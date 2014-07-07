@@ -14,7 +14,6 @@ import argparse
 from pprint import pprint, pformat
 import itertools
 from collections import deque
-from heapq import heappush, heappushpop
 from math import ceil, floor
 
 # Forward decls
@@ -44,7 +43,7 @@ class Route(object):
         self.gainCr = gainCr
 
     def __lt__(self, rhs):
-        return self.gainCr < rhs.gainCr
+        return rhs.gainCr < self.gainCr # reversed
     def __eq__(self, rhs):
         return self.gainCr == rhs.gainCr
 
@@ -96,7 +95,7 @@ def parse_command_line():
         originID = tdb.get_station_id(originName)
         origins = [ originID ]
     else:
-        origins = list(stations.keys())
+        origins = list(tdb.stations.keys())
 
     if args.dest:
         destName = args.dest
@@ -205,17 +204,14 @@ def main():
             gainCr += int(bestTrade[1] * (1.0 - args.margin))
         if len(hops) + 1 < len(route):
             continue
-        if len(routes) >= len(tdb.stations) * 3:
-            if min(routes).gainCr <= gainCr:
-                heappushpop(routes, Route(route, hops, gainCr))
-        else:
-            heappush(routes, Route(route, hops, gainCr))
+        routes.append(Route(route, hops, gainCr))
         assert credits + gainCr > startCr
 
     if not routes:
         print("No routes match your selected criteria.")
         return
 
+    routes.sort()
     for i in range(0, min(len(routes), args.routes)):
         print(routes[i])
 
