@@ -144,7 +144,7 @@ def try_combinations(capacity, credits, tradeList):
             best.append([trade, maximum])
             capacity -= maximum
             credits -= maximum * itemCostCr
-            bestCr += trade.gainCr
+            bestCr += maximum * trade.gainCr
             if not capacity or not credits:
                 break
     return [ best, bestCr ]
