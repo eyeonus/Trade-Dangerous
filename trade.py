@@ -73,7 +73,8 @@ class Route(object):
 ######################################################################
 
 def parse_command_line():
-    global args, origins, originStation, finalStation, viaStation, avoidItems, maxUnits
+    global args, origins, originStation, finalStation, viaStation, avoidItems, maxUnits, \
+            originName, destName, viaName
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
     parser.add_argument('--from', dest='origin', metavar='<Origin>', help='Specifies starting system/station', required=False)
