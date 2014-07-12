@@ -35,14 +35,14 @@ class Station(object):
     def __init__(self, ID, system, station):
         self.ID, self.system, self.station = ID, system.replace(' ', ''), station.replace(' ', '')
         self.links = {}
-        self.stations = {}
+        self.stations = []
 
     def addTrade(self, dest, item, itemID, costCr, gainCr):
         """ Add a Trade entry from this to a destination station """
         dstID = dest.ID
         if not dstID in self.links:
             self.links[dstID] = []
-            self.stations[dest] = None
+            self.stations.append(dest)
         trade = Trade(item, itemID, costCr, gainCr)
         self.links[dstID].append(trade)
 
@@ -50,10 +50,8 @@ class Station(object):
         for dstID in self.links:
             items = self.links[dstID]
             items.sort(key=lambda trade: trade.gainCr, reverse=True)
-        for dest in self.stations:
-            self.stations[dest] = self.links[dest.ID]
 
-    def __str__(self):
+    def __repr__(self):
         str = self.system + " " + self.station
         return str
 
@@ -92,10 +90,10 @@ class TradeDB(object):
         for station in self.stations.values():
             station.organizeTrades()
 
-    def get_station_id(self, name):
+    def getStation(self, name):
         upperName = name.upper()
         if upperName in self.systemIDs:
-            return self.systemIDs[upperName]
+            return self.stations[self.systemIDs[upperName]]
         elif upperName in self.stationIDs:
-            return self.stationIDs[upperName]
+            return self.stations[self.stationIDs[upperName]]
         raise ValueError("Unrecognized system/station name '%s'" % name)

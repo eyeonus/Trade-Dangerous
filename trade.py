@@ -19,7 +19,7 @@ from math import ceil, floor
 # Forward decls
 args = None
 profitCache = dict()
-originID, finalStationID, viaStationID = None, None, None
+originStation, finalStation, viaStation = None, None, None
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
 
@@ -37,10 +37,14 @@ class Route(object):
     """ Describes a series of CargoRuns, that is CargoLoads
         between several stations. E.g. Chango -> Gateway -> Enterprise
         """
-    def __init__(self, route, hops, gainCr):
-        self.route = list(route)
+    def __init__(self, stations, hops, gainCr):
+        self.route = stations
         self.hops = hops
         self.gainCr = gainCr
+
+    def plus(self, dst, hop):
+        rvalue = Route(self.route + [dst], self.hops + [hop], self.gainCr + hop[1])
+        return rvalue
 
     def __lt__(self, rhs):
         return rhs.gainCr < self.gainCr # reversed
@@ -69,7 +73,7 @@ class Route(object):
 ######################################################################
 
 def parse_command_line():
-    global args, origins, originID, finalStationID, viaStationID, originName, destName, viaName
+    global args, origins, originStation, finalStation, viaStation
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
     parser.add_argument('--from', dest='origin', metavar='<Origin>', help='Specifies starting system/station', required=False)
@@ -92,29 +96,29 @@ def parse_command_line():
 
     if args.origin:
         originName = args.origin
-        originID = tdb.get_station_id(originName)
-        origins = [ tdb.stations[originID] ]
+        originStation = tdb.getStation(originName)
+        origins = [ originStation ]
     else:
         origins = [ station for station in tdb.stations.values() ]
 
     if args.dest:
         destName = args.dest
-        finalStationID = tdb.get_station_id(destName)
-        if args.hops == 1 and originID and finalStationID and originID == finalStationID:
+        finalStation = tdb.getStation(destName)
+        if args.hops == 1 and originStation and finalStation and originStation == finalStation:
             raise ValueError("More than one hop required to use same from/to destination")
 
     if args.via:
         if args.hops < 2:
             raise ValueError("Minimum of 2 hops required for a 'via' route")
         viaName = args.via
-        viaStationID = tdb.get_station_id(viaName)
+        viaStation = tdb.getStation(viaName)
         if args.hops == 2:
-            if viaStationID == originID:
+            if viaStation == originStation:
                 raise ValueError("3+ hops required to go 'via' the origin station")
-            if viaStationID == finalStationID:
+            if viaStation == finalStation:
                 raise ValueError("3+ hops required to go 'via' the destination station")
         if args.hops <= 3:
-            if viaStationID == originID and viaStationID == finalStationID:
+            if viaStation == originStation and viaStation == finalStation:
                 raise ValueError("4+ hops required to go 'via' the same station as you start and end at")
 
     if args.credits < 0:
@@ -136,7 +140,7 @@ def parse_command_line():
 
 def try_combinations(capacity, credits, tradeList):
     best, bestCr = [], 0
-    for idx, trade in enumerate(tradeList):
+    for trade in tradeList:
         itemCostCr = trade.costCr
         maximum = min(capacity, credits // itemCostCr)
         if maximum > 0 :
@@ -150,60 +154,64 @@ def try_combinations(capacity, credits, tradeList):
 
 
 def get_profits(src, dst, startCr):
-    if args.debug: print("%s -> %s with %dcr" % (src, dst, startCr))
+    if args.debug: print("# %s -> %s with %dcr" % (src, dst, startCr))
 
     # Get a list of what we can buy
-    trades = src.links[dst.ID]
-    return try_combinations(args.capacity, startCr, trades)
+    return try_combinations(args.capacity, startCr, src.links[dst.ID])
 
 
-def generate_routes():
-    q = deque([[origin] for origin in origins])
-    hops = args.hops
-    while q:
-        # get the most recent partial route
-        route = q.pop()
-        # furthest station on the route
-        lastStation = route[-1]
-        if len(route) >= hops: # destination
-            # upsize the array so we can reuse the slot.
-            route.append(0)
-            for dest in lastStation.stations:
-                route[-1] = dest
-                yield route
-        else:
-            for dest in lastStation.stations:
-                q.append(route + [dest])
+def get_best_hops(routes, credits, restrictTo):
+    """ Given a list of routes, try all available next hops from each
+        route. Store the results by destination so that we pick the
+        best route-to-point for each destination at each step. If we
+        have two routes: A->B->D, A->C->D and A->B->D produces more
+        profit, then there is no point in continuing the A->C->D path. """
+
+    bestToDest = {}
+    safetyMargin = 1.0 - args.margin
+    for route in routes:
+        src = route.route[-1]
+        for dst in src.stations:
+            if restrictTo and dst != restrictTo:
+                continue
+            trade = get_profits(src, dst, credits + int(route.gainCr * safetyMargin))
+            if not trade:
+                continue
+            dstID = dst.ID
+            try:
+                best = bestToDest[dstID]
+                if best[1].gainCr + best[2][1] >= route.gainCr + trade[1]:
+                    continue
+            except: pass
+            bestToDest[dstID] = [ dst, route, trade ]
+
+    result = []
+    for (dst, route, trade) in bestToDest.values():
+        result.append(route.plus(dst, trade))
+
+    return result
 
 def main():
     parse_command_line()
 
-    print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, args.credits, args.hops))
-
     startCr = args.credits - args.insurance
-    routes = []
-    for route in generate_routes():
-        # Do we have a specific destination requirement?
-        if finalStationID and route[-1] != finalStationID:
-            continue
-        # Do we have a travel-via requirement?
-        if viaStationID and not viaStationID in route[1:-2]:
-            continue
-        credits = startCr
-        gainCr = 0
-        hops = []
-        for i in range(0, len(route) - 1):
-            src, dst = route[i], route[i + 1]
-            if args.debug: print("hop %d: %s -> %s" % (i, src, dst))
-            bestTrade = get_profits(src, dst, credits + gainCr)
-            if not bestTrade:
-                break
-            hops.append(bestTrade)
-            gainCr += int(bestTrade[1] * (1.0 - args.margin))
-        if len(hops) + 1 < len(route):
-            continue
-        routes.append(Route(route, hops, gainCr))
-        assert credits + gainCr > startCr
+    routes = [ Route([src], [], 0) for src in origins ]
+    numHops =  args.hops
+    lastHop = numHops - 1
+
+    print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
+
+    for hopNo in range(numHops):
+        if args.debug: print("# Hop %d" % hopNo)
+        restrictTo = None
+        if hopNo == 0 and viaStation:
+            restrictTo = viaStation
+        elif hopNo == lastHop:
+            restrictTo = finalStation
+            if viaStation:
+                # Cull to routes that include the viaStation
+                routes = [ route for route in routes if viaStation in route.route[1:] ]
+        routes = get_best_hops(routes, startCr, restrictTo)
 
     if not routes:
         print("No routes match your selected criteria.")
