@@ -145,11 +145,10 @@ def try_combinations(startCapacity, startCr, tradeList):
     best, bestGainCr, bestCap = [], 0, startCapacity
     tradeItems = len(tradeList)
     for handicap in range(startCapacity):
-        for combo in itertools.combinations(range(tradeItems), min(startCapacity, tradeItems)):
+        for combo in itertools.combinations(tradeList, min(startCapacity, tradeItems)):
             cargo, credits, capacity, gainCr = [], startCr, startCapacity, 0
             myHandicap = handicap
-            for idx in combo:
-                trade = tradeList[idx]
+            for trade in combo:
                 itemCostCr = trade.costCr
                 maximum = min(capacity, credits // itemCostCr)
                 if maximum > 0:
