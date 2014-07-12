@@ -91,7 +91,7 @@ def parse_command_line():
 
     if args.hops < 1:
         raise ValueError("Minimum of 1 hop required")
-    if args.hops > 10:
+    if args.hops > 40:
         raise ValueError("Too many hops without more optimization")
 
     if args.origin:
@@ -138,19 +138,38 @@ def parse_command_line():
 ######################################################################
 # Processing functions
 
-def try_combinations(capacity, credits, tradeList):
-    best, bestCr = [], 0
-    for trade in tradeList:
-        itemCostCr = trade.costCr
-        maximum = min(capacity, credits // itemCostCr)
-        if maximum > 0 :
-            best.append([trade, maximum])
-            capacity -= maximum
-            credits -= maximum * itemCostCr
-            bestCr += maximum * trade.gainCr
-            if not capacity or not credits:
-                break
-    return [ best, bestCr ]
+def try_combinations(startCapacity, startCr, tradeList):
+    firstTrade = tradeList[0]
+    if firstTrade.costCr * startCapacity <= startCr:
+        return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
+    best, bestGainCr, bestCap = [], 0, startCapacity
+    tradeItems = len(tradeList)
+    for handicap in range(startCapacity):
+        for combo in itertools.combinations(range(tradeItems), min(startCapacity, tradeItems)):
+            cargo, credits, capacity, gainCr = [], startCr, startCapacity, 0
+            myHandicap = handicap
+            for idx in combo:
+                trade = tradeList[idx]
+                itemCostCr = trade.costCr
+                maximum = min(capacity, credits // itemCostCr)
+                if maximum > 0:
+                    deduction = min(maximum, myHandicap)
+                    maximum -= deduction
+                    myHandicap -= deduction
+                if maximum > 0:
+                    cargo.append([trade, maximum])
+                    capacity -= maximum
+                    credits -= maximum * itemCostCr
+                    gainCr += maximum * trade.gainCr
+                    if not capacity or not credits:
+                        break
+        if gainCr < bestGainCr:
+            continue
+        if gainCr == bestGainCr and capacity >= bestCap:
+            continue
+        best, bestGainCr, bestCap = cargo, gainCr, capacity
+
+    return [ best, bestGainCr ]
 
 
 def get_profits(src, dst, startCr):
