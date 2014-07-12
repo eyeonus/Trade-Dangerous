@@ -13,16 +13,17 @@ import pypyodbc
 class Trade(object):
     """ Describes what it would cost and how much you would gain
         when selling an item between two specific stations. """
-    def __init__(self, item, costCr, gainCr):
+    def __init__(self, item, itemID, costCr, gainCr):
         self.item = item
+        self.itemID = itemID
         self.costCr = costCr
         self.gainCr = gainCr
 
     def describe(self):
-        print(self.item, self.costCr, self.gainCr, self.value)
+        print(self.item, self.itemID, self.costCr, self.gainCr, self.value)
 
     def __repr__(self):
-        return "%s@%d+%d" % (self.item, self.costCr, self.gainCr)
+        return "%s (%dcr)" % (self.item, self.costCr)
 
 
 class Station(object):
@@ -34,12 +35,25 @@ class Station(object):
     def __init__(self, ID, system, station):
         self.ID, self.system, self.station = ID, system.replace(' ', ''), station.replace(' ', '')
         self.links = {}
+        self.items = {}
+        self.stations = []
 
-    def addTrade(self, dstID, item, costCr, gainCr):
+    def addTrade(self, dest, item, itemID, costCr, gainCr):
         """ Add a Trade entry from this to a destination station """
+        dstID = dest.ID
         if not dstID in self.links:
             self.links[dstID] = []
-        self.links[dstID].append(Trade(item, costCr, gainCr))
+            self.stations.append(dest)
+        trade = Trade(item, itemID, costCr, gainCr)
+        self.links[dstID].append(trade)
+        self.items[((dstID) << 16) + itemID] = trade
+
+    def getTrade(self, dstID, itemID):
+        key = ((dstID) << 16) + itemID
+        try:
+            return self.items[key]
+        except:
+            return None
 
     def organizeTrades(self):
         for station in self.links:
@@ -78,9 +92,9 @@ class TradeDB(object):
                     ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
                     ' WHERE src.station_id <> dst.station_id AND src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
                     ' AND src.ui_order > 0 AND dst.ui_order > 0'
-                    ' ORDER BY (dst.sell_cr - src.buy_cr) / src.buy_cr DESC')
+                    ' ORDER BY (dst.sell_cr - src.buy_cr) DESC')
         for row in cur:
-            self.stations[row[0]].addTrade(row[1], self.items[row[2]], row[3], row[4])
+            self.stations[row[0]].addTrade(self.stations[row[1]], self.items[row[2]], row[2], row[3], row[4])
 
         for station in self.stations.values():
             station.organizeTrades()

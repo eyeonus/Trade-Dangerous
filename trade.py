@@ -48,21 +48,21 @@ class Route(object):
         return self.gainCr == rhs.gainCr
 
     def __repr__(self):
-        src = tdb.stations[self.route[0]]
+        src = self.route[0]
         credits = args.credits
         gainCr = 0
         route = self.route
 
-        str = "%s -> %s:\n" % (src, tdb.stations[route[-1]])
+        str = "%s -> %s:\n" % (src, route[-1])
         for i in range(len(route) - 1):
             hop = self.hops[i]
-            str += " @ %-20s Buy" % tdb.stations[route[i]]
+            str += " @ %-20s Buy" % route[i]
             for item in hop[0]:
                 str += " %d*%s," % (item[1], item[0])
             str += "\n"
             gainCr += hop[1]
 
-        str += " $ %s %dcr + %dcr => %dcr total" % (tdb.stations[route[-1]], credits, gainCr, credits + gainCr)
+        str += " $ %s %dcr + %dcr => %dcr total" % (route[-1], credits, gainCr, credits + gainCr)
 
         return str
 
@@ -93,9 +93,9 @@ def parse_command_line():
     if args.origin:
         originName = args.origin
         originID = tdb.get_station_id(originName)
-        origins = [ originID ]
+        origins = [ tdb.stations[originID] ]
     else:
-        origins = list(tdb.stations.keys())
+        origins = [ station for station in tdb.stations.values() ]
 
     if args.dest:
         destName = args.dest
@@ -149,33 +149,31 @@ def try_combinations(capacity, credits, tradeList):
     return [ best, bestCr ]
 
 
-def get_profits(srcID, dstID, startCr):
-    src = tdb.stations[srcID]
-
-    if args.debug: print("%s -> %s with %dcr" % (src, tdb.stations[dstID], startCr))
+def get_profits(src, dst, startCr):
+    if args.debug: print("%s -> %s with %dcr" % (src, dst, startCr))
 
     # Get a list of what we can buy
-    trades = src.links[dstID]
+    trades = src.links[dst.ID]
     return try_combinations(args.capacity, startCr, trades)
 
 
 def generate_routes():
-    q = deque([[origID] for origID in origins])
+    q = deque([[origin] for origin in origins])
     hops = args.hops
     while q:
         # get the most recent partial route
         route = q.pop()
         # furthest station on the route
-        lastStation = tdb.stations[route[-1]]
+        lastStation = route[-1]
         if len(route) >= hops: # destination
             # upsize the array so we can reuse the slot.
             route.append(0)
-            for dstID in lastStation.links:
-                route[-1] = dstID
+            for dest in lastStation.stations:
+                route[-1] = dest
                 yield route
         else:
-            for dstID in lastStation.links:
-                q.append(route + [dstID])
+            for dest in lastStation.stations:
+                q.append(route + [dest])
 
 def main():
     parse_command_line()
@@ -195,9 +193,9 @@ def main():
         gainCr = 0
         hops = []
         for i in range(0, len(route) - 1):
-            srcID, dstID = route[i], route[i + 1]
-            if args.debug: print("hop %d: %d -> %d" % (i, srcID, dstID))
-            bestTrade = get_profits(srcID, dstID, credits + gainCr)
+            src, dst = route[i], route[i + 1]
+            if args.debug: print("hop %d: %s -> %s" % (i, src, dst))
+            bestTrade = get_profits(src, dst, credits + gainCr)
             if not bestTrade:
                 break
             hops.append(bestTrade)
