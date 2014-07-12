@@ -35,7 +35,6 @@ class Station(object):
     def __init__(self, ID, system, station):
         self.ID, self.system, self.station = ID, system.replace(' ', ''), station.replace(' ', '')
         self.links = {}
-        self.items = {}
         self.stations = []
 
     def addTrade(self, dest, item, itemID, costCr, gainCr):
@@ -46,14 +45,6 @@ class Station(object):
             self.stations.append(dest)
         trade = Trade(item, itemID, costCr, gainCr)
         self.links[dstID].append(trade)
-        self.items[((dstID) << 16) + itemID] = trade
-
-    def getTrade(self, dstID, itemID):
-        key = ((dstID) << 16) + itemID
-        try:
-            return self.items[key]
-        except:
-            return None
 
     def organizeTrades(self):
         for station in self.links:
