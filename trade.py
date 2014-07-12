@@ -11,9 +11,7 @@
 # Imports
 
 import argparse
-from pprint import pprint, pformat
 import itertools
-from collections import deque
 from math import ceil, floor
 
 # Forward decls
@@ -22,6 +20,8 @@ profitCache = dict()
 originStation, finalStation, viaStation = None, None, None
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
+avoidItems = []
+maxUnits = 0
 
 ######################################################################
 # DB Setup
@@ -73,15 +73,18 @@ class Route(object):
 ######################################################################
 
 def parse_command_line():
-    global args, origins, originStation, finalStation, viaStation
+    global args, origins, originStation, finalStation, viaStation, avoidItems, maxUnits
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
     parser.add_argument('--from', dest='origin', metavar='<Origin>', help='Specifies starting system/station', required=False)
     parser.add_argument('--to', dest='dest', metavar='<Destination>', help='Specifies final system/station', required=False)
     parser.add_argument('--via', dest='via', metavar='<ViaStation>', help='Require specified station to be en-route', required=False)
+    parser.add_argument('--avoid', dest='avoid', metavar='<Item>', help='Exclude this item from trading', required=False, action='append')
     parser.add_argument('--credits', metavar='<Balance>', help='Number of credits to start with', type=int, required=True)
     parser.add_argument('--hops', metavar="<Hops>", help="Number of hops to run", type=int, default=2, required=False)
     parser.add_argument('--capacity', metavar="<Capactiy>", help="Maximum capacity of cargo hold", type=int, default=4, required=False)
+    parser.add_argument('--limit', help='Maximum units of any one cargo item to buy', type=int, default=0, required=False)
+    parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
     parser.add_argument('--insurance', metavar="<Credits>", help="Reserve at least this many credits", type=int, default=0, required=False)
     parser.add_argument('--margin', metavar="<Error Margin>", help="Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. Default: 0.02", default=0.02, type=float, required=False)
     parser.add_argument('--debug', help="Enable verbose output", default=False, required=False, action='store_true')
@@ -121,17 +124,37 @@ def parse_command_line():
             if viaStation == originStation and viaStation == finalStation:
                 raise ValueError("4+ hops required to go 'via' the same station as you start and end at")
 
+    if args.avoid:
+        for avoid in args.avoid:
+            if not avoid in tdb.items.values():
+                raise ValueError("Unknown item: %s" % avoid)   
+            avoidItems.append(avoid)
+
     if args.credits < 0:
         raise ValueError("Invalid (negative) value for initial credits")
 
     if args.capacity < 0:
         raise ValueError("Invalid (negative) cargo capacity")
 
+    if args.limit and args.limit > args.capacity:
+        raise ValueError("'limit' must be <= capacity")
+    if args.limit and args.limit < 0:
+        raise ValueError("'limit' can't be negative, silly")
+    maxUnits = args.limit if args.limit else args.capacity
+
     if args.insurance and args.insurance >= (args.credits + 30):
         raise ValueError("Insurance leaves no margin for trade")
 
     if args.routes < 1:
         raise ValueError("Maximum routes has to be 1 or higher")
+
+    if args.unique and args.hops >= len(tdb.stations):
+        raise ValueError("Requested unique trip with more hops than there are stations...")
+    if args.unique and (    \
+            (originStation and originStation == finalStation) or \
+            (originStation and originStation == viaStation) or \
+            (viaStation and viaStation == finalStation)):
+        raise ValueError("from/to/via repeat conflicts with --unique")
 
     return args
 
@@ -140,7 +163,7 @@ def parse_command_line():
 
 def try_combinations(startCapacity, startCr, tradeList):
     firstTrade = tradeList[0]
-    if firstTrade.costCr * startCapacity <= startCr:
+    if maxUnits >= startCapacity and firstTrade.costCr * startCapacity <= startCr:
         return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
     best, bestGainCr, bestCap = [], 0, startCapacity
     tradeItems = len(tradeList)
@@ -149,8 +172,10 @@ def try_combinations(startCapacity, startCr, tradeList):
             cargo, credits, capacity, gainCr = [], startCr, startCapacity, 0
             myHandicap = handicap
             for trade in combo:
+                if trade.item in avoidItems:
+                    continue
                 itemCostCr = trade.costCr
-                maximum = min(capacity, credits // itemCostCr)
+                maximum = min(min(capacity, maxUnits), credits // itemCostCr)
                 if maximum > 0:
                     deduction = min(maximum, myHandicap)
                     maximum -= deduction
@@ -191,6 +216,8 @@ def get_best_hops(routes, credits, restrictTo):
         src = route.route[-1]
         for dst in src.stations:
             if restrictTo and dst != restrictTo:
+                continue
+            if args.unique and dst in route.route:
                 continue
             trade = get_profits(src, dst, credits + int(route.gainCr * safetyMargin))
             if not trade:
