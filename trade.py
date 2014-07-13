@@ -165,7 +165,8 @@ def parse_command_line():
 def try_combinations(startCapacity, startCr, tradeList):
     firstTrade = tradeList[0]
     if maxUnits >= startCapacity and firstTrade.costCr * startCapacity <= startCr:
-        return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
+        if not avoidItems or not firstTrade.item in avoidItems:
+            return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
     best, bestGainCr, bestCap = [], 0, startCapacity
     tradeItems = len(tradeList)
     for handicap in range(startCapacity):
