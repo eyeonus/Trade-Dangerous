@@ -38,7 +38,7 @@ class Station(object):
         self.stations = []
 
     def addTrade(self, dest, item, itemID, costCr, gainCr):
-        """ Add a Trade entry from this to a destination station """
+        """ Add a Trade entry from this to a destination station. """
         dstID = dest.ID
         if not dstID in self.links:
             self.links[dstID] = []
@@ -47,9 +47,24 @@ class Station(object):
         self.links[dstID].append(trade)
 
     def organizeTrades(self):
+        """ Process the trades-to-destination lists: If there are multiple items
+            with the same gain for a given link, only keep the cheapest. Then
+            sort the list into by-gain order. """
         for dstID in self.links:
             items = self.links[dstID]
-            items.sort(key=lambda trade: trade.gainCr, reverse=True)
+            # Find the cheapest item
+            cheapest = min(items, key=lambda item: item.costCr)
+            cheapestGain = cheapest.gainCr
+            # Pick the cheapest item for each gain.
+            gains = dict()
+            for item in items:
+                itemGainCr = item.gainCr
+                if itemGainCr >= cheapestGain:
+                    if (not itemGainCr in gains) or (gains[itemGainCr].costCr <= item.costCr):
+                        gains[itemGainCr] = item
+            # Now sort the list in descending gain order - so the most
+            # profitable item is listed first.
+            self.links[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
 
     def __repr__(self):
         str = self.system + " " + self.station
@@ -61,7 +76,7 @@ class TradeDB(object):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.load()
 
-    def load(self):
+    def load(self, avoiding=[]):
         # Connect to the database
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
@@ -78,6 +93,8 @@ class TradeDB(object):
         cur.execute('SELECT id, item FROM Items')
         self.items = { row[0]: row[1] for row in cur }
 
+        stations, items = self.stations, self.items
+
         """ Populate the station list with the profitable trades between stations """
         cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr - src.buy_cr'
                     ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
@@ -85,9 +102,10 @@ class TradeDB(object):
                     ' AND src.ui_order > 0 AND dst.ui_order > 0'
                     ' ORDER BY (dst.sell_cr - src.buy_cr) DESC')
         for row in cur:
-            self.stations[row[0]].addTrade(self.stations[row[1]], self.items[row[2]], row[2], row[3], row[4])
+            if not (items[row[2]] in avoiding):
+                stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])
 
-        for station in self.stations.values():
+        for station in stations.values():
             station.organizeTrades()
 
     def getStation(self, name):

@@ -20,7 +20,6 @@ profitCache = dict()
 originStation, finalStation, viaStation = None, None, None
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
-avoidItems = []
 maxUnits = 0
 
 ######################################################################
@@ -73,8 +72,7 @@ class Route(object):
 ######################################################################
 
 def parse_command_line():
-    global args, origins, originStation, finalStation, viaStation, avoidItems, maxUnits, \
-            originName, destName, viaName
+    global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
     parser.add_argument('--from', dest='origin', metavar='<Origin>', help='Specifies starting system/station', required=False)
@@ -95,8 +93,18 @@ def parse_command_line():
 
     if args.hops < 1:
         raise ValueError("Minimum of 1 hop required")
-    if args.hops > 40:
+    if args.hops > 64:
         raise ValueError("Too many hops without more optimization")
+
+    if args.avoid:
+        avoidItems = []
+        for avoid in args.avoid:
+            if not avoid in tdb.items.values():
+                raise ValueError("Unknown item: %s" % avoid)   
+            avoidItems.append(avoid)
+        if avoidItems:
+            if args.debug: print("Avoiding %s" % avoidItems)
+            tdb.load(avoiding=avoidItems)
 
     if args.origin:
         originName = args.origin
@@ -124,12 +132,6 @@ def parse_command_line():
         if args.hops <= 3:
             if viaStation == originStation and viaStation == finalStation:
                 raise ValueError("4+ hops required to go 'via' the same station as you start and end at")
-
-    if args.avoid:
-        for avoid in args.avoid:
-            if not avoid in tdb.items.values():
-                raise ValueError("Unknown item: %s" % avoid)   
-            avoidItems.append(avoid)
 
     if args.credits < 0:
         raise ValueError("Invalid (negative) value for initial credits")
