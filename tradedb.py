@@ -92,7 +92,7 @@ class TradeDB(object):
         """ Populate 'items' from the database """
         cur.execute('SELECT id, item FROM Items')
         self.items = { row[0]: row[1] for row in cur }
-        self.itemIDs = { row[1]: row[0] for row in cur }
+        self.itemIDs = { self.items[name]: name for name in self.items }
 
         stations, items = self.stations, self.items
 
