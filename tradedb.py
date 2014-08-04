@@ -92,6 +92,7 @@ class TradeDB(object):
         """ Populate 'items' from the database """
         cur.execute('SELECT id, item FROM Items')
         self.items = { row[0]: row[1] for row in cur }
+        self.itemIDs = { row[1]: row[0] for row in cur }
 
         stations, items = self.stations, self.items
 
@@ -115,3 +116,10 @@ class TradeDB(object):
         elif upperName in self.stationIDs:
             return self.stations[self.stationIDs[upperName]]
         raise ValueError("Unrecognized system/station name '%s'" % name)
+
+    def query(self, sql):
+        conn = pypyodbc.connect(self.path)
+        cur = conn.cursor()
+        cur.execute(sql)
+        for row in cur:
+            yield row
