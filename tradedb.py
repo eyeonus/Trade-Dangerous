@@ -76,7 +76,7 @@ class TradeDB(object):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.load()
 
-    def load(self, avoiding=[]):
+    def load(self, avoiding=[], ignoreLinks=False):
         # Connect to the database
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
@@ -97,11 +97,19 @@ class TradeDB(object):
         stations, items = self.stations, self.items
 
         """ Populate the station list with the profitable trades between stations """
-        cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr - src.buy_cr'
-                    ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
-                    ' WHERE src.station_id <> dst.station_id AND src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
-                    ' AND src.ui_order > 0 AND dst.ui_order > 0'
-                    ' ORDER BY (dst.sell_cr - src.buy_cr) DESC')
+        if not ignoreLinks:
+            cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr - src.buy_cr'
+                        ' FROM Links AS l, Prices AS src, Prices AS dst'
+                        ' WHERE l.from = src.station_id AND l.to = dst.station_id AND src.item_id = dst.item_id'
+                        ' AND src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
+                        ' AND src.ui_order > 0 AND dst.ui_order > 0'
+                        ' ORDER BY (dst.sell_cr - src.buy_cr) DESC')
+        else:
+            cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr - src.buy_cr'
+                        ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
+                        ' WHERE src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
+                        ' AND src.ui_order > 0 AND dst.ui_order > 0'
+                        ' ORDER BY (dst.sell_cr - src.buy_cr) DESC')
         for row in cur:
             if not (items[row[2]] in avoiding):
                 stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])

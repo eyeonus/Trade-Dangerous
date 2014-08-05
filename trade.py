@@ -88,6 +88,7 @@ def parse_command_line():
     parser.add_argument('--margin', metavar="<Error Margin>", help="Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. Default: 0.02", default=0.02, type=float, required=False)
     parser.add_argument('--debug', help="Enable verbose output", default=False, required=False, action='store_true')
     parser.add_argument('--routes', metavar="<MaxRoutes>", help="Maximum number of routes to show", type=int, default=1, required=False)
+    parser.add_argument('--links', dest='ignoreLinks', help="Ignore links (treat all stations as connected)", default=False, required=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -96,15 +97,17 @@ def parse_command_line():
     if args.hops > 64:
         raise ValueError("Too many hops without more optimization")
 
+    avoidItems = []
     if args.avoid:
-        avoidItems = []
         for avoid in args.avoid:
             if not avoid in tdb.items.values():
                 raise ValueError("Unknown item: %s" % avoid)   
             avoidItems.append(avoid)
         if avoidItems:
             if args.debug: print("Avoiding %s" % avoidItems)
-            tdb.load(avoiding=avoidItems)
+
+    if args.ignoreLinks or avoidItems:
+        tdb.load(avoiding=avoidItems, ignoreLinks=args.ignoreLinks)
 
     if args.origin:
         originName = args.origin
