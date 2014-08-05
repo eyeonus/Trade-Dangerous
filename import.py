@@ -21,7 +21,7 @@ def list_search(listType, lookup, values):
         if val.casefold().find(needle) > -1:
             if match:
                 raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
-                                    listType, lookup, match, cat))
+                                    listType, lookup, match, val))
             match = val
     if not match:
         raise ValueError("Error: '%s' doesn't match any %s" % (lookup, listType))
