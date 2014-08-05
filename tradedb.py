@@ -129,5 +129,8 @@ class TradeDB(object):
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
         cur.execute(sql)
-        for row in cur:
+        return cur
+
+    def fetch_all(self, sql):
+        for row in self.query(sql):
             yield row
