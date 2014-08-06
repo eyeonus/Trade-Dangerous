@@ -53,8 +53,10 @@ class TradeCalc(object):
         self.unique = unique
         self.maxUnits = maxUnits if maxUnits > 0 else capacity
 
-    def tryCombinations(self, startCr, tradeList):
-        startCapacity, maxUnits = self.capacity, self.maxUnits
+    def tryCombinations(self, startCr, tradeList, capacity=None):
+        startCapacity = capacity if capacity else self.capacity
+        maxUnits = self.maxUnits
+
         firstTrade = tradeList[0]
         if maxUnits >= startCapacity and firstTrade.costCr * startCapacity <= startCr:
             return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
@@ -87,11 +89,11 @@ class TradeCalc(object):
         return [ best, bestGainCr ]
 
 
-    def getProfits(self, src, dst, startCr):
+    def getBestTrade(self, src, dst, startCr, capacity=None):
         if self.debug: print("# %s -> %s with %dcr" % (src, dst, startCr))
 
         # Get a list of what we can buy
-        return self.tryCombinations(startCr, src.links[dst.ID])
+        return self.tryCombinations(startCr, src.links[dst.ID], capacity=capacity)
 
     def getBestHopFrom(self, src, credits):
         """ Determine the best trade run from a given station. """
@@ -99,7 +101,7 @@ class TradeCalc(object):
             src = self.tdb.getStation(src)
         bestDst, bestLoad, bestGainCr = None, None, 0
         for dst in src.stations:
-            trade = self.getProfits(src, dst, credits)
+            trade = self.getBestTrade(src, dst, credits)
             if trade and trade[1] > bestGainCr:
                 bestDst, bestLoad, bestGainCr = dst, trade[0], trade[1]
         return bestDst, bestLoad, bestGainCr
@@ -122,7 +124,7 @@ class TradeCalc(object):
                     continue
                 if unique and dst in route.route:
                     continue
-                trade = self.getProfits(src, dst, startCr)
+                trade = self.getBestTrade(src, dst, startCr)
                 if not trade:
                     continue
                 dstID = dst.ID
