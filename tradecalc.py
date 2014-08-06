@@ -91,9 +91,11 @@ class TradeCalc(object):
 
     def getBestTrade(self, src, dst, startCr, capacity=None):
         if self.debug: print("# %s -> %s with %dcr" % (src, dst, startCr))
+        if not dst in src.stations:
+            raise ValueError("%s does not have a link to %s" % (src, dst))
 
         # Get a list of what we can buy
-        return self.tryCombinations(startCr, src.links[dst.ID], capacity=capacity)
+        return self.tryCombinations(startCr, src.links[dst.ID], capacity)
 
     def getBestHopFrom(self, src, credits, capacity=None):
         """ Determine the best trade run from a given station. """
