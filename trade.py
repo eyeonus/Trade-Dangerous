@@ -11,63 +11,24 @@
 # Imports
 
 import argparse
-import itertools
-from math import ceil, floor
 
 # Forward decls
 args = None
-profitCache = dict()
 originStation, finalStation, viaStation = None, None, None
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
 maxUnits = 0
 
 ######################################################################
-# DB Setup
+# TradeDB and TradeCalc
 
-# Connect
 from tradedb import TradeDB, Trade, Station
+from tradecalc import Route, TradeCalc
+
 tdb = TradeDB("C:\\Dev\\trade\\TradeDangerous.accdb")
 
 ######################################################################
 # Classes
-
-class Route(object):
-    """ Describes a series of CargoRuns, that is CargoLoads
-        between several stations. E.g. Chango -> Gateway -> Enterprise
-        """
-    def __init__(self, stations, hops, gainCr):
-        self.route = stations
-        self.hops = hops
-        self.gainCr = gainCr
-
-    def plus(self, dst, hop):
-        rvalue = Route(self.route + [dst], self.hops + [hop], self.gainCr + hop[1])
-        return rvalue
-
-    def __lt__(self, rhs):
-        return rhs.gainCr < self.gainCr # reversed
-    def __eq__(self, rhs):
-        return self.gainCr == rhs.gainCr
-
-    def __repr__(self):
-        src = self.route[0]
-        credits = args.credits
-        gainCr = 0
-        route = self.route
-
-        str = "%s -> %s:\n" % (src, route[-1])
-        for i in range(len(route) - 1):
-            hop = self.hops[i]
-            str += " @ %-20s Buy" % route[i]
-            for item in hop[0]:
-                str += " %d*%s," % (item[1], item[0])
-            str += "\n"
-            gainCr += hop[1]
-
-        str += " $ %s %dcr + %dcr => %dcr total" % (route[-1], credits, gainCr, credits + gainCr)
-
-        return str
 
 ######################################################################
 
@@ -167,91 +128,20 @@ def parse_command_line():
 ######################################################################
 # Processing functions
 
-def try_combinations(startCapacity, startCr, tradeList):
-    firstTrade = tradeList[0]
-    if maxUnits >= startCapacity and firstTrade.costCr * startCapacity <= startCr:
-        return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
-    best, bestGainCr, bestCap = [], 0, startCapacity
-    tradeItems = len(tradeList)
-    for handicap in range(startCapacity):
-        for combo in itertools.combinations(tradeList, min(startCapacity, tradeItems)):
-            cargo, credits, capacity, gainCr = [], startCr, startCapacity, 0
-            myHandicap = handicap
-            for trade in combo:
-                itemCostCr = trade.costCr
-                maximum = min(min(capacity, maxUnits), credits // itemCostCr)
-                if maximum > 0:
-                    deduction = min(maximum, myHandicap)
-                    maximum -= deduction
-                    myHandicap -= deduction
-                if maximum > 0:
-                    cargo.append([trade, maximum])
-                    capacity -= maximum
-                    credits -= maximum * itemCostCr
-                    gainCr += maximum * trade.gainCr
-                    if not capacity or not credits:
-                        break
-        if gainCr < bestGainCr:
-            continue
-        if gainCr == bestGainCr and capacity >= bestCap:
-            continue
-        best, bestGainCr, bestCap = cargo, gainCr, capacity
-
-    return [ best, bestGainCr ]
-
-
-def get_profits(src, dst, startCr):
-    if args.debug: print("# %s -> %s with %dcr" % (src, dst, startCr))
-
-    # Get a list of what we can buy
-    return try_combinations(args.capacity, startCr, src.links[dst.ID])
-
-
-def get_best_hops(routes, credits, restrictTo):
-    """ Given a list of routes, try all available next hops from each
-        route. Store the results by destination so that we pick the
-        best route-to-point for each destination at each step. If we
-        have two routes: A->B->D, A->C->D and A->B->D produces more
-        profit, then there is no point in continuing the A->C->D path. """
-
-    bestToDest = {}
-    safetyMargin = 1.0 - args.margin
-    for route in routes:
-        src = route.route[-1]
-        for dst in src.stations:
-            if restrictTo and dst != restrictTo:
-                continue
-            if args.unique and dst in route.route:
-                continue
-            trade = get_profits(src, dst, credits + int(route.gainCr * safetyMargin))
-            if not trade:
-                continue
-            dstID = dst.ID
-            try:
-                best = bestToDest[dstID]
-                if best[1].gainCr + best[2][1] >= route.gainCr + trade[1]:
-                    continue
-            except: pass
-            bestToDest[dstID] = [ dst, route, trade ]
-
-    result = []
-    for (dst, route, trade) in bestToDest.values():
-        result.append(route.plus(dst, trade))
-
-    return result
-
 def main():
+    global tdb
     parse_command_line()
 
     startCr = args.credits - args.insurance
-    routes = [ Route([src], [], 0) for src in origins ]
+    routes = [ Route([src], [], startCr, 0) for src in origins ]
     numHops =  args.hops
     lastHop = numHops - 1
 
     print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
 
+    calc = TradeCalc(tdb, debug=args.debug, capacity=args.capacity, maxUnits=maxUnits, margin=args.margin, unique=args.unique)
     for hopNo in range(numHops):
-        if args.debug: print("# Hop %d" % hopNo)
+        if calc.debug: print("# Hop %d" % hopNo)
         restrictTo = None
         if hopNo == 0 and viaStation:
             restrictTo = viaStation
@@ -260,7 +150,7 @@ def main():
             if viaStation:
                 # Cull to routes that include the viaStation
                 routes = [ route for route in routes if viaStation in route.route[1:] ]
-        routes = get_best_hops(routes, startCr, restrictTo)
+        routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo)
 
     if not routes:
         print("No routes match your selected criteria.")
