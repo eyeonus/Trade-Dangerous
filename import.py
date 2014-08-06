@@ -29,6 +29,28 @@ def list_search(listType, lookup, values):
 
 import sys
 
+def addStar(line):
+    global tdb
+    fields = line.split(':')
+    sys, station = fields[0].split('/')
+    srcID = None
+    try:
+        srcID = tdb.getStation(station).ID
+    except ValueError:
+        tdb.query("INSERT INTO Stations (system, station) VALUES ('%s', '%s')" % (sys, station)).commit()
+        print("Added %s/%s" % (sys, station))
+        tdb.load()
+        srcID = tdb.getStation(station).ID
+
+    for dst in fields[1].split(','):
+        dstID = tdb.getStation(dst).ID
+        try:
+            tdb.query("INSERT INTO Links (`from`, `to`) VALUES (%d, %d)" % (srcID, dstID)).commit()
+        except pypyodbc.IntegrityError: pass
+        try:
+            tdb.query("INSERT INTO Links (`from`, `to`) VALUES (%d, %d)" % (dstID, srcID)).commit()
+        except pypyodbc.IntegrityError: pass
+
 def changeStation(name):
     global tdb
     station = tdb.getStation(name)
@@ -68,7 +90,9 @@ with open('import.txt', 'r') as f:
         line = line.strip()
         if not line:
             next
-        if line[0] == '@':
+        if line[0] == '*':
+            addStar(line[1:])
+        elif line[0] == '@':
             curStation = changeStation(line[1:])
         elif line[0] == '-':
             curCat = changeCategory(line[1:])
