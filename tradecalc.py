@@ -95,13 +95,13 @@ class TradeCalc(object):
         # Get a list of what we can buy
         return self.tryCombinations(startCr, src.links[dst.ID], capacity=capacity)
 
-    def getBestHopFrom(self, src, credits):
+    def getBestHopFrom(self, src, credits, capacity=None):
         """ Determine the best trade run from a given station. """
         if isinstance(src, str):
             src = self.tdb.getStation(src)
         bestDst, bestLoad, bestGainCr = None, None, 0
         for dst in src.stations:
-            trade = self.getBestTrade(src, dst, credits)
+            trade = self.getBestTrade(src, dst, credits, capacity=capacity)
             if trade and trade[1] > bestGainCr:
                 bestDst, bestLoad, bestGainCr = dst, trade[0], trade[1]
         return bestDst, bestLoad, bestGainCr
