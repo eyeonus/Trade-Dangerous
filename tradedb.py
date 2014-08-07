@@ -6,6 +6,7 @@
 # Imports
 
 import pypyodbc
+from queue import Queue
 
 ######################################################################
 # Classes
@@ -26,32 +27,53 @@ class Trade(object):
         return "%s (%dcr)" % (self.item, self.costCr)
 
 
-class Station(object):
-    """ Describes a station and which stations it links to, the links themselves
-        also describe what products can be sold to the destination and how much
-        profit can be earned by doing so. These are stored in gain order so that
-        we can easily tell if we can afford to fill up on the most expensive
-        item. """
-    def __init__(self, ID, system, station):
-        self.ID, self.system, self.station = ID, system.replace(' ', ''), station.replace(' ', '')
+class System(object):
+    """ Describes a star system, which may contain one or more Station objects,
+        and lists which stars it has a direct connection to. """
+
+    def __init__(self, system):
+        self.system = system
         self.links = {}
         self.stations = []
+
+    def addLink(self, dest, dist):
+        self.links[dest] = dist
+
+    def links(self):
+        return list(self.links.keys())
+
+    def addStation(self, station):
+        if not station in self.stations:
+            self.stations.append(station)
+
+    def str(self):
+        return self.system
+
+
+class Station(object):
+    """ Describes a station within a given system along with what trade
+        opportunities it presents. """
+    def __init__(self, ID, system, station):
+        self.ID, self.system, self.station = ID, system, station.replace(' ', '')
+        self.trades = {}
+        self.stations = []
+        system.addStation(self)
 
     def addTrade(self, dest, item, itemID, costCr, gainCr):
         """ Add a Trade entry from this to a destination station. """
         dstID = dest.ID
-        if not dstID in self.links:
-            self.links[dstID] = []
+        if not dstID in self.trades:
+            self.trades[dstID] = []
             self.stations.append(dest)
         trade = Trade(item, itemID, costCr, gainCr)
-        self.links[dstID].append(trade)
+        self.trades[dstID].append(trade)
 
     def organizeTrades(self):
         """ Process the trades-to-destination lists: If there are multiple items
             with the same gain for a given link, only keep the cheapest. Then
             sort the list into by-gain order. """
-        for dstID in self.links:
-            items = self.links[dstID]
+        for dstID in self.trades:
+            items = self.trades[dstID]
             # Find the cheapest item
             cheapest = min(items, key=lambda item: item.costCr)
             cheapestGain = cheapest.gainCr
@@ -64,15 +86,37 @@ class Station(object):
                         gains[itemGainCr] = item
             # Now sort the list in descending gain order - so the most
             # profitable item is listed first.
-            self.links[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
+            self.trades[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
+
+    def getDestinations(self, maxJumps=None, maxLy=None):
+        openList, closedList, destStations = Queue(), dict(), []
+        openList.put([self.system, 0, 0])
+        while not openList.empty():
+            (sys, jumps, dist) = openList.get()
+            if (maxJumps and jumps > maxJumps) or (maxLy and dist > maxLy):
+                continue
+            for stn in sys.stations:
+                if stn != self:
+                    destStations.append([sys, stn, jumps, dist])
+            jumps += 1
+            if (maxJumps and jumps > maxJumps):
+                continue
+            for (destSys, destDist) in sys.links.items():
+                if maxLy and dist + destDist > maxLy:
+                    continue
+                if destSys in closedList:
+                    continue
+                openList.put([destSys, jumps, dist + destDist])
+                closedList[destSys] = 1
+        return destStations
 
     def __repr__(self):
-        str = self.system + " " + self.station
+        str = self.system.str() + " " + self.station
         return str
 
 
 class TradeDB(object):
-    def __init__(self, path="TradeDangerous.accdb"):
+    def __init__(self, path=r'.\TradeDangerous.accdb'):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.load()
 
@@ -81,11 +125,19 @@ class TradeDB(object):
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
 
+        cur.execute('SELECT system FROM Stations GROUP BY system')
+        self.systems = { row[0]: System(row[0]) for row in cur }
+        cur.execute("""SELECT frmSys.system, toSys.system
+                     FROM Stations AS frmSys, Links, Stations as toSys
+                     WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
+        for row in cur:
+            self.systems[row[0]].addLink(self.systems[row[1]], 1)
+
         cur.execute('SELECT id, system, station FROM Stations')
         # Station lookup by ID
-        self.stations = { row[0]: Station(row[0], row[1], row[2]) for row in cur}
+        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur }
         # StationID lookup by System Name
-        self.systemIDs = { value.system.upper(): key for (key, value) in self.stations.items() }
+        self.systemIDs = { value.system.str().upper(): key for (key, value) in self.stations.items() }
         # StationID lookup by Station Name
         self.stationIDs = { value.station.upper(): key for (key, value) in self.stations.items() }
 
