@@ -4,6 +4,10 @@
 import itertools
 from math import ceil, floor
 
+from collections import namedtuple
+
+TradeHop = namedtuple('TradeHop', [ 'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly' ])
+
 class Route(object):
     """ Describes a series of CargoRuns, that is CargoLoads
         between several stations. E.g. Chango -> Gateway -> Enterprise
@@ -97,18 +101,18 @@ class TradeCalc(object):
         # Get a list of what we can buy
         return self.tryCombinations(startCr, src.trades[dst.ID], capacity)
 
-    def getBestHopFrom(self, src, credits, capacity=None):
+    def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLy=None):
         """ Determine the best trade run from a given station. """
         if isinstance(src, str):
             src = self.tdb.getStation(src)
-        bestDst, bestLoad, bestGainCr = None, None, 0
-        for dst in src.stations:
-            trade = self.getBestTrade(src, dst, credits, capacity=capacity)
-            if trade and trade[1] > bestGainCr:
-                bestDst, bestLoad, bestGainCr = dst, trade[0], trade[1]
-        return bestDst, bestLoad, bestGainCr
+        hop = None
+        for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=maxJumps, maxLy=maxLy):
+            load = self.getBestTrade(src, destStn, credits, capacity=capacity)
+            if load and (not hop or (load[1] > hop.gainCr or (load[1] == hop.gainCr and jumps < hop.jumps))):
+                hop = TradeHop(destSys=destSys, destStn=destStn, load=load[0], gainCr=load[1], jumps=jumps, ly=ly)
+        return hop
 
-    def getBestHops(self, routes, credits, restrictTo=None):
+    def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None):
         """ Given a list of routes, try all available next hops from each
             route. Store the results by destination so that we pick the
             best route-to-point for each destination at each step. If we
