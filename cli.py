@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from tradedb import *
 from tradecalc import *
 
