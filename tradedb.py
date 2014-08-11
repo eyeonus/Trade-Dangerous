@@ -131,11 +131,11 @@ class TradeDB(object):
 
         cur.execute('SELECT system FROM Stations GROUP BY system')
         self.systems = { row[0]: System(row[0]) for row in cur }
-        cur.execute("""SELECT frmSys.system, toSys.system
+        cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
         for row in cur:
-            self.systems[row[0]].addLink(self.systems[row[1]], 1)
+            self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
 
         cur.execute('SELECT id, system, station FROM Stations')
         # Station lookup by ID
