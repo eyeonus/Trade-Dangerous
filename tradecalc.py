@@ -12,20 +12,23 @@ class Route(object):
     """ Describes a series of CargoRuns, that is CargoLoads
         between several stations. E.g. Chango -> Gateway -> Enterprise
         """
-    def __init__(self, stations, hops, startCr, gainCr):
+    def __init__(self, stations, hops, startCr, gainCr, jumps):
         self.route = stations
         self.hops = hops
         self.startCr = startCr
         self.gainCr = gainCr
+        self.jumps = jumps
 
-    def plus(self, dst, hop):
-        rvalue = Route(self.route + [dst], self.hops + [hop], self.startCr, self.gainCr + hop[1])
+    def plus(self, dst, hop, jumps):
+        rvalue = Route(self.route + [dst], self.hops + [hop], self.startCr, self.gainCr + hop[1], self.jumps + jumps)
         return rvalue
 
     def __lt__(self, rhs):
-        return rhs.gainCr < self.gainCr # reversed
+        if rhs.gainCr < self.gainCr: # reversed
+            return True
+        return rhs.gainCr == self.gainCr and rhs.jumps < self.jumps
     def __eq__(self, rhs):
-        return self.gainCr == rhs.gainCr
+        return self.gainCr == rhs.gainCr and self.jumps == rhs.jumps
 
     def __repr__(self):
         src = self.route[0]
@@ -112,7 +115,7 @@ class TradeCalc(object):
                 hop = TradeHop(destSys=destSys, destStn=destStn, load=load[0], gainCr=load[1], jumps=jumps, ly=ly)
         return hop
 
-    def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None):
+    def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None, maxJumpsPer=None):
         """ Given a list of routes, try all available next hops from each
             route. Store the results by destination so that we pick the
             best route-to-point for each destination at each step. If we
@@ -122,27 +125,36 @@ class TradeCalc(object):
         bestToDest = {}
         safetyMargin = 1.0 - self.margin
         unique = self.unique
+        perJumpLimit = maxJumpsPer if maxJumpsPer > 0 else 0
         for route in routes:
             src = route.route[-1]
             startCr = credits + int(route.gainCr * safetyMargin)
-            for dst in src.stations:
-                if restrictTo and dst != restrictTo:
+            routeJumps = route.jumps
+            jumpLimit = perJumpLimit
+            if maxJumps and maxJumps > 0:
+                jumpLimit = min(maxJumps - routeJumps, perJumpLimit) if perJumpLimit > 0 else maxJumps - routeJumps
+                if jumpLimit == 0:
                     continue
-                if unique and dst in route.route:
+            for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy):
+                if not destStn in src.stations:
                     continue
-                trade = self.getBestTrade(src, dst, startCr)
+                if restrictTo and destStn != restrictTo:
+                    continue
+                if unique and destStn in route.route:
+                    continue
+                trade = self.getBestTrade(src, destStn, startCr)
                 if not trade:
                     continue
-                dstID = dst.ID
+                dstID = destStn.ID
                 try:
                     best = bestToDest[dstID]
                     if best[1].gainCr + best[2][1] >= route.gainCr + trade[1]:
                         continue
                 except: pass
-                bestToDest[dstID] = [ dst, route, trade ]
+                bestToDest[dstID] = [ destStn, route, trade, jumps, ly ]
 
         result = []
-        for (dst, route, trade) in bestToDest.values():
-            result.append(route.plus(dst, trade))
+        for (dst, route, trade, jumps, ly) in bestToDest.values():
+            result.append(route.plus(dst, trade, jumps))
 
         return result

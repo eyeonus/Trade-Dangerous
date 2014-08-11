@@ -42,6 +42,8 @@ def parse_command_line():
     parser.add_argument('--avoid', dest='avoid', metavar='<Item>', help='Exclude this item from trading', required=False, action='append')
     parser.add_argument('--credits', metavar='<Balance>', help='Number of credits to start with', type=int, required=True)
     parser.add_argument('--hops', metavar="<Hops>", help="Number of hops to run", type=int, default=2, required=False)
+    parser.add_argument('--jumps', dest='maxJumps', metavar="<Jumps>", help="Maximum total jumps", type=int, default=None, required=False)
+    parser.add_argument('--jumps-per', dest='maxJumpsPer', metavar="<Jumps>", help="Maximum jumps per hop", type=int, default=3, required=False)
     parser.add_argument('--capacity', metavar="<Capactiy>", help="Maximum capacity of cargo hold", type=int, default=4, required=False)
     parser.add_argument('--limit', help='Maximum units of any one cargo item to buy', type=int, default=0, required=False)
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
@@ -49,7 +51,6 @@ def parse_command_line():
     parser.add_argument('--margin', metavar="<Error Margin>", help="Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. Default: 0.02", default=0.02, type=float, required=False)
     parser.add_argument('--debug', help="Enable verbose output", default=False, required=False, action='store_true')
     parser.add_argument('--routes', metavar="<MaxRoutes>", help="Maximum number of routes to show", type=int, default=1, required=False)
-    parser.add_argument('--links', dest='ignoreLinks', help="Ignore links (treat all stations as connected)", default=False, required=False, action='store_true')
 
     args = parser.parse_args()
 
@@ -66,9 +67,7 @@ def parse_command_line():
             avoidItems.append(avoid)
         if avoidItems:
             if args.debug: print("Avoiding %s" % avoidItems)
-
-    if args.ignoreLinks or avoidItems:
-        tdb.load(avoiding=avoidItems, ignoreLinks=args.ignoreLinks)
+            tdb.load(avoiding=avoidItems)
 
     if args.origin:
         originName = args.origin
@@ -133,7 +132,7 @@ def main():
     parse_command_line()
 
     startCr = args.credits - args.insurance
-    routes = [ Route([src], [], startCr, 0) for src in origins ]
+    routes = [ Route([src], [], startCr, 0, 0) for src in origins ]
     numHops =  args.hops
     lastHop = numHops - 1
 
@@ -143,14 +142,14 @@ def main():
     for hopNo in range(numHops):
         if calc.debug: print("# Hop %d" % hopNo)
         restrictTo = None
-        if hopNo == 0 and viaStation:
+        if hopNo == 0 and numHops == 2 and viaStation:
             restrictTo = viaStation
         elif hopNo == lastHop:
             restrictTo = finalStation
             if viaStation:
                 # Cull to routes that include the viaStation
                 routes = [ route for route in routes if viaStation in route.route[1:] ]
-        routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo)
+        routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer)
 
     if not routes:
         print("No routes match your selected criteria.")
