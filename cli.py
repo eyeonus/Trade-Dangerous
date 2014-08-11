@@ -44,11 +44,11 @@ def routes(maxHops=2, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None, ma
     srcStn = stn if stn else curStation
     withCr = cr if cr else curCredits
     routes = [ Route([srcStn], [], withCr, 0, 0) ]
-    lastHop = numHops - 1
+    lastHop = maxHops - 1
 
-    print("From %s via %s to %s with %d credits for %d hops" % (srcStn, "None", "Any", withCr, numHops))
+    print("From %s via %s to %s with %d credits for %d hops" % (srcStn, "None", "Any", withCr, maxHops))
 
-    for hopNo in range(numHops):
+    for hopNo in range(maxHops):
         if calc.debug: print("# Hop %d" % hopNo)
         restrictTo = None
         # if hopNo == 0 and viaStation:
@@ -68,3 +68,34 @@ def routes(maxHops=2, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None, ma
 
     for i in range(0, min(len(routes), maxRoutes)):
         print(routes[i])
+
+def find(item, stn=None):
+    srcStn = tdb.getStation(stn if stn else curStation)
+    qry = """
+        SELECT  p.station_id, p.buy_cr
+          FROM  Items AS i
+                INNER JOIN Prices AS p
+                    ON i.ID = P.item_id
+         WHERE  i.item LIKE '%%%s%%'
+                AND p.buy_cr > 0 
+                AND p.ui_order > 0
+         ORDER  BY buy_cr ASC
+         """ % item
+    prices = [ row for row in tdb.fetch_all(qry) ]
+    if not prices:
+        raise ValueError("No items match '%s'" % item)
+    dests = { dest[1].ID: dest for dest in srcStn.getDestinations() }
+    if not prices[0][0] in dests:
+        raise ValueError("No connecting stations found")
+    cheapest = dests[prices[0][0]]
+    print("Cheapest: %s: %dcr, %djumps, %dly" % (cheapest[1], prices[0][1], cheapest[2], cheapest[3]))
+    best, bestCr, bestJumps, bestLy = None, 0, 0, 0
+    for price in prices:
+        stnID = price[0]
+        if not stnID in dests:
+            next
+        dest = dests[stnID]
+        if not best or (price[1] < bestCr or (price[1] >= bestCr - 16 and dest[2] < bestJumps)):
+            best, bestCr, bestJumps, bestLy = dest[1], price[1], dest[2], dest[3]
+    if best:
+        print("Closest: %s: %dcr, %djumps, %dly" % (best, bestCr, bestJumps, bestLy))

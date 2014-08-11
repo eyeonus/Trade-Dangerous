@@ -162,6 +162,8 @@ class TradeDB(object):
             station.organizeTrades()
 
     def getStation(self, name):
+        if isinstance(name, Station):
+            return name
         upperName = name.upper()
         if upperName in self.systemIDs:
             return self.stations[self.systemIDs[upperName]]
@@ -178,3 +180,16 @@ class TradeDB(object):
     def fetch_all(self, sql):
         for row in self.query(sql):
             yield row
+
+    def list_search(listType, lookup, values):
+        match = None
+        needle = lookup.casefold()
+        for val in values:
+            if val.casefold().find(needle) > -1:
+                if match:
+                    raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
+                                        listType, lookup, match, val))
+                match = val
+        if not match:
+            raise ValueError("Error: '%s' doesn't match any %s" % (lookup, listType))
+        return match
