@@ -104,7 +104,7 @@ class Station(object):
             if (maxJumps and jumps > maxJumps):
                 continue
             for (destSys, destDist) in sys.links.items():
-                if dist > maxLyper:
+                if dist > maxLyPer:
                     continue
                 if maxLy and dist + destDist > maxLy:
                     continue
