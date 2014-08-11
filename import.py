@@ -4,6 +4,8 @@ import re
 from tradedb import *
 import pprint
 
+allowUnknown = False
+
 tdb = TradeDB(r'.\TradeDangerous.accdb')
 
 categories = dict()
@@ -37,15 +39,20 @@ def addStar(line):
         m = re.match(r'(.+)\s*@\s*(\d+\.\d+)(\s*ly)?', dst)
         if m:
             dst, dist = m.group(1), m.group(2)
-        dstID = tdb.getStation(dst).ID
         try:
-            tdb.query("INSERT INTO Links (`from`, `to`, `distLy`) VALUES (%d, %d, %s)" % (srcID, dstID, dist)).commit()
-        except pypyodbc.IntegrityError:
-            tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, srcID, dstID)).commit()
-        try:
-            tdb.query("INSERT INTO Links (`from`, `to`) VALUES (%d, %d)" % (dstID, srcID)).commit()
-        except pypyodbc.IntegrityError:
-            tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, dstID, srcID)).commit()
+            dstID = tdb.getStation(dst).ID
+            try:
+                tdb.query("INSERT INTO Links (`from`, `to`, `distLy`) VALUES (%d, %d, %s)" % (srcID, dstID, dist)).commit()
+            except pypyodbc.IntegrityError:
+                tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, srcID, dstID)).commit()
+            try:
+                tdb.query("INSERT INTO Links (`from`, `to`, `distLy`) VALUES (%d, %d, %s)" % (dstID, srcID, dist)).commit()
+            except pypyodbc.IntegrityError:
+                tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, dstID, srcID)).commit()
+        except ValueError as e:
+            if not allowUnknown:
+                raise e
+            print("* Unknown star system: %s" % dst)
 
 def changeStation(name):
     global tdb
@@ -87,6 +94,8 @@ with open('import.txt', 'r') as f:
         if not line:
             next
         if line[0] == '#':
+            if line == '#allowUnknown':
+                allowUnknown = True
             next    # comment
         elif line[0] == '*':
             addStar(line[1:])
