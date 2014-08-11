@@ -181,7 +181,7 @@ class TradeDB(object):
         for row in self.query(sql):
             yield row
 
-    def list_search(listType, lookup, values):
+    def list_search(self, listType, lookup, values):
         match = None
         needle = lookup.casefold()
         for val in values:
