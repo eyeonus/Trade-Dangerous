@@ -33,6 +33,7 @@ def addStar(line):
     global tdb
     fields = line.split(':')
     sys, station = fields[0].split('/')
+    sys, station = sys.strip(), station.strip()
     srcID = None
     try:
         srcID = tdb.getStation(station).ID
@@ -43,13 +44,19 @@ def addStar(line):
         srcID = tdb.getStation(station).ID
 
     for dst in fields[1].split(','):
+        dst, dist = dst.strip(), 1
+        m = re.match(r'(.+)\s*@\s*(\d+\.\d+)(\s*ly)?', dst)
+        if m:
+            dst, dist = m.group(1), m.group(2)
         dstID = tdb.getStation(dst).ID
         try:
-            tdb.query("INSERT INTO Links (`from`, `to`) VALUES (%d, %d)" % (srcID, dstID)).commit()
-        except pypyodbc.IntegrityError: pass
+            tdb.query("INSERT INTO Links (`from`, `to`, `distLy`) VALUES (%d, %d, %s)" % (srcID, dstID, dist)).commit()
+        except pypyodbc.IntegrityError:
+            tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, srcID, dstID)).commit()
         try:
             tdb.query("INSERT INTO Links (`from`, `to`) VALUES (%d, %d)" % (dstID, srcID)).commit()
-        except pypyodbc.IntegrityError: pass
+        except pypyodbc.IntegrityError:
+            tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, dstID, srcID)).commit()
 
 def changeStation(name):
     global tdb
@@ -90,7 +97,9 @@ with open('import.txt', 'r') as f:
         line = line.strip()
         if not line:
             next
-        if line[0] == '*':
+        if line[0] == '#':
+            next    # comment
+        elif line[0] == '*':
             addStar(line[1:])
         elif line[0] == '@':
             curStation = changeStation(line[1:])
