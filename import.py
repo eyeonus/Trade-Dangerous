@@ -14,19 +14,6 @@ for row in tdb.fetch_all("""
         categories[cat] = []
     categories[cat].append(item)
 
-def list_search(listType, lookup, values):
-    match = None
-    needle = lookup.casefold()
-    for val in values:
-        if val.casefold().find(needle) > -1:
-            if match:
-                raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
-                                    listType, lookup, match, val))
-            match = val
-    if not match:
-        raise ValueError("Error: '%s' doesn't match any %s" % (lookup, listType))
-    return match
-
 import sys
 
 def addStar(line):
@@ -65,14 +52,14 @@ def changeStation(name):
     return station
 
 def changeCategory(name):
-    cat = list_search('category', name, categories)
+    cat = tdb.list_search('category', name, categories)
     print("Category Select: ", cat)
     return cat
 
 def parseItem(station, cat, line, uiOrder):
     fields = line.split()
     itemName, sellCr, buyCr = fields[0], int(fields[1]), int(fields[2] if len(fields) > 2 else 0)
-    item = list_search('item', itemName, categories[cat])
+    item = tdb.list_search('item', itemName, categories[cat])
     print("Item: ", item, sellCr, buyCr)
 
     stationID, itemID = int(station.ID), int(tdb.itemIDs[item])
