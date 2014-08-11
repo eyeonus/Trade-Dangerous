@@ -104,18 +104,18 @@ class TradeCalc(object):
         # Get a list of what we can buy
         return self.tryCombinations(startCr, src.trades[dst.ID], capacity)
 
-    def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLy=None):
+    def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLy=None, maxLyPer=None):
         """ Determine the best trade run from a given station. """
         if isinstance(src, str):
             src = self.tdb.getStation(src)
         hop = None
-        for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=maxJumps, maxLy=maxLy):
+        for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=maxJumps, maxLy=maxLy, maxLyPer=maxLyPer):
             load = self.getBestTrade(src, destStn, credits, capacity=capacity)
             if load and (not hop or (load[1] > hop.gainCr or (load[1] == hop.gainCr and jumps < hop.jumps))):
                 hop = TradeHop(destSys=destSys, destStn=destStn, load=load[0], gainCr=load[1], jumps=jumps, ly=ly)
         return hop
 
-    def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None, maxJumpsPer=None):
+    def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None, maxJumpsPer=None, maxLyPer=None):
         """ Given a list of routes, try all available next hops from each
             route. Store the results by destination so that we pick the
             best route-to-point for each destination at each step. If we
@@ -135,7 +135,7 @@ class TradeCalc(object):
                 jumpLimit = min(maxJumps - routeJumps, perJumpLimit) if perJumpLimit > 0 else maxJumps - routeJumps
                 if jumpLimit == 0:
                     continue
-            for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy):
+            for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy, maxLyPer=maxLyPer):
                 if not destStn in src.stations:
                     continue
                 if restrictTo and destStn != restrictTo:

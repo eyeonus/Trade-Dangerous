@@ -44,6 +44,7 @@ def parse_command_line():
     parser.add_argument('--hops', metavar="<Hops>", help="Number of hops to run", type=int, default=2, required=False)
     parser.add_argument('--jumps', dest='maxJumps', metavar="<Jumps>", help="Maximum total jumps", type=int, default=None, required=False)
     parser.add_argument('--jumps-per', dest='maxJumpsPer', metavar="<Jumps>", help="Maximum jumps per hop", type=int, default=3, required=False)
+    parser.add_argument('--ly-per', dest='maxLyPer', metvar='<LY>', help="Maximum light years per jump", type=int, default=8, required=False)
     parser.add_argument('--capacity', metavar="<Capactiy>", help="Maximum capacity of cargo hold", type=int, default=4, required=False)
     parser.add_argument('--limit', help='Maximum units of any one cargo item to buy', type=int, default=0, required=False)
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
@@ -149,7 +150,7 @@ def main():
             if viaStation:
                 # Cull to routes that include the viaStation
                 routes = [ route for route in routes if viaStation in route.route[1:] ]
-        routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer)
+        routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
     if not routes:
         print("No routes match your selected criteria.")

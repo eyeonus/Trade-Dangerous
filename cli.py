@@ -39,7 +39,7 @@ def links(stn=None, maxJumps=None, maxLy=None):
         srcStn = tdb.getStation(srcStn)
     return srcStn.stations.getDestinations(maxJumps=maxJumps, maxLy=maxLy)
 
-def routes(maxHops=2, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None, maxRoutes=1, maxJumpsPer=None):
+def routes(maxHops=2, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None, maxRoutes=1, maxJumpsPer=None, maxLyPer=8):
     global calc
     srcStn = stn if stn else curStation
     withCr = cr if cr else curCredits
@@ -58,7 +58,7 @@ def routes(maxHops=2, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None, ma
         #     if viaStation:
         #         # Cull to routes that include the viaStation
         #         routes = [ route for route in routes if viaStation in route.route[1:] ]
-        routes = calc.getBestHops(routes, withCr, restrictTo=restrictTo, maxJumps=maxJumps, maxJumpsPer=maxJumpsPer, maxLy=maxLy)
+        routes = calc.getBestHops(routes, withCr, restrictTo=restrictTo, maxJumps=maxJumps, maxJumpsPer=maxJumpsPer, maxLy=maxLy, maxLyPer=maxLyPer)
 
     if not routes:
         print("No routes match your selected criteria.")

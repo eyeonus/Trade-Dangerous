@@ -5,6 +5,7 @@
 ######################################################################
 # Imports
 
+import sys
 import pypyodbc
 from queue import Queue
 
@@ -88,9 +89,10 @@ class Station(object):
             # profitable item is listed first.
             self.trades[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
 
-    def getDestinations(self, maxJumps=None, maxLy=None):
+    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None):
         openList, closedList, destStations = Queue(), dict(), []
         openList.put([self.system, 0, 0])
+        maxJumpDist = maxLyPer or sys.maxint
         while not openList.empty():
             (sys, jumps, dist) = openList.get()
             if (maxJumps and jumps > maxJumps) or (maxLy and dist > maxLy):
@@ -102,6 +104,8 @@ class Station(object):
             if (maxJumps and jumps > maxJumps):
                 continue
             for (destSys, destDist) in sys.links.items():
+                if dist > maxLyper:
+                    continue
                 if maxLy and dist + destDist > maxLy:
                     continue
                 if destSys in closedList:
