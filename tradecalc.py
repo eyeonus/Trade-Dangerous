@@ -125,13 +125,13 @@ class TradeCalc(object):
         bestToDest = {}
         safetyMargin = 1.0 - self.margin
         unique = self.unique
-        perJumpLimit = maxJumpsPer if maxJumpsPer > 0 else 0
+        perJumpLimit = maxJumpsPer if (maxJumpsPer or 0) > 0 else 0
         for route in routes:
             src = route.route[-1]
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = route.jumps
             jumpLimit = perJumpLimit
-            if maxJumps and maxJumps > 0:
+            if (maxJumps or 0) > 0:
                 jumpLimit = min(maxJumps - routeJumps, perJumpLimit) if perJumpLimit > 0 else maxJumps - routeJumps
                 if jumpLimit == 0:
                     continue
