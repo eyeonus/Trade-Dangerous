@@ -50,7 +50,8 @@ def parse_command_line():
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
     parser.add_argument('--insurance', metavar="<Credits>", help="Reserve at least this many credits", type=int, default=0, required=False)
     parser.add_argument('--margin', metavar="<Error Margin>", help="Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. Default: 0.02", default=0.02, type=float, required=False)
-    parser.add_argument('--debug', help="Enable verbose output", default=False, required=False, action='store_true')
+    parser.add_argument('--detail', help="Give detailed jump information for multi-jump hops", default=False, required=False, action='store_true')
+    parser.add_argument('--debug', help="Enable diagnostic output", default=False, required=False, action='store_true')
     parser.add_argument('--routes', metavar="<MaxRoutes>", help="Maximum number of routes to show", type=int, default=1, required=False)
 
     args = parser.parse_args()
@@ -133,11 +134,12 @@ def main():
     parse_command_line()
 
     startCr = args.credits - args.insurance
-    routes = [ Route([src], [], startCr, 0, 0) for src in origins ]
+    routes = [ Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0) for src in origins ]
     numHops =  args.hops
     lastHop = numHops - 1
 
-    print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
+    if args.debug:
+        print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
 
     calc = TradeCalc(tdb, debug=args.debug, capacity=args.capacity, maxUnits=maxUnits, margin=args.margin, unique=args.unique)
     for hopNo in range(numHops):
@@ -163,7 +165,7 @@ def main():
 
     routes.sort()
     for i in range(0, min(len(routes), args.routes)):
-        print(routes[i])
+        print(routes[i].detail(args.detail))
 
 
 if __name__ == "__main__":

@@ -91,17 +91,19 @@ class Station(object):
 
     def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None):
         openList, closedList, destStations = Queue(), dict(), []
-        openList.put([self.system, 0, 0])
+        openList.put([self.system, [], 0])
         maxJumpDist = maxLyPer or sys.maxint
         while not openList.empty():
             (sys, jumps, dist) = openList.get()
-            if (maxJumps and jumps > maxJumps) or (maxLy and dist > maxLy):
+            if maxJumps and len(jumps) > maxJumps:
+                continue
+            if maxLy and dist > maxLy:
                 continue
             for stn in sys.stations:
                 if stn != self:
-                    destStations.append([sys, stn, jumps, dist])
-            jumps += 1
-            if (maxJumps and jumps > maxJumps):
+                    destStations.append([sys, stn, list(jumps), dist])
+            jumps.append(sys)
+            if (maxJumps and len(jumps) > maxJumps):
                 continue
             for (destSys, destDist) in sys.links.items():
                 if dist > maxLyPer:
@@ -110,7 +112,7 @@ class Station(object):
                     continue
                 if destSys in closedList:
                     continue
-                openList.put([destSys, jumps, dist + destDist])
+                openList.put([destSys, list(jumps), dist + destDist])
                 closedList[destSys] = 1
         return destStations
 
@@ -120,8 +122,9 @@ class Station(object):
 
 
 class TradeDB(object):
-    def __init__(self, path=r'.\TradeDangerous.accdb'):
+    def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
+        self.debug = debug
         self.load()
 
     def load(self, avoiding=[], ignoreLinks=False):
@@ -131,6 +134,8 @@ class TradeDB(object):
 
         cur.execute('SELECT system FROM Stations GROUP BY system')
         self.systems = { row[0]: System(row[0]) for row in cur }
+        if self.debug:
+            print(self.systems)
         cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
@@ -148,7 +153,7 @@ class TradeDB(object):
         """ Populate 'items' from the database """
         cur.execute('SELECT id, item FROM Items')
         self.items = { row[0]: row[1] for row in cur }
-        self.itemIDs = { self.items[name]: name for name in self.items }
+        self.itemIDs = { name: itemID for (itemID, name) in self.items.items() }
 
         stations, items = self.stations, self.items
 
@@ -157,13 +162,39 @@ class TradeDB(object):
                     ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
                     ' WHERE src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
                     ' AND src.ui_order > 0 AND dst.ui_order > 0'
-                    ' ORDER BY (dst.sell_cr - src.buy_cr) DESC')
+                    )
         for row in cur:
             if not (items[row[2]] in avoiding):
                 stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])
 
         for station in stations.values():
             station.organizeTrades()
+
+        if self.debug:
+            self.validate()
+
+    def validate(self):
+        # Check that things correctly reference themselves.
+        for (stnID, stn) in self.stations.items():
+            if self.stations[stn.ID] != stn:
+                raise ValueError("Station not pointing to self correctly" % stn.station)
+        for (stnName, stnID) in self.stationIDs.items():
+            if self.stations[stnID].station.upper() != stnName:
+                raise ValueError("Station name not pointing to self correctly" % stnName)
+        for (itemID, item) in self.items.items():
+            if self.itemIDs[item] != itemID:
+                raise ValueError("Item %s not pointing to itself correctly" % item, itemID, item, self.itemIDs[item])
+        # Check that system links are bi-directional
+        for (name, sys) in self.systems.items():
+            if not sys.links:
+                raise ValueError("System %s has no links" % name)
+            if sys in sys.links:
+                raise ValueError("System %s has a link to itself!" % name)
+            if name in sys.links:
+                raise ValueError("System %s's name occurs in sys.links" % name)
+            for link in sys.links:
+                if not sys in link.links:
+                    raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
     def getStation(self, name):
         if isinstance(name, Station):
