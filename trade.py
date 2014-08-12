@@ -143,14 +143,19 @@ def main():
     for hopNo in range(numHops):
         if calc.debug: print("# Hop %d" % hopNo)
         restrictTo = None
-        if hopNo == 0 and numHops == 2 and viaStation:
+        if hopNo == 0 and numHops == 2 and viaStation and finalStation:
+            # If we're going TO someplace, the via station has to be in the middle.
+            # but if we're not going someplace, it could be the last station.
             restrictTo = viaStation
         elif hopNo == lastHop:
             restrictTo = finalStation
-            if viaStation:
+            if viaStation and finalStation:
                 # Cull to routes that include the viaStation
                 routes = [ route for route in routes if viaStation in route.route[1:] ]
         routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
+
+    if viaStation:
+        routes = [ route for route in routes if viaStation in route.route[1:] ]
 
     if not routes:
         print("No routes match your selected criteria.")
