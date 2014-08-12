@@ -47,13 +47,13 @@ class Route(object):
             for item in hop[0]:
                 str += " %d*%s," % (item[1], item[0])
             str += "\n"
-            if verbose and len(self.jumps[i]) > 2:
+            if verbose and len(self.jumps) > 1:
                 str += "   |   "
                 str += " -> ".join([ jump.str() for jump in self.jumps[i] ])
                 str += "\n"
             gainCr += hop[1]
 
-        str += " <-< %s %dcr + %dcr => %dcr total" % (route[-1], credits, gainCr, credits + gainCr)
+        str += " <-< %s gaining %dcr => %dcr total" % (route[-1], gainCr, credits + gainCr)
 
         return str
 
