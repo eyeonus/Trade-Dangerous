@@ -47,7 +47,7 @@ class Route(object):
             for item in hop[0]:
                 str += " %d*%s," % (item[1], item[0])
             str += "\n"
-            if verbose and len(self.jumps) > 1:
+            if verbose:
                 str += "   |   "
                 str += " -> ".join([ jump.str() for jump in self.jumps[i] ])
                 str += "\n"
