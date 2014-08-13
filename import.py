@@ -26,6 +26,8 @@ def addStar(line):
     sys, station = fields[0].split('/')
     sys, station = sys.strip(), station.strip()
     srcID = None
+    if station == '*':
+        station = sys.upper() + '*'
     try:
         srcID = tdb.getStation(station).ID
     except ValueError:
@@ -91,12 +93,12 @@ with open('import.txt', 'r') as f:
     uiOrder = 0
     for line in f:
         line = line.strip()
-        if not line:
-            next
+        if not line or len(line) < 1:
+            continue
         if line[0] == '#':
             if line == '#allowUnknown':
                 allowUnknown = True
-            next    # comment
+            continue    # comment
         elif line[0] == '*':
             addStar(line[1:])
         elif line[0] == '@':
