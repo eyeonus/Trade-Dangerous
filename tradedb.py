@@ -204,7 +204,7 @@ class TradeDB(object):
             return self.stations[self.systemIDs[upperName]]
         elif upperName in self.stationIDs:
             return self.stations[self.stationIDs[upperName]]
-        raise ValueError("Unrecognized system/station name '%s'" % name)
+        raise LookupError("Unrecognized system/station name '%s'" % name)
 
     def query(self, sql):
         conn = pypyodbc.connect(self.path)
@@ -226,5 +226,5 @@ class TradeDB(object):
                                         listType, lookup, match, val))
                 match = val
         if not match:
-            raise ValueError("Error: '%s' doesn't match any %s" % (lookup, listType))
+            raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
