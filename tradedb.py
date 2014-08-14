@@ -196,6 +196,17 @@ class TradeDB(object):
                 if not sys in link.links:
                     raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
+    def getSystem(self, name):
+        """ Look up a system by it's name. """
+        if isinstance(name, System):
+            return name
+        if isinstance(name, Station):
+            return name.system
+
+        system = self.list_search("System", name, self.systemIDs.keys())
+        return self.systemIDs[system]
+
+
     def getStation(self, name):
         if isinstance(name, Station):
             return name
