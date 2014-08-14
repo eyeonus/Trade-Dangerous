@@ -212,15 +212,17 @@ class TradeDB(object):
         cur.execute(sql)
         return cur
 
+
     def fetch_all(self, sql):
         for row in self.query(sql):
             yield row
 
+
     def list_search(self, listType, lookup, values):
         match = None
-        needle = lookup.casefold()
+        needle = lookup.casefold().replace(" ", "").casefold()
         for val in values:
-            if val.casefold().find(needle) > -1:
+            if val.casefold().replace(" ", "").find(needle) > -1:
                 if match:
                     raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
                                         listType, lookup, match, val))
