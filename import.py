@@ -4,7 +4,7 @@ import re
 from tradedb import *
 import pprint
 
-allowUnknown = False
+rejectUnknown = False
 
 tdb = TradeDB(r'.\TradeDangerous.accdb')
 
@@ -52,7 +52,7 @@ def addStar(line):
             except pypyodbc.IntegrityError:
                 tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, dstID, srcID)).commit()
         except ValueError as e:
-            if not allowUnknown:
+            if rejectUnknown:
                 raise e
             print("* Unknown star system: %s" % dst)
 
@@ -96,8 +96,8 @@ with open('import.txt', 'r') as f:
         if not line or len(line) < 1:
             continue
         if line[0] == '#':
-            if line == '#allowUnknown':
-                allowUnknown = True
+            if line == '#rejectUnknown':
+                rejectUnknown = True
             continue    # comment
         elif line[0] == '*':
             addStar(line[1:])
