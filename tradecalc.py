@@ -111,18 +111,19 @@ class TradeCalc(object):
     def fast_fit(self, items, credits, capacity, maxUnits):
         def _fit_combos(offset, cr, cap):
             for item in items[offset:]:
+                offset += 1
                 itemCostCr = item.costCr
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
                 if maxQty > 0:
                     loadItems, loadCostCr, loadGainCr = [[item, maxQty]], maxQty * itemCostCr, maxQty * item.gainCr
-                    bestGainCr = 0
+                    bestGainCr = -1
                     crLeft, capLeft = cr - loadCostCr, cap - maxQty
                     if crLeft > 0 and capLeft > 0:
-                        for subLoad in _fit_combos(offset + 1, crLeft, capLeft):
+                        for subLoad in _fit_combos(offset, crLeft, capLeft):
                             if subLoad.gainCr >= bestGainCr:
                                 yield TradeLoad(subLoad.items + loadItems, subLoad.gainCr + loadGainCr, subLoad.costCr + loadCostCr, subLoad.units + maxQty)
                                 bestGainCr = subLoad.gainCr
-                    if not bestGainCr:
+                    if bestGainCr < 0:
                         yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
 
         bestLoad = emptyLoad
