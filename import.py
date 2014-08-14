@@ -1,8 +1,35 @@
 #!/usr/bin/env python
+#
+# Tool for importing data into the TradeDangerous database from a fairly
+# simple text file, 'import.txt'.
+#
+# The first none white-space character of a line determines the line type:
+#  '#' = comment,
+#  '*' = add star and distances,
+#  '@' = select station,
+#  '-' = select item category,
+# All other lines are treated as specifying an item price:
+#  <item name> <station paying cr>
+# or for an item that can be bought here:
+#  <item name> <station paying cr> <station asking cr>
+# Blank lines are ignored.
+#
+# Add star line:
+#  *<star name>/<system name>:<other star>@<lightyears>
+# Examples:
+#  *Aulin/Enterprise:Dahan@9.6
+#  *Dahan/Gateway:Aulin@9.6,Eranin@8.4ly,Hermitage@14ly,Ross1015@21.00
+#
+# Category and Item names use partial matching.
+#   -che, -CheMiCAlS, -micals
+# all match the "chemicals" category
+# Don't include whitespaces, so
+#   dom., dom.a, dom.appl
+# would match the "dom. appliances" item (but only if you have selected
+# the category at the moment)
 
 import re
 from tradedb import *
-import pprint
 
 rejectUnknown = False
 
