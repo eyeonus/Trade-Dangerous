@@ -6,6 +6,9 @@ from math import ceil, floor
 
 from collections import namedtuple
 
+TradeLoad = namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])
+emptyLoad = TradeLoad([], 0, 0, 0)
+
 TradeHop = namedtuple('TradeHop', [ 'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly' ])
 
 class Route(object):
@@ -59,6 +62,7 @@ class Route(object):
 
 class TradeCalc(object):
     """ Container for accessing trade calculations with common properties """
+    emptyLoad = TradeLoad([], 0, 0, 0)
 
     def __init__(self, tdb, debug=False, capacity=4, maxUnits=0, margin=0.02, unique=False):
         self.tdb = tdb
@@ -66,51 +70,94 @@ class TradeCalc(object):
         self.capacity = capacity
         self.margin = margin
         self.unique = unique
-        self.maxUnits = maxUnits if maxUnits > 0 else capacity
+        self.maxUnits = maxUnits or 0
 
-    def tryCombinations(self, startCr, tradeList, capacity=None):
-        startCapacity = capacity if capacity else self.capacity
-        maxUnits = self.maxUnits
+    def brute_force_fit(self, items, credits, capacity, maxUnits):
+        def brute_fit_gen(offset, cr, cap):
+            if offset >= len(items):
+                return emptyLoad
+            # yield items below us too
+            bestLoad = brute_fit_gen(offset + 1, cr, cap)
+            item = items[offset]
+            itemCost = item.costCr
+            maxQty = min(maxUnits, cap, cr // itemCost)
+            if maxQty > 0:
+                itemGain = item.gainCr
+                for qty in range(maxQty):
+                    load = TradeLoad([[item, maxQty]], itemGain * maxQty, itemCost * maxQty, maxQty)
+                    subLoad = brute_fit_gen(offset + 1, cr - load.costCr, cap - load.units)
+                    combGain = load.gainCr + subLoad.gainCr
+                    if combGain < bestLoad.gainCr:
+                        continue
+                    combCost, combWeight = load.costCr + subLoad.costCr, load.units + subLoad.units
+                    if combGain == bestLoad.gainCr:
+                        if combWeight > bestLoad.units:
+                            continue
+                        if combWeight == bestLoad.units:
+                            if combCost >= bestLoad.costCr:
+                                continue
+                    bestLoad = TradeLoad(load.items+subLoad.items, load.gainCr+subLoad.gainCr, load.costCr+subLoad.costCr, load.units+subLoad.units)
+            return bestLoad
 
-        firstTrade = tradeList[0]
-        if maxUnits >= startCapacity and firstTrade.costCr * startCapacity <= startCr:
-            return [ [ [ firstTrade, startCapacity ] ], firstTrade.gainCr * startCapacity ]
-        best, bestGainCr, bestCap = [], 0, startCapacity
-        tradeItems = len(tradeList)
-        for handicap in range(startCapacity):
-            for combo in itertools.combinations(tradeList, min(startCapacity, tradeItems)):
-                cargo, credits, capacity, gainCr = [], startCr, startCapacity, 0
-                myHandicap = handicap
-                for trade in combo:
-                    itemCostCr = trade.costCr
-                    maximum = min(min(capacity, maxUnits), credits // itemCostCr)
-                    if maximum > 0:
-                        deduction = min(maximum, myHandicap)
-                        maximum -= deduction
-                        myHandicap -= deduction
-                    if maximum > 0:
-                        cargo.append([trade, maximum])
-                        capacity -= maximum
-                        credits -= maximum * itemCostCr
-                        gainCr += maximum * trade.gainCr
-                        if not capacity or not credits:
-                            break
-            if gainCr < bestGainCr:
-                continue
-            if gainCr == bestGainCr and capacity >= bestCap:
-                continue
-            best, bestGainCr, bestCap = cargo, gainCr, capacity
+        bestLoad = brute_fit_gen(0, credits, capacity)
+        return bestLoad
 
-        return [ best, bestGainCr ]
+    def fast_fit(self, items, credits, capacity, maxUnits):
+        def resolve(offset, cr, cap):
+            if cr <= 0 or cap <= 0:
+                return
+            for item in items[offset:]:
+                itemCostCr = item.costCr
+                maxQty = min(maxUnits, cap, cr // itemCostCr)
+                if maxQty == 0:
+                    continue
+                loadItems, loadCostCr, loadGainCr = [[item, maxQty]], maxQty * itemCostCr, maxQty * item.gainCr
+                bestGainCr = 0
+                for subLoad in resolve(offset + 1, cr - loadCostCr, cap - maxQty):
+                    if subLoad.gainCr >= bestGainCr:
+                        yield TradeLoad(subLoad.items + loadItems, subLoad.gainCr + loadGainCr, subLoad.costCr + loadCostCr, subLoad.units + maxQty)
+                        bestGainCr = subLoad.gainCr
+                if not bestGainCr:
+                    yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
+
+        bestLoad = emptyLoad
+        for result in resolve(0, credits, capacity):
+            if not bestLoad or (result.gainCr > bestLoad.gainCr or (result.gainCr == bestLoad.gainCr and (result.units < bestLoad.units or (result.units == bestLoad.units and result.costCr < bestLoad.costCr)))):
+                bestLoad = result
+
+        return bestLoad
 
 
-    def getBestTrade(self, src, dst, startCr, capacity=None):
-        if self.debug: print("# %s -> %s with %dcr" % (src, dst, startCr))
+    def getBestTrade(self, src, dst, credits, capacity=None):
+        if self.debug: print("# %s -> %s with %dcr" % (src, dst, credits))
         if not dst in src.stations:
             raise ValueError("%s does not have a link to %s" % (src, dst))
 
+        capacity = capacity or self.capacity
+        if not capacity:
+            raise ValueError("zero capacity")
+        maxUnits = self.maxUnits or capacity
+
+        # Find the cheapest item, and then remove any items which
+        # have a lower gain (value) or are outside our budget
+        items = src.trades[dst.ID]
+        if items:
+            firstItem = min(items, key=lambda item: item.costCr)
+            firstCost, firstGain = firstItem.costCr, firstItem.gainCr
+            items = [item for item in items if item.costCr <= credits and (item.gainCr > firstGain or item == firstItem)]
+        if not items:
+            return emptyLoad
+
+        # Items come sorted in descending order of gain, so if we can
+        # fill up with the first thing in the list, that's what we
+        # should do.
+        firstItem = items[0]
+        if maxUnits >= capacity and firstItem.costCr * capacity <= credits:
+            return TradeLoad([[items[0], capacity]], capacity * firstItem.gainCr, capacity * firstItem.costCr, capacity)
+
         # Get a list of what we can buy
-        return self.tryCombinations(startCr, src.trades[dst.ID], capacity)
+        return self.tryCombinations(items, credits, capacity, maxUnits)
+
 
     def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLy=None, maxLyPer=None):
         """ Determine the best trade run from a given station. """
@@ -119,8 +166,8 @@ class TradeCalc(object):
         hop = None
         for (destSys, destStn, jumps, ly, via) in src.getDestinations(maxJumps=maxJumps, maxLy=maxLy, maxLyPer=maxLyPer):
             load = self.getBestTrade(src, destStn, credits, capacity=capacity)
-            if load and (not hop or (load[1] > hop.gainCr or (load[1] == hop.gainCr and len(jumps) < hop.jumps))):
-                hop = TradeHop(destSys=destSys, destStn=destStn, load=load[0], gainCr=load[1], jumps=jumps, ly=ly)
+            if load and (not hop or (load.gainCr > hop.gainCr or (load.gainCr == hop.gainCr and len(jumps) < hop.jumps))):
+                hop = TradeHop(destSys=destSys, destStn=destStn, load=load.items, gainCr=load.gainCr, jumps=jumps, ly=ly)
         return hop
 
     def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None, maxJumpsPer=None, maxLyPer=None):
@@ -177,3 +224,5 @@ class TradeCalc(object):
             result.append(route.plus(dst, trade, jumps))
 
         return result
+
+TradeCalc.tryCombinations = TradeCalc.fast_fit
