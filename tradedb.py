@@ -203,8 +203,7 @@ class TradeDB(object):
         if isinstance(name, Station):
             return name.system
 
-        system = self.list_search("System", name, self.systemIDs.keys())
-        return self.systemIDs[system]
+        return self.list_search("System", name, self.systemIDs.keys())
 
 
     def getStation(self, name):
