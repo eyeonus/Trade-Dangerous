@@ -208,14 +208,45 @@ class TradeDB(object):
 
 
     def getStation(self, name):
+        """ Look up a station by it's station or system name. """
         if isinstance(name, Station):
             return name
-        upperName = name.upper()
-        if upperName in self.systemIDs:
-            return self.stations[self.systemIDs[upperName]]
-        elif upperName in self.stationIDs:
-            return self.stations[self.stationIDs[upperName]]
-        raise LookupError("Unrecognized system/station name '%s'" % name)
+        if isinstance(name, System):
+            # If they provide a system and it only has one station, return that.
+            if len(name.stations) != 1:
+                raise ValueError("System '%s' has %d stations, please specify a station instead." % (name.str(), len(name.stations)))
+            return name.stations[0]
+
+        stationID, systemID = None, None
+        try:
+            systemID = self.list_search("System", name, self.systems.keys())
+        except LookupError:
+            pass
+        try:
+            station = self.list_search("Station", name, self.stationIDs.keys())
+            stationID = self.stationIDs[station]
+        except LookupError:
+            pass
+        # If neither matched, we have a lookup error.
+        if not (stationID or systemID):
+            raise LookupError("'%s' did not match any station or system." % (name))
+
+        # If we matched both a station and a system, make sure they resovle to the
+        # the same station otherwise we have an ambiguity. Some stations have the
+        # same name as their star system (Aulin/Aulin Enterprise)
+        if systemID and stationID and systemID != stationID:
+            raise ValueError("Ambiguity: '%s' could be '%s' or '%s'")
+
+        if stationID:
+            return self.stations[stationID]
+
+        # If we only matched a system name, ensure that it's a single station system
+        # otherwise they need to specify a station name.
+        system = self.systems[systemID]
+        if len(system.stations) != 1:
+            raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
+        return system.stations[0]
+
 
     def query(self, sql):
         conn = pypyodbc.connect(self.path)
