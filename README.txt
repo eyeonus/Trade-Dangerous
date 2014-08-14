@@ -1,92 +1,131 @@
-TradeDangerous v0.0.mumble	Copyright (C) Oliver "kfsone" Smith, July 2014
-==========================
+==============================================================================
+TradeDangerous v2.0
+Copyright (C) Oliver "kfsone" Smith, July 2014
+==============================================================================
 
 REQUIRES PYTHON 3.0 OR HIGHER.
 
-* What is Trade Dangerous?
+==============================================================================
+== What is Trade Dangerous?
+==============================================================================
 
-TradeDangerous is a cargo run optimizer for Elite: Dangerous. By "cargo run" I mean
-that it's designed to optimize more than just the current hop for you.
+TradeDangerous is a cargo run optimizer for Elite: Dangerous that calculates
+everything from simple one-jump stops between stations to calculating complex
+multi-stop routes with light-year, jumps-per-stop, and all sorts of other
+things.
 
-Jumping between just two stations isn't guaranteed to give you the best bang for your
-buck. 
-
-Sure, TD can tell you what the best load is for your Cobra from Chango to Enterprise,
-but it can also tell you what you should pick up at Enterprise and where you should
-take that.
-
-TD also does a more comprehensive test for what the optimal load is. Some E:D trade
-optimizers will tell you that you should buy 1 Gold, 1 Tantalum, 1 Biowaste and 1
-Scrap; TD will figure out that you could take 3 Tantalum and 1 Basic Medicines
-and come away with twice as much profit from the run.
-
-It also takes into account the profit earned from trades on each hop into the
-subsequent hop.
-
-* Where does it get it's data?
-
-The data is stored in a simple Microsoft Access 2013 Database because I'm hand-editing
-the database and Microsoft Access surprised me by having a really nice UI for doing
-this (open the .accdb file with MS Access and open the 'StationCats' query, click the
-'v' button on the 'station' header and select the station you are at to update the
-prices for it).
-
-Programmer Note: I used the pypyodbc api so you can replace it with whatever DB you
-want.
+For multi-stop routes, it takes into account the money you are making and
+factors that into the shopping for each subsequent hop.
 
 
-* Tell me how to use it!
+==============================================================================
+== Where does it get it's data?
+==============================================================================
 
-If you are sitting in a hauler at Chango with 20,000 credits and you have time for 2 hops,
-you might run it like this:
+The data is stored in a simple Microsoft Access 2013 Database because I'm
+hand-editing the database and Microsoft Access surprised me by having a really
+nice UI for doing this (open the .accdb file with MS Access and open the
+'StationCats' query, click the 'v' button on the 'station' header and select
+the station you are at to update the prices for it).
+
+Programmer Note: I used the pypyodbc api so you can replace it with whatever
+DB you want.
+
+
+==============================================================================
+== Tell me how to use it!
+==============================================================================
+
+If you are sitting in a hauler at Chango with 20,000 credits and you have time
+for 2 hops, you might run it like this:
 
  C:\TradeDangerous\> trade.py --from Chango --credits 20000 -capacity 16 --hops 2
 
 And the output might look like this:
 
-   From Chango via Any to Any with 20000 credits for 2 hops
-   IBootis Chango -> Dahan Gateway:
-    @ IBootis Chango       Buy 16*Fish (551cr),
-    @ LHS3006 WCM          Buy 11*Gallite (1862cr), 4*Lepidolite (400cr), 1*Bauxite (28cr),
-    $ Dahan Gateway 20000cr + 6228cr => 26228cr total
+    I BOOTIS Chango -> DAHAN Gateway:
+     >-> I BOOTIS Chango      Buy 16*Fish (389cr),
+     -+- LHS3006 WCM          Buy 13*Bertrandite (1871cr), 3*Lepidolite (323cr),
+     <-< DAHAN Gateway gaining 13806cr => 33806cr total
 
-This is telling you that it found a trade run starting at Chango. You buy 16 fish and fly to WCM.
+The route goes from Chango to Gateway via LHS 3006. At Chango, you pick up 16
+fish at 389 credits each. Fly to LHS 3006 and dock at WCM and sell your fish,
+and pick up 13 Bertrandite and 3 units of Lepidolite. Set sail for Gateway in
+Dahan ... and profit.
 
-At WCM you sell your fish and buy 11 Gallite, 4 lepidolite and 1 bauxite. Then you fly to Dahan
-and sell it for a profit of 6,228 credits.
+To the tune of 13,806cr.
 
-If you leave out the '--from' option, TradeDangerous will check all stations.
+If you leave out the '--from' option, TradeDangerous will do the same
+calculation for every station in the database and tell you where the best
+possible 2-hop run is:
 
-    From Any via Any to Any with 20000 credits for 2 hops
-    Aulin Enterprise -> Dahan Gateway:
-     @ Aulin Enterprise     Buy 6*Combat Stabilisers (2452cr), 7*Bioreducing Lichen (725cr), 3*Biowaste (23cr),
-     @ LHS3006 WCM          Buy 11*Indite (1992cr), 4*Lepidolite (400cr), 1*Bauxite (28cr),
-     $ Dahan Gateway 20000cr + 8008cr => 28008cr total
+ C:\TradeDangerous\> trade.py --credits 20000 -capacity 16 --hops 2
+    ACIHAUT Cuffey -> DAHAN Gateway:
+     >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
+     -+- AULIN Enterprise     Buy 13*Combat Stabilisers (2179cr), 3*Synthetic Meat (87cr),
+     <-< DAHAN Gateway gaining 20035cr => 40035cr total
 
-It turns out the best route would have started from Aulin and would net us nearly 2,000 credits more.
+By starting from Cuffey and making our way to Gateway, we'd make 2,000 credits
+more.
 
-TD also takes a "--insurance" option which tells it to put some money aside for
-insurance payments. This lets you put the actual amount of credits you have without
-having to remember to subtract your insurance each time:
+But how was it expecting us to get from Cuffey to Aulin? For this, there is
+the --detail option:
 
-Lets say we want to do a half dozen runs.
+ C:\TradeDangerous\> trade.py --credits 20000 -capacity 16 --hops 2 --detail
+    ACIHAUT Cuffey -> DAHAN Gateway:
+     >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
+       |   Acihaut -> LHS3006 -> Aulin
+     -+- AULIN Enterprise     Buy 13*Combat Stabilisers (2179cr), 3*Synthetic Meat (87cr),
+       |   Aulin -> Eranin -> Dahan
+     <-< DAHAN Gateway gaining 20035cr => 40035cr total
+
+The route starts at Cuffey station in Acihaut. Then you jump to LHS 3006 and
+then Aulin, where you dock at Enterprise. Then you jump from Aulin to Eranin
+and finally to Dahan to dock at Gateway.
+
+I use the term "hop" to describe picking up goods at one station, crossing
+systems and docking at another station and selling the goods; the term "jump"
+to describe a hyperspace trip between two individual star systems.
+
+One problem:
+
+The hauler can't make the above journey with cargo.
+
+The "--ly-per" argument lets us tell TD to limit connections to a max of
+5.2ly.
+
+ C:\TradeDangerous\> trade.py --credits 20000 -capacity 16 --hops 2 --detail --ly-per 5.2
+     >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
+       |   Morgor -> Dahan -> Asellus
+     -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
+       |   Asellus -> Dahan
+     <-< DAHAN Gateway gaining 18640cr => 38640cr total
+
+You can also control the number of jumps allowed on any given hop: --max-jumps
+sets an upper limit on the total number of jumps, --jumps-per limits the
+maximum jumps on each hop.
+
+  C:\TradeDangerous\> trade.py --credits 20000 --capacity 16 --hops 2 --detail --ly-per 5.2 --jumps-per 2
+    ERANIN Azeban -> DAHAN Gateway:
+     >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
+       |   Eranin -> Asellus
+     -+- ASELLUS Beagle2      Buy 11*Advanced Catalysts (2160cr), 5*H.E. Suits (115cr),
+       |   Asellus -> Dahan
+     <-< DAHAN Gateway gaining 13870cr => 33870cr total
+
+TD also takes a "--insurance" option which tells it to put some money aside
+for insurance payments. This lets you put the actual amount of credits you
+have without having to remember to subtract your insurance each time:
+
+Lets say we want to do a half dozen runs and keep 4000 credits aside so that
+we don't get totally wiped out by a crash along the way:
 
     C:\TradeDangerous\> trade.py --from Chango --capacity 16 --insurance 4000 --hops 6 --credits 20000
 
 
-    From Chango via Any to Any with 16000 credits for 6 hops
-    IBootis Chango -> Dahan Gateway:
-     @ IBootis Chango       Buy 16*Fish (551cr),
-     @ Aulin Enterprise     Buy 5*Combat Stabilisers (2452cr), 7*Bioreducing Lichen (725cr), 4*Biowaste (23cr),
-     @ LHS3006 WCM          Buy 8*Indite (1992cr), 2*Gallite (1862cr), 4*Lepidolite (400cr), 2*Bauxite (28cr),
-     @ Dahan Gateway        Buy 6*Tantalum (3829cr), 10*Aluminium (184cr),
-     @ Aulin Enterprise     Buy 4*Performance Enhancers (3037cr), 5*Combat Stabilisers (2452cr), 3*Bioreducing Lichen (725cr), 4*Biowaste (23cr),
-     @ LHS3006 WCM          Buy 9*Indite (1992cr), 7*Gallite (1862cr),
-     $ Dahan Gateway 20000cr + 20644cr => 40644cr total
-
-In just 6 hops, we made 20k credits, keeping 4k aside incase of disaster.
-
-Command Line Options:
+==============================================================================
+== Command Line Options:
+==============================================================================
 
  Route options:
    --from <station or system>
@@ -102,8 +141,8 @@ Command Line Options:
        --to Aulin
 
    --via <station or system>
-     Lets you specify a station that must be between start and final,
-     requires that hops be at least 2
+     Lets you specify a station that must be between the second and final hop.
+     Requires that hops be at least 2.
      e.g.
        --via Enterprise
        --via Chango
@@ -111,38 +150,60 @@ Command Line Options:
    --unique
      Only show routes which do not visit any station twice
 
-   --hops <number> DEFAULT: 2
+   --hops N
+     DEFAULT: 2
      Maximum number of hops (number of cargo pickups)
      e.g.
        --hops 8
 
+   --jumps N
+     DEFAULT: 0 (unlimited)
+     Limit the total number of jumps across the journey
+     e.g.
+       --jumps 3
+
+   --jumps-per N
+     DEFAULT: 3
+     Limit the number of systems jumped to between each station
+     e.g.
+       -jumps-per 5
+
+   --ly-per N.NN
+     DEFAULT: 5.2
+     Maximum distance your ship can jump between systems at full capacity.
+     Note: You can increase your range by selling your weapons.
+     e.g.
+       --ly-per 19.1
+       --ly-per 3
+
  Ship/Trade options:
-   --capacity <number> DEFAULT: 4
+   --capacity N
+     DEFAULT: 4
      Maximum items you can carry on each hop.
  
-   --credits <number>
+   --credits N
      How many credits to start with
      e.g.
        --credits 20000
 
-   --insurance <number> DEFAULT: 0
+   --insurance N   DEFAULT: 0
      How many credits to hold back for insurance purposes
      e.g.
        --insurance 1000
 
-   --limit <number> DEFAULT: 0
+   --limit N   DEFAULT: 0
      If set, limits the maximum number of units of any cargo
      item you will buy on any trade hop, incase you want to
      hedge your bets or be a good economy citizen.
      e.g.
        --capacity 16 --limit 8
 
-   --avoid <item name>
+   --avoid ITEM
      Prevents purchase of the specified item.
      e.g.
        --avoid Gold
 
-   --margin <decimal> DEFAULT: 0.02
+   --margin N.NN   DEFAULT: 0.01
      At the end of each hop, reduce the profit by this much (0.02 = 2%),
      to allow a margin of error in the accuracy of prices.
      e.g.
@@ -150,33 +211,150 @@ Command Line Options:
        --margin 0.01   (1% margin)
  
  Other options:
-   --routes <number> DEFAULT: 1
+   --routes N   DEFAULT: 1
      Shows the top N routes; 
+
+   --detail
+     Show jumps between stations when showing routes
 
    --debug
      Gives some additional information on what TD is doing while running.
 
 
-* Why did you choose MS Access, you moron?
+==============================================================================
+== How can I add or update the data?
+==============================================================================
 
-I'm a Unix guy but I also like to push myself outside my comfort zone. During my
-time at Blizzard I'd actually started to find MS Office 2010 quite bearable, so
-I happened to have a free trial of MS Office 365 installed.
+A script is provided, "import.py", which processes a series of simple commands
+from a file called "import.txt".
 
-I wanted to throw the data together really, really quickly. So I tried Libre Office
-Base. The pain was strong in that one. So, for giggles, I decided to see just how
-painful it was in Access and 5 minutes later I had a working database that was really
-easy to update exactly the way I wanted.
+Syntax for import.txt is fairly primitive. Eventually I intend to replace the
+access database with a collection of 'import.txt' files.
+
+  # ...
+    Comment lines are ignored, as are blank lines.
+
+  #rejectUnknown
+    Special comment that causes an unrecognized system in a new-star line
+    to generate an error.
+
+  *<system name>/<station name>:<system>@n.nn[ly][,<system>@n.nn[,...]]
+    Adds a system with links to other systems. For EMPTY systems (with
+    no stations), you can specify '*' as the station name.
+    e.g.
+      *Dahan/Gateway:Aulin@5.6,Eranin@9.8ly,...
+      *Hermitage/*:Elsewhere@10.13ly
+
+  @<station name>
+    Selects the specified station without trying to add it.
+    e.g.
+      @aulin
+      @gateway
+      @dahan
+
+  -<partial category name>
+    Finds an item category matching the string and selects it as
+    the current item category. If the match is ambiguous, an error
+    will be raised.
+    NOTE: the name cannot contain a space, e.g. for "Consumer Goods"
+    just use "consumer" or "goods"
+    e.g.
+      -dru
+      -DRUG
+      -dRuGs
+      -rug
+      -ugs
+      -cons
+      -consumer
+      -goods
+
+  <partial item name> <buy price> [<sell price>]
+    Finds an item matching the name within the current category
+    and sets a buy (how much the station buys for) and/or sell
+    price (how much the station sells for) for the item.
+    If the match is ambiguous, an error will be raised.
+    If no sell price is specified, it is assumed to be 0.
+    NOTE: Name cannot contain spaces
+    e.g.
+      -cons
+      appliances 1000
+      appl 1000 0
+      -chem
+      pesticides 56 57
+      PEST 56 57
+
+'*' doesn't select the system, this is because I tend to keep all of
+my stations at the top of my import.txt and then tack on item updates
+to a single station at the end, and I wanted to make absolutely sure I
+had selected the correct station.
+
+
+=====================
+== Example import.txt
+
+
+  # Add (or update) dahan and describe it's links to Aulin and Eranin.
+  # If they aren't in the database yet, they will be quietly ignored.
+  # If they are in the database, a link will be added each way.
+  *Dahan/Gateway:Aulin@5.6ly,Eranin@9.8ly
+
+  # Add Eranin.
+  *Eranin/Azeban:Dahan@9.8ly,Hermitage@20.21ly
+
+  # Select Dahan.
+  # Alternatively: @DAHAN, @GATEWAY or @gateway
+  @Dahan
+
+  # Select 'Chemicals' category.
+  # Alternatively: -CHEMICALS, -CHEMicals, etc
+  -chem
+
+  # Hydrogen fuel is bought by this station for 56cr but not sold here.
+  # Alternatively: Hydrogen 56 0, HYD 56, etc
+  hydro 56
+
+  # Station is selling pesticides for 67cr or paying 58 for them.
+  # Alternatively: PESTICIDES 67 58, pesti 67 58, etc
+  pest 67 58
+
+  # Change to Consumer Goods category, which matches 'cons'
+  # and specify prices for "Clothing", "Consumer Technology" and "Dom.
+  # Appliances"
+  -cons
+  clo 306
+  cons 6049
+  # alternatively: dom, DOM, appliances, APPLI, appl, etc
+  dom. 548
+
+
+==============================================================================
+== Why did you choose MS Access, you moron?
+==============================================================================
+
+I'm a Unix guy but I also like to push myself outside my comfort zone. During
+my time at Blizzard I'd actually started to find MS Office 2010 quite
+bearable, so I happened to have a free trial of MS Office 365 installed.
+
+I wanted to throw the data together really, really quickly. So I tried Libre
+Office Base. The pain was strong in that one. So, for giggles, I decided to
+see just how painful it was in Access and 5 minutes later I had a working
+database that was really easy to update exactly the way I wanted.
 
 It should be trivial to convert it to a different database.
 
-* That's nice, but I'm a programmer and I want to ...
+
+==============================================================================
+== That's nice, but I'm a programmer and I want to ...
+==============================================================================
 
 Yeah, let me stop you there. 
 
-  from tradedb.py import TradeDB, Station, Trade
-  tdb = TradeDB("c:\\path\\to\\db")
+    from tradedb import *
+    from tradecalc import *
+
+    tdb = TradeDB(".\\TradeDangerous.accdb")
+    calc = TradeCalc(tdb, capacity=16, margin=0.01, unique=False)
 
 Whatever it is you want to do, you can do from there.
 
-
+See "cli.py" for examples.
