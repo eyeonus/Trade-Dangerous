@@ -116,9 +116,11 @@ class Station(object):
                 closedList[destSys] = 1
         return destStations
 
+    def str(self):
+        return self.system.str().upper() + " " + self.station
+
     def __repr__(self):
-        str = self.system.str().upper() + " " + self.station
-        return str
+        return str()
 
 
 class TradeDB(object):
