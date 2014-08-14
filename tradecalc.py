@@ -47,7 +47,7 @@ class Route(object):
             hop = self.hops[i]
             str += " >-> " if i == 0 else " -+- "
             str += "%-20s Buy" % route[i]
-            for item in hop[0]:
+            for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
                 str += " %d*%s," % (item[1], item[0])
             str += "\n"
             if verbose:
