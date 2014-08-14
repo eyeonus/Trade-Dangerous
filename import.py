@@ -98,6 +98,11 @@ with open('import.txt', 'r') as f:
         if line[0] == '#':
             if line == '#rejectUnknown':
                 rejectUnknown = True
+            if line == '#stop':
+                break
+            if line[0:5] == '#echo':
+                text = line[6:].strip()
+                print(text)
             continue    # comment
         elif line[0] == '*':
             addStar(line[1:])
