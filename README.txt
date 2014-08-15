@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v2.0
+TradeDangerous v2.01
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -198,10 +198,13 @@ we don't get totally wiped out by a crash along the way:
      e.g.
        --capacity 16 --limit 8
 
-   --avoid ITEM
-     Prevents purchase of the specified item.
+   --avoid ITEM/SYSTEM/STATION
+     Excludes the item/system/station matching the name from the database
      e.g.
        --avoid Gold
+       --avoid Aulin
+       --avoid Enterprise
+       --avoid prise
 
    --margin N.NN   DEFAULT: 0.01
      At the end of each hop, reduce the profit by this much (0.02 = 2%),
