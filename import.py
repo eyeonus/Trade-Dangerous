@@ -45,27 +45,13 @@ for row in tdb.fetch_all("""
         categories[cat] = []
     categories[cat].append(item)
 
-import sys
-
-def addStar(line):
+def addLinks(station, links):
     global tdb
-    fields = line.split(':')
-    sys, station = fields[0].split('/')
-    sys, station = sys.strip(), station.strip()
-    srcID = None
-    if station == '*':
-        station = sys.upper() + '*'
-    try:
-        srcID = tdb.getStation(station).ID
-    except ValueError:
-        tdb.query("INSERT INTO Stations (system, station) VALUES ('%s', '%s')" % (sys, station)).commit()
-        print("Added %s/%s" % (sys, station))
-        tdb.load()
-        srcID = tdb.getStation(station).ID
 
-    for dst in fields[1].split(','):
+    srcID = station.ID
+    for dst in links.split(','):
         dst, dist = dst.strip(), 1
-        m = re.match(r'(.+)\s*@\s*(\d+\.\d+)(\s*ly)?', dst)
+        m = re.match(r'(.+)\s*@\s*(\d+(\.\d+)?)(\s*ly)?', dst)
         if m:
             dst, dist = m.group(1), m.group(2)
         try:
@@ -78,15 +64,35 @@ def addStar(line):
                 tdb.query("INSERT INTO Links (`from`, `to`, `distLy`) VALUES (%d, %d, %s)" % (dstID, srcID, dist)).commit()
             except pypyodbc.IntegrityError:
                 tdb.query("UPDATE Links SET distLy=%s WHERE from=%d and to=%d" % (dist, dstID, srcID)).commit()
-        except ValueError as e:
+        except LookupError as e:
             if rejectUnknown:
                 raise e
             print("* Unknown star system: %s" % dst)
 
-def changeStation(name):
+def changeStation(line):
     global tdb
-    station = tdb.getStation(name)
-    print("Station Select: ", station)
+
+    station = None
+    matches = re.match(r'\s*(.*?)\s*/\s*(.*?)(:\s*(.*?))?\s*$', line)
+    if matches:
+        # Long format: system/station:links ...
+        sysName, stnName, links = matches.group(1), matches.group(2), matches.group(4)
+        if stnName == '*':
+            stnName = sysName.upper() + '*'
+        try:
+            station = tdb.getStation(stnName)
+        except LookupError:
+            tdb.query("INSERT INTO Stations (system, station) VALUES ('%s', '%s')" % (sysName, stnName)).commit()
+            print("Added %s/%s" % (sysName, stnName))
+            tdb.load()
+            station = tdb.getStation(stnName)
+        if links:
+            addLinks(station, links)
+    else:
+        # Short formnat: system/station name.
+        station = tdb.getStation(line)
+
+    print("Station: ", station)
     return station
 
 def changeCategory(name):
@@ -131,9 +137,7 @@ with open('import.txt', 'r') as f:
                 text = line[6:].strip()
                 print(text)
             continue    # comment
-        elif line[0] == '*':
-            addStar(line[1:])
-        elif line[0] == '@':
+        elif line[0] == '*' or line[0] == '@':
             curStation = changeStation(line[1:])
         elif line[0] == '-':
             curCat = changeCategory(line[1:])
