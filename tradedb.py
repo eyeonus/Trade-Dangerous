@@ -129,24 +129,25 @@ class TradeDB(object):
         self.debug = debug
         self.load()
 
-    def load(self, avoiding=[], ignoreLinks=False):
+    def load(self, avoidItems=[], avoidSystems=[], avoidStations=[], ignoreLinks=False):
         # Connect to the database
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
 
         cur.execute('SELECT system FROM Stations GROUP BY system')
-        self.systems = { row[0]: System(row[0]) for row in cur }
+        self.systems = { row[0]: System(row[0]) for row in cur if not self.normalized_str(row[0]) in avoidSystems }
         if self.debug:
             print(self.systems)
         cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
         for row in cur:
-            self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
+            if row[0] in self.systems:
+                self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
 
         cur.execute('SELECT id, system, station FROM Stations')
         # Station lookup by ID
-        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur }
+        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur if row[1] in self.systems and not self.normalized_str(row[2]) in avoidStations }
         # StationID lookup by System Name
         self.systemIDs = { value.system.str().upper(): key for (key, value) in self.stations.items() }
         # StationID lookup by Station Name
@@ -154,7 +155,7 @@ class TradeDB(object):
 
         """ Populate 'items' from the database """
         cur.execute('SELECT id, item FROM Items')
-        self.items = { row[0]: row[1] for row in cur }
+        self.items = { row[0]: row[1] for row in cur if not self.normalized_str(row[1]) in avoidItems }
         self.itemIDs = { name: itemID for (itemID, name) in self.items.items() }
 
         stations, items = self.stations, self.items
@@ -166,7 +167,7 @@ class TradeDB(object):
                     ' AND src.ui_order > 0 AND dst.ui_order > 0'
                     )
         for row in cur:
-            if not (items[row[2]] in avoiding):
+            if row[0] in stations and row[1] in stations and row[2] in items:
                 stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])
 
         for station in stations.values():
