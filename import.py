@@ -45,6 +45,7 @@ for row in tdb.fetch_all("""
         categories[cat] = []
     categories[cat].append(item)
 
+
 def addLinks(station, links):
     global tdb
 
@@ -68,6 +69,7 @@ def addLinks(station, links):
             if rejectUnknown:
                 raise e
             print("* Unknown star system: %s" % dst)
+
 
 def changeStation(line):
     global tdb
@@ -95,10 +97,12 @@ def changeStation(line):
     print("Station: ", station)
     return station
 
+
 def changeCategory(name):
     cat = tdb.list_search('category', name, categories)
     print("Category Select: ", cat)
     return cat
+
 
 def parseItem(station, cat, line, uiOrder):
     fields = line.split()
@@ -120,30 +124,35 @@ def parseItem(station, cat, line, uiOrder):
         else:
             raise e
 
-with open('import.txt', 'r') as f:
-    curStation = None
-    curCat = None
-    uiOrder = 0
-    for line in f:
-        line = line.strip()
-        if not line or len(line) < 1:
-            continue
-        if line[0] == '#':
-            if line == '#rejectUnknown':
-                rejectUnknown = True
-            if line == '#stop':
-                break
-            if line[0:5] == '#echo':
-                text = line[6:].strip()
-                print(text)
-            continue    # comment
-        elif line[0] == '*' or line[0] == '@':
-            curStation = changeStation(line[1:])
-        elif line[0] == '-':
-            curCat = changeCategory(line[1:])
-            uiOrder = 0
-        else:
-            if curStation == None or curCat == None:
-                raise ValueError("Expecting station and category before items: " + line)
-            uiOrder += 1
-            parseItem(curStation, curCat, line, uiOrder)
+
+def main():
+    with open('import.txt', 'r') as f:
+        curStation = None
+        curCat = None
+        uiOrder = 0
+        for line in f:
+            line = line.strip()
+            if not line or len(line) < 1:
+                continue
+            if line[0] == '#':
+                if line == '#rejectUnknown':
+                    rejectUnknown = True
+                if line == '#stop':
+                    break
+                if line[0:5] == '#echo':
+                    text = line[6:].strip()
+                    print(text)
+                continue    # comment
+            elif line[0] == '*' or line[0] == '@':
+                curStation = changeStation(line[1:])
+            elif line[0] == '-':
+                curCat = changeCategory(line[1:])
+                uiOrder = 0
+            else:
+                if curStation == None or curCat == None:
+                    raise ValueError("Expecting station and category before items: " + line)
+                uiOrder += 1
+                parseItem(curStation, curCat, line, uiOrder)
+
+if __name__ == "__main__":
+    main()
