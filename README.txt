@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v2.01
+TradeDangerous v2.02
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -361,3 +361,16 @@ Yeah, let me stop you there.
 Whatever it is you want to do, you can do from there.
 
 See "cli.py" for examples.
+
+
+==============================================================================
+== Change Log
+==============================================================================
+
+v2.02
+  "--via" will now accept the via station as the first station on
+  routes when the user doesn't specify a "--from".
+  Also made name matching far more flexible.
+
+v2.01
+  "--avoid" now handles stations and system names

@@ -166,6 +166,8 @@ def main():
     routes = [ Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0) for src in origins ]
     numHops =  args.hops
     lastHop = numHops - 1
+    viaStartPos = 1 if originStation else 0
+    viaEndPos = -1 if finalStation else -1
 
     if args.debug:
         print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
@@ -182,11 +184,14 @@ def main():
             restrictTo = finalStation
             if viaStation and finalStation:
                 # Cull to routes that include the viaStation
-                routes = [ route for route in routes if viaStation in route.route[1:] ]
+                routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
         routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
     if viaStation:
-        routes = [ route for route in routes if viaStation in route.route[1:] ]
+        # If the user doesn't specify start or end stations, expand the
+        # search for "via" stations to encompass the first/last station
+        # as well as the hops in-between
+        routes = [ route for route in routes if viaStation in route.route[viaStartPos:viaEndPos] ]
 
     if not routes:
         print("No routes match your selected criteria.")
