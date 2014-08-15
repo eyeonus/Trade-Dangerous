@@ -6,6 +6,7 @@
 # Imports
 
 import sys
+import re
 import pypyodbc
 from queue import Queue
 
@@ -124,6 +125,8 @@ class Station(object):
 
 
 class TradeDB(object):
+    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+
     def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.debug = debug
@@ -275,6 +278,7 @@ class TradeDB(object):
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
 
-
     def normalized_str(self, str):
-        return str.replace(" ", "").casefold()
+        # Remove spaces, tabs, apostrophes, periods, hyphens and underscores,
+        # then convert to casefolded so that caseless matches will work.
+        return self.normalizeRe.sub('', str).casefold()
