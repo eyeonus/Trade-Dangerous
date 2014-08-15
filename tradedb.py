@@ -120,7 +120,7 @@ class Station(object):
         return self.system.str().upper() + " " + self.station
 
     def __repr__(self):
-        return str()
+        return self.str()
 
 
 class TradeDB(object):
