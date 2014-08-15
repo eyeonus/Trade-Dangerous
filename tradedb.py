@@ -222,14 +222,16 @@ class TradeDB(object):
                 raise ValueError("System '%s' has %d stations, please specify a station instead." % (name.str(), len(name.stations)))
             return name.stations[0]
 
-        stationID, systemID = None, None
+        stationID, station, systemID, system = None, None, None, None
         try:
             systemID = self.list_search("System", name, self.systems.keys())
+            system = self.systems[systemID]
         except LookupError:
             pass
         try:
-            station = self.list_search("Station", name, self.stationIDs.keys())
-            stationID = self.stationIDs[station]
+            stationName = self.list_search("Station", name, self.stationIDs.keys())
+            stationID = self.stationIDs[stationName]
+            station = self.stations[stationID]
         except LookupError:
             pass
         # If neither matched, we have a lookup error.
@@ -239,8 +241,8 @@ class TradeDB(object):
         # If we matched both a station and a system, make sure they resovle to the
         # the same station otherwise we have an ambiguity. Some stations have the
         # same name as their star system (Aulin/Aulin Enterprise)
-        if systemID and stationID and systemID != stationID:
-            raise ValueError("Ambiguity: '%s' could be '%s' or '%s'")
+        if systemID and stationID and system != station.system:
+            raise ValueError("Ambiguity: '%s' could be '%s' or '%s'" % (name, system.str(), station.str()))
 
         if stationID:
             return self.stations[stationID]
