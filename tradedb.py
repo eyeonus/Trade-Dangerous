@@ -263,9 +263,9 @@ class TradeDB(object):
 
     def list_search(self, listType, lookup, values):
         match = None
-        needle = lookup.casefold().replace(" ", "").casefold()
+        needle = self.normalized_str(lookup)
         for val in values:
-            if val.casefold().replace(" ", "").find(needle) > -1:
+            if self.normalized_str(val).find(needle) > -1:
                 if match:
                     raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
                                         listType, lookup, match, val))
@@ -273,3 +273,7 @@ class TradeDB(object):
         if not match:
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
+
+
+    def normalized_str(self, str):
+        return str.replace(" ", "").casefold()
