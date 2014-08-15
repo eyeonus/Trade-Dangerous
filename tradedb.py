@@ -56,7 +56,7 @@ class Station(object):
     """ Describes a station within a given system along with what trade
         opportunities it presents. """
     def __init__(self, ID, system, station):
-        self.ID, self.system, self.station = ID, system, station.replace(' ', '')
+        self.ID, self.system, self.station = ID, system, station
         self.trades = {}
         self.stations = []
         system.addStation(self)
