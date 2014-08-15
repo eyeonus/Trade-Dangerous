@@ -30,7 +30,43 @@ tdb = TradeDB("C:\\Dev\\trade\\TradeDangerous.accdb")
 ######################################################################
 # Classes
 
+# Yeah, I moved most of those into modules. See TradeDB.py and TradeCalc.py
+
 ######################################################################
+# Functions
+
+def parse_avoids(avoidances):
+    avoidItems, avoidSystems, avoidStations = [], [], []
+
+    for avoid in args.avoid:
+        # Is it an item?
+        item, system, station = None, None, None
+        try:
+            item = tdb.list_search("Item", avoid, tdb.items.values())
+            avoidItems.append(tdb.normalized_str(item))
+        except LookupError:
+            pass
+        try:
+            system = tdb.getSystem(avoid)
+            avoidSystems.append(tdb.normalized_str(system.str()))
+        except LookupError:
+            pass
+        try:
+            station = tdb.getStation(avoid)
+            avoidStations.append(tdb.normalized_str(station.station))
+        except LookupError as e:
+            pass
+
+        if not (item or system or station):
+            raise LookupError("Unknown item/system/station: %s" % avoid)
+
+        if item and system: raise ValueError("Ambiguity error: avoidance '%s' could be item %s or system %s" % (avoid, item, system.str()))
+        if item and station: raise ValueError("Ambiguity error: avoidance '%s' could be item %s or station %s" % (avoid, item, station.str()))
+        if system and station and station.system != system: raise ValueError("Ambiguity error: avoidance '%s' could be system %s or station %s" % (avoid, system.str(), station.str()))
+
+    if args.debug: print("Avoiding items %s, systems %s, stations %s" % (avoidItems, avoidSystems, avoidStations))
+    tdb.load(avoidItems=avoidItems, avoidSystems=avoidSystems, avoidStations=avoidStations)
+
 
 def parse_command_line():
     global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName
@@ -39,7 +75,7 @@ def parse_command_line():
     parser.add_argument('--from', dest='origin', metavar='STATION', help='Specifies starting system/station', required=False)
     parser.add_argument('--to', dest='dest', metavar='STATION', help='Specifies final system/station', required=False)
     parser.add_argument('--via', dest='via', metavar='STATION', help='Require specified station to be en-route', required=False)
-    parser.add_argument('--avoid', dest='avoid', metavar='ITEM', help='Exclude this item from trading', required=False, action='append')
+    parser.add_argument('--avoid', dest='avoid', metavar='NAME', help='Exclude an item, system or station from the database. Partial matches allowed, e.g. "dom.ap" matches "Dom. Appliance"', required=False, action='append')
     parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
     parser.add_argument('--hops', metavar='N', help="Number of hops (station-to-station) to run. DEFAULT: 2", type=int, default=2, required=False)
     parser.add_argument('--jumps', metavar='N', dest='maxJumps', help="Maximum total jumps (system-to-system)", type=int, default=None, required=False)
@@ -61,15 +97,8 @@ def parse_command_line():
     if args.hops > 64:
         raise ValueError("Too many hops without more optimization")
 
-    avoidItems = []
     if args.avoid:
-        for avoid in args.avoid:
-            if not avoid in tdb.items.values():
-                raise ValueError("Unknown item: %s" % avoid)   
-            avoidItems.append(avoid)
-        if avoidItems:
-            if args.debug: print("Avoiding %s" % avoidItems)
-            tdb.load(avoiding=avoidItems)
+        parse_avoids(args.avoid)
 
     if args.origin:
         originName = args.origin
@@ -137,6 +166,8 @@ def main():
     routes = [ Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0) for src in origins ]
     numHops =  args.hops
     lastHop = numHops - 1
+    viaStartPos = 1 if originStation else 0
+    viaEndPos = -1 if finalStation else -1
 
     if args.debug:
         print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
@@ -153,11 +184,14 @@ def main():
             restrictTo = finalStation
             if viaStation and finalStation:
                 # Cull to routes that include the viaStation
-                routes = [ route for route in routes if viaStation in route.route[1:] ]
+                routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
         routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
     if viaStation:
-        routes = [ route for route in routes if viaStation in route.route[1:] ]
+        # If the user doesn't specify start or end stations, expand the
+        # search for "via" stations to encompass the first/last station
+        # as well as the hops in-between
+        routes = [ route for route in routes if viaStation in route.route[viaStartPos:viaEndPos] ]
 
     if not routes:
         print("No routes match your selected criteria.")

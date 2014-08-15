@@ -6,6 +6,7 @@
 # Imports
 
 import sys
+import re
 import pypyodbc
 from queue import Queue
 
@@ -116,35 +117,40 @@ class Station(object):
                 closedList[destSys] = 1
         return destStations
 
+    def str(self):
+        return self.system.str().upper() + " " + self.station
+
     def __repr__(self):
-        str = self.system.str().upper() + " " + self.station
-        return str
+        return self.str()
 
 
 class TradeDB(object):
+    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+
     def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.debug = debug
         self.load()
 
-    def load(self, avoiding=[], ignoreLinks=False):
+    def load(self, avoidItems=[], avoidSystems=[], avoidStations=[], ignoreLinks=False):
         # Connect to the database
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
 
         cur.execute('SELECT system FROM Stations GROUP BY system')
-        self.systems = { row[0]: System(row[0]) for row in cur }
+        self.systems = { row[0]: System(row[0]) for row in cur if not self.normalized_str(row[0]) in avoidSystems }
         if self.debug:
             print(self.systems)
         cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
         for row in cur:
-            self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
+            if row[0] in self.systems:
+                self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
 
         cur.execute('SELECT id, system, station FROM Stations')
         # Station lookup by ID
-        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur }
+        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur if row[1] in self.systems and not self.normalized_str(row[2]) in avoidStations }
         # StationID lookup by System Name
         self.systemIDs = { value.system.str().upper(): key for (key, value) in self.stations.items() }
         # StationID lookup by Station Name
@@ -152,7 +158,7 @@ class TradeDB(object):
 
         """ Populate 'items' from the database """
         cur.execute('SELECT id, item FROM Items')
-        self.items = { row[0]: row[1] for row in cur }
+        self.items = { row[0]: row[1] for row in cur if not self.normalized_str(row[1]) in avoidItems }
         self.itemIDs = { name: itemID for (itemID, name) in self.items.items() }
 
         stations, items = self.stations, self.items
@@ -164,7 +170,7 @@ class TradeDB(object):
                     ' AND src.ui_order > 0 AND dst.ui_order > 0'
                     )
         for row in cur:
-            if not (items[row[2]] in avoiding):
+            if row[0] in stations and row[1] in stations and row[2] in items:
                 stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])
 
         for station in stations.values():
@@ -196,15 +202,58 @@ class TradeDB(object):
                 if not sys in link.links:
                     raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
+    def getSystem(self, name):
+        """ Look up a system by it's name. """
+        if isinstance(name, System):
+            return name
+        if isinstance(name, Station):
+            return name.system
+
+        system = self.list_search("System", name, self.systems.keys())
+        return self.systems[system]
+
     def getStation(self, name):
+        """ Look up a station by it's station or system name. """
         if isinstance(name, Station):
             return name
-        upperName = name.upper()
-        if upperName in self.systemIDs:
-            return self.stations[self.systemIDs[upperName]]
-        elif upperName in self.stationIDs:
-            return self.stations[self.stationIDs[upperName]]
-        raise ValueError("Unrecognized system/station name '%s'" % name)
+        if isinstance(name, System):
+            # If they provide a system and it only has one station, return that.
+            if len(name.stations) != 1:
+                raise ValueError("System '%s' has %d stations, please specify a station instead." % (name.str(), len(name.stations)))
+            return name.stations[0]
+
+        stationID, station, systemID, system = None, None, None, None
+        try:
+            systemID = self.list_search("System", name, self.systems.keys())
+            system = self.systems[systemID]
+        except LookupError:
+            pass
+        try:
+            stationName = self.list_search("Station", name, self.stationIDs.keys())
+            stationID = self.stationIDs[stationName]
+            station = self.stations[stationID]
+        except LookupError:
+            pass
+        # If neither matched, we have a lookup error.
+        if not (stationID or systemID):
+            raise LookupError("'%s' did not match any station or system." % (name))
+
+        # If we matched both a station and a system, make sure they resovle to the
+        # the same station otherwise we have an ambiguity. Some stations have the
+        # same name as their star system (Aulin/Aulin Enterprise)
+        if systemID and stationID and system != station.system:
+            raise ValueError("Ambiguity: '%s' could be '%s' or '%s'" % (name, system.str(), station.str()))
+
+        if stationID:
+            return self.stations[stationID]
+
+        # If we only matched a system name, ensure that it's a single station system
+        # otherwise they need to specify a station name.
+        system = self.systems[systemID]
+        if len(system.stations) != 1:
+            raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
+        return system.stations[0]
+
 
     def query(self, sql):
         conn = pypyodbc.connect(self.path)
@@ -212,19 +261,26 @@ class TradeDB(object):
         cur.execute(sql)
         return cur
 
+
     def fetch_all(self, sql):
         for row in self.query(sql):
             yield row
 
+
     def list_search(self, listType, lookup, values):
         match = None
-        needle = lookup.casefold()
+        needle = self.normalized_str(lookup)
         for val in values:
-            if val.casefold().find(needle) > -1:
+            if self.normalized_str(val).find(needle) > -1:
                 if match:
                     raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
                                         listType, lookup, match, val))
                 match = val
         if not match:
-            raise ValueError("Error: '%s' doesn't match any %s" % (lookup, listType))
+            raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
+
+    def normalized_str(self, str):
+        # Remove spaces, tabs, apostrophes, periods, hyphens and underscores,
+        # then convert to casefolded so that caseless matches will work.
+        return self.normalizeRe.sub('', str).casefold()
