@@ -145,7 +145,7 @@ class TradeDB(object):
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
         for row in cur:
-            if row[0] in self.systems:
+            if row[0] in self.systems and row[1] in self.systems:
                 self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
 
         cur.execute('SELECT id, system, station FROM Stations')
