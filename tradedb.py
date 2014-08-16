@@ -96,7 +96,7 @@ class Station(object):
         maxJumpDist = float(maxLyPer or sys.maxint)
         while not openList.empty():
             (sys, jumps, dist) = openList.get()
-            if maxJumps and len(jumps) - 1 > maxJumps:
+            if maxJumps and len(jumps) > maxJumps:
                 continue
             if maxLy and dist > maxLy:
                 continue
@@ -104,7 +104,7 @@ class Station(object):
             for stn in sys.stations:
                 if stn != self:
                     destStations.append([sys, stn, jumps, dist])
-            if (maxJumps and len(jumps) >= maxJumps):
+            if (maxJumps and len(jumps) > maxJumps):
                 continue
             for (destSys, destDist) in sys.links.items():
                 if destDist > maxJumpDist:
