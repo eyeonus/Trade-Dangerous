@@ -255,10 +255,10 @@ class TradeDB(object):
         return system.stations[0]
 
 
-    def query(self, sql):
+    def query(self, *args):
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
-        cur.execute(sql)
+        cur.execute(*args)
         return cur
 
 
