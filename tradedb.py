@@ -271,7 +271,11 @@ class TradeDB(object):
         match = None
         needle = self.normalized_str(lookup)
         for val in values:
-            if self.normalized_str(val).find(needle) > -1:
+            normVal = self.normalized_str(val)
+            if normVal.find(needle) > -1:
+                # If this is an exact match, ignore ambiguities.
+                if normVal == needle:
+                    return val
                 if match:
                     raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
                                         listType, lookup, match, val))
