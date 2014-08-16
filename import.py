@@ -34,6 +34,7 @@ from tradedb import *
 rejectUnknown = False
 
 tdb = TradeDB(r'.\TradeDangerous.accdb')
+sqlEscapeRe = re.compile(r'([\\\'\"%;])')
 
 categories = dict()
 for row in tdb.fetch_all("""
@@ -84,7 +85,7 @@ def changeStation(line):
         try:
             station = tdb.getStation(stnName)
         except LookupError:
-            tdb.query("INSERT INTO Stations (system, station) VALUES ('%s', '%s')" % (sysName, stnName)).commit()
+            tdb.query("INSERT INTO Stations (system, station) VALUES (?, ?)", [sysName, stnName]).commit()
             print("Added %s/%s" % (sysName, stnName))
             tdb.load()
             station = tdb.getStation(stnName)

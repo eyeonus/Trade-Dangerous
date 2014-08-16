@@ -56,7 +56,7 @@ class Station(object):
     """ Describes a station within a given system along with what trade
         opportunities it presents. """
     def __init__(self, ID, system, station):
-        self.ID, self.system, self.station = ID, system, station.replace(' ', '')
+        self.ID, self.system, self.station = ID, system, station
         self.trades = {}
         self.stations = []
         system.addStation(self)
@@ -96,7 +96,7 @@ class Station(object):
         maxJumpDist = float(maxLyPer or sys.maxint)
         while not openList.empty():
             (sys, jumps, dist) = openList.get()
-            if maxJumps and len(jumps) - 1 > maxJumps:
+            if maxJumps and len(jumps) > maxJumps:
                 continue
             if maxLy and dist > maxLy:
                 continue
@@ -104,7 +104,7 @@ class Station(object):
             for stn in sys.stations:
                 if stn != self:
                     destStations.append([sys, stn, jumps, dist])
-            if (maxJumps and len(jumps) >= maxJumps):
+            if (maxJumps and len(jumps) > maxJumps):
                 continue
             for (destSys, destDist) in sys.links.items():
                 if destDist > maxJumpDist:
@@ -145,7 +145,7 @@ class TradeDB(object):
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
         for row in cur:
-            if row[0] in self.systems:
+            if row[0] in self.systems and row[1] in self.systems:
                 self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
 
         cur.execute('SELECT id, system, station FROM Stations')
@@ -255,10 +255,10 @@ class TradeDB(object):
         return system.stations[0]
 
 
-    def query(self, sql):
+    def query(self, *args):
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
-        cur.execute(sql)
+        cur.execute(*args)
         return cur
 
 
@@ -271,7 +271,11 @@ class TradeDB(object):
         match = None
         needle = self.normalized_str(lookup)
         for val in values:
-            if self.normalized_str(val).find(needle) > -1:
+            normVal = self.normalized_str(val)
+            if normVal.find(needle) > -1:
+                # If this is an exact match, ignore ambiguities.
+                if normVal == needle:
+                    return val
                 if match:
                     raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
                                         listType, lookup, match, val))
