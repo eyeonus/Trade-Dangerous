@@ -17,6 +17,26 @@ things.
 For multi-stop routes, it takes into account the money you are making and
 factors that into the shopping for each subsequent hop.
 
+==============================================================================
+== CHANGE LOG
+==============================================================================
+
+v2.04 Aug/17/2014
+  Added "--checklist" command to walk you through a route
+  Added "localedNo()" function to API
+
+v2.03 Aug/15/2014
+  Imported star data from wtbw
+  Fixed various prices and station names
+  Fixed minor issues
+
+v2.02
+  "--via" will now accept the via station as the first station on
+  routes when the user doesn't specify a "--from".
+  Also made name matching far more flexible.
+
+v2.01
+  "--avoid" now handles stations and system names
 
 ==============================================================================
 == Where does it get it's data?
@@ -122,6 +142,9 @@ we don't get totally wiped out by a crash along the way:
 
     C:\TradeDangerous\> trade.py --from Chango --capacity 16 --insurance 4000 --hops 6 --credits 20000
 
+Lastly, if you are working a long, complicated route, try the "--checklist"
+argument which also honors the --detail argument.
+
 
 ==============================================================================
 == Command Line Options:
@@ -216,6 +239,10 @@ we don't get totally wiped out by a crash along the way:
  Other options:
    --routes N   DEFAULT: 1
      Shows the top N routes; 
+
+   --checklist
+     Walks you through the purchases, sales and jumps of your route.
+     Note: More verbose when used with --detail
 
    --detail
      Show jumps between stations when showing routes
@@ -361,16 +388,3 @@ Yeah, let me stop you there.
 Whatever it is you want to do, you can do from there.
 
 See "cli.py" for examples.
-
-
-==============================================================================
-== Change Log
-==============================================================================
-
-v2.02
-  "--via" will now accept the via station as the first station on
-  routes when the user doesn't specify a "--from".
-  Also made name matching far more flexible.
-
-v2.01
-  "--avoid" now handles stations and system names

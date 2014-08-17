@@ -4,13 +4,11 @@
 # not give us the best profit.
 # The goal here, then, is to find the best multi-hop route.
 
-# Potential Optimization: Two routes with the same dest at the same hop,
-# eliminate the one with the lowest score at that hop
-
 ######################################################################
 # Imports
 
 import argparse
+import locale
 
 # Forward decls
 args = None
@@ -23,7 +21,7 @@ maxUnits = 0
 # TradeDB and TradeCalc
 
 from tradedb import TradeDB, Trade, Station
-from tradecalc import Route, TradeCalc
+from tradecalc import Route, TradeCalc, localedNo
 
 tdb = TradeDB("C:\\Users\\Admin\\PycharmProjects\\tradedangerous\\TradeDangerous.accdb")
 
@@ -89,6 +87,7 @@ def parse_command_line():
     parser.add_argument('--detail', help="Give detailed jump information for multi-jump hops", default=False, required=False, action='store_true')
     parser.add_argument('--debug', help="Enable diagnostic output", default=False, required=False, action='store_true')
     parser.add_argument('--routes', metavar="N", help="Maximum number of routes to show. DEFAULT: 1", type=int, default=1, required=False)
+    parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False, )
 
     args = parser.parse_args()
 
@@ -153,10 +152,78 @@ def parse_command_line():
             (viaStation and viaStation == finalStation)):
         raise ValueError("from/to/via repeat conflicts with --unique")
 
+    if args.checklist and args.routes > 1:
+        raise ValueError("Checklist can only be applied to a single route.")
+
     return args
 
 ######################################################################
 # Processing functions
+
+def doStep(stepNo, prompt):
+    stepNo += 1
+    input("   %3d: %s: " % (stepNo, prompt))
+    return stepNo
+
+def note(str, addBreak=True):
+    print("(i) %s (i)" % str)
+    if addBreak:
+        print()
+
+def doChecklist(route, credits):
+    stepNo, gainCr = 0, 0
+    stations, hops, jumps = route.route, route.hops, route.jumps
+    lastHopIdx = len(stations) - 1
+
+    title = "(i) BEGINNING CHECKLIST FOR %s (i)" % route.str()
+    underline = '-' * len(title)
+
+    print(title)
+    print(underline)
+    print()
+    if args.detail:
+        ttlGainCr = sum([hop[1] for hop in hops])
+        note("Start CR: %10s" % localedNo(credits), False)
+        note("Hops    : %10s" % localedNo(len(hops)), False)
+        note("Jumps   : %10s" % localedNo(sum([len(hopJumps) for hopJumps in jumps])), False)
+        note("Gain CR : %10s" % localedNo(ttlGainCr), False)
+        note("Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)), False)
+        note("Final CR: %10s" % localedNo(credits + ttlGainCr), False)
+        print()
+
+    for idx in range(lastHopIdx):
+        cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
+
+        # Tell them what they need to buy.
+        note("Buy [%s]" % cur)
+        for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
+            stepNo = doStep(stepNo, "Buy %d x %s" % (item[1], item[0]))
+        if args.detail:
+            stepNo = doStep(stepNo, "Refuel")
+        print()
+
+        # If there is a next hop, describe how to get there.
+        note("Fly [%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        if idx < len(hops) and jumps[idx]:
+            for jump in jumps[idx][1:]:
+                stepNo = doStep(stepNo, "Jump to [%s]" % (jump.str()))
+        if args.detail:
+            stepNo = doStep(stepNo, "Dock at [%s]" % nxt)
+        print()
+
+        note("Sell [%s]" % nxt)
+        for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
+            stepNo = doStep(stepNo, "Sell %s x %s" % (localedNo(item[1]), item[0].item))
+        print()
+
+        gainCr += hop[1]
+        if args.detail and gainCr > 0:
+            note("GAINED: %scr, CREDITS: %scr" % (localedNo(gainCr), localedNo(credits + gainCr)))
+
+        if idx + 1 < lastHopIdx:
+            print()
+            print("--------------------------------------")
+            print()
 
 def main():
     global tdb
@@ -170,7 +237,7 @@ def main():
     viaEndPos = -1 if finalStation else -1
 
     if args.debug:
-        print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, startCr, numHops))
+        print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, args.credits, numHops))
 
     calc = TradeCalc(tdb, debug=args.debug, capacity=args.capacity, maxUnits=maxUnits, margin=args.margin, unique=args.unique)
     for hopNo in range(numHops):
@@ -198,6 +265,13 @@ def main():
         return
 
     routes.sort()
+
+    # User wants to be guided through the route.
+    if args.checklist:
+        assert len(routes) == 1
+        doChecklist(routes[0], args.credits)
+
+    # Just print the routes.
     for i in range(0, min(len(routes), args.routes)):
         print(routes[i].detail(args.detail))
 
