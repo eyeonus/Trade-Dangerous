@@ -25,7 +25,7 @@ maxUnits = 0
 from tradedb import TradeDB, Trade, Station
 from tradecalc import Route, TradeCalc
 
-tdb = TradeDB("C:\\Dev\\trade\\TradeDangerous.accdb")
+tdb = TradeDB("C:\\Users\\Admin\\PycharmProjects\\tradedangerous\\TradeDangerous.accdb")
 
 ######################################################################
 # Classes
