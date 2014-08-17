@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # Calculator layer over TradeDB
 
+import locale
+locale.setlocale(locale.LC_ALL, '')
+
 import itertools
 from math import ceil, floor
 
@@ -37,7 +40,6 @@ class Route(object):
         return "%s -> %s" % (self.route[0], self.route[-1])
 
     def detail(self, verbose=False):
-        src = self.route[0]
         credits = self.startCr
         gainCr = 0
         route = self.route
@@ -233,3 +235,7 @@ class TradeCalc(object):
             result.append(route.plus(dst, trade, jumps))
 
         return result
+
+
+def localedNo(num):
+    return locale.format("%d", num, grouping=True)
