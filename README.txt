@@ -21,6 +21,14 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v2.05 Aug 17/2014
+  Big code cleanup,
+  Startup speed improvement,
+  Fixed --via,
+  Refactored how avoidance works:
+   - Avoiding a system prevents jumps to/thru that system,
+   - Avoiding a station allows jumps thru the system but not dockings,
+
 v2.04 Aug/17/2014
   Added "--checklist" command to walk you through a route
   Added "localedNo()" function to API

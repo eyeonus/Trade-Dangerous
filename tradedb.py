@@ -1,14 +1,21 @@
 #!/usr/bin/env python
-# TradeDangerousDB
-# Loads system, station, item and trade-price data from the db
+# TradeDangerous :: Modules :: Database Module
+# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#   You are free to use, redistribute, or even print and eat a copy of this
+#   software so long as you include this copyright notice. I guarantee that
+#   there is at least one bug neither of us knew about.
+#
+# Provides classes that load and describe the TradeDangerous data set.
+# Currently depends on pypyodbc and Microsoft Access 2010+ drivers,
+# but I'll switch to a more portable format soon.
 
 ######################################################################
 # Imports
 
-import sys
-import re
-import pypyodbc
-from queue import Queue
+import sys                  # For sys.maxint
+import re                   # Because irregular expressions are dull
+import pypyodbc             # Because its documentation was better
+from queue import Queue     # Because we're British.
 
 ######################################################################
 # Classes
@@ -22,8 +29,10 @@ class Trade(object):
         self.costCr = costCr
         self.gainCr = gainCr
 
+
     def describe(self):
         print(self.item, self.itemID, self.costCr, self.gainCr, self.value)
+
 
     def __repr__(self):
         return "%s (%dcr)" % (self.item, self.costCr)
@@ -38,15 +47,19 @@ class System(object):
         self.links = {}
         self.stations = []
 
+
     def addLink(self, dest, dist):
         self.links[dest] = dist
+
 
     def links(self):
         return list(self.links.keys())
 
+
     def addStation(self, station):
         if not station in self.stations:
             self.stations.append(station)
+
 
     def str(self):
         return self.system
@@ -55,11 +68,13 @@ class System(object):
 class Station(object):
     """ Describes a station within a given system along with what trade
         opportunities it presents. """
+
     def __init__(self, ID, system, station):
         self.ID, self.system, self.station = ID, system, station
         self.trades = {}
         self.stations = []
         system.addStation(self)
+
 
     def addTrade(self, dest, item, itemID, costCr, gainCr):
         """ Add a Trade entry from this to a destination station. """
@@ -69,6 +84,7 @@ class Station(object):
             self.stations.append(dest)
         trade = Trade(item, itemID, costCr, gainCr)
         self.trades[dstID].append(trade)
+
 
     def organizeTrades(self):
         """ Process the trades-to-destination lists: If there are multiple items
@@ -90,8 +106,16 @@ class Station(object):
             # profitable item is listed first.
             self.trades[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
 
-    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None):
-        openList, closedList, destStations = Queue(), dict(), []
+
+    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=[]):
+        """ Gets a list of the Station destinations that can be reached
+            from this Station within the specified constraints.
+            If no constraints are specified, you get a list of everywhere
+            that this station has a link to in the db where something
+            the station sells is bought.
+            """
+
+        openList, closedList, destStations = Queue(), [sys for sys in avoiding if isinstance(sys, System)] + [self], []
         openList.put([self.system, [], 0])
         maxJumpDist = float(maxLyPer or sys.maxint)
         while not openList.empty():
@@ -102,7 +126,7 @@ class Station(object):
                 continue
             jumps = list(jumps + [sys])
             for stn in sys.stations:
-                if stn != self:
+                if not stn in avoiding:
                     destStations.append([sys, stn, jumps, dist])
             if (maxJumps and len(jumps) > maxJumps):
                 continue
@@ -114,11 +138,13 @@ class Station(object):
                 if destSys in closedList:
                     continue
                 openList.put([destSys, jumps, dist + destDist])
-                closedList[destSys] = 1
+                closedList.append(destSys)
         return destStations
+
 
     def str(self):
         return self.system.str().upper() + " " + self.station
+
 
     def __repr__(self):
         return self.str()
@@ -130,17 +156,25 @@ class TradeDB(object):
     def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.debug = debug
+        self.conn = pypyodbc.connect(self.path)
         self.load()
 
     def load(self, avoidItems=[], avoidSystems=[], avoidStations=[], ignoreLinks=False):
-        # Connect to the database
-        conn = pypyodbc.connect(self.path)
-        cur = conn.cursor()
+        """ Populate/re-populate this instance with data from the TradeDB layer. """
 
+        # Create a cursor.
+        cur = self.conn.cursor()
+
+        # Fetch a list of systems.
         cur.execute('SELECT system FROM Stations GROUP BY system')
         self.systems = { row[0]: System(row[0]) for row in cur if not self.normalized_str(row[0]) in avoidSystems }
         if self.debug:
             print(self.systems)
+
+        # Fetch a list of links between systems.
+        # Rather than storing positions, I'm storing the links themselves, but
+        # eventually I'll just store the positions instead and calculate the
+        # distances as/when I need them.
         cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
@@ -148,6 +182,7 @@ class TradeDB(object):
             if row[0] in self.systems and row[1] in self.systems:
                 self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
 
+        # Fetch the list of stations
         cur.execute('SELECT id, system, station FROM Stations')
         # Station lookup by ID
         self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur if row[1] in self.systems and not self.normalized_str(row[2]) in avoidStations }
@@ -156,14 +191,17 @@ class TradeDB(object):
         # StationID lookup by Station Name
         self.stationIDs = { value.station.upper(): key for (key, value) in self.stations.items() }
 
-        """ Populate 'items' from the database """
+        # Populate 'items' from the database
         cur.execute('SELECT id, item FROM Items')
         self.items = { row[0]: row[1] for row in cur if not self.normalized_str(row[1]) in avoidItems }
         self.itemIDs = { name: itemID for (itemID, name) in self.items.items() }
 
         stations, items = self.stations, self.items
 
-        """ Populate the station list with the profitable trades between stations """
+        # Populate the station list with the profitable trades between stations
+        # The DB does a really good job of providing this information quickly and
+        # spares us having to load ALL of the data in order to build this view.
+        # Yes, the DB has to load it but it's designed to do that efficiently.
         cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr - src.buy_cr'
                     ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
                     ' WHERE src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
@@ -173,13 +211,16 @@ class TradeDB(object):
             if row[0] in stations and row[1] in stations and row[2] in items:
                 stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])
 
+        # Post-process the trades and sort them into whatever order we want them in.
         for station in stations.values():
             station.organizeTrades()
 
+        # In debug mode, check that everything looks sane.
         if self.debug:
-            self.validate()
+            self._validate()
 
-    def validate(self):
+
+    def _validate(self):
         # Check that things correctly reference themselves.
         for (stnID, stn) in self.stations.items():
             if self.stations[stn.ID] != stn:
@@ -203,7 +244,7 @@ class TradeDB(object):
                     raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
     def getSystem(self, name):
-        """ Look up a system by it's name. """
+        """ Look up a System object by it's name. """
         if isinstance(name, System):
             return name
         if isinstance(name, Station):
@@ -212,8 +253,9 @@ class TradeDB(object):
         system = self.list_search("System", name, self.systems.keys())
         return self.systems[system]
 
+
     def getStation(self, name):
-        """ Look up a station by it's station or system name. """
+        """ Look up a Station object by it's name or system. """
         if isinstance(name, Station):
             return name
         if isinstance(name, System):
@@ -256,6 +298,7 @@ class TradeDB(object):
 
 
     def query(self, *args):
+        """ Perform an SQL query on the DB and return the cursor. """
         conn = pypyodbc.connect(self.path)
         cur = conn.cursor()
         cur.execute(*args)
@@ -263,11 +306,21 @@ class TradeDB(object):
 
 
     def fetch_all(self, sql):
+        """ Perform an SQL query on the DB and iterate across the rows. """
         for row in self.query(sql):
             yield row
 
 
     def list_search(self, listType, lookup, values):
+        """ Seaches [values] for 'lookup' for least-ambiguous matches,
+            return the matching value as stored in [values].
+            If [values] contains "bread", "water", "biscuits and "It",
+            searching "ea" will return "bread", "WaT" will return "water"
+            and "i" will return "biscuits". Searching for "a" will raise
+            a ValueError because "a" matches "bread" and "water", but
+            searching for "it" will return "It" because it provides an
+            exact match of a key. """
+
         match = None
         needle = self.normalized_str(lookup)
         for val in values:
@@ -284,7 +337,9 @@ class TradeDB(object):
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
 
+
     def normalized_str(self, str):
-        # Remove spaces, tabs, apostrophes, periods, hyphens and underscores,
-        # then convert to casefolded so that caseless matches will work.
+        """ Returns a case folded, sanitized version of 'str' suitable for
+            performing simple and partial matches against. Removes whitespace,
+            hyphens, underscores, periods and apostrophes. """
         return self.normalizeRe.sub('', str).casefold()

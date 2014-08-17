@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# TradeDangerous :: Scripts :: Importer
+# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#   You are free to use, redistribute, or even print and eat a copy of this
+#   software so long as you include this copyright notice. I guarantee that
+#   there is at least one bug neither of us knew about.
 #
 # Tool for importing data into the TradeDangerous database from a fairly
 # simple text file, 'import.txt'.
@@ -28,14 +33,15 @@
 # would match the "dom. appliances" item (but only if you have selected
 # the category at the moment)
 
-import re
+import re                   # regex functionality
 from tradedb import *
 
+# Assume that we're going to allow unknown stars for pre-declarations
 rejectUnknown = False
 
 tdb = TradeDB(r'.\TradeDangerous.accdb')
-sqlEscapeRe = re.compile(r'([\\\'\"%;])')
 
+# Fetch a list of item categories, since TradeDB doesn't load it yet.
 categories = dict()
 for row in tdb.fetch_all("""
     SELECT  Categories.category, Items.item
@@ -48,6 +54,7 @@ for row in tdb.fetch_all("""
 
 
 def addLinks(station, links):
+    """ Add a list of links to nearby stars. DEPRECATED. """
     global tdb
 
     srcID = station.ID
