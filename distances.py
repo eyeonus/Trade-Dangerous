@@ -6,7 +6,7 @@
 #   there is at least one bug neither of us knew about.
 #
 # Import data from http://forums.frontier.co.uk/showthread.php?t=34824
-git push# and ensure existing data is correct.
+# and ensure existing data is correct.
 
 import math
 
