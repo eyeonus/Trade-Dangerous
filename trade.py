@@ -32,7 +32,7 @@ mfd = None
 ######################################################################
 # Database and calculator modules.
 
-from tradedb import TradeDB, Trade, Station
+from tradedb import TradeDB
 from tradecalc import Route, TradeCalc, localedNo
 
 tdb = TradeDB('.\\TradeDangerous.accdb')
