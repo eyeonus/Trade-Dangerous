@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# TradeDangerous :: Scripts :: Importer
+# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#   You are free to use, redistribute, or even print and eat a copy of this
+#   software so long as you include this copyright notice. I guarantee that
+#   there is at least one bug neither of us knew about.
 #
 # Tool for importing data into the TradeDangerous database from a fairly
 # simple text file, 'import.txt'.
@@ -28,14 +33,14 @@
 # would match the "dom. appliances" item (but only if you have selected
 # the category at the moment)
 
-import re
 from tradedb import *
 
+# Assume that we're going to allow unknown stars for pre-declarations
 rejectUnknown = False
 
 tdb = TradeDB(r'.\TradeDangerous.accdb')
-sqlEscapeRe = re.compile(r'([\\\'\"%;])')
 
+# Fetch a list of item categories, since TradeDB doesn't load it yet.
 categories = dict()
 for row in tdb.fetch_all("""
     SELECT  Categories.category, Items.item
@@ -48,6 +53,7 @@ for row in tdb.fetch_all("""
 
 
 def addLinks(station, links):
+    """ Add a list of links to nearby stars. DEPRECATED. """
     global tdb
 
     srcID = station.ID
@@ -75,13 +81,12 @@ def addLinks(station, links):
 def changeStation(line):
     global tdb
 
-    station = None
     matches = re.match(r'\s*(.*?)\s*/\s*(.*?)(:\s*(.*?))?\s*$', line)
     if matches:
         # Long format: system/station:links ...
         sysName, stnName, links = matches.group(1), matches.group(2), matches.group(4)
         if stnName == '*':
-            stnName = sysName.upper() + '*'
+            stnName = sysName.upper().join('*')
         try:
             station = tdb.getStation(stnName)
         except LookupError:
@@ -92,7 +97,7 @@ def changeStation(line):
         if links:
             addLinks(station, links)
     else:
-        # Short formnat: system/station name.
+        # Short format: system/station name.
         station = tdb.getStation(line)
 
     print("Station: ", station)
@@ -127,7 +132,7 @@ def parseItem(station, cat, line, uiOrder):
 
 
 def main():
-    with open('import.txt', 'r') as f:
+    with open('import.txt') as f:
         curStation = None
         curCat = None
         uiOrder = 0
@@ -150,7 +155,7 @@ def main():
                 curCat = changeCategory(line[1:])
                 uiOrder = 0
             else:
-                if curStation == None or curCat == None:
+                if curStation is None or curCat is None:
                     raise ValueError("Expecting station and category before items: " + line)
                 uiOrder += 1
                 parseItem(curStation, curCat, line, uiOrder)

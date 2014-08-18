@@ -1,57 +1,97 @@
 #!/usr/bin/env python
+# TradeDangerous :: Command Line App :: Main Module
+# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#   You are free to use, redistribute, or even print and eat a copy of this
+#   software so long as you include this copyright notice. I guarantee that
+#   there is at least one bug neither of us knew about.
 #
 # We can easily predict the best run from A->B, but the return trip from B->A might
 # not give us the best profit.
 # The goal here, then, is to find the best multi-hop route.
+#
+# TODO:
 
 ######################################################################
 # Imports
 
-import argparse
-import locale
+import argparse             # For parsing command line args.
 
-# Forward decls
+######################################################################
+# The thing I hate most about Python is the global lock. What kind
+# of idiot puts globals in their programs?
+
 args = None
 originStation, finalStation, viaStation = None, None, None
+# Things not to do, places not to go, people not to see.
+avoidItems, avoidSystems, avoidStations = [], [], []
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
 maxUnits = 0
+mfd = None
 
 ######################################################################
-# TradeDB and TradeCalc
+# Database and calculator modules.
 
-from tradedb import TradeDB, Trade, Station
+from tradedb import TradeDB
 from tradecalc import Route, TradeCalc, localedNo
 
-tdb = TradeDB("C:\\Users\\Admin\\PycharmProjects\\tradedangerous\\TradeDangerous.accdb")
+tdb = TradeDB('.\\TradeDangerous.accdb')
 
 ######################################################################
 # Classes
 
-# Yeah, I moved most of those into modules. See TradeDB.py and TradeCalc.py
+# Multi-function display wrappers
+
+class DummyMFD(object):
+    def __init__(self):
+        pass
+
+    def update(self, *args, **kwargs):
+        pass
+
+    def finish(self):
+        pass
+
+class X52ProMFD(object):
+    def __init__(self):
+        import saitek.X52Pro
+        self.doObj = saitek.X52Pro.SaitekX52Pro()
+        self.page = self.doObj.add_page("TD")
+        self.update("TradeDangerous", "INITIALIZING", delay=0.5)
+
+    def finish(self):
+        self.doObj.finish()
+
+    def update(self, line0="", line1="", line2="", delay=None):
+        self.page[0], self.page[1], self.page[2] = line0, line1, line2
+        if delay:
+            import time
+            time.sleep(delay)
 
 ######################################################################
 # Functions
 
 def parse_avoids(avoidances):
-    avoidItems, avoidSystems, avoidStations = [], [], []
+    global avoidItems, avoidSystems, avoidStations
 
+    # You can use --avoid to specify an item, system or station.
     for avoid in args.avoid:
         # Is it an item?
         item, system, station = None, None, None
         try:
             item = tdb.list_search("Item", avoid, tdb.items.values())
-            avoidItems.append(tdb.normalized_str(item))
+            avoidItems.append(item)
         except LookupError:
             pass
         try:
             system = tdb.getSystem(avoid)
-            avoidSystems.append(tdb.normalized_str(system.str()))
+            avoidSystems.append(system)
         except LookupError:
             pass
         try:
             station = tdb.getStation(avoid)
-            avoidStations.append(tdb.normalized_str(station.station))
+            if system and station.system != system:
+                avoidStations.append(station)
         except LookupError as e:
             pass
 
@@ -63,11 +103,9 @@ def parse_avoids(avoidances):
         if system and station and station.system != system: raise ValueError("Ambiguity error: avoidance '%s' could be system %s or station %s" % (avoid, system.str(), station.str()))
 
     if args.debug: print("Avoiding items %s, systems %s, stations %s" % (avoidItems, avoidSystems, avoidStations))
-    tdb.load(avoidItems=avoidItems, avoidSystems=avoidSystems, avoidStations=avoidStations)
-
 
 def parse_command_line():
-    global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName
+    global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName, mfd
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
     parser.add_argument('--from', dest='origin', metavar='STATION', help='Specifies starting system/station', required=False)
@@ -87,7 +125,8 @@ def parse_command_line():
     parser.add_argument('--detail', help="Give detailed jump information for multi-jump hops", default=False, required=False, action='store_true')
     parser.add_argument('--debug', help="Enable diagnostic output", default=False, required=False, action='store_true')
     parser.add_argument('--routes', metavar="N", help="Maximum number of routes to show. DEFAULT: 1", type=int, default=1, required=False)
-    parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False, )
+    parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False)
+    parser.add_argument('--x52-pro', dest='x52pro', help="Enable experimental X52 Pro MFD output", action='store_true', required=False, default=False)
 
     args = parser.parse_args()
 
@@ -147,22 +186,32 @@ def parse_command_line():
     if args.unique and args.hops >= len(tdb.stations):
         raise ValueError("Requested unique trip with more hops than there are stations...")
     if args.unique and (    \
-            (originStation and originStation == finalStation) or \
-            (originStation and originStation == viaStation) or \
+            (originStation and originStation == finalStation) or
+            (originStation and originStation == viaStation) or
             (viaStation and viaStation == finalStation)):
         raise ValueError("from/to/via repeat conflicts with --unique")
 
     if args.checklist and args.routes > 1:
         raise ValueError("Checklist can only be applied to a single route.")
 
+    mfd = DummyMFD()
+    if args.x52pro:
+        mfd = X52ProMFD()
+
+    mfd.update("TradeDangerous", "CALCULATING", delay=0.5)
+
     return args
 
 ######################################################################
 # Processing functions
 
-def doStep(stepNo, prompt):
+def doStep(stepNo, action, detail=""):
     stepNo += 1
-    input("   %3d: %s: " % (stepNo, prompt))
+    mfd.update("Step # %d" % stepNo, action, detail)
+    if detail:
+        input("   %3d: %s %s: " % (stepNo, action, detail))
+    else:
+        input("   %3d: %s: " % (stepNo, action))
     return stepNo
 
 def note(str, addBreak=True):
@@ -197,23 +246,23 @@ def doChecklist(route, credits):
         # Tell them what they need to buy.
         note("Buy [%s]" % cur)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, "Buy %d x %s" % (item[1], item[0]))
+            stepNo = doStep(stepNo, 'Buy %d x' % item[1], str(item[0]))
         if args.detail:
-            stepNo = doStep(stepNo, "Refuel")
+            stepNo = doStep(stepNo, 'Refuel')
         print()
 
         # If there is a next hop, describe how to get there.
-        note("Fly [%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note('Fly' + "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
-                stepNo = doStep(stepNo, "Jump to [%s]" % (jump.str()))
+                stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
         if args.detail:
-            stepNo = doStep(stepNo, "Dock at [%s]" % nxt)
+            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt)
         print()
 
         note("Sell [%s]" % nxt)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, "Sell %s x %s" % (localedNo(item[1]), item[0].item))
+            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(item[1]), str(item[0].item))
         print()
 
         gainCr += hop[1]
@@ -225,21 +274,27 @@ def doChecklist(route, credits):
             print("--------------------------------------")
             print()
 
+    mfd.update("FINISHED", "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
+
 def main():
     global tdb
     parse_command_line()
 
     startCr = args.credits - args.insurance
-    routes = [ Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0) for src in origins ]
-    numHops =  args.hops
+    routes = [
+        Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0)
+        for src in origins
+        if not (src in avoidStations or src.system in avoidSystems)
+    ]
+    numHops = args.hops
     lastHop = numHops - 1
     viaStartPos = 1 if originStation else 0
-    viaEndPos = -1 if finalStation else -1
 
     if args.debug:
         print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, args.credits, numHops))
 
     calc = TradeCalc(tdb, debug=args.debug, capacity=args.capacity, maxUnits=maxUnits, margin=args.margin, unique=args.unique)
+    avoidPlaces = avoidSystems + avoidStations
     for hopNo in range(numHops):
         if calc.debug: print("# Hop %d" % hopNo)
         restrictTo = None
@@ -249,16 +304,18 @@ def main():
             restrictTo = viaStation
         elif hopNo == lastHop:
             restrictTo = finalStation
-            if viaStation and finalStation:
-                # Cull to routes that include the viaStation
+            if viaStation:
+                # Cull to routes that include the viaStation, might save us some calculations
                 routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
-        routes = calc.getBestHops(routes, startCr, restrictTo=restrictTo, maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
+        routes = calc.getBestHops(routes, startCr,
+                                  restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
+                                  maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
-    if viaStation:
+#    if viaStation:
         # If the user doesn't specify start or end stations, expand the
         # search for "via" stations to encompass the first/last station
         # as well as the hops in-between
-        routes = [ route for route in routes if viaStation in route.route[viaStartPos:viaEndPos] ]
+#        routes = [ route for route in routes if viaStation in route.route[viaStartPos:viaEndPos] ]
 
     if not routes:
         print("No routes match your selected criteria.")
@@ -268,13 +325,15 @@ def main():
 
     # User wants to be guided through the route.
     if args.checklist:
-        assert len(routes) == 1
+        assert args.routes == 1
         doChecklist(routes[0], args.credits)
+        return
 
     # Just print the routes.
     for i in range(0, min(len(routes), args.routes)):
         print(routes[i].detail(args.detail))
 
-
 if __name__ == "__main__":
     main()
+    if mfd:
+        mfd.finish()

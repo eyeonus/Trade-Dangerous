@@ -1,18 +1,34 @@
 #!/usr/bin/env python
-# Calculator layer over TradeDB
+# TradeDangerous :: Modules :: Profit Calculator
+# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#   You are free to use, redistribute, or even print and eat a copy of this
+#   software so long as you include this copyright notice. I guarantee that
+#   there is at least one bug neither of us knew about.
 
+######################################################################
+# Imports
+
+# Let's not confuse the Americans by using long numbers that don't
+# pause with a comma every 3 digits, and lets not confuse the French
+# by putting commas after every 3 digits instead of a full stop.
 import locale
 locale.setlocale(locale.LC_ALL, '')
 
-import itertools
-from math import ceil, floor
+######################################################################
+# Stuff that passes for classes (but isn't)
+
+# Python's documentation lied to me and told me that namedtuple was
+# super-whizzy fast and implemented in C. But in Python 3 it's just
+# a dict. What a dict move.
 
 from collections import namedtuple
-
 TradeLoad = namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])
 emptyLoad = TradeLoad([], 0, 0, 0)
 
 TradeHop = namedtuple('TradeHop', [ 'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly' ])
+
+######################################################################
+# Classes
 
 class Route(object):
     """ Describes a series of CargoRuns, that is CargoLoads
@@ -104,7 +120,7 @@ class TradeCalc(object):
                         if combWeight == bestLoad.units:
                             if combCost >= bestLoad.costCr:
                                 continue
-                    bestLoad = TradeLoad(load.items+subLoad.items, load.gainCr+subLoad.gainCr, load.costCr+subLoad.costCr, load.units+subLoad.units)
+                    bestLoad = TradeLoad(load.items + subLoad.items, load.gainCr + subLoad.gainCr, load.costCr + subLoad.costCr, load.units + subLoad.units)
             return bestLoad
 
         bestLoad = _fit_combos(0, credits, capacity)
@@ -135,8 +151,10 @@ class TradeCalc(object):
 
         return bestLoad
 
-    def getBestTrade(self, src, dst, credits, capacity=None, fitFunction=None):
+    def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=None, focusItems=None, fitFunction=None):
         """ Find the most profitable trade between stations src and dst. """
+        if not focusItems: focusItems = []
+        if not avoidItems: avoidItems = []
         if self.debug: print("# %s -> %s with %dcr" % (src, dst, credits))
 
         if not dst in src.stations:
@@ -149,6 +167,10 @@ class TradeCalc(object):
         maxUnits = self.maxUnits or capacity
 
         items = src.trades[dst.ID]
+        if avoidItems:
+            items = [ item for item in items if not item.item in avoidItems ]
+        if focusItems:
+            items = [ item for item in items if item.item in focusItems ]
 
         # Remove any items with less gain (value) than the cheapest item, or that are outside our budget.
         # This should reduce the search domain for the majority of cases, especially low-end searches.
@@ -181,12 +203,15 @@ class TradeCalc(object):
                 hop = TradeHop(destSys=destSys, destStn=destStn, load=load.items, gainCr=load.gainCr, jumps=jumps, ly=ly)
         return hop
 
-    def getBestHops(self, routes, credits, restrictTo=None, maxJumps=None, maxLy=None, maxJumpsPer=None, maxLyPer=None):
+    def getBestHops(self, routes, credits, restrictTo=None, avoidItems=None, avoidPlaces=None, maxJumps=None,
+                    maxLy=None, maxJumpsPer=None, maxLyPer=None):
         """ Given a list of routes, try all available next hops from each
             route. Store the results by destination so that we pick the
             best route-to-point for each destination at each step. If we
             have two routes: A->B->D, A->C->D and A->B->D produces more
             profit, then there is no point in continuing the A->C->D path. """
+        if not avoidPlaces: avoidPlaces = []
+        if not avoidItems: avoidItems = []
 
         bestToDest = {}
         safetyMargin = 1.0 - self.margin
@@ -203,8 +228,8 @@ class TradeCalc(object):
                 if jumpLimit <= 0:
                     if self.debug: print("Jump Limit")
                     continue
-            
-            for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy, maxLyPer=maxLyPer):
+
+            for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy, maxLyPer=maxLyPer, avoiding=avoidPlaces):
                 if self.debug:
                     print("#destSys = %s, destStn = %s, jumps = %s, ly = %s" % (destSys.str(), destStn, "->".join([jump.str() for jump in jumps]), ly))
                 if not destStn in src.stations:
@@ -216,7 +241,7 @@ class TradeCalc(object):
                 if unique and destStn in route.route:
                     if self.debug: print("#%s is already in the list, not unique" % destStn)
                     continue
-                trade = self.getBestTrade(src, destStn, startCr)
+                trade = self.getBestTrade(src, destStn, startCr, avoidItems=avoidItems)
                 if not trade:
                     if self.debug: print("#* No trade")
                     continue
@@ -236,6 +261,12 @@ class TradeCalc(object):
 
         return result
 
-
+# A function called 'localedNo'. If you needed this comment, we're
+# in a metric heck ton of trouble, and the calculator has yet to find
+# a route for selling any number of tons of trouble across any number
+# of light years. Maybe we should use imperial heck tons?
+# Look. It's the only function in this file, and I'll be damned if
+# I can let that fly without a comment. So this is what you get.
 def localedNo(num):
+    """ Returns a locale-formatted version of a number, e.g. 1,234,456. """
     return locale.format("%d", num, grouping=True)
