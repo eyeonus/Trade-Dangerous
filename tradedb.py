@@ -156,7 +156,11 @@ class TradeDB(object):
     def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.debug = debug
-        self.conn = pypyodbc.connect(self.path)
+        try:
+            self.conn = pypyodbc.connect(self.path)
+        except pypyodbc.Error as e:
+            print("Do you have the requisite driver installed? See http://www.microsoft.com/en-us/download/details.aspx?id=13255")
+            raise e
         self.load()
 
     def load(self, avoidItems=[], avoidSystems=[], avoidStations=[], ignoreLinks=False):
