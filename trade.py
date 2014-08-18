@@ -77,7 +77,7 @@ def parse_avoids(avoidances):
     global avoidItems, avoidSystems, avoidStations
 
     # You can use --avoid to specify an item, system or station.
-    for avoid in args.avoid:
+    for avoid in avoidances:
         # Is it an item?
         item, system, station = None, None, None
         try:
@@ -92,7 +92,7 @@ def parse_avoids(avoidances):
             pass
         try:
             station = tdb.getStation(avoid)
-            if system and station.system != system:
+            if not (system and station.system is system):
                 avoidStations.append(station)
         except LookupError as e:
             pass

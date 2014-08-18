@@ -154,8 +154,8 @@ class TradeCalc(object):
 
     def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=None, focusItems=None, fitFunction=None):
         """ Find the most profitable trade between stations src and dst. """
-        if not focusItems: focusItems = []
         if not avoidItems: avoidItems = []
+        if not focusItems: focusItems = []
         if self.debug: print("# %s -> %s with %dcr" % (src, dst, credits))
 
         if not dst in src.stations:
@@ -211,8 +211,9 @@ class TradeCalc(object):
             best route-to-point for each destination at each step. If we
             have two routes: A->B->D, A->C->D and A->B->D produces more
             profit, then there is no point in continuing the A->C->D path. """
-        if not avoidPlaces: avoidPlaces = []
+
         if not avoidItems: avoidItems = []
+        if not avoidPlaces: avoidPlaces = []
 
         bestToDest = {}
         safetyMargin = 1.0 - self.margin

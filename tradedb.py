@@ -106,13 +106,15 @@ class Station(object):
             self.trades[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
 
 
-    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=[]):
+    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=None):
         """ Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
             If no constraints are specified, you get a list of everywhere
             that this station has a link to in the db where something
             the station sells is bought.
             """
+
+        if not avoiding: avoiding = []
 
         openList, closedList, destStations = Queue(), [sys for sys in avoiding if isinstance(sys, System)] + [self], []
         openList.put([self.system, [], 0])
