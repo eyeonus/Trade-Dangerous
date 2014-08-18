@@ -30,7 +30,7 @@ class Trade(object):
 
 
     def describe(self):
-        print(self.item, self.itemID, self.costCr, self.gainCr, self.value)
+        print(self.item, self.itemID, self.costCr, self.gainCr)
 
 
     def __repr__(self):
