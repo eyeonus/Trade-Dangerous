@@ -258,7 +258,7 @@ def doChecklist(route, credits):
         print()
 
         # If there is a next hop, describe how to get there.
-        note('Fly' + "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note('Fly ' + "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
                 stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
