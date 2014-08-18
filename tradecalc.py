@@ -121,7 +121,7 @@ class TradeCalc(object):
                         if combWeight == bestLoad.units:
                             if combCost >= bestLoad.costCr:
                                 continue
-                    bestLoad = TradeLoad(load.items+subLoad.items, load.gainCr+subLoad.gainCr, load.costCr+subLoad.costCr, load.units+subLoad.units)
+                    bestLoad = TradeLoad(load.items + subLoad.items, load.gainCr + subLoad.gainCr, load.costCr + subLoad.costCr, load.units + subLoad.units)
             return bestLoad
 
         bestLoad = _fit_combos(0, credits, capacity)
@@ -152,8 +152,10 @@ class TradeCalc(object):
 
         return bestLoad
 
-    def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=[], focusItems=[], fitFunction=None):
+    def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=None, focusItems=None, fitFunction=None):
         """ Find the most profitable trade between stations src and dst. """
+        if not focusItems: focusItems = []
+        if not avoidItems: avoidItems = []
         if self.debug: print("# %s -> %s with %dcr" % (src, dst, credits))
 
         if not dst in src.stations:
@@ -202,16 +204,15 @@ class TradeCalc(object):
                 hop = TradeHop(destSys=destSys, destStn=destStn, load=load.items, gainCr=load.gainCr, jumps=jumps, ly=ly)
         return hop
 
-    def getBestHops(self,
-                routes, credits,
-                restrictTo=None, avoidItems=[], avoidPlaces=[],
-                maxJumps=None, maxLy=None, maxJumpsPer=None, maxLyPer=None
-                ):
+    def getBestHops(self, routes, credits, restrictTo=None, avoidItems=None, avoidPlaces=None, maxJumps=None,
+                    maxLy=None, maxJumpsPer=None, maxLyPer=None):
         """ Given a list of routes, try all available next hops from each
             route. Store the results by destination so that we pick the
             best route-to-point for each destination at each step. If we
             have two routes: A->B->D, A->C->D and A->B->D produces more
             profit, then there is no point in continuing the A->C->D path. """
+        if not avoidPlaces: avoidPlaces = []
+        if not avoidItems: avoidItems = []
 
         bestToDest = {}
         safetyMargin = 1.0 - self.margin
@@ -228,7 +229,7 @@ class TradeCalc(object):
                 if jumpLimit <= 0:
                     if self.debug: print("Jump Limit")
                     continue
-            
+
             for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy, maxLyPer=maxLyPer, avoiding=avoidPlaces):
                 if self.debug:
                     print("#destSys = %s, destStn = %s, jumps = %s, ly = %s" % (destSys.str(), destStn, "->".join([jump.str() for jump in jumps]), ly))

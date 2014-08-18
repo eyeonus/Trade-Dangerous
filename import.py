@@ -33,7 +33,6 @@
 # would match the "dom. appliances" item (but only if you have selected
 # the category at the moment)
 
-import re                   # regex functionality
 from tradedb import *
 
 # Assume that we're going to allow unknown stars for pre-declarations
@@ -82,13 +81,12 @@ def addLinks(station, links):
 def changeStation(line):
     global tdb
 
-    station = None
     matches = re.match(r'\s*(.*?)\s*/\s*(.*?)(:\s*(.*?))?\s*$', line)
     if matches:
         # Long format: system/station:links ...
         sysName, stnName, links = matches.group(1), matches.group(2), matches.group(4)
         if stnName == '*':
-            stnName = sysName.upper() + '*'
+            stnName = sysName.upper().join('*')
         try:
             station = tdb.getStation(stnName)
         except LookupError:
@@ -99,7 +97,7 @@ def changeStation(line):
         if links:
             addLinks(station, links)
     else:
-        # Short formnat: system/station name.
+        # Short format: system/station name.
         station = tdb.getStation(line)
 
     print("Station: ", station)
@@ -134,7 +132,7 @@ def parseItem(station, cat, line, uiOrder):
 
 
 def main():
-    with open('import.txt', 'r') as f:
+    with open('import.txt') as f:
         curStation = None
         curCat = None
         uiOrder = 0
@@ -157,7 +155,7 @@ def main():
                 curCat = changeCategory(line[1:])
                 uiOrder = 0
             else:
-                if curStation == None or curCat == None:
+                if curStation is None or curCat is None:
                     raise ValueError("Expecting station and category before items: " + line)
                 uiOrder += 1
                 parseItem(curStation, curCat, line, uiOrder)

@@ -32,7 +32,7 @@ mfd = None
 ######################################################################
 # Database and calculator modules.
 
-from tradedb import TradeDB, Trade, Station
+from tradedb import TradeDB
 from tradecalc import Route, TradeCalc, localedNo
 
 tdb = TradeDB('.\\TradeDangerous.accdb')
@@ -188,8 +188,8 @@ def parse_command_line():
     if args.unique and args.hops >= len(tdb.stations):
         raise ValueError("Requested unique trip with more hops than there are stations...")
     if args.unique and (    \
-            (originStation and originStation == finalStation) or \
-            (originStation and originStation == viaStation) or \
+            (originStation and originStation == finalStation) or
+            (originStation and originStation == viaStation) or
             (viaStation and viaStation == finalStation)):
         raise ValueError("from/to/via repeat conflicts with --unique")
 
@@ -258,7 +258,7 @@ def doChecklist(route, credits):
         print()
 
         # If there is a next hop, describe how to get there.
-        note('Fly', "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note('Fly' + "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
                 stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
@@ -293,10 +293,9 @@ def main():
         for src in origins
         if not (src in avoidStations or src.system in avoidSystems)
     ]
-    numHops =  args.hops
+    numHops = args.hops
     lastHop = numHops - 1
     viaStartPos = 1 if originStation else 0
-    viaEndPos = -1 if finalStation else -2
 
     if args.debug:
         print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, args.credits, numHops))
@@ -316,8 +315,8 @@ def main():
                 # Cull to routes that include the viaStation, might save us some calculations
                 routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
         routes = calc.getBestHops(routes, startCr,
-                                    restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
-                                    maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
+                                  restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
+                                  maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
 #    if viaStation:
         # If the user doesn't specify start or end stations, expand the
@@ -344,4 +343,3 @@ if __name__ == "__main__":
     main()
     if mfd:
         mfd.finish()
-
