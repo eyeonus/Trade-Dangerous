@@ -29,7 +29,10 @@ class SaitekX52Pro(DirectOutputDevice):
 			self.active = active
 
 		def __del__(self):
-			self.device.RemovePage(self.page_id)
+			try:
+				self.device.RemovePage(self.page_id)
+			except AttributeError:
+				pass
 
 		def __getitem__(self, key):
 			return self._lines[key]
@@ -127,7 +130,11 @@ class SaitekX52Pro(DirectOutputDevice):
 
 	def RegisterSoftButtonCallback(self, buttons):
 		self.debug(1, "soft button callback", buttons)
-		
+
+	def finish(self):
+		for page in self.pages:
+			del page
+		super().finish()
 
 if __name__ == '__main__':
 	x52 = SaitekX52Pro(debug_level=1)
