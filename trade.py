@@ -186,8 +186,8 @@ def parse_command_line():
     if args.unique and args.hops >= len(tdb.stations):
         raise ValueError("Requested unique trip with more hops than there are stations...")
     if args.unique and (    \
-            (originStation and originStation == finalStation) or \
-            (originStation and originStation == viaStation) or \
+            (originStation and originStation == finalStation) or
+            (originStation and originStation == viaStation) or
             (viaStation and viaStation == finalStation)):
         raise ValueError("from/to/via repeat conflicts with --unique")
 
@@ -308,8 +308,8 @@ def main():
                 # Cull to routes that include the viaStation, might save us some calculations
                 routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
         routes = calc.getBestHops(routes, startCr,
-                                    restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
-                                    maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
+                                  restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
+                                  maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
 #    if viaStation:
         # If the user doesn't specify start or end stations, expand the
