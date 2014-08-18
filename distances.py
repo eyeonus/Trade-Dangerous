@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# TradeDangerous :: Scripts :: Populate star database
+# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#   You are free to use, redistribute, or even print and eat a copy of this
+#   software so long as you include this copyright notice. I guarantee that
+#   there is at least one bug neither of us knew about.
 #
 # Import data from http://forums.frontier.co.uk/showthread.php?t=34824
 # and ensure existing data is correct.
