@@ -324,15 +324,14 @@ def main():
 
     routes.sort()
 
+    for i in range(0, min(len(routes), args.routes)):
+        print(routes[i].detail(args.detail))
+
     # User wants to be guided through the route.
     if args.checklist:
         assert args.routes == 1
         doChecklist(routes[0], args.credits)
         return
-
-    # Just print the routes.
-    for i in range(0, min(len(routes), args.routes)):
-        print(routes[i].detail(args.detail))
 
 if __name__ == "__main__":
     main()

@@ -75,6 +75,7 @@ class Route(object):
             gainCr += hop[1]
 
         str += " <-< %s gaining %dcr => %dcr total" % (route[-1], gainCr, credits + gainCr)
+        str += "\n"
 
         return str
 
