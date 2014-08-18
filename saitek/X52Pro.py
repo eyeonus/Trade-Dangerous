@@ -107,8 +107,9 @@ class SaitekX52Pro(DirectOutputDevice):
 	_page_counter = 0
 
 	def add_page(self, name, active=True):
-		self.pages[name] = self.Page(self, self._page_counter, name, active=active)
+		page = self.pages[name] = self.Page(self, self._page_counter, name, active=active)
 		self._page_counter += 1
+		return page
 
 	def remove_page(self, name):
 		del self.pages[name]
@@ -125,7 +126,7 @@ class SaitekX52Pro(DirectOutputDevice):
 				return
 
 	def RegisterSoftButtonCallback(self, buttons):
-		print("soft button callback")
+		self.debug(1, "soft button callback", buttons)
 		
 
 if __name__ == '__main__':

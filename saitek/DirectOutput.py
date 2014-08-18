@@ -333,7 +333,9 @@ class DirectOutputDevice():
 		De-initializes DLL. Must be called before program exit
 		
 		"""
-		self.direct_output.Deinitialize()
+		if self.direct_output:
+			self.direct_output.Deinitialize()
+			self.direct_output = None
 	
 	def _DeviceCallbackClosure(self):
 		"""
