@@ -43,6 +43,8 @@ tdb = TradeDB('.\\TradeDangerous.accdb')
 # Multi-function display wrappers
 
 class DummyMFD(object):
+    hopNo = None
+
     def __init__(self):
         pass
 
@@ -52,7 +54,7 @@ class DummyMFD(object):
     def finish(self):
         pass
 
-class X52ProMFD(object):
+class X52ProMFD(DummyMFD):
     def __init__(self):
         import saitek.X52Pro
         self.doObj = saitek.X52Pro.SaitekX52Pro()
@@ -207,7 +209,7 @@ def parse_command_line():
 
 def doStep(stepNo, action, detail=""):
     stepNo += 1
-    mfd.update("Step # %d" % stepNo, action, detail)
+    mfd.update("Step %d. Hop %d" % (stepNo, mfd.hopNo), action, detail)
     if detail:
         input("   %3d: %s %s: " % (stepNo, action, detail))
     else:
@@ -241,9 +243,13 @@ def doChecklist(route, credits):
         print()
 
     for idx in range(lastHopIdx):
+        mfd.hopNo = hopNo = idx + 1
         cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
 
         # Tell them what they need to buy.
+        if args.detail:
+            note("HOP %d of %d" % (hopNo, lastHopIdx))
+
         note("Buy [%s]" % cur)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
             stepNo = doStep(stepNo, 'Buy %d x' % item[1], str(item[0]))
@@ -269,11 +275,12 @@ def doChecklist(route, credits):
         if args.detail and gainCr > 0:
             note("GAINED: %scr, CREDITS: %scr" % (localedNo(gainCr), localedNo(credits + gainCr)))
 
-        if idx + 1 < lastHopIdx:
+        if hopNo < lastHopIdx:
             print()
             print("--------------------------------------")
             print()
 
+    mfd.hopNo = None
     mfd.update("FINISHED", "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
 
 def main():
