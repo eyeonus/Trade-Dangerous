@@ -12,7 +12,6 @@
 ######################################################################
 # Imports
 
-import sys                  # For sys.maxint
 import re                   # Because irregular expressions are dull
 import pypyodbc             # Because its documentation was better
 from queue import Queue     # Because we're British.
@@ -31,7 +30,7 @@ class Trade(object):
 
 
     def describe(self):
-        print(self.item, self.itemID, self.costCr, self.gainCr, self.value)
+        print(self.item, self.itemID, self.costCr, self.gainCr)
 
 
     def __repr__(self):
@@ -117,7 +116,8 @@ class Station(object):
 
         openList, closedList, destStations = Queue(), [sys for sys in avoiding if isinstance(sys, System)] + [self], []
         openList.put([self.system, [], 0])
-        maxJumpDist = float(maxLyPer or sys.maxint)
+        # Sys is always available, so we don't need to import it. maxint was deprecated in favour of maxsize.
+        maxJumpDist = float(maxLyPer or sys.maxsize)
         while not openList.empty():
             (sys, jumps, dist) = openList.get()
             if maxJumps and len(jumps) > maxJumps:

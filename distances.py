@@ -8,10 +8,9 @@
 # Import data from http://forums.frontier.co.uk/showthread.php?t=34824
 # and ensure existing data is correct.
 
-from tradedb import *
-
-from collections import namedtuple
 import math
+
+from tradedb import *
 
 class Star(object):
     def __init__(self, name, x, y, z, links):
@@ -146,4 +145,3 @@ for star in stars:
             if tdDist != dist:
                 print("%s -> %s is wrong: %.2f vs %.2f" % (star.name, dest.name, tdDist, dist))
                 tdb.query("UPDATE Links SET `distLy` = %.2f WHERE `from` = %d AND `to` = %d" % (dist, srcID, dstID)).commit()
-        
