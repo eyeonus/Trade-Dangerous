@@ -252,7 +252,7 @@ def doChecklist(route, credits):
         print()
 
         # If there is a next hop, describe how to get there.
-        note('Fly', "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note('Fly' + "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
                 stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
@@ -286,10 +286,9 @@ def main():
         for src in origins
         if not (src in avoidStations or src.system in avoidSystems)
     ]
-    numHops =  args.hops
+    numHops = args.hops
     lastHop = numHops - 1
     viaStartPos = 1 if originStation else 0
-    viaEndPos = -1 if finalStation else -2
 
     if args.debug:
         print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, args.credits, numHops))
@@ -338,4 +337,3 @@ if __name__ == "__main__":
     main()
     if mfd:
         mfd.finish()
-
