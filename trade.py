@@ -27,6 +27,7 @@ avoidItems, avoidSystems, avoidStations = [], [], []
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
 maxUnits = 0
+mfd = None
 
 ######################################################################
 # Database and calculator modules.
@@ -39,7 +40,33 @@ tdb = TradeDB('.\\TradeDangerous.accdb')
 ######################################################################
 # Classes
 
-# Yeah, I moved most of those into modules. See TradeDB.py and TradeCalc.py
+# Multi-function display wrappers
+
+class DummyMFD(object):
+    def __init__(self):
+        pass
+
+    def update(self, *args):
+        pass
+
+    def finish(self):
+        pass
+
+class X52ProMFD(object):
+    def __init__(self):
+        import saitek.X52Pro
+        self.doObj = saitek.X52Pro.SaitekX52Pro()
+        self.page = self.doObj.add_page("TD")
+        self.update("TradeDangerous", "INITIALIZING", delay=0.5)
+
+    def finish(self):
+        self.doObj.finish()
+
+    def update(self, line0="", line1="", line2="", delay=None):
+        self.page[0], self.page[1], self.page[2] = line0, line1, line2
+        if delay:
+            import time
+            time.sleep(delay)
 
 ######################################################################
 # Functions
@@ -77,9 +104,8 @@ def parse_avoids(avoidances):
 
     if args.debug: print("Avoiding items %s, systems %s, stations %s" % (avoidItems, avoidSystems, avoidStations))
 
-
 def parse_command_line():
-    global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName
+    global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName, mfd
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
     parser.add_argument('--from', dest='origin', metavar='STATION', help='Specifies starting system/station', required=False)
@@ -99,7 +125,8 @@ def parse_command_line():
     parser.add_argument('--detail', help="Give detailed jump information for multi-jump hops", default=False, required=False, action='store_true')
     parser.add_argument('--debug', help="Enable diagnostic output", default=False, required=False, action='store_true')
     parser.add_argument('--routes', metavar="N", help="Maximum number of routes to show. DEFAULT: 1", type=int, default=1, required=False)
-    parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False, )
+    parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False)
+    parser.add_argument('--x52-pro', dest='x52pro', help="Enable experimental X52 Pro MFD output", action='store_true', required=False, default=False)
 
     args = parser.parse_args()
 
@@ -167,14 +194,24 @@ def parse_command_line():
     if args.checklist and args.routes > 1:
         raise ValueError("Checklist can only be applied to a single route.")
 
+    mfd = DummyMFD()
+    if args.x52pro:
+        mfd = X52ProMFD()
+
+    mfd.update("TradeDangerous", "CALCULATING", delay=0.5)
+
     return args
 
 ######################################################################
 # Processing functions
 
-def doStep(stepNo, prompt):
+def doStep(stepNo, action, detail=""):
     stepNo += 1
-    input("   %3d: %s: " % (stepNo, prompt))
+    mfd.update("Step # %d" % stepNo, action, detail)
+    if detail:
+        input("   %3d: %s %s: " % (stepNo, action, detail))
+    else:
+        input("   %3d: %s: " % (stepNo, action))
     return stepNo
 
 def note(str, addBreak=True):
@@ -209,23 +246,23 @@ def doChecklist(route, credits):
         # Tell them what they need to buy.
         note("Buy [%s]" % cur)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, "Buy %d x %s" % (item[1], item[0]))
+            stepNo = doStep(stepNo, 'Buy %d x' % item[1], str(item[0]))
         if args.detail:
-            stepNo = doStep(stepNo, "Refuel")
+            stepNo = doStep(stepNo, 'Refuel')
         print()
 
         # If there is a next hop, describe how to get there.
-        note("Fly [%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note('Fly', "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
-                stepNo = doStep(stepNo, "Jump to [%s]" % (jump.str()))
+                stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
         if args.detail:
-            stepNo = doStep(stepNo, "Dock at [%s]" % nxt)
+            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt)
         print()
 
         note("Sell [%s]" % nxt)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, "Sell %s x %s" % (localedNo(item[1]), item[0].item))
+            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(item[1]), str(item[0].item))
         print()
 
         gainCr += hop[1]
@@ -236,6 +273,8 @@ def doChecklist(route, credits):
             print()
             print("--------------------------------------")
             print()
+
+    mfd.update("FINISHED", "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
 
 def main():
     global tdb
@@ -287,13 +326,16 @@ def main():
 
     # User wants to be guided through the route.
     if args.checklist:
-        assert len(routes) == 1
+        assert args.routes == 1
         doChecklist(routes[0], args.credits)
+        return
 
     # Just print the routes.
     for i in range(0, min(len(routes), args.routes)):
         print(routes[i].detail(args.detail))
 
-
 if __name__ == "__main__":
     main()
+    if mfd:
+        mfd.finish()
+

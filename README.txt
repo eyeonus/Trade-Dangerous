@@ -21,6 +21,9 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v2.06 Aug 17/2014
+  Added experimental X52 Pro MFD support to the checklist
+
 v2.05 Aug 17/2014
   Big code cleanup,
   Startup speed improvement,
@@ -251,6 +254,10 @@ argument which also honors the --detail argument.
    --checklist
      Walks you through the purchases, sales and jumps of your route.
      Note: More verbose when used with --detail
+
+   --x52-pro
+     OMFG Output the current step of the checklist on your X52 Pro MFD.
+     Is that some sweetness or what?
 
    --detail
      Show jumps between stations when showing routes
