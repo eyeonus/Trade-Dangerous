@@ -81,8 +81,6 @@ class Route(object):
 
 class TradeCalc(object):
     """ Container for accessing trade calculations with common properties """
-    emptyLoad = TradeLoad([], 0, 0, 0)
-
     def __init__(self, tdb, debug=False, capacity=4, maxUnits=0, margin=0.02, unique=False, fit=None):
         self.tdb = tdb
         self.debug = debug
