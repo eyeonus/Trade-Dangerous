@@ -15,7 +15,7 @@
 # Imports
 
 import argparse             # For parsing command line args.
-import saitek.X52Pro
+import saitek.X52Pro        # MFD handling on the X52Pro stick.
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
