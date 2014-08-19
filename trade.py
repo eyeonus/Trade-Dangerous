@@ -100,7 +100,7 @@ def parse_avoids(avoidances):
         # Is it an item?
         item, system, station = None, None, None
         try:
-            item = tdb.list_search("Item", avoid, tdb.items.values())
+            item = tdb.list_search('Item', avoid, tdb.items.values())
             avoidItems.append(item)
         except LookupError:
             pass
@@ -219,7 +219,7 @@ def parse_command_line():
     if args.x52pro:
         mfd = X52ProMFD()
 
-    mfd.update("TradeDangerous", "CALCULATING", delay=0.5)
+    mfd.display('TradeDangerous', 'CALCULATING', delay=0.25)
 
     return args
 
@@ -228,7 +228,7 @@ def parse_command_line():
 
 def doStep(stepNo, action, detail=""):
     stepNo += 1
-    mfd.update("Step %d. Hop %d" % (stepNo, mfd.hopNo), action, detail)
+    mfd.display("Step %d. Hop %d" % (stepNo, mfd.hopNo), action, detail)
     if detail:
         input("   %3d: %s %s: " % (stepNo, action, detail))
     else:
@@ -277,7 +277,7 @@ def doChecklist(route, credits):
         print()
 
         # If there is a next hop, describe how to get there.
-        note('Fly' + "[%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note("Fly [%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
                 stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
@@ -300,7 +300,7 @@ def doChecklist(route, credits):
             print()
 
     mfd.hopNo = None
-    mfd.update("FINISHED", "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
+    mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
 
 def main():
     global tdb
