@@ -121,7 +121,7 @@ def parse_avoids(avoidances):
         if not (item or system or station):
             raise LookupError("Unknown item/system/station: %s" % avoid)
 
-		# But if it matched more than once, whine about ambiguity
+        # But if it matched more than once, whine about ambiguity
         if item and system: raise AmbiguityError('Avoidance', avoid, item, system.str())
         if item and station: raise AmbiguityError('Avoidance', avoid, item, station.str())
         if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, system.str(), station.str())
@@ -210,9 +210,9 @@ def parse_command_line():
     if args.unique and args.hops >= len(tdb.stations):
         raise ValueError("Requested unique trip with more hops than there are stations...")
     if args.unique:
-		if (originStation and originStation == finalStation) or
+        if ((originStation and originStation == finalStation) or
                 (originStation and originStation == viaStation) or
-                 (viaStation and viaStation == finalStation):
+                 (viaStation and viaStation == finalStation)):
             raise ValueError("from/to/via repeat conflicts with --unique")
 
     if args.checklist and args.routes > 1:
