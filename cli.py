@@ -39,12 +39,11 @@ def links(stn=None, maxJumps=None, maxLy=None):
         srcStn = tdb.getStation(srcStn)
     return srcStn.stations.getDestinations(maxJumps=maxJumps, maxLy=maxLy)
 
-def routes(maxHops=2, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None, maxRoutes=1, maxJumpsPer=None, maxLyPer=8):
+def routes(maxHops=2, stn=None, cr=None, maxJumps=None, maxLy=None, maxRoutes=1, maxJumpsPer=None, maxLyPer=8):
     global calc
     srcStn = stn if stn else curStation
     withCr = cr if cr else curCredits
     routes = [ Route([srcStn], [], withCr, 0, 0) ]
-    lastHop = maxHops - 1
 
     print("From %s via %s to %s with %d credits for %d hops" % (srcStn, "None", "Any", withCr, maxHops))
 
@@ -93,7 +92,7 @@ def find(item, stn=None):
     for price in prices:
         stnID = price[0]
         if not stnID in dests:
-            next
+            continue
         dest = dests[stnID]
         if not best or (price[1] < bestCr or (price[1] >= bestCr - 16 and dest[2] < bestJumps)):
             best, bestCr, bestJumps, bestLy = dest[1], price[1], dest[2], dest[3]

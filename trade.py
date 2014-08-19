@@ -86,7 +86,7 @@ class X52ProMFD(DummyMFD):
         self.doObj.finish()
 
     def display(self, line, line1="", line2="", delay=None):
-        self.page[0], self.page[1], self.page[2] = line0, line1, line2
+        self.page[0], self.page[1], self.page[2] = line1, line2, line3
         if delay: sleep(delay)
 
 ######################################################################
@@ -104,21 +104,24 @@ def parse_avoids(avoidances):
             avoidItems.append(item)
         except LookupError:
             pass
+        # Is it a system perhaps?
         try:
             system = tdb.getSystem(avoid)
             avoidSystems.append(system)
         except LookupError:
             pass
+        # Or perhaps it is a station
         try:
             station = tdb.getStation(avoid)
             if not (system and station.system is system):
                 avoidStations.append(station)
         except LookupError as e:
             pass
-
+        # If it was none of the above, whine about it
         if not (item or system or station):
             raise LookupError("Unknown item/system/station: %s" % avoid)
 
+		# But if it matched more than once, whine about ambiguity
         if item and system: raise AmbiguityError('Avoidance', avoid, item, system.str())
         if item and station: raise AmbiguityError('Avoidance', avoid, item, station.str())
         if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, system.str(), station.str())
@@ -206,11 +209,11 @@ def parse_command_line():
 
     if args.unique and args.hops >= len(tdb.stations):
         raise ValueError("Requested unique trip with more hops than there are stations...")
-    if args.unique and (    \
-            (originStation and originStation == finalStation) or
-            (originStation and originStation == viaStation) or
-            (viaStation and viaStation == finalStation)):
-        raise ValueError("from/to/via repeat conflicts with --unique")
+    if args.unique:
+		if (originStation and originStation == finalStation) or
+                (originStation and originStation == viaStation) or
+                 (viaStation and viaStation == finalStation):
+            raise ValueError("from/to/via repeat conflicts with --unique")
 
     if args.checklist and args.routes > 1:
         raise ValueError("Checklist can only be applied to a single route.")
@@ -269,7 +272,7 @@ def doChecklist(route, credits):
         if args.detail:
             note("HOP %d of %d" % (hopNo, lastHopIdx))
 
-        note("Buy [%s]" % cur)
+        note("Buy at %s" % cur)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
             stepNo = doStep(stepNo, 'Buy %d x' % item[1], str(item[0]))
         if args.detail:
@@ -277,7 +280,7 @@ def doChecklist(route, credits):
         print()
 
         # If there is a next hop, describe how to get there.
-        note("Fly [%s]" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note("Fly %s" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
                 stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
@@ -285,7 +288,7 @@ def doChecklist(route, credits):
             stepNo = doStep(stepNo, 'Dock at', '%s' % nxt)
         print()
 
-        note("Sell [%s]" % nxt)
+        note("Sell at %s" % nxt)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
             stepNo = doStep(stepNo, 'Sell %s x' % localedNo(item[1]), str(item[0].item))
         print()
