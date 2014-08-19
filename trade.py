@@ -100,9 +100,9 @@ def parse_avoids(avoidances):
         if not (item or system or station):
             raise LookupError("Unknown item/system/station: %s" % avoid)
 
-        if item and system: raise ValueError("Ambiguity error: avoidance '%s' could be item %s or system %s" % (avoid, item, system.str()))
-        if item and station: raise ValueError("Ambiguity error: avoidance '%s' could be item %s or station %s" % (avoid, item, station.str()))
-        if system and station and station.system != system: raise ValueError("Ambiguity error: avoidance '%s' could be system %s or station %s" % (avoid, system.str(), station.str()))
+        if item and system: raise AmbiguityError('Avoidance', avoid, item, system.str())
+        if item and station: raise AmbiguityError('Avoidance', avoid, item, station.str())
+        if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, system.str(), station.str())
 
     if args.debug: print("Avoiding items %s, systems %s, stations %s" % (avoidItems, avoidSystems, avoidStations))
 

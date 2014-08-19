@@ -19,6 +19,18 @@ from queue import Queue     # Because we're British.
 ######################################################################
 # Classes
 
+class AmbiguityError(Exception):
+    """ Raised when a search key could match multiple entities.
+        Attributes:
+            searchKey - the key given to the search routine,
+            first     - the first potential match
+            second    - the alternate match
+    """
+    def __init__(self, lookupType, searchKey, first, second):
+        self.lookupType, self.searchKey, self.first, self.second = lookupType, searchKey, first, second
+    def __str__(self):
+        return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
+
 class Trade(object):
     """ Describes what it would cost and how much you would gain
         when selling an item between two specific stations. """
@@ -286,7 +298,7 @@ class TradeDB(object):
         # the same station otherwise we have an ambiguity. Some stations have the
         # same name as their star system (Aulin/Aulin Enterprise)
         if systemID and stationID and system != station.system:
-            raise ValueError("Ambiguity: '%s' could be '%s' or '%s'" % (name, system.str(), station.str()))
+            raise AmbiguityError('Station', name, system.str(), station.str())
 
         if stationID:
             return self.stations[stationID]
@@ -332,8 +344,7 @@ class TradeDB(object):
                 if normVal == needle:
                     return val
                 if match:
-                    raise ValueError("Ambiguity: %s '%s' could match %s or %s" % (
-                                        listType, lookup, match, val))
+                    raise AmbiguityError(listType, lookup, match, val)
                 match = val
         if not match:
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
