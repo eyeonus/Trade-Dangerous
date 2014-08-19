@@ -81,11 +81,11 @@ class Route(object):
 
 class TradeCalc(object):
     """ Container for accessing trade calculations with common properties """
-    def __init__(self, tdb, debug=False, capacity=4, maxUnits=0, margin=0.02, unique=False, fit=None):
+    def __init__(self, tdb, debug=False, capacity=None, maxUnits=None, margin=0.01, unique=False, fit=None):
         self.tdb = tdb
         self.debug = debug
-        self.capacity = capacity
-        self.margin = margin
+        self.capacity = capacity or 4
+        self.margin = float(margin)
         self.unique = unique
         self.maxUnits = maxUnits or 0
         self.defaultFit = fit or self.fast_fit
@@ -126,9 +126,30 @@ class TradeCalc(object):
         return bestLoad
 
     def fast_fit(self, items, credits, capacity, maxUnits):
+        """
+            Best load calculator using a recursive knapsack-like
+            algorithm to find multiple loads and return the best.
+        """
+
         def _fit_combos(offset, cr, cap):
+            """
+                Starting from offset, consider a scenario where we
+                would purchase the maximum number of each item
+                given the cr/cap limitations. Then, assuming that
+                load, solve for the remaining cr+cap from the next
+                value of offset.
+
+                The "best fit" is not always the most profitable,
+                so we yield all the results and leave the caller
+                to determine which is actually most profitable.
+            """
+            # Note: both
+            #  for (itemNo, item) in enumerate(items[offset:]):
+            # and
+            #  for itemNo in range(offset, len(items)):
+            #      item = items[itemNo]
+            # seemed significantly slower than this approach.
             for item in items[offset:]:
-                offset += 1
                 itemCostCr = item.costCr
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
                 if maxQty > 0:
@@ -136,12 +157,16 @@ class TradeCalc(object):
                     bestGainCr = -1
                     crLeft, capLeft = cr - loadCostCr, cap - maxQty
                     if crLeft > 0 and capLeft > 0:
-                        for subLoad in _fit_combos(offset, crLeft, capLeft):
+                        # Solve for the remaining credits and capacity with what
+                        # is left in items after the item we just checked.
+                        for subLoad in _fit_combos(offset + 1, crLeft, capLeft):
                             if subLoad.gainCr >= bestGainCr:
                                 yield TradeLoad(subLoad.items + loadItems, subLoad.gainCr + loadGainCr, subLoad.costCr + loadCostCr, subLoad.units + maxQty)
                                 bestGainCr = subLoad.gainCr
+                    # If there were no good additions, yield what we have.
                     if bestGainCr < 0:
                         yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
+                offset += 1
 
         bestLoad = emptyLoad
         for result in _fit_combos(0, credits, capacity):
