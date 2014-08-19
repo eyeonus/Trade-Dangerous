@@ -337,12 +337,6 @@ def main():
                                   restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
                                   maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
-#    if viaStation:
-        # If the user doesn't specify start or end stations, expand the
-        # search for "via" stations to encompass the first/last station
-        # as well as the hops in-between
-#        routes = [ route for route in routes if viaStation in route.route[viaStartPos:viaEndPos] ]
-
     if not routes:
         print("No routes match your selected criteria.")
         return
