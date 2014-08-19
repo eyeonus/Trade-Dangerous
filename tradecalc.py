@@ -227,7 +227,8 @@ class TradeCalc(object):
                 hop = TradeHop(destSys=destSys, destStn=destStn, load=load.items, gainCr=load.gainCr, jumps=jumps, ly=ly)
         return hop
 
-    def getBestHops(self, routes, credits, restrictTo=None, avoidItems=None, avoidPlaces=None, maxJumps=None,
+    def getBestHops(self, routes, credits,
+                    restrictTo=None, avoidItems=None, avoidPlaces=None, maxJumps=None,
                     maxLy=None, maxJumpsPer=None, maxLyPer=None):
         """ Given a list of routes, try all available next hops from each
             route. Store the results by destination so that we pick the
@@ -251,7 +252,6 @@ class TradeCalc(object):
             if (maxJumps or 0) > 0:
                 jumpLimit = min(maxJumps - routeJumps, perJumpLimit) if perJumpLimit > 0 else maxJumps - routeJumps
                 if jumpLimit <= 0:
-                    if self.debug: print("Jump Limit")
                     continue
 
             for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy, maxLyPer=maxLyPer, avoiding=avoidPlaces):
@@ -294,4 +294,4 @@ class TradeCalc(object):
 # I can let that fly without a comment. So this is what you get.
 def localedNo(num):
     """ Returns a locale-formatted version of a number, e.g. 1,234,456. """
-    return locale.format("%d", num, grouping=True)
+    return locale.format('%d', num, grouping=True)
