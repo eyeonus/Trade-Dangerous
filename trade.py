@@ -15,6 +15,7 @@
 # Imports
 
 import argparse             # For parsing command line args.
+import saitek.X52Pro
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
@@ -56,7 +57,7 @@ class DummyMFD(object):
 
 class X52ProMFD(DummyMFD):
     def __init__(self):
-        import saitek.X52Pro
+        super().__init__()
         self.doObj = saitek.X52Pro.SaitekX52Pro()
         self.page = self.doObj.add_page("TD")
         self.update("TradeDangerous", "INITIALIZING", delay=0.5)
@@ -85,21 +86,24 @@ def parse_avoids(avoidances):
             avoidItems.append(item)
         except LookupError:
             pass
+        # Is it a system perhaps?
         try:
             system = tdb.getSystem(avoid)
             avoidSystems.append(system)
         except LookupError:
             pass
+        # Well, it must be a station then...
         try:
             station = tdb.getStation(avoid)
             if not (system and station.system is system):
                 avoidStations.append(station)
         except LookupError as e:
             pass
-
+        # None of those - whine about it.
         if not (item or system or station):
             raise LookupError("Unknown item/system/station: %s" % avoid)
 
+        # Make sure it's not ambiguous
         if item and system: raise ValueError("Ambiguity error: avoidance '%s' could be item %s or system %s" % (avoid, item, system.str()))
         if item and station: raise ValueError("Ambiguity error: avoidance '%s' could be item %s or station %s" % (avoid, item, station.str()))
         if system and station and station.system != system: raise ValueError("Ambiguity error: avoidance '%s' could be system %s or station %s" % (avoid, system.str(), station.str()))
@@ -187,10 +191,9 @@ def parse_command_line():
 
     if args.unique and args.hops >= len(tdb.stations):
         raise ValueError("Requested unique trip with more hops than there are stations...")
-    if args.unique and (    \
-            (originStation and originStation == finalStation) or
-            (originStation and originStation == viaStation) or
-            (viaStation and viaStation == finalStation)):
+    if args.unique and ((originStation and originStation == finalStation) or
+                         (originStation and originStation == viaStation) or
+                         (viaStation and viaStation == finalStation)):
         raise ValueError("from/to/via repeat conflicts with --unique")
 
     if args.checklist and args.routes > 1:
