@@ -40,35 +40,54 @@ tdb = TradeDB('.\\TradeDangerous.accdb')
 ######################################################################
 # Classes
 
-# Multi-function display wrappers
+# Multi-Function Display wrappers
 
 class DummyMFD(object):
+    """
+        Base class for the MFD drivers, implemented as no-ops so that
+        you can always use all MFD functions without conditionals.
+    """
     hopNo = None
 
     def __init__(self):
         pass
 
-    def update(self, *args, **kwargs):
+    def finish(self):
+        """
+            Close down the driver.
+        """
         pass
 
-    def finish(self):
+    def display(self, line1, line2="", line3="", delay=None):
+        """
+            Display data to the MFD.
+            Arguments: 1-3 lines of text plus optional pause in seconds.
+        """
         pass
+
 
 class X52ProMFD(DummyMFD):
+    """
+        Wrapper for the Saitek X52 Pro MFD.
+    """
+    from time import sleep
+
     def __init__(self):
-        import saitek.X52Pro
-        self.doObj = saitek.X52Pro.SaitekX52Pro()
-        self.page = self.doObj.add_page("TD")
-        self.update("TradeDangerous", "INITIALIZING", delay=0.5)
+        try:
+            import saitek.X52Pro
+            self.doObj = saitek.X52Pro.SaitekX52Pro()
+        except:
+            raise Exception('Unable to initialize the X52 Pro module. Make sure your X52 is plugged in and you have the drivers installed.')
+
+        self.page = self.doObj.add_page('TD')
+        self.display('TradeDangerous', 'INITIALIZING', delay=0.25)
 
     def finish(self):
         self.doObj.finish()
 
-    def update(self, line0="", line1="", line2="", delay=None):
+    def display(self, line, line1="", line2="", delay=None):
         self.page[0], self.page[1], self.page[2] = line0, line1, line2
-        if delay:
-            import time
-            time.sleep(delay)
+        if delay: sleep(delay)
 
 ######################################################################
 # Functions
