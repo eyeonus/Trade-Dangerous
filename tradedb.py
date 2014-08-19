@@ -119,6 +119,7 @@ class Station(object):
         openList, closedList, destStations = Queue(), [sys for sys in avoiding if isinstance(sys, System)] + [self], []
         openList.put([self.system, [], 0])
         # Sys is always available, so we don't need to import it. maxint was deprecated in favour of maxsize.
+        # noinspection PyUnresolvedReferences
         maxJumpDist = float(maxLyPer or sys.maxsize)
         while not openList.empty():
             (sys, jumps, dist) = openList.get()
@@ -161,12 +162,15 @@ class TradeDB(object):
         try:
             self.conn = pypyodbc.connect(self.path)
         except pypyodbc.Error as e:
-            print("Do you have the requisite driver installed? See http://www.microsoft.com/en-us/download/details.aspx?id=13255")
+            print("Do you have the requisite Access driver installed? See http://www.microsoft.com/en-us/download/details.aspx?id=13255")
             raise e
         self.load()
 
-    def load(self, avoidItems=[], avoidSystems=[], avoidStations=[], ignoreLinks=False):
+    def load(self, avoidItems=None, avoidSystems=None, avoidStations=None):
         """ Populate/re-populate this instance with data from the TradeDB layer. """
+        if not avoidStations: avoidStations = []
+        if not avoidSystems: avoidSystems = []
+        if not avoidItems: avoidItems = []
 
         # Create a cursor.
         cur = self.conn.cursor()
