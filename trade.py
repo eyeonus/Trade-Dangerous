@@ -32,7 +32,7 @@ mfd = None
 ######################################################################
 # Database and calculator modules.
 
-from tradedb import TradeDB
+from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
 tdb = TradeDB('.\\TradeDangerous.accdb')
