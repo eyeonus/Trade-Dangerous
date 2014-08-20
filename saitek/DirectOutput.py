@@ -75,8 +75,18 @@ SOFTBUTTON_SELECT = 0x00000001
 SOFTBUTTON_UP = 0x00000002
 SOFTBUTTON_DOWN = 0x00000004
 
+class TaggedSpan(object):
+    indentLevel = ""
+    def __init__(self, name, enabled):
+        self.name = name
+        self.enabled = enabled
+        if self.enabled: print("%s-> %s" % (TaggedSpan.indentLevel, self.name))
+        TaggedSpan.indentLevel += '--'
+    def __del__(self, *args, **kwargs):
+        TaggedSpan.indentLevel = TaggedSpan.indentLevel[:-2]
+        if self.enabled: print("%s<- %s" % (TaggedSpan.indentLevel, self.name))
 
-class DirectOutput():
+class DirectOutput(object):
 
     def __init__(self, dll_path):
         """
@@ -244,9 +254,9 @@ class DirectOutput():
         return self.DirectOutputDLL.DirectOutput_SetString(device_handle, page, line, len(string), ctypes.wintypes.LPWSTR(string))
 
 
-class DirectOutputDevice():
+class DirectOutputDevice(object):
 
-    class Buttons():
+    class Buttons(object):
 
         select, up, down = False, False, False
 
@@ -277,55 +287,78 @@ class DirectOutputDevice():
 
     application_name = "GenericDevice"
     device_handle = None
+    direct_output = None
+    debug_level = 0
 
-    def __init__(self, dll_path="C:\\Program Files (x86)\\Saitek\\DirectOutput\\DirectOutput.dll", debug_level=0):
+    def __init__(self, dll_path="C:\\Program Files (x86)\\Saitek\\DirectOutput\\DirectOutput.dll", debug_level=0, name=None):
 
         """
         Initialises device, creates internal state (device_handle) and registers callbacks.
 
         """
+
+        self.application_name = name or DirectOutputDevice.application_name
+
+        self.debug_level = debug_level
+        outerSpan = TaggedSpan("Initializing SaitekX52Pro", debug_level >= 1)
+
         try:
+            innerSpan = TaggedSpan("Creating DirectOutput instance", debug_level >= 2)
             self.direct_output = DirectOutput(dll_path)
         except WindowsError as e:
             raise DLLError(e.winerror)
 
+        innerSpan = TaggedSpan("Initializing DirectOutput(%s)" % self.application_name, debug_level >= 2)
         result = self.direct_output.Initialize(self.application_name)
         if result != S_OK:
             raise DirectOutputError(result)
+        del innerSpan
 
+        innerSpan = TaggedSpan("Creating callback closures", debug_level >= 2)
         self.device_callback_instance = self._DeviceCallbackClosure()
         self.enumerate_callback_instance = self._EnumerateCallbackClosure()
         self.register_page_callback_instance = self._RegisterPageCallbackClosure()
         self.register_soft_button_callback_instance = self._RegisterSoftButtonCallbackClosure()
+        del innerSpan
 
+        innerSpan = TaggedSpan("Registering device callback", debug_level >= 2)
         result = self.direct_output.RegisterDeviceCallback(self.device_callback_instance)
         if result != S_OK:
             self.finish()
             raise DirectOutputError(result)
+        del innerSpan
 
+        innerSpan = TaggedSpan("Enumerating devices", debug_level >= 2)
         result = self.direct_output.Enumerate(self.enumerate_callback_instance)
         if result != S_OK:
             self.finish()
             raise DirectOutputError(result)
+        del innerSpan
 
         if not self.device_handle:
             self.finish()
             raise DirectOutputError(result)
 
+        innerSpan = TaggedSpan("Registering page callback", debug_level >= 2)
         result = self.direct_output.RegisterPageCallback(self.device_handle, self.register_page_callback_instance)
         if result != S_OK:
             self.finish()
             raise DirectOutputError(result)
+        del innerSpan
 
+        innerSpan = TaggedSpan("Registering soft button callback", debug_level >= 2)
         result = self.direct_output.RegisterSoftButtonCallback(self.device_handle, self.register_soft_button_callback_instance)
         if result != S_OK:
             self.finish()
             raise DirectOutputError(result)
+        del innerSpan
 
-        self.DebugLevel = debug_level
+    def __del__(self, *args, **kwargs):
+        span = TaggedSpan("~DirectOutputDevice", self.debug_level >= 2)
+        self.finish()
 
     def debug(self, level, *args, **kwargs):
-        if self.DebugLevel >= level:
+        if self.debug_level >= level:
             print(*args, **kwargs)
 
     def finish(self):
@@ -333,6 +366,7 @@ class DirectOutputDevice():
         De-initializes DLL. Must be called before program exit
 
         """
+        span = TaggedSpan("DirectOutputDevice.finish()", self.debug_level >= 2)
         if self.direct_output:
             self.direct_output.Deinitialize()
             self.direct_output = None
@@ -346,6 +380,7 @@ class DirectOutputDevice():
         """
         DeviceCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
         def func(hDevice, bAdded, pvContext):
+            span = TaggedSpan("devicecallback closure", debug_level >= 2)
             self._DeviceCallback(hDevice, bAdded, pvContext)
         return DeviceCallback_Proto(func)
 
@@ -358,6 +393,7 @@ class DirectOutputDevice():
         """
         EnumerateCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)
         def func(hDevice, pvContext):
+            span = TaggedSpan("enumeratecallback closure", self.debug_level >= 2)
             self._EnumerateCallback(hDevice, pvContext)
         return EnumerateCallback_Proto(func)
 
@@ -370,6 +406,7 @@ class DirectOutputDevice():
         """
         PageCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.wintypes.DWORD, ctypes.c_bool, ctypes.c_void_p)
         def func(hDevice, dwPage, bActivated, pvContext):
+            span = TaggedSpan("registerpage closure", self.debug_level >= 2)
             self._RegisterPageCallback(hDevice, dwPage, bActivated, pvContext)
         return PageCallback_Proto(func)
 
@@ -382,6 +419,7 @@ class DirectOutputDevice():
         """
         SoftButtonCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.wintypes.DWORD, ctypes.c_void_p)
         def func(hDevice, dwButtons, pvContext):
+            span = TaggedSpan("softbutton closure", self.debug_level >= 2)
             self._RegisterSoftButtonCallback(hDevice, dwButtons, pvContext)
         return SoftButtonCallback_Proto(func)
 
@@ -390,6 +428,7 @@ class DirectOutputDevice():
         Internal function to register device handle
 
         """
+        span = TaggedSpan("_devicecallback", self.debug_level >= 2)
         if not bAdded:
             raise NotImplementedError("Received a message that a device went away.")
         if self.device_handle and self.device_handle != hDevice:
@@ -401,6 +440,7 @@ class DirectOutputDevice():
         Internal function to process a device enumeration
 
         """
+        span = TaggedSpan("_enumeratecallback", self.debug_level >= 2)
         self._DeviceCallback(hDevice, True, pvContext)
 
     def _RegisterPageCallback(self, hDevice, dwPage, bActivated, pvContext):
@@ -408,6 +448,7 @@ class DirectOutputDevice():
         Method called when page changes. Calls self.RegisterPageCallback to hide hDevice and pvContext from end-user
 
         """
+        span = TaggedSpan("_registerpagecallback", self.debug_level >= 2)
         self.RegisterPageCallback(dwPage, bActivated)
 
     def _RegisterSoftButtonCallback(self, hDevice, dwButtons, pvContext):
@@ -415,6 +456,7 @@ class DirectOutputDevice():
         Method called when soft button changes. Calls self.RegisterSoftButtonCallback to hide hDevice and pvContext from end-user. Also hides change of page softbutton and press-up.
 
         """
+        span = TaggedSpan("_registersoftbuttoncallback", self.debug_level >= 2)
         self.RegisterSoftButtonCallback(self.Buttons(dwButtons))
 
     def RegisterPageCallback(self, page, activated):
@@ -426,7 +468,7 @@ class DirectOutputDevice():
         activated -- true if this page has become the active page, false if this page was the active page
 
         """
-        self.debug(1, "Base RegisterPageCallback called")
+        span = TaggedSpan("registerpagecallback", self.debug_level >= 2)
 
     def RegisterSoftButtonCallback(self, buttons):
         """
@@ -436,7 +478,7 @@ class DirectOutputDevice():
         buttons - Buttons object representing button state
 
         """
-        self.debug(1, "Base RegisterSoftButtonCallback called")
+        span = TaggedSpan("registersoftbuttoncallback", self.debug_level >= 2)
 
     def AddPage(self, page, name, active):
         """
@@ -448,7 +490,7 @@ class DirectOutputDevice():
         active -- True if page is to become the active page, if False this will not change the active page
 
         """
-        self.debug(1, "*AddPage(%s, %s, %s)" % (str(page), str(name), str(active)))
+        span = TaggedSpan("AddPage(%s, %s, %s)" % (str(page), str(name), str(active)), self.debug_level >= 1)
         self.direct_output.AddPage(self.device_handle, page, name, active)
 
     def RemovePage(self, page):
@@ -459,6 +501,7 @@ class DirectOutputDevice():
         page -- page ID to remove
 
         """
+        span = TaggedSpan("RemovePage(%s)" % (str(page)), self.debug_level >= 1)
         result = self.direct_output.RemovePage(self.device_handle, page)
         if result != S_OK:
             self.finish()
@@ -473,7 +516,7 @@ class DirectOutputDevice():
         line -- the line to display the string on (0 = top, 1 = middle, 2 = bottom)
         string -- the string to display
         """
-        self.debug(1, "*SetString(%s, %s, %s)" % (str(page), str(line), str(string)))
+        span = TaggedSpan("SetString(%s, %s, %s)" % (str(page), str(line), str(string)), self.debug_level >= 1)
         result = self.direct_output.SetString(self.device_handle, page, line, string)
         if result != S_OK:
             self.finish()
@@ -489,6 +532,7 @@ class DirectOutputDevice():
         value -- value to set LED (1 = on, 0 = off)
 
         """
+        span = TaggedSpan("SetLed(%s, %s, %s)" % (str(page), str(led), str(value)), self.debug_level >= 1)
         result = self.direct_output.SetLed(self.device_handle, page, led, value)
         if result != S_OK:
             self.finish()

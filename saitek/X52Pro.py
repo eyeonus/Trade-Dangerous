@@ -13,11 +13,11 @@ TODO:
     * Error handling and exceptions
 """
 
-from .DirectOutput import DirectOutputDevice
+from . DirectOutput import DirectOutputDevice, TaggedSpan
 
 
 class SaitekX52Pro(DirectOutputDevice):
-    class Page():
+    class Page(object):
         _lines = [ str(), str(), str() ]
         _leds  = dict()
 
@@ -28,7 +28,7 @@ class SaitekX52Pro(DirectOutputDevice):
             self.device.AddPage(self.page_id, name, 1 if active else 0)
             self.active = active
 
-        def __del__(self):
+        def __del__(self, *args, **kwargs):
             try:
                 self.device.RemovePage(self.page_id)
             except AttributeError:
@@ -54,57 +54,57 @@ class SaitekX52Pro(DirectOutputDevice):
             for led, value in self._leds:
                 self.device.SetLed(self.page_id, led, 1 if value else 0)
 
-        def _set_led(self, led, value):
+        def set_led(self, led, value):
             self._leds[led] = value
             if self.active:
                 self.device.SetLed(self.page_id, led, 1 if value else 0)
 
-        def _set_led_colour(self, value, led_red, led_green):
+        def set_led_colour(self, value, led_red, led_green):
             if value == "red":
-                self._set_led(led_red, 1)
-                self._set_led(led_green, 0)
+                self.set_led(led_red, 1)
+                self.set_led(led_green, 0)
             elif value == "green":
-                self._set_led(led_red, 0)
-                self._set_led(led_green, 1)
+                self.set_led(led_red, 0)
+                self.set_led(led_green, 1)
             elif value == "orange":
-                self._set_led(led_red, 1)
-                self._set_led(led_green, 1)
+                self.set_led(led_red, 1)
+                self.set_led(led_green, 1)
             elif value == "off":
-                self._set_led(led_red, 0)
-                self._set_led(led_green, 0)
+                self.set_led(led_red, 0)
+                self.set_led(led_green, 0)
 
         def fire(self, value):
-            self._set_led(0, value)
+            self.set_led(0, value)
 
         def fire_a(self, value):
-            self._set_led_colour(value, 1, 2)
+            self.set_led_colour(value, 1, 2)
 
         def fire_b(self, value):
-            self._set_led_colour(value, 3, 4)
+            self.set_led_colour(value, 3, 4)
 
         def fire_d(self, value):
-            self._set_led_colour(value, 5, 6)
+            self.set_led_colour(value, 5, 6)
 
         def fire_e(self, value):
-            self._set_led_colour(value, 7, 8)
+            self.set_led_colour(value, 7, 8)
 
         def toggle_1_2(self, value):
-            self._set_led_colour(value, 9, 10)
+            self.set_led_colour(value, 9, 10)
 
         def toggle_3_4(self, value):
-            self._set_led_colour(value, 11, 12)
+            self.set_led_colour(value, 11, 12)
 
         def toggle_5_6(self, value):
-            self._set_led_colour(value, 13, 14)
+            self.set_led_colour(value, 13, 14)
 
         def pov_2(self, value):
-            self._set_led_colour(value, 15, 16)
+            self.set_led_colour(value, 15, 16)
 
         def clutch(self, value):
-            self._set_led_colour(value, 17, 18)
+            self.set_led_colour(value, 17, 18)
 
         def throttle_axis(self, value):
-            self._set_led(19, value)
+            self.set_led(19, value)
 
     pages = {}
     _page_counter = 0
@@ -118,7 +118,7 @@ class SaitekX52Pro(DirectOutputDevice):
         del self.pages[name]
 
     def RegisterPageCallback(self, page_id, activated):
-        self.debug(1, "Page Callback:", page_id, activated)
+        span = TaggedSpan("RegisterPageCallback(%s, %s)" % (str(page_id), str(activated)), self.debug_level >= 2)
         for page in self.pages.values():
             if page.page_id == page_id:
                 print("Found the page", page_id, activated)
@@ -128,14 +128,14 @@ class SaitekX52Pro(DirectOutputDevice):
                     page.active = False
                 return
 
-    def RegisterSoftButtonCallback(self, buttons):
-        self.debug(1, "soft button callback", buttons)
+    def RegisterSoftButtonCallback(self, *args, **kwargs):
+        span = TaggedSpan("RegisterSoftButtonCallback()")
 
     def finish(self):
+        span = TaggedSpan("SaitekX52Pro.finish()", self.debug_level >= 2)
         for page in self.pages:
             del page
         super().finish()
-
 
 if __name__ == '__main__':
     x52 = SaitekX52Pro(debug_level=1)
