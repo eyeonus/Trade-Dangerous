@@ -70,8 +70,6 @@ class X52ProMFD(DummyMFD):
     """
         Wrapper for the Saitek X52 Pro MFD.
     """
-    from time import sleep
-
     def __init__(self):
         try:
             import saitek.X52Pro
@@ -85,9 +83,9 @@ class X52ProMFD(DummyMFD):
     def finish(self):
         self.doObj.finish()
 
-    def display(self, line, line1="", line2="", delay=None):
+    def display(self, line1, line2="", line3="", delay=None):
         self.page[0], self.page[1], self.page[2] = line1, line2, line3
-        if delay: sleep(delay)
+        if delay: import time; time.sleep(delay)
 
 ######################################################################
 # Functions
