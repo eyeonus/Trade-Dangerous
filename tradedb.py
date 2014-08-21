@@ -310,6 +310,13 @@ class TradeDB(object):
         """ Look up a ship by name """
         return self.list_search("Ship", name, self.ships, key=lambda item: item.name)
 
+    def getTrade(self, src, dst, item):
+        """ Returns a Trade object describing purchase of item from src for sale at dst. """
+        srcStn = self.getStation(src)
+        dstStn = self.getStation(dst)
+        trades = srcStn.trades[dstStn.ID]
+        return trades[item]
+
     def query(self, *args):
         """ Perform an SQL query on the DB and return the cursor. """
         conn = pypyodbc.connect(self.path)
