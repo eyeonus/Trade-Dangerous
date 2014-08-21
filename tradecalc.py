@@ -70,7 +70,7 @@ class Route(object):
             text += "At %s/%s, Buy:" % (route[i].system.str().upper(), route[i].station)
             separator = "\n  |   " if detail > 1 else ""
             for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            if detail:
+                if detail:
                     text += "%s %4d x %-30s" % (separator, qty, item.item)
                     text += " @ %8scr each, %8scr total" % (localedNo(item.costCr), localedNo(item.costCr * qty))
                 else:
@@ -203,7 +203,12 @@ class TradeCalc(object):
         return bestLoad
 
     def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=None, focusItems=None, fitFunction=None):
-        """ Find the most profitable trade between stations src and dst. """
+        """
+            Find the most profitable trade between stations src and dst.
+            If avoidItems is populated, the items in it will not be considered for trading.
+            If focusItems is populated, only items listed in it will be considered for trading.
+            'fitFunction' lets you specify a function to use for performing the fit.
+        """
         if not avoidItems: avoidItems = []
         if not focusItems: focusItems = []
         if self.debug: print("# %s -> %s with %dcr" % (src, dst, credits))
