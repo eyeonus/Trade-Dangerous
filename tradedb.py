@@ -333,7 +333,7 @@ class TradeDB(object):
             yield row
 
 
-    def list_search(self, listType, lookup, values):
+    def list_search(self, listType, lookup, values, key=lambda item: item):
         """ Seaches [values] for 'lookup' for least-ambiguous matches,
             return the matching value as stored in [values].
             If [values] contains "bread", "water", "biscuits and "It",
@@ -346,7 +346,7 @@ class TradeDB(object):
         match = None
         needle = self.normalized_str(lookup)
         for val in values:
-            normVal = self.normalized_str(val)
+            normVal = self.normalized_str(key(val))
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
