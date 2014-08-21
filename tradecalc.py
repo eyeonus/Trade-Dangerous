@@ -55,29 +55,49 @@ class Route(object):
     def str(self):
         return "%s -> %s" % (self.route[0], self.route[-1])
 
-    def detail(self, verbose=False):
+    def detail(self, detail=0):
         credits = self.startCr
         gainCr = 0
         route = self.route
 
         str = self.str() + ":\n"
+        if detail > 1:
+            str += self.summary() + "\n"
         for i in range(len(route) - 1):
             hop = self.hops[i]
+            hopGainCr, hopTonnes = hop[1], 0
             str += " >-> " if i == 0 else " -+- "
             str += "%-20s Buy" % route[i]
             for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
                 str += " %d*%s," % (item[1], item[0])
+                hopTonnes += item[1]
             str += "\n"
-            if verbose:
+            if detail:
                 str += "   |   "
                 str += " -> ".join([ jump.str() for jump in self.jumps[i] ])
+                str += " => Gain %dcr" % hopGainCr
+                if detail > 1:
+                    str += " (%dcr/ton)" % (hopGainCr / hopTonnes)
                 str += "\n"
-            gainCr += hop[1]
+            gainCr += hopGainCr
 
         str += " <-< %s gaining %dcr => %dcr total" % (route[-1], gainCr, credits + gainCr)
         str += "\n"
 
         return str
+
+    def summary(self):
+        credits, hops, jumps = self.startCr, self.hops, self.jumps
+        ttlGainCr = sum([hop[1] for hop in hops])
+        return "\n".join([
+            "Start CR: %10s" % localedNo(credits),
+            "Hops    : %10s" % localedNo(len(hops)),
+            "Jumps   : %10s" % localedNo(sum([len(hopJumps) for hopJumps in jumps])),
+            "Gain CR : %10s" % localedNo(ttlGainCr),
+            "Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)),
+            "Final CR: %10s" % localedNo(credits + ttlGainCr),
+        ])
+
 
 class TradeCalc(object):
     """ Container for accessing trade calculations with common properties """

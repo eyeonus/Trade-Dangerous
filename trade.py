@@ -144,7 +144,7 @@ def parse_command_line():
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
     parser.add_argument('--margin', metavar='N.NN', help='Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. DEFAULT: 0.01', default=0.01, type=float, required=False)
     parser.add_argument('--insurance', metavar='CR', help='Reserve at least this many credits to cover insurance', type=int, default=0, required=False)
-    parser.add_argument('--detail', help='Give detailed jump information for multi-jump hops', default=0, required=False, action='count')
+    parser.add_argument('-v', '--detail', help='Give detailed jump information for multi-jump hops', default=0, required=False, action='count')
     parser.add_argument('--debug', help='Enable diagnostic output', default=0, required=False, action='count')
     parser.add_argument('--routes', metavar='N', help='Maximum number of routes to show. DEFAULT: 1', type=int, default=1, required=False)
     parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False)
@@ -253,14 +253,7 @@ def doChecklist(route, credits):
     print(underline)
     print()
     if args.detail:
-        ttlGainCr = sum([hop[1] for hop in hops])
-        note("Start CR: %10s" % localedNo(credits), False)
-        note("Hops    : %10s" % localedNo(len(hops)), False)
-        note("Jumps   : %10s" % localedNo(sum([len(hopJumps) for hopJumps in jumps])), False)
-        note("Gain CR : %10s" % localedNo(ttlGainCr), False)
-        note("Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)), False)
-        note("Final CR: %10s" % localedNo(credits + ttlGainCr), False)
-        print()
+        print(route.summary(), "\n")
 
     for idx in range(lastHopIdx):
         mfd.hopNo = hopNo = idx + 1
@@ -272,7 +265,7 @@ def doChecklist(route, credits):
 
         note("Buy at %s" % cur)
         for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, 'Buy %d x' % item[1], str(item[0]))
+            stepNo = doStep(stepNo, 'Buy %d x %s' % (item[1], str(item[0])))
         if args.detail:
             stepNo = doStep(stepNo, 'Refuel')
         print()
@@ -345,7 +338,7 @@ def main():
     routes.sort()
 
     for i in range(0, min(len(routes), args.routes)):
-        print(routes[i].detail(args.detail))
+        print(routes[i].detail(detail=args.detail))
 
     # User wants to be guided through the route.
     if args.checklist:
