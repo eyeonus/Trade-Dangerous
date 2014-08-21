@@ -81,7 +81,6 @@ class Station(object):
         self.stations = []
         system.addStation(self)
 
-
     def addTrade(self, dest, item, itemID, costCr, gainCr):
         """ Add a Trade entry from this to a destination station. """
         dstID = dest.ID
@@ -92,24 +91,10 @@ class Station(object):
         self.trades[dstID].append(trade)
 
     def organizeTrades(self):
-        """ Process the trades-to-destination lists: If there are multiple items
-            with the same gain for a given link, only keep the cheapest. Then
-            sort the list into by-gain order. """
-        for dstID in self.trades:
-            items = self.trades[dstID]
-            # Find the cheapest item
-            cheapest = min(items, key=lambda item: item.costCr)
-            cheapestGain = cheapest.gainCr
-            # Pick the cheapest item for each gain.
-            gains = dict()
-            for item in items:
-                itemGainCr = item.gainCr
-                if itemGainCr >= cheapestGain:
-                    if (not itemGainCr in gains) or (gains[itemGainCr].costCr <= item.costCr):
-                        gains[itemGainCr] = item
-            # Now sort the list in descending gain order - so the most
-            # profitable item is listed first.
-            self.trades[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
+        """ Process the trades-to-destination lists: sort the list into by-gain order. """
+        for tradeList in self.trades.values():
+            # sort the list in descending gain order - so the mostprofitable item is listed first.
+            tradeList.sort(key=lambda trade: trade.gainCr, reverse=True)
 
     def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=None):
         """ Gets a list of the Station destinations that can be reached
@@ -181,7 +166,7 @@ class TradeDB(object):
         Ship('Anaconda',     228, 19.70, 17.60),
     ]
 
-    def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
+    def __init__(self, path='.\\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
         self.debug = debug
         try:
@@ -191,36 +176,28 @@ class TradeDB(object):
             raise e
         self.load()
 
-    def load(self, avoidItems=None, avoidSystems=None, avoidStations=None):
+    def load(self):
         """ Populate/re-populate this instance with data from the TradeDB layer. """
-        if not avoidItems: avoidItems = []
-        if not avoidSystems: avoidSystems = []
-        if not avoidStations: avoidStations = []
-
         # Create a cursor.
         cur = self.conn.cursor()
 
         # Fetch a list of systems.
         cur.execute('SELECT system FROM Stations GROUP BY system')
-        self.systems = { row[0]: System(row[0]) for row in cur if not self.normalized_str(row[0]) in avoidSystems }
-        if self.debug:
-            print(self.systems)
+        systems = self.systems = { row[0]: System(row[0]) for row in cur }
 
         # Fetch a list of links between systems.
-        # Rather than storing positions, I'm storing the links themselves, but
-        # eventually I'll just store the positions instead and calculate the
-        # distances as/when I need them.
+        # TODO: Store positions, calculate distances on demand
         cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
                      FROM Stations AS frmSys, Links, Stations as toSys
                      WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
-        for row in cur:
-            if row[0] in self.systems and row[1] in self.systems:
-                self.systems[row[0]].addLink(self.systems[row[1]], float(row[2] or 5))
+        for (srcSysID, dstSysID, distLy) in cur:
+            srcSys, dstSys = systems[srcSysID], systems[dstSysID]
+            srcSys.addLink(dstSys, float(distLy))
 
         # Fetch the list of stations
         cur.execute('SELECT id, system, station FROM Stations')
         # Station lookup by ID
-        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur if row[1] in self.systems and not self.normalized_str(row[2]) in avoidStations }
+        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur }
         # StationID lookup by System Name
         self.systemIDs = { value.system.str().upper(): key for (key, value) in self.stations.items() }
         # StationID lookup by Station Name
@@ -228,23 +205,23 @@ class TradeDB(object):
 
         # Populate 'items' from the database
         cur.execute('SELECT id, item FROM Items')
-        self.items = { row[0]: row[1] for row in cur if not self.normalized_str(row[1]) in avoidItems }
+        self.items = { row[0]: row[1] for row in cur }
         self.itemIDs = { name: itemID for (itemID, name) in self.items.items() }
 
         stations, items = self.stations, self.items
 
         # Populate the station list with the profitable trades between stations
-        # The DB does a really good job of providing this information quickly and
-        # spares us having to load ALL of the data in order to build this view.
-        # Yes, the DB has to load it but it's designed to do that efficiently.
-        cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr - src.buy_cr'
+        # Ignore items that have a ui_order of 0 in the prices table (my way of marking an item as defunct or illegal)
+        cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr'
                     ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
                     ' WHERE src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
                     ' AND src.ui_order > 0 AND dst.ui_order > 0'
                     )
-        for row in cur:
-            if row[0] in stations and row[1] in stations and row[2] in items:
-                stations[row[0]].addTrade(stations[row[1]], items[row[2]], row[2], row[3], row[4])
+        for (srcID, dstID, itemID, srcCostCr, dstValueCr) in cur:
+            srcStn = stations[srcID]
+            dstStn = stations[dstID]
+            item   = items[itemID]
+            srcStn.addTrade(dstStn, item, itemID, srcCostCr, dstValueCr - srcCostCr)
 
         # Post-process the trades and sort them into whatever order we want them in.
         for station in stations.values():
