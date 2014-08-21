@@ -40,10 +40,8 @@ class Trade(object):
         self.costCr = costCr
         self.gainCr = gainCr
 
-
     def describe(self):
         print(self.item, self.itemID, self.costCr, self.gainCr)
-
 
     def __repr__(self):
         return "%s (%dcr)" % (self.item, self.costCr)
@@ -58,19 +56,15 @@ class System(object):
         self.links = {}
         self.stations = []
 
-
     def addLink(self, dest, dist):
         self.links[dest] = dist
-
 
     def links(self):
         return list(self.links.keys())
 
-
     def addStation(self, station):
         if not station in self.stations:
             self.stations.append(station)
-
 
     def str(self):
         return self.system
@@ -96,7 +90,6 @@ class Station(object):
         trade = Trade(item, itemID, costCr, gainCr)
         self.trades[dstID].append(trade)
 
-
     def organizeTrades(self):
         """ Process the trades-to-destination lists: If there are multiple items
             with the same gain for a given link, only keep the cheapest. Then
@@ -116,7 +109,6 @@ class Station(object):
             # Now sort the list in descending gain order - so the most
             # profitable item is listed first.
             self.trades[dstID] = sorted([item for item in gains.values()], key=lambda trade: trade.gainCr, reverse=True)
-
 
     def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=None):
         """ Gets a list of the Station destinations that can be reached
@@ -241,7 +233,6 @@ class TradeDB(object):
         if self.debug:
             self._validate()
 
-
     def _validate(self):
         # Check that things correctly reference themselves.
         for (stnID, stn) in self.stations.items():
@@ -274,7 +265,6 @@ class TradeDB(object):
 
         system = self.list_search("System", name, self.systems.keys())
         return self.systems[system]
-
 
     def getStation(self, name):
         """ Look up a Station object by it's name or system. """
@@ -326,12 +316,10 @@ class TradeDB(object):
         cur.execute(*args)
         return cur
 
-
     def fetch_all(self, sql):
         """ Perform an SQL query on the DB and iterate across the rows. """
         for row in self.query(sql):
             yield row
-
 
     def list_search(self, listType, lookup, values, key=lambda item: item):
         """ Seaches [values] for 'lookup' for least-ambiguous matches,
@@ -357,7 +345,6 @@ class TradeDB(object):
         if not match:
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
-
 
     def normalized_str(self, str):
         """ Returns a case folded, sanitized version of 'str' suitable for
