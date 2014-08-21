@@ -15,6 +15,7 @@
 import re                   # Because irregular expressions are dull
 import pypyodbc             # Because its documentation was better
 from queue import Queue     # Because we're British.
+from collections import namedtuple
 
 ######################################################################
 # Classes
@@ -156,6 +157,8 @@ class Station(object):
     def __repr__(self):
         return '%s %s' % (self.system.str().upper(), self.station)
 
+class Ship(namedtuple('Ship', [ 'name', 'capacity', 'maxJump', 'maxJumpFull' ])):
+    pass
 
 class TradeDB(object):
     normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
