@@ -162,6 +162,24 @@ class Ship(namedtuple('Ship', [ 'name', 'capacity', 'maxJump', 'maxJumpFull' ]))
 
 class TradeDB(object):
     normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+    ships = [
+        # Aulin, Beagle2
+        Ship('Sidewinder',     4,  8.13,  7.25),
+        # Aulin, Azeban
+        Ship('Eagle',          6,  6.59,  6.00),
+        # Aulin, Beagle2
+        Ship('Hauler',        16,  8.74,  6.10),
+        # Aulin, Beagle 2, Chango
+        Ship('Viper',          8, 13.49,  9.16),
+        # Aulin, Chango
+        Ship('Cobra',         36,  9.94,  7.30),
+        # Aulin, Chango, Vonarburg
+        Ship('Lakon Type 6', 100, 29.36, 15.64),
+        # Chango
+        Ship('Lakon Type 9', 440, 18.22, 13.34),
+        # Loius De Lacaille
+        Ship('Anaconda',     228, 19.70, 17.60),
+    ]
 
     def __init__(self, path=r'.\TradeDangerous.accdb', debug=0):
         self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
