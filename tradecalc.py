@@ -60,31 +60,38 @@ class Route(object):
         gainCr = 0
         route = self.route
 
-        str = self.str() + ":\n"
+        text = self.str() + ":\n"
         if detail > 1:
-            str += self.summary() + "\n"
+            text += self.summary() + "\n"
         for i in range(len(route) - 1):
             hop = self.hops[i]
             hopGainCr, hopTonnes = hop[1], 0
-            str += " >-> " if i == 0 else " -+- "
-            str += "%-20s Buy" % route[i]
-            for item in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-                str += " %d*%s," % (item[1], item[0])
-                hopTonnes += item[1]
-            str += "\n"
+            text += " >-> " if i == 0 else "  +  "
+            text += "At %s/%s, Buy:" % (route[i].system.str().upper(), route[i].station)
+            separator = "\n  |   " if detail > 1 else ""
+            for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
             if detail:
-                str += "   |   "
-                str += " -> ".join([ jump.str() for jump in self.jumps[i] ])
-                str += " => Gain %dcr" % hopGainCr
+                    text += "%s %4d x %-30s" % (separator, qty, item.item)
+                    text += " @ %8scr each, %8scr total" % (localedNo(item.costCr), localedNo(item.costCr * qty))
+                else:
+                    text += "%s %d x %s" % (separator, qty, item.item)
+                text += ","
+                hopTonnes += qty
+            text += "\n"
+            if detail:
+                text += "  |   "
                 if detail > 1:
-                    str += " (%dcr/ton)" % (hopGainCr / hopTonnes)
-                str += "\n"
+                    text += "%scr => " % localedNo((credits + gainCr))
+                text += " -> ".join([ jump.str() for jump in self.jumps[i] ])
+                if detail > 1:
+                    text += " => Gain %scr (%scr/ton) => %scr" % (localedNo(hopGainCr), localedNo(hopGainCr / hopTonnes), localedNo(credits + gainCr + hopGainCr))
+                text += "\n"
             gainCr += hopGainCr
 
-        str += " <-< %s gaining %dcr => %dcr total" % (route[-1], gainCr, credits + gainCr)
-        str += "\n"
+        text += " <-< %s gaining %scr => %scr total" % (route[-1], localedNo(gainCr), localedNo(credits + gainCr))
+        text += "\n"
 
-        return str
+        return text
 
     def summary(self):
         credits, hops, jumps = self.startCr, self.hops, self.jumps
