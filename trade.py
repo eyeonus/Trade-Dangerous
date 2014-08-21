@@ -140,6 +140,7 @@ def parse_command_line():
     parser.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump. DEFAULT: 5.2', type=float, default=5.2, required=False)
     parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
     parser.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold. DEFAULT: 4', type=int, default=4, required=False)
+    parser.add_argument('--ship', metavar='name', help='Set capacity and max-ly-per from ship type', type=str, required=False, default=None)
     parser.add_argument('--limit', metavar='N', help='Maximum units of any one cargo item to buy. DEFAULT: 0 (unlimited)', type=int, default=0, required=False)
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
     parser.add_argument('--margin', metavar='N.NN', help='Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. DEFAULT: 0.01', default=0.01, type=float, required=False)
@@ -189,6 +190,10 @@ def parse_command_line():
 
     if args.credits < 0:
         raise ValueError("Invalid (negative) value for initial credits")
+
+    if args.ship:
+        ship = tdb.getShip(args.ship)
+        args.ship, args.capacity, args.maxLyPer = ship, ship.capacity, ship.maxJumpFull
 
     if args.capacity < 0:
         raise ValueError("Invalid (negative) cargo capacity")
