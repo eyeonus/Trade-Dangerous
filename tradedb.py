@@ -329,6 +329,9 @@ class TradeDB(object):
             raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
         return system.stations[0]
 
+    def getShip(self, name):
+        """ Look up a ship by name """
+        return self.list_search("Ship", name, self.ships, key=lambda item: item.name)
 
     def query(self, *args):
         """ Perform an SQL query on the DB and return the cursor. """
