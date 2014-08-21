@@ -259,11 +259,14 @@ argument which also honors the --detail argument.
      OMFG Output the current step of the checklist on your X52 Pro MFD.
      Is that some sweetness or what?
 
-   --detail
-     Show jumps between stations when showing routes
+   --detail or -v
+     Increases the amount of detail given when showing routes or running the
+     checklist system. Each use increases the detail, i.e. "-v -v" will
+     give you more detail than just "-v".
 
    --debug
-     Gives some additional information on what TD is doing while running.
+     Gives some additional information on what TD is doing while running,
+     each use increases the verbosity: i.e. --debug --debug is more verbose.
 
 
 ==============================================================================
