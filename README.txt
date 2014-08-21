@@ -21,6 +21,16 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v2.08 Aug 21/2014
+  Fixed some formatting shenanigans
+
+v2.07 Aug 21/2014
+  Added "--ship" to specify capacity and max light years based on ship,
+  Use "--detail" multiple times to add more detail,
+  Changed presentation of routes, "--detail --detail" shows a lot more
+  information and breaks it up onto more lines
+  Improved start up time slightly
+
 v2.06 Aug 17/2014
   Added experimental X52 Pro MFD support to the checklist
 

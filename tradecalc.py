@@ -68,13 +68,14 @@ class Route(object):
             hopGainCr, hopTonnes = hop[1], 0
             text += " >-> " if i == 0 else "  +  "
             text += "At %s/%s, Buy:" % (route[i].system.str().upper(), route[i].station)
-            separator = "\n  |   " if detail > 1 else ""
             for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-                if detail:
-                    text += "%s %4d x %-30s" % (separator, qty, item.item)
-                    text += " @ %8scr each, %8scr total" % (localedNo(item.costCr), localedNo(item.costCr * qty))
+                if detail > 1:
+                    text += "\n  |   %4d x %-30s" % (qty, item.item)
+                    text += " @ %10scr each, %10scr total" % (localedNo(item.costCr), localedNo(item.costCr * qty))
+                elif detail:
+                    text += " %d x %s (@%dcr)" % (qty, item.item, item.costCr)
                 else:
-                    text += "%s %d x %s" % (separator, qty, item.item)
+                    text += " %d x %s" % (qty, item.item)
                 text += ","
                 hopTonnes += qty
             text += "\n"
@@ -234,11 +235,15 @@ class TradeCalc(object):
             firstItem = min(items, key=lambda item: item.costCr)
             firstCost, firstGain = firstItem.costCr, firstItem.gainCr
             items = [item for item in items if item.costCr <= credits and (item.gainCr > firstGain or item == firstItem)]
+
+        # Make sure there's still something to trade.
         if not items:
             return emptyLoad
 
         # Short-circuit: Items are sorted from highest to lowest gain. So if we can fill up with the first
         # item in the list, we don't need to try any other combinations.
+        # NOTE: The payoff for this comes from higher-end searches that would normally be more expensive,
+        # at the cost of a slight hitch in lower-end searches.
         firstItem = items[0]
         if maxUnits >= capacity and firstItem.costCr * capacity <= credits:
             return TradeLoad([[items[0], capacity]], capacity * firstItem.gainCr, capacity * firstItem.costCr, capacity)
@@ -303,13 +308,20 @@ class TradeCalc(object):
                     if self.debug: print("#* No trade")
                     continue
                 dstID = destStn.ID
+
                 try:
-                    best = bestToDest[dstID]
-                    oldRouteGainCr = best[1].gainCr + best[2][1]
+                    # See if there is already a candidate for this destination
+                    (bestStn, bestRoute, bestTrade, bestJumps, bestLy) = bestToDest[dstID]
+                    # Check if it is a better option than we just produced
+                    bestRouteGainCr = bestRoute.gainCr + bestTrade[1]
                     newRouteGainCr = route.gainCr + trade[1]
-                    if oldRouteGainCr >= newRouteGainCr:
+                    if bestRouteGainCr > newRouteGainCr:
                         continue
-                except KeyError: pass
+                    if bestRouteGainCr == newRouteGainCr and bestLy <= ly:
+                        continue
+                except KeyError:
+                    # No existing candidate, we win by default
+                    pass
                 bestToDest[dstID] = [ destStn, route, trade, jumps, ly ]
 
         result = []
