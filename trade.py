@@ -15,6 +15,7 @@
 # Imports
 
 import argparse             # For parsing command line args.
+import sys                  # Inevitably.
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
@@ -89,6 +90,17 @@ class X52ProMFD(DummyMFD):
 
 ######################################################################
 # Functions
+
+class CommandLineError(Exception):
+    """
+        Raised when you provide invalid input on the command line.
+        Attributes:
+            errorstr       What to tell the user.
+    """
+    def __init__(self, errorStr):
+        self.errorStr = errorStr
+    def __str__(self):
+        return 'Error in command line: %s' % (self.errorStr)
 
 def parse_avoids(avoidances):
     global avoidItems, avoidSystems, avoidStations
@@ -354,6 +366,10 @@ def main():
         return
 
 if __name__ == "__main__":
+    try:
     main()
+    except (CommandLineError, AmbiguityError) as e:
+        print("%s: error: %s" % (sys.argv[0], str(e)))
+    finally:
     if mfd:
         mfd.finish()
