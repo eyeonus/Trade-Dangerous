@@ -129,7 +129,7 @@ def parse_avoids(avoidances):
             pass
         # If it was none of the above, whine about it
         if not (item or system or station):
-            raise LookupError("Unknown item/system/station: %s" % avoid)
+            raise CommandLineError("Unknown item/system/station: %s" % avoid)
 
         # But if it matched more than once, whine about ambiguity
         if item and system: raise AmbiguityError('Avoidance', avoid, item, system.str())
@@ -166,9 +166,9 @@ def parse_command_line():
     args = parser.parse_args()
 
     if args.hops < 1:
-        raise ValueError("Minimum of 1 hop required")
+        raise CommandLineError("Minimum of 1 hop required")
     if args.hops > 64:
-        raise ValueError("Too many hops without more optimization")
+        raise CommandLineError("Too many hops without more optimization")
 
     if args.avoid:
         parse_avoids(args.avoid)
@@ -184,24 +184,24 @@ def parse_command_line():
         destName = args.dest
         finalStation = tdb.getStation(destName)
         if args.hops == 1 and originStation and finalStation and originStation == finalStation:
-            raise ValueError("More than one hop required to use same from/to destination")
+            raise CommandLineError("More than one hop required to use same from/to destination")
 
     if args.via:
         if args.hops < 2:
-            raise ValueError("Minimum of 2 hops required for a 'via' route")
+            raise CommandLineError("Minimum of 2 hops required for a 'via' route")
         viaName = args.via
         viaStation = tdb.getStation(viaName)
         if args.hops == 2:
             if viaStation == originStation:
-                raise ValueError("3+ hops required to go 'via' the origin station")
+                raise CommandLineError("3+ hops required to go 'via' the origin station")
             if viaStation == finalStation:
-                raise ValueError("3+ hops required to go 'via' the destination station")
+                raise CommandLineError("3+ hops required to go 'via' the destination station")
         if args.hops <= 3:
             if viaStation == originStation and viaStation == finalStation:
-                raise ValueError("4+ hops required to go 'via' the same station as you start and end at")
+                raise CommandLineError("4+ hops required to go 'via' the same station as you start and end at")
 
     if args.credits < 0:
-        raise ValueError("Invalid (negative) value for initial credits")
+        raise CommandLineError("Invalid (negative) value for initial credits")
 
     # If the user specified a ship, use it to fill out details unless
     # the user has explicitly supplied them. E.g. if the user says
@@ -221,27 +221,27 @@ def parse_command_line():
         raise CommandLineError("Capacity > 1000 not supported (you specified %s)" % args.capacity)
 
     if args.limit and args.limit > args.capacity:
-        raise ValueError("'limit' must be <= capacity")
+        raise CommandLineError("'limit' must be <= capacity")
     if args.limit and args.limit < 0:
-        raise ValueError("'limit' can't be negative, silly")
+        raise CommandLineError("'limit' can't be negative, silly")
     maxUnits = args.limit if args.limit else args.capacity
 
     if args.insurance and args.insurance >= (args.credits + 30):
-        raise ValueError("Insurance leaves no margin for trade")
+        raise CommandLineError("Insurance leaves no margin for trade")
 
     if args.routes < 1:
-        raise ValueError("Maximum routes has to be 1 or higher")
+        raise CommandLineError("Maximum routes has to be 1 or higher")
 
     if args.unique and args.hops >= len(tdb.stations):
-        raise ValueError("Requested unique trip with more hops than there are stations...")
+        raise CommandLineError("Requested unique trip with more hops than there are stations...")
     if args.unique:
         if ((originStation and originStation == finalStation) or
                 (originStation and originStation == viaStation) or
                  (viaStation and viaStation == finalStation)):
-            raise ValueError("from/to/via repeat conflicts with --unique")
+            raise CommandLineError("from/to/via repeat conflicts with --unique")
 
     if args.checklist and args.routes > 1:
-        raise ValueError("Checklist can only be applied to a single route.")
+        raise CommandLineError("Checklist can only be applied to a single route.")
 
     mfd = DummyMFD()
     if args.x52pro:
@@ -339,8 +339,11 @@ def main():
     lastHop = numHops - 1
     viaStartPos = 1 if originStation else 0
 
-    if args.debug:
-        print("From %s via %s to %s with %d credits for %d hops" % (originName, viaName, destName, args.credits, numHops))
+    if args.debug or args.detail:
+        print("From %s via %s to %s with %s credits." % (originName, viaName, destName, localedNo(args.credits)))
+        print("%d hops, max %d jumps/hop and max %dly/jump" % (numHops, args.maxJumpsPer, args.maxLyPer))
+        print("--------------------------------------------------------")
+        print()
 
     calc = TradeCalc(tdb, debug=args.debug, capacity=args.capacity, maxUnits=maxUnits, margin=args.margin, unique=args.unique)
     avoidPlaces = avoidSystems + avoidStations
@@ -377,9 +380,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-    main()
+        main()
     except (CommandLineError, AmbiguityError) as e:
         print("%s: error: %s" % (sys.argv[0], str(e)))
     finally:
-    if mfd:
-        mfd.finish()
+        if mfd:
+            mfd.finish()
