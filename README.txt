@@ -197,6 +197,7 @@ argument which also honors the --detail argument.
        --via Chango
 
    --unique
+   --uni
      Only show routes which do not visit any station twice
 
    --hops N
@@ -205,40 +206,40 @@ argument which also honors the --detail argument.
      e.g.
        --hops 8
 
-   --jumps N
-     DEFAULT: 0 (unlimited)
-     Limit the total number of jumps across the journey
-     e.g.
-       --jumps 3
-
    --jumps-per N
-     DEFAULT: 3
+   --jum N
+     DEFAULT: 2
      Limit the number of systems jumped to between each station
      e.g.
        -jumps-per 5
 
    --ly-per N.NN
-     DEFAULT: 5.2
+   --ly N.NN
+     DEFAULT: based on --ship
      Maximum distance your ship can jump between systems at full capacity.
-     Note: You can increase your range by selling your weapons.
+     NOTE: You can increase your range by selling your weapons.
      e.g.
        --ly-per 19.1
        --ly-per 3
 
  Ship/Trade options:
    --capacity N
-     DEFAULT: 4
+   --cap N
+     DEFAULT: based on --ship
      Maximum items you can carry on each hop.
  
    --credits N
+   --cr N
      How many credits to start with
      e.g.
        --credits 20000
 
    --insurance N   DEFAULT: 0
+   --ins N
      How many credits to hold back for insurance purposes
      e.g.
        --insurance 1000
+       --ins 5000
 
    --limit N   DEFAULT: 0
      If set, limits the maximum number of units of any cargo
@@ -248,6 +249,7 @@ argument which also honors the --detail argument.
        --capacity 16 --limit 8
 
    --avoid ITEM/SYSTEM/STATION
+   --av ITEM/SYSTEM/STATION
      Excludes the item/system/station matching the name from the database
      e.g.
        --avoid Gold
@@ -267,14 +269,17 @@ argument which also honors the --detail argument.
      Shows the top N routes; 
 
    --checklist
+   --check
      Walks you through the purchases, sales and jumps of your route.
      Note: More verbose when used with --detail
 
    --x52-pro
+   --x52
      OMFG Output the current step of the checklist on your X52 Pro MFD.
      Is that some sweetness or what?
 
-   --detail or -v
+   --detail
+   -v
      Increases the amount of detail given when showing routes or running the
      checklist system. Each use increases the detail, i.e. "-v -v" will
      give you more detail than just "-v".

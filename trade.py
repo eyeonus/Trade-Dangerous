@@ -147,7 +147,6 @@ def parse_command_line():
     parser.add_argument('--via', dest='via', metavar='STATION', help='Require specified station to be en-route', required=False)
     parser.add_argument('--avoid', dest='avoid', metavar='NAME', help='Exclude an item, system or station from the database. Partial matches allowed, e.g. "dom.ap" matches "Dom. Appliance"', required=False, action='append')
     parser.add_argument('--hops', metavar='N', help='Number of hops (station-to-station) to run. DEFAULT: 2', type=int, default=2, required=False)
-    parser.add_argument('--jumps', metavar='N', dest='maxJumps', help='Maximum total jumps (system-to-system)', type=int, default=None, required=False)
     parser.add_argument('--jumps-per', metavar='N', dest='maxJumpsPer', help='Maximum jumps (system-to-system) per hop (station-to-station). DEFAULT: 2', type=int, default=2, required=False)
     parser.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump.', type=float, default=None, required=False)
     parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
@@ -341,7 +340,7 @@ def main():
 
     if args.debug or args.detail:
         print("From %s via %s to %s with %s credits." % (originName, viaName, destName, localedNo(args.credits)))
-        print("%d hops, max %d jumps/hop and max %dly/jump" % (numHops, args.maxJumpsPer, args.maxLyPer))
+        print("%d hops, max %d jumps/hop and max %d ly/jump" % (numHops, args.maxJumpsPer, args.maxLyPer))
         print("--------------------------------------------------------")
         print()
 
@@ -361,7 +360,7 @@ def main():
                 routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
         routes = calc.getBestHops(routes, startCr,
                                   restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
-                                  maxJumps=args.maxJumps, maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
+                                  maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
     if not routes:
         print("No routes match your selected criteria.")
