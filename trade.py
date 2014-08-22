@@ -149,7 +149,7 @@ def parse_command_line():
     parser.add_argument('--hops', metavar='N', help='Number of hops (station-to-station) to run. DEFAULT: 2', type=int, default=2, required=False)
     parser.add_argument('--jumps', metavar='N', dest='maxJumps', help='Maximum total jumps (system-to-system)', type=int, default=None, required=False)
     parser.add_argument('--jumps-per', metavar='N', dest='maxJumpsPer', help='Maximum jumps (system-to-system) per hop (station-to-station). DEFAULT: 2', type=int, default=2, required=False)
-    parser.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump. DEFAULT: 5.2', type=float, default=5.2, required=False)
+    parser.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump.', type=float, default=None, required=False)
     parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
     parser.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold. DEFAULT: 4', type=int, default=4, required=False)
     parser.add_argument('--ship', metavar='name', help='Set capacity and max-ly-per from ship type', type=str, required=False, default=None)
@@ -203,12 +203,22 @@ def parse_command_line():
     if args.credits < 0:
         raise ValueError("Invalid (negative) value for initial credits")
 
+    # If the user specified a ship, use it to fill out details unless
+    # the user has explicitly supplied them. E.g. if the user says
+    # --ship sidewinder --capacity 2, use their capacity limit.
     if args.ship:
         ship = tdb.getShip(args.ship)
-        args.ship, args.capacity, args.maxLyPer = ship, ship.capacity, ship.maxJumpFull
-
+        args.ship = ship
+        if args.capacity is None: args.capacity = ship.capacity
+        if args.maxLyPer is None: args.maxLyPer = ship.maxJumpFull
+    if args.capacity is None:
+        raise CommandLineError("Missing '--capacity' or '--ship' argument")
+    if args.maxLyPer is None:
+        raise CommandLineError("Missing '--ly-per' or '--ship' argument")
     if args.capacity < 0:
-        raise ValueError("Invalid (negative) cargo capacity")
+        raise CommandLineError("Invalid (negative) cargo capacity")
+    if args.capacity > 1000:
+        raise CommandLineError("Capacity > 1000 not supported (you specified %s)" % args.capacity)
 
     if args.limit and args.limit > args.capacity:
         raise ValueError("'limit' must be <= capacity")
