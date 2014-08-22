@@ -103,7 +103,7 @@ def sql(sqlQuery, formatStr):
     lines = map(lambda row: formatStr.format(*row), tdb.fetch_all(sqlQuery))
     print("\n".join(lines))
 
-def avgPrice(*args):
+def avgSale(*args):
     whereClause = ' OR '.join(["i.item LIKE '%%%s%%'" % item for item in args])
     sql('SELECT i.item, avg(p.sell_cr)'
             ' FROM Items AS i'
@@ -125,6 +125,33 @@ def bestSale(*args):
                     ' INNER JOIN Stations as s'
                         ' ON s.id = p.station_id)'
             ' WHERE (%s) AND p.sell_cr = (SELECT MAX(ip.sell_cr) FROM Prices ip WHERE ip.item_id = p.item_id)'
+            ' ORDER BY 2 DESC'
+                 % whereClause
+        , "{:<32} {:9.0f}cr"
+            )
+
+def avgCost(*args):
+    whereClause = ' OR '.join(["i.item LIKE '%%%s%%'" % item for item in args])
+    sql('SELECT i.item, avg(p.buy_cr)'
+            ' FROM Items AS i'
+                ' INNER JOIN Prices as p'
+                    ' ON i.id = p.item_id'
+            ' WHERE %s'
+            ' GROUP BY i.item'
+            ' ORDER BY 2 DESC'
+                 % whereClause
+        , "{:<30} {:9.0f}"
+            )
+
+def bestCost(*args):
+    whereClause = ' OR '.join(["i.item LIKE '%%%s%%'" % item for item in args])
+    sql('SELECT i.item & \' @ \' & s.system & \'/\' & s.station, p.buy_cr'
+            ' FROM ((Items AS i'
+                ' INNER JOIN Prices as p'
+                    ' ON i.id = p.item_id)'
+                    ' INNER JOIN Stations as s'
+                        ' ON s.id = p.station_id)'
+            ' WHERE (%s) AND p.buy_cr = (SELECT MAX(ip.buy_cr) FROM Prices ip WHERE ip.item_id = p.item_id)'
             ' ORDER BY 2 DESC'
                  % whereClause
         , "{:<32} {:9.0f}cr"
