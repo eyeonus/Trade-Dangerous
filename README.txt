@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v2.02
+TradeDangerous v2.09
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -20,6 +20,11 @@ factors that into the shopping for each subsequent hop.
 ==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v2.09 Aug 22/2014
+  Command line errors now get a simple explanation rather than a stack dump,
+  --ly-per and --capacity can now override values from --ship,
+  Made "--detail" show the "options summary" in addition to --debug doing it,
 
 v2.08 Aug 21/2014
   Fixed some formatting shenanigans
