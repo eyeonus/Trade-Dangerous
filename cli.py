@@ -113,7 +113,7 @@ def avgSale(*args):
             ' GROUP BY i.item'
             ' ORDER BY 2 DESC'
                  % whereClause
-        , "{:<30} {:9.0f}"
+        , "{:.<50} {:9.0f}"
             )
 
 def bestSale(*args):
@@ -127,7 +127,7 @@ def bestSale(*args):
             ' WHERE (%s) AND p.sell_cr = (SELECT MAX(ip.sell_cr) FROM Prices ip WHERE ip.item_id = p.item_id)'
             ' ORDER BY 2 DESC'
                  % whereClause
-        , "{:<32} {:9.0f}cr"
+        , "{:.<50} {:9.0f}cr"
             )
 
 def avgCost(*args):
@@ -140,7 +140,7 @@ def avgCost(*args):
             ' GROUP BY i.item'
             ' ORDER BY 2 DESC'
                  % whereClause
-        , "{:<30} {:9.0f}"
+        , "{:.<50} {:9.0f}"
             )
 
 def bestCost(*args):
@@ -154,5 +154,5 @@ def bestCost(*args):
             ' WHERE (%s) AND p.buy_cr = (SELECT MAX(ip.buy_cr) FROM Prices ip WHERE ip.item_id = p.item_id)'
             ' ORDER BY 2 DESC'
                  % whereClause
-        , "{:<32} {:9.0f}cr"
+        , "{:.<50} {:9.0f}cr"
             )
