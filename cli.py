@@ -116,7 +116,7 @@ def avgPrice(*args):
         , "{:<30} {:9.0f}"
             )
 
-def bestPrice(*args):
+def bestSale(*args):
     whereClause = ' OR '.join(["i.item LIKE '%%%s%%'" % item for item in args])
     sql('SELECT i.item & \' @ \' & s.system & \'/\' & s.station, p.sell_cr'
             ' FROM ((Items AS i'
