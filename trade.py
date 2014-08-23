@@ -340,7 +340,7 @@ def main():
 
     if args.debug or args.detail:
         print("From %s via %s to %s with %s credits." % (originName, viaName, destName, localedNo(args.credits)))
-        print("%d hops, max %d jumps/hop and max %d ly/jump" % (numHops, args.maxJumpsPer, args.maxLyPer))
+        print("%d hops, max %d jumps/hop and max %0.2f ly/jump" % (numHops, args.maxJumpsPer, args.maxLyPer))
         print("--------------------------------------------------------")
         print()
 
@@ -382,6 +382,5 @@ if __name__ == "__main__":
         main()
     except (CommandLineError, AmbiguityError) as e:
         print("%s: error: %s" % (sys.argv[0], str(e)))
-    finally:
-        if mfd:
-            mfd.finish()
+    if mfd:
+        mfd.finish()
