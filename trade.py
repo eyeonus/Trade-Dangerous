@@ -270,13 +270,10 @@ def parse_command_line():
 ######################################################################
 # Processing functions
 
-def doStep(stepNo, action, detail=""):
+def doStep(stepNo, action, detail=None, extra=None):
     stepNo += 1
-    mfd.display("Step %d. Hop %d" % (stepNo, mfd.hopNo), action, detail)
-    if detail:
-        input("   %3d: %s %s: " % (stepNo, action, detail))
-    else:
-        input("   %3d: %s: " % (stepNo, action))
+    mfd.display("#%d %s" % (stepNo, action), detail or "", extra or "")
+    input("   %3d: %s: " % (stepNo, " ".join([item for item in [action, detail, extra] if item])))
     return stepNo
 
 def note(str, addBreak=True):
@@ -308,8 +305,7 @@ def doChecklist(route, credits):
 
         note("Buy at %s" % cur)
         for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            itemDesc = "%s @ %dcr" % (item.item, item.costCr)
-            stepNo = doStep(stepNo, 'Buy %d x' % qty, itemDesc)
+            stepNo = doStep(stepNo, 'Buy %d x' % qty, item.item, '@ %scr' % localedNo(item.costCr))
         if args.detail:
             stepNo = doStep(stepNo, 'Refuel')
         print()
@@ -325,8 +321,7 @@ def doChecklist(route, credits):
 
         note("Sell at %s" % nxt)
         for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            itemDesc = "%s @ %dcr" % (item.item, item.costCr + item.gainCr)
-            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), itemDesc)
+            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), item.item, '@ %scr' % localedNo(item.costCr + item.gainCr))
         print()
 
         gainCr += hop[1]
@@ -339,7 +334,9 @@ def doChecklist(route, credits):
             print()
 
     mfd.hopNo = None
-    mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
+    mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr))
+    mfd.attention(3)
+    time.sleep(1.5)
 
 def main():
     global tdb
