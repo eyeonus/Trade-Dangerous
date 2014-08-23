@@ -148,13 +148,13 @@ class Ship(namedtuple('Ship', [ 'name', 'capacity', 'maxJump', 'maxJumpFull', 's
 class TradeDB(object):
     normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
     ships = [
-        Ship('Sidewinder',     4,  8.13,  7.25,     [ 'Aulin Enterprise', 'Beagle2' ]),
-        Ship('Eagle',          6,  6.59,  6.00,     [ 'Aulin Enterprise', 'Beagle2' ]),
-        Ship('Hauler',        16,  8.74,  6.10,     [ 'Aulin Enterprise', 'Beagle2' ]),
+        Ship('Sidewinder',     4,  8.13,  7.25,     [ 'Aulin Enterprise', 'Beagle2', 'Abnett Platform', 'Moxon\'s Mojo' ]),
+        Ship('Eagle',          6,  6.59,  6.00,     [ 'Aulin Enterprise', 'Beagle2', 'Abnett Platform' ]),
+        Ship('Hauler',        16,  8.74,  6.10,     [ 'Aulin Enterprise', 'Beagle2', 'Moxon\'s Mojo' ]),
         Ship('Viper',          8, 13.49,  9.16,     [ 'Aulin Enterprise', 'Beagle2', 'Chango Dock' ]),
         Ship('Cobra',         36,  9.94,  7.30,     [ 'Aulin Enterprise', 'Chango Dock' ]),
-        Ship('Lakon Type 6', 100, 29.36, 15.64,     [ 'Aulin Enterprise', 'Chango Dock', 'Vonarburg Co-op' ]),
-        Ship('Lakon Type 9', 440, 18.22, 13.34,     [ 'Chango Dock' ]),
+        Ship('Lakon Type 6', 100, 29.36, 15.64,     [ 'Aulin Enterprise', 'Chango Dock', 'Vonarburg Co-op', 'Moxon\'s Mojo' ]),
+        Ship('Lakon Type 9', 440, 18.22, 13.34,     [ 'Chango Dock', 'Moxon\'s Mojo' ]),
         Ship('Anaconda',     228, 19.70, 17.60,     [ 'Louis De Lacaille Prospect' ]),
     ]
 
