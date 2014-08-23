@@ -150,7 +150,7 @@ def parse_command_line():
     parser.add_argument('--jumps-per', metavar='N', dest='maxJumpsPer', help='Maximum jumps (system-to-system) per hop (station-to-station). DEFAULT: 2', type=int, default=2, required=False)
     parser.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump.', type=float, default=None, required=False)
     parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
-    parser.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold. DEFAULT: 4', type=int, default=4, required=False)
+    parser.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold.', type=int, required=False)
     parser.add_argument('--ship', metavar='name', help='Set capacity and max-ly-per from ship type', type=str, required=False, default=None)
     parser.add_argument('--limit', metavar='N', help='Maximum units of any one cargo item to buy. DEFAULT: 0 (unlimited)', type=int, default=0, required=False)
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
@@ -340,7 +340,7 @@ def main():
 
     if args.debug or args.detail:
         print("From %s via %s to %s with %s credits." % (originName, viaName, destName, localedNo(args.credits)))
-        print("%d hops, max %d jumps/hop and max %0.2f ly/jump" % (numHops, args.maxJumpsPer, args.maxLyPer))
+        print("%d cap, %d hops, max %d jumps/hop and max %0.2f ly/jump" % (args.capacity, numHops, args.maxJumpsPer, args.maxLyPer))
         print("--------------------------------------------------------")
         print()
 

@@ -85,7 +85,7 @@ DB you want.
 If you are sitting in a hauler at Chango with 20,000 credits and you have time
 for 2 hops, you might run it like this:
 
- C:\TradeDangerous\> trade.py --from Chango --credits 20000 -capacity 16 --hops 2
+ C:\TradeDangerous\> trade.py --ship hauler --from Chango --credits 20000 --hops 2
 
 And the output might look like this:
 
@@ -105,7 +105,7 @@ If you leave out the '--from' option, TradeDangerous will do the same
 calculation for every station in the database and tell you where the best
 possible 2-hop run is:
 
- C:\TradeDangerous\> trade.py --credits 20000 -capacity 16 --hops 2
+ C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
      -+- AULIN Enterprise     Buy 13*Combat Stabilisers (2179cr), 3*Synthetic Meat (87cr),
@@ -117,7 +117,7 @@ more.
 But how was it expecting us to get from Cuffey to Aulin? For this, there is
 the --detail option:
 
- C:\TradeDangerous\> trade.py --credits 20000 -capacity 16 --hops 2 --detail
+ C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2 --detail
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
        |   Acihaut -> LHS3006 -> Aulin
@@ -135,23 +135,22 @@ to describe a hyperspace trip between two individual star systems.
 
 One problem:
 
-The hauler can't make the above journey with cargo.
+The hauler can't make the above journey with cargo and weapons.
 
-The "--ly-per" argument lets us tell TD to limit connections to a max of
-5.2ly.
+The "--ly-per" argument (or it's --ly abbreviation) lets us tell TD to limit
+connections to a max jump distance, in this case of 5.2ly.
 
- C:\TradeDangerous\> trade.py --credits 20000 -capacity 16 --hops 2 --detail --ly-per 5.2
+ C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2 --detail --ly-per 5.2
      >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
        |   Morgor -> Dahan -> Asellus
      -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
        |   Asellus -> Dahan
      <-< DAHAN Gateway gaining 18640cr => 38640cr total
 
-You can also control the number of jumps allowed on any given hop: --max-jumps
-sets an upper limit on the total number of jumps, --jumps-per limits the
-maximum jumps on each hop.
+You can also control how many jumps (connecting star systems) we'll make
+on a given hop with '--jumps':
 
-  C:\TradeDangerous\> trade.py --credits 20000 --capacity 16 --hops 2 --detail --ly-per 5.2 --jumps-per 2
+  C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2 --detail --jumps 2
     ERANIN Azeban -> DAHAN Gateway:
      >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
        |   Eranin -> Asellus
@@ -166,7 +165,7 @@ have without having to remember to subtract your insurance each time:
 Lets say we want to do a half dozen runs and keep 4000 credits aside so that
 we don't get totally wiped out by a crash along the way:
 
-    C:\TradeDangerous\> trade.py --from Chango --capacity 16 --insurance 4000 --hops 6 --credits 20000
+    C:\TradeDangerous\> trade.py --ship hauler --from Chango --insurance 4000 --hops 6 --credits 20000
 
 Lastly, if you are working a long, complicated route, try the "--checklist"
 argument which also honors the --detail argument.
