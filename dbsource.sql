@@ -13,10 +13,10 @@ CREATE TABLE
    posz DOUBLE NOT NULL,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-   UNIQUE INDEX (name),
-   INDEX (posx, posy, posz)
+   UNIQUE (name)
  )
 ;
+CREATE INDEX systems_position ON Systems (posx, posy, posz);
 
 -- Stations within systems
 CREATE TABLE
@@ -26,14 +26,14 @@ CREATE TABLE
    system_id INTEGER NOT NULL,
    ls_from_star DOUBLE NOT NULL,
 
-   UNIQUE INDEX (name),
-   INDEX (system_id),
+   UNIQUE (name),
 
    FOREIGN KEY (system_id) REFERENCES Systems(rowid)
    	ON UPDATE CASCADE
 	ON DELETE CASCADE
  )
 ;
+CREATE INDEX station_systems ON Stations (system_id);
 
 -- Ships
 CREATE TABLE
@@ -45,7 +45,7 @@ CREATE TABLE
    max_ly_full INTEGER NOT NULL,
    boost_speed INTEGER NOT NULL,
 
-   UNIQUE INDEX (name)
+   UNIQUE (name)
  )
 ;
 
@@ -58,7 +58,6 @@ CREATE TABLE
    cost INTEGER,
 
    PRIMARY KEY (ship_id, station_id),
-   INDEX (station_id, ship_id),
 
    FOREIGN KEY (ship_id) REFERENCES Ships(rowid)
 	ON UPDATE CASCADE
@@ -75,7 +74,7 @@ CREATE TABLE
    name VARCHAR(40) COLLATE nocase,
    weight NUMBER NOT NULL,
 
-   UNIQUE INDEX (name)
+   UNIQUE (name)
  )
 ;
 
@@ -87,7 +86,6 @@ CREATE TABLE
    cost INTEGER,
 
    PRIMARY KEY (upgrade_id, station_id),
-   INDEX (station_id, upgrade_id),
 
    FOREIGN KEY (upgrade_id) REFERENCES Upgrades(rowid)
 	ON UPDATE CASCADE
@@ -104,7 +102,7 @@ CREATE TABLE
  (
    name VARCHAR(40) COLLATE nocase,
 
-   UNIQUE INDEX (name)
+   UNIQUE (name)
  )
 ;
 
@@ -115,7 +113,7 @@ CREATE TABLE
    name VARCHAR(40) COLLATE nocase,
    category_id INTEGER NOT NULL,
 
-   UNIQUE INDEX (category_id, name),
+   UNIQUE (category_id, name),
 
    FOREIGN KEY (category_id) REFERENCES ItemCategories(rowid)
    	ON UPDATE CASCADE
@@ -143,4 +141,3 @@ CREATE TABLE
 	ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
-
