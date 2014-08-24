@@ -9,12 +9,12 @@ Description: Python wrapper class for DirectOutput functions.
 
 This module consists of two classes - DirectOutput and DirectOutputDevice
 
-DirectOutput directly calls C functions within DirectOutput.dll to allow Python control of the Saitek X62 Pro MFD and LEDs. Implemented as a class to allow sharing of dll object amongst functions
+DirectOutput directly calls C functions within DirectOutput.dll to allow Python control of the Saitek X52 Pro MFD and LEDs. Implemented as a class to allow sharing of dll object amongst functions
 
 DirectOutputDevice is a wrapper around DirectOutput which automates setup and persists the device handle across functions. This class can be directly called or inherited to control an individual device (eg. X52 Pro)
 
 Thanks to Spksh and ellF for the C# version of the wrapper which was very helpful in implementing this.
-Thanks to Frazzle for the first Python version which Saitek dutifuly rap^H^H^Hbroke.
+Thanks to Frazzle for the first Python version (no-longer compatible with the saitek driver).
 
 Example Usage:
 
@@ -306,7 +306,7 @@ class DirectOutputDevice(object):
             innerSpan = TaggedSpan("Creating DirectOutput instance", debug_level >= 2)
             self.direct_output = DirectOutput(dll_path)
         except WindowsError as e:
-            raise DLLError(e.winerror)
+            raise DLLError(e.winerror) from None
 
         innerSpan = TaggedSpan("Initializing DirectOutput(%s)" % self.application_name, debug_level >= 2)
         result = self.direct_output.Initialize(self.application_name)
@@ -551,7 +551,7 @@ class DLLError(Exception):
         if error_code == 126:
             self.msg = "specified file does not exist"
         elif error_code == 193:
-            self.msg = "possible 32/64 bit mismatch between Python interpreter and DLL "
+            self.msg = "possible 32/64 bit mismatch between Python interpreter and DLL. Make sure you have installed both the 32- and 64-bit driver from Saitek's website"
         else:
             self.msg = "unspecified error"
 
