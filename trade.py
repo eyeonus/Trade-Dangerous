@@ -75,8 +75,9 @@ class X52ProMFD(DummyMFD):
         try:
             import saitek.X52Pro
             self.doObj = saitek.X52Pro.SaitekX52Pro()
-        except:
-            raise Exception('Unable to initialize the X52 Pro module. Make sure your X52 is plugged in and you have the drivers installed.')
+        except DLLError as e:
+            print("{}: error#{}: Unable to initialize the Saitek X52 Pro module: {}".format(__name__, e.error_code, e.msg), file=sys.stderr)
+            sys.exit(1)
 
         self.page = self.doObj.add_page('TD')
         self.display('TradeDangerous', 'INITIALIZING', delay=0.25)
