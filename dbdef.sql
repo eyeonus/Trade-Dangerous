@@ -7,28 +7,30 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE
  Systems
  (
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
-   posx DOUBLE NOT NULL,
-   posy DOUBLE NOT NULL,
-   posz DOUBLE NOT NULL,
+   pos_x DOUBLE NOT NULL,
+   pos_y DOUBLE NOT NULL,
+   pos_z DOUBLE NOT NULL,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    UNIQUE (name)
  )
 ;
-CREATE INDEX systems_position ON Systems (posx, posy, posz);
+CREATE INDEX systems_position ON Systems (pos_x, pos_y, pos_z);
 
 -- Stations within systems
 CREATE TABLE
  Stations
  (
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    system_id INTEGER NOT NULL,
    ls_from_star DOUBLE NOT NULL,
 
    UNIQUE (name),
 
-   FOREIGN KEY (system_id) REFERENCES Systems(rowid)
+   FOREIGN KEY (system_id) REFERENCES Systems(id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  )
@@ -39,10 +41,14 @@ CREATE INDEX station_systems ON Stations (system_id);
 CREATE TABLE
  Ships
  (
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    capacity INTEGER NOT NULL,
-   max_ly_empty INTEGER NOT NULL,
-   max_ly_full INTEGER NOT NULL,
+   mass INTEGER NOT NULL,
+   drive_rating DOUBLE NOT NULL,
+   max_ly_empty DOUBLE NOT NULL,
+   max_ly_full DOUBLE NOT NULL,
+   max_speed INTEGER NOT NULL,
    boost_speed INTEGER NOT NULL,
 
    UNIQUE (name)
@@ -59,10 +65,10 @@ CREATE TABLE
 
    PRIMARY KEY (ship_id, station_id),
 
-   FOREIGN KEY (ship_id) REFERENCES Ships(rowid)
+   FOREIGN KEY (ship_id) REFERENCES Ships(id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Stations(rowid)
+   FOREIGN KEY (station_id) REFERENCES Stations(id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  ) WITHOUT ROWID
@@ -71,6 +77,7 @@ CREATE TABLE
 CREATE TABLE
  Upgrades
  (
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    weight NUMBER NOT NULL,
 
@@ -87,10 +94,10 @@ CREATE TABLE
 
    PRIMARY KEY (upgrade_id, station_id),
 
-   FOREIGN KEY (upgrade_id) REFERENCES Upgrades(rowid)
+   FOREIGN KEY (upgrade_id) REFERENCES Upgrades(id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Stations(rowid)
+   FOREIGN KEY (station_id) REFERENCES Stations(id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  ) WITHOUT ROWID
@@ -100,6 +107,7 @@ CREATE TABLE
 CREATE TABLE
  ItemCategories
  (
+   id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
 
    UNIQUE (name)
@@ -115,7 +123,7 @@ CREATE TABLE
 
    UNIQUE (category_id, name),
 
-   FOREIGN KEY (category_id) REFERENCES ItemCategories(rowid)
+   FOREIGN KEY (category_id) REFERENCES ItemCategories(id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  )
@@ -133,10 +141,10 @@ CREATE TABLE
 
    PRIMARY KEY (item_id, station_id),
 
-   FOREIGN KEY (item_id) REFERENCES Items(rowid)
+   FOREIGN KEY (item_id) REFERENCES Items(id)
    	ON UPDATE CASCADE
       ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Stations(rowid)
+   FOREIGN KEY (station_id) REFERENCES Stations(id)
    	ON UPDATE CASCADE
       ON DELETE CASCADE
  ) WITHOUT ROWID
