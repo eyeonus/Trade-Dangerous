@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # List of ships known to tradedb
 
+from collections import namedtuple
+
 class Ship(namedtuple('Ship', [ 'name', 'capacity', 'mass', 'driveRating', 'maxJump', 'maxJumpFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
     pass
 
