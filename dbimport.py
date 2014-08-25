@@ -98,7 +98,7 @@ def main():
 
             station = Station(newStationID, system, stationName)
             stations[stationName] = station
-            stationByOldID[oldStationID] = station
+            stationByOldID[oldStationID] = newStationID
 
     with check_item("Populate `Ship` table"):
         # I'm not entirely sure whether I really want this data in the database,
