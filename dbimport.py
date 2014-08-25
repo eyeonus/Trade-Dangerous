@@ -200,6 +200,22 @@ def main():
         outCur.executemany(stmt, rows)
     debug_log(1, "{} items loaded".format(len(items)))
 
+    pricesCount = 0
+    with check_item("Populate `Price` table") as check:
+        inCur.execute("SELECT station_id, item_id, sell_cr, buy_cr, ui_order FROM Prices ORDER BY item_id, station_id")
+        stmt = """
+                INSERT INTO Price
+                    (item_id, station_id, ui_order, sell_to, buy_from)
+                VALUES
+                    (?, ?, ?, ?, ?)
+                """
+        rows = []
+        for (oldStationID, oldItemID, stnPayingCr, stnAskingCr, uiOrder) in inCur:
+            itemID, stationID = itemByOldID[oldItemID], stationByOldID[oldStationID]
+            rows += [ [ itemID, stationID, uiOrder or 0, stnPayingCr, stnAskingCr or 0 ] ]
+        outCur.executemany(stmt, rows)
+        pricesCount = len(rows)
+    debug_log(1, "{} prices loaded".format(pricesCount))
 
     outConn.commit()
 
