@@ -30,17 +30,18 @@ class check_item(object):
           with check_item("Step description"):
             things_in_step()
     """
+    margin = 60
     def __init__(self, title):
-        self.title = title
+        self.title, self.noop = title, False
     def __enter__(self):
-        print('- {:.<72}:  '.format(self.title), end='')
-        return None
+        print('- {:.<{width}}:  '.format(self.title, width=self.margin - 3), end='')
+        return self
     def __exit__(self, type, value, traceback):
         if value:           # Exception occurred
-            print("\a\rX {:.<72}: ERROR".format(self.title.upper()))
+            print("\a\rX {:.<{width}}: ERROR".format(self.title.upper(), width=self.margin - 3))
             print()
         else:
-            print('[+]')
+            print('[+]') if not self.noop else print("\bNO-OP")
 
 def main():
     # Destroy the SQLite database if it already exists.
