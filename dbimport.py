@@ -219,6 +219,27 @@ def main():
 
     outConn.commit()
 
+    numLinks = 0
+    with check_item("Checking system links/performance") as check:
+        import math
+        outCur.execute("""
+                SELECT from_system_id, to_system_id, distance_sq
+                  FROM vLink
+                 WHERE from_system_id < to_system_id
+                   AND distance_sq <= ?
+                """, [ maxJumpDistanceLy ** 2])
+        links = {}
+        for (lhsID, rhsID, distSq) in outCur:
+            # Round the distance up to the next 100th of a lightyear.
+            distLy = math.ceil(math.sqrt(distSq) * 100.0) / 100.0
+            # Generate a 64-bit identifier that describes a link
+            # between two systems that can be consistent regardless
+            # of which way round you use them (that is, you always
+            # have to do the min/max the same for each 32 bits)
+            linkID = (min(lhsID, rhsID) << 32) | (max(lhsID, rhsID))
+            links[linkID] = distLy
+            numLinks += 1
+    debug_log(1, "Number of links calculated: {}".format(numLinks))
 
 if __name__ == "__main__":
     main()
