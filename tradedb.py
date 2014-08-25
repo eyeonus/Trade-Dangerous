@@ -335,6 +335,32 @@ class TradeDB(object):
         trades = srcStn.trades[dstStn.ID]
         return trades[item]
 
+    @staticmethod
+    def getDistanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
+        """
+            Calculate the square of the distance between two points.
+
+            Pythagors theorem: distance = root( (x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2 )
+
+            But calculating square roots is not cheap and if you don't
+            need the distance for display, etc, then returning the
+            square saves an expensive calculation:
+
+            IF   root(A^2 + B^2 + C^2) == root(D^2 + E^2 + F^2)
+            THEN (A^2 + B^2 + C^2) == (D^2 + E^2 + F^2)
+
+            So instead of having to sqrt all of our distances in a complex
+            set, we can do this:
+
+            maxDistSq = 300 ** 2   # check for items < 300ly
+            inRange = []
+            for (lhs, rhs) in items:
+                distSq = getDistanceSq(lhs.x, lhs.y, lhs.z, rhs.x, rhs.y, rhs.z)
+                if distSq <= maxDistSq:
+                    inRange += [[lhs, rhs]]
+        """
+        return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
+
     def query(self, *args):
         """ Perform an SQL query on the DB and return the cursor. """
         conn = pypyodbc.connect(self.path)
