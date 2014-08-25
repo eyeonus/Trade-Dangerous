@@ -20,6 +20,7 @@ outDB	= "tradedb.sq3"
 
 systems = {}
 stations, stationByOldID, stationByNewID = {}, {}, {}
+categories, categoryByOldID, categoryByNewID = {}, {}, {}
 
 class check_item(object):
     """
@@ -152,7 +153,19 @@ def main():
         # TODO: UpgradeVendor
         check.noop = True
 
-    #
+    with check_item("Populate `Category` table") as check:
+        # Copy from accdb and track the newly assigned ID.
+        inCur.execute("SELECT ID, category FROM Categories ORDER BY ID")
+        categoryID = 0
+        stmt = "INSERT INTO Category (category_id, name) VALUES (?, ?)"
+        rows = []
+        for (ID, categoryName) in inCur:
+            categoryID += 1
+            rows += [ [ categoryID, categoryName ] ]
+            categories[TradeDB.normalized_str(categoryName)] = categoryID
+            categoryByOldID[ID] = categoryID
+            categoryByNewID[categoryID] = ID
+        outCur.executemany(stmt, rows)
 
     outConn.commit()
 
