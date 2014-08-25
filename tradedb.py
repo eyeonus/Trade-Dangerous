@@ -62,8 +62,8 @@ class System(object):
     # TODO: Build the links from an SQL query, it'll save a lot of
     # expensive python dictionary lookups.
 
-    def __init__(self, system):
-        self.system = system
+    def __init__(self, ID, system, posX, posY, posZ):
+        self.ID, self.system, self.posX, self.posY, self.posZ = ID, system, posX, posY, posZ
         self.links = {}
         self.stations = []
 
@@ -93,8 +93,8 @@ class Station(object):
         opportunities it presents.
     """
 
-    def __init__(self, ID, system, station):
-        self.ID, self.system, self.station = ID, system, station
+    def __init__(self, ID, system, station, lsFromStar=0.0):
+        self.ID, self.system, self.station, self.lsFromStar = ID, system, station, lsFromStar
         self.trades = {}
         self.stations = []
         system.addStation(self)
@@ -124,42 +124,79 @@ class Station(object):
             # sort the list in descending gain order - so the mostprofitable item is listed first.
             tradeList.sort(key=lambda trade: trade.gainCr, reverse=True)
 
-    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=None):
-        """ Gets a list of the Station destinations that can be reached
+    def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
+        """
+            Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
-            If no constraints are specified, you get a list of everywhere
-            that this station has a link to in the db where something
-            the station sells is bought.
-            """
+        """
 
-        if not avoiding: avoiding = []
+        avoiding = avoiding or []
+        maxJumps = maxJumps or sys.maxsize
+        maxLyPer = maxLyPer or float("inf")
 
-        openList, closedList, destStations = Queue(), [sys for sys in avoiding if isinstance(sys, System)] + [self], []
-        openList.put([self.system, [], 0])
-        # Sys is always available, so we don't need to import it. maxint was deprecated in favour of maxsize.
-        # noinspection PyUnresolvedReferences
-        maxJumpDist = float(maxLyPer or sys.maxsize)
-        while not openList.empty():
-            (sys, jumps, dist) = openList.get()
-            if maxJumps and len(jumps) > maxJumps:
-                continue
-            if maxLy and dist > maxLy:
-                continue
-            jumps = list(jumps + [sys])
-            for stn in sys.stations:
-                if not stn in avoiding:
-                    destStations.append([sys, stn, jumps, dist])
-            if (maxJumps and len(jumps) > maxJumps):
-                continue
-            for (destSys, destDist) in sys.links.items():
-                if destDist > maxJumpDist:
-                    continue
-                if maxLy and dist + destDist > maxLy:
-                    continue
-                if destSys in closedList:
-                    continue
-                openList.put([destSys, jumps, dist + destDist])
-                closedList.append(destSys)
+        # The open list is the list of nodes we should consider next for
+        # potential destinations.
+        # The path list is a list of the destinations we've found and the
+        # shortest path to them. It doubles as the "closed list".
+        # The closed list is the list of nodes we've already been to (so
+        # that we don't create loops A->B->C->A->B->C->...)
+
+        Node = namedtuple('Node', [ 'system', 'via', 'dist' ])
+
+        openList = [ OpenNode(self.system, [], 0) ]
+        pathList = { system.ID: Node(system, None, 0.0)
+                        # include avoids so we only have
+                        # to consult one place for exclusions
+                        for system in avoiding + [ self ]
+                        # the avoid list may contain stations,
+                        # which affects destinations but not vias
+                        if isinstance(system, System) }
+
+        # As long as the open list is not empty, keep iterating.
+        jumps = 0
+        while openList and jumps < maxJumps:
+            # Expand the search domain by one jump; grab the list of
+            # nodes that are this many hops out and then clear the list.
+            ring, openList = openList, []
+            # All of the destinations we are about to consider will
+            # either be on the closed list or they will be +1 jump away.
+            jumps += 1
+
+            for node in ring:
+                (nodeSys, nodeVia, nodeDist) = (node.system, node.via, node.dist)
+                for (destSys, destDist) in sys.links.items():
+                    # Range check
+                    dist = nodeDist + destDist
+                    if dist > maxLyPer: continue
+                    try:
+                        prevNode = pathList[destSys.ID]
+                        # If we already have a shorter path, do nothing
+                        if dist >= prevNode.dist: continue
+                    except KeyError: pass
+                    # Add to the path list
+                    pathList[destSys.ID] = Node(dest, nodeVia, dist)
+                    # Add to the open list but also include node to the via
+                    # list so that it serves as the via list for all next-hops.
+                    openList += Node(dest, nodeVia + [dest], dist)
+
+        DestNode = namedtuple('DestNode', [ 'system', 'station', 'via', 'dist' ])
+
+        destStations = []
+        # always include the local stations, unless the user has indicated they are
+        # avoiding this system. E.g. if you're in Chango but you've specified you
+        # want to avoid Chango...
+        if not self.system in avoiding:
+            for station in self.stations:
+                if not station in avoiding:
+                    destStations += Node(self, station, [], 0.0)
+
+        avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
+        epsiol = sys.float_info.epsilon
+        for node in pathList.values():
+            if node.dist > epsilon:         # Values indistinguishable from zero are avoidances
+                for station in node.system.stations:
+                    destStations += Node(node.system, station, node.via, node.dist)
+
         return destStations
 
     def name(self):
@@ -169,32 +206,56 @@ class Station(object):
         return '%s %s' % (self.system.name(), self.station)
 
     def __repr__(self):
-        return '<Station: {}, {}, {}>' % (self.ID, self.system.name(), self.name())
+        return '<Station: {}, {}, {}>'.format(self.ID, self.system.name(), self.name())
 
 class Ship(namedtuple('Ship', [ 'name', 'capacity', 'maxJump', 'maxJumpFull', 'stations' ])):
     pass
 
 class TradeDB(object):
-    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
-    ships = [
-        Ship('Sidewinder',     4,  8.13,  7.25,     [ 'Aulin Enterprise', 'Beagle2' ]),
-        Ship('Eagle',          6,  6.59,  6.00,     [ 'Aulin Enterprise', 'Beagle2' ]),
-        Ship('Hauler',        16,  8.74,  6.10,     [ 'Aulin Enterprise', 'Beagle2' ]),
-        Ship('Viper',          8, 13.49,  9.16,     [ 'Aulin Enterprise', 'Beagle2', 'Chango Dock' ]),
-        Ship('Cobra',         36,  9.94,  7.30,     [ 'Aulin Enterprise', 'Chango Dock' ]),
-        Ship('Lakon Type 6', 100, 29.36, 15.64,     [ 'Aulin Enterprise', 'Chango Dock', 'Vonarburg Co-op' ]),
-        Ship('Lakon Type 9', 440, 18.22, 13.34,     [ 'Chango Dock' ]),
-        Ship('Anaconda',     228, 19.70, 17.60,     [ 'Louis De Lacaille Prospect' ]),
-    ]
+    """
+        Encapsulation for the database layer.
 
-    def __init__(self, path='.\\TradeDangerous.accdb', debug=0):
-        self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
+        Attributes:
+            debug       -   Debugging level for this instance
+            dbmodule    -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc)
+            path        -   The URI to the database
+            conn        -   The database connection
+    """
+    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+
+    def __init__(self, path='.\\TradeDangerous.sq3', debug=0):
         self.debug = debug
-        try:
-            self.conn = pypyodbc.connect(self.path)
-        except pypyodbc.Error as e:
-            print("Do you have the requisite Access driver installed? See http://www.microsoft.com/en-us/download/details.aspx?id=13255")
-            raise e
+        if re.search("\.(accdb|mdb)", path, flags=re.IGNORECASE):
+            try:
+                import pypyodbc
+                self.dbmodule = pypyodbc
+                self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
+                self.conn = self.dbmodule.connect(self.path)
+            except ImportError as e:
+                print("ERROR: Using a Microsoft Access database file for the backend (%s) requires the 'pypyodbc' module. Try 'pip pypyodbc'" % path)
+                raise e
+            except pypyodbc.Error as e:
+                print("ERROR: You're trying to use the Microsoft Access back end for TradeDB which requires that you have the 'Microsoft Access Database Engine 2010 Redistributable' installed (just having Access apparently isn't good enough, because ... Microsoft logic).\n"
+                        "Please install the driver from Microsoft's site: http://www.microsoft.com/en-us/download/details.aspx?id=13255")
+                raise e
+        elif re.search("\.sq3", path, flags=re.IGNORECASE):
+            # Ensure the file exists, otherwise sqlite will create a new database.
+            try:
+                with open(path): pass
+            except IOError as e:
+                print("%s: error: The database file, '%s', appears to be missing or inaccessible." % (__name__, path))
+                raise e
+            try:
+                import sqlite3
+                self.dbmodule = sqlite3
+                self.path = path
+                self.conn = self.dbmodule.connect(self.path)
+            except ImportError as e:
+                print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
+                raise e
+        else:
+            raise Exception("ERROR: '%s': Unrecognized database type (expecting .sq3 or if you're MSochistic, .accdb or .mdb)." % path)
+
         self.load()
 
     def load(self):
