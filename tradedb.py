@@ -14,6 +14,7 @@
 
 import re                   # Because irregular expressions are dull
 import pypyodbc             # Because its documentation was better
+import sys
 from queue import Queue     # Because we're British.
 from collections import namedtuple
 
@@ -21,7 +22,8 @@ from collections import namedtuple
 # Classes
 
 class AmbiguityError(Exception):
-    """ Raised when a search key could match multiple entities.
+    """
+        Raised when a search key could match multiple entities.
         Attributes:
             searchKey - the key given to the search routine,
             first     - the first potential match
@@ -32,9 +34,13 @@ class AmbiguityError(Exception):
     def __str__(self):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
+
 class Trade(object):
-    """ Describes what it would cost and how much you would gain
-        when selling an item between two specific stations. """
+    """
+        Describes what it would cost and how much you would gain
+        when selling an item between two specific stations.
+    """
+    # TODO: Replace with a class within Station that describes asking and paying.
     def __init__(self, item, itemID, costCr, gainCr):
         self.item = item
         self.itemID = itemID
@@ -49,8 +55,12 @@ class Trade(object):
 
 
 class System(object):
-    """ Describes a star system, which may contain one or more Station objects,
-        and lists which stars it has a direct connection to. """
+    """
+        Describes a star system, which may contain one or more Station objects,
+        and lists which stars it has a direct connection to.
+    """
+    # TODO: Build the links from an SQL query, it'll save a lot of
+    # expensive python dictionary lookups.
 
     def __init__(self, system):
         self.system = system
@@ -67,13 +77,18 @@ class System(object):
         if not station in self.stations:
             self.stations.append(station)
 
+    def name(self):
+        return self.system.upper()
+
     def str(self):
         return self.system
 
 
 class Station(object):
-    """ Describes a station within a given system along with what trade
-        opportunities it presents. """
+    """
+        Describes a station within a given system along with what trade
+        opportunities it presents.
+    """
 
     def __init__(self, ID, system, station):
         self.ID, self.system, self.station = ID, system, station
@@ -81,8 +96,15 @@ class Station(object):
         self.stations = []
         system.addStation(self)
 
+    def name(self):
+        return self.station
+
     def addTrade(self, dest, item, itemID, costCr, gainCr):
-        """ Add a Trade entry from this to a destination station. """
+        """
+            Add an entry reflecting that an item can be bought at this
+            station and sold for a gain at another.
+        """
+        # TODO: Something smarter.
         dstID = dest.ID
         if not dstID in self.trades:
             self.trades[dstID] = []
@@ -91,7 +113,10 @@ class Station(object):
         self.trades[dstID].append(trade)
 
     def organizeTrades(self):
-        """ Process the trades-to-destination lists: sort the list into by-gain order. """
+        """
+            Process the trades-to-destination lists: sort the list into by-gain order.
+        """
+        # TODO: Read them from the DB in this order.
         for tradeList in self.trades.values():
             # sort the list in descending gain order - so the mostprofitable item is listed first.
             tradeList.sort(key=lambda trade: trade.gainCr, reverse=True)
@@ -134,13 +159,14 @@ class Station(object):
                 closedList.append(destSys)
         return destStations
 
+    def name(self):
+        return self.station
 
     def str(self):
-        return '%s %s' % (self.system.str().upper(), self.station)
-
+        return '%s %s' % (self.system.name(), self.station)
 
     def __repr__(self):
-        return '%s %s' % (self.system.str().upper(), self.station)
+        return '<Station: {}, {}, {}>' % (self.ID, self.system.name(), self.name())
 
 class Ship(namedtuple('Ship', [ 'name', 'capacity', 'maxJump', 'maxJumpFull', 'stations' ])):
     pass
@@ -253,7 +279,7 @@ class TradeDB(object):
         if isinstance(name, Station):
             return name.system
 
-        system = self.list_search("System", name, self.systems.keys())
+        system = TradeDB.list_search("System", name, self.systems.keys())
         return self.systems[system]
 
     def getStation(self, name):
@@ -268,12 +294,12 @@ class TradeDB(object):
 
         stationID, station, systemID, system = None, None, None, None
         try:
-            systemID = self.list_search("System", name, self.systems.keys())
+            systemID = TradeDB.list_search("System", name, self.systems.keys())
             system = self.systems[systemID]
         except LookupError:
             pass
         try:
-            stationName = self.list_search("Station", name, self.stationIDs.keys())
+            stationName = TradeDB.list_search("Station", name, self.stationIDs.keys())
             stationID = self.stationIDs[stationName]
             station = self.stations[stationID]
         except LookupError:
@@ -300,7 +326,7 @@ class TradeDB(object):
 
     def getShip(self, name):
         """ Look up a ship by name """
-        return self.list_search("Ship", name, self.ships, key=lambda item: item.name)
+        return TradeDB.list_search("Ship", name, self.ships, key=lambda item: item.name)
 
     def getTrade(self, src, dst, item):
         """ Returns a Trade object describing purchase of item from src for sale at dst. """
@@ -321,20 +347,23 @@ class TradeDB(object):
         for row in self.query(sql):
             yield row
 
-    def list_search(self, listType, lookup, values, key=lambda item: item):
-        """ Seaches [values] for 'lookup' for least-ambiguous matches,
+    @staticmethod
+    def list_search(listType, lookup, values, key=lambda item: item):
+        """
+            Searches [values] for 'lookup' for least-ambiguous matches,
             return the matching value as stored in [values].
             If [values] contains "bread", "water", "biscuits and "It",
             searching "ea" will return "bread", "WaT" will return "water"
             and "i" will return "biscuits". Searching for "a" will raise
             a ValueError because "a" matches "bread" and "water", but
             searching for "it" will return "It" because it provides an
-            exact match of a key. """
+            exact match of a key.
+        """
 
+        needle = TradeDB.normalized_str(lookup)
         match = None
-        needle = self.normalized_str(lookup)
         for val in values:
-            normVal = self.normalized_str(key(val))
+            normVal = TradeDB.normalized_str(key(val))
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
@@ -346,8 +375,11 @@ class TradeDB(object):
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
 
-    def normalized_str(self, str):
-        """ Returns a case folded, sanitized version of 'str' suitable for
+    @staticmethod
+    def normalized_str(str):
+        """
+            Returns a case folded, sanitized version of 'str' suitable for
             performing simple and partial matches against. Removes whitespace,
-            hyphens, underscores, periods and apostrophes. """
-        return self.normalizeRe.sub('', str).casefold()
+            hyphens, underscores, periods and apostrophes.
+        """
+        return TradeDB.normalizeRe.sub('', str).casefold()
