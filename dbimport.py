@@ -22,6 +22,10 @@ systems = {}
 stations, stationByOldID = {}, {}
 categories, categoryByOldID = {}, {}
 items, itemByOldID = {}, {}
+# We also track the maximum distance any ship can jump,
+# then we use this value to constrain links between stations.
+maxJumpDistanceLy = 0.0
+
 
 class check_item(object):
     """
@@ -101,32 +105,26 @@ def main():
             stationByOldID[oldStationID] = newStationID
 
     with check_item("Populate `Ship` table"):
+        global maxJumpDistanceLy
         # I'm not entirely sure whether I really want this data in the database,
         # it seems perfectly fine to maintain it as a python script.
         stmt = """
                 INSERT INTO Ship
-                    (
-                      name
-                    , capacity, mass, drive_rating
-                    , max_ly_empty, max_ly_full
-                    , max_speed, boost_speed 
-                    )
+                    ( name, capacity, mass, drive_rating, max_ly_empty, max_ly_full, max_speed, boost_speed  )
                 VALUES
-                    (
-                      ?
-                    , ?, ?, ?
-                    , ?, ?
-                    , ?, ?
-                    )
+                    ( ?, ?, ?, ?, ?, ?, ?, ? )
                 """
         rows = []
         for ship in dataseed.ships.ships:
+            assert ship.maxJump > 0 and ship.maxJumpFull > 0
+            assert ship.maxJumpFull <= ship.maxJump
             rows += [ [
                     ship.name
                     , ship.capacity, ship.mass, ship.driveRating
                     , ship.maxJump, ship.maxJumpFull
                     , ship.maxSpeed, ship.boostSpeed
                     ] ]
+            maxJumpDistanceLy = max(maxJumpDistanceLy, ship.maxJump, ship.maxJumpFull)
         outCur.executemany(stmt, rows)
 
     with check_item("Populate `ShipVendor` table"):
