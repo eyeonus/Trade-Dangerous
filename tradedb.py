@@ -83,6 +83,9 @@ class System(object):
     def str(self):
         return self.system
 
+    def __repr__(self):
+        return "<System: {}, {}, {}, {}, {}>".format(self.ID, self.system, self.posX, self.posY, self.posZ)
+
 
 class Station(object):
     """
