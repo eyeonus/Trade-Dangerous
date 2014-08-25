@@ -144,6 +144,16 @@ def main():
                         ] ]
         outCur.executemany(stmt, rows)
 
+    with check_item("Populate `Upgrade` table") as check:
+        # TODO: Populate Upgrade
+        check.noop = True
+
+    with check_item("Populate `UpgradeVendor' table") as check:
+        # TODO: UpgradeVendor
+        check.noop = True
+
+    #
+
     outConn.commit()
 
 
