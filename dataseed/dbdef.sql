@@ -136,8 +136,10 @@ CREATE TABLE
    item_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
    ui_order INTEGER NOT NULL DEFAULT 0,
-   from_stn_cr INTEGER NOT NULL,
-   to_stn_cr INTEGER NOT NULL DEFAULT 0,
+   -- how many credits will the station pay for this item?
+   sell_to INTEGER NOT NULL,
+   -- how many credits must you pay to buy at this station?
+   buy_from INTEGER NOT NULL DEFAULT 0,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    PRIMARY KEY (item_id, station_id),
