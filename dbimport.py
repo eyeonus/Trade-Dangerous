@@ -55,7 +55,7 @@ class check_item(object):
 
 def debug_log(level, message):
     if debug >= level:
-        print(" [ {:^59} ]".format(message))
+        print("  | {:^54} |".format(message))
 
 ######################################################################
 # Main
