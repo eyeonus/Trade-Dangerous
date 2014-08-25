@@ -93,7 +93,8 @@ def main():
         stmt = "INSERT INTO Station (name, system_id, ls_from_star) VALUES (?, ?, 0)"
         for (ID, stationName, systemName) in inCur:
             if fakeNameRe.search(stationName):
-                pass
+                continue
+
             system = systems[TradeDB.normalized_str(systemName)]
 
             outCur.execute(stmt, [ stationName, system.ID ])
