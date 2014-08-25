@@ -19,8 +19,9 @@ inDB	= "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=.\\TradeDangerous.
 outDB	= "tradedb.sq3"
 
 systems = {}
-stations, stationByOldID, stationByNewID = {}, {}, {}
-categories, categoryByOldID, categoryByNewID = {}, {}, {}
+stations, stationByOldID = {}, {}
+categories, categoryByOldID = {}, {}
+items, itemByOldID = {}, {}
 
 class check_item(object):
     """
@@ -98,7 +99,6 @@ def main():
             station = Station(newStationID, system, stationName)
             stations[stationName] = station
             stationByOldID[oldStationID] = station
-            stationByNewID[newStationID] = station
 
     with check_item("Populate `Ship` table"):
         # I'm not entirely sure whether I really want this data in the database,
@@ -164,7 +164,18 @@ def main():
             rows += [ [ categoryID, categoryName ] ]
             categories[TradeDB.normalized_str(categoryName)] = categoryID
             categoryByOldID[ID] = categoryID
-            categoryByNewID[categoryID] = ID
+        outCur.executemany(stmt, rows)
+
+    with check_item("Populate `Item` table") as check:
+        inCur.execute("SELECT ID, category_id, item FROM Items")
+        stmt = "INSERT INTO Item (item_id, category_id, name) VALUES (?, ?, ?)"
+        rows = []
+        itemID = 0
+        for (ID, category_id, itemName) in inCur:
+            itemID += 1
+            rows += [ [ itemID, categoryByOldID[category_id], itemName ] ]
+            items[TradeDB.normalized_str(itemName)] = itemID
+            itemByOldID[ID] = itemID
         outCur.executemany(stmt, rows)
 
     outConn.commit()
