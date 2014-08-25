@@ -18,14 +18,18 @@ dbDef   = "dataseed/dbdef.sql"
 inDB	= "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=.\\TradeDangerous.accdb"
 outDB	= "tradedb.sq3"
 
-systems = {}
+systems, systemByID = {}, {}
 stations, stationByOldID = {}, {}
 categories, categoryByOldID = {}, {}
 items, itemByOldID = {}, {}
+debug = 1
+
 # We also track the maximum distance any ship can jump,
 # then we use this value to constrain links between stations.
 maxJumpDistanceLy = 0.0
 
+######################################################################
+# Helpers
 
 class check_item(object):
     """
@@ -48,6 +52,13 @@ class check_item(object):
             print()
         else:
             print('[+]') if not self.noop else print("\bNO-OP")
+
+def debug_log(level, message):
+    if debug >= level:
+        print(" [ {:^59} ]".format(message))
+
+######################################################################
+# Main
 
 def main():
     # Destroy the SQLite database if it already exists.
