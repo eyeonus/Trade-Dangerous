@@ -74,6 +74,8 @@ def main():
         import sqlite3
         outConn = sqlite3.connect(outDB)
         outCur  = outConn.cursor()
+        # Add a function for calculating distance between stars
+        outConn.create_function("calc_distance_sq", 6, TradeDB.getDistanceSq)
 
     with check_item("Apply DDL commands from '%s'" % dbDef):
         # Sure, I could have written: outCur.executescript(open(dbDef).read()).commit()
