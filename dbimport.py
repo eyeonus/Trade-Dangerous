@@ -89,6 +89,8 @@ def main():
             systemID = int(outCur.lastrowid)
             system = System(systemID, star.name, star.x, star.y, star.z)
             systems[TradeDB.normalized_str(star.name)] = system
+            systemByID[systemID] = system
+    debug_log(1, "{} star systems loaded".format(len(systems)))
 
     with check_item("Populate `Station` table"):
         # We're going to remap the station IDs to new IDs, and we're the accessdb
