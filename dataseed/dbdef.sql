@@ -5,9 +5,9 @@ PRAGMA foreign_keys = ON;
 
 -- Star systems
 CREATE TABLE
- Systems
+ System
  (
-   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   system_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
@@ -17,31 +17,31 @@ CREATE TABLE
    UNIQUE (name)
  )
 ;
-CREATE INDEX systems_position ON Systems (pos_x, pos_y, pos_z);
+CREATE INDEX systems_position ON System (pos_x, pos_y, pos_z);
 
 -- Stations within systems
 CREATE TABLE
- Stations
+ Station
  (
-   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   station_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    system_id INTEGER NOT NULL,
    ls_from_star DOUBLE NOT NULL,
 
    UNIQUE (name),
 
-   FOREIGN KEY (system_id) REFERENCES Systems(id)
+   FOREIGN KEY (system_id) REFERENCES System(system_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  )
 ;
-CREATE INDEX station_systems ON Stations (system_id);
+CREATE INDEX station_systems ON Station (system_id);
 
 -- Ships
 CREATE TABLE
- Ships
+ Ship
  (
-   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   ship_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    capacity INTEGER NOT NULL,
    mass INTEGER NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE
 
 -- Where ships can be bought
 CREATE TABLE
- ShipVendors
+ ShipVendor
  (
    ship_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
@@ -65,19 +65,19 @@ CREATE TABLE
 
    PRIMARY KEY (ship_id, station_id),
 
-   FOREIGN KEY (ship_id) REFERENCES Ships(id)
+   FOREIGN KEY (ship_id) REFERENCES Ship(ship_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Stations(id)
+   FOREIGN KEY (station_id) REFERENCES Station(station_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
 
 CREATE TABLE
- Upgrades
+ Upgrade
  (
-   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   upgrade_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    weight NUMBER NOT NULL,
 
@@ -86,7 +86,7 @@ CREATE TABLE
 ;
 
 CREATE TABLE
- UpgradeVendors
+ UpgradeVendor
  (
    upgrade_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
@@ -94,10 +94,10 @@ CREATE TABLE
 
    PRIMARY KEY (upgrade_id, station_id),
 
-   FOREIGN KEY (upgrade_id) REFERENCES Upgrades(id)
+   FOREIGN KEY (upgrade_id) REFERENCES Upgrade(upgrade_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Stations(id)
+   FOREIGN KEY (station_id) REFERENCES Station(station_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  ) WITHOUT ROWID
@@ -105,9 +105,9 @@ CREATE TABLE
 
 -- Trade items are divided up into categories
 CREATE TABLE
- ItemCategories
+ Category
  (
-   id INTEGER PRIMARY KEY AUTOINCREMENT,
+   category_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
 
    UNIQUE (name)
@@ -116,21 +116,21 @@ CREATE TABLE
 
 -- Tradeable items
 CREATE TABLE
- Items
+ Item
  (
    name VARCHAR(40) COLLATE nocase,
    category_id INTEGER NOT NULL,
 
    UNIQUE (category_id, name),
 
-   FOREIGN KEY (category_id) REFERENCES ItemCategories(id)
+   FOREIGN KEY (category_id) REFERENCES Category(category_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  )
 ;
 
 CREATE TABLE
- Prices
+ Price
  (
    item_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
@@ -141,10 +141,10 @@ CREATE TABLE
 
    PRIMARY KEY (item_id, station_id),
 
-   FOREIGN KEY (item_id) REFERENCES Items(id)
+   FOREIGN KEY (item_id) REFERENCES Item(item_id)
    	ON UPDATE CASCADE
       ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Stations(id)
+   FOREIGN KEY (station_id) REFERENCES Station(station_id)
    	ON UPDATE CASCADE
       ON DELETE CASCADE
  ) WITHOUT ROWID
