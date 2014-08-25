@@ -117,6 +117,7 @@ def main():
             station = Station(newStationID, system, stationName)
             stations[stationName] = station
             stationByOldID[oldStationID] = newStationID
+    debug_log(1, "{} stations loaded".format(len(stations)))
 
     with check_item("Populate `Ship` table"):
         global maxJumpDistanceLy
@@ -140,7 +141,10 @@ def main():
                     ] ]
             maxJumpDistanceLy = max(maxJumpDistanceLy, ship.maxJump, ship.maxJumpFull)
         outCur.executemany(stmt, rows)
+    debug_log(1, "{} ships loaded".format(len(dataseed.ships.ships)))
+    debug_log(1, "Maximum distance any ship jumps: {:.2f}ly".format(maxJumpDistanceLy))
 
+    shipLocations = 0
     with check_item("Populate `ShipVendor` table"):
         stmt = """
                 INSERT INTO ShipVendor
@@ -156,6 +160,8 @@ def main():
                         ship.name, station.ID, 0    # We don't have prices yet.
                         ] ]
         outCur.executemany(stmt, rows)
+        shipLocations = len(rows)
+    debug_log(1, "{} ship locations loaded".format(shipLocations))
 
     with check_item("Populate `Upgrade` table") as check:
         # TODO: Populate Upgrade
@@ -177,6 +183,7 @@ def main():
             categories[TradeDB.normalized_str(categoryName)] = categoryID
             categoryByOldID[ID] = categoryID
         outCur.executemany(stmt, rows)
+    debug_log(1, "{} item categories loaded".format(len(categories)))
 
     with check_item("Populate `Item` table") as check:
         inCur.execute("SELECT ID, category_id, item FROM Items")
@@ -189,6 +196,8 @@ def main():
             items[TradeDB.normalized_str(itemName)] = itemID
             itemByOldID[ID] = itemID
         outCur.executemany(stmt, rows)
+    debug_log(1, "{} items loaded".format(len(items)))
+
 
     outConn.commit()
 
