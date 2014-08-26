@@ -210,7 +210,7 @@ def parse_command_line():
         ship = tdb.getShip(args.ship)
         args.ship = ship
         if args.capacity is None: args.capacity = ship.capacity
-        if args.maxLyPer is None: args.maxLyPer = ship.maxJumpFull
+        if args.maxLyPer is None: args.maxLyPer = ship.maxLyFull
     if args.capacity is None:
         raise CommandLineError("Missing '--capacity' or '--ship' argument")
     if args.maxLyPer is None:

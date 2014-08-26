@@ -98,8 +98,7 @@ class Station(object):
 
     def __init__(self, ID, system, name, lsFromStar=0.0):
         self.ID, self.system, self.dbname, self.lsFromStar = ID, system, name, lsFromStar
-        self.trades = {}
-        self.stations = []
+        self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
         system.addStation(self)
 
     def name(self):
@@ -111,12 +110,10 @@ class Station(object):
             station and sold for a gain at another.
         """
         # TODO: Something smarter.
-        dstID = dest.ID
-        if not dstID in self.trades:
-            self.trades[dstID] = []
-            self.stations.append(dest)
+        if not dest in self.tradingWith:
+            self.tradingWith[dest] = []
         trade = Trade(item, itemID, costCr, gainCr)
-        self.trades[dstID].append(trade)
+        self.tradingWith[dest].append(trade)
 
     def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
         """
@@ -135,9 +132,9 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        Node = namedtuple('Node', [ 'system', 'via', 'dist' ])
+        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
 
-        openList = [ OpenNode(self.system, [], 0) ]
+        openList = [ Node(self.system, [], 0) ]
         pathList = { system.ID: Node(system, None, 0.0)
                         # include avoids so we only have
                         # to consult one place for exclusions
@@ -157,39 +154,37 @@ class Station(object):
             jumps += 1
 
             for node in ring:
-                (nodeSys, nodeVia, nodeDist) = (node.system, node.via, node.dist)
-                for (destSys, destDist) in sys.links.items():
-                    # Range check
-                    dist = nodeDist + destDist
-                    if dist > maxLyPer: continue
+                for (destSys, destDist) in node.system.links.items():
+                    if destDist > maxLyPer: continue
+                    dist = node.distLy + destDist
                     try:
                         prevNode = pathList[destSys.ID]
                         # If we already have a shorter path, do nothing
-                        if dist >= prevNode.dist: continue
+                        if dist >= prevNode.distLy: continue
                     except KeyError: pass
                     # Add to the path list
-                    pathList[destSys.ID] = Node(dest, nodeVia, dist)
+                    pathList[destSys.ID] = Node(destSys, node.via, dist)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += Node(dest, nodeVia + [dest], dist)
+                    openList += [ Node(destSys, node.via + [destSys], dist) ]
 
-        DestNode = namedtuple('DestNode', [ 'system', 'station', 'via', 'dist' ])
+        Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
 
         destStations = []
         # always include the local stations, unless the user has indicated they are
         # avoiding this system. E.g. if you're in Chango but you've specified you
         # want to avoid Chango...
         if not self.system in avoiding:
-            for station in self.stations:
-                if not station in avoiding:
-                    destStations += Node(self, station, [], 0.0)
+            for station in self.system.stations:
+                if station in self.tradingWith and not station in avoiding:
+                    destStations += [ Destination(self, station, [], 0.0) ]
 
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
-        epsiol = sys.float_info.epsilon
+        epsilon = sys.float_info.epsilon
         for node in pathList.values():
-            if node.dist > epsilon:         # Values indistinguishable from zero are avoidances
+            if node.distLy > epsilon:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
-                    destStations += Node(node.system, station, node.via, node.dist)
+                    destStations += [ Destination(node.system, station, [self] + node.via + [station], node.distLy) ]
 
         return destStations
 
@@ -202,8 +197,9 @@ class Station(object):
     def __repr__(self):
         return '<Station: {}, {}, {}, {}>'.format(self.ID, self.system.name(), self.dbname, self.lsFromStar)
 
-class Ship(namedtuple('Ship', [ 'ID', 'name', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
-    pass
+class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
+    def name(self):
+        return self.dbname
 
 class TradeDB(object):
     """
@@ -396,7 +392,7 @@ class TradeDB(object):
         # the maximum "link" between any two stars.
         longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
         self.maxSystemLinkLy = longestJumper.maxLyEmpty + 0.01
-        if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name, self.maxSystemLinkLy))
+        if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
 
         self.build_links(self.maxSystemLinkLy)
 
@@ -421,7 +417,9 @@ class TradeDB(object):
                     raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
     def getSystem(self, key):
-        """ Look up a System object by it's name. """
+        """
+            Look up a System object by it's name.
+        """
         if isinstance(key, System):
             return name
         if isinstance(key, Station):
@@ -430,7 +428,9 @@ class TradeDB(object):
         return TradeDB.list_search("System", name, self.systems.values(), key=lambda system: system.name)
 
     def getStation(self, name):
-        """ Look up a Station object by it's name or system. """
+        """
+            Look up a Station object by it's name or system.
+        """
         if isinstance(name, Station):
             return name
         if isinstance(name, System):
@@ -441,45 +441,43 @@ class TradeDB(object):
 
         stationID, station, systemID, system = None, None, None, None
         try:
-            system = TradeDB.list_search("System", name, self.systems.values(), key=lambda system: system.name)
+            system = TradeDB.list_search("System", name, self.systemByID.values(), key=lambda system: system.dbname)
         except LookupError:
             pass
         try:
-            stationName = TradeDB.list_search("Station", name, self.stationIDs.keys())
-            stationID = self.stationIDs[stationName]
-            station = self.stations[stationID]
+            station = TradeDB.list_search("Station", name, self.stationByID.values(), key=lambda station: station.dbname)
         except LookupError:
             pass
         # If neither matched, we have a lookup error.
-        if not (stationID or systemID):
+        if not (station or system):
             raise LookupError("'%s' did not match any station or system." % (name))
 
         # If we matched both a station and a system, make sure they resovle to the
         # the same station otherwise we have an ambiguity. Some stations have the
         # same name as their star system (Aulin/Aulin Enterprise)
-        if systemID and stationID and system != station.system:
-            raise AmbiguityError('Station', name, system.str(), station.str())
+        if system and station and system != station.system:
+            raise AmbiguityError('Station', name, system.name(), station.name())
 
-        if stationID:
-            return self.stations[stationID]
+        if station:
+            return station
 
         # If we only matched a system name, ensure that it's a single station system
         # otherwise they need to specify a station name.
-        system = self.systems[systemID]
         if len(system.stations) != 1:
             raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
         return system.stations[0]
 
     def getShip(self, name):
-        """ Look up a ship by name """
-        return TradeDB.list_search("Ship", name, self.ships, key=lambda item: item.name)
+        """
+            Look up a ship by name
+        """
+        return TradeDB.list_search("Ship", name, self.shipByID.values(), key=lambda ship: ship.dbname)
 
     def getTrade(self, src, dst, item):
         """ Returns a Trade object describing purchase of item from src for sale at dst. """
         srcStn = self.getStation(src)
         dstStn = self.getStation(dst)
-        trades = srcStn.trades[dstStn.ID]
-        return trades[item]
+        return srcStn.tradingWith[dstStn]
 
     @staticmethod
     def getDistanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
