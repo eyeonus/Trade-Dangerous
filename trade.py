@@ -36,7 +36,7 @@ mfd = None
 from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
-tdb = TradeDB('.\\TradeDangerous.accdb')
+tdb = TradeDB('.\\TradeDangerous.sq3', debug=3)
 
 ######################################################################
 # Classes
