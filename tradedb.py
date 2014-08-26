@@ -184,7 +184,7 @@ class Station(object):
         for node in pathList.values():
             if node.distLy > epsilon:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
-                    destStations += [ Destination(node.system, station, [self] + node.via + [station], node.distLy) ]
+                    destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
 
         return destStations
 

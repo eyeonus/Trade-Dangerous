@@ -36,7 +36,7 @@ mfd = None
 from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
-tdb = TradeDB('.\\TradeDangerous.sq3', debug=3)
+tdb = TradeDB('.\\TradeDangerous.sq3', debug=0)
 
 ######################################################################
 # Classes
@@ -290,7 +290,7 @@ def doChecklist(route, credits):
         if args.detail:
             note("HOP %d of %d" % (hopNo, lastHopIdx))
 
-        note("Buy at %s" % cur)
+        note("Buy at %s" % cur.str())
         for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
             itemDesc = "%s @ %dcr" % (item.item, item.costCr)
             stepNo = doStep(stepNo, 'Buy %d x' % qty, itemDesc)
@@ -304,10 +304,10 @@ def doChecklist(route, credits):
             for jump in jumps[idx][1:]:
                 stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
         if args.detail:
-            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt)
+            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt.name())
         print()
 
-        note("Sell at %s" % nxt)
+        note("Sell at %s" % nxt.str())
         for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
             itemDesc = "%s @ %dcr" % (item.item, item.costCr + item.gainCr)
             stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), itemDesc)
