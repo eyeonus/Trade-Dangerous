@@ -21,6 +21,7 @@ locale.setlocale(locale.LC_ALL, '')
 # super-whizzy fast and implemented in C. But in Python 3 it's just
 # a dict. What a dict move.
 
+from tradedb import System, Station
 from collections import namedtuple
 TradeLoad = namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])
 emptyLoad = TradeLoad([], 0, 0, 0)
@@ -307,10 +308,10 @@ class TradeCalc(object):
                     if self.debug > 2: print("#%s is not in my station list" % dest.station.name())
                     continue
                 if restrictTo:
-                    if (isinstance(restrictTo, system) and dest.system != restrictTo) \
-                            or (isinstance(restrictTo, station) and dest.station != restrictTo):
+                    if (isinstance(restrictTo, System) and dest.system != restrictTo) \
+                            or (isinstance(restrictTo, Station) and dest.station != restrictTo):
                         if self.debug > 2: print("#%s doesn't match restrict %s" % (dest.station.name(), restrictTo))
-                    continue
+                        continue
                 if unique and dest.station in route.route:
                     if self.debug > 2: print("#%s is already in the list, not unique" % dest.station.name())
                     continue
