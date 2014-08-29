@@ -152,14 +152,3 @@ CREATE TABLE
       ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
-
-CREATE VIEW
-  vLink
-AS
-   SELECT   lhs.system_id AS from_system_id
-            , rhs.system_id AS to_system_id
-            , calc_distance_sq( lhs.pos_x, lhs.pos_y, lhs.pos_z
-                              , rhs.pos_x, rhs.pos_y, rhs.pos_z)
-               AS distance_sq
-     FROM   System AS lhs, System AS rhs
-;
