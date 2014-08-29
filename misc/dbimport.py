@@ -16,7 +16,7 @@ from tradedb import *
 # Filenames/URIs
 dbDef   = "dataseed/dbdef.sql"
 inDB	= "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=.\\TradeDangerous.accdb"
-outDB	= "TradeDangerous.sq3"
+outDB	= "data\\TradeDangerous.sq3"
 
 systems, systemByID = {}, {}
 stations, stationByOldID = {}, {}

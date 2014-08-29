@@ -213,7 +213,7 @@ class TradeDB(object):
     """
     normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
 
-    def __init__(self, path='.\\TradeDangerous.sq3', debug=0):
+    def __init__(self, path='.\\data\\TradeDangerous.sq3', debug=0):
         self.debug = debug
         if re.search("\.(accdb|mdb)", path, flags=re.IGNORECASE):
             try:
