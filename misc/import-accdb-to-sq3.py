@@ -1,6 +1,17 @@
 #! /usr/bin/env python
+######################################################################
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#  You are free to use, redistribute, or even print and eat a copy of
+#  this software so long as you include this copyright notice.
+#  I guarantee there is at least one bug neither of us knew about.
+######################################################################
+# CAUTION: NOT INTENDED FOR GENERAL END-USER OPERATION.
+# If you don't know what this script is for, you can safely ignore it.
+######################################################################
+# TradeDangerous :: Misc :: Legacy data import.
 #
-# Bootstrap a new .SQ3 database from dataseeds and an existing ACCDB database.
+# Bootstrap a new SQLite3 database from python files and an existing
+# Microsoft Access .ACCDB database.
 #
 # Note: This is NOT intended to be user friendly. If you don't know what this
 # script is for, then you can safely ignore it.
@@ -16,7 +27,7 @@ from tradedb import *
 # Filenames/URIs
 dbDef   = "dataseed/dbdef.sql"
 inDB	= "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=.\\TradeDangerous.accdb"
-outDB	= "data\\TradeDangerous.sq3"
+outDB	= TradeDB.defaultDB
 
 systems, systemByID = {}, {}
 stations, stationByOldID = {}, {}
@@ -75,7 +86,7 @@ def main():
         outConn = sqlite3.connect(outDB)
         outCur  = outConn.cursor()
         # Add a function for calculating distance between stars
-        outConn.create_function("calc_distance_sq", 6, TradeDB.getDistanceSq)
+        outConn.create_function("calc_distance_sq", 6, TradeDB.distanceSq)
 
     with check_item("Apply DDL commands from '%s'" % dbDef):
         # Sure, I could have written: outCur.executescript(open(dbDef).read()).commit()
@@ -86,11 +97,11 @@ def main():
     with check_item("Populate `System` table"):
         # Star data is stored in 'stars.py'
         stmt = "INSERT INTO System (name, pos_x, pos_y, pos_z) VALUES (?, ?, ?, ?)"
-        for star in dataseed.stars.stars:
+        for star in data.stars.stars:
             outCur.execute(stmt, [ star.name, star.x, star.y, star.z ])
             systemID = int(outCur.lastrowid)
             system = System(systemID, star.name, star.x, star.y, star.z)
-            systems[TradeDB.normalized_str(star.name)] = system
+            systems[TradeDB.normalizedStr(star.name)] = system
             systemByID[systemID] = system
     debug_log(1, "{} star systems loaded".format(len(systems)))
 
@@ -110,7 +121,7 @@ def main():
             if fakeNameRe.search(stationName):
                 continue
 
-            system = systems[TradeDB.normalized_str(systemName)]
+            system = systems[TradeDB.normalizedStr(systemName)]
 
             outCur.execute(stmt, [ stationName, system.ID ])
             newStationID = int(outCur.lastrowid)
@@ -132,7 +143,7 @@ def main():
                     ( ?, ?, ?, ?, ?, ?, ?, ? )
                 """
         rows = []
-        for ship in dataseed.ships.ships:
+        for ship in data.ships.ships:
             assert ship.maxJump > 0 and ship.maxJumpFull > 0
             assert ship.maxJumpFull <= ship.maxJump
             rows += [ [
@@ -143,7 +154,7 @@ def main():
                     ] ]
             maxJumpDistanceLy = max(maxJumpDistanceLy, ship.maxJump, ship.maxJumpFull)
         outCur.executemany(stmt, rows)
-    debug_log(1, "{} ships loaded".format(len(dataseed.ships.ships)))
+    debug_log(1, "{} ships loaded".format(len(data.ships.ships)))
     debug_log(1, "Maximum distance any ship jumps: {:.2f}ly".format(maxJumpDistanceLy))
 
     shipLocations = 0
@@ -155,9 +166,9 @@ def main():
                     ( (SELECT ship_id FROM Ship WHERE Ship.name = ?), ?, ? )
                 """
         rows = []
-        for ship in dataseed.ships.ships:
+        for ship in data.ships.ships:
             for stationName in ship.stations:
-                station = stations[TradeDB.list_search("Station", stationName, stations)]
+                station = stations[TradeDB.listSearch("Station", stationName, stations)]
                 rows += [ [
                         ship.name, station.ID, 0    # We don't have prices yet.
                         ] ]
@@ -182,7 +193,7 @@ def main():
         for (ID, categoryName) in inCur:
             categoryID += 1
             rows += [ [ categoryID, categoryName ] ]
-            categories[TradeDB.normalized_str(categoryName)] = categoryID
+            categories[TradeDB.normalizedStr(categoryName)] = categoryID
             categoryByOldID[ID] = categoryID
         outCur.executemany(stmt, rows)
     debug_log(1, "{} item categories loaded".format(len(categories)))
@@ -195,7 +206,7 @@ def main():
         for (ID, category_id, itemName) in inCur:
             itemID += 1
             rows += [ [ itemID, categoryByOldID[category_id], itemName ] ]
-            items[TradeDB.normalized_str(itemName)] = itemID
+            items[TradeDB.normalizedStr(itemName)] = itemID
             itemByOldID[ID] = itemID
         outCur.executemany(stmt, rows)
     debug_log(1, "{} items loaded".format(len(items)))

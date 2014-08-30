@@ -1,13 +1,14 @@
 #!/usr/bin/env python
+#---------------------------------------------------------------------
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#  You are free to use, redistribute, or even print and eat a copy of
+#  this software so long as you include this copyright notice.
+#  I guarantee there is at least one bug neither of us knew about.
+#---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Database Module
-# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-#   You are free to use, redistribute, or even print and eat a copy of this
-#   software so long as you include this copyright notice. I guarantee that
-#   there is at least one bug neither of us knew about.
 #
-# Provides classes that load and describe the TradeDangerous data set.
-# Currently depends on pypyodbc and Microsoft Access 2010+ drivers,
-# but I'll switch to a more portable format soon.
+#  Containers for describing the current TradeDangerous database
+#  and loading it from the SQLite database cache.
 
 ######################################################################
 # Imports
@@ -19,6 +20,7 @@ from queue import Queue     # Because we're British.
 from collections import namedtuple
 import itertools
 import math
+from pathlib import Path
 
 ######################################################################
 # Classes
@@ -33,6 +35,8 @@ class AmbiguityError(Exception):
     """
     def __init__(self, lookupType, searchKey, first, second):
         self.lookupType, self.searchKey, self.first, self.second = lookupType, searchKey, first, second
+
+
     def __str__(self):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
@@ -49,8 +53,10 @@ class Trade(object):
         self.costCr = costCr
         self.gainCr = gainCr
 
+
     def describe(self):
         print(self.item, self.itemID, self.costCr, self.gainCr)
+
 
     def __repr__(self):
         return "%s (%dcr)" % (self.item, self.costCr)
@@ -69,22 +75,28 @@ class System(object):
         self.links = {}
         self.stations = []
 
+
     @staticmethod
     def linkSystems(lhs, rhs, distSq):
         lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
 
+
     def links(self):
         return list(self.links.keys())
+
 
     def addStation(self, station):
         if not station in self.stations:
             self.stations.append(station)
 
+
     def name(self):
         return self.dbname.upper()
 
+
     def str(self):
         return self.dbname
+
 
     def __repr__(self):
         return "<System: {}, {}, {}, {}, {}>".format(self.ID, self.dbname, self.posX, self.posY, self.posZ)
@@ -101,8 +113,10 @@ class Station(object):
         self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
         system.addStation(self)
 
+
     def name(self):
         return self.dbname
+
 
     def addTrade(self, dest, item, itemID, costCr, gainCr):
         """
@@ -114,6 +128,7 @@ class Station(object):
             self.tradingWith[dest] = []
         trade = Trade(item, itemID, costCr, gainCr)
         self.tradingWith[dest].append(trade)
+
 
     def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
         """
@@ -188,67 +203,149 @@ class Station(object):
 
         return destStations
 
+
     def name(self):
         return self.dbname
+
 
     def str(self):
         return '%s %s' % (self.system.name(), self.dbname)
 
+
     def __repr__(self):
         return '<Station: {}, {}, {}, {}>'.format(self.ID, self.system.name(), self.dbname, self.lsFromStar)
+
 
 class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
     def name(self):
         return self.dbname
+
 
 class TradeDB(object):
     """
         Encapsulation for the database layer.
 
         Attributes:
-            debug       -   Debugging level for this instance
-            dbmodule    -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc)
-            path        -   The URI to the database
-            conn        -   The database connection
-    """
-    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+            debug               -   Debugging level for this instance.
+            dbmodule            -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc).
+            path                -   The URI to the database.
+            conn                -   The database connection.
 
-    def __init__(self, path='.\\data\\TradeDangerous.sq3', debug=0):
+        Methods:
+            load                -   Reloads entire database. CAUTION: Destructive - Orphans existing records you reference.
+            loadTrades          -   Reloads just the price data. CAUTION: Destructive - Orphans existing records.
+            lookupSystem        -   Return a system matching "name" with ambiguity detection.
+            lookupStation       -   Return a station matching "name" with ambiguity detection.
+            lookupShip          -   Return a ship matching "name" with ambiguity detection.
+            getTrade            -   Look for a Trade object where item is sold from one stationi and bought at another.
+
+            query               -   Executes the specified SQL on the db and returns a cursor.
+            fetch_all           -   Generator that yields all the rows retrieved by an sql cursor.
+            
+        Static methods:
+            distanceSq          -   Returns the square of the distance between two points.
+            listSearch          -   Performs a partial-match search of a list for a value.
+            normalizedStr       -   Normalizes a search index string.
+    """
+
+    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+    # The DB cache
+    defaultDB = './data/TradeDangerous.db'
+    # File containing SQL to build the DB cache from
+    defaultSQL = './data/TradeDangerous.sql'
+    # File containing text description of prices
+    defaultPrices = './data/TradeDangerous.prices'
+
+
+    def __init__(self, path=None, sqlFilename=None, pricesFilename=None, debug=0):
+        self.dbPath = Path(path or TradeDB.defaultDB)
+        self.dbURI = str(self.dbPath)
+        self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
         self.debug = debug
-        if re.search("\.(accdb|mdb)", path, flags=re.IGNORECASE):
-            try:
-                import pypyodbc
-                self.dbmodule = pypyodbc
-                self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
-                self.conn = self.dbmodule.connect(self.path)
-            except ImportError as e:
-                print("ERROR: Using a Microsoft Access database file for the backend (%s) requires the 'pypyodbc' module. Try 'pip pypyodbc'" % path)
-                raise e
-            except pypyodbc.Error as e:
-                print("ERROR: You're trying to use the Microsoft Access back end for TradeDB which requires that you have the 'Microsoft Access Database Engine 2010 Redistributable' installed (just having Access apparently isn't good enough, because ... Microsoft logic).\n"
-                        "Please install the driver from Microsoft's site: http://www.microsoft.com/en-us/download/details.aspx?id=13255")
-                raise e
-        elif re.search("\.sq3", path, flags=re.IGNORECASE):
-            # Ensure the file exists, otherwise sqlite will create a new database.
-            try:
-                with open(path): pass
-            except IOError as e:
-                print("%s: error: The database file, '%s', appears to be missing or inaccessible." % (__name__, path))
-                raise e
-            try:
-                import sqlite3
-                self.dbmodule = sqlite3
-                self.path = path
-                self.conn = self.dbmodule.connect(self.path)
-            except ImportError as e:
-                print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
-                raise e
-        else:
-            raise Exception("ERROR: '%s': Unrecognized database type (expecting .sq3 or if you're MSochistic, .accdb or .mdb)." % path)
+        self.conn, self.dbmodule = None, None
+
+        # Ensure the file exists, otherwise sqlite will create a new database.
+        self._connectToDB()
 
         self.load()
 
-    def _load_systems(self):
+
+    ####
+    # Access to the underlying database.
+
+    def _connectToDB(self):
+        self.reloadCache()
+
+        # Make sure we don't hold on to an existing connection.
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
+        try:
+            import sqlite3
+            self.dbmodule = sqlite3
+            self.conn = self.dbmodule.connect(self.dbURI)
+        except ImportError as e:
+            print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
+            raise e
+
+
+    def query(self, *args):
+        """ Perform an SQL query on the DB and return the cursor. """
+        if not self.conn: self._connectToDB()
+        cur = self.conn.cursor()
+        cur.execute(*args)
+        return cur
+
+
+    # following the convention of how fetch_all is written in python modules.
+    def fetch_all(self, *args):
+        """ Perform an SQL query on the DB and iterate across the rows. """
+        for row in self.query(*args):
+            yield row
+
+
+    def reloadCache(self):
+        """
+            Checks if the .sql or .prices file is newer than the cache.
+        """
+
+        if self.dbPath.exists():
+            # We're looking to see if the .sql file or .prices file
+            # was modified or created more recently than the last time
+            # we *created* the db file.
+            dbFileCreatedTimestamp = self.dbPath.stat().st_ctime
+
+            sqlStat, pricesStat = self.sqlPath.stat(), self.pricesPath.stat()
+            sqlFileTimestamp = max(sqlStat.st_mtime, sqlStat.st_ctime)
+            pricesFileTimestamp = max(pricesStat.st_mtime, pricesStat.st_ctime)
+
+            if dbFileCreatedTimestamp > max(sqlFileTimestamp, pricesFileTimestamp):
+                # db is newer.
+                if self.debug > 1:
+                    print("reloadCache: db file is newer. db:{} > max(sql:{}, prices:{}".format(dbFileCreatedTimestamp, sqlFileTimestamp, pricesFileTimestamp))
+                return
+
+            if self.debug:
+                print("* Rebuilding DB Cache")
+        else:
+            if self.debug:
+                print("* Building DB cache")
+
+        import buildcache
+        buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath)
+
+
+    ####
+    # Star system data.
+
+    def systems(self):
+        """ Iterate through the list of systems. """
+        yield from self.systemByID.values()
+
+
+    def _loadSystems(self):
         """
             Initial load the (raw) list of systems.
             If you have previously loaded Systems, this will orphan the old System objects.
@@ -265,57 +362,8 @@ class TradeDB(object):
         self.systemByID, self.systemByName = systemByID, systemByName
         if self.debug > 1: print("# Loaded %d Systems" % len(systemByID))
 
-    def _load_stations(self):
-        """
-            Populate the Station list.
-            Station constructor automatically adds itself to the System object.
-            If you have previously loaded Stations, this will orphan the old objects.
-        """
-        stmt = """
-                SELECT station_id, system_id, name, ls_from_star
-                  FROM Station
-            """
-        self.cur.execute(stmt)
-        stationByID, stationByName = {}, {}
-        systemByID = self.systemByID
-        for (ID, systemID, name, lsFromStar) in self.cur:
-            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar)
 
-        self.stationByID, self.stationByName = stationByID, stationByName
-        if self.debug > 1: print("# Loaded %d Stations" % len(stationByID))
-
-    def _load_ships(self):
-        """
-            Populate the Ship list.
-            If you have previously loaded Ships, this will orphan the old objects.
-        """
-        stmt = """
-                SELECT ship_id, name, capacity, mass, drive_rating, max_ly_empty, max_ly_full, max_speed, boost_speed
-                  FROM Ship
-            """
-        self.cur.execute(stmt)
-        self.shipByID = { row[0]: Ship(*row, stations=[]) for row in self.cur }
-
-        if self.debug > 1: print("# Loaded %d Ships" % len(self.shipByID))
-
-    def _load_items(self):
-        """
-            Populate the Item list.
-            If you have previously loaded Items, this will orphan the old objects.
-        """
-        stmt = """
-                SELECT item_id, name
-                  FROM Item
-            """
-        self.cur.execute(stmt)
-        itemByID, itemByName = {}, {}
-        for (ID, name) in self.cur:
-            itemByID[ID], itemByName[name] = name, ID
-
-        self.itemByID, self.itemByName = itemByID, itemByName
-        if self.debug > 1: print("# Loaded %d Items" % len(itemByID))
-
-    def build_links(self, longestJumpLy):
+    def buildLinks(self, longestJumpLy):
         """
             Populate the list of reachable systems for every star system.
 
@@ -339,84 +387,8 @@ class TradeDB(object):
 
         if self.debug > 2: print("# Number of links between systems: %d" % numLinks)
 
-    def load_trades(self):
-        """
-            Load the prices records which indicate that one item sells an item that
-            another station buys for more, indicating a profitable trade.
-            Ignore items that have a ui_order of 0 (my way of indicating the item is
-            either unavailable or black market).
-            NOTE: Trades MUST be loaded such that they are populated into the
-            lists in descending order of profit (highest profit first)
-        """
-        stmt = """
-                SELECT src.station_id, dst.station_id
-                     , src.item_id
-                     , src.buy_from
-                     , dst.sell_to - src.buy_from AS profit
-                  FROM Price AS src INNER JOIN Price as dst
-                        ON src.item_id = dst.item_id
-                 WHERE src.buy_from > 0
-                        AND profit > 0
-                        AND src.ui_order > 0
-                        AND dst.ui_order > 0
-                 ORDER BY profit DESC
-                """
-        self.cur.execute(stmt)
-        stations, items = self.stationByID, self.itemByID
-        for (srcStnID, dstStnID, itemID, srcCostCr, profitCr) in self.cur:
-            srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
-            srcStn.addTrade(dstStn, item, itemID, srcCostCr, profitCr)
 
-    def load(self):
-        """
-            Populate/re-populate this instance of TradeDB with data.
-            WARNING: This will orphan existing records you have
-            taken references to:
-                tdb.load()
-                x = tdb.getStation("Aulin")
-                tdb.load() # x now points to an orphan Aulin
-        """
-
-        self.cur = self.conn.cursor()
-
-        # Load raw tables. Stations will be linked to systems, but nothing else.
-        # TODO: Make station -> system link a post-load action.
-        self._load_systems()
-        self._load_stations()
-        self._load_ships()
-        self._load_items()
-
-        systems, stations, ships, items = self.systemByID, self.stationByID, self.shipByID, self.itemByID
-
-        # Calculate the maximum distance anyone can jump so we can constrain
-        # the maximum "link" between any two stars.
-        longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
-        self.maxSystemLinkLy = longestJumper.maxLyEmpty + 0.01
-        if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
-
-        self.build_links(self.maxSystemLinkLy)
-
-        self.load_trades()
-
-        # In debug mode, check that everything looks sane.
-        if self.debug:
-            self._validate()
-
-    def _validate(self):
-        # Check that things correctly reference themselves.
-        # Check that system links are bi-directional
-        for (name, sys) in self.systemByName.items():
-            if not sys.links:
-                raise ValueError("System %s has no links" % name)
-            if sys in sys.links:
-                raise ValueError("System %s has a link to itself!" % name)
-            if name in sys.links:
-                raise ValueError("System %s's name occurs in sys.links" % name)
-            for link in sys.links:
-                if not sys in link.links:
-                    raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
-
-    def getSystem(self, key):
+    def lookupSystem(self, key):
         """
             Look up a System object by it's name.
         """
@@ -425,9 +397,38 @@ class TradeDB(object):
         if isinstance(key, Station):
             return name.system
 
-        return TradeDB.list_search("System", name, self.systems.values(), key=lambda system: system.name)
+        return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
-    def getStation(self, name):
+
+    ####
+    # Station data.
+
+    def stations(self):
+        """ Iterate through the list of stations. """
+        yield from self.stationByID.values()
+
+
+    def _loadStations(self):
+        """
+            Populate the Station list.
+            Station constructor automatically adds itself to the System object.
+            If you have previously loaded Stations, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT station_id, system_id, name, ls_from_star
+                  FROM Station
+            """
+        self.cur.execute(stmt)
+        stationByID, stationByName = {}, {}
+        systemByID = self.systemByID
+        for (ID, systemID, name, lsFromStar) in self.cur:
+            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar)
+
+        self.stationByID, self.stationByName = stationByID, stationByName
+        if self.debug > 1: print("# Loaded %d Stations" % len(stationByID))
+
+
+    def lookupStation(self, name):
         """
             Look up a Station object by it's name or system.
         """
@@ -441,11 +442,11 @@ class TradeDB(object):
 
         stationID, station, systemID, system = None, None, None, None
         try:
-            system = TradeDB.list_search("System", name, self.systemByID.values(), key=lambda system: system.dbname)
+            system = TradeDB.listSearch("System", name, self.systemByID.values(), key=lambda system: system.dbname)
         except LookupError:
             pass
         try:
-            station = TradeDB.list_search("Station", name, self.stationByID.values(), key=lambda station: station.dbname)
+            station = TradeDB.listSearch("Station", name, self.stationByID.values(), key=lambda station: station.dbname)
         except LookupError:
             pass
         # If neither matched, we have a lookup error.
@@ -467,20 +468,170 @@ class TradeDB(object):
             raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
         return system.stations[0]
 
-    def getShip(self, name):
+
+    ####
+    # Ship data.
+
+    def ships(self):
+        """ Iterate through the list of ships. """
+        yield from self.shipByID.values()
+
+
+    def _loadShips(self):
+        """
+            Populate the Ship list.
+            If you have previously loaded Ships, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT ship_id, name, capacity, mass, drive_rating, max_ly_empty, max_ly_full, max_speed, boost_speed
+                  FROM Ship
+            """
+        self.cur.execute(stmt)
+        self.shipByID = { row[0]: Ship(*row, stations=[]) for row in self.cur }
+
+        if self.debug > 1: print("# Loaded %d Ships" % len(self.shipByID))
+
+
+    def lookupShip(self, name):
         """
             Look up a ship by name
         """
-        return TradeDB.list_search("Ship", name, self.shipByID.values(), key=lambda ship: ship.dbname)
+        return TradeDB.listSearch("Ship", name, self.shipByID.values(), key=lambda ship: ship.dbname)
+
+
+    ####
+    # Item data.
+
+    def items(self):
+        """ Iterate through the list of items. """
+        yield from self.itemByID.values()
+
+
+    # TODO: Provide CATEGORIES so that you can do an item lookup.
+    def _loadItems(self):
+        """
+            Populate the Item list.
+            If you have previously loaded Items, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT item_id, name
+                  FROM Item
+            """
+        self.cur.execute(stmt)
+        itemByID = {}
+        for (ID, name) in self.cur:
+            itemByID[ID] = name, ID
+
+        self.itemByID = itemByID
+        if self.debug > 1: print("# Loaded %d Items" % len(itemByID))
+
+    #### NOTE: We don't provide "lookupItem" because you need to do that
+    #### based on category (some minerals/metals have the same name).
+
+
+    ####
+    # Price data.
+
+    def loadTrades(self):
+        """
+            Populate the "Trades" table for stations.
+
+            A trade is a connection between two stations where the SRC station
+
+            Ignore items that have a ui_order of 0 (my way of indicating the item is
+            either unavailable or black market).
+
+            NOTE: Trades MUST be loaded such that they are populated into the
+            lists in descending order of profit (highest profit first)
+        """
+
+        # I could make a view that does this, but then it makes it fiddly to
+        # port this to another database that perhaps doesn't support views.
+        stmt = """
+                SELECT src.station_id, dst.station_id
+                     , src.item_id
+                     , src.buy_from
+                     , dst.sell_to - src.buy_from AS profit
+                  FROM Price AS src INNER JOIN Price as dst
+                        ON src.item_id = dst.item_id
+                 WHERE src.buy_from > 0
+                        AND profit > 0
+                        AND src.ui_order > 0
+                        AND dst.ui_order > 0
+                 ORDER BY profit DESC
+                """
+        self.cur.execute(stmt)
+        stations, items = self.stationByID, self.itemByID
+        for (srcStnID, dstStnID, itemID, srcCostCr, profitCr) in self.cur:
+            srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
+            srcStn.addTrade(dstStn, item, itemID, srcCostCr, profitCr)
+
 
     def getTrade(self, src, dst, item):
         """ Returns a Trade object describing purchase of item from src for sale at dst. """
-        srcStn = self.getStation(src)
-        dstStn = self.getStation(dst)
+
+        # I could write this more compactly, but it makes errors less readable.
+        srcStn = self.lookupStation(src)
+        dstStn = self.lookupStation(dst)
         return srcStn.tradingWith[dstStn]
 
+
+    def load(self):
+        """
+            Populate/re-populate this instance of TradeDB with data.
+            WARNING: This will orphan existing records you have
+            taken references to:
+                tdb.load()
+                x = tdb.lookupStation("Aulin")
+                tdb.load() # x now points to an orphan Aulin
+        """
+
+        self.cur = self.conn.cursor()
+
+        # Load raw tables. Stations will be linked to systems, but nothing else.
+        # TODO: Make station -> system link a post-load action.
+        self._loadSystems()
+        self._loadStations()
+        self._loadShips()
+        self._loadItems()
+
+        systems, stations, ships, items = self.systemByID, self.stationByID, self.shipByID, self.itemByID
+
+        # Calculate the maximum distance anyone can jump so we can constrain
+        # the maximum "link" between any two stars.
+        longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
+        self.maxSystemLinkLy = longestJumper.maxLyEmpty + 0.01
+        if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
+
+        self.buildLinks(self.maxSystemLinkLy)
+
+        self.loadTrades()
+
+        # In debug mode, check that everything looks sane.
+        if self.debug:
+            self._validate()
+
+
+    def _validate(self):
+        # Check that things correctly reference themselves.
+        # Check that system links are bi-directional
+        for (name, sys) in self.systemByName.items():
+            if not sys.links:
+                raise ValueError("System %s has no links" % name)
+            if sys in sys.links:
+                raise ValueError("System %s has a link to itself!" % name)
+            if name in sys.links:
+                raise ValueError("System %s's name occurs in sys.links" % name)
+            for link in sys.links:
+                if not sys in link.links:
+                    raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
+
+
+    ####
+    # General purpose static methods.
+
     @staticmethod
-    def getDistanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
+    def distanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
         """
             Calculate the square of the distance between two points.
 
@@ -499,26 +650,15 @@ class TradeDB(object):
             maxDistSq = 300 ** 2   # check for items < 300ly
             inRange = []
             for (lhs, rhs) in items:
-                distSq = getDistanceSq(lhs.x, lhs.y, lhs.z, rhs.x, rhs.y, rhs.z)
+                distSq = distanceSq(lhs.x, lhs.y, lhs.z, rhs.x, rhs.y, rhs.z)
                 if distSq <= maxDistSq:
                     inRange += [[lhs, rhs]]
         """
         return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
 
-    def query(self, *args):
-        """ Perform an SQL query on the DB and return the cursor. """
-        conn = pypyodbc.connect(self.path)
-        cur = conn.cursor()
-        cur.execute(*args)
-        return cur
-
-    def fetch_all(self, sql):
-        """ Perform an SQL query on the DB and iterate across the rows. """
-        for row in self.query(sql):
-            yield row
 
     @staticmethod
-    def list_search(listType, lookup, values, key=lambda item: item):
+    def listSearch(listType, lookup, values, key=lambda item: item):
         """
             Searches [values] for 'lookup' for least-ambiguous matches,
             return the matching value as stored in [values].
@@ -530,10 +670,10 @@ class TradeDB(object):
             exact match of a key.
         """
 
-        needle = TradeDB.normalized_str(lookup)
+        needle = TradeDB.normalizedStr(lookup)
         match = None
         for val in values:
-            normVal = TradeDB.normalized_str(key(val))
+            normVal = TradeDB.normalizedStr(key(val))
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
@@ -545,11 +685,13 @@ class TradeDB(object):
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
 
+
     @staticmethod
-    def normalized_str(str):
+    def normalizedStr(str):
         """
             Returns a case folded, sanitized version of 'str' suitable for
             performing simple and partial matches against. Removes whitespace,
             hyphens, underscores, periods and apostrophes.
         """
         return TradeDB.normalizeRe.sub('', str).casefold()
+

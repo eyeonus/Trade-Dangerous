@@ -63,7 +63,7 @@ def addLinks(station, links):
         if m:
             dst, dist = m.group(1), m.group(2)
         try:
-            dstID = tdb.getStation(dst).ID
+            dstID = tdb.lookupStation(dst).ID
             try:
                 tdb.query("INSERT INTO Links (`from`, `to`, `distLy`) VALUES (%d, %d, %s)" % (srcID, dstID, dist)).commit()
             except pypyodbc.IntegrityError:
@@ -88,24 +88,24 @@ def changeStation(line):
         if stnName == '*':
             stnName = sysName.upper().join('*')
         try:
-            station = tdb.getStation(stnName)
+            station = tdb.lookupStation(stnName)
         except LookupError:
             tdb.query("INSERT INTO Stations (system, station) VALUES (?, ?)", [sysName, stnName]).commit()
             print("Added %s/%s" % (sysName, stnName))
             tdb.load()
-            station = tdb.getStation(stnName)
+            station = tdb.lookupStation(stnName)
         if links:
             addLinks(station, links)
     else:
         # Short format: system/station name.
-        station = tdb.getStation(line)
+        station = tdb.lookupStation(line)
 
     print("Station: ", station)
     return station
 
 
 def changeCategory(name):
-    cat = tdb.list_search('category', name, categories)
+    cat = tdb.listSearch('category', name, categories)
     print("Category Select: ", cat)
     return cat
 
@@ -113,7 +113,7 @@ def changeCategory(name):
 def parseItem(station, cat, line, uiOrder):
     fields = line.split()
     itemName, sellCr, buyCr = fields[0], int(fields[1]), int(fields[2] if len(fields) > 2 else 0)
-    item = tdb.list_search('item', itemName, categories[cat])
+    item = tdb.listSearch('item', itemName, categories[cat])
     print("Item: ", item, sellCr, buyCr)
 
     stationID, itemID = int(station.ID), int(tdb.itemIDs[item])

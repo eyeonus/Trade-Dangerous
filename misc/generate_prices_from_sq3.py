@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# Bootstrap a new .SQ3 database from dataseeds and an existing ACCDB database.
+# Bootstrap a new SQLite3 database from dataseeds and an existing ACCDB database.
 #
 # Note: This is NOT intended to be user friendly. If you don't know what this
 # script is for, then you can safely ignore it.
@@ -8,12 +8,13 @@
 # Main imports.
 import sys, os, re
 import sqlite3
+from tradedb import TradeDB
 
 ######################################################################
 # Main
 
 def main():
-    conn = sqlite3.connect("TradeDangerous.sq3")
+    conn = sqlite3.connect(TradeDB.defaultDB)
     cur  = conn.cursor()
 
     systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM system") }

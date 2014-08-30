@@ -10,7 +10,7 @@
 --
 -- You can edit this file, if you really need to, if you know
 -- what you are doing. Or you can use the 'sqlite3' command
--- to edit the .sq3 database and then use the '.dump' command
+-- to edit the .db database and then use the '.dump' command
 -- to regenerate this file, except then you'll lose this nice
 -- header and I might have to wag my finger at you.
 --

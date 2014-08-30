@@ -2,7 +2,7 @@
 #
 # This file is used by TradeDangerous to populate the
 # SQLite databsae with prices, whenever this file is
-# updated or you delete the .sq3 file.
+# updated or you delete the TradeDangerous.db file.
 
 # FORMAT:
 #

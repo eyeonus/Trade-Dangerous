@@ -1,15 +1,34 @@
 #!/usr/bin/env python
+#---------------------------------------------------------------------
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#  You are free to use, redistribute, or even print and eat a copy of
+#  this software so long as you include this copyright notice.
+#  I guarantee there is at least one bug neither of us knew about.
+#---------------------------------------------------------------------
 # TradeDangerous :: Command Line App :: Main Module
-# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-#   You are free to use, redistribute, or even print and eat a copy of this
-#   software so long as you include this copyright notice. I guarantee that
-#   there is at least one bug neither of us knew about.
 #
-# We can easily predict the best run from A->B, but the return trip from B->A might
-# not give us the best profit.
-# The goal here, then, is to find the best multi-hop route.
+# TradeDangerous is a powerful set of tools for traders in Frontier
+# Development's game "Elite: Dangerous". It's main function is
+# calculating the most profitable trades between either individual
+# stations or working out "profit runs".
 #
-# TODO:
+# I wrote TD because I realized that the best trade run - in terms
+# of the "average profit per stop" was rarely as simple as going
+# Chango -> Dahan -> Chango.
+#
+# E:D's economy is complex; sometimes you can make the most profit
+# by trading one item A->B and flying a second item B->A.
+# But more often you need to fly multiple stations, especially since
+# as you are making money different trade options are coming into
+# your affordable range.
+#
+# END USERS: If you are a user looking to find out how to use TD,
+# please consult the file "README.txt".
+#
+# DEVELOPERS: If you are a programmer who wants TD to do something
+# cool, please see the TradeDB and TradeCalc modules. TD is designed
+# to empower other programmers to do cool stuff.
+
 
 ######################################################################
 # Imports
@@ -28,6 +47,8 @@ avoidItems, avoidSystems, avoidStations = [], [], []
 originName, destName, viaName = "Any", "Any", "Any"
 origins = []
 maxUnits = 0
+
+# Multi-function display, optional
 mfd = None
 
 ######################################################################
@@ -36,58 +57,7 @@ mfd = None
 from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
-tdb = TradeDB('.\\data\\TradeDangerous.sq3', debug=0)
-
-######################################################################
-# Classes
-
-# Multi-Function Display wrappers
-
-class DummyMFD(object):
-    """
-        Base class for the MFD drivers, implemented as no-ops so that
-        you can always use all MFD functions without conditionals.
-    """
-    hopNo = None
-
-    def __init__(self):
-        pass
-
-    def finish(self):
-        """
-            Close down the driver.
-        """
-        pass
-
-    def display(self, line1, line2="", line3="", delay=None):
-        """
-            Display data to the MFD.
-            Arguments: 1-3 lines of text plus optional pause in seconds.
-        """
-        pass
-
-
-class X52ProMFD(DummyMFD):
-    """
-        Wrapper for the Saitek X52 Pro MFD.
-    """
-    def __init__(self):
-        try:
-            import saitek.X52Pro
-            self.doObj = saitek.X52Pro.SaitekX52Pro()
-        except DLLError as e:
-            print("{}: error#{}: Unable to initialize the Saitek X52 Pro module: {}".format(__name__, e.error_code, e.msg), file=sys.stderr)
-            sys.exit(1)
-
-        self.page = self.doObj.add_page('TD')
-        self.display('TradeDangerous', 'INITIALIZING', delay=0.25)
-
-    def finish(self):
-        self.doObj.finish()
-
-    def display(self, line1, line2="", line3="", delay=None):
-        self.page[0], self.page[1], self.page[2] = line1, line2, line3
-        if delay: import time; time.sleep(delay)
+tdb = TradeDB(debug=0)
 
 ######################################################################
 # Functions
@@ -103,7 +73,8 @@ class CommandLineError(Exception):
     def __str__(self):
         return 'Error in command line: %s' % (self.errorStr)
 
-def parse_avoids(avoidances):
+
+def parseAvoids(avoidances):
     global avoidItems, avoidSystems, avoidStations
 
     # You can use --avoid to specify an item, system or station.
@@ -111,19 +82,19 @@ def parse_avoids(avoidances):
         # Is it an item?
         item, system, station = None, None, None
         try:
-            item = tdb.list_search('Item', avoid, tdb.items.values())
+            item = tdb.listSearch('Item', avoid, tdb.items(), key=lambda item: item[0])
             avoidItems.append(item)
         except LookupError:
             pass
         # Is it a system perhaps?
         try:
-            system = tdb.getSystem(avoid)
+            system = tdb.lookupSystem(avoid)
             avoidSystems.append(system)
         except LookupError:
             pass
         # Or perhaps it is a station
         try:
-            station = tdb.getStation(avoid)
+            station = tdb.lookupStation(avoid)
             if not (system and station.system is system):
                 avoidStations.append(station)
         except LookupError as e:
@@ -139,7 +110,8 @@ def parse_avoids(avoidances):
 
     if args.debug: print("Avoiding items %s, systems %s, stations %s" % (avoidItems, avoidSystems, avoidStations))
 
-def parse_command_line():
+
+def parseCommandLine():
     global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName, mfd
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
@@ -171,18 +143,18 @@ def parse_command_line():
         raise CommandLineError("Too many hops without more optimization")
 
     if args.avoid:
-        parse_avoids(args.avoid)
+        parseAvoids(args.avoid)
 
     if args.origin:
         originName = args.origin
-        originStation = tdb.getStation(originName)
+        originStation = tdb.lookupStation(originName)
         origins = [ originStation ]
     else:
-        origins = [ station for station in tdb.stations.values() ]
+        origins = [ station for station in tdb.stationByID.values() ]
 
     if args.dest:
         destName = args.dest
-        finalStation = tdb.getStation(destName)
+        finalStation = tdb.lookupStation(destName)
         if args.hops == 1 and originStation and finalStation and originStation == finalStation:
             raise CommandLineError("More than one hop required to use same from/to destination")
 
@@ -190,7 +162,7 @@ def parse_command_line():
         if args.hops < 2:
             raise CommandLineError("Minimum of 2 hops required for a 'via' route")
         viaName = args.via
-        viaStation = tdb.getStation(viaName)
+        viaStation = tdb.lookupStation(viaName)
         if args.hops == 2:
             if viaStation == originStation:
                 raise CommandLineError("3+ hops required to go 'via' the origin station")
@@ -207,7 +179,7 @@ def parse_command_line():
     # the user has explicitly supplied them. E.g. if the user says
     # --ship sidewinder --capacity 2, use their capacity limit.
     if args.ship:
-        ship = tdb.getShip(args.ship)
+        ship = tdb.lookupShip(args.ship)
         args.ship = ship
         if args.capacity is None: args.capacity = ship.capacity
         if args.maxLyPer is None: args.maxLyPer = ship.maxLyFull
@@ -232,7 +204,7 @@ def parse_command_line():
     if args.routes < 1:
         raise CommandLineError("Maximum routes has to be 1 or higher")
 
-    if args.unique and args.hops >= len(tdb.stations):
+    if args.unique and args.hops >= len(tdb.stationByID):
         raise CommandLineError("Requested unique trip with more hops than there are stations...")
     if args.unique:
         if ((originStation and originStation == finalStation) or
@@ -243,30 +215,35 @@ def parse_command_line():
     if args.checklist and args.routes > 1:
         raise CommandLineError("Checklist can only be applied to a single route.")
 
-    mfd = DummyMFD()
     if args.x52pro:
+        from mfdwrapper import X52ProMFD
         mfd = X52ProMFD()
 
-    mfd.display('TradeDangerous', 'CALCULATING', delay=0.25)
+    if mfd:
+        mfd.display('TradeDangerous', 'CALCULATING')
 
     return args
 
+
 ######################################################################
-# Processing functions
+# Checklist functions
 
 def doStep(stepNo, action, detail=""):
     stepNo += 1
-    mfd.display("Step %d. Hop %d" % (stepNo, mfd.hopNo), action, detail)
+    if mfd:
+        mfd.display("Step %d. Hop %d" % (stepNo, mfd.hopNo), action, detail)
     if detail:
         input("   %3d: %s %s: " % (stepNo, action, detail))
     else:
         input("   %3d: %s: " % (stepNo, action))
     return stepNo
 
+
 def note(str, addBreak=True):
     print("(i) %s (i)" % str)
     if addBreak:
         print()
+
 
 def doChecklist(route, credits):
     stepNo, gainCr = 0, 0
@@ -283,7 +260,8 @@ def doChecklist(route, credits):
         print(route.summary(), "\n")
 
     for idx in range(lastHopIdx):
-        mfd.hopNo = hopNo = idx + 1
+        hopNo = idx + 1
+        if mfd: mfd.hopNo = hopNo
         cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
 
         # Tell them what they need to buy.
@@ -292,7 +270,7 @@ def doChecklist(route, credits):
 
         note("Buy at %s" % cur.str())
         for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            itemDesc = "%s @ %dcr" % (item.item, item.costCr)
+            itemDesc = "%s @ %dcr" % (item.item[0], item.costCr)
             stepNo = doStep(stepNo, 'Buy %d x' % qty, itemDesc)
         if args.detail:
             stepNo = doStep(stepNo, 'Refuel')
@@ -309,7 +287,7 @@ def doChecklist(route, credits):
 
         note("Sell at %s" % nxt.str())
         for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            itemDesc = "%s @ %dcr" % (item.item, item.costCr + item.gainCr)
+            itemDesc = "%s @ %dcr" % (item.item[0], item.costCr + item.gainCr)
             stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), itemDesc)
         print()
 
@@ -322,12 +300,17 @@ def doChecklist(route, credits):
             print("--------------------------------------")
             print()
 
-    mfd.hopNo = None
-    mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
+    if mfd:
+        mfd.hopNo = None
+        mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr), delay=3)
+
+
+######################################################################
+# If I have to explain what this is, it must be myself reading this.
 
 def main():
     global tdb
-    parse_command_line()
+    parseCommandLine()
 
     startCr = args.credits - args.insurance
     routes = [
@@ -377,6 +360,7 @@ def main():
         assert args.routes == 1
         doChecklist(routes[0], args.credits)
         return
+
 
 if __name__ == "__main__":
     try:
