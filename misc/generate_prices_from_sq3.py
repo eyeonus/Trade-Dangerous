@@ -30,7 +30,6 @@ def main():
                 , Price.station_id
                 , Item.category_id
                 , Price.item_id
-                , Price.ui_order
                 , Price.sell_to
                 , Price.buy_from
           FROM  Station, Item, Price
@@ -39,7 +38,7 @@ def main():
          ORDER  BY Station.system_id, Station.station_id, Item.category_id, Price.ui_order, Price.item_id
     """)
     lastSys, lastStn, lastCat = None, None, None
-    for (sysID, stnID, catID, itemID, uiOrder, fromStn, toStn) in cur:
+    for (sysID, stnID, catID, itemID, fromStn, toStn) in cur:
         system = systems[sysID]
         if system is not lastSys:
             if lastStn: print("\n")
@@ -58,7 +57,7 @@ def main():
             print("   + {}".format(category))
             lastCat = category
 
-        print("      [{:3d}] {:<{width}} {:7d} {:6d}".format(uiOrder, items[itemID], fromStn, toStn, width=longestNameLen))
+        print("      {:<{width}} {:7d} {:6d}".format(items[itemID], fromStn, toStn, width=longestNameLen))
 
 
 if __name__ == "__main__":
