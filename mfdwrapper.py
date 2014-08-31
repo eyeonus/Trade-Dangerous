@@ -10,6 +10,8 @@
 #   Multi-Function Display wrappers
 #   
 
+import time
+
 class DummyMFD(object):
     """
         Base class for the MFD drivers, implemented as no-ops so that
@@ -33,6 +35,13 @@ class DummyMFD(object):
             Arguments: 1-3 lines of text plus optional pause in seconds.
         """
         pass
+
+
+    def attention(self, duration):
+        """
+            Draw the user's attention.
+        """
+        print("\a")
 
 
 class X52ProMFD(DummyMFD):
@@ -59,5 +68,16 @@ class X52ProMFD(DummyMFD):
     def display(self, line1, line2="", line3="", delay=None):
         self.page[0], self.page[1], self.page[2] = line1, line2, line3
         if delay:
-        	import time
         	time.sleep(delay)
+
+    def attention(self, duration):
+        page = self.page
+        iterNo = 0
+        cutoff = time.time() + duration
+        while time.time() <= cutoff:
+            for ledNo in range(0, 20):
+                page.set_led(ledNo, (iterNo + ledNo) % 4)
+            iterNo += 1
+            time.sleep(0.02)
+
+

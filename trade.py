@@ -35,6 +35,7 @@
 
 import argparse             # For parsing command line args.
 import sys                  # Inevitably.
+import time
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
