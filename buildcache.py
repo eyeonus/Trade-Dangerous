@@ -137,7 +137,7 @@ def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     # Database is ready; copy it to a persistent store.
     if debug: print("* Populating SQLite database file '%s'" % dbPath)
     if dbPath.exists():
-        print("- Removing old database file")
+        if debug: print("- Removing old database file")
         dbPath.unlink()
 
     newDB = sqlite3.connect(str(dbPath))

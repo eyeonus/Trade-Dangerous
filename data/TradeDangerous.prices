@@ -38,7 +38,6 @@
 # can be bought here for 160cr.
 #
 
-
 @ ACIHAUT/Cuffey Plant
    + Chemicals
       Mineral Oil               163      0
@@ -48,6 +47,8 @@
       Clothing                  307      0
       Consumer Tech            6550      0
       Dom. Appliances           550      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Fruit and Vegetables      307      0
       Coffee                   1401      0
@@ -57,6 +58,9 @@
       Grain                     180      0
       Tea                      1406      0
       Synthetic Meat            233      0
+   + Machinery
+      Mineral Extractors        617      0
+      Hel-Static Furnaces       171      0
    + Medicines
       Performance Enhancers    7120      0
       Progenitor Cells         7120      0
@@ -87,11 +91,6 @@
    + Waste
       Biowaste                   11     18
       Scrap                      91      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        617      0
-      Hel-Static Furnaces       171      0
 
 
 @ AGANIPPE/Julian Market
@@ -102,6 +101,9 @@
       Clothing                  306      0
       Consumer Tech            7110      0
       Dom. Appliances           549      0
+   + Drugs
+      Beer                      142      0
+      Wine                      233      0
    + Foods
       Algae                      10     15
       Fruit and Vegetables      308      0
@@ -110,6 +112,9 @@
       Coffee                   1399      0
       Tea                      1589      0
       Animal Meat              1399      0
+   + Machinery
+      Crop Harvesters          2340      0
+      Marine Supplies          4489      0
    + Medicines
       Performance Enhancers    7110      0
       Progenitor Cells         7110      0
@@ -123,12 +128,6 @@
       Biowaste                   68      0
    + Weapons
       Personal Weapons         4489      0
-   + Drugs
-      Beer                      142      0
-      Wine                      233      0
-   + Machinery
-      Crop Harvesters          2340      0
-      Marine Supplies          4489      0
 
 
 @ ASELLUS PRIMUS/Beagle 2 Landing
@@ -138,6 +137,9 @@
       Clothing                  252      0
       Consumer Tech            6595   6671
       Dom. Appliances           550      0
+   + Drugs
+      Beer                      143      0
+      Wine                      233      0
    + Foods
       Grain                     180      0
       Fruit and Vegetables      277      0
@@ -184,9 +186,6 @@
       Non-Lethal Wpns          1787      0
       Reactive Armor           1958      0
       Personal Weapons         3966   4064
-   + Drugs
-      Beer                      143      0
-      Wine                      233      0
 
 
 @ AULIN/Aulin Enterprise
@@ -197,6 +196,8 @@
       Dom. Appliances           547      0
       Clothing                  292      0
       Consumer Tech            6733      0
+   + Drugs
+      Beer                      142      0
    + Foods
       Animal Meat              1226      0
       Coffee                   1226      0
@@ -236,8 +237,6 @@
    + Waste
       Biowaste                   11     18
       Scrap                      28     35
-   + Drugs
-      Beer                      142      0
 
 
 @ AULIS/Dezhurov Gateway
@@ -249,6 +248,8 @@
       Dom. Appliances           550      0
       Consumer Tech            7115      0
       Clothing                  306      0
+   + Drugs
+      Beer                      158      0
    + Foods
       Algae                      10     15
       Fruit and Vegetables      116    129
@@ -257,6 +258,9 @@
       Fish                      329    355
       Animal Meat              1387      0
       Grain                      49     58
+   + Machinery
+      Crop Harvesters          2341      0
+      Marine Supplies          4491      0
    + Medicines
       Basic Medicines           306      0
       Performance Enhancers    7114      0
@@ -268,11 +272,6 @@
       Animal Monitors           289      0
    + Waste
       Biowaste                   68      0
-   + Drugs
-      Beer                      158      0
-   + Machinery
-      Crop Harvesters          2341      0
-      Marine Supplies          4491      0
 
 
 @ BD+47 2112/Olivas Settlement
@@ -283,6 +282,8 @@
       Dom. Appliances           551      0
       Clothing                  307      0
       Consumer Tech            6566      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Coffee                   1404      0
       Animal Meat              1323      0
@@ -292,6 +293,8 @@
       Fruit and Vegetables      307      0
       Food Cartridges           103      0
       Fish                      715      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Performance Enhancers    7137      0
       Basic Medicines           307      0
@@ -310,35 +313,37 @@
    + Weapons
       Non-Lethal Wpns          1935      0
       Reactive Armor           2201      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ BOLG/Moxon's Mojo
    + Chemicals
       Hydrogen Fuels             62      0
    + Consumer Items
-      Consumer Tech            7081      0
+      Consumer Tech            7121      0
       Dom. Appliances           345    369
-      Clothing                  307      0
+      Clothing                  306      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Fruit and Vegetables      307      0
       Synthetic Meat            234      0
-      Fish                      744      0
-      Animal Meat              1263      0
+      Fish                      735      0
+      Animal Meat              1332      0
       Grain                     181      0
       Food Cartridges            14     20
       Algae                      95      0
-      Coffee                   1337      0
+      Coffee                   1384      0
       Tea                      1407      0
    + Industrial Materials
       Polymers                  116      0
       Semiconductors            959      0
       Superconductors          7124      0
+   + Machinery
+      Hel-Static Furnaces        45     53
+      Mineral Extractors        333    356
+      Crop Harvesters          1944   1996
    + Medicines
-      Progenitor Cells         7093      0
+      Progenitor Cells         7124      0
       Basic Medicines           344      0
       Performance Enhancers    7124      0
    + Metals
@@ -349,7 +354,7 @@
       Titanium                 1088      0
       Copper                    488      0
       Aluminium                 324      0
-      Gold                     9482      0
+      Gold                     9599      0
    + Minerals
       Beryllium                8683      0
       Gallium                  5476      0
@@ -357,19 +362,13 @@
       H.E. Suits                259      0
       Robotics                 1931      0
       Auto-Fabricators         3946      0
-   + Waste
-      Biowaste                   11     18
-      Scrap                      20     25
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Hel-Static Furnaces        45     53
-      Mineral Extractors        318    341
-      Crop Harvesters          1944   1996
    + Textiles
       Synthetic Fabrics         156      0
       Leather                   143      0
       Natural Fabrics           409      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     25
 
 
 @ CHI HERCULIS/Gorbatko
@@ -380,6 +379,8 @@
       Dom. Appliances           550      0
       Consumer Tech            7114      0
       Clothing                  306      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Algae                      11     17
       Fruit and Vegetables      306      0
@@ -388,6 +389,9 @@
       Fish                      361    389
       Animal Meat              1231      0
       Grain                      57     67
+   + Machinery
+      Crop Harvesters          2341      0
+      Marine Supplies          4491      0
    + Medicines
       Basic Medicines           306      0
       Performance Enhancers    7114      0
@@ -399,11 +403,6 @@
       Animal Monitors           289      0
    + Waste
       Biowaste                   68      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Crop Harvesters          2341      0
-      Marine Supplies          4491      0
 
 
 @ CM DRACO/Anderson Escape
@@ -414,6 +413,12 @@
       Clothing                  308      0
       Consumer Tech            6588      0
       Dom. Appliances           469      0
+   + Drugs
+      Tobacco                  4706      0
+      Beer                      143      0
+      Narcotics                 143      0
+      Wine                      236      0
+      Liquor                    664      0
    + Foods
       Fruit and Vegetables      254      0
       Grain                     182      0
@@ -423,6 +428,8 @@
       Food Cartridges           103      0
       Fish                      650      0
       Animal Meat              1239      0
+   + Machinery
+      Mineral Extractors        616      0
    + Medicines
       Performance Enhancers    7161      0
       Basic Medicines           309      0
@@ -445,14 +452,6 @@
       Non-Lethal Wpns          1942      0
       Personal Weapons         4523      0
       Reactive Armor           2210      0
-   + Drugs
-      Tobacco                  4706      0
-      Beer                      143      0
-      Narcotics                 143      0
-      Wine                      236      0
-      Liquor                    664      0
-   + Machinery
-      Mineral Extractors        616      0
 
 
 @ DAHAN/Gateway
@@ -464,6 +463,8 @@
       Dom. Appliances           551      0
       Consumer Tech            6566      0
       Clothing                  307      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Synthetic Meat            234      0
       Fish                      647      0
@@ -475,6 +476,9 @@
       Grain                     181      0
    + Industrial Materials
       Polymers                   29     39
+   + Machinery
+      Hel-Static Furnaces       172      0
+      Mineral Extractors        622      0
    + Medicines
       Basic Medicines           307      0
       Combat Stabilisers       2997      0
@@ -505,11 +509,6 @@
    + Weapons
       Non-Lethal Wpns          1936      0
       Reactive Armor           2202      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Hel-Static Furnaces       172      0
-      Mineral Extractors        622      0
 
 
 @ ERANIN/Azeban City
@@ -521,6 +520,11 @@
       Dom. Appliances           550      0
       Clothing                  252      0
       Consumer Tech            6926      0
+   + Drugs
+      Beer                      143      0
+      Tobacco                  4675      0
+      Wine                      256      0
+      Liquor                    659      0
    + Foods
       Coffee                   1067   1114
       Tea                      1243   1297
@@ -528,6 +532,8 @@
       Fish                      645      0
       Animal Meat              1067   1114
       Grain                      70     83
+   + Machinery
+      Crop Harvesters          2179      0
    + Medicines
       Basic Medicines           306      0
       Progenitor Cells         7115      0
@@ -536,20 +542,13 @@
    + Technology
       Animal Monitors           289      0
       Terrain Enrich Sys       4675      0
+   + Textiles
+      Natural Fabrics           237    255
+      Leather                    46     58
    + Waste
       Biowaste                   68      0
    + Weapons
       Personal Weapons         4280      0
-   + Drugs
-      Beer                      143      0
-      Tobacco                  4675      0
-      Wine                      256      0
-      Liquor                    659      0
-   + Machinery
-      Crop Harvesters          2179      0
-   + Textiles
-      Natural Fabrics           237    255
-      Leather                    46     58
 
 
 @ G 239-25/Bresnik Mine
@@ -560,6 +559,8 @@
       Dom. Appliances           552      0
       Clothing                  308      0
       Consumer Tech            6569      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Coffee                   1404      0
       Tea                      1410      0
@@ -569,6 +570,8 @@
       Animal Meat              1235      0
       Grain                     181      0
       Fruit and Vegetables      301      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Performance Enhancers    7140      0
       Basic Medicines           307      0
@@ -584,10 +587,6 @@
    + Weapons
       Reactive Armor           2203      0
       Non-Lethal Wpns          1936      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ H DRACONIS/Brislington
@@ -597,6 +596,9 @@
       Dom. Appliances           290    314
       Consumer Tech            7109      0
       Clothing                  116    129
+   + Drugs
+      Beer                      142      0
+      Wine                      233      0
    + Foods
       Animal Meat              1398      0
       Coffee                   1398      0
@@ -631,18 +633,15 @@
       H.E. Suits                259      0
       Robotics                 1927      0
       Auto-Fabricators         3937      0
+   + Textiles
+      Leather                   142      0
+      Synthetic Fabrics         156      0
+      Natural Fabrics           408      0
    + Waste
       Biowaste                   11     18
       Scrap                      20     24
    + Weapons
       Personal Weapons         4488      0
-   + Drugs
-      Beer                      142      0
-      Wine                      233      0
-   + Textiles
-      Leather                   142      0
-      Synthetic Fabrics         156      0
-      Natural Fabrics           408      0
 
 
 @ I BOOTIS/Chango Dock
@@ -654,6 +653,8 @@
       Clothing                  116    129
       Consumer Tech            7090      0
       Dom. Appliances           548      0
+   + Drugs
+      Beer                      142      0
    + Foods
       Food Cartridges            13     19
       Coffee                   1393      0
@@ -668,6 +669,11 @@
       Semiconductors            954      0
       Polymers                  115      0
       Superconductors          7090      0
+   + Machinery
+      Crop Harvesters          1935   1990
+      Mineral Extractors        394    432
+      Hel-Static Furnaces        45     53
+      Marine Supplies          4476      0
    + Medicines
       Performance Enhancers    7090      0
       Agri-Medicines            943      0
@@ -693,20 +699,13 @@
       Auto-Fabricators         3839      0
       H.E. Suits                258      0
       Computer Components       346    371
-   + Waste
-      Biowaste                   67      0
-      Scrap                      20     25
-   + Drugs
-      Beer                      142      0
-   + Machinery
-      Crop Harvesters          1935   1990
-      Mineral Extractors        394    432
-      Hel-Static Furnaces        45     53
-      Marine Supplies          4476      0
    + Textiles
       Leather                   142      0
       Natural Fabrics           407      0
       Synthetic Fabrics         155      0
+   + Waste
+      Biowaste                   67      0
+      Scrap                      20     25
 
 
 @ ITHACA/Hume Depot
@@ -717,6 +716,12 @@
       Clothing                  307      0
       Consumer Tech            6563      0
       Dom. Appliances           551      0
+   + Drugs
+      Tobacco                  4688      0
+      Beer                      143      0
+      Narcotics                 143      0
+      Wine                      234      0
+      Liquor                    661      0
    + Foods
       Fruit and Vegetables      307      0
       Grain                     181      0
@@ -726,6 +731,8 @@
       Food Cartridges           103      0
       Fish                      647      0
       Animal Meat              1256      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Performance Enhancers    6928      0
       Basic Medicines           307      0
@@ -748,14 +755,6 @@
       Non-Lethal Wpns          1758      0
       Personal Weapons         4216      0
       Reactive Armor           1963      0
-   + Drugs
-      Tobacco                  4688      0
-      Beer                      143      0
-      Narcotics                 143      0
-      Wine                      234      0
-      Liquor                    661      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ KERIES/Derrickson's Escape
@@ -766,6 +765,12 @@
       Clothing                  261      0
       Consumer Tech            6588      0
       Dom. Appliances           469      0
+   + Drugs
+      Wine                      235      0
+      Beer                      144      0
+      Narcotics                 144      0
+      Tobacco                  4706      0
+      Liquor                    664      0
    + Foods
       Coffee                   1410      0
       Synthetic Meat            227      0
@@ -775,6 +780,8 @@
       Animal Meat              1239      0
       Grain                     182      0
       Fruit and Vegetables      272      0
+   + Machinery
+      Mineral Extractors        532      0
    + Medicines
       Performance Enhancers    6908      0
       Basic Medicines           304      0
@@ -793,14 +800,6 @@
       Non-Lethal Wpns          1942      0
       Reactive Armor           1984      0
       Personal Weapons         4115      0
-   + Drugs
-      Wine                      235      0
-      Beer                      144      0
-      Narcotics                 144      0
-      Tobacco                  4706      0
-      Liquor                    664      0
-   + Machinery
-      Mineral Extractors        532      0
 
 
 @ LFT 880/Baker Platform
@@ -811,6 +810,9 @@
       Clothing                  279      0
       Consumer Tech            6563      0
       Dom. Appliances           467      0
+   + Drugs
+      Beer                      143      0
+      Wine                      234      0
    + Foods
       Fruit and Vegetables      256      0
       Food Cartridges           103      0
@@ -820,6 +822,8 @@
       Grain                     181      0
       Synthetic Meat            234      0
       Coffee                   1258      0
+   + Machinery
+      Hel-Static Furnaces       172      0
    + Medicines
       Performance Enhancers    7134      0
       Basic Medicines           307      0
@@ -851,11 +855,6 @@
       Non-Lethal Wpns          1719      0
       Reactive Armor           1963      0
       Personal Weapons         4099      0
-   + Drugs
-      Beer                      143      0
-      Wine                      234      0
-   + Machinery
-      Hel-Static Furnaces       172      0
 
 
 @ LFT 992/Szulkin Mines
@@ -866,6 +865,12 @@
       Dom. Appliances           554      0
       Clothing                  308      0
       Consumer Tech            6588      0
+   + Drugs
+      Beer                      144      0
+      Tobacco                  4706      0
+      Wine                      235      0
+      Liquor                    664      0
+      Narcotics                 144      0
    + Foods
       Coffee                   1410      0
       Animal Meat              1239      0
@@ -875,6 +880,8 @@
       Fish                      650      0
       Tea                      1414      0
       Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        624      0
    + Medicines
       Basic Medicines           308      0
       Performance Enhancers    7161      0
@@ -891,14 +898,6 @@
       Personal Weapons         4521      0
       Reactive Armor           2209      0
       Non-Lethal Wpns          1942      0
-   + Drugs
-      Beer                      144      0
-      Tobacco                  4706      0
-      Wine                      235      0
-      Liquor                    664      0
-      Narcotics                 144      0
-   + Machinery
-      Mineral Extractors        624      0
 
 
 @ LHS 2819/Tasaki Freeport
@@ -909,6 +908,12 @@
       Dom. Appliances           554      0
       Clothing                  308      0
       Consumer Tech            6588      0
+   + Drugs
+      Narcotics                 144      0
+      Liquor                    664      0
+      Wine                      235      0
+      Beer                      144      0
+      Tobacco                  4706      0
    + Foods
       Fish                      778      0
       Fruit and Vegetables      308      0
@@ -918,6 +923,8 @@
       Coffee                   1410      0
       Tea                      1414      0
       Synthetic Meat            235      0
+   + Machinery
+      Mineral Extractors        609      0
    + Medicines
       Performance Enhancers    7161      0
       Basic Medicines           308      0
@@ -933,14 +940,6 @@
       Reactive Armor           2209      0
       Non-Lethal Wpns          1904      0
       Personal Weapons         4521      0
-   + Drugs
-      Narcotics                 144      0
-      Liquor                    664      0
-      Wine                      235      0
-      Beer                      144      0
-      Tobacco                  4706      0
-   + Machinery
-      Mineral Extractors        609      0
 
 
 @ LHS 2884/Abnett Platform
@@ -951,6 +950,9 @@
       Consumer Tech            6559      0
       Dom. Appliances           547      0
       Clothing                  305      0
+   + Drugs
+      Wine                      234      0
+      Beer                      143      0
    + Foods
       Synthetic Meat            234      0
       Coffee                   1402      0
@@ -960,6 +962,8 @@
       Fish                      647      0
       Grain                     181      0
       Fruit and Vegetables      307      0
+   + Machinery
+      Mineral Extractors        618      0
    + Medicines
       Progenitor Cells         7129      0
       Performance Enhancers    7129      0
@@ -982,11 +986,6 @@
       Non-Lethal Wpns          1933      0
       Reactive Armor           1962      0
       Personal Weapons         4096      0
-   + Drugs
-      Wine                      234      0
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        618      0
 
 
 @ LHS 2887/Massimino Dock
@@ -998,6 +997,8 @@
       Dom. Appliances           504      0
       Consumer Tech            6569      0
       Clothing                  253      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Grain                     181      0
       Coffee                   1297      0
@@ -1011,6 +1012,8 @@
       Polymers                   29     39
       Superconductors          6700   6777
       Semiconductors            683    715
+   + Machinery
+      Hel-Static Furnaces       171      0
    + Medicines
       Basic Medicines           308      0
       Performance Enhancers    7141      0
@@ -1033,18 +1036,14 @@
       Resonating Separators    6025      0
       Advanced Catalysers      3038      0
       H.E. Suits                260      0
+   + Textiles
+      Synthetic Fabrics          57     68
    + Waste
       Biowaste                   12     18
       Scrap                      91      0
    + Weapons
       Non-Lethal Wpns          1936      0
       Reactive Armor           2203      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Hel-Static Furnaces       171      0
-   + Textiles
-      Synthetic Fabrics          57     68
 
 
 @ LHS 3006/WCM Transfer Orbital
@@ -1055,6 +1054,8 @@
       Dom. Appliances           551      0
       Clothing                  307      0
       Consumer Tech            6563      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Tea                      1409      0
       Animal Meat              1400      0
@@ -1064,6 +1065,8 @@
       Synthetic Meat            234      0
       Fish                      766      0
       Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Progenitor Cells         7134      0
       Performance Enhancers    7134      0
@@ -1082,10 +1085,6 @@
    + Weapons
       Reactive Armor           2200      0
       Non-Lethal Wpns          1934      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ LHS 3262/Louis De Lacaille Prospect
@@ -1096,6 +1095,8 @@
       Clothing                  272      0
       Consumer Tech            5682   5748
       Dom. Appliances           526      0
+   + Drugs
+      Beer                      142      0
    + Foods
       Fruit and Vegetables      252      0
       Fish                      679      0
@@ -1138,8 +1139,6 @@
    + Weapons
       Non-Lethal Wpns          1249   1283
       Reactive Armor           1446   1485
-   + Drugs
-      Beer                      142      0
 
 
 @ LHS 417/Gernhardt Camp
@@ -1150,6 +1149,8 @@
       Clothing                  308      0
       Consumer Tech            6569      0
       Dom. Appliances           552      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Tea                      1529      0
       Synthetic Meat            234      0
@@ -1159,6 +1160,8 @@
       Animal Meat              1404      0
       Grain                     181      0
       Coffee                   1405      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Basic Medicines           307      0
       Performance Enhancers    7140      0
@@ -1180,10 +1183,6 @@
    + Weapons
       Reactive Armor           2078      0
       Non-Lethal Wpns          1927      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ LHS 5287/Mcarthur's Reach
@@ -1194,6 +1193,8 @@
       Dom. Appliances           552      0
       Clothing                  307      0
       Consumer Tech            6569      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Coffee                   1404      0
       Tea                      1410      0
@@ -1203,6 +1204,8 @@
       Animal Meat              1404      0
       Grain                     181      0
       Fruit and Vegetables      307      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Performance Enhancers    7140      0
       Basic Medicines           307      0
@@ -1218,10 +1221,6 @@
    + Weapons
       Reactive Armor           2203      0
       Non-Lethal Wpns          1936      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ LP 64-194/Longyear Survey
@@ -1232,6 +1231,9 @@
       Clothing                  307      0
       Consumer Tech            6566      0
       Dom. Appliances           467      0
+   + Drugs
+      Beer                      143      0
+      Wine                      234      0
    + Foods
       Coffee                   1404      0
       Fish                      679      0
@@ -1241,6 +1243,8 @@
       Tea                      1409      0
       Synthetic Meat            234      0
       Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        622      0
    + Medicines
       Performance Enhancers    7137      0
       Basic Medicines           307      0
@@ -1260,11 +1264,6 @@
       Personal Weapons         4101      0
       Reactive Armor           2201      0
       Non-Lethal Wpns          1935      0
-   + Drugs
-      Beer                      143      0
-      Wine                      234      0
-   + Machinery
-      Mineral Extractors        622      0
 
 
 @ LP 98-132/Freeport
@@ -1275,6 +1274,12 @@
       Clothing                  254      0
       Consumer Tech            6588      0
       Dom. Appliances           469      0
+   + Drugs
+      Narcotics                 125      0
+      Wine                      235      0
+      Tobacco                  4706      0
+      Beer                      143      0
+      Liquor                    664      0
    + Foods
       Coffee                   1239      0
       Tea                      1414      0
@@ -1284,6 +1289,8 @@
       Grain                     164      0
       Fish                      650      0
       Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        532      0
    + Medicines
       Performance Enhancers    6588      0
       Basic Medicines           308      0
@@ -1303,14 +1310,6 @@
       Personal Weapons         4115      0
       Reactive Armor           1997      0
       Non-Lethal Wpns          1772      0
-   + Drugs
-      Narcotics                 125      0
-      Wine                      235      0
-      Tobacco                  4706      0
-      Beer                      143      0
-      Liquor                    664      0
-   + Machinery
-      Mineral Extractors        532      0
 
 
 @ MAGEC/Xiaoguan
@@ -1322,6 +1321,8 @@
       Consumer Tech            7114      0
       Dom. Appliances           550      0
       Clothing                  306      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Fruit and Vegetables      128    142
       Grain                      70     83
@@ -1329,6 +1330,8 @@
       Tea                      1198   1249
       Fish                      772      0
       Animal Meat               902    942
+   + Machinery
+      Crop Harvesters          2341      0
    + Medicines
       Agri-Medicines           1086      0
       Basic Medicines           306      0
@@ -1337,15 +1340,11 @@
    + Technology
       Animal Monitors           289      0
       Terrain Enrich Sys       5093      0
-   + Waste
-      Biowaste                   68      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Crop Harvesters          2341      0
    + Textiles
       Natural Fabrics           237    255
       Leather                    43     53
+   + Waste
+      Biowaste                   68      0
 
 
 @ MORGOR/Romanek's Folly
@@ -1356,6 +1355,12 @@
       Dom. Appliances           550      0
       Consumer Tech            6553      0
       Clothing                  307      0
+   + Drugs
+      Beer                      143      0
+      Liquor                    660      0
+      Narcotics                 122      0
+      Tobacco                  4763      0
+      Wine                      234      0
    + Foods
       Tea                      1407      0
       Synthetic Meat            234      0
@@ -1365,6 +1370,8 @@
       Grain                     181      0
       Fruit and Vegetables      307      0
       Coffee                   1234      0
+   + Machinery
+      Mineral Extractors        609      0
    + Medicines
       Performance Enhancers    7123      0
       Basic Medicines           307      0
@@ -1379,14 +1386,6 @@
       Biowaste                   11     18
    + Weapons
       Personal Weapons         4093      0
-   + Drugs
-      Beer                      143      0
-      Liquor                    660      0
-      Narcotics                 122      0
-      Tobacco                  4763      0
-      Wine                      234      0
-   + Machinery
-      Mineral Extractors        609      0
 
 
 @ NANG TA-KHIAN/Hay Point
@@ -1396,6 +1395,9 @@
       Consumer Tech            6956      0
       Dom. Appliances           345    369
       Clothing                  307      0
+   + Drugs
+      Beer                      143      0
+      Wine                      233      0
    + Foods
       Grain                     180      0
       Synthetic Meat            233      0
@@ -1410,6 +1412,9 @@
       Polymers                  115      0
       Semiconductors            958      0
       Superconductors          7120      0
+   + Machinery
+      Mineral Extractors        398    426
+      Crop Harvesters          1912   1963
    + Medicines
       Progenitor Cells         7120      0
       Basic Medicines           307      0
@@ -1430,21 +1435,15 @@
       H.E. Suits                259      0
       Robotics                 1930      0
       Auto-Fabricators         3943      0
+   + Textiles
+      Leather                   143      0
+      Natural Fabrics           408      0
+      Synthetic Fabrics         156      0
    + Waste
       Biowaste                   11     18
       Scrap                      30     37
    + Weapons
       Personal Weapons         3832   3927
-   + Drugs
-      Beer                      143      0
-      Wine                      233      0
-   + Machinery
-      Mineral Extractors        398    426
-      Crop Harvesters          1912   1963
-   + Textiles
-      Leather                   143      0
-      Natural Fabrics           408      0
-      Synthetic Fabrics         156      0
 
 
 @ NARAKA/Novitski Oasis
@@ -1455,6 +1454,8 @@
       Clothing                  306      0
       Consumer Tech            7103      0
       Dom. Appliances           549      0
+   + Drugs
+      Beer                      142      0
    + Foods
       Fruit and Vegetables      276      0
       Grain                      61     72
@@ -1462,6 +1463,9 @@
       Animal Meat               881    922
       Fish                      771      0
       Coffee                   1397      0
+   + Machinery
+      Crop Harvesters          2337      0
+      Marine Supplies          4484      0
    + Medicines
       Agri-Medicines           1084      0
       Progenitor Cells         7103      0
@@ -1471,15 +1475,10 @@
       Terrain Enrich Sys       4668      0
       Animal Monitors           289      0
       Aquaponic Systems         259      0
-   + Waste
-      Biowaste                   68      0
-   + Drugs
-      Beer                      142      0
-   + Machinery
-      Crop Harvesters          2337      0
-      Marine Supplies          4484      0
    + Textiles
       Leather                    38     48
+   + Waste
+      Biowaste                   68      0
 
 
 @ OPALA/Romanenko
@@ -1490,6 +1489,8 @@
       Dom. Appliances           549      0
       Consumer Tech            7103      0
       Clothing                  306      0
+   + Drugs
+      Beer                      142      0
    + Foods
       Algae                      10     16
       Fruit and Vegetables      306      0
@@ -1498,6 +1499,9 @@
       Fish                      443    478
       Animal Meat              1397      0
       Grain                      71     84
+   + Machinery
+      Crop Harvesters          2337      0
+      Marine Supplies          4484      0
    + Medicines
       Basic Medicines           306      0
       Performance Enhancers    7103      0
@@ -1509,11 +1513,6 @@
       Animal Monitors           289      0
    + Waste
       Biowaste                   68      0
-   + Drugs
-      Beer                      142      0
-   + Machinery
-      Crop Harvesters          2337      0
-      Marine Supplies          4484      0
 
 
 @ OVID/Bradfield
@@ -1523,6 +1522,8 @@
       Consumer Tech            7116      0
       Clothing                  306      0
       Dom. Appliances           550      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Fish                      767      0
       Synthetic Meat            233      0
@@ -1537,6 +1538,11 @@
       Semiconductors            958      0
       Superconductors          7116      0
       Polymers                  115      0
+   + Machinery
+      Hel-Static Furnaces        45     53
+      Mineral Extractors        301    323
+      Crop Harvesters          1911   1962
+      Marine Supplies          3911   4008
    + Medicines
       Progenitor Cells         7116      0
       Basic Medicines           306      0
@@ -1558,20 +1564,13 @@
       H.E. Suits                259      0
       Robotics                 1929      0
       Auto-Fabricators         3941      0
-   + Waste
-      Biowaste                   11     18
-      Scrap                      20     24
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Hel-Static Furnaces        45     53
-      Mineral Extractors        301    323
-      Crop Harvesters          1911   1962
-      Marine Supplies          3911   4008
    + Textiles
       Leather                   143      0
       Natural Fabrics           408      0
       Synthetic Fabrics         156      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     24
 
 
 @ PI-FANG/Brooks
@@ -1583,6 +1582,9 @@
       Consumer Tech            7099      0
       Clothing                  306      0
       Dom. Appliances           548      0
+   + Drugs
+      Beer                      120      0
+      Wine                      211      0
    + Foods
       Synthetic Meat            233      0
       Coffee                   1396      0
@@ -1591,6 +1593,9 @@
       Grain                      51     60
       Fruit and Vegetables      116    130
       Tea                      1587      0
+   + Machinery
+      Crop Harvesters          2336      0
+      Marine Supplies          4481      0
    + Medicines
       Progenitor Cells         7099      0
       Basic Medicines           306      0
@@ -1607,12 +1612,6 @@
       Biowaste                   68      0
    + Weapons
       Personal Weapons         4481      0
-   + Drugs
-      Beer                      120      0
-      Wine                      211      0
-   + Machinery
-      Crop Harvesters          2336      0
-      Marine Supplies          4481      0
 
 
 @ RAKAPILA/Stone Enterprise
@@ -1622,6 +1621,8 @@
       Consumer Tech            7116      0
       Dom. Appliances           345    369
       Clothing                  116    129
+   + Drugs
+      Beer                      143      0
    + Foods
       Animal Meat              1400      0
       Food Cartridges           102      0
@@ -1656,15 +1657,13 @@
       H.E. Suits                259      0
       Robotics                 1929      0
       Auto-Fabricators         3941      0
-   + Waste
-      Biowaste                   11     18
-      Scrap                      20     24
-   + Drugs
-      Beer                      143      0
    + Textiles
       Synthetic Fabrics         156      0
       Natural Fabrics           408      0
       Leather                   143      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     24
 
 
 @ ROSS 1015/Bowersox
@@ -1675,6 +1674,8 @@
       Dom. Appliances           553      0
       Clothing                  308      0
       Consumer Tech            6588      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Coffee                   1409      0
       Tea                      1414      0
@@ -1684,6 +1685,8 @@
       Animal Meat              1239      0
       Grain                     182      0
       Fruit and Vegetables      308      0
+   + Machinery
+      Mineral Extractors        624      0
    + Medicines
       Performance Enhancers    7162      0
       Basic Medicines           308      0
@@ -1699,10 +1702,6 @@
    + Weapons
       Reactive Armor           2170      0
       Non-Lethal Wpns          1942      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        624      0
 
 
 @ ROSS 1051/Abetti Platform
@@ -1714,6 +1713,8 @@
       Dom. Appliances           467      0
       Consumer Tech            6566      0
       Clothing                  253      0
+   + Drugs
+      Beer                      143      0
    + Foods
       Animal Meat              1235      0
       Coffee                   1333      0
@@ -1727,6 +1728,8 @@
       Polymers                   19     25
       Superconductors          6591   6667
       Semiconductors            533    558
+   + Machinery
+      Hel-Static Furnaces       172      0
    + Medicines
       Basic Medicines           307      0
       Performance Enhancers    6921      0
@@ -1748,18 +1751,14 @@
       Resonating Separators    5739      0
       Advanced Catalysers      2742      0
       H.E. Suits                260      0
+   + Textiles
+      Synthetic Fabrics          38     46
    + Waste
       Biowaste                    7     11
       Scrap                      91      0
    + Weapons
       Non-Lethal Wpns          1935      0
       Reactive Armor           2173      0
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Hel-Static Furnaces       172      0
-   + Textiles
-      Synthetic Fabrics          38     46
 
 
 @ TILIAN/Maunder
@@ -1769,6 +1768,8 @@
       Dom. Appliances           342    367
       Consumer Tech            6952      0
       Clothing                  116    129
+   + Drugs
+      Beer                      143      0
    + Foods
       Fruit and Vegetables      306      0
       Fish                      772      0
@@ -1783,6 +1784,9 @@
       Polymers                  115      0
       Semiconductors            958      0
       Superconductors          7116      0
+   + Machinery
+      Mineral Extractors        312    334
+      Crop Harvesters          1570   1612
    + Medicines
       Progenitor Cells         7116      0
       Basic Medicines           116    129
@@ -1803,18 +1807,13 @@
       H.E. Suits                259      0
       Robotics                 1929      0
       Auto-Fabricators         3941      0
-   + Waste
-      Biowaste                    7     11
-      Scrap                      20     24
-   + Drugs
-      Beer                      143      0
-   + Machinery
-      Mineral Extractors        312    334
-      Crop Harvesters          1570   1612
    + Textiles
       Synthetic Fabrics         158      0
       Leather                   143      0
       Natural Fabrics           408      0
+   + Waste
+      Biowaste                    7     11
+      Scrap                      20     24
 
 
 @ WYRD/Vonarburg Co-operative
@@ -1826,6 +1825,11 @@
       Clothing                  305      0
       Consumer Tech            7091      0
       Dom. Appliances           548      0
+   + Drugs
+      Beer                      142      0
+      Liquor                    343    371
+      Wine                      232      0
+      Tobacco                  4238   4331
    + Foods
       Fruit and Vegetables      305      0
       Grain                      70     83
@@ -1833,6 +1837,9 @@
       Animal Meat               834    880
       Fish                      328    358
       Coffee                    848    894
+   + Machinery
+      Crop Harvesters          2333      0
+      Marine Supplies          4477      0
    + Medicines
       Performance Enhancers    7091      0
       Progenitor Cells         7091      0
@@ -1842,17 +1849,9 @@
       Terrain Enrich Sys       4660      0
       Animal Monitors           288      0
       Aquaponic Systems         258      0
+   + Textiles
+      Leather                    30     38
    + Waste
       Biowaste                   68      0
    + Weapons
       Personal Weapons         4477      0
-   + Drugs
-      Beer                      142      0
-      Liquor                    343    371
-      Wine                      232      0
-      Tobacco                  4238   4331
-   + Machinery
-      Crop Harvesters          2333      0
-      Marine Supplies          4477      0
-   + Textiles
-      Leather                    30     38
