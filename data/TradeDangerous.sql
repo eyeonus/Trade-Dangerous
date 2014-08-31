@@ -118,7 +118,7 @@ INSERT INTO "Station" VALUES(18,'Bowersox',48,0.0);
 INSERT INTO "Station" VALUES(19,'Massimino Dock',29,0.0);
 INSERT INTO "Station" VALUES(20,'Stone Enterprise',47,0.0);
 INSERT INTO "Station" VALUES(21,'Derrickson''s Escape',22,0.0);
-INSERT INTO "Station" VALUES(22,'Xiaoguan',39,0.0);
+INSERT INTO "Station" VALUES(22,'Xiaoguan Hub',39,0.0);
 INSERT INTO "Station" VALUES(23,'Gernhardt Camp',32,0.0);
 INSERT INTO "Station" VALUES(24,'Louis De Lacaille Prospect',31,0.0);
 INSERT INTO "Station" VALUES(25,'Maunder',53,0.0);

@@ -194,8 +194,8 @@
       Hydrogen Fuels             56      0
    + Consumer Items
       Dom. Appliances           547      0
-      Clothing                  292      0
-      Consumer Tech            6733      0
+      Clothing                  251      0
+      Consumer Tech            6719      0
    + Drugs
       Beer                      142      0
    + Foods
@@ -205,34 +205,34 @@
       Grain                     180      0
       Synthetic Meat             77     87
       Tea                      1399      0
-      Fruit and Vegetables      304      0
+      Fruit and Vegetables      301      0
    + Industrial Materials
       Superconductors          7086      0
    + Medicines
       Agri-Medicines            624    653
       Basic Medicines           305      0
       Progenitor Cells         6498   6577
-      Combat Stabilisers       2218   2277
+      Combat Stabilisers       2123   2180
       Performance Enhancers    6508   6587
    + Metals
       Gold                     9131      0
-      Silver                   4996      0
-      Lithium                  1620      0
-      Palladium               12801      0
-      Cobalt                    742      0
-      Indium                   6019      0
-      Tantalum                 4047      0
+      Silver                   4657      0
+      Lithium                  1582      0
+      Palladium               13432      0
+      Cobalt                    743      0
+      Indium                   6024      0
+      Tantalum                 4082      0
       Uranium                  2833      0
    + Minerals
       Rutile                    323      0
-      Gallium                  5407      0
+      Gallium                  5432      0
       Gallite                  1825      0
-      Beryllium                8080      0
+      Beryllium                8473      0
    + Technology
       Terrain Enrich Sys       3912   3961
       Advanced Catalysers      2247   2306
       H.E. Suits                128    143
-      Computer Components       547      0
+      Computer Components       498      0
       Bioreducing Lichen        732    766
    + Waste
       Biowaste                   11     18
@@ -713,33 +713,33 @@
       Explosives                290      0
       Hydrogen Fuels             47     48
    + Consumer Items
-      Clothing                  307      0
-      Consumer Tech            6563      0
-      Dom. Appliances           551      0
+      Clothing                  291      0
+      Consumer Tech            6848      0
+      Dom. Appliances           515      0
    + Drugs
-      Tobacco                  4688      0
+      Tobacco                  4911      0
       Beer                      143      0
       Narcotics                 143      0
       Wine                      234      0
       Liquor                    661      0
    + Foods
-      Fruit and Vegetables      307      0
+      Fruit and Vegetables      298      0
       Grain                     181      0
       Coffee                   1234      0
-      Tea                      1409      0
+      Tea                      1502      0
       Synthetic Meat            234      0
       Food Cartridges           103      0
       Fish                      647      0
-      Animal Meat              1256      0
+      Animal Meat              1318      0
    + Machinery
-      Mineral Extractors        622      0
+      Mineral Extractors        545      0
    + Medicines
-      Performance Enhancers    6928      0
+      Performance Enhancers    7134      0
       Basic Medicines           307      0
    + Metals
-      Silver                   3938   3985
+      Silver                   3988   4033
       Cobalt                    386    412
-      Palladium               12598  12599
+      Palladium               13044  13045
    + Minerals
       Uraninite                 533    558
       Bauxite                    19     25
@@ -752,9 +752,9 @@
    + Waste
       Biowaste                   11     18
    + Weapons
-      Non-Lethal Wpns          1758      0
-      Personal Weapons         4216      0
-      Reactive Armor           1963      0
+      Non-Lethal Wpns          1736      0
+      Personal Weapons         4099      0
+      Reactive Armor           2082      0
 
 
 @ KERIES/Derrickson's Escape
@@ -1312,7 +1312,7 @@
       Non-Lethal Wpns          1772      0
 
 
-@ MAGEC/Xiaoguan
+@ MAGEC/Xiaoguan Hub
    + Chemicals
       Hydrogen Fuels             56      0
       Pesticides                199      0
