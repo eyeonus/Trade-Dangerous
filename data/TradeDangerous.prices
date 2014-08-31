@@ -1318,7 +1318,7 @@
       Pesticides                199      0
       Mineral Oil                62     73
    + Consumer Items
-      Consumer Tech            7114      0
+      Consumer Tech            6962      0
       Dom. Appliances           550      0
       Clothing                  306      0
    + Drugs
@@ -1328,10 +1328,10 @@
       Grain                      70     83
       Coffee                   1023   1068
       Tea                      1198   1249
-      Fish                      772      0
-      Animal Meat               902    942
+      Fish                      645      0
+      Animal Meat               944    986
    + Machinery
-      Crop Harvesters          2341      0
+      Crop Harvesters          2340      0
    + Medicines
       Agri-Medicines           1086      0
       Basic Medicines           306      0
@@ -1339,7 +1339,7 @@
       Progenitor Cells         7114      0
    + Technology
       Animal Monitors           289      0
-      Terrain Enrich Sys       5093      0
+      Terrain Enrich Sys       4675      0
    + Textiles
       Natural Fabrics           237    255
       Leather                    43     53
