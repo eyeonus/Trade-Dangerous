@@ -1,9 +1,14 @@
 #!/usr/bin/env python
+#---------------------------------------------------------------------
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#  You are free to use, redistribute, or even print and eat a copy of
+#  this software so long as you include this copyright notice.
+#  I guarantee there is at least one bug neither of us knew about.
+#---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Profit Calculator
-# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-#   You are free to use, redistribute, or even print and eat a copy of this
-#   software so long as you include this copyright notice. I guarantee that
-#   there is at least one bug neither of us knew about.
+#
+#  Provides functions for calculating the most profitable trades and
+#  trade runs based based on a set of encapsulated criteria.
 
 ######################################################################
 # Imports
@@ -21,6 +26,7 @@ locale.setlocale(locale.LC_ALL, '')
 # super-whizzy fast and implemented in C. But in Python 3 it's just
 # a dict. What a dict move.
 
+from tradedb import System, Station
 from collections import namedtuple
 TradeLoad = namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])
 emptyLoad = TradeLoad([], 0, 0, 0)
@@ -31,9 +37,11 @@ TradeHop = namedtuple('TradeHop', [ 'destSys', 'destStn', 'load', 'gainCr', 'jum
 # Classes
 
 class Route(object):
-    """ Describes a series of CargoRuns, that is CargoLoads
+    """
+        Describes a series of CargoRuns, that is CargoLoads
         between several stations. E.g. Chango -> Gateway -> Enterprise
-        """
+    """
+
     def __init__(self, stations, hops, startCr, gainCr, jumps):
         self.route = stations
         self.hops = hops
@@ -41,21 +49,33 @@ class Route(object):
         self.gainCr = gainCr
         self.jumps = jumps
 
+
     def plus(self, dst, hop, jumps):
-        rvalue = Route(self.route + [dst], self.hops + [hop], self.startCr, self.gainCr + hop[1], self.jumps + [jumps])
-        return rvalue
+        """
+            Returns a new route describing the sum of this route plus a new hop.
+        """
+        return Route(self.route + [dst], self.hops + [hop], self.startCr, self.gainCr + hop[1], self.jumps + [jumps])
+
 
     def __lt__(self, rhs):
         if rhs.gainCr < self.gainCr: # reversed
             return True
         return rhs.gainCr == self.gainCr and len(rhs.jumps) < len(self.jumps)
+
+
     def __eq__(self, rhs):
         return self.gainCr == rhs.gainCr and len(self.jumps) == len(rhs.jumps)
 
+
     def str(self):
-        return "%s -> %s" % (self.route[0], self.route[-1])
+        return "%s -> %s" % (self.route[0].str(), self.route[-1].str())
+
 
     def detail(self, detail=0):
+        """
+            Return a string describing this route to a given level of detail.
+        """
+
         credits = self.startCr
         gainCr = 0
         route = self.route
@@ -67,15 +87,15 @@ class Route(object):
             hop = self.hops[i]
             hopGainCr, hopTonnes = hop[1], 0
             text += " >-> " if i == 0 else "  +  "
-            text += "At %s/%s, Buy:" % (route[i].system.str().upper(), route[i].station)
+            text += "At %s/%s, Buy:" % (route[i].system.name(), route[i].name())
             for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
                 if detail > 1:
-                    text += "\n  |   %4d x %-30s" % (qty, item.item)
+                    text += "\n  |   %4d x %-30s" % (qty, item.item[0])
                     text += " @ %10scr each, %10scr total" % (localedNo(item.costCr), localedNo(item.costCr * qty))
                 elif detail:
-                    text += " %d x %s (@%dcr)" % (qty, item.item, item.costCr)
+                    text += " %d x %s (@%dcr)" % (qty, item.item[0], item.costCr)
                 else:
-                    text += " %d x %s" % (qty, item.item)
+                    text += " %d x %s" % (qty, item.item[0])
                 text += ","
                 hopTonnes += qty
             text += "\n"
@@ -89,12 +109,16 @@ class Route(object):
                 text += "\n"
             gainCr += hopGainCr
 
-        text += " <-< %s gaining %scr => %scr total" % (route[-1], localedNo(gainCr), localedNo(credits + gainCr))
+        text += " <-< %s gaining %scr => %scr total" % (route[-1].name(), localedNo(gainCr), localedNo(credits + gainCr))
         text += "\n"
 
         return text
 
     def summary(self):
+        """
+            Returns a string giving a short summary of this route.
+        """
+
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum([hop[1] for hop in hops])
         return "\n".join([
@@ -108,27 +132,31 @@ class Route(object):
 
 
 class TradeCalc(object):
-    """ Container for accessing trade calculations with common properties """
-    def __init__(self, tdb, debug=False, capacity=None, maxUnits=None, margin=0.01, unique=False, fit=None):
+    """
+        Container for accessing trade calculations with common properties.
+    """
+
+    def __init__(self, tdb, debug=0, capacity=None, maxUnits=None, margin=0.01, unique=False, fit=None):
         self.tdb = tdb
         self.debug = debug
         self.capacity = capacity or 4
         self.margin = float(margin)
         self.unique = unique
         self.maxUnits = maxUnits or 0
-        self.defaultFit = fit or self.fast_fit
+        self.defaultFit = fit or self.fastFit
 
-    def brute_force_fit(self, items, credits, capacity, maxUnits):
+
+    def bruteForceFit(self, items, credits, capacity, maxUnits):
         """
             Brute-force generation of all possible combinations of items. This is provided
             to make it easy to validate the results of future variants or optimizations of
             the fit algorithm.
         """
-        def _fit_combos(offset, cr, cap):
+        def _fitCombos(offset, cr, cap):
             if offset >= len(items):
                 return emptyLoad
             # yield items below us too
-            bestLoad = _fit_combos(offset + 1, cr, cap)
+            bestLoad = _fitCombos(offset + 1, cr, cap)
             item = items[offset]
             itemCost = item.costCr
             maxQty = min(maxUnits, cap, cr // itemCost)
@@ -136,7 +164,7 @@ class TradeCalc(object):
                 itemGain = item.gainCr
                 for qty in range(maxQty):
                     load = TradeLoad([[item, maxQty]], itemGain * maxQty, itemCost * maxQty, maxQty)
-                    subLoad = _fit_combos(offset + 1, cr - load.costCr, cap - load.units)
+                    subLoad = _fitCombos(offset + 1, cr - load.costCr, cap - load.units)
                     combGain = load.gainCr + subLoad.gainCr
                     if combGain < bestLoad.gainCr:
                         continue
@@ -150,16 +178,17 @@ class TradeCalc(object):
                     bestLoad = TradeLoad(load.items + subLoad.items, load.gainCr + subLoad.gainCr, load.costCr + subLoad.costCr, load.units + subLoad.units)
             return bestLoad
 
-        bestLoad = _fit_combos(0, credits, capacity)
+        bestLoad = _fitCombos(0, credits, capacity)
         return bestLoad
 
-    def fast_fit(self, items, credits, capacity, maxUnits):
+
+    def fastFit(self, items, credits, capacity, maxUnits):
         """
             Best load calculator using a recursive knapsack-like
             algorithm to find multiple loads and return the best.
         """
 
-        def _fit_combos(offset, cr, cap):
+        def _fitCombos(offset, cr, cap):
             """
                 Starting from offset, consider a scenario where we
                 would purchase the maximum number of each item
@@ -187,7 +216,7 @@ class TradeCalc(object):
                     if crLeft > 0 and capLeft > 0:
                         # Solve for the remaining credits and capacity with what
                         # is left in items after the item we just checked.
-                        for subLoad in _fit_combos(offset + 1, crLeft, capLeft):
+                        for subLoad in _fitCombos(offset + 1, crLeft, capLeft):
                             if subLoad.gainCr >= bestGainCr:
                                 yield TradeLoad(subLoad.items + loadItems, subLoad.gainCr + loadGainCr, subLoad.costCr + loadCostCr, subLoad.units + maxQty)
                                 bestGainCr = subLoad.gainCr
@@ -197,11 +226,12 @@ class TradeCalc(object):
                 offset += 1
 
         bestLoad = emptyLoad
-        for result in _fit_combos(0, credits, capacity):
+        for result in _fitCombos(0, credits, capacity):
             if not bestLoad or (result.gainCr > bestLoad.gainCr or (result.gainCr == bestLoad.gainCr and (result.units < bestLoad.units or (result.units == bestLoad.units and result.costCr < bestLoad.costCr)))):
                 bestLoad = result
 
         return bestLoad
+
 
     def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=None, focusItems=None, fitFunction=None):
         """
@@ -212,10 +242,10 @@ class TradeCalc(object):
         """
         if not avoidItems: avoidItems = []
         if not focusItems: focusItems = []
-        if self.debug: print("# %s -> %s with %dcr" % (src, dst, credits))
+        if self.debug: print("# %s -> %s with %dcr" % (src.name(), dst.name(), credits))
 
-        if not dst in src.stations:
-            raise ValueError("%s does not have a link to %s" % (src, dst))
+        if not dst in src.tradingWith:
+            raise ValueError("%s does not have a link to %s" % (src.name(), dst.name()))
 
         capacity = capacity or self.capacity
         if not capacity:
@@ -223,7 +253,7 @@ class TradeCalc(object):
 
         maxUnits = self.maxUnits or capacity
 
-        items = src.trades[dst.ID]
+        items = src.tradingWith[dst]
         if avoidItems:
             items = [ item for item in items if not item.item in avoidItems ]
         if focusItems:
@@ -253,25 +283,40 @@ class TradeCalc(object):
         return fitFunction(items, credits, capacity, maxUnits)
 
 
-    def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLy=None, maxLyPer=None):
-        """ Determine the best trade run from a given station. """
-        if isinstance(src, str):
-            src = self.tdb.getStation(src)
-        hop = None
-        for (destSys, destStn, jumps, ly, via) in src.getDestinations(maxJumps=maxJumps, maxLy=maxLy, maxLyPer=maxLyPer):
-            load = self.getBestTrade(src, destStn, credits, capacity=capacity)
-            if load and (not hop or (load.gainCr > hop.gainCr or (load.gainCr == hop.gainCr and len(jumps) < hop.jumps))):
-                hop = TradeHop(destSys=destSys, destStn=destStn, load=load.items, gainCr=load.gainCr, jumps=jumps, ly=ly)
-        return hop
+    def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLyPer=None):
+        """
+            Determine the best trade run from a given station.
+        """
+        src = self.tdb.lookupStation(src)
+        bestHop = None
+        for dest in src.getDestinations(maxJumps=maxJumps, maxLyPer=maxLyPer):
+            load = self.getBestTrade(src, dest.station, credits, capacity=capacity)
+            if not load:
+                continue
+            if bestHop:
+                if load.gainCr > bestHop.gainCr: continue
+                if load.gainCr == bestHop.gainCr:
+                    if dest.jumps > bestHop.jumps: continue
+                    if dest.jumps == bestHop.jumps:
+                        if dest.ly >= bestHop.ly:
+                            continue
+            bestHop = TradeHop(destSys=dest.system, destStn=dest.station, load=load.items, gainCr=load.gainCr, jumps=dest.jumps, ly=dest.ly)
+        return besthop
+
 
     def getBestHops(self, routes, credits,
                     restrictTo=None, avoidItems=None, avoidPlaces=None, maxJumps=None,
-                    maxLy=None, maxJumpsPer=None, maxLyPer=None):
-        """ Given a list of routes, try all available next hops from each
-            route. Store the results by destination so that we pick the
-            best route-to-point for each destination at each step. If we
-            have two routes: A->B->D, A->C->D and A->B->D produces more
-            profit, then there is no point in continuing the A->C->D path. """
+                    maxJumpsPer=None, maxLyPer=None):
+        """
+            Given a list of routes, try all available next hops from each
+            route.
+
+            Store the results by destination so that we pick the
+            best route-to-point for each destination at each step.
+
+            If we have two routes: A->B->D, A->C->D and A->B->D produces
+            more profit, there's no point continuing the A->C->D path.
+        """
 
         if not avoidItems: avoidItems = []
         if not avoidPlaces: avoidPlaces = []
@@ -291,24 +336,27 @@ class TradeCalc(object):
                 if jumpLimit <= 0:
                     continue
 
-            for (destSys, destStn, jumps, ly) in src.getDestinations(maxJumps=jumpLimit, maxLy=maxLy, maxLyPer=maxLyPer, avoiding=avoidPlaces):
+            for dest in src.getDestinations(maxJumps=jumpLimit, maxLyPer=maxLyPer, avoiding=avoidPlaces):
                 if self.debug:
-                    print("#destSys = %s, destStn = %s, jumps = %s, ly = %s" % (destSys.str(), destStn, "->".join([jump.str() for jump in jumps]), ly))
-                if not destStn in src.stations:
-                    if self.debug: print("#%s is not in my station list" % destStn)
+                    print("#destSys = %s, destStn = %s, jumps = %s, distLy = %s" % (dest.system.name(), dest.station.name(), "->".join([jump.str() for jump in dest.via]), dest.distLy))
+                if not dest.station in src.tradingWith:
+                    if self.debug > 2: print("#%s is not in my station list" % dest.station.name())
                     continue
-                if restrictTo and destStn != restrictTo:
-                    if self.debug: print("#%s doesn't match restrict %s" % (destStn, restrictTo))
+                if restrictTo:
+                    if (isinstance(restrictTo, System) and dest.system != restrictTo) \
+                            or (isinstance(restrictTo, Station) and dest.station != restrictTo):
+                        if self.debug > 2: print("#%s doesn't match restrict %s" % (dest.station.name(), restrictTo))
+                        continue
+                if unique and dest.station in route.route:
+                    if self.debug > 2: print("#%s is already in the list, not unique" % dest.station.name())
                     continue
-                if unique and destStn in route.route:
-                    if self.debug: print("#%s is already in the list, not unique" % destStn)
-                    continue
-                trade = self.getBestTrade(src, destStn, startCr, avoidItems=avoidItems)
-                if not trade:
-                    if self.debug: print("#* No trade")
-                    continue
-                dstID = destStn.ID
 
+                trade = self.getBestTrade(src, dest.station, startCr, avoidItems=avoidItems)
+                if not trade:
+                    if self.debug > 2: print("#* No trade")
+                    continue
+
+                dstID = dest.station.ID
                 try:
                     # See if there is already a candidate for this destination
                     (bestStn, bestRoute, bestTrade, bestJumps, bestLy) = bestToDest[dstID]
@@ -317,12 +365,12 @@ class TradeCalc(object):
                     newRouteGainCr = route.gainCr + trade[1]
                     if bestRouteGainCr > newRouteGainCr:
                         continue
-                    if bestRouteGainCr == newRouteGainCr and bestLy <= ly:
+                    if bestRouteGainCr == newRouteGainCr and bestLy <= dest.distLy:
                         continue
                 except KeyError:
                     # No existing candidate, we win by default
                     pass
-                bestToDest[dstID] = [ destStn, route, trade, jumps, ly ]
+                bestToDest[dstID] = [ dest.station, route, trade, dest.via, dest.distLy ]
 
         result = []
         for (dst, route, trade, jumps, ly) in bestToDest.values():
@@ -330,12 +378,9 @@ class TradeCalc(object):
 
         return result
 
-# A function called 'localedNo'. If you needed this comment, we're
-# in a metric heck ton of trouble, and the calculator has yet to find
-# a route for selling any number of tons of trouble across any number
-# of light years. Maybe we should use imperial heck tons?
-# Look. It's the only function in this file, and I'll be damned if
-# I can let that fly without a comment. So this is what you get.
-def localedNo(num):
-    """ Returns a locale-formatted version of a number, e.g. 1,234,456. """
+
+def localedNo(num): # as in "transformed into the current locale"
+    """
+        Returns a locale-formatted version of a number, e.g. 1,234,456.
+    """
     return locale.format('%d', num, grouping=True)

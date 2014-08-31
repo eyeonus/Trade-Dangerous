@@ -1,27 +1,33 @@
 #!/usr/bin/env python
+#---------------------------------------------------------------------
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#  You are free to use, redistribute, or even print and eat a copy of
+#  this software so long as you include this copyright notice.
+#  I guarantee there is at least one bug neither of us knew about.
+#---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Database Module
-# TradeDangerous Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-#   You are free to use, redistribute, or even print and eat a copy of this
-#   software so long as you include this copyright notice. I guarantee that
-#   there is at least one bug neither of us knew about.
 #
-# Provides classes that load and describe the TradeDangerous data set.
-# Currently depends on pypyodbc and Microsoft Access 2010+ drivers,
-# but I'll switch to a more portable format soon.
+#  Containers for describing the current TradeDangerous database
+#  and loading it from the SQLite database cache.
 
 ######################################################################
 # Imports
 
 import re                   # Because irregular expressions are dull
 import pypyodbc             # Because its documentation was better
+import sys
 from queue import Queue     # Because we're British.
 from collections import namedtuple
+import itertools
+import math
+from pathlib import Path
 
 ######################################################################
 # Classes
 
 class AmbiguityError(Exception):
-    """ Raised when a search key could match multiple entities.
+    """
+        Raised when a search key could match multiple entities.
         Attributes:
             searchKey - the key given to the search routine,
             first     - the first potential match
@@ -29,235 +35,403 @@ class AmbiguityError(Exception):
     """
     def __init__(self, lookupType, searchKey, first, second):
         self.lookupType, self.searchKey, self.first, self.second = lookupType, searchKey, first, second
+
+
     def __str__(self):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
+
 class Trade(object):
-    """ Describes what it would cost and how much you would gain
-        when selling an item between two specific stations. """
+    """
+        Describes what it would cost and how much you would gain
+        when selling an item between two specific stations.
+    """
+    # TODO: Replace with a class within Station that describes asking and paying.
     def __init__(self, item, itemID, costCr, gainCr):
         self.item = item
         self.itemID = itemID
         self.costCr = costCr
         self.gainCr = gainCr
 
+
     def describe(self):
         print(self.item, self.itemID, self.costCr, self.gainCr)
+
 
     def __repr__(self):
         return "%s (%dcr)" % (self.item, self.costCr)
 
 
 class System(object):
-    """ Describes a star system, which may contain one or more Station objects,
-        and lists which stars it has a direct connection to. """
+    """
+        Describes a star system, which may contain one or more Station objects,
+        and lists which stars it has a direct connection to.
+    """
+    # TODO: Build the links from an SQL query, it'll save a lot of
+    # expensive python dictionary lookups.
 
-    def __init__(self, system):
-        self.system = system
+    def __init__(self, ID, name, posX, posY, posZ):
+        self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, name, posX, posY, posZ
         self.links = {}
         self.stations = []
 
-    def addLink(self, dest, dist):
-        self.links[dest] = dist
+
+    @staticmethod
+    def linkSystems(lhs, rhs, distSq):
+        lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
+
 
     def links(self):
         return list(self.links.keys())
+
 
     def addStation(self, station):
         if not station in self.stations:
             self.stations.append(station)
 
-    def str(self):
-        return self.system
 
-
-class Station(object):
-    """ Describes a station within a given system along with what trade
-        opportunities it presents. """
-
-    def __init__(self, ID, system, station):
-        self.ID, self.system, self.station = ID, system, station
-        self.trades = {}
-        self.stations = []
-        system.addStation(self)
-
-    def addTrade(self, dest, item, itemID, costCr, gainCr):
-        """ Add a Trade entry from this to a destination station. """
-        dstID = dest.ID
-        if not dstID in self.trades:
-            self.trades[dstID] = []
-            self.stations.append(dest)
-        trade = Trade(item, itemID, costCr, gainCr)
-        self.trades[dstID].append(trade)
-
-    def organizeTrades(self):
-        """ Process the trades-to-destination lists: sort the list into by-gain order. """
-        for tradeList in self.trades.values():
-            # sort the list in descending gain order - so the mostprofitable item is listed first.
-            tradeList.sort(key=lambda trade: trade.gainCr, reverse=True)
-
-    def getDestinations(self, maxJumps=None, maxLy=None, maxLyPer=None, avoiding=None):
-        """ Gets a list of the Station destinations that can be reached
-            from this Station within the specified constraints.
-            If no constraints are specified, you get a list of everywhere
-            that this station has a link to in the db where something
-            the station sells is bought.
-            """
-
-        if not avoiding: avoiding = []
-
-        openList, closedList, destStations = Queue(), [sys for sys in avoiding if isinstance(sys, System)] + [self], []
-        openList.put([self.system, [], 0])
-        # Sys is always available, so we don't need to import it. maxint was deprecated in favour of maxsize.
-        # noinspection PyUnresolvedReferences
-        maxJumpDist = float(maxLyPer or sys.maxsize)
-        while not openList.empty():
-            (sys, jumps, dist) = openList.get()
-            if maxJumps and len(jumps) > maxJumps:
-                continue
-            if maxLy and dist > maxLy:
-                continue
-            jumps = list(jumps + [sys])
-            for stn in sys.stations:
-                if not stn in avoiding:
-                    destStations.append([sys, stn, jumps, dist])
-            if (maxJumps and len(jumps) > maxJumps):
-                continue
-            for (destSys, destDist) in sys.links.items():
-                if destDist > maxJumpDist:
-                    continue
-                if maxLy and dist + destDist > maxLy:
-                    continue
-                if destSys in closedList:
-                    continue
-                openList.put([destSys, jumps, dist + destDist])
-                closedList.append(destSys)
-        return destStations
+    def name(self):
+        return self.dbname.upper()
 
 
     def str(self):
-        return '%s %s' % (self.system.str().upper(), self.station)
+        return self.dbname
 
 
     def __repr__(self):
-        return '%s %s' % (self.system.str().upper(), self.station)
+        return "<System: {}, {}, {}, {}, {}>".format(self.ID, self.dbname, self.posX, self.posY, self.posZ)
 
-class Ship(namedtuple('Ship', [ 'name', 'capacity', 'maxJump', 'maxJumpFull', 'stations' ])):
-    pass
+
+class Station(object):
+    """
+        Describes a station within a given system along with what trade
+        opportunities it presents.
+    """
+
+    def __init__(self, ID, system, name, lsFromStar=0.0):
+        self.ID, self.system, self.dbname, self.lsFromStar = ID, system, name, lsFromStar
+        self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
+        system.addStation(self)
+
+
+    def name(self):
+        return self.dbname
+
+
+    def addTrade(self, dest, item, itemID, costCr, gainCr):
+        """
+            Add an entry reflecting that an item can be bought at this
+            station and sold for a gain at another.
+        """
+        # TODO: Something smarter.
+        if not dest in self.tradingWith:
+            self.tradingWith[dest] = []
+        trade = Trade(item, itemID, costCr, gainCr)
+        self.tradingWith[dest].append(trade)
+
+
+    def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
+        """
+            Gets a list of the Station destinations that can be reached
+            from this Station within the specified constraints.
+        """
+
+        avoiding = avoiding or []
+        maxJumps = maxJumps or sys.maxsize
+        maxLyPer = maxLyPer or float("inf")
+
+        # The open list is the list of nodes we should consider next for
+        # potential destinations.
+        # The path list is a list of the destinations we've found and the
+        # shortest path to them. It doubles as the "closed list".
+        # The closed list is the list of nodes we've already been to (so
+        # that we don't create loops A->B->C->A->B->C->...)
+
+        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
+
+        openList = [ Node(self.system, [], 0) ]
+        pathList = { system.ID: Node(system, None, 0.0)
+                        # include avoids so we only have
+                        # to consult one place for exclusions
+                        for system in avoiding + [ self ]
+                        # the avoid list may contain stations,
+                        # which affects destinations but not vias
+                        if isinstance(system, System) }
+
+        # As long as the open list is not empty, keep iterating.
+        jumps = 0
+        while openList and jumps < maxJumps:
+            # Expand the search domain by one jump; grab the list of
+            # nodes that are this many hops out and then clear the list.
+            ring, openList = openList, []
+            # All of the destinations we are about to consider will
+            # either be on the closed list or they will be +1 jump away.
+            jumps += 1
+
+            for node in ring:
+                for (destSys, destDist) in node.system.links.items():
+                    if destDist > maxLyPer: continue
+                    dist = node.distLy + destDist
+                    try:
+                        prevNode = pathList[destSys.ID]
+                        # If we already have a shorter path, do nothing
+                        if dist >= prevNode.distLy: continue
+                    except KeyError: pass
+                    # Add to the path list
+                    pathList[destSys.ID] = Node(destSys, node.via, dist)
+                    # Add to the open list but also include node to the via
+                    # list so that it serves as the via list for all next-hops.
+                    openList += [ Node(destSys, node.via + [destSys], dist) ]
+
+        Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
+
+        destStations = []
+        # always include the local stations, unless the user has indicated they are
+        # avoiding this system. E.g. if you're in Chango but you've specified you
+        # want to avoid Chango...
+        if not self.system in avoiding:
+            for station in self.system.stations:
+                if station in self.tradingWith and not station in avoiding:
+                    destStations += [ Destination(self, station, [], 0.0) ]
+
+        avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
+        epsilon = sys.float_info.epsilon
+        for node in pathList.values():
+            if node.distLy > epsilon:       # Values indistinguishable from zero are avoidances
+                for station in node.system.stations:
+                    destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+
+        return destStations
+
+
+    def name(self):
+        return self.dbname
+
+
+    def str(self):
+        return '%s %s' % (self.system.name(), self.dbname)
+
+
+    def __repr__(self):
+        return '<Station: {}, {}, {}, {}>'.format(self.ID, self.system.name(), self.dbname, self.lsFromStar)
+
+
+class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
+    def name(self):
+        return self.dbname
+
 
 class TradeDB(object):
-    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
-    ships = [
-        Ship('Sidewinder',     4,  8.13,  7.25,     [ 'Aulin Enterprise', 'Beagle2', 'Abnett Platform', 'Moxon\'s Mojo' ]),
-        Ship('Eagle',          6,  6.59,  6.00,     [ 'Aulin Enterprise', 'Beagle2', 'Abnett Platform' ]),
-        Ship('Hauler',        16,  8.74,  6.10,     [ 'Aulin Enterprise', 'Beagle2', 'Moxon\'s Mojo' ]),
-        Ship('Viper',          8, 13.49,  9.16,     [ 'Aulin Enterprise', 'Beagle2', 'Chango Dock' ]),
-        Ship('Cobra',         36,  9.94,  7.30,     [ 'Aulin Enterprise', 'Chango Dock' ]),
-        Ship('Lakon Type 6', 100, 29.36, 15.64,     [ 'Aulin Enterprise', 'Chango Dock', 'Vonarburg Co-op', 'Moxon\'s Mojo' ]),
-        Ship('Lakon Type 9', 440, 18.22, 13.34,     [ 'Chango Dock', 'Moxon\'s Mojo' ]),
-        Ship('Anaconda',     228, 19.70, 17.60,     [ 'Louis De Lacaille Prospect' ]),
-    ]
+    """
+        Encapsulation for the database layer.
 
-    def __init__(self, path='.\\TradeDangerous.accdb', debug=0):
-        self.path = "Driver={Microsoft Access Driver (*.mdb, *.accdb)};DBQ=" + path
+        Attributes:
+            debug               -   Debugging level for this instance.
+            dbmodule            -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc).
+            path                -   The URI to the database.
+            conn                -   The database connection.
+
+        Methods:
+            load                -   Reloads entire database. CAUTION: Destructive - Orphans existing records you reference.
+            loadTrades          -   Reloads just the price data. CAUTION: Destructive - Orphans existing records.
+            lookupSystem        -   Return a system matching "name" with ambiguity detection.
+            lookupStation       -   Return a station matching "name" with ambiguity detection.
+            lookupShip          -   Return a ship matching "name" with ambiguity detection.
+            getTrade            -   Look for a Trade object where item is sold from one stationi and bought at another.
+
+            query               -   Executes the specified SQL on the db and returns a cursor.
+            fetch_all           -   Generator that yields all the rows retrieved by an sql cursor.
+            
+        Static methods:
+            distanceSq          -   Returns the square of the distance between two points.
+            listSearch          -   Performs a partial-match search of a list for a value.
+            normalizedStr       -   Normalizes a search index string.
+    """
+
+    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+    # The DB cache
+    defaultDB = './data/TradeDangerous.db'
+    # File containing SQL to build the DB cache from
+    defaultSQL = './data/TradeDangerous.sql'
+    # File containing text description of prices
+    defaultPrices = './data/TradeDangerous.prices'
+
+
+    def __init__(self, path=None, sqlFilename=None, pricesFilename=None, debug=0):
+        self.dbPath = Path(path or TradeDB.defaultDB)
+        self.dbURI = str(self.dbPath)
+        self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
         self.debug = debug
-        try:
-            self.conn = pypyodbc.connect(self.path)
-        except pypyodbc.Error as e:
-            print("Do you have the requisite Access driver installed? See http://www.microsoft.com/en-us/download/details.aspx?id=13255")
-            raise e
+        self.conn, self.dbmodule = None, None
+
+        # Ensure the file exists, otherwise sqlite will create a new database.
+        self._connectToDB()
+
         self.load()
 
-    def load(self):
-        """ Populate/re-populate this instance with data from the TradeDB layer. """
-        # Create a cursor.
+
+    ####
+    # Access to the underlying database.
+
+    def _connectToDB(self):
+        self.reloadCache()
+
+        # Make sure we don't hold on to an existing connection.
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
+        try:
+            import sqlite3
+            self.dbmodule = sqlite3
+            self.conn = self.dbmodule.connect(self.dbURI)
+        except ImportError as e:
+            print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
+            raise e
+
+
+    def query(self, *args):
+        """ Perform an SQL query on the DB and return the cursor. """
+        if not self.conn: self._connectToDB()
         cur = self.conn.cursor()
+        cur.execute(*args)
+        return cur
 
-        # Fetch a list of systems.
-        cur.execute('SELECT system FROM Stations GROUP BY system')
-        systems = self.systems = { row[0]: System(row[0]) for row in cur }
 
-        # Fetch a list of links between systems.
-        # TODO: Store positions, calculate distances on demand
-        cur.execute("""SELECT frmSys.system, toSys.system, Links.distLy
-                     FROM Stations AS frmSys, Links, Stations as toSys
-                     WHERE frmSys.ID = Links.from AND toSys.ID = Links.to""")
-        for (srcSysID, dstSysID, distLy) in cur:
-            srcSys, dstSys = systems[srcSysID], systems[dstSysID]
-            srcSys.addLink(dstSys, float(distLy))
+    # following the convention of how fetch_all is written in python modules.
+    def fetch_all(self, *args):
+        """ Perform an SQL query on the DB and iterate across the rows. """
+        for row in self.query(*args):
+            yield row
 
-        # Fetch the list of stations
-        cur.execute('SELECT id, system, station FROM Stations')
-        # Station lookup by ID
-        self.stations = { row[0]: Station(row[0], self.systems[row[1]], row[2]) for row in cur }
-        # StationID lookup by System Name
-        self.systemIDs = { value.system.str().upper(): key for (key, value) in self.stations.items() }
-        # StationID lookup by Station Name
-        self.stationIDs = { value.station.upper(): key for (key, value) in self.stations.items() }
 
-        # Populate 'items' from the database
-        cur.execute('SELECT id, item FROM Items')
-        self.items = { row[0]: row[1] for row in cur }
-        self.itemIDs = { name: itemID for (itemID, name) in self.items.items() }
+    def reloadCache(self):
+        """
+            Checks if the .sql or .prices file is newer than the cache.
+        """
 
-        stations, items = self.stations, self.items
+        if self.dbPath.exists():
+            # We're looking to see if the .sql file or .prices file
+            # was modified or created more recently than the last time
+            # we *created* the db file.
+            dbFileCreatedTimestamp = self.dbPath.stat().st_ctime
 
-        # Populate the station list with the profitable trades between stations
-        # Ignore items that have a ui_order of 0 in the prices table (my way of marking an item as defunct or illegal)
-        cur.execute('SELECT src.station_id, dst.station_id, src.item_id, src.buy_cr, dst.sell_cr'
-                    ' FROM Prices AS src INNER JOIN Prices AS dst ON src.item_id = dst.item_id'
-                    ' WHERE src.buy_cr > 0 AND dst.sell_cr > src.buy_cr'
-                    ' AND src.ui_order > 0 AND dst.ui_order > 0'
-                    )
-        for (srcID, dstID, itemID, srcCostCr, dstValueCr) in cur:
-            srcStn = stations[srcID]
-            dstStn = stations[dstID]
-            item   = items[itemID]
-            srcStn.addTrade(dstStn, item, itemID, srcCostCr, dstValueCr - srcCostCr)
+            sqlStat, pricesStat = self.sqlPath.stat(), self.pricesPath.stat()
+            sqlFileTimestamp = max(sqlStat.st_mtime, sqlStat.st_ctime)
+            pricesFileTimestamp = max(pricesStat.st_mtime, pricesStat.st_ctime)
 
-        # Post-process the trades and sort them into whatever order we want them in.
-        for station in stations.values():
-            station.organizeTrades()
+            if dbFileCreatedTimestamp > max(sqlFileTimestamp, pricesFileTimestamp):
+                # db is newer.
+                if self.debug > 1:
+                    print("reloadCache: db file is newer. db:{} > max(sql:{}, prices:{}".format(dbFileCreatedTimestamp, sqlFileTimestamp, pricesFileTimestamp))
+                return
 
-        # In debug mode, check that everything looks sane.
-        if self.debug:
-            self._validate()
+            if self.debug:
+                print("* Rebuilding DB Cache")
+        else:
+            if self.debug:
+                print("* Building DB cache")
 
-    def _validate(self):
-        # Check that things correctly reference themselves.
-        for (stnID, stn) in self.stations.items():
-            if self.stations[stn.ID] != stn:
-                raise ValueError("Station not pointing to self correctly" % stn.station)
-        for (stnName, stnID) in self.stationIDs.items():
-            if self.stations[stnID].station.upper() != stnName:
-                raise ValueError("Station name not pointing to self correctly" % stnName)
-        for (itemID, item) in self.items.items():
-            if self.itemIDs[item] != itemID:
-                raise ValueError("Item %s not pointing to itself correctly" % item, itemID, item, self.itemIDs[item])
-        # Check that system links are bi-directional
-        for (name, sys) in self.systems.items():
-            if not sys.links:
-                raise ValueError("System %s has no links" % name)
-            if sys in sys.links:
-                raise ValueError("System %s has a link to itself!" % name)
-            if name in sys.links:
-                raise ValueError("System %s's name occurs in sys.links" % name)
-            for link in sys.links:
-                if not sys in link.links:
-                    raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
+        import buildcache
+        buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath)
 
-    def getSystem(self, name):
-        """ Look up a System object by it's name. """
-        if isinstance(name, System):
+
+    ####
+    # Star system data.
+
+    def systems(self):
+        """ Iterate through the list of systems. """
+        yield from self.systemByID.values()
+
+
+    def _loadSystems(self):
+        """
+            Initial load the (raw) list of systems.
+            If you have previously loaded Systems, this will orphan the old System objects.
+        """
+        stmt = """
+                SELECT system_id, name, pos_x, pos_y, pos_z
+                  FROM System
+            """
+        self.cur.execute(stmt)
+        systemByID, systemByName = {}, {}
+        for (ID, name, posX, posY, posZ) in self.cur:
+            systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
+
+        self.systemByID, self.systemByName = systemByID, systemByName
+        if self.debug > 1: print("# Loaded %d Systems" % len(systemByID))
+
+
+    def buildLinks(self, longestJumpLy):
+        """
+            Populate the list of reachable systems for every star system.
+
+            Not every system can reach every other, and we use the longest jump
+            that can be made by a ship to limit how many connections we consider
+            to be "links".
+        """
+
+        longestJumpSq = longestJumpLy ** 2  # So we don't have to sqrt every distance
+
+        # Generate a series of symmetric pairs (A->B, A->C, A->D, B->C, B->D, C->D)
+        # so we only calculate each distance once, and then add a link each way.
+        # (A->B distance populates A->B and B->A, etc)
+        numLinks = 0
+        for (lhs, rhs) in itertools.combinations(self.systemByID.values(), 2):
+            dX, dY, dZ = rhs.posX - lhs.posX, rhs.posY - lhs.posY, rhs.posZ - lhs.posZ
+            distSq = (dX * dX) + (dY * dY) + (dZ * dZ)
+            if distSq <= longestJumpSq:
+                System.linkSystems(lhs, rhs, distSq)
+                numLinks += 1
+
+        if self.debug > 2: print("# Number of links between systems: %d" % numLinks)
+
+
+    def lookupSystem(self, key):
+        """
+            Look up a System object by it's name.
+        """
+        if isinstance(key, System):
             return name
-        if isinstance(name, Station):
+        if isinstance(key, Station):
             return name.system
 
-        system = self.list_search("System", name, self.systems.keys())
-        return self.systems[system]
+        return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
-    def getStation(self, name):
-        """ Look up a Station object by it's name or system. """
+
+    ####
+    # Station data.
+
+    def stations(self):
+        """ Iterate through the list of stations. """
+        yield from self.stationByID.values()
+
+
+    def _loadStations(self):
+        """
+            Populate the Station list.
+            Station constructor automatically adds itself to the System object.
+            If you have previously loaded Stations, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT station_id, system_id, name, ls_from_star
+                  FROM Station
+            """
+        self.cur.execute(stmt)
+        stationByID, stationByName = {}, {}
+        systemByID = self.systemByID
+        for (ID, systemID, name, lsFromStar) in self.cur:
+            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar)
+
+        self.stationByID, self.stationByName = stationByID, stationByName
+        if self.debug > 1: print("# Loaded %d Stations" % len(stationByID))
+
+
+    def lookupStation(self, name):
+        """
+            Look up a Station object by it's name or system.
+        """
         if isinstance(name, Station):
             return name
         if isinstance(name, System):
@@ -268,73 +442,238 @@ class TradeDB(object):
 
         stationID, station, systemID, system = None, None, None, None
         try:
-            systemID = self.list_search("System", name, self.systems.keys())
-            system = self.systems[systemID]
+            system = TradeDB.listSearch("System", name, self.systemByID.values(), key=lambda system: system.dbname)
         except LookupError:
             pass
         try:
-            stationName = self.list_search("Station", name, self.stationIDs.keys())
-            stationID = self.stationIDs[stationName]
-            station = self.stations[stationID]
+            station = TradeDB.listSearch("Station", name, self.stationByID.values(), key=lambda station: station.dbname)
         except LookupError:
             pass
         # If neither matched, we have a lookup error.
-        if not (stationID or systemID):
+        if not (station or system):
             raise LookupError("'%s' did not match any station or system." % (name))
 
         # If we matched both a station and a system, make sure they resovle to the
         # the same station otherwise we have an ambiguity. Some stations have the
         # same name as their star system (Aulin/Aulin Enterprise)
-        if systemID and stationID and system != station.system:
-            raise AmbiguityError('Station', name, system.str(), station.str())
+        if system and station and system != station.system:
+            raise AmbiguityError('Station', name, system.name(), station.name())
 
-        if stationID:
-            return self.stations[stationID]
+        if station:
+            return station
 
         # If we only matched a system name, ensure that it's a single station system
         # otherwise they need to specify a station name.
-        system = self.systems[systemID]
         if len(system.stations) != 1:
             raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
         return system.stations[0]
 
-    def getShip(self, name):
-        """ Look up a ship by name """
-        return self.list_search("Ship", name, self.ships, key=lambda item: item.name)
+
+    ####
+    # Ship data.
+
+    def ships(self):
+        """ Iterate through the list of ships. """
+        yield from self.shipByID.values()
+
+
+    def _loadShips(self):
+        """
+            Populate the Ship list.
+            If you have previously loaded Ships, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT ship_id, name, capacity, mass, drive_rating, max_ly_empty, max_ly_full, max_speed, boost_speed
+                  FROM Ship
+            """
+        self.cur.execute(stmt)
+        self.shipByID = { row[0]: Ship(*row, stations=[]) for row in self.cur }
+
+        if self.debug > 1: print("# Loaded %d Ships" % len(self.shipByID))
+
+
+    def lookupShip(self, name):
+        """
+            Look up a ship by name
+        """
+        return TradeDB.listSearch("Ship", name, self.shipByID.values(), key=lambda ship: ship.dbname)
+
+
+    ####
+    # Item data.
+
+    def items(self):
+        """ Iterate through the list of items. """
+        yield from self.itemByID.values()
+
+
+    # TODO: Provide CATEGORIES so that you can do an item lookup.
+    def _loadItems(self):
+        """
+            Populate the Item list.
+            If you have previously loaded Items, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT item_id, name
+                  FROM Item
+            """
+        self.cur.execute(stmt)
+        itemByID = {}
+        for (ID, name) in self.cur:
+            itemByID[ID] = name, ID
+
+        self.itemByID = itemByID
+        if self.debug > 1: print("# Loaded %d Items" % len(itemByID))
+
+    #### NOTE: We don't provide "lookupItem" because you need to do that
+    #### based on category (some minerals/metals have the same name).
+
+
+    ####
+    # Price data.
+
+    def loadTrades(self):
+        """
+            Populate the "Trades" table for stations.
+
+            A trade is a connection between two stations where the SRC station
+
+            Ignore items that have a ui_order of 0 (my way of indicating the item is
+            either unavailable or black market).
+
+            NOTE: Trades MUST be loaded such that they are populated into the
+            lists in descending order of profit (highest profit first)
+        """
+
+        # I could make a view that does this, but then it makes it fiddly to
+        # port this to another database that perhaps doesn't support views.
+        stmt = """
+                SELECT src.station_id, dst.station_id
+                     , src.item_id
+                     , src.buy_from
+                     , dst.sell_to - src.buy_from AS profit
+                  FROM Price AS src INNER JOIN Price as dst
+                        ON src.item_id = dst.item_id
+                 WHERE src.buy_from > 0
+                        AND profit > 0
+                        AND src.ui_order > 0
+                        AND dst.ui_order > 0
+                 ORDER BY profit DESC
+                """
+        self.cur.execute(stmt)
+        stations, items = self.stationByID, self.itemByID
+        for (srcStnID, dstStnID, itemID, srcCostCr, profitCr) in self.cur:
+            srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
+            srcStn.addTrade(dstStn, item, itemID, srcCostCr, profitCr)
+
 
     def getTrade(self, src, dst, item):
         """ Returns a Trade object describing purchase of item from src for sale at dst. """
-        srcStn = self.getStation(src)
-        dstStn = self.getStation(dst)
-        trades = srcStn.trades[dstStn.ID]
-        return trades[item]
 
-    def query(self, *args):
-        """ Perform an SQL query on the DB and return the cursor. """
-        conn = pypyodbc.connect(self.path)
-        cur = conn.cursor()
-        cur.execute(*args)
-        return cur
+        # I could write this more compactly, but it makes errors less readable.
+        srcStn = self.lookupStation(src)
+        dstStn = self.lookupStation(dst)
+        return srcStn.tradingWith[dstStn]
 
-    def fetch_all(self, sql):
-        """ Perform an SQL query on the DB and iterate across the rows. """
-        for row in self.query(sql):
-            yield row
 
-    def list_search(self, listType, lookup, values, key=lambda item: item):
-        """ Seaches [values] for 'lookup' for least-ambiguous matches,
+    def load(self):
+        """
+            Populate/re-populate this instance of TradeDB with data.
+            WARNING: This will orphan existing records you have
+            taken references to:
+                tdb.load()
+                x = tdb.lookupStation("Aulin")
+                tdb.load() # x now points to an orphan Aulin
+        """
+
+        self.cur = self.conn.cursor()
+
+        # Load raw tables. Stations will be linked to systems, but nothing else.
+        # TODO: Make station -> system link a post-load action.
+        self._loadSystems()
+        self._loadStations()
+        self._loadShips()
+        self._loadItems()
+
+        systems, stations, ships, items = self.systemByID, self.stationByID, self.shipByID, self.itemByID
+
+        # Calculate the maximum distance anyone can jump so we can constrain
+        # the maximum "link" between any two stars.
+        longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
+        self.maxSystemLinkLy = longestJumper.maxLyEmpty + 0.01
+        if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
+
+        self.buildLinks(self.maxSystemLinkLy)
+
+        self.loadTrades()
+
+        # In debug mode, check that everything looks sane.
+        if self.debug:
+            self._validate()
+
+
+    def _validate(self):
+        # Check that things correctly reference themselves.
+        # Check that system links are bi-directional
+        for (name, sys) in self.systemByName.items():
+            if not sys.links:
+                raise ValueError("System %s has no links" % name)
+            if sys in sys.links:
+                raise ValueError("System %s has a link to itself!" % name)
+            if name in sys.links:
+                raise ValueError("System %s's name occurs in sys.links" % name)
+            for link in sys.links:
+                if not sys in link.links:
+                    raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
+
+
+    ####
+    # General purpose static methods.
+
+    @staticmethod
+    def distanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
+        """
+            Calculate the square of the distance between two points.
+
+            Pythagors theorem: distance = root( (x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2 )
+
+            But calculating square roots is not cheap and if you don't
+            need the distance for display, etc, then returning the
+            square saves an expensive calculation:
+
+            IF   root(A^2 + B^2 + C^2) == root(D^2 + E^2 + F^2)
+            THEN (A^2 + B^2 + C^2) == (D^2 + E^2 + F^2)
+
+            So instead of having to sqrt all of our distances in a complex
+            set, we can do this:
+
+            maxDistSq = 300 ** 2   # check for items < 300ly
+            inRange = []
+            for (lhs, rhs) in items:
+                distSq = distanceSq(lhs.x, lhs.y, lhs.z, rhs.x, rhs.y, rhs.z)
+                if distSq <= maxDistSq:
+                    inRange += [[lhs, rhs]]
+        """
+        return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
+
+
+    @staticmethod
+    def listSearch(listType, lookup, values, key=lambda item: item):
+        """
+            Searches [values] for 'lookup' for least-ambiguous matches,
             return the matching value as stored in [values].
             If [values] contains "bread", "water", "biscuits and "It",
             searching "ea" will return "bread", "WaT" will return "water"
             and "i" will return "biscuits". Searching for "a" will raise
             a ValueError because "a" matches "bread" and "water", but
             searching for "it" will return "It" because it provides an
-            exact match of a key. """
+            exact match of a key.
+        """
 
+        needle = TradeDB.normalizedStr(lookup)
         match = None
-        needle = self.normalized_str(lookup)
         for val in values:
-            normVal = self.normalized_str(key(val))
+            normVal = TradeDB.normalizedStr(key(val))
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
@@ -346,8 +685,13 @@ class TradeDB(object):
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
         return match
 
-    def normalized_str(self, str):
-        """ Returns a case folded, sanitized version of 'str' suitable for
+
+    @staticmethod
+    def normalizedStr(str):
+        """
+            Returns a case folded, sanitized version of 'str' suitable for
             performing simple and partial matches against. Removes whitespace,
-            hyphens, underscores, periods and apostrophes. """
-        return self.normalizeRe.sub('', str).casefold()
+            hyphens, underscores, periods and apostrophes.
+        """
+        return TradeDB.normalizeRe.sub('', str).casefold()
+

@@ -1,4 +1,15 @@
 #!/usr/bin/env python
+#---------------------------------------------------------------------
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+#  You are free to use, redistribute, or even print and eat a copy of
+#  this software so long as you include this copyright notice.
+#  I guarantee there is at least one bug neither of us knew about.
+#---------------------------------------------------------------------
+#
+# This is a work-in-progress script that allows you to use some of
+# TDs functionality from inside a python interpreter such as IDLE or
+# just python itself.
+
 
 from tradedb import *
 from tradecalc import *
@@ -10,7 +21,7 @@ curCredits = 1000
 
 def at(station):
     global curStation
-    curStation = tdb.getStation(station)
+    curStation = tdb.lookupStation(station)
 
 def cr(n):
     global curCredits
@@ -26,7 +37,7 @@ def run(dst=None, stn=None, cr=None, cap=None, maxJumps=None, maxLy=None):
     withCr = cr if cr else curCredits
     if not dst:
         return calc.getBestHopFrom(srcStn, withCr, capacity=cap, maxJumps=None, maxLy=None)
-    dstStn = dst if isinstance(dst, Station) else tdb.getStation(dst)
+    dstStn = dst if isinstance(dst, Station) else tdb.lookupStation(dst)
     print(srcStn, dstStn, withCr, cap)
     return calc.getBestTrade(srcStn, dstStn, withCr, capacity=cap, maxJumps=maxJumps, maxLy=maxLy)
 
@@ -36,7 +47,7 @@ def links(stn=None, maxJumps=None, maxLy=None):
         print("You don't have a station selected. Use at('name') or links(stn='name')")
         return None
     if isinstance(srcStn, str):
-        srcStn = tdb.getStation(srcStn)
+        srcStn = tdb.lookupStation(srcStn)
     return srcStn.stations.getDestinations(maxJumps=maxJumps, maxLy=maxLy)
 
 def routes(maxHops=2, stn=None, cr=None, maxJumps=None, maxLy=None, maxRoutes=1, maxJumpsPer=None, maxLyPer=8):
@@ -69,7 +80,7 @@ def routes(maxHops=2, stn=None, cr=None, maxJumps=None, maxLy=None, maxRoutes=1,
         print(routes[i])
 
 def find(item, stn=None):
-    srcStn = tdb.getStation(stn if stn else curStation)
+    srcStn = tdb.lookupStation(stn if stn else curStation)
     qry = """
         SELECT  p.station_id, p.buy_cr
           FROM  Items AS i

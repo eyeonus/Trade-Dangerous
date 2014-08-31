@@ -1,0 +1,1857 @@
+# SOURCE List of item prices for TradeDangerous.
+#
+# This file is used by TradeDangerous to populate the
+# SQLite databsae with prices, whenever this file is
+# updated or you delete the TradeDangerous.db file.
+
+# FORMAT:
+#
+# # ...
+#   A comment
+#
+# @ SYSTEM NAME/Station Name
+#   Sets the current station
+#   e.g. @ CHANGO/Chango Dock
+#
+# + Product Category
+#   Sets the current product category
+#   e.g. + Consumer Tech
+#
+# Item Name   Value    Cost
+#   Item value line.
+#     Item Name is the name of the item, e.g. Fish
+#     Value is what the STATION pays for the item,
+#     Cost is how much the item costs FROM the station
+#
+# Example:
+# @ CHANGO/Chango Dock
+#  + Chemicals
+#     Mineral Oil     150    0
+#     Hydrogen Fuels  63     0
+#     Explosives      150  160
+#
+# This gives prives for items under the "Chemicals"
+# heading. Mineral oil was listed first and was selling
+# at the station for 150cr.
+# Hydrogen Fuels was listed 3rd and sells for 63 cr.
+# Explosives was listed 2nd and sells for 150 cr AND
+# can be bought here for 160cr.
+#
+
+@ ACIHAUT/Cuffey Plant
+   + Chemicals
+      Mineral Oil               163      0
+      Explosives                147    163
+      Hydrogen Fuels             47     48
+   + Consumer Items
+      Clothing                  307      0
+      Consumer Tech            6550      0
+      Dom. Appliances           550      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Fruit and Vegetables      307      0
+      Coffee                   1401      0
+      Food Cartridges           102      0
+      Fish                      676      0
+      Animal Meat              1394      0
+      Grain                     180      0
+      Tea                      1406      0
+      Synthetic Meat            233      0
+   + Machinery
+      Mineral Extractors        617      0
+      Hel-Static Furnaces       171      0
+   + Medicines
+      Performance Enhancers    7120      0
+      Progenitor Cells         7120      0
+      Basic Medicines           307      0
+   + Metals
+      Copper                    222    239
+      Indium                   5738   5805
+      Aluminium                 126    139
+      Uranium                  2321   2382
+      Lithium                  1083   1129
+      Titanium                  782    818
+   + Minerals
+      Indite                   2300      0
+      Bertrandite              1820   1868
+      Gallium                  4925   4984
+      Gallite                  1354   1392
+      Coltan                   1493      0
+      Uraninite                 958      0
+      Lepidolite                302    323
+      Rutile                    324      0
+      Bauxite                   115      0
+      Beryllium                7898   7987
+   + Technology
+      Advanced Catalysers      3014      0
+      H.E. Suits                259      0
+      Resonating Separators    6155      0
+      Bioreducing Lichen       1020      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      91      0
+
+
+@ AGANIPPE/Julian Market
+   + Chemicals
+      Pesticides                199      0
+      Hydrogen Fuels             56      0
+   + Consumer Items
+      Clothing                  306      0
+      Consumer Tech            7110      0
+      Dom. Appliances           549      0
+   + Drugs
+      Beer                      142      0
+      Wine                      233      0
+   + Foods
+      Algae                      10     15
+      Fruit and Vegetables      308      0
+      Fish                      329    356
+      Grain                      49     58
+      Coffee                   1399      0
+      Tea                      1589      0
+      Animal Meat              1399      0
+   + Machinery
+      Crop Harvesters          2340      0
+      Marine Supplies          4489      0
+   + Medicines
+      Performance Enhancers    7110      0
+      Progenitor Cells         7110      0
+      Agri-Medicines           1085      0
+      Basic Medicines           306      0
+   + Technology
+      Terrain Enrich Sys       4956      0
+      Animal Monitors           289      0
+      Aquaponic Systems         259      0
+   + Waste
+      Biowaste                   68      0
+   + Weapons
+      Personal Weapons         4489      0
+
+
+@ ASELLUS PRIMUS/Beagle 2 Landing
+   + Chemicals
+      Hydrogen Fuels             56      0
+   + Consumer Items
+      Clothing                  252      0
+      Consumer Tech            6595   6671
+      Dom. Appliances           550      0
+   + Drugs
+      Beer                      143      0
+      Wine                      233      0
+   + Foods
+      Grain                     180      0
+      Fruit and Vegetables      277      0
+      Tea                      1405      0
+      Coffee                   1231      0
+      Food Cartridges           102      0
+      Fish                      645      0
+      Synthetic Meat            233      0
+      Animal Meat              1231      0
+   + Industrial Materials
+      Superconductors          6949      0
+   + Medicines
+      Performance Enhancers    7116      0
+      Basic Medicines           306      0
+      Progenitor Cells         7081      0
+   + Metals
+      Palladium               13388      0
+      Gold                     9169      0
+      Cobalt                    746      0
+      Uranium                  2845      0
+      Tantalum                 3823      0
+      Indium                   5722      0
+      Lithium                  1660      0
+      Silver                   5121      0
+   + Minerals
+      Rutile                    324      0
+      Beryllium                8618      0
+      Gallite                  1832      0
+      Gallium                  5243      0
+   + Technology
+      Terrain Enrich Sys       4615   4671
+      Advanced Catalysers      2374   2435
+      Aquaponic Systems         129    144
+      Animal Monitors           150    166
+      Computer Components       550      0
+      H.E. Suits                103    115
+      Robotics                 1539   1581
+      Auto-Fabricators         3085   3162
+      Resonating Separators    5386   5449
+   + Waste
+      Biowaste                   11     18
+      Scrap                      27     34
+   + Weapons
+      Non-Lethal Wpns          1787      0
+      Reactive Armor           1958      0
+      Personal Weapons         3966   4064
+
+
+@ AULIN/Aulin Enterprise
+   + Chemicals
+      Pesticides                 83     97
+      Hydrogen Fuels             56      0
+   + Consumer Items
+      Dom. Appliances           547      0
+      Clothing                  292      0
+      Consumer Tech            6733      0
+   + Drugs
+      Beer                      142      0
+   + Foods
+      Animal Meat              1226      0
+      Coffee                   1226      0
+      Fish                      643      0
+      Grain                     180      0
+      Synthetic Meat             77     87
+      Tea                      1399      0
+      Fruit and Vegetables      304      0
+   + Industrial Materials
+      Superconductors          7086      0
+   + Medicines
+      Agri-Medicines            624    653
+      Basic Medicines           305      0
+      Progenitor Cells         6498   6577
+      Combat Stabilisers       2218   2277
+      Performance Enhancers    6508   6587
+   + Metals
+      Gold                     9131      0
+      Silver                   4996      0
+      Lithium                  1620      0
+      Palladium               12801      0
+      Cobalt                    742      0
+      Indium                   6019      0
+      Tantalum                 4047      0
+      Uranium                  2833      0
+   + Minerals
+      Rutile                    323      0
+      Gallium                  5407      0
+      Gallite                  1825      0
+      Beryllium                8080      0
+   + Technology
+      Terrain Enrich Sys       3912   3961
+      Advanced Catalysers      2247   2306
+      H.E. Suits                128    143
+      Computer Components       547      0
+      Bioreducing Lichen        732    766
+   + Waste
+      Biowaste                   11     18
+      Scrap                      28     35
+
+
+@ AULIS/Dezhurov Gateway
+   + Chemicals
+      Mineral Oil                62     73
+      Pesticides                199      0
+      Hydrogen Fuels             56      0
+   + Consumer Items
+      Dom. Appliances           550      0
+      Consumer Tech            7115      0
+      Clothing                  306      0
+   + Drugs
+      Beer                      158      0
+   + Foods
+      Algae                      10     15
+      Fruit and Vegetables      116    129
+      Coffee                    897    937
+      Tea                      1024   1067
+      Fish                      329    355
+      Animal Meat              1387      0
+      Grain                      49     58
+   + Machinery
+      Crop Harvesters          2341      0
+      Marine Supplies          4491      0
+   + Medicines
+      Basic Medicines           306      0
+      Performance Enhancers    7114      0
+      Agri-Medicines           1086      0
+      Progenitor Cells         7114      0
+   + Technology
+      Aquaponic Systems         259      0
+      Terrain Enrich Sys       4675      0
+      Animal Monitors           289      0
+   + Waste
+      Biowaste                   68      0
+
+
+@ BD+47 2112/Olivas Settlement
+   + Chemicals
+      Explosives                290      0
+      Hydrogen Fuels             80     81
+   + Consumer Items
+      Dom. Appliances           551      0
+      Clothing                  307      0
+      Consumer Tech            6566      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Coffee                   1404      0
+      Animal Meat              1323      0
+      Grain                     181      0
+      Synthetic Meat            234      0
+      Tea                      1409      0
+      Fruit and Vegetables      307      0
+      Food Cartridges           103      0
+      Fish                      715      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Performance Enhancers    7137      0
+      Basic Medicines           307      0
+      Progenitor Cells         7137      0
+   + Metals
+      Cobalt                    486    519
+   + Minerals
+      Uraninite                 638    715
+      Indite                   1917   1968
+      Bauxite                    29     39
+   + Technology
+      H.E. Suits                260      0
+      Bioreducing Lichen       1022      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Non-Lethal Wpns          1935      0
+      Reactive Armor           2201      0
+
+
+@ BOLG/Moxon's Mojo
+   + Chemicals
+      Hydrogen Fuels             62      0
+   + Consumer Items
+      Consumer Tech            7121      0
+      Dom. Appliances           345    369
+      Clothing                  306      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Fruit and Vegetables      307      0
+      Synthetic Meat            234      0
+      Fish                      735      0
+      Animal Meat              1332      0
+      Grain                     181      0
+      Food Cartridges            14     20
+      Algae                      95      0
+      Coffee                   1384      0
+      Tea                      1407      0
+   + Industrial Materials
+      Polymers                  116      0
+      Semiconductors            959      0
+      Superconductors          7124      0
+   + Machinery
+      Hel-Static Furnaces        45     53
+      Mineral Extractors        333    356
+      Crop Harvesters          1944   1996
+   + Medicines
+      Progenitor Cells         7124      0
+      Basic Medicines           344      0
+      Performance Enhancers    7124      0
+   + Metals
+      Indium                   6245      0
+      Tantalum                 4212      0
+      Uranium                  2848      0
+      Lithium                  1698      0
+      Titanium                 1088      0
+      Copper                    488      0
+      Aluminium                 324      0
+      Gold                     9599      0
+   + Minerals
+      Beryllium                8683      0
+      Gallium                  5476      0
+   + Technology
+      H.E. Suits                259      0
+      Robotics                 1931      0
+      Auto-Fabricators         3946      0
+   + Textiles
+      Synthetic Fabrics         156      0
+      Leather                   143      0
+      Natural Fabrics           409      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     25
+
+
+@ CHI HERCULIS/Gorbatko
+   + Chemicals
+      Hydrogen Fuels             56      0
+      Pesticides                199      0
+   + Consumer Items
+      Dom. Appliances           550      0
+      Consumer Tech            7114      0
+      Clothing                  306      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Algae                      11     17
+      Fruit and Vegetables      306      0
+      Coffee                   1399      0
+      Tea                      1590      0
+      Fish                      361    389
+      Animal Meat              1231      0
+      Grain                      57     67
+   + Machinery
+      Crop Harvesters          2341      0
+      Marine Supplies          4491      0
+   + Medicines
+      Basic Medicines           306      0
+      Performance Enhancers    7114      0
+      Agri-Medicines           1086      0
+      Progenitor Cells         7114      0
+   + Technology
+      Aquaponic Systems         259      0
+      Terrain Enrich Sys       4964      0
+      Animal Monitors           289      0
+   + Waste
+      Biowaste                   68      0
+
+
+@ CM DRACO/Anderson Escape
+   + Chemicals
+      Explosives                291      0
+      Hydrogen Fuels             81     82
+   + Consumer Items
+      Clothing                  308      0
+      Consumer Tech            6588      0
+      Dom. Appliances           469      0
+   + Drugs
+      Tobacco                  4706      0
+      Beer                      143      0
+      Narcotics                 143      0
+      Wine                      236      0
+      Liquor                    664      0
+   + Foods
+      Fruit and Vegetables      254      0
+      Grain                     182      0
+      Coffee                   1409      0
+      Tea                      1414      0
+      Synthetic Meat            217      0
+      Food Cartridges           103      0
+      Fish                      650      0
+      Animal Meat              1239      0
+   + Machinery
+      Mineral Extractors        616      0
+   + Medicines
+      Performance Enhancers    7161      0
+      Basic Medicines           309      0
+   + Metals
+      Silver                   4131   4181
+      Cobalt                    387    413
+      Palladium               12284  12284
+   + Minerals
+      Uraninite                 685    717
+      Bauxite                    30     39
+      Rutile                    133    147
+      Indite                   1923   1974
+      Coltan                   1139   1188
+   + Technology
+      Bioreducing Lichen       1026      0
+      H.E. Suits                261      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Non-Lethal Wpns          1942      0
+      Personal Weapons         4523      0
+      Reactive Armor           2210      0
+
+
+@ DAHAN/Gateway
+   + Chemicals
+      Mineral Oil               164      0
+      Hydrogen Fuels             80     81
+      Explosives                145    162
+   + Consumer Items
+      Dom. Appliances           551      0
+      Consumer Tech            6566      0
+      Clothing                  307      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Synthetic Meat            234      0
+      Fish                      647      0
+      Food Cartridges           103      0
+      Fruit and Vegetables      307      0
+      Tea                      1409      0
+      Coffee                   1235      0
+      Animal Meat              1235      0
+      Grain                     181      0
+   + Industrial Materials
+      Polymers                   29     39
+   + Machinery
+      Hel-Static Furnaces       172      0
+      Mineral Extractors        622      0
+   + Medicines
+      Basic Medicines           307      0
+      Combat Stabilisers       2997      0
+      Performance Enhancers    7137      0
+   + Metals
+      Indium                   5751   5819
+      Tantalum                 3625   3714
+      Cobalt                    502    535
+      Titanium                  634    663
+      Aluminium                 154    170
+   + Minerals
+      Indite                   1575   1617
+      Bertrandite              2400      0
+      Bauxite                   113      0
+      Gallite                  1926      0
+      Coltan                   1497      0
+      Uraninite                 908      0
+      Lepidolite                622      0
+      Rutile                    325      0
+   + Technology
+      Advanced Catalysers      2907      0
+      H.E. Suits                260      0
+      Resonating Separators    5739      0
+      Bioreducing Lichen       1022      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      91      0
+   + Weapons
+      Non-Lethal Wpns          1936      0
+      Reactive Armor           2202      0
+
+
+@ ERANIN/Azeban City
+   + Chemicals
+      Mineral Oil                62     73
+      Hydrogen Fuels             56      0
+      Pesticides                199      0
+   + Consumer Items
+      Dom. Appliances           550      0
+      Clothing                  252      0
+      Consumer Tech            6926      0
+   + Drugs
+      Beer                      143      0
+      Tobacco                  4675      0
+      Wine                      256      0
+      Liquor                    659      0
+   + Foods
+      Coffee                   1067   1114
+      Tea                      1243   1297
+      Fruit and Vegetables      166    184
+      Fish                      645      0
+      Animal Meat              1067   1114
+      Grain                      70     83
+   + Machinery
+      Crop Harvesters          2179      0
+   + Medicines
+      Basic Medicines           306      0
+      Progenitor Cells         7115      0
+      Agri-Medicines            964      0
+      Performance Enhancers    7115      0
+   + Technology
+      Animal Monitors           289      0
+      Terrain Enrich Sys       4675      0
+   + Textiles
+      Natural Fabrics           237    255
+      Leather                    46     58
+   + Waste
+      Biowaste                   68      0
+   + Weapons
+      Personal Weapons         4280      0
+
+
+@ G 239-25/Bresnik Mine
+   + Chemicals
+      Explosives                290      0
+      Hydrogen Fuels             81     81
+   + Consumer Items
+      Dom. Appliances           552      0
+      Clothing                  308      0
+      Consumer Tech            6569      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Coffee                   1404      0
+      Tea                      1410      0
+      Synthetic Meat            234      0
+      Food Cartridges           103      0
+      Fish                      775      0
+      Animal Meat              1235      0
+      Grain                     181      0
+      Fruit and Vegetables      301      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Performance Enhancers    7140      0
+      Basic Medicines           307      0
+   + Minerals
+      Gallite                  1342   1379
+      Bertrandite              1825   1873
+      Lepidolite                302    324
+   + Technology
+      H.E. Suits                260      0
+      Bioreducing Lichen       1023      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Reactive Armor           2203      0
+      Non-Lethal Wpns          1936      0
+
+
+@ H DRACONIS/Brislington
+   + Chemicals
+      Hydrogen Fuels             62      0
+   + Consumer Items
+      Dom. Appliances           290    314
+      Consumer Tech            7109      0
+      Clothing                  116    129
+   + Drugs
+      Beer                      142      0
+      Wine                      233      0
+   + Foods
+      Animal Meat              1398      0
+      Coffee                   1398      0
+      Tea                      1589      0
+      Synthetic Meat            233      0
+      Food Cartridges           102      0
+      Fish                      772      0
+      Grain                     180      0
+      Fruit and Vegetables      306      0
+      Algae                      95      0
+   + Industrial Materials
+      Superconductors          7109      0
+      Semiconductors            957      0
+      Polymers                  115      0
+   + Medicines
+      Basic Medicines           306      0
+      Performance Enhancers    7109      0
+      Progenitor Cells         7109      0
+   + Metals
+      Gold                     9889      0
+      Uranium                  2842      0
+      Lithium                  1695      0
+      Titanium                 1085      0
+      Indium                   6232      0
+      Copper                    487      0
+      Aluminium                 324      0
+      Tantalum                 4204      0
+   + Minerals
+      Beryllium                8665      0
+      Gallium                  5465      0
+   + Technology
+      H.E. Suits                259      0
+      Robotics                 1927      0
+      Auto-Fabricators         3937      0
+   + Textiles
+      Leather                   142      0
+      Synthetic Fabrics         156      0
+      Natural Fabrics           408      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     24
+   + Weapons
+      Personal Weapons         4488      0
+
+
+@ I BOOTIS/Chango Dock
+   + Chemicals
+      Hydrogen Fuels             58      0
+      Pesticides                198      0
+      Mineral Oil                51     60
+   + Consumer Items
+      Clothing                  116    129
+      Consumer Tech            7090      0
+      Dom. Appliances           548      0
+   + Drugs
+      Beer                      142      0
+   + Foods
+      Food Cartridges            13     19
+      Coffee                   1393      0
+      Synthetic Meat            229      0
+      Tea                      1563      0
+      Fish                      457    494
+      Animal Meat              1395      0
+      Grain                     180      0
+      Fruit and Vegetables      305      0
+      Algae                      10     15
+   + Industrial Materials
+      Semiconductors            954      0
+      Polymers                  115      0
+      Superconductors          7090      0
+   + Machinery
+      Crop Harvesters          1935   1990
+      Mineral Extractors        394    432
+      Hel-Static Furnaces        45     53
+      Marine Supplies          4476      0
+   + Medicines
+      Performance Enhancers    7090      0
+      Agri-Medicines            943      0
+      Basic Medicines           342      0
+      Progenitor Cells         7090      0
+   + Metals
+      Lithium                  1690      0
+      Gold                     9136      0
+      Tantalum                 4178      0
+      Uranium                  2834      0
+      Titanium                 1058      0
+      Copper                    485      0
+      Aluminium                 323      0
+      Indium                   6054      0
+   + Minerals
+      Gallium                  5387      0
+      Beryllium                8617      0
+   + Technology
+      Aquaponic Systems         258      0
+      Terrain Enrich Sys       4659      0
+      Robotics                 1922      0
+      Animal Monitors           288      0
+      Auto-Fabricators         3839      0
+      H.E. Suits                258      0
+      Computer Components       346    371
+   + Textiles
+      Leather                   142      0
+      Natural Fabrics           407      0
+      Synthetic Fabrics         155      0
+   + Waste
+      Biowaste                   67      0
+      Scrap                      20     25
+
+
+@ ITHACA/Hume Depot
+   + Chemicals
+      Explosives                290      0
+      Hydrogen Fuels             47     48
+   + Consumer Items
+      Clothing                  307      0
+      Consumer Tech            6563      0
+      Dom. Appliances           551      0
+   + Drugs
+      Tobacco                  4688      0
+      Beer                      143      0
+      Narcotics                 143      0
+      Wine                      234      0
+      Liquor                    661      0
+   + Foods
+      Fruit and Vegetables      307      0
+      Grain                     181      0
+      Coffee                   1234      0
+      Tea                      1409      0
+      Synthetic Meat            234      0
+      Food Cartridges           103      0
+      Fish                      647      0
+      Animal Meat              1256      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Performance Enhancers    6928      0
+      Basic Medicines           307      0
+   + Metals
+      Silver                   3938   3985
+      Cobalt                    386    412
+      Palladium               12598  12599
+   + Minerals
+      Uraninite                 533    558
+      Bauxite                    19     25
+      Rutile                    126    140
+      Indite                   1574   1616
+      Coltan                    910    950
+   + Technology
+      Bioreducing Lichen       1022      0
+      H.E. Suits                260      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Non-Lethal Wpns          1758      0
+      Personal Weapons         4216      0
+      Reactive Armor           1963      0
+
+
+@ KERIES/Derrickson's Escape
+   + Chemicals
+      Explosives                291      0
+      Hydrogen Fuels             81     82
+   + Consumer Items
+      Clothing                  261      0
+      Consumer Tech            6588      0
+      Dom. Appliances           469      0
+   + Drugs
+      Wine                      235      0
+      Beer                      144      0
+      Narcotics                 144      0
+      Tobacco                  4706      0
+      Liquor                    664      0
+   + Foods
+      Coffee                   1410      0
+      Synthetic Meat            227      0
+      Tea                      1414      0
+      Food Cartridges           103      0
+      Fish                      650      0
+      Animal Meat              1239      0
+      Grain                     182      0
+      Fruit and Vegetables      272      0
+   + Machinery
+      Mineral Extractors        532      0
+   + Medicines
+      Performance Enhancers    6908      0
+      Basic Medicines           304      0
+   + Minerals
+      Indite                   1954   2007
+      Bertrandite              1830   1878
+      Bauxite                    19     25
+      Gallite                  1651   1695
+      Lepidolite                303    325
+   + Technology
+      H.E. Suits                261      0
+      Bioreducing Lichen       1026      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Non-Lethal Wpns          1942      0
+      Reactive Armor           1984      0
+      Personal Weapons         4115      0
+
+
+@ LFT 880/Baker Platform
+   + Chemicals
+      Mineral Oil               164      0
+      Hydrogen Fuels             57      0
+   + Consumer Items
+      Clothing                  279      0
+      Consumer Tech            6563      0
+      Dom. Appliances           467      0
+   + Drugs
+      Beer                      143      0
+      Wine                      234      0
+   + Foods
+      Fruit and Vegetables      256      0
+      Food Cartridges           103      0
+      Fish                      678      0
+      Animal Meat              1234      0
+      Tea                      1409      0
+      Grain                     181      0
+      Synthetic Meat            234      0
+      Coffee                   1258      0
+   + Machinery
+      Hel-Static Furnaces       172      0
+   + Medicines
+      Performance Enhancers    7134      0
+      Basic Medicines           307      0
+   + Metals
+      Copper                    223    239
+      Titanium                  617    646
+      Uranium                  1975   2026
+      Indium                   4966   5024
+      Gold                     8885   8984
+   + Minerals
+      Bertrandite              2399      0
+      Coltan                   1436      0
+      Beryllium                7150   7231
+      Bauxite                   116      0
+      Rutile                    268      0
+      Lepidolite                622      0
+      Uraninite                 960      0
+      Indite                   2212      0
+      Gallite                  1858      0
+      Gallium                  4212   4262
+   + Technology
+      Resonating Separators    5736      0
+      Advanced Catalysers      2742      0
+      H.E. Suits                260      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      91      0
+   + Weapons
+      Non-Lethal Wpns          1719      0
+      Reactive Armor           1963      0
+      Personal Weapons         4099      0
+
+
+@ LFT 992/Szulkin Mines
+   + Chemicals
+      Hydrogen Fuels             81     82
+      Explosives                291      0
+   + Consumer Items
+      Dom. Appliances           554      0
+      Clothing                  308      0
+      Consumer Tech            6588      0
+   + Drugs
+      Beer                      144      0
+      Tobacco                  4706      0
+      Wine                      235      0
+      Liquor                    664      0
+      Narcotics                 144      0
+   + Foods
+      Coffee                   1410      0
+      Animal Meat              1239      0
+      Synthetic Meat            235      0
+      Fruit and Vegetables      308      0
+      Grain                     182      0
+      Fish                      650      0
+      Tea                      1414      0
+      Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        624      0
+   + Medicines
+      Basic Medicines           308      0
+      Performance Enhancers    7161      0
+   + Minerals
+      Gallite                  1346   1383
+      Bertrandite              1830   1878
+      Lepidolite                303    325
+   + Technology
+      H.E. Suits                261      0
+      Bioreducing Lichen       1026      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Personal Weapons         4521      0
+      Reactive Armor           2209      0
+      Non-Lethal Wpns          1942      0
+
+
+@ LHS 2819/Tasaki Freeport
+   + Chemicals
+      Hydrogen Fuels             47     48
+      Explosives                291      0
+   + Consumer Items
+      Dom. Appliances           554      0
+      Clothing                  308      0
+      Consumer Tech            6588      0
+   + Drugs
+      Narcotics                 144      0
+      Liquor                    664      0
+      Wine                      235      0
+      Beer                      144      0
+      Tobacco                  4706      0
+   + Foods
+      Fish                      778      0
+      Fruit and Vegetables      308      0
+      Food Cartridges           103      0
+      Grain                     182      0
+      Animal Meat              1239      0
+      Coffee                   1410      0
+      Tea                      1414      0
+      Synthetic Meat            235      0
+   + Machinery
+      Mineral Extractors        609      0
+   + Medicines
+      Performance Enhancers    7161      0
+      Basic Medicines           308      0
+   + Minerals
+      Gallite                  1346   1383
+      Bertrandite              1830   1878
+   + Technology
+      H.E. Suits                261      0
+      Bioreducing Lichen       1026      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Reactive Armor           2209      0
+      Non-Lethal Wpns          1904      0
+      Personal Weapons         4521      0
+
+
+@ LHS 2884/Abnett Platform
+   + Chemicals
+      Explosives                290      0
+      Hydrogen Fuels             47     48
+   + Consumer Items
+      Consumer Tech            6559      0
+      Dom. Appliances           547      0
+      Clothing                  305      0
+   + Drugs
+      Wine                      234      0
+      Beer                      143      0
+   + Foods
+      Synthetic Meat            234      0
+      Coffee                   1402      0
+      Tea                      1472      0
+      Animal Meat              1233      0
+      Food Cartridges           102      0
+      Fish                      647      0
+      Grain                     181      0
+      Fruit and Vegetables      307      0
+   + Machinery
+      Mineral Extractors        618      0
+   + Medicines
+      Progenitor Cells         7129      0
+      Performance Enhancers    7129      0
+      Basic Medicines           307      0
+   + Metals
+      Silver                   4623   4678
+      Gold                     8268   8360
+      Cobalt                    501    535
+   + Minerals
+      Bauxite                    19     25
+      Indite                   1573   1615
+      Uraninite                 533    558
+      Rutile                    126    140
+   + Technology
+      H.E. Suits                259      0
+      Bioreducing Lichen       1021      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Non-Lethal Wpns          1933      0
+      Reactive Armor           1962      0
+      Personal Weapons         4096      0
+
+
+@ LHS 2887/Massimino Dock
+   + Chemicals
+      Explosives                150    167
+      Hydrogen Fuels             81     81
+      Mineral Oil               164      0
+   + Consumer Items
+      Dom. Appliances           504      0
+      Consumer Tech            6569      0
+      Clothing                  253      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Grain                     181      0
+      Coffee                   1297      0
+      Tea                      1410      0
+      Synthetic Meat            234      0
+      Fish                      648      0
+      Animal Meat              1235      0
+      Food Cartridges           103      0
+      Fruit and Vegetables      307      0
+   + Industrial Materials
+      Polymers                   29     39
+      Superconductors          6700   6777
+      Semiconductors            683    715
+   + Machinery
+      Hel-Static Furnaces       171      0
+   + Medicines
+      Basic Medicines           308      0
+      Performance Enhancers    7141      0
+   + Metals
+      Copper                    299    321
+      Lithium                  1310   1366
+      Tantalum                 3733   3825
+      Indium                   5797   5865
+      Titanium                  785    821
+   + Minerals
+      Gallite                  1839      0
+      Coltan                   1496      0
+      Bauxite                   116      0
+      Bertrandite              2401      0
+      Uraninite                 961      0
+      Lepidolite                622      0
+      Rutile                    325      0
+      Indite                   2272      0
+   + Technology
+      Resonating Separators    6025      0
+      Advanced Catalysers      3038      0
+      H.E. Suits                260      0
+   + Textiles
+      Synthetic Fabrics          57     68
+   + Waste
+      Biowaste                   12     18
+      Scrap                      91      0
+   + Weapons
+      Non-Lethal Wpns          1936      0
+      Reactive Armor           2203      0
+
+
+@ LHS 3006/WCM Transfer Orbital
+   + Chemicals
+      Hydrogen Fuels             80     81
+      Explosives                290      0
+   + Consumer Items
+      Dom. Appliances           551      0
+      Clothing                  307      0
+      Consumer Tech            6563      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Tea                      1409      0
+      Animal Meat              1400      0
+      Fruit and Vegetables      307      0
+      Grain                     181      0
+      Coffee                   1403      0
+      Synthetic Meat            234      0
+      Fish                      766      0
+      Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Progenitor Cells         7134      0
+      Performance Enhancers    7134      0
+      Basic Medicines           307      0
+   + Minerals
+      Indite                   1916   1967
+      Bertrandite              1823   1871
+      Bauxite                    29     39
+      Lepidolite                302    323
+      Gallite                  1514   1555
+   + Technology
+      H.E. Suits                260      0
+      Bioreducing Lichen       1022      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Reactive Armor           2200      0
+      Non-Lethal Wpns          1934      0
+
+
+@ LHS 3262/Louis De Lacaille Prospect
+   + Chemicals
+      Pesticides                 58     67
+      Hydrogen Fuels             56      0
+   + Consumer Items
+      Clothing                  272      0
+      Consumer Tech            5682   5748
+      Dom. Appliances           526      0
+   + Drugs
+      Beer                      142      0
+   + Foods
+      Fruit and Vegetables      252      0
+      Fish                      679      0
+      Animal Meat              1228      0
+      Grain                     180      0
+      Food Cartridges           102      0
+      Tea                      1402      0
+      Coffee                   1250      0
+      Synthetic Meat            233      0
+   + Industrial Materials
+      Superconductors          7099      0
+   + Medicines
+      Performance Enhancers    7099      0
+      Basic Medicines           258      0
+      Progenitor Cells         7099      0
+   + Metals
+      Lithium                  1688      0
+      Uranium                  2838      0
+      Silver                   5109      0
+      Cobalt                    744      0
+      Gold                     9340      0
+      Indium                   6033      0
+      Palladium               13744      0
+      Tantalum                 4197      0
+   + Minerals
+      Beryllium                7994      0
+      Rutile                    323      0
+      Gallite                  1885      0
+      Gallium                  5150      0
+   + Technology
+      Auto-Fabricators         2853   2925
+      Terrain Enrich Sys       3919   3966
+      Animal Monitors           107    119
+      Robotics                 1249   1283
+      H.E. Suits                 91    101
+      Computer Components       548      0
+   + Waste
+      Biowaste                    7     11
+      Scrap                      29     37
+   + Weapons
+      Non-Lethal Wpns          1249   1283
+      Reactive Armor           1446   1485
+
+
+@ LHS 417/Gernhardt Camp
+   + Chemicals
+      Hydrogen Fuels             81     81
+      Explosives                290      0
+   + Consumer Items
+      Clothing                  308      0
+      Consumer Tech            6569      0
+      Dom. Appliances           552      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Tea                      1529      0
+      Synthetic Meat            234      0
+      Fish                      732      0
+      Food Cartridges           103      0
+      Fruit and Vegetables      307      0
+      Animal Meat              1404      0
+      Grain                     181      0
+      Coffee                   1405      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Basic Medicines           307      0
+      Performance Enhancers    7140      0
+   + Metals
+      Silver                   4630   4685
+      Cobalt                    506    540
+      Palladium               13876  13877
+   + Minerals
+      Uraninite                 683    715
+      Bauxite                    23     31
+      Rutile                    126    140
+      Indite                   1659   1704
+      Coltan                   1000   1044
+   + Technology
+      Bioreducing Lichen       1023      0
+      H.E. Suits                260      0
+   + Waste
+      Biowaste                    7     11
+   + Weapons
+      Reactive Armor           2078      0
+      Non-Lethal Wpns          1927      0
+
+
+@ LHS 5287/Mcarthur's Reach
+   + Chemicals
+      Explosives                290      0
+      Hydrogen Fuels             47     48
+   + Consumer Items
+      Dom. Appliances           552      0
+      Clothing                  307      0
+      Consumer Tech            6569      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Coffee                   1404      0
+      Tea                      1410      0
+      Synthetic Meat            234      0
+      Food Cartridges           103      0
+      Fish                      757      0
+      Animal Meat              1404      0
+      Grain                     181      0
+      Fruit and Vegetables      307      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Performance Enhancers    7140      0
+      Basic Medicines           307      0
+   + Minerals
+      Gallite                  1342   1379
+      Bertrandite              1825   1873
+      Lepidolite                355    380
+   + Technology
+      H.E. Suits                260      0
+      Bioreducing Lichen       1023      0
+   + Waste
+      Biowaste                    7     11
+   + Weapons
+      Reactive Armor           2203      0
+      Non-Lethal Wpns          1936      0
+
+
+@ LP 64-194/Longyear Survey
+   + Chemicals
+      Hydrogen Fuels             67     67
+      Explosives                290      0
+   + Consumer Items
+      Clothing                  307      0
+      Consumer Tech            6566      0
+      Dom. Appliances           467      0
+   + Drugs
+      Beer                      143      0
+      Wine                      234      0
+   + Foods
+      Coffee                   1404      0
+      Fish                      679      0
+      Fruit and Vegetables      304      0
+      Animal Meat              1404      0
+      Grain                     181      0
+      Tea                      1409      0
+      Synthetic Meat            234      0
+      Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        622      0
+   + Medicines
+      Performance Enhancers    7137      0
+      Basic Medicines           307      0
+   + Metals
+      Gold                     8282   8375
+   + Minerals
+      Bertrandite              1824   1872
+      Bauxite                    19     25
+      Rutile                    126    140
+      Coltan                    911    950
+   + Technology
+      H.E. Suits                260      0
+      Bioreducing Lichen       1022      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Personal Weapons         4101      0
+      Reactive Armor           2201      0
+      Non-Lethal Wpns          1935      0
+
+
+@ LP 98-132/Freeport
+   + Chemicals
+      Hydrogen Fuels             71     72
+      Explosives                289      0
+   + Consumer Items
+      Clothing                  254      0
+      Consumer Tech            6588      0
+      Dom. Appliances           469      0
+   + Drugs
+      Narcotics                 125      0
+      Wine                      235      0
+      Tobacco                  4706      0
+      Beer                      143      0
+      Liquor                    664      0
+   + Foods
+      Coffee                   1239      0
+      Tea                      1414      0
+      Animal Meat              1239      0
+      Synthetic Meat            224      0
+      Fruit and Vegetables      254      0
+      Grain                     164      0
+      Fish                      650      0
+      Food Cartridges           103      0
+   + Machinery
+      Mineral Extractors        532      0
+   + Medicines
+      Performance Enhancers    6588      0
+      Basic Medicines           308      0
+   + Metals
+      Gold                     9183   9285
+   + Minerals
+      Bertrandite              1904   1954
+      Bauxite                    19     25
+      Rutile                    144    160
+      Coltan                    994   1037
+   + Technology
+      H.E. Suits                254      0
+      Bioreducing Lichen       1026      0
+   + Waste
+      Biowaste                   12     18
+   + Weapons
+      Personal Weapons         4115      0
+      Reactive Armor           1997      0
+      Non-Lethal Wpns          1772      0
+
+
+@ MAGEC/Xiaoguan
+   + Chemicals
+      Hydrogen Fuels             56      0
+      Pesticides                199      0
+      Mineral Oil                62     73
+   + Consumer Items
+      Consumer Tech            7114      0
+      Dom. Appliances           550      0
+      Clothing                  306      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Fruit and Vegetables      128    142
+      Grain                      70     83
+      Coffee                   1023   1068
+      Tea                      1198   1249
+      Fish                      772      0
+      Animal Meat               902    942
+   + Machinery
+      Crop Harvesters          2341      0
+   + Medicines
+      Agri-Medicines           1086      0
+      Basic Medicines           306      0
+      Performance Enhancers    7114      0
+      Progenitor Cells         7114      0
+   + Technology
+      Animal Monitors           289      0
+      Terrain Enrich Sys       5093      0
+   + Textiles
+      Natural Fabrics           237    255
+      Leather                    43     53
+   + Waste
+      Biowaste                   68      0
+
+
+@ MORGOR/Romanek's Folly
+   + Chemicals
+      Hydrogen Fuels             80     81
+      Explosives                289      0
+   + Consumer Items
+      Dom. Appliances           550      0
+      Consumer Tech            6553      0
+      Clothing                  307      0
+   + Drugs
+      Beer                      143      0
+      Liquor                    660      0
+      Narcotics                 122      0
+      Tobacco                  4763      0
+      Wine                      234      0
+   + Foods
+      Tea                      1407      0
+      Synthetic Meat            234      0
+      Food Cartridges           102      0
+      Fish                      646      0
+      Animal Meat              1232      0
+      Grain                     181      0
+      Fruit and Vegetables      307      0
+      Coffee                   1234      0
+   + Machinery
+      Mineral Extractors        609      0
+   + Medicines
+      Performance Enhancers    7123      0
+      Basic Medicines           307      0
+   + Minerals
+      Gallite                  1339   1376
+      Bertrandite              1827   1876
+      Lepidolite                302    323
+   + Technology
+      H.E. Suits                259      0
+      Bioreducing Lichen       1020      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Personal Weapons         4093      0
+
+
+@ NANG TA-KHIAN/Hay Point
+   + Chemicals
+      Hydrogen Fuels             62      0
+   + Consumer Items
+      Consumer Tech            6956      0
+      Dom. Appliances           345    369
+      Clothing                  307      0
+   + Drugs
+      Beer                      143      0
+      Wine                      233      0
+   + Foods
+      Grain                     180      0
+      Synthetic Meat            233      0
+      Fish                      773      0
+      Animal Meat              1401      0
+      Food Cartridges           102      0
+      Fruit and Vegetables      307      0
+      Algae                      95      0
+      Coffee                   1401      0
+      Tea                      1592      0
+   + Industrial Materials
+      Polymers                  115      0
+      Semiconductors            958      0
+      Superconductors          7120      0
+   + Machinery
+      Mineral Extractors        398    426
+      Crop Harvesters          1912   1963
+   + Medicines
+      Progenitor Cells         7120      0
+      Basic Medicines           307      0
+      Performance Enhancers    7120      0
+   + Metals
+      Indium                   6242      0
+      Tantalum                 4210      0
+      Uranium                  2846      0
+      Lithium                  1697      0
+      Titanium                 1087      0
+      Copper                    487      0
+      Gold                     9745      0
+      Aluminium                 324      0
+   + Minerals
+      Beryllium                8668      0
+      Gallium                  5473      0
+   + Technology
+      H.E. Suits                259      0
+      Robotics                 1930      0
+      Auto-Fabricators         3943      0
+   + Textiles
+      Leather                   143      0
+      Natural Fabrics           408      0
+      Synthetic Fabrics         156      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      30     37
+   + Weapons
+      Personal Weapons         3832   3927
+
+
+@ NARAKA/Novitski Oasis
+   + Chemicals
+      Hydrogen Fuels             56      0
+      Pesticides                199      0
+   + Consumer Items
+      Clothing                  306      0
+      Consumer Tech            7103      0
+      Dom. Appliances           549      0
+   + Drugs
+      Beer                      142      0
+   + Foods
+      Fruit and Vegetables      276      0
+      Grain                      61     72
+      Tea                      1588      0
+      Animal Meat               881    922
+      Fish                      771      0
+      Coffee                   1397      0
+   + Machinery
+      Crop Harvesters          2337      0
+      Marine Supplies          4484      0
+   + Medicines
+      Agri-Medicines           1084      0
+      Progenitor Cells         7103      0
+      Basic Medicines           306      0
+      Performance Enhancers    7103      0
+   + Technology
+      Terrain Enrich Sys       4668      0
+      Animal Monitors           289      0
+      Aquaponic Systems         259      0
+   + Textiles
+      Leather                    38     48
+   + Waste
+      Biowaste                   68      0
+
+
+@ OPALA/Romanenko
+   + Chemicals
+      Hydrogen Fuels             56      0
+      Pesticides                199      0
+   + Consumer Items
+      Dom. Appliances           549      0
+      Consumer Tech            7103      0
+      Clothing                  306      0
+   + Drugs
+      Beer                      142      0
+   + Foods
+      Algae                      10     16
+      Fruit and Vegetables      306      0
+      Coffee                   1397      0
+      Tea                      1588      0
+      Fish                      443    478
+      Animal Meat              1397      0
+      Grain                      71     84
+   + Machinery
+      Crop Harvesters          2337      0
+      Marine Supplies          4484      0
+   + Medicines
+      Basic Medicines           306      0
+      Performance Enhancers    7103      0
+      Agri-Medicines           1084      0
+      Progenitor Cells         7103      0
+   + Technology
+      Aquaponic Systems         259      0
+      Terrain Enrich Sys       4709      0
+      Animal Monitors           289      0
+   + Waste
+      Biowaste                   68      0
+
+
+@ OVID/Bradfield
+   + Chemicals
+      Hydrogen Fuels             62      0
+   + Consumer Items
+      Consumer Tech            7116      0
+      Clothing                  306      0
+      Dom. Appliances           550      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Fish                      767      0
+      Synthetic Meat            233      0
+      Food Cartridges           102      0
+      Grain                     180      0
+      Tea                      1591      0
+      Animal Meat              1378      0
+      Coffee                   1400      0
+      Fruit and Vegetables      306      0
+      Algae                      95      0
+   + Industrial Materials
+      Semiconductors            958      0
+      Superconductors          7116      0
+      Polymers                  115      0
+   + Machinery
+      Hel-Static Furnaces        45     53
+      Mineral Extractors        301    323
+      Crop Harvesters          1911   1962
+      Marine Supplies          3911   4008
+   + Medicines
+      Progenitor Cells         7116      0
+      Basic Medicines           306      0
+      Performance Enhancers    7116      0
+   + Metals
+      Titanium                 1086      0
+      Lithium                  1696      0
+      Copper                    487      0
+      Aluminium                 324      0
+      Uranium                  2845      0
+      Tantalum                 4207      0
+      Indium                   6238      0
+      Gold                     9898      0
+   + Minerals
+      Beryllium                8673      0
+      Gallium                  5470      0
+   + Technology
+      Computer Components       261    280
+      H.E. Suits                259      0
+      Robotics                 1929      0
+      Auto-Fabricators         3941      0
+   + Textiles
+      Leather                   143      0
+      Natural Fabrics           408      0
+      Synthetic Fabrics         156      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     24
+
+
+@ PI-FANG/Brooks
+   + Chemicals
+      Mineral Oil                41     49
+      Hydrogen Fuels             58      0
+      Pesticides                199      0
+   + Consumer Items
+      Consumer Tech            7099      0
+      Clothing                  306      0
+      Dom. Appliances           548      0
+   + Drugs
+      Beer                      120      0
+      Wine                      211      0
+   + Foods
+      Synthetic Meat            233      0
+      Coffee                   1396      0
+      Fish                      771      0
+      Animal Meat              1396      0
+      Grain                      51     60
+      Fruit and Vegetables      116    130
+      Tea                      1587      0
+   + Machinery
+      Crop Harvesters          2336      0
+      Marine Supplies          4481      0
+   + Medicines
+      Progenitor Cells         7099      0
+      Basic Medicines           306      0
+      Performance Enhancers    7099      0
+      Agri-Medicines           1084      0
+   + Metals
+      Gold                     9874      0
+      Silver                   5109      0
+   + Technology
+      Animal Monitors           289      0
+      Aquaponic Systems         258      0
+      Terrain Enrich Sys       5109      0
+   + Waste
+      Biowaste                   68      0
+   + Weapons
+      Personal Weapons         4481      0
+
+
+@ RAKAPILA/Stone Enterprise
+   + Chemicals
+      Hydrogen Fuels             62      0
+   + Consumer Items
+      Consumer Tech            7116      0
+      Dom. Appliances           345    369
+      Clothing                  116    129
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Animal Meat              1400      0
+      Food Cartridges           102      0
+      Fruit and Vegetables      306      0
+      Synthetic Meat            233      0
+      Grain                     180      0
+      Fish                      772      0
+      Algae                      95      0
+      Coffee                   1400      0
+      Tea                      1591      0
+   + Industrial Materials
+      Polymers                  115      0
+      Semiconductors            958      0
+      Superconductors          7116      0
+   + Medicines
+      Performance Enhancers    7116      0
+      Progenitor Cells         7116      0
+      Basic Medicines           306      0
+   + Metals
+      Gold                     9898      0
+      Aluminium                 324      0
+      Copper                    487      0
+      Titanium                 1086      0
+      Lithium                  1696      0
+      Uranium                  2845      0
+      Tantalum                 4207      0
+      Indium                   6238      0
+   + Minerals
+      Beryllium                8673      0
+      Gallium                  5470      0
+   + Technology
+      H.E. Suits                259      0
+      Robotics                 1929      0
+      Auto-Fabricators         3941      0
+   + Textiles
+      Synthetic Fabrics         156      0
+      Natural Fabrics           408      0
+      Leather                   143      0
+   + Waste
+      Biowaste                   11     18
+      Scrap                      20     24
+
+
+@ ROSS 1015/Bowersox
+   + Chemicals
+      Explosives                291      0
+      Hydrogen Fuels             74     75
+   + Consumer Items
+      Dom. Appliances           553      0
+      Clothing                  308      0
+      Consumer Tech            6588      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Coffee                   1409      0
+      Tea                      1414      0
+      Synthetic Meat            235      0
+      Food Cartridges           103      0
+      Fish                      650      0
+      Animal Meat              1239      0
+      Grain                     182      0
+      Fruit and Vegetables      308      0
+   + Machinery
+      Mineral Extractors        624      0
+   + Medicines
+      Performance Enhancers    7162      0
+      Basic Medicines           308      0
+   + Minerals
+      Gallite                  1346   1383
+      Bertrandite              1830   1878
+      Lepidolite                303    325
+   + Technology
+      H.E. Suits                261      0
+      Bioreducing Lichen       1026      0
+   + Waste
+      Biowaste                   11     18
+   + Weapons
+      Reactive Armor           2170      0
+      Non-Lethal Wpns          1942      0
+
+
+@ ROSS 1051/Abetti Platform
+   + Chemicals
+      Explosives                150    167
+      Hydrogen Fuels             47     48
+      Mineral Oil               164      0
+   + Consumer Items
+      Dom. Appliances           467      0
+      Consumer Tech            6566      0
+      Clothing                  253      0
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Animal Meat              1235      0
+      Coffee                   1333      0
+      Tea                      1409      0
+      Synthetic Meat            234      0
+      Fish                      647      0
+      Food Cartridges           103      0
+      Grain                     181      0
+      Fruit and Vegetables      307      0
+   + Industrial Materials
+      Polymers                   19     25
+      Superconductors          6591   6667
+      Semiconductors            533    558
+   + Machinery
+      Hel-Static Furnaces       172      0
+   + Medicines
+      Basic Medicines           307      0
+      Performance Enhancers    6921      0
+   + Metals
+      Copper                    223    239
+      Indium                   4997   5055
+      Titanium                  617    646
+   + Minerals
+      Gallium                  4214   4264
+      Gallite                  1838      0
+      Coltan                   1495      0
+      Bauxite                   116      0
+      Bertrandite              2400      0
+      Uraninite                 961      0
+      Lepidolite                622      0
+      Rutile                    325      0
+      Indite                   2178      0
+   + Technology
+      Resonating Separators    5739      0
+      Advanced Catalysers      2742      0
+      H.E. Suits                260      0
+   + Textiles
+      Synthetic Fabrics          38     46
+   + Waste
+      Biowaste                    7     11
+      Scrap                      91      0
+   + Weapons
+      Non-Lethal Wpns          1935      0
+      Reactive Armor           2173      0
+
+
+@ TILIAN/Maunder
+   + Chemicals
+      Hydrogen Fuels             62      0
+   + Consumer Items
+      Dom. Appliances           342    367
+      Consumer Tech            6952      0
+      Clothing                  116    129
+   + Drugs
+      Beer                      143      0
+   + Foods
+      Fruit and Vegetables      306      0
+      Fish                      772      0
+      Animal Meat              1400      0
+      Grain                     180      0
+      Coffee                   1400      0
+      Food Cartridges            13     19
+      Algae                      95      0
+      Tea                      1591      0
+      Synthetic Meat            233      0
+   + Industrial Materials
+      Polymers                  115      0
+      Semiconductors            958      0
+      Superconductors          7116      0
+   + Machinery
+      Mineral Extractors        312    334
+      Crop Harvesters          1570   1612
+   + Medicines
+      Progenitor Cells         7116      0
+      Basic Medicines           116    129
+      Performance Enhancers    7116      0
+   + Metals
+      Indium                   6238      0
+      Tantalum                 4207      0
+      Uranium                  2845      0
+      Lithium                  1696      0
+      Titanium                 1086      0
+      Copper                    487      0
+      Gold                     9898      0
+      Aluminium                 324      0
+   + Minerals
+      Beryllium                8673      0
+      Gallium                  5470      0
+   + Technology
+      H.E. Suits                259      0
+      Robotics                 1929      0
+      Auto-Fabricators         3941      0
+   + Textiles
+      Synthetic Fabrics         158      0
+      Leather                   143      0
+      Natural Fabrics           408      0
+   + Waste
+      Biowaste                    7     11
+      Scrap                      20     24
+
+
+@ WYRD/Vonarburg Co-operative
+   + Chemicals
+      Hydrogen Fuels             56      0
+      Pesticides                198      0
+      Mineral Oil                62     74
+   + Consumer Items
+      Clothing                  305      0
+      Consumer Tech            7091      0
+      Dom. Appliances           548      0
+   + Drugs
+      Beer                      142      0
+      Liquor                    343    371
+      Wine                      232      0
+      Tobacco                  4238   4331
+   + Foods
+      Fruit and Vegetables      305      0
+      Grain                      70     83
+      Tea                       981   1033
+      Animal Meat               834    880
+      Fish                      328    358
+      Coffee                    848    894
+   + Machinery
+      Crop Harvesters          2333      0
+      Marine Supplies          4477      0
+   + Medicines
+      Performance Enhancers    7091      0
+      Progenitor Cells         7091      0
+      Basic Medicines           305      0
+      Agri-Medicines           1083      0
+   + Technology
+      Terrain Enrich Sys       4660      0
+      Animal Monitors           288      0
+      Aquaponic Systems         258      0
+   + Textiles
+      Leather                    30     38
+   + Waste
+      Biowaste                   68      0
+   + Weapons
+      Personal Weapons         4477      0

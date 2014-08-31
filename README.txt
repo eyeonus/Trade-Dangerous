@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v2.09
+TradeDangerous v3.0
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -21,61 +21,21 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
-v2.09 Aug 22/2014
-  Command line errors now get a simple explanation rather than a stack dump,
-  --ly-per and --capacity can now override values from --ship,
-  Made "--detail" show the "options summary" in addition to --debug doing it,
+v3.0 Aug 30/2014
+  Major overhaul. No-longer requires Microsoft Access DB. To update prices,
+  edit the data/TradeDangerous.prices file. When you next run the tool, new
+  data will be loaded automatically.
+  Cleaned up code, normalized the way I name functions, etc.
+  Added more ship data, etc.
 
-v2.08 Aug 21/2014
-  Fixed some formatting shenanigans
-
-v2.07 Aug 21/2014
-  Added "--ship" to specify capacity and max light years based on ship,
-  Use "--detail" multiple times to add more detail,
-  Changed presentation of routes, "--detail --detail" shows a lot more
-  information and breaks it up onto more lines
-  Improved start up time slightly
-
-v2.06 Aug 17/2014
-  Added experimental X52 Pro MFD support to the checklist
-
-v2.05 Aug 17/2014
-  Big code cleanup,
-  Startup speed improvement,
-  Fixed --via,
-  Refactored how avoidance works:
-   - Avoiding a system prevents jumps to/thru that system,
-   - Avoiding a station allows jumps thru the system but not dockings,
-
-v2.04 Aug/17/2014
-  Added "--checklist" command to walk you through a route
-  Added "localedNo()" function to API
-
-v2.03 Aug/15/2014
-  Imported star data from wtbw
-  Fixed various prices and station names
-  Fixed minor issues
-
-v2.02
-  "--via" will now accept the via station as the first station on
-  routes when the user doesn't specify a "--from".
-  Also made name matching far more flexible.
-
-v2.01
-  "--avoid" now handles stations and system names
 
 ==============================================================================
 == Where does it get it's data?
 ==============================================================================
 
-The data is stored in a simple Microsoft Access 2013 Database because I'm
-hand-editing the database and Microsoft Access surprised me by having a really
-nice UI for doing this (open the .accdb file with MS Access and open the
-'StationCats' query, click the 'v' button on the 'station' header and select
-the station you are at to update the prices for it).
-
-Programmer Note: I used the pypyodbc api so you can replace it with whatever
-DB you want.
+The data is stored as human-readable text in a .SQL file and a .Prices file.
+When this data is loaded, it is saved into an SQLite database file which the
+tools use directly until you change either the .SQL or .Prices file.
 
 
 ==============================================================================
@@ -292,123 +252,11 @@ argument which also honors the --detail argument.
 == How can I add or update the data?
 ==============================================================================
 
-A script is provided, "import.py", which processes a series of simple commands
-from a file called "import.txt".
-
-Syntax for import.txt is fairly primitive. Eventually I intend to replace the
-access database with a collection of 'import.txt' files.
-
-  # ...
-    Comment lines are ignored, as are blank lines.
-
-  #rejectUnknown
-    Special comment that causes an unrecognized system in a new-star line
-    to generate an error.
-
-  *<system name>/<station name>:<system>@n.nn[ly][,<system>@n.nn[,...]]
-    Adds a system with links to other systems. For EMPTY systems (with
-    no stations), you can specify '*' as the station name.
-    e.g.
-      *Dahan/Gateway:Aulin@5.6,Eranin@9.8ly,...
-      *Hermitage/*:Elsewhere@10.13ly
-
-  @<station name>
-    Selects the specified station without trying to add it.
-    e.g.
-      @aulin
-      @gateway
-      @dahan
-
-  -<partial category name>
-    Finds an item category matching the string and selects it as
-    the current item category. If the match is ambiguous, an error
-    will be raised.
-    NOTE: the name cannot contain a space, e.g. for "Consumer Goods"
-    just use "consumer" or "goods"
-    e.g.
-      -dru
-      -DRUG
-      -dRuGs
-      -rug
-      -ugs
-      -cons
-      -consumer
-      -goods
-
-  <partial item name> <buy price> [<sell price>]
-    Finds an item matching the name within the current category
-    and sets a buy (how much the station buys for) and/or sell
-    price (how much the station sells for) for the item.
-    If the match is ambiguous, an error will be raised.
-    If no sell price is specified, it is assumed to be 0.
-    NOTE: Name cannot contain spaces
-    e.g.
-      -cons
-      appliances 1000
-      appl 1000 0
-      -chem
-      pesticides 56 57
-      PEST 56 57
-
-'*' doesn't select the system, this is because I tend to keep all of
-my stations at the top of my import.txt and then tack on item updates
-to a single station at the end, and I wanted to make absolutely sure I
-had selected the correct station.
-
-
-=====================
-== Example import.txt
-
-
-  # Add (or update) dahan and describe it's links to Aulin and Eranin.
-  # If they aren't in the database yet, they will be quietly ignored.
-  # If they are in the database, a link will be added each way.
-  *Dahan/Gateway:Aulin@5.6ly,Eranin@9.8ly
-
-  # Add Eranin.
-  *Eranin/Azeban:Dahan@9.8ly,Hermitage@20.21ly
-
-  # Select Dahan.
-  # Alternatively: @DAHAN, @GATEWAY or @gateway
-  @Dahan
-
-  # Select 'Chemicals' category.
-  # Alternatively: -CHEMICALS, -CHEMicals, etc
-  -chem
-
-  # Hydrogen fuel is bought by this station for 56cr but not sold here.
-  # Alternatively: Hydrogen 56 0, HYD 56, etc
-  hydro 56
-
-  # Station is selling pesticides for 67cr or paying 58 for them.
-  # Alternatively: PESTICIDES 67 58, pesti 67 58, etc
-  pest 67 58
-
-  # Change to Consumer Goods category, which matches 'cons'
-  # and specify prices for "Clothing", "Consumer Technology" and "Dom.
-  # Appliances"
-  -cons
-  clo 306
-  cons 6049
-  # alternatively: dom, DOM, appliances, APPLI, appl, etc
-  dom. 548
-
-
-==============================================================================
-== Why did you choose MS Access, you moron?
-==============================================================================
-
-I'm a Unix guy but I also like to push myself outside my comfort zone. During
-my time at Blizzard I'd actually started to find MS Office 2010 quite
-bearable, so I happened to have a free trial of MS Office 365 installed.
-
-I wanted to throw the data together really, really quickly. So I tried Libre
-Office Base. The pain was strong in that one. So, for giggles, I decided to
-see just how painful it was in Access and 5 minutes later I had a working
-database that was really easy to update exactly the way I wanted.
-
-It should be trivial to convert it to a different database.
-
+For pricing changes, take a look at data/TradeDangerous.prices. This rebuilds
+the entire database, a future version will allow you to update prices for
+specific stations or items and be able to tell you how recent a price value
+is (and use that information for adjusting how confident TD is about a
+calculation).
 
 ==============================================================================
 == That's nice, but I'm a programmer and I want to ...
@@ -419,7 +267,7 @@ Yeah, let me stop you there.
     from tradedb import *
     from tradecalc import *
 
-    tdb = TradeDB(".\\TradeDangerous.accdb")
+    tdb = TradeDB()
     calc = TradeCalc(tdb, capacity=16, margin=0.01, unique=False)
 
 Whatever it is you want to do, you can do from there.
