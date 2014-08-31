@@ -115,6 +115,9 @@ def parseCommandLine():
     global args, origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName, mfd
 
     parser = argparse.ArgumentParser(description='Trade run calculator')
+    parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
+    parser.add_argument('--ship', metavar='name', help='Set capacity and max-ly-per from ship type', type=str, required=False, default=None)
+    parser.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold.', type=int, required=False)
     parser.add_argument('--from', dest='origin', metavar='STATION', help='Specifies starting system/station', required=False)
     parser.add_argument('--to', dest='dest', metavar='STATION', help='Specifies final system/station', required=False)
     parser.add_argument('--via', dest='via', metavar='STATION', help='Require specified station to be en-route', required=False)
@@ -122,18 +125,15 @@ def parseCommandLine():
     parser.add_argument('--hops', metavar='N', help='Number of hops (station-to-station) to run. DEFAULT: 2', type=int, default=2, required=False)
     parser.add_argument('--jumps-per', metavar='N', dest='maxJumpsPer', help='Maximum jumps (system-to-system) per hop (station-to-station). DEFAULT: 2', type=int, default=2, required=False)
     parser.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump.', type=float, default=None, required=False)
-    parser.add_argument('--credits', metavar='CR', help='Number of credits to start with', type=int, required=True)
-    parser.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold.', type=int, required=False)
-    parser.add_argument('--ship', metavar='name', help='Set capacity and max-ly-per from ship type', type=str, required=False, default=None)
     parser.add_argument('--limit', metavar='N', help='Maximum units of any one cargo item to buy. DEFAULT: 0 (unlimited)', type=int, default=0, required=False)
     parser.add_argument('--unique', help='Only visit each station once', default=False, required=False, action='store_true')
     parser.add_argument('--margin', metavar='N.NN', help='Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. DEFAULT: 0.01', default=0.01, type=float, required=False)
     parser.add_argument('--insurance', metavar='CR', help='Reserve at least this many credits to cover insurance', type=int, default=0, required=False)
-    parser.add_argument('-v', '--detail', help='Give detailed jump information for multi-jump hops', default=0, required=False, action='count')
-    parser.add_argument('-w', '--debug', help='Enable diagnostic output', default=0, required=False, action='count')
     parser.add_argument('--routes', metavar='N', help='Maximum number of routes to show. DEFAULT: 1', type=int, default=1, required=False)
     parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False)
     parser.add_argument('--x52-pro', dest='x52pro', help='Enable experimental X52 Pro MFD output', action='store_true', required=False, default=False)
+    parser.add_argument('-v', '--detail', help='Give detailed jump information for multi-jump hops', default=0, required=False, action='count')
+    parser.add_argument('-w', '--debug', help='Enable diagnostic output', default=0, required=False, action='count')
 
     args = parser.parse_args()
 
