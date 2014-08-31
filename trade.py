@@ -132,8 +132,8 @@ def parseCommandLine():
     parser.add_argument('--routes', metavar='N', help='Maximum number of routes to show. DEFAULT: 1', type=int, default=1, required=False)
     parser.add_argument('--checklist', help='Provide a checklist flow for the route', action='store_true', required=False, default=False)
     parser.add_argument('--x52-pro', dest='x52pro', help='Enable experimental X52 Pro MFD output', action='store_true', required=False, default=False)
-    parser.add_argument('-v', '--detail', help='Give detailed jump information for multi-jump hops', default=0, required=False, action='count')
-    parser.add_argument('-w', '--debug', help='Enable diagnostic output', default=0, required=False, action='count')
+    parser.add_argument('--detail', '-v', help='Give detailed jump information for multi-jump hops', default=0, required=False, action='count')
+    parser.add_argument('--debug', '-w', help='Enable diagnostic output', default=0, required=False, action='count')
 
     args = parser.parse_args()
 
