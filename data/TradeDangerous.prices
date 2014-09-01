@@ -910,22 +910,22 @@
       Hydrogen Fuels             47     48
    + Consumer Items
       Consumer Tech            6559      0
-      Dom. Appliances           547      0
-      Clothing                  305      0
+      Dom. Appliances           467      0
+      Clothing                  253      0
    + Drugs
       Wine                      234      0
       Beer                      143      0
    + Foods
       Synthetic Meat            234      0
-      Coffee                   1402      0
-      Tea                      1472      0
-      Animal Meat              1233      0
+      Coffee                   1323      0
+      Tea                      1501      0
+      Animal Meat              1375      0
       Food Cartridges           102      0
       Fish                      647      0
       Grain                     181      0
       Fruit and Vegetables      307      0
    + Machinery
-      Mineral Extractors        618      0
+      Mineral Extractors        553      0
    + Medicines
       Progenitor Cells         7129      0
       Performance Enhancers    7129      0
@@ -936,7 +936,7 @@
       Cobalt                    501    535
    + Minerals
       Bauxite                    19     25
-      Indite                   1573   1615
+      Indite                   1798   1846
       Uraninite                 533    558
       Rutile                    126    140
    + Technology
@@ -945,9 +945,9 @@
    + Waste
       Biowaste                   11     18
    + Weapons
-      Non-Lethal Wpns          1933      0
-      Reactive Armor           1962      0
-      Personal Weapons         4096      0
+      Non-Lethal Wpns          1751      0
+      Reactive Armor           2080      0
+      Personal Weapons         4349      0
 
 
 @ LHS 2887/Massimino Dock
@@ -1280,7 +1280,7 @@
       Pesticides                199      0
       Mineral Oil                62     73
    + Consumer Items
-      Consumer Tech            6962      0
+      Consumer Tech            7114      0
       Dom. Appliances           550      0
       Clothing                  306      0
    + Drugs
@@ -1291,9 +1291,9 @@
       Coffee                   1023   1068
       Tea                      1198   1249
       Fish                      645      0
-      Animal Meat               944    986
+      Animal Meat               902    942
    + Machinery
-      Crop Harvesters          2340      0
+      Crop Harvesters          2341      0
    + Medicines
       Agri-Medicines           1086      0
       Basic Medicines           306      0
