@@ -28,6 +28,7 @@ locale.setlocale(locale.LC_ALL, '')
 
 from tradedb import System, Station
 from collections import namedtuple
+
 TradeLoad = namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])
 emptyLoad = TradeLoad([], 0, 0, 0)
 
