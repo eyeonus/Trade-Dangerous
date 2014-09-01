@@ -1,5 +1,5 @@
 """
-SaitekX52Pro.py - DirectOutputDevice for SaitekX52Pro
+x52pro.py - DirectOutputDevice for SaitekX52Pro
 
 Version: 0.2
 Author: Frazzle
@@ -13,10 +13,10 @@ TODO:
     * Error handling and exceptions
 """
 
-from . DirectOutput import DirectOutputDevice, TaggedSpan
+from . directoutput import DirectOutputDevice
 
 
-class SaitekX52Pro(DirectOutputDevice):
+class X52Pro(DirectOutputDevice):
     class Page(object):
         _lines = [ str(), str(), str() ]
         _leds  = dict()
@@ -117,8 +117,9 @@ class SaitekX52Pro(DirectOutputDevice):
     def remove_page(self, name):
         del self.pages[name]
 
-    def RegisterPageCallback(self, page_id, activated):
-        span = TaggedSpan("RegisterPageCallback(%s, %s)" % (str(page_id), str(activated)), self.debug_level >= 2)
+
+    def OnPage(self, page_id, activated):
+        super().OnPage(page_id, activated)
         for page in self.pages.values():
             if page.page_id == page_id:
                 print("Found the page", page_id, activated)
@@ -128,17 +129,20 @@ class SaitekX52Pro(DirectOutputDevice):
                     page.active = False
                 return
 
-    def RegisterSoftButtonCallback(self, *args, **kwargs):
-        span = TaggedSpan("RegisterSoftButtonCallback()")
+
+    def OnSoftButton(self, *args, **kwargs):
+        super().OnSoftButton(*args, **kwargs)
+        print("*** ON SOFT BUTTON")
+
 
     def finish(self):
-        span = TaggedSpan("SaitekX52Pro.finish()", self.debug_level >= 2)
         for page in self.pages:
             del page
         super().finish()
 
+
 if __name__ == '__main__':
-    x52 = SaitekX52Pro(debug_level=1)
+    x52 = X52Pro(debug_level=1)
     print("X52 Connected")
 
     x52.add_page("Page1")
@@ -188,3 +192,4 @@ if __name__ == '__main__':
             print(e)
             x52.finish()
             sys.exit()
+

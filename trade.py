@@ -217,7 +217,7 @@ def parseCommandLine():
         raise CommandLineError("Checklist can only be applied to a single route.")
 
     if args.x52pro:
-        from mfdwrapper import X52ProMFD
+        from mfd import X52ProMFD
         mfd = X52ProMFD()
 
     if mfd:

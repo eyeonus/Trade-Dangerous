@@ -8,9 +8,16 @@
 # TradeDangerous :: Modules :: Multi-function display wrapper
 #
 #   Multi-Function Display wrappers
-#   
+
+
+######################################################################
+# imports
 
 import time
+
+
+######################################################################
+# classes
 
 class DummyMFD(object):
     """
@@ -44,6 +51,10 @@ class DummyMFD(object):
         print("\a")
 
 
+# for now, I'm going to put the wrapper classes just here. till I
+# have a few more to play with and can figure out how I want to
+# organize them.
+
 class X52ProMFD(DummyMFD):
     """
         Wrapper for the Saitek X52 Pro MFD.
@@ -51,8 +62,8 @@ class X52ProMFD(DummyMFD):
 
     def __init__(self):
         try:
-            import saitek.X52Pro
-            self.doObj = saitek.X52Pro.SaitekX52Pro()
+            from . saitek import x52pro
+            self.doObj = x52pro.X52Pro()
         except DLLError as e:
             print("{}: error#{}: Unable to initialize the Saitek X52 Pro module: {}".format(__name__, e.error_code, e.msg), file=sys.stderr)
             sys.exit(1)
@@ -79,5 +90,4 @@ class X52ProMFD(DummyMFD):
                 page.set_led(ledNo, (iterNo + ledNo) % 4)
             iterNo += 1
             time.sleep(0.02)
-
 

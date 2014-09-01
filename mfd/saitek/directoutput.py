@@ -63,6 +63,8 @@ DirectOutput_CloseServer
 import ctypes
 import ctypes.wintypes
 
+import logging
+
 S_OK = 0x00000000
 E_HANDLE = 0x80070006
 E_INVALIDARG = 0x80070057
@@ -75,16 +77,6 @@ SOFTBUTTON_SELECT = 0x00000001
 SOFTBUTTON_UP = 0x00000002
 SOFTBUTTON_DOWN = 0x00000004
 
-class TaggedSpan(object):
-    indentLevel = ""
-    def __init__(self, name, enabled):
-        self.name = name
-        self.enabled = enabled
-        if self.enabled: print("%s-> %s" % (TaggedSpan.indentLevel, self.name))
-        TaggedSpan.indentLevel += '--'
-    def __del__(self, *args, **kwargs):
-        TaggedSpan.indentLevel = TaggedSpan.indentLevel[:-2]
-        if self.enabled: print("%s<- %s" % (TaggedSpan.indentLevel, self.name))
 
 class DirectOutput(object):
 
@@ -96,6 +88,7 @@ class DirectOutput(object):
         dll_path -- String containing DirectOutput.dll location.
 
         """
+        logging.debug("DirectOutput.__init__")
         self.DirectOutputDLL = ctypes.WinDLL(dll_path)
 
     def Initialize(self, application_name):
@@ -112,6 +105,7 @@ class DirectOutput(object):
         E_HANDLE: The DirectOutputManager process could not be found
 
         """
+        logging.debug("DirectOutput.Initialize")
         return self.DirectOutputDLL.DirectOutput_Initialize(ctypes.wintypes.LPWSTR(application_name))
 
     def Deinitialize(self):
@@ -122,6 +116,7 @@ class DirectOutput(object):
         S_OK: The call completed successfully.
         E_HANDLE:  DirectOutput was not initialized or was already deinitialized.
         """
+        logging.debug("DirectOutput.Deinitialize")
         return self.DirectOutputDLL.DirectOutput_Deinitialize()
 
     def RegisterDeviceCallback(self, function):
@@ -136,6 +131,7 @@ class DirectOutput(object):
         E_HANDLE: DirectOutput was not initialized.
 
         """
+        logging.debug("DirectOutput.RegisterDeviceCallback")
         return self.DirectOutputDLL.DirectOutput_RegisterDeviceCallback(function, 0)
 
     def Enumerate(self, function):
@@ -147,12 +143,13 @@ class DirectOutput(object):
         E_HANDLE: DirectOutput was not initialized.
 
         """
+        logging.debug("DirectOutput.Enumerate")
         return self.DirectOutputDLL.DirectOutput_Enumerate(function, 0)
 
 
     def RegisterSoftButtonCallback(self, device_handle, function):
         """
-        Registers self.RegisterSoftButtonCallback to be called when a soft button changes
+        Registers a function to be called when a soft button changes
 
         Required Arugments:
         device_handle -- ID of device
@@ -163,11 +160,12 @@ class DirectOutput(object):
         E_HANDLE: The device handle specified is invalid.
 
         """
-        return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(device_handle, function, 0)
+        logging.debug("DirectOutput.RegisterSoftButtonCallback({}, {})".format(device_handle, function))
+        return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(device_handle, function, SOFTBUTTON_SELECT)
 
     def RegisterPageCallback(self, device_handle, function):
         """
-        Registers self.RegisterPageCallback to be called when page changes
+        Registers a function to be called when page changes
 
         Required Arugments:
         device_handle -- ID of device
@@ -177,7 +175,22 @@ class DirectOutput(object):
         S_OK: The call completed successfully.
         E_HANDLE: The device handle specified is invalid.
         """
+        logging.debug("DirectOutput.RegisterPageCallback({}, {})".format(device_handle,function))
         return self.DirectOutputDLL.DirectOutput_RegisterPageCallback(device_handle, function, 0)
+
+    def SetProfile(self, device_handle, profile):
+        """
+        Sets the profile used on the device.
+
+        Required Arguments:
+        device_handle -- ID of device
+        profile -- full path of the profile to activate. passing None will clear the profile.
+        """
+        logging.debug("DirectOutput.SetProfile({}, {})".format(device_handle, profile))
+        if profile:
+            return self.DirectOutputDLL.DirectOutput_SetProfile(device_handle, len(profile), ctypes.wintypes.LPWSTR(profile))
+        else:
+            return self.DirectOutputDLL.DirectOutput_SetProfile(device_handle, 0, 0)
 
     def AddPage(self, device_handle, page, name, active):
         """
@@ -196,8 +209,8 @@ class DirectOutput(object):
         E_HANDLE: The device handle specified is invalid.
 
         """
+        logging.debug("DirectOutput.AddPage({}, {}, {}, {})".format(device_handle, page, name, active))
         return self.DirectOutputDLL.DirectOutput_AddPage(device_handle, page, active)
-
 
     def RemovePage(self, device_handle, page):
         """
@@ -213,6 +226,7 @@ class DirectOutput(object):
         E_HANDLE: The device handle specified is invalid.
 
         """
+        logging.debug("DirectOutput.RemovePage({}, {})".format(device_handle, page))
         return self.DirectOutputDLL.DirectOutput_RemovePage(device_handle, page)
 
     def SetLed(self, device_handle, page, led, value):
@@ -231,6 +245,7 @@ class DirectOutput(object):
         E_HANDLE: The device handle specified is invalid
 
         """
+        logging.debug("DirectOutput.SetLed({}, {}, {}, {})".format(device_handle, page, led, value))
         return self.DirectOutputDLL.DirectOutput_SetLed(device_handle, page, led, value)
 
 
@@ -251,6 +266,7 @@ class DirectOutput(object):
         E_HANDLE: The device handle specified is invalid.
 
         """
+        logging.debug("DirectOutput.SetString({}, {}, {}, {})".format(device_handle, page, line, string))
         return self.DirectOutputDLL.DirectOutput_SetString(device_handle, page, line, len(string), ctypes.wintypes.LPWSTR(string))
 
 
@@ -291,175 +307,192 @@ class DirectOutputDevice(object):
     debug_level = 0
 
     def __init__(self, dll_path="C:\\Program Files (x86)\\Saitek\\DirectOutput\\DirectOutput.dll", debug_level=0, name=None):
-
         """
         Initialises device, creates internal state (device_handle) and registers callbacks.
 
         """
 
-        self.application_name = name or DirectOutputDevice.application_name
+        logging.info("DirectOutputDevice.__init__")
 
+        self.application_name = name or DirectOutputDevice.application_name
         self.debug_level = debug_level
-        outerSpan = TaggedSpan("Initializing SaitekX52Pro", debug_level >= 1)
 
         try:
-            innerSpan = TaggedSpan("Creating DirectOutput instance", debug_level >= 2)
+            logging.debug("DirectOutputDevice -> DirectOutput")
             self.direct_output = DirectOutput(dll_path)
+            logging.debug("direct_output = {}".format(self.direct_output))
         except WindowsError as e:
+            logging.warning("DLLError {}".format(e.winerror))
             raise DLLError(e.winerror) from None
 
-        innerSpan = TaggedSpan("Initializing DirectOutput(%s)" % self.application_name, debug_level >= 2)
         result = self.direct_output.Initialize(self.application_name)
         if result != S_OK:
+            logging.warning("direct_output.Initialize returned {}".format(result))
             raise DirectOutputError(result)
-        del innerSpan
 
-        innerSpan = TaggedSpan("Creating callback closures", debug_level >= 2)
-        self.device_callback_instance = self._DeviceCallbackClosure()
-        self.enumerate_callback_instance = self._EnumerateCallbackClosure()
-        self.register_page_callback_instance = self._RegisterPageCallbackClosure()
-        self.register_soft_button_callback_instance = self._RegisterSoftButtonCallbackClosure()
-        del innerSpan
+        logging.info("Creating callback closures.")
+        self.onDevice_closure = self._OnDeviceClosure()
+        logging.debug("onDevice_closure {}".format(self.onDevice_closure))
+        self.onEnumerate_closure = self._OnEnumerateClosure()
+        logging.debug("onEnumerate_closure {}".format(self.onEnumerate_closure))
+        self.onPage_closure = self._OnPageClosure()
+        logging.debug("onPage_closure {}".format(self.onPage_closure))
+        self.onSoftButton_closure = self._OnSoftButtonClosure()
+        logging.debug("onSoftButton_closure {}".format(self.onSoftButton_closure))
 
-        innerSpan = TaggedSpan("Registering device callback", debug_level >= 2)
-        result = self.direct_output.RegisterDeviceCallback(self.device_callback_instance)
+        result = self.direct_output.RegisterDeviceCallback(self.onDevice_closure)
         if result != S_OK:
+            logging.warning("RegisterDeviceCallback failed: {}".format(result))
             self.finish()
             raise DirectOutputError(result)
-        del innerSpan
 
-        innerSpan = TaggedSpan("Enumerating devices", debug_level >= 2)
-        result = self.direct_output.Enumerate(self.enumerate_callback_instance)
+        result = self.direct_output.Enumerate(self.onEnumerate_closure)
         if result != S_OK:
+            logging.warning("Enumerate failed: {}".format(result))
             self.finish()
             raise DirectOutputError(result)
-        del innerSpan
 
         if not self.device_handle:
+            logging.warning("No device handle")
             self.finish()
             raise DirectOutputError(result)
 
-        innerSpan = TaggedSpan("Registering page callback", debug_level >= 2)
-        result = self.direct_output.RegisterPageCallback(self.device_handle, self.register_page_callback_instance)
+        result = self.direct_output.RegisterSoftButtonCallback(self.device_handle, self.onSoftButton_closure)
         if result != S_OK:
+            logging.warning("RegisterSoftButtonCallback failed")
             self.finish()
             raise DirectOutputError(result)
-        del innerSpan
 
-        innerSpan = TaggedSpan("Registering soft button callback", debug_level >= 2)
-        result = self.direct_output.RegisterSoftButtonCallback(self.device_handle, self.register_soft_button_callback_instance)
+        result = self.direct_output.RegisterPageCallback(self.device_handle, self.onPage_closure)
         if result != S_OK:
+            logging.warning("RegisterPageCallback failed")
             self.finish()
             raise DirectOutputError(result)
-        del innerSpan
+
 
     def __del__(self, *args, **kwargs):
-        span = TaggedSpan("~DirectOutputDevice", self.debug_level >= 2)
+        logging.debug("DirectOutputDevice.__del__")
         self.finish()
 
-    def debug(self, level, *args, **kwargs):
-        if self.debug_level >= level:
-            print(*args, **kwargs)
 
     def finish(self):
         """
         De-initializes DLL. Must be called before program exit
 
         """
-        span = TaggedSpan("DirectOutputDevice.finish()", self.debug_level >= 2)
         if self.direct_output:
+            logging.info("DirectOutputDevice deinitializing")
             self.direct_output.Deinitialize()
             self.direct_output = None
+        else:
+            logging.debug("nothing to do in finish()")
 
-    def _DeviceCallbackClosure(self):
+
+    def _OnDeviceClosure(self):
         """
-        Returns a pointer to function that calls self._DeviceCallback method. This allows class methods to be called from within DirectOutput.dll
+        Returns a pointer to function that calls self._OnDevice method. This allows class methods to be called from within DirectOutput.dll
 
         http://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes
 
         """
-        DeviceCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
+        OnDevice_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_bool, ctypes.c_void_p)
+
         def func(hDevice, bAdded, pvContext):
-            span = TaggedSpan("devicecallback closure", debug_level >= 2)
-            self._DeviceCallback(hDevice, bAdded, pvContext)
-        return DeviceCallback_Proto(func)
+            logging.info("device callback closure func: {}, {}, {}".format(hDevice, bAdded, pvContext))
+            self._OnDevice(hDevice, bAdded, pvContext)
 
-    def _EnumerateCallbackClosure(self):
+        return OnDevice_Proto(func)
+
+
+    def _OnEnumerateClosure(self):
         """
-        Returns a pointer to function that calls self._EnumerateCallback method. This allows class methods to be called from within DirectOutput.dll
+        Returns a pointer to function that calls self._OnEnumerate method. This allows class methods to be called from within DirectOutput.dll
 
         http://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes
 
         """
-        EnumerateCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)
+        OnEnumerate_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p)
+
         def func(hDevice, pvContext):
-            span = TaggedSpan("enumeratecallback closure", self.debug_level >= 2)
-            self._EnumerateCallback(hDevice, pvContext)
-        return EnumerateCallback_Proto(func)
+            logging.info("enumerate callback closure func: {}, {}".format(hDevice, pvContext))
+            self._OnEnumerate(hDevice, pvContext)
 
-    def _RegisterPageCallbackClosure(self):
+        return OnEnumerate_Proto(func)
+
+
+    def _OnPageClosure(self):
         """
-        Returns a pointer to function that calls self._RegisterPageCallback method. This allows class methods to be called from within DirectOutput.dll
+        Returns a pointer to function that calls self._OnPage method. This allows class methods to be called from within DirectOutput.dll
 
         http://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes
 
         """
-        PageCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.wintypes.DWORD, ctypes.c_bool, ctypes.c_void_p)
+        OnPage_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.wintypes.DWORD, ctypes.c_bool, ctypes.c_void_p)
+
         def func(hDevice, dwPage, bActivated, pvContext):
-            span = TaggedSpan("registerpage closure", self.debug_level >= 2)
-            self._RegisterPageCallback(hDevice, dwPage, bActivated, pvContext)
-        return PageCallback_Proto(func)
+            logging.info("page callback closure: {}, {}, {}, {}".format(hDevice, dwPage, bActivated, pvContext))
+            self._OnPage(hDevice, dwPage, bActivated, pvContext)
 
-    def _RegisterSoftButtonCallbackClosure(self):
+        return OnPage_Proto(func)
+
+
+    def _OnSoftButtonClosure(self):
         """
-        Returns a pointer to function that calls self._RegisterSoftButtonCallback method. This allows class methods to be called from within DirectOutput.dll
+        Returns a pointer to function that calls self._OnSoftButton method. This allows class methods to be called from within DirectOutput.dll
 
         http://stackoverflow.com/questions/7259794/how-can-i-get-methods-to-work-as-callbacks-with-python-ctypes
 
         """
-        SoftButtonCallback_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.wintypes.DWORD, ctypes.c_void_p)
-        def func(hDevice, dwButtons, pvContext):
-            span = TaggedSpan("softbutton closure", self.debug_level >= 2)
-            self._RegisterSoftButtonCallback(hDevice, dwButtons, pvContext)
-        return SoftButtonCallback_Proto(func)
+        OnSoftButton_Proto = ctypes.WINFUNCTYPE(None, ctypes.c_void_p, ctypes.wintypes.DWORD, ctypes.c_void_p)
 
-    def _DeviceCallback(self, hDevice, bAdded, pvContext):
+        def func(hDevice, dwButtons, pvContext):
+            logging.info("soft button callback closure: {}, {}, {}".format(hDevice, dwButtons, pvContext))
+            self._OnSoftButton(hDevice, dwButtons, pvContext)
+
+        return OnSoftButton_Proto(func)
+
+
+    def _OnDevice(self, hDevice, bAdded, pvContext):
         """
         Internal function to register device handle
 
         """
-        span = TaggedSpan("_devicecallback", self.debug_level >= 2)
         if not bAdded:
             raise NotImplementedError("Received a message that a device went away.")
         if self.device_handle and self.device_handle != hDevice:
             raise IndexError("Too many Saitek devices present")
+        logging.info("_OnDevice")
         self.device_handle = hDevice
 
-    def _EnumerateCallback(self, hDevice, pvContext):
+
+    def _OnEnumerate(self, hDevice, pvContext):
         """
         Internal function to process a device enumeration
 
         """
-        span = TaggedSpan("_enumeratecallback", self.debug_level >= 2)
-        self._DeviceCallback(hDevice, True, pvContext)
+        logging.info("_OnEnumerate")
+        self._OnDevice(hDevice, True, pvContext)
 
-    def _RegisterPageCallback(self, hDevice, dwPage, bActivated, pvContext):
-        """
-        Method called when page changes. Calls self.RegisterPageCallback to hide hDevice and pvContext from end-user
 
+    def _OnPage(self, hDevice, dwPage, bActivated, pvContext):
         """
-        span = TaggedSpan("_registerpagecallback", self.debug_level >= 2)
-        self.RegisterPageCallback(dwPage, bActivated)
-
-    def _RegisterSoftButtonCallback(self, hDevice, dwButtons, pvContext):
-        """
-        Method called when soft button changes. Calls self.RegisterSoftButtonCallback to hide hDevice and pvContext from end-user. Also hides change of page softbutton and press-up.
+        Method called when page changes. Calls self.OnPage to hide hDevice and pvContext from end-user
 
         """
-        span = TaggedSpan("_registersoftbuttoncallback", self.debug_level >= 2)
-        self.RegisterSoftButtonCallback(self.Buttons(dwButtons))
+        logging.info("_OnPage")
+        self.OnPage(dwPage, bActivated)
 
-    def RegisterPageCallback(self, page, activated):
+
+    def _OnSoftButton(self, hDevice, dwButtons, pvContext):
+        """
+        Method called when soft button changes. Calls self.OnSoftButton to hide hDevice and pvContext from end-user. Also hides change of page softbutton and press-up.
+
+        """
+        logging.info("_OnSoftButton")
+        self.OnSoftButton(self.Buttons(dwButtons))
+
+
+    def OnPage(self, page, activated):
         """
         Method called when a page changes. This should be overwritten by inheriting class
 
@@ -468,9 +501,10 @@ class DirectOutputDevice(object):
         activated -- true if this page has become the active page, false if this page was the active page
 
         """
-        span = TaggedSpan("registerpagecallback", self.debug_level >= 2)
+        logging.info("OnPage({}, {})".format(page, activated))
 
-    def RegisterSoftButtonCallback(self, buttons):
+
+    def OnSoftButton(self, buttons):
         """
         Method called when a soft button changes. This should be overwritten by inheriting class
 
@@ -478,11 +512,25 @@ class DirectOutputDevice(object):
         buttons - Buttons object representing button state
 
         """
-        span = TaggedSpan("registersoftbuttoncallback", self.debug_level >= 2)
+        logging.info("OnSoftButton({})".format(buttons))
+
+
+    def SetProfile(self, profile):
+        """
+        Sets the profile used on the device.
+
+        Required Arguments:
+        device_handle -- ID of device
+        profile -- full path of the profile to activate. passing None will clear the profile.
+        """
+        logging.debug("SetProfile({})".format(profile))
+        return self.direct_output.SetProfile(self.device_handle, profile)
+
 
     def AddPage(self, page, name, active):
         """
-        Adds a page to the MFD
+        Adds a page to the MFD. If overriden by a derived class, you should
+        call super().AddPage(*args, **kwargs)
 
         Required Arguments:
         page -- page ID to add
@@ -490,8 +538,9 @@ class DirectOutputDevice(object):
         active -- True if page is to become the active page, if False this will not change the active page
 
         """
-        span = TaggedSpan("AddPage(%s, %s, %s)" % (str(page), str(name), str(active)), self.debug_level >= 1)
+        logging.info("AddPage({}, {}, {})".format(page, name, active))
         self.direct_output.AddPage(self.device_handle, page, name, active)
+
 
     def RemovePage(self, page):
         """
@@ -501,11 +550,13 @@ class DirectOutputDevice(object):
         page -- page ID to remove
 
         """
-        span = TaggedSpan("RemovePage(%s)" % (str(page)), self.debug_level >= 1)
+        logging.info("RemovePage({})".format(page))
         result = self.direct_output.RemovePage(self.device_handle, page)
         if result != S_OK:
+            logging.error("RemovePage failed: {}".format(result))
             self.finish()
             raise DirectOutputError(result)
+
 
     def SetString(self, page, line, string):
         """
@@ -516,11 +567,13 @@ class DirectOutputDevice(object):
         line -- the line to display the string on (0 = top, 1 = middle, 2 = bottom)
         string -- the string to display
         """
-        span = TaggedSpan("SetString(%s, %s, %s)" % (str(page), str(line), str(string)), self.debug_level >= 1)
+        logging.debug("SetString({}, {}, {})".format(page, line, string))
         result = self.direct_output.SetString(self.device_handle, page, line, string)
         if result != S_OK:
+            logging.warning("SetString failed: {}".format(result))
             self.finish()
             raise DirectOutputError(result)
+
 
     def SetLed(self, page, led, value):
         """
@@ -532,9 +585,10 @@ class DirectOutputDevice(object):
         value -- value to set LED (1 = on, 0 = off)
 
         """
-        span = TaggedSpan("SetLed(%s, %s, %s)" % (str(page), str(led), str(value)), self.debug_level >= 1)
+        logging.debug("SetLed({}, {}, {})".format(page, led, value))
         result = self.direct_output.SetLed(self.device_handle, page, led, value)
         if result != S_OK:
+            logging.warning("SetLed failed: {}".format(result))
             self.finish()
             raise DirectOutputError(result)
 
@@ -543,6 +597,7 @@ class DeviceNotFoundError(Exception):
 
     def __str__(self):
         return "No Compatible Device Found"
+
 
 class DLLError(Exception):
 
@@ -557,6 +612,7 @@ class DLLError(Exception):
 
     def __str__(self):
         return "Unable to load DirectOutput.dll - "+self.msg
+
 
 class DirectOutputError(Exception):
     Errors = {
@@ -578,7 +634,14 @@ class DirectOutputError(Exception):
     def __str__(self):
         return self.msg
 
+
 if __name__ == '__main__':
+    # If you want it to go to a file?
+    # logging.basicConfig(filename='directoutput.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
+    # If you want less verbose logging?
+    # logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
+
     import time, sys
 
     device = DirectOutputDevice(debug_level=1)
