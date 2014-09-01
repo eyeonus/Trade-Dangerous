@@ -474,7 +474,7 @@ def editUpdate(args, stationID):
             print("# Update complete, regenerating .prices file")
 
         with tdb.pricesPath.open("w") as pricesFile:
-            prices.dumpPrices(args.db, file=pricesFile, debug=args.debug)
+            prices.dumpPrices(args.db, withModified=True, file=pricesFile, debug=args.debug)
 
         # Update the DB file so we don't regenerate it.
         pathlib.Path(args.db).touch()

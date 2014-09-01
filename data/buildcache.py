@@ -28,9 +28,9 @@ from collections import namedtuple
 noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)+?)\s*(#|$)')
 systemStationRe = re.compile(r'^\@\s*(.*)\s*/\s*(.*)')
 categoryRe = re.compile(r'^\+\s*(.*?)\s*$')
-itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)$')
+itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)(?:\s+(\d{4}-.*?))?$')
 
-class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'paying', 'uiOrder' ])):
+class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'paying', 'uiOrder', 'modified' ])):
     pass
 
 def priceLineNegotiator(priceFile, db, debug=0):
@@ -88,15 +88,17 @@ def priceLineNegotiator(priceFile, db, debug=0):
             if not matches:
                 print("Unrecognized line/syntax: {}".format(line))
                 sys.exit(1)
-            itemName, stationPaying, stationAsking = matches.group(1), int(matches.group(2)), int(matches.group(3))
+            itemName, stationPaying, stationAsking, modified = matches.group(1), int(matches.group(2)), int(matches.group(3)), matches.group(4)
             itemID = itemsByName["{}:{}".format(categoryID, itemName)]
             uiOrder += 1
-            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder)
+            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified)
         except (AttributeError, IndexError):
             continue
 
 
 def processPricesFile(db, pricesPath, stationID=None, debug=0):
+    global currentTimestamp
+
     if debug: print("* Processing Prices file '{}'".format(str(pricesPath)))
 
     if stationID:
@@ -109,8 +111,8 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
             if debug > 2: print(price)
             bindValues += [ price ]
         stmt = """
-                   INSERT INTO Price (station_id, item_id, sell_to, buy_from, ui_order)
-                   VALUES (?, ?, ?, ?, ?)
+                   INSERT INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified)
+                   VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """
         db.executemany(stmt, bindValues)
     db.commit()
