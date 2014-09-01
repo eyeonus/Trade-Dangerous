@@ -161,7 +161,7 @@ class DirectOutput(object):
 
         """
         logging.debug("DirectOutput.RegisterSoftButtonCallback({}, {})".format(device_handle, function))
-        return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(device_handle, function, SOFTBUTTON_SELECT)
+        return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(device_handle, function, 0)
 
     def RegisterPageCallback(self, device_handle, function):
         """
@@ -332,13 +332,13 @@ class DirectOutputDevice(object):
 
         logging.info("Creating callback closures.")
         self.onDevice_closure = self._OnDeviceClosure()
-        logging.debug("onDevice_closure {}".format(self.onDevice_closure))
+        logging.debug("onDevice_closure is {}".format(self.onDevice_closure))
         self.onEnumerate_closure = self._OnEnumerateClosure()
-        logging.debug("onEnumerate_closure {}".format(self.onEnumerate_closure))
+        logging.debug("onEnumerate_closure is {}".format(self.onEnumerate_closure))
         self.onPage_closure = self._OnPageClosure()
-        logging.debug("onPage_closure {}".format(self.onPage_closure))
+        logging.debug("onPage_closure is {}".format(self.onPage_closure))
         self.onSoftButton_closure = self._OnSoftButtonClosure()
-        logging.debug("onSoftButton_closure {}".format(self.onSoftButton_closure))
+        logging.debug("onSoftButton_closure is {}".format(self.onSoftButton_closure))
 
         result = self.direct_output.RegisterDeviceCallback(self.onDevice_closure)
         if result != S_OK:
