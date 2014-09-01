@@ -83,7 +83,7 @@ class Route(object):
 
         text = self.str() + ":\n"
         if detail > 1:
-            text += self.summary() + "\n"
+            text += self.summary() + "\n" + "\n"
         for i in range(len(route) - 1):
             hop = self.hops[i]
             hopGainCr, hopTonnes = hop[1], 0
