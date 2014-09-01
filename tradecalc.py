@@ -115,6 +115,7 @@ class Route(object):
 
         return text
 
+
     def summary(self):
         """
             Returns a string giving a short summary of this route.
