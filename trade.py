@@ -556,7 +556,10 @@ def main():
         print("For help on a specific command, type: %s {command} -h" % (parser.prog))
         sys.exit(1)
 
+    # load the database
     tdb = TradeDB(debug=args.debug, dbFilename=args.db)
+
+    # run the commands
     return args.proc(args)
 
 

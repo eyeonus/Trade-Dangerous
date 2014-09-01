@@ -278,10 +278,12 @@ class TradeDB(object):
 
         # Make sure we don't hold on to an existing connection.
         if self.conn:
+            if self.debug > 2: print("x Disconnect DB")
             self.conn.close()
             self.conn = None
 
         try:
+            if self.debug > 1: print("* Connecting to DB")
             import sqlite3
             self.dbModule = sqlite3
             self.conn = self.dbModule.connect(self.dbURI)
@@ -323,7 +325,7 @@ class TradeDB(object):
             if dbFileCreatedTimestamp > max(sqlFileTimestamp, pricesFileTimestamp):
                 # db is newer.
                 if self.debug > 1:
-                    print("reloadCache: db file is newer. db:{} > max(sql:{}, prices:{}".format(dbFileCreatedTimestamp, sqlFileTimestamp, pricesFileTimestamp))
+                    print("- SQLite is up to date")
                 return
 
             if self.debug:
@@ -584,6 +586,8 @@ class TradeDB(object):
                 x = tdb.lookupStation("Aulin")
                 tdb.load() # x now points to an orphan Aulin
         """
+
+        if self.debug > 1: print("* Loading data")
 
         self.cur = self.conn.cursor()
 
