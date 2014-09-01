@@ -149,11 +149,11 @@ class Station(object):
 
         openList = [ Node(self.system, [], 0) ]
         pathList = { system.ID: Node(system, None, 0.0)
-                        # include avoids so we only have
-                        # to consult one place for exclusions
+                            # include avoids so we only have
+                            # to consult one place for exclusions
                         for system in avoiding + [ self ]
-                        # the avoid list may contain stations,
-                        # which affects destinations but not vias
+                            # the avoid list may contain stations,
+                            # which affects destinations but not vias
                         if isinstance(system, System) }
 
         # As long as the open list is not empty, keep iterating.
@@ -197,7 +197,8 @@ class Station(object):
         for node in pathList.values():
             if node.distLy > epsilon:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
-                    destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+                    if not station in avoidStations:
+                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
 
         return destStations
 
