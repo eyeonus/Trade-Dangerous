@@ -33,7 +33,7 @@ itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)$')
 class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'paying', 'uiOrder' ])):
     pass
 
-def priceLineNegotiator(priceFile, db, debug):
+def priceLineNegotiator(priceFile, db, debug=0):
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
@@ -96,6 +96,26 @@ def priceLineNegotiator(priceFile, db, debug):
             continue
 
 
+def processPricesFile(db, pricesPath, stationID=None, debug=0):
+    if debug: print("* Processing Prices file '{}'".format(str(pricesPath)))
+
+    if stationID:
+        if debug: print("* Deleting stale entries for {}".format(stationID))
+        db.execute("DELETE FROM Price WHERE station_id = {}".format(stationID))
+
+    with pricesPath.open() as pricesFile:
+        bindValues = []
+        for price in priceLineNegotiator(pricesFile, db, debug):
+            if debug > 2: print(price)
+            bindValues += [ price ]
+        stmt = """
+                   INSERT INTO Price (station_id, item_id, sell_to, buy_from, ui_order)
+                   VALUES (?, ?, ?, ?, ?)
+                """
+        db.executemany(stmt, bindValues)
+    db.commit()
+
+
 def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     """
         Rebuilds the SQlite database from source files.
@@ -122,17 +142,7 @@ def buildCache(dbPath, sqlPath, pricesPath, debug=0):
         tempDB.executescript(sqlScript)
 
     # Parse the prices file
-    if debug: print("* Processing Prices file '%s'" % pricesPath)
-    with pricesPath.open() as pricesFile:
-        bindValues = []
-        for price in priceLineNegotiator(pricesFile, tempDB, debug):
-            if debug > 2: print(price)
-            bindValues += [ price ]
-        stmt = """
-                   INSERT INTO Price (station_id, item_id, sell_to, buy_from, ui_order)
-                   VALUES (?, ?, ?, ?, ?)
-                """
-        tempDB.executemany(stmt, bindValues)
+    processPricesFile(tempDB, pricesPath)
 
     # Database is ready; copy it to a persistent store.
     if debug: print("* Populating SQLite database file '%s'" % dbPath)

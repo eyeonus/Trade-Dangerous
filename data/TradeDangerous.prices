@@ -1,42 +1,4 @@
-# SOURCE List of item prices for TradeDangerous.
-#
-# This file is used by TradeDangerous to populate the
-# SQLite databsae with prices, whenever this file is
-# updated or you delete the TradeDangerous.db file.
-
-# FORMAT:
-#
-# # ...
-#   A comment
-#
-# @ SYSTEM NAME/Station Name
-#   Sets the current station
-#   e.g. @ CHANGO/Chango Dock
-#
-# + Product Category
-#   Sets the current product category
-#   e.g. + Consumer Tech
-#
-# Item Name   Value    Cost
-#   Item value line.
-#     Item Name is the name of the item, e.g. Fish
-#     Value is what the STATION pays for the item,
-#     Cost is how much the item costs FROM the station
-#
-# Example:
-# @ CHANGO/Chango Dock
-#  + Chemicals
-#     Mineral Oil     150    0
-#     Hydrogen Fuels  63     0
-#     Explosives      150  160
-#
-# This gives prives for items under the "Chemicals"
-# heading. Mineral oil was listed first and was selling
-# at the station for 150cr.
-# Hydrogen Fuels was listed 3rd and sells for 63 cr.
-# Explosives was listed 2nd and sells for 150 cr AND
-# can be bought here for 160cr.
-#
+# Source for TradeDangerous' price database.
 
 @ ACIHAUT/Cuffey Plant
    + Chemicals

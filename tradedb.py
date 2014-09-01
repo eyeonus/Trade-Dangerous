@@ -225,8 +225,9 @@ class TradeDB(object):
 
         Attributes:
             debug               -   Debugging level for this instance.
-            dbmodule            -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc).
-            path                -   The URI to the database.
+            dbModule            -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc).
+            dbPath              -   Path object describing the db location.
+            dbURI               -   String representation of the db location (e.g. filename).
             conn                -   The database connection.
 
         Methods:
@@ -255,13 +256,13 @@ class TradeDB(object):
     defaultPrices = './data/TradeDangerous.prices'
 
 
-    def __init__(self, path=None, sqlFilename=None, pricesFilename=None, debug=0):
-        self.dbPath = Path(path or TradeDB.defaultDB)
+    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0):
+        self.dbPath = Path(dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
         self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
         self.debug = debug
-        self.conn, self.dbmodule = None, None
+        self.conn, self.dbModule = None, None
 
         # Ensure the file exists, otherwise sqlite will create a new database.
         self._connectToDB()
@@ -282,8 +283,8 @@ class TradeDB(object):
 
         try:
             import sqlite3
-            self.dbmodule = sqlite3
-            self.conn = self.dbmodule.connect(self.dbURI)
+            self.dbModule = sqlite3
+            self.conn = self.dbModule.connect(self.dbURI)
         except ImportError as e:
             print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
             raise e
@@ -313,7 +314,7 @@ class TradeDB(object):
             # We're looking to see if the .sql file or .prices file
             # was modified or created more recently than the last time
             # we *created* the db file.
-            dbFileCreatedTimestamp = self.dbPath.stat().st_ctime
+            dbFileCreatedTimestamp = self.dbPath.stat().st_mtime
 
             sqlStat, pricesStat = self.sqlPath.stat(), self.pricesPath.stat()
             sqlFileTimestamp = max(sqlStat.st_mtime, sqlStat.st_ctime)
@@ -326,7 +327,7 @@ class TradeDB(object):
                 return
 
             if self.debug:
-                print("* Rebuilding DB Cache")
+                print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlFileTimestamp, pricesFileTimestamp))
         else:
             if self.debug:
                 print("* Building DB cache")
@@ -574,7 +575,7 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self):
+    def load(self, dbFilename=None):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
