@@ -14,9 +14,7 @@
 # Imports
 
 import re                   # Because irregular expressions are dull
-import pypyodbc             # Because its documentation was better
 import sys
-from queue import Queue     # Because we're British.
 from collections import namedtuple
 import itertools
 import math
