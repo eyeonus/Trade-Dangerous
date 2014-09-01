@@ -134,7 +134,8 @@ def doChecklist(route, credits):
     print(underline)
     print()
     if args.detail:
-        print(route.summary(), "\n")
+        print(route.summary())
+        print()
 
     for idx in range(lastHopIdx):
         hopNo = idx + 1
@@ -345,8 +346,14 @@ def runCommand(args):
         print("--------------------------------------------------------")
         print()
 
+    # Instantiate the calculator object
     calc = TradeCalc(tdb, debug=args.debug, capacity=args.capacity, maxUnits=maxUnits, margin=args.margin, unique=args.unique)
+
+    # Build a single list of places we want to avoid
+    # TODO: Keep these seperate because we wind up spending
+    # time breaking the list down in getDestinations.
     avoidPlaces = avoidSystems + avoidStations
+
     for hopNo in range(numHops):
         if calc.debug: print("# Hop %d" % hopNo)
         restrictTo = None
