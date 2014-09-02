@@ -86,6 +86,19 @@ class HelpAction(argparse.Action):
         sys.exit(0)
 
 
+class EditAction(argparse.Action):
+    """
+        argparse action that stores a value and also flags args._editing
+    """
+    def __init__(self, *args, **kwargs):
+        if not 'type' in kwargs and not 'nargs' in kwargs:
+            kwargs['nargs'] = 0
+        super(EditAction, self).__init__(*args, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, "_editing", True)
+        setattr(namespace, self.dest, values or self.default)
+
+
 def new_file_arg(string):
     """ argparse action handler for specifying a file that does not already exist. """
 
@@ -398,6 +411,8 @@ def editUpdate(args, stationID):
         database and regenerate the master .prices file.
     """
 
+    if args.debug: print("# 'update' mode with editor. editor:{} station:{}".format(args.editor, args.station))
+
     from data import buildcache
     from data import prices
     import subprocess
@@ -489,15 +504,17 @@ def updateCommand(args):
         Allow the user to update the prices database.
     """
 
-    if args.debug: print("# 'update' mode editor:{} station:{}".format(args.editor, args.station))
-
     station = tdb.lookupStation(args.station)
     stationID = station.ID
 
-    if args.editor or args.sublime or args.notepad:
+    if args._editing:
+        # User specified one of the options to use an editor.
         return editUpdate(args, stationID)
 
-    print("Guided mode not implemented yet. Try using --editor or --sublime.")
+    if args.debug: print('# guided "update" mode station:{}'.format(args.station))
+
+
+    print("Guided mode not implemented yet. Try using --editor, --sublime or --notepad")
 
 
 ######################################################################
@@ -507,6 +524,7 @@ def main():
     global args, tdb
 
     parser = argparse.ArgumentParser(description='Trade run calculator', add_help=False)
+    parser.set_defaults(_editing=False)
 
     # Arguments common to all subparsers.
     commonArgs = parser.add_argument_group('Common Arguments')
@@ -548,10 +566,10 @@ def main():
     updtReqArgs.add_argument('station', type=str, help='Name of the station to update prices for.')
     updtOptArgs = updateParser.add_argument_group('Optional Arguments')
     updtOptArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
-    updtOptArgs.add_argument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', required=False, default=None, type=str)
+    updtOptArgs.add_argument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', required=False, default=None, type=str, action=EditAction)
     editorGroup = updateParser.add_mutually_exclusive_group()
-    editorGroup.add_argument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', required=False, default=False, action='store_true')
-    editorGroup.add_argument('--notepad', help='Like --editor but uses Notepad.', required=False, default=False, action='store_true')
+    editorGroup.add_argument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', required=False, default=False, action=EditAction)
+    editorGroup.add_argument('--notepad', help='Like --editor but uses Notepad.', required=False, default=False, action=EditAction)
     updateParser.set_defaults(proc=updateCommand)
 
     args = parser.parse_args()
