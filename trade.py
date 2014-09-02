@@ -470,7 +470,7 @@ def editUpdate(args, stationID):
 
         # Launch the editor
         editorCommandLine = [ editor ] + editorArgs + [ absoluteFilename ]
-        print("# Invoking [{}]".format(str(editorCommandLine)))
+        if args.debug: print("# Invoking [{}]".format(str(editorCommandLine)))
         result = subprocess.call(editorCommandLine)
         if result != 0:
             print("NOTE: Edit failed ({}), nothing to import.".format(result))
