@@ -106,7 +106,7 @@ INSERT INTO "Station" VALUES(6,'Aulin Enterprise',5,0.0);
 INSERT INTO "Station" VALUES(7,'WCM Transfer Orbital',30,0.0);
 INSERT INTO "Station" VALUES(8,'Romanenko',44,0.0);
 INSERT INTO "Station" VALUES(9,'Romanek''s Folly',41,0.0);
-INSERT INTO "Station" VALUES(10,'Bradfield',45,0.0);
+INSERT INTO "Station" VALUES(10,'Bradfield Orbital',45,0.0);
 INSERT INTO "Station" VALUES(11,'Gorbatko',10,0.0);
 INSERT INTO "Station" VALUES(12,'Cuffey Plant',2,0.0);
 INSERT INTO "Station" VALUES(13,'Hay Point',42,0.0);
