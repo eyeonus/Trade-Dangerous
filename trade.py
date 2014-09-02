@@ -90,13 +90,22 @@ class EditAction(argparse.Action):
     """
         argparse action that stores a value and also flags args._editing
     """
-    def __init__(self, *args, **kwargs):
-        if not 'type' in kwargs and not 'nargs' in kwargs:
-            kwargs['nargs'] = 0
-        super(EditAction, self).__init__(*args, **kwargs)
     def __call__(self, parser, namespace, values, option_string=None):
         setattr(namespace, "_editing", True)
         setattr(namespace, self.dest, values or self.default)
+
+
+class EditActionStoreTrue(argparse.Action):
+    """
+        argparse action that stores True but also flags args._editing
+    """
+    def __init__(self, option_strings, dest, nargs=None, **kwargs):
+        if nargs is not None:
+            raise ValueError("nargs not allowed")
+        super(EditActionStoreTrue, self).__init__(option_strings, dest, nargs=0, **kwargs)
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, "_editing", True)
+        setattr(namespace, self.dest, True)
 
 
 def new_file_arg(string):
@@ -444,7 +453,8 @@ def editUpdate(args, stationID):
     # Create a temporary text file with a list of the price data.
     tmpPath = pathlib.Path("prices.tmp")
     if tmpPath.exists():
-        print("Temporary file ({}) already exists.".format(tmpPath))
+        print("ERROR: Temporary file ({}) already exists.".format(tmpPath))
+        sys.exit(1)
     absoluteFilename = None
     try:
         # Open the file and dump data to it.
@@ -460,7 +470,7 @@ def editUpdate(args, stationID):
 
         # Launch the editor
         editorCommandLine = [ editor ] + editorArgs + [ absoluteFilename ]
-        if args.debug: print("# Invoking [{}]".format('::'.join(editorCommandLine)))
+        print("# Invoking [{}]".format(str(editorCommandLine)))
         result = subprocess.call(editorCommandLine)
         if result != 0:
             print("NOTE: Edit failed ({}), nothing to import.".format(result))
@@ -568,8 +578,8 @@ def main():
     updtOptArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
     updtOptArgs.add_argument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', required=False, default=None, type=str, action=EditAction)
     editorGroup = updateParser.add_mutually_exclusive_group()
-    editorGroup.add_argument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', required=False, default=False, action=EditAction)
-    editorGroup.add_argument('--notepad', help='Like --editor but uses Notepad.', required=False, default=False, action=EditAction)
+    editorGroup.add_argument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', required=False, default=False, action=EditActionStoreTrue)
+    editorGroup.add_argument('--notepad', help='Like --editor but uses Notepad.', required=False, default=False, action=EditActionStoreTrue)
     updateParser.set_defaults(proc=updateCommand)
 
     args = parser.parse_args()
