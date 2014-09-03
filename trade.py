@@ -530,57 +530,108 @@ def updateCommand(args):
 ######################################################################
 # main entry point
 
+class ParseArgument(object):
+    """
+        Provides argument forwarding so that 'makeSubParser' can take function-like arguments.
+    """
+    def __init__(self, *args, **kwargs):
+        self.args, self.kwargs = args, kwargs
+
+
+def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=None):
+    """
+        Provide a normalized sub-parser for a specific command. This helps to
+        make it easier to keep the command lines consistent and makes the calls
+        to build them easier to write/read.
+    """
+
+    subParser = subparsers.add_parser(name, help=help, add_help=False)
+
+    def addArguments(group, options, required, topGroup=None):
+        """
+            Registers a list of options to the specified group. Nodes
+            are either an instance of ParseArgument or a list of
+            ParseArguments. The list form is considered to be a
+            mutually exclusive group of arguments.
+        """
+
+        for option in options:
+            # lists indicate mutually exclusive subgroups
+            if isinstance(option, list):
+                addArguments((topGroup or group).add_mutually_exclusive_group(), option, required, topGroup=group)
+            else:
+                assert not required in option.kwargs
+                if option.args[0][0] == '-':
+                    group.add_argument(*(option.args), required=required, **(option.kwargs))
+                else:
+                    group.add_argument(*(option.args), **(option.kwargs))
+
+    if arguments:
+        argParser = subParser.add_argument_group('Required Arguments')
+        addArguments(argParser, arguments, True)
+
+    switchParser = subParser.add_argument_group('Optional Switches')
+    switchParser.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
+    addArguments(switchParser, switches, False)
+
+    subParser.set_defaults(proc=commandFunc)
+
+    return argParser
+
+
 def main():
     global args, tdb
 
-    parser = argparse.ArgumentParser(description='Trade run calculator', add_help=False)
+    parser = argparse.ArgumentParser(description='Trade run calculator', add_help=False, epilog='For help on a specific command, use the command followed by -h.')
     parser.set_defaults(_editing=False)
 
     # Arguments common to all subparsers.
-    commonArgs = parser.add_argument_group('Common Arguments')
+    commonArgs = parser.add_argument_group('Common Switches')
     commonArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
     commonArgs.add_argument('--debug', '-w', help='Enable diagnostic output.', default=0, required=False, action='count')
     commonArgs.add_argument('--db', help='Specify location of the SQLite database. Default: {}'.format(TradeDB.defaultDB), type=existing_file_arg, default=TradeDB.defaultDB)
 
-    # Split operations up in to several sub-commands.
     subparsers = parser.add_subparsers(dest='subparser', title='Commands')
 
     # "run" calculates a trade run.
-    runParser = subparsers.add_parser('run', help='Calculate best trade run with a given set of constraints.', add_help=False)
-    runReqArgs = runParser.add_argument_group('Required Arguments')
-    runReqArgs.add_argument('--credits', metavar='CR', help='Number of credits to start with.', type=int, required=True)
-    runOptArgs = runParser.add_argument_group('Optional Arguments')
-    runOptArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
-    runOptArgs.add_argument('--ship', metavar='name', help='Set capacity and max-ly-per from ship type.', type=str, required=False, default=None)
-    runOptArgs.add_argument('--capacity', metavar='N', help='Maximum capacity of cargo hold.', type=int, required=False)
-    runOptArgs.add_argument('--from', dest='origin', metavar='STATION', help='Specifies starting system/station.', required=False)
-    runOptArgs.add_argument('--to', dest='dest', metavar='STATION', help='Specifies final system/station.', required=False)
-    runOptArgs.add_argument('--via', dest='via', metavar='STATION', help='Require specified station to be en-route.', required=False)
-    runOptArgs.add_argument('--avoid', dest='avoid', metavar='NAME', help='Exclude an item, system or station from the database. Partial matches allowed, e.g. "dom.ap" matches "Dom. Appliance".', required=False, action='append')
-    runOptArgs.add_argument('--hops', metavar='N', help='Number of hops (station-to-station) to run. DEFAULT: 2', type=int, default=2, required=False)
-    runOptArgs.add_argument('--jumps-per', metavar='N', dest='maxJumpsPer', help='Maximum jumps (system-to-system) per hop (station-to-station). DEFAULT: 2', type=int, default=2, required=False)
-    runOptArgs.add_argument('--ly-per', metavar='N.NN', dest='maxLyPer', help='Maximum light years per individual jump.', type=float, default=None, required=False)
-    runOptArgs.add_argument('--limit', metavar='N', help='Maximum units of any one cargo item to buy. DEFAULT: 0 (unlimited)', type=int, default=0, required=False)
-    runOptArgs.add_argument('--unique', help='Only visit each station once.', default=False, required=False, action='store_true')
-    runOptArgs.add_argument('--margin', metavar='N.NN', help='Reduce gains by this much to provide a margin of error for market fluctuations (e.g. 0.25 reduces gains by 1/4). 0<=m<=0.25. DEFAULT: 0.01', default=0.01, type=float, required=False)
-    runOptArgs.add_argument('--insurance', metavar='CR', help='Reserve at least this many credits to cover insurance.', type=int, default=0, required=False)
-    runOptArgs.add_argument('--routes', metavar='N', help='Maximum number of routes to show. DEFAULT: 1', type=int, default=1, required=False)
-    runOptArgs.add_argument('--checklist', help='Provide a checklist flow for the route.', action='store_true', required=False, default=False)
-    runOptArgs.add_argument('--x52-pro', dest='x52pro', help='Enable experimental X52 Pro MFD output.', action='store_true', required=False, default=False)
-    runOptArgs.add_argument('--detail', '-v', help='Give detailed jump information for multi-jump hops.', default=0, required=False, action='count')
-    runParser.set_defaults(proc=runCommand)
+    runParser = makeSubParser(subparsers, 'run', 'Calculate best trade run.', runCommand,
+        arguments = [
+            ParseArgument('--credits', help='Starting credits.', metavar='CR', type=int)
+        ],
+        switches = [
+            ParseArgument('--ship', help='Set capacity and ly-per from ship type.', metavar='name', type=str),
+            ParseArgument('--capacity', help='Maximum capacity of cargo hold.', metavar='N', type=int),
+            ParseArgument('--from', help='Starting system/station.', metavar='STATION', dest='origin'),
+            ParseArgument('--to', help='Final system/station.', metavar='STATION', dest='dest'),
+            ParseArgument('--via', help='Require specified station to en-route.', metavar='STATION'),
+            ParseArgument('--avoid', help='Exclude an item, system or station from trading. Partial matches allowed, e.g. "dom.App" or "domap" matches "Dom. Appliances".', action='append'),
+            ParseArgument('--hops', help='Number of hops (station-to-station) to run.', metavar='N', type=int, default=2),
+            ParseArgument('--jumps-per', help='Maximum number of jumps (system-to-system) per hop.', metavar='N', dest='maxJumpsPer', type=int, default=2),
+            ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
+            ParseArgument('--limit', help='Maximum units of any one cargo item to buy (0: unlimited).', metavar='N', type=int),
+            ParseArgument('--unique', help='Only visit each station once.', action='store_true', default=False),
+            ParseArgument('--margin', help='Reduce gains made on each hop to provide a margin of error for market fluctuations (e.g: 0.25 reduces gains by 1/4). 0<: N<: 0.25.', metavar='N.NN', type=float, default=0.00),
+            ParseArgument('--insurance', help='Reserve at least this many credits to cover insurance.', metavar='CR', type=int, default=0),
+            ParseArgument('--routes', help='Maximum number of routes to show. DEFAULT: 1', metavar='N', type=int, default=1),
+            ParseArgument('--checklist', help='Provide a checklist flow for the route.', action='store_true', default=False),
+            ParseArgument('--x52-pro', help='Enable experimental X52 Pro MFD output.', action='store_true', dest='x52pro', default=False),
+            ParseArgument('--detail', '-v', help='Give detailed jump information for multi-jump hops.', default=0, action='count')
+        ]
+    )
 
-    # Provide the user a way to edit prices.
-    updateParser = subparsers.add_parser('update', help='Provides a way to update the prices for a particular station.', add_help=False)
-    updtReqArgs = updateParser.add_argument_group('Required Arguments')
-    updtReqArgs.add_argument('station', type=str, help='Name of the station to update prices for.')
-    updtOptArgs = updateParser.add_argument_group('Optional Arguments')
-    updtOptArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
-    updtOptArgs.add_argument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', required=False, default=None, type=str, action=EditAction)
-    editorGroup = updateParser.add_mutually_exclusive_group()
-    editorGroup.add_argument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', required=False, default=False, action=EditActionStoreTrue)
-    editorGroup.add_argument('--notepad', help='Like --editor but uses Notepad.', required=False, default=False, action=EditActionStoreTrue)
-    updateParser.set_defaults(proc=updateCommand)
+    # "update" provides the user a way to edit prices.
+    updateParser = makeSubParser(subparsers, 'update', 'Provides a way to update the prices for a particular station.', updateCommand,
+        arguments = [
+            ParseArgument('station', help='Name of the station to update.', type=str)            
+        ],
+        switches = [
+            ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
+            [   # Mutually exclusive group:
+                ParseArgument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', action=EditActionStoreTrue),
+                ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),
+            ]
+        ]
+    )
 
     args = parser.parse_args()
     if not 'proc' in args:
