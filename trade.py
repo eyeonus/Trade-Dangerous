@@ -117,16 +117,6 @@ def new_file_arg(string):
     sys.exit(errno.EEXIST)
 
 
-def existing_file_arg(string):
-    """ argparse action handler for selecting a file that already exists. """
-
-    path = pathlib.Path(string)
-    if path.exists(): return path
-    import errno
-    sys.stderr.write("ERROR: Specified file, \"{}\", does not exist.\n".format(path))
-    sys.exit(errno.ENOENT)
-
-
 ######################################################################
 # Checklist functions
 
@@ -589,7 +579,7 @@ def main():
     commonArgs = parser.add_argument_group('Common Switches')
     commonArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
     commonArgs.add_argument('--debug', '-w', help='Enable diagnostic output.', default=0, required=False, action='count')
-    commonArgs.add_argument('--db', help='Specify location of the SQLite database. Default: {}'.format(TradeDB.defaultDB), type=existing_file_arg, default=TradeDB.defaultDB)
+    commonArgs.add_argument('--db', help='Specify location of the SQLite database. Default: {}'.format(TradeDB.defaultDB), type=str, default=str(TradeDB.defaultDB))
 
     subparsers = parser.add_subparsers(dest='subparser', title='Commands')
 
