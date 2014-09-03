@@ -492,7 +492,7 @@ def editUpdate(args, stationID):
         if args.debug:
             print("# File changed - importing data.")
 
-        buildcache.processPricesFile(db=tdb.conn, pricesPath=tmpPath, stationID=stationID, debug=args.debug)
+        buildcache.processPricesFile(db=tdb.getDB(), pricesPath=tmpPath, stationID=stationID, debug=args.debug)
 
         # If everything worked, we need to re-build the prices file.
         if args.debug:

@@ -226,7 +226,6 @@ class TradeDB(object):
 
         Attributes:
             debug               -   Debugging level for this instance.
-            dbModule            -   Reference to the database layer we're using (e.g. sqlite3 or pypyodbc).
             dbPath              -   Path object describing the db location.
             dbURI               -   String representation of the db location (e.g. filename).
             conn                -   The database connection.
@@ -263,10 +262,9 @@ class TradeDB(object):
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
         self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
         self.debug = debug
-        self.conn, self.dbModule = None, None
+        self.conn = None
 
-        # Ensure the file exists, otherwise sqlite will create a new database.
-        self._connectToDB()
+        self.reloadCache()
 
         self.load()
 
@@ -274,20 +272,12 @@ class TradeDB(object):
     ####
     # Access to the underlying database.
 
-    def _connectToDB(self):
-        self.reloadCache()
-
-        # Make sure we don't hold on to an existing connection.
-        if self.conn:
-            if self.debug > 2: print("x Disconnect DB")
-            self.conn.close()
-            self.conn = None
-
+    def getDB(self):
+        if self.conn: return self.conn
         try:
             if self.debug > 1: print("* Connecting to DB")
             import sqlite3
-            self.dbModule = sqlite3
-            self.conn = self.dbModule.connect(self.dbURI)
+            return sqlite3.connect(self.dbURI)
         except ImportError as e:
             print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
             raise e
@@ -295,8 +285,8 @@ class TradeDB(object):
 
     def query(self, *args):
         """ Perform an SQL query on the DB and return the cursor. """
-        if not self.conn: self._connectToDB()
-        cur = self.conn.cursor()
+        conn = self.getDB()
+        cur = conn.cursor()
         cur.execute(*args)
         return cur
 
@@ -590,7 +580,8 @@ class TradeDB(object):
 
         if self.debug > 1: print("* Loading data")
 
-        self.cur = self.conn.cursor()
+        conn = self.getDB()
+        self.cur = conn.cursor()
 
         # Load raw tables. Stations will be linked to systems, but nothing else.
         # TODO: Make station -> system link a post-load action.
