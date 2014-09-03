@@ -134,7 +134,7 @@ INSERT INTO "Station" VALUES(34,'Baker Platform',25,0.0);
 INSERT INTO "Station" VALUES(35,'Longyear Survey',37,0.0);
 INSERT INTO "Station" VALUES(36,'Tasaki Freeport',27,0.0);
 INSERT INTO "Station" VALUES(37,'Abetti Platform',49,0.0);
-INSERT INTO "Station" VALUES(38,'Anderson Escape',11,0.0);
+INSERT INTO "Station" VALUES(38,'Anderson Escape',11,2090000.0);
 INSERT INTO "Station" VALUES(39,'Brislington',18,0.0);
 CREATE TABLE Ship
  (
