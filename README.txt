@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v3.0
+TradeDangerous v3.2
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -20,6 +20,14 @@ factors that into the shopping for each subsequent hop.
 ==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v3.2 Sep 03/2014
+  Internal cleanup of how we process sub-commands
+
+v3.1 Sep 01/2014
+  Introduced sub-commands:
+  - "run" command provides the old default behavior of calculating a run,
+  - "update" command provides ways to update price database easily,
 
 v3.0 Aug 30/2014
   Major overhaul. No-longer requires Microsoft Access DB. To update prices,
@@ -42,10 +50,40 @@ tools use directly until you change either the .SQL or .Prices file.
 == Tell me how to use it!
 ==============================================================================
 
-If you are sitting in a hauler at Chango with 20,000 credits and you have time
+Lets start with a fully fleshed out example command line and then I'll walk
+you through some simpler cases.
+
+  I have a Lakon Type 6 and 50,000 credits. I want to keep 20,000 credits
+  aside for insurance incase bad things happen. My ship is kitted out so
+  it is limited to 12 light year jumps, but I'll try 3 jumps between each
+  station. I don't like the long drive to Anderson's escape so don't go
+  there, and I want to avoid Gold because it's usually scarce.
+
+  I have a mission at Cuffey and I want to finish at Aulin to outfit.
+
+  Plan me a route from Chango with 6 stops to make money.
+
+  Show me the route in detail, walk me through each step and put the
+  instructions for the current step on the multi-function display of my
+  X52 throttle...
+
+  trade.py run --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --detail --detail --detail --checklist --x52-pro
+
+or
+
+  trade.py run --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 -vvv --check --x52
+
+Lets dial it back and start with something simpler:
+
+You're sitting in a hauler at Chango with 20,000 credits and you have time
 for 2 hops, you might run it like this:
 
- C:\TradeDangerous\> trade.py --ship hauler --from Chango --credits 20000 --hops 2
+ C:\TradeDangerous\> trade.py run --ship hauler --from Chango --credits 20000
+
+The 'run' keyword indicates you want to calculate a trade run. Trade tries to
+be flexible, so you could shorten this down to:
+
+  trade.py --sh hauler --fr chan --cr 20000
 
 And the output might look like this:
 
@@ -65,7 +103,7 @@ If you leave out the '--from' option, TradeDangerous will do the same
 calculation for every station in the database and tell you where the best
 possible 2-hop run is:
 
- C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2
+ C:\TradeDangerous\> trade.py run --ship hauler --credits 20000
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
      -+- AULIN Enterprise     Buy 13*Combat Stabilisers (2179cr), 3*Synthetic Meat (87cr),
@@ -77,7 +115,7 @@ more.
 But how was it expecting us to get from Cuffey to Aulin? For this, there is
 the --detail option:
 
- C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2 --detail
+ C:\TradeDangerous\> trade.py run --ship hauler --credits 20000 --detail
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
        |   Acihaut -> LHS3006 -> Aulin
@@ -100,17 +138,17 @@ The hauler can't make the above journey with cargo and weapons.
 The "--ly-per" argument (or it's --ly abbreviation) lets us tell TD to limit
 connections to a max jump distance, in this case of 5.2ly.
 
- C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2 --detail --ly-per 5.2
+ C:\TradeDangerous\> trade.py run --ship hauler --credits 20000 --detail --ly-per 5.2
      >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
        |   Morgor -> Dahan -> Asellus
      -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
        |   Asellus -> Dahan
      <-< DAHAN Gateway gaining 18640cr => 38640cr total
 
-You can also control how many jumps (connecting star systems) we'll make
-on a given hop with '--jumps':
+Maybe you don't want to make multiple jumps between systems? Use the "--jumps"
+switch to lower or increase the number of jumps between systems on each hop:
 
-  C:\TradeDangerous\> trade.py --ship hauler --credits 20000 --hops 2 --detail --jumps 2
+  C:\TradeDangerous\> trade.py run --ship hauler --credits 20000 --detail --jumps 1
     ERANIN Azeban -> DAHAN Gateway:
      >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
        |   Eranin -> Asellus
@@ -120,143 +158,195 @@ on a given hop with '--jumps':
 
 TD also takes a "--insurance" option which tells it to put some money aside
 for insurance payments. This lets you put the actual amount of credits you
-have without having to remember to subtract your insurance each time:
+have without having to remember to subtract your insurance each time.
 
-Lets say we want to do a half dozen runs and keep 4000 credits aside so that
-we don't get totally wiped out by a crash along the way:
-
-    C:\TradeDangerous\> trade.py --ship hauler --from Chango --insurance 4000 --hops 6 --credits 20000
-
-Lastly, if you are working a long, complicated route, try the "--checklist"
-argument which also honors the --detail argument.
 
 
 ==============================================================================
 == Command Line Options:
 ==============================================================================
 
- Route options:
-   --from <station or system>
-     Lets you specify the starting station
-     e.g.
-       --from Dahan
-       --from Gateway
+trade.py is a front-end to several tools - a trade run calculator, a tool for
+updating prices at a given station, and more to come.
 
-   --to <station or system>
-     Lets you specify the final destination
-     e.g.
-       --to Beagle2
-       --to Aulin
+You can type "trade.py -h" for basic usage, or for help on a specific sub-
+command, you can use "trade.py command -h" for example
 
-   --via <station or system>
-     Lets you specify a station that must be between the second and final hop.
-     Requires that hops be at least 2.
-     e.g.
-       --via Enterprise
-       --via Chango
+  trade.py run -h
 
-   --unique
-   --uni
-     Only show routes which do not visit any station twice
+will show you how to use the 'run' sub-command.
 
-   --hops N
-     DEFAULT: 2
-     Maximum number of hops (number of cargo pickups)
-     e.g.
-       --hops 8
+Sub Commands:
+  trade.py run ...
+    Calculates a trade run.
 
-   --jumps-per N
-   --jum N
-     DEFAULT: 2
-     Limit the number of systems jumped to between each station
-     e.g.
-       -jumps-per 5
+  trade.py update ...
+    Provides an interface for updating the prices at a station.
 
-   --ly-per N.NN
-   --ly N.NN
-     DEFAULT: based on --ship
-     Maximum distance your ship can jump between systems at full capacity.
-     NOTE: You can increase your range by selling your weapons.
-     e.g.
-       --ly-per 19.1
-       --ly-per 3
 
- Ship/Trade options:
-   --capacity N
-   --cap N
-     DEFAULT: based on --ship
-     Maximum items you can carry on each hop.
- 
-   --credits N
-   --cr N
-     How many credits to start with
-     e.g.
-       --credits 20000
+RUN sub-command:
 
-   --insurance N   DEFAULT: 0
-   --ins N
-     How many credits to hold back for insurance purposes
-     e.g.
-       --insurance 1000
-       --ins 5000
+  This command provides the primary trade run calculator functionality (it provides
+  the functionality of the older TradeDangerous versions prior to 3.1)
 
-   --limit N   DEFAULT: 0
-     If set, limits the maximum number of units of any cargo
-     item you will buy on any trade hop, incase you want to
-     hedge your bets or be a good economy citizen.
-     e.g.
-       --capacity 16 --limit 8
+   Route options:
+     --from <station or system>
+       Lets you specify the starting station
+       e.g.
+         --from Dahan
+         --from Gateway
 
-   --avoid ITEM/SYSTEM/STATION
-   --av ITEM/SYSTEM/STATION
-     Excludes the item/system/station matching the name from the database
-     e.g.
-       --avoid Gold
-       --avoid Aulin
-       --avoid Enterprise
-       --avoid prise
+     --to <station or system>
+       Lets you specify the final destination
+       e.g.
+         --to Beagle2
+         --to Aulin
 
-   --margin N.NN   DEFAULT: 0.01
-     At the end of each hop, reduce the profit by this much (0.02 = 2%),
-     to allow a margin of error in the accuracy of prices.
-     e.g.
-       --margin 0      (no margin)
-       --margin 0.01   (1% margin)
- 
- Other options:
-   --routes N   DEFAULT: 1
-     Shows the top N routes; 
+     --via <station or system>
+       Lets you specify a station that must be between the second and final hop.
+       Requires that hops be at least 2.
+       e.g.
+         --via Enterprise
+         --via Chango
 
-   --checklist
-   --check
-     Walks you through the purchases, sales and jumps of your route.
-     Note: More verbose when used with --detail
+     --unique
+     --uni
+       Only show routes which do not visit any station twice
 
-   --x52-pro
-   --x52
-     OMFG Output the current step of the checklist on your X52 Pro MFD.
-     Is that some sweetness or what?
+     --hops N
+       DEFAULT: 2
+       Maximum number of hops (number of cargo pickups)
+       e.g.
+         --hops 8
 
-   --detail
-   -v
-     Increases the amount of detail given when showing routes or running the
-     checklist system. Each use increases the detail, i.e. "-v -v" will
-     give you more detail than just "-v".
+     --jumps-per N
+     --jum N
+       DEFAULT: 2
+       Limit the number of systems jumped to between each station
+       e.g.
+         -jumps-per 5
 
-   --debug
-     Gives some additional information on what TD is doing while running,
-     each use increases the verbosity: i.e. --debug --debug is more verbose.
+     --ly-per N.NN
+     --ly N.NN
+       DEFAULT: based on --ship
+       Maximum distance your ship can jump between systems at full capacity.
+       NOTE: You can increase your range by selling your weapons.
+       e.g.
+         --ly-per 19.1
+         --ly-per 3
 
+   Ship/Trade options:
+     --capacity N
+     --cap N
+       DEFAULT: based on --ship
+       Maximum items you can carry on each hop.
+   
+     --credits N
+     --cr N
+       How many credits to start with
+       e.g.
+         --credits 20000
+
+     --insurance N   DEFAULT: 0
+     --ins N
+       How many credits to hold back for insurance purposes
+       e.g.
+         --insurance 1000
+         --ins 5000
+
+     --limit N   DEFAULT: 0
+       If set, limits the maximum number of units of any cargo
+       item you will buy on any trade hop, incase you want to
+       hedge your bets or be a good economy citizen.
+       e.g.
+         --capacity 16 --limit 8
+
+     --avoid ITEM/SYSTEM/STATION
+     --avoid AVOID,AVOID,...,AVOID
+     --av ITEM/SYSTEM/STATION
+     --av AVOID,AVOID,...,AVOID
+       Excludes the item/system/station matching the name from the database
+       e.g.
+         --avoid Gold
+         --avoid Aulin
+         --avoid Enterprise
+         --avoid prise
+         --av gold,aulin,enterprise,anderson
+
+     --margin N.NN   DEFAULT: 0.01
+       At the end of each hop, reduce the profit by this much (0.02 = 2%),
+       to allow a margin of error in the accuracy of prices.
+       e.g.
+         --margin 0      (no margin)
+         --margin 0.01   (1% margin)
+   
+   Other options:
+     --routes N   DEFAULT: 1
+       Shows the top N routes; 
+
+     --checklist
+     --check
+       Walks you through the purchases, sales and jumps of your route.
+       Note: More verbose when used with --detail
+
+     --x52-pro
+     --x52
+       OMFG Output the current step of the checklist on your X52 Pro MFD.
+       Is that some sweetness or what?
+
+     --detail
+     -v
+       Increases the amount of detail given when showing routes or running the
+       checklist system. Each use increases the detail, i.e. "-v -v" will
+       give you more detail than just "-v". Short version stacks, e.g.
+       "-v -v -v" is the same as "-vvv"
+
+     --debug
+     -w
+       Gives some additional information on what TD is doing while running,
+       each use increases the verbosity: i.e. --debug --debug is more verbose.
+       Short version is stackable, e.g. "-w -w -w" or "-www"
+
+UPDATE sub-command:
+
+  For maintenance on your local prices database. The default is to walk
+  you through a list of all the prices known for the station. You can either
+  hit enter or type the correction.
+
+  Alternatively, if you specify one of the editing switches, it will put
+  the prices for a given station into a text file and let you edit it
+  with your favorite editor.
+
+  trade.py update [--editor <executable> | --sublime | --notepad] station
+
+    --editor <executable name or path>
+      e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
+      Saves the prices in a human-readable format and loads that into
+      an editor. Make changes and save to update the database.
+
+    --sublime
+    --subl
+      Like "--editor" but finds and uses the Sublime Text 3 editor.
+      You can use "--editor" to tell it exactly where the editor
+      is located if it fails to find it.
+
+    --notepad
+    --note
+      Like "--editor" but uses notepad as the editor.
+
+  Examples:
+    trade.py update "aulin enterprise" --notepad
+    trade.py update chango --subl
+    trade.py update anderson --editor "C:\Program Files\Microsoft Office\WordPad.exe"
+    trade.py update wcm
 
 ==============================================================================
 == How can I add or update the data?
 ==============================================================================
 
-For pricing changes, take a look at data/TradeDangerous.prices. This rebuilds
-the entire database, a future version will allow you to update prices for
-specific stations or items and be able to tell you how recent a price value
-is (and use that information for adjusting how confident TD is about a
-calculation).
+You can either edit the "data/TradeDangerous.prices" file or you can use the
+"update" sub-command.
+
 
 ==============================================================================
 == That's nice, but I'm a programmer and I want to ...
