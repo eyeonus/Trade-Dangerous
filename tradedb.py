@@ -39,52 +39,6 @@ class AmbiguityError(Exception):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
 
-class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
-    """
-        Items are organized into categories (Food, Drugs, Metals, etc).
-        Category object describes a category's ID, name and list of items.
-    """
-    def name(self):
-        return self.dbname.upper()
-
-
-    def __str__(self):
-        return self.dbname
-
-
-class Item(namedtuple('Item', [ 'ID', 'dbname', 'category', 'fullname' ])):
-    """
-        Describes a product that can be bought/sold in the game.
-    """
-    def name(self):
-        return self.dbname
-
-
-    def __str__(self):
-        return '{}/{}'.format(self.category.name, self.dbname)
-
-
-class Trade(object):
-    """
-        Describes what it would cost and how much you would gain
-        when selling an item between two specific stations.
-    """
-    # TODO: Replace with a class within Station that describes asking and paying.
-    def __init__(self, item, itemID, costCr, gainCr):
-        self.item = item
-        self.itemID = itemID
-        self.costCr = costCr
-        self.gainCr = gainCr
-
-
-    def describe(self):
-        print(self.item, self.itemID, self.costCr, self.gainCr)
-
-
-    def __repr__(self):
-        return "%s (%dcr)" % (self.item, self.costCr)
-
-
 class System(object):
     """
         Describes a star system, which may contain one or more Station objects,
@@ -93,8 +47,8 @@ class System(object):
     # TODO: Build the links from an SQL query, it'll save a lot of
     # expensive python dictionary lookups.
 
-    def __init__(self, ID, name, posX, posY, posZ):
-        self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, name, posX, posY, posZ
+    def __init__(self, ID, dbname, posX, posY, posZ):
+        self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
         self.links = {}
         self.stations = []
 
@@ -122,7 +76,7 @@ class System(object):
 
 
     def __repr__(self):
-        return "<System: {}, {}, {}, {}, {}>".format(self.ID, self.dbname, self.posX, self.posY, self.posZ)
+        return "System(ID={}, dbname='{}', posX={}, posY={}, posZ={})".format(self.ID, re.escape(self.dbname), self.posX, self.posY, self.posZ)
 
 
 class Station(object):
@@ -131,8 +85,8 @@ class Station(object):
         opportunities it presents.
     """
 
-    def __init__(self, ID, system, name, lsFromStar=0.0):
-        self.ID, self.system, self.dbname, self.lsFromStar = ID, system, name, lsFromStar
+    def __init__(self, ID, system, dbname, lsFromStar=0.0):
+        self.ID, self.system, self.dbname, self.lsFromStar = ID, system, dbname, lsFromStar
         self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
         system.addStation(self)
 
@@ -141,7 +95,7 @@ class Station(object):
         return self.dbname
 
 
-    def addTrade(self, dest, item, itemID, costCr, gainCr):
+    def addTrade(self, dest, trade):
         """
             Add an entry reflecting that an item can be bought at this
             station and sold for a gain at another.
@@ -149,7 +103,6 @@ class Station(object):
         # TODO: Something smarter.
         if not dest in self.tradingWith:
             self.tradingWith[dest] = []
-        trade = Trade(item, itemID, costCr, gainCr)
         self.tradingWith[dest].append(trade)
 
 
@@ -236,12 +189,72 @@ class Station(object):
 
 
     def __repr__(self):
-        return '<Station: {}, {}, {}, {}>'.format(self.ID, self.system.name(), self.dbname, self.lsFromStar)
+        return "Station(ID={}, system='{}', dbname='{}', lsFromStar={})".format(self.ID, re.escape(self.system.dbname), re.escape(self.dbname), self.lsFromStar)
 
 
 class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
     def name(self):
         return self.dbname
+
+
+class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
+    """
+        Items are organized into categories (Food, Drugs, Metals, etc).
+        Category object describes a category's ID, name and list of items.
+    """
+    def name(self):
+        return self.dbname.upper()
+
+
+    def __str__(self):
+        return self.dbname
+
+
+class Item(object):
+    """
+        Describes a product that can be bought/sold in the game.
+
+        Attributes:
+            ID       -- Database ID.
+            dbname   -- Name as it appears in-game and in the DB.
+            category -- Reference to the category.
+            fullname -- Combined category/dbname for lookups.
+            altname  -- The internal name used by the game.
+    """
+    def __init__(self, ID, dbname, category, fullname, altname=None):
+        self.ID, self.dbname, self.category, self.fullname, self.altname = ID, dbname, category, fullname, altname
+
+    def name(self):
+        return self.dbname
+
+
+    def __str__(self):
+        return '{}/{}'.format(self.category.name, self.dbname)
+
+
+class Trade(object):
+    """
+        Describes what it would cost and how much you would gain
+        when selling an item between two specific stations.
+    """
+    # TODO: Replace with a class within Station that describes asking and paying.
+    def __init__(self, item, itemID, costCr, gainCr):
+        self.item = item
+        self.itemID = itemID
+        self.costCr = costCr
+        self.gainCr = gainCr
+
+
+    def name(self):
+        return self.item.name()
+
+
+    def describe(self):
+        print(self.item, self.itemID, self.costCr, self.gainCr)
+
+
+    def __repr__(self):
+        return "Trade(item={}, itemID={}, costCr={}, gainCr={})".format(repr(self.item()), self.itemID, self.costCr, self.gainCr)
 
 
 class TradeDB(object):
@@ -561,22 +574,42 @@ class TradeDB(object):
                 SELECT item_id, name, category_id
                   FROM Item
             """
-        itemByID = {}
+        itemByID, itemByName = {}, {}
         for (ID, name, categoryID) in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
-            item = Item(ID, name, category, '{}/{}'.format(category.dbname, name))
+            item = Item(ID, name, category, '{}/{}'.format(category.dbname, name), None)
             itemByID[ID] = item
+            itemByName[name] = item
             category.items.append(item)
-        self.itemByID = itemByID
 
-        if self.debug > 1: print("# Loaded %d Items" % len(self.itemByID))
+        # Some items have different actual names than display names.
+        # Load the aliases.
+        stmt = """
+                SELECT alt_name, item_id
+                  FROM AltItemNames
+            """
+        aliases = 0
+        for (altName, itemID) in self.cur.execute(stmt):
+            assert not altName in itemByName
+            aliases += 1
+            item = itemByID[itemID]
+            item.altname = altName
+            itemByName[altName] = item
+            if self.debug > 1: print("# '{}' alias for #{} '{}'".format(altName, itemID, item.fullname))
+
+        self.itemByID = itemByID
+        self.itemByName = itemByName
+
+        if self.debug > 1:
+            print("# Loaded %d Items" % len(self.itemByID))
+            print("# Loaded %d AltItemNames" % aliases)
 
 
     def lookupItem(self, name):
         """
             Look up an Item by name using "CATEGORY/Item"
         """
-        return TradeDB.listSearch("Item", name, self.itemByID.values(), key=lambda item: item.fullname)
+        return TradeDB.listSearch("Item", name, self.itemByName.items(), key=lambda kvTup: kvTup[0], val=lambda kvTup: kvTup[1])
 
 
     ####
@@ -614,7 +647,7 @@ class TradeDB(object):
         stations, items = self.stationByID, self.itemByID
         for (srcStnID, dstStnID, itemID, srcCostCr, profitCr) in self.cur:
             srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
-            srcStn.addTrade(dstStn, item, itemID, srcCostCr, profitCr)
+            srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr))
 
 
     def getTrade(self, src, dst, item):

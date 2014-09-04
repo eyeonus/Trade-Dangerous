@@ -159,8 +159,8 @@ def doChecklist(route, credits):
             note("HOP %d of %d" % (hopNo, lastHopIdx))
 
         note("Buy at %s" % cur.str())
-        for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, 'Buy %d x' % qty, item.item[0], '@ %scr' % localedNo(item.costCr))
+        for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
+            stepNo = doStep(stepNo, 'Buy %d x' % qty, trade.name(), '@ %scr' % localedNo(trade.costCr))
         if args.detail:
             stepNo = doStep(stepNo, 'Refuel')
         print()
@@ -175,8 +175,8 @@ def doChecklist(route, credits):
         print()
 
         note("Sell at %s" % nxt.str())
-        for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), item.item[0], '@ %scr' % localedNo(item.costCr + item.gainCr))
+        for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
+            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), trade.name(), '@ %scr' % localedNo(trade.costCr + trade.gainCr))
         print()
 
         gainCr += hop[1]

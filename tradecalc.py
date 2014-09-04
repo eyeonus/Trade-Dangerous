@@ -89,14 +89,14 @@ class Route(object):
             hopGainCr, hopTonnes = hop[1], 0
             text += " >-> " if i == 0 else "  +  "
             text += "At %s/%s, Buy:" % (route[i].system.name(), route[i].name())
-            for (item, qty) in sorted(hop[0], key=lambda item: item[1] * item[0].gainCr, reverse=True):
+            for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
                 if detail > 1:
-                    text += "\n  |   %4d x %-30s" % (qty, item.item[0])
-                    text += " @ %10scr each, %10scr total" % (localedNo(item.costCr), localedNo(item.costCr * qty))
+                    text += "\n  |   %4d x %-30s" % (qty, trade.name())
+                    text += " @ %10scr each, %10scr total" % (localedNo(trade.costCr), localedNo(trade.costCr * qty))
                 elif detail:
-                    text += " %d x %s (@%dcr)" % (qty, item.item[0], item.costCr)
+                    text += " %d x %s (@%dcr)" % (qty, trade.name(), trade.costCr)
                 else:
-                    text += " %d x %s" % (qty, item.item[0])
+                    text += " %d x %s" % (qty, trade.name())
                 text += ","
                 hopTonnes += qty
             text += "\n"
