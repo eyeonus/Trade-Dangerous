@@ -239,7 +239,11 @@ def parseAvoids(avoidances):
         if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, system.str(), station.str())
 
     if args.debug:
-        print("Avoiding items %s, systems %s, stations %s" % (avoidItems, avoidSystems, avoidStations))
+        print("Avoiding items %s, systems %s, stations %s" % (
+            [ item.name() for item in avoidItems ],
+            [ system.name() for system in avoidSystems ],
+            [ station.name() for station in avoidStations ]
+        ))
 
 
 def processRunArguments(args):
