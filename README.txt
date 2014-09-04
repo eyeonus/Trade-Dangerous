@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v3.2
+TradeDangerous v3.3
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -20,6 +20,18 @@ factors that into the shopping for each subsequent hop.
 ==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v3.3 Sep 04/2014
+  Updated README to include sub-commands,
+  Fixed a 'file not found' error running trade.py the first time with no arguments,
+  Made specific CATEGORY/Item lookups possible (e.g. "Metals/Gold"),
+  Added games internal names for items to the database,
+  Enabled internal-name lookups for items (e.g. 'heliostaticfurnaces'),
+  Fixed a bug where two names for the same thing caused ambiguity (duh!),
+API changes:
+  TradeDB.listSearch() now also takes a val() argument,
+  Added a simple EMDN access module (emdn directory),
+  Cleaned up various __repr__ functions now I know what __repr__ is for,
 
 v3.2 Sep 03/2014
   Internal cleanup of how we process sub-commands
