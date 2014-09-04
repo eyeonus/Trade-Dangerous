@@ -39,6 +39,31 @@ class AmbiguityError(Exception):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
 
+class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
+    """
+        Items are organized into categories (Food, Drugs, Metals, etc).
+        Category object describes a category's ID, name and list of items.
+    """
+    def name(self):
+        return self.dbname.upper()
+
+
+    def __str__(self):
+        return self.dbname
+
+
+class Item(namedtuple('Item', [ 'ID', 'dbname', 'category', 'fullname' ])):
+    """
+        Describes a product that can be bought/sold in the game.
+    """
+    def name(self):
+        return self.dbname
+
+
+    def __str__(self):
+        return '{}/{}'.format(self.category.name, self.dbname)
+
+
 class Trade(object):
     """
         Describes what it would cost and how much you would gain
@@ -170,10 +195,9 @@ class Station(object):
                 for (destSys, destDist) in node.system.links.items():
                     if destDist > maxLyPer: continue
                     dist = node.distLy + destDist
+                    # If we already have a shorter path, do nothing
                     try:
-                        prevNode = pathList[destSys.ID]
-                        # If we already have a shorter path, do nothing
-                        if dist >= prevNode.distLy: continue
+                        if dist >= pathList[destSys.ID].distLy: continue
                     except KeyError: pass
                     # Add to the path list
                     pathList[destSys.ID] = Node(destSys, node.via, dist)
@@ -494,6 +518,34 @@ class TradeDB(object):
     ####
     # Item data.
 
+    def categories(self):
+        """
+            Iterate through the list of categories. key = category name, value = list of items.
+        """
+        yield from self.categoryByID.items()
+
+
+    def _loadCategories(self):
+        """
+            Populate the list of item categories.
+            If you have previously loaded Categories, this will orphan the old objects.
+        """
+        stmt = """
+                SELECT category_id, name
+                  FROM Category
+            """
+        self.categoryByID = { ID: Category(ID, name, []) for (ID, name) in self.cur.execute(stmt) }
+
+        if self.debug > 1: print("# Loaded %d Categories" % len(self.categoryByID))
+
+
+    def lookupCategory(self, name):
+        """
+            Look up a category by name
+        """
+        return TradeDB.listSearch("Category", name, self.categoryByID.values(), key=lambda cat: cat.dbname)
+
+
     def items(self):
         """ Iterate through the list of items. """
         yield from self.itemByID.values()
@@ -506,19 +558,25 @@ class TradeDB(object):
             If you have previously loaded Items, this will orphan the old objects.
         """
         stmt = """
-                SELECT item_id, name
+                SELECT item_id, name, category_id
                   FROM Item
             """
-        self.cur.execute(stmt)
         itemByID = {}
-        for (ID, name) in self.cur:
-            itemByID[ID] = name, ID
-
+        for (ID, name, categoryID) in self.cur.execute(stmt):
+            category = self.categoryByID[categoryID]
+            item = Item(ID, name, category, '{}/{}'.format(category.dbname, name))
+            itemByID[ID] = item
+            category.items.append(item)
         self.itemByID = itemByID
-        if self.debug > 1: print("# Loaded %d Items" % len(itemByID))
 
-    #### NOTE: We don't provide "lookupItem" because you need to do that
-    #### based on category (some minerals/metals have the same name).
+        if self.debug > 1: print("# Loaded %d Items" % len(self.itemByID))
+
+
+    def lookupItem(self, name):
+        """
+            Look up an Item by name using "CATEGORY/Item"
+        """
+        return TradeDB.listSearch("Item", name, self.itemByID.values(), key=lambda item: item.fullname)
 
 
     ####
@@ -588,6 +646,7 @@ class TradeDB(object):
         self._loadSystems()
         self._loadStations()
         self._loadShips()
+        self._loadCategories()
         self._loadItems()
 
         systems, stations, ships, items = self.systemByID, self.stationByID, self.shipByID, self.itemByID
@@ -674,7 +733,7 @@ class TradeDB(object):
                 if normVal == needle:
                     return val
                 if match:
-                    raise AmbiguityError(listType, lookup, match, val)
+                    raise AmbiguityError(listType, lookup, key(match), key(val))
                 match = val
         if not match:
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))

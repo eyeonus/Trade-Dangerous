@@ -209,11 +209,10 @@ def parseAvoids(avoidances):
     # and you can group them together with commas or list them
     # individually.
     for avoid in ','.join(avoidances).split(','):
-        print(avoid)
         # Is it an item?
         item, system, station = None, None, None
         try:
-            item = tdb.listSearch('Item', avoid, tdb.items(), key=lambda item: item[0])
+            item = tdb.lookupItem(avoid)
             avoidItems.append(item)
         except LookupError:
             pass
