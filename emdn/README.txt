@@ -9,3 +9,35 @@ Initially written as part of the TradeDangerous trade calculator.
 
 For problems/issues/suggestions, see https://bitbucket.org/kfsone/tradedangerous/
 
+
+Example usage:
+
+
+	#! /usr/bin/env python
+
+	from emdn.firehose import Firehose
+
+	# Create a firehose connection to read from.
+	firehose = Firehose()
+
+	# Read a dozen records with no time limit.
+	dozen = []
+	for record in firehose.drink(records=12):
+		dozen.append(record)
+
+	# Or written another way:
+	dozen = [ record for record in firehose.drink(records=12) ]
+
+	# Get all the data that arrives in the next 30 seconds.
+	for record in firehose.drink(timeout=30.00):
+		pass
+
+	# Get the first burst of data that arrives within 30 seconds,
+	# but return as soon as we've read all the data that arrived
+	for record in firehose.drink(timeout=30.00, burst=True):
+		pass
+
+	# Try and read 100 records but don't wait more than 10 seconds to do it.
+	for record in firehose.drink(records=100, timeout=10):
+		pass
+
