@@ -13,6 +13,18 @@ import re
 class ItemRecord(object):
 	"""
 		Describes a record pulled from the Firehose.
+
+		Attributes:
+
+			askingCr    -- Cost to buy from station or 0 if not sold here.
+			payingCr    -- Price station is paying for item or 0 if not bought by station.
+			demand      -- Number of units station wants to buy.
+			demandLevel -- Enumeration of demand level.
+			stock       -- Number of units station has to sell.
+			stockLevel  -- Enumeration of stock level.
+			system      -- Name of the star system this record is for.
+			station     -- Name of the station this record is for.
+			timestamp   -- Date/time of report (which is kind of crap, please don't use).
 	"""
 	systemStationRe = re.compile(r'^(.*?)\s*\((.*?)\)$')
 
