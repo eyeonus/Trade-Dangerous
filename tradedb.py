@@ -766,7 +766,7 @@ class TradeDB(object):
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
                     return val(entry)
-                if matchKey:
+                if matchVal and matchVal != val(entry):
                     raise AmbiguityError(listType, lookup, matchKey, entryKey)
                 matchKey, matchVal = entryKey, val(entry)
         if not matchKey:
