@@ -712,7 +712,7 @@ class TradeDB(object):
 
 
     @staticmethod
-    def listSearch(listType, lookup, values, key=lambda item: item):
+    def listSearch(listType, lookup, values, key=lambda item: item, val=lambda item: item):
         """
             Searches [values] for 'lookup' for least-ambiguous matches,
             return the matching value as stored in [values].
@@ -725,19 +725,20 @@ class TradeDB(object):
         """
 
         needle = TradeDB.normalizedStr(lookup)
-        match = None
-        for val in values:
-            normVal = TradeDB.normalizedStr(key(val))
+        matchKey, matchVal = None, None
+        for entry in values:
+            entryKey = key(entry)
+            normVal = TradeDB.normalizedStr(entryKey)
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
-                    return val
-                if match:
-                    raise AmbiguityError(listType, lookup, key(match), key(val))
-                match = val
-        if not match:
+                    return val(entry)
+                if matchKey:
+                    raise AmbiguityError(listType, lookup, matchKey, entryKey)
+                matchKey, matchVal = entryKey, val(entry)
+        if not matchKey:
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
-        return match
+        return matchVal
 
 
     @staticmethod
