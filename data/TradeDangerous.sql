@@ -17,7 +17,9 @@
 -- -Oliver
 
 PRAGMA foreign_keys=ON;
+
 BEGIN TRANSACTION;
+
 CREATE TABLE System
  (
    system_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,6 +86,7 @@ INSERT INTO "System" VALUES(52,'Surya',-38.46875,39.25,5.40625,'2014-08-26 15:22
 INSERT INTO "System" VALUES(53,'Tilian',-21.53125,22.3125,10.125,'2014-08-26 15:22:38');
 INSERT INTO "System" VALUES(54,'WISE 1647+5632',-21.59375,17.71875,1.75,'2014-08-26 15:22:38');
 INSERT INTO "System" VALUES(55,'Wyrd',-11.625,31.53125,-3.9375,'2014-08-26 15:22:38');
+
 CREATE TABLE Station
  (
    station_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,6 +139,7 @@ INSERT INTO "Station" VALUES(36,'Tasaki Freeport',27,0.0);
 INSERT INTO "Station" VALUES(37,'Abetti Platform',49,0.0);
 INSERT INTO "Station" VALUES(38,'Anderson Escape',11,2090000.0);
 INSERT INTO "Station" VALUES(39,'Brislington',18,0.0);
+
 CREATE TABLE Ship
  (
    ship_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,6 +162,7 @@ INSERT INTO "Ship" VALUES(5,'Cobra',36,114,1155.0,9.94,7.3,280,400);
 INSERT INTO "Ship" VALUES(6,'Lakon Type 6',100,113,3455.0,29.36,15.64,220,329);
 INSERT INTO "Ship" VALUES(7,'Lakon Type 9',440,1275,23720.0,18.22,13.34,130,200);
 INSERT INTO "Ship" VALUES(8,'Anaconda',228,2600,52345.0,19.7,17.6,180,235);
+
 CREATE TABLE ShipVendor
  (
    ship_id INTEGER NOT NULL,
@@ -190,6 +195,7 @@ INSERT INTO "ShipVendor" VALUES(6,6,0);
 INSERT INTO "ShipVendor" VALUES(6,15,0);
 INSERT INTO "ShipVendor" VALUES(7,4,0);
 INSERT INTO "ShipVendor" VALUES(8,24,0);
+
 CREATE TABLE Upgrade
  (
    upgrade_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,6 +204,7 @@ CREATE TABLE Upgrade
 
    UNIQUE (name)
  );
+
 CREATE TABLE UpgradeVendor
  (
    upgrade_id INTEGER NOT NULL,
@@ -214,6 +221,7 @@ CREATE TABLE UpgradeVendor
    	ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
+
 CREATE TABLE Category
  (
    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,6 +242,7 @@ INSERT INTO "Category" VALUES(10,'Weapons');
 INSERT INTO "Category" VALUES(11,'Drugs');
 INSERT INTO "Category" VALUES(12,'Machinery');
 INSERT INTO "Category" VALUES(13,'Textiles');
+
 CREATE TABLE Item
  (
    item_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -321,6 +330,26 @@ INSERT INTO "Item" VALUES(72,'Natural Fabrics',13);
 INSERT INTO "Item" VALUES(73,'Synthetic Fabrics',13);
 INSERT INTO "Item" VALUES(74,'Uraninite',7);
 INSERT INTO "Item" VALUES(75,'Tobacco',11);
+
+-- Some items have two versions of their name.
+CREATE TABLE AltItemNames
+ (
+   alt_name VARCHAR(40) NOT NULL COLLATE nocase,
+   item_id INTEGER NOT NULL,
+
+   PRIMARY KEY (alt_name, item_id)
+ )
+;
+INSERT INTO AltItemNames VALUES ('consumertechnology', (SELECT item_id FROM Item WHERE name = 'Consumer Tech'));
+INSERT INTO AltItemNames VALUES ('domesticappliances', (SELECT item_id FROM Item WHERE name = 'Dom. Appliances'));
+INSERT INTO AltItemNames VALUES ('basicnarcotics', (SELECT item_id FROM Item WHERE name = 'Narcotics'));
+INSERT INTO AltItemNames VALUES ('heliostaticfurnaces', (SELECT item_id FROM Item WHERE name = 'Hel-Static Furnaces'));
+INSERT INTO AltItemNames VALUES ('agriculturalmedicines', (SELECT item_id FROM Item WHERE name = 'Agri-Medicines'));
+INSERT INTO AltItemNames VALUES ('hazardousenvironmentsuits', (SELECT item_id FROM Item WHERE name = 'H.E. Suits'));
+INSERT INTO AltItemNames VALUES ('terrainenrichmentsystems', (SELECT item_id FROM Item WHERE name = 'Terrain Enrich Sys'));
+INSERT INTO AltItemNames VALUES ('nonlethalweapons', (SELECT item_id FROM Item WHERE name = 'Non-Lethal Wpns'));
+INSERT INTO AltItemNames VALUES ('reactivearmour', (SELECT item_id FROM Item WHERE name = 'Reactive Armor'));
+
 CREATE TABLE Price
  (
    item_id INTEGER NOT NULL,
@@ -342,12 +371,5 @@ CREATE TABLE Price
       ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
-DELETE FROM sqlite_sequence;
-INSERT INTO "sqlite_sequence" VALUES('System',55);
-INSERT INTO "sqlite_sequence" VALUES('Station',39);
-INSERT INTO "sqlite_sequence" VALUES('Ship',8);
-INSERT INTO "sqlite_sequence" VALUES('Category',13);
-INSERT INTO "sqlite_sequence" VALUES('Item',75);
-CREATE INDEX systems_position ON System (pos_x, pos_y, pos_z);
-CREATE INDEX station_systems ON Station (system_id);
+
 COMMIT;
