@@ -72,7 +72,9 @@ class Firehose(object):
 			def _poll(timeout):
 				return self.__socket.poll(timeout)
 			def _read():
-				return self.__socket.recv_string()
+				result = self.__socket.recv_string()
+				if not result: raise EOFError()
+				return result
 
 			# All ZMQ operations are done through a Context,
 			# so use one we're given or create one for ourselves.
