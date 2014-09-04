@@ -224,12 +224,20 @@ class Item(object):
     def __init__(self, ID, dbname, category, fullname, altname=None):
         self.ID, self.dbname, self.category, self.fullname, self.altname = ID, dbname, category, fullname, altname
 
+
     def name(self):
         return self.dbname
 
 
     def __str__(self):
         return '{}/{}'.format(self.category.name, self.dbname)
+
+
+    def __repr__(self):
+        return "Item(ID={}, dbname='{}', category={}, fullname='{}', altName={})".format(
+                self.ID, re.escape(self.dbname), repr(self.category), re.escape(self.fullname),
+                "'{}'".format(re.escape(self.altname) if self.altname else 'None')
+            )
 
 
 class Trade(object):
