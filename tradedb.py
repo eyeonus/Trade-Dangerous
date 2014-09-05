@@ -465,7 +465,7 @@ class TradeDB(object):
         if self.debug > 1: print("# Loaded %d Stations" % len(stationByID))
 
 
-    def lookupStation(self, name):
+    def lookupStation(self, name, system=None):
         """
             Look up a Station object by it's name or system.
         """
@@ -476,6 +476,10 @@ class TradeDB(object):
             if len(name.stations) != 1:
                 raise ValueError("System '%s' has %d stations, please specify a station instead." % (name.str(), len(name.stations)))
             return name.stations[0]
+
+        if system:
+            system = self.lookupSystem(system)
+            return TradeDB.listSearch("Station", name, system.stations, key=lambda system: system.dbname)
 
         stationID, station, systemID, system = None, None, None, None
         try:
