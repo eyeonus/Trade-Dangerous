@@ -5,3 +5,4 @@ tmp
 *.laccdb
 
 data/TradeDangerous.db
+data/TradeDangerous.db-journal
