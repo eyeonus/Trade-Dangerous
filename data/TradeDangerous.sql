@@ -373,4 +373,24 @@ CREATE TABLE Price
  ) WITHOUT ROWID
 ;
 
+-- Some views I use now and again.
+
+CREATE VIEW vPriceDataAge AS
+    SELECT System.name, MIN(Price.modified)
+      FROM ((System INNER JOIN Station ON System.system_id = Station.system_id)
+            INNER JOIN Price on Station.station_id = Price.station_id)
+     GROUP BY 1
+     ORDER BY 2 DESC
+;
+
+CREATE VIEW vOlderData AS
+    SELECT System.name, MIN(Price.modified)
+      FROM ((System INNER JOIN Station ON System.system_id = Station.system_id)
+            INNER JOIN Price on Station.station_id = Price.station_id)
+     WHERE Price.modified <= DATETIME(CURRENT_TIMESTAMP, '-2 day')
+     GROUP BY 1
+     ORDER BY 2 DESC
+;
+
+
 COMMIT;
