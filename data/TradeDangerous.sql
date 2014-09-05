@@ -101,32 +101,32 @@ CREATE TABLE Station
    	ON DELETE CASCADE
  );
 INSERT INTO "Station" VALUES(1,'Beagle 2 Landing',4,0.0);
-INSERT INTO "Station" VALUES(2,'Gateway',12,0.0);
+INSERT INTO "Station" VALUES(2,'Dahan Gateway',12,0.0);
 INSERT INTO "Station" VALUES(3,'Freeport',38,0.0);
 INSERT INTO "Station" VALUES(4,'Chango Dock',20,0.0);
 INSERT INTO "Station" VALUES(5,'Azeban City',15,0.0);
 INSERT INTO "Station" VALUES(6,'Aulin Enterprise',5,0.0);
 INSERT INTO "Station" VALUES(7,'WCM Transfer Orbital',30,0.0);
-INSERT INTO "Station" VALUES(8,'Romanenko',44,0.0);
+INSERT INTO "Station" VALUES(8,'Romanenko Estate',44,0.0);
 INSERT INTO "Station" VALUES(9,'Romanek''s Folly',41,0.0);
 INSERT INTO "Station" VALUES(10,'Bradfield Orbital',45,0.0);
-INSERT INTO "Station" VALUES(11,'Gorbatko',10,0.0);
+INSERT INTO "Station" VALUES(11,'Gorbatko Reserve',10,0.0);
 INSERT INTO "Station" VALUES(12,'Cuffey Plant',2,0.0);
 INSERT INTO "Station" VALUES(13,'Hay Point',42,0.0);
 INSERT INTO "Station" VALUES(14,'Bresnik Mine',16,0.0);
 INSERT INTO "Station" VALUES(15,'Vonarburg Co-operative',55,0.0);
 INSERT INTO "Station" VALUES(16,'Olivas Settlement',7,0.0);
 INSERT INTO "Station" VALUES(17,'Moxon''s Mojo',9,0.0);
-INSERT INTO "Station" VALUES(18,'Bowersox',48,0.0);
+INSERT INTO "Station" VALUES(18,'Bowersox Mines',48,0.0);
 INSERT INTO "Station" VALUES(19,'Massimino Dock',29,0.0);
 INSERT INTO "Station" VALUES(20,'Stone Enterprise',47,0.0);
 INSERT INTO "Station" VALUES(21,'Derrickson''s Escape',22,0.0);
 INSERT INTO "Station" VALUES(22,'Xiaoguan Hub',39,0.0);
 INSERT INTO "Station" VALUES(23,'Gernhardt Camp',32,0.0);
-INSERT INTO "Station" VALUES(24,'Louis De Lacaille Prospect',31,0.0);
-INSERT INTO "Station" VALUES(25,'Maunder',53,0.0);
+INSERT INTO "Station" VALUES(24,'Louis De Lacaille Prospect',31,759.0);
+INSERT INTO "Station" VALUES(25,'Maunder''s Hope',53,0.0);
 INSERT INTO "Station" VALUES(26,'Novitski Oasis',43,0.0);
-INSERT INTO "Station" VALUES(27,'Brooks',46,0.0);
+INSERT INTO "Station" VALUES(27,'Brooks Estate',46,0.0);
 INSERT INTO "Station" VALUES(28,'Julian Market',3,0.0);
 INSERT INTO "Station" VALUES(29,'Abnett Platform',28,0.0);
 INSERT INTO "Station" VALUES(30,'Mcarthur''s Reach',33,0.0);
@@ -139,6 +139,7 @@ INSERT INTO "Station" VALUES(36,'Tasaki Freeport',27,0.0);
 INSERT INTO "Station" VALUES(37,'Abetti Platform',49,0.0);
 INSERT INTO "Station" VALUES(38,'Anderson Escape',11,2090000.0);
 INSERT INTO "Station" VALUES(39,'Brislington',18,0.0);
+INSERT INTO "Station" VALUES(40,'Burbank Camp',52,0.0);
 
 CREATE TABLE Ship
  (

@@ -519,7 +519,6 @@ def updateCommand(args):
 
     if args.debug: print('# guided "update" mode station:{}'.format(args.station))
 
-
     print("Guided mode not implemented yet. Try using --editor, --sublime or --notepad")
 
 
