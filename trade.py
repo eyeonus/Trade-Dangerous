@@ -253,6 +253,10 @@ def processRunArguments(args):
 
     global origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName, mfd
 
+    if args.credits < 0:
+        raise CommandLineError("Invalid (negative) value for initial credits")
+    # I'm going to allow 0 credits as a future way of saying "just fly"
+
     if args.hops < 1:
         raise CommandLineError("Minimum of 1 hop required")
     if args.hops > 64:
@@ -287,9 +291,6 @@ def processRunArguments(args):
         if args.hops <= 3:
             if viaStation == originStation and viaStation == finalStation:
                 raise CommandLineError("4+ hops required to go 'via' the same station as you start and end at")
-
-    if args.credits < 0:
-        raise CommandLineError("Invalid (negative) value for initial credits")
 
     # If the user specified a ship, use it to fill out details unless
     # the user has explicitly supplied them. E.g. if the user says
