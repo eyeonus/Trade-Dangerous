@@ -430,9 +430,9 @@ class TradeDB(object):
             Look up a System object by it's name.
         """
         if isinstance(key, System):
-            return name
+            return key
         if isinstance(key, Station):
-            return name.system
+            return key.system
 
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
