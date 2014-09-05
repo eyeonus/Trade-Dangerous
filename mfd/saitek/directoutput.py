@@ -60,6 +60,8 @@ DirectOutput_CloseServer
 
 """
 
+from .. import MissingDeviceError
+
 import ctypes
 import ctypes.wintypes
 
@@ -72,6 +74,7 @@ E_OUTOFMEMORY = 0x8007000E
 E_PAGENOTACTIVE = -0xfbffff        # Something munges it from it's actual value
 E_BUFFERTOOSMALL = -0xfc0000
 E_NOTIMPL = 0x80004001
+ERROR_DEV_NOT_EXIST = 55
 
 SOFTBUTTON_SELECT = 0x00000001
 SOFTBUTTON_UP = 0x00000002
@@ -355,7 +358,7 @@ class DirectOutputDevice(object):
         if not self.device_handle:
             logging.warning("No device handle")
             self.finish()
-            raise DirectOutputError(result)
+            raise MissingDeviceError()
 
         result = self.direct_output.RegisterSoftButtonCallback(self.device_handle, self.onSoftButton_closure)
         if result != S_OK:

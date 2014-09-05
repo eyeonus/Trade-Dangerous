@@ -17,6 +17,15 @@ import time
 
 
 ######################################################################
+# exceptions
+
+class MissingDeviceError(Exception):
+    """
+        Throw when no instance of a device cannot be found.
+    """
+    pass
+
+######################################################################
 # classes
 
 class DummyMFD(object):
@@ -61,12 +70,16 @@ class X52ProMFD(DummyMFD):
     """
 
     def __init__(self):
+        from sys import exit
+        from . saitek import directoutput, x52pro
         try:
-            from . saitek import x52pro
             self.doObj = x52pro.X52Pro()
-        except DLLError as e:
+        except MissingDeviceError:
+            print("{}: error: Could not find any X52 Pro devices attached to the system - please ensure your device is connected and drivers are installed.".format(__name__))
+            exit(1)
+        except directoutput.DLLError as e:
             print("{}: error#{}: Unable to initialize the Saitek X52 Pro module: {}".format(__name__, e.error_code, e.msg), file=sys.stderr)
-            sys.exit(1)
+            exit(1)
 
         self.page = self.doObj.add_page('TD')
         self.display('TradeDangerous', 'INITIALIZING')
@@ -79,7 +92,7 @@ class X52ProMFD(DummyMFD):
     def display(self, line1, line2="", line3="", delay=None):
         self.page[0], self.page[1], self.page[2] = line1, line2, line3
         if delay:
-        	time.sleep(delay)
+            time.sleep(delay)
 
     def attention(self, duration):
         page = self.page
@@ -90,4 +103,3 @@ class X52ProMFD(DummyMFD):
                 page.set_led(ledNo, (iterNo + ledNo) % 4)
             iterNo += 1
             time.sleep(0.02)
-
