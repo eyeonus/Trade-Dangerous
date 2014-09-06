@@ -70,11 +70,11 @@ def processCommandLine():
 
     pargs.duration = pargs.minutes * 60 + pargs.seconds
 
-    if pargs.verbose:
-        print("* Fetching EMDN data from {} to {}.".format(
-                pargs.firehoseURI or '['+Firehose.defaultURI+']',
-                pargs.db or '['+TradeDB.defaultDB+']'
-            ))
+    print("* Fetching EMDN data from {} to {}. Automatic commits {}.".format(
+            pargs.firehoseURI or '['+Firehose.defaultURI+']',
+            pargs.db or '['+TradeDB.defaultDB+']',
+            'every {} seconds'.format(pargs.commit) if pargs.commit else 'disabled'
+        ))
 
     warnOnly = pargs.warn
 
