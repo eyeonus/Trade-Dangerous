@@ -24,9 +24,13 @@ class ItemRecord(object):
 			stockLevel  -- Enumeration of stock level.
 			system      -- Name of the star system this record is for.
 			station     -- Name of the station this record is for.
+			category    -- Which category heading the item is under.
+			item        -- Game name for the item.
+			location    -- Where the item was seen in "System (Station)" format.
 			timestamp   -- Date/time of report (which is kind of crap, please don't use).
 	"""
 	systemStationRe = re.compile(r'^(.*?)\s*\((.*?)\)$')
+	timestampTrimRe = re.compile(r'^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})')
 
 	def __init__(self, askingCr, payingCr, demand, demandLevel, stock, stockLevel, category, item, location, timestamp):
 		self.askingCr, self.payingCr = int(askingCr or 0), int(payingCr or 0)
@@ -34,7 +38,7 @@ class ItemRecord(object):
 		self.stock, self.stockLevel = int(stock or 0), int(stockLevel or 0)
 		self.category, self.item = category, item
 		self.system, self.station = ItemRecord.systemStationRe.match(location).group(1, 2)
-		self.timestamp = timestamp
+		self.timestamp = ItemRecord.timestampTrimRe.match(timestamp).group(1)
 
 	def str(self):
 		return "{},{},{},{},{},{},{},{},{} ({}),{}".format(

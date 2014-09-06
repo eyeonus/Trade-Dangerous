@@ -70,9 +70,11 @@ def processCommandLine():
 
     pargs.duration = pargs.minutes * 60 + pargs.seconds
 
-    print("* Fetching EMDN data from {} to {}. Automatic commits {}.".format(
+    print("* Fetching EMDN data from {} to {}.".format(
             pargs.firehoseURI or '['+Firehose.defaultURI+']',
-            pargs.db or '['+TradeDB.defaultDB+']',
+            pargs.db or '['+TradeDB.defaultDB+']'
+        ))
+    print("* Automatic commits {}.".format(
             'every {} seconds'.format(pargs.commit) if pargs.commit else 'disabled'
         ))
 
@@ -182,9 +184,6 @@ def main():
 
     pargs = processCommandLine()
 
-    # For removing milliseconds from timestamps.
-    trimTimestampRe = re.compile(r'\.\d+$')
-
     # Open the local TradeDangerous database
     dbFilename = pargs.db or TradeDB.defaultDB
     tdb = TradeDB(dbFilename=dbFilename, debug=1 if pargs.verbose else 0)
@@ -193,9 +192,9 @@ def main():
     loadUIOrders(db)
 
     # Open a connection to the firehose.
-    firehose = Firehose(pargs.firehoseURI)
+    firehose = Firehose(pargs.firehoseURI, debug=pargs.verbose)
 
-    if pargs.verbose: print("* Capture starting")
+    if pargs.verbose: print("* Capture starting.")
 
     lastCommit, duration = time.time(), pargs.duration
     recordsSinceLastCommit = []
@@ -213,8 +212,7 @@ def main():
             if pargs.verbose and (records % 1000 == 0):
                 print("# At {} captured {} records.".format(rec.timestamp, records))
             if pargs.verbose > 1:
-                ts = trimTimestampRe.sub('', rec.timestamp)
-                print("[{}] {:.<60} {}cr/{}cr".format(ts, '{} @ {}/{}'.format(rec.item, rec.system, rec.station), rec.payingCr, rec.askingCr))
+                print("[{}] {:.<60} {}cr/{}cr".format(rec.timestamp, '{} @ {}/{}'.format(rec.item, rec.system, rec.station), rec.payingCr, rec.askingCr))
 
             # Find the item in the price database to get its data and make sure
             # it matches the category we expect to see it listed in.

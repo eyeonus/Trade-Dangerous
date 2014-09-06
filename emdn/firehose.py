@@ -36,12 +36,13 @@
 try:
     import zmq
 except ImportError:
-    raise ImportError("This module requires the ZeroMQ library to be installed. The easiest way to obtain this is to type: pip install pyzmq")
-
-import time
-
+    raise ImportError("This module requires the ZeroMQ library to be installed. The easiest way to obtain this is to type: pip install pyzmq") from None
 try: from itemrecord import ItemRecord
 except ImportError: from . itemrecord import ItemRecord
+
+import zlib
+import json
+import time
 
 class Firehose(object):
     """
@@ -52,10 +53,11 @@ class Firehose(object):
         reads from a local file called 'emdn.csv'.
     """
 
-    defaultURI = 'tcp://firehose.elite-market-data.net:9050'
+    defaultURI = 'tcp://firehose.elite-market-data.net:9500'
 
-    def __init__(self, uri=None, ctx=None):
+    def __init__(self, uri=None, ctx=None, debug=0):
         self.__uri = uri or Firehose.defaultURI
+        self.debug = debug
 
         if self.__uri.find("file://") == 0:
             def _poll(timeout):
@@ -74,7 +76,10 @@ class Firehose(object):
                 return self.__socket.poll(timeout)
             def _read(nonBlocking=False):
                 flags = zmq.NOBLOCK if nonBlocking else 0
-                result = self.__socket.recv_string(flags)
+                compressed = self.__socket.recv(flags)
+                uncompressed = zlib.decompress(compressed)
+                jsonString = uncompressed.decode('utf-8')
+                result = json.loads(jsonString)
                 if not result: raise EOFError()
                 return result
 
@@ -89,6 +94,41 @@ class Firehose(object):
             self.__socket.connect(self.__uri)
             self.poll = _poll
             self.read = _read
+
+
+    def json_to_record(self, data):
+        record = None
+        try:
+            dataType = data['type']
+            if dataType == 'marketquote':
+                try:
+                    message = data['message']
+                    try:
+                        return ItemRecord(
+                            askingCr=message['buyPrice'],
+                            payingCr=message['sellPrice'],
+                            demand=message['demand'],
+                            demandLevel=message['demandLevel'],
+                            stock=message['stationStock'],
+                            stockLevel=message['stationStockLevel'],
+                            category=message['categoryName'],
+                            item=message['itemName'],
+                            location=message['stationName'],
+                            timestamp=message['timestamp']
+                        )
+                    except KeyError as e:
+                        print("jsonData['message']:", message)
+                        raise ValueError("json marketquote data is missing a required field: {}".format(e))
+                except KeyError: # missing 'message' element
+                    if self.debug > 2: print("# json data didn't contain a 'message'")
+                    if self.debug > 3: print(data)
+            else:   # not a marketquote
+                if self.debug > 2: print("# ignoring '{}'".format(dataType))
+        except KeyError: # missing 'type' field
+            if self.debug > 2: print("# invalid data, did not contain a 'type' key")
+            if self.debug > 3: print(data)
+
+        return None
 
 
     def drink(self, records=None, timeout=None, burst=False):
@@ -125,12 +165,15 @@ class Firehose(object):
             if pollResult:
                 while recordsRemaining:
                     try:
-                        csv = self.read(nonBlocking=True)
+                        jsData = self.read(nonBlocking=True)
                     except EOFError:
                         return
                     except (zmq.error.Again, BlockingIOError, InterruptedError):
                         break
-                    yield ItemRecord(*(csv.split(',')))
-                    recordsRemaining -= 1
+
+                    record = self.json_to_record(jsData)
+                    if record:
+                        yield record
+                        recordsRemaining -= 1
                 if burst:
                     return
