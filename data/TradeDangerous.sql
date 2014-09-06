@@ -140,6 +140,7 @@ INSERT INTO "Station" VALUES(37,'Abetti Platform',49,0.0);
 INSERT INTO "Station" VALUES(38,'Anderson Escape',11,2090000.0);
 INSERT INTO "Station" VALUES(39,'Brislington',18,0.0);
 INSERT INTO "Station" VALUES(40,'Burbank Camp',52,0.0);
+INSERT INTO "Station" VALUES(41,'Wang Estate',50,0.0);
 
 CREATE TABLE Ship
  (

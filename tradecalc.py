@@ -126,7 +126,7 @@ class Route(object):
         return "\n".join([
             "Start CR: %10s" % localedNo(credits),
             "Hops    : %10s" % localedNo(len(hops)),
-            "Jumps   : %10s" % localedNo(sum([len(hopJumps) for hopJumps in jumps])),
+            "Jumps   : %10s" % localedNo(sum([len(hopJumps)-1 for hopJumps in jumps])), # always includes start point
             "Gain CR : %10s" % localedNo(ttlGainCr),
             "Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)),
             "Final CR: %10s" % localedNo(credits + ttlGainCr),
@@ -322,6 +322,7 @@ class TradeCalc(object):
 
         if not avoidItems: avoidItems = []
         if not avoidPlaces: avoidPlaces = []
+        assert not restrictTo or isinstance(restrictTo, set)
 
         bestToDest = {}
         safetyMargin = 1.0 - self.margin
@@ -339,14 +340,13 @@ class TradeCalc(object):
                     continue
 
             for dest in src.getDestinations(maxJumps=jumpLimit, maxLyPer=maxLyPer, avoiding=avoidPlaces):
-                if self.debug:
+                if self.debug > 1:
                     print("#destSys = %s, destStn = %s, jumps = %s, distLy = %s" % (dest.system.name(), dest.station.name(), "->".join([jump.str() for jump in dest.via]), dest.distLy))
                 if not dest.station in src.tradingWith:
                     if self.debug > 2: print("#%s is not in my station list" % dest.station.name())
                     continue
                 if restrictTo:
-                    if (isinstance(restrictTo, System) and dest.system != restrictTo) \
-                            or (isinstance(restrictTo, Station) and dest.station != restrictTo):
+                    if not dest.station in restrictTo and not dest.system in restrictTo:
                         if self.debug > 2: print("#%s doesn't match restrict %s" % (dest.station.name(), restrictTo))
                         continue
                 if unique and dest.station in route.route:

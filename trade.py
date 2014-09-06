@@ -43,10 +43,12 @@ import pathlib              # For path
 # of idiot puts globals in their programs?
 
 args = None
-originStation, finalStation, viaStation = None, None, None
+originStation, finalStation = None, None
 # Things not to do, places not to go, people not to see.
 avoidItems, avoidSystems, avoidStations = [], [], []
-originName, destName, viaName = "Any", "Any", "Any"
+# Stations we need to visit
+viaStations = set()
+originName, destName = "Any", "Any"
 origins = []
 maxUnits = 0
 
@@ -198,12 +200,14 @@ def doChecklist(route, credits):
 ######################################################################
 # "run" command functionality.
 
-def parseAvoids(avoidances):
+def parseAvoids(args):
     """
         Process a list of avoidances.
     """
 
     global avoidItems, avoidSystems, avoidStations
+
+    avoidances = args.avoid
 
     # You can use --avoid to specify an item, system or station.
     # and you can group them together with commas or list them
@@ -246,24 +250,43 @@ def parseAvoids(avoidances):
         ))
 
 
+def parseVias(args):
+    """
+        Process a list of station names and build them into a
+        list of waypoints for the route.
+    """
+
+    # accept [ "a", "b,c", "d" ] by joining everything and then splitting it.
+    global viaStations
+
+    for via in ",".join(args.via).split(","):
+        station = tdb.lookupStation(via)
+        viaStations.add(station)
+
+
 def processRunArguments(args):
     """
         Process arguments to the 'run' option.
     """
 
-    global origins, originStation, finalStation, viaStation, maxUnits, originName, destName, viaName, mfd
+    global origins, originStation, finalStation, maxUnits, originName, destName, mfd, unspecifiedHops
 
     if args.credits < 0:
         raise CommandLineError("Invalid (negative) value for initial credits")
     # I'm going to allow 0 credits as a future way of saying "just fly"
+
+    if args.routes < 1:
+        raise CommandLineError("Maximum routes has to be 1 or higher")
+    if args.routes > 1 and args.checklist:
+        raise CommandLineError("Checklist can only be applied to a single route.")
 
     if args.hops < 1:
         raise CommandLineError("Minimum of 1 hop required")
     if args.hops > 64:
         raise CommandLineError("Too many hops without more optimization")
 
-    if args.avoid:
-        parseAvoids(args.avoid)
+    if args.maxJumpsPer < 0:
+        raise CommandLineError("Negative jumps: you're already there?")
 
     if args.origin:
         originName = args.origin
@@ -278,19 +301,14 @@ def processRunArguments(args):
         if args.hops == 1 and originStation and finalStation and originStation == finalStation:
             raise CommandLineError("More than one hop required to use same from/to destination")
 
+    if args.avoid:
+        parseAvoids(args)
     if args.via:
-        if args.hops < 2:
-            raise CommandLineError("Minimum of 2 hops required for a 'via' route")
-        viaName = args.via
-        viaStation = tdb.lookupStation(viaName)
-        if args.hops == 2:
-            if viaStation == originStation:
-                raise CommandLineError("3+ hops required to go 'via' the origin station")
-            if viaStation == finalStation:
-                raise CommandLineError("3+ hops required to go 'via' the destination station")
-        if args.hops <= 3:
-            if viaStation == originStation and viaStation == finalStation:
-                raise CommandLineError("4+ hops required to go 'via' the same station as you start and end at")
+        parseVias(args)
+
+    unspecifiedHops = args.hops + (0 if originStation else 1) - (1 if finalStation else 0)
+    if len(viaStations) > unspecifiedHops:
+        raise CommandLineError("Too many vias: {} stations vs {} hops available.".format(len(viaStations), availableHops))
 
     # If the user specified a ship, use it to fill out details unless
     # the user has explicitly supplied them. E.g. if the user says
@@ -315,29 +333,21 @@ def processRunArguments(args):
         raise CommandLineError("'limit' can't be negative, silly")
     maxUnits = args.limit if args.limit else args.capacity
 
-    if args.insurance and args.insurance >= (args.credits + 30):
+    arbitraryInsuranceBuffer = 42
+    if args.insurance and args.insurance >= (args.credits + arbitraryInsuranceBuffer):
         raise CommandLineError("Insurance leaves no margin for trade")
-
-    if args.routes < 1:
-        raise CommandLineError("Maximum routes has to be 1 or higher")
 
     if args.unique and args.hops >= len(tdb.stationByID):
         raise CommandLineError("Requested unique trip with more hops than there are stations...")
     if args.unique:
         if ((originStation and originStation == finalStation) or
-                (originStation and originStation == viaStation) or
-                 (viaStation and viaStation == finalStation)):
+                (originStation and originStation in viaStations) or
+                 (finalStation and finalStation in viaStations)):
             raise CommandLineError("from/to/via repeat conflicts with --unique")
-
-    if args.checklist and args.routes > 1:
-        raise CommandLineError("Checklist can only be applied to a single route.")
 
     if args.x52pro:
         from mfd import X52ProMFD
         mfd = X52ProMFD()
-
-    if mfd:
-        mfd.display('TradeDangerous', 'CALCULATING')
 
 
 def runCommand(args):
@@ -360,9 +370,12 @@ def runCommand(args):
     viaStartPos = 1 if originStation else 0
 
     if args.debug or args.detail:
-        print("From %s via %s to %s with %s credits." % (originName, viaName, destName, localedNo(args.credits)))
+        summaries = [ 'With {}cr'.format(localedNo(args.credits)) ]
+        summaries += [ 'From {}'.format(originStation.str() if originStation else 'Anywhere') ]
+        summaries += [ 'To {}'.format(finalStation.str() if finalStation else 'Anywhere') ]
+        if viaStations: summaries += [ 'Via {}'.format(', '.join([ station.name() for station in viaStations ])) ]
+        print(*summaries, sep=' / ')
         print("%d cap, %d hops, max %d jumps/hop and max %0.2f ly/jump" % (args.capacity, numHops, args.maxJumpsPer, args.maxLyPer))
-        print("--------------------------------------------------------")
         print()
 
     # Instantiate the calculator object
@@ -373,18 +386,27 @@ def runCommand(args):
     # time breaking the list down in getDestinations.
     avoidPlaces = avoidSystems + avoidStations
 
+    print("unspecified hops {}, numHops {}, viaStations {}".format(unspecifiedHops, numHops, len(viaStations)))
     for hopNo in range(numHops):
+        if mfd:
+            mfd.display('TradeDangerous', 'CALCULATING', 'Hop {}'.format(hopNo))
         if calc.debug: print("# Hop %d" % hopNo)
+
         restrictTo = None
-        if hopNo == 0 and numHops == 2 and viaStation and finalStation:
-            # If we're going TO someplace, the via station has to be in the middle.
-            # but if we're not going someplace, it could be the last station.
-            restrictTo = viaStation
-        elif hopNo == lastHop:
-            restrictTo = finalStation
-            if viaStation:
-                # Cull to routes that include the viaStation, might save us some calculations
-                routes = [ route for route in routes if viaStation in route.route[viaStartPos:] ]
+        if hopNo == lastHop and finalStation:
+            restrictTo = set([finalStation])
+            ### TODO:
+            ### if hopsLeft < len(viaStations):
+            ###   ... only keep routes that include len(viaStations)-hopsLeft routes
+            ### Thus: If you specify 5 hops via a,b,c and we are on hop 3, only keep
+            ### routes that include a, b or c. On hop 4, only include routes that
+            ### already include 2 of the vias, on hop 5, require all 3.
+            if viaStations:
+                routes = [ route for route in routes if viaStations & set(route.route[viaStartPos:]) ]
+        elif unspecifiedHops == len(viaStations):
+            # Everywhere we're going is in the viaStations list.
+            restrictTo = viaStations
+
         routes = calc.getBestHops(routes, startCr,
                                   restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
                                   maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
@@ -599,7 +621,7 @@ def main():
             ParseArgument('--capacity', help='Maximum capacity of cargo hold.', metavar='N', type=int),
             ParseArgument('--from', help='Starting system/station.', metavar='STATION', dest='origin'),
             ParseArgument('--to', help='Final system/station.', metavar='STATION', dest='dest'),
-            ParseArgument('--via', help='Require specified station to en-route.', metavar='STATION'),
+            ParseArgument('--via', help='Require specified systems/stations to be en-route.', metavar='PLACE[,PLACE,...]', action='append'),
             ParseArgument('--avoid', help='Exclude an item, system or station from trading. Partial matches allowed, e.g. "dom.App" or "domap" matches "Dom. Appliances".', action='append'),
             ParseArgument('--hops', help='Number of hops (station-to-station) to run.', metavar='N', type=int, default=2),
             ParseArgument('--jumps-per', help='Maximum number of jumps (system-to-system) per hop.', metavar='N', dest='maxJumpsPer', type=int, default=2),

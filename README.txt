@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v3.3
+TradeDangerous v3.4
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -20,6 +20,11 @@ factors that into the shopping for each subsequent hop.
 ==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v3.4 Sep 05/2014
+  Added emdn-tap.py script which pulls data from EMDN network.
+  "--via" now accepts multiple and/or comma separated stations so you can plan
+  a very specific shopping-list route.
 
 v3.3 Sep 04/2014
   Updated README to include sub-commands,
@@ -56,6 +61,10 @@ v3.0 Aug 30/2014
 The data is stored as human-readable text in a .SQL file and a .Prices file.
 When this data is loaded, it is saved into an SQLite database file which the
 tools use directly until you change either the .SQL or .Prices file.
+
+As of version 3.4 it also supports pulling data from the Elite Market Data
+Network (EMDN) by means of the emdn-tap.py script (see emdn-tap.py --help
+for command line usage)
 
 
 ==============================================================================
@@ -358,6 +367,13 @@ UPDATE sub-command:
 
 You can either edit the "data/TradeDangerous.prices" file or you can use the
 "update" sub-command.
+
+Alternatively, you can use the "emdn-tap.py" script to monitor the Elite
+Market Data Network to pull prices observed by other players. Use
+
+   emdn-tap.py --help
+
+for command line arguments.
 
 
 ==============================================================================
