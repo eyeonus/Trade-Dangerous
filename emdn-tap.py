@@ -54,7 +54,7 @@ def processCommandLine():
     parser.add_argument('--verbose',  '-v',  help='Increase verboseness.', action='count', default=0)
     parser.add_argument('--no-writes',       help='Don\'t actually write to the database.', action='store_true', default=False, dest='noWrites')
     parser.add_argument('--warn',            help='Demote unrecognized items/stations to warnings.', action='store_true', default=False)
-    parser.add_argument('--commit',          help='Commit periodically rather than just at the end.', type=int, default=0)
+    parser.add_argument('--commit',          help='Automatically commit after this many seconds, 0 disables. Default: 90', type=int, default=90)
 
     pargs = parser.parse_args()
 
