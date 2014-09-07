@@ -26,6 +26,7 @@ import time
 import pathlib
 
 from tradedb import TradeDB
+from tradecalc import localedNo
 from emdn.firehose import Firehose
 from data import prices
 
@@ -33,6 +34,10 @@ from data import prices
 # global variables: jeebus doesn't love me anymore.
 
 warnOnly = False
+
+blackMarketItems = frozenset([
+    'battleweapons',
+])
 
 ######################################################################
 # process command line
@@ -212,7 +217,9 @@ def main():
             if pargs.verbose and (records % 1000 == 0):
                 print("# At {} captured {} records.".format(rec.timestamp, records))
             if pargs.verbose > 1:
-                print("[{}] {:.<60} {}cr/{}cr".format(rec.timestamp, '{} @ {}/{}'.format(rec.item, rec.system, rec.station), rec.payingCr, rec.askingCr))
+                paying = localedNo(rec.payingCr)+'cr' if rec.payingCr else '    -    '
+                asking = localedNo(rec.askingCr)+'cr' if rec.askingCr else '    -    '
+                print("{} {:.<65} {:>9} {:>9}".format(rec.timestamp, '{} @ {}/{}'.format(rec.item, rec.system, rec.station), paying, asking))
 
             # Find the item in the price database to get its data and make sure
             # it matches the category we expect to see it listed in.
@@ -222,7 +229,8 @@ def main():
                     bleat("item", rec.item, "\aCATEGORY MISMATCH: {}/{} => item: {}/{} aka {}".format(rec.category, rec.item, item.category.dbname, item.dbname, item.altname or 'None'))
                     continue
             except LookupError:
-                bleat("item", rec.item, "UNRECOGNIZED ITEM:", rec.item)
+                if not rec.item in blackMarketItems:
+                    bleat("item", rec.item, "UNRECOGNIZED ITEM:", rec.item)
                 continue
 
             # Lookup the station.
