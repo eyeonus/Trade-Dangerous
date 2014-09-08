@@ -2,214 +2,220 @@
 
 @ ACIHAUT/Cuffey Plant
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-07 09:12:05
-      Mineral Oil               163      0   2014-09-07 09:12:05
-      Explosives                147    163   2014-09-07 09:12:05
+      Hydrogen Fuels             47     48   2014-09-08 05:52:21
+      Mineral Oil               163      0   2014-09-08 05:52:21
+      Explosives                147    163   2014-09-08 05:52:21
    + Consumer Items
-      Dom. Appliances           484      0   2014-09-07 09:12:05
-      Consumer Tech            6550      0   2014-09-07 09:12:05
-      Clothing                  266      0   2014-09-07 09:12:05
+      Dom. Appliances           482      0   2014-09-08 05:52:21
+      Consumer Tech            6550      0   2014-09-08 05:52:21
+      Clothing                  268      0   2014-09-08 05:52:21
    + Drugs
-      Beer                      143      0   2014-09-07 09:12:05
+      Beer                      143      0   2014-09-08 05:52:21
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 09:12:05
-      Grain                     180      0   2014-09-07 09:12:05
-      Animal Meat              1232      0   2014-09-07 09:12:05
-      Fish                      684      0   2014-09-07 09:12:05
-      Food Cartridges           102      0   2014-09-07 09:12:05
-      Synthetic Meat            233      0   2014-09-07 09:12:05
-      Tea                      1406      0   2014-09-07 09:12:05
-      Coffee                   1288      0   2014-09-07 09:12:05
+      Fruit and Vegetables      307      0   2014-09-08 05:52:21
+      Grain                     180      0   2014-09-08 05:52:21
+      Animal Meat              1246      0   2014-09-08 05:52:21
+      Fish                      695      0   2014-09-08 05:52:21
+      Food Cartridges           102      0   2014-09-08 05:52:21
+      Synthetic Meat            233      0   2014-09-08 05:52:21
+      Tea                      1406      0   2014-09-08 05:52:21
+      Coffee                   1255      0   2014-09-08 05:52:21
    + Industrial Materials
-      Superconductors          5717   5718   2014-09-07 01:00:52
+      Superconductors          5717   5718   2014-09-08 00:00:27
+      Polymers                   25     26   2014-09-08 00:00:27
    + Machinery
-      Hel-Static Furnaces       171      0   2014-09-07 09:12:05
-      Mineral Extractors        537      0   2014-09-07 09:12:05
+      Hel-Static Furnaces       171      0   2014-09-08 05:52:21
+      Mineral Extractors        529      0   2014-09-08 05:52:21
    + Medicines
-      Performance Enhancers    7120      0   2014-09-07 09:12:05
-      Basic Medicines           307      0   2014-09-07 09:12:05
-      Progenitor Cells         7088      0   2014-09-07 09:12:05
+      Performance Enhancers    7120      0   2014-09-08 05:52:21
+      Basic Medicines           307      0   2014-09-08 05:52:21
+      Progenitor Cells         7120      0   2014-09-08 05:52:21
    + Metals
-      Indium                   5738   5805   2014-09-07 09:12:05
-      Uranium                  2321   2382   2014-09-07 09:12:05
-      Lithium                  1083   1129   2014-09-07 09:12:05
-      Titanium                  782    818   2014-09-07 09:12:05
-      Copper                    222    239   2014-09-07 09:12:05
-      Aluminium                 126    139   2014-09-07 09:12:05
+      Indium                   5738   5805   2014-09-08 05:52:21
+      Uranium                  2321   2382   2014-09-08 05:52:21
+      Lithium                  1083   1129   2014-09-08 05:52:21
+      Titanium                  782    818   2014-09-08 05:52:21
+      Copper                    222    239   2014-09-08 05:52:21
+      Aluminium                 126    139   2014-09-08 05:52:21
+      Cobalt                    408    409   2014-09-08 00:00:27
+      Tantalum                 3149   3150   2014-09-08 00:00:27
    + Minerals
-      Bertrandite              1820   1868   2014-09-07 09:12:05
-      Indite                   2220      0   2014-09-07 09:12:05
-      Gallite                  1354   1392   2014-09-07 09:12:05
-      Coltan                   1493      0   2014-09-07 09:12:05
-      Uraninite                 958      0   2014-09-07 09:12:05
-      Lepidolite                302    323   2014-09-07 09:12:05
-      Rutile                    324      0   2014-09-07 09:12:05
-      Bauxite                   115      0   2014-09-07 09:12:05
-      Beryllium                7898   7987   2014-09-07 09:12:05
-      Gallium                  4925   4984   2014-09-07 09:12:05
+      Bertrandite              1820   1868   2014-09-08 05:52:21
+      Indite                   2186      0   2014-09-08 05:52:21
+      Gallite                  1354   1392   2014-09-08 05:52:21
+      Coltan                   1493      0   2014-09-08 05:52:21
+      Uraninite                 958      0   2014-09-08 05:52:21
+      Lepidolite                302    323   2014-09-08 05:52:21
+      Rutile                    324      0   2014-09-08 05:52:21
+      Bauxite                   115      0   2014-09-08 05:52:21
+      Beryllium                7898   7987   2014-09-08 05:52:21
+      Gallium                  4925   4984   2014-09-08 05:52:21
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:12:05
-      Advanced Catalysers      2939      0   2014-09-07 09:12:05
-      Resonating Separators    6242      0   2014-09-07 09:12:05
-      Bioreducing Lichen       1020      0   2014-09-07 09:12:05
+      H.E. Suits                259      0   2014-09-08 05:52:21
+      Advanced Catalysers      2971      0   2014-09-08 05:52:21
+      Resonating Separators    6237      0   2014-09-08 05:52:21
+      Bioreducing Lichen       1020      0   2014-09-08 05:52:21
    + Waste
-      Biowaste                   11     18   2014-09-07 09:12:05
-      Scrap                      91      0   2014-09-07 09:12:05
+      Biowaste                   11     18   2014-09-08 05:52:21
+      Scrap                      91      0   2014-09-08 05:52:21
 
 
 @ AGANIPPE/Julian Market
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 08:44:50
-      Pesticides                199      0   2014-09-07 08:44:50
+      Hydrogen Fuels             56      0   2014-09-08 02:35:09
+      Pesticides                199      0   2014-09-08 02:35:09
    + Consumer Items
-      Dom. Appliances           549      0   2014-09-07 08:44:50
-      Consumer Tech            7110      0   2014-09-07 08:44:50
-      Clothing                  306      0   2014-09-07 08:44:50
+      Dom. Appliances           549      0   2014-09-08 02:35:09
+      Consumer Tech            7110      0   2014-09-08 02:35:09
+      Clothing                  306      0   2014-09-08 02:35:09
    + Drugs
-      Beer                      142      0   2014-09-07 08:44:50
-      Wine                      233      0   2014-09-07 08:44:50
+      Beer                      142      0   2014-09-08 02:35:09
+      Wine                      233      0   2014-09-08 02:35:09
    + Foods
-      Algae                      10     15   2014-09-07 08:44:50
-      Fruit and Vegetables      306      0   2014-09-07 08:44:50
-      Grain                      49     58   2014-09-07 08:44:50
-      Animal Meat              1389      0   2014-09-07 08:44:50
-      Fish                      329    356   2014-09-07 08:44:50
-      Tea                      1589      0   2014-09-07 08:44:50
-      Coffee                   1399      0   2014-09-07 08:44:50
+      Algae                      10     15   2014-09-08 02:35:09
+      Fruit and Vegetables      306      0   2014-09-08 02:35:09
+      Grain                      49     58   2014-09-08 02:35:09
+      Animal Meat              1399      0   2014-09-08 02:35:09
+      Fish                      329    356   2014-09-08 02:35:09
+      Tea                      1589      0   2014-09-08 02:35:09
+      Coffee                   1399      0   2014-09-08 02:35:09
    + Machinery
-      Crop Harvesters          2340      0   2014-09-07 08:44:50
-      Marine Supplies          4489      0   2014-09-07 08:44:50
+      Crop Harvesters          2340      0   2014-09-08 02:35:09
+      Marine Supplies          4489      0   2014-09-08 02:35:09
    + Medicines
-      Agri-Medicines           1085      0   2014-09-07 08:44:50
-      Performance Enhancers    7110      0   2014-09-07 08:44:50
-      Basic Medicines           306      0   2014-09-07 08:44:50
-      Progenitor Cells         7110      0   2014-09-07 08:44:50
+      Agri-Medicines           1085      0   2014-09-08 02:35:09
+      Performance Enhancers    7110      0   2014-09-08 02:35:09
+      Basic Medicines           306      0   2014-09-08 02:35:09
+      Progenitor Cells         7110      0   2014-09-08 02:35:09
    + Technology
-      Animal Monitors           289      0   2014-09-07 08:44:50
-      Aquaponic Systems         259      0   2014-09-07 08:44:50
-      Terrain Enrich Sys       4673      0   2014-09-07 08:44:50
+      Animal Monitors           289      0   2014-09-08 02:35:09
+      Aquaponic Systems         259      0   2014-09-08 02:35:09
+      Terrain Enrich Sys       4673      0   2014-09-08 02:35:09
    + Waste
-      Biowaste                   68      0   2014-09-07 08:44:50
+      Biowaste                   68      0   2014-09-08 02:35:09
    + Weapons
-      Personal Weapons         4489      0   2014-09-07 08:44:50
+      Personal Weapons         4489      0   2014-09-08 02:35:09
 
 
 @ ASELLUS PRIMUS/Beagle 2 Landing
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:11:02
+      Hydrogen Fuels             56      0   2014-09-08 06:04:14
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-07 09:11:02
-      Consumer Tech            6596   6672   2014-09-07 09:11:02
-      Clothing                  252      0   2014-09-07 09:11:02
+      Dom. Appliances           550      0   2014-09-08 06:04:14
+      Consumer Tech            6595   6671   2014-09-08 06:04:14
+      Clothing                  252      0   2014-09-08 06:04:14
    + Drugs
-      Beer                      143      0   2014-09-07 09:11:02
-      Wine                      233      0   2014-09-07 09:11:02
+      Beer                      143      0   2014-09-08 06:04:14
+      Wine                      233      0   2014-09-08 06:04:14
    + Foods
-      Fish                      645      0   2014-09-07 09:11:02
-      Food Cartridges           102      0   2014-09-07 09:11:02
-      Synthetic Meat            233      0   2014-09-07 09:11:02
-      Tea                      1405      0   2014-09-07 09:11:02
-      Coffee                   1231      0   2014-09-07 09:11:02
-      Fruit and Vegetables      286      0   2014-09-07 09:11:02
-      Grain                     180      0   2014-09-07 09:11:02
-      Animal Meat              1231      0   2014-09-07 09:11:02
+      Fish                      645      0   2014-09-08 06:04:14
+      Food Cartridges           102      0   2014-09-08 06:04:14
+      Synthetic Meat            233      0   2014-09-08 06:04:14
+      Tea                      1405      0   2014-09-08 06:04:14
+      Coffee                   1231      0   2014-09-08 06:04:14
+      Fruit and Vegetables      285      0   2014-09-08 06:04:14
+      Grain                     180      0   2014-09-08 06:04:14
+      Animal Meat              1231      0   2014-09-08 06:04:14
    + Industrial Materials
-      Superconductors          7116      0   2014-09-07 09:11:02
+      Superconductors          7116      0   2014-09-08 06:04:14
    + Medicines
-      Performance Enhancers    7116      0   2014-09-07 09:11:02
-      Basic Medicines           306      0   2014-09-07 09:11:02
-      Progenitor Cells         6950      0   2014-09-07 09:11:02
+      Performance Enhancers    7116      0   2014-09-08 06:04:14
+      Basic Medicines           306      0   2014-09-08 06:04:14
+      Progenitor Cells         7116      0   2014-09-08 06:04:14
       Combat Stabilisers       2144   2145   2014-09-06 23:56:10
    + Metals
-      Palladium               13508      0   2014-09-07 09:11:02
-      Gold                     9169      0   2014-09-07 09:11:02
-      Silver                   5121      0   2014-09-07 09:11:02
-      Cobalt                    746      0   2014-09-07 09:11:02
-      Indium                   5929      0   2014-09-07 09:11:02
-      Tantalum                 3976      0   2014-09-07 09:11:02
-      Uranium                  2845      0   2014-09-07 09:11:02
-      Lithium                  1695      0   2014-09-07 09:11:02
+      Palladium               13716      0   2014-09-08 06:04:14
+      Gold                     9169      0   2014-09-08 06:04:14
+      Silver                   5121      0   2014-09-08 06:04:14
+      Cobalt                    746      0   2014-09-08 06:04:14
+      Indium                   5998      0   2014-09-08 06:04:14
+      Tantalum                 3945      0   2014-09-08 06:04:14
+      Uranium                  2845      0   2014-09-08 06:04:14
+      Lithium                  1623      0   2014-09-08 06:04:14
       Titanium                  639    640   2014-09-07 00:03:09
+      Copper                    237    238   2014-09-07 21:01:57
    + Minerals
-      Gallite                  1858      0   2014-09-07 09:11:02
-      Rutile                    324      0   2014-09-07 09:11:02
-      Beryllium                8652      0   2014-09-07 09:11:02
-      Gallium                  5151      0   2014-09-07 09:11:02
+      Gallite                  1832      0   2014-09-08 06:04:14
+      Rutile                    324      0   2014-09-08 06:04:14
+      Beryllium                8495      0   2014-09-08 06:04:14
+      Gallium                  5217      0   2014-09-08 06:04:14
    + Technology
-      Computer Components       550      0   2014-09-07 09:11:02
-      H.E. Suits                103    115   2014-09-07 09:11:02
-      Robotics                 1539   1581   2014-09-07 09:11:02
-      Auto-Fabricators         3085   3162   2014-09-07 09:11:02
-      Animal Monitors           150    166   2014-09-07 09:11:02
-      Aquaponic Systems         129    144   2014-09-07 09:11:02
-      Advanced Catalysers      2349   2411   2014-09-07 09:11:02
-      Terrain Enrich Sys       4614   4669   2014-09-07 09:11:02
-      Resonating Separators    5296   5358   2014-09-07 09:11:02
+      Computer Components       550      0   2014-09-08 06:04:14
+      H.E. Suits                103    115   2014-09-08 06:04:14
+      Robotics                 1539   1581   2014-09-08 06:04:14
+      Auto-Fabricators         3085   3162   2014-09-08 06:04:14
+      Animal Monitors           150    166   2014-09-08 06:04:14
+      Aquaponic Systems         129    144   2014-09-08 06:04:14
+      Advanced Catalysers      2339   2400   2014-09-08 06:04:14
+      Terrain Enrich Sys       4614   4669   2014-09-08 06:04:14
+      Resonating Separators    5315   5377   2014-09-08 06:04:14
    + Textiles
       Natural Fabrics           186    187   2014-09-06 21:48:36
+      Synthetic Fabrics          45     46   2014-09-07 21:01:57
    + Waste
-      Biowaste                   11     18   2014-09-07 09:11:02
-      Scrap                      27     34   2014-09-07 09:11:02
+      Biowaste                   11     18   2014-09-08 06:04:14
+      Scrap                      27     34   2014-09-08 06:04:14
    + Weapons
-      Personal Weapons         3966   4064   2014-09-07 09:11:02
-      Reactive Armor           1958      0   2014-09-07 09:11:02
-      Non-Lethal Wpns          1787      0   2014-09-07 09:11:02
+      Personal Weapons         3966   4064   2014-09-08 06:04:14
+      Reactive Armor           1958      0   2014-09-08 06:04:14
+      Non-Lethal Wpns          1787      0   2014-09-08 06:04:14
 
 
 @ AULIN/Aulin Enterprise
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:17:32
-      Pesticides                 83     97   2014-09-07 09:17:32
+      Hydrogen Fuels             56      0   2014-09-08 06:06:10
+      Pesticides                 83     97   2014-09-08 06:06:10
    + Consumer Items
-      Dom. Appliances           547      0   2014-09-07 09:17:32
-      Consumer Tech            6733      0   2014-09-07 09:17:32
-      Clothing                  251      0   2014-09-07 09:17:32
+      Dom. Appliances           547      0   2014-09-08 06:06:10
+      Consumer Tech            6733      0   2014-09-08 06:06:10
+      Clothing                  251      0   2014-09-08 06:06:10
    + Drugs
-      Beer                      142      0   2014-09-07 09:17:32
+      Beer                      142      0   2014-09-08 06:06:10
    + Foods
-      Fruit and Vegetables      290      0   2014-09-07 09:17:32
-      Grain                     180      0   2014-09-07 09:17:32
-      Animal Meat              1226      0   2014-09-07 09:17:32
-      Fish                      643      0   2014-09-07 09:17:32
-      Synthetic Meat             77     87   2014-09-07 09:17:32
-      Tea                      1399      0   2014-09-07 09:17:32
-      Coffee                   1226      0   2014-09-07 09:17:32
+      Fruit and Vegetables      294      0   2014-09-08 06:06:10
+      Grain                     180      0   2014-09-08 06:06:10
+      Animal Meat              1226      0   2014-09-08 06:06:10
+      Fish                      643      0   2014-09-08 06:06:10
+      Synthetic Meat             77     87   2014-09-08 06:06:10
+      Tea                      1399      0   2014-09-08 06:06:10
+      Coffee                   1226      0   2014-09-08 06:06:10
+      Food Cartridges            19     20   2014-09-07 11:43:24
    + Industrial Materials
-      Superconductors          7086      0   2014-09-07 09:17:32
+      Superconductors          7086      0   2014-09-08 06:06:10
    + Machinery
       Crop Harvesters          1600   1601   2014-09-07 09:06:54
    + Medicines
-      Agri-Medicines            624    653   2014-09-07 09:17:32
-      Performance Enhancers    6508   6587   2014-09-07 09:17:32
-      Basic Medicines           305      0   2014-09-07 09:17:32
-      Progenitor Cells         6498   6577   2014-09-07 09:17:32
-      Combat Stabilisers       2136   2192   2014-09-07 09:17:32
+      Agri-Medicines            624    653   2014-09-08 06:06:10
+      Performance Enhancers    6508   6587   2014-09-08 06:06:10
+      Basic Medicines           305      0   2014-09-08 06:06:10
+      Progenitor Cells         6498   6577   2014-09-08 06:06:10
+      Combat Stabilisers       2122   2179   2014-09-08 06:06:10
    + Metals
-      Palladium               13302      0   2014-09-07 09:17:32
-      Gold                     9131      0   2014-09-07 09:17:32
-      Silver                   4657      0   2014-09-07 09:17:32
-      Cobalt                    743      0   2014-09-07 09:17:32
-      Indium                   6069      0   2014-09-07 09:17:32
-      Tantalum                 4109      0   2014-09-07 09:17:32
-      Uranium                  2829      0   2014-09-07 09:17:32
-      Lithium                  1560      0   2014-09-07 09:17:32
+      Palladium               13456      0   2014-09-08 06:06:10
+      Gold                     9131      0   2014-09-08 06:06:10
+      Silver                   4703      0   2014-09-08 06:06:10
+      Cobalt                    743      0   2014-09-08 06:06:10
+      Indium                   5999      0   2014-09-08 06:06:10
+      Tantalum                 3977      0   2014-09-08 06:06:10
+      Uranium                  2833      0   2014-09-08 06:06:10
+      Lithium                  1597      0   2014-09-08 06:06:10
    + Minerals
-      Gallite                  1825      0   2014-09-07 09:17:32
-      Rutile                    323      0   2014-09-07 09:17:32
-      Beryllium                8370      0   2014-09-07 09:17:32
-      Gallium                  5381      0   2014-09-07 09:17:32
+      Gallite                  1825      0   2014-09-08 06:06:10
+      Rutile                    323      0   2014-09-08 06:06:10
+      Beryllium                8471      0   2014-09-08 06:06:10
+      Gallium                  5252      0   2014-09-08 06:06:10
    + Technology
-      Computer Components       522      0   2014-09-07 09:17:32
-      H.E. Suits                128    143   2014-09-07 09:17:32
-      Advanced Catalysers      2250   2310   2014-09-07 09:17:32
-      Terrain Enrich Sys       3912   3961   2014-09-07 09:17:32
-      Bioreducing Lichen        732    766   2014-09-07 09:17:32
+      Computer Components       511      0   2014-09-08 06:06:10
+      H.E. Suits                128    143   2014-09-08 06:06:10
+      Advanced Catalysers      2247   2306   2014-09-08 06:06:10
+      Terrain Enrich Sys       3912   3961   2014-09-08 06:06:10
+      Bioreducing Lichen        732    766   2014-09-08 06:06:10
       Resonating Separators    4940   4944   2014-09-06 23:41:39
    + Textiles
       Leather                    38     39   2014-09-07 06:03:42
    + Waste
-      Biowaste                   11     18   2014-09-07 09:17:32
-      Scrap                      28     35   2014-09-07 09:17:32
+      Biowaste                   11     18   2014-09-08 06:06:10
+      Scrap                      28     35   2014-09-08 06:06:10
 
 
 @ AULIS/Dezhurov Gateway
@@ -249,495 +255,526 @@
 
 @ BD+47 2112/Olivas Settlement
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-07 07:49:32
-      Explosives                290      0   2014-09-07 07:49:32
+      Hydrogen Fuels             80     81   2014-09-08 03:18:31
+      Explosives                290      0   2014-09-08 03:18:31
    + Consumer Items
-      Dom. Appliances           534      0   2014-09-07 07:49:32
-      Consumer Tech            6851      0   2014-09-07 07:49:32
-      Clothing                  279      0   2014-09-07 07:49:32
+      Dom. Appliances           542      0   2014-09-08 03:18:31
+      Consumer Tech            6851      0   2014-09-08 03:18:31
+      Clothing                  279      0   2014-09-08 03:18:31
    + Drugs
-      Beer                      143      0   2014-09-07 07:49:32
+      Beer                      143      0   2014-09-08 03:18:31
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 07:49:32
-      Grain                     181      0   2014-09-07 07:49:32
-      Animal Meat              1318      0   2014-09-07 07:49:32
-      Fish                      647      0   2014-09-07 07:49:32
-      Food Cartridges           103      0   2014-09-07 07:49:32
-      Synthetic Meat            234      0   2014-09-07 07:49:32
-      Tea                      1502      0   2014-09-07 07:49:32
-      Coffee                   1235      0   2014-09-07 07:49:32
+      Fruit and Vegetables      307      0   2014-09-08 03:18:31
+      Grain                     181      0   2014-09-08 03:18:31
+      Animal Meat              1318      0   2014-09-08 03:18:31
+      Fish                      647      0   2014-09-08 03:18:31
+      Food Cartridges           103      0   2014-09-08 03:18:31
+      Synthetic Meat            234      0   2014-09-08 03:18:31
+      Tea                      1502      0   2014-09-08 03:18:31
+      Coffee                   1235      0   2014-09-08 03:18:31
+   + Industrial Materials
+      Semiconductors            553    554   2014-09-07 23:48:24
+      Polymers                   25     26   2014-09-07 23:48:24
+      Superconductors          5717   5718   2014-09-07 23:48:24
    + Machinery
-      Mineral Extractors        592      0   2014-09-07 07:49:32
+      Mineral Extractors        605      0   2014-09-08 03:18:31
    + Medicines
-      Performance Enhancers    7137      0   2014-09-07 07:49:32
-      Basic Medicines           307      0   2014-09-07 07:49:32
-      Progenitor Cells         6851      0   2014-09-07 07:49:32
+      Performance Enhancers    7137      0   2014-09-08 03:18:31
+      Basic Medicines           307      0   2014-09-08 03:18:31
+      Progenitor Cells         6851      0   2014-09-08 03:18:31
    + Metals
-      Cobalt                    486    519   2014-09-07 07:49:32
+      Cobalt                    486    519   2014-09-08 03:18:31
+      Indium                   4940   4941   2014-09-07 23:48:24
+      Lithium                  1088   1089   2014-09-07 23:48:24
+      Copper                    237    238   2014-09-07 23:48:24
+      Tantalum                 3149   3150   2014-09-07 23:48:24
+      Titanium                  639    640   2014-09-07 23:48:24
    + Minerals
-      Indite                   1917   1968   2014-09-07 07:49:32
-      Uraninite                 683    715   2014-09-07 07:49:32
-      Bauxite                    29     39   2014-09-07 07:49:32
+      Indite                   1917   1968   2014-09-08 03:18:31
+      Uraninite                 684    716   2014-09-08 03:18:31
+      Bauxite                    29     39   2014-09-08 03:18:31
    + Technology
-      H.E. Suits                260      0   2014-09-07 07:49:32
-      Bioreducing Lichen       1022      0   2014-09-07 07:49:32
+      H.E. Suits                260      0   2014-09-08 03:18:31
+      Bioreducing Lichen       1022      0   2014-09-08 03:18:31
    + Waste
-      Biowaste                   12     18   2014-09-07 07:49:32
+      Biowaste                   12     18   2014-09-08 03:18:31
    + Weapons
-      Reactive Armor           2201      0   2014-09-07 07:49:32
-      Non-Lethal Wpns          1935      0   2014-09-07 07:49:32
+      Reactive Armor           2201      0   2014-09-08 03:18:31
+      Non-Lethal Wpns          1935      0   2014-09-08 03:18:31
 
 
 @ BOLG/Moxon's Mojo
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-07 09:17:32
+      Hydrogen Fuels             62      0   2014-09-08 05:25:02
    + Consumer Items
-      Dom. Appliances           345    369   2014-09-07 09:17:32
-      Consumer Tech            6567      0   2014-09-07 09:17:32
-      Clothing                  300      0   2014-09-07 09:17:32
+      Dom. Appliances           345    369   2014-09-08 05:25:02
+      Consumer Tech            6754      0   2014-09-08 05:25:02
+      Clothing                  307      0   2014-09-08 05:25:02
    + Drugs
-      Beer                      143      0   2014-09-07 09:17:32
+      Beer                      143      0   2014-09-08 05:25:02
    + Foods
-      Algae                      95      0   2014-09-07 09:17:32
-      Fruit and Vegetables      307      0   2014-09-07 09:17:32
-      Grain                     181      0   2014-09-07 09:17:32
-      Animal Meat              1348      0   2014-09-07 09:17:32
-      Fish                      766      0   2014-09-07 09:17:32
-      Food Cartridges            14     20   2014-09-07 09:17:32
-      Synthetic Meat            234      0   2014-09-07 09:17:32
-      Tea                      1407      0   2014-09-07 09:17:32
-      Coffee                   1306      0   2014-09-07 09:17:32
+      Algae                      95      0   2014-09-08 05:25:02
+      Fruit and Vegetables      307      0   2014-09-08 05:25:02
+      Grain                     181      0   2014-09-08 05:25:02
+      Animal Meat              1368      0   2014-09-08 05:25:02
+      Fish                      770      0   2014-09-08 05:25:02
+      Food Cartridges            14     20   2014-09-08 05:25:02
+      Synthetic Meat            234      0   2014-09-08 05:25:02
+      Tea                      1407      0   2014-09-08 05:25:02
+      Coffee                   1352      0   2014-09-08 05:25:02
    + Industrial Materials
-      Polymers                  116      0   2014-09-07 09:17:32
-      Semiconductors            959      0   2014-09-07 09:17:32
-      Superconductors          7124      0   2014-09-07 09:17:32
+      Polymers                  116      0   2014-09-08 05:25:02
+      Semiconductors            959      0   2014-09-08 05:25:02
+      Superconductors          7124      0   2014-09-08 05:25:02
    + Machinery
-      Hel-Static Furnaces        45     53   2014-09-07 09:17:32
-      Mineral Extractors        324    347   2014-09-07 09:17:32
-      Crop Harvesters          1944   1996   2014-09-07 09:17:32
+      Hel-Static Furnaces        45     53   2014-09-08 05:25:02
+      Mineral Extractors        316    338   2014-09-08 05:25:02
+      Crop Harvesters          1944   1996   2014-09-08 05:25:02
    + Medicines
-      Performance Enhancers    7124      0   2014-09-07 09:17:32
-      Basic Medicines           344      0   2014-09-07 09:17:32
-      Progenitor Cells         7124      0   2014-09-07 09:17:32
+      Performance Enhancers    7124      0   2014-09-08 05:25:02
+      Basic Medicines           344      0   2014-09-08 05:25:02
+      Progenitor Cells         7124      0   2014-09-08 05:25:02
    + Metals
-      Gold                     9180      0   2014-09-07 09:17:32
-      Indium                   6245      0   2014-09-07 09:17:32
-      Tantalum                 4212      0   2014-09-07 09:17:32
-      Uranium                  2848      0   2014-09-07 09:17:32
-      Lithium                  1698      0   2014-09-07 09:17:32
-      Titanium                 1088      0   2014-09-07 09:17:32
-      Copper                    488      0   2014-09-07 09:17:32
-      Aluminium                 324      0   2014-09-07 09:17:32
+      Gold                     9180      0   2014-09-08 05:25:02
+      Indium                   6245      0   2014-09-08 05:25:02
+      Tantalum                 4212      0   2014-09-08 05:25:02
+      Uranium                  2848      0   2014-09-08 05:25:02
+      Lithium                  1698      0   2014-09-08 05:25:02
+      Titanium                 1088      0   2014-09-08 05:25:02
+      Copper                    488      0   2014-09-08 05:25:02
+      Aluminium                 324      0   2014-09-08 05:25:02
    + Minerals
-      Beryllium                8683      0   2014-09-07 09:17:32
-      Gallium                  5476      0   2014-09-07 09:17:32
+      Beryllium                8683      0   2014-09-08 05:25:02
+      Gallium                  5476      0   2014-09-08 05:25:02
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:17:32
-      Robotics                 1931      0   2014-09-07 09:17:32
-      Auto-Fabricators         3946      0   2014-09-07 09:17:32
+      H.E. Suits                259      0   2014-09-08 05:25:02
+      Robotics                 1931      0   2014-09-08 05:25:02
+      Auto-Fabricators         3946      0   2014-09-08 05:25:02
    + Textiles
-      Leather                   143      0   2014-09-07 09:17:32
-      Natural Fabrics           409      0   2014-09-07 09:17:32
-      Synthetic Fabrics         156      0   2014-09-07 09:17:32
+      Leather                   143      0   2014-09-08 05:25:02
+      Natural Fabrics           409      0   2014-09-08 05:25:02
+      Synthetic Fabrics         156      0   2014-09-08 05:25:02
    + Waste
-      Biowaste                   11     18   2014-09-07 09:17:32
-      Scrap                      20     25   2014-09-07 09:17:32
+      Biowaste                   11     18   2014-09-08 05:25:02
+      Scrap                      20     25   2014-09-08 05:25:02
+   + Weapons
+      Personal Weapons         3829   3924   2014-09-07 09:55:50
 
 
 @ CHI HERCULIS/Gorbatko Reserve
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:07:32
-      Pesticides                199      0   2014-09-07 09:07:32
+      Hydrogen Fuels             56      0   2014-09-08 05:06:12
+      Pesticides                199      0   2014-09-08 05:06:12
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-07 09:07:32
-      Consumer Tech            7114      0   2014-09-07 09:07:32
-      Clothing                  306      0   2014-09-07 09:07:32
+      Dom. Appliances           550      0   2014-09-08 05:06:12
+      Consumer Tech            7114      0   2014-09-08 05:06:12
+      Clothing                  306      0   2014-09-08 05:06:12
    + Drugs
-      Beer                      143      0   2014-09-07 09:07:32
+      Beer                      143      0   2014-09-08 05:06:12
    + Foods
-      Algae                      11     17   2014-09-07 09:07:32
-      Fruit and Vegetables      306      0   2014-09-07 09:07:32
-      Grain                      57     67   2014-09-07 09:07:32
-      Animal Meat              1317      0   2014-09-07 09:07:32
-      Fish                      361    389   2014-09-07 09:07:32
-      Tea                      1590      0   2014-09-07 09:07:32
-      Coffee                   1399      0   2014-09-07 09:07:32
+      Algae                      11     17   2014-09-08 05:06:12
+      Fruit and Vegetables      306      0   2014-09-08 05:06:12
+      Grain                      57     67   2014-09-08 05:06:12
+      Animal Meat              1317      0   2014-09-08 05:06:12
+      Fish                      361    389   2014-09-08 05:06:12
+      Tea                      1590      0   2014-09-08 05:06:12
+      Coffee                   1399      0   2014-09-08 05:06:12
    + Machinery
-      Crop Harvesters          2341      0   2014-09-07 09:07:32
-      Marine Supplies          4491      0   2014-09-07 09:07:32
+      Crop Harvesters          2341      0   2014-09-08 05:06:12
+      Marine Supplies          4491      0   2014-09-08 05:06:12
       Mineral Extractors        320    321   2014-09-07 03:41:35
    + Medicines
-      Agri-Medicines           1086      0   2014-09-07 09:07:32
-      Performance Enhancers    7114      0   2014-09-07 09:07:32
-      Basic Medicines           306      0   2014-09-07 09:07:32
-      Progenitor Cells         7114      0   2014-09-07 09:07:32
+      Agri-Medicines           1086      0   2014-09-08 05:06:12
+      Performance Enhancers    7114      0   2014-09-08 05:06:12
+      Basic Medicines           306      0   2014-09-08 05:06:12
+      Progenitor Cells         7114      0   2014-09-08 05:06:12
+   + Minerals
+      Gallite                  1364   1365   2014-09-07 11:19:11
    + Technology
-      Animal Monitors           289      0   2014-09-07 09:07:32
-      Aquaponic Systems         259      0   2014-09-07 09:07:32
-      Terrain Enrich Sys       4675      0   2014-09-07 09:07:32
+      Animal Monitors           289      0   2014-09-08 05:06:12
+      Aquaponic Systems         259      0   2014-09-08 05:06:12
+      Terrain Enrich Sys       4675      0   2014-09-08 05:06:12
+   + Textiles
+      Natural Fabrics           186    187   2014-09-08 03:02:39
    + Waste
-      Biowaste                   68      0   2014-09-07 09:07:32
+      Biowaste                   68      0   2014-09-08 05:06:12
 
 
 @ CM DRACO/Anderson Escape
    + Chemicals
-      Hydrogen Fuels             81     82   2014-09-06 23:19:35
-      Explosives                291      0   2014-09-06 23:19:35
+      Hydrogen Fuels             81     82   2014-09-08 02:08:10
+      Explosives                291      0   2014-09-08 02:08:10
    + Consumer Items
-      Dom. Appliances           511      0   2014-09-06 23:19:35
-      Consumer Tech            6874      0   2014-09-06 23:19:35
-      Clothing                  280      0   2014-09-06 23:19:35
+      Dom. Appliances           511      0   2014-09-08 02:08:10
+      Consumer Tech            6874      0   2014-09-08 02:08:10
+      Clothing                  280      0   2014-09-08 02:08:10
    + Drugs
-      Narcotics                 143      0   2014-09-06 23:19:35
-      Tobacco                  4930      0   2014-09-06 23:19:35
-      Beer                      143      0   2014-09-06 23:19:35
-      Wine                      235      0   2014-09-06 23:19:35
-      Liquor                    664      0   2014-09-06 23:19:35
+      Narcotics                 143      0   2014-09-08 02:08:10
+      Tobacco                  4930      0   2014-09-08 02:08:10
+      Beer                      143      0   2014-09-08 02:08:10
+      Wine                      235      0   2014-09-08 02:08:10
+      Liquor                    664      0   2014-09-08 02:08:10
    + Foods
-      Fruit and Vegetables      280      0   2014-09-06 23:19:35
-      Grain                     173      0   2014-09-06 23:19:35
-      Animal Meat              1323      0   2014-09-06 23:19:35
-      Fish                      713      0   2014-09-06 23:19:35
-      Food Cartridges           103      0   2014-09-06 23:19:35
-      Synthetic Meat            235      0   2014-09-06 23:19:35
-      Tea                      1507      0   2014-09-06 23:19:35
-      Coffee                   1323      0   2014-09-06 23:19:35
+      Fruit and Vegetables      280      0   2014-09-08 02:08:10
+      Grain                     182      0   2014-09-08 02:08:10
+      Animal Meat              1323      0   2014-09-08 02:08:10
+      Fish                      713      0   2014-09-08 02:08:10
+      Food Cartridges           103      0   2014-09-08 02:08:10
+      Synthetic Meat            235      0   2014-09-08 02:08:10
+      Tea                      1507      0   2014-09-08 02:08:10
+      Coffee                   1323      0   2014-09-08 02:08:10
+   + Industrial Materials
+      Polymers                   25     26   2014-09-08 01:08:19
+      Semiconductors            553    554   2014-09-08 01:08:19
+      Superconductors          5717   5718   2014-09-08 01:08:19
    + Machinery
-      Mineral Extractors        532      0   2014-09-06 23:19:35
+      Mineral Extractors        532      0   2014-09-08 02:08:10
    + Medicines
-      Performance Enhancers    7161      0   2014-09-06 23:19:35
-      Basic Medicines           308      0   2014-09-06 23:19:35
+      Performance Enhancers    7161      0   2014-09-08 02:08:10
+      Basic Medicines           308      0   2014-09-08 02:08:10
    + Metals
-      Palladium               13454  13455   2014-09-06 23:19:35
-      Silver                   4476   4529   2014-09-06 23:19:35
-      Cobalt                    446    476   2014-09-06 23:19:35
+      Palladium               13248  13249   2014-09-08 02:08:10
+      Silver                   4512   4566   2014-09-08 02:08:10
+      Cobalt                    437    466   2014-09-08 02:08:10
+      Indium                   4940   4941   2014-09-08 01:08:19
+      Titanium                  639    640   2014-09-08 01:08:19
+      Copper                    237    238   2014-09-08 01:08:19
    + Minerals
-      Indite                   1923   1974   2014-09-06 23:19:35
-      Coltan                   1139   1188   2014-09-06 23:19:35
-      Uraninite                 685    717   2014-09-06 23:19:35
-      Rutile                    133    147   2014-09-06 23:19:35
-      Bauxite                    30     39   2014-09-06 23:19:35
+      Indite                   1923   1974   2014-09-08 02:08:10
+      Coltan                   1139   1188   2014-09-08 02:08:10
+      Uraninite                 685    717   2014-09-08 02:08:10
+      Rutile                    133    147   2014-09-08 02:08:10
+      Bauxite                    30     39   2014-09-08 02:08:10
    + Technology
-      H.E. Suits                261      0   2014-09-06 23:19:35
-      Bioreducing Lichen       1026      0   2014-09-06 23:19:35
+      H.E. Suits                261      0   2014-09-08 02:08:10
+      Bioreducing Lichen       1026      0   2014-09-08 02:08:10
+      Robotics                 1276   1277   2014-09-08 01:08:19
+      Auto-Fabricators         2909   2910   2014-09-08 01:08:19
+      Animal Monitors           118    119   2014-09-08 01:08:19
+      Terrain Enrich Sys       3944   3945   2014-09-08 01:08:19
    + Waste
-      Biowaste                   10     17   2014-09-06 23:19:35
+      Biowaste                   10     16   2014-09-08 02:08:10
    + Weapons
-      Personal Weapons         4318      0   2014-09-06 23:19:35
-      Reactive Armor           2090      0   2014-09-06 23:19:35
-      Non-Lethal Wpns          1864      0   2014-09-06 23:19:35
+      Personal Weapons         4318      0   2014-09-08 02:08:10
+      Reactive Armor           2090      0   2014-09-08 02:08:10
+      Non-Lethal Wpns          1931      0   2014-09-08 02:08:10
 
 
 @ DAHAN/Dahan Gateway
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-07 09:04:58
-      Mineral Oil               164      0   2014-09-07 09:04:58
-      Explosives                145    162   2014-09-07 09:04:58
+      Hydrogen Fuels             80     81   2014-09-08 04:42:30
+      Mineral Oil               164      0   2014-09-08 04:42:30
+      Explosives                145    162   2014-09-08 04:42:30
    + Consumer Items
-      Dom. Appliances           543      0   2014-09-07 09:04:58
-      Consumer Tech            6851      0   2014-09-07 09:04:58
-      Clothing                  253      0   2014-09-07 09:04:58
+      Dom. Appliances           551      0   2014-09-08 04:42:30
+      Consumer Tech            6851      0   2014-09-08 04:42:30
+      Clothing                  253      0   2014-09-08 04:42:30
    + Drugs
-      Beer                      143      0   2014-09-07 09:04:58
+      Beer                      143      0   2014-09-08 04:42:30
    + Foods
-      Fruit and Vegetables      253      0   2014-09-07 09:04:58
-      Grain                     180      0   2014-09-07 09:04:58
-      Animal Meat              1318      0   2014-09-07 09:04:58
-      Fish                      647      0   2014-09-07 09:04:58
-      Food Cartridges           103      0   2014-09-07 09:04:58
-      Synthetic Meat            234      0   2014-09-07 09:04:58
-      Tea                      1502      0   2014-09-07 09:04:58
-      Coffee                   1235      0   2014-09-07 09:04:58
+      Fruit and Vegetables      253      0   2014-09-08 04:42:30
+      Grain                     181      0   2014-09-08 04:42:30
+      Animal Meat              1318      0   2014-09-08 04:42:30
+      Fish                      647      0   2014-09-08 04:42:30
+      Food Cartridges           103      0   2014-09-08 04:42:30
+      Synthetic Meat            234      0   2014-09-08 04:42:30
+      Tea                      1502      0   2014-09-08 04:42:30
+      Coffee                   1235      0   2014-09-08 04:42:30
    + Industrial Materials
-      Polymers                   29     39   2014-09-07 09:04:58
+      Polymers                   29     39   2014-09-08 04:42:30
    + Machinery
-      Hel-Static Furnaces       169      0   2014-09-07 09:04:58
-      Mineral Extractors        530      0   2014-09-07 09:04:58
+      Hel-Static Furnaces       172      0   2014-09-08 04:42:30
+      Mineral Extractors        530      0   2014-09-08 04:42:30
    + Medicines
-      Performance Enhancers    7075      0   2014-09-07 09:04:58
-      Basic Medicines           307      0   2014-09-07 09:04:58
-      Combat Stabilisers       2742      0   2014-09-07 09:04:58
+      Performance Enhancers    7137      0   2014-09-08 04:42:30
+      Basic Medicines           307      0   2014-09-08 04:42:30
+      Combat Stabilisers       2742      0   2014-09-08 04:42:30
    + Metals
-      Cobalt                    502    535   2014-09-07 09:04:58
-      Indium                   5751   5819   2014-09-07 09:04:58
-      Tantalum                 3625   3714   2014-09-07 09:04:58
-      Titanium                  634    663   2014-09-07 09:04:58
-      Aluminium                 154    170   2014-09-07 09:04:58
+      Cobalt                    503    537   2014-09-08 04:42:30
+      Indium                   5751   5819   2014-09-08 04:42:30
+      Tantalum                 3625   3714   2014-09-08 04:42:30
+      Titanium                  634    663   2014-09-08 04:42:30
+      Aluminium                 154    170   2014-09-08 04:42:30
    + Minerals
-      Bertrandite              2400      0   2014-09-07 09:04:58
-      Indite                   1822   1871   2014-09-07 09:04:58
-      Gallite                  1838      0   2014-09-07 09:04:58
-      Coltan                   1409      0   2014-09-07 09:04:58
-      Uraninite                 908      0   2014-09-07 09:04:58
-      Lepidolite                605      0   2014-09-07 09:04:58
-      Rutile                    325      0   2014-09-07 09:04:58
-      Bauxite                   113      0   2014-09-07 09:04:58
+      Bertrandite              2400      0   2014-09-08 04:42:30
+      Indite                   1948   2000   2014-09-08 04:42:30
+      Gallite                  1838      0   2014-09-08 04:42:30
+      Coltan                   1399      0   2014-09-08 04:42:30
+      Uraninite                 908      0   2014-09-08 04:42:30
+      Lepidolite                612      0   2014-09-08 04:42:30
+      Rutile                    325      0   2014-09-08 04:42:30
+      Bauxite                   113      0   2014-09-08 04:42:30
    + Technology
-      H.E. Suits                260      0   2014-09-07 09:04:58
-      Advanced Catalysers      2742      0   2014-09-07 09:04:58
-      Resonating Separators    5739      0   2014-09-07 09:04:58
-      Bioreducing Lichen       1021      0   2014-09-07 09:04:58
+      H.E. Suits                260      0   2014-09-08 04:42:30
+      Advanced Catalysers      2742      0   2014-09-08 04:42:30
+      Resonating Separators    5739      0   2014-09-08 04:42:30
+      Bioreducing Lichen       1022      0   2014-09-08 04:42:30
+      Animal Monitors           118    119   2014-09-07 10:18:00
    + Textiles
       Synthetic Fabrics          45     46   2014-09-07 08:44:15
    + Waste
-      Biowaste                   12     18   2014-09-07 09:04:58
-      Scrap                      91      0   2014-09-07 09:04:58
+      Biowaste                   12     18   2014-09-08 04:42:30
+      Scrap                      91      0   2014-09-08 04:42:30
    + Weapons
-      Reactive Armor           2200      0   2014-09-07 09:04:58
-      Non-Lethal Wpns          1795      0   2014-09-07 09:04:58
+      Reactive Armor           2202      0   2014-09-08 04:42:30
+      Non-Lethal Wpns          1889      0   2014-09-08 04:42:30
 
 
 @ ERANIN/Azeban City
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:17:01
-      Mineral Oil                62     73   2014-09-07 09:17:01
-      Pesticides                199      0   2014-09-07 09:17:01
+      Hydrogen Fuels             56      0   2014-09-08 06:18:46
+      Mineral Oil                62     74   2014-09-08 06:18:46
+      Pesticides                199      0   2014-09-08 06:18:46
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-07 09:17:01
-      Consumer Tech            6756      0   2014-09-07 09:17:01
-      Clothing                  252      0   2014-09-07 09:17:01
+      Dom. Appliances           550      0   2014-09-08 06:18:46
+      Consumer Tech            6822      0   2014-09-08 06:18:46
+      Clothing                  252      0   2014-09-08 06:18:46
    + Drugs
-      Tobacco                  4898      0   2014-09-07 09:17:01
-      Beer                      143      0   2014-09-07 09:17:01
-      Wine                      256      0   2014-09-07 09:17:01
-      Liquor                    659      0   2014-09-07 09:17:01
+      Tobacco                  4898      0   2014-09-08 06:18:46
+      Beer                      143      0   2014-09-08 06:18:46
+      Wine                      256      0   2014-09-08 06:18:46
+      Liquor                    659      0   2014-09-08 06:18:46
    + Foods
-      Fruit and Vegetables      166    184   2014-09-07 09:17:01
-      Grain                      74     86   2014-09-07 09:17:01
-      Animal Meat              1067   1114   2014-09-07 09:17:01
-      Fish                      645      0   2014-09-07 09:17:01
-      Tea                      1243   1297   2014-09-07 09:17:01
-      Coffee                   1067   1114   2014-09-07 09:17:01
+      Fruit and Vegetables      166    184   2014-09-08 06:18:46
+      Grain                      74     87   2014-09-08 06:18:46
+      Animal Meat              1067   1114   2014-09-08 06:18:46
+      Fish                      645      0   2014-09-08 06:18:46
+      Tea                      1243   1297   2014-09-08 06:18:46
+      Coffee                   1067   1114   2014-09-08 06:18:46
    + Machinery
-      Crop Harvesters          2325      0   2014-09-07 09:17:01
+      Crop Harvesters          2330      0   2014-09-08 06:18:46
    + Medicines
-      Agri-Medicines           1080      0   2014-09-07 09:17:01
-      Performance Enhancers    7115      0   2014-09-07 09:17:01
-      Basic Medicines           306      0   2014-09-07 09:17:01
-      Progenitor Cells         7115      0   2014-09-07 09:17:01
+      Agri-Medicines           1024      0   2014-09-08 06:18:46
+      Performance Enhancers    7115      0   2014-09-08 06:18:46
+      Basic Medicines           306      0   2014-09-08 06:18:46
+      Progenitor Cells         7115      0   2014-09-08 06:18:46
    + Metals
       Gold                     8281   8284   2014-09-06 10:25:54
+      Tantalum                 3149   3150   2014-09-08 00:03:42
    + Technology
-      Animal Monitors           289      0   2014-09-07 09:17:01
-      Terrain Enrich Sys       4675      0   2014-09-07 09:17:01
+      Animal Monitors           289      0   2014-09-08 06:18:46
+      Terrain Enrich Sys       4675      0   2014-09-08 06:18:46
       Computer Components       278    279   2014-09-07 05:47:29
       Robotics                 1276   1277   2014-09-06 22:13:19
+      Resonating Separators    4940   4942   2014-09-07 11:16:21
    + Textiles
-      Leather                    46     58   2014-09-07 09:17:01
-      Natural Fabrics           237    255   2014-09-07 09:17:01
+      Leather                    46     58   2014-09-08 06:18:46
+      Natural Fabrics           237    255   2014-09-08 06:18:46
    + Waste
-      Biowaste                   68      0   2014-09-07 09:17:01
+      Biowaste                   68      0   2014-09-08 06:18:46
    + Weapons
-      Personal Weapons         4435      0   2014-09-07 09:17:01
+      Personal Weapons         4451      0   2014-09-08 06:18:46
 
 
 @ G 239-25/Bresnik Mine
    + Chemicals
-      Hydrogen Fuels             81     81   2014-09-07 08:42:36
-      Explosives                290      0   2014-09-07 08:42:36
+      Hydrogen Fuels             81     81   2014-09-08 06:13:33
+      Explosives                290      0   2014-09-08 06:13:33
    + Consumer Items
-      Dom. Appliances           487      0   2014-09-07 08:42:36
-      Consumer Tech            6854      0   2014-09-07 08:42:36
-      Clothing                  307      0   2014-09-07 08:42:36
+      Dom. Appliances           468      0   2014-09-08 06:13:33
+      Consumer Tech            6854      0   2014-09-08 06:13:33
+      Clothing                  280      0   2014-09-08 06:13:33
    + Drugs
-      Beer                      143      0   2014-09-07 08:42:36
+      Beer                      143      0   2014-09-08 06:13:33
    + Foods
-      Fruit and Vegetables      253      0   2014-09-07 08:42:36
-      Grain                     181      0   2014-09-07 08:42:36
-      Animal Meat              1319      0   2014-09-07 08:42:36
-      Fish                      692      0   2014-09-07 08:42:36
-      Food Cartridges           103      0   2014-09-07 08:42:36
-      Synthetic Meat            234      0   2014-09-07 08:42:36
-      Tea                      1503      0   2014-09-07 08:42:36
-      Coffee                   1247      0   2014-09-07 08:42:36
+      Fruit and Vegetables      253      0   2014-09-08 06:13:33
+      Grain                     181      0   2014-09-08 06:13:33
+      Animal Meat              1319      0   2014-09-08 06:13:33
+      Fish                      707      0   2014-09-08 06:13:33
+      Food Cartridges           103      0   2014-09-08 06:13:33
+      Synthetic Meat            234      0   2014-09-08 06:13:33
+      Tea                      1503      0   2014-09-08 06:13:33
+      Coffee                   1334      0   2014-09-08 06:13:33
    + Machinery
-      Mineral Extractors        605      0   2014-09-07 08:42:36
+      Mineral Extractors        571      0   2014-09-08 06:13:33
    + Medicines
-      Performance Enhancers    7140      0   2014-09-07 08:42:36
-      Basic Medicines           307      0   2014-09-07 08:42:36
+      Performance Enhancers    6993      0   2014-09-08 06:13:33
+      Basic Medicines           307      0   2014-09-08 06:13:33
    + Minerals
-      Bertrandite              1825   1873   2014-09-07 08:42:36
-      Gallite                  1342   1379   2014-09-07 08:42:36
-      Lepidolite                302    324   2014-09-07 08:42:36
+      Bertrandite              1825   1873   2014-09-08 06:13:33
+      Gallite                  1342   1379   2014-09-08 06:13:33
+      Lepidolite                302    324   2014-09-08 06:13:33
       Gallium                  4219   4220   2014-09-06 23:03:11
    + Technology
-      H.E. Suits                260      0   2014-09-07 08:42:36
-      Bioreducing Lichen       1023      0   2014-09-07 08:42:36
+      H.E. Suits                260      0   2014-09-08 06:13:33
+      Bioreducing Lichen       1023      0   2014-09-08 06:13:33
+      Resonating Separators    4940   4941   2014-09-07 10:31:18
    + Waste
-      Biowaste                   11     18   2014-09-07 08:42:36
+      Biowaste                   12     18   2014-09-08 06:13:33
    + Weapons
-      Reactive Armor           2083      0   2014-09-07 08:42:36
-      Non-Lethal Wpns          1720      0   2014-09-07 08:42:36
+      Reactive Armor           2083      0   2014-09-08 06:13:33
+      Non-Lethal Wpns          1720      0   2014-09-08 06:13:33
 
 
 @ H DRACONIS/Brislington
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-07 09:07:32
+      Hydrogen Fuels             62      0   2014-09-08 06:12:09
    + Consumer Items
-      Dom. Appliances           293    314   2014-09-07 09:07:32
-      Consumer Tech            7109      0   2014-09-07 09:07:32
-      Clothing                  116    129   2014-09-07 09:07:32
+      Dom. Appliances           293    314   2014-09-08 06:12:09
+      Consumer Tech            7109      0   2014-09-08 06:12:09
+      Clothing                  116    129   2014-09-08 06:12:09
    + Drugs
-      Beer                      142      0   2014-09-07 09:07:32
-      Wine                      233      0   2014-09-07 09:07:32
+      Beer                      142      0   2014-09-08 06:12:09
+      Wine                      233      0   2014-09-08 06:12:09
    + Foods
-      Algae                      95      0   2014-09-07 09:07:32
-      Fruit and Vegetables      306      0   2014-09-07 09:07:32
-      Grain                     180      0   2014-09-07 09:07:32
-      Animal Meat              1398      0   2014-09-07 09:07:32
-      Fish                      769      0   2014-09-07 09:07:32
-      Food Cartridges           102      0   2014-09-07 09:07:32
-      Synthetic Meat            233      0   2014-09-07 09:07:32
-      Tea                      1589      0   2014-09-07 09:07:32
-      Coffee                   1398      0   2014-09-07 09:07:32
+      Algae                      95      0   2014-09-08 06:12:09
+      Fruit and Vegetables      306      0   2014-09-08 06:12:09
+      Grain                     180      0   2014-09-08 06:12:09
+      Animal Meat              1398      0   2014-09-08 06:12:09
+      Fish                      772      0   2014-09-08 06:12:09
+      Food Cartridges           102      0   2014-09-08 06:12:09
+      Synthetic Meat            233      0   2014-09-08 06:12:09
+      Tea                      1589      0   2014-09-08 06:12:09
+      Coffee                   1398      0   2014-09-08 06:12:09
    + Industrial Materials
-      Polymers                  115      0   2014-09-07 09:07:32
-      Semiconductors            957      0   2014-09-07 09:07:32
-      Superconductors          7109      0   2014-09-07 09:07:32
+      Polymers                  115      0   2014-09-08 06:12:09
+      Semiconductors            957      0   2014-09-08 06:12:09
+      Superconductors          7109      0   2014-09-08 06:12:09
    + Medicines
-      Performance Enhancers    7109      0   2014-09-07 09:07:32
-      Basic Medicines           306      0   2014-09-07 09:07:32
-      Progenitor Cells         7109      0   2014-09-07 09:07:32
+      Performance Enhancers    7109      0   2014-09-08 06:12:09
+      Basic Medicines           306      0   2014-09-08 06:12:09
+      Progenitor Cells         7109      0   2014-09-08 06:12:09
    + Metals
-      Gold                     9748      0   2014-09-07 09:07:32
-      Indium                   6232      0   2014-09-07 09:07:32
-      Tantalum                 4204      0   2014-09-07 09:07:32
-      Uranium                  2842      0   2014-09-07 09:07:32
-      Lithium                  1695      0   2014-09-07 09:07:32
-      Titanium                 1085      0   2014-09-07 09:07:32
-      Copper                    487      0   2014-09-07 09:07:32
-      Aluminium                 324      0   2014-09-07 09:07:32
+      Gold                     9530      0   2014-09-08 06:12:09
+      Indium                   6232      0   2014-09-08 06:12:09
+      Tantalum                 4204      0   2014-09-08 06:12:09
+      Uranium                  2842      0   2014-09-08 06:12:09
+      Lithium                  1695      0   2014-09-08 06:12:09
+      Titanium                 1085      0   2014-09-08 06:12:09
+      Copper                    487      0   2014-09-08 06:12:09
+      Aluminium                 324      0   2014-09-08 06:12:09
    + Minerals
-      Beryllium                8665      0   2014-09-07 09:07:32
-      Gallium                  5462      0   2014-09-07 09:07:32
+      Beryllium                8665      0   2014-09-08 06:12:09
+      Gallium                  5465      0   2014-09-08 06:12:09
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:07:32
-      Robotics                 1927      0   2014-09-07 09:07:32
-      Auto-Fabricators         3937      0   2014-09-07 09:07:32
+      H.E. Suits                259      0   2014-09-08 06:12:09
+      Robotics                 1927      0   2014-09-08 06:12:09
+      Auto-Fabricators         3937      0   2014-09-08 06:12:09
    + Textiles
-      Leather                   142      0   2014-09-07 09:07:32
-      Natural Fabrics           408      0   2014-09-07 09:07:32
-      Synthetic Fabrics         156      0   2014-09-07 09:07:32
+      Leather                   142      0   2014-09-08 06:12:09
+      Natural Fabrics           408      0   2014-09-08 06:12:09
+      Synthetic Fabrics         156      0   2014-09-08 06:12:09
    + Waste
-      Biowaste                   11     18   2014-09-07 09:07:32
-      Scrap                      20     24   2014-09-07 09:07:32
+      Biowaste                   11     18   2014-09-08 06:12:09
+      Scrap                      20     24   2014-09-08 06:12:09
    + Weapons
-      Personal Weapons         4488      0   2014-09-07 09:07:32
+      Personal Weapons         4488      0   2014-09-08 06:12:09
 
 
 @ I BOOTIS/Chango Dock
    + Chemicals
-      Hydrogen Fuels             58      0   2014-09-07 09:17:32
-      Mineral Oil                50     60   2014-09-07 09:17:32
-      Pesticides                198      0   2014-09-07 09:17:32
+      Hydrogen Fuels             58      0   2014-09-08 06:17:25
+      Mineral Oil                50     60   2014-09-08 06:17:25
+      Pesticides                198      0   2014-09-08 06:17:25
    + Consumer Items
-      Dom. Appliances           548      0   2014-09-07 09:17:32
-      Consumer Tech            7090      0   2014-09-07 09:17:32
-      Clothing                  116    129   2014-09-07 09:17:32
+      Dom. Appliances           548      0   2014-09-08 06:17:25
+      Consumer Tech            7090      0   2014-09-08 06:17:25
+      Clothing                  116    129   2014-09-08 06:17:25
    + Drugs
-      Beer                      142      0   2014-09-07 09:17:32
+      Beer                      142      0   2014-09-08 06:17:25
    + Foods
-      Algae                      10     15   2014-09-07 09:17:32
-      Fruit and Vegetables      305      0   2014-09-07 09:17:32
-      Grain                     180      0   2014-09-07 09:17:32
-      Animal Meat              1395      0   2014-09-07 09:17:32
-      Fish                      457    494   2014-09-07 09:17:32
-      Food Cartridges            13     19   2014-09-07 09:17:32
-      Synthetic Meat            217      0   2014-09-07 09:17:32
-      Tea                      1564      0   2014-09-07 09:17:32
-      Coffee                   1393      0   2014-09-07 09:17:32
+      Algae                      10     15   2014-09-08 06:17:25
+      Fruit and Vegetables      305      0   2014-09-08 06:17:25
+      Grain                     180      0   2014-09-08 06:17:25
+      Animal Meat              1395      0   2014-09-08 06:17:25
+      Fish                      457    494   2014-09-08 06:17:25
+      Food Cartridges            13     19   2014-09-08 06:17:25
+      Synthetic Meat            223      0   2014-09-08 06:17:25
+      Tea                      1581      0   2014-09-08 06:17:25
+      Coffee                   1392      0   2014-09-08 06:17:25
    + Industrial Materials
-      Polymers                  115      0   2014-09-07 09:17:32
-      Semiconductors            954      0   2014-09-07 09:17:32
-      Superconductors          7090      0   2014-09-07 09:17:32
+      Polymers                  115      0   2014-09-08 06:17:25
+      Semiconductors            954      0   2014-09-08 06:17:25
+      Superconductors          7090      0   2014-09-08 06:17:25
    + Machinery
-      Hel-Static Furnaces        45     53   2014-09-07 09:17:32
-      Mineral Extractors        393    421   2014-09-07 09:17:32
-      Crop Harvesters          1935   1990   2014-09-07 09:17:32
-      Marine Supplies          4476      0   2014-09-07 09:17:32
+      Hel-Static Furnaces        45     53   2014-09-08 06:17:25
+      Mineral Extractors        393    421   2014-09-08 06:17:25
+      Crop Harvesters          1935   1990   2014-09-08 06:17:25
+      Marine Supplies          4476      0   2014-09-08 06:17:25
    + Medicines
-      Agri-Medicines            943      0   2014-09-07 09:17:32
-      Performance Enhancers    7090      0   2014-09-07 09:17:32
-      Basic Medicines           342      0   2014-09-07 09:17:32
-      Progenitor Cells         7090      0   2014-09-07 09:17:32
+      Agri-Medicines            943      0   2014-09-08 06:17:25
+      Performance Enhancers    7090      0   2014-09-08 06:17:25
+      Basic Medicines           342      0   2014-09-08 06:17:25
+      Progenitor Cells         7090      0   2014-09-08 06:17:25
    + Metals
-      Gold                     9245      0   2014-09-07 09:17:32
-      Indium                   6213      0   2014-09-07 09:17:32
-      Tantalum                 4191      0   2014-09-07 09:17:32
-      Uranium                  2834      0   2014-09-07 09:17:32
-      Lithium                  1690      0   2014-09-07 09:17:32
-      Titanium                 1081      0   2014-09-07 09:17:32
-      Copper                    485      0   2014-09-07 09:17:32
-      Aluminium                 323      0   2014-09-07 09:17:32
+      Gold                     9177      0   2014-09-08 06:17:25
+      Indium                   6216      0   2014-09-08 06:17:25
+      Tantalum                 4192      0   2014-09-08 06:17:25
+      Uranium                  2834      0   2014-09-08 06:17:25
+      Lithium                  1690      0   2014-09-08 06:17:25
+      Titanium                 1067      0   2014-09-08 06:17:25
+      Copper                    485      0   2014-09-08 06:17:25
+      Aluminium                 323      0   2014-09-08 06:17:25
+      Cobalt                    408    409   2014-09-08 03:06:31
    + Minerals
-      Beryllium                8607      0   2014-09-07 09:17:32
-      Gallium                  5450      0   2014-09-07 09:17:32
+      Beryllium                8630      0   2014-09-08 06:17:25
+      Gallium                  5450      0   2014-09-08 06:17:25
    + Technology
-      Computer Components       346    371   2014-09-07 09:17:32
-      H.E. Suits                258      0   2014-09-07 09:17:32
-      Robotics                 1922      0   2014-09-07 09:17:32
-      Auto-Fabricators         3881      0   2014-09-07 09:17:32
-      Animal Monitors           288      0   2014-09-07 09:17:32
-      Aquaponic Systems         258      0   2014-09-07 09:17:32
-      Terrain Enrich Sys       4659      0   2014-09-07 09:17:32
+      Computer Components       346    371   2014-09-08 06:17:25
+      H.E. Suits                258      0   2014-09-08 06:17:25
+      Robotics                 1922      0   2014-09-08 06:17:25
+      Auto-Fabricators         3852      0   2014-09-08 06:17:25
+      Animal Monitors           288      0   2014-09-08 06:17:25
+      Aquaponic Systems         258      0   2014-09-08 06:17:25
+      Terrain Enrich Sys       4659      0   2014-09-08 06:17:25
       Bioreducing Lichen        598    599   2014-09-07 07:56:33
    + Textiles
-      Leather                   142      0   2014-09-07 09:17:32
-      Natural Fabrics           407      0   2014-09-07 09:17:32
-      Synthetic Fabrics         155      0   2014-09-07 09:17:32
+      Leather                   142      0   2014-09-08 06:17:25
+      Natural Fabrics           407      0   2014-09-08 06:17:25
+      Synthetic Fabrics         155      0   2014-09-08 06:17:25
    + Waste
-      Biowaste                   67      0   2014-09-07 09:17:32
-      Scrap                      20     25   2014-09-07 09:17:32
+      Biowaste                   67      0   2014-09-08 06:17:25
+      Scrap                      20     25   2014-09-08 06:17:25
 
 
 @ ITHACA/Hume Depot
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-07 08:12:57
-      Explosives                290      0   2014-09-07 08:12:57
+      Hydrogen Fuels             47     48   2014-09-08 03:33:59
+      Explosives                290      0   2014-09-08 03:33:59
    + Consumer Items
-      Dom. Appliances           522      0   2014-09-07 08:12:57
-      Consumer Tech            6848      0   2014-09-07 08:12:57
-      Clothing                  253      0   2014-09-07 08:12:57
+      Dom. Appliances           551      0   2014-09-08 03:33:59
+      Consumer Tech            6848      0   2014-09-08 03:33:59
+      Clothing                  253      0   2014-09-08 03:33:59
    + Drugs
-      Narcotics                 143      0   2014-09-07 08:12:57
-      Tobacco                  4911      0   2014-09-07 08:12:57
-      Beer                      143      0   2014-09-07 08:12:57
-      Wine                      234      0   2014-09-07 08:12:57
-      Liquor                    661      0   2014-09-07 08:12:57
+      Narcotics                 143      0   2014-09-08 03:33:59
+      Tobacco                  4911      0   2014-09-08 03:33:59
+      Beer                      143      0   2014-09-08 03:33:59
+      Wine                      234      0   2014-09-08 03:33:59
+      Liquor                    661      0   2014-09-08 03:33:59
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 08:12:57
-      Grain                     181      0   2014-09-07 08:12:57
-      Animal Meat              1318      0   2014-09-07 08:12:57
-      Fish                      647      0   2014-09-07 08:12:57
-      Food Cartridges           103      0   2014-09-07 08:12:57
-      Synthetic Meat            234      0   2014-09-07 08:12:57
-      Tea                      1502      0   2014-09-07 08:12:57
-      Coffee                   1234      0   2014-09-07 08:12:57
+      Fruit and Vegetables      307      0   2014-09-08 03:33:59
+      Grain                     181      0   2014-09-08 03:33:59
+      Animal Meat              1318      0   2014-09-08 03:33:59
+      Fish                      647      0   2014-09-08 03:33:59
+      Food Cartridges           103      0   2014-09-08 03:33:59
+      Synthetic Meat            234      0   2014-09-08 03:33:59
+      Tea                      1502      0   2014-09-08 03:33:59
+      Coffee                   1234      0   2014-09-08 03:33:59
    + Machinery
-      Mineral Extractors        605      0   2014-09-07 08:12:57
+      Mineral Extractors        617      0   2014-09-08 03:33:59
    + Medicines
-      Performance Enhancers    6891      0   2014-09-07 08:12:57
-      Basic Medicines           307      0   2014-09-07 08:12:57
+      Performance Enhancers    7134      0   2014-09-08 03:33:59
+      Basic Medicines           307      0   2014-09-08 03:33:59
    + Metals
-      Palladium               12870  12870   2014-09-07 08:12:57
-      Silver                   4200   4250   2014-09-07 08:12:57
-      Cobalt                    386    412   2014-09-07 08:12:57
+      Palladium               12927  12928   2014-09-08 03:33:59
+      Silver                   4293   4345   2014-09-08 03:33:59
+      Cobalt                    386    412   2014-09-08 03:33:59
       Gold                     8281   8282   2014-09-05 22:08:18
    + Minerals
-      Indite                   1574   1616   2014-09-07 08:12:57
-      Coltan                    910    950   2014-09-07 08:12:57
-      Uraninite                 533    558   2014-09-07 08:12:57
-      Rutile                    126    140   2014-09-07 08:12:57
-      Bauxite                    19     25   2014-09-07 08:12:57
+      Indite                   1574   1616   2014-09-08 03:33:59
+      Coltan                    910    950   2014-09-08 03:33:59
+      Uraninite                 533    558   2014-09-08 03:33:59
+      Rutile                    126    140   2014-09-08 03:33:59
+      Bauxite                    19     25   2014-09-08 03:33:59
    + Technology
-      H.E. Suits                260      0   2014-09-07 08:12:57
-      Bioreducing Lichen       1022      0   2014-09-07 08:12:57
+      H.E. Suits                260      0   2014-09-08 03:33:59
+      Bioreducing Lichen       1022      0   2014-09-08 03:33:59
    + Waste
-      Biowaste                   11     18   2014-09-07 08:12:57
+      Biowaste                   11     18   2014-09-08 03:33:59
    + Weapons
-      Personal Weapons         4418      0   2014-09-07 08:12:57
-      Reactive Armor           2082      0   2014-09-07 08:12:57
-      Non-Lethal Wpns          1811      0   2014-09-07 08:12:57
+      Personal Weapons         4499      0   2014-09-08 03:33:59
+      Reactive Armor           2082      0   2014-09-08 03:33:59
+      Non-Lethal Wpns          1906      0   2014-09-08 03:33:59
 
 
 @ KERIES/Derrickson's Escape
@@ -787,101 +824,101 @@
 
 @ LFT 880/Baker Platform
    + Chemicals
-      Hydrogen Fuels             57      0   2014-09-07 09:16:29
-      Mineral Oil               164      0   2014-09-07 09:16:29
+      Hydrogen Fuels             57      0   2014-09-08 06:02:17
+      Mineral Oil               164      0   2014-09-08 06:02:17
    + Consumer Items
-      Dom. Appliances           467      0   2014-09-07 09:16:29
-      Consumer Tech            6848      0   2014-09-07 09:16:29
-      Clothing                  279      0   2014-09-07 09:16:29
+      Dom. Appliances           467      0   2014-09-08 06:02:17
+      Consumer Tech            6848      0   2014-09-08 06:02:17
+      Clothing                  279      0   2014-09-08 06:02:17
    + Drugs
-      Beer                      143      0   2014-09-07 09:16:29
-      Wine                      234      0   2014-09-07 09:16:29
+      Beer                      143      0   2014-09-08 06:02:17
+      Wine                      234      0   2014-09-08 06:02:17
    + Foods
-      Fruit and Vegetables      253      0   2014-09-07 09:16:29
-      Grain                     144      0   2014-09-07 09:16:29
-      Animal Meat              1318      0   2014-09-07 09:16:29
-      Fish                      647      0   2014-09-07 09:16:29
-      Food Cartridges            96      0   2014-09-07 09:16:29
-      Synthetic Meat            234      0   2014-09-07 09:16:29
-      Tea                      1502      0   2014-09-07 09:16:29
-      Coffee                   1234      0   2014-09-07 09:16:29
+      Fruit and Vegetables      253      0   2014-09-08 06:02:17
+      Grain                     147      0   2014-09-08 06:02:17
+      Animal Meat              1318      0   2014-09-08 06:02:17
+      Fish                      647      0   2014-09-08 06:02:17
+      Food Cartridges           103      0   2014-09-08 06:02:17
+      Synthetic Meat            234      0   2014-09-08 06:02:17
+      Tea                      1502      0   2014-09-08 06:02:17
+      Coffee                   1234      0   2014-09-08 06:02:17
    + Machinery
-      Hel-Static Furnaces       141      0   2014-09-07 09:16:29
+      Hel-Static Furnaces       159      0   2014-09-08 06:02:17
    + Medicines
-      Performance Enhancers    7048      0   2014-09-07 09:16:29
-      Basic Medicines           307      0   2014-09-07 09:16:29
+      Performance Enhancers    7086      0   2014-09-08 06:02:17
+      Basic Medicines           273      0   2014-09-08 06:02:17
    + Metals
-      Gold                     8593   8689   2014-09-07 09:16:29
-      Indium                   5275   5337   2014-09-07 09:16:29
-      Uranium                  1975   2026   2014-09-07 09:16:29
-      Titanium                  617    646   2014-09-07 09:16:29
-      Copper                    223    239   2014-09-07 09:16:29
+      Gold                     8505   8600   2014-09-08 06:02:17
+      Indium                   5266   5328   2014-09-08 06:02:17
+      Uranium                  1975   2026   2014-09-08 06:02:17
+      Titanium                  617    646   2014-09-08 06:02:17
+      Copper                    223    239   2014-09-08 06:02:17
    + Minerals
-      Bertrandite              2399      0   2014-09-07 09:16:29
-      Indite                   2099      0   2014-09-07 09:16:29
-      Gallite                  1837      0   2014-09-07 09:16:29
-      Coltan                   1319      0   2014-09-07 09:16:29
-      Uraninite                 960      0   2014-09-07 09:16:29
-      Lepidolite                622      0   2014-09-07 09:16:29
-      Rutile                    296      0   2014-09-07 09:16:29
-      Bauxite                   116      0   2014-09-07 09:16:29
-      Beryllium                7308   7390   2014-09-07 09:16:29
-      Gallium                  4212   4262   2014-09-07 09:16:29
+      Bertrandite              2399      0   2014-09-08 06:02:17
+      Indite                   2099      0   2014-09-08 06:02:17
+      Gallite                  1837      0   2014-09-08 06:02:17
+      Coltan                   1319      0   2014-09-08 06:02:17
+      Uraninite                 960      0   2014-09-08 06:02:17
+      Lepidolite                622      0   2014-09-08 06:02:17
+      Rutile                    296      0   2014-09-08 06:02:17
+      Bauxite                   116      0   2014-09-08 06:02:17
+      Beryllium                7367   7450   2014-09-08 06:02:17
+      Gallium                  4316   4367   2014-09-08 06:02:17
    + Technology
-      H.E. Suits                260      0   2014-09-07 09:16:29
-      Advanced Catalysers      2741      0   2014-09-07 09:16:29
-      Resonating Separators    5736      0   2014-09-07 09:16:29
+      H.E. Suits                260      0   2014-09-08 06:02:17
+      Advanced Catalysers      2741      0   2014-09-08 06:02:17
+      Resonating Separators    5736      0   2014-09-08 06:02:17
    + Waste
-      Biowaste                   11     18   2014-09-07 09:16:29
-      Scrap                      91      0   2014-09-07 09:16:29
+      Biowaste                   11     18   2014-09-08 06:02:17
+      Scrap                      91      0   2014-09-08 06:02:17
    + Weapons
-      Personal Weapons         4099      0   2014-09-07 09:16:29
-      Reactive Armor           2082      0   2014-09-07 09:16:29
-      Non-Lethal Wpns          1826      0   2014-09-07 09:16:29
+      Personal Weapons         4099      0   2014-09-08 06:02:17
+      Reactive Armor           2082      0   2014-09-08 06:02:17
+      Non-Lethal Wpns          1826      0   2014-09-08 06:02:17
 
 
 @ LFT 992/Szulkin Mines
    + Chemicals
-      Hydrogen Fuels             81     82   2014-09-07 06:57:16
-      Explosives                291      0   2014-09-07 06:57:16
+      Hydrogen Fuels             81     82   2014-09-07 09:40:46
+      Explosives                291      0   2014-09-07 09:40:46
    + Consumer Items
-      Dom. Appliances           511      0   2014-09-07 06:57:16
-      Consumer Tech            6874      0   2014-09-07 06:57:16
-      Clothing                  280      0   2014-09-07 06:57:16
+      Dom. Appliances           511      0   2014-09-07 09:40:46
+      Consumer Tech            6874      0   2014-09-07 09:40:46
+      Clothing                  280      0   2014-09-07 09:40:46
    + Drugs
-      Narcotics                 144      0   2014-09-07 06:57:16
-      Tobacco                  4930      0   2014-09-07 06:57:16
-      Beer                      144      0   2014-09-07 06:57:16
-      Wine                      235      0   2014-09-07 06:57:16
-      Liquor                    664      0   2014-09-07 06:57:16
+      Narcotics                 144      0   2014-09-07 09:40:46
+      Tobacco                  4930      0   2014-09-07 09:40:46
+      Beer                      144      0   2014-09-07 09:40:46
+      Wine                      235      0   2014-09-07 09:40:46
+      Liquor                    664      0   2014-09-07 09:40:46
    + Foods
-      Fruit and Vegetables      308      0   2014-09-07 06:57:16
-      Grain                     182      0   2014-09-07 06:57:16
-      Animal Meat              1323      0   2014-09-07 06:57:16
-      Fish                      713      0   2014-09-07 06:57:16
-      Food Cartridges           103      0   2014-09-07 06:57:16
-      Synthetic Meat            235      0   2014-09-07 06:57:16
-      Tea                      1507      0   2014-09-07 06:57:16
-      Coffee                   1409      0   2014-09-07 06:57:16
+      Fruit and Vegetables      308      0   2014-09-07 09:40:46
+      Grain                     182      0   2014-09-07 09:40:46
+      Animal Meat              1323      0   2014-09-07 09:40:46
+      Fish                      713      0   2014-09-07 09:40:46
+      Food Cartridges           103      0   2014-09-07 09:40:46
+      Synthetic Meat            235      0   2014-09-07 09:40:46
+      Tea                      1507      0   2014-09-07 09:40:46
+      Coffee                   1409      0   2014-09-07 09:40:46
    + Machinery
-      Mineral Extractors        532      0   2014-09-07 06:57:16
+      Mineral Extractors        532      0   2014-09-07 09:40:46
    + Medicines
-      Performance Enhancers    7161      0   2014-09-07 06:57:16
-      Basic Medicines           308      0   2014-09-07 06:57:16
+      Performance Enhancers    7161      0   2014-09-07 09:40:46
+      Basic Medicines           308      0   2014-09-07 09:40:46
    + Minerals
-      Bertrandite              1830   1878   2014-09-07 06:57:16
-      Gallite                  1346   1383   2014-09-07 06:57:16
-      Lepidolite                303    325   2014-09-07 06:57:16
+      Bertrandite              1830   1878   2014-09-07 09:40:46
+      Gallite                  1346   1383   2014-09-07 09:40:46
+      Lepidolite                303    325   2014-09-07 09:40:46
       Beryllium                7157   7158   2014-09-06 22:23:32
    + Technology
-      H.E. Suits                261      0   2014-09-07 06:57:16
-      Bioreducing Lichen       1026      0   2014-09-07 06:57:16
+      H.E. Suits                261      0   2014-09-07 09:40:46
+      Bioreducing Lichen       1026      0   2014-09-07 09:40:46
    + Waste
-      Biowaste                   10     16   2014-09-07 06:57:16
+      Biowaste                   10     16   2014-09-07 09:40:46
    + Weapons
-      Personal Weapons         4199      0   2014-09-07 06:57:16
-      Reactive Armor           2209      0   2014-09-07 06:57:16
-      Non-Lethal Wpns          1942      0   2014-09-07 06:57:16
+      Personal Weapons         4223      0   2014-09-07 09:40:46
+      Reactive Armor           2209      0   2014-09-07 09:40:46
+      Non-Lethal Wpns          1942      0   2014-09-07 09:40:46
 
 
 @ LHS 2819/Tasaki Freeport
@@ -929,252 +966,297 @@
 
 @ LHS 2884/Abnett Platform
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-07 05:45:48
-      Explosives                290      0   2014-09-07 05:45:48
+      Hydrogen Fuels             47     48   2014-09-08 01:21:10
+      Explosives                290      0   2014-09-08 01:21:10
    + Consumer Items
-      Dom. Appliances           467      0   2014-09-07 05:45:48
-      Consumer Tech            6559      0   2014-09-07 05:45:48
-      Clothing                  253      0   2014-09-07 05:45:48
+      Dom. Appliances           467      0   2014-09-08 01:21:10
+      Consumer Tech            6559      0   2014-09-08 01:21:10
+      Clothing                  253      0   2014-09-08 01:21:10
    + Drugs
-      Beer                      143      0   2014-09-07 05:45:48
-      Wine                      234      0   2014-09-07 05:45:48
+      Beer                      143      0   2014-09-08 01:21:10
+      Wine                      234      0   2014-09-08 01:21:10
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 05:45:48
-      Grain                     181      0   2014-09-07 05:45:48
-      Animal Meat              1292      0   2014-09-07 05:45:48
-      Fish                      647      0   2014-09-07 05:45:48
-      Food Cartridges           102      0   2014-09-07 05:45:48
-      Synthetic Meat            234      0   2014-09-07 05:45:48
-      Tea                      1501      0   2014-09-07 05:45:48
-      Coffee                   1295      0   2014-09-07 05:45:48
+      Fruit and Vegetables      307      0   2014-09-08 01:21:10
+      Grain                     181      0   2014-09-08 01:21:10
+      Animal Meat              1337      0   2014-09-08 01:21:10
+      Fish                      647      0   2014-09-08 01:21:10
+      Food Cartridges           102      0   2014-09-08 01:21:10
+      Synthetic Meat            234      0   2014-09-08 01:21:10
+      Tea                      1501      0   2014-09-08 01:21:10
+      Coffee                   1328      0   2014-09-08 01:21:10
    + Machinery
-      Mineral Extractors        540      0   2014-09-07 05:45:48
+      Mineral Extractors        530      0   2014-09-08 01:21:10
    + Medicines
-      Progenitor Cells         7085      0   2014-09-07 05:45:48
-      Performance Enhancers    7086      0   2014-09-07 05:45:48
-      Basic Medicines           307      0   2014-09-07 05:45:48
+      Progenitor Cells         6889      0   2014-09-08 01:21:10
+      Performance Enhancers    7129      0   2014-09-08 01:21:10
+      Basic Medicines           307      0   2014-09-08 01:21:10
    + Metals
-      Gold                     8268   8360   2014-09-07 05:45:48
-      Silver                   4623   4678   2014-09-07 05:45:48
-      Cobalt                    501    535   2014-09-07 05:45:48
+      Gold                     8268   8360   2014-09-08 01:21:10
+      Silver                   4623   4678   2014-09-08 01:21:10
+      Cobalt                    501    535   2014-09-08 01:21:10
    + Minerals
-      Indite                   1573   1615   2014-09-07 05:45:48
-      Uraninite                 533    558   2014-09-07 05:45:48
-      Rutile                    126    140   2014-09-07 05:45:48
-      Bauxite                    19     25   2014-09-07 05:45:48
+      Indite                   1573   1615   2014-09-08 01:21:10
+      Uraninite                 533    558   2014-09-08 01:21:10
+      Rutile                    126    140   2014-09-08 01:21:10
+      Bauxite                    19     25   2014-09-08 01:21:10
       Bertrandite              1852   1853   2014-09-06 22:56:46
       Beryllium                7157   7158   2014-09-06 22:56:46
    + Technology
-      Bioreducing Lichen       1021      0   2014-09-07 05:45:48
-      H.E. Suits                258      0   2014-09-07 05:45:48
+      Bioreducing Lichen       1021      0   2014-09-08 01:21:10
+      H.E. Suits                255      0   2014-09-08 01:21:10
    + Waste
-      Biowaste                   11     18   2014-09-07 05:45:48
+      Biowaste                   11     18   2014-09-08 01:21:10
    + Weapons
-      Personal Weapons         4482      0   2014-09-07 05:45:48
-      Reactive Armor           2116      0   2014-09-07 05:45:48
-      Non-Lethal Wpns          1933      0   2014-09-07 05:45:48
+      Personal Weapons         4423      0   2014-09-08 01:21:10
+      Reactive Armor           2080      0   2014-09-08 01:21:10
+      Non-Lethal Wpns          1766      0   2014-09-08 01:21:10
 
 
 @ LHS 2887/Massimino Dock
    + Chemicals
-      Hydrogen Fuels             81     81   2014-09-07 08:09:30
-      Mineral Oil               164      0   2014-09-07 08:09:30
-      Explosives                150    167   2014-09-07 08:09:30
+      Hydrogen Fuels             81     81   2014-09-08 00:56:22
+      Mineral Oil               164      0   2014-09-08 00:56:22
+      Explosives                150    167   2014-09-08 00:56:22
    + Consumer Items
-      Dom. Appliances           468      0   2014-09-07 08:09:30
-      Consumer Tech            6854      0   2014-09-07 08:09:30
-      Clothing                  280      0   2014-09-07 08:09:30
+      Dom. Appliances           474      0   2014-09-08 00:56:22
+      Consumer Tech            6854      0   2014-09-08 00:56:22
+      Clothing                  280      0   2014-09-08 00:56:22
    + Drugs
-      Beer                      143      0   2014-09-07 08:09:30
+      Beer                      143      0   2014-09-08 00:56:22
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 08:09:30
-      Grain                     181      0   2014-09-07 08:09:30
-      Animal Meat              1319      0   2014-09-07 08:09:30
-      Fish                      740      0   2014-09-07 08:09:30
-      Food Cartridges           103      0   2014-09-07 08:09:30
-      Synthetic Meat            234      0   2014-09-07 08:09:30
-      Tea                      1503      0   2014-09-07 08:09:30
-      Coffee                   1319      0   2014-09-07 08:09:30
+      Fruit and Vegetables      307      0   2014-09-08 00:56:22
+      Grain                     181      0   2014-09-08 00:56:22
+      Animal Meat              1319      0   2014-09-08 00:56:22
+      Fish                      715      0   2014-09-08 00:56:22
+      Food Cartridges           103      0   2014-09-08 00:56:22
+      Synthetic Meat            234      0   2014-09-08 00:56:22
+      Tea                      1503      0   2014-09-08 00:56:22
+      Coffee                   1319      0   2014-09-08 00:56:22
    + Industrial Materials
-      Polymers                   29     39   2014-09-07 08:09:30
-      Semiconductors            683    715   2014-09-07 08:09:30
-      Superconductors          6709   6786   2014-09-07 08:09:30
+      Polymers                   29     39   2014-09-08 00:56:22
+      Semiconductors            683    715   2014-09-08 00:56:22
+      Superconductors          6709   6786   2014-09-08 00:56:22
    + Machinery
-      Hel-Static Furnaces       172      0   2014-09-07 08:09:30
+      Hel-Static Furnaces       172      0   2014-09-08 00:56:22
    + Medicines
-      Performance Enhancers    7141      0   2014-09-07 08:09:30
-      Basic Medicines           308      0   2014-09-07 08:09:30
+      Performance Enhancers    7141      0   2014-09-08 00:56:22
+      Basic Medicines           308      0   2014-09-08 00:56:22
    + Metals
-      Indium                   5792   5859   2014-09-07 08:09:30
-      Tantalum                 3733   3825   2014-09-07 08:09:30
-      Lithium                  1325   1382   2014-09-07 08:09:30
-      Titanium                  785    821   2014-09-07 08:09:30
-      Copper                    299    321   2014-09-07 08:09:30
+      Indium                   5828   5896   2014-09-08 00:56:22
+      Tantalum                 3733   3825   2014-09-08 00:56:22
+      Lithium                  1328   1385   2014-09-08 00:56:22
+      Titanium                  785    821   2014-09-08 00:56:22
+      Copper                    299    321   2014-09-08 00:56:22
    + Minerals
-      Bertrandite              2401      0   2014-09-07 08:09:30
-      Indite                   2314      0   2014-09-07 08:09:30
-      Gallite                  1839      0   2014-09-07 08:09:30
-      Coltan                   1495      0   2014-09-07 08:09:30
-      Uraninite                 961      0   2014-09-07 08:09:30
-      Lepidolite                622      0   2014-09-07 08:09:30
-      Rutile                    325      0   2014-09-07 08:09:30
-      Bauxite                   116      0   2014-09-07 08:09:30
+      Bertrandite              2401      0   2014-09-08 00:56:22
+      Indite                   2349      0   2014-09-08 00:56:22
+      Gallite                  1839      0   2014-09-08 00:56:22
+      Coltan                   1497      0   2014-09-08 00:56:22
+      Uraninite                 961      0   2014-09-08 00:56:22
+      Lepidolite                615      0   2014-09-08 00:56:22
+      Rutile                    325      0   2014-09-08 00:56:22
+      Bauxite                   116      0   2014-09-08 00:56:22
       Beryllium                7157   7158   2014-09-06 23:11:26
    + Technology
-      H.E. Suits                260      0   2014-09-07 08:09:30
-      Advanced Catalysers      3016      0   2014-09-07 08:09:30
-      Resonating Separators    5959      0   2014-09-07 08:09:30
+      H.E. Suits                260      0   2014-09-08 00:56:22
+      Advanced Catalysers      3004      0   2014-09-08 00:56:22
+      Resonating Separators    5935      0   2014-09-08 00:56:22
    + Textiles
-      Synthetic Fabrics          57     68   2014-09-07 08:09:30
+      Synthetic Fabrics          57     68   2014-09-08 00:56:22
    + Waste
-      Biowaste                   10     17   2014-09-07 08:09:30
-      Scrap                      91      0   2014-09-07 08:09:30
+      Biowaste                   10     17   2014-09-08 00:56:22
+      Scrap                      91      0   2014-09-08 00:56:22
    + Weapons
-      Reactive Armor           2083      0   2014-09-07 08:09:30
-      Non-Lethal Wpns          1936      0   2014-09-07 08:09:30
+      Reactive Armor           2083      0   2014-09-08 00:56:22
+      Non-Lethal Wpns          1936      0   2014-09-08 00:56:22
 
 
 @ LHS 3006/WCM Transfer Orbital
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-07 08:52:55
-      Explosives                290      0   2014-09-07 08:52:55
+      Hydrogen Fuels             80     81   2014-09-08 06:08:30
+      Explosives                290      0   2014-09-08 06:08:30
    + Consumer Items
-      Dom. Appliances           551      0   2014-09-07 08:52:55
-      Consumer Tech            6563      0   2014-09-07 08:52:55
-      Clothing                  255      0   2014-09-07 08:52:55
+      Dom. Appliances           535      0   2014-09-08 06:08:30
+      Consumer Tech            6563      0   2014-09-08 06:08:30
+      Clothing                  253      0   2014-09-08 06:08:30
    + Drugs
-      Beer                      143      0   2014-09-07 08:52:55
+      Beer                      143      0   2014-09-08 06:08:30
    + Foods
-      Fruit and Vegetables      298      0   2014-09-07 08:52:55
-      Grain                     181      0   2014-09-07 08:52:55
-      Animal Meat              1234      0   2014-09-07 08:52:55
-      Fish                      647      0   2014-09-07 08:52:55
-      Food Cartridges           103      0   2014-09-07 08:52:55
-      Synthetic Meat            234      0   2014-09-07 08:52:55
-      Tea                      1502      0   2014-09-07 08:52:55
-      Coffee                   1394      0   2014-09-07 08:52:55
+      Fruit and Vegetables      305      0   2014-09-08 06:08:30
+      Grain                     181      0   2014-09-08 06:08:30
+      Animal Meat              1234      0   2014-09-08 06:08:30
+      Fish                      647      0   2014-09-08 06:08:30
+      Food Cartridges           103      0   2014-09-08 06:08:30
+      Synthetic Meat            234      0   2014-09-08 06:08:30
+      Tea                      1502      0   2014-09-08 06:08:30
+      Coffee                   1323      0   2014-09-08 06:08:30
    + Machinery
-      Mineral Extractors        606      0   2014-09-07 08:52:55
+      Mineral Extractors        606      0   2014-09-08 06:08:30
    + Medicines
-      Performance Enhancers    7087      0   2014-09-07 08:52:55
-      Basic Medicines           307      0   2014-09-07 08:52:55
-      Progenitor Cells         7085      0   2014-09-07 08:52:55
+      Performance Enhancers    7134      0   2014-09-08 06:08:30
+      Basic Medicines           307      0   2014-09-08 06:08:30
+      Progenitor Cells         7134      0   2014-09-08 06:08:30
+   + Metals
+      Cobalt                    408    409   2014-09-08 00:01:11
    + Minerals
-      Bertrandite              1823   1871   2014-09-07 08:52:55
-      Indite                   1947   1999   2014-09-07 08:52:55
-      Gallite                  1514   1555   2014-09-07 08:52:55
-      Lepidolite                302    323   2014-09-07 08:52:55
-      Bauxite                    29     39   2014-09-07 08:52:55
+      Bertrandite              1823   1871   2014-09-08 06:08:30
+      Indite                   1947   1999   2014-09-08 06:08:30
+      Gallite                  1514   1555   2014-09-08 06:08:30
+      Lepidolite                302    323   2014-09-08 06:08:30
+      Bauxite                    29     39   2014-09-08 06:08:30
       Beryllium                7157   7158   2014-09-06 23:27:36
    + Technology
-      H.E. Suits                260      0   2014-09-07 08:52:55
-      Bioreducing Lichen       1022      0   2014-09-07 08:52:55
+      H.E. Suits                260      0   2014-09-08 06:08:30
+      Bioreducing Lichen       1022      0   2014-09-08 06:08:30
+      Resonating Separators    4940   4941   2014-09-07 10:21:41
    + Textiles
       Natural Fabrics           186    187   2014-09-07 02:02:01
    + Waste
-      Biowaste                   12     18   2014-09-07 08:52:55
+      Biowaste                   12     18   2014-09-08 06:08:30
    + Weapons
-      Reactive Armor           1963      0   2014-09-07 08:52:55
-      Non-Lethal Wpns          1719      0   2014-09-07 08:52:55
+      Reactive Armor           1963      0   2014-09-08 06:08:30
+      Non-Lethal Wpns          1719      0   2014-09-08 06:08:30
 
 
 @ LHS 3262/Louis De Lacaille Prospect
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:17:32
-      Pesticides                 58     67   2014-09-07 09:17:32
+      Hydrogen Fuels             56      0   2014-09-08 06:16:16
+      Pesticides                 58     67   2014-09-08 06:16:16
    + Consumer Items
-      Dom. Appliances           470      0   2014-09-07 09:17:32
-      Consumer Tech            5809   5877   2014-09-07 09:17:32
-      Clothing                  252      0   2014-09-07 09:17:32
+      Dom. Appliances           469      0   2014-09-08 06:16:16
+      Consumer Tech            5859   5928   2014-09-08 06:16:16
+      Clothing                  252      0   2014-09-08 06:16:16
    + Drugs
-      Beer                      142      0   2014-09-07 09:17:32
+      Beer                      142      0   2014-09-08 06:16:16
    + Foods
-      Fruit and Vegetables      252      0   2014-09-07 09:17:32
-      Grain                     180      0   2014-09-07 09:17:32
-      Animal Meat              1228      0   2014-09-07 09:17:32
-      Fish                      644      0   2014-09-07 09:17:32
-      Food Cartridges           102      0   2014-09-07 09:17:32
-      Synthetic Meat            233      0   2014-09-07 09:17:32
-      Tea                      1402      0   2014-09-07 09:17:32
-      Coffee                   1228      0   2014-09-07 09:17:32
+      Fruit and Vegetables      252      0   2014-09-08 06:16:16
+      Grain                     180      0   2014-09-08 06:16:16
+      Animal Meat              1228      0   2014-09-08 06:16:16
+      Fish                      664      0   2014-09-08 06:16:16
+      Food Cartridges           102      0   2014-09-08 06:16:16
+      Synthetic Meat            233      0   2014-09-08 06:16:16
+      Tea                      1402      0   2014-09-08 06:16:16
+      Coffee                   1228      0   2014-09-08 06:16:16
    + Industrial Materials
-      Superconductors          7099      0   2014-09-07 09:17:32
+      Superconductors          7099      0   2014-09-08 06:16:16
+      Semiconductors            553    554   2014-09-08 00:22:17
+      Polymers                   25     26   2014-09-08 00:22:17
    + Medicines
-      Performance Enhancers    7099      0   2014-09-07 09:17:32
-      Basic Medicines           252      0   2014-09-07 09:17:32
-      Progenitor Cells         7099      0   2014-09-07 09:17:32
+      Performance Enhancers    7099      0   2014-09-08 06:16:16
+      Basic Medicines           252      0   2014-09-08 06:16:16
+      Progenitor Cells         7099      0   2014-09-08 06:16:16
    + Metals
-      Palladium               13689      0   2014-09-07 09:17:32
-      Gold                     9258      0   2014-09-07 09:17:32
-      Silver                   5107      0   2014-09-07 09:17:32
-      Cobalt                    744      0   2014-09-07 09:17:32
-      Indium                   5879      0   2014-09-07 09:17:32
-      Tantalum                 4086      0   2014-09-07 09:17:32
-      Uranium                  2688      0   2014-09-07 09:17:32
-      Lithium                  1640      0   2014-09-07 09:17:32
+      Palladium               13747      0   2014-09-08 06:16:16
+      Gold                     9364      0   2014-09-08 06:16:16
+      Silver                   5109      0   2014-09-08 06:16:16
+      Cobalt                    744      0   2014-09-08 06:16:16
+      Indium                   5853      0   2014-09-08 06:16:16
+      Tantalum                 4086      0   2014-09-08 06:16:16
+      Uranium                  2621      0   2014-09-08 06:16:16
+      Lithium                  1625      0   2014-09-08 06:16:16
+      Copper                    237    238   2014-09-08 00:22:17
+      Titanium                  639    640   2014-09-08 00:22:17
    + Minerals
-      Gallite                  1828      0   2014-09-07 09:17:32
-      Rutile                    323      0   2014-09-07 09:17:32
-      Beryllium                7994      0   2014-09-07 09:17:32
-      Gallium                  4990      0   2014-09-07 09:17:32
-      Coltan                    940    941   2014-09-06 08:55:02
+      Gallite                  1828      0   2014-09-08 06:16:16
+      Rutile                    323      0   2014-09-08 06:16:16
+      Beryllium                7994      0   2014-09-08 06:16:16
+      Gallium                  4990      0   2014-09-08 06:16:16
+      Coltan                    940    941   2014-09-07 11:32:21
    + Technology
-      Computer Components       548      0   2014-09-07 09:17:32
-      H.E. Suits                 91    101   2014-09-07 09:17:32
-      Robotics                 1249   1283   2014-09-07 09:17:32
-      Auto-Fabricators         2853   2925   2014-09-07 09:17:32
-      Animal Monitors           107    119   2014-09-07 09:17:32
-      Terrain Enrich Sys       3919   3966   2014-09-07 09:17:32
+      Computer Components       548      0   2014-09-08 06:16:16
+      H.E. Suits                 91    101   2014-09-08 06:16:16
+      Robotics                 1249   1283   2014-09-08 06:16:16
+      Auto-Fabricators         2853   2925   2014-09-08 06:16:16
+      Animal Monitors           107    119   2014-09-08 06:16:16
+      Terrain Enrich Sys       3919   3966   2014-09-08 06:16:16
    + Waste
-      Biowaste                    7     11   2014-09-07 09:17:32
-      Scrap                      29     37   2014-09-07 09:17:32
+      Biowaste                    7     11   2014-09-08 06:16:16
+      Scrap                      29     37   2014-09-08 06:16:16
    + Weapons
-      Reactive Armor           1446   1485   2014-09-07 09:17:32
-      Non-Lethal Wpns          1249   1283   2014-09-07 09:17:32
+      Reactive Armor           1446   1485   2014-09-08 06:16:16
+      Non-Lethal Wpns          1249   1283   2014-09-08 06:16:16
 
 
 @ LHS 417/Gernhardt Camp
    + Chemicals
-      Hydrogen Fuels             81     81   2014-09-07 09:15:09
-      Explosives                290      0   2014-09-07 09:15:09
+      Hydrogen Fuels             81     81   2014-09-08 06:18:46
+      Explosives                290      0   2014-09-08 06:18:46
    + Consumer Items
-      Dom. Appliances           468      0   2014-09-07 09:15:09
-      Consumer Tech            6854      0   2014-09-07 09:15:09
-      Clothing                  280      0   2014-09-07 09:15:09
+      Dom. Appliances           468      0   2014-09-08 06:18:46
+      Consumer Tech            6854      0   2014-09-08 06:18:46
+      Clothing                  280      0   2014-09-08 06:18:46
    + Drugs
-      Beer                      143      0   2014-09-07 09:15:09
+      Beer                      143      0   2014-09-08 06:18:46
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 09:15:09
-      Grain                     181      0   2014-09-07 09:15:09
-      Animal Meat              1319      0   2014-09-07 09:15:09
-      Fish                      744      0   2014-09-07 09:15:09
-      Food Cartridges           103      0   2014-09-07 09:15:09
-      Synthetic Meat            234      0   2014-09-07 09:15:09
-      Tea                      1503      0   2014-09-07 09:15:09
-      Coffee                   1405      0   2014-09-07 09:15:09
+      Fruit and Vegetables      307      0   2014-09-08 06:18:46
+      Grain                     181      0   2014-09-08 06:18:46
+      Animal Meat              1319      0   2014-09-08 06:18:46
+      Fish                      722      0   2014-09-08 06:18:46
+      Food Cartridges           103      0   2014-09-08 06:18:46
+      Synthetic Meat            234      0   2014-09-08 06:18:46
+      Tea                      1503      0   2014-09-08 06:18:46
+      Coffee                   1337      0   2014-09-08 06:18:46
    + Machinery
-      Mineral Extractors        530      0   2014-09-07 09:15:09
+      Mineral Extractors        530      0   2014-09-08 06:18:46
    + Medicines
-      Performance Enhancers    7140      0   2014-09-07 09:15:09
-      Basic Medicines           256      0   2014-09-07 09:15:09
+      Performance Enhancers    7140      0   2014-09-08 06:18:46
+      Basic Medicines           265      0   2014-09-08 06:18:46
    + Metals
-      Palladium               13876  13877   2014-09-07 09:15:09
-      Silver                   4692   4748   2014-09-07 09:15:09
-      Cobalt                    513    547   2014-09-07 09:15:09
+      Palladium               13876  13877   2014-09-08 06:18:46
+      Silver                   4692   4748   2014-09-08 06:18:46
+      Cobalt                    513    547   2014-09-08 06:18:46
    + Minerals
-      Indite                   1660   1704   2014-09-07 09:15:09
-      Coltan                   1000   1044   2014-09-07 09:15:09
-      Uraninite                 683    715   2014-09-07 09:15:09
-      Rutile                    126    140   2014-09-07 09:15:09
-      Bauxite                    23     31   2014-09-07 09:15:09
+      Indite                   1659   1704   2014-09-08 06:18:46
+      Coltan                   1000   1044   2014-09-08 06:18:46
+      Uraninite                 683    715   2014-09-08 06:18:46
+      Rutile                    126    140   2014-09-08 06:18:46
+      Bauxite                    23     31   2014-09-08 06:18:46
    + Technology
-      H.E. Suits                255      0   2014-09-07 09:15:09
-      Bioreducing Lichen       1023      0   2014-09-07 09:15:09
+      H.E. Suits                260      0   2014-09-08 06:18:46
+      Bioreducing Lichen       1023      0   2014-09-08 06:18:46
    + Waste
-      Biowaste                    7     11   2014-09-07 09:15:09
+      Biowaste                    7     11   2014-09-08 06:18:46
    + Weapons
-      Reactive Armor           2083      0   2014-09-07 09:15:09
-      Non-Lethal Wpns          1720      0   2014-09-07 09:15:09
+      Reactive Armor           2083      0   2014-09-08 06:18:46
+      Non-Lethal Wpns          1720      0   2014-09-08 06:18:46
+
+
+@ LHS 5287/Mcarthur's Reach
+   + Chemicals
+      Hydrogen Fuels             47     48   2014-09-08 00:20:55
+      Explosives                290      0   2014-09-08 00:20:55
+   + Consumer Items
+      Dom. Appliances           552      0   2014-09-08 00:20:55
+      Consumer Tech            6854      0   2014-09-08 00:20:55
+      Clothing                  280      0   2014-09-08 00:20:55
+   + Drugs
+      Beer                      143      0   2014-09-08 00:20:55
+   + Foods
+      Fruit and Vegetables      307      0   2014-09-08 00:20:55
+      Grain                     181      0   2014-09-08 00:20:55
+      Animal Meat              1397      0   2014-09-08 00:20:55
+      Fish                      742      0   2014-09-08 00:20:55
+      Food Cartridges           103      0   2014-09-08 00:20:55
+      Synthetic Meat            234      0   2014-09-08 00:20:55
+      Tea                      1503      0   2014-09-08 00:20:55
+      Coffee                   1395      0   2014-09-08 00:20:55
+   + Machinery
+      Mineral Extractors        613      0   2014-09-08 00:20:55
+   + Medicines
+      Performance Enhancers    7140      0   2014-09-08 00:20:55
+      Basic Medicines           307      0   2014-09-08 00:20:55
+   + Minerals
+      Bertrandite              1825   1873   2014-09-08 00:20:55
+      Gallite                  1342   1379   2014-09-08 00:20:55
+      Lepidolite                355    380   2014-09-08 00:20:55
+   + Technology
+      H.E. Suits                260      0   2014-09-08 00:20:55
+      Bioreducing Lichen       1023      0   2014-09-08 00:20:55
+   + Waste
+      Biowaste                    7     11   2014-09-08 00:20:55
+   + Weapons
+      Reactive Armor           2203      0   2014-09-08 00:20:55
+      Non-Lethal Wpns          1936      0   2014-09-08 00:20:55
 
 
 @ LP 64-194/Longyear Survey
@@ -1222,695 +1304,715 @@
 
 @ LP 98-132/Freeport
    + Chemicals
-      Explosives                291      0   2014-09-07 08:56:43
-      Hydrogen Fuels             71     72   2014-09-07 08:56:43
+      Explosives                285      0   2014-09-08 06:14:40
+      Hydrogen Fuels             71     72   2014-09-08 06:14:40
    + Consumer Items
-      Dom. Appliances           469      0   2014-09-07 08:56:43
-      Consumer Tech            6874      0   2014-09-07 08:56:43
-      Clothing                  280      0   2014-09-07 08:56:43
+      Dom. Appliances           469      0   2014-09-08 06:14:40
+      Consumer Tech            6874      0   2014-09-08 06:14:40
+      Clothing                  280      0   2014-09-08 06:14:40
    + Drugs
-      Narcotics                 127      0   2014-09-07 08:56:43
-      Tobacco                  4930      0   2014-09-07 08:56:43
-      Beer                      143      0   2014-09-07 08:56:43
-      Wine                      235      0   2014-09-07 08:56:43
-      Liquor                    664      0   2014-09-07 08:56:43
+      Narcotics                 127      0   2014-09-08 06:14:40
+      Tobacco                  4930      0   2014-09-08 06:14:40
+      Beer                      143      0   2014-09-08 06:14:40
+      Wine                      235      0   2014-09-08 06:14:40
+      Liquor                    664      0   2014-09-08 06:14:40
    + Foods
-      Fruit and Vegetables      254      0   2014-09-07 08:56:43
-      Grain                     157      0   2014-09-07 08:56:43
-      Animal Meat              1323      0   2014-09-07 08:56:43
-      Fish                      713      0   2014-09-07 08:56:43
-      Food Cartridges           100      0   2014-09-07 08:56:43
-      Synthetic Meat            235      0   2014-09-07 08:56:43
-      Tea                      1507      0   2014-09-07 08:56:43
-      Coffee                   1323      0   2014-09-07 08:56:43
+      Fruit and Vegetables      254      0   2014-09-08 06:14:40
+      Grain                     153      0   2014-09-08 06:14:40
+      Animal Meat              1323      0   2014-09-08 06:14:40
+      Fish                      713      0   2014-09-08 06:14:40
+      Food Cartridges           103      0   2014-09-08 06:14:40
+      Synthetic Meat            235      0   2014-09-08 06:14:40
+      Tea                      1507      0   2014-09-08 06:14:40
+      Coffee                   1323      0   2014-09-08 06:14:40
       Algae                      15     16   2014-09-07 01:44:05
    + Machinery
-      Mineral Extractors        532      0   2014-09-07 08:56:43
+      Mineral Extractors        532      0   2014-09-08 06:14:40
    + Medicines
-      Performance Enhancers    6953      0   2014-09-07 08:56:43
-      Basic Medicines           308      0   2014-09-07 08:56:43
+      Performance Enhancers    6991      0   2014-09-08 06:14:40
+      Basic Medicines           308      0   2014-09-08 06:14:40
+      Combat Stabilisers       1072   2145   2014-09-07 21:45:34
    + Metals
-      Gold                     9183   9285   2014-09-07 08:56:43
+      Gold                     9183   9285   2014-09-08 06:14:40
    + Minerals
-      Bertrandite              1830   1878   2014-09-07 08:56:43
-      Coltan                   1023   1068   2014-09-07 08:56:43
-      Rutile                    144    160   2014-09-07 08:56:43
-      Bauxite                    19     25   2014-09-07 08:56:43
+      Bertrandite              1830   1878   2014-09-08 06:14:40
+      Coltan                   1033   1078   2014-09-08 06:14:40
+      Rutile                    144    160   2014-09-08 06:14:40
+      Bauxite                    19     25   2014-09-08 06:14:40
    + Technology
-      H.E. Suits                251      0   2014-09-07 08:56:43
-      Bioreducing Lichen       1026      0   2014-09-07 08:56:43
+      H.E. Suits                256      0   2014-09-08 06:14:40
+      Bioreducing Lichen       1026      0   2014-09-08 06:14:40
+   + Textiles
+      Synthetic Fabrics          23     46   2014-09-08 04:00:44
    + Waste
-      Biowaste                   12     18   2014-09-07 08:56:43
+      Biowaste                   12     18   2014-09-08 06:14:40
    + Weapons
-      Personal Weapons         4115      0   2014-09-07 08:56:43
-      Reactive Armor           2044      0   2014-09-07 08:56:43
-      Non-Lethal Wpns          1759      0   2014-09-07 08:56:43
+      Personal Weapons         4115      0   2014-09-08 06:14:40
+      Reactive Armor           2083      0   2014-09-08 06:14:40
+      Non-Lethal Wpns          1725      0   2014-09-08 06:14:40
 
 
 @ MAGEC/Xiaoguan Hub
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 08:21:45
-      Mineral Oil                62     73   2014-09-07 08:21:45
-      Pesticides                199      0   2014-09-07 08:21:45
+      Hydrogen Fuels             56      0   2014-09-08 02:19:44
+      Mineral Oil                62     73   2014-09-08 02:19:44
+      Pesticides                199      0   2014-09-08 02:19:44
    + Consumer Items
-      Dom. Appliances           549      0   2014-09-07 08:21:45
-      Consumer Tech            7114      0   2014-09-07 08:21:45
-      Clothing                  306      0   2014-09-07 08:21:45
+      Dom. Appliances           547      0   2014-09-08 02:19:44
+      Consumer Tech            7074      0   2014-09-08 02:19:44
+      Clothing                  306      0   2014-09-08 02:19:44
    + Drugs
-      Beer                      143      0   2014-09-07 08:21:45
+      Beer                      143      0   2014-09-08 02:19:44
    + Foods
-      Fruit and Vegetables      128    142   2014-09-07 08:21:45
-      Grain                      70     83   2014-09-07 08:21:45
-      Animal Meat               925    966   2014-09-07 08:21:45
-      Fish                      645      0   2014-09-07 08:21:45
-      Tea                      1198   1249   2014-09-07 08:21:45
-      Coffee                   1023   1068   2014-09-07 08:21:45
+      Fruit and Vegetables      128    142   2014-09-08 02:19:44
+      Grain                      70     83   2014-09-08 02:19:44
+      Animal Meat               944    986   2014-09-08 02:19:44
+      Fish                      645      0   2014-09-08 02:19:44
+      Tea                      1198   1249   2014-09-08 02:19:44
+      Coffee                   1024   1069   2014-09-08 02:19:44
    + Machinery
-      Crop Harvesters          2341      0   2014-09-07 08:21:45
+      Crop Harvesters          2341      0   2014-09-08 02:19:44
    + Medicines
-      Agri-Medicines           1086      0   2014-09-07 08:21:45
-      Performance Enhancers    7114      0   2014-09-07 08:21:45
-      Basic Medicines           306      0   2014-09-07 08:21:45
-      Progenitor Cells         7114      0   2014-09-07 08:21:45
+      Agri-Medicines           1086      0   2014-09-08 02:19:44
+      Performance Enhancers    7114      0   2014-09-08 02:19:44
+      Basic Medicines           306      0   2014-09-08 02:19:44
+      Progenitor Cells         7114      0   2014-09-08 02:19:44
    + Metals
       Uranium                  1003   2007   2014-09-06 22:37:56
    + Technology
-      Animal Monitors           289      0   2014-09-07 08:21:45
-      Terrain Enrich Sys       4675      0   2014-09-07 08:21:45
+      Animal Monitors           289      0   2014-09-08 02:19:44
+      Terrain Enrich Sys       4675      0   2014-09-08 02:19:44
    + Textiles
-      Leather                    43     53   2014-09-07 08:21:45
-      Natural Fabrics           237    255   2014-09-07 08:21:45
+      Leather                    43     53   2014-09-08 02:19:44
+      Natural Fabrics           237    255   2014-09-08 02:19:44
    + Waste
-      Biowaste                   68      0   2014-09-07 08:21:45
+      Biowaste                   68      0   2014-09-08 02:19:44
       Scrap                      12     25   2014-09-06 22:37:56
 
 
 @ MORGOR/Romanek's Folly
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-07 09:14:38
-      Explosives                289      0   2014-09-07 09:14:38
+      Hydrogen Fuels             80     81   2014-09-07 23:27:38
+      Explosives                289      0   2014-09-07 23:27:38
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-07 09:14:38
-      Consumer Tech            6837      0   2014-09-07 09:14:38
-      Clothing                  281      0   2014-09-07 09:14:38
+      Dom. Appliances           467      0   2014-09-07 23:27:38
+      Consumer Tech            6837      0   2014-09-07 23:27:38
+      Clothing                  288      0   2014-09-07 23:27:38
    + Drugs
-      Narcotics                 127      0   2014-09-07 09:14:38
-      Tobacco                  4904      0   2014-09-07 09:14:38
-      Beer                      143      0   2014-09-07 09:14:38
-      Wine                      234      0   2014-09-07 09:14:38
-      Liquor                    631      0   2014-09-07 09:14:38
+      Narcotics                 127      0   2014-09-07 23:27:38
+      Tobacco                  4904      0   2014-09-07 23:27:38
+      Beer                      143      0   2014-09-07 23:27:38
+      Wine                      234      0   2014-09-07 23:27:38
+      Liquor                    659      0   2014-09-07 23:27:38
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 09:14:38
-      Grain                     181      0   2014-09-07 09:14:38
-      Animal Meat              1316      0   2014-09-07 09:14:38
-      Fish                      646      0   2014-09-07 09:14:38
-      Food Cartridges           102      0   2014-09-07 09:14:38
-      Synthetic Meat            234      0   2014-09-07 09:14:38
-      Tea                      1499      0   2014-09-07 09:14:38
-      Coffee                   1340      0   2014-09-07 09:14:38
+      Fruit and Vegetables      307      0   2014-09-07 23:27:38
+      Grain                     181      0   2014-09-07 23:27:38
+      Animal Meat              1316      0   2014-09-07 23:27:38
+      Fish                      646      0   2014-09-07 23:27:38
+      Food Cartridges           102      0   2014-09-07 23:27:38
+      Synthetic Meat            234      0   2014-09-07 23:27:38
+      Tea                      1499      0   2014-09-07 23:27:38
+      Coffee                   1325      0   2014-09-07 23:27:38
    + Machinery
-      Mineral Extractors        593      0   2014-09-07 09:14:38
+      Mineral Extractors        553      0   2014-09-07 23:27:38
       Hel-Static Furnaces        53     54   2014-09-06 23:47:33
    + Medicines
-      Performance Enhancers    6967      0   2014-09-07 09:14:38
-      Basic Medicines           307      0   2014-09-07 09:14:38
+      Performance Enhancers    7062      0   2014-09-07 23:27:38
+      Basic Medicines           307      0   2014-09-07 23:27:38
    + Minerals
-      Bertrandite              1872   1921   2014-09-07 09:14:38
-      Gallite                  1339   1376   2014-09-07 09:14:38
-      Lepidolite                302    323   2014-09-07 09:14:38
+      Bertrandite              1897   1947   2014-09-07 23:27:38
+      Gallite                  1339   1376   2014-09-07 23:27:38
+      Lepidolite                302    323   2014-09-07 23:27:38
       Bauxite                    25     26   2014-09-06 23:47:33
+      Coltan                    940    941   2014-09-07 11:40:09
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:14:38
-      Bioreducing Lichen       1020      0   2014-09-07 09:14:38
+      H.E. Suits                259      0   2014-09-07 23:27:38
+      Bioreducing Lichen       1015      0   2014-09-07 23:27:38
+      Animal Monitors           118    119   2014-09-07 11:09:43
    + Waste
-      Biowaste                   12     18   2014-09-07 09:14:38
+      Biowaste                   11     18   2014-09-07 23:27:38
    + Weapons
-      Personal Weapons         4093      0   2014-09-07 09:14:38
+      Personal Weapons         4101      0   2014-09-07 23:27:38
 
 
 @ NANG TA-KHIAN/Hay Point
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-07 09:16:29
+      Hydrogen Fuels             62      0   2014-09-08 05:53:48
    + Consumer Items
-      Dom. Appliances           345    369   2014-09-07 09:16:29
-      Consumer Tech            6550      0   2014-09-07 09:16:29
-      Clothing                  307      0   2014-09-07 09:16:29
+      Dom. Appliances           345    369   2014-09-08 05:53:48
+      Consumer Tech            6550      0   2014-09-08 05:53:48
+      Clothing                  303      0   2014-09-08 05:53:48
    + Drugs
-      Beer                      143      0   2014-09-07 09:16:29
-      Wine                      233      0   2014-09-07 09:16:29
+      Beer                      143      0   2014-09-08 05:53:48
+      Wine                      233      0   2014-09-08 05:53:48
    + Foods
-      Algae                      95      0   2014-09-07 09:16:29
-      Fruit and Vegetables      307      0   2014-09-07 09:16:29
-      Grain                     180      0   2014-09-07 09:16:29
-      Animal Meat              1387      0   2014-09-07 09:16:29
-      Fish                      763      0   2014-09-07 09:16:29
-      Food Cartridges           102      0   2014-09-07 09:16:29
-      Synthetic Meat            233      0   2014-09-07 09:16:29
-      Tea                      1406      0   2014-09-07 09:16:29
-      Coffee                   1368      0   2014-09-07 09:16:29
+      Algae                      95      0   2014-09-08 05:53:48
+      Fruit and Vegetables      306      0   2014-09-08 05:53:48
+      Grain                     180      0   2014-09-08 05:53:48
+      Animal Meat              1283      0   2014-09-08 05:53:48
+      Fish                      773      0   2014-09-08 05:53:48
+      Food Cartridges           102      0   2014-09-08 05:53:48
+      Synthetic Meat            233      0   2014-09-08 05:53:48
+      Tea                      1406      0   2014-09-08 05:53:48
+      Coffee                   1309      0   2014-09-08 05:53:48
    + Industrial Materials
-      Polymers                  115      0   2014-09-07 09:16:29
-      Semiconductors            958      0   2014-09-07 09:16:29
-      Superconductors          7120      0   2014-09-07 09:16:29
+      Polymers                  115      0   2014-09-08 05:53:48
+      Semiconductors            958      0   2014-09-08 05:53:48
+      Superconductors          7120      0   2014-09-08 05:53:48
    + Machinery
-      Mineral Extractors        403    432   2014-09-07 09:16:29
-      Crop Harvesters          1943   1995   2014-09-07 09:16:29
+      Mineral Extractors        406    435   2014-09-08 05:53:48
+      Crop Harvesters          1943   1995   2014-09-08 05:53:48
    + Medicines
-      Performance Enhancers    7120      0   2014-09-07 09:16:29
-      Basic Medicines           307      0   2014-09-07 09:16:29
-      Progenitor Cells         7120      0   2014-09-07 09:16:29
+      Performance Enhancers    7120      0   2014-09-08 05:53:48
+      Basic Medicines           307      0   2014-09-08 05:53:48
+      Progenitor Cells         7120      0   2014-09-08 05:53:48
    + Metals
-      Gold                     9175      0   2014-09-07 09:16:29
-      Indium                   6242      0   2014-09-07 09:16:29
-      Tantalum                 4210      0   2014-09-07 09:16:29
-      Uranium                  2846      0   2014-09-07 09:16:29
-      Lithium                  1626      0   2014-09-07 09:16:29
-      Titanium                 1087      0   2014-09-07 09:16:29
-      Copper                    487      0   2014-09-07 09:16:29
-      Aluminium                 324      0   2014-09-07 09:16:29
+      Gold                     9175      0   2014-09-08 05:53:48
+      Indium                   6226      0   2014-09-08 05:53:48
+      Tantalum                 4210      0   2014-09-08 05:53:48
+      Uranium                  2846      0   2014-09-08 05:53:48
+      Lithium                  1644      0   2014-09-08 05:53:48
+      Titanium                 1087      0   2014-09-08 05:53:48
+      Copper                    487      0   2014-09-08 05:53:48
+      Aluminium                 324      0   2014-09-08 05:53:48
    + Minerals
-      Beryllium                8351      0   2014-09-07 09:16:29
-      Gallium                  5470      0   2014-09-07 09:16:29
+      Beryllium                8348      0   2014-09-08 05:53:48
+      Gallium                  5473      0   2014-09-08 05:53:48
+      Bauxite                    25     26   2014-09-08 05:53:48
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:16:29
-      Robotics                 1930      0   2014-09-07 09:16:29
-      Auto-Fabricators         3943      0   2014-09-07 09:16:29
+      H.E. Suits                259      0   2014-09-08 05:53:48
+      Robotics                 1930      0   2014-09-08 05:53:48
+      Auto-Fabricators         3943      0   2014-09-08 05:53:48
    + Textiles
-      Leather                   143      0   2014-09-07 09:16:29
-      Natural Fabrics           408      0   2014-09-07 09:16:29
-      Synthetic Fabrics         156      0   2014-09-07 09:16:29
+      Leather                   143      0   2014-09-08 05:53:48
+      Natural Fabrics           408      0   2014-09-08 05:53:48
+      Synthetic Fabrics         156      0   2014-09-08 05:53:48
    + Waste
-      Biowaste                   11     18   2014-09-07 09:16:29
-      Scrap                      30     37   2014-09-07 09:16:29
+      Biowaste                   11     18   2014-09-08 05:53:48
+      Scrap                      30     37   2014-09-08 05:53:48
    + Weapons
-      Personal Weapons         3968   4066   2014-09-07 09:16:29
+      Personal Weapons         3968   4066   2014-09-08 05:53:48
 
 
 @ NARAKA/Novitski Oasis
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 02:46:35
-      Pesticides                199      0   2014-09-07 02:46:35
+      Hydrogen Fuels             56      0   2014-09-07 21:22:40
+      Pesticides                199      0   2014-09-07 21:22:40
    + Consumer Items
-      Dom. Appliances           549      0   2014-09-07 02:46:35
-      Consumer Tech            7070      0   2014-09-07 02:46:35
-      Clothing                  305      0   2014-09-07 02:46:35
+      Dom. Appliances           549      0   2014-09-07 21:22:40
+      Consumer Tech            7050      0   2014-09-07 21:22:40
+      Clothing                  305      0   2014-09-07 21:22:40
    + Drugs
-      Beer                      142      0   2014-09-07 02:46:35
+      Beer                      142      0   2014-09-07 21:22:40
    + Foods
-      Fruit and Vegetables      273      0   2014-09-07 02:46:35
-      Grain                      61     72   2014-09-07 02:46:35
-      Animal Meat               881    922   2014-09-07 02:46:35
-      Fish                      771      0   2014-09-07 02:46:35
-      Tea                      1588      0   2014-09-07 02:46:35
-      Coffee                   1397      0   2014-09-07 02:46:35
+      Fruit and Vegetables      282      0   2014-09-07 21:22:40
+      Grain                      61     72   2014-09-07 21:22:40
+      Animal Meat               887    928   2014-09-07 21:22:40
+      Fish                      770      0   2014-09-07 21:22:40
+      Tea                      1588      0   2014-09-07 21:22:40
+      Coffee                   1397      0   2014-09-07 21:22:40
    + Machinery
-      Crop Harvesters          2337      0   2014-09-07 02:46:35
-      Marine Supplies          4484      0   2014-09-07 02:46:35
+      Crop Harvesters          2337      0   2014-09-07 21:22:40
+      Marine Supplies          4484      0   2014-09-07 21:22:40
    + Medicines
-      Agri-Medicines           1084      0   2014-09-07 02:46:35
-      Performance Enhancers    7103      0   2014-09-07 02:46:35
-      Basic Medicines           306      0   2014-09-07 02:46:35
-      Progenitor Cells         7103      0   2014-09-07 02:46:35
+      Agri-Medicines           1084      0   2014-09-07 21:22:40
+      Performance Enhancers    7103      0   2014-09-07 21:22:40
+      Basic Medicines           306      0   2014-09-07 21:22:40
+      Progenitor Cells         7103      0   2014-09-07 21:22:40
    + Technology
-      Animal Monitors           289      0   2014-09-07 02:46:35
-      Aquaponic Systems         259      0   2014-09-07 02:46:35
-      Terrain Enrich Sys       4668      0   2014-09-07 02:46:35
+      Animal Monitors           289      0   2014-09-07 21:22:40
+      Aquaponic Systems         259      0   2014-09-07 21:22:40
+      Terrain Enrich Sys       4668      0   2014-09-07 21:22:40
    + Textiles
-      Leather                    38     48   2014-09-07 02:46:35
+      Leather                    38     48   2014-09-07 21:22:40
    + Waste
-      Biowaste                   68      0   2014-09-07 02:46:35
+      Biowaste                   68      0   2014-09-07 21:22:40
 
 
 @ OPALA/Romanenko Estate
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:17:32
-      Pesticides                199      0   2014-09-07 09:17:32
+      Hydrogen Fuels             56      0   2014-09-08 05:14:16
+      Pesticides                199      0   2014-09-08 05:14:16
    + Consumer Items
-      Dom. Appliances           549      0   2014-09-07 09:17:32
-      Consumer Tech            7103      0   2014-09-07 09:17:32
-      Clothing                  306      0   2014-09-07 09:17:32
+      Dom. Appliances           549      0   2014-09-08 05:14:16
+      Consumer Tech            7103      0   2014-09-08 05:14:16
+      Clothing                  304      0   2014-09-08 05:14:16
    + Drugs
-      Beer                      142      0   2014-09-07 09:17:32
+      Beer                      142      0   2014-09-08 05:14:16
    + Foods
-      Algae                      10     16   2014-09-07 09:17:32
-      Fruit and Vegetables      297      0   2014-09-07 09:17:32
-      Grain                      71     84   2014-09-07 09:17:32
-      Animal Meat              1339      0   2014-09-07 09:17:32
-      Fish                      443    478   2014-09-07 09:17:32
-      Tea                      1588      0   2014-09-07 09:17:32
-      Coffee                   1397      0   2014-09-07 09:17:32
+      Algae                      10     16   2014-09-08 05:14:16
+      Fruit and Vegetables      306      0   2014-09-08 05:14:16
+      Grain                      71     84   2014-09-08 05:14:16
+      Animal Meat              1358      0   2014-09-08 05:14:16
+      Fish                      443    479   2014-09-08 05:14:16
+      Tea                      1588      0   2014-09-08 05:14:16
+      Coffee                   1397      0   2014-09-08 05:14:16
    + Machinery
-      Crop Harvesters          2337      0   2014-09-07 09:17:32
-      Marine Supplies          4484      0   2014-09-07 09:17:32
+      Crop Harvesters          2337      0   2014-09-08 05:14:16
+      Marine Supplies          4484      0   2014-09-08 05:14:16
       Mineral Extractors        320    321   2014-09-07 01:32:19
    + Medicines
-      Agri-Medicines           1084      0   2014-09-07 09:17:32
-      Performance Enhancers    7103      0   2014-09-07 09:17:32
-      Basic Medicines           306      0   2014-09-07 09:17:32
-      Progenitor Cells         7103      0   2014-09-07 09:17:32
+      Agri-Medicines           1084      0   2014-09-08 05:14:16
+      Performance Enhancers    7103      0   2014-09-08 05:14:16
+      Basic Medicines           306      0   2014-09-08 05:14:16
+      Progenitor Cells         7103      0   2014-09-08 05:14:16
    + Minerals
       Uraninite                 277    554   2014-09-07 00:09:24
    + Technology
-      Animal Monitors           289      0   2014-09-07 09:17:32
-      Aquaponic Systems         259      0   2014-09-07 09:17:32
-      Terrain Enrich Sys       4668      0   2014-09-07 09:17:32
+      Animal Monitors           289      0   2014-09-08 05:14:16
+      Aquaponic Systems         259      0   2014-09-08 05:14:16
+      Terrain Enrich Sys       4668      0   2014-09-08 05:14:16
       Auto-Fabricators         2909   2913   2014-09-06 21:57:19
+      Robotics                 1276   1278   2014-09-07 10:01:29
    + Waste
-      Biowaste                   68      0   2014-09-07 09:17:32
+      Biowaste                   68      0   2014-09-08 05:14:16
 
 
 @ OVID/Bradfield Orbital
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-07 09:12:52
+      Hydrogen Fuels             62      0   2014-09-08 06:04:45
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-07 09:12:52
-      Consumer Tech            6674      0   2014-09-07 09:12:52
-      Clothing                  306      0   2014-09-07 09:12:52
+      Dom. Appliances           550      0   2014-09-08 06:04:45
+      Consumer Tech            6692      0   2014-09-08 06:04:45
+      Clothing                  306      0   2014-09-08 06:04:45
    + Drugs
-      Beer                      143      0   2014-09-07 09:12:52
+      Beer                      143      0   2014-09-08 06:04:45
    + Foods
-      Algae                      95      0   2014-09-07 09:12:52
-      Fruit and Vegetables      306      0   2014-09-07 09:12:52
-      Grain                     180      0   2014-09-07 09:12:52
-      Animal Meat              1292      0   2014-09-07 09:12:52
-      Fish                      645      0   2014-09-07 09:12:52
-      Food Cartridges           102      0   2014-09-07 09:12:52
-      Synthetic Meat            233      0   2014-09-07 09:12:52
-      Tea                      1537      0   2014-09-07 09:12:52
-      Coffee                   1393      0   2014-09-07 09:12:52
+      Algae                      95      0   2014-09-08 06:04:45
+      Fruit and Vegetables      306      0   2014-09-08 06:04:45
+      Grain                     180      0   2014-09-08 06:04:45
+      Animal Meat              1280      0   2014-09-08 06:04:45
+      Fish                      645      0   2014-09-08 06:04:45
+      Food Cartridges           102      0   2014-09-08 06:04:45
+      Synthetic Meat            233      0   2014-09-08 06:04:45
+      Tea                      1425      0   2014-09-08 06:04:45
+      Coffee                   1389      0   2014-09-08 06:04:45
    + Industrial Materials
-      Polymers                  115      0   2014-09-07 09:12:52
-      Semiconductors            958      0   2014-09-07 09:12:52
-      Superconductors          7116      0   2014-09-07 09:12:52
+      Polymers                  115      0   2014-09-08 06:04:45
+      Semiconductors            958      0   2014-09-08 06:04:45
+      Superconductors          7116      0   2014-09-08 06:04:45
    + Machinery
-      Hel-Static Furnaces        45     53   2014-09-07 09:12:52
-      Mineral Extractors        301    323   2014-09-07 09:12:52
-      Crop Harvesters          1911   1962   2014-09-07 09:12:52
-      Marine Supplies          3911   4008   2014-09-07 09:12:52
+      Hel-Static Furnaces        45     53   2014-09-08 06:04:45
+      Mineral Extractors        301    323   2014-09-08 06:04:45
+      Crop Harvesters          1911   1962   2014-09-08 06:04:45
+      Marine Supplies          3911   4008   2014-09-08 06:04:45
    + Medicines
-      Performance Enhancers    7116      0   2014-09-07 09:12:52
-      Basic Medicines           306      0   2014-09-07 09:12:52
-      Progenitor Cells         7116      0   2014-09-07 09:12:52
+      Performance Enhancers    7116      0   2014-09-08 06:04:45
+      Basic Medicines           306      0   2014-09-08 06:04:45
+      Progenitor Cells         7116      0   2014-09-08 06:04:45
    + Metals
-      Gold                     9169      0   2014-09-07 09:12:52
-      Indium                   6050      0   2014-09-07 09:12:52
-      Tantalum                 4207      0   2014-09-07 09:12:52
-      Uranium                  2845      0   2014-09-07 09:12:52
-      Lithium                  1696      0   2014-09-07 09:12:52
-      Titanium                 1086      0   2014-09-07 09:12:52
-      Copper                    487      0   2014-09-07 09:12:52
-      Aluminium                 324      0   2014-09-07 09:12:52
+      Gold                     9226      0   2014-09-08 06:04:45
+      Indium                   6026      0   2014-09-08 06:04:45
+      Tantalum                 4044      0   2014-09-08 06:04:45
+      Uranium                  2845      0   2014-09-08 06:04:45
+      Lithium                  1696      0   2014-09-08 06:04:45
+      Titanium                 1086      0   2014-09-08 06:04:45
+      Copper                    487      0   2014-09-08 06:04:45
+      Aluminium                 324      0   2014-09-08 06:04:45
    + Minerals
-      Beryllium                8673      0   2014-09-07 09:12:52
-      Gallium                  5470      0   2014-09-07 09:12:52
+      Beryllium                8673      0   2014-09-08 06:04:45
+      Gallium                  5470      0   2014-09-08 06:04:45
    + Technology
-      Computer Components       261    280   2014-09-07 09:12:52
-      H.E. Suits                259      0   2014-09-07 09:12:52
-      Robotics                 1929      0   2014-09-07 09:12:52
-      Auto-Fabricators         3941      0   2014-09-07 09:12:52
+      Computer Components       261    280   2014-09-08 06:04:45
+      H.E. Suits                259      0   2014-09-08 06:04:45
+      Robotics                 1929      0   2014-09-08 06:04:45
+      Auto-Fabricators         3941      0   2014-09-08 06:04:45
+      Resonating Separators    4940   4941   2014-09-07 09:52:33
    + Textiles
-      Leather                   143      0   2014-09-07 09:12:52
-      Natural Fabrics           408      0   2014-09-07 09:12:52
-      Synthetic Fabrics         156      0   2014-09-07 09:12:52
+      Leather                   143      0   2014-09-08 06:04:45
+      Natural Fabrics           408      0   2014-09-08 06:04:45
+      Synthetic Fabrics         156      0   2014-09-08 06:04:45
    + Waste
-      Biowaste                   11     18   2014-09-07 09:12:52
-      Scrap                      20     24   2014-09-07 09:12:52
+      Biowaste                   11     18   2014-09-08 06:04:45
+      Scrap                      20     24   2014-09-08 06:04:45
 
 
 @ PI-FANG/Brooks Estate
    + Chemicals
-      Hydrogen Fuels             58      0   2014-09-07 08:42:01
-      Mineral Oil                41     49   2014-09-07 08:42:01
-      Pesticides                199      0   2014-09-07 08:42:01
+      Hydrogen Fuels             58      0   2014-09-08 00:45:16
+      Mineral Oil                41     49   2014-09-08 00:45:16
+      Pesticides                199      0   2014-09-08 00:45:16
    + Consumer Items
-      Dom. Appliances           548      0   2014-09-07 08:42:01
-      Consumer Tech            7054      0   2014-09-07 08:42:01
-      Clothing                  306      0   2014-09-07 08:42:01
+      Dom. Appliances           548      0   2014-09-08 00:45:16
+      Consumer Tech            7095      0   2014-09-08 00:45:16
+      Clothing                  306      0   2014-09-08 00:45:16
    + Drugs
-      Beer                      120      0   2014-09-07 08:42:01
-      Wine                      211      0   2014-09-07 08:42:01
+      Beer                      120      0   2014-09-08 00:45:16
+      Wine                      211      0   2014-09-08 00:45:16
    + Foods
-      Fruit and Vegetables      116    130   2014-09-07 08:42:01
-      Grain                      51     60   2014-09-07 08:42:01
-      Animal Meat              1396      0   2014-09-07 08:42:01
-      Fish                      771      0   2014-09-07 08:42:01
-      Synthetic Meat            233      0   2014-09-07 08:42:01
-      Tea                      1587      0   2014-09-07 08:42:01
-      Coffee                   1396      0   2014-09-07 08:42:01
+      Fruit and Vegetables      116    130   2014-09-08 00:45:16
+      Grain                      51     60   2014-09-08 00:45:16
+      Animal Meat              1393      0   2014-09-08 00:45:16
+      Fish                      771      0   2014-09-08 00:45:16
+      Synthetic Meat            233      0   2014-09-08 00:45:16
+      Tea                      1587      0   2014-09-08 00:45:16
+      Coffee                   1396      0   2014-09-08 00:45:16
+   + Industrial Materials
+      Polymers                   25     26   2014-09-08 00:45:16
+      Semiconductors            553    558   2014-09-08 00:45:16
+      Superconductors          5717   5760   2014-09-08 00:45:16
    + Machinery
-      Crop Harvesters          2336      0   2014-09-07 08:42:01
-      Marine Supplies          4481      0   2014-09-07 08:42:01
+      Crop Harvesters          2336      0   2014-09-08 00:45:16
+      Marine Supplies          4481      0   2014-09-08 00:45:16
    + Medicines
-      Agri-Medicines           1084      0   2014-09-07 08:42:01
-      Performance Enhancers    7099      0   2014-09-07 08:42:01
-      Basic Medicines           306      0   2014-09-07 08:42:01
-      Progenitor Cells         7099      0   2014-09-07 08:42:01
+      Agri-Medicines           1084      0   2014-09-08 00:45:16
+      Performance Enhancers    7099      0   2014-09-08 00:45:16
+      Basic Medicines           306      0   2014-09-08 00:45:16
+      Progenitor Cells         7099      0   2014-09-08 00:45:16
    + Metals
-      Gold                     9734      0   2014-09-07 08:42:01
-      Silver                   5109      0   2014-09-07 08:42:01
+      Gold                     9410      0   2014-09-08 00:45:16
+      Silver                   5109      0   2014-09-08 00:45:16
+      Cobalt                    408    412   2014-09-08 00:45:16
+      Indium                   4940   4977   2014-09-08 00:45:16
+      Titanium                  639    644   2014-09-08 00:45:16
+      Copper                    237    239   2014-09-08 00:45:16
    + Technology
-      Animal Monitors           289      0   2014-09-07 08:42:01
-      Aquaponic Systems         258      0   2014-09-07 08:42:01
-      Terrain Enrich Sys       4859      0   2014-09-07 08:42:01
+      Animal Monitors           289      0   2014-09-08 00:45:16
+      Aquaponic Systems         258      0   2014-09-08 00:45:16
+      Terrain Enrich Sys       4724      0   2014-09-08 00:45:16
+      H.E. Suits                101    102   2014-09-08 00:45:16
+      Robotics                 1276   1286   2014-09-08 00:45:16
+      Auto-Fabricators         2909   2931   2014-09-08 00:45:16
    + Waste
-      Biowaste                   68      0   2014-09-07 08:42:01
+      Biowaste                   68      0   2014-09-08 00:45:16
    + Weapons
-      Personal Weapons         4481      0   2014-09-07 08:42:01
+      Personal Weapons         4481      0   2014-09-08 00:45:16
 
 
 @ RAKAPILA/Stone Enterprise
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-07 08:55:38
+      Hydrogen Fuels             62      0   2014-09-08 04:31:19
    + Consumer Items
-      Dom. Appliances           345    369   2014-09-07 08:55:38
-      Consumer Tech            6598      0   2014-09-07 08:55:38
-      Clothing                  116    129   2014-09-07 08:55:38
+      Dom. Appliances           345    369   2014-09-08 04:31:19
+      Consumer Tech            6769      0   2014-09-08 04:31:19
+      Clothing                  116    129   2014-09-08 04:31:19
    + Drugs
-      Beer                      143      0   2014-09-07 08:55:38
+      Beer                      143      0   2014-09-08 04:31:19
    + Foods
-      Algae                      95      0   2014-09-07 08:55:38
-      Fruit and Vegetables      306      0   2014-09-07 08:55:38
-      Grain                     180      0   2014-09-07 08:55:38
-      Animal Meat              1391      0   2014-09-07 08:55:38
-      Fish                      708      0   2014-09-07 08:55:38
-      Food Cartridges           102      0   2014-09-07 08:55:38
-      Synthetic Meat            233      0   2014-09-07 08:55:38
-      Tea                      1571      0   2014-09-07 08:55:38
-      Coffee                   1400      0   2014-09-07 08:55:38
+      Algae                      95      0   2014-09-08 04:31:19
+      Fruit and Vegetables      306      0   2014-09-08 04:31:19
+      Grain                     180      0   2014-09-08 04:31:19
+      Animal Meat              1285      0   2014-09-08 04:31:19
+      Fish                      681      0   2014-09-08 04:31:19
+      Food Cartridges           102      0   2014-09-08 04:31:19
+      Synthetic Meat            233      0   2014-09-08 04:31:19
+      Tea                      1543      0   2014-09-08 04:31:19
+      Coffee                   1400      0   2014-09-08 04:31:19
    + Industrial Materials
-      Polymers                  115      0   2014-09-07 08:55:38
-      Semiconductors            958      0   2014-09-07 08:55:38
-      Superconductors          7116      0   2014-09-07 08:55:38
+      Polymers                  115      0   2014-09-08 04:31:19
+      Semiconductors            958      0   2014-09-08 04:31:19
+      Superconductors          7116      0   2014-09-08 04:31:19
    + Machinery
       Hel-Static Furnaces        53     54   2014-09-06 23:34:06
       Crop Harvesters          1600   1601   2014-09-06 23:34:06
       Mineral Extractors        320    321   2014-09-07 08:47:00
+      Marine Supplies          3368   3369   2014-09-07 21:29:04
    + Medicines
-      Performance Enhancers    7116      0   2014-09-07 08:55:38
-      Basic Medicines           306      0   2014-09-07 08:55:38
-      Progenitor Cells         7110      0   2014-09-07 08:55:38
+      Performance Enhancers    7116      0   2014-09-08 04:31:19
+      Basic Medicines           306      0   2014-09-08 04:31:19
+      Progenitor Cells         7116      0   2014-09-08 04:31:19
    + Metals
-      Gold                     9493      0   2014-09-07 08:55:38
-      Indium                   6238      0   2014-09-07 08:55:38
-      Tantalum                 4207      0   2014-09-07 08:55:38
-      Uranium                  2845      0   2014-09-07 08:55:38
-      Lithium                  1696      0   2014-09-07 08:55:38
-      Titanium                 1086      0   2014-09-07 08:55:38
-      Copper                    487      0   2014-09-07 08:55:38
-      Aluminium                 324      0   2014-09-07 08:55:38
+      Gold                     9471      0   2014-09-08 04:31:19
+      Indium                   6238      0   2014-09-08 04:31:19
+      Tantalum                 4207      0   2014-09-08 04:31:19
+      Uranium                  2845      0   2014-09-08 04:31:19
+      Lithium                  1696      0   2014-09-08 04:31:19
+      Titanium                 1086      0   2014-09-08 04:31:19
+      Copper                    487      0   2014-09-08 04:31:19
+      Aluminium                 324      0   2014-09-08 04:31:19
    + Minerals
-      Beryllium                8673      0   2014-09-07 08:55:38
-      Gallium                  5470      0   2014-09-07 08:55:38
+      Beryllium                8673      0   2014-09-08 04:31:19
+      Gallium                  5470      0   2014-09-08 04:31:19
    + Technology
-      H.E. Suits                259      0   2014-09-07 08:55:38
-      Robotics                 1929      0   2014-09-07 08:55:38
-      Auto-Fabricators         3941      0   2014-09-07 08:55:38
+      H.E. Suits                259      0   2014-09-08 04:31:19
+      Robotics                 1929      0   2014-09-08 04:31:19
+      Auto-Fabricators         3941      0   2014-09-08 04:31:19
    + Textiles
-      Leather                   143      0   2014-09-07 08:55:38
-      Natural Fabrics           408      0   2014-09-07 08:55:38
-      Synthetic Fabrics         156      0   2014-09-07 08:55:38
+      Leather                   143      0   2014-09-08 04:31:19
+      Natural Fabrics           408      0   2014-09-08 04:31:19
+      Synthetic Fabrics         156      0   2014-09-08 04:31:19
    + Waste
-      Biowaste                   11     18   2014-09-07 08:55:38
-      Scrap                      20     24   2014-09-07 08:55:38
+      Biowaste                   11     18   2014-09-08 04:31:19
+      Scrap                      20     24   2014-09-08 04:31:19
 
 
 @ ROSS 1015/Bowersox Mines
    + Chemicals
-      Hydrogen Fuels             74     75   2014-09-07 08:16:38
-      Explosives                291      0   2014-09-07 08:16:38
+      Hydrogen Fuels             74     75   2014-09-08 01:06:36
+      Explosives                287      0   2014-09-08 01:06:36
    + Consumer Items
-      Dom. Appliances           541      0   2014-09-07 08:16:38
-      Consumer Tech            6874      0   2014-09-07 08:16:38
-      Clothing                  280      0   2014-09-07 08:16:38
+      Dom. Appliances           510      0   2014-09-08 01:06:36
+      Consumer Tech            6874      0   2014-09-08 01:06:36
+      Clothing                  280      0   2014-09-08 01:06:36
    + Drugs
-      Beer                      143      0   2014-09-07 08:16:38
+      Beer                      143      0   2014-09-08 01:06:36
    + Foods
-      Fruit and Vegetables      308      0   2014-09-07 08:16:38
-      Grain                     182      0   2014-09-07 08:16:38
-      Animal Meat              1323      0   2014-09-07 08:16:38
-      Fish                      713      0   2014-09-07 08:16:38
-      Food Cartridges           103      0   2014-09-07 08:16:38
-      Synthetic Meat            235      0   2014-09-07 08:16:38
-      Tea                      1507      0   2014-09-07 08:16:38
-      Coffee                   1323      0   2014-09-07 08:16:38
+      Fruit and Vegetables      254      0   2014-09-08 01:06:36
+      Grain                     182      0   2014-09-08 01:06:36
+      Animal Meat              1323      0   2014-09-08 01:06:36
+      Fish                      713      0   2014-09-08 01:06:36
+      Food Cartridges           103      0   2014-09-08 01:06:36
+      Synthetic Meat            235      0   2014-09-08 01:06:36
+      Tea                      1507      0   2014-09-08 01:06:36
+      Coffee                   1323      0   2014-09-08 01:06:36
    + Machinery
-      Mineral Extractors        532      0   2014-09-07 08:16:38
+      Mineral Extractors        532      0   2014-09-08 01:06:36
    + Medicines
-      Performance Enhancers    7162      0   2014-09-07 08:16:38
-      Basic Medicines           308      0   2014-09-07 08:16:38
+      Performance Enhancers    7162      0   2014-09-08 01:06:36
+      Basic Medicines           308      0   2014-09-08 01:06:36
    + Metals
       Tantalum                 3149   3150   2014-09-07 08:16:38
    + Minerals
-      Bertrandite              1971   2023   2014-09-07 08:16:38
-      Gallite                  1346   1383   2014-09-07 08:16:38
-      Lepidolite                303    325   2014-09-07 08:16:38
+      Bertrandite              1915   1965   2014-09-08 01:06:36
+      Gallite                  1346   1383   2014-09-08 01:06:36
+      Lepidolite                303    325   2014-09-08 01:06:36
    + Technology
-      H.E. Suits                261      0   2014-09-07 08:16:38
-      Bioreducing Lichen       1026      0   2014-09-07 08:16:38
+      H.E. Suits                261      0   2014-09-08 01:06:36
+      Bioreducing Lichen       1025      0   2014-09-08 01:06:36
    + Waste
-      Biowaste                   11     18   2014-09-07 08:16:38
+      Biowaste                   11     18   2014-09-08 01:06:36
    + Weapons
-      Reactive Armor           2209      0   2014-09-07 08:16:38
-      Non-Lethal Wpns          1903      0   2014-09-07 08:16:38
+      Reactive Armor           1971      0   2014-09-08 01:06:36
+      Non-Lethal Wpns          1942      0   2014-09-08 01:06:36
 
 
 @ ROSS 1051/Abetti Platform
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-07 06:33:16
-      Mineral Oil               164      0   2014-09-07 06:33:16
-      Explosives                150    167   2014-09-07 06:33:16
+      Hydrogen Fuels             47     48   2014-09-08 06:04:45
+      Mineral Oil               164      0   2014-09-08 06:04:45
+      Explosives                150    167   2014-09-08 06:04:45
    + Consumer Items
-      Dom. Appliances           467      0   2014-09-07 06:33:16
-      Consumer Tech            6851      0   2014-09-07 06:33:16
-      Clothing                  279      0   2014-09-07 06:33:16
+      Dom. Appliances           467      0   2014-09-08 06:04:45
+      Consumer Tech            6851      0   2014-09-08 06:04:45
+      Clothing                  279      0   2014-09-08 06:04:45
    + Drugs
-      Beer                      143      0   2014-09-07 06:33:16
+      Beer                      143      0   2014-09-08 06:04:45
    + Foods
-      Fruit and Vegetables      296      0   2014-09-07 06:33:16
-      Grain                     181      0   2014-09-07 06:33:16
-      Animal Meat              1318      0   2014-09-07 06:33:16
-      Fish                      647      0   2014-09-07 06:33:16
-      Food Cartridges           103      0   2014-09-07 06:33:16
-      Synthetic Meat            234      0   2014-09-07 06:33:16
-      Tea                      1521      0   2014-09-07 06:33:16
-      Coffee                   1404      0   2014-09-07 06:33:16
+      Fruit and Vegetables      306      0   2014-09-08 06:04:45
+      Grain                     181      0   2014-09-08 06:04:45
+      Animal Meat              1318      0   2014-09-08 06:04:45
+      Fish                      647      0   2014-09-08 06:04:45
+      Food Cartridges           103      0   2014-09-08 06:04:45
+      Synthetic Meat            234      0   2014-09-08 06:04:45
+      Tea                      1573      0   2014-09-08 06:04:45
+      Coffee                   1376      0   2014-09-08 06:04:45
    + Industrial Materials
-      Polymers                   19     25   2014-09-07 06:33:16
-      Semiconductors            533    558   2014-09-07 06:33:16
-      Superconductors          6524   6599   2014-09-07 06:33:16
+      Polymers                   19     25   2014-09-08 06:04:45
+      Semiconductors            533    558   2014-09-08 06:04:45
+      Superconductors          6359   6432   2014-09-08 06:04:45
    + Machinery
-      Hel-Static Furnaces       172      0   2014-09-07 06:33:16
+      Hel-Static Furnaces       172      0   2014-09-08 06:04:45
    + Medicines
-      Performance Enhancers    7082      0   2014-09-07 06:33:16
-      Basic Medicines           307      0   2014-09-07 06:33:16
+      Performance Enhancers    6877      0   2014-09-08 06:04:45
+      Basic Medicines           307      0   2014-09-08 06:04:45
    + Metals
-      Indium                   5040   5099   2014-09-07 06:33:16
-      Titanium                  617    646   2014-09-07 06:33:16
-      Copper                    223    239   2014-09-07 06:33:16
+      Indium                   5059   5118   2014-09-08 06:04:45
+      Titanium                  617    646   2014-09-08 06:04:45
+      Copper                    223    239   2014-09-08 06:04:45
    + Minerals
-      Bertrandite              2400      0   2014-09-07 06:33:16
-      Indite                   2104      0   2014-09-07 06:33:16
-      Gallite                  1868      0   2014-09-07 06:33:16
-      Coltan                   1484      0   2014-09-07 06:33:16
-      Uraninite                 961      0   2014-09-07 06:33:16
-      Lepidolite                622      0   2014-09-07 06:33:16
-      Rutile                    323      0   2014-09-07 06:33:16
-      Bauxite                   116      0   2014-09-07 06:33:16
-      Gallium                  4214   4264   2014-09-07 06:33:16
+      Bertrandite              2400      0   2014-09-08 06:04:45
+      Indite                   2133      0   2014-09-08 06:04:45
+      Gallite                  1838      0   2014-09-08 06:04:45
+      Coltan                   1497      0   2014-09-08 06:04:45
+      Uraninite                 961      0   2014-09-08 06:04:45
+      Lepidolite                622      0   2014-09-08 06:04:45
+      Rutile                    325      0   2014-09-08 06:04:45
+      Bauxite                   116      0   2014-09-08 06:04:45
+      Gallium                  4214   4264   2014-09-08 06:04:45
    + Technology
-      H.E. Suits                260      0   2014-09-07 06:33:16
-      Advanced Catalysers      2742      0   2014-09-07 06:33:16
-      Resonating Separators    5739      0   2014-09-07 06:33:16
+      H.E. Suits                260      0   2014-09-08 06:04:45
+      Advanced Catalysers      2742      0   2014-09-08 06:04:45
+      Resonating Separators    5739      0   2014-09-08 06:04:45
    + Textiles
-      Synthetic Fabrics          38     46   2014-09-07 06:33:16
+      Synthetic Fabrics          38     46   2014-09-08 06:04:45
    + Waste
-      Biowaste                    7     11   2014-09-07 06:33:16
-      Scrap                      91      0   2014-09-07 06:33:16
+      Biowaste                    8     13   2014-09-08 06:04:45
+      Scrap                      91      0   2014-09-08 06:04:45
    + Weapons
-      Reactive Armor           2201      0   2014-09-07 06:33:16
-      Non-Lethal Wpns          1935      0   2014-09-07 06:33:16
+      Reactive Armor           2082      0   2014-09-08 06:04:45
+      Non-Lethal Wpns          1720      0   2014-09-08 06:04:45
 
 
 @ ROSS 1057/Wang Estate
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 03:16:29
-      Pesticides                199      0   2014-09-07 03:16:29
+      Hydrogen Fuels             56      0   2014-09-08 00:05:15
+      Pesticides                199      0   2014-09-08 00:05:15
    + Consumer Items
-      Dom. Appliances           544      0   2014-09-07 03:16:29
-      Consumer Tech            6554      0   2014-09-07 03:16:29
-      Clothing                  307      0   2014-09-07 03:16:29
+      Dom. Appliances           550      0   2014-09-08 00:05:15
+      Consumer Tech            6554      0   2014-09-08 00:05:15
+      Clothing                  307      0   2014-09-08 00:05:15
    + Drugs
-      Beer                      143      0   2014-09-07 03:16:29
+      Beer                      143      0   2014-09-08 00:05:15
    + Foods
-      Algae                      15     25   2014-09-07 03:16:29
-      Fruit and Vegetables      157    174   2014-09-07 03:16:29
-      Grain                      72     84   2014-09-07 03:16:29
-      Animal Meat              1232      0   2014-09-07 03:16:29
-      Fish                      646      0   2014-09-07 03:16:29
-      Tea                      1407      0   2014-09-07 03:16:29
-      Coffee                   1401      0   2014-09-07 03:16:29
+      Algae                      15     25   2014-09-08 00:05:15
+      Fruit and Vegetables      157    174   2014-09-08 00:05:15
+      Grain                      72     84   2014-09-08 00:05:15
+      Animal Meat              1232      0   2014-09-08 00:05:15
+      Fish                      646      0   2014-09-08 00:05:15
+      Tea                      1407      0   2014-09-08 00:05:15
+      Coffee                   1401      0   2014-09-08 00:05:15
    + Machinery
-      Crop Harvesters          2344      0   2014-09-07 03:16:29
-      Marine Supplies          4497      0   2014-09-07 03:16:29
+      Crop Harvesters          2344      0   2014-09-08 00:05:15
+      Marine Supplies          4497      0   2014-09-08 00:05:15
    + Medicines
-      Agri-Medicines           1088      0   2014-09-07 03:16:29
-      Performance Enhancers    7124      0   2014-09-07 03:16:29
-      Basic Medicines           307      0   2014-09-07 03:16:29
-      Progenitor Cells         7124      0   2014-09-07 03:16:29
+      Agri-Medicines           1088      0   2014-09-08 00:05:15
+      Performance Enhancers    7124      0   2014-09-08 00:05:15
+      Basic Medicines           307      0   2014-09-08 00:05:15
+      Progenitor Cells         7124      0   2014-09-08 00:05:15
    + Technology
-      Animal Monitors           290      0   2014-09-07 03:16:29
-      Aquaponic Systems         259      0   2014-09-07 03:16:29
-      Terrain Enrich Sys       4682      0   2014-09-07 03:16:29
+      Animal Monitors           290      0   2014-09-08 00:05:15
+      Aquaponic Systems         259      0   2014-09-08 00:05:15
+      Terrain Enrich Sys       4682      0   2014-09-08 00:05:15
    + Textiles
-      Natural Fabrics           237    256   2014-09-07 03:16:29
+      Natural Fabrics           237    256   2014-09-08 00:05:15
    + Waste
-      Biowaste                   68      0   2014-09-07 03:16:29
+      Biowaste                   68      0   2014-09-08 00:05:15
 
 
 @ SURYA/Burbank Camp
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-07 09:02:11
-      Mineral Oil               163      0   2014-09-07 09:02:11
+      Hydrogen Fuels             47     48   2014-09-08 02:25:38
+      Mineral Oil               163      0   2014-09-08 02:25:38
    + Consumer Items
-      Dom. Appliances           466      0   2014-09-07 09:02:11
-      Consumer Tech            6550      0   2014-09-07 09:02:11
-      Clothing                  253      0   2014-09-07 09:02:11
+      Dom. Appliances           466      0   2014-09-08 02:25:38
+      Consumer Tech            6550      0   2014-09-08 02:25:38
+      Clothing                  253      0   2014-09-08 02:25:38
    + Drugs
-      Beer                      143      0   2014-09-07 09:02:11
+      Beer                      143      0   2014-09-08 02:25:38
    + Foods
-      Fruit and Vegetables      307      0   2014-09-07 09:02:11
-      Grain                     180      0   2014-09-07 09:02:11
-      Animal Meat              1232      0   2014-09-07 09:02:11
-      Fish                      646      0   2014-09-07 09:02:11
-      Food Cartridges           102      0   2014-09-07 09:02:11
-      Synthetic Meat            233      0   2014-09-07 09:02:11
-      Tea                      1499      0   2014-09-07 09:02:11
-      Coffee                   1400      0   2014-09-07 09:02:11
+      Fruit and Vegetables      307      0   2014-09-08 02:25:38
+      Grain                     180      0   2014-09-08 02:25:38
+      Animal Meat              1232      0   2014-09-08 02:25:38
+      Fish                      646      0   2014-09-08 02:25:38
+      Food Cartridges           102      0   2014-09-08 02:25:38
+      Synthetic Meat            233      0   2014-09-08 02:25:38
+      Tea                      1499      0   2014-09-08 02:25:38
+      Coffee                   1351      0   2014-09-08 02:25:38
    + Industrial Materials
-      Semiconductors            532    557   2014-09-07 09:02:11
-      Superconductors          6165   6237   2014-09-07 09:02:11
+      Semiconductors            532    557   2014-09-08 02:25:38
+      Superconductors          6264   6336   2014-09-08 02:25:38
    + Machinery
-      Hel-Static Furnaces       164      0   2014-09-07 09:02:11
+      Hel-Static Furnaces       151      0   2014-09-08 02:25:38
       Mineral Extractors        320    321   2014-09-07 04:02:00
    + Medicines
-      Performance Enhancers    7120      0   2014-09-07 09:02:11
-      Basic Medicines           307      0   2014-09-07 09:02:11
-      Progenitor Cells         7120      0   2014-09-07 09:02:11
+      Performance Enhancers    7088      0   2014-09-08 02:25:38
+      Basic Medicines           307      0   2014-09-08 02:25:38
+      Progenitor Cells         7120      0   2014-09-08 02:25:38
    + Metals
-      Indium                   5069   5128   2014-09-07 09:02:11
-      Tantalum                 3098   3175   2014-09-07 09:02:11
-      Titanium                  616    644   2014-09-07 09:02:11
+      Indium                   5054   5113   2014-09-08 02:25:38
+      Tantalum                 3136   3214   2014-09-08 02:25:38
+      Titanium                  616    644   2014-09-08 02:25:38
    + Minerals
-      Bertrandite              2394      0   2014-09-07 09:02:11
-      Indite                   2342      0   2014-09-07 09:02:11
-      Gallite                  1930      0   2014-09-07 09:02:11
-      Coltan                   1493      0   2014-09-07 09:02:11
-      Uraninite                 958      0   2014-09-07 09:02:11
-      Lepidolite                621      0   2014-09-07 09:02:11
-      Rutile                    324      0   2014-09-07 09:02:11
-      Bauxite                   115      0   2014-09-07 09:02:11
+      Bertrandite              2394      0   2014-09-08 02:25:38
+      Indite                   2343      0   2014-09-08 02:25:38
+      Gallite                  1921      0   2014-09-08 02:25:38
+      Coltan                   1493      0   2014-09-08 02:25:38
+      Uraninite                 958      0   2014-09-08 02:25:38
+      Lepidolite                621      0   2014-09-08 02:25:38
+      Rutile                    324      0   2014-09-08 02:25:38
+      Bauxite                   115      0   2014-09-08 02:25:38
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:02:11
-      Advanced Catalysers      2906      0   2014-09-07 09:02:11
-      Resonating Separators    5846      0   2014-09-07 09:02:11
+      H.E. Suits                259      0   2014-09-08 02:25:38
+      Advanced Catalysers      2850      0   2014-09-08 02:25:38
+      Resonating Separators    5821      0   2014-09-08 02:25:38
    + Textiles
-      Synthetic Fabrics          38     46   2014-09-07 09:02:11
+      Synthetic Fabrics          38     46   2014-09-08 02:25:38
    + Waste
-      Biowaste                   11     18   2014-09-07 09:02:11
-      Scrap                      91      0   2014-09-07 09:02:11
+      Biowaste                   12     18   2014-09-08 02:25:38
+      Scrap                      91      0   2014-09-08 02:25:38
 
 
 @ TILIAN/Maunder's Hope
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-07 09:15:42
+      Hydrogen Fuels             62      0   2014-09-08 05:15:50
    + Consumer Items
-      Dom. Appliances           342    367   2014-09-07 09:15:42
-      Consumer Tech            6546      0   2014-09-07 09:15:42
-      Clothing                  116    129   2014-09-07 09:15:42
+      Dom. Appliances           342    367   2014-09-08 05:15:50
+      Consumer Tech            6546      0   2014-09-08 05:15:50
+      Clothing                  116    129   2014-09-08 05:15:50
    + Drugs
-      Beer                      143      0   2014-09-07 09:15:42
+      Beer                      143      0   2014-09-08 05:15:50
    + Foods
-      Algae                      95      0   2014-09-07 09:15:42
-      Fruit and Vegetables      306      0   2014-09-07 09:15:42
-      Grain                     180      0   2014-09-07 09:15:42
-      Animal Meat              1369      0   2014-09-07 09:15:42
-      Fish                      772      0   2014-09-07 09:15:42
-      Food Cartridges            13     19   2014-09-07 09:15:42
-      Synthetic Meat            233      0   2014-09-07 09:15:42
-      Tea                      1414      0   2014-09-07 09:15:42
-      Coffee                   1371      0   2014-09-07 09:15:42
+      Algae                      95      0   2014-09-08 05:15:50
+      Fruit and Vegetables      306      0   2014-09-08 05:15:50
+      Grain                     180      0   2014-09-08 05:15:50
+      Animal Meat              1400      0   2014-09-08 05:15:50
+      Fish                      758      0   2014-09-08 05:15:50
+      Food Cartridges            13     19   2014-09-08 05:15:50
+      Synthetic Meat            233      0   2014-09-08 05:15:50
+      Tea                      1499      0   2014-09-08 05:15:50
+      Coffee                   1400      0   2014-09-08 05:15:50
    + Industrial Materials
-      Polymers                  115      0   2014-09-07 09:15:42
-      Semiconductors            958      0   2014-09-07 09:15:42
-      Superconductors          7116      0   2014-09-07 09:15:42
+      Polymers                  115      0   2014-09-08 05:15:50
+      Semiconductors            958      0   2014-09-08 05:15:50
+      Superconductors          7116      0   2014-09-08 05:15:50
    + Machinery
-      Mineral Extractors        329    352   2014-09-07 09:15:42
-      Crop Harvesters          1721   1766   2014-09-07 09:15:42
+      Mineral Extractors        316    338   2014-09-08 05:15:50
+      Crop Harvesters          1778   1826   2014-09-08 05:15:50
    + Medicines
-      Performance Enhancers    7116      0   2014-09-07 09:15:42
-      Basic Medicines           116    129   2014-09-07 09:15:42
-      Progenitor Cells         7116      0   2014-09-07 09:15:42
+      Performance Enhancers    7116      0   2014-09-08 05:15:50
+      Basic Medicines           116    129   2014-09-08 05:15:50
+      Progenitor Cells         7116      0   2014-09-08 05:15:50
    + Metals
-      Gold                     9454      0   2014-09-07 09:15:42
-      Indium                   6198      0   2014-09-07 09:15:42
-      Tantalum                 4207      0   2014-09-07 09:15:42
-      Uranium                  2845      0   2014-09-07 09:15:42
-      Lithium                  1691      0   2014-09-07 09:15:42
-      Titanium                 1085      0   2014-09-07 09:15:42
-      Copper                    487      0   2014-09-07 09:15:42
-      Aluminium                 324      0   2014-09-07 09:15:42
+      Gold                     9218      0   2014-09-08 05:15:50
+      Indium                   6187      0   2014-09-08 05:15:50
+      Tantalum                 4207      0   2014-09-08 05:15:50
+      Uranium                  2845      0   2014-09-08 05:15:50
+      Lithium                  1685      0   2014-09-08 05:15:50
+      Titanium                 1086      0   2014-09-08 05:15:50
+      Copper                    487      0   2014-09-08 05:15:50
+      Aluminium                 324      0   2014-09-08 05:15:50
    + Minerals
-      Beryllium                8435      0   2014-09-07 09:15:42
-      Gallium                  5470      0   2014-09-07 09:15:42
+      Beryllium                8607      0   2014-09-08 05:15:50
+      Gallium                  5470      0   2014-09-08 05:15:50
    + Technology
-      H.E. Suits                259      0   2014-09-07 09:15:42
-      Robotics                 1929      0   2014-09-07 09:15:42
-      Auto-Fabricators         3868      0   2014-09-07 09:15:42
+      H.E. Suits                259      0   2014-09-08 05:15:50
+      Robotics                 1929      0   2014-09-08 05:15:50
+      Auto-Fabricators         3819      0   2014-09-08 05:15:50
    + Textiles
-      Leather                   143      0   2014-09-07 09:15:42
-      Natural Fabrics           408      0   2014-09-07 09:15:42
-      Synthetic Fabrics         156      0   2014-09-07 09:15:42
+      Leather                   143      0   2014-09-08 05:15:50
+      Natural Fabrics           408      0   2014-09-08 05:15:50
+      Synthetic Fabrics         156      0   2014-09-08 05:15:50
    + Waste
-      Biowaste                    7     11   2014-09-07 09:15:42
-      Scrap                      20     24   2014-09-07 09:15:42
+      Biowaste                    7     11   2014-09-08 05:15:50
+      Scrap                      20     24   2014-09-08 05:15:50
 
 
 @ WYRD/Vonarburg Co-operative
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-07 09:16:29
-      Mineral Oil                62     74   2014-09-07 09:16:29
-      Pesticides                198      0   2014-09-07 09:16:29
+      Hydrogen Fuels             56      0   2014-09-08 06:14:40
+      Mineral Oil                62     74   2014-09-08 06:14:40
+      Pesticides                198      0   2014-09-08 06:14:40
    + Consumer Items
-      Dom. Appliances           548      0   2014-09-07 09:16:29
-      Consumer Tech            7091      0   2014-09-07 09:16:29
-      Clothing                  305      0   2014-09-07 09:16:29
+      Dom. Appliances           548      0   2014-09-08 06:14:40
+      Consumer Tech            7091      0   2014-09-08 06:14:40
+      Clothing                  305      0   2014-09-08 06:14:40
    + Drugs
-      Tobacco                  4232   4325   2014-09-07 09:16:29
-      Beer                      142      0   2014-09-07 09:16:29
-      Wine                      232      0   2014-09-07 09:16:29
-      Liquor                    343    371   2014-09-07 09:16:29
+      Tobacco                  4253   4346   2014-09-08 06:14:40
+      Beer                      142      0   2014-09-08 06:14:40
+      Wine                      232      0   2014-09-08 06:14:40
+      Liquor                    343    371   2014-09-08 06:14:40
    + Foods
-      Fruit and Vegetables      305      0   2014-09-07 09:16:29
-      Grain                      70     83   2014-09-07 09:16:29
-      Animal Meat               834    880   2014-09-07 09:16:29
-      Fish                      328    358   2014-09-07 09:16:29
-      Tea                       983   1035   2014-09-07 09:16:29
-      Coffee                    848    894   2014-09-07 09:16:29
+      Fruit and Vegetables      305      0   2014-09-08 06:14:40
+      Grain                      70     83   2014-09-08 06:14:40
+      Animal Meat               834    880   2014-09-08 06:14:40
+      Fish                      328    358   2014-09-08 06:14:40
+      Tea                       981   1033   2014-09-08 06:14:40
+      Coffee                    848    894   2014-09-08 06:14:40
    + Machinery
-      Crop Harvesters          2333      0   2014-09-07 09:16:29
-      Marine Supplies          4477      0   2014-09-07 09:16:29
+      Crop Harvesters          2333      0   2014-09-08 06:14:40
+      Marine Supplies          4477      0   2014-09-08 06:14:40
    + Medicines
-      Agri-Medicines           1082      0   2014-09-07 09:16:29
-      Performance Enhancers    7091      0   2014-09-07 09:16:29
-      Basic Medicines           305      0   2014-09-07 09:16:29
-      Progenitor Cells         7091      0   2014-09-07 09:16:29
+      Agri-Medicines           1083      0   2014-09-08 06:14:40
+      Performance Enhancers    7091      0   2014-09-08 06:14:40
+      Basic Medicines           305      0   2014-09-08 06:14:40
+      Progenitor Cells         7091      0   2014-09-08 06:14:40
    + Technology
-      Animal Monitors           288      0   2014-09-07 09:16:29
-      Aquaponic Systems         258      0   2014-09-07 09:16:29
-      Terrain Enrich Sys       4660      0   2014-09-07 09:16:29
+      Animal Monitors           288      0   2014-09-08 06:14:40
+      Aquaponic Systems         258      0   2014-09-08 06:14:40
+      Terrain Enrich Sys       4660      0   2014-09-08 06:14:40
    + Textiles
-      Leather                    30     38   2014-09-07 09:16:29
+      Leather                    30     38   2014-09-08 06:14:40
    + Waste
-      Biowaste                   68      0   2014-09-07 09:16:29
+      Biowaste                   68      0   2014-09-08 06:14:40
    + Weapons
-      Personal Weapons         4477      0   2014-09-07 09:16:29
+      Personal Weapons         4477      0   2014-09-08 06:14:40
