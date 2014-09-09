@@ -34,6 +34,7 @@ from data import prices
 # global variables: jeebus doesn't love me anymore.
 
 warnOnly = False
+warningFh = sys.stderr
 
 blackMarketItems = frozenset([
     'battleweapons',
@@ -47,7 +48,7 @@ def processCommandLine():
         Process the command line with argparse.
     """
 
-    global warnOnly
+    global warnOnly, warningFh
 
     parser = argparse.ArgumentParser(description='Pull updates from the EMDN firehose to the TradeDangerous DB')
     parser.add_argument('--firehose', '-u',  help='URI for the firehose. Default={}'.format(Firehose.defaultURI), default=None)
@@ -59,6 +60,7 @@ def processCommandLine():
     parser.add_argument('--verbose',  '-v',  help='Increase verboseness.', action='count', default=0)
     parser.add_argument('--no-writes',       help='Don\'t actually write to the database.', action='store_true', default=False, dest='noWrites')
     parser.add_argument('--warn',            help='Demote unrecognized items/stations to warnings.', action='store_true', default=False)
+    parser.add_argument('--warn-to',         help='Same as --warn but specifies file to write to.', dest='warnTo')
     parser.add_argument('--commit',          help='Automatically commit after this many seconds, 0 disables. Default: 90', type=int, default=90)
 
     pargs = parser.parse_args()
@@ -82,6 +84,10 @@ def processCommandLine():
     print("* Automatic commits {}.".format(
             'every {} seconds'.format(pargs.commit) if pargs.commit else 'disabled'
         ))
+
+    if pargs.warnTo:
+        pargs.warn = True
+        warningFh = open(pargs.warnTo, 'w')
 
     warnOnly = pargs.warn
 
@@ -134,8 +140,11 @@ def bleat(category, name, *args, **kwargs):
     bleatKey = '{}:{}'.format(category, name)
 
     if not bleatKey in bleat.bleated:
+        import datetime
+        now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+        print(now, '[{} >> {}]'.format(category, name), *args, file=warningFh, **kwargs)
+        warningFh.flush()
         bleat.bleated.add(bleatKey)
-        print(*args, file=sys.stderr, **kwargs)
 
     if not warnOnly:
         sys.exit(1)
@@ -257,3 +266,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
