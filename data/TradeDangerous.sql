@@ -362,6 +362,10 @@ CREATE TABLE Price
    -- how many credits must you pay to buy at this station?
    buy_from INTEGER NOT NULL DEFAULT 0,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+   demand INTEGER,
+   demandLevel INTEGER,
+   stock INTEGER,
+   stockLevel INTEGER,
 
    PRIMARY KEY (item_id, station_id),
 
