@@ -29,6 +29,8 @@ class ItemRecord(object):
 			location    -- Where the item was seen in "System (Station)" format.
 			timestamp   -- Date/time of report (which is kind of crap, please don't use).
 	"""
+	__slots__ = ('askingCr', 'payingCr', 'demand', 'demandLevel', 'stock', 'stockLevel', 'category', 'item', 'system', 'station', 'timestamp')
+
 	systemStationRe = re.compile(r'^(.*?)\s*\((.*?)\)$')
 	timestampTrimRe = re.compile(r'^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2})')
 

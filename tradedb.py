@@ -44,8 +44,7 @@ class System(object):
         Describes a star system, which may contain one or more Station objects,
         and lists which stars it has a direct connection to.
     """
-    # TODO: Build the links from an SQL query, it'll save a lot of
-    # expensive python dictionary lookups.
+    __slots__ = ('ID', 'dbname', 'posX', 'posY', 'posZ', 'links', 'stations')
 
     def __init__(self, ID, dbname, posX, posY, posZ):
         self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
@@ -56,10 +55,6 @@ class System(object):
     @staticmethod
     def linkSystems(lhs, rhs, distSq):
         lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
-
-
-    def links(self):
-        return list(self.links.keys())
 
 
     def addStation(self, station):
@@ -84,6 +79,7 @@ class Station(object):
         Describes a station within a given system along with what trade
         opportunities it presents.
     """
+    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith')
 
     def __init__(self, ID, system, dbname, lsFromStar=0.0):
         self.ID, self.system, self.dbname, self.lsFromStar = ID, system, dbname, lsFromStar
@@ -221,6 +217,8 @@ class Item(object):
             fullname -- Combined category/dbname for lookups.
             altname  -- The internal name used by the game.
     """
+    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'altname')
+
     def __init__(self, ID, dbname, category, fullname, altname=None):
         self.ID, self.dbname, self.category, self.fullname, self.altname = ID, dbname, category, fullname, altname
 
@@ -245,6 +243,7 @@ class Trade(object):
         Describes what it would cost and how much you would gain
         when selling an item between two specific stations.
     """
+    __slots__ = ('item', 'itemID', 'costCr', 'gainCr')
     # TODO: Replace with a class within Station that describes asking and paying.
     def __init__(self, item, itemID, costCr, gainCr):
         self.item = item

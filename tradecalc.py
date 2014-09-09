@@ -42,6 +42,7 @@ class Route(object):
         Describes a series of CargoRuns, that is CargoLoads
         between several stations. E.g. Chango -> Gateway -> Enterprise
     """
+    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps')
 
     def __init__(self, stations, hops, startCr, gainCr, jumps):
         self.route = stations
