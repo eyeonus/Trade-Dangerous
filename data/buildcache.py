@@ -28,9 +28,9 @@ from collections import namedtuple
 noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)+?)\s*(#|$)')
 systemStationRe = re.compile(r'^\@\s*(.*)\s*/\s*(.*)')
 categoryRe = re.compile(r'^\+\s*(.*?)\s*$')
-itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)(?:\s+(\d{4}-.*?))?$')
+itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)(?:\s+(\d{4}-.*?)(?:\s+demand\s+(-?\d+)L(-?\d+)\s+stock\s+(-?\d+)L(-?\d+))?)?$')
 
-class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'paying', 'uiOrder', 'modified' ])):
+class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'paying', 'uiOrder', 'modified', 'demand', 'demandLevel', 'stock', 'stockLevel' ])):
     pass
 
 def priceLineNegotiator(priceFile, db, debug=0):
@@ -89,9 +89,10 @@ def priceLineNegotiator(priceFile, db, debug=0):
                 print("Unrecognized line/syntax: {}".format(line))
                 sys.exit(1)
             itemName, stationPaying, stationAsking, modified = matches.group(1), int(matches.group(2)), int(matches.group(3)), matches.group(4)
+            demand, demandLevel, stock, stockLevel = int(matches.group(5) or -1), int(matches.group(6) or -1), int(matches.group(7) or -1), int(matches.group(8) or -1)
             itemID = itemsByName["{}:{}".format(categoryID, itemName)]
             uiOrder += 1
-            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified)
+            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand, demandLevel, stock, stockLevel)
         except (AttributeError, IndexError):
             continue
 
@@ -111,8 +112,8 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
             if debug > 2: print(price)
             bindValues += [ price ]
         stmt = """
-                   INSERT INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified)
-                   VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                   INSERT OR REPLACE INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified, demand, demand_level, stock, stock_level)
+                   VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP), ?, ?, ?, ?)
                 """
         db.executemany(stmt, bindValues)
     db.commit()

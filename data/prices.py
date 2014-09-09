@@ -38,6 +38,10 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
                 , Price.sell_to
                 , Price.buy_from
                 , Price.modified
+                , IFNULL(Price.demand, -1)
+                , IFNULL(Price.demand_level, -1)
+                , IFNULL(Price.stock, -1)
+                , IFNULL(Price.stock_level, -1)
           FROM  Station, Item, Category, Price
          WHERE  {}  -- station clause
                 AND Station.station_id = Price.station_id
@@ -49,7 +53,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
     if not file: file = sys.stdout
     file.write("# Source for TradeDangerous' price database.\n\n")
 
-    for (sysID, stnID, catID, itemID, fromStn, toStn, modified) in cur:
+    for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
         system = systems[sysID]
         if system is not lastSys:
             if lastStn: file.write("\n\n")
@@ -70,7 +74,13 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
 
         file.write("      {:<{width}} {:7d} {:6d}".format(items[itemID], fromStn, toStn, width=longestNameLen))
         if withModified and modified:
-            file.write("   {}".format(modified))
+            file.write("   {} demand {:>7}L{} stock {:>7}L{}".format(
+                        modified,
+                        demand,
+                        demandLevel,
+                        stock,
+                        stockLevel
+                    ))
         file.write("\n")
 
 

@@ -166,6 +166,7 @@ class Firehose(object):
                 while recordsRemaining:
                     try:
                         jsData = self.read(nonBlocking=True)
+                        if self.debug > 3: print(jsData)
                     except EOFError:
                         return
                     except (zmq.error.Again, BlockingIOError, InterruptedError):

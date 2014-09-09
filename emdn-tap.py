@@ -157,8 +157,8 @@ bleat.bleated = set()
 # Save data to the db
 
 commitStmt = """
-    INSERT OR REPLACE INTO Price (item_id, station_id, ui_order, sell_to, buy_from, modified)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT OR REPLACE INTO Price (item_id, station_id, ui_order, sell_to, buy_from, modified, demand, demand_level, stock, stock_level)
+    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)
 """
 
 def commit(tdb, db, recordsSinceLastCommit, pargs):
@@ -172,7 +172,7 @@ def commit(tdb, db, recordsSinceLastCommit, pargs):
 
     if pargs.verbose:
         print("-> commit {} records".format(len(recordsSinceLastCommit)) + (" [disabled]" if pargs.noWrites else ""))
-        if pargs.verbose > 2:
+        if pargs.verbose > 3:
             print("\n".join(['#  {}'.format(str(items)) for items in recordsSinceLastCommit]))
     if not pargs.noWrites:
         # Save the records.
@@ -221,14 +221,35 @@ def main():
                     recordsSinceLastCommit = []
                     lastCommit = now
 
+            if rec.payingCr == 0 and rec.askingCr == 0:
+                if pargs.verbose > 2:
+                    print("# Ignoring 0/0 entry for {} @ {}/{}".format(rec.item, rec.system, rec.station))
+            if rec.payingCr < 0 or rec.askingCr < 0 \
+            or rec.stock < 0 or rec.stockLevel < 0 \
+            or rec.demand < 0 or rec.demandLevel < 0:
+                bleat("item", '{}@{}/{}'.format(rec.item, rec.system, rec.station), "Invalid (negative) value in price/stock fields")
+                continue
+
             records += 1
 
             if pargs.verbose and (records % 1000 == 0):
                 print("# At {} captured {} records.".format(rec.timestamp, records))
+
             if pargs.verbose > 1:
                 paying = localedNo(rec.payingCr)+'cr' if rec.payingCr else '    -    '
                 asking = localedNo(rec.askingCr)+'cr' if rec.askingCr else '    -    '
-                print("{} {:.<65} {:>9} {:>9}".format(rec.timestamp, '{} @ {}/{}'.format(rec.item, rec.system, rec.station), paying, asking))
+                desc = '{} @ {}/{}'.format(rec.item, rec.system, rec.station)
+                extra = " | {:>6}L{} {:>6}L{}".format(rec.demand, rec.demandLevel, rec.stock, rec.stockLevel) if pargs.verbose > 2 else ""
+                print("{} {:.<65} {:>9} {:>9}{}".format(rec.timestamp, desc, paying, asking, extra))
+
+            # As of Beta 1.04, if you are carrying an item that the station doesn't handle
+            # the UI shows a fake entry with the prices from the station you bought the
+            # item from.
+
+            if rec.demandLevel == 0 and rec.stockLevel == 0:
+                if pargs.verbose > 2:
+                    print("# Ignoring fake entry for {} @ {}/{}".format(rec.item, rec.system, rec.station))
+                continue
 
             # Find the item in the price database to get its data and make sure
             # it matches the category we expect to see it listed in.
@@ -254,7 +275,7 @@ def main():
                 continue
 
             uiOrder = getItemUIOrder(station.ID, item.category.ID, item.ID)
-            recordsSinceLastCommit.append([ item.ID, station.ID, uiOrder, rec.payingCr, rec.askingCr ])
+            recordsSinceLastCommit.append([ item.ID, station.ID, uiOrder, rec.payingCr, rec.askingCr, rec.demand, rec.demandLevel, rec.stock, rec.stockLevel ])
     except KeyboardInterrupt:
         print("Ctrl-C pressed, stopping.")
 
