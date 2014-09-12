@@ -87,7 +87,8 @@ def processCommandLine():
 
     if pargs.warnTo:
         pargs.warn = True
-        warningFh = open(pargs.warnTo, 'w')
+        warningFh = open(pargs.warnTo, 'w', 1)
+        print("# warnings from {}".format(__name__), file=warningFh)
 
     warnOnly = pargs.warn
 
@@ -131,6 +132,24 @@ def loadUIOrders(db):
 
 ######################################################################
 
+def warning(*args, **kwargs):
+    """
+       Write a message to the warning channel, and duplicate to
+       stdout if verbosity > 1.
+    """
+
+    import datetime
+    now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
+    warning(now, *args, file=warningFh, **kwargs)
+    if warning.verbose:
+        print('#', *args, **kwargs)
+
+
+warning.verbose = 0
+
+
+######################################################################
+
 def bleat(category, name, *args, **kwargs):
     """
         Throttled (once per category+name only) reporting
@@ -140,10 +159,7 @@ def bleat(category, name, *args, **kwargs):
     bleatKey = '{}:{}'.format(category, name)
 
     if not bleatKey in bleat.bleated:
-        import datetime
-        now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-        print(now, '[{} >> {}]'.format(category, name), *args, file=warningFh, **kwargs)
-        warningFh.flush()
+        warning(now, '[{} >> {}]'.format(category, name), *args, **kwargs)
         bleat.bleated.add(bleatKey)
 
     if not warnOnly:
@@ -182,7 +198,7 @@ def commit(tdb, db, recordsSinceLastCommit, pargs):
         # Rebuild prices
     dbFilename = tdb.dbURI
     if pargs.verbose:
-        print("- Rebuid prices file" + (" [disabled]" if pargs.noWrites else ""))
+        print("- Rebuild prices file" + (" [disabled]" if pargs.noWrites else ""))
 
     if not pargs.noWrites:
         with tdb.pricesPath.open("w") as pricesFile:
@@ -197,6 +213,7 @@ def main():
     records = 0
 
     pargs = processCommandLine()
+    warning.verbose = pargs.verbose
 
     # Open the local TradeDangerous database
     dbFilename = pargs.db or TradeDB.defaultDB
@@ -248,7 +265,7 @@ def main():
 
             if rec.demandLevel == 0 and rec.stockLevel == 0:
                 if pargs.verbose > 2:
-                    print("# Ignoring fake entry for {} @ {}/{}".format(rec.item, rec.system, rec.station))
+                    warning("Ignoring no-demand entry for {} @ {}/{}".format(rec.item, rec.system, rec.station))
                 continue
 
             # Find the item in the price database to get its data and make sure
