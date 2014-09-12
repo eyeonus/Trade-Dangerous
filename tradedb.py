@@ -261,13 +261,14 @@ class Trade(object):
         Describes what it would cost and how much you would gain
         when selling an item between two specific stations.
     """
-    __slots__ = ('item', 'itemID', 'costCr', 'gainCr')
+    __slots__ = ('item', 'itemID', 'costCr', 'gainCr', 'stock', 'stockLevel', 'demand', 'demandLevel', 'srcAge', 'dstAge')
     # TODO: Replace with a class within Station that describes asking and paying.
-    def __init__(self, item, itemID, costCr, gainCr):
-        self.item = item
-        self.itemID = itemID
-        self.costCr = costCr
-        self.gainCr = gainCr
+    def __init__(self, item, itemID, costCr, gainCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge):
+        self.item, self.itemID = item, itemID
+        self.costCr, self.gainCr = costCr, gainCr
+        self.stock, self.stockLevel = stock, stockLevel
+        self.demand, self.demandLevel = demand, demandLevel
+        self.srcAge, self.dstAge = srcAge, dstAge
 
 
     def name(self):
@@ -667,19 +668,25 @@ class TradeDB(object):
                      , src.item_id
                      , src.buy_from
                      , dst.sell_to - src.buy_from AS profit
+                     , src.stock, src.stock_level
+                     , dst.demand, dst.demand_level
+                     , strftime('%s', 'now') - strftime('%s', src.modified) AS src_age
+                     , strftime('%s', 'now') - strftime('%s', dst.modified) AS dst_age
                   FROM Price AS src INNER JOIN Price as dst
                         ON src.item_id = dst.item_id
                  WHERE src.buy_from > 0
                         AND profit > 0
+                        AND src.stock_level > 0
+                        AND dst.demand_level > 0
                         AND src.ui_order > 0
                         AND dst.ui_order > 0
                  ORDER BY profit DESC
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
-        for (srcStnID, dstStnID, itemID, srcCostCr, profitCr) in self.cur:
+        for (srcStnID, dstStnID, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
             srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
-            srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr))
+            srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
 
     def getTrade(self, src, dst, item):
