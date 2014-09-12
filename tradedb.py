@@ -39,6 +39,9 @@ class AmbiguityError(Exception):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
 
+######################################################################
+
+
 class System(object):
     """
         Describes a star system, which may contain one or more Station objects,
@@ -72,6 +75,9 @@ class System(object):
 
     def __repr__(self):
         return "System(ID={}, dbname='{}', posX={}, posY={}, posZ={})".format(self.ID, re.escape(self.dbname), self.posX, self.posY, self.posZ)
+
+
+######################################################################
 
 
 class Station(object):
@@ -188,9 +194,15 @@ class Station(object):
         return "Station(ID={}, system='{}', dbname='{}', lsFromStar={})".format(self.ID, re.escape(self.system.dbname), re.escape(self.dbname), self.lsFromStar)
 
 
+######################################################################
+
+
 class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
     def name(self):
         return self.dbname
+
+
+######################################################################
 
 
 class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
@@ -204,6 +216,9 @@ class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
 
     def __str__(self):
         return self.dbname
+
+
+######################################################################
 
 
 class Item(object):
@@ -238,6 +253,9 @@ class Item(object):
             )
 
 
+######################################################################
+
+
 class Trade(object):
     """
         Describes what it would cost and how much you would gain
@@ -262,6 +280,9 @@ class Trade(object):
 
     def __repr__(self):
         return "Trade(item={}, itemID={}, costCr={}, gainCr={})".format(repr(self.item()), self.itemID, self.costCr, self.gainCr)
+
+
+######################################################################
 
 
 class TradeDB(object):
@@ -313,7 +334,7 @@ class TradeDB(object):
         self.load()
 
 
-    ####
+    ############################################################
     # Access to the underlying database.
 
     def getDB(self):
@@ -373,7 +394,7 @@ class TradeDB(object):
         data.buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath)
 
 
-    ####
+    ############################################################
     # Star system data.
 
     def systems(self):
@@ -436,7 +457,7 @@ class TradeDB(object):
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
 
-    ####
+    ############################################################
     # Station data.
 
     def stations(self):
@@ -509,7 +530,7 @@ class TradeDB(object):
         return system.stations[0]
 
 
-    ####
+    ############################################################
     # Ship data.
 
     def ships(self):
@@ -539,7 +560,7 @@ class TradeDB(object):
         return TradeDB.listSearch("Ship", name, self.shipByID.values(), key=lambda ship: ship.dbname)
 
 
-    ####
+    ############################################################
     # Item data.
 
     def categories(self):
@@ -623,7 +644,7 @@ class TradeDB(object):
         return TradeDB.listSearch("Item", name, self.itemByName.items(), key=lambda kvTup: kvTup[0], val=lambda kvTup: kvTup[1])
 
 
-    ####
+    ############################################################
     # Price data.
 
     def loadTrades(self):
@@ -725,7 +746,7 @@ class TradeDB(object):
                     raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
 
-    ####
+    ############################################################
     # General purpose static methods.
 
     @staticmethod
