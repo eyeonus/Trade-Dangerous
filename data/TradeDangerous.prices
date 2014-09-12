@@ -2,57 +2,56 @@
 
 @ ACIHAUT/Cuffey Plant
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-11 07:05:57 demand       0L0 stock  645104L3
-      Mineral Oil               163      0   2014-09-11 07:05:57 demand   26551L2 stock       0L0
-      Explosives                147    163   2014-09-11 07:05:57 demand       0L0 stock   63298L1
+      Hydrogen Fuels             47     48   2014-09-12 18:42:06 demand       0L0 stock  645104L3
+      Mineral Oil               163      0   2014-09-12 18:42:06 demand   26551L2 stock       0L0
+      Explosives                147    163   2014-09-12 18:42:06 demand       0L0 stock   63298L1
    + Consumer Items
-      Dom. Appliances           503      0   2014-09-11 07:05:57 demand    2219L2 stock       0L0
-      Consumer Tech            6550      0   2014-09-11 07:05:57 demand       0L1 stock       0L0
-      Clothing                  289      0   2014-09-11 07:05:57 demand     994L2 stock       0L0
+      Dom. Appliances           546      0   2014-09-12 18:42:06 demand    3248L2 stock       0L0
+      Consumer Tech            6550      0   2014-09-12 18:42:06 demand     426L1 stock       0L0
+      Clothing                  262      0   2014-09-12 18:42:06 demand     619L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 07:05:57 demand   19394L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:42:06 demand   19394L2 stock       0L0
    + Foods
-      Fruit and Vegetables      307      0   2014-09-11 07:05:57 demand    4102L2 stock       0L0
-      Grain                     180      0   2014-09-11 07:05:57 demand   16654L2 stock       0L0
-      Animal Meat              1232      0   2014-09-11 07:05:57 demand     315L1 stock       0L0
-      Fish                      758      0   2014-09-11 07:05:57 demand    3183L2 stock       0L0
-      Food Cartridges           102      0   2014-09-11 07:05:57 demand    4784L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 07:05:57 demand    4776L2 stock       0L0
-      Tea                      1406      0   2014-09-11 07:05:57 demand       0L1 stock       0L0
-      Coffee                   1284      0   2014-09-11 07:05:57 demand     900L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:42:06 demand    4102L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:42:06 demand   16654L2 stock       0L0
+      Animal Meat              1252      0   2014-09-12 18:42:06 demand     500L1 stock       0L0
+      Fish                      697      0   2014-09-12 18:42:06 demand    2196L2 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:42:06 demand    4784L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:42:06 demand    4776L2 stock       0L0
+      Tea                      1406      0   2014-09-12 18:42:06 demand       0L1 stock       0L0
+      Coffee                   1338      0   2014-09-12 18:42:06 demand    1194L2 stock       0L0
    + Machinery
-      Hel-Static Furnaces       171      0   2014-09-11 07:05:57 demand   12879L2 stock       0L0
-      Mineral Extractors        531      0   2014-09-11 07:05:57 demand    1762L1 stock       0L0
+      Hel-Static Furnaces       171      0   2014-09-12 18:42:06 demand   12879L2 stock       0L0
+      Mineral Extractors        621      0   2014-09-12 18:42:06 demand    4260L2 stock       0L0
    + Medicines
-      Performance Enhancers    7120      0   2014-09-11 07:05:57 demand    5076L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 07:05:57 demand    1338L2 stock       0L0
-      Progenitor Cells         7120      0   2014-09-11 07:05:57 demand    1107L2 stock       0L0
+      Performance Enhancers    7068      0   2014-09-12 18:42:06 demand    4799L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:42:06 demand    1338L2 stock       0L0
+      Progenitor Cells         6550      0   2014-09-12 18:42:06 demand     308L1 stock       0L0
    + Metals
-      Indium                   5738   5805   2014-09-11 07:05:57 demand       0L0 stock   10672L1
-      Uranium                  2321   2382   2014-09-11 07:05:57 demand       0L0 stock   39873L2
-      Lithium                  1083   1129   2014-09-11 07:05:57 demand       0L0 stock  172426L3
-      Titanium                  782    818   2014-09-11 07:05:57 demand       0L0 stock   36439L1
-      Copper                    222    239   2014-09-11 07:05:57 demand       0L0 stock  254799L3
-      Aluminium                 126    139   2014-09-11 07:05:57 demand       0L0 stock  672710L3
+      Indium                   5812   5880   2014-09-12 18:42:06 demand       0L0 stock    3526L1
+      Uranium                  2413   2475   2014-09-12 18:42:06 demand       0L0 stock   19424L1
+      Titanium                  794    831   2014-09-12 18:42:06 demand       0L0 stock   30742L1
+      Copper                    222    239   2014-09-12 18:42:06 demand       0L0 stock  254799L3
+      Aluminium                 126    139   2014-09-12 18:42:06 demand       0L0 stock  672710L3
    + Minerals
-      Bertrandite              1820   1868   2014-09-11 07:05:57 demand       0L0 stock   24316L3
-      Indite                   2139      0   2014-09-11 07:05:57 demand    3419L1 stock       0L0
-      Gallite                  1354   1392   2014-09-11 07:05:57 demand       0L0 stock   97570L3
-      Coltan                   1493      0   2014-09-11 07:05:57 demand    8344L2 stock       0L0
-      Uraninite                 958      0   2014-09-11 07:05:57 demand   10326L2 stock       0L0
-      Lepidolite                302    323   2014-09-11 07:05:57 demand       0L0 stock  183194L3
-      Rutile                    324      0   2014-09-11 07:05:57 demand     893L2 stock       0L0
-      Bauxite                   115      0   2014-09-11 07:05:57 demand    8469L2 stock       0L0
-      Beryllium                7898   7987   2014-09-11 07:05:57 demand       0L0 stock   15067L2
-      Gallium                  4925   4984   2014-09-11 07:05:57 demand       0L0 stock   56714L1
+      Bertrandite              2235   2294   2014-09-12 18:42:06 demand       0L0 stock     989L1
+      Indite                   2343      0   2014-09-12 18:42:06 demand    6741L2 stock       0L0
+      Gallite                  1668   1713   2014-09-12 18:42:06 demand       0L0 stock    3533L1
+      Coltan                   1493      0   2014-09-12 18:42:06 demand    8344L2 stock       0L0
+      Uraninite                 958      0   2014-09-12 18:42:06 demand   10326L2 stock       0L0
+      Lepidolite                302    323   2014-09-12 18:42:06 demand       0L0 stock  178670L3
+      Rutile                    324      0   2014-09-12 18:42:06 demand     893L2 stock       0L0
+      Bauxite                   115      0   2014-09-12 18:42:06 demand    8469L2 stock       0L0
+      Beryllium                8311   8405   2014-09-12 18:42:06 demand       0L0 stock    2021L1
+      Gallium                  4991   5050   2014-09-12 18:42:06 demand       0L0 stock   33349L1
    + Technology
-      H.E. Suits                259      0   2014-09-11 07:05:57 demand   26914L2 stock       0L0
-      Advanced Catalysers      3037      0   2014-09-11 07:05:57 demand   29841L2 stock       0L0
-      Resonating Separators    6242      0   2014-09-11 07:05:57 demand   10674L2 stock       0L0
-      Bioreducing Lichen       1020      0   2014-09-11 07:05:57 demand    8348L2 stock       0L0
+      H.E. Suits                259      0   2014-09-12 18:42:06 demand   26914L2 stock       0L0
+      Advanced Catalysers      3037      0   2014-09-12 18:42:06 demand   29841L2 stock       0L0
+      Resonating Separators    6242      0   2014-09-12 18:42:06 demand   10674L2 stock       0L0
+      Bioreducing Lichen       1020      0   2014-09-12 18:42:06 demand    8348L2 stock       0L0
    + Waste
-      Biowaste                   11     18   2014-09-11 07:05:57 demand       0L0 stock     827L1
-      Scrap                      91      0   2014-09-11 07:05:57 demand   29089L2 stock       0L0
+      Biowaste                   12     18   2014-09-12 18:42:06 demand       0L0 stock     251L1
+      Scrap                      91      0   2014-09-12 18:42:06 demand   29089L2 stock       0L0
 
 
 @ AGANIPPE/Julian Market
@@ -94,109 +93,100 @@
 
 @ ASELLUS PRIMUS/Beagle 2 Landing
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 06:56:28 demand   38014L1 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:59:23 demand   38014L1 stock       0L0
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-11 06:56:28 demand    7381L2 stock       0L0
-      Consumer Tech            6595   6671   2014-09-11 06:56:28 demand       0L0 stock   30659L1
-      Clothing                  252      0   2014-09-11 06:56:28 demand       0L1 stock       0L0
+      Dom. Appliances           547      0   2014-09-12 18:59:23 demand    7227L2 stock       0L0
+      Consumer Tech            6686   6763   2014-09-12 18:59:23 demand       0L0 stock    7503L1
+      Clothing                  252      0   2014-09-12 18:59:23 demand       0L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 06:56:28 demand   10656L2 stock       0L0
-      Wine                      233      0   2014-09-11 06:56:28 demand    7151L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:59:23 demand   10656L2 stock       0L0
+      Wine                      233      0   2014-09-12 18:59:23 demand    7151L2 stock       0L0
    + Foods
-      Fish                      645      0   2014-09-11 06:56:28 demand       0L1 stock       0L0
-      Food Cartridges           102      0   2014-09-11 06:56:28 demand    5257L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 06:56:28 demand    5248L2 stock       0L0
-      Tea                      1405      0   2014-09-11 06:56:28 demand       0L1 stock       0L0
-      Coffee                   1231      0   2014-09-11 06:56:28 demand       0L1 stock       0L0
-      Fruit and Vegetables      306      0   2014-09-11 06:56:28 demand    4507L2 stock       0L0
-      Grain                     180      0   2014-09-11 06:56:28 demand   18300L2 stock       0L0
-      Animal Meat              1231      0   2014-09-11 06:56:28 demand       0L1 stock       0L0
+      Fish                      680      0   2014-09-12 18:59:23 demand    2116L1 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:59:23 demand    5257L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:59:23 demand    5248L2 stock       0L0
+      Tea                      1447      0   2014-09-12 18:59:23 demand     289L1 stock       0L0
+      Coffee                   1345      0   2014-09-12 18:59:23 demand    1360L2 stock       0L0
+      Fruit and Vegetables      306      0   2014-09-12 18:59:23 demand    4507L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:59:23 demand   18300L2 stock       0L0
+      Animal Meat              1255      0   2014-09-12 18:59:23 demand     565L1 stock       0L0
    + Industrial Materials
-      Superconductors          7116      0   2014-09-11 06:56:28 demand   14712L2 stock       0L0
+      Superconductors          7116      0   2014-09-12 18:59:23 demand   14712L2 stock       0L0
    + Medicines
-      Performance Enhancers    7116      0   2014-09-11 06:56:28 demand    5578L2 stock       0L0
-      Basic Medicines           304      0   2014-09-11 06:56:28 demand    1432L2 stock       0L0
-      Progenitor Cells         7116      0   2014-09-11 06:56:28 demand    1217L2 stock       0L0
+      Performance Enhancers    7116      0   2014-09-12 18:59:23 demand    5578L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:59:23 demand    1469L2 stock       0L0
+      Progenitor Cells         7033      0   2014-09-12 18:59:23 demand    1111L2 stock       0L0
    + Metals
-      Palladium               13780      0   2014-09-11 06:56:28 demand    2167L2 stock       0L0
-      Gold                     9169      0   2014-09-11 06:56:28 demand       0L1 stock       0L0
-      Silver                   5121      0   2014-09-11 06:56:28 demand   34273L2 stock       0L0
-      Cobalt                    746      0   2014-09-11 06:56:28 demand   17091L2 stock       0L0
-      Indium                   5984      0   2014-09-11 06:56:28 demand   11016L2 stock       0L0
-      Tantalum                 4063      0   2014-09-11 06:56:28 demand    5825L2 stock       0L0
-      Uranium                  2845      0   2014-09-11 06:56:28 demand    4509L2 stock       0L0
-      Lithium                  1674      0   2014-09-11 06:56:28 demand    5364L2 stock       0L0
+      Palladium               13780      0   2014-09-12 18:59:23 demand    2167L2 stock       0L0
+      Gold                     9898      0   2014-09-12 18:59:23 demand    5056L2 stock       0L0
+      Silver                   5121      0   2014-09-12 18:59:23 demand   34273L2 stock       0L0
+      Cobalt                    746      0   2014-09-12 18:59:23 demand   17091L2 stock       0L0
+      Indium                   6237      0   2014-09-12 18:59:23 demand   15616L2 stock       0L0
+      Tantalum                 4207      0   2014-09-12 18:59:23 demand    7512L2 stock       0L0
+      Uranium                  2822      0   2014-09-12 18:59:23 demand    4293L2 stock       0L0
+      Lithium                  1696      0   2014-09-12 18:59:23 demand    5756L2 stock       0L0
    + Minerals
-      Gallite                  1944      0   2014-09-11 06:56:28 demand    3659L2 stock       0L0
-      Rutile                    324      0   2014-09-11 06:56:28 demand    6546L2 stock       0L0
-      Beryllium                8673      0   2014-09-11 06:56:28 demand   13427L2 stock       0L0
-      Gallium                  5374      0   2014-09-11 06:56:28 demand   14583L2 stock       0L0
+      Gallite                  1976      0   2014-09-12 18:59:23 demand    4102L2 stock       0L0
+      Rutile                    324      0   2014-09-12 18:59:23 demand    6525L2 stock       0L0
+      Beryllium                8673      0   2014-09-12 18:59:23 demand   13427L2 stock       0L0
+      Gallium                  5470      0   2014-09-12 18:59:23 demand   16620L2 stock       0L0
    + Technology
-      Computer Components       550      0   2014-09-11 06:56:28 demand   99519L2 stock       0L0
-      H.E. Suits                103    115   2014-09-11 06:56:28 demand       0L0 stock  278270L2
-      Robotics                 1539   1581   2014-09-11 06:56:28 demand       0L0 stock   13529L1
-      Auto-Fabricators         3085   3162   2014-09-11 06:56:28 demand       0L0 stock   88174L2
-      Animal Monitors           150    166   2014-09-11 06:56:28 demand       0L0 stock   55650L1
-      Aquaponic Systems         129    144   2014-09-11 06:56:28 demand       0L0 stock  110894L1
-      Advanced Catalysers      2203   2260   2014-09-11 06:56:28 demand       0L0 stock   58914L2
-      Terrain Enrich Sys       4614   4669   2014-09-11 06:56:28 demand       0L0 stock    1714L1
-      Resonating Separators    5188   5248   2014-09-11 06:56:28 demand       0L0 stock   38766L2
+      Computer Components       550      0   2014-09-12 18:59:23 demand   99519L2 stock       0L0
+      H.E. Suits                103    115   2014-09-12 18:59:23 demand       0L0 stock  278270L2
+      Robotics                 1565   1608   2014-09-12 18:59:23 demand       0L0 stock    4485L1
+      Animal Monitors           150    166   2014-09-12 18:59:23 demand       0L0 stock   55650L1
+      Aquaponic Systems         129    144   2014-09-12 18:59:23 demand       0L0 stock  110894L1
    + Waste
-      Biowaste                   11     18   2014-09-11 06:56:28 demand       0L0 stock     949L1
-      Scrap                      27     34   2014-09-11 06:56:28 demand       0L0 stock    7000L2
-   + Weapons
-      Personal Weapons         3966   4064   2014-09-11 06:56:28 demand       0L0 stock     171L1
+      Scrap                      28     35   2014-09-12 18:59:23 demand       0L0 stock    6102L2
 
 
 @ AULIN/Aulin Enterprise
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 07:03:29 demand  190526L1 stock       0L0
-      Pesticides                 83     97   2014-09-11 07:03:29 demand       0L0 stock  215749L1
+      Hydrogen Fuels             56      0   2014-09-12 18:59:34 demand  190526L1 stock       0L0
+      Pesticides                 83     97   2014-09-12 18:59:34 demand       0L0 stock  215749L1
    + Consumer Items
-      Dom. Appliances           547      0   2014-09-11 07:03:29 demand   35332L2 stock       0L0
-      Consumer Tech            6733      0   2014-09-11 07:03:29 demand   24701L2 stock       0L0
-      Clothing                  251      0   2014-09-11 07:03:29 demand       0L1 stock       0L0
+      Dom. Appliances           547      0   2014-09-12 18:59:34 demand   35332L2 stock       0L0
+      Consumer Tech            6733      0   2014-09-12 18:59:34 demand   24701L2 stock       0L0
+      Clothing                  251      0   2014-09-12 18:59:34 demand       0L1 stock       0L0
    + Drugs
-      Beer                      142      0   2014-09-11 07:03:29 demand  106809L2 stock       0L0
+      Beer                      142      0   2014-09-12 18:59:34 demand  106809L2 stock       0L0
    + Foods
-      Fruit and Vegetables      305      0   2014-09-11 07:03:29 demand   11965L2 stock       0L0
-      Grain                     180      0   2014-09-11 07:03:29 demand   91720L2 stock       0L0
-      Animal Meat              1261      0   2014-09-11 07:03:29 demand    6217L1 stock       0L0
-      Fish                      643      0   2014-09-11 07:03:29 demand       0L1 stock       0L0
-      Synthetic Meat             77     87   2014-09-11 07:03:29 demand       0L0 stock 1535011L3
-      Tea                      1399      0   2014-09-11 07:03:29 demand       0L1 stock       0L0
-      Coffee                   1240      0   2014-09-11 07:03:29 demand    2019L1 stock       0L0
+      Fruit and Vegetables      305      0   2014-09-12 18:59:34 demand   11985L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:59:34 demand   91720L2 stock       0L0
+      Animal Meat              1283      0   2014-09-12 18:59:34 demand    7170L2 stock       0L0
+      Fish                      643      0   2014-09-12 18:59:34 demand       0L1 stock       0L0
+      Synthetic Meat             77     87   2014-09-12 18:59:34 demand       0L0 stock 1535011L3
+      Tea                      1553      0   2014-09-12 18:59:34 demand    4228L2 stock       0L0
+      Coffee                   1226      0   2014-09-12 18:59:34 demand    1732L1 stock       0L0
    + Industrial Materials
-      Superconductors          7086      0   2014-09-11 07:03:29 demand   73734L2 stock       0L0
+      Superconductors          7086      0   2014-09-12 18:59:34 demand   73734L2 stock       0L0
    + Medicines
-      Agri-Medicines            624    653   2014-09-11 07:03:29 demand       0L0 stock  544660L3
-      Performance Enhancers    6508   6587   2014-09-11 07:03:29 demand       0L0 stock  102933L1
-      Basic Medicines           305      0   2014-09-11 07:03:29 demand    3525L2 stock       0L0
-      Progenitor Cells         6498   6577   2014-09-11 07:03:29 demand       0L0 stock  108157L1
-      Combat Stabilisers       2122   2179   2014-09-11 07:03:29 demand       0L0 stock   16835L3
+      Agri-Medicines            626    656   2014-09-12 18:59:34 demand       0L0 stock  538760L3
+      Performance Enhancers    6658   6739   2014-09-12 18:59:34 demand       0L0 stock   26512L1
+      Basic Medicines           302      0   2014-09-12 18:59:34 demand    3424L2 stock       0L0
+      Progenitor Cells         6575   6655   2014-09-12 18:59:34 demand       0L0 stock   91139L1
    + Metals
-      Palladium               13723      0   2014-09-11 07:03:29 demand    1106L2 stock       0L0
-      Gold                     9131      0   2014-09-11 07:03:29 demand       0L1 stock       0L0
-      Silver                   4948      0   2014-09-11 07:03:29 demand    1362L2 stock       0L0
-      Cobalt                    743      0   2014-09-11 07:03:29 demand    4268L2 stock       0L0
-      Indium                   5987      0   2014-09-11 07:03:29 demand    5792L2 stock       0L0
-      Tantalum                 4172      0   2014-09-11 07:03:29 demand    9143L2 stock       0L0
-      Uranium                  2829      0   2014-09-11 07:03:29 demand   11190L2 stock       0L0
-      Lithium                  1586      0   2014-09-11 07:03:29 demand    9774L2 stock       0L0
+      Palladium               13723      0   2014-09-12 18:59:34 demand    1106L2 stock       0L0
+      Gold                     9839      0   2014-09-12 18:59:34 demand    1239L2 stock       0L0
+      Silver                   5048      0   2014-09-12 18:59:34 demand    1595L2 stock       0L0
+      Cobalt                    713      0   2014-09-12 18:59:34 demand    3536L2 stock       0L0
+      Indium                   6212      0   2014-09-12 18:59:34 demand    7850L2 stock       0L0
+      Tantalum                 4190      0   2014-09-12 18:59:34 demand    9412L2 stock       0L0
+      Uranium                  2833      0   2014-09-12 18:59:34 demand   11280L2 stock       0L0
+      Lithium                  1683      0   2014-09-12 18:59:34 demand   14110L2 stock       0L0
    + Minerals
-      Gallite                  1825      0   2014-09-11 07:03:29 demand       0L1 stock       0L0
-      Rutile                    323      0   2014-09-11 07:03:29 demand    6555L2 stock       0L0
-      Beryllium                8058      0   2014-09-11 07:03:29 demand     629L1 stock       0L0
-      Gallium                  5044      0   2014-09-11 07:03:29 demand    4016L1 stock       0L0
+      Gallite                  1825      0   2014-09-12 18:59:34 demand       0L1 stock       0L0
+      Rutile                    323      0   2014-09-12 18:59:34 demand    6555L2 stock       0L0
+      Beryllium                8637      0   2014-09-12 18:59:34 demand    1334L2 stock       0L0
+      Gallium                  5444      0   2014-09-12 18:59:34 demand    8316L2 stock       0L0
    + Technology
-      Computer Components       529      0   2014-09-11 07:03:29 demand   43379L2 stock       0L0
-      H.E. Suits                128    143   2014-09-11 07:03:29 demand       0L0 stock   37052L1
-      Advanced Catalysers      2247   2306   2014-09-11 07:03:29 demand       0L0 stock   79567L2
-      Terrain Enrich Sys       3912   3961   2014-09-11 07:03:29 demand       0L0 stock  670536L3
-      Bioreducing Lichen        732    766   2014-09-11 07:03:29 demand       0L0 stock   18383L1
+      Computer Components       539      0   2014-09-12 18:59:34 demand   47000L2 stock       0L0
+      H.E. Suits                132    147   2014-09-12 18:59:34 demand       0L0 stock    2331L1
+      Terrain Enrich Sys       4657   4715   2014-09-12 18:59:34 demand       0L0 stock   56877L1
+      Bioreducing Lichen        746    781   2014-09-12 18:59:34 demand       0L0 stock    3741L1
    + Waste
-      Biowaste                   11     18   2014-09-11 07:03:29 demand       0L0 stock    3791L1
-      Scrap                      28     35   2014-09-11 07:03:29 demand       0L0 stock   25069L2
+      Biowaste                   11     18   2014-09-12 18:59:34 demand       0L0 stock     245L1
+      Scrap                      28     35   2014-09-12 18:59:34 demand       0L0 stock   25069L2
 
 
 @ AULIS/Dezhurov Gateway
@@ -234,132 +224,125 @@
 
 @ BD+47 2112/Olivas Settlement
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-11 07:02:29 demand       0L0 stock   32247L1
-      Explosives                290      0   2014-09-11 07:02:29 demand   19672L2 stock       0L0
+      Hydrogen Fuels             80     81   2014-09-12 18:51:14 demand       0L0 stock   32247L1
+      Explosives                290      0   2014-09-12 18:51:14 demand   19672L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           551      0   2014-09-11 07:02:29 demand     598L2 stock       0L0
-      Consumer Tech            6851      0   2014-09-11 07:02:29 demand       0L1 stock       0L0
-      Clothing                  279      0   2014-09-11 07:02:29 demand       0L1 stock       0L0
+      Dom. Appliances           485      0   2014-09-12 18:51:14 demand     314L1 stock       0L0
+      Consumer Tech            6851      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
+      Clothing                  279      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 07:02:29 demand    4119L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:51:14 demand    4119L2 stock       0L0
    + Foods
-      Fruit and Vegetables      307      0   2014-09-11 07:02:29 demand     731L2 stock       0L0
-      Grain                     181      0   2014-09-11 07:02:29 demand    2588L2 stock       0L0
-      Animal Meat              1318      0   2014-09-11 07:02:29 demand       0L1 stock       0L0
-      Fish                      647      0   2014-09-11 07:02:29 demand       0L1 stock       0L0
-      Food Cartridges           103      0   2014-09-11 07:02:29 demand    1077L2 stock       0L0
-      Synthetic Meat            234      0   2014-09-11 07:02:29 demand     851L2 stock       0L0
-      Tea                      1502      0   2014-09-11 07:02:29 demand       0L1 stock       0L0
-      Coffee                   1235      0   2014-09-11 07:02:29 demand       0L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:51:14 demand     731L2 stock       0L0
+      Grain                     181      0   2014-09-12 18:51:14 demand    2588L2 stock       0L0
+      Animal Meat              1318      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
+      Fish                      647      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:51:14 demand    1077L2 stock       0L0
+      Synthetic Meat            234      0   2014-09-12 18:51:14 demand     851L2 stock       0L0
+      Tea                      1502      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
+      Coffee                   1235      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
    + Machinery
-      Mineral Extractors        622      0   2014-09-11 07:02:29 demand    2646L2 stock       0L0
+      Mineral Extractors        622      0   2014-09-12 18:51:14 demand    2648L2 stock       0L0
    + Medicines
-      Performance Enhancers    7137      0   2014-09-11 07:02:29 demand     924L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 07:02:29 demand     411L2 stock       0L0
-      Progenitor Cells         7094      0   2014-09-11 07:02:29 demand      91L2 stock       0L0
+      Performance Enhancers    7029      0   2014-09-12 18:51:14 demand     819L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:51:14 demand     411L2 stock       0L0
+      Progenitor Cells         6851      0   2014-09-12 18:51:14 demand       0L1 stock       0L0
    + Metals
-      Cobalt                    486    519   2014-09-11 07:02:29 demand       0L0 stock   15644L2
+      Cobalt                    512    546   2014-09-12 18:51:14 demand       0L0 stock    3247L1
    + Minerals
-      Indite                   1917   1968   2014-09-11 07:02:29 demand       0L0 stock    3491L1
-      Uraninite                 683    715   2014-09-11 07:02:29 demand       0L0 stock    1068L1
-      Bauxite                    29     39   2014-09-11 07:02:29 demand       0L0 stock     350L1
+      Bauxite                    30     40   2014-09-12 18:51:14 demand       0L0 stock      73L1
    + Technology
-      H.E. Suits                260      0   2014-09-11 07:02:29 demand    4182L2 stock       0L0
-      Bioreducing Lichen       1022      0   2014-09-11 07:02:29 demand    5188L2 stock       0L0
-   + Waste
-      Biowaste                   12     18   2014-09-11 07:02:29 demand       0L0 stock      15L1
+      H.E. Suits                260      0   2014-09-12 18:51:14 demand    4182L2 stock       0L0
+      Bioreducing Lichen       1022      0   2014-09-12 18:51:14 demand    5188L2 stock       0L0
    + Weapons
-      Reactive Armor           2201      0   2014-09-11 07:02:29 demand     185L2 stock       0L0
-      Non-Lethal Wpns          1935      0   2014-09-11 07:02:29 demand     292L2 stock       0L0
+      Reactive Armor           2082      0   2014-09-12 18:51:14 demand      34L1 stock       0L0
+      Non-Lethal Wpns          1935      0   2014-09-12 18:51:14 demand     292L2 stock       0L0
 
 
 @ BOLG/Moxon's Mojo
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-11 05:47:01 demand   95460L2 stock       0L0
+      Hydrogen Fuels             62      0   2014-09-12 18:59:03 demand   95460L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           345    369   2014-09-11 05:47:01 demand       0L0 stock   35867L1
-      Consumer Tech            7124      0   2014-09-11 05:47:01 demand    1549L2 stock       0L0
-      Clothing                  304      0   2014-09-11 05:47:01 demand    1641L2 stock       0L0
+      Dom. Appliances           355    381   2014-09-12 18:59:03 demand       0L0 stock    2324L1
+      Consumer Tech            7124      0   2014-09-12 18:59:03 demand    1549L2 stock       0L0
+      Clothing                  307      0   2014-09-12 18:59:03 demand    1700L2 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 05:47:01 demand   13379L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:59:03 demand   13379L2 stock       0L0
    + Foods
-      Algae                      95      0   2014-09-11 05:47:01 demand    9908L2 stock       0L0
-      Fruit and Vegetables      307      0   2014-09-11 05:47:01 demand    5659L2 stock       0L0
-      Grain                     181      0   2014-09-11 05:47:01 demand   22978L2 stock       0L0
-      Animal Meat              1401      0   2014-09-11 05:47:01 demand    1460L2 stock       0L0
-      Fish                      773      0   2014-09-11 05:47:01 demand    4727L2 stock       0L0
-      Food Cartridges            14     20   2014-09-11 05:47:01 demand       0L0 stock   59946L3
-      Synthetic Meat            234      0   2014-09-11 05:47:01 demand    6589L2 stock       0L0
-      Tea                      1407      0   2014-09-11 05:47:01 demand       0L1 stock       0L0
-      Coffee                   1401      0   2014-09-11 05:47:01 demand    2116L2 stock       0L0
+      Algae                      95      0   2014-09-12 18:59:03 demand    9908L2 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:59:03 demand    5659L2 stock       0L0
+      Grain                     181      0   2014-09-12 18:59:03 demand   22978L2 stock       0L0
+      Animal Meat              1249      0   2014-09-12 18:59:03 demand     670L1 stock       0L0
+      Fish                      744      0   2014-09-12 18:59:03 demand    4076L2 stock       0L0
+      Food Cartridges            14     20   2014-09-12 18:59:03 demand       0L0 stock   59946L3
+      Synthetic Meat            234      0   2014-09-12 18:59:03 demand    6589L2 stock       0L0
+      Tea                      1579      0   2014-09-12 18:59:03 demand     648L2 stock       0L0
+      Coffee                   1401      0   2014-09-12 18:59:03 demand    2116L2 stock       0L0
    + Industrial Materials
-      Polymers                  116      0   2014-09-11 05:47:01 demand   31158L2 stock       0L0
-      Semiconductors            959      0   2014-09-11 05:47:01 demand    9499L2 stock       0L0
-      Superconductors          7124      0   2014-09-11 05:47:01 demand   73905L2 stock       0L0
+      Polymers                  116      0   2014-09-12 18:59:03 demand   31158L2 stock       0L0
+      Semiconductors            958      0   2014-09-12 18:59:03 demand    9436L2 stock       0L0
+      Superconductors          7124      0   2014-09-12 18:59:03 demand   73905L2 stock       0L0
    + Machinery
-      Hel-Static Furnaces        45     53   2014-09-11 05:47:01 demand       0L0 stock   91036L3
-      Mineral Extractors        310    332   2014-09-11 05:47:01 demand       0L0 stock   35362L3
-      Crop Harvesters          1944   1996   2014-09-11 05:47:01 demand       0L0 stock     713L1
+      Hel-Static Furnaces        57     67   2014-09-12 18:59:03 demand       0L0 stock   47887L2
    + Medicines
-      Performance Enhancers    7124      0   2014-09-11 05:47:01 demand    7004L2 stock       0L0
-      Progenitor Cells         7124      0   2014-09-11 05:47:01 demand    1527L2 stock       0L0
+      Performance Enhancers    7124      0   2014-09-12 18:59:03 demand    7004L2 stock       0L0
+      Progenitor Cells         7091      0   2014-09-12 18:59:03 demand    1474L2 stock       0L0
    + Metals
-      Gold                     9206      0   2014-09-11 05:47:01 demand    1335L1 stock       0L0
-      Indium                   6245      0   2014-09-11 05:47:01 demand  196351L2 stock       0L0
-      Tantalum                 4212      0   2014-09-11 05:47:01 demand   70717L2 stock       0L0
-      Uranium                  2848      0   2014-09-11 05:47:01 demand  198098L2 stock       0L0
-      Lithium                  1698      0   2014-09-11 05:47:01 demand  108328L2 stock       0L0
-      Titanium                 1088      0   2014-09-11 05:47:01 demand   44695L2 stock       0L0
-      Copper                    488      0   2014-09-11 05:47:01 demand  199205L2 stock       0L0
-      Aluminium                 324      0   2014-09-11 05:47:01 demand   24658L2 stock       0L0
+      Gold                     9721      0   2014-09-12 18:59:03 demand    2679L2 stock       0L0
+      Indium                   6245      0   2014-09-12 18:59:03 demand  196351L2 stock       0L0
+      Tantalum                 4212      0   2014-09-12 18:59:03 demand   70717L2 stock       0L0
+      Uranium                  2848      0   2014-09-12 18:59:03 demand  198098L2 stock       0L0
+      Lithium                  1698      0   2014-09-12 18:59:03 demand  108328L2 stock       0L0
+      Titanium                 1088      0   2014-09-12 18:59:03 demand   44695L2 stock       0L0
+      Copper                    488      0   2014-09-12 18:59:03 demand  199205L2 stock       0L0
+      Aluminium                 324      0   2014-09-12 18:59:03 demand   24658L2 stock       0L0
    + Minerals
-      Beryllium                8683      0   2014-09-11 05:47:01 demand   50584L2 stock       0L0
-      Gallium                  5476      0   2014-09-11 05:47:01 demand    6263L2 stock       0L0
+      Beryllium                8683      0   2014-09-12 18:59:03 demand   50584L2 stock       0L0
+      Gallium                  5468      0   2014-09-12 18:59:03 demand    6196L2 stock       0L0
    + Technology
-      H.E. Suits                259      0   2014-09-11 05:47:01 demand   37134L2 stock       0L0
-      Robotics                 1931      0   2014-09-11 05:47:01 demand   27482L2 stock       0L0
-      Auto-Fabricators         3946      0   2014-09-11 05:47:01 demand  243021L2 stock       0L0
+      H.E. Suits                259      0   2014-09-12 18:59:03 demand   37134L2 stock       0L0
+      Robotics                 1931      0   2014-09-12 18:59:03 demand   27482L2 stock       0L0
+      Auto-Fabricators         3946      0   2014-09-12 18:59:03 demand  243021L2 stock       0L0
    + Textiles
-      Leather                   143      0   2014-09-11 05:47:01 demand   26758L2 stock       0L0
-      Natural Fabrics           409      0   2014-09-11 05:47:01 demand   14549L2 stock       0L0
-      Synthetic Fabrics         156      0   2014-09-11 05:47:01 demand   25173L2 stock       0L0
+      Leather                   142      0   2014-09-12 18:59:03 demand   26572L2 stock       0L0
+      Natural Fabrics           409      0   2014-09-12 18:59:03 demand   14549L2 stock       0L0
+      Synthetic Fabrics         156      0   2014-09-12 18:59:03 demand   25173L2 stock       0L0
    + Waste
-      Biowaste                   11     18   2014-09-11 05:47:01 demand       0L0 stock    1426L1
-      Scrap                      20     25   2014-09-11 05:47:01 demand       0L0 stock   48493L3
+      Biowaste                   12     18   2014-09-12 18:59:03 demand       0L0 stock    1064L1
+      Scrap                      25     31   2014-09-12 18:59:03 demand       0L0 stock   29298L2
 
 
 @ CHI HERCULIS/Gorbatko Reserve
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 02:37:58 demand   90139L1 stock       0L0
-      Pesticides                199      0   2014-09-11 02:37:58 demand   62946L2 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:54:55 demand   90139L1 stock       0L0
+      Pesticides                199      0   2014-09-12 18:54:55 demand   62946L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-11 02:37:58 demand    7271L2 stock       0L0
-      Consumer Tech            7114      0   2014-09-11 02:37:58 demand    7564L2 stock       0L0
-      Clothing                  306      0   2014-09-11 02:37:58 demand    3209L2 stock       0L0
+      Dom. Appliances           550      0   2014-09-12 18:54:55 demand    7271L2 stock       0L0
+      Consumer Tech            7114      0   2014-09-12 18:54:55 demand    7564L2 stock       0L0
+      Clothing                  286      0   2014-09-12 18:54:55 demand    2467L2 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 02:37:58 demand   25266L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:54:55 demand   25266L2 stock       0L0
    + Foods
-      Algae                      11     17   2014-09-11 02:37:58 demand       0L0 stock    9639L3
-      Fruit and Vegetables      306      0   2014-09-11 02:37:58 demand    1386L2 stock       0L0
-      Grain                      57     67   2014-09-11 02:37:58 demand       0L0 stock  111607L2
-      Animal Meat              1328      0   2014-09-11 02:37:58 demand     728L2 stock       0L0
-      Fish                      365    394   2014-09-11 02:37:58 demand       0L0 stock   37781L2
-      Tea                      1590      0   2014-09-11 02:37:58 demand    1988L2 stock       0L0
-      Coffee                   1399      0   2014-09-11 02:37:58 demand    2584L2 stock       0L0
+      Algae                      16     25   2014-09-12 18:54:55 demand       0L0 stock    2769L1
+      Fruit and Vegetables      306      0   2014-09-12 18:54:55 demand    1386L2 stock       0L0
+      Grain                      65     76   2014-09-12 18:54:55 demand       0L0 stock   78507L2
+      Animal Meat              1399      0   2014-09-12 18:54:55 demand     978L2 stock       0L0
+      Tea                      1590      0   2014-09-12 18:54:55 demand    1988L2 stock       0L0
+      Coffee                   1382      0   2014-09-12 18:54:55 demand    2426L2 stock       0L0
    + Machinery
-      Crop Harvesters          2341      0   2014-09-11 02:37:58 demand   23419L2 stock       0L0
-      Marine Supplies          4491      0   2014-09-11 02:37:58 demand   34542L2 stock       0L0
+      Crop Harvesters          2341      0   2014-09-12 18:54:55 demand   23419L2 stock       0L0
+      Marine Supplies          4491      0   2014-09-12 18:54:55 demand   34542L2 stock       0L0
    + Medicines
-      Agri-Medicines           1086      0   2014-09-11 02:37:58 demand    6750L2 stock       0L0
-      Performance Enhancers    7114      0   2014-09-11 02:37:58 demand   15407L2 stock       0L0
-      Basic Medicines           306      0   2014-09-11 02:37:58 demand    1308L2 stock       0L0
-      Progenitor Cells         7114      0   2014-09-11 02:37:58 demand   12838L2 stock       0L0
+      Agri-Medicines           1086      0   2014-09-12 18:54:55 demand    6750L2 stock       0L0
+      Performance Enhancers    7114      0   2014-09-12 18:54:55 demand   15407L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:54:55 demand    1308L2 stock       0L0
+      Progenitor Cells         7114      0   2014-09-12 18:54:55 demand   12838L2 stock       0L0
    + Technology
-      Animal Monitors           289      0   2014-09-11 02:37:58 demand   98973L2 stock       0L0
-      Aquaponic Systems         259      0   2014-09-11 02:37:58 demand    7013L2 stock       0L0
-      Terrain Enrich Sys       4675      0   2014-09-11 02:37:58 demand       0L1 stock       0L0
+      Animal Monitors           289      0   2014-09-12 18:54:55 demand   98973L2 stock       0L0
+      Aquaponic Systems         259      0   2014-09-12 18:54:55 demand    7013L2 stock       0L0
+      Terrain Enrich Sys       4675      0   2014-09-12 18:54:55 demand       0L1 stock       0L0
    + Waste
-      Biowaste                   68      0   2014-09-11 02:37:58 demand   40527L2 stock       0L0
+      Biowaste                   68      0   2014-09-12 18:54:55 demand   40527L2 stock       0L0
 
 
 @ CM DRACO/Anderson Escape
@@ -391,8 +374,6 @@
       Performance Enhancers    7161      0   2014-09-10 09:50:12 demand     184L2 stock       0L0
       Basic Medicines           308      0   2014-09-10 09:50:12 demand     169L2 stock       0L0
    + Metals
-      Palladium               13073  13073   2014-09-09 18:34:15 demand       0L0 stock    1158L2
-      Silver                   4468   4521   2014-09-09 18:34:15 demand       0L0 stock    4003L2
       Cobalt                    445    474   2014-09-10 09:50:12 demand       0L0 stock     451L2
    + Minerals
       Indite                   1923   1974   2014-09-10 09:50:12 demand       0L0 stock    1546L1
@@ -413,98 +394,86 @@
 
 @ DAHAN/Dahan Gateway
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-11 06:23:47 demand       0L0 stock   42691L1
-      Mineral Oil               164      0   2014-09-11 06:23:47 demand    5462L2 stock       0L0
-      Explosives                145    162   2014-09-11 06:23:47 demand       0L0 stock   16272L2
+      Hydrogen Fuels             80     81   2014-09-12 18:52:03 demand       0L0 stock   42691L1
+      Mineral Oil               164      0   2014-09-12 18:52:03 demand    5462L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           551      0   2014-09-11 06:23:47 demand     768L2 stock       0L0
-      Consumer Tech            6851      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Clothing                  253      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
+      Dom. Appliances           467      0   2014-09-12 18:52:03 demand     194L1 stock       0L0
+      Consumer Tech            6851      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
+      Clothing                  253      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 06:23:47 demand    5452L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:52:03 demand    5452L2 stock       0L0
    + Foods
-      Fruit and Vegetables      253      0   2014-09-11 06:23:47 demand     334L1 stock       0L0
-      Grain                     181      0   2014-09-11 06:23:47 demand    3426L2 stock       0L0
-      Animal Meat              1318      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Fish                      647      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Food Cartridges           103      0   2014-09-11 06:23:47 demand    1655L2 stock       0L0
-      Synthetic Meat            234      0   2014-09-11 06:23:47 demand    1215L2 stock       0L0
-      Tea                      1502      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Coffee                   1235      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:52:03 demand    1043L2 stock       0L0
+      Grain                     181      0   2014-09-12 18:52:03 demand    3426L2 stock       0L0
+      Animal Meat              1361      0   2014-09-12 18:52:03 demand     101L2 stock       0L0
+      Fish                      647      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:52:03 demand    1655L2 stock       0L0
+      Synthetic Meat            234      0   2014-09-12 18:52:03 demand    1215L2 stock       0L0
+      Tea                      1502      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
+      Coffee                   1369      0   2014-09-12 18:52:03 demand     342L2 stock       0L0
    + Industrial Materials
-      Polymers                   29     39   2014-09-11 06:23:47 demand       0L0 stock    8710L1
+      Polymers                   30     40   2014-09-12 18:52:03 demand       0L0 stock    4096L1
    + Machinery
-      Hel-Static Furnaces       172      0   2014-09-11 06:23:47 demand    2649L2 stock       0L0
-      Mineral Extractors        530      0   2014-09-11 06:23:47 demand     258L1 stock       0L0
+      Hel-Static Furnaces       172      0   2014-09-12 18:52:03 demand    2649L2 stock       0L0
+      Mineral Extractors        599      0   2014-09-12 18:52:03 demand     746L2 stock       0L0
    + Medicines
-      Performance Enhancers    7137      0   2014-09-11 06:23:47 demand    1271L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 06:23:47 demand     562L2 stock       0L0
-      Combat Stabilisers       2742      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
+      Performance Enhancers    7078      0   2014-09-12 18:52:03 demand    1193L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:52:03 demand     562L2 stock       0L0
+      Combat Stabilisers       3045      0   2014-09-12 18:52:03 demand    3714L2 stock       0L0
    + Metals
-      Cobalt                    502    535   2014-09-11 06:23:47 demand       0L0 stock    3962L1
-      Indium                   5751   5819   2014-09-11 06:23:47 demand       0L0 stock   13171L1
-      Tantalum                 3625   3714   2014-09-11 06:23:47 demand       0L0 stock   19097L2
-      Titanium                  634    663   2014-09-11 06:23:47 demand       0L0 stock   89270L3
-      Aluminium                 154    170   2014-09-11 06:23:47 demand       0L0 stock   53880L2
+      Indium                   5826   5894   2014-09-12 18:52:03 demand       0L0 stock     572L1
+      Titanium                  799    836   2014-09-12 18:52:03 demand       0L0 stock      70L1
+      Aluminium                 180    199   2014-09-12 18:52:03 demand       0L0 stock   17703L1
    + Minerals
-      Bertrandite              2400      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Indite                   1836   1885   2014-09-11 06:23:47 demand       0L0 stock    2811L2
-      Gallite                  1838      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Coltan                   1402      0   2014-09-11 06:23:47 demand    1169L2 stock       0L0
-      Uraninite                 908      0   2014-09-11 06:23:47 demand    2124L2 stock       0L0
-      Lepidolite                622      0   2014-09-11 06:23:47 demand    2629L2 stock       0L0
-      Rutile                    325      0   2014-09-11 06:23:47 demand    1838L2 stock       0L0
-      Bauxite                   113      0   2014-09-11 06:23:47 demand    3484L2 stock       0L0
+      Bertrandite              2400      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
+      Gallite                  1838      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
+      Coltan                   1366      0   2014-09-12 18:52:03 demand     955L1 stock       0L0
+      Uraninite                 874      0   2014-09-12 18:52:03 demand    1674L1 stock       0L0
+      Lepidolite                541      0   2014-09-12 18:52:03 demand    1243L1 stock       0L0
+      Rutile                    325      0   2014-09-12 18:52:03 demand    1838L2 stock       0L0
+      Bauxite                   113      0   2014-09-12 18:52:03 demand    3471L2 stock       0L0
    + Technology
-      H.E. Suits                260      0   2014-09-11 06:23:47 demand    5536L2 stock       0L0
-      Advanced Catalysers      2742      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Resonating Separators    5739      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Bioreducing Lichen       1020      0   2014-09-11 06:23:47 demand    1703L2 stock       0L0
+      H.E. Suits                256      0   2014-09-12 18:52:03 demand    5295L2 stock       0L0
+      Advanced Catalysers      3045      0   2014-09-12 18:52:03 demand    6138L2 stock       0L0
+      Resonating Separators    6257      0   2014-09-12 18:52:03 demand    2196L2 stock       0L0
+      Bioreducing Lichen       1022      0   2014-09-12 18:52:03 demand    1717L2 stock       0L0
    + Waste
-      Biowaste                   12     18   2014-09-11 06:23:47 demand       0L0 stock      12L1
-      Scrap                      91      0   2014-09-11 06:23:47 demand    5984L2 stock       0L0
+      Scrap                      91      0   2014-09-12 18:52:03 demand    5984L2 stock       0L0
    + Weapons
-      Reactive Armor           2082      0   2014-09-11 06:23:47 demand       0L1 stock       0L0
-      Non-Lethal Wpns          1936      0   2014-09-11 06:23:47 demand     366L2 stock       0L0
+      Reactive Armor           2082      0   2014-09-12 18:52:03 demand       0L1 stock       0L0
+      Non-Lethal Wpns          1936      0   2014-09-12 18:52:03 demand     366L2 stock       0L0
 
 
 @ ERANIN/Azeban City
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 06:34:15 demand   67083L1 stock       0L0
-      Mineral Oil                62     73   2014-09-11 06:34:15 demand       0L0 stock    1717L1
-      Pesticides                199      0   2014-09-11 06:34:15 demand   53808L2 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:58:08 demand   67083L1 stock       0L0
+      Pesticides                199      0   2014-09-12 18:58:08 demand   53808L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-11 06:34:15 demand    6216L2 stock       0L0
-      Consumer Tech            7115      0   2014-09-11 06:34:15 demand    5451L2 stock       0L0
-      Clothing                  252      0   2014-09-11 06:34:15 demand       0L1 stock       0L0
+      Dom. Appliances           535      0   2014-09-12 18:58:08 demand    5582L2 stock       0L0
+      Consumer Tech            7085      0   2014-09-12 18:58:08 demand    5280L2 stock       0L0
+      Clothing                  252      0   2014-09-12 18:58:08 demand       0L1 stock       0L0
    + Drugs
-      Tobacco                  4898      0   2014-09-11 06:34:15 demand       0L1 stock       0L0
-      Beer                      143      0   2014-09-11 06:34:15 demand   18804L2 stock       0L0
-      Liquor                    659      0   2014-09-11 06:34:15 demand    1986L2 stock       0L0
+      Tobacco                  4898      0   2014-09-12 18:58:08 demand       0L1 stock       0L0
+      Beer                      143      0   2014-09-12 18:58:08 demand   18804L2 stock       0L0
+      Liquor                    659      0   2014-09-12 18:58:08 demand    1986L2 stock       0L0
    + Foods
-      Fruit and Vegetables      166    184   2014-09-11 06:34:15 demand       0L0 stock    5055L1
-      Grain                      70     83   2014-09-11 06:34:15 demand       0L0 stock   11304L1
-      Animal Meat              1067   1114   2014-09-11 06:34:15 demand       0L0 stock     296L1
-      Fish                      645      0   2014-09-11 06:34:15 demand       0L1 stock       0L0
-      Tea                      1243   1297   2014-09-11 06:34:15 demand       0L0 stock      58L1
-      Coffee                   1067   1114   2014-09-11 06:34:15 demand       0L0 stock     131L1
+      Fish                      645      0   2014-09-12 18:58:08 demand       0L1 stock       0L0
    + Machinery
-      Crop Harvesters          2341      0   2014-09-11 06:34:15 demand   17428L2 stock       0L0
+      Crop Harvesters          2341      0   2014-09-12 18:58:08 demand   17428L2 stock       0L0
    + Medicines
-      Agri-Medicines           1003      0   2014-09-11 06:34:15 demand    3219L2 stock       0L0
-      Performance Enhancers    7115      0   2014-09-11 06:34:15 demand   10277L2 stock       0L0
-      Basic Medicines           306      0   2014-09-11 06:34:15 demand    1738L2 stock       0L0
-      Progenitor Cells         7115      0   2014-09-11 06:34:15 demand    7270L2 stock       0L0
+      Agri-Medicines           1035      0   2014-09-12 18:58:08 demand    3918L2 stock       0L0
+      Performance Enhancers    7115      0   2014-09-12 18:58:08 demand   10277L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:58:08 demand    1738L2 stock       0L0
+      Progenitor Cells         7115      0   2014-09-12 18:58:08 demand    7270L2 stock       0L0
    + Technology
-      Animal Monitors           289      0   2014-09-11 06:34:15 demand   12277L2 stock       0L0
-      Terrain Enrich Sys       4675      0   2014-09-11 06:34:15 demand       0L1 stock       0L0
+      Animal Monitors           289      0   2014-09-12 18:58:08 demand   12277L2 stock       0L0
+      Terrain Enrich Sys       4675      0   2014-09-12 18:58:08 demand       0L1 stock       0L0
    + Textiles
-      Leather                    46     58   2014-09-11 06:34:15 demand       0L0 stock   18803L1
-      Natural Fabrics           237    255   2014-09-11 06:34:15 demand       0L0 stock   10223L1
+      Leather                    47     59   2014-09-12 18:58:08 demand       0L0 stock    5495L1
    + Waste
-      Biowaste                   68      0   2014-09-11 06:34:15 demand   30161L2 stock       0L0
+      Biowaste                   68      0   2014-09-12 18:58:08 demand   30161L2 stock       0L0
    + Weapons
-      Personal Weapons         4491      0   2014-09-11 06:34:15 demand    2812L2 stock       0L0
+      Personal Weapons         4491      0   2014-09-12 18:58:08 demand    2812L2 stock       0L0
 
 
 @ G 239-25/Bresnik Mine
@@ -547,120 +516,116 @@
 
 @ H DRACONIS/Brislington
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-11 03:55:04 demand  218017L2 stock       0L0
+      Hydrogen Fuels             62      0   2014-09-12 18:47:54 demand  218017L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           293    314   2014-09-11 03:55:04 demand       0L0 stock  180762L2
-      Consumer Tech            7064      0   2014-09-11 03:55:04 demand    8439L2 stock       0L0
-      Clothing                  116    129   2014-09-11 03:55:04 demand       0L0 stock  731664L3
+      Dom. Appliances           355    380   2014-09-12 18:47:54 demand       0L0 stock   41071L1
+      Consumer Tech            7109      0   2014-09-12 18:47:54 demand    8857L2 stock       0L0
+      Clothing                  116    129   2014-09-12 18:47:54 demand       0L0 stock  731664L3
    + Drugs
-      Beer                      142      0   2014-09-11 03:55:04 demand   30556L2 stock       0L0
-      Wine                      233      0   2014-09-11 03:55:04 demand   28541L2 stock       0L0
+      Beer                      142      0   2014-09-12 18:47:54 demand   30556L2 stock       0L0
+      Wine                      233      0   2014-09-12 18:47:54 demand   28541L2 stock       0L0
    + Foods
-      Algae                      95      0   2014-09-11 03:55:04 demand    5247L2 stock       0L0
-      Fruit and Vegetables      306      0   2014-09-11 03:55:04 demand    9600L2 stock       0L0
-      Grain                     180      0   2014-09-11 03:55:04 demand   52477L2 stock       0L0
-      Animal Meat              1398      0   2014-09-11 03:55:04 demand    5145L2 stock       0L0
-      Fish                      772      0   2014-09-11 03:55:04 demand   12792L2 stock       0L0
-      Food Cartridges           102      0   2014-09-11 03:55:04 demand    6497L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 03:55:04 demand   11178L2 stock       0L0
-      Tea                      1589      0   2014-09-11 03:55:04 demand    2155L2 stock       0L0
-      Coffee                   1398      0   2014-09-11 03:55:04 demand    3589L2 stock       0L0
+      Algae                      95      0   2014-09-12 18:47:54 demand    5247L2 stock       0L0
+      Fruit and Vegetables      304      0   2014-09-12 18:47:54 demand    9344L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:47:54 demand   52477L2 stock       0L0
+      Animal Meat              1393      0   2014-09-12 18:47:54 demand    5047L2 stock       0L0
+      Fish                      772      0   2014-09-12 18:47:54 demand   12792L2 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:47:54 demand    6497L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:47:54 demand   11178L2 stock       0L0
+      Tea                      1589      0   2014-09-12 18:47:54 demand    2155L2 stock       0L0
+      Coffee                   1398      0   2014-09-12 18:47:54 demand    3589L2 stock       0L0
    + Industrial Materials
-      Polymers                  115      0   2014-09-11 03:55:04 demand   71161L2 stock       0L0
-      Semiconductors            957      0   2014-09-11 03:55:04 demand   21693L2 stock       0L0
-      Superconductors          7109      0   2014-09-11 03:55:04 demand  168789L2 stock       0L0
+      Polymers                  115      0   2014-09-12 18:47:54 demand   71161L2 stock       0L0
+      Semiconductors            957      0   2014-09-12 18:47:54 demand   21693L2 stock       0L0
+      Superconductors          7109      0   2014-09-12 18:47:54 demand  168789L2 stock       0L0
    + Medicines
-      Performance Enhancers    7109      0   2014-09-11 03:55:04 demand   16699L2 stock       0L0
-      Basic Medicines           306      0   2014-09-11 03:55:04 demand    2824L2 stock       0L0
-      Progenitor Cells         7109      0   2014-09-11 03:55:04 demand   11813L2 stock       0L0
+      Performance Enhancers    7109      0   2014-09-12 18:47:54 demand   16699L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:47:54 demand    2824L2 stock       0L0
+      Progenitor Cells         7109      0   2014-09-12 18:47:54 demand   11813L2 stock       0L0
    + Metals
-      Gold                     9847      0   2014-09-11 03:55:04 demand    6988L2 stock       0L0
-      Indium                   6232      0   2014-09-11 03:55:04 demand  224231L2 stock       0L0
-      Tantalum                 4204      0   2014-09-11 03:55:04 demand  161507L2 stock       0L0
-      Uranium                  2842      0   2014-09-11 03:55:04 demand  193904L2 stock       0L0
-      Lithium                  1695      0   2014-09-11 03:55:04 demand  412335L2 stock       0L0
-      Titanium                 1085      0   2014-09-11 03:55:04 demand  102076L2 stock       0L0
-      Copper                    487      0   2014-09-11 03:55:04 demand  454958L2 stock       0L0
-      Aluminium                 324      0   2014-09-11 03:55:04 demand   56314L2 stock       0L0
+      Gold                     9889      0   2014-09-12 18:47:54 demand    7239L2 stock       0L0
+      Indium                   6232      0   2014-09-12 18:47:54 demand  224231L2 stock       0L0
+      Tantalum                 4204      0   2014-09-12 18:47:54 demand  161507L2 stock       0L0
+      Uranium                  2842      0   2014-09-12 18:47:54 demand  193904L2 stock       0L0
+      Lithium                  1695      0   2014-09-12 18:47:54 demand  412335L2 stock       0L0
+      Titanium                 1085      0   2014-09-12 18:47:54 demand  102076L2 stock       0L0
+      Copper                    487      0   2014-09-12 18:47:54 demand  454958L2 stock       0L0
+      Aluminium                 324      0   2014-09-12 18:47:54 demand   56314L2 stock       0L0
    + Minerals
-      Beryllium                8665      0   2014-09-11 03:55:04 demand  115528L2 stock       0L0
-      Gallium                  5465      0   2014-09-11 03:55:04 demand   14302L2 stock       0L0
+      Beryllium                8665      0   2014-09-12 18:47:54 demand  115528L2 stock       0L0
+      Gallium                  5465      0   2014-09-12 18:47:54 demand   14302L2 stock       0L0
    + Technology
-      H.E. Suits                259      0   2014-09-11 03:55:04 demand   84809L2 stock       0L0
-      Robotics                 1927      0   2014-09-11 03:55:04 demand   76784L2 stock       0L0
-      Auto-Fabricators         3937      0   2014-09-11 03:55:04 demand  555027L2 stock       0L0
+      H.E. Suits                259      0   2014-09-12 18:47:54 demand   84809L2 stock       0L0
+      Robotics                 1927      0   2014-09-12 18:47:54 demand   76784L2 stock       0L0
+      Auto-Fabricators         3937      0   2014-09-12 18:47:54 demand  555027L2 stock       0L0
    + Textiles
-      Leather                   142      0   2014-09-11 03:55:04 demand   61111L2 stock       0L0
-      Natural Fabrics           408      0   2014-09-11 03:55:04 demand   49839L2 stock       0L0
-      Synthetic Fabrics         156      0   2014-09-11 03:55:04 demand   86248L2 stock       0L0
+      Leather                   142      0   2014-09-12 18:47:54 demand   61111L2 stock       0L0
+      Natural Fabrics           408      0   2014-09-12 18:47:54 demand   49839L2 stock       0L0
+      Synthetic Fabrics         156      0   2014-09-12 18:47:54 demand   86248L2 stock       0L0
    + Waste
-      Biowaste                   11     18   2014-09-11 03:55:04 demand       0L0 stock    2712L1
-      Scrap                      20     24   2014-09-11 03:55:04 demand       0L0 stock  108216L3
+      Biowaste                   11     18   2014-09-12 18:47:54 demand       0L0 stock    2712L1
+      Scrap                      20     24   2014-09-12 18:47:54 demand       0L0 stock  108216L3
    + Weapons
-      Personal Weapons         4488      0   2014-09-11 03:55:04 demand    4569L2 stock       0L0
+      Personal Weapons         4488      0   2014-09-12 18:47:54 demand    4569L2 stock       0L0
 
 
 @ I BOOTIS/Chango Dock
    + Chemicals
-      Hydrogen Fuels             58      0   2014-09-11 07:13:35 demand  332453L1 stock       0L0
-      Mineral Oil                50     60   2014-09-11 07:13:35 demand       0L0 stock   11462L2
-      Pesticides                198      0   2014-09-11 07:13:35 demand  139294L2 stock       0L0
+      Hydrogen Fuels             58      0   2014-09-12 18:58:25 demand  332453L1 stock       0L0
+      Mineral Oil                63     75   2014-09-12 18:58:25 demand       0L0 stock    1790L1
+      Pesticides                198      0   2014-09-12 18:58:25 demand  139294L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           548      0   2014-09-11 07:13:35 demand   21454L2 stock       0L0
-      Consumer Tech            7090      0   2014-09-11 07:13:35 demand   35614L2 stock       0L0
-      Clothing                  116    129   2014-09-11 07:13:35 demand       0L0 stock  468756L3
+      Dom. Appliances           548      0   2014-09-12 18:58:25 demand   21454L2 stock       0L0
+      Consumer Tech            7090      0   2014-09-12 18:58:25 demand   35614L2 stock       0L0
+      Clothing                  116    129   2014-09-12 18:58:25 demand       0L0 stock  431684L3
    + Drugs
-      Beer                      142      0   2014-09-11 07:13:35 demand   74550L2 stock       0L0
+      Beer                      142      0   2014-09-12 18:58:25 demand   74550L2 stock       0L0
    + Foods
-      Algae                      10     15   2014-09-11 07:13:35 demand       0L0 stock  324453L3
-      Fruit and Vegetables      305      0   2014-09-11 07:13:35 demand   14566L2 stock       0L0
-      Grain                     180      0   2014-09-11 07:13:35 demand   80042L2 stock       0L0
-      Animal Meat              1395      0   2014-09-11 07:13:35 demand   18939L2 stock       0L0
-      Fish                      457    494   2014-09-11 07:13:35 demand       0L0 stock   13886L1
-      Food Cartridges            13     19   2014-09-11 07:13:35 demand       0L0 stock  912258L3
-      Synthetic Meat            232      0   2014-09-11 07:13:35 demand    4225L2 stock       0L0
-      Tea                      1585      0   2014-09-11 07:13:35 demand    7323L2 stock       0L0
-      Coffee                   1393      0   2014-09-11 07:13:35 demand    5413L2 stock       0L0
+      Algae                      10     15   2014-09-12 18:58:25 demand       0L0 stock  324453L3
+      Fruit and Vegetables      305      0   2014-09-12 18:58:25 demand   14566L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:58:25 demand   80042L2 stock       0L0
+      Animal Meat              1394      0   2014-09-12 18:58:25 demand   18896L2 stock       0L0
+      Food Cartridges            13     19   2014-09-12 18:58:25 demand       0L0 stock  912258L3
+      Synthetic Meat            228      0   2014-09-12 18:58:25 demand    3983L2 stock       0L0
+      Tea                      1585      0   2014-09-12 18:58:25 demand    7331L2 stock       0L0
+      Coffee                   1395      0   2014-09-12 18:58:25 demand    5446L2 stock       0L0
    + Industrial Materials
-      Polymers                  115      0   2014-09-11 07:13:35 demand   43405L2 stock       0L0
-      Semiconductors            954      0   2014-09-11 07:13:35 demand   13232L2 stock       0L0
-      Superconductors          7090      0   2014-09-11 07:13:35 demand  102954L2 stock       0L0
+      Polymers                  115      0   2014-09-12 18:58:25 demand   43405L2 stock       0L0
+      Semiconductors            954      0   2014-09-12 18:58:25 demand   13232L2 stock       0L0
+      Superconductors          7090      0   2014-09-12 18:58:25 demand  102954L2 stock       0L0
    + Machinery
-      Hel-Static Furnaces        45     53   2014-09-11 07:13:35 demand       0L0 stock   61665L3
-      Mineral Extractors        393    421   2014-09-11 07:13:35 demand       0L0 stock    8712L1
-      Crop Harvesters          1935   1990   2014-09-11 07:13:35 demand       0L0 stock     247L1
-      Marine Supplies          4476      0   2014-09-11 07:13:35 demand   95547L2 stock       0L0
+      Hel-Static Furnaces        68     81   2014-09-12 18:58:25 demand       0L0 stock    6054L1
+      Marine Supplies          4476      0   2014-09-12 18:58:25 demand   95547L2 stock       0L0
    + Medicines
-      Agri-Medicines            943      0   2014-09-11 07:13:35 demand       0L1 stock       0L0
-      Performance Enhancers    7090      0   2014-09-11 07:13:35 demand   45460L2 stock       0L0
-      Progenitor Cells         7090      0   2014-09-11 07:13:35 demand   63130L2 stock       0L0
+      Agri-Medicines            943      0   2014-09-12 18:58:25 demand    6117L1 stock       0L0
+      Performance Enhancers    7090      0   2014-09-12 18:58:25 demand   45460L2 stock       0L0
+      Progenitor Cells         7090      0   2014-09-12 18:58:25 demand   63130L2 stock       0L0
    + Metals
-      Gold                     9312      0   2014-09-11 07:13:35 demand    2406L1 stock       0L0
-      Indium                   6216      0   2014-09-11 07:13:35 demand    8205L2 stock       0L0
-      Tantalum                 4192      0   2014-09-11 07:13:35 demand    9854L2 stock       0L0
-      Uranium                  2834      0   2014-09-11 07:13:35 demand   11823L2 stock       0L0
-      Lithium                  1690      0   2014-09-11 07:13:35 demand   15094L2 stock       0L0
-      Titanium                 1082      0   2014-09-11 07:13:35 demand   18671L2 stock       0L0
-      Copper                    485      0   2014-09-11 07:13:35 demand   27754L2 stock       0L0
-      Aluminium                 323      0   2014-09-11 07:13:35 demand   34349L2 stock       0L0
+      Gold                     9862      0   2014-09-12 18:58:25 demand    4415L2 stock       0L0
+      Indium                   6216      0   2014-09-12 18:58:25 demand    8205L2 stock       0L0
+      Tantalum                 4192      0   2014-09-12 18:58:25 demand    9854L2 stock       0L0
+      Uranium                  2834      0   2014-09-12 18:58:25 demand   11823L2 stock       0L0
+      Lithium                  1690      0   2014-09-12 18:58:25 demand   15094L2 stock       0L0
+      Titanium                 1067      0   2014-09-12 18:58:25 demand   17407L2 stock       0L0
+      Copper                    485      0   2014-09-12 18:58:25 demand   27754L2 stock       0L0
+      Aluminium                 323      0   2014-09-12 18:58:25 demand   34349L2 stock       0L0
    + Minerals
-      Beryllium                8642      0   2014-09-11 07:13:35 demand    7048L2 stock       0L0
-      Gallium                  5450      0   2014-09-11 07:13:35 demand    8724L2 stock       0L0
+      Beryllium                8642      0   2014-09-12 18:58:25 demand    7048L2 stock       0L0
+      Gallium                  5450      0   2014-09-12 18:58:25 demand    8724L2 stock       0L0
    + Technology
-      Computer Components       346    371   2014-09-11 07:13:35 demand       0L0 stock   87036L1
-      H.E. Suits                258      0   2014-09-11 07:13:35 demand   51730L2 stock       0L0
-      Robotics                 1922      0   2014-09-11 07:13:35 demand   62710L2 stock       0L0
-      Auto-Fabricators         3927      0   2014-09-11 07:13:35 demand   33857L2 stock       0L0
-      Animal Monitors           288      0   2014-09-11 07:13:35 demand  219020L2 stock       0L0
-      Aquaponic Systems         258      0   2014-09-11 07:13:35 demand  387933L2 stock       0L0
-      Terrain Enrich Sys       4659      0   2014-09-11 07:13:35 demand       0L1 stock       0L0
+      H.E. Suits                258      0   2014-09-12 18:58:25 demand   51730L2 stock       0L0
+      Robotics                 1922      0   2014-09-12 18:58:25 demand   62710L2 stock       0L0
+      Auto-Fabricators         3899      0   2014-09-12 18:58:25 demand   32297L2 stock       0L0
+      Animal Monitors           288      0   2014-09-12 18:58:25 demand  219020L2 stock       0L0
+      Aquaponic Systems         258      0   2014-09-12 18:58:25 demand  387933L2 stock       0L0
+      Terrain Enrich Sys       4659      0   2014-09-12 18:58:25 demand       0L1 stock       0L0
    + Textiles
-      Leather                   142      0   2014-09-11 07:13:35 demand   37275L2 stock       0L0
-      Natural Fabrics           407      0   2014-09-11 07:13:35 demand   20267L2 stock       0L0
-      Synthetic Fabrics         155      0   2014-09-11 07:13:35 demand   35068L2 stock       0L0
+      Leather                   142      0   2014-09-12 18:58:25 demand   37275L2 stock       0L0
+      Natural Fabrics           407      0   2014-09-12 18:58:25 demand   20267L2 stock       0L0
+      Synthetic Fabrics         155      0   2014-09-12 18:58:25 demand   35068L2 stock       0L0
    + Waste
-      Biowaste                   67      0   2014-09-11 07:13:35 demand   89683L2 stock       0L0
-      Scrap                      20     25   2014-09-11 07:13:35 demand       0L0 stock   36152L3
+      Biowaste                   67      0   2014-09-12 18:58:25 demand   89683L2 stock       0L0
+      Scrap                      20     25   2014-09-12 18:58:25 demand       0L0 stock   36152L3
 
 
 @ ITHACA/Hume Depot
@@ -759,100 +724,95 @@
 
 @ LFT 880/Baker Platform
    + Chemicals
-      Hydrogen Fuels             57      0   2014-09-11 05:14:26 demand    6125L1 stock       0L0
-      Mineral Oil               164      0   2014-09-11 05:14:26 demand    6269L2 stock       0L0
+      Hydrogen Fuels             57      0   2014-09-12 18:58:35 demand    6125L1 stock       0L0
+      Mineral Oil               164      0   2014-09-12 18:58:35 demand    6269L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           467      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Consumer Tech            6848      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Clothing                  279      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
+      Dom. Appliances           467      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
+      Consumer Tech            6848      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
+      Clothing                  279      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 05:14:26 demand    4350L2 stock       0L0
-      Wine                      234      0   2014-09-11 05:14:26 demand    1482L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:58:35 demand    4350L2 stock       0L0
+      Wine                      234      0   2014-09-12 18:58:35 demand    1482L2 stock       0L0
    + Foods
-      Fruit and Vegetables      253      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Grain                     181      0   2014-09-11 05:14:26 demand    2949L2 stock       0L0
-      Animal Meat              1318      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Fish                      647      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Food Cartridges            97      0   2014-09-11 05:14:26 demand    1250L2 stock       0L0
-      Synthetic Meat            234      0   2014-09-11 05:14:26 demand    1045L2 stock       0L0
-      Tea                      1502      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Coffee                   1234      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:58:35 demand     898L2 stock       0L0
+      Grain                     181      0   2014-09-12 18:58:35 demand    2949L2 stock       0L0
+      Animal Meat              1318      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
+      Fish                      774      0   2014-09-12 18:58:35 demand     526L2 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:58:35 demand    1424L2 stock       0L0
+      Synthetic Meat            234      0   2014-09-12 18:58:35 demand    1045L2 stock       0L0
+      Tea                      1502      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
+      Coffee                   1403      0   2014-09-12 18:58:35 demand     336L2 stock       0L0
    + Machinery
-      Hel-Static Furnaces       171      0   2014-09-11 05:14:26 demand    2979L2 stock       0L0
+      Hel-Static Furnaces       172      0   2014-09-12 18:58:35 demand    3041L2 stock       0L0
    + Medicines
-      Performance Enhancers    7025      0   2014-09-11 05:14:26 demand     898L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 05:14:26 demand     448L2 stock       0L0
+      Performance Enhancers    7134      0   2014-09-12 18:58:35 demand    1014L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:58:35 demand     448L2 stock       0L0
    + Metals
-      Gold                     8484   8579   2014-09-11 05:14:26 demand       0L0 stock   14102L3
-      Indium                   5140   5200   2014-09-11 05:14:26 demand       0L0 stock    6658L2
-      Uranium                  1975   2026   2014-09-11 05:14:26 demand       0L0 stock  145263L3
-      Titanium                  617    646   2014-09-11 05:14:26 demand       0L0 stock   45879L3
-      Copper                    223    239   2014-09-11 05:14:26 demand       0L0 stock  340840L3
+      Titanium                  798    834   2014-09-12 18:58:35 demand       0L0 stock    9394L1
+      Copper                    223    239   2014-09-12 18:58:35 demand       0L0 stock  340840L3
    + Minerals
-      Bertrandite              2399      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Indite                   2099      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Gallite                  1837      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Coltan                   1319      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Uraninite                 960      0   2014-09-11 05:14:26 demand    1219L2 stock       0L0
-      Lepidolite                622      0   2014-09-11 05:14:26 demand     755L2 stock       0L0
-      Rutile                    296      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Bauxite                   116      0   2014-09-11 05:14:26 demand    2000L2 stock       0L0
-      Beryllium                7176   7257   2014-09-11 05:14:26 demand       0L0 stock   68098L3
-      Gallium                  4212   4262   2014-09-11 05:14:26 demand       0L0 stock  107122L3
+      Bertrandite              2399      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
+      Indite                   2347      0   2014-09-12 18:58:35 demand    2388L2 stock       0L0
+      Gallite                  1938      0   2014-09-12 18:58:35 demand     566L2 stock       0L0
+      Coltan                   1447      0   2014-09-12 18:58:35 demand     411L2 stock       0L0
+      Uraninite                 960      0   2014-09-12 18:58:35 demand    1219L2 stock       0L0
+      Lepidolite                530      0   2014-09-12 18:58:35 demand     264L1 stock       0L0
+      Rutile                    320      0   2014-09-12 18:58:35 demand     190L2 stock       0L0
+      Bauxite                   116      0   2014-09-12 18:58:35 demand    2000L2 stock       0L0
    + Technology
-      H.E. Suits                260      0   2014-09-11 05:14:26 demand    4766L2 stock       0L0
-      Advanced Catalysers      2741      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Resonating Separators    5736      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
+      H.E. Suits                260      0   2014-09-12 18:58:35 demand    4766L2 stock       0L0
+      Advanced Catalysers      3043      0   2014-09-12 18:58:35 demand    7036L2 stock       0L0
+      Resonating Separators    6254      0   2014-09-12 18:58:35 demand    2520L2 stock       0L0
    + Waste
-      Biowaste                   11     18   2014-09-11 05:14:26 demand       0L0 stock     151L1
-      Scrap                      91      0   2014-09-11 05:14:26 demand    6744L2 stock       0L0
+      Biowaste                   12     18   2014-09-12 18:58:35 demand       0L0 stock      36L1
+      Scrap                      91      0   2014-09-12 18:58:35 demand    6868L2 stock       0L0
    + Weapons
-      Personal Weapons         4099      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Reactive Armor           2082      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
-      Non-Lethal Wpns          1826      0   2014-09-11 05:14:26 demand       0L1 stock       0L0
+      Personal Weapons         4099      0   2014-09-12 18:58:35 demand     117L1 stock       0L0
+      Reactive Armor           2082      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
+      Non-Lethal Wpns          1826      0   2014-09-12 18:58:35 demand       0L1 stock       0L0
 
 
 @ LFT 992/Szulkin Mines
    + Chemicals
-      Hydrogen Fuels             81     82   2014-09-09 16:09:36 demand       0L0 stock    8051L1
-      Explosives                291      0   2014-09-09 16:09:36 demand    7366L2 stock       0L0
+      Hydrogen Fuels             81     82   2014-09-12 18:42:16 demand       0L0 stock    8051L1
+      Explosives                291      0   2014-09-12 18:42:16 demand    7366L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           511      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
-      Consumer Tech            6874      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
-      Clothing                  280      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
+      Dom. Appliances           511      0   2014-09-12 18:42:16 demand      49L1 stock       0L0
+      Consumer Tech            6874      0   2014-09-12 18:42:16 demand       0L1 stock       0L0
+      Clothing                  308      0   2014-09-12 18:42:16 demand      48L2 stock       0L0
    + Drugs
-      Narcotics                 144      0   2014-09-09 16:09:36 demand      90L2 stock       0L0
-      Tobacco                  4930      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
-      Beer                      144      0   2014-09-09 16:09:36 demand    1505L2 stock       0L0
-      Wine                      235      0   2014-09-09 16:09:36 demand      70L2 stock       0L0
-      Liquor                    664      0   2014-09-09 16:09:36 demand     161L2 stock       0L0
+      Narcotics                 144      0   2014-09-12 18:42:16 demand      90L2 stock       0L0
+      Tobacco                  5157      0   2014-09-12 18:42:16 demand      59L2 stock       0L0
+      Beer                      144      0   2014-09-12 18:42:16 demand    1505L2 stock       0L0
+      Wine                      235      0   2014-09-12 18:42:16 demand      70L2 stock       0L0
+      Liquor                    664      0   2014-09-12 18:42:16 demand     161L2 stock       0L0
    + Foods
-      Fruit and Vegetables      308      0   2014-09-09 16:09:36 demand     239L2 stock       0L0
-      Grain                     179      0   2014-09-09 16:09:36 demand     622L2 stock       0L0
-      Animal Meat              1323      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
-      Fish                      713      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
-      Food Cartridges           103      0   2014-09-09 16:09:36 demand     480L2 stock       0L0
-      Synthetic Meat            235      0   2014-09-09 16:09:36 demand     278L2 stock       0L0
-      Tea                      1507      0   2014-09-09 16:09:36 demand       0L1 stock       0L0
-      Coffee                   1330      0   2014-09-09 16:09:36 demand      40L1 stock       0L0
+      Fruit and Vegetables      308      0   2014-09-12 18:42:16 demand     239L2 stock       0L0
+      Grain                     182      0   2014-09-12 18:42:16 demand     646L2 stock       0L0
+      Animal Meat              1323      0   2014-09-12 18:42:16 demand       0L1 stock       0L0
+      Fish                      713      0   2014-09-12 18:42:16 demand       0L1 stock       0L0
+      Food Cartridges           100      0   2014-09-12 18:42:16 demand     442L2 stock       0L0
+      Synthetic Meat            235      0   2014-09-12 18:42:16 demand     278L2 stock       0L0
+      Tea                      1507      0   2014-09-12 18:42:16 demand       0L1 stock       0L0
+      Coffee                   1409      0   2014-09-12 18:42:16 demand      90L2 stock       0L0
    + Machinery
-      Mineral Extractors        571      0   2014-09-09 16:09:36 demand     432L2 stock       0L0
+      Mineral Extractors        563      0   2014-09-12 18:42:16 demand     398L2 stock       0L0
    + Medicines
-      Performance Enhancers    7161      0   2014-09-09 16:09:36 demand     260L2 stock       0L0
-      Basic Medicines           308      0   2014-09-09 16:09:36 demand     239L2 stock       0L0
+      Performance Enhancers    7161      0   2014-09-12 18:42:16 demand     260L2 stock       0L0
+      Basic Medicines           308      0   2014-09-12 18:42:16 demand     239L2 stock       0L0
    + Minerals
-      Bertrandite              1830   1878   2014-09-09 16:09:36 demand       0L0 stock   12728L3
-      Gallite                  1346   1383   2014-09-09 16:09:36 demand       0L0 stock   29421L3
-      Lepidolite                303    325   2014-09-09 16:09:36 demand       0L0 stock   12394L3
+      Bertrandite              2248   2307   2014-09-12 18:42:16 demand       0L0 stock    2124L1
+      Gallite                  1677   1723   2014-09-12 18:42:16 demand       0L0 stock    3290L1
+      Lepidolite                323    345   2014-09-12 18:42:16 demand       0L0 stock    9122L2
    + Technology
-      H.E. Suits                261      0   2014-09-09 16:09:36 demand    1044L2 stock       0L0
-      Bioreducing Lichen       1026      0   2014-09-09 16:09:36 demand    1295L2 stock       0L0
+      H.E. Suits                261      0   2014-09-12 18:42:16 demand    1044L2 stock       0L0
+      Bioreducing Lichen       1026      0   2014-09-12 18:42:16 demand    1295L2 stock       0L0
    + Waste
-      Biowaste                   10     16   2014-09-09 16:09:36 demand       0L0 stock      71L1
+      Biowaste                   10     16   2014-09-12 18:42:16 demand       0L0 stock      71L1
    + Weapons
-      Personal Weapons         4521      0   2014-09-09 16:09:36 demand     252L2 stock       0L0
-      Reactive Armor           2209      0   2014-09-09 16:09:36 demand     180L2 stock       0L0
-      Non-Lethal Wpns          1942      0   2014-09-09 16:09:36 demand     268L2 stock       0L0
+      Personal Weapons         4521      0   2014-09-12 18:42:16 demand     252L2 stock       0L0
+      Reactive Armor           2209      0   2014-09-12 18:42:16 demand     180L2 stock       0L0
+      Non-Lethal Wpns          1942      0   2014-09-12 18:42:16 demand     268L2 stock       0L0
 
 
 @ LHS 2819/Tasaki Freeport
@@ -945,60 +905,54 @@
 
 @ LHS 2887/Massimino Dock
    + Chemicals
-      Hydrogen Fuels             81     81   2014-09-11 06:42:48 demand       0L0 stock   23819L1
-      Mineral Oil               164      0   2014-09-11 06:42:48 demand    4063L2 stock       0L0
-      Explosives                150    167   2014-09-11 06:42:48 demand       0L0 stock    7264L1
+      Hydrogen Fuels             81     81   2014-09-12 18:37:19 demand       0L0 stock   23819L1
+      Mineral Oil               164      0   2014-09-12 18:37:19 demand    4063L2 stock       0L0
+      Explosives                154    171   2014-09-12 18:37:19 demand       0L0 stock    3638L1
    + Consumer Items
-      Dom. Appliances           468      0   2014-09-11 06:42:48 demand     158L1 stock       0L0
-      Consumer Tech            6854      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
-      Clothing                  280      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
+      Dom. Appliances           468      0   2014-09-12 18:37:19 demand     122L1 stock       0L0
+      Consumer Tech            6854      0   2014-09-12 18:37:19 demand       0L1 stock       0L0
+      Clothing                  280      0   2014-09-12 18:37:19 demand      37L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 06:42:48 demand    3265L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:37:19 demand    3265L2 stock       0L0
    + Foods
-      Fruit and Vegetables      307      0   2014-09-11 06:42:48 demand     582L2 stock       0L0
-      Grain                     181      0   2014-09-11 06:42:48 demand    1912L2 stock       0L0
-      Animal Meat              1319      0   2014-09-11 06:42:48 demand       8L1 stock       0L0
-      Fish                      700      0   2014-09-11 06:42:48 demand     221L2 stock       0L0
-      Food Cartridges           103      0   2014-09-11 06:42:48 demand     923L2 stock       0L0
-      Synthetic Meat            234      0   2014-09-11 06:42:48 demand     678L2 stock       0L0
-      Tea                      1503      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
-      Coffee                   1319      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:37:19 demand     582L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:37:19 demand    1882L2 stock       0L0
+      Animal Meat              1319      0   2014-09-12 18:37:19 demand       0L1 stock       0L0
+      Fish                      648      0   2014-09-12 18:37:19 demand       7L1 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:37:19 demand     923L2 stock       0L0
+      Synthetic Meat            234      0   2014-09-12 18:37:19 demand     678L2 stock       0L0
+      Tea                      1596      0   2014-09-12 18:37:19 demand      42L2 stock       0L0
+      Coffee                   1405      0   2014-09-12 18:37:19 demand     218L2 stock       0L0
    + Industrial Materials
-      Polymers                   29     39   2014-09-11 06:42:48 demand       0L0 stock    6479L1
-      Semiconductors            683    715   2014-09-11 06:42:48 demand       0L0 stock    1975L1
-      Superconductors          6700   6777   2014-09-11 06:42:48 demand       0L0 stock     379L1
+      Polymers                   30     39   2014-09-12 18:37:19 demand       0L0 stock    6174L1
+      Semiconductors            697    729   2014-09-12 18:28:16 demand       0L0 stock       6L1
    + Machinery
-      Hel-Static Furnaces       171      0   2014-09-11 06:42:48 demand    1955L2 stock       0L0
+      Hel-Static Furnaces       172      0   2014-09-12 18:37:19 demand    1971L2 stock       0L0
    + Medicines
-      Performance Enhancers    7141      0   2014-09-11 06:42:48 demand     761L2 stock       0L0
-      Basic Medicines           308      0   2014-09-11 06:42:48 demand     337L2 stock       0L0
+      Performance Enhancers    7141      0   2014-09-12 18:37:19 demand     761L2 stock       0L0
+      Basic Medicines           308      0   2014-09-12 18:37:19 demand     337L2 stock       0L0
    + Metals
-      Indium                   5757   5824   2014-09-11 06:42:48 demand       0L0 stock    1620L1
-      Tantalum                 3733   3825   2014-09-11 06:42:48 demand       0L0 stock     358L1
-      Lithium                  1316   1372   2014-09-11 06:42:48 demand       0L0 stock    2733L1
-      Titanium                  785    821   2014-09-11 06:42:48 demand       0L0 stock    3616L1
-      Copper                    299    321   2014-09-11 06:42:48 demand       0L0 stock    5522L1
+      Copper                    306    328   2014-09-12 18:37:19 demand       0L0 stock    1441L1
    + Minerals
-      Bertrandite              2401      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
-      Indite                   2343      0   2014-09-11 06:42:48 demand    2542L2 stock       0L0
-      Gallite                  1839      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
-      Coltan                   1497      0   2014-09-11 06:42:48 demand    3192L2 stock       0L0
-      Uraninite                 961      0   2014-09-11 06:42:48 demand    3951L2 stock       0L0
-      Lepidolite                622      0   2014-09-11 06:42:48 demand    4890L2 stock       0L0
-      Rutile                    325      0   2014-09-11 06:42:48 demand    6836L2 stock       0L0
-      Bauxite                   116      0   2014-09-11 06:42:48 demand   12959L2 stock       0L0
+      Bertrandite              2607      0   2014-09-12 18:37:19 demand    2066L2 stock       0L0
+      Indite                   2349      0   2014-09-12 18:37:19 demand    2579L2 stock       0L0
+      Gallite                  1839      0   2014-09-12 18:37:19 demand     570L1 stock       0L0
+      Coltan                   1486      0   2014-09-12 18:37:19 demand    3068L2 stock       0L0
+      Uraninite                 955      0   2014-09-12 18:37:19 demand    3845L2 stock       0L0
+      Lepidolite                622      0   2014-09-12 18:37:19 demand    4890L2 stock       0L0
+      Rutile                    325      0   2014-09-12 18:37:19 demand    6836L2 stock       0L0
+      Bauxite                   116      0   2014-09-12 18:37:19 demand   12959L2 stock       0L0
    + Technology
-      H.E. Suits                260      0   2014-09-11 06:42:48 demand    3089L2 stock       0L0
-      Advanced Catalysers      3046      0   2014-09-11 06:42:48 demand    4567L2 stock       0L0
-      Resonating Separators    6068      0   2014-09-11 06:42:48 demand    1272L2 stock       0L0
+      H.E. Suits                260      0   2014-09-12 18:37:19 demand    3089L2 stock       0L0
+      Advanced Catalysers      3046      0   2014-09-12 18:37:19 demand    4567L2 stock       0L0
+      Resonating Separators    6259      0   2014-09-12 18:37:19 demand    1634L2 stock       0L0
    + Textiles
-      Synthetic Fabrics          57     68   2014-09-11 06:42:48 demand       0L0 stock    5234L1
+      Synthetic Fabrics          59     70   2014-09-12 18:37:19 demand       0L0 stock    3136L1
    + Waste
-      Biowaste                   10     16   2014-09-11 06:42:48 demand       0L0 stock     122L1
-      Scrap                      91      0   2014-09-11 06:42:48 demand    4451L2 stock       0L0
+      Scrap                      91      0   2014-09-12 18:37:19 demand    4451L2 stock       0L0
    + Weapons
-      Reactive Armor           2083      0   2014-09-11 06:42:48 demand       0L1 stock       0L0
-      Non-Lethal Wpns          1936      0   2014-09-11 06:42:48 demand     259L2 stock       0L0
+      Reactive Armor           2203      0   2014-09-12 18:37:19 demand     162L2 stock       0L0
+      Non-Lethal Wpns          1936      0   2014-09-12 18:37:19 demand     259L2 stock       0L0
 
 
 @ LHS 3006/WCM Transfer Orbital
@@ -1044,100 +998,93 @@
 
 @ LHS 3262/Louis De Lacaille Prospect
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 07:11:26 demand  117474L1 stock       0L0
-      Pesticides                 58     67   2014-09-11 07:11:26 demand       0L0 stock  532108L3
+      Hydrogen Fuels             56      0   2014-09-12 18:59:23 demand  117474L1 stock       0L0
+      Pesticides                 58     67   2014-09-12 18:59:23 demand       0L0 stock  532108L3
    + Consumer Items
-      Dom. Appliances           487      0   2014-09-11 07:11:26 demand   11266L1 stock       0L0
-      Consumer Tech            5682   5748   2014-09-11 07:11:26 demand       0L0 stock  477548L3
-      Clothing                  252      0   2014-09-11 07:11:26 demand       0L1 stock       0L0
+      Dom. Appliances           503      0   2014-09-12 18:59:23 demand   13610L2 stock       0L0
+      Clothing                  252      0   2014-09-12 18:59:23 demand       0L1 stock       0L0
    + Drugs
-      Beer                      142      0   2014-09-11 07:11:26 demand   32928L2 stock       0L0
+      Beer                      142      0   2014-09-12 18:59:23 demand   32928L2 stock       0L0
    + Foods
-      Fruit and Vegetables      252      0   2014-09-11 07:11:26 demand       0L1 stock       0L0
-      Grain                     180      0   2014-09-11 07:11:26 demand   56552L2 stock       0L0
-      Animal Meat              1228      0   2014-09-11 07:11:26 demand       0L1 stock       0L0
-      Fish                      677      0   2014-09-11 07:11:26 demand    7956L1 stock       0L0
-      Food Cartridges           102      0   2014-09-11 07:11:26 demand    5322L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 07:11:26 demand   11196L2 stock       0L0
-      Tea                      1402      0   2014-09-11 07:11:26 demand       0L1 stock       0L0
-      Coffee                   1228      0   2014-09-11 07:11:26 demand    1146L1 stock       0L0
+      Fruit and Vegetables      291      0   2014-09-12 18:59:23 demand    8087L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:59:23 demand   56552L2 stock       0L0
+      Animal Meat              1228      0   2014-09-12 18:59:23 demand    1935L1 stock       0L0
+      Fish                      737      0   2014-09-12 18:59:23 demand   12002L2 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:59:23 demand    5322L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:59:23 demand   11196L2 stock       0L0
+      Tea                      1402      0   2014-09-12 18:59:23 demand       0L1 stock       0L0
+      Coffee                   1396      0   2014-09-12 18:59:23 demand    3595L2 stock       0L0
    + Industrial Materials
-      Superconductors          7099      0   2014-09-11 07:11:26 demand   45463L2 stock       0L0
+      Superconductors          7099      0   2014-09-12 18:59:23 demand   45463L2 stock       0L0
    + Medicines
-      Performance Enhancers    7099      0   2014-09-11 07:11:26 demand   19133L2 stock       0L0
-      Basic Medicines           252      0   2014-09-11 07:11:26 demand       0L1 stock       0L0
-      Progenitor Cells         7099      0   2014-09-11 07:11:26 demand   14912L2 stock       0L0
+      Performance Enhancers    7099      0   2014-09-12 18:59:23 demand   19133L2 stock       0L0
+      Basic Medicines           252      0   2014-09-12 18:59:23 demand       0L1 stock       0L0
+      Progenitor Cells         7092      0   2014-09-12 18:59:23 demand   14812L2 stock       0L0
    + Metals
-      Palladium               13726      0   2014-09-11 07:11:26 demand    6602L2 stock       0L0
-      Gold                     9402      0   2014-09-11 07:11:26 demand    9530L2 stock       0L0
-      Silver                   5109      0   2014-09-11 07:11:26 demand  105915L2 stock       0L0
-      Cobalt                    744      0   2014-09-11 07:11:26 demand   26409L2 stock       0L0
-      Indium                   5944      0   2014-09-11 07:11:26 demand    6518L2 stock       0L0
-      Tantalum                 4194      0   2014-09-11 07:11:26 demand   11547L2 stock       0L0
-      Uranium                  2780      0   2014-09-11 07:11:26 demand   12247L2 stock       0L0
-      Lithium                  1629      0   2014-09-11 07:11:26 demand   14291L2 stock       0L0
+      Palladium               13747      0   2014-09-12 18:59:23 demand    6696L2 stock       0L0
+      Gold                     9874      0   2014-09-12 18:59:23 demand   15624L2 stock       0L0
+      Silver                   5109      0   2014-09-12 18:59:23 demand  105915L2 stock       0L0
+      Cobalt                    744      0   2014-09-12 18:59:23 demand   26409L2 stock       0L0
+      Indium                   6205      0   2014-09-12 18:59:23 demand    9450L2 stock       0L0
+      Tantalum                 4197      0   2014-09-12 18:59:23 demand   11607L2 stock       0L0
+      Uranium                  2838      0   2014-09-12 18:59:23 demand   13933L2 stock       0L0
+      Lithium                  1692      0   2014-09-12 18:59:23 demand   17786L2 stock       0L0
    + Minerals
-      Gallite                  1828      0   2014-09-11 07:11:26 demand       0L1 stock       0L0
-      Rutile                    323      0   2014-09-11 07:11:26 demand   20229L2 stock       0L0
-      Beryllium                7994      0   2014-09-11 07:11:26 demand    3088L1 stock       0L0
-      Gallium                  4990      0   2014-09-11 07:11:26 demand     229L1 stock       0L0
+      Gallite                  1979      0   2014-09-12 18:59:23 demand   13023L2 stock       0L0
+      Rutile                    323      0   2014-09-12 18:59:23 demand   20229L2 stock       0L0
+      Beryllium                8634      0   2014-09-12 18:59:23 demand    8155L2 stock       0L0
+      Gallium                  5457      0   2014-09-12 18:59:23 demand   10268L2 stock       0L0
    + Technology
-      Computer Components       548      0   2014-09-11 07:11:26 demand  153773L2 stock       0L0
-      H.E. Suits                 91    101   2014-09-11 07:11:26 demand       0L0 stock  798882L3
-      Robotics                 1249   1283   2014-09-11 07:11:26 demand       0L0 stock  281912L3
-      Auto-Fabricators         2853   2925   2014-09-11 07:11:26 demand       0L0 stock  679134L3
-      Animal Monitors           107    119   2014-09-11 07:11:26 demand       0L0 stock  859859L3
-      Terrain Enrich Sys       3919   3966   2014-09-11 07:11:26 demand       0L0 stock   21141L3
+      Computer Components       548      0   2014-09-12 18:59:23 demand  153773L2 stock       0L0
+      H.E. Suits                 91    101   2014-09-12 18:59:23 demand       0L0 stock  798882L3
+      Robotics                 1249   1283   2014-09-12 18:59:23 demand       0L0 stock  281912L3
+      Auto-Fabricators         3102   3180   2014-09-12 18:59:23 demand       0L0 stock  390682L2
+      Animal Monitors           107    119   2014-09-12 18:59:23 demand       0L0 stock  859859L3
    + Waste
-      Biowaste                    7     11   2014-09-11 07:11:26 demand       0L0 stock    8693L3
-      Scrap                      29     37   2014-09-11 07:11:26 demand       0L0 stock   10839L1
+      Biowaste                    7     11   2014-09-12 18:59:23 demand       0L0 stock    8693L3
+      Scrap                      30     38   2014-09-12 18:59:23 demand       0L0 stock    5376L1
    + Weapons
-      Reactive Armor           1446   1485   2014-09-11 07:11:26 demand       0L0 stock  156591L3
-      Non-Lethal Wpns          1249   1283   2014-09-11 07:11:26 demand       0L0 stock  166007L3
+      Non-Lethal Wpns          1561   1604   2014-09-12 18:59:23 demand       0L0 stock   29920L1
 
 
 @ LHS 417/Gernhardt Camp
    + Chemicals
-      Hydrogen Fuels             81     81   2014-09-11 03:56:56 demand       0L0 stock   27504L1
-      Explosives                290      0   2014-09-11 03:56:56 demand   25165L2 stock       0L0
+      Hydrogen Fuels             81     81   2014-09-12 18:59:03 demand       0L0 stock   27504L1
+      Explosives                290      0   2014-09-12 18:59:03 demand   25165L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           495      0   2014-09-11 03:56:56 demand     294L1 stock       0L0
-      Consumer Tech            6854      0   2014-09-11 03:56:56 demand       0L1 stock       0L0
-      Clothing                  280      0   2014-09-11 03:56:56 demand       0L1 stock       0L0
+      Dom. Appliances           468      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
+      Consumer Tech            6854      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
+      Clothing                  280      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 03:56:56 demand    3769L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:59:03 demand    3769L2 stock       0L0
    + Foods
-      Fruit and Vegetables      307      0   2014-09-11 03:56:56 demand     672L2 stock       0L0
-      Grain                     181      0   2014-09-11 03:56:56 demand    2207L2 stock       0L0
-      Animal Meat              1319      0   2014-09-11 03:56:56 demand       0L1 stock       0L0
-      Fish                      727      0   2014-09-11 03:56:56 demand     304L2 stock       0L0
-      Food Cartridges           103      0   2014-09-11 03:56:56 demand    1066L2 stock       0L0
-      Synthetic Meat            234      0   2014-09-11 03:56:56 demand     783L2 stock       0L0
-      Tea                      1503      0   2014-09-11 03:56:56 demand       0L1 stock       0L0
-      Coffee                   1235      0   2014-09-11 03:56:56 demand      47L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:59:03 demand     672L2 stock       0L0
+      Grain                     181      0   2014-09-12 18:59:03 demand    2207L2 stock       0L0
+      Animal Meat              1319      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
+      Fish                      648      0   2014-09-12 18:59:03 demand      18L1 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:59:03 demand    1066L2 stock       0L0
+      Synthetic Meat            234      0   2014-09-12 18:59:03 demand     783L2 stock       0L0
+      Tea                      1503      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
+      Coffee                   1405      0   2014-09-12 18:59:03 demand     252L2 stock       0L0
    + Machinery
-      Mineral Extractors        530      0   2014-09-11 03:56:56 demand     458L1 stock       0L0
+      Mineral Extractors        622      0   2014-09-12 18:59:03 demand    2259L2 stock       0L0
    + Medicines
-      Performance Enhancers    7140      0   2014-09-11 03:56:56 demand     879L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 03:56:56 demand     389L2 stock       0L0
+      Performance Enhancers    7140      0   2014-09-12 18:59:03 demand     879L2 stock       0L0
+      Basic Medicines           253      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
    + Metals
-      Palladium               13876  13877   2014-09-11 03:56:56 demand       0L0 stock    3012L1
-      Silver                   4692   4748   2014-09-11 03:56:56 demand       0L0 stock     376L1
-      Cobalt                    513    547   2014-09-11 03:56:56 demand       0L0 stock     212L1
+      Palladium               13876  13877   2014-09-12 18:59:03 demand       0L0 stock    2617L1
    + Minerals
-      Indite                   1659   1704   2014-09-11 03:56:56 demand       0L0 stock   19813L2
-      Coltan                   1000   1044   2014-09-11 03:56:56 demand       0L0 stock   17148L2
-      Uraninite                 683    715   2014-09-11 03:56:56 demand       0L0 stock    4562L1
-      Rutile                    126    140   2014-09-11 03:56:56 demand       0L0 stock  179215L3
-      Bauxite                    23     31   2014-09-11 03:56:56 demand       0L0 stock   17404L2
+      Uraninite                 687    720   2014-09-12 18:59:03 demand       0L0 stock    4278L1
+      Rutile                    126    140   2014-09-12 18:59:03 demand       0L0 stock  179215L3
+      Bauxite                    24     31   2014-09-12 18:59:03 demand       0L0 stock   16589L2
    + Technology
-      H.E. Suits                260      0   2014-09-11 03:56:56 demand    3567L2 stock       0L0
-      Bioreducing Lichen       1023      0   2014-09-11 03:56:56 demand    4425L2 stock       0L0
+      H.E. Suits                260      0   2014-09-12 18:59:03 demand    3567L2 stock       0L0
+      Bioreducing Lichen       1023      0   2014-09-12 18:59:03 demand    4425L2 stock       0L0
    + Waste
-      Biowaste                    9     15   2014-09-11 03:56:56 demand       0L0 stock     354L2
+      Biowaste                    9     14   2014-09-12 18:59:03 demand       0L0 stock     390L2
    + Weapons
-      Reactive Armor           2083      0   2014-09-11 03:56:56 demand       0L1 stock       0L0
-      Non-Lethal Wpns          1720      0   2014-09-11 03:56:56 demand       0L1 stock       0L0
+      Reactive Armor           2083      0   2014-09-12 18:59:03 demand       0L1 stock       0L0
+      Non-Lethal Wpns          1720      0   2014-09-12 18:59:03 demand      35L1 stock       0L0
 
 
 @ LHS 5287/Mcarthur's Reach
@@ -1223,309 +1170,284 @@
 
 @ LP 98-132/Freeport
    + Chemicals
-      Explosives                291      0   2014-09-11 06:34:41 demand    4253L2 stock       0L0
-      Hydrogen Fuels             71     72   2014-09-11 06:34:41 demand       0L0 stock   21581L2
+      Hydrogen Fuels             71     72   2014-09-12 18:43:03 demand       0L0 stock   21581L2
+      Explosives                291      0   2014-09-12 18:43:03 demand    4253L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           469      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Consumer Tech            6874      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Clothing                  280      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
+      Dom. Appliances           477      0   2014-09-12 18:43:03 demand     138L1 stock       0L0
+      Consumer Tech            6874      0   2014-09-12 18:43:03 demand       0L1 stock       0L0
+      Clothing                  280      0   2014-09-12 18:43:03 demand       0L1 stock       0L0
    + Drugs
-      Narcotics                 127      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Tobacco                  4930      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Beer                      143      0   2014-09-11 06:34:41 demand    2606L2 stock       0L0
-      Wine                      235      0   2014-09-11 06:34:41 demand     121L2 stock       0L0
-      Liquor                    664      0   2014-09-11 06:34:41 demand     278L2 stock       0L0
+      Narcotics                 144      0   2014-09-12 18:43:03 demand     155L2 stock       0L0
+      Tobacco                  5156      0   2014-09-12 18:43:03 demand     102L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:43:03 demand    2606L2 stock       0L0
+      Wine                      235      0   2014-09-12 18:43:03 demand     121L2 stock       0L0
+      Liquor                    664      0   2014-09-12 18:43:03 demand     278L2 stock       0L0
    + Foods
-      Fruit and Vegetables      254      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Grain                     172      0   2014-09-11 06:34:41 demand     946L2 stock       0L0
-      Animal Meat              1323      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Fish                      713      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Food Cartridges           103      0   2014-09-11 06:34:41 demand     831L2 stock       0L0
-      Synthetic Meat            235      0   2014-09-11 06:34:41 demand     481L2 stock       0L0
-      Tea                      1507      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Coffee                   1323      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
+      Fruit and Vegetables      267      0   2014-09-12 18:43:03 demand     223L1 stock       0L0
+      Grain                     182      0   2014-09-12 18:43:03 demand    1119L2 stock       0L0
+      Animal Meat              1323      0   2014-09-12 18:43:03 demand       0L1 stock       0L0
+      Fish                      713      0   2014-09-12 18:43:03 demand       0L1 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:43:03 demand     831L2 stock       0L0
+      Synthetic Meat            226      0   2014-09-12 18:43:03 demand     426L2 stock       0L0
+      Tea                      1507      0   2014-09-12 18:43:03 demand       0L1 stock       0L0
+      Coffee                   1323      0   2014-09-12 18:43:03 demand       0L1 stock       0L0
    + Machinery
-      Mineral Extractors        532      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
+      Mineral Extractors        573      0   2014-09-12 18:43:03 demand     763L2 stock       0L0
    + Medicines
-      Performance Enhancers    7161      0   2014-09-11 06:34:41 demand     450L2 stock       0L0
-      Basic Medicines           308      0   2014-09-11 06:34:41 demand     413L2 stock       0L0
-   + Metals
-      Gold                     4592   9285   2014-09-11 07:13:35 demand       0L0 stock       0L2
+      Performance Enhancers    7008      0   2014-09-12 18:43:03 demand     378L2 stock       0L0
+      Basic Medicines           308      0   2014-09-12 18:43:03 demand     413L2 stock       0L0
    + Minerals
-      Bertrandite              1830   1878   2014-09-11 06:34:41 demand       0L0 stock   15826L3
-      Coltan                    947    988   2014-09-11 06:34:41 demand       0L0 stock    5365L3
-      Rutile                    144    160   2014-09-11 06:34:41 demand       0L0 stock    9674L2
-      Bauxite                    19     25   2014-09-11 06:34:41 demand       0L0 stock   53660L3
+      Bauxite                    20     26   2014-09-12 18:43:03 demand       0L0 stock   45636L3
    + Technology
-      H.E. Suits                261      0   2014-09-11 06:34:41 demand    1808L2 stock       0L0
-      Bioreducing Lichen       1026      0   2014-09-11 06:34:41 demand    2243L2 stock       0L0
-   + Waste
-      Biowaste                   12     18   2014-09-11 06:34:41 demand       0L0 stock      10L1
+      H.E. Suits                261      0   2014-09-12 18:43:03 demand    1808L2 stock       0L0
+      Bioreducing Lichen       1026      0   2014-09-12 18:43:03 demand    2243L2 stock       0L0
    + Weapons
-      Personal Weapons         4115      0   2014-09-11 06:34:41 demand       0L1 stock       0L0
-      Reactive Armor           1971      0   2014-09-11 06:34:41 demand     108L1 stock       0L0
-      Non-Lethal Wpns          1827      0   2014-09-11 06:34:41 demand     316L2 stock       0L0
+      Personal Weapons         4460      0   2014-09-12 18:43:03 demand     397L2 stock       0L0
+      Reactive Armor           2068      0   2014-09-12 18:43:03 demand     201L2 stock       0L0
+      Non-Lethal Wpns          1886      0   2014-09-12 18:43:03 demand     392L2 stock       0L0
 
 
 @ MAGEC/Xiaoguan Hub
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 02:10:23 demand   88389L1 stock       0L0
-      Mineral Oil                62     73   2014-09-11 02:10:23 demand       0L0 stock    2263L1
-      Pesticides                199      0   2014-09-11 02:10:23 demand   61723L2 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:23:27 demand   88389L1 stock       0L0
+      Mineral Oil                62     73   2014-09-12 18:23:27 demand       0L0 stock    2263L1
+      Pesticides                199      0   2014-09-12 18:23:27 demand   61723L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-11 02:10:23 demand    7130L2 stock       0L0
-      Consumer Tech            7110      0   2014-09-11 02:10:23 demand    7385L2 stock       0L0
-      Clothing                  306      0   2014-09-11 02:10:23 demand    3147L2 stock       0L0
+      Dom. Appliances           550      0   2014-09-12 18:23:27 demand    7130L2 stock       0L0
+      Consumer Tech            7114      0   2014-09-12 18:23:27 demand    7417L2 stock       0L0
+      Clothing                  299      0   2014-09-12 18:23:27 demand    2887L2 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 02:10:23 demand   24776L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:23:27 demand   24776L2 stock       0L0
    + Foods
-      Fruit and Vegetables      128    142   2014-09-11 02:10:23 demand       0L0 stock   43301L2
-      Grain                      70     83   2014-09-11 02:10:23 demand       0L0 stock   14901L1
-      Animal Meat               907    947   2014-09-11 02:10:23 demand       0L0 stock   19234L2
-      Fish                      645      0   2014-09-11 02:10:23 demand       0L1 stock       0L0
-      Tea                      1198   1249   2014-09-11 02:10:23 demand       0L0 stock    5396L2
-      Coffee                   1023   1068   2014-09-11 02:10:23 demand       0L0 stock    6191L2
+      Fruit and Vegetables      138    153   2014-09-12 18:23:27 demand       0L0 stock   35555L2
+      Grain                      70     83   2014-09-12 18:23:27 demand       0L0 stock   14901L1
+      Fish                      708      0   2014-09-12 18:23:27 demand    1536L2 stock       0L0
    + Machinery
-      Crop Harvesters          2341      0   2014-09-11 02:10:23 demand   22964L2 stock       0L0
+      Crop Harvesters          2341      0   2014-09-12 18:23:27 demand   22964L2 stock       0L0
    + Medicines
-      Agri-Medicines           1086      0   2014-09-11 02:10:23 demand    6619L2 stock       0L0
-      Performance Enhancers    7114      0   2014-09-11 02:10:23 demand   15108L2 stock       0L0
-      Basic Medicines           306      0   2014-09-11 02:10:23 demand    1282L2 stock       0L0
-      Progenitor Cells         7114      0   2014-09-11 02:10:23 demand   12588L2 stock       0L0
+      Agri-Medicines           1086      0   2014-09-12 18:23:27 demand    6619L2 stock       0L0
+      Performance Enhancers    7114      0   2014-09-12 18:23:27 demand   15108L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:23:27 demand    1282L2 stock       0L0
+      Progenitor Cells         7114      0   2014-09-12 18:23:27 demand   12588L2 stock       0L0
    + Technology
-      Animal Monitors           289      0   2014-09-11 02:10:23 demand   16176L2 stock       0L0
-      Terrain Enrich Sys       4675      0   2014-09-11 02:10:23 demand       0L1 stock       0L0
+      Animal Monitors           289      0   2014-09-12 18:23:27 demand   16176L2 stock       0L0
+      Terrain Enrich Sys       4675      0   2014-09-12 18:23:27 demand       0L1 stock       0L0
    + Textiles
-      Leather                    43     53   2014-09-11 02:10:23 demand       0L0 stock   36668L2
-      Natural Fabrics           237    255   2014-09-11 02:10:23 demand       0L0 stock   13471L1
+      Leather                    43     53   2014-09-12 18:23:27 demand       0L0 stock   36668L2
+      Natural Fabrics           237    255   2014-09-12 18:23:27 demand       0L0 stock   13471L1
    + Waste
-      Biowaste                   68      0   2014-09-11 02:10:23 demand   39740L2 stock       0L0
+      Biowaste                   68      0   2014-09-12 18:23:27 demand   39740L2 stock       0L0
 
 
 @ MORGOR/Romanek's Folly
    + Chemicals
-      Hydrogen Fuels             80     81   2014-09-11 04:49:25 demand       0L0 stock   37761L1
-      Explosives                289      0   2014-09-11 04:49:25 demand   11518L2 stock       0L0
+      Hydrogen Fuels             80     81   2014-09-12 18:43:50 demand       0L0 stock   37761L1
+      Explosives                289      0   2014-09-12 18:43:50 demand   11518L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-11 04:49:25 demand     618L2 stock       0L0
-      Consumer Tech            6837      0   2014-09-11 04:49:25 demand       0L1 stock       0L0
-      Clothing                  302      0   2014-09-11 04:49:25 demand     204L2 stock       0L0
+      Dom. Appliances           550      0   2014-09-12 18:43:50 demand     618L2 stock       0L0
+      Consumer Tech            6837      0   2014-09-12 18:43:50 demand       0L1 stock       0L0
+      Clothing                  279      0   2014-09-12 18:43:50 demand      50L1 stock       0L0
    + Drugs
-      Narcotics                 127      0   2014-09-11 04:49:25 demand       0L1 stock       0L0
-      Tobacco                  4904      0   2014-09-11 04:49:25 demand       0L1 stock       0L0
-      Beer                      143      0   2014-09-11 04:49:25 demand    3529L2 stock       0L0
-      Wine                      234      0   2014-09-11 04:49:25 demand     976L2 stock       0L0
-      Liquor                    660      0   2014-09-11 04:49:25 demand     282L2 stock       0L0
+      Narcotics                 135      0   2014-09-12 18:43:50 demand      15L2 stock       0L0
+      Tobacco                  4904      0   2014-09-12 18:43:50 demand       0L1 stock       0L0
+      Beer                      143      0   2014-09-12 18:43:50 demand    3529L2 stock       0L0
+      Wine                      234      0   2014-09-12 18:43:50 demand     976L2 stock       0L0
+      Liquor                    576      0   2014-09-12 18:43:50 demand     134L1 stock       0L0
    + Foods
-      Fruit and Vegetables      307      0   2014-09-11 04:49:25 demand     839L2 stock       0L0
-      Grain                     181      0   2014-09-11 04:49:25 demand    3030L2 stock       0L0
-      Animal Meat              1316      0   2014-09-11 04:49:25 demand       0L1 stock       0L0
-      Fish                      646      0   2014-09-11 04:49:25 demand       0L1 stock       0L0
-      Food Cartridges           102      0   2014-09-11 04:49:25 demand    1126L2 stock       0L0
-      Synthetic Meat            232      0   2014-09-11 04:49:25 demand     960L2 stock       0L0
-      Tea                      1499      0   2014-09-11 04:49:25 demand       0L1 stock       0L0
-      Coffee                   1248      0   2014-09-11 04:49:25 demand     143L1 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:43:50 demand     839L2 stock       0L0
+      Grain                     181      0   2014-09-12 18:43:50 demand    3030L2 stock       0L0
+      Animal Meat              1349      0   2014-09-12 18:43:50 demand      92L2 stock       0L0
+      Fish                      646      0   2014-09-12 18:43:50 demand      90L1 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:43:50 demand    1126L2 stock       0L0
+      Synthetic Meat            234      0   2014-09-12 18:43:50 demand     977L2 stock       0L0
+      Tea                      1499      0   2014-09-12 18:43:50 demand       0L1 stock       0L0
+      Coffee                   1402      0   2014-09-12 18:43:50 demand     314L2 stock       0L0
    + Machinery
-      Mineral Extractors        590      0   2014-09-11 04:49:25 demand    2473L2 stock       0L0
+      Mineral Extractors        621      0   2014-09-12 18:43:50 demand    3101L2 stock       0L0
    + Medicines
-      Performance Enhancers    7049      0   2014-09-11 04:49:25 demand     842L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 04:49:25 demand     280L2 stock       0L0
+      Performance Enhancers    7123      0   2014-09-12 18:43:50 demand     914L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:43:50 demand     280L2 stock       0L0
    + Minerals
-      Bertrandite              1820   1868   2014-09-11 04:49:25 demand       0L0 stock   12779L3
-      Gallite                  1339   1376   2014-09-11 04:49:25 demand       0L0 stock   71488L3
-      Lepidolite                302    323   2014-09-11 04:49:25 demand       0L0 stock  118746L3
+      Lepidolite                302    323   2014-09-12 18:43:50 demand       0L0 stock  118662L3
    + Technology
-      H.E. Suits                259      0   2014-09-11 04:49:25 demand    4897L2 stock       0L0
-      Bioreducing Lichen       1020      0   2014-09-11 04:49:25 demand    6075L2 stock       0L0
-   + Waste
-      Biowaste                   11     18   2014-09-11 04:49:25 demand       0L0 stock     158L1
+      H.E. Suits                254      0   2014-09-12 18:43:50 demand    4572L2 stock       0L0
+      Bioreducing Lichen       1020      0   2014-09-12 18:43:50 demand    6075L2 stock       0L0
    + Weapons
-      Personal Weapons         4254      0   2014-09-11 04:49:25 demand     183L2 stock       0L0
+      Personal Weapons         4444      0   2014-09-12 18:43:50 demand     264L2 stock       0L0
 
 
 @ NANG TA-KHIAN/Hay Point
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-11 06:06:50 demand   81326L2 stock       0L0
+      Hydrogen Fuels             62      0   2014-09-12 18:31:28 demand   81326L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           345    369   2014-09-11 06:06:50 demand       0L0 stock   30555L1
-      Consumer Tech            6550      0   2014-09-11 06:06:50 demand       0L1 stock       0L0
-      Clothing                  307      0   2014-09-11 06:06:50 demand    1448L2 stock       0L0
+      Consumer Tech            6831      0   2014-09-12 18:31:28 demand     919L2 stock       0L0
+      Clothing                  289      0   2014-09-12 18:31:28 demand    1170L2 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 06:06:50 demand   11398L2 stock       0L0
-      Wine                      233      0   2014-09-11 06:06:50 demand    7649L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:31:28 demand   11398L2 stock       0L0
+      Wine                      233      0   2014-09-12 18:31:28 demand    7649L2 stock       0L0
    + Foods
-      Algae                      95      0   2014-09-11 06:06:50 demand  421967L2 stock       0L0
-      Fruit and Vegetables      307      0   2014-09-11 06:06:50 demand    4821L2 stock       0L0
-      Grain                     180      0   2014-09-11 06:06:50 demand   19576L2 stock       0L0
-      Animal Meat              1321      0   2014-09-11 06:06:50 demand     893L2 stock       0L0
-      Fish                      773      0   2014-09-11 06:06:50 demand    4027L2 stock       0L0
-      Food Cartridges           102      0   2014-09-11 06:06:50 demand    5623L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 06:06:50 demand    5614L2 stock       0L0
-      Tea                      1406      0   2014-09-11 06:06:50 demand       0L1 stock       0L0
-      Coffee                   1380      0   2014-09-11 06:06:50 demand    1674L2 stock       0L0
+      Algae                      95      0   2014-09-12 18:31:28 demand  421967L2 stock       0L0
+      Fruit and Vegetables      303      0   2014-09-12 18:31:28 demand    4620L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:31:28 demand   19576L2 stock       0L0
+      Animal Meat              1263      0   2014-09-12 18:31:28 demand     635L1 stock       0L0
+      Fish                      768      0   2014-09-12 18:31:28 demand    3935L2 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:31:28 demand    5623L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:31:28 demand    5614L2 stock       0L0
+      Tea                      1592      0   2014-09-12 18:31:28 demand     578L2 stock       0L0
+      Coffee                   1401      0   2014-09-12 18:31:28 demand    1803L2 stock       0L0
    + Industrial Materials
-      Polymers                  115      0   2014-09-11 06:06:50 demand   26545L2 stock       0L0
-      Semiconductors            958      0   2014-09-11 06:06:50 demand    8092L2 stock       0L0
-      Superconductors          7120      0   2014-09-11 06:06:50 demand   62963L2 stock       0L0
-   + Machinery
-      Mineral Extractors        401    430   2014-09-11 06:06:50 demand       0L0 stock    4553L1
-      Crop Harvesters          1943   1995   2014-09-11 06:06:50 demand       0L0 stock    1968L1
+      Polymers                  115      0   2014-09-12 18:31:28 demand   26545L2 stock       0L0
+      Semiconductors            958      0   2014-09-12 18:31:28 demand    8092L2 stock       0L0
+      Superconductors          7120      0   2014-09-12 18:31:28 demand   62963L2 stock       0L0
    + Medicines
-      Performance Enhancers    7120      0   2014-09-11 06:06:50 demand    5967L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 06:06:50 demand    1571L2 stock       0L0
-      Progenitor Cells         7120      0   2014-09-11 06:06:50 demand    1301L2 stock       0L0
+      Performance Enhancers    7120      0   2014-09-12 18:31:28 demand    5967L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:31:28 demand    1571L2 stock       0L0
+      Progenitor Cells         7120      0   2014-09-12 18:31:28 demand    1301L2 stock       0L0
    + Metals
-      Gold                     9449      0   2014-09-11 06:06:50 demand    1691L2 stock       0L0
-      Indium                   6234      0   2014-09-11 06:06:50 demand    4974L2 stock       0L0
-      Tantalum                 4210      0   2014-09-11 06:06:50 demand    6027L2 stock       0L0
-      Uranium                  2846      0   2014-09-11 06:06:50 demand   24114L2 stock       0L0
-      Lithium                  1695      0   2014-09-11 06:06:50 demand    9170L2 stock       0L0
-      Titanium                 1087      0   2014-09-11 06:06:50 demand  190368L2 stock       0L0
-      Copper                    487      0   2014-09-11 06:06:50 demand   16973L2 stock       0L0
-      Aluminium                 324      0   2014-09-11 06:06:50 demand   21007L2 stock       0L0
+      Gold                     9904      0   2014-09-12 18:31:28 demand    2701L2 stock       0L0
+      Indium                   6242      0   2014-09-12 18:31:28 demand    5018L2 stock       0L0
+      Tantalum                 4210      0   2014-09-12 18:31:28 demand    6027L2 stock       0L0
+      Uranium                  2846      0   2014-09-12 18:31:28 demand   24114L2 stock       0L0
+      Lithium                  1697      0   2014-09-12 18:31:28 demand    9231L2 stock       0L0
+      Titanium                 1087      0   2014-09-12 18:31:28 demand  190368L2 stock       0L0
+      Copper                    487      0   2014-09-12 18:31:28 demand   16973L2 stock       0L0
+      Aluminium                 324      0   2014-09-12 18:31:28 demand   21007L2 stock       0L0
    + Minerals
-      Beryllium                8426      0   2014-09-11 06:06:50 demand    3322L2 stock       0L0
-      Gallium                  5473      0   2014-09-11 06:06:50 demand   88898L2 stock       0L0
+      Beryllium                8678      0   2014-09-12 18:31:28 demand    4311L2 stock       0L0
+      Gallium                  5473      0   2014-09-12 18:31:28 demand   88898L2 stock       0L0
    + Technology
-      H.E. Suits                259      0   2014-09-11 06:06:50 demand   31636L2 stock       0L0
-      Robotics                 1930      0   2014-09-11 06:06:50 demand   25242L2 stock       0L0
-      Auto-Fabricators         3943      0   2014-09-11 06:06:50 demand  207040L2 stock       0L0
+      H.E. Suits                259      0   2014-09-12 18:31:28 demand   31636L2 stock       0L0
+      Robotics                 1930      0   2014-09-12 18:31:28 demand   25242L2 stock       0L0
+      Auto-Fabricators         3943      0   2014-09-12 18:31:28 demand  207040L2 stock       0L0
    + Textiles
-      Leather                   143      0   2014-09-11 06:06:50 demand   22796L2 stock       0L0
-      Natural Fabrics           408      0   2014-09-11 06:06:50 demand   12395L2 stock       0L0
-      Synthetic Fabrics         156      0   2014-09-11 06:06:50 demand   32173L2 stock       0L0
+      Leather                   143      0   2014-09-12 18:31:28 demand   22796L2 stock       0L0
+      Natural Fabrics           408      0   2014-09-12 18:31:28 demand   12395L2 stock       0L0
+      Synthetic Fabrics         156      0   2014-09-12 18:31:28 demand   32173L2 stock       0L0
    + Waste
-      Biowaste                   11     18   2014-09-11 06:06:50 demand       0L0 stock    1144L1
-      Scrap                      30     37   2014-09-11 06:06:50 demand       0L0 stock   11413L1
-   + Weapons
-      Personal Weapons         3968   4066   2014-09-11 06:06:50 demand       0L0 stock     173L1
+      Biowaste                   12     18   2014-09-12 18:31:28 demand       0L0 stock     467L1
+      Scrap                      30     38   2014-09-12 18:31:28 demand       0L0 stock    2412L1
 
 
 @ NARAKA/Novitski Oasis
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-10 23:59:25 demand  229266L1 stock       0L0
-      Pesticides                199      0   2014-09-10 23:59:25 demand  147118L2 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:51:37 demand  229266L1 stock       0L0
+      Pesticides                199      0   2014-09-12 18:51:37 demand  147118L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           549      0   2014-09-10 23:59:25 demand   16994L2 stock       0L0
-      Consumer Tech            7103      0   2014-09-10 23:59:25 demand   31232L2 stock       0L0
-      Clothing                  306      0   2014-09-10 23:59:25 demand    8162L2 stock       0L0
+      Dom. Appliances           549      0   2014-09-12 18:51:37 demand   16994L2 stock       0L0
+      Consumer Tech            7103      0   2014-09-12 18:51:37 demand   31232L2 stock       0L0
+      Clothing                  306      0   2014-09-12 18:51:37 demand    8162L2 stock       0L0
    + Drugs
-      Beer                      142      0   2014-09-10 23:59:25 demand   64264L2 stock       0L0
+      Beer                      142      0   2014-09-12 18:51:37 demand   64264L2 stock       0L0
    + Foods
-      Fruit and Vegetables      302      0   2014-09-10 23:59:25 demand    2223L2 stock       0L0
-      Grain                      61     72   2014-09-10 23:59:25 demand       0L0 stock  123022L2
-      Animal Meat               881    922   2014-09-10 23:59:25 demand       0L0 stock   82567L2
-      Fish                      771      0   2014-09-10 23:59:25 demand    6691L2 stock       0L0
-      Tea                      1588      0   2014-09-10 23:59:25 demand    6677L2 stock       0L0
-      Coffee                   1397      0   2014-09-10 23:59:25 demand    4314L2 stock       0L0
+      Fruit and Vegetables      303      0   2014-09-12 18:51:37 demand    2247L2 stock       0L0
+      Grain                      61     72   2014-09-12 18:51:37 demand       0L0 stock  123022L2
+      Animal Meat              1065   1114   2014-09-12 18:51:37 demand       0L0 stock      43L1
+      Fish                      771      0   2014-09-12 18:51:37 demand    6691L2 stock       0L0
+      Tea                      1588      0   2014-09-12 18:51:37 demand    6677L2 stock       0L0
+      Coffee                   1397      0   2014-09-12 18:51:37 demand    4314L2 stock       0L0
    + Machinery
-      Crop Harvesters          2337      0   2014-09-10 23:59:25 demand   59564L2 stock       0L0
-      Marine Supplies          4484      0   2014-09-10 23:59:25 demand   87855L2 stock       0L0
+      Crop Harvesters          2337      0   2014-09-12 18:51:37 demand   59564L2 stock       0L0
+      Marine Supplies          4484      0   2014-09-12 18:51:37 demand   87855L2 stock       0L0
    + Medicines
-      Agri-Medicines           1084      0   2014-09-10 23:59:25 demand   21460L2 stock       0L0
-      Performance Enhancers    7103      0   2014-09-10 23:59:25 demand   41406L2 stock       0L0
-      Basic Medicines           306      0   2014-09-10 23:59:25 demand    1358L2 stock       0L0
-      Progenitor Cells         7103      0   2014-09-10 23:59:25 demand   61517L2 stock       0L0
+      Agri-Medicines           1084      0   2014-09-12 18:51:37 demand   21460L2 stock       0L0
+      Performance Enhancers    7103      0   2014-09-12 18:51:37 demand   41406L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:51:37 demand    1358L2 stock       0L0
+      Progenitor Cells         7103      0   2014-09-12 18:51:37 demand   61517L2 stock       0L0
    + Technology
-      Animal Monitors           289      0   2014-09-10 23:59:25 demand  209778L2 stock       0L0
-      Aquaponic Systems         259      0   2014-09-10 23:59:25 demand   17837L2 stock       0L0
-      Terrain Enrich Sys       4668      0   2014-09-10 23:59:25 demand     474L1 stock       0L0
+      Animal Monitors           289      0   2014-09-12 18:51:37 demand  209778L2 stock       0L0
+      Aquaponic Systems         259      0   2014-09-12 18:51:37 demand   17837L2 stock       0L0
+      Terrain Enrich Sys       4980      0   2014-09-12 18:51:37 demand    1694L2 stock       0L0
    + Textiles
-      Leather                    38     48   2014-09-10 23:59:25 demand       0L0 stock  134832L2
+      Leather                    38     48   2014-09-12 18:51:37 demand       0L0 stock  134832L2
    + Waste
-      Biowaste                   68      0   2014-09-10 23:59:25 demand  103078L2 stock       0L0
+      Biowaste                   68      0   2014-09-12 18:51:37 demand  103078L2 stock       0L0
 
 
 @ OPALA/Romanenko Estate
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 06:50:47 demand  162115L1 stock       0L0
-      Pesticides                199      0   2014-09-11 06:50:47 demand  104029L2 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:55:07 demand  162115L1 stock       0L0
+      Pesticides                199      0   2014-09-12 18:55:07 demand  104029L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           549      0   2014-09-11 06:50:47 demand   12016L2 stock       0L0
-      Consumer Tech            7103      0   2014-09-11 06:50:47 demand   22084L2 stock       0L0
-      Clothing                  306      0   2014-09-11 06:50:47 demand    5772L2 stock       0L0
+      Dom. Appliances           549      0   2014-09-12 18:55:07 demand   12016L2 stock       0L0
+      Consumer Tech            7103      0   2014-09-12 18:55:07 demand   22084L2 stock       0L0
+      Clothing                  301      0   2014-09-12 18:55:07 demand    5473L2 stock       0L0
    + Drugs
-      Beer                      142      0   2014-09-11 06:50:47 demand   45441L2 stock       0L0
+      Beer                      142      0   2014-09-12 18:55:07 demand   45441L2 stock       0L0
    + Foods
-      Algae                      10     16   2014-09-11 06:50:47 demand       0L0 stock   18088L3
-      Fruit and Vegetables      306      0   2014-09-11 06:50:47 demand    1636L2 stock       0L0
-      Grain                      71     84   2014-09-11 06:50:47 demand       0L0 stock   85855L1
-      Animal Meat              1387      0   2014-09-11 06:50:47 demand    2383L2 stock       0L0
-      Fish                      443    478   2014-09-11 06:50:47 demand       0L0 stock   29433L1
-      Tea                      1588      0   2014-09-11 06:50:47 demand    4721L2 stock       0L0
-      Coffee                   1397      0   2014-09-11 06:50:47 demand    3050L2 stock       0L0
+      Algae                      16     25   2014-09-12 18:55:07 demand       0L0 stock    2650L1
+      Fruit and Vegetables      306      0   2014-09-12 18:55:07 demand    1636L2 stock       0L0
+      Grain                      71     84   2014-09-12 18:55:07 demand       0L0 stock   85755L1
+      Animal Meat              1397      0   2014-09-12 18:55:07 demand    2476L2 stock       0L0
+      Tea                      1588      0   2014-09-12 18:55:07 demand    4721L2 stock       0L0
+      Coffee                   1397      0   2014-09-12 18:55:07 demand    3050L2 stock       0L0
    + Machinery
-      Crop Harvesters          2337      0   2014-09-11 06:50:47 demand   42118L2 stock       0L0
-      Marine Supplies          4484      0   2014-09-11 06:50:47 demand   62123L2 stock       0L0
+      Crop Harvesters          2337      0   2014-09-12 18:55:07 demand   42118L2 stock       0L0
+      Marine Supplies          4484      0   2014-09-12 18:55:07 demand   62123L2 stock       0L0
    + Medicines
-      Agri-Medicines           1084      0   2014-09-11 06:50:47 demand   15174L2 stock       0L0
-      Performance Enhancers    7103      0   2014-09-11 06:50:47 demand   29278L2 stock       0L0
-      Basic Medicines           306      0   2014-09-11 06:50:47 demand     960L2 stock       0L0
-      Progenitor Cells         7103      0   2014-09-11 06:50:47 demand   43499L2 stock       0L0
+      Agri-Medicines           1084      0   2014-09-12 18:55:07 demand   15174L2 stock       0L0
+      Performance Enhancers    7103      0   2014-09-12 18:55:07 demand   29278L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:55:07 demand     960L2 stock       0L0
+      Progenitor Cells         7103      0   2014-09-12 18:55:07 demand   43499L2 stock       0L0
    + Technology
-      Animal Monitors           289      0   2014-09-11 06:50:47 demand  178003L2 stock       0L0
-      Aquaponic Systems         259      0   2014-09-11 06:50:47 demand   12613L2 stock       0L0
-      Terrain Enrich Sys       4668      0   2014-09-11 06:50:47 demand       0L1 stock       0L0
+      Animal Monitors           289      0   2014-09-12 18:55:07 demand  178003L2 stock       0L0
+      Aquaponic Systems         259      0   2014-09-12 18:55:07 demand   12613L2 stock       0L0
+      Terrain Enrich Sys       4668      0   2014-09-12 18:55:07 demand       0L1 stock       0L0
    + Waste
-      Biowaste                   68      0   2014-09-11 06:50:47 demand   72887L2 stock       0L0
+      Biowaste                   68      0   2014-09-12 18:55:07 demand   72887L2 stock       0L0
 
 
 @ OVID/Bradfield Orbital
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-11 02:27:47 demand  111370L2 stock       0L0
+      Hydrogen Fuels             62      0   2014-09-12 18:56:46 demand  111370L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           550      0   2014-09-11 02:27:47 demand    5099L2 stock       0L0
-      Consumer Tech            7056      0   2014-09-11 02:27:47 demand    1719L2 stock       0L0
-      Clothing                  304      0   2014-09-11 02:27:47 demand    1927L2 stock       0L0
+      Dom. Appliances           550      0   2014-09-12 18:56:46 demand    5099L2 stock       0L0
+      Consumer Tech            7116      0   2014-09-12 18:56:46 demand    1835L2 stock       0L0
+      Clothing                  286      0   2014-09-12 18:56:46 demand    1529L2 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 02:27:47 demand   15609L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:56:46 demand   15609L2 stock       0L0
    + Foods
-      Algae                      95      0   2014-09-11 02:27:47 demand    2032L2 stock       0L0
-      Fruit and Vegetables      306      0   2014-09-11 02:27:47 demand    6231L2 stock       0L0
-      Grain                     180      0   2014-09-11 02:27:47 demand   26807L2 stock       0L0
-      Animal Meat              1239      0   2014-09-11 02:27:47 demand     779L1 stock       0L0
-      Fish                      645      0   2014-09-11 02:27:47 demand       0L1 stock       0L0
-      Food Cartridges           102      0   2014-09-11 02:27:47 demand    6373L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 02:27:47 demand    7255L2 stock       0L0
-      Tea                      1523      0   2014-09-11 02:27:47 demand     651L2 stock       0L0
-      Coffee                   1386      0   2014-09-11 02:27:47 demand    2214L2 stock       0L0
+      Algae                      95      0   2014-09-12 18:56:46 demand    2032L2 stock       0L0
+      Fruit and Vegetables      306      0   2014-09-12 18:56:46 demand    6231L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:56:46 demand   26807L2 stock       0L0
+      Animal Meat              1362      0   2014-09-12 18:56:46 demand    1577L2 stock       0L0
+      Fish                      687      0   2014-09-12 18:56:46 demand    3386L1 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:56:46 demand    6315L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:56:46 demand    7255L2 stock       0L0
+      Tea                      1591      0   2014-09-12 18:56:46 demand     834L2 stock       0L0
+      Coffee                   1400      0   2014-09-12 18:56:46 demand    2330L2 stock       0L0
    + Industrial Materials
-      Polymers                  115      0   2014-09-11 02:27:47 demand  181766L2 stock       0L0
-      Semiconductors            958      0   2014-09-11 02:27:47 demand   11082L2 stock       0L0
-      Superconductors          7116      0   2014-09-11 02:27:47 demand   86223L2 stock       0L0
+      Polymers                  115      0   2014-09-12 18:56:46 demand  181766L2 stock       0L0
+      Semiconductors            957      0   2014-09-12 18:56:46 demand   11028L2 stock       0L0
+      Superconductors          7116      0   2014-09-12 18:56:46 demand   86223L2 stock       0L0
    + Machinery
-      Hel-Static Furnaces        45     53   2014-09-11 02:27:47 demand       0L0 stock   55284L3
-      Mineral Extractors        301    323   2014-09-11 02:27:47 demand       0L0 stock   27231L3
-      Crop Harvesters          1911   1963   2014-09-11 02:27:47 demand       0L0 stock    7213L1
-      Marine Supplies          3911   4008   2014-09-11 02:27:47 demand       0L0 stock   26642L1
+      Hel-Static Furnaces        55     65   2014-09-12 18:56:46 demand       0L0 stock   30651L2
    + Medicines
-      Performance Enhancers    7116      0   2014-09-11 02:27:47 demand    8620L2 stock       0L0
-      Basic Medicines           306      0   2014-09-11 02:27:47 demand    1781L2 stock       0L0
-      Progenitor Cells         7116      0   2014-09-11 02:27:47 demand    2069L2 stock       0L0
+      Performance Enhancers    7116      0   2014-09-12 18:56:46 demand    8620L2 stock       0L0
+      Basic Medicines           306      0   2014-09-12 18:56:46 demand    1781L2 stock       0L0
+      Progenitor Cells         6949      0   2014-09-12 18:56:46 demand    1705L2 stock       0L0
    + Metals
-      Gold                     9585      0   2014-09-11 02:27:47 demand    2745L2 stock       0L0
-      Indium                   6238      0   2014-09-11 02:27:47 demand    9166L2 stock       0L0
-      Tantalum                 4207      0   2014-09-11 02:27:47 demand   11004L2 stock       0L0
-      Uranium                  2845      0   2014-09-11 02:27:47 demand  165083L2 stock       0L0
-      Lithium                  1696      0   2014-09-11 02:27:47 demand   16851L2 stock       0L0
-      Titanium                 1086      0   2014-09-11 02:27:47 demand   20860L2 stock       0L0
-      Copper                    487      0   2014-09-11 02:27:47 demand   30983L2 stock       0L0
-      Aluminium                 324      0   2014-09-11 02:27:47 demand 1629913L2 stock       0L0
+      Gold                     9898      0   2014-09-12 18:56:46 demand    3698L2 stock       0L0
+      Indium                   6238      0   2014-09-12 18:56:46 demand    9166L2 stock       0L0
+      Tantalum                 4207      0   2014-09-12 18:56:46 demand   11004L2 stock       0L0
+      Uranium                  2845      0   2014-09-12 18:56:46 demand  165083L2 stock       0L0
+      Lithium                  1696      0   2014-09-12 18:56:46 demand   16851L2 stock       0L0
+      Titanium                 1085      0   2014-09-12 18:56:46 demand   20707L2 stock       0L0
+      Copper                    487      0   2014-09-12 18:56:46 demand   30983L2 stock       0L0
+      Aluminium                 324      0   2014-09-12 18:56:46 demand 1629913L2 stock       0L0
    + Minerals
-      Beryllium                8673      0   2014-09-11 02:27:47 demand   19668L2 stock       0L0
-      Gallium                  5470      0   2014-09-11 02:27:47 demand   24346L2 stock       0L0
+      Beryllium                8673      0   2014-09-12 18:56:46 demand   19668L2 stock       0L0
+      Gallium                  5470      0   2014-09-12 18:56:46 demand   24346L2 stock       0L0
    + Technology
-      Computer Components       261    280   2014-09-11 02:27:47 demand       0L0 stock  291565L3
-      H.E. Suits                259      0   2014-09-11 02:27:47 demand   43323L2 stock       0L0
-      Robotics                 1929      0   2014-09-11 02:27:47 demand  385794L2 stock       0L0
-      Auto-Fabricators         3941      0   2014-09-11 02:27:47 demand  283525L2 stock       0L0
+      Computer Components       342    366   2014-09-12 18:56:46 demand       0L0 stock   82609L1
+      H.E. Suits                259      0   2014-09-12 18:56:46 demand   43323L2 stock       0L0
+      Robotics                 1929      0   2014-09-12 18:56:46 demand  385794L2 stock       0L0
+      Auto-Fabricators         3941      0   2014-09-12 18:56:46 demand  283525L2 stock       0L0
    + Textiles
-      Leather                   143      0   2014-09-11 02:27:47 demand   31217L2 stock       0L0
-      Natural Fabrics           408      0   2014-09-11 02:27:47 demand   25460L2 stock       0L0
-      Synthetic Fabrics         156      0   2014-09-11 02:27:47 demand   44058L2 stock       0L0
+      Leather                   143      0   2014-09-12 18:56:46 demand   31217L2 stock       0L0
+      Natural Fabrics           408      0   2014-09-12 18:56:46 demand   25460L2 stock       0L0
+      Synthetic Fabrics         156      0   2014-09-12 18:56:46 demand   44058L2 stock       0L0
    + Waste
-      Biowaste                   11     18   2014-09-11 02:27:47 demand       0L0 stock    1404L1
-      Scrap                      20     24   2014-09-11 02:27:47 demand       0L0 stock   56087L3
+      Scrap                      20     24   2014-09-12 18:56:46 demand       0L0 stock   56087L3
 
 
 @ PI-FANG/Brooks Estate
@@ -1623,40 +1545,37 @@
 
 @ ROSS 1015/Bowersox Mines
    + Chemicals
-      Hydrogen Fuels             74     75   2014-09-10 20:41:45 demand       0L0 stock   24964L2
-      Explosives                289      0   2014-09-10 20:41:45 demand    5340L2 stock       0L0
+      Hydrogen Fuels             74     75   2014-09-12 18:54:01 demand       0L0 stock   24964L2
+      Explosives                289      0   2014-09-12 18:54:01 demand    5363L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           482      0   2014-09-10 20:41:45 demand     192L1 stock       0L0
-      Consumer Tech            6874      0   2014-09-10 20:41:45 demand       0L1 stock       0L0
-      Clothing                  280      0   2014-09-10 20:41:45 demand       0L1 stock       0L0
+      Dom. Appliances           469      0   2014-09-12 18:54:01 demand       0L1 stock       0L0
+      Consumer Tech            7171      0   2014-09-12 18:54:01 demand      24L2 stock       0L0
+      Clothing                  307      0   2014-09-12 18:54:01 demand     104L2 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-10 20:41:45 demand    3364L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:54:01 demand    3364L2 stock       0L0
    + Foods
-      Fruit and Vegetables      271      0   2014-09-10 20:41:45 demand     314L1 stock       0L0
-      Grain                     182      0   2014-09-10 20:41:45 demand    1445L2 stock       0L0
-      Animal Meat              1323      0   2014-09-10 20:41:45 demand       0L1 stock       0L0
-      Fish                      713      0   2014-09-10 20:41:45 demand       0L1 stock       0L0
-      Food Cartridges           103      0   2014-09-10 20:41:45 demand    1073L2 stock       0L0
-      Synthetic Meat            235      0   2014-09-10 20:41:45 demand     621L2 stock       0L0
-      Tea                      1507      0   2014-09-10 20:41:45 demand       0L1 stock       0L0
-      Coffee                   1343      0   2014-09-10 20:41:45 demand     108L1 stock       0L0
+      Fruit and Vegetables      308      0   2014-09-12 18:54:01 demand     533L2 stock       0L0
+      Grain                     182      0   2014-09-12 18:54:01 demand    1445L2 stock       0L0
+      Animal Meat              1323      0   2014-09-12 18:54:01 demand       0L1 stock       0L0
+      Fish                      713      0   2014-09-12 18:54:01 demand       0L1 stock       0L0
+      Food Cartridges           103      0   2014-09-12 18:54:01 demand    1073L2 stock       0L0
+      Synthetic Meat            235      0   2014-09-12 18:54:01 demand     621L2 stock       0L0
+      Tea                      1507      0   2014-09-12 18:54:01 demand       0L1 stock       0L0
+      Coffee                   1323      0   2014-09-12 18:54:01 demand       0L1 stock       0L0
    + Machinery
-      Mineral Extractors        532      0   2014-09-10 20:41:45 demand       0L1 stock       0L0
+      Mineral Extractors        610      0   2014-09-12 18:54:01 demand    1340L2 stock       0L0
    + Medicines
-      Performance Enhancers    7162      0   2014-09-10 20:41:45 demand     581L2 stock       0L0
-      Basic Medicines           308      0   2014-09-10 20:41:45 demand     533L2 stock       0L0
+      Performance Enhancers    7162      0   2014-09-12 18:54:01 demand     581L2 stock       0L0
+      Basic Medicines           308      0   2014-09-12 18:54:01 demand     533L2 stock       0L0
    + Minerals
-      Bertrandite              1868   1917   2014-09-10 20:41:45 demand       0L0 stock    5454L3
-      Gallite                  1346   1383   2014-09-10 20:41:45 demand       0L0 stock   40639L3
-      Lepidolite                303    325   2014-09-10 20:41:45 demand       0L0 stock   56771L3
+      Gallite                  1677   1723   2014-09-12 18:54:01 demand       0L0 stock    3160L1
+      Lepidolite                386    413   2014-09-12 18:54:01 demand       0L0 stock   19479L2
    + Technology
-      H.E. Suits                261      0   2014-09-10 20:41:45 demand    2334L2 stock       0L0
-      Bioreducing Lichen       1026      0   2014-09-10 20:41:45 demand    2896L2 stock       0L0
-   + Waste
-      Biowaste                   11     18   2014-09-10 20:41:45 demand       0L0 stock     163L1
+      H.E. Suits                261      0   2014-09-12 18:54:01 demand    2334L2 stock       0L0
+      Bioreducing Lichen       1026      0   2014-09-12 18:54:01 demand    2896L2 stock       0L0
    + Weapons
-      Reactive Armor           1971      0   2014-09-10 20:41:45 demand     127L1 stock       0L0
-      Non-Lethal Wpns          1942      0   2014-09-10 20:41:45 demand     599L2 stock       0L0
+      Reactive Armor           2209      0   2014-09-12 18:54:01 demand     402L2 stock       0L0
+      Non-Lethal Wpns          1793      0   2014-09-12 18:54:01 demand     352L1 stock       0L0
 
 
 @ ROSS 1051/Abetti Platform
@@ -1754,147 +1673,138 @@
 
 @ SURYA/Burbank Camp
    + Chemicals
-      Hydrogen Fuels             47     48   2014-09-11 04:22:26 demand       0L0 stock  347216L3
-      Mineral Oil               163      0   2014-09-11 04:22:26 demand   16921L2 stock       0L0
+      Hydrogen Fuels             47     48   2014-09-12 18:55:46 demand       0L0 stock  347216L3
+      Mineral Oil               163      0   2014-09-12 18:55:46 demand   16921L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           466      0   2014-09-11 04:22:26 demand       0L1 stock       0L0
-      Consumer Tech            6550      0   2014-09-11 04:22:26 demand       0L1 stock       0L0
-      Clothing                  253      0   2014-09-11 04:22:26 demand       0L1 stock       0L0
+      Dom. Appliances           466      0   2014-09-12 18:55:46 demand       0L1 stock       0L0
+      Consumer Tech            6550      0   2014-09-12 18:55:46 demand       0L1 stock       0L0
+      Clothing                  253      0   2014-09-12 18:55:46 demand       0L1 stock       0L0
    + Drugs
-      Beer                      143      0   2014-09-11 04:22:26 demand    9269L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:55:46 demand    9269L2 stock       0L0
    + Foods
-      Fruit and Vegetables      307      0   2014-09-11 04:22:26 demand    1961L2 stock       0L0
-      Grain                     180      0   2014-09-11 04:22:26 demand    7960L2 stock       0L0
-      Animal Meat              1232      0   2014-09-11 04:22:26 demand       0L1 stock       0L0
-      Fish                      646      0   2014-09-11 04:22:26 demand       0L1 stock       0L0
-      Food Cartridges           102      0   2014-09-11 04:22:26 demand    2287L2 stock       0L0
-      Synthetic Meat            233      0   2014-09-11 04:22:26 demand    2283L2 stock       0L0
-      Tea                      1499      0   2014-09-11 04:22:26 demand       0L1 stock       0L0
-      Coffee                   1397      0   2014-09-11 04:22:26 demand     725L2 stock       0L0
+      Fruit and Vegetables      307      0   2014-09-12 18:55:46 demand    1961L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:55:46 demand    7960L2 stock       0L0
+      Animal Meat              1232      0   2014-09-12 18:55:46 demand     189L1 stock       0L0
+      Fish                      646      0   2014-09-12 18:55:46 demand       0L1 stock       0L0
+      Food Cartridges           102      0   2014-09-12 18:55:46 demand    2287L2 stock       0L0
+      Synthetic Meat            233      0   2014-09-12 18:55:46 demand    2283L2 stock       0L0
+      Tea                      1592      0   2014-09-12 18:55:46 demand     235L2 stock       0L0
+      Coffee                   1397      0   2014-09-12 18:55:46 demand     725L2 stock       0L0
    + Industrial Materials
-      Semiconductors            532    557   2014-09-11 04:22:26 demand       0L0 stock   46071L3
-      Superconductors          6082   6152   2014-09-11 04:22:26 demand       0L0 stock   10180L2
+      Semiconductors            695    727   2014-09-12 18:55:46 demand       0L0 stock    4996L1
    + Machinery
-      Hel-Static Furnaces       171      0   2014-09-11 04:22:26 demand    8208L2 stock       0L0
+      Hel-Static Furnaces       171      0   2014-09-12 18:55:46 demand    8208L2 stock       0L0
    + Medicines
-      Performance Enhancers    7120      0   2014-09-11 04:22:26 demand    2427L2 stock       0L0
-      Basic Medicines           307      0   2014-09-11 04:22:26 demand     639L2 stock       0L0
-      Progenitor Cells         7120      0   2014-09-11 04:22:26 demand     529L2 stock       0L0
+      Performance Enhancers    7120      0   2014-09-12 18:55:46 demand    2427L2 stock       0L0
+      Basic Medicines           307      0   2014-09-12 18:55:46 demand     639L2 stock       0L0
+      Progenitor Cells         7120      0   2014-09-12 18:55:46 demand     529L2 stock       0L0
    + Metals
-      Indium                   4924   4981   2014-09-11 04:22:26 demand       0L0 stock   95856L3
-      Tantalum                 3098   3175   2014-09-11 04:22:26 demand       0L0 stock   65330L3
-      Titanium                  616    644   2014-09-11 04:22:26 demand       0L0 stock  371541L3
+      Titanium                  616    644   2014-09-12 18:55:46 demand       0L0 stock  371541L3
    + Minerals
-      Bertrandite              2511      0   2014-09-11 04:22:26 demand     665L2 stock       0L0
-      Indite                   2343      0   2014-09-11 04:22:26 demand   10741L2 stock       0L0
-      Gallite                  2056      0   2014-09-11 04:22:26 demand    6803L2 stock       0L0
-      Coltan                   1493      0   2014-09-11 04:22:26 demand   13294L2 stock       0L0
-      Uraninite                 958      0   2014-09-11 04:22:26 demand   16455L2 stock       0L0
-      Lepidolite                621      0   2014-09-11 04:22:26 demand   20364L2 stock       0L0
-      Rutile                    324      0   2014-09-11 04:22:26 demand   28469L2 stock       0L0
-      Bauxite                   115      0   2014-09-11 04:22:26 demand   53971L2 stock       0L0
+      Bertrandite              2434      0   2014-09-12 18:55:46 demand     493L1 stock       0L0
+      Indite                   2343      0   2014-09-12 18:55:46 demand   10741L2 stock       0L0
+      Gallite                  2059      0   2014-09-12 18:55:46 demand    6849L2 stock       0L0
+      Coltan                   1493      0   2014-09-12 18:55:46 demand   13294L2 stock       0L0
+      Uraninite                 958      0   2014-09-12 18:55:46 demand   16455L2 stock       0L0
+      Lepidolite                621      0   2014-09-12 18:55:46 demand   20364L2 stock       0L0
+      Rutile                    324      0   2014-09-12 18:55:46 demand   28469L2 stock       0L0
+      Bauxite                   115      0   2014-09-12 18:55:46 demand   53971L2 stock       0L0
    + Technology
-      H.E. Suits                259      0   2014-09-11 04:22:26 demand   12864L2 stock       0L0
-      Advanced Catalysers      2853      0   2014-09-11 04:22:26 demand   12026L2 stock       0L0
-      Resonating Separators    5883      0   2014-09-11 04:22:26 demand    3970L1 stock       0L0
+      H.E. Suits                259      0   2014-09-12 18:55:46 demand   12864L2 stock       0L0
+      Advanced Catalysers      3037      0   2014-09-12 18:55:46 demand   19018L2 stock       0L0
+      Resonating Separators    6242      0   2014-09-12 18:55:46 demand    6803L2 stock       0L0
    + Textiles
-      Synthetic Fabrics          38     46   2014-09-11 04:22:26 demand       0L0 stock   87214L3
+      Synthetic Fabrics          38     46   2014-09-12 18:55:46 demand       0L0 stock   75231L3
    + Waste
-      Biowaste                   11     18   2014-09-11 04:22:26 demand       0L0 stock     362L1
-      Scrap                      91      0   2014-09-11 04:22:26 demand   18538L2 stock       0L0
+      Biowaste                   11     18   2014-09-12 18:55:46 demand       0L0 stock     395L1
+      Scrap                      91      0   2014-09-12 18:55:46 demand   18538L2 stock       0L0
 
 
 @ TILIAN/Maunder's Hope
    + Chemicals
-      Hydrogen Fuels             62      0   2014-09-11 03:41:51 demand   75863L2 stock       0L0
+      Hydrogen Fuels             62      0   2014-09-12 18:56:08 demand   75863L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           342    367   2014-09-11 03:41:51 demand       0L0 stock   15883L1
-      Consumer Tech            6546      0   2014-09-11 03:41:51 demand       0L1 stock       0L0
-      Clothing                  116    129   2014-09-11 03:41:51 demand       0L0 stock  265863L3
+      Consumer Tech            7009      0   2014-09-12 18:56:08 demand    1110L2 stock       0L0
+      Clothing                  116    129   2014-09-12 18:56:08 demand       0L0 stock  265863L3
    + Drugs
-      Beer                      143      0   2014-09-11 03:41:51 demand   10633L2 stock       0L0
+      Beer                      143      0   2014-09-12 18:56:08 demand   10633L2 stock       0L0
    + Foods
-      Algae                      95      0   2014-09-11 03:41:51 demand    8306L2 stock       0L0
-      Fruit and Vegetables      306      0   2014-09-11 03:41:51 demand    4245L2 stock       0L0
-      Grain                     180      0   2014-09-11 03:41:51 demand   18260L2 stock       0L0
-      Animal Meat              1313      0   2014-09-11 03:41:51 demand     861L2 stock       0L0
-      Fish                      755      0   2014-09-11 03:41:51 demand    3553L2 stock       0L0
-      Food Cartridges            13     19   2014-09-11 03:41:51 demand       0L0 stock  533979L3
-      Synthetic Meat            233      0   2014-09-11 03:41:51 demand    4942L2 stock       0L0
-      Tea                      1471      0   2014-09-11 03:41:51 demand     348L2 stock       0L0
-      Coffee                   1392      0   2014-09-11 03:41:51 demand    1546L2 stock       0L0
+      Algae                      95      0   2014-09-12 18:56:08 demand    8306L2 stock       0L0
+      Fruit and Vegetables      306      0   2014-09-12 18:56:08 demand    4245L2 stock       0L0
+      Grain                     180      0   2014-09-12 18:56:08 demand   18260L2 stock       0L0
+      Animal Meat              1400      0   2014-09-12 18:56:08 demand    1242L2 stock       0L0
+      Fish                      772      0   2014-09-12 18:56:08 demand    3867L2 stock       0L0
+      Food Cartridges            13     19   2014-09-12 18:56:08 demand       0L0 stock  533979L3
+      Synthetic Meat            233      0   2014-09-12 18:56:08 demand    4942L2 stock       0L0
+      Tea                      1591      0   2014-09-12 18:56:08 demand     569L2 stock       0L0
+      Coffee                   1400      0   2014-09-12 18:56:08 demand    1587L2 stock       0L0
    + Industrial Materials
-      Polymers                  115      0   2014-09-11 03:41:51 demand  123815L2 stock       0L0
-      Semiconductors            958      0   2014-09-11 03:41:51 demand    7549L2 stock       0L0
-      Superconductors          7116      0   2014-09-11 03:41:51 demand   58733L2 stock       0L0
-   + Machinery
-      Mineral Extractors        312    334   2014-09-11 03:41:51 demand       0L0 stock   13859L3
-      Crop Harvesters          1660   1704   2014-09-11 03:41:51 demand       0L0 stock   12820L2
+      Polymers                  115      0   2014-09-12 18:56:08 demand  123815L2 stock       0L0
+      Semiconductors            958      0   2014-09-12 18:56:08 demand    7549L2 stock       0L0
+      Superconductors          7116      0   2014-09-12 18:56:08 demand   58733L2 stock       0L0
    + Medicines
-      Performance Enhancers    7116      0   2014-09-11 03:41:51 demand    5872L2 stock       0L0
-      Basic Medicines           116    129   2014-09-11 03:41:51 demand       0L0 stock  260042L3
-      Progenitor Cells         7116      0   2014-09-11 03:41:51 demand    1410L2 stock       0L0
+      Performance Enhancers    7116      0   2014-09-12 18:56:08 demand    5872L2 stock       0L0
+      Basic Medicines           116    129   2014-09-12 18:56:08 demand       0L0 stock  253383L3
+      Progenitor Cells         6665      0   2014-09-12 18:56:08 demand     740L1 stock       0L0
    + Metals
-      Gold                     9729      0   2014-09-11 03:41:51 demand    2169L2 stock       0L0
-      Indium                   6231      0   2014-09-11 03:41:51 demand    1551L2 stock       0L0
-      Tantalum                 4204      0   2014-09-11 03:41:51 demand    1864L2 stock       0L0
-      Uranium                  2845      0   2014-09-11 03:41:51 demand    2246L2 stock       0L0
-      Lithium                  1696      0   2014-09-11 03:41:51 demand    2868L2 stock       0L0
-      Titanium                 1086      0   2014-09-11 03:41:51 demand    3551L2 stock       0L0
-      Copper                    487      0   2014-09-11 03:41:51 demand    5280L2 stock       0L0
-      Aluminium                 324      0   2014-09-11 03:41:51 demand    6532L2 stock       0L0
+      Gold                     9898      0   2014-09-12 18:56:08 demand    2519L2 stock       0L0
+      Indium                   6238      0   2014-09-12 18:56:08 demand    1563L2 stock       0L0
+      Tantalum                 4207      0   2014-09-12 18:56:08 demand    1874L2 stock       0L0
+      Uranium                  2845      0   2014-09-12 18:56:08 demand    2246L2 stock       0L0
+      Lithium                  1696      0   2014-09-12 18:56:08 demand    2868L2 stock       0L0
+      Titanium                 1086      0   2014-09-12 18:56:08 demand    3551L2 stock       0L0
+      Copper                    487      0   2014-09-12 18:56:08 demand    5280L2 stock       0L0
+      Aluminium                 324      0   2014-09-12 18:56:08 demand    6532L2 stock       0L0
    + Minerals
-      Beryllium                8508      0   2014-09-11 03:41:51 demand    1142L2 stock       0L0
-      Gallium                  5470      0   2014-09-11 03:41:51 demand    1662L2 stock       0L0
+      Beryllium                8673      0   2014-09-12 18:56:08 demand    1343L2 stock       0L0
+      Gallium                  5470      0   2014-09-12 18:56:08 demand    1662L2 stock       0L0
    + Technology
-      H.E. Suits                259      0   2014-09-11 03:41:51 demand   29511L2 stock       0L0
-      Robotics                 1929      0   2014-09-11 03:41:51 demand   26280L2 stock       0L0
-      Auto-Fabricators         3941      0   2014-09-11 03:41:51 demand   19315L2 stock       0L0
+      H.E. Suits                259      0   2014-09-12 18:56:08 demand   29511L2 stock       0L0
+      Robotics                 1922      0   2014-09-12 18:56:08 demand   25762L2 stock       0L0
+      Auto-Fabricators         3680      0   2014-09-12 18:56:08 demand   11074L1 stock       0L0
    + Textiles
-      Leather                   143      0   2014-09-11 03:41:51 demand  106321L2 stock       0L0
-      Natural Fabrics           408      0   2014-09-11 03:41:51 demand  115637L2 stock       0L0
-      Synthetic Fabrics         156      0   2014-09-11 03:41:51 demand  200079L2 stock       0L0
+      Leather                   143      0   2014-09-12 18:56:08 demand  106321L2 stock       0L0
+      Natural Fabrics           408      0   2014-09-12 18:56:08 demand  115637L2 stock       0L0
+      Synthetic Fabrics         156      0   2014-09-12 18:56:08 demand  200079L2 stock       0L0
    + Waste
-      Biowaste                    7     11   2014-09-11 03:41:51 demand       0L0 stock    3830L3
-      Scrap                      20     24   2014-09-11 03:41:51 demand       0L0 stock   38205L3
+      Biowaste                    7     11   2014-09-12 18:56:08 demand       0L0 stock    3830L3
+      Scrap                      30     38   2014-09-12 18:56:08 demand       0L0 stock    6947L1
 
 
 @ WYRD/Vonarburg Co-operative
    + Chemicals
-      Hydrogen Fuels             56      0   2014-09-11 06:53:03 demand  694836L1 stock       0L0
-      Mineral Oil                62     74   2014-09-11 06:53:03 demand       0L0 stock   17787L1
-      Pesticides                198      0   2014-09-11 06:53:03 demand  504884L2 stock       0L0
+      Hydrogen Fuels             56      0   2014-09-12 18:45:06 demand  694836L1 stock       0L0
+      Mineral Oil                62     74   2014-09-12 18:45:06 demand       0L0 stock   17787L1
+      Pesticides                198      0   2014-09-12 18:45:06 demand  504884L2 stock       0L0
    + Consumer Items
-      Dom. Appliances           548      0   2014-09-11 06:53:03 demand   58318L2 stock       0L0
-      Consumer Tech            7091      0   2014-09-11 06:53:03 demand   92234L2 stock       0L0
-      Clothing                  305      0   2014-09-11 06:53:03 demand   24737L2 stock       0L0
+      Dom. Appliances           548      0   2014-09-12 18:45:06 demand   58318L2 stock       0L0
+      Consumer Tech            7091      0   2014-09-12 18:45:06 demand   92234L2 stock       0L0
+      Clothing                  305      0   2014-09-12 18:45:06 demand   24540L2 stock       0L0
    + Drugs
-      Tobacco                  4232   4325   2014-09-11 06:53:03 demand       0L0 stock    6810L2
-      Beer                      142      0   2014-09-11 06:53:03 demand  194763L2 stock       0L0
-      Wine                      232      0   2014-09-11 06:53:03 demand  246553L2 stock       0L0
-      Liquor                    343    371   2014-09-11 06:53:03 demand       0L1 stock   32126L3
+      Beer                      142      0   2014-09-12 18:45:06 demand  194763L2 stock       0L0
+      Wine                      232      0   2014-09-12 18:45:06 demand  246553L2 stock       0L0
+      Liquor                    437    471   2014-09-12 18:45:06 demand       0L3 stock    2991L1
    + Foods
-      Fruit and Vegetables      305      0   2014-09-11 06:53:03 demand    7937L2 stock       0L0
-      Grain                      70     83   2014-09-11 06:53:03 demand       0L0 stock  117146L1
-      Animal Meat               834    880   2014-09-11 06:53:03 demand       0L0 stock  214954L3
-      Fish                      328    358   2014-09-11 06:53:03 demand       0L0 stock  801303L3
-      Tea                       981   1033   2014-09-11 06:53:03 demand       0L0 stock  116454L3
-      Coffee                    848    894   2014-09-11 06:53:03 demand       0L0 stock  110648L3
+      Fruit and Vegetables      305      0   2014-09-12 18:45:06 demand    7937L2 stock       0L0
+      Grain                      70     83   2014-09-12 18:45:06 demand       0L0 stock  117146L1
+      Animal Meat              1039   1096   2014-09-12 18:45:06 demand       0L0 stock   65542L1
+      Fish                      328    358   2014-09-12 18:45:06 demand       0L0 stock  801299L3
+      Coffee                   1063   1121   2014-09-12 18:45:06 demand       0L0 stock   11308L1
    + Machinery
-      Crop Harvesters          2333      0   2014-09-11 06:53:03 demand  180519L2 stock       0L0
-      Marine Supplies          4477      0   2014-09-11 06:53:03 demand  266262L2 stock       0L0
+      Crop Harvesters          2333      0   2014-09-12 18:45:06 demand  180519L2 stock       0L0
+      Marine Supplies          4477      0   2014-09-12 18:45:06 demand  266262L2 stock       0L0
    + Medicines
-      Agri-Medicines           1083      0   2014-09-11 06:53:03 demand   65037L2 stock       0L0
-      Performance Enhancers    7091      0   2014-09-11 06:53:03 demand  115404L2 stock       0L0
-      Basic Medicines           305      0   2014-09-11 06:53:03 demand    8742L2 stock       0L0
-      Progenitor Cells         7091      0   2014-09-11 06:53:03 demand  154171L2 stock       0L0
+      Agri-Medicines           1080      0   2014-09-12 18:45:06 demand   64327L2 stock       0L0
+      Performance Enhancers    7091      0   2014-09-12 18:45:06 demand  115404L2 stock       0L0
+      Basic Medicines           305      0   2014-09-12 18:45:06 demand    8742L2 stock       0L0
+      Progenitor Cells         7091      0   2014-09-12 18:45:06 demand  154171L2 stock       0L0
    + Technology
-      Animal Monitors           288      0   2014-09-11 06:53:03 demand  127155L2 stock       0L0
-      Aquaponic Systems         258      0   2014-09-11 06:53:03 demand   54059L2 stock       0L0
-      Terrain Enrich Sys       4660      0   2014-09-11 06:53:03 demand       0L1 stock       0L0
+      Animal Monitors           288      0   2014-09-12 18:45:06 demand  127155L2 stock       0L0
+      Aquaponic Systems         258      0   2014-09-12 18:45:06 demand   54059L2 stock       0L0
+      Terrain Enrich Sys       4660      0   2014-09-12 18:45:06 demand       0L1 stock       0L0
    + Textiles
-      Leather                    30     38   2014-09-11 06:53:03 demand       0L0 stock  682053L3
+      Leather                    30     38   2014-09-12 18:45:06 demand       0L0 stock  682053L3
    + Waste
-      Biowaste                   68      0   2014-09-11 06:53:03 demand  312399L2 stock       0L0
+      Biowaste                   68      0   2014-09-12 18:45:06 demand  312399L2 stock       0L0
    + Weapons
-      Personal Weapons         4477      0   2014-09-11 06:53:03 demand   25129L2 stock       0L0
+      Personal Weapons         4477      0   2014-09-12 18:45:06 demand   25129L2 stock       0L0
