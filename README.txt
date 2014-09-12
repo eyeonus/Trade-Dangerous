@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v3.4
+TradeDangerous v3.6
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -20,6 +20,19 @@ factors that into the shopping for each subsequent hop.
 ==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v3.6 Sep 12/2014
+  Added DB support for tracking item stock/demand levels,
+  TradeCalc will now factor stock levels when present,
+  Minor performance/memory tweak
+  emdn-tap:
+    Now accepts --warn-to argument,
+    Applies filters to what data it will accept,
+    Records item stock/demand levels to the DB
+
+v3.5 Sep 06/2014
+  The emdn-tap tool now uses the compressed JSON stream rather than
+  the CSV stream - saves you bandwidth.
 
 v3.4 Sep 05/2014
   Added emdn-tap.py script which pulls data from EMDN network.
