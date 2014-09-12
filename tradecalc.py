@@ -13,6 +13,8 @@
 ######################################################################
 # Imports
 
+import math
+
 # Let's not confuse the Americans by using long numbers that don't
 # pause with a comma every 3 digits, and lets not confuse the French
 # by putting commas after every 3 digits instead of a full stop.
@@ -142,6 +144,11 @@ class TradeCalc(object):
         Container for accessing trade calculations with common properties.
     """
 
+    # How fast do we expect stock to increase
+    # My estimate is +5% every 60s.
+    stockIncreaseRate = 0.05
+    stockIncreaseInterval = 5 * 60
+
     def __init__(self, tdb, debug=0, capacity=None, maxUnits=None, margin=0.01, unique=False, fit=None):
         self.tdb = tdb
         self.debug = debug
@@ -166,6 +173,9 @@ class TradeCalc(object):
             item = items[offset]
             itemCost = item.costCr
             maxQty = min(maxUnits, cap, cr // itemCost)
+            if item.stock > 0 and item.stock < maxQty:
+                adjustment = math.ceil(item.stock * TradeCalc.stockIncreaseRate) * math.floor(item.srcAge / TradeCalc.stockIncreaseInterval)
+                maxQty = min(maxQty, item.stock + adjustment)
             if maxQty > 0:
                 itemGain = item.gainCr
                 for qty in range(maxQty):
@@ -206,6 +216,7 @@ class TradeCalc(object):
                 so we yield all the results and leave the caller
                 to determine which is actually most profitable.
             """
+
             # Note: both
             #  for (itemNo, item) in enumerate(items[offset:]):
             # and
@@ -215,6 +226,9 @@ class TradeCalc(object):
             for item in items[offset:]:
                 itemCostCr = item.costCr
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
+                if item.stock > 0 and item.stock < maxQty:
+                    adjustment = math.ceil(item.stock * TradeCalc.stockIncreaseRate) * math.floor(item.srcAge / TradeCalc.stockIncreaseInterval)
+                    maxQty = min(maxQty, item.stock + adjustment)
                 if maxQty > 0:
                     loadItems, loadCostCr, loadGainCr = [[item, maxQty]], maxQty * itemCostCr, maxQty * item.gainCr
                     bestGainCr = -1
@@ -223,7 +237,7 @@ class TradeCalc(object):
                         # Solve for the remaining credits and capacity with what
                         # is left in items after the item we just checked.
                         for subLoad in _fitCombos(offset + 1, crLeft, capLeft):
-                            if subLoad.gainCr >= bestGainCr:
+                            if subLoad.gainCr > 0 and subLoad.gainCr >= bestGainCr:
                                 yield TradeLoad(subLoad.items + loadItems, subLoad.gainCr + loadGainCr, subLoad.costCr + loadCostCr, subLoad.units + maxQty)
                                 bestGainCr = subLoad.gainCr
                     # If there were no good additions, yield what we have.
@@ -282,7 +296,8 @@ class TradeCalc(object):
         # at the cost of a slight hitch in lower-end searches.
         firstItem = items[0]
         if maxUnits >= capacity and firstItem.costCr * capacity <= credits:
-            return TradeLoad([[items[0], capacity]], capacity * firstItem.gainCr, capacity * firstItem.costCr, capacity)
+            if firstItem.stock < 0 or firstItem.stock >= maxUnits:
+                return TradeLoad([[items[0], capacity]], capacity * firstItem.gainCr, capacity * firstItem.costCr, capacity)
 
         # Go ahead and find the best combination out of what's left.
         fitFunction = fitFunction or self.defaultFit
