@@ -10,11 +10,6 @@
 #  by other players.
 #  For more information on EMDN see Andreas' post:
 #   http://forums.frontier.co.uk/showthread.php?t=23585
-#
-#  TODO: Use a LOCAL .prices file so that we don't get conflicts,
-#  or stop storing the .prices file in the repository entirely.
-
-# v0.1 -- First, crude version. Using old EMDN CSV format.
 
 ######################################################################
 # imports
@@ -39,6 +34,13 @@ warningFh = sys.stderr
 blackMarketItems = frozenset([
     'battleweapons',
 ])
+
+
+class OldPrice(object):
+    __slots__ = ('payingCr', 'askingCr')
+    def __init__(self, payingCr, askingCr):
+        self.payingCr, self.askingCr = payingCr, askingCr
+
 
 ######################################################################
 # process command line
@@ -110,9 +112,11 @@ def processCommandLine():
 # useful UIOrder attached to them, this makes a best guess.
 
 uiOrders = {}
+oldPrices = {}
+
 def getStationCat(stationID, catID):
     global uiOrders
-    key = "{}.{}".format(stationID, catID)
+    key = (stationID << 32) | catID
     try: result = uiOrders[key]
     except KeyError:
         result = uiOrders[key] = {}
@@ -129,15 +133,25 @@ def getItemUIOrder(stationID, catID, itemID):
     return result
 
 
-def loadUIOrders(db):
-    # Get the current list of ui orders.
+def getOldPrice(stationID, itemID):
+    global oldPrices
+    key = (stationID << 32) | itemID
+    try: result = oldPrices[key]
+    except KeyError:
+        result = oldPrices[key] = OldPrice(0, 0)
+    return result
+
+def loadPriceData(db):
+    """ Load current prices and UI order values """
     stmt = """
-        SELECT  Price.station_id, Item.category_id, Price.item_id, Price.ui_order
+        SELECT  station_id, category_id, Price.item_id, ui_order, sell_to, buy_from
         FROM  Price INNER JOIN Item ON Price.item_id = Item.item_id
     """
     cur = db.execute(stmt)
-    for (stationID, catID, itemID, uiOrder) in cur:
+    for (stationID, catID, itemID, uiOrder, payingCr, askingCr) in cur:
         getStationCat(stationID, catID)[itemID] = uiOrder
+        oldPrice = getOldPrice(stationID, itemID)
+        oldPrice.payingCr, oldPrice.askingCr = payingCr, askingCr
 
 
 ######################################################################
@@ -199,7 +213,7 @@ def commit(tdb, db, recordsSinceLastCommit, pargs):
         return
 
     if pargs.verbose:
-        print("-> commit {} records".format(len(recordsSinceLastCommit)) + (" [disabled]" if pargs.noWrites else ""))
+        print("-> Save {} updates".format(len(recordsSinceLastCommit)) + (" [disabled]" if pargs.noWrites else ""))
         if pargs.verbose > 3:
             print("\n".join(['#  {}'.format(str(items)) for items in recordsSinceLastCommit]))
     if not pargs.noWrites:
@@ -232,7 +246,7 @@ def main():
     tdb = TradeDB(dbFilename=dbFilename, debug=1 if pargs.verbose else 0)
     db = tdb.getDB()
 
-    loadUIOrders(db)
+    loadPriceData(db)
 
     # Open a connection to the firehose.
     firehose = Firehose(pargs.firehoseURI, debug=pargs.verbose)
@@ -270,7 +284,7 @@ def main():
             desc = '{} @ {}/{}'.format(rec.item, rec.system, rec.station)
             extra = " | {:>6}L{} {:>6}L{}".format(rec.demand, rec.demandLevel, rec.stock, rec.stockLevel) if pargs.verbose > 2 else ""
             print("{} {:.<65} {:>9} {:>9}{}".format(rec.timestamp, desc, paying, asking, extra))
-
+ 
         # As of Beta 1.04, if you are carrying an item that the station doesn't handle
         # the UI shows a fake entry with the prices from the station you bought the
         # item from.
@@ -302,6 +316,20 @@ def main():
         except LookupError:
             bleat("station", rec.station, "UNRECOGNIZED STATION:", rec.system, rec.station)
             return
+
+        oldPrice = getOldPrice(station.ID, item.ID)
+        if oldPrice and oldPrice.payingCr and oldPrice.askingCr and pargs.verbose:
+            desc = '{} @ {}/{}'.format(rec.item, rec.system, rec.station)
+            payingDiff, askingDiff = rec.payingCr - oldPrice.payingCr, rec.askingCr - oldPrice.askingCr
+            if payingDiff != 0 and askingDiff != 0:
+                payingChange = "{}{}cr".format('+' if payingDiff > 0 else '-', localedNo(abs(payingDiff))) if payingDiff != 0 else '    -    '
+                askingChange = "{}{}cr".format('+' if askingDiff > 0 else '-', localedNo(abs(askingDiff))) if askingDiff != 0 else '    -    '
+                print("{:<19} {:.<65} {:>9} {:>9}".format(
+                    '' if pargs.verbose > 1 else rec.timestamp,
+                    '' if pargs.verbose > 1 else desc,
+                    payingChange, askingChange
+                ))
+                oldPrice.payingCr, oldPrice.askingCr = rec.payingCr, rec.askingCr
 
         uiOrder = getItemUIOrder(station.ID, item.category.ID, item.ID)
         recordsSinceLastCommit.append([ item.ID, station.ID, uiOrder, rec.payingCr, rec.askingCr, rec.demand, rec.demandLevel, rec.stock, rec.stockLevel ])
