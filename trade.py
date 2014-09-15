@@ -119,6 +119,55 @@ def new_file_arg(string):
     sys.exit(errno.EEXIST)
 
 
+class ParseArgument(object):
+    """
+        Provides argument forwarding so that 'makeSubParser' can take function-like arguments.
+    """
+    def __init__(self, *args, **kwargs):
+        self.args, self.kwargs = args, kwargs
+
+
+def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=None, epilog=None):
+    """
+        Provide a normalized sub-parser for a specific command. This helps to
+        make it easier to keep the command lines consistent and makes the calls
+        to build them easier to write/read.
+    """
+
+    subParser = subparsers.add_parser(name, help=help, add_help=False, epilog=epilog)
+
+    def addArguments(group, options, required, topGroup=None):
+        """
+            Registers a list of options to the specified group. Nodes
+            are either an instance of ParseArgument or a list of
+            ParseArguments. The list form is considered to be a
+            mutually exclusive group of arguments.
+        """
+
+        for option in options:
+            # lists indicate mutually exclusive subgroups
+            if isinstance(option, list):
+                addArguments((topGroup or group).add_mutually_exclusive_group(), option, required, topGroup=group)
+            else:
+                assert not required in option.kwargs
+                if option.args[0][0] == '-':
+                    group.add_argument(*(option.args), required=required, **(option.kwargs))
+                else:
+                    group.add_argument(*(option.args), **(option.kwargs))
+
+    if arguments:
+        argParser = subParser.add_argument_group('Required Arguments')
+        addArguments(argParser, arguments, True)
+
+    switchParser = subParser.add_argument_group('Optional Switches')
+    switchParser.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
+    addArguments(switchParser, switches, False)
+
+    subParser.set_defaults(proc=commandFunc)
+
+    return subParser
+
+
 ######################################################################
 # Checklist functions
 
@@ -608,54 +657,6 @@ def cleanupCommand(args):
 ######################################################################
 # main entry point
 
-class ParseArgument(object):
-    """
-        Provides argument forwarding so that 'makeSubParser' can take function-like arguments.
-    """
-    def __init__(self, *args, **kwargs):
-        self.args, self.kwargs = args, kwargs
-
-
-def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=None, epilog=None):
-    """
-        Provide a normalized sub-parser for a specific command. This helps to
-        make it easier to keep the command lines consistent and makes the calls
-        to build them easier to write/read.
-    """
-
-    subParser = subparsers.add_parser(name, help=help, add_help=False, epilog=epilog)
-
-    def addArguments(group, options, required, topGroup=None):
-        """
-            Registers a list of options to the specified group. Nodes
-            are either an instance of ParseArgument or a list of
-            ParseArguments. The list form is considered to be a
-            mutually exclusive group of arguments.
-        """
-
-        for option in options:
-            # lists indicate mutually exclusive subgroups
-            if isinstance(option, list):
-                addArguments((topGroup or group).add_mutually_exclusive_group(), option, required, topGroup=group)
-            else:
-                assert not required in option.kwargs
-                if option.args[0][0] == '-':
-                    group.add_argument(*(option.args), required=required, **(option.kwargs))
-                else:
-                    group.add_argument(*(option.args), **(option.kwargs))
-
-    if arguments:
-        argParser = subParser.add_argument_group('Required Arguments')
-        addArguments(argParser, arguments, True)
-
-    switchParser = subParser.add_argument_group('Optional Switches')
-    switchParser.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
-    addArguments(switchParser, switches, False)
-
-    subParser.set_defaults(proc=commandFunc)
-
-    return subParser
-
 
 def main():
     global args, tdb
@@ -734,6 +735,9 @@ def main():
 
     # run the commands
     return args.proc(args)
+
+
+######################################################################
 
 
 if __name__ == "__main__":
