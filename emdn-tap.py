@@ -50,7 +50,17 @@ def processCommandLine():
 
     global warnOnly, warningFh
 
-    parser = argparse.ArgumentParser(description='Pull updates from the EMDN firehose to the TradeDangerous DB')
+    parser = argparse.ArgumentParser(
+        description="""
+            Connects to the Elite Market Data Network (EMDN) firehose
+            and saves incoming price updates to the TradeDangerous database.
+        """,
+        epilog="""
+            This tool is provided as an OPTIONAL alternative to manually
+            updating the Elite Dangerous database (see trade.py update --help).
+            EMDN is developed by another E:D fan, Andreas. For details see his forum post: http://forums.frontier.co.uk/showthread.php?t=23585.
+        """
+    )
     parser.add_argument('--firehose', '-u',  help='URI for the firehose. Default={}'.format(Firehose.defaultURI), default=None)
     parser.add_argument('--file',     '-f',  help='Filename for the firehose. Default=None.', default=None)
     parser.add_argument('--db',       '-d',  help='SQLite database to write to. Default={}'.format(TradeDB.defaultDB))
