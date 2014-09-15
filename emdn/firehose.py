@@ -73,6 +73,7 @@ class Firehose(object):
         else:
             def _poll(timeout):
                 #### TODO: Use a ZMQ Poller so we can catch ctrl-c
+                # Bleah, current version of pyzmq neither works.
                 return self.__socket.poll(timeout)
             def _read(nonBlocking=False):
                 flags = zmq.NOBLOCK if nonBlocking else 0
