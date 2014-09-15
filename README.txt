@@ -1,5 +1,5 @@
 ==============================================================================
-TradeDangerous v3.6
+TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
@@ -20,6 +20,19 @@ factors that into the shopping for each subsequent hop.
 ==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v3.7 Sep 15/2014
+  Fixed excessive CPU usage in emdn-tap.py (ty, jojje)
+  Added 'cleanup' command to help remove bad data from emdn
+    EMDN isn't foolproof, and sometimes receives invalid or
+    deliberately poisoned data. The best way to detect this
+    is currently to look for prices that are somewhat older
+    than the rest of the information received for the same
+    station. This command checks for those records and
+    removes them.
+  emdn-tap now tries harder to honor commit intervals.
+API Changes:
+  makeSubParser now takes an epilog  
 
 v3.6 Sep 12/2014
   Added DB support for tracking item stock/demand levels,
@@ -387,6 +400,34 @@ Market Data Network to pull prices observed by other players. Use
    emdn-tap.py --help
 
 for command line arguments.
+
+CAUTION: EMDN is not fool proof and frequently includes bad data. This is
+mostly because of the way EMDN obtains its data and how the Elite Dangerous
+UI displays it, but it can also be the result of people deliberately injecting
+bad data to spoil your day.
+
+If you use "emdn-tap.py" you will occasionally want to run the trade.py cleanup
+command to remove prices that are somewhat older than other prices for the same
+station.
+
+You can use the "--dry-run" option to see what this is going to do:
+
+    $ trade.py cleanup --dry-run
+    * Performing database cleanup, expiring 10 minute orphan records. DRY RUN.
+    - DAHAN Dahan Gateway @ Indium : 2014-09-15 07:10:57 vs 2014-09-15 09:10:32
+    # DRY RUN: Database unmodified.
+
+What this tells us is that we haven't seen a price for Indium at Dahan Gateway
+since 07:10, but we have more recent prices for other items. Since this is
+a single item, chances are it's either no-longer sold there or was a bad
+data entry ('fake' items sometimes show up when someone is carrying a mission
+item in their cargo hold).
+
+In this case, it looks ok to do cleanup:
+
+    $ trade.py cleanup
+    * Performing database cleanup, expiring 10 minute orphan records.
+    - Removed 1 entry.
 
 
 ==============================================================================

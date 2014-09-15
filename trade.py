@@ -546,6 +546,68 @@ def updateCommand(args):
 
 
 ######################################################################
+# functionality for the "cleanup" command
+
+def cleanupCommand(args):
+    """
+        Perform maintenance on the database.
+    """
+
+    global tdb
+
+    print("* Performing database cleanup, expiring {} minute orphan records.{}".format(
+            args.minutes,
+            " DRY RUN." if args.dryRun else ""
+        ))
+
+    if args.minutes <= 0:
+        raise ValueError("Invalid --minutes specification.")
+
+    # Get access to the DB in a transaction so that if something goes
+    # wrong or we are only doing a dry run, nothing will actually happen.
+    db = tdb.getDB()
+    db.isolation_level = None
+    cur = db.execute("BEGIN")
+
+    # How many prices were there before?
+    beforeCount = cur.execute('SELECT COUNT(*) FROM Price').fetchone()[0]
+
+    stmt = """
+        SELECT OldPrice.item_id, OldPrice.station_id, OldPrice.modified, MIN(NewerPrice.modified)
+         FROM Price as OldPrice
+                INNER JOIN Price as NewerPrice
+                    ON (OldPrice.station_id = NewerPrice.station_id
+                        AND OldPrice.modified <= DATETIME(NewerPrice.modified, '-{} minute'))
+        GROUP BY 1, 2
+    """
+    deletions = []
+    for (itemID, stationID, oldTimestamp, newTimestamp) in cur.execute(stmt.format(args.minutes)):
+        if args.dryRun or args.debug:
+            item, station = tdb.itemByID[itemID], tdb.stationByID[stationID]
+            print("- {} @ {} : {} vs {}".format(station.str(), item.name(), oldTimestamp, newTimestamp))
+        deletions.append([itemID, stationID])
+    if not deletions:
+        print("* Nothing to do.")
+        return
+
+    cur.executemany("DELETE FROM Price WHERE item_id = ? AND station_id = ?", deletions)
+
+    # And how many after what we were doing?
+    afterCount = cur.execute('SELECT COUNT(*) FROM Price').fetchone()[0]
+
+    if args.debug or args.dryRun:
+        print("# Price records before: {}, after: {}".format(beforeCount, afterCount))
+
+    if not args.dryRun:
+        deleted = len(deletions)
+        print("- Removed {} {}.".format(deleted, "entry" if deleted == 1 else "entries"))
+        db.execute("COMMIT")
+    else:
+        print("# DRY RUN: Database unmodified.")
+        db.execute("ROLLBACK")  # technically this is redundant
+
+
+######################################################################
 # main entry point
 
 class ParseArgument(object):
@@ -556,14 +618,14 @@ class ParseArgument(object):
         self.args, self.kwargs = args, kwargs
 
 
-def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=None):
+def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=None, epilog=None):
     """
         Provide a normalized sub-parser for a specific command. This helps to
         make it easier to keep the command lines consistent and makes the calls
         to build them easier to write/read.
     """
 
-    subParser = subparsers.add_parser(name, help=help, add_help=False)
+    subParser = subparsers.add_parser(name, help=help, add_help=False, epilog=epilog)
 
     def addArguments(group, options, required, topGroup=None):
         """
@@ -594,7 +656,7 @@ def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=
 
     subParser.set_defaults(proc=commandFunc)
 
-    return argParser
+    return subParser
 
 
 def main():
@@ -610,6 +672,15 @@ def main():
     commonArgs.add_argument('--db', help='Specify location of the SQLite database. Default: {}'.format(TradeDB.defaultDB), type=str, default=str(TradeDB.defaultDB))
 
     subparsers = parser.add_subparsers(dest='subparser', title='Commands')
+
+    # Maintenance on the database.
+    cleanupParser = makeSubParser(subparsers, 'cleanup', 'Remove stale price data.', cleanupCommand,
+        epilog='EMDN sometimes gets invalid data (either from Elite Dangerous UI issues or people deliberately submitting bad data). These items can be crudely detected by checking for price entries that are somewhat older than other entries for the same station.',
+        switches = [
+            ParseArgument('--minutes', help='Cull prices which are this much older than other prices for the same station.', type=int, default=30),
+            ParseArgument('--dry-run', help="Show which records would be deleted, but don't actually delete anything.", dest='dryRun', default=False, action='store_true')
+        ]
+    )
 
     # "run" calculates a trade run.
     runParser = makeSubParser(subparsers, 'run', 'Calculate best trade run.', runCommand,
@@ -638,7 +709,7 @@ def main():
     )
 
     # "update" provides the user a way to edit prices.
-    updateParser = makeSubParser(subparsers, 'update', 'Provides a way to update the prices for a particular station.', updateCommand,
+    updateParser = makeSubParser(subparsers, 'update', 'Update prices for a station.', updateCommand,
         arguments = [
             ParseArgument('station', help='Name of the station to update.', type=str)            
         ],
