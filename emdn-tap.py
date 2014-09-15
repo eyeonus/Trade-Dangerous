@@ -230,7 +230,7 @@ def main():
     lastCommit, duration = time.time(), pargs.duration
     recordsSinceLastCommit = []
     try:
-        for rec in firehose.drink(records=pargs.records, timeout=duration):
+        for rec in firehose.drink(records=pargs.records, timeout=duration or None):
             if pargs.commit:
                 now = time.time()
                 if now >= lastCommit + pargs.commit:
