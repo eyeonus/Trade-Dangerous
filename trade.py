@@ -433,7 +433,7 @@ def runCommand(args):
     # time breaking the list down in getDestinations.
     avoidPlaces = avoidSystems + avoidStations
 
-    print("unspecified hops {}, numHops {}, viaStations {}".format(unspecifiedHops, numHops, len(viaStations)))
+    if args.debug: print("unspecified hops {}, numHops {}, viaStations {}".format(unspecifiedHops, numHops, len(viaStations)))
     for hopNo in range(numHops):
         if mfd:
             mfd.display('TradeDangerous', 'CALCULATING', 'Hop {}'.format(hopNo))
