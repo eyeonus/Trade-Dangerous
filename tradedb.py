@@ -187,7 +187,7 @@ class Station(object):
 
 
     def str(self):
-        return '%s %s' % (self.system.name(), self.dbname)
+        return '%s/%s' % (self.system.name(), self.dbname)
 
 
     def __repr__(self):
