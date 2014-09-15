@@ -24,10 +24,6 @@ locale.setlocale(locale.LC_ALL, '')
 ######################################################################
 # Stuff that passes for classes (but isn't)
 
-# Python's documentation lied to me and told me that namedtuple was
-# super-whizzy fast and implemented in C. But in Python 3 it's just
-# a dict. What a dict move.
-
 from tradedb import System, Station
 from collections import namedtuple
 
