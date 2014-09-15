@@ -153,7 +153,6 @@ def doChecklist(route, credits):
 
     for idx in range(lastHopIdx):
         hopNo = idx + 1
-        if mfd: mfd.hopNo = hopNo
         cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
 
         # Tell them what they need to buy.
@@ -191,7 +190,6 @@ def doChecklist(route, credits):
             print()
 
     if mfd:
-        mfd.hopNo = None
         mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr))
         mfd.attention(3)
         time.sleep(1.5)
