@@ -27,9 +27,10 @@ class AmbiguityError(Exception):
     """
         Raised when a search key could match multiple entities.
         Attributes:
-            searchKey - the key given to the search routine,
-            first     - the first potential match
-            second    - the alternate match
+            lookupType - description of what was being queried,
+            searchKey  - the key given to the search routine,
+            first      - the first potential match,
+            second     - the alternate match
     """
     def __init__(self, lookupType, searchKey, first, second):
         self.lookupType, self.searchKey, self.first, self.second = lookupType, searchKey, first, second
@@ -38,6 +39,13 @@ class AmbiguityError(Exception):
     def __str__(self):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
+
+class SystemNotStationError(ValueError):
+    """
+        Raised when a station lookup matched a System but
+        could not be automatically reduced to a Station.
+    """
+    pass
 
 ######################################################################
 
@@ -495,7 +503,7 @@ class TradeDB(object):
         if isinstance(name, System):
             # If they provide a system and it only has one station, return that.
             if len(name.stations) != 1:
-                raise ValueError("System '%s' has %d stations, please specify a station instead." % (name.str(), len(name.stations)))
+                raise SystemNotStationError("System '%s' has %d stations, please specify a station instead." % (name.str(), len(name.stations)))
             return name.stations[0]
 
         if system:
@@ -527,8 +535,21 @@ class TradeDB(object):
         # If we only matched a system name, ensure that it's a single station system
         # otherwise they need to specify a station name.
         if len(system.stations) != 1:
-            raise ValueError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
+            raise SystemNotStationError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
         return system.stations[0]
+
+
+    def lookupStationExplicitly(self, name, system=None):
+        """
+            Look up a Station object by it's name.
+        """
+        if isinstance(name, Station):
+            if system and name.system.ID != system.ID:
+                raise LookupError("Station '{}' is not in System '{}'".format(name.dbname, system.dbname))
+            return name
+
+        nameList = system.stations if system else self.stationByID.values()
+        return TradeDB.listSearch("Station", name, nameList, key=lambda entry: entry.dbname)
 
 
     ############################################################

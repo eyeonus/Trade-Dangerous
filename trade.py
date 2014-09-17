@@ -58,7 +58,7 @@ mfd = None
 ######################################################################
 # Database and calculator modules.
 
-from tradedb import TradeDB, AmbiguityError
+from tradedb import TradeDB, AmbiguityError, SystemNotStationError
 from tradecalc import Route, TradeCalc, localedNo
 
 tdb = None
@@ -275,11 +275,13 @@ def parseAvoids(args):
             pass
         # Or perhaps it is a station
         try:
-            station = tdb.lookupStation(avoid)
-            if not (system and station.system is system):
+            station = tdb.lookupStationExplicitly(avoid)
+            if (not system) or (station.system is not system):
+                avoidSystems.append(station.system)
                 avoidStations.append(station)
         except LookupError as e:
             pass
+
         # If it was none of the above, whine about it
         if not (item or system or station):
             raise CommandLineError("Unknown item/system/station: %s" % avoid)
