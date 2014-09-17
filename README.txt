@@ -21,6 +21,12 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v3.8 Sep 17/2014
+  Fix for Issue #7: --avoid not working with systems that have no stations,
+  Additional help text,
+  General cleanup,
+  Running "emdn-tap.py -v" will show price changes,
+
 v3.7 Sep 15/2014
   Fixed excessive CPU usage in emdn-tap.py (ty, jojje)
   Added 'cleanup' command to help remove bad data from emdn
