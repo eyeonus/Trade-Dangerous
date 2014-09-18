@@ -71,7 +71,7 @@ class Route(object):
 
 
     def str(self):
-        return "%s -> %s" % (self.route[0].str(), self.route[-1].str())
+        return "%s -> %s" % (self.route[0].name(), self.route[-1].name())
 
 
     def detail(self, detail=0):
@@ -90,7 +90,7 @@ class Route(object):
             hop = self.hops[i]
             hopGainCr, hopTonnes = hop[1], 0
             text += " >-> " if i == 0 else "  +  "
-            text += "At %s/%s, Buy:" % (route[i].system.name(), route[i].name())
+            text += "At %s, Buy:" % (route[i].name())
             for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
                 if detail > 1:
                     text += "\n  |   %4d x %-30s" % (qty, trade.name())
@@ -106,7 +106,7 @@ class Route(object):
                 text += "  |   "
                 if detail > 1:
                     text += "%scr => " % localedNo((credits + gainCr))
-                text += " -> ".join([ jump.str() for jump in self.jumps[i] ])
+                text += " -> ".join([ jump.name() for jump in self.jumps[i] ])
                 if detail > 1:
                     text += " => Gain %scr (%scr/ton) => %scr" % (localedNo(hopGainCr), localedNo(hopGainCr / hopTonnes), localedNo(credits + gainCr + hopGainCr))
                 text += "\n"

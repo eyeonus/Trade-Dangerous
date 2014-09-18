@@ -101,10 +101,6 @@ class Station(object):
         system.addStation(self)
 
 
-    def name(self):
-        return self.dbname
-
-
     def addTrade(self, dest, trade):
         """
             Add an entry reflecting that an item can be bought at this
@@ -191,11 +187,11 @@ class Station(object):
 
 
     def name(self):
-        return self.dbname
+        return '%s/%s' % (self.system.name(), self.dbname)
 
 
     def str(self):
-        return '%s/%s' % (self.system.name(), self.dbname)
+        return self.dbname
 
 
     def __repr__(self):
@@ -280,6 +276,10 @@ class Trade(object):
 
 
     def name(self):
+        return self.item.name()
+
+
+    def str(self):
         return self.item.name()
 
 

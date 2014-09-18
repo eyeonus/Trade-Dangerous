@@ -208,7 +208,7 @@ def doChecklist(route, credits):
         if args.detail:
             note("HOP %d of %d" % (hopNo, lastHopIdx))
 
-        note("Buy at %s" % cur.str())
+        note("Buy at %s" % cur.name())
         for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
             stepNo = doStep(stepNo, 'Buy %d x' % qty, trade.name(), '@ %scr' % localedNo(trade.costCr))
         if args.detail:
@@ -216,15 +216,15 @@ def doChecklist(route, credits):
         print()
 
         # If there is a next hop, describe how to get there.
-        note("Fly %s" % " -> ".join([ jump.str() for jump in jumps[idx] ]))
+        note("Fly %s" % " -> ".join([ jump.name() for jump in jumps[idx] ]))
         if idx < len(hops) and jumps[idx]:
             for jump in jumps[idx][1:]:
-                stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.str()))
+                stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.name()))
         if args.detail:
-            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt.name())
+            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt.str())
         print()
 
-        note("Sell at %s" % nxt.str())
+        note("Sell at %s" % nxt.name())
         for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
             stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), trade.name(), '@ %scr' % localedNo(trade.costCr + trade.gainCr))
         print()
@@ -422,7 +422,7 @@ def runCommand(args):
         summaries = [ 'With {}cr'.format(localedNo(args.credits)) ]
         summaries += [ 'From {}'.format(originStation.str() if originStation else 'Anywhere') ]
         summaries += [ 'To {}'.format(finalStation.str() if finalStation else 'Anywhere') ]
-        if viaStations: summaries += [ 'Via {}'.format(', '.join([ station.name() for station in viaStations ])) ]
+        if viaStations: summaries += [ 'Via {}'.format(', '.join([ station.str() for station in viaStations ])) ]
         print(*summaries, sep=' / ')
         print("%d cap, %d hops, max %d jumps/hop and max %0.2f ly/jump" % (args.capacity, numHops, args.maxJumpsPer, args.maxLyPer))
         print()
