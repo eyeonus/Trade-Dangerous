@@ -460,6 +460,9 @@ def runCommand(args):
                                   restrictTo=restrictTo, avoidItems=avoidItems, avoidPlaces=avoidPlaces,
                                   maxJumpsPer=args.maxJumpsPer, maxLyPer=args.maxLyPer)
 
+    if viaStations:
+        routes = [ route for route in routes if viaStations & set(route.route[viaStartPos:]) ]
+
     if not routes:
         print("No routes match your selected criteria.")
         return
