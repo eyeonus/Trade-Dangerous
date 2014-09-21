@@ -685,13 +685,13 @@ def cleanupCommand(args):
 
     global tdb
 
+    if args.minutes <= 0:
+        raise ValueError("Invalid --minutes specification.")
+
     print("* Performing database cleanup, expiring {} minute orphan records.{}".format(
             args.minutes,
             " DRY RUN." if args.dryRun else ""
         ))
-
-    if args.minutes <= 0:
-        raise ValueError("Invalid --minutes specification.")
 
     # Get access to the DB in a transaction so that if something goes
     # wrong or we are only doing a dry run, nothing will actually happen.
