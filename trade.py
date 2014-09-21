@@ -598,6 +598,78 @@ def updateCommand(args):
 
 
 ######################################################################
+#
+
+def lookupSystem(name, intent):
+    """
+        Look up a name using either a system or station name.
+    """
+
+    try:
+        return tdb.lookupSystem(name)
+    except LookupError:
+        try:
+            return tdb.lookupStationExplicitly(name).system
+        except LookupError:
+            raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
+
+
+def navCommand(args):
+    """
+        Give player directions A->B
+    """
+
+    srcSystem = lookupSystem(args.start, 'start')
+    dstSystem = lookupSystem(args.end, 'end')
+
+    avoiding = []
+    if args.ship:
+        ship = tdb.lookupShip(args.ship)
+        args.ship = ship
+        if args.maxLyPer is None: args.maxLyPer = ship.maxLyFull
+    maxLyPer = args.maxLyPer or tdb.maxSystemLinkLy
+
+    openList = { srcSystem: 0.0 }
+    distances = { srcSystem: [ 0.0, None ] }
+
+    # As long as the open list is not empty, keep iterating.
+    while openList and not dstSystem in distances:
+        # Expand the search domain by one jump; grab the list of
+        # nodes that are this many hops out and then clear the list.
+        openNodes, openList = openList, {}
+
+        for (node, startDist) in openNodes.items():
+            for (destSys, destDist) in node.links.items():
+                if destDist > maxLyPer:
+                    continue
+                dist = startDist + destDist
+                # If we already have a shorter path, do nothing
+                try:
+                    distNode = distances[destSys]
+                    if distNode[0] <= dist:
+                        continue
+                    distNode[0], distNode[1] = dist, node
+                except KeyError:
+                    distances[destSys] = [ dist, node ]
+                assert not destSys in openList or openList[destSys] > dist
+                openList[destSys] = dist
+
+    # Unravel the route by tracing back the vias.
+    route = []
+    try:
+        jumpEnd = dstSystem
+        while jumpEnd != srcSystem:
+            (jumpDist, jumpStart) = distances[jumpEnd]
+            route.append("{:6.2f}ly {} -> {}".format(jumpDist, jumpStart.name(), jumpEnd.name()))
+            jumpEnd = jumpStart
+    except KeyError:
+        print("No route found between {} and {} with {}ly jump limit.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
+        return
+    route.reverse()
+    for (idx, step) in enumerate(route, 1):
+        print("#{:2d}: {}".format(idx, step))
+
+######################################################################
 # functionality for the "cleanup" command
 
 def cleanupCommand(args):
@@ -686,13 +758,25 @@ def main():
         ]
     )
 
+    # "nav" tells you how to get from one place to another.
+    navParser = makeSubParser(subparsers, 'nav', 'Calculate a route between two systems.', navCommand,
+        arguments = [
+            ParseArgument('start', help='System to start from', type=str),
+            ParseArgument('end', help='System to end at', type=str),
+        ],
+        switches = [
+            ParseArgument('--ship', help='Use a ship type to constrain jump distances, etc.', metavar='shiptype', type=str),
+            ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer')
+        ]
+    )
+
     # "run" calculates a trade run.
     runParser = makeSubParser(subparsers, 'run', 'Calculate best trade run.', runCommand,
         arguments = [
             ParseArgument('--credits', help='Starting credits.', metavar='CR', type=int)
         ],
         switches = [
-            ParseArgument('--ship', help='Set capacity and ly-per from ship type.', metavar='name', type=str),
+            ParseArgument('--ship', help='Set capacity and ly-per from ship type.', metavar='shiptype', type=str),
             ParseArgument('--capacity', help='Maximum capacity of cargo hold.', metavar='N', type=int),
             ParseArgument('--from', help='Starting system/station.', metavar='STATION', dest='origin'),
             ParseArgument('--to', help='Final system/station.', metavar='STATION', dest='dest'),
