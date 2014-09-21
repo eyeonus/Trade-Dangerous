@@ -317,13 +317,22 @@ def main():
             bleat("station", rec.station, "UNRECOGNIZED STATION:", rec.system, rec.station)
             return
 
+        def describeAdjustment(diff, newPrice, oldPrice):
+            if not diff:
+                return '   ...   '
+            if newPrice == 0:
+                return '  -n/a-  '
+            if oldPrice == 0:
+                return "@{:n}cr".format(newPrice)
+            return '{:+n}cr'.format(diff)
+
         oldPrice = getOldPrice(station.ID, item.ID)
         if oldPrice and oldPrice.payingCr and oldPrice.askingCr and pargs.verbose:
             desc = '{} @ {}/{}'.format(rec.item, rec.system, rec.station)
             payingDiff, askingDiff = rec.payingCr - oldPrice.payingCr, rec.askingCr - oldPrice.askingCr
             if payingDiff != 0 and askingDiff != 0:
-                payingChange = "{}{}cr".format('+' if payingDiff > 0 else '-', localedNo(abs(payingDiff))) if payingDiff != 0 else '    -    '
-                askingChange = "{}{}cr".format('+' if askingDiff > 0 else '-', localedNo(abs(askingDiff))) if askingDiff != 0 else '    -    '
+                payingChange = describeAdjustment(payingDiff, rec.payingCr, oldPrice.payingCr)
+                askingChange = describeAdjustment(askingDiff, rec.askingCr, oldPrice.askingCr)
                 print("{:<19} {:.<65} {:>9} {:>9}".format(
                     '' if pargs.verbose > 1 else rec.timestamp,
                     '' if pargs.verbose > 1 else desc,
