@@ -629,6 +629,9 @@ def navCommand(args):
         if args.maxLyPer is None: args.maxLyPer = ship.maxLyFull
     maxLyPer = args.maxLyPer or tdb.maxSystemLinkLy
 
+    if args.debug or args.detail:
+        print("# Route from {} to {} with max {} ly per jump.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
+
     openList = { srcSystem: 0.0 }
     distances = { srcSystem: [ 0.0, None ] }
 
@@ -659,15 +662,18 @@ def navCommand(args):
     try:
         jumpEnd = dstSystem
         while jumpEnd != srcSystem:
-            (jumpDist, jumpStart) = distances[jumpEnd]
-            route.append("{:6.2f}ly {} -> {}".format(jumpDist, jumpStart.name(), jumpEnd.name()))
+            jumpStart = distances[jumpEnd][1]
+            text = "{} -> {}".format(jumpStart.name(), jumpEnd.name())
+            if args.detail:
+                text += ' [{:.02f}ly]'.format(jumpStart.links[jumpEnd])
+            route.append(text)
             jumpEnd = jumpStart
     except KeyError:
         print("No route found between {} and {} with {}ly jump limit.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
         return
     route.reverse()
     for (idx, step) in enumerate(route, 1):
-        print("#{:2d}: {}".format(idx, step))
+        print(step)
 
 ######################################################################
 # functionality for the "cleanup" command
@@ -766,7 +772,8 @@ def main():
         ],
         switches = [
             ParseArgument('--ship', help='Use a ship type to constrain jump distances, etc.', metavar='shiptype', type=str),
-            ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer')
+            ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
+            ParseArgument('--detail', '-v', help='Give detailed jump information for multi-jump hops.', default=0, action='count'),
         ]
     )
 
