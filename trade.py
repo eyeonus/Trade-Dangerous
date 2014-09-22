@@ -750,7 +750,9 @@ def main():
     # Arguments common to all subparsers.
     commonArgs = parser.add_argument_group('Common Switches')
     commonArgs.add_argument('-h', '--help', help='Show this help message and exit.', action=HelpAction, nargs=0)
-    commonArgs.add_argument('--debug', '-w', help='Enable diagnostic output.', default=0, required=False, action='count')
+    commonArgs.add_argument('--debug',  '-w', help='Enable diagnostic output.', default=0, required=False, action='count')
+    commonArgs.add_argument('--detail', '-v', help='Increase level  of detail in output.', default=0, required=False, action='count')
+    commonArgs.add_argument('--quiet',  '-q', help='Reduce level of detail in output.', default=0, required=False, action='count')
     commonArgs.add_argument('--db', help='Specify location of the SQLite database. Default: {}'.format(TradeDB.defaultDB), type=str, default=str(TradeDB.defaultDB))
 
     subparsers = parser.add_subparsers(dest='subparser', title='Commands')
@@ -773,7 +775,6 @@ def main():
         switches = [
             ParseArgument('--ship', help='Use a ship type to constrain jump distances, etc.', metavar='shiptype', type=str),
             ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
-            ParseArgument('--detail', '-v', help='Give detailed jump information for multi-jump hops.', default=0, action='count'),
         ]
     )
 
@@ -799,7 +800,6 @@ def main():
             ParseArgument('--routes', help='Maximum number of routes to show. DEFAULT: 1', metavar='N', type=int, default=1),
             ParseArgument('--checklist', help='Provide a checklist flow for the route.', action='store_true', default=False),
             ParseArgument('--x52-pro', help='Enable experimental X52 Pro MFD output.', action='store_true', dest='x52pro', default=False),
-            ParseArgument('--detail', '-v', help='Give detailed jump information for multi-jump hops.', default=0, action='count')
         ]
     )
 
@@ -819,12 +819,11 @@ def main():
 
     args = parser.parse_args()
     if not 'proc' in args:
-        parser.print_help()
-        print()
-        print("As of TradeDangerous v3.01 you MUST specify a command from the list above.")
-        import pprint
-        print("For help on a specific command, type: %s {command} -h" % (parser.prog))
-        sys.exit(1)
+        helpText = "No sub-command specified.\n" + parser.format_help() + "\nNote: As of v3 you need to specify one of the 'sub-commands' listed above (run, nav, etc)."
+        raise CommandLineError(helpText)
+
+    if args.detail and args.quiet:
+        raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
 
     # load the database
     tdb = TradeDB(debug=args.debug, dbFilename=args.db)
@@ -840,6 +839,6 @@ if __name__ == "__main__":
     try:
         main()
     except (CommandLineError, AmbiguityError) as e:
-        print("%s: error: %s" % (sys.argv[0], str(e)))
+        print("%s: %s" % (sys.argv[0], str(e)))
     if mfd:
         mfd.finish()
