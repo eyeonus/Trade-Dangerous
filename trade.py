@@ -688,10 +688,11 @@ def cleanupCommand(args):
     if args.minutes <= 0:
         raise ValueError("Invalid --minutes specification.")
 
-    print("* Performing database cleanup, expiring {} minute orphan records.{}".format(
-            args.minutes,
-            " DRY RUN." if args.dryRun else ""
-        ))
+    if not args.quiet:
+        print("* Performing database cleanup, expiring {} minute orphan records.{}".format(
+                args.minutes,
+                " DRY RUN." if args.dryRun else ""
+            ))
 
     # Get access to the DB in a transaction so that if something goes
     # wrong or we are only doing a dry run, nothing will actually happen.
@@ -717,8 +718,9 @@ def cleanupCommand(args):
             print("- {} @ {} : {} vs {}".format(station.str(), item.name(), oldTimestamp, newTimestamp))
         deletions.append([itemID, stationID])
     if not deletions:
-        print("* Nothing to do.")
-        return
+        if not args.quiet:
+            print("* Nothing to do.")
+        return None
 
     cur.executemany("DELETE FROM Price WHERE item_id = ? AND station_id = ?", deletions)
 
@@ -730,11 +732,15 @@ def cleanupCommand(args):
 
     if not args.dryRun:
         deleted = len(deletions)
-        print("- Removed {} {}.".format(deleted, "entry" if deleted == 1 else "entries"))
+        if args.quiet < 2:
+            print("- Removed {} {}.".format(deleted, "entry" if deleted == 1 else "entries"))
         db.execute("COMMIT")
     else:
-        print("# DRY RUN: Database unmodified.")
+        if args.quiet < 2:
+            print("# DRY RUN: Database unmodified.")
         db.execute("ROLLBACK")  # technically this is redundant
+
+    return deletions
 
 
 ######################################################################
