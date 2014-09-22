@@ -699,7 +699,7 @@ def navCommand(args):
         lastHop = system
 
     present('Depart', srcSystem)
-    for viaSys in route[1:-2]:
+    for viaSys in route[1:-1]:
         present('Via', viaSys)
     present('Arrive', dstSystem)
 
