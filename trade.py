@@ -629,7 +629,7 @@ def navCommand(args):
         if args.maxLyPer is None: args.maxLyPer = ship.maxLyFull
     maxLyPer = args.maxLyPer or tdb.maxSystemLinkLy
 
-    if args.debug or args.detail:
+    if args.debug:
         print("# Route from {} to {} with max {} ly per jump.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
 
     openList = { srcSystem: 0.0 }
@@ -658,22 +658,51 @@ def navCommand(args):
                 openList[destSys] = dist
 
     # Unravel the route by tracing back the vias.
-    route = []
+    route = [ dstSystem ]
     try:
-        jumpEnd = dstSystem
-        while jumpEnd != srcSystem:
+        while route[-1] != srcSystem:
+            jumpEnd = route[-1]
             jumpStart = distances[jumpEnd][1]
-            text = "{} -> {}".format(jumpStart.name(), jumpEnd.name())
-            if args.detail:
-                text += ' [{:.02f}ly]'.format(jumpStart.links[jumpEnd])
-            route.append(text)
-            jumpEnd = jumpStart
+            route.append(jumpStart)
     except KeyError:
         print("No route found between {} and {} with {}ly jump limit.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
         return
     route.reverse()
-    for (idx, step) in enumerate(route, 1):
-        print(step)
+    titleFormat = "From {src} to {dst} with {mly}ly per jump limit."
+    if args.detail:
+        labelFormat = "{act:<6} | {sys:<30} | {jly:<7} | {tly:<8}"
+        stepFormat = "{act:<6} | {sys:<30} | {jly:>7.2f} | {tly:>8.2f}"
+    elif not args.quiet:
+        labelFormat = "{sys:<30} ({jly:<7})"
+        stepFormat  = "{sys:<30} ({jly:>7.2f})"
+    elif args.quiet == 1:
+        titleFormat = "{src}->{dst} limit {mly}ly:"
+        labelFormat = None
+        stepFormat = " {sys}"
+    else:
+        titleFormat, labelFormat, stepFormat = None, None, "{sys}"
+
+    if titleFormat:
+        print(titleFormat.format(src=srcSystem.name(), dst=dstSystem.name(), mly=maxLyPer))
+
+    if labelFormat:
+        label = labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly')
+        print(label)
+        print('-' * len(label))
+
+    lastHop, totalLy = None, 0.00
+    def present(action, system):
+        nonlocal lastHop, totalLy
+        jumpLy = system.links[lastHop] if lastHop else 0.00
+        totalLy += jumpLy
+        print(stepFormat.format(act=action, sys=system.name(), jly=jumpLy, tly=totalLy))
+        lastHop = system
+
+    present('Depart', srcSystem)
+    for viaSys in route[1:-2]:
+        present('Via', viaSys)
+    present('Arrive', dstSystem)
+
 
 ######################################################################
 # functionality for the "cleanup" command
