@@ -626,7 +626,7 @@ def navCommand(args):
     if args.ship:
         ship = tdb.lookupShip(args.ship)
         args.ship = ship
-        if args.maxLyPer is None: args.maxLyPer = ship.maxLyFull
+        if args.maxLyPer is None: args.maxLyPer = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     maxLyPer = args.maxLyPer or tdb.maxSystemLinkLy
 
     if args.debug:
@@ -808,7 +808,8 @@ def main():
             ParseArgument('end', help='System to end at', type=str),
         ],
         switches = [
-            ParseArgument('--ship', help='Use a ship type to constrain jump distances, etc.', metavar='shiptype', type=str),
+            ParseArgument('--ship', help='Use the maximum jump distance of the specified ship (defaults to the empty value).', metavar='shiptype', type=str),
+            ParseArgument('--full', help='(With --ship) Limits the jump distance to that of a full ship.', action='store_true', default=False),
             ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
         ]
     )
