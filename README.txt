@@ -21,6 +21,15 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v3.9 Sep 21/2014
+  NOTE: '--detail' (-v) is now a common option, i.e. must come before sub-command
+    trade.py cleanup -v    << won't work any more
+    trade.py -v cleanup    << new order
+  Added 'nav' sub-command for navigation assistance:
+    trade.py nav [--ship name [--full]] [--ly-per] from to
+  Added '--quiet' (-q) common option for reducing level of detail, e.g.
+    trade.py -q cleanup
+
 v3.8 Sep 17/2014
   Fix for Issue #7: --avoid not working with systems that have no stations,
   Additional help text,
@@ -120,11 +129,9 @@ you through some simpler cases.
   instructions for the current step on the multi-function display of my
   X52 throttle...
 
-  trade.py run --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --detail --detail --detail --checklist --x52-pro
-
+  trade.py --detail --detail --detail run --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --checklist --x52-pro
 or
-
-  trade.py run --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 -vvv --check --x52
+  trade.py -vvv run --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 --check --x52
 
 Lets dial it back and start with something simpler:
 
@@ -166,9 +173,11 @@ By starting from Cuffey and making our way to Gateway, we'd make 2,000 credits
 more.
 
 But how was it expecting us to get from Cuffey to Aulin? For this, there is
-the --detail option:
+the --detail option. This is one of the options common to all commands, and
+so it has to be specified before the command. It can be abbreviated "-v"
+(think: verbose)
 
- C:\TradeDangerous\> trade.py run --ship hauler --credits 20000 --detail
+ C:\TradeDangerous\> trade.py --detail run --ship hauler --credits 20000
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
        |   Acihaut -> LHS3006 -> Aulin
@@ -189,9 +198,10 @@ One problem:
 The hauler can't make the above journey with cargo and weapons.
 
 The "--ly-per" argument (or it's --ly abbreviation) lets us tell TD to limit
-connections to a max jump distance, in this case of 5.2ly.
+connections to a max jump distance, in this case of 5.2ly. Note that this
+time I'm using "-v" as a short-cut for "--detail"
 
- C:\TradeDangerous\> trade.py run --ship hauler --credits 20000 --detail --ly-per 5.2
+ C:\TradeDangerous\> trade.py -v run --ship hauler --credits 20000 --ly-per 5.2
      >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
        |   Morgor -> Dahan -> Asellus
      -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
@@ -201,7 +211,7 @@ connections to a max jump distance, in this case of 5.2ly.
 Maybe you don't want to make multiple jumps between systems? Use the "--jumps"
 switch to lower or increase the number of jumps between systems on each hop:
 
-  C:\TradeDangerous\> trade.py run --ship hauler --credits 20000 --detail --jumps 1
+  C:\TradeDangerous\> trade.py -v run --ship hauler --credits 20000 --jumps 1
     ERANIN Azeban -> DAHAN Gateway:
      >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
        |   Eranin -> Asellus
@@ -212,7 +222,6 @@ switch to lower or increase the number of jumps between systems on each hop:
 TD also takes a "--insurance" option which tells it to put some money aside
 for insurance payments. This lets you put the actual amount of credits you
 have without having to remember to subtract your insurance each time.
-
 
 
 ==============================================================================
@@ -228,6 +237,30 @@ command, you can use "trade.py command -h" for example
   trade.py run -h
 
 will show you how to use the 'run' sub-command.
+
+Common Options:
+  These can be used with any command, so they must be specified before the
+  command itself.
+
+     --detail
+     -v
+       Increases the amount of detail given when showing routes or running the
+       checklist system. Each use increases the detail, i.e. "-v -v" will
+       give you more detail than just "-v". Short version stacks, e.g.
+       "-v -v -v" is the same as "-vvv"
+
+     --quiet
+     -q
+       Reduces the verbosity of the program. For example,
+         trade.py -qq cleanup
+       Will run the command with no output unless an error occurs.
+       NOTE: --detail and --quiet are mutually exclusive.
+
+     --debug
+     -w
+       Gives some additional information on what TD is doing while running,
+       each use increases the verbosity: i.e. --debug --debug is more verbose.
+       Short version is stackable, e.g. "-w -w -w" or "-www"
 
 Sub Commands:
   trade.py run ...
@@ -347,19 +380,6 @@ RUN sub-command:
        OMFG Output the current step of the checklist on your X52 Pro MFD.
        Is that some sweetness or what?
 
-     --detail
-     -v
-       Increases the amount of detail given when showing routes or running the
-       checklist system. Each use increases the detail, i.e. "-v -v" will
-       give you more detail than just "-v". Short version stacks, e.g.
-       "-v -v -v" is the same as "-vvv"
-
-     --debug
-     -w
-       Gives some additional information on what TD is doing while running,
-       each use increases the verbosity: i.e. --debug --debug is more verbose.
-       Short version is stackable, e.g. "-w -w -w" or "-www"
-
 UPDATE sub-command:
 
   For maintenance on your local prices database. The default is to walk
@@ -392,6 +412,53 @@ UPDATE sub-command:
     trade.py update chango --subl
     trade.py update anderson --editor "C:\Program Files\Microsoft Office\WordPad.exe"
     trade.py update wcm
+
+NAV sub-command:
+
+  Provides details of routes without worrying about trade. By default, if
+  given a ship, it uses the max dry range of the ship. Use --full if you
+  want to restrict to routes with a full cargo hold.
+
+  trade.py [-q | -v] nav [--ship name [--full]] [--ly-per] from to
+
+    --ship name
+      Uses the values for an empty ship to constrain jump ranges,
+      --ship=ana
+      --ship type6
+      --ship 6
+
+    --full
+      Used with --ship, uses the max range of the ship with a full load,
+      --ship cobra --full
+
+    --ly-per N.NN
+      Constrains jumps to a maximum ly distance
+      --ly-per 3.2
+
+    from
+      Name of the starting system or a station in the system,
+
+    to
+      Name of the destination system or a station in the system,
+
+  Examples:
+    > trade.py nav --ship=type6 5287 2887
+    From LHS 5287 to LHS 2887 with 29.36ly per jump limit.
+    System                         (Jump Ly)
+    ----------------------------------------
+    LHS 5287                       (   0.00)
+    I BOOTIS                       (  19.94)
+    LHS 2887                       (  17.14)
+
+    > trade.py -v nav --ship=type6 --full 5287 2887
+    From LHS 5287 to LHS 2887 with 15.64ly per jump limit.
+    Action | System                         | Jump Ly | Total Ly
+    ------------------------------------------------------------
+    Depart | LHS 5287                       |    0.00 |     0.00
+    Via    | ASELLUS PRIMUS                 |   14.47 |    14.47
+    Via    | BD+47 2112                     |   11.81 |    26.28
+    Arrive | LHS 2887                       |   11.73 |    38.01
+
 
 ==============================================================================
 == How can I add or update the data?
@@ -434,6 +501,10 @@ In this case, it looks ok to do cleanup:
     $ trade.py cleanup
     * Performing database cleanup, expiring 10 minute orphan records.
     - Removed 1 entry.
+
+If you prefer no output from your cleanup, use -qq
+
+    $ trade.py -qq cleanup
 
 
 ==============================================================================
