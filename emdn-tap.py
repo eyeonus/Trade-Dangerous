@@ -164,7 +164,7 @@ def warning(*args, **kwargs):
 
     import datetime
     now = datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
-    warning(now, *args, file=warningFh, **kwargs)
+    print(now, *args, file=warningFh, **kwargs)
     if warning.verbose:
         print('#', *args, **kwargs)
 
