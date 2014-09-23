@@ -348,7 +348,7 @@ def main():
         now = time.time()
         while True:
             nextCommit = lastCommit + pargs.commit
-            timeLeft = cutoffTime - now if duration else nextCommit - now
+            timeLeft = endOfRun - now if duration else nextCommit - now
             timeout = min(timeLeft, nextCommit - now) or None
             for rec in firehose.drink(records=pargs.records, timeout=timeout):
                 consumeRecord(rec)
