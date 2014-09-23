@@ -218,7 +218,9 @@ def commit(tdb, db, recordsSinceLastCommit, pargs):
             print("\n".join(['#  {}'.format(str(items)) for items in recordsSinceLastCommit]))
     if not pargs.noWrites:
         # Save the records.
+        if pargs.verbose >= 9: print("## executemany")
         db.executemany(commitStmt, recordsSinceLastCommit)
+        if pargs.verbose >= 9: print("## commit")
         db.commit()
 
         # Rebuild prices
@@ -229,6 +231,7 @@ def commit(tdb, db, recordsSinceLastCommit, pargs):
     if not pargs.noWrites:
         with tdb.pricesPath.open("w") as pricesFile:
             prices.dumpPrices(dbFilename, withModified=True, file=pricesFile)
+        if pargs.verbose >= 9: print("## selah")
         time.sleep(0.001)
         pathlib.Path(dbFilename).touch()
 
@@ -350,10 +353,13 @@ def main():
             nextCommit = lastCommit + pargs.commit
             timeLeft = endOfRun - now if duration else nextCommit - now
             timeout = min(timeLeft, nextCommit - now) or None
+            if pargs.verbose >= 9: print("## drinking(records={}, timeout={})".format(pargs.records, timeout))
             for rec in firehose.drink(records=pargs.records, timeout=timeout):
+                if pargs.verbose >= 9: print("## consuming")
                 consumeRecord(rec)
-            if pargs.verbose > 2:
-                print("- tick")
+                if pargs.verbose >= 9: print("## consumed")
+            if pargs.verbose >= 9: print("## drank")
+            elif pargs.verbose > 2: print("# tick")
             lastCommit = now = time.time()
             commit(tdb, db, recordsSinceLastCommit, pargs)
             recordsSinceLastCommit = []
