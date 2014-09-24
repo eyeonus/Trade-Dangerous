@@ -310,7 +310,7 @@ class TradeDB(object):
             lookupSystem        -   Return a system matching "name" with ambiguity detection.
             lookupStation       -   Return a station matching "name" with ambiguity detection.
             lookupShip          -   Return a ship matching "name" with ambiguity detection.
-            getTrade            -   Look for a Trade object where item is sold from one stationi and bought at another.
+            getTrades           -   Returns the list of Trade objects between two stations.
 
             query               -   Executes the specified SQL on the db and returns a cursor.
             fetch_all           -   Generator that yields all the rows retrieved by an sql cursor.
@@ -710,8 +710,8 @@ class TradeDB(object):
             srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
 
-    def getTrade(self, src, dst, item):
-        """ Returns a Trade object describing purchase of item from src for sale at dst. """
+    def getTrades(self, src, dst):
+        """ Returns a list of the Trade objects between src and dst. """
 
         # I could write this more compactly, but it makes errors less readable.
         srcStn = self.lookupStation(src)
