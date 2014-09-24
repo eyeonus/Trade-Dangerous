@@ -417,7 +417,7 @@ CREATE VIEW vForSale AS
 ;
 
 CREATE VIEW vForSaleOrdered AS
-   SELECT * FROM vForSale ORDER BY sy.name, st.name, c.name, i.name
+   SELECT * FROM vForSale ORDER BY system, station, category, item
 ;
 
 COMMIT;
