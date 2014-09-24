@@ -403,11 +403,11 @@ CREATE VIEW vForSale AS
         , c.name  AS category
         , i.name  AS item
         , p.buy_from AS asking
-        , p.demand
-        , p.demand_level
-        , p.sell_to AS paying
         , p.stock
         , p.stock_level
+        , p.sell_to AS paying
+        , p.demand
+        , p.demand_level
         , STRFTIME('%s', 'now') - STRFTIME('%s', p.modified) AS age
      FROM System AS sy
           INNER JOIN Station as st ON (sy.system_id = st.system_id)
