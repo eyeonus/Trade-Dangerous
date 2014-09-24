@@ -397,5 +397,27 @@ CREATE VIEW vOlderData AS
      ORDER BY 2 DESC
 ;
 
+CREATE VIEW vForSale AS
+   SELECT sy.name AS system
+        , st.name AS station
+        , c.name  AS category
+        , i.name  AS item
+        , p.buy_from AS asking
+        , p.demand
+        , p.demand_level
+        , p.sell_to AS paying
+        , p.stock
+        , p.stock_level
+        , STRFTIME('%s', 'now') - STRFTIME('%s', p.modified) AS age
+     FROM System AS sy
+          INNER JOIN Station as st ON (sy.system_id = st.system_id)
+          INNER JOIN Price AS p ON (st.station_id = p.station_id)
+          INNER JOIN Item AS I ON (p.item_id = i.item_id)
+          INNER JOIN Category AS C on (i.category_id = c.category_id)
+;
+
+CREATE VIEW vForSaleOrdered AS
+   SELECT * FROM vForSale ORDER BY sy.name, st.name, c.name, i.name
+;
 
 COMMIT;
