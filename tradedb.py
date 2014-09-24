@@ -20,6 +20,9 @@ import itertools
 import math
 from pathlib import Path
 
+import locale
+locale.setlocale(locale.LC_ALL, '')
+
 ######################################################################
 # Classes
 
