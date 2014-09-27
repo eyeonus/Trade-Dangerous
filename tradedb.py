@@ -700,8 +700,8 @@ class TradeDB(object):
                         ON src.item_id = dst.item_id
                  WHERE src.buy_from > 0
                         AND profit > 0
-                        AND src.stock_level > 0
-                        AND dst.demand_level > 0
+                        AND src.stock_level != 0
+                        AND dst.demand_level != 0
                         AND src.ui_order > 0
                         AND dst.ui_order > 0
                  ORDER BY profit DESC
