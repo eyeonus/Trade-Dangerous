@@ -142,6 +142,21 @@ INSERT INTO "Station" VALUES(39,'Brislington',18,0.0);
 INSERT INTO "Station" VALUES(40,'Burbank Camp',52,0.0);
 INSERT INTO "Station" VALUES(41,'Wang Estate',50,0.0);
 
+INSERT INTO "Station" VALUES(42,'Azeban Orbital',(SELECT system_id FROM System WHERE System.name = 'Eranin'),0.0);
+INSERT INTO "Station" VALUES(43,'Eranin 4 Survey',(SELECT system_id FROM System WHERE System.name = 'Eranin'),0.0);
+INSERT INTO "Station" VALUES(44,'Dahan 3 Metalworks',(SELECT system_id FROM System WHERE System.name = 'Dahan'),0.0);
+INSERT INTO "Station" VALUES(45,'Bixby Station',(SELECT system_id FROM System WHERE System.name = 'Styx'),0.0);
+INSERT INTO "Station" VALUES(46,'Wingrove Platform',(SELECT system_id FROM System WHERE System.name = 'Styx'),0.0);
+INSERT INTO "Station" VALUES(47,'Maher Stellar Research',(SELECT system_id FROM System WHERE System.name = 'i Bootis'),0.0);
+INSERT INTO "Station" VALUES(48,'Harbaugh Station',(SELECT system_id FROM System WHERE System.name = 'Aulin'),0.0);
+INSERT INTO "Station" VALUES(49,'Onufrienko Station',(SELECT system_id FROM System WHERE System.name = 'Aulin'),0.0);
+INSERT INTO "Station" VALUES(50,'Foster Reseearch Lab',(SELECT system_id FROM System WHERE System.name = 'Asellus Primus'),0.0);
+INSERT INTO "Station" VALUES(51,'Prospect Five',(SELECT system_id FROM System WHERE System.name = 'LP 98-132'),0.0);
+INSERT INTO "Station" VALUES(52,'Wang Terminal',(SELECT system_id FROM System WHERE System.name = 'Bolg'),0.0);
+INSERT INTO "Station" VALUES(53,'Mastracchio Base',(SELECT system_id FROM System WHERE System.name = 'Acihaut'),0.0);
+INSERT INTO "Station" VALUES(54,'Hadwell Orbital',(SELECT system_id FROM System WHERE System.name = 'Nang Ta-Khian'),0.0);
+INSERT INTO "Station" VALUES(55,'Keeler Rest',(SELECT system_id FROM System WHERE System.name = 'Tilian'),0.0);
+
 CREATE TABLE Ship
  (
    ship_id INTEGER PRIMARY KEY AUTOINCREMENT,
