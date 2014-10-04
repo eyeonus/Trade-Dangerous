@@ -347,6 +347,25 @@ INSERT INTO "System" VALUES(310,'LHS 2948',-21.6875,60.4375,15.09375,'2014-10-02
 INSERT INTO "System" VALUES(311,'CE Bootis',-5.40625,29.375,16.46875,'2014-10-02 14:21:15');
 INSERT INTO "System" VALUES(312,'LHS 2651',-22.84375,60.375,-13.8125,'2014-10-02 14:21:15');
 
+---------------------
+--Calculated systems from Codec https://docs.google.com/spreadsheets/d/1dNvJV2CnRLU9BqaTpR-lV4D8AW1PfMzOcKzlqIe5aJg/edit#gid=225835509
+---------------------
+INSERT INTO "System" VALUES(313,'GD 356',-50.937329,44.156314,7.312356,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(314,'Ross 52',-8.437344,29.156181,13.312062,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(315,'Rigel',385.776454,-360.412738,-682.530344,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(316,'SDSS J1416+1348',-0.763711,27.15127,12.010749,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(317,'Etamin',-132.465759,74.882226,25.534914,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(318,'Alpha Cygni',-1404.999446,46.100667,132.507506,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(319,'Polaris',-322.694559,194.561748,-212.451208,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(320,'Taran',-42.50011,45.468803,-3.000247,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(321,'Achenar',67.498165,-119.469951,24.84084,'2014-10-05 17:49:18');
+--INSERT INTO "System" VALUES(322,'Sagittarius A*',-7371.313229,-21643.12915,12112.54096,'2014-10-05 17:49:18'); Bad Calc. Needs fixed.
+INSERT INTO "System" VALUES(323,'Hagalaz',-51.967872,36.653411,2.52069,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(324,'Alphard',99.25266,-27.376891,-122.037074,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(325,'Enif',-536.59161,-363.040063,236.177363,'2014-10-05 17:49:18');
+INSERT INTO "System" VALUES(326,'Sol',-0.000447,-0.000311,-0.000324,'2014-10-05 17:49:18');
+
+
 
 CREATE TABLE Station
  (
@@ -422,6 +441,11 @@ INSERT INTO "Station" VALUES(56,'Burbank Platform',(SELECT system_id FROM System
 INSERT INTO "Station" VALUES(57,'Redi Settlement',(SELECT system_id FROM System WHERE System.name = '35 Draconis'),0.0);
 INSERT INTO "Station" VALUES(58,'Wul Vision',(SELECT system_id FROM System WHERE System.name = 'Bangati'),0.0);
 INSERT INTO "Station" VALUES(59,'Filter Horizons',(SELECT system_id FROM System WHERE System.name = 'Nyon T''ao Wujin'),0.0);
+INSERT INTO "Station" VALUES(60,'Sawyer Outpost',(SELECT system_id FROM System WHERE System.name = 'Nguruai Trimpaso'),0.0);
+INSERT INTO "Station" VALUES(61,'Kiernan Refinery',(SELECT system_id FROM System WHERE System.name = 'LP Draconis'),0.0);
+INSERT INTO "Station" VALUES(62,'Heyerdahl Depot',(SELECT system_id FROM System WHERE System.name = 'Clotti'),0.0);
+INSERT INTO "Station" VALUES(63,'Barcelos Base',(SELECT system_id FROM System WHERE System.name = 'LTT 15294'),0.0);
+
 
 
 CREATE TABLE Ship
