@@ -418,6 +418,12 @@ INSERT INTO "Station" VALUES(53,'Mastracchio Base',(SELECT system_id FROM System
 INSERT INTO "Station" VALUES(54,'Hadwell Orbital',(SELECT system_id FROM System WHERE System.name = 'Nang Ta-Khian'),0.0);
 INSERT INTO "Station" VALUES(55,'Keeler Rest',(SELECT system_id FROM System WHERE System.name = 'Tilian'),0.0);
 
+INSERT INTO "Station" VALUES(56,'Burbank Platform',(SELECT system_id FROM System WHERE System.name = 'NLTT 50716'),0.0);
+INSERT INTO "Station" VALUES(57,'Redi Settlement',(SELECT system_id FROM System WHERE System.name = '35 Draconis'),0.0);
+INSERT INTO "Station" VALUES(58,'Wul Vision',(SELECT system_id FROM System WHERE System.name = 'Bangati'),0.0);
+INSERT INTO "Station" VALUES(59,'Filter Horizons',(SELECT system_id FROM System WHERE System.name = 'Nyon T''ao Wujin'),0.0);
+
+
 CREATE TABLE Ship
  (
    ship_id INTEGER PRIMARY KEY AUTOINCREMENT,
