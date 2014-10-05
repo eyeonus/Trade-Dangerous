@@ -464,7 +464,7 @@ INSERT INTO "Station" VALUES(79,'Lessing Refinery',(SELECT system_id FROM System
 INSERT INTO "Station" VALUES(80,'Garan Landing',(SELECT system_id FROM System WHERE System.name = 'Chirichianco'),0.0);
 INSERT INTO "Station" VALUES(81,'Morgan Stop',(SELECT system_id FROM System WHERE System.name = 'V740 Cassiopeiae'),0.0);
 INSERT INTO "Station" VALUES(82,'Haignere Platform',(SELECT system_id FROM System WHERE System.name = 'Gliese 9843'),0.0);
-INSERT INTO "Station" VALUES(83,'Brunton Platform',(SELECT system_id FROM System WHERE System.name = 'GR 8133'),0.0);
+INSERT INTO "Station" VALUES(83,'Brunton Platform',(SELECT system_id FROM System WHERE System.name = 'HR 8133'),0.0);
 INSERT INTO "Station" VALUES(84,'Brule Colony',(SELECT system_id FROM System WHERE System.name = 'Toyota'),0.0);
 INSERT INTO "Station" VALUES(85,'Ride Vision',(SELECT system_id FROM System WHERE System.name = 'Psamathe'),0.0);
 INSERT INTO "Station" VALUES(86,'Cowper Asylum',(SELECT system_id FROM System WHERE System.name = 'Tapari'),0.0);
