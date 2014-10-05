@@ -445,6 +445,40 @@ INSERT INTO "Station" VALUES(60,'Sawyer Outpost',(SELECT system_id FROM System W
 INSERT INTO "Station" VALUES(61,'Kiernan Refinery',(SELECT system_id FROM System WHERE System.name = 'LP Draconis'),0.0);
 INSERT INTO "Station" VALUES(62,'Heyerdahl Depot',(SELECT system_id FROM System WHERE System.name = 'Clotti'),0.0);
 INSERT INTO "Station" VALUES(63,'Barcelos Base',(SELECT system_id FROM System WHERE System.name = 'LTT 15294'),0.0);
+INSERT INTO "Station" VALUES(64,'Shriver Camp',(SELECT system_id FROM System WHERE System.name = 'Grabri'),0.0);
+INSERT INTO "Station" VALUES(65,'Pausch Settlement',(SELECT system_id FROM System WHERE System.name = 'Harpulo'),0.0);
+INSERT INTO "Station" VALUES(66,'Robinson Port',(SELECT system_id FROM System WHERE System.name = 'STKM 1-1676'),0.0);
+INSERT INTO "Station" VALUES(67,'Nicollier Exchange',(SELECT system_id FROM System WHERE System.name = 'Pareco'),0.0);
+INSERT INTO "Station" VALUES(68,'Galois Retreat',(SELECT system_id FROM System WHERE System.name = 'Djedet'),0.0);
+INSERT INTO "Station" VALUES(69,'Favier Port',(SELECT system_id FROM System WHERE System.name = 'Coquenchis'),0.0);
+INSERT INTO "Station" VALUES(70,'Volynov Dock',(SELECT system_id FROM System WHERE System.name = 'Mistana'),0.0);
+INSERT INTO "Station" VALUES(71,'Stephenson Hub',(SELECT system_id FROM System WHERE System.name = 'Gera'),0.0);
+INSERT INTO "Station" VALUES(72,'Soukup Colony',(SELECT system_id FROM System WHERE System.name = 'HIP 2422'),0.0);
+INSERT INTO "Station" VALUES(73,'Linteris Colony',(SELECT system_id FROM System WHERE System.name = 'HR 8474'),0.0);
+INSERT INTO "Station" VALUES(74,'Burton Terminal',(SELECT system_id FROM System WHERE System.name = 'BD+71 1033'),0.0);
+INSERT INTO "Station" VALUES(75,'Lysenko Ring',(SELECT system_id FROM System WHERE System.name = 'Adepti'),0.0);
+INSERT INTO "Station" VALUES(76,'Harrison Beacon',(SELECT system_id FROM System WHERE System.name = 'Kulkanabossongma'),0.0);
+INSERT INTO "Station" VALUES(77,'Ito Stop',(SELECT system_id FROM System WHERE System.name = 'HR 8423'),0.0);
+INSERT INTO "Station" VALUES(78,'Ashby Port',(SELECT system_id FROM System WHERE System.name = 'LP 29-188'),0.0);
+INSERT INTO "Station" VALUES(79,'Lessing Refinery',(SELECT system_id FROM System WHERE System.name = 'Basium'),0.0);
+INSERT INTO "Station" VALUES(80,'Garan Landing',(SELECT system_id FROM System WHERE System.name = 'Chirichianco'),0.0);
+INSERT INTO "Station" VALUES(81,'Morgan Stop',(SELECT system_id FROM System WHERE System.name = 'V740 Cassiopeiae'),0.0);
+INSERT INTO "Station" VALUES(82,'Haignere Platform',(SELECT system_id FROM System WHERE System.name = 'Gliese 9843'),0.0);
+INSERT INTO "Station" VALUES(83,'Brunton Platform',(SELECT system_id FROM System WHERE System.name = 'GR 8133'),0.0);
+INSERT INTO "Station" VALUES(84,'Brule Colony',(SELECT system_id FROM System WHERE System.name = 'Toyota'),0.0);
+INSERT INTO "Station" VALUES(85,'Ride Vision',(SELECT system_id FROM System WHERE System.name = 'Psamathe'),0.0);
+INSERT INTO "Station" VALUES(86,'Cowper Asylum',(SELECT system_id FROM System WHERE System.name = 'Tapari'),0.0);
+INSERT INTO "Station" VALUES(87,'Van Scyoc Landing',(SELECT system_id FROM System WHERE System.name = 'BD+63 1764'),0.0);
+INSERT INTO "Station" VALUES(88,'Aitken Station',(SELECT system_id FROM System WHERE System.name = 'Poqomathi'),0.0);
+INSERT INTO "Station" VALUES(89,'Griffin Ring',(SELECT system_id FROM System WHERE System.name = 'Titicate'),0.0);
+INSERT INTO "Station" VALUES(90,'AvoGadro Landing',(SELECT system_id FROM System WHERE System.name = 'Andjeri'),0.0);
+INSERT INTO "Station" VALUES(91,'Harbaugh Vision',(SELECT system_id FROM System WHERE System.name = 'MCC 858'),0.0);
+INSERT INTO "Station" VALUES(92,'Melvill Terminal',(SELECT system_id FROM System WHERE System.name = 'Fu Haiting'),0.0);
+INSERT INTO "Station" VALUES(93,'Linenger Landing',(SELECT system_id FROM System WHERE System.name = 'Tring'),0.0);
+INSERT INTO "Station" VALUES(94,'Hill Platform',(SELECT system_id FROM System WHERE System.name = 'LHS 3877'),0.0);
+INSERT INTO "Station" VALUES(95,'Hartdog Dock',(SELECT system_id FROM System WHERE System.name = 'Verboni'),0.0);
+
+
 
 
 
