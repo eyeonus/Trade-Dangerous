@@ -1,11 +1,9 @@
 ==============================================================================
 TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
-==============================================================================
-
 REQUIRES PYTHON 3.0 OR HIGHER.
-
 ==============================================================================
+
 == What is Trade Dangerous?
 ==============================================================================
 
@@ -17,9 +15,11 @@ things.
 For multi-stop routes, it takes into account the money you are making and
 factors that into the shopping for each subsequent hop.
 
-==============================================================================
 == CHANGE LOG
 ==============================================================================
+
+v4.0 Oct 05/2014
+  Updated to Beta 2 - All credit to ShadowGar
 
 v3.9 Sep 21/2014
   NOTE: '--detail' (-v) is now a common option, i.e. must come before sub-command
