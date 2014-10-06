@@ -477,6 +477,14 @@ INSERT INTO "Station" VALUES(92,'Melvill Terminal',(SELECT system_id FROM System
 INSERT INTO "Station" VALUES(93,'Linenger Landing',(SELECT system_id FROM System WHERE System.name = 'Tring'),0.0);
 INSERT INTO "Station" VALUES(94,'Hill Platform',(SELECT system_id FROM System WHERE System.name = 'LHS 3877'),0.0);
 INSERT INTO "Station" VALUES(95,'Hartdog Dock',(SELECT system_id FROM System WHERE System.name = 'Verboni'),0.0);
+INSERT INTO "Station" VALUES(96,'Boas Claim',(SELECT system_id FROM System WHERE System.name = 'Evergreen'),0.0);
+INSERT INTO "Station" VALUES(97,'Hirase Platform',(SELECT system_id FROM System WHERE System.name = 'WISE 1647+5632'),0.0);
+INSERT INTO "Station" VALUES(98,'Adams Dock',(SELECT system_id FROM System WHERE System.name = '44 chi Draconis'),0.0);
+INSERT INTO "Station" VALUES(99,'Ferguson Platform',(SELECT system_id FROM System WHERE System.name = '44 chi Draconis'),0.0);
+INSERT INTO "Station" VALUES(100,'Horowitz City',(SELECT system_id FROM System WHERE System.name = 'G 203-47'),0.0);
+INSERT INTO "Station" VALUES(101,'Hopkins Settlement',(SELECT system_id FROM System WHERE System.name = 'G 203-47'),0.0);
+INSERT INTO "Station" VALUES(102,'Zhen Outpost',(SELECT system_id FROM System WHERE System.name = 'G 203-47'),0.0);
+INSERT INTO "Station" VALUES(103,'Sy Base',(SELECT system_id FROM System WHERE System.name = 'LHS 3262'),0.0);
 
 
 
