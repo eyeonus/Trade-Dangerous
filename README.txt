@@ -465,6 +465,75 @@ NAV sub-command:
     Via    | BD+47 2112                     |   11.81 |    26.28
     Arrive | LHS 2887                       |   11.73 |    38.01
 
+LOCAL sub-command:
+
+  Provides details of local stations without worrying about trade. By default, if
+  given a ship, it uses the max dry range of the ship. Use --full if you
+  want to restrict to systems with a full cargo hold.
+
+  trade.py [-q | -v] local [--ship name [--full]] [--ly N.NN] system
+
+    --ship name
+      Uses the values for an empty ship to constrain jump ranges,
+      --ship=ana
+      --ship type6
+      --ship 6
+
+    --full
+      Used with --ship, uses the max range of the ship with a full load,
+      --ship cobra --full
+
+    --ly N.NN
+      Constrains local systems to a maximum ly distance
+      --ly 20.0
+
+    system
+      Name of the system or a station in the system,
+
+  Examples:
+    > trade.py local --ly 11.0 dahan
+    Local systems to DAHAN within 11.0 ly.
+	--------------------------------------
+	 4.66 Asellus Primus
+	 5.12 Morgor
+	 6.41 Eranin
+	 8.26 Meliae
+	 8.58 LHS 2884
+	 8.60 LP 98-132
+	 9.20 Aulis
+	 9.75 GD 319
+	10.08 BD+47 2112
+	10.33 i Bootis
+
+    > trade.py -v local --ly 10.0 3006
+	Local systems to LHS 3006 within 10.0 ly.
+	-----------------------------------------
+	 5.64 Acihaut
+		  <Cuffey Plant>
+		  <Mastracchio Base>
+	 6.00 G 239-25
+		  <Bresnik Mine>
+	 6.47 Nang Ta-khian
+		  <Hay Point>
+		  <Hadwell Orbital>
+	 7.51 Eranin
+		  <Azeban City>
+		  <Azeban Orbital>
+		  <Eranin 4 Survey>
+	 7.74 Aulin
+		  <Aulin Enterprise>
+		  <Harbaugh Station>
+		  <Onufrienko Station>
+	 8.12 i Bootis
+		  <Chango Dock>
+		  <Maher Stellar Research>
+	 8.52 BD+47 2112
+		  <Olivas Settlement>
+	 8.78 Lalande 29917
+	 9.40 DN Draconis
+	 9.72 LP 98-132
+		  <Freeport>
+		  <Prospect Five>
 
 ==============================================================================
 == How can I add or update the data?

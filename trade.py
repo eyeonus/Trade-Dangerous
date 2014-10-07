@@ -636,6 +636,40 @@ def lookupSystem(name, intent):
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
 
+def localCommand(args):
+    """
+        Local systems
+    """
+
+    srcSystem = lookupSystem(args.system, 'system')
+
+    if args.ship:
+        ship = tdb.lookupShip(args.ship)
+        args.ship = ship
+        if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
+    ly = args.ly or tdb.maxSystemLinkLy
+
+    title = "Local systems to {} within {} ly.".format(srcSystem.name(), ly)
+    print(title)
+    print('-' * len(title))
+
+    distances = { }
+
+    for (destSys, destDist) in srcSystem.links.items():
+        if destDist > ly:
+            continue
+        distances[destSys] = destDist
+
+    for (sys, dist) in sorted(distances.items(), key=lambda x: x[1]):
+        print("{:5.2f} {}".format(dist, sys.str()))
+        if args.detail:
+            for (station) in sys.stations:
+                statDist = ""
+                if station.lsFromStar>0:
+                    statDist = " {} ls".format(station.lsFromStar)
+                print("      <{}>{}".format(station.str(), statDist))
+
+
 def navCommand(args):
     """
         Give player directions A->B
@@ -833,6 +867,18 @@ def main():
             ParseArgument('--ship', help='Use the maximum jump distance of the specified ship (defaults to the empty value).', metavar='shiptype', type=str),
             ParseArgument('--full', help='(With --ship) Limits the jump distance to that of a full ship.', action='store_true', default=False),
             ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
+        ]
+    )
+	
+	# "local" shows systems local to given system.
+    localParser = makeSubParser(subparsers, 'local', 'Calculate local systems.', localCommand,
+        arguments = [
+            ParseArgument('system', help='System to measure from', type=str),
+        ],
+        switches = [
+            ParseArgument('--ship', help='Use the maximum jump distance of the specified ship (defaults to the empty value).', metavar='shiptype', type=str),
+            ParseArgument('--full', help='(With --ship) Limits the jump distance to that of a full ship.', action='store_true', default=False),
+            ParseArgument('--ly', help='Maximum light years to measure.', metavar='N.NN', type=float, dest='ly'),
         ]
     )
 
