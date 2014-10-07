@@ -18,6 +18,9 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.0.1 Oct 06/2014
+  Improved "--sublime" option, now supports Sublime Text 2 and works under Mac/Lin
+
 v4.0 Oct 05/2014
   Updated to Beta 2 - All credit to ShadowGar
 
