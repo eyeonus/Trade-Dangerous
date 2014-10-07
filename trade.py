@@ -560,8 +560,11 @@ def editUpdate(args, stationID):
 
         # Launch the editor
         editorCommandLine = [ editor ] + editorArgs + [ absoluteFilename ]
-        if args.debug: print("# Invoking [{}]".format(str(editorCommandLine)))
-        result = subprocess.call(editorCommandLine)
+        if args.debug: print("# Invoking [{}]".format(' '.join(editorCommandLine)))
+        try:
+            result = subprocess.call(editorCommandLine)
+        except FileNotFoundError:
+            raise CommandLineError("Unable to launch specified editor: {}".format(editorCommandLine))
         if result != 0:
             print("NOTE: Edit failed ({}), nothing to import.".format(result))
             sys.exit(1)
