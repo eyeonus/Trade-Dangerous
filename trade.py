@@ -642,7 +642,7 @@ def distanceAlongPill(sc, percent):
         Estimate a distance along the Pill using 2 reference systems
     """
     sa = tdb.lookupSystem("Eranin")
-    sb = tdb.lookupSystem("Maidubii") # Would like to use 16 Cephei
+    sb = tdb.lookupSystem("HIP 107457")
     dotProduct = (sb.posX-sa.posX) * (sc.posX-sa.posX) \
                + (sb.posY-sa.posY) * (sc.posY-sa.posY) \
                + (sb.posZ-sa.posZ) * (sc.posZ-sa.posZ)
