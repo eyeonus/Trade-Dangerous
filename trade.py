@@ -674,6 +674,8 @@ def localCommand(args):
     distances = { }
 
     for (destSys, destDist) in srcSystem.links.items():
+        if args.debug:
+            print("Checking {} dist={:5.2f}".format(destSys.str(), destDist))
         if destDist > ly:
             continue
         distances[destSys] = destDist
