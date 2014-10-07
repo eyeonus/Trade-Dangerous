@@ -830,7 +830,16 @@ class TradeDB(object):
                 if normVal == needle:
                     return val(entry)
                 if matchVal and matchVal != val(entry):
-                    raise AmbiguityError(listType, lookup, matchKey, entryKey)
+                    # Check if one match matches a whole word and prefer that.
+                    wordStr = r'\b{}\b'.format(lookup)
+                    wordRe = re.compile(wordStr, re.IGNORECASE)
+                    prevWholeWord = wordRe.match(matchKey)
+                    newWholeWord = wordRe.match(entryKey)
+                    print("%s %s %s / %s" % (wordStr, wordRe, prevWholeWord, newWholeWord))
+                    if prevWholeWord:
+                        if not newWholeWord:
+                            continue
+                        raise AmbiguityError(listType, lookup, matchKey, entryKey)
                 matchKey, matchVal = entryKey, val(entry)
         if not matchKey:
             raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
