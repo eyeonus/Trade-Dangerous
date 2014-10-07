@@ -38,6 +38,7 @@ import sys                  # Inevitably.
 import time
 import pathlib              # For path
 import os
+import math
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
@@ -635,7 +636,22 @@ def lookupSystem(name, intent):
         except LookupError:
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
-
+                        
+def lengthAlongPill(sc):
+    """
+        Estimate a distance along the Pill using 2 reference systems
+    """
+    sa = tdb.lookupSystem("Eranin")
+    sb = tdb.lookupSystem("Maidubii") # Would like to use 16 Cephei
+    dotProduct = (sb.posX-sa.posX) * (sc.posX-sa.posX) \
+               + (sb.posY-sa.posY) * (sc.posY-sa.posY) \
+               + (sb.posZ-sa.posZ) * (sc.posZ-sa.posZ)
+    length = math.sqrt((sb.posX-sa.posX) * (sb.posX-sa.posX) 
+                     + (sb.posY-sa.posY) * (sb.posY-sa.posY)
+                     + (sb.posZ-sa.posZ) * (sb.posZ-sa.posZ))
+    
+    return dotProduct / length
+    
 def localCommand(args):
     """
         Local systems
@@ -660,14 +676,17 @@ def localCommand(args):
             continue
         distances[destSys] = destDist
 
-    for (sys, dist) in sorted(distances.items(), key=lambda x: x[1]):
-        print("{:5.2f} {}".format(dist, sys.str()))
-        if args.detail:
-            for (station) in sys.stations:
-                statDist = ""
+    for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
+        pillLength = ""
+        if args.detail > 0:
+            pillLength = " [{:5.1f}]".format(lengthAlongPill(system))
+        print("{:5.2f}{} {}".format(dist, pillLength, system.str()))
+        if args.detail > 1:
+            for (station) in system.stations:
+                stationDistance = ""
                 if station.lsFromStar>0:
-                    statDist = " {} ls".format(station.lsFromStar)
-                print("      <{}>{}".format(station.str(), statDist))
+                    stationDistance = " {} ls".format(station.lsFromStar)
+                print("      <{}>{}".format(station.str(), stationDistance))
 
 
 def navCommand(args):
