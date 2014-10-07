@@ -869,7 +869,7 @@ def main():
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
             [   # Mutually exclusive group:
-                ParseArgument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', action=EditActionStoreTrue),
+                ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),
             ]
         ]

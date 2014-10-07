@@ -402,7 +402,7 @@ UPDATE sub-command:
 
     --sublime
     --subl
-      Like "--editor" but finds and uses the Sublime Text 3 editor.
+      Like "--editor" but finds and uses the Sublime Text editor (2 and 3).
       You can use "--editor" to tell it exactly where the editor
       is located if it fails to find it.
 
