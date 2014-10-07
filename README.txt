@@ -486,7 +486,12 @@ LOCAL sub-command:
     --ly N.NN
       Constrains local systems to a maximum ly distance
       --ly 20.0
-
+    
+    -v
+      Show estimated length along the Pill
+    -vv
+      Show stations
+      
     system
       Name of the system or a station in the system,
 
@@ -504,36 +509,45 @@ LOCAL sub-command:
 	 9.75 GD 319
 	10.08 BD+47 2112
 	10.33 i Bootis
-
-    > trade.py -v local --ly 10.0 3006
-	Local systems to LHS 3006 within 10.0 ly.
-	-----------------------------------------
-	 5.64 Acihaut
-		  <Cuffey Plant>
-		  <Mastracchio Base>
-	 6.00 G 239-25
-		  <Bresnik Mine>
-	 6.47 Nang Ta-khian
-		  <Hay Point>
-		  <Hadwell Orbital>
-	 7.51 Eranin
-		  <Azeban City>
-		  <Azeban Orbital>
-		  <Eranin 4 Survey>
-	 7.74 Aulin
-		  <Aulin Enterprise>
-		  <Harbaugh Station>
-		  <Onufrienko Station>
-	 8.12 i Bootis
-		  <Chango Dock>
-		  <Maher Stellar Research>
-	 8.52 BD+47 2112
-		  <Olivas Settlement>
-	 8.78 Lalande 29917
-	 9.40 DN Draconis
-	 9.72 LP 98-132
-		  <Freeport>
-		  <Prospect Five>
+    
+    > trade.py -v local --ly 11.0 sur
+    Local systems to SURYA within 11.0 ly.
+    --------------------------------------
+     9.22 [  2.2] 14 Herculis
+     9.23 [  1.0] Vaccimici
+     9.35 [ 10.0] CM Draco
+    10.59 [ 10.3] V1090 Herculis
+    10.69 [ -1.6] Chi Herculis
+    
+    > trade.py -vv local --ly 10.0 3006
+    Local systems to LHS 3006 within 10.0 ly.
+    -----------------------------------------
+     5.64 [  0.4] Acihaut
+          <Cuffey Plant>
+          <Mastracchio Base>
+     6.00 [  5.1] G 239-25
+          <Bresnik Mine>
+     6.47 [  1.1] Nang Ta-khian
+          <Hay Point>
+          <Hadwell Orbital>
+     7.51 [ -0.0] Eranin
+          <Azeban City>
+          <Azeban Orbital>
+          <Eranin 4 Survey>
+     7.74 [ -4.9] Aulin
+          <Aulin Enterprise>
+          <Harbaugh Station>
+          <Onufrienko Station>
+     8.12 [ -2.8] i Bootis
+          <Chango Dock>
+          <Maher Stellar Research>
+     8.52 [ -6.4] BD+47 2112
+          <Olivas Settlement>
+     8.78 [  7.9] Lalande 29917
+     9.40 [  5.7] DN Draconis
+     9.72 [  4.9] LP 98-132
+          <Freeport>
+          <Prospect Five>
 
 ==============================================================================
 == How can I add or update the data?
