@@ -637,7 +637,7 @@ def lookupSystem(name, intent):
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
                         
-def lengthAlongPill(sc):
+def distanceAlongPill(sc, percent):
     """
         Estimate a distance along the Pill using 2 reference systems
     """
@@ -649,6 +649,8 @@ def lengthAlongPill(sc):
     length = math.sqrt((sb.posX-sa.posX) * (sb.posX-sa.posX) 
                      + (sb.posY-sa.posY) * (sb.posY-sa.posY)
                      + (sb.posZ-sa.posZ) * (sb.posZ-sa.posZ))
+    if percent:
+        return 100. * dotProduct / length / length
     
     return dotProduct / length
     
@@ -679,15 +681,13 @@ def localCommand(args):
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         pillLength = ""
         if args.detail > 0:
-            pillLength = " [{:5.1f}]".format(lengthAlongPill(system))
+            pillLengthFormat = " [{:4.0f}%]" if args.percent else " [{:5.1f}]"
+            pillLength = pillLengthFormat.format(distanceAlongPill(system, args.percent))
         print("{:5.2f}{} {}".format(dist, pillLength, system.str()))
         if args.detail > 1:
             for (station) in system.stations:
-                stationDistance = ""
-                if station.lsFromStar>0:
-                    stationDistance = " {} ls".format(station.lsFromStar)
+                stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar>0 else ""
                 print("      <{}>{}".format(station.str(), stationDistance))
-
 
 def navCommand(args):
     """
@@ -898,7 +898,8 @@ def main():
             ParseArgument('--ship', help='Use the maximum jump distance of the specified ship (defaults to the empty value).', metavar='shiptype', type=str),
             ParseArgument('--full', help='(With --ship) Limits the jump distance to that of a full ship.', action='store_true', default=False),
             ParseArgument('--ly', help='Maximum light years to measure.', metavar='N.NN', type=float, dest='ly'),
-        ]
+            ParseArgument('--percent', help='Show distance up pill as percent.', action='store_true', default=False),
+       ]
     )
 
     # "run" calculates a trade run.
