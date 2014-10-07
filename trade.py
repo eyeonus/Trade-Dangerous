@@ -37,6 +37,7 @@ import argparse             # For parsing command line args.
 import sys                  # Inevitably.
 import time
 import pathlib              # For path
+import os
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
@@ -481,6 +482,18 @@ def runCommand(args):
 ######################################################################
 # "update" command functionality.
 
+def getSublimeTextPaths():
+    paths = []
+    import platform
+    system = platform.system()
+    if system == 'Windows':
+        for folder in ["Program Files", "Program Files (x86)"]:
+            for version in [2, 3]:
+                paths.append("C:\\{}\\Sublime Text {}".format(folder, version))
+    paths += os.environ['PATH'].split(os.pathsep)
+    return [ paths, "sublime_text.exe" if system == 'Windows' else "subl" ]
+
+
 def editUpdate(args, stationID):
     """
         Dump the price data for a specific station to a file and
@@ -506,11 +519,17 @@ def editUpdate(args, stationID):
             if "SUBLIME_EDITOR" in os.environ:
                 editor = os.environ["SUBLIME_EDITOR"]
             else:
-                editor = "C:\\Program Files\\Sublime Text 3\\sublime_text.exe"
-                if not pathlib.Path(editor).exists():
-                    editor = "C:\\Program Files (x86)\\Sublime Text 3\\sublime_text.exe"
-                    if not pathlib.Path(editor).exists():
-                        print("ERROR: --sublime specified but could not find your Sublime Text 3 installation. Either specify the path to your editor with --editor or set the SUBLIME_EDITOR environment variable.")
+                (paths, binary) = getSublimeTextPaths()
+                for path in paths:
+                    candidate = os.path.join(path, binary)
+                    try:
+                        if pathlib.Path(candidate).exists():
+                            editor = candidate
+                            break
+                    except OSError:
+                        pass
+                else:
+                    raise CommandLineError("ERROR: --sublime specified but could not find your Sublime Text installation. Either specify the path to your editor with --editor or set the SUBLIME_EDITOR environment variable.")
         editorArgs += [ "--wait" ]
     elif args.notepad:
         if args.debug: print("# Notepad mode")
@@ -541,8 +560,11 @@ def editUpdate(args, stationID):
 
         # Launch the editor
         editorCommandLine = [ editor ] + editorArgs + [ absoluteFilename ]
-        if args.debug: print("# Invoking [{}]".format(str(editorCommandLine)))
-        result = subprocess.call(editorCommandLine)
+        if args.debug: print("# Invoking [{}]".format(' '.join(editorCommandLine)))
+        try:
+            result = subprocess.call(editorCommandLine)
+        except FileNotFoundError:
+            raise CommandLineError("Unable to launch specified editor: {}".format(editorCommandLine))
         if result != 0:
             print("NOTE: Edit failed ({}), nothing to import.".format(result))
             sys.exit(1)
@@ -847,7 +869,7 @@ def main():
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
             [   # Mutually exclusive group:
-                ParseArgument('--sublime', help='Like --editor but uses Sublime Text 3, which is nice.', action=EditActionStoreTrue),
+                ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),
             ]
         ]
@@ -878,3 +900,4 @@ if __name__ == "__main__":
         print("%s: %s" % (sys.argv[0], str(e)))
     if mfd:
         mfd.finish()
+

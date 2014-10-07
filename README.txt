@@ -18,6 +18,12 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.0.2 Oct 06/2014
+  More systems/stations from ShadowGar!
+
+v4.0.1 Oct 06/2014
+  Improved "--sublime" option, now supports Sublime Text 2 and works under Mac/Lin
+
 v4.0 Oct 05/2014
   Updated to Beta 2 - All credit to ShadowGar
 
@@ -399,7 +405,7 @@ UPDATE sub-command:
 
     --sublime
     --subl
-      Like "--editor" but finds and uses the Sublime Text 3 editor.
+      Like "--editor" but finds and uses the Sublime Text editor (2 and 3).
       You can use "--editor" to tell it exactly where the editor
       is located if it fails to find it.
 
