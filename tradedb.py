@@ -831,13 +831,9 @@ class TradeDB(object):
                     return val(entry)
                 if matchVal and matchVal != val(entry):
                     # Check if one match matches a whole word and prefer that.
-                    wordStr = r'\b{}\b'.format(lookup)
-                    wordRe = re.compile(wordStr, re.IGNORECASE)
-                    prevWholeWord = wordRe.match(matchKey)
-                    newWholeWord = wordRe.match(entryKey)
-                    print("%s %s %s / %s" % (wordStr, wordRe, prevWholeWord, newWholeWord))
-                    if prevWholeWord:
-                        if not newWholeWord:
+                    wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
+                    if wordRe.match(matchKey):
+                        if not wordRe.match(entryKey):
                             continue
                         raise AmbiguityError(listType, lookup, matchKey, entryKey)
                 matchKey, matchVal = entryKey, val(entry)
