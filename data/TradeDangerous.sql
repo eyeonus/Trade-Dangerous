@@ -664,9 +664,6 @@ INSERT INTO "Station" VALUES(282,'Piccard Point',308,0.0);
 INSERT INTO "Station" VALUES(283,'Griffith Terminal',309,0.0);
 INSERT INTO "Station" VALUES(284,'Moseley Park',311,0.0);
 INSERT INTO "Station" VALUES(285,'Kippax Depot',312,0.0);
-INSERT INTO "Station" VALUES(186,'Bruce Terminal',245,0.0);
-
-
 
 
 
