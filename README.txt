@@ -18,6 +18,13 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.0.3 Oct 12/2014
+  Issue #17 "--avoid gold" conflicted with "Goldstein Mines"
+  Issue #13 "Nelson Port" was listed as "Nelson Point"
+  Issue #12 "-w" was failing because Rigel has no links
+  Issue #11 Partial name matches weren't generating an ambiguity (e.g. 'ra' or 'ross')
+  Issue #19 Beryllium and Gallium were incorrectly identified as Minerals
+
 v4.0.2 Oct 06/2014
   More systems/stations from ShadowGar!
 
