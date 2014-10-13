@@ -603,7 +603,7 @@ INSERT INTO "Station" VALUES(221,'Guidoni Landing',240,0.0);
 INSERT INTO "Station" VALUES(222,'Gannt Enterprise',241,0.0);
 INSERT INTO "Station" VALUES(223,'Solovyov Colony',242,0.0);
 INSERT INTO "Station" VALUES(224,'Comino Dock',243,0.0);
-INSERT INTO "Station" VALUES(225,'Nelson Point',244,0.0);
+INSERT INTO "Station" VALUES(225,'Nelson Port',244,0.0);
 INSERT INTO "Station" VALUES(226,'Mcmonagle Hub',246,0.0);
 INSERT INTO "Station" VALUES(227,'Volterra Refinery',247,0.0);
 INSERT INTO "Station" VALUES(228,'Al-Khalili Refinery',248,0.0);
