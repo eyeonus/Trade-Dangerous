@@ -43,6 +43,7 @@ import math
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
 # of idiot puts globals in their programs?
+import errno
 
 args = None
 originStation, finalStation = None, None
@@ -359,7 +360,7 @@ def processRunArguments(args):
 
     unspecifiedHops = args.hops + (0 if originStation else 1) - (1 if finalStation else 0)
     if len(viaStations) > unspecifiedHops:
-        raise CommandLineError("Too many vias: {} stations vs {} hops available.".format(len(viaStations), availableHops))
+        raise CommandLineError("Too many vias: {} stations vs {} hops available.".format(len(viaStations), unspecifiedHops))
 
     # If the user specified a ship, use it to fill out details unless
     # the user has explicitly supplied them. E.g. if the user says
