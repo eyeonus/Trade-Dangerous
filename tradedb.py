@@ -766,8 +766,8 @@ class TradeDB(object):
         # Check that things correctly reference themselves.
         # Check that system links are bi-directional
         for (name, sys) in self.systemByName.items():
-            if not sys.links:
-                raise ValueError("System %s has no links" % name)
+            if not sys.links and self.debug:
+                print("NOTE: System '%s' has no links" % name)
             if sys in sys.links:
                 raise ValueError("System %s has a link to itself!" % name)
             if name in sys.links:
@@ -834,7 +834,10 @@ class TradeDB(object):
                     wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
                     if wordRe.match(matchKey):
                         if not wordRe.match(entryKey):
+                            # old case was a stronger match
                             continue
+                        raise AmbiguityError(listType, lookup, matchKey, entryKey)
+                    elif not wordRe.match(entryKey):
                         raise AmbiguityError(listType, lookup, matchKey, entryKey)
                 matchKey, matchVal = entryKey, val(entry)
         if not matchKey:

@@ -50,7 +50,13 @@ def priceLineNegotiator(priceFile, db, debug=0):
     systemByName = { name: ID for (ID, name) in cur }
 
     categoriesByName = { name: ID for (ID, name) in cur.execute("SELECT category_id, name FROM category") }
-    itemsByName = { "{}:{}".format(catID, name): itemID for (catID, itemID, name) in cur.execute("SELECT category_id, item_id, name FROM item") }
+
+    # Are there any item names which appear in two categories?
+    qualityItemWithCategory = cur.execute("SELECT COUNT(*) FROM (SELECT name FROM Item GROUP BY 1 HAVING COUNT(*) > 1)").fetchone()[0]
+    if qualityItemWithCategory:
+        itemsByName = { "{}.{}".format(catID, name): itemID for (catID, itemID, name) in cur.execute("SELECT category_id, item_id, name FROM item") }
+    else:
+        itemsByName = { name: itemID for (itemID, name) in cur.execute("SELECT item_id, name FROM item") }
 
     for line in priceFile:
         try:
@@ -90,7 +96,7 @@ def priceLineNegotiator(priceFile, db, debug=0):
                 sys.exit(1)
             itemName, stationPaying, stationAsking, modified = matches.group(1), int(matches.group(2)), int(matches.group(3)), matches.group(4)
             demand, demandLevel, stock, stockLevel = int(matches.group(5) or -1), int(matches.group(6) or -1), int(matches.group(7) or -1), int(matches.group(8) or -1)
-            itemID = itemsByName["{}:{}".format(categoryID, itemName)]
+            itemID = itemsByName["{}:{}".format(categoryID, itemName)] if qualityItemWithCategory else itemsByName[itemName]
             uiOrder += 1
             yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand, demandLevel, stock, stockLevel)
         except (AttributeError, IndexError):

@@ -268,12 +268,16 @@ def parseAvoids(args):
         try:
             item = tdb.lookupItem(avoid)
             avoidItems.append(item)
+            if TradeDB.normalizedStr(item.name()) == TradeDB.normalizedStr(avoid):
+                continue
         except LookupError:
             pass
         # Is it a system perhaps?
         try:
             system = tdb.lookupSystem(avoid)
             avoidSystems.append(system)
+            if TradeDB.normalizedStr(system.str()) == TradeDB.normalizedStr(avoid):
+                continue
         except LookupError:
             pass
         # Or perhaps it is a station
@@ -282,6 +286,8 @@ def parseAvoids(args):
             if (not system) or (station.system is not system):
                 avoidSystems.append(station.system)
                 avoidStations.append(station)
+            if TradeDB.normalizedStr(station.str()) == TradeDB.normalizedStr(avoid):
+                continue
         except LookupError as e:
             pass
 
