@@ -18,6 +18,12 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.1.0 Oct 15/2014
+  Merged Bernd Gollesch's changes to eliminate the .prices file from the
+  repository and to add "--all" to the "update" command.
+  Also fixed problems caused when the .prices file is missing and there is
+  limited or no data available - user should get better feedback now.
+
 v4.0.4 Oct 15/2014
   Issue #20 Improved fuzzy-matching of system/star names
   Fixed "Lacaille Prospect"
