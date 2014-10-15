@@ -713,7 +713,9 @@ class TradeDB(object):
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
+        self.tradingCount = 0
         for (srcStnID, dstStnID, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
+            self.tradingCount += 1
             srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
             srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 

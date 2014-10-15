@@ -76,7 +76,21 @@ class CommandLineError(Exception):
     def __init__(self, errorStr):
         self.errorStr = errorStr
     def __str__(self):
-        return 'Error in command line: %s' % (self.errorStr)
+        return 'Error in command line: {}'.format(self.errorStr)
+
+
+class NoDataError(CommandLineError):
+    """
+        Raised when a request is made for which no data can be found.
+        Attributes:
+            errorStr        Describe the problem to the user.
+    """
+    def __init__(self, errorStr):
+        self.errorStr = errorStr
+    def __str__(self):
+        return "Error: {}\n".format(self.errorStr) + \
+                "This can happen if you have not entered any price data yet or if your price database is small enough there are no profitable trades in it.\n" + \
+                "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n"
 
 
 class HelpAction(argparse.Action):
@@ -317,6 +331,8 @@ def parseVias(args):
 
     for via in ",".join(args.via).split(","):
         station = tdb.lookupStation(via)
+        if station.itemCount == 0:
+            raise NoDataError("No price data available for via station {}.".format(station.name()))
         viaStations.add(station)
 
 
@@ -401,6 +417,15 @@ def processRunArguments(args):
                  (finalStation and finalStation in viaStations)):
             raise CommandLineError("from/to/via repeat conflicts with --unique")
 
+    if originStation and originStation.itemCount == 0:
+        raise NoDataError("Start station {} doesn't have any price data.".format(originStation.name()))
+    if finalStation and finalStation.itemCount == 0:
+        raise NoDataError("End station {} doesn't have any price data.".format(finalStation.name()))
+    if finalStation and args.hops == 1 and originStation and not finalStation in originStation.tradeWith:
+        raise CommandLineError("No profitable items found between {} and {}".format(originStation.name(), finalStation.name()))
+    if originStation and len(originStation.tradingWith) == 0:
+        raise NoDataError("No data found for potential buyers for items from {}.".format(originStation.name()))
+
     if args.x52pro:
         from mfd import X52ProMFD
         mfd = X52ProMFD()
@@ -412,6 +437,9 @@ def runCommand(args):
     global tdb
 
     if args.debug: print("# 'run' mode")
+
+    if tdb.tradingCount == 0:
+        raise NoDataError("Database does not contain any profitable trades.")
 
     processRunArguments(args)
 
@@ -471,7 +499,7 @@ def runCommand(args):
         routes = [ route for route in routes if viaStations & set(route.route[viaStartPos:]) ]
 
     if not routes:
-        print("No routes match your selected criteria.")
+        print("No routes matched your critera, or price data for that route is missing.")
         return
 
     routes.sort()
@@ -869,6 +897,9 @@ def main():
 
     # "update" provides the user a way to edit prices.
     updateParser = makeSubParser(subparsers, 'update', 'Update prices for a station.', updateCommand,
+        epilog="Generates a human-readable version of the price list for a given station and opens it in the specified text editor.\n"
+            "The format is intended to closely resemble the presentation of the market in-game. If you change the order items are listed in, "
+            "the order will be kept for future edits, making it easier to quickly check for changes.",
         arguments = [
             ParseArgument('station', help='Name of the station to update.', type=str)            
         ],
