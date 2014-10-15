@@ -403,7 +403,7 @@ INSERT INTO "Station" VALUES(20,'Stone Enterprise',47,0.0);
 INSERT INTO "Station" VALUES(21,'Derrickson''s Escape',22,0.0);
 INSERT INTO "Station" VALUES(22,'Xiaoguan Hub',39,0.0);
 INSERT INTO "Station" VALUES(23,'Gernhardt Camp',32,0.0);
-INSERT INTO "Station" VALUES(24,'Louis De Lacaille Prospect',31,759.0);
+INSERT INTO "Station" VALUES(24,'Lacaille Prospect',31,759.0);
 INSERT INTO "Station" VALUES(25,'Maunder''s Hope',53,0.0);
 INSERT INTO "Station" VALUES(26,'Novitski Oasis',43,0.0);
 INSERT INTO "Station" VALUES(27,'Brooks Estate',46,0.0);
