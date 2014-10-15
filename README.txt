@@ -18,6 +18,11 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.0.4 Oct 15/2014
+  Issue #20 Improved fuzzy-matching of system/star names
+  Fixed "Lacaille Prospect"
+  "trade.py" is now executable by default on Linux/MacOS
+
 v4.0.3 Oct 12/2014
   Issue #17 "--avoid gold" conflicted with "Goldstein Mines"
   Issue #13 "Nelson Port" was listed as "Nelson Point"
