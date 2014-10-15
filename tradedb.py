@@ -821,7 +821,11 @@ class TradeDB(object):
         """
 
         needle = TradeDB.normalizedStr(lookup)
-        matchKey, matchVal = None, None
+        partialMatches, wordMatches = [], []
+        # make a regex to match whole words
+        wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
+        # describe a match
+        Match = namedtuple('Match', [ 'key', 'value' ])
         for entry in values:
             entryKey = key(entry)
             normVal = TradeDB.normalizedStr(entryKey)
@@ -829,20 +833,23 @@ class TradeDB(object):
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
                     return val(entry)
-                if matchVal and matchVal != val(entry):
-                    # Check if one match matches a whole word and prefer that.
-                    wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
-                    if wordRe.match(matchKey):
-                        if not wordRe.match(entryKey):
-                            # old case was a stronger match
-                            continue
-                        raise AmbiguityError(listType, lookup, matchKey, entryKey)
-                    elif not wordRe.match(entryKey):
-                        raise AmbiguityError(listType, lookup, matchKey, entryKey)
-                matchKey, matchVal = entryKey, val(entry)
-        if not matchKey:
-            raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
-        return matchVal
+                match = Match(entryKey, val(entry))
+                if wordRe.match(entryKey):
+                    wordMatches.append(match)
+                else:
+                    partialMatches.append(match)
+        # Whole word matches trump partial matches
+        if wordMatches:
+            if len(wordMatches) > 1:
+                raise AmbiguityError(listType, lookup, wordMatches[0].key, wordMatches[1].key)
+            return wordMatches[0].value
+        # Fuzzy matches
+        if partialMatches:
+            if len(partialMatches) > 1:
+                raise AmbiguityError(listType, lookup, partialMatches[0].key, partialMatches[1].key)
+            return partialMatches[0].value
+        # No matches
+        raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
 
 
     @staticmethod
