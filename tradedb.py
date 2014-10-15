@@ -96,10 +96,10 @@ class Station(object):
         Describes a station within a given system along with what trade
         opportunities it presents.
     """
-    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith')
+    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith', 'itemCount')
 
-    def __init__(self, ID, system, dbname, lsFromStar=0.0):
-        self.ID, self.system, self.dbname, self.lsFromStar = ID, system, dbname, lsFromStar
+    def __init__(self, ID, system, dbname, lsFromStar, itemCount):
+        self.ID, self.system, self.dbname, self.lsFromStar, self.itemCount = ID, system, dbname, lsFromStar, itemCount
         self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
         system.addStation(self)
 
@@ -489,14 +489,14 @@ class TradeDB(object):
             If you have previously loaded Stations, this will orphan the old objects.
         """
         stmt = """
-                SELECT station_id, system_id, name, ls_from_star
+                SELECT station_id, system_id, name, ls_from_star, (SELECT COUNT(*) FROM Price WHERE station_id = Station.station_id) itemCount
                   FROM Station
             """
         self.cur.execute(stmt)
         stationByID, stationByName = {}, {}
         systemByID = self.systemByID
-        for (ID, systemID, name, lsFromStar) in self.cur:
-            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar)
+        for (ID, systemID, name, lsFromStar, itemCount) in self.cur:
+            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
 
         self.stationByID, self.stationByName = stationByID, stationByName
         if self.debug > 1: print("# Loaded %d Stations" % len(stationByID))
