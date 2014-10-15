@@ -42,17 +42,18 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
         modifiedStamp = "Price.modified"
 
     stationClause = "1" if not stationID else "Station.station_id = {}".format(stationID)
+    defaultDemandVal = -1
     if priceCount == 0:
         # no prices, generate an emtpy one with all items
         cur.execute("""
             SELECT  Station.system_id, Station.station_id, Item.category_id, Item.item_id,
                     0, 0, CURRENT_TIMESTAMP,
-                    0, 0, 0, 0
+                    {defDemand}, {defDemand}, {defDemand}, {defDemand}
                FROM Item LEFT OUTER JOIN Station, Category
-              WHERE {}
+              WHERE {stationClause}
                 AND Item.category_id = Category.category_id
               ORDER BY Station.system_id, Station.station_id, Category.name, Item.item_id
-        """.format(stationClause))
+        """.format(stationClause=stationClause, defDemand=defaultDemandVal))
     else:
         cur.execute("""
             SELECT  Station.system_id
@@ -61,17 +62,17 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
                     , Price.item_id
                     , Price.sell_to
                     , Price.buy_from
-                    , {}  -- real or current timestamp
-                    , IFNULL(Price.demand, -1)
-                    , IFNULL(Price.demand_level, -1)
-                    , IFNULL(Price.stock, -1)
-                    , IFNULL(Price.stock_level, -1)
+                    , {modStamp}  -- real or current timestamp
+                    , IFNULL(Price.demand, {defDemand})
+                    , IFNULL(Price.demand_level, {defDemand})
+                    , IFNULL(Price.stock, {defDemand})
+                    , IFNULL(Price.stock_level, {defDemand})
               FROM  Station, Item, Category, Price
-             WHERE  {}  -- station clause
+             WHERE  {stationClause}  -- station clause
                     AND Station.station_id = Price.station_id
                     AND (Item.category_id = Category.category_id) AND Item.item_id = Price.item_id
              ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Price.item_id
-        """.format(modifiedStamp, stationClause))
+        """.format(modStamp=modifiedStamp, stationClause=stationClause, defDemand=defaultDemandVal))
 
     lastSys, lastStn, lastCat = None, None, None
 
