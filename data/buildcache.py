@@ -112,18 +112,20 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
         if debug: print("* Deleting stale entries for {}".format(stationID))
         db.execute("DELETE FROM Price WHERE station_id = {}".format(stationID))
 
-    with pricesPath.open() as pricesFile:
-        bindValues = []
-        for price in priceLineNegotiator(pricesFile, db, debug):
-            if debug > 2: print(price)
-            bindValues += [ price ]
-        stmt = """
-                   INSERT OR REPLACE INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified, demand, demand_level, stock, stock_level)
-                   VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP), ?, ?, ?, ?)
-                """
-        db.executemany(stmt, bindValues)
-    db.commit()
-
+    try:
+        with pricesPath.open() as pricesFile:
+            bindValues = []
+            for price in priceLineNegotiator(pricesFile, db, debug):
+                if debug > 2: print(price)
+                bindValues += [ price ]
+            stmt = """
+                       INSERT OR REPLACE INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified, demand, demand_level, stock, stock_level)
+                       VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP), ?, ?, ?, ?)
+                    """
+            db.executemany(stmt, bindValues)
+        db.commit()
+    except FileNotFoundError:
+        print("WARNING: processPricesFile found no {} file".format(pricesPath))
 
 def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     """

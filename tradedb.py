@@ -386,18 +386,23 @@ class TradeDB(object):
             # we *created* the db file.
             dbFileCreatedTimestamp = self.dbPath.stat().st_mtime
 
-            sqlStat, pricesStat = self.sqlPath.stat(), self.pricesPath.stat()
-            sqlFileTimestamp = max(sqlStat.st_mtime, sqlStat.st_ctime)
-            pricesFileTimestamp = max(pricesStat.st_mtime, pricesStat.st_ctime)
+            def getMostRecentTimestamp(altPath):
+                try:
+                    stat = altPath.stat()
+                    return max(stat.st_mtime, stat.st_ctime)
+                except FileNotFoundError:
+                    return 0
 
-            if dbFileCreatedTimestamp > max(sqlFileTimestamp, pricesFileTimestamp):
+            sqlTimestamp, pricesTimestamp = getMostRecentTimestamp(self.sqlPath), getMostRecentTimestamp(self.pricesPath)
+
+            if dbFileCreatedTimestamp > max(sqlTimestamp, pricesTimestamp):
                 # db is newer.
                 if self.debug > 1:
                     print("- SQLite is up to date")
                 return
 
             if self.debug:
-                print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlFileTimestamp, pricesFileTimestamp))
+                print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp))
         else:
             if self.debug:
                 print("* Building DB cache")
