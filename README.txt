@@ -17,6 +17,8 @@ factors that into the shopping for each subsequent hop.
 
 == CHANGE LOG
 ==============================================================================
+v4.2.1 Oct 15/2014
+  Added more Stars and corrected HAGALAZ.
 
 v4.2.0 Oct 15/2014
   Merged Smacker65's "local" sub-command (lists systems within jump range of you)
