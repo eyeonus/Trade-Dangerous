@@ -18,6 +18,20 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.2.0 Oct 15/2014
+  Merged Smacker65's "local" sub-command (lists systems within jump range of you)
+
+v4.1.0 Oct 15/2014
+  Merged Bernd Gollesch's (gazelle) changes to eliminate the .prices file from the
+  repository and to add "--all" to the "update" command.
+  Also fixed problems caused when the .prices file is missing and there is
+  limited or no data available - user should get better feedback now.
+
+v4.0.4 Oct 15/2014
+  Issue #20 Improved fuzzy-matching of system/star names
+  Fixed "Lacaille Prospect"
+  "trade.py" is now executable by default on Linux/MacOS
+
 v4.0.3 Oct 12/2014
   Issue #17 "--avoid gold" conflicted with "Goldstein Mines"
   Issue #13 "Nelson Port" was listed as "Nelson Point"
@@ -472,6 +486,93 @@ NAV sub-command:
     Via    | BD+47 2112                     |   11.81 |    26.28
     Arrive | LHS 2887                       |   11.73 |    38.01
 
+LOCAL sub-command:
+
+  Provides details of local stations without worrying about trade. By default, if
+  given a ship, it uses the max dry range of the ship. Use --full if you
+  want to restrict to systems with a full cargo hold.
+
+  trade.py [-q | -v] local [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
+
+    --ship name
+      Uses the values for an empty ship to constrain jump ranges,
+      --ship=ana
+      --ship type6
+      --ship 6
+
+    --full
+      Used with --ship, uses the max range of the ship with a full load,
+      --ship cobra --full
+
+    --ly N.NN
+      Constrains local systems to a maximum ly distance
+      --ly 20.0
+    
+    --pill
+      Show estimated length along the Pill in ly
+
+    --percent
+      Like --pill but shows percentage instead
+
+    -v
+      Show stations
+      
+    system
+      Name of the system or a station in the system,
+
+  Examples:
+    > trade.py local --ly 11.0 dahan
+    Local systems to DAHAN within 11.0 ly.
+	--------------------------------------
+	 4.66 Asellus Primus
+	 5.12 Morgor
+	 6.41 Eranin
+	 8.26 Meliae
+	 8.58 LHS 2884
+	 8.60 LP 98-132
+	 9.20 Aulis
+	 9.75 GD 319
+	10.08 BD+47 2112
+	10.33 i Bootis
+    
+    > trade.py -v local --ly 11.0 sur
+    Local systems to SURYA within 11.0 ly.
+    --------------------------------------
+     9.22 [  2.2] 14 Herculis
+     9.23 [  1.0] Vaccimici
+     9.35 [ 10.0] CM Draco
+    10.59 [ 10.3] V1090 Herculis
+    10.69 [ -1.6] Chi Herculis
+    
+    > trade.py -vv local --ly 10.0 3006
+    Local systems to LHS 3006 within 10.0 ly.
+    -----------------------------------------
+     5.64 [  0.4] Acihaut
+          <Cuffey Plant>
+          <Mastracchio Base>
+     6.00 [  5.1] G 239-25
+          <Bresnik Mine>
+     6.47 [  1.1] Nang Ta-khian
+          <Hay Point>
+          <Hadwell Orbital>
+     7.51 [ -0.0] Eranin
+          <Azeban City>
+          <Azeban Orbital>
+          <Eranin 4 Survey>
+     7.74 [ -4.9] Aulin
+          <Aulin Enterprise>
+          <Harbaugh Station>
+          <Onufrienko Station>
+     8.12 [ -2.8] i Bootis
+          <Chango Dock>
+          <Maher Stellar Research>
+     8.52 [ -6.4] BD+47 2112
+          <Olivas Settlement>
+     8.78 [  7.9] Lalande 29917
+     9.40 [  5.7] DN Draconis
+     9.72 [  4.9] LP 98-132
+          <Freeport>
+          <Prospect Five>
 
 ==============================================================================
 == How can I add or update the data?

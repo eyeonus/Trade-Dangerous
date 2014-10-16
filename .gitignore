@@ -6,4 +6,6 @@ tmp
 
 data/TradeDangerous.db
 data/TradeDangerous.db-journal
+data/TradeDangerous.prices
 market/
+*.orig

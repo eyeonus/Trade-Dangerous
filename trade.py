@@ -38,10 +38,12 @@ import sys                  # Inevitably.
 import time
 import pathlib              # For path
 import os
+import math
 
 ######################################################################
 # The thing I hate most about Python is the global lock. What kind
 # of idiot puts globals in their programs?
+import errno
 
 args = None
 originStation, finalStation = None, None
@@ -76,7 +78,21 @@ class CommandLineError(Exception):
     def __init__(self, errorStr):
         self.errorStr = errorStr
     def __str__(self):
-        return 'Error in command line: %s' % (self.errorStr)
+        return 'Error in command line: {}'.format(self.errorStr)
+
+
+class NoDataError(CommandLineError):
+    """
+        Raised when a request is made for which no data can be found.
+        Attributes:
+            errorStr        Describe the problem to the user.
+    """
+    def __init__(self, errorStr):
+        self.errorStr = errorStr
+    def __str__(self):
+        return "Error: {}\n".format(self.errorStr) + \
+                "This can happen if you have not entered any price data yet or if your price database is small enough there are no profitable trades in it.\n" + \
+                "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n"
 
 
 class HelpAction(argparse.Action):
@@ -317,6 +333,8 @@ def parseVias(args):
 
     for via in ",".join(args.via).split(","):
         station = tdb.lookupStation(via)
+        if station.itemCount == 0:
+            raise NoDataError("No price data available for via station {}.".format(station.name()))
         viaStations.add(station)
 
 
@@ -364,7 +382,7 @@ def processRunArguments(args):
 
     unspecifiedHops = args.hops + (0 if originStation else 1) - (1 if finalStation else 0)
     if len(viaStations) > unspecifiedHops:
-        raise CommandLineError("Too many vias: {} stations vs {} hops available.".format(len(viaStations), availableHops))
+        raise CommandLineError("Too many vias: {} stations vs {} hops available.".format(len(viaStations), unspecifiedHops))
 
     # If the user specified a ship, use it to fill out details unless
     # the user has explicitly supplied them. E.g. if the user says
@@ -401,6 +419,15 @@ def processRunArguments(args):
                  (finalStation and finalStation in viaStations)):
             raise CommandLineError("from/to/via repeat conflicts with --unique")
 
+    if originStation and originStation.itemCount == 0:
+        raise NoDataError("Start station {} doesn't have any price data.".format(originStation.name()))
+    if finalStation and finalStation.itemCount == 0:
+        raise NoDataError("End station {} doesn't have any price data.".format(finalStation.name()))
+    if finalStation and args.hops == 1 and originStation and not finalStation in originStation.tradeWith:
+        raise CommandLineError("No profitable items found between {} and {}".format(originStation.name(), finalStation.name()))
+    if originStation and len(originStation.tradingWith) == 0:
+        raise NoDataError("No data found for potential buyers for items from {}.".format(originStation.name()))
+
     if args.x52pro:
         from mfd import X52ProMFD
         mfd = X52ProMFD()
@@ -412,6 +439,9 @@ def runCommand(args):
     global tdb
 
     if args.debug: print("# 'run' mode")
+
+    if tdb.tradingCount == 0:
+        raise NoDataError("Database does not contain any profitable trades.")
 
     processRunArguments(args)
 
@@ -471,7 +501,7 @@ def runCommand(args):
         routes = [ route for route in routes if viaStations & set(route.route[viaStartPos:]) ]
 
     if not routes:
-        print("No routes match your selected criteria.")
+        print("No routes matched your critera, or price data for that route is missing.")
         return
 
     routes.sort()
@@ -557,7 +587,7 @@ def editUpdate(args, stationID):
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            prices.dumpPrices(args.db, file=tmpFile, stationID=stationID, debug=args.debug)
+            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -641,6 +671,60 @@ def lookupSystem(name, intent):
         except LookupError:
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
+                        
+def distanceAlongPill(sc, percent):
+    """
+        Estimate a distance along the Pill using 2 reference systems
+    """
+    sa = tdb.lookupSystem("Eranin")
+    sb = tdb.lookupSystem("HIP 107457")
+    dotProduct = (sb.posX-sa.posX) * (sc.posX-sa.posX) \
+               + (sb.posY-sa.posY) * (sc.posY-sa.posY) \
+               + (sb.posZ-sa.posZ) * (sc.posZ-sa.posZ)
+    length = math.sqrt((sb.posX-sa.posX) * (sb.posX-sa.posX) 
+                     + (sb.posY-sa.posY) * (sb.posY-sa.posY)
+                     + (sb.posZ-sa.posZ) * (sb.posZ-sa.posZ))
+    if percent:
+        return 100. * dotProduct / length / length
+    
+    return dotProduct / length
+    
+def localCommand(args):
+    """
+        Local systems
+    """
+
+    srcSystem = lookupSystem(args.system, 'system')
+
+    if args.ship:
+        ship = tdb.lookupShip(args.ship)
+        args.ship = ship
+        if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
+    ly = args.ly or tdb.maxSystemLinkLy
+
+    title = "Local systems to {} within {} ly.".format(srcSystem.name(), ly)
+    print(title)
+    print('-' * len(title))
+
+    distances = { }
+
+    for (destSys, destDist) in srcSystem.links.items():
+        if args.debug:
+            print("Checking {} dist={:5.2f}".format(destSys.str(), destDist))
+        if destDist > ly:
+            continue
+        distances[destSys] = destDist
+
+    for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
+        pillLength = ""
+        if args.pill or args.percent:
+            pillLengthFormat = " [{:4.0f}%]" if args.percent else " [{:5.1f}]"
+            pillLength = pillLengthFormat.format(distanceAlongPill(system, args.percent))
+        print("{:5.2f}{} {}".format(dist, pillLength, system.str()))
+        if args.detail:
+            for (station) in system.stations:
+                stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
+                print("\t<{}>{}".format(station.str(), stationDistance))
 
 def navCommand(args):
     """
@@ -841,6 +925,22 @@ def main():
             ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
         ]
     )
+    
+    # "local" shows systems local to given system.
+    localParser = makeSubParser(subparsers, 'local', 'Calculate local systems.', localCommand,
+        arguments = [
+            ParseArgument('system', help='System to measure from', type=str),
+        ],
+        switches = [
+            ParseArgument('--ship', help='Use the maximum jump distance of the specified ship (defaults to the empty value).', metavar='shiptype', type=str),
+            ParseArgument('--full', help='(With --ship) Limits the jump distance to that of a full ship.', action='store_true', default=False),
+            ParseArgument('--ly', help='Maximum light years to measure.', metavar='N.NN', type=float, dest='ly'),
+            [
+              ParseArgument('--pill', help='Show distance along the pill in ly.', action='store_true', default=False),
+              ParseArgument('--percent', help='Show distance along pill as percentage.', action='store_true', default=False),
+            ],
+       ]
+    )
 
     # "run" calculates a trade run.
     runParser = makeSubParser(subparsers, 'run', 'Calculate best trade run.', runCommand,
@@ -869,11 +969,15 @@ def main():
 
     # "update" provides the user a way to edit prices.
     updateParser = makeSubParser(subparsers, 'update', 'Update prices for a station.', updateCommand,
+        epilog="Generates a human-readable version of the price list for a given station and opens it in the specified text editor.\n"
+            "The format is intended to closely resemble the presentation of the market in-game. If you change the order items are listed in, "
+            "the order will be kept for future edits, making it easier to quickly check for changes.",
         arguments = [
             ParseArgument('station', help='Name of the station to update.', type=str)            
         ],
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
+            ParseArgument('--all', help='Generates the temporary file with all columns and new timestamp.', action='store_true', default=False),
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),

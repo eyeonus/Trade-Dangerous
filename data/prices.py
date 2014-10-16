@@ -29,25 +29,51 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
     longestName = max(items.values(), key=lambda name: len(name))
     longestNameLen = len(longestName)
 
+    if stationID:
+        # check if there are prices for the station
+        cur.execute("SELECT COUNT(*) FROM Price WHERE Price.station_id = {}".format(stationID))
+        priceCount = cur.fetchone()[0]
+        # generate new timestamp in the select
+        modifiedStamp = "CURRENT_TIMESTAMP"
+    else:
+        # no station, no check
+        priceCount = 1
+        # use old timestamp for the export
+        modifiedStamp = "Price.modified"
+
     stationClause = "1" if not stationID else "Station.station_id = {}".format(stationID)
-    cur.execute("""
-        SELECT  Station.system_id
-                , Price.station_id
-                , Item.category_id
-                , Price.item_id
-                , Price.sell_to
-                , Price.buy_from
-                , Price.modified
-                , IFNULL(Price.demand, -1)
-                , IFNULL(Price.demand_level, -1)
-                , IFNULL(Price.stock, -1)
-                , IFNULL(Price.stock_level, -1)
-          FROM  Station, Item, Category, Price
-         WHERE  {}  -- station clause
-                AND Station.station_id = Price.station_id
-                AND (Item.category_id = Category.category_id) AND Item.item_id = Price.item_id
-         ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Price.item_id
-    """.format(stationClause))
+    defaultDemandVal = -1
+    if priceCount == 0:
+        # no prices, generate an emtpy one with all items
+        cur.execute("""
+            SELECT  Station.system_id, Station.station_id, Item.category_id, Item.item_id,
+                    0, 0, CURRENT_TIMESTAMP,
+                    {defDemand}, {defDemand}, {defDemand}, {defDemand}
+               FROM Item LEFT OUTER JOIN Station, Category
+              WHERE {stationClause}
+                AND Item.category_id = Category.category_id
+              ORDER BY Station.system_id, Station.station_id, Category.name, Item.item_id
+        """.format(stationClause=stationClause, defDemand=defaultDemandVal))
+    else:
+        cur.execute("""
+            SELECT  Station.system_id
+                    , Price.station_id
+                    , Item.category_id
+                    , Price.item_id
+                    , Price.sell_to
+                    , Price.buy_from
+                    , {modStamp}  -- real or current timestamp
+                    , IFNULL(Price.demand, {defDemand})
+                    , IFNULL(Price.demand_level, {defDemand})
+                    , IFNULL(Price.stock, {defDemand})
+                    , IFNULL(Price.stock_level, {defDemand})
+              FROM  Station, Item, Category, Price
+             WHERE  {stationClause}  -- station clause
+                    AND Station.station_id = Price.station_id
+                    AND (Item.category_id = Category.category_id) AND Item.item_id = Price.item_id
+             ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Price.item_id
+        """.format(modStamp=modifiedStamp, stationClause=stationClause, defDemand=defaultDemandVal))
+
     lastSys, lastStn, lastCat = None, None, None
 
     if not file: file = sys.stdout
