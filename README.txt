@@ -18,8 +18,11 @@ factors that into the shopping for each subsequent hop.
 == CHANGE LOG
 ==============================================================================
 
+v4.2.0 Oct 15/2014
+  Merged Smacker65's "local" sub-command (lists systems within jump range of you)
+
 v4.1.0 Oct 15/2014
-  Merged Bernd Gollesch's changes to eliminate the .prices file from the
+  Merged Bernd Gollesch's (gazelle) changes to eliminate the .prices file from the
   repository and to add "--all" to the "update" command.
   Also fixed problems caused when the .prices file is missing and there is
   limited or no data available - user should get better feedback now.
@@ -489,7 +492,7 @@ LOCAL sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to systems with a full cargo hold.
 
-  trade.py [-q | -v] local [--ship name [--full]] [--ly N.NN] system
+  trade.py [-q | -v] local [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
 
     --ship name
       Uses the values for an empty ship to constrain jump ranges,
@@ -505,9 +508,13 @@ LOCAL sub-command:
       Constrains local systems to a maximum ly distance
       --ly 20.0
     
+    --pill
+      Show estimated length along the Pill in ly
+
+    --percent
+      Like --pill but shows percentage instead
+
     -v
-      Show estimated length along the Pill
-    -vv
       Show stations
       
     system

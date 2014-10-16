@@ -717,14 +717,14 @@ def localCommand(args):
 
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         pillLength = ""
-        if args.detail > 0:
+        if args.pill or args.percent:
             pillLengthFormat = " [{:4.0f}%]" if args.percent else " [{:5.1f}]"
             pillLength = pillLengthFormat.format(distanceAlongPill(system, args.percent))
         print("{:5.2f}{} {}".format(dist, pillLength, system.str()))
-        if args.detail > 1:
+        if args.detail:
             for (station) in system.stations:
-                stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar>0 else ""
-                print("      <{}>{}".format(station.str(), stationDistance))
+                stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
+                print("\t<{}>{}".format(station.str(), stationDistance))
 
 def navCommand(args):
     """
@@ -925,8 +925,8 @@ def main():
             ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
         ]
     )
-	
-	# "local" shows systems local to given system.
+    
+    # "local" shows systems local to given system.
     localParser = makeSubParser(subparsers, 'local', 'Calculate local systems.', localCommand,
         arguments = [
             ParseArgument('system', help='System to measure from', type=str),
@@ -935,7 +935,10 @@ def main():
             ParseArgument('--ship', help='Use the maximum jump distance of the specified ship (defaults to the empty value).', metavar='shiptype', type=str),
             ParseArgument('--full', help='(With --ship) Limits the jump distance to that of a full ship.', action='store_true', default=False),
             ParseArgument('--ly', help='Maximum light years to measure.', metavar='N.NN', type=float, dest='ly'),
-            ParseArgument('--percent', help='Show distance up pill as percent.', action='store_true', default=False),
+            [
+              ParseArgument('--pill', help='Show distance along the pill in ly.', action='store_true', default=False),
+              ParseArgument('--percent', help='Show distance along pill as percentage.', action='store_true', default=False),
+            ],
        ]
     )
 
