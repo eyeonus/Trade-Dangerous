@@ -408,7 +408,7 @@ class TradeDB(object):
                 print("* Building DB cache")
 
         import data.buildcache
-        data.buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath)
+        data.buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, debug=self.debug)
 
 
     ############################################################

@@ -125,7 +125,8 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
             db.executemany(stmt, bindValues)
         db.commit()
     except FileNotFoundError:
-        print("WARNING: processPricesFile found no {} file".format(pricesPath))
+        if debug:
+            print("WARNING: processPricesFile found no {} file".format(pricesPath))
 
 def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     """
@@ -153,7 +154,7 @@ def buildCache(dbPath, sqlPath, pricesPath, debug=0):
         tempDB.executescript(sqlScript)
 
     # Parse the prices file
-    processPricesFile(tempDB, pricesPath)
+    processPricesFile(tempDB, pricesPath, debug=debug)
 
     # Database is ready; copy it to a persistent store.
     if debug: print("* Populating SQLite database file '%s'" % dbPath)
