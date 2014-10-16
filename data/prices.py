@@ -52,7 +52,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
                FROM Item LEFT OUTER JOIN Station, Category
               WHERE {stationClause}
                 AND Item.category_id = Category.category_id
-              ORDER BY Station.system_id, Station.station_id, Category.name, Item.item_id
+              ORDER BY Station.system_id, Station.station_id, Category.name, Item.name
         """.format(stationClause=stationClause, defDemand=defaultDemandVal))
     else:
         cur.execute("""
@@ -71,13 +71,30 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
              WHERE  {stationClause}  -- station clause
                     AND Station.station_id = Price.station_id
                     AND (Item.category_id = Category.category_id) AND Item.item_id = Price.item_id
-             ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Price.item_id
+             ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Item.name
         """.format(modStamp=modifiedStamp, stationClause=stationClause, defDemand=defaultDemandVal))
 
     lastSys, lastStn, lastCat = None, None, None
 
     if not file: file = sys.stdout
-    file.write("# Source for TradeDangerous' price database.\n\n")
+
+    if stationID:
+        file.write("# TradeDangerous prices for {}\n".format(stations[stationID]))
+    else:
+        file.write("# TradeDangerous prices for ALL Systems/Stations\n")
+    file.write("\n")
+
+    file.write("# The order items are listed in is saved to the DB,\n")
+    file.write("# feel free to move items around within their categories.\n")
+    file.write("\n")
+
+    if not withModified:
+        file.write("# <item name> <sell> <buy>\n")
+    else:
+        file.write("# <item name> <selll> <buy> <timestamp> demand <demand#>L<level> stock <stock#>L<level>\n")
+        file.write("#  demand#/stock#: the quantity available or -1 for 'unknown'")
+        file.write("#  level: 0 = None, 1 = Low, 2 = Medium, 3 = High, -1 = Unknown\n")
+    file.write("\n")
 
     for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
         system = systems[sysID]
