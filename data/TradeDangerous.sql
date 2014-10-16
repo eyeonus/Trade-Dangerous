@@ -881,6 +881,7 @@ INSERT INTO "Item" VALUES(72,'Natural Fabrics',13);
 INSERT INTO "Item" VALUES(73,'Synthetic Fabrics',13);
 INSERT INTO "Item" VALUES(74,'Uraninite',7);
 INSERT INTO "Item" VALUES(75,'Tobacco',11);
+INSERT INTO "Item" VALUES(76,'Battle Weapons',10);
 
 -- Some items have two versions of their name.
 CREATE TABLE AltItemNames
