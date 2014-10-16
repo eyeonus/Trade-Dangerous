@@ -318,7 +318,7 @@ class TradeCalc(object):
                         if dest.ly >= bestHop.ly:
                             continue
             bestHop = TradeHop(destSys=dest.system, destStn=dest.station, load=load.items, gainCr=load.gainCr, jumps=dest.jumps, ly=dest.ly)
-        return besthop
+        return bestHop
 
 
     def getBestHops(self, routes, credits,

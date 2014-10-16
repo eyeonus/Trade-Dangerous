@@ -50,7 +50,13 @@ def priceLineNegotiator(priceFile, db, debug=0):
     systemByName = { name: ID for (ID, name) in cur }
 
     categoriesByName = { name: ID for (ID, name) in cur.execute("SELECT category_id, name FROM category") }
-    itemsByName = { "{}:{}".format(catID, name): itemID for (catID, itemID, name) in cur.execute("SELECT category_id, item_id, name FROM item") }
+
+    # Are there any item names which appear in two categories?
+    qualityItemWithCategory = cur.execute("SELECT COUNT(*) FROM (SELECT name FROM Item GROUP BY 1 HAVING COUNT(*) > 1)").fetchone()[0]
+    if qualityItemWithCategory:
+        itemsByName = { "{}.{}".format(catID, name): itemID for (catID, itemID, name) in cur.execute("SELECT category_id, item_id, name FROM item") }
+    else:
+        itemsByName = { name: itemID for (itemID, name) in cur.execute("SELECT item_id, name FROM item") }
 
     for line in priceFile:
         try:
@@ -90,7 +96,7 @@ def priceLineNegotiator(priceFile, db, debug=0):
                 sys.exit(1)
             itemName, stationPaying, stationAsking, modified = matches.group(1), int(matches.group(2)), int(matches.group(3)), matches.group(4)
             demand, demandLevel, stock, stockLevel = int(matches.group(5) or -1), int(matches.group(6) or -1), int(matches.group(7) or -1), int(matches.group(8) or -1)
-            itemID = itemsByName["{}:{}".format(categoryID, itemName)]
+            itemID = itemsByName["{}:{}".format(categoryID, itemName)] if qualityItemWithCategory else itemsByName[itemName]
             uiOrder += 1
             yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand, demandLevel, stock, stockLevel)
         except (AttributeError, IndexError):
@@ -106,18 +112,21 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
         if debug: print("* Deleting stale entries for {}".format(stationID))
         db.execute("DELETE FROM Price WHERE station_id = {}".format(stationID))
 
-    with pricesPath.open() as pricesFile:
-        bindValues = []
-        for price in priceLineNegotiator(pricesFile, db, debug):
-            if debug > 2: print(price)
-            bindValues += [ price ]
-        stmt = """
-                   INSERT OR REPLACE INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified, demand, demand_level, stock, stock_level)
-                   VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP), ?, ?, ?, ?)
-                """
-        db.executemany(stmt, bindValues)
-    db.commit()
-
+    try:
+        with pricesPath.open() as pricesFile:
+            bindValues = []
+            for price in priceLineNegotiator(pricesFile, db, debug):
+                if debug > 2: print(price)
+                bindValues += [ price ]
+            stmt = """
+                       INSERT OR REPLACE INTO Price (station_id, item_id, sell_to, buy_from, ui_order, modified, demand, demand_level, stock, stock_level)
+                       VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP), ?, ?, ?, ?)
+                    """
+            db.executemany(stmt, bindValues)
+        db.commit()
+    except FileNotFoundError:
+        if debug:
+            print("WARNING: processPricesFile found no {} file".format(pricesPath))
 
 def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     """
@@ -145,7 +154,7 @@ def buildCache(dbPath, sqlPath, pricesPath, debug=0):
         tempDB.executescript(sqlScript)
 
     # Parse the prices file
-    processPricesFile(tempDB, pricesPath)
+    processPricesFile(tempDB, pricesPath, debug=debug)
 
     # Database is ready; copy it to a persistent store.
     if debug: print("* Populating SQLite database file '%s'" % dbPath)

@@ -96,10 +96,10 @@ class Station(object):
         Describes a station within a given system along with what trade
         opportunities it presents.
     """
-    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith')
+    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith', 'itemCount')
 
-    def __init__(self, ID, system, dbname, lsFromStar=0.0):
-        self.ID, self.system, self.dbname, self.lsFromStar = ID, system, dbname, lsFromStar
+    def __init__(self, ID, system, dbname, lsFromStar, itemCount):
+        self.ID, self.system, self.dbname, self.lsFromStar, self.itemCount = ID, system, dbname, lsFromStar, itemCount
         self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
         system.addStation(self)
 
@@ -386,24 +386,29 @@ class TradeDB(object):
             # we *created* the db file.
             dbFileCreatedTimestamp = self.dbPath.stat().st_mtime
 
-            sqlStat, pricesStat = self.sqlPath.stat(), self.pricesPath.stat()
-            sqlFileTimestamp = max(sqlStat.st_mtime, sqlStat.st_ctime)
-            pricesFileTimestamp = max(pricesStat.st_mtime, pricesStat.st_ctime)
+            def getMostRecentTimestamp(altPath):
+                try:
+                    stat = altPath.stat()
+                    return max(stat.st_mtime, stat.st_ctime)
+                except FileNotFoundError:
+                    return 0
 
-            if dbFileCreatedTimestamp > max(sqlFileTimestamp, pricesFileTimestamp):
+            sqlTimestamp, pricesTimestamp = getMostRecentTimestamp(self.sqlPath), getMostRecentTimestamp(self.pricesPath)
+
+            if dbFileCreatedTimestamp > max(sqlTimestamp, pricesTimestamp):
                 # db is newer.
                 if self.debug > 1:
                     print("- SQLite is up to date")
                 return
 
             if self.debug:
-                print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlFileTimestamp, pricesFileTimestamp))
+                print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp))
         else:
             if self.debug:
                 print("* Building DB cache")
 
         import data.buildcache
-        data.buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath)
+        data.buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, debug=self.debug)
 
 
     ############################################################
@@ -484,14 +489,14 @@ class TradeDB(object):
             If you have previously loaded Stations, this will orphan the old objects.
         """
         stmt = """
-                SELECT station_id, system_id, name, ls_from_star
+                SELECT station_id, system_id, name, ls_from_star, (SELECT COUNT(*) FROM Price WHERE station_id = Station.station_id) itemCount
                   FROM Station
             """
         self.cur.execute(stmt)
         stationByID, stationByName = {}, {}
         systemByID = self.systemByID
-        for (ID, systemID, name, lsFromStar) in self.cur:
-            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar)
+        for (ID, systemID, name, lsFromStar, itemCount) in self.cur:
+            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
 
         self.stationByID, self.stationByName = stationByID, stationByName
         if self.debug > 1: print("# Loaded %d Stations" % len(stationByID))
@@ -708,7 +713,9 @@ class TradeDB(object):
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
+        self.tradingCount = 0
         for (srcStnID, dstStnID, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
+            self.tradingCount += 1
             srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
             srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
@@ -766,8 +773,8 @@ class TradeDB(object):
         # Check that things correctly reference themselves.
         # Check that system links are bi-directional
         for (name, sys) in self.systemByName.items():
-            if not sys.links:
-                raise ValueError("System %s has no links" % name)
+            if not sys.links and self.debug:
+                print("NOTE: System '%s' has no links" % name)
             if sys in sys.links:
                 raise ValueError("System %s has a link to itself!" % name)
             if name in sys.links:
@@ -821,7 +828,11 @@ class TradeDB(object):
         """
 
         needle = TradeDB.normalizedStr(lookup)
-        matchKey, matchVal = None, None
+        partialMatches, wordMatches = [], []
+        # make a regex to match whole words
+        wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
+        # describe a match
+        Match = namedtuple('Match', [ 'key', 'value' ])
         for entry in values:
             entryKey = key(entry)
             normVal = TradeDB.normalizedStr(entryKey)
@@ -829,17 +840,23 @@ class TradeDB(object):
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
                     return val(entry)
-                if matchVal and matchVal != val(entry):
-                    # Check if one match matches a whole word and prefer that.
-                    wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
-                    if wordRe.match(matchKey):
-                        if not wordRe.match(entryKey):
-                            continue
-                        raise AmbiguityError(listType, lookup, matchKey, entryKey)
-                matchKey, matchVal = entryKey, val(entry)
-        if not matchKey:
-            raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
-        return matchVal
+                match = Match(entryKey, val(entry))
+                if wordRe.match(entryKey):
+                    wordMatches.append(match)
+                else:
+                    partialMatches.append(match)
+        # Whole word matches trump partial matches
+        if wordMatches:
+            if len(wordMatches) > 1:
+                raise AmbiguityError(listType, lookup, wordMatches[0].key, wordMatches[1].key)
+            return wordMatches[0].value
+        # Fuzzy matches
+        if partialMatches:
+            if len(partialMatches) > 1:
+                raise AmbiguityError(listType, lookup, partialMatches[0].key, partialMatches[1].key)
+            return partialMatches[0].value
+        # No matches
+        raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
 
 
     @staticmethod

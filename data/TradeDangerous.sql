@@ -427,7 +427,7 @@ INSERT INTO "Station" VALUES(20,'Stone Enterprise',47,0.0);
 INSERT INTO "Station" VALUES(21,'Derrickson''s Escape',22,0.0);
 INSERT INTO "Station" VALUES(22,'Xiaoguan Hub',39,0.0);
 INSERT INTO "Station" VALUES(23,'Gernhardt Camp',32,0.0);
-INSERT INTO "Station" VALUES(24,'Louis De Lacaille Prospect',31,759.0);
+INSERT INTO "Station" VALUES(24,'Lacaille Prospect',31,759.0);
 INSERT INTO "Station" VALUES(25,'Maunder''s Hope',53,0.0);
 INSERT INTO "Station" VALUES(26,'Novitski Oasis',43,0.0);
 INSERT INTO "Station" VALUES(27,'Brooks Estate',46,0.0);
@@ -586,7 +586,7 @@ INSERT INTO "Station" VALUES(180,'Darwin Terminal',189,0.0);
 INSERT INTO "Station" VALUES(181,'Kurland Dock',190,0.0);
 INSERT INTO "Station" VALUES(182,'Bush High',191,0.0);
 INSERT INTO "Station" VALUES(183,'Noblehome',192,0.0);
-INSERT INTO "Station" VALUES(184,'Andreas Horizons',194,0.0);
+INSERT INTO "Station" VALUES(184,'Andreas Horizons',194,3335.0);
 INSERT INTO "Station" VALUES(185,'Clement Plant',195,0.0);
 INSERT INTO "Station" VALUES(186,'Hobaugh Beacon',197,0.0);
 INSERT INTO "Station" VALUES(187,'Horowitz Reserve',198,0.0);
@@ -627,7 +627,7 @@ INSERT INTO "Station" VALUES(221,'Guidoni Landing',240,0.0);
 INSERT INTO "Station" VALUES(222,'Gannt Enterprise',241,0.0);
 INSERT INTO "Station" VALUES(223,'Solovyov Colony',242,0.0);
 INSERT INTO "Station" VALUES(224,'Comino Dock',243,0.0);
-INSERT INTO "Station" VALUES(225,'Nelson Point',244,0.0);
+INSERT INTO "Station" VALUES(225,'Nelson Port',244,0.0);
 INSERT INTO "Station" VALUES(226,'Mcmonagle Hub',246,0.0);
 INSERT INTO "Station" VALUES(227,'Volterra Refinery',247,0.0);
 INSERT INTO "Station" VALUES(228,'Al-Khalili Refinery',248,0.0);
@@ -688,8 +688,6 @@ INSERT INTO "Station" VALUES(282,'Piccard Point',308,0.0);
 INSERT INTO "Station" VALUES(283,'Griffith Terminal',309,0.0);
 INSERT INTO "Station" VALUES(284,'Moseley Park',311,0.0);
 INSERT INTO "Station" VALUES(285,'Kippax Depot',312,0.0);
-
-
 
 
 
@@ -875,8 +873,8 @@ INSERT INTO "Item" VALUES(64,'Palladium',6);
 INSERT INTO "Item" VALUES(65,'Cobalt',6);
 INSERT INTO "Item" VALUES(66,'Indium',6);
 INSERT INTO "Item" VALUES(67,'Uranium',6);
-INSERT INTO "Item" VALUES(68,'Gallium',7);
-INSERT INTO "Item" VALUES(69,'Beryllium',7);
+INSERT INTO "Item" VALUES(68,'Gallium',6);
+INSERT INTO "Item" VALUES(69,'Beryllium',6);
 INSERT INTO "Item" VALUES(70,'Semiconductors',4);
 INSERT INTO "Item" VALUES(71,'Polymers',4);
 INSERT INTO "Item" VALUES(72,'Natural Fabrics',13);
