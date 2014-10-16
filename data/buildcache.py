@@ -148,7 +148,7 @@ def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     tempDB = sqlite3.connect(':memory:')
 
     # Read the SQL script so we are ready to populate structure, etc.
-    if debug: print("* Executing SQL Script '%s'" % sqlPath)
+    if debug: print("* Executing SQL Script '{}' from '{}'".format(sqlPath, os.getcwd()))
     with sqlPath.open() as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
