@@ -423,7 +423,7 @@ def processRunArguments(args):
         raise NoDataError("Start station {} doesn't have any price data.".format(originStation.name()))
     if finalStation and finalStation.itemCount == 0:
         raise NoDataError("End station {} doesn't have any price data.".format(finalStation.name()))
-    if finalStation and args.hops == 1 and originStation and not finalStation in originStation.tradeWith:
+    if finalStation and args.hops == 1 and originStation and not finalStation in originStation.tradingWith:
         raise CommandLineError("No profitable items found between {} and {}".format(originStation.name(), finalStation.name()))
     if originStation and len(originStation.tradingWith) == 0:
         raise NoDataError("No data found for potential buyers for items from {}.".format(originStation.name()))
