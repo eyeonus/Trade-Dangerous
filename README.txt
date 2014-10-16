@@ -15,130 +15,56 @@ things.
 For multi-stop routes, it takes into account the money you are making and
 factors that into the shopping for each subsequent hop.
 
+TradeDangerous data is manually entered: The tool provides an easy editor
+for correcting prices at a given station, but you can also retrieve ".prices"
+files from other commanders to fill out your database.
+
+
 == CHANGE LOG
 ==============================================================================
+
 v4.2.1 Oct 15/2014
-  Added more Stars and corrected HAGALAZ.
+. (ShadowGar) Added more Stars and corrected HAGALAZ
+. (kfsone) sort items by name rather than id when building .prices files
+. (kfsone) improved the instructional comments in .prices files
+. (kfsone) Big README.txt cleanup
 
 v4.2.0 Oct 15/2014
-  Merged Smacker65's "local" sub-command (lists systems within jump range of you)
+. (Smacker65) Added "local" sub-command (lists systems within jump range of you)
 
 v4.1.0 Oct 15/2014
-  Merged Bernd Gollesch's (gazelle) changes to eliminate the .prices file from the
-  repository and to add "--all" to the "update" command.
-  Also fixed problems caused when the .prices file is missing and there is
+. (gazelle) ".prices" file is no-longer included in the git repository,
+  instead you'll need to download one or populate your own
+. (gazelle) added the "--all" option to the "update" sub-command,
+. (kfsone) fixed problems caused when the .prices file is missing and there is
   limited or no data available - user should get better feedback now.
 
 v4.0.4 Oct 15/2014
-  Issue #20 Improved fuzzy-matching of system/star names
-  Fixed "Lacaille Prospect"
-  "trade.py" is now executable by default on Linux/MacOS
+. (kfsone) Issue #20 Improved fuzzy-matching of system/star names
+. (gazelle) Fixed "Lacaille Prospect"
+. (kfsone) "trade.py" is now executable by default on Linux/MacOS
 
 v4.0.3 Oct 12/2014
-  Issue #17 "--avoid gold" conflicted with "Goldstein Mines"
-  Issue #13 "Nelson Port" was listed as "Nelson Point"
-  Issue #12 "-w" was failing because Rigel has no links
-  Issue #11 Partial name matches weren't generating an ambiguity (e.g. 'ra' or 'ross')
-  Issue #19 Beryllium and Gallium were incorrectly identified as Minerals
+. (kfsone) Issue #17 "--avoid gold" conflicted with "Goldstein Mines"
+. (Smacker65) Issue #13 "Nelson Port" was listed as "Nelson Point"
+. (kfsone) Issue #12 "-w" was failing because Rigel has no links
+. (kfsone) Issue #11 Partial name matches weren't generating an ambiguity (e.g. 'ra' or 'ross')
+. (kfsone) Issue #19 Beryllium and Gallium were incorrectly identified as Minerals
 
 v4.0.2 Oct 06/2014
-  More systems/stations from ShadowGar!
+. (ShadowGar) More systems/stations from
 
 v4.0.1 Oct 06/2014
-  Improved "--sublime" option, now supports Sublime Text 2 and works under Mac/Lin
+. (kfsone)  Improved "--sublime" option, now supports Sublime Text 2 and works under Mac/Lin
 
 v4.0 Oct 05/2014
-  Updated to Beta 2 - All credit to ShadowGar
+. (ShadowGar) Updated to Beta 2 - All credit to ShadowGar
 
-v3.9 Sep 21/2014
-  NOTE: '--detail' (-v) is now a common option, i.e. must come before sub-command
-    trade.py cleanup -v    << won't work any more
-    trade.py -v cleanup    << new order
-  Added 'nav' sub-command for navigation assistance:
-    trade.py nav [--ship name [--full]] [--ly-per] from to
-  Added '--quiet' (-q) common option for reducing level of detail, e.g.
-    trade.py -q cleanup
-
-v3.8 Sep 17/2014
-  Fix for Issue #7: --avoid not working with systems that have no stations,
-  Additional help text,
-  General cleanup,
-  Running "emdn-tap.py -v" will show price changes,
-
-v3.7 Sep 15/2014
-  Fixed excessive CPU usage in emdn-tap.py (ty, jojje)
-  Added 'cleanup' command to help remove bad data from emdn
-    EMDN isn't foolproof, and sometimes receives invalid or
-    deliberately poisoned data. The best way to detect this
-    is currently to look for prices that are somewhat older
-    than the rest of the information received for the same
-    station. This command checks for those records and
-    removes them.
-  emdn-tap now tries harder to honor commit intervals.
-API Changes:
-  makeSubParser now takes an epilog  
-
-v3.6 Sep 12/2014
-  Added DB support for tracking item stock/demand levels,
-  TradeCalc will now factor stock levels when present,
-  Minor performance/memory tweak
-  emdn-tap:
-    Now accepts --warn-to argument,
-    Applies filters to what data it will accept,
-    Records item stock/demand levels to the DB
-
-v3.5 Sep 06/2014
-  The emdn-tap tool now uses the compressed JSON stream rather than
-  the CSV stream - saves you bandwidth.
-
-v3.4 Sep 05/2014
-  Added emdn-tap.py script which pulls data from EMDN network.
-  "--via" now accepts multiple and/or comma separated stations so you can plan
-  a very specific shopping-list route.
-
-v3.3 Sep 04/2014
-  Updated README to include sub-commands,
-  Fixed a 'file not found' error running trade.py the first time with no arguments,
-  Made specific CATEGORY/Item lookups possible (e.g. "Metals/Gold"),
-  Added games internal names for items to the database,
-  Enabled internal-name lookups for items (e.g. 'heliostaticfurnaces'),
-  Fixed a bug where two names for the same thing caused ambiguity (duh!),
-API changes:
-  TradeDB.listSearch() now also takes a val() argument,
-  Added a simple EMDN access module (emdn directory),
-  Cleaned up various __repr__ functions now I know what __repr__ is for,
-
-v3.2 Sep 03/2014
-  Internal cleanup of how we process sub-commands
-
-v3.1 Sep 01/2014
-  Introduced sub-commands:
-  - "run" command provides the old default behavior of calculating a run,
-  - "update" command provides ways to update price database easily,
-
-v3.0 Aug 30/2014
-  Major overhaul. No-longer requires Microsoft Access DB. To update prices,
-  edit the data/TradeDangerous.prices file. When you next run the tool, new
-  data will be loaded automatically.
-  Cleaned up code, normalized the way I name functions, etc.
-  Added more ship data, etc.
+(See end of file for older changes)
 
 
 ==============================================================================
-== Where does it get it's data?
-==============================================================================
-
-The data is stored as human-readable text in a .SQL file and a .Prices file.
-When this data is loaded, it is saved into an SQLite database file which the
-tools use directly until you change either the .SQL or .Prices file.
-
-As of version 3.4 it also supports pulling data from the Elite Market Data
-Network (EMDN) by means of the emdn-tap.py script (see emdn-tap.py --help
-for command line usage)
-
-
-==============================================================================
-== Tell me how to use it!
+== TRADE DANGEROUS: USAGE
 ==============================================================================
 
 Lets start with a fully fleshed out example command line and then I'll walk
@@ -254,7 +180,7 @@ have without having to remember to subtract your insurance each time.
 
 
 ==============================================================================
-== Command Line Options:
+== COMMAND LINE OPTIONS
 ==============================================================================
 
 trade.py is a front-end to several tools - a trade run calculator, a tool for
@@ -577,50 +503,50 @@ LOCAL sub-command:
           <Prospect Five>
 
 ==============================================================================
-== How can I add or update the data?
+== ADDING OR CHANGING PRICE DATA
 ==============================================================================
 
-You can either edit the "data/TradeDangerous.prices" file or you can use the
-"update" sub-command.
+TradeDangerous uses a human-readable text format for price information. This
+is designed to closely resemble what we see in the market screens in-game.
 
-Alternatively, you can use the "emdn-tap.py" script to monitor the Elite
-Market Data Network to pull prices observed by other players. Use
+To edit the data for a single station, use the "update" sub-command, e.g.
 
-   emdn-tap.py --help
+  trade.py update --notepad Aulin
 
-for command line arguments.
+This will open notepad with the data for Aulin, which will look something like:
 
-CAUTION: EMDN is not fool proof and frequently includes bad data. This is
-mostly because of the way EMDN obtains its data and how the Elite Dangerous
-UI displays it, but it can also be the result of people deliberately injecting
-bad data to spoil your day.
+  @ AULIN/Aulin Enterprise
+     + Chemicals
+        Explosives                 50      0
+        Hydrogen Fuels             19      0
+        Mineral Oil               100      0
+        Pesticides                 21      0
+     + Consumer Items
+        Clothing                  300      0
+        Consumer Tech            1112   1111
 
-If you use "emdn-tap.py" you will occasionally want to run the trade.py cleanup
-command to remove prices that are somewhat older than other prices for the same
-station.
+"@" lines specify a system/station.
+"+" lines specify a category.
+The remaining lines are items.
 
-You can use the "--dry-run" option to see what this is going to do:
+  Explosives    50    0
 
-    $ trade.py cleanup --dry-run
-    * Performing database cleanup, expiring 10 minute orphan records. DRY RUN.
-    - DAHAN Dahan Gateway @ Indium : 2014-09-15 07:10:57 vs 2014-09-15 09:10:32
-    # DRY RUN: Database unmodified.
+These fields are:
+  <item name>
+  <sale price> (how much the station pays)
+  <buying price> (how much the station charges)
 
-What this tells us is that we haven't seen a price for Indium at Dahan Gateway
-since 07:10, but we have more recent prices for other items. Since this is
-a single item, chances are it's either no-longer sold there or was a bad
-data entry ('fake' items sometimes show up when someone is carrying a mission
-item in their cargo hold).
+So you can see the only item this station is selling is Consumer Tech, which 
+the station wants 1111 credits for.
 
-In this case, it looks ok to do cleanup:
+NOTE: The order items are listed within their category is saved between edits,
+so if you switch "Explosives" and "Hydrogen Fuels" and then save it, they
+will show that way when you edit this station again.
 
-    $ trade.py cleanup
-    * Performing database cleanup, expiring 10 minute orphan records.
-    - Removed 1 entry.
+See "trade.py update -h" for more help with the update command.
 
-If you prefer no output from your cleanup, use -qq
-
-    $ trade.py -qq cleanup
+Note: My personal editor of choice is "Sublime Text", which is why there is
+a command line option (--sublime or just --subl) for invoking it.
 
 
 ==============================================================================
@@ -638,3 +564,80 @@ Yeah, let me stop you there.
 Whatever it is you want to do, you can do from there.
 
 See "cli.py" for examples.
+
+== Change Log Archive
+==============================================================================
+
+v3.9 Sep 21/2014
+  NOTE: '--detail' (-v) is now a common option, i.e. must come before sub-command
+    trade.py cleanup -v    << won't work any more
+    trade.py -v cleanup    << new order
+  Added 'nav' sub-command for navigation assistance:
+    trade.py nav [--ship name [--full]] [--ly-per] from to
+  Added '--quiet' (-q) common option for reducing level of detail, e.g.
+    trade.py -q cleanup
+
+v3.8 Sep 17/2014
+  Fix for Issue #7: --avoid not working with systems that have no stations,
+  Additional help text,
+  General cleanup,
+  Running "emdn-tap.py -v" will show price changes,
+
+v3.7 Sep 15/2014
+  Fixed excessive CPU usage in emdn-tap.py (ty, jojje)
+  Added 'cleanup' command to help remove bad data from emdn
+    EMDN isn't foolproof, and sometimes receives invalid or
+    deliberately poisoned data. The best way to detect this
+    is currently to look for prices that are somewhat older
+    than the rest of the information received for the same
+    station. This command checks for those records and
+    removes them.
+  emdn-tap now tries harder to honor commit intervals.
+API Changes:
+  makeSubParser now takes an epilog  
+
+v3.6 Sep 12/2014
+  Added DB support for tracking item stock/demand levels,
+  TradeCalc will now factor stock levels when present,
+  Minor performance/memory tweak
+  emdn-tap:
+    Now accepts --warn-to argument,
+    Applies filters to what data it will accept,
+    Records item stock/demand levels to the DB
+
+v3.5 Sep 06/2014
+  The emdn-tap tool now uses the compressed JSON stream rather than
+  the CSV stream - saves you bandwidth.
+
+v3.4 Sep 05/2014
+  Added emdn-tap.py script which pulls data from EMDN network.
+  "--via" now accepts multiple and/or comma separated stations so you can plan
+  a very specific shopping-list route.
+
+v3.3 Sep 04/2014
+  Updated README to include sub-commands,
+  Fixed a 'file not found' error running trade.py the first time with no arguments,
+  Made specific CATEGORY/Item lookups possible (e.g. "Metals/Gold"),
+  Added games internal names for items to the database,
+  Enabled internal-name lookups for items (e.g. 'heliostaticfurnaces'),
+  Fixed a bug where two names for the same thing caused ambiguity (duh!),
+API changes:
+  TradeDB.listSearch() now also takes a val() argument,
+  Added a simple EMDN access module (emdn directory),
+  Cleaned up various __repr__ functions now I know what __repr__ is for,
+
+v3.2 Sep 03/2014
+  Internal cleanup of how we process sub-commands
+
+v3.1 Sep 01/2014
+  Introduced sub-commands:
+  - "run" command provides the old default behavior of calculating a run,
+  - "update" command provides ways to update price database easily,
+
+v3.0 Aug 30/2014
+  Major overhaul. No-longer requires Microsoft Access DB. To update prices,
+  edit the data/TradeDangerous.prices file. When you next run the tool, new
+  data will be loaded automatically.
+  Cleaned up code, normalized the way I name functions, etc.
+  Added more ship data, etc.
+
