@@ -519,16 +519,37 @@ def runCommand(args):
 ######################################################################
 # "update" command functionality.
 
-def getSublimeTextPaths():
+def getEditorPaths(args, editorName, envVar, windowsFolders, winExe, nixExe):
+    if args.debug: print("# Locating {} editor".format(editorName))
+    try:
+        return os.environ[envVar]
+    except KeyError: pass
+
     paths = []
+
     import platform
     system = platform.system()
     if system == 'Windows':
+        binary = winExe
         for folder in ["Program Files", "Program Files (x86)"]:
-            for version in [2, 3]:
-                paths.append("C:\\{}\\Sublime Text {}".format(folder, version))
-    paths += os.environ['PATH'].split(os.pathsep)
-    return [ paths, "sublime_text.exe" if system == 'Windows' else "subl" ]
+            for version in windowsFolders:
+                paths.append("{}\\{}\\{}".format(os.environ['SystemDrive'], folder, version))
+    else:
+        binary = nixExe
+
+    try:
+        paths += os.environ['PATH'].split(os.pathsep)
+    except KeyError: pass
+
+    for path in paths:
+        candidate = os.path.join(path, binary)
+        try:
+            if pathlib.Path(candidate).exists():
+                return candidate
+        except OSError:
+            pass
+
+    raise CommandLineError("ERROR: Unable to locate {} editor.\nEither specify the path to your editor with --editor or set the {} environment variable to point to it.".format(editorName, envVar))
 
 
 def editUpdate(args, stationID):
@@ -552,22 +573,20 @@ def editUpdate(args, stationID):
     if args.sublime:
         if args.debug: print("# Sublime mode")
         if not editor:
-            if args.debug: print("# Locating sublime")
-            if "SUBLIME_EDITOR" in os.environ:
-                editor = os.environ["SUBLIME_EDITOR"]
-            else:
-                (paths, binary) = getSublimeTextPaths()
-                for path in paths:
-                    candidate = os.path.join(path, binary)
-                    try:
-                        if pathlib.Path(candidate).exists():
-                            editor = candidate
-                            break
-                    except OSError:
-                        pass
-                else:
-                    raise CommandLineError("ERROR: --sublime specified but could not find your Sublime Text installation. Either specify the path to your editor with --editor or set the SUBLIME_EDITOR environment variable.")
+            editor = getEditorPaths(args, "sublime", "SUBLIME_EDITOR", ["Sublime Text 3", "Sublime Text 2"], "sublime_text.exe", "subl")
         editorArgs += [ "--wait" ]
+    elif args.npp:
+        if args.debug: print("# Notepad++ mode")
+        if not editor:
+            editor = getEditorPaths(args, "notepad++", "NOTEPADPP_EDITOR", ["Notepad++"], "notepad++.exe", "notepad++")
+        if not args.quiet: print("NOTE: You'll need to exit Notepad++ to return control back to trade.py")
+    elif args.vim:
+        if args.debug: print("# VI iMproved mode")
+        if not editor:
+            # Hack... Hackity hack, hack, hack.
+            # This has a disadvantage in that: we don't check for just "vim" (no .exe) under Windows
+            vimDirs = [ "Git\\share\\vim\\vim{}".format(vimVer) for vimVer in range(70,75) ]
+            editor = getEditorPaths(args, "vim", "EDITOR", vimDirs, "vim.exe", "vim")
     elif args.notepad:
         if args.debug: print("# Notepad mode")
         editor = "notepad.exe"  # herp
@@ -982,6 +1001,8 @@ def main():
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),
+                ParseArgument('--npp',     help='Like --editor but uses Notepad++.', action=EditActionStoreTrue),
+                ParseArgument('--vim',     help='Like --editor but uses vim.', action=EditActionStoreTrue),
             ]
         ]
     )
