@@ -162,7 +162,7 @@ def processImportFile(db, importPath, tableName, debug=0):
 
     try:
         with importPath.open() as importFile:
-            csvin = csv.reader(importFile, delimiter=',', quotechar="'")
+            csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
             # first line must be the column names
             columnNames = next(csvin)
             columnCount = len(columnNames)
