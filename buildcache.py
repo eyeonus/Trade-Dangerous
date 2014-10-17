@@ -175,15 +175,15 @@ def processImportFile(db, importPath, tableName, debug=0):
                 splitNames = cName.split('@')
                 if len(splitNames) == 1:
                     # no foreign key, straight insert
-                    bindColumns += [splitNames[0]]
-                    bindValues += '?'
+                    bindColumns += [ splitNames[0] ]
+                    bindValues  += [ '?' ]
                 else:
                     # foreign key, we need to make a select
-                    splitJoin  = splitNames[1].split('.')
-                    joinTable  = splitJoin[0]
-                    joinColumn = splitJoin[1]
-                    bindColumns += [joinColumn]
-                    bindValues += ["(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)".format(newValue=splitNames[1], table=joinTable, column=splitNames[0])]
+                    splitJoin    = splitNames[1].split('.')
+                    joinTable    = splitJoin[0]
+                    joinColumn   = splitJoin[1]
+                    bindColumns += [ joinColumn ]
+                    bindValues  += [ "(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)".format(newValue=splitNames[1], table=joinTable, column=splitNames[0]) ]
             # now we can make the sql statement
             sql_stmt = "INSERT INTO {table}({columns}) VALUES({values})".format(table=tableName, columns=','.join(bindColumns), values=','.join(bindValues))
             if debug: print("SQL-Statement: {}".format(sql_stmt))
