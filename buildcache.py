@@ -186,14 +186,17 @@ def processImportFile(db, importPath, tableName, debug=0):
                     bindValues  += [ "(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)".format(newValue=splitNames[1], table=joinTable, column=splitNames[0]) ]
             # now we can make the sql statement
             sql_stmt = "INSERT INTO {table}({columns}) VALUES({values})".format(table=tableName, columns=','.join(bindColumns), values=','.join(bindValues))
-            if debug: print("SQL-Statement: {}".format(sql_stmt))
+            if debug: print("* SQL-Statement: {}".format(sql_stmt))
 
             # import the data
+            importCount = 0
             for linein in csvin:
                 if len(linein) == columnCount:
-                    if debug: print("       Values: {}".format(', '.join(linein)))
+                    if debug > 1: print("-        Values: {}".format(', '.join(linein)))
                     db.execute(sql_stmt, linein)
+                    importCount += 1
             db.commit()
+            if debug: print("* {count} {table}s imported".format(count=importCount, table=tableName))
 
     except FileNotFoundError:
         if debug:
