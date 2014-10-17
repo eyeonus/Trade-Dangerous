@@ -336,6 +336,7 @@ class TradeDB(object):
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencys!
     defaultTables = [
+                      [ './data/Added.csv', 'Added' ],
                       [ './data/System.csv', 'System' ],
                       [ './data/Station.csv', 'Station' ],
                       [ './data/Ship.csv', 'Ship' ],

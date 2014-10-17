@@ -20,6 +20,16 @@ PRAGMA foreign_keys=ON;
 
 BEGIN TRANSACTION;
 
+
+CREATE TABLE Added
+ (
+   added_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   name VARCHAR(40) COLLATE nocase,
+
+   UNIQUE(name)
+ );
+
+
 CREATE TABLE System
  (
    system_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,9 +37,14 @@ CREATE TABLE System
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
    pos_z DOUBLE NOT NULL,
+   added_id INTEGER,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-   UNIQUE (name)
+   UNIQUE (name),
+
+    FOREIGN KEY (added_id) REFERENCES Added(added_id)
+   	ON UPDATE CASCADE
+   	ON DELETE CASCADE
  );
 
 
