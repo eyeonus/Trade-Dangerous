@@ -61,7 +61,8 @@ mfd = None
 ######################################################################
 # Database and calculator modules.
 
-from tradedb import TradeDB, AmbiguityError, SystemNotStationError
+from tradeexcept import TradeException
+from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
 tdb = None
@@ -69,7 +70,7 @@ tdb = None
 ######################################################################
 # Helpers
 
-class CommandLineError(Exception):
+class CommandLineError(TradeException):
     """
         Raised when you provide invalid input on the command line.
         Attributes:
@@ -81,7 +82,7 @@ class CommandLineError(Exception):
         return 'Error in command line: {}'.format(self.errorStr)
 
 
-class NoDataError(CommandLineError):
+class NoDataError(TradeException):
     """
         Raised when a request is made for which no data can be found.
         Attributes:
@@ -542,7 +543,7 @@ def editUpdate(args, stationID):
 
     if args.debug: print("# 'update' mode with editor. editor:{} station:{}".format(args.editor, args.station))
 
-    from data import buildcache
+    import buildcache
     from data import prices
     import subprocess
     import os
@@ -827,7 +828,7 @@ def cleanupCommand(args):
     global tdb
 
     if args.minutes <= 0:
-        raise ValueError("Invalid --minutes specification.")
+        raise CommandLineError("Invalid --minutes specification.")
 
     if not args.quiet:
         print("* Performing database cleanup, expiring {} minute orphan records.{}".format(
@@ -1006,7 +1007,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except (CommandLineError, AmbiguityError) as e:
+    except (TradeException) as e:
         print("%s: %s" % (sys.argv[0], str(e)))
     if mfd:
         mfd.finish()

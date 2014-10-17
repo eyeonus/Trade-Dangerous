@@ -20,13 +20,15 @@ import itertools
 import math
 from pathlib import Path
 
+from tradeexcept import TradeException
+
 import locale
 locale.setlocale(locale.LC_ALL, '')
 
 ######################################################################
 # Classes
 
-class AmbiguityError(Exception):
+class AmbiguityError(TradeException):
     """
         Raised when a search key could match multiple entities.
         Attributes:
@@ -43,7 +45,7 @@ class AmbiguityError(Exception):
         return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
 
 
-class SystemNotStationError(ValueError):
+class SystemNotStationError(TradeException):
     """
         Raised when a station lookup matched a System but
         could not be automatically reduced to a Station.
@@ -407,8 +409,8 @@ class TradeDB(object):
             if self.debug:
                 print("* Building DB cache")
 
-        import data.buildcache
-        data.buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, debug=self.debug)
+        import buildcache
+        buildcache.buildCache(dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, debug=self.debug)
 
 
     ############################################################
@@ -792,7 +794,7 @@ class TradeDB(object):
         """
             Calculate the square of the distance between two points.
 
-            Pythagors theorem: distance = root( (x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2 )
+            Pythagoras theorem: distance = root( (x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2 )
 
             But calculating square roots is not cheap and if you don't
             need the distance for display, etc, then returning the
@@ -822,7 +824,7 @@ class TradeDB(object):
             If [values] contains "bread", "water", "biscuits and "It",
             searching "ea" will return "bread", "WaT" will return "water"
             and "i" will return "biscuits". Searching for "a" will raise
-            a ValueError because "a" matches "bread" and "water", but
+            an AmbiguityError because "a" matches "bread" and "water", but
             searching for "it" will return "It" because it provides an
             exact match of a key.
         """
