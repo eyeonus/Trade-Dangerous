@@ -15,7 +15,7 @@ import sqlite3
 ######################################################################
 # Main
 
-def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=0):
+def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaultZero=False, debug=0):
     """ Generate a 'prices' list for the given list of stations using data from the DB. """
     conn = sqlite3.connect(str(dbFilename))     # so we can handle a Path object too
     cur  = conn.cursor()
@@ -42,7 +42,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, debug=
         modifiedStamp = "Price.modified"
 
     stationClause = "1" if not stationID else "Station.station_id = {}".format(stationID)
-    defaultDemandVal = -1
+    defaultDemandVal = 0 if defaultZero else -1
     if priceCount == 0:
         # no prices, generate an emtpy one with all items
         cur.execute("""
