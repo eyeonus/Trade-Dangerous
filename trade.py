@@ -666,6 +666,9 @@ def updateCommand(args):
     station = tdb.lookupStation(args.station)
     stationID = station.ID
 
+    if args.zero and not args.all:
+        raise CommandLineError("TEMPORARY: --zero requires --all for the time being, just so you understand the connection.")
+
     if args._editing:
         # User specified one of the options to use an editor.
         return editUpdate(args, stationID)
@@ -998,7 +1001,7 @@ def main():
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
             ParseArgument('--all', help='Generates the temporary file with all columns and new timestamp.', action='store_true', default=False),
-            ParseArgument('--zero', help='Default to 0 for demand/stock values.', action='store_true', default=False),
+            ParseArgument('--zero', help='(with --all) Show "0" for unknown demand/stock values instead of "-1".', action='store_true', default=False),
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),

@@ -23,6 +23,12 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.3.0 Oct 17/2014
+. (gazelle) Added "--zero" option to "update --all" which makes the default
+   value for prices "0" instead of "-1". (-1 means 'unknown'. use this option
+   if you are editing timestamps and stock levels and all those -s get in your
+   way)
+
 v4.2.3 Oct 17/2014
 . (ShadowGar, Smacker65) Imported Harbinger and RedWizzard system data,
   also added tracking of where data has come from. Thanks also to Wolverine
@@ -361,6 +367,15 @@ UPDATE sub-command:
       e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
       Saves the prices in a human-readable format and loads that into
       an editor. Make changes and save to update the database.
+
+    --all
+      Exposes timestamp, demand and stock value columns.
+
+    --zero
+      Requires --all
+      Causes unknown demand/stock levels to show as 0 instead of -1.
+      Use this when you are actively editing those fields and the -1s
+      get in your way.
 
     --sublime
     --subl
