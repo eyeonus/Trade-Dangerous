@@ -607,7 +607,7 @@ def editUpdate(args, stationID):
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
+            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -691,7 +691,7 @@ def lookupSystem(name, intent):
         except LookupError:
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
-                        
+
 def distanceAlongPill(sc, percent):
     """
         Estimate a distance along the Pill using 2 reference systems
@@ -701,14 +701,14 @@ def distanceAlongPill(sc, percent):
     dotProduct = (sb.posX-sa.posX) * (sc.posX-sa.posX) \
                + (sb.posY-sa.posY) * (sc.posY-sa.posY) \
                + (sb.posZ-sa.posZ) * (sc.posZ-sa.posZ)
-    length = math.sqrt((sb.posX-sa.posX) * (sb.posX-sa.posX) 
+    length = math.sqrt((sb.posX-sa.posX) * (sb.posX-sa.posX)
                      + (sb.posY-sa.posY) * (sb.posY-sa.posY)
                      + (sb.posZ-sa.posZ) * (sb.posZ-sa.posZ))
     if percent:
         return 100. * dotProduct / length / length
-    
+
     return dotProduct / length
-    
+
 def localCommand(args):
     """
         Local systems
@@ -945,7 +945,7 @@ def main():
             ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', type=float, dest='maxLyPer'),
         ]
     )
-    
+
     # "local" shows systems local to given system.
     localParser = makeSubParser(subparsers, 'local', 'Calculate local systems.', localCommand,
         arguments = [
@@ -993,12 +993,11 @@ def main():
             "The format is intended to closely resemble the presentation of the market in-game. If you change the order items are listed in, "
             "the order will be kept for future edits, making it easier to quickly check for changes.",
         arguments = [
-            ParseArgument('station', help='Name of the station to update.', type=str)            
+            ParseArgument('station', help='Name of the station to update.', type=str)
         ],
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
             ParseArgument('--all', help='Generates the temporary file with all columns and new timestamp.', action='store_true', default=False),
-            ParseArgument('--zero', help='Default to 0 for demand/stock values.', action='store_true', default=False),
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),

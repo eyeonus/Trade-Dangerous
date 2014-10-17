@@ -572,7 +572,7 @@ class TradeDB(object):
         # If we only matched a system name, ensure that it's a single station system
         # otherwise they need to specify a station name.
         if len(system.stations) != 1:
-            raise SystemNotStationError("System '%s' has %d stations, please specify a station instead." % (system.name(), len(system.stations)))
+            raise SystemNotStationError("System '%s' has %d stations, please specify a station instead." % (name, len(system.stations)))
         return system.stations[0]
 
 
