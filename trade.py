@@ -607,7 +607,7 @@ def editUpdate(args, stationID):
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, debug=args.debug)
+            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -998,6 +998,7 @@ def main():
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
             ParseArgument('--all', help='Generates the temporary file with all columns and new timestamp.', action='store_true', default=False),
+            ParseArgument('--zero', help='Default to 0 for demand/stock values.', action='store_true', default=False),
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),
