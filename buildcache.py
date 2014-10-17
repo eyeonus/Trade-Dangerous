@@ -23,6 +23,7 @@ import sqlite3
 import sys
 import os
 from collections import namedtuple
+from tradeexcept import TradeException
 
 # Find the non-comment part of a string
 noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)+?)\s*(#|$)')
@@ -30,8 +31,24 @@ systemStationRe = re.compile(r'^\@\s*(.*)\s*/\s*(.*)')
 categoryRe = re.compile(r'^\+\s*(.*?)\s*$')
 itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)(?:\s+(\d{4}-.*?)(?:\s+demand\s+(-?\d+)L(-?\d+)\s+stock\s+(-?\d+)L(-?\d+))?)?$')
 
+
+class UnknownItemError(TradeException):
+    """
+        Raised in the case of an item name that we don't know.
+        Attributes:
+            fileName   Name of the file being read
+            lineNo     Line on which the error occurred
+            itemName   Key we tried to look up.
+    """
+    def __init__(self, fromFile, lineNo, itemName):
+        self.fileName, self.lineNo, self.itemName = fromFile.name, lineNo, itemName
+    def __str__(self):
+        return "{}:{}: Unrecognized item name, {}.".format(self.fileName, self.lineNo, str(self.itemName))
+
+
 class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'paying', 'uiOrder', 'modified', 'demand', 'demandLevel', 'stock', 'stockLevel' ])):
     pass
+
 
 def priceLineNegotiator(priceFile, db, debug=0):
     """
@@ -58,7 +75,9 @@ def priceLineNegotiator(priceFile, db, debug=0):
     else:
         itemsByName = { name: itemID for (itemID, name) in cur.execute("SELECT item_id, name FROM item") }
 
+    lineNo = 0
     for line in priceFile:
+        lineNo += 1
         try:
             text = noCommentRe.match(line).group('text').strip()
             # replace whitespace with single spaces
@@ -94,9 +113,15 @@ def priceLineNegotiator(priceFile, db, debug=0):
             if not matches:
                 print("Unrecognized line/syntax: {}".format(line))
                 sys.exit(1)
+
             itemName, stationPaying, stationAsking, modified = matches.group(1), int(matches.group(2)), int(matches.group(3)), matches.group(4)
             demand, demandLevel, stock, stockLevel = int(matches.group(5) or -1), int(matches.group(6) or -1), int(matches.group(7) or -1), int(matches.group(8) or -1)
-            itemID = itemsByName["{}:{}".format(categoryID, itemName)] if qualityItemWithCategory else itemsByName[itemName]
+
+            try:
+                itemID = itemsByName["{}:{}".format(categoryID, itemName)] if qualityItemWithCategory else itemsByName[itemName]
+            except KeyError as key:
+                raise UnknownItemError(priceFile, lineNo, key)
+
             uiOrder += 1
             yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand, demandLevel, stock, stockLevel)
         except (AttributeError, IndexError):
