@@ -334,6 +334,7 @@ class TradeDB(object):
     # File containing text description of prices
     defaultPrices = './data/TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
+    # WARNING: order is important because of dependencys!
     defaultTables = [
                       [ './data/System.csv', 'System' ],
                       [ './data/Station.csv', 'Station' ],
@@ -419,7 +420,9 @@ class TradeDB(object):
                 # check standard tables
                 for (fileName, tableName) in self.importTables:
                     if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp:
+                        if self.debug: print("* file '{}' updated".format(fileName))
                         rebuild = True
+                        break
 
             if not rebuild:
                 if self.debug > 1:
