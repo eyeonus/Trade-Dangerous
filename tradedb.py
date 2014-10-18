@@ -412,13 +412,10 @@ class TradeDB(object):
 
             sqlTimestamp, pricesTimestamp = getMostRecentTimestamp(self.sqlPath), getMostRecentTimestamp(self.pricesPath)
 
-            rebuild = False
-            if max(sqlTimestamp, pricesTimestamp) > dbFileCreatedTimestamp:
-                # db is older
-                rebuild = True
-
+            # rebuild if the sql or prices file is more recent than the db file
+            rebuild = ( max(sqlTimestamp, pricesTimestamp) >= dbFileCreatedTimestamp )
             if not rebuild:
-                # check standard tables
+                # check if any table files have changed
                 for (fileName, tableName) in self.importTables:
                     if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp:
                         if self.debug: print("* file '{}' updated".format(fileName))
