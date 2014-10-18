@@ -28,6 +28,10 @@ v4.3.0 Oct 17/2014
    value for demand/stock levels "0" instead of "-1". (-1 means 'unknown'.
    Use this option if you are editing timestamps and stock levels and all
    those '-'s get in your way)
+. (gazelle) Moved Star, System, etc data out of ".sql" file and into
+   per-table ".csv" files. This should make it much easier for people to
+   share and synchronize data and make it less daunting for people to
+   maintain their data files. Great work, Gazelle!
 
 v4.2.3 Oct 17/2014
 . (ShadowGar, Smacker65) Imported Harbinger and RedWizzard system data,

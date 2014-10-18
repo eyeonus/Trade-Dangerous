@@ -413,22 +413,16 @@ class TradeDB(object):
             sqlTimestamp, pricesTimestamp = getMostRecentTimestamp(self.sqlPath), getMostRecentTimestamp(self.pricesPath)
 
             # rebuild if the sql or prices file is more recent than the db file
-            rebuild = ( max(sqlTimestamp, pricesTimestamp) >= dbFileCreatedTimestamp )
-            if not rebuild:
-                # check if any table files have changed
-                for (fileName, tableName) in self.importTables:
-                    if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp:
-                        if self.debug: print("* file '{}' updated".format(fileName))
-                        rebuild = True
-                        break
-
-            if not rebuild:
-                if self.debug > 1:
-                    print("- SQLite is up to date")
-                return
-
-            if self.debug:
-                print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp))
+            if max(sqlTimestamp, pricesTimestamp) < dbFileCreatedTimestamp:
+                # sql and prices file are older than the db, db may be upto date,
+                # check if any of the table files have changed.
+                changedFiles = [ fileName for (fileName, _) in self.importTables if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp ]
+                if not changedFiles:
+                    if self.debug > 1: print("- DB Cache is up to date.")
+                    return
+                if self.debug: print("* Rebuilding DB Cache because of modified {}".format(', '.join(changedFiles)))
+            else:
+                if self.debug: print("* Rebuilding DB Cache [db:{}, sql:{}, prices:{}]".format(dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp))
         else:
             if self.debug:
                 print("* Building DB cache")
