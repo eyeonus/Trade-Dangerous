@@ -22,6 +22,8 @@ import re
 import sqlite3
 import sys
 import os
+import csv
+from pathlib import Path
 from collections import namedtuple
 from tradeexcept import TradeException
 
@@ -153,7 +155,55 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
         if debug:
             print("WARNING: processPricesFile found no {} file".format(pricesPath))
 
-def buildCache(dbPath, sqlPath, pricesPath, debug=0):
+
+def processImportFile(db, importPath, tableName, debug=0):
+
+    if debug: print("* Processing import file '{}' for table '{}'".format(str(importPath), tableName))
+
+    try:
+        with importPath.open() as importFile:
+            csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
+            # first line must be the column names
+            columnNames = next(csvin)
+            columnCount = len(columnNames)
+
+            # split up columns and values
+            # this is necessary because the insert might use a foreign key
+            bindColumns = []
+            bindValues  = []
+            for cName in columnNames:
+                splitNames = cName.split('@')
+                if len(splitNames) == 1:
+                    # no foreign key, straight insert
+                    bindColumns += [ splitNames[0] ]
+                    bindValues  += [ '?' ]
+                else:
+                    # foreign key, we need to make a select
+                    splitJoin    = splitNames[1].split('.')
+                    joinTable    = splitJoin[0]
+                    joinColumn   = splitJoin[1]
+                    bindColumns += [ joinColumn ]
+                    bindValues  += [ "(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)".format(newValue=splitNames[1], table=joinTable, column=splitNames[0]) ]
+            # now we can make the sql statement
+            sql_stmt = "INSERT INTO {table}({columns}) VALUES({values})".format(table=tableName, columns=','.join(bindColumns), values=','.join(bindValues))
+            if debug: print("* SQL-Statement: {}".format(sql_stmt))
+
+            # import the data
+            importCount = 0
+            for linein in csvin:
+                if len(linein) == columnCount:
+                    if debug > 1: print("-        Values: {}".format(', '.join(linein)))
+                    db.execute(sql_stmt, linein)
+                    importCount += 1
+            db.commit()
+            if debug: print("* {count} {table}s imported".format(count=importCount, table=tableName))
+
+    except FileNotFoundError:
+        if debug:
+            print("WARNING: processImportFile found no {} file".format(importPath))
+
+
+def buildCache(dbPath, sqlPath, pricesPath, importTables, debug=0):
     """
         Rebuilds the SQlite database from source files.
 
@@ -177,6 +227,10 @@ def buildCache(dbPath, sqlPath, pricesPath, debug=0):
     with sqlPath.open() as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
+
+    # import standard tables
+    for (importName, importTable) in importTables:
+        processImportFile(tempDB, Path(importName), importTable, debug=debug)
 
     # Parse the prices file
     processPricesFile(tempDB, pricesPath, debug=debug)

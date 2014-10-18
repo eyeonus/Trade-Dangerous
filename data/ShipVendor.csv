@@ -1,0 +1,17 @@
+name@Ship.ship_id,name@Station.station_id,cost
+'Anaconda','Lacaille Prospect',0
+'Cobra','Aulin Enterprise',0
+'Cobra','Chango Dock',0
+'Eagle','Aulin Enterprise',0
+'Eagle','Beagle 2 Landing',0
+'Hauler','Aulin Enterprise',0
+'Hauler','Beagle 2 Landing',0
+'Lakon Type 6','Aulin Enterprise',0
+'Lakon Type 6','Chango Dock',0
+'Lakon Type 6','Vonarburg Co-operative',0
+'Lakon Type 9','Chango Dock',0
+'Sidewinder','Aulin Enterprise',0
+'Sidewinder','Beagle 2 Landing',0
+'Viper','Aulin Enterprise',0
+'Viper','Beagle 2 Landing',0
+'Viper','Chango Dock',0
