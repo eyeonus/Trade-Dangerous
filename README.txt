@@ -25,9 +25,9 @@ files from other commanders to fill out your database.
 
 v4.3.0 Oct 17/2014
 . (gazelle) Added "--zero" option to "update --all" which makes the default
-   value for prices "0" instead of "-1". (-1 means 'unknown'. use this option
-   if you are editing timestamps and stock levels and all those -s get in your
-   way)
+   value for demand/stock levels "0" instead of "-1". (-1 means 'unknown'.
+   Use this option if you are editing timestamps and stock levels and all
+   those '-'s get in your way)
 
 v4.2.3 Oct 17/2014
 . (ShadowGar, Smacker65) Imported Harbinger and RedWizzard system data,
