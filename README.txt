@@ -23,10 +23,14 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.5.0 Oct 20/2014
+. (Smacker65/Community) Smacker brings the star database up to 567 systems.
+
 v4.4.0 Oct 19/2014
-. (Community) Merged Gazelle's update with community sources Star/Station
+. (Gazelle/Community) Merged Gazelle's update with community sources Star/Station
   data. Thanks to Gazelle, Smacker, RedWizzard, Haringer, Wolverine.
   It's only data but it's a big update and a lot of work went into it :)
+
 v4.3.0 Oct 17/2014
 . (gazelle) Added "--zero" option to "update --all" which makes the default
    value for demand/stock levels "0" instead of "-1". (-1 means 'unknown'.
