@@ -23,6 +23,14 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.5.1 Oct 20/2014
+. (kfsone) Added --dir (-C) command line for specifying which directory you
+  want trade.py to look in for it's files.
+. (kfsone) trade.py will now default to trying to look for files relative
+  to where the "trade.py" script was called from. So if you run
+  "c:\tradedangerous\trade.py" it will look for the data directory as
+  "c:\tradedangerous\data\" (Issue #39)
+
 v4.5.0 Oct 20/2014
 . (Smacker65/Community) Smacker brings the star database up to 567 systems.
 

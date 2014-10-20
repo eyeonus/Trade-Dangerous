@@ -924,6 +924,7 @@ def main():
     commonArgs.add_argument('--detail', '-v', help='Increase level  of detail in output.', default=0, required=False, action='count')
     commonArgs.add_argument('--quiet',  '-q', help='Reduce level of detail in output.', default=0, required=False, action='count')
     commonArgs.add_argument('--db', help='Specify location of the SQLite database. Default: {}'.format(TradeDB.defaultDB), type=str, default=str(TradeDB.defaultDB))
+    commonArgs.add_argument('--cwd',    '-C', help='Change the directory relative to which TradeDangerous will try to access files such as the .db, etc.', type=str, required=False)
 
     subparsers = parser.add_subparsers(dest='subparser', title='Commands')
 
@@ -1018,6 +1019,18 @@ def main():
 
     if args.detail and args.quiet:
         raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
+
+    # If a directory was specified, relocate to it.
+    # Otherwise, try to chdir to 
+    if args.dir:
+        os.chdir(args.dir)
+    else:
+        if sys.argv[0]:
+            cwdPath = pathlib.Path('.').resolve()
+            exePath = pathlib.Path(sys.argv[0]).parent.resolve()
+            if cwdPath != exePath:
+                if args.debug: print("# cwd at launch was: {}, changing to {} to match trade.py".format(cwdPath, exePath))
+                os.chdir(str(exePath))
 
     # load the database
     tdb = TradeDB(debug=args.debug, dbFilename=args.db)
