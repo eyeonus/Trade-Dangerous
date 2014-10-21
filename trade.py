@@ -1022,8 +1022,8 @@ def main():
 
     # If a directory was specified, relocate to it.
     # Otherwise, try to chdir to 
-    if args.dir:
-        os.chdir(args.dir)
+    if args.cwd:
+        os.chdir(args.cwd)
     else:
         if sys.argv[0]:
             cwdPath = pathlib.Path('.').resolve()
