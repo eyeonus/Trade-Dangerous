@@ -118,10 +118,12 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
         file.write("      {:<{width}} {:7d} {:6d}".format(items[itemID], fromStn, toStn, width=longestNameLen))
         if withModified and modified:
             if defaultZero:
-                if demand      == -1: demand      = 0
-                if demandLevel == -1: demandLevel = 0
-                if stock       == -1: stock       = 0
-                if stockLevel  == -1: stockLevel  = 0
+                if demand == -1 and demandLevel == -1:
+                    demand      = 0
+                    demandLevel = 0
+                if stock == -1 and stockLevel == -1:
+                    stock      = 0
+                    stockLevel = 0
             file.write("   {} demand {:>7}L{} stock {:>7}L{}".format(
                         modified,
                         demand,
