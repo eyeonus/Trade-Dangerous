@@ -91,7 +91,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
     if not withModified:
         file.write("# <item name> <sell> <buy>\n")
     else:
-        file.write("# <item name> <selll> <buy> <timestamp> demand <demand#>L<level> stock <stock#>L<level>\n")
+        file.write("# <item name> <sell> <buy> <timestamp> demand <demand#>L<level> stock <stock#>L<level>\n")
         file.write("#  demand#/stock#: the quantity available or -1 for 'unknown'")
         file.write("#  level: 0 = None, 1 = Low, 2 = Medium, 3 = High, -1 = Unknown\n")
     file.write("\n")
