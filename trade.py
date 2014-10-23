@@ -607,7 +607,9 @@ def editUpdate(args, stationID):
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
+            withModified = args.all # or args.timestamps
+            withLevels   = args.all # or args.levels
+            prices.dumpPrices(args.db, withModified=withModified, withLevels=withLevels, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -648,7 +650,7 @@ def editUpdate(args, stationID):
             print("# Update complete, regenerating .prices file")
 
         with tdb.pricesPath.open("w") as pricesFile:
-            prices.dumpPrices(args.db, withModified=True, file=pricesFile, debug=args.debug)
+            prices.dumpPrices(args.db, withModified=True, withLevels=True, file=pricesFile, debug=args.debug)
 
         # Update the DB file so we don't regenerate it.
         pathlib.Path(args.db).touch()

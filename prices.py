@@ -15,7 +15,7 @@ import sqlite3
 ######################################################################
 # Main
 
-def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaultZero=False, debug=0):
+def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None, file=None, defaultZero=False, debug=0):
     """ Generate a 'prices' list for the given list of stations using data from the DB. """
     conn = sqlite3.connect(str(dbFilename))     # so we can handle a Path object too
     cur  = conn.cursor()
@@ -33,13 +33,9 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
         # check if there are prices for the station
         cur.execute("SELECT COUNT(*) FROM Price WHERE Price.station_id = {}".format(stationID))
         priceCount = cur.fetchone()[0]
-        # generate new timestamp in the select
-        modifiedStamp = "CURRENT_TIMESTAMP"
     else:
         # no station, no check
         priceCount = 1
-        # use old timestamp for the export
-        modifiedStamp = "Price.modified"
 
     stationClause = "1" if not stationID else "Station.station_id = {}".format(stationID)
     defaultDemandVal = 0 if defaultZero else -1
@@ -47,7 +43,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
         # no prices, generate an emtpy one with all items
         cur.execute("""
             SELECT  Station.system_id, Station.station_id, Item.category_id, Item.item_id,
-                    0, 0, CURRENT_TIMESTAMP,
+                    0, 0, NULL,
                     {defDemand}, {defDemand}, {defDemand}, {defDemand}
                FROM Item LEFT OUTER JOIN Station, Category
               WHERE {stationClause}
@@ -62,7 +58,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
                     , Price.item_id
                     , Price.sell_to
                     , Price.buy_from
-                    , {modStamp}  -- real or current timestamp
+                    , Price.modified
                     , IFNULL(Price.demand, {defDemand})
                     , IFNULL(Price.demand_level, {defDemand})
                     , IFNULL(Price.stock, {defDemand})
@@ -72,7 +68,7 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
                     AND Station.station_id = Price.station_id
                     AND (Item.category_id = Category.category_id) AND Item.item_id = Price.item_id
              ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Item.name
-        """.format(modStamp=modifiedStamp, stationClause=stationClause, defDemand=defaultDemandVal))
+        """.format(stationClause=stationClause, defDemand=defaultDemandVal))
 
     lastSys, lastStn, lastCat = None, None, None
 
@@ -84,17 +80,53 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
         file.write("# TradeDangerous prices for ALL Systems/Stations\n")
     file.write("\n")
 
-    file.write("# The order items are listed in is saved to the DB,\n")
-    file.write("# feel free to move items around within their categories.\n")
+    file.write("# REMOVE ITEMS THAT DON'T APPEAR IN THE UI\n")
+    file.write("# ORDER IS REMEMBERED: Move items around within categories to match the game UI\n")
     file.write("\n")
 
-    if not withModified:
-        file.write("# <item name> <sell> <buy>\n")
-    else:
-        file.write("# <item name> <sell> <buy> <timestamp> demand <demand#>L<level> stock <stock#>L<level>\n")
-        file.write("#  demand#/stock#: the quantity available or -1 for 'unknown'")
-        file.write("#  level: 0 = None, 1 = Low, 2 = Medium, 3 = High, -1 = Unknown\n")
+    file.write("# File syntax:\n")
+    file.write("# <item name> <sell> <buy> [ <demand units>@<demand level> <stock units>@<stock level> [<timestamp>] ]\n")
+    file.write("# You can write 'unk' for unknown demand/stock, 'n/a' if the item is unavailable,\n")
+    file.write("# level can be one of 'L', 'M' or 'H'.\n")
+    file.write("# If you omit the timestamp, the current time will be used when the file is loaded.\n")
+
+    if defaultZero:
+        file.write("\n")
+        file.write("# CAUTION: Items marked 'n/a' are ignored for trade planning.\n")
+
     file.write("\n")
+
+    levelDescriptions = {
+        -1: "?",
+         0: "0",
+         1: "L",
+         2: "M",
+         3: "H"
+    }
+    def itemQtyAndLevel(quantity, level):
+        if defaultZero and quantity == -1 and level == -1:
+            quantity, level = 0, 0
+        if quantity < 0 and level < 0:
+            return "      unk"
+        if quantity == 0 and level == 0:
+            return "      n/a"
+        # Quantity of -1 indicates 'unknown'
+        quantityDesc = '?' if quantity < 0 else str(quantity)
+        # try to use a descriptive for the level
+        try:
+            levelDesc = levelDescriptions[int(level)]
+        except (KeyError, ValueError):
+            levelDesc = str(level)
+        return "{:>7}@{}".format(quantityDesc, levelDesc)
+
+
+    maxCrWidth = 7
+    file.write("#     {:<{width}} {:>{crwidth}} {:>{crwidth}}".format("Item Name", "Sell Cr", "Buy Cr", width=longestNameLen, crwidth=maxCrWidth))
+    if withLevels:
+        file.write("  {:>9} {:>9}".format("Demand", "Stock"))
+    if withModified:
+        file.write("  {}".format("Modified"))
+    file.write("\n\n")
 
     for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
         system = systems[sysID]
@@ -115,25 +147,17 @@ def dumpPrices(dbFilename, withModified=False, stationID=None, file=None, defaul
             file.write("   + {}\n".format(category))
             lastCat = category
 
-        file.write("      {:<{width}} {:7d} {:6d}".format(items[itemID], fromStn, toStn, width=longestNameLen))
-        if withModified and modified:
-            if defaultZero:
-                if demand == -1 and demandLevel == -1:
-                    demand      = 0
-                    demandLevel = 0
-                if stock == -1 and stockLevel == -1:
-                    stock      = 0
-                    stockLevel = 0
-            file.write("   {} demand {:>7}L{} stock {:>7}L{}".format(
-                        modified,
-                        demand,
-                        demandLevel,
-                        stock,
-                        stockLevel
+        file.write("      {:<{width}} {:{crwidth}d} {:{crwidth}d}".format(items[itemID], fromStn, toStn, width=longestNameLen, crwidth=maxCrWidth))
+        if withLevels:
+            file.write("  {} {}".format(
+                        itemQtyAndLevel(demand, demandLevel),
+                        itemQtyAndLevel(stock, stockLevel),
                     ))
+        if withModified:
+            file.write("  {}".format(modified or 'now'))
         file.write("\n")
 
 
 if __name__ == "__main__":
     from tradedb import TradeDB
-    dumpPrices(TradeDB.defaultDB, withModified=True)
+    dumpPrices(TradeDB.defaultDB, withModified=True, withLevels=True)
