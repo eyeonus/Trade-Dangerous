@@ -19,7 +19,7 @@ name@System.system_id,name,ls_from_star
 'Adepti','Lysenko Ring',0.0
 'Aganippe','Julian Market',0.0
 'Aladu Kuan Gon','Finch City',0.0
-'Alderamin','Sullivan Port',0.0
+'Alderamin','Sullivan Port',121778.0
 'Alrai','Resnik Dock',0.0
 'Andjeri','AvoGadro Landing',0.0
 'Ao Qin','Volterra Refinery',7619.0
@@ -52,8 +52,8 @@ name@System.system_id,name,ls_from_star
 'Bhotepa','Kazantsev Inheritance',0.0
 'Bolg','Moxon''s Mojo',0.0
 'Bolg','Wang Terminal',0.0
-'Boro Kacharis','Strekalov Terminal',0.0
-'Caer Bran','Browns Port',0.0
+'Boro Kacharis','Strekalov Terminal',357.0
+'Caer Bran','Browns Port',321.0
 'CE Bootis','Moseley Park',0.0
 'Chapoyo','Peano Reserve',0.0
 'Chara','Schade Dock',0.0
@@ -63,7 +63,7 @@ name@System.system_id,name,ls_from_star
 'Clotti','Heyerdahl Depot',0.0
 'CM Draco','Anderson Escape',2090000.0
 'Coelrind','Daimler Settlement',0.0
-'Connla','Nelson Port',0.0
+'Connla','Nelson Port',5570.0
 'Coquenchis','Favier Port',0.0
 'CR Draco','Bruce Terminal',713.0
 'Cuages','Wundt Holdings',0.0
@@ -78,7 +78,7 @@ name@System.system_id,name,ls_from_star
 'Eranin','Azeban City',0.0
 'Eranin','Azeban Orbital',0.0
 'Eranin','Eranin 4 Survey',0.0
-'Eta Cephei','Isherwood Ring',0.0
+'Eta Cephei','Isherwood Ring',14.5
 'Evergreen','Boas Claim',0.0
 'Exbeur','Bush High',0.0
 'Flousop','Mcculley Refinery',0.0
@@ -86,7 +86,7 @@ name@System.system_id,name,ls_from_star
 'G 180-18','Murrays Port',0.0
 'G 203-47','Hopkins Settlement',0.0
 'G 203-47','Horowitz City',0.0
-'G 203-47','Zhen Outpost',0.0
+'G 203-47','Zhen Outpost',1227.0
 'G 224-46','Chomsky Orbital',0.0
 'G 230-27','Trinh Dock',0.0
 'G 239-25','Bresnik Mine',0.0
@@ -134,15 +134,15 @@ name@System.system_id,name,ls_from_star
 'LFT 1072','Nansen Inheritance',0.0
 'LFT 1073','Roberts Camp',0.0
 'LFT 1421','Volkov Plant',772287.0
-'LFT 1446','Ray Colony',0.0
+'LFT 1446','Ray Colony',15319.0
 'LFT 880','Baker Platform',0.0
 'LFT 992','Szulkin Mines',0.0
 'LHS 1065','Battuta Terminal',0.0
 'LHS 1101','Apgar Landing',0.0
 'LHS 2123','Pangborn Point',0.0
 'LHS 2405','Fraas Dock',0.0
-'LHS 246','Kurland Dock',0.0
-'LHS 250','Zamka Dock',0.0
+'LHS 246','Kurland Dock',9.5
+'LHS 250','Zamka Dock',24.3
 'LHS 2522','Weyl Estate',0.0
 'LHS 2651','Kippax Depot',0.0
 'LHS 2764a','Maclean Station',0.0
@@ -168,7 +168,7 @@ name@System.system_id,name,ls_from_star
 'LHS 391','Scheickart Depot',0.0
 'LHS 411','Schottky Port',0.0
 'LHS 417','Gernhardt Camp',0.0
-'LHS 5072','Dutton Beacon',0.0
+'LHS 5072','Dutton Beacon',27812.0
 'LHS 5287','Mcarthur''s Reach',0.0
 'LHS 6282','Stephens Terminal',0.0
 'LHS 6309','Rangarajan Platform',0.0
@@ -182,8 +182,8 @@ name@System.system_id,name,ls_from_star
 'LP 322-836','Piccard Point',0.0
 'LP 440-38','Reynolds Colony',0.0
 'LP 45-128','Hobaugh Beacon',6.99
-'LP 48-567','Remec Hub',0.0
-'LP 5-88','Gurragchaa Station',0.0
+'LP 48-567','Remec Hub',8.56
+'LP 5-88','Gurragchaa Station',1437.0
 'LP 64-194','Longyear Survey',0.0
 'LP 7-226','Christopher Colony',0.0
 'LP 71-157','Linenger Hub',10.3
@@ -215,7 +215,7 @@ name@System.system_id,name,ls_from_star
 'Ngoloki Anaten','Hale Landing',0.0
 'Nguruai Trimpaso','Sawyer Outpost',0.0
 'Nimba','Fowler Estate',0.0
-'NLTT 46621','Bradley Inheritance',0.0
+'NLTT 46621','Bradley Inheritance',3507.0
 'NLTT 49528','Fullerton City',6153.0
 'NLTT 49528','Padalka Installation',0.0
 'NLTT 50716','Burbank Platform',0.0
@@ -228,7 +228,7 @@ name@System.system_id,name,ls_from_star
 'Pareco','Nicollier Exchange',0.0
 'Pata Thewi','Agnesi Terminal',0.0
 'Paul-Friedrichs Star','Paul-Friedrichs Expedition Base Camp',0.0
-'Pemede','Goeppert-Mayer Gateway',0.0
+'Pemede','Goeppert-Mayer Gateway',605.0
 'Perendi','Guidoni Landing',0.0
 'Pi-fang','Brooks Estate',0.0
 'Poqomathi','Aitken Station',0.0
@@ -273,12 +273,12 @@ name@System.system_id,name,ls_from_star
 'V740 Cassiopeiae','Morgan Stop',0.0
 'Vaccimici','Gannt Enterprise',0.0
 'Verboni','Hartdog Dock',0.0
-'Vetr','Solovyov Colony',11.3
+'Vetr','Solovyov Colony',6.69
 'Wikmeang','Bosch Base',0.0
 'WISE 1647+5632','Hirase Platform',0.0
 'Wolf 1409','Al-Khalili Refinery',0.0
 'Wolf 497','Kadenyuk Camp',0.0
-'Wolf 654','Diesel Survey',0.0
+'Wolf 654','Diesel Survey',20.4
 'Wunjo','Burkin Depot',0.0
 'Wyrd','Vonarburg Co-operative',0.0
 'Xi Ursae Majoris','Comino Dock',0.0
