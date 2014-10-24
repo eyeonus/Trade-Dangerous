@@ -23,6 +23,26 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.6.0 Oct 24/2014
+. (kfsone) New extended .prices format:
+  <item name> <sell> <buy> <demand> <stock> [<time>]
+  Demand/stock can be:
+   unk     :-  "unknown" - treat as though always available
+   n/a     :-  "not available" - ignore in trade calcs
+   0       :-  alias for "n/a"
+  or the number of units followed by L, M or H, e.g.
+   10L     :- 10 units at Low
+   500M    :- 500 units at Medium
+   9000H   :- 9000 units at High
+  Note that the time has moved to the end of the line.
+  When updating data, you can either remove the time and have it
+  default to 'now' or you can explicitly write the word now.
+. (smacker65) Couple of station name corrections
+. (kfsone) Better feedback when price data could not be found
+. (kfsone) .prices wiki page
+. (smacker65) More star data and corrections
+. (gazelle) Fix for "--zero" and, e.g., "-1L0"
+
 v4.5.1 Oct 20/2014
 . (kfsone) Added --dir (-C) command line for specifying which directory you
   want trade.py to look in for it's files.
