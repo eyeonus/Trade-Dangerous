@@ -28,10 +28,111 @@ from collections import namedtuple
 from tradeexcept import TradeException
 
 # Find the non-comment part of a string
-noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)+?)\s*(#|$)')
+noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)*)\s*(#|$)')
 systemStationRe = re.compile(r'^\@\s*(.*)\s*/\s*(.*)')
 categoryRe = re.compile(r'^\+\s*(.*?)\s*$')
-itemPriceRe = re.compile(r'^(.*?)\s+(\d+)\s+(\d+)(?:\s+(\d{4}-.*?)(?:\s+demand\s+(-?\d+)L(-?\d+)\s+stock\s+(-?\d+)L(-?\d+))?)?$')
+
+# first part of any prices line is the item name and paying/asking price
+itemPriceFrag = r"""
+    # match item name, allowing spaces in the name
+    (?P<item> .*?)
+\s+
+    # price station is buying the item for
+    (?P<paying> \d+)
+\s+
+    # price station is selling item for
+    (?P<asking> \d+)
+"""
+
+# time formats per https://www.sqlite.org/lang_datefunc.html
+# YYYY-MM-DD HH:MM:SS
+# YYYY-MM-DDTHH:MM:SS
+# HH:MM:SS
+# 'now'
+timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
+
+# format used with --full and in TradeDangerous.prices
+# <item name> <paying> <asking> [ <time> [ demand <units>L<level> stock <units>L<level> ] ]
+itemPriceRe = re.compile(r"""
+^
+    # name, prices
+    {base_f}
+    # extended section with time and possibly demand+stock info
+    (?:
+    \s+
+        {time_f}
+        # optional demand/stock after time
+        (?:
+            \s+ demand \s+ (?P<demand> -?\d+L-?\d+ | n/a | -L-)
+            \s+ stock \s+ (?P<stock> -?\d+L-?\d+ | n/a | -L-)
+        )?
+    )?
+\s*
+$
+""".format(base_f=itemPriceFrag, time_f=timeFrag), re.IGNORECASE + re.VERBOSE)
+
+# new format: <name> <paying> <asking> [ <demUnits><demLevel> <stockUnits><stockLevel> [ <time> | now ] ]
+qtyLevelFrag = r"""
+    unk                         # You can just write 'unknown'
+|   n/a                         # alias for 0L0
+|   -                           # alias for 0L0
+|   \d+[LMH]                    # Or <number><level> where level is L(ow), M(ed) or H(igh)
+|   0                           # alias for n/a
+"""
+newItemPriceRe = re.compile(r"""
+^
+    {base_f}
+\s+ 
+    # demand units and level
+    (?P<demand> {qtylvl_f})
+\s+
+    # stock units and level
+    (?P<stock> {qtylvl_f})
+    # time is optional
+    (?:
+    \s+
+        {time_f}
+    )?
+\s*
+$
+""".format(base_f=itemPriceFrag, qtylvl_f=qtyLevelFrag, time_f=timeFrag), re.IGNORECASE + re.VERBOSE)
+
+
+class UnitsAndLevel(object):
+    """
+        Helper class for breaking a units-and-level reading (e.g. -1L-1 or 50@M)
+        into units and level values or throwing diagnostic messages to help the
+        user figure out what data error was made.
+    """
+    # Map textual representations of levels back into integer values
+    levels = {
+        '-1': -1,
+        '0': 0, '-': 0,
+        'L': 1, '1': 1,
+        'M': 2, '2': 2,
+        'H': 3, '3': 3,
+    }
+    # Split a <units>L<level> reading
+    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>\d+)$')
+    # Split a <units><level> reading
+    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[LMH])$')
+
+    def __init__(self, category, reading):
+        if reading in (None, "unk", "-1L-1", "-1L0", "0L-1"):
+            self.units, self.level = -1, -1
+        elif reading in ("-", "-L-", "n/a", "0"):
+            self.units, self.level = 0, 0
+        else:
+            matches = self.splitLRe.match(reading) or self.splitAtRe.match(reading)
+            if not matches:
+                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[LMH], got '{}'".format(category, reading))
+            units, level = matches.group('units', 'level')
+            try:
+                self.units, self.level = int(units), UnitsAndLevel.levels[level]
+            except KeyError:
+                raise ValueError("Invalid {} level '{}' (expected 0 (or -) for unavailable, L (or 1) for low, M (or 2) for medium, H (or 3) for high)".format(category, level))
+            if self.units < 0:
+                raise ValueError("Negative {} quantity '{}' specified, please use 'unk' for unknown".format(category, self.units))
 
 
 class UnknownItemError(TradeException):
@@ -113,11 +214,16 @@ def priceLineNegotiator(priceFile, db, debug=0):
 
             matches = itemPriceRe.match(text)
             if not matches:
-                print("Unrecognized line/syntax: {}".format(line))
-                sys.exit(1)
+                matches = newItemPriceRe.match(text)
+                if not matches:
+                    print("Unrecognized line/syntax: {}".format(line))
+                    sys.exit(1)
 
-            itemName, stationPaying, stationAsking, modified = matches.group(1), int(matches.group(2)), int(matches.group(3)), matches.group(4)
-            demand, demandLevel, stock, stockLevel = int(matches.group(5) or -1), int(matches.group(6) or -1), int(matches.group(7) or -1), int(matches.group(8) or -1)
+            itemName, stationPaying, stationAsking, modified = matches.group('item'), int(matches.group('paying')), int(matches.group('asking')), matches.group('time')
+            demand = UnitsAndLevel('demand', matches.group('demand'))
+            stock  = UnitsAndLevel('stock',  matches.group('stock'))
+            if modified and modified.lower() in ('now', '"now"', "'now'"):
+                modified = None         # Use CURRENT_FILESTAMP
 
             try:
                 itemID = itemsByName["{}:{}".format(categoryID, itemName)] if qualityItemWithCategory else itemsByName[itemName]
@@ -125,8 +231,8 @@ def priceLineNegotiator(priceFile, db, debug=0):
                 raise UnknownItemError(priceFile, lineNo, key)
 
             uiOrder += 1
-            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand, demandLevel, stock, stockLevel)
-        except (AttributeError, IndexError):
+            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand.units, demand.level, stock.units, stock.level)
+        except UnknownItemError:
             continue
 
 
