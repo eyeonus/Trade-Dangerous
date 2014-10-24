@@ -24,22 +24,31 @@
 #          need some corrections.
 ######################################################################
 
+import argparse
 import sqlite3
 import csv
+import sys
+import errno
+from pathlib import Path
 
 def search_dict(list, key, val):
     for row in list:
         if row[key] == val: return row
 
-def main(debug=0):
+######################################################################
+# Main
+
+def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
     # load the database
-    conn = sqlite3.connect("../data/TradeDangerous.db")
+    if not quiet: print("Using database '{}'".format(dbFilename))
+    conn = sqlite3.connect(str(dbFilename))
     conn.row_factory = sqlite3.Row
 
     # for some tables the first two columns will be reversed
     reverseList = [ 'AltItemNames',
                     'Item',
                     'Price',
+                    'PriceHistory',
                     'ShipVendor',
                     'Station',
                     'UpgradeVendor'
@@ -47,20 +56,21 @@ def main(debug=0):
 
     # iterate over all tables
     tCursor = conn.cursor()
+    tableStmt = "NOT LIKE 'sqlite_%'" if not exportTable else "= '{}'".format(exportTable)
     for row in tCursor.execute("""
                                   SELECT name
                                     FROM sqlite_master
                                    WHERE type = 'table'
-                                     AND name NOT LIKE 'sqlite_%'
+                                     AND name {} COLLATE NOCASE
                                    ORDER BY name
-                               """):
+                               """.format(tableStmt)):
         tableName = row['name']
-        exportName = "{table}.csv".format(table=tableName)
+        exportName = Path(exportPath).joinpath("{table}.csv".format(table=tableName))
 
         # create CSV files
-        print("Export Table {table} to {file}".format(table=tableName, file=exportName))
-        with open(exportName, "w") as exportFile:
-            exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True)
+        if not quiet: print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
+        with exportName.open("w") as exportFile:
+            exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, lineterminator="\n")
 
             cur = conn.cursor()
             keyList = []
@@ -115,8 +125,8 @@ def main(debug=0):
                 sqlStmt += " WHERE {}".format(" AND ".join(stmtWhere))
             if len(stmtOrder) > 0:
                 sqlStmt += " ORDER BY {}".format(",".join(stmtOrder))
-            if debug:
-                print("SQL: %s" % sqlStmt)
+            if debug == 1:
+                print("* SQL: %s" % sqlStmt)
 
             # finally generate the csv file
             lineCount = 0
@@ -124,9 +134,31 @@ def main(debug=0):
             for line in cur.execute(sqlStmt):
                 lineCount += 1
                 exportOut.writerow(list(line))
-            print("* {count} {table}s exported".format(count=lineCount, table=tableName))
-            print()
+            if debug == 1:
+                print("* {count} {table}s exported".format(count=lineCount, table=tableName))
 
 
 if __name__ == "__main__":
-    main()
+    # some defaults
+    defaultDB   = Path("../data/TradeDangerous.db")
+    defaultPath = Path(".")
+
+    # command line arguments
+    parser = argparse.ArgumentParser(description='CSV exporter for TradeDangerous database.')
+    parser.add_argument('--db', help="Specify location of the SQLite database. Default: '{}'".format(defaultDB), type=str, default=defaultDB)
+    parser.add_argument('--path', help="Specify save location of the CSV files. Default: '{}'".format(defaultPath), type=str, default=defaultPath)
+    parser.add_argument('--table', help='Specify a single tablename to export.', type=str, default=None)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--debug', '-w', help='Enable debug output.', default=0, action='count')
+    group.add_argument('--quiet', '-q', help='No output.', default=False, action='store_true')
+    args = parser.parse_args()
+
+    # some checks
+    if not Path(args.db).is_file():
+        print("error: database '{}' not found.".format(args.db))
+        sys.exit(errno.ENOENT)
+    if not Path(args.path).is_dir():
+        print("error: save location '{}' not found.".format(args.path))
+        sys.exit(errno.ENOENT)
+
+    exportTables(dbFilename=args.db, exportPath=args.path, exportTable=args.table, quiet=args.quiet, debug=args.debug)
