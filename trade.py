@@ -92,8 +92,11 @@ class NoDataError(TradeException):
         self.errorStr = errorStr
     def __str__(self):
         return "Error: {}\n".format(self.errorStr) + \
-                "This can happen if you have not entered any price data yet or if your price database is small enough there are no profitable trades in it.\n" + \
-                "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n"
+        "This can happen if you have not yet entered any price data for the station(s) involved, " + \
+            "if there are no profitable trades between them, " + \
+            "or the items are marked as 'n/a' (did you use '-zero' when updating?).\n" + \
+        "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n" + \
+        "Or see https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data for more help.\n"
 
 
 class HelpAction(argparse.Action):
