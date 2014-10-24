@@ -77,6 +77,7 @@ qtyLevelFrag = r"""
 |   n/a                         # alias for 0L0
 |   -                           # alias for 0L0
 |   \d+[LMH]                    # Or <number><level> where level is L(ow), M(ed) or H(igh)
+|   0                           # alias for n/a
 """
 newItemPriceRe = re.compile(r"""
 ^
@@ -119,7 +120,7 @@ class UnitsAndLevel(object):
     def __init__(self, category, reading):
         if reading in (None, "unk", "-1L-1", "-1L0", "0L-1"):
             self.units, self.level = -1, -1
-        elif reading in ("-", "-L-", "n/a"):
+        elif reading in ("-", "-L-", "n/a", "0"):
             self.units, self.level = 0, 0
         else:
             matches = self.splitLRe.match(reading) or self.splitAtRe.match(reading)
