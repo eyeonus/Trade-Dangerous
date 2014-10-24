@@ -565,7 +565,7 @@ def editUpdate(args, stationID):
     if args.debug: print("# 'update' mode with editor. editor:{} station:{}".format(args.editor, args.station))
 
     import buildcache
-    from data import prices
+    import prices
     import subprocess
     import os
 
