@@ -76,7 +76,7 @@ qtyLevelFrag = r"""
     unk                         # You can just write 'unknown'
 |   n/a                         # alias for 0L0
 |   -                           # alias for 0L0
-|   \d+[LMH]                    # Or <number><level> where level is L(ow), M(ed) or H(igh)
+|   \d+[\?LMH]                  # Or <number><level> where level is L(ow), M(ed) or H(igh)
 |   0                           # alias for n/a
 """
 newItemPriceRe = re.compile(r"""
@@ -106,16 +106,16 @@ class UnitsAndLevel(object):
     """
     # Map textual representations of levels back into integer values
     levels = {
-        '-1': -1,
+        '-1': -1, '?': -1,
         '0': 0, '-': 0,
         'L': 1, '1': 1,
         'M': 2, '2': 2,
         'H': 3, '3': 3,
     }
     # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>\d+)$')
+    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-\d+)$')
     # Split a <units><level> reading
-    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[LMH])$')
+    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[\?LMH])$')
 
     def __init__(self, category, reading):
         if reading in (None, "unk", "-1L-1", "-1L0", "0L-1"):
@@ -125,7 +125,7 @@ class UnitsAndLevel(object):
         else:
             matches = self.splitLRe.match(reading) or self.splitAtRe.match(reading)
             if not matches:
-                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[LMH], got '{}'".format(category, reading))
+                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[\?LMH], got '{}'".format(category, reading))
             units, level = matches.group('units', 'level')
             try:
                 self.units, self.level = int(units), UnitsAndLevel.levels[level]
@@ -216,8 +216,7 @@ def priceLineNegotiator(priceFile, db, debug=0):
             if not matches:
                 matches = newItemPriceRe.match(text)
                 if not matches:
-                    print("Unrecognized line/syntax: {}".format(line))
-                    sys.exit(1)
+                    raise ValueError("Unrecognized line/syntax: {}".format(line))
 
             itemName, stationPaying, stationAsking, modified = matches.group('item'), int(matches.group('paying')), int(matches.group('asking')), matches.group('time')
             demand = UnitsAndLevel('demand', matches.group('demand'))
