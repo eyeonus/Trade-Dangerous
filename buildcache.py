@@ -71,13 +71,12 @@ itemPriceRe = re.compile(r"""
 $
 """.format(base_f=itemPriceFrag, time_f=timeFrag), re.IGNORECASE + re.VERBOSE)
 
-# new format: <name> <paying> <asking> [ <demUnits>@<demLevel> <stockUnits>@<stockLevel> [ <time> | now ] ]
+# new format: <name> <paying> <asking> [ <demUnits><demLevel> <stockUnits><stockLevel> [ <time> | now ] ]
 qtyLevelFrag = r"""
     unk                         # You can just write 'unknown'
-|   n/a                         # alias for 0@0
-|   -                           # alias for 0@0
-|   \?@\?                       # Or ?@?
-|   \d+@[LMH]                   # Or <number>@<level> where level is L(ow), M(ed) or H(igh)
+|   n/a                         # alias for 0L0
+|   -                           # alias for 0L0
+|   \d+[LMH]                    # Or <number><level> where level is L(ow), M(ed) or H(igh)
 """
 newItemPriceRe = re.compile(r"""
 ^
@@ -114,23 +113,23 @@ class UnitsAndLevel(object):
     }
     # Split a <units>L<level> reading
     splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>\d+)$')
-    # Split a <units>@<level> reading
-    splitAtRe = re.compile(r'^(?P<units>\d+)@(?P<level>[LMH])$')
+    # Split a <units><level> reading
+    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[LMH])$')
 
     def __init__(self, category, reading):
-        if reading in (None, "unk", "?@?", "-1L-1"):
+        if reading in (None, "unk", "-1L-1", "-1L0", "0L-1"):
             self.units, self.level = -1, -1
-        elif reading in ("-@-", "-L-", "-", "n/a"):
+        elif reading in ("-", "-L-", "n/a"):
             self.units, self.level = 0, 0
         else:
             matches = self.splitLRe.match(reading) or self.splitAtRe.match(reading)
             if not matches:
-                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>@[LMH], got '{}'".format(category, reading))
+                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[LMH], got '{}'".format(category, reading))
             units, level = matches.group('units', 'level')
             try:
                 self.units, self.level = int(units), UnitsAndLevel.levels[level]
             except KeyError:
-                raise ValueError("Invalid {} level '{}' (expected 0 or - for unavailable, 1 or l for low, 2 or m for medium, 3 or h for high)".format(category, level))
+                raise ValueError("Invalid {} level '{}' (expected 0 (or -) for unavailable, L (or 1) for low, M (or 2) for medium, H (or 3) for high)".format(category, level))
             if self.units < 0:
                 raise ValueError("Negative {} quantity '{}' specified, please use 'unk' for unknown".format(category, self.units))
 

@@ -85,7 +85,7 @@ def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None,
     file.write("\n")
 
     file.write("# File syntax:\n")
-    file.write("# <item name> <sell> <buy> [ <demand units>@<demand level> <stock units>@<stock level> [<timestamp>] ]\n")
+    file.write("# <item name> <sell> <buy> [ <demand units><level> <stock units><level> [<timestamp>] ]\n")
     file.write("# You can write 'unk' for unknown demand/stock, 'n/a' if the item is unavailable,\n")
     file.write("# level can be one of 'L', 'M' or 'H'.\n")
     file.write("# If you omit the timestamp, the current time will be used when the file is loaded.\n")
@@ -107,9 +107,9 @@ def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None,
         if defaultZero and quantity == -1 and level == -1:
             quantity, level = 0, 0
         if quantity < 0 and level < 0:
-            return "      unk"
+            return "unk"
         if quantity == 0 and level == 0:
-            return "      n/a"
+            return "n/a"
         # Quantity of -1 indicates 'unknown'
         quantityDesc = '?' if quantity < 0 else str(quantity)
         # try to use a descriptive for the level
@@ -117,13 +117,15 @@ def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None,
             levelDesc = levelDescriptions[int(level)]
         except (KeyError, ValueError):
             levelDesc = str(level)
-        return "{:>7}@{}".format(quantityDesc, levelDesc)
+        return "{}{}".format(quantityDesc, levelDesc)
 
 
     maxCrWidth = 7
+    levelWidth = 8
+
     file.write("#     {:<{width}} {:>{crwidth}} {:>{crwidth}}".format("Item Name", "Sell Cr", "Buy Cr", width=longestNameLen, crwidth=maxCrWidth))
     if withLevels:
-        file.write("  {:>9} {:>9}".format("Demand", "Stock"))
+        file.write("  {:>{lvlwidth}} {:>{lvlwidth}}".format("Demand", "Stock", lvlwidth=levelWidth))
     if withModified:
         file.write("  {}".format("Modified"))
     file.write("\n\n")
@@ -149,9 +151,10 @@ def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None,
 
         file.write("      {:<{width}} {:{crwidth}d} {:{crwidth}d}".format(items[itemID], fromStn, toStn, width=longestNameLen, crwidth=maxCrWidth))
         if withLevels:
-            file.write("  {} {}".format(
+            file.write("  {:>{lvlwidth}} {:>{lvlwidth}}".format(
                         itemQtyAndLevel(demand, demandLevel),
                         itemQtyAndLevel(stock, stockLevel),
+                        lvlwidth=levelWidth,
                     ))
         if withModified:
             file.write("  {}".format(modified or 'now'))
