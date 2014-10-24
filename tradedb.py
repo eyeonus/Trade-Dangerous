@@ -349,7 +349,7 @@ class TradeDB(object):
                     ]
 
 
-    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0):
+    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0, maxSystemLinkLy=None):
         self.dbPath = Path(dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
@@ -360,7 +360,7 @@ class TradeDB(object):
 
         self.reloadCache()
 
-        self.load()
+        self.load(maxSystemLinkLy=maxSystemLinkLy)
 
 
     ############################################################
@@ -749,7 +749,7 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self, dbFilename=None):
+    def load(self, dbFilename=None, maxSystemLinkLy=None):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
@@ -776,8 +776,11 @@ class TradeDB(object):
 
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
-        longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
-        self.maxSystemLinkLy = longestJumper.maxLyEmpty + 0.01
+        if not maxSystemLinkLy:
+            longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
+            self.maxSystemLinkLy = longestJumper.maxLyEmpty
+        else:
+            self.maxSystemLinkLy = maxSystemLinkLy
         if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
 
         self.buildLinks(self.maxSystemLinkLy)

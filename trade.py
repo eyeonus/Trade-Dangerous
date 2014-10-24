@@ -92,8 +92,11 @@ class NoDataError(TradeException):
         self.errorStr = errorStr
     def __str__(self):
         return "Error: {}\n".format(self.errorStr) + \
-                "This can happen if you have not entered any price data yet or if your price database is small enough there are no profitable trades in it.\n" + \
-                "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n"
+        "This can happen if you have not yet entered any price data for the station(s) involved, " + \
+            "if there are no profitable trades between them, " + \
+            "or the items are marked as 'n/a' (did you use '-zero' when updating?).\n" + \
+        "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n" + \
+        "Or see https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data for more help.\n"
 
 
 class HelpAction(argparse.Action):
@@ -565,7 +568,7 @@ def editUpdate(args, stationID):
     if args.debug: print("# 'update' mode with editor. editor:{} station:{}".format(args.editor, args.station))
 
     import buildcache
-    from data import prices
+    import prices
     import subprocess
     import os
 
@@ -607,7 +610,9 @@ def editUpdate(args, stationID):
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            prices.dumpPrices(args.db, withModified=args.all, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
+            withModified = args.all # or args.timestamps
+            withLevels   = args.all # or args.levels
+            prices.dumpPrices(args.db, withModified=withModified, withLevels=withLevels, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -648,7 +653,7 @@ def editUpdate(args, stationID):
             print("# Update complete, regenerating .prices file")
 
         with tdb.pricesPath.open("w") as pricesFile:
-            prices.dumpPrices(args.db, withModified=True, file=pricesFile, debug=args.debug)
+            prices.dumpPrices(args.db, withModified=True, withLevels=True, file=pricesFile, debug=args.debug)
 
         # Update the DB file so we don't regenerate it.
         pathlib.Path(args.db).touch()
