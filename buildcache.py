@@ -115,7 +115,7 @@ class UnitsAndLevel(object):
     # Split a <units>L<level> reading
     splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-\d+)$')
     # Split a <units><level> reading
-    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[\?LMH])$')
+    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[\?LMH])$', re.IGNORECASE)
 
     def __init__(self, category, reading):
         if reading in (None, "unk", "-1L-1", "-1L0", "0L-1"):
