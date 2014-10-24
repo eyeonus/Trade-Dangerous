@@ -9,3 +9,4 @@ data/TradeDangerous.db-journal
 data/TradeDangerous.prices
 market/
 *.orig
+misc/*.csv
