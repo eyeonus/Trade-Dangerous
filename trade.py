@@ -1043,7 +1043,8 @@ def main():
     tdb = TradeDB(debug=args.debug, dbFilename=args.db)
 
     # run the commands
-    return args.proc(args)
+    commandFunction = args.proc
+    return commandFunction(args)
 
 
 ######################################################################
