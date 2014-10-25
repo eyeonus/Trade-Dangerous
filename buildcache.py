@@ -113,19 +113,20 @@ class UnitsAndLevel(object):
         'H': 3, '3': 3,
     }
     # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-\d+)$')
+    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-?\d+)$')
     # Split a <units><level> reading
     splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[\?LMH])$', re.IGNORECASE)
 
     def __init__(self, category, reading):
-        if reading in (None, "unk", "-1L-1", "-1L0", "0L-1"):
+        ucReading = reading.upper()
+        if ucReading in ("UNK", "-1L-1", "-1L0", "0L-1"):
             self.units, self.level = -1, -1
-        elif reading in ("-", "-L-", "n/a", "0"):
+        elif ucReading in ("-", "-L-", "N/A", "0"):
             self.units, self.level = 0, 0
         else:
-            matches = self.splitLRe.match(reading) or self.splitAtRe.match(reading)
+            matches = self.splitLRe.match(ucReading) or self.splitAtRe.match(ucReading)
             if not matches:
-                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[\?LMH], got '{}'".format(category, reading))
+                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[?LMH], got '{}'".format(category, reading))
             units, level = matches.group('units', 'level')
             try:
                 self.units, self.level = int(units), UnitsAndLevel.levels[level]
@@ -153,7 +154,7 @@ class PriceEntry(namedtuple('PriceEntry', [ 'stationID', 'itemID', 'asking', 'pa
     pass
 
 
-def priceLineNegotiator(priceFile, db, debug=0):
+def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
@@ -178,7 +179,11 @@ def priceLineNegotiator(priceFile, db, debug=0):
     else:
         itemsByName = { name: itemID for (itemID, name) in cur.execute("SELECT item_id, name FROM item") }
 
+    defaultUnits = -1 if not defaultZero else 0
+    defaultLevel = -1 if not defaultZero else 0
+
     lineNo = 0
+
     for line in priceFile:
         lineNo += 1
         try:
@@ -219,8 +224,13 @@ def priceLineNegotiator(priceFile, db, debug=0):
                     raise ValueError("Unrecognized line/syntax: {}".format(line))
 
             itemName, stationPaying, stationAsking, modified = matches.group('item'), int(matches.group('paying')), int(matches.group('asking')), matches.group('time')
-            demand = UnitsAndLevel('demand', matches.group('demand'))
-            stock  = UnitsAndLevel('stock',  matches.group('stock'))
+            demandString, stockString = matches.group('demand'), matches.group('stock')
+            if demandString and stockString:
+                demand = UnitsAndLevel('demand', demandString)
+                stock  = UnitsAndLevel('stock',  stockString)
+                demandUnits, demandLevel, stockUnits, stockLevel = demand.units, demand.level, stock.units, stock.level
+            else:
+                demandUnits, demandLevel, stockUnits, stockLevel = defaultUnits, defaultLevel, defaultUnits, defaultLevel
             if modified and modified.lower() in ('now', '"now"', "'now'"):
                 modified = None         # Use CURRENT_FILESTAMP
 
@@ -230,14 +240,12 @@ def priceLineNegotiator(priceFile, db, debug=0):
                 raise UnknownItemError(priceFile, lineNo, key)
 
             uiOrder += 1
-            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demand.units, demand.level, stock.units, stock.level)
+            yield PriceEntry(stationID, itemID, stationPaying, stationAsking, uiOrder, modified, demandUnits, demandLevel, stockUnits, stockLevel)
         except UnknownItemError:
             continue
 
 
-def processPricesFile(db, pricesPath, stationID=None, debug=0):
-    global currentTimestamp
-
+def processPricesFile(db, pricesPath, stationID=None, defaultZero=False, debug=0):
     if debug: print("* Processing Prices file '{}'".format(str(pricesPath)))
 
     if stationID:
@@ -247,7 +255,7 @@ def processPricesFile(db, pricesPath, stationID=None, debug=0):
     try:
         with pricesPath.open() as pricesFile:
             bindValues = []
-            for price in priceLineNegotiator(pricesFile, db, debug):
+            for price in genSQLFromPriceLines(pricesFile, db, defaultZero, debug):
                 if debug > 2: print(price)
                 bindValues += [ price ]
             stmt = """
@@ -308,7 +316,7 @@ def processImportFile(db, importPath, tableName, debug=0):
             print("WARNING: processImportFile found no {} file".format(importPath))
 
 
-def buildCache(dbPath, sqlPath, pricesPath, importTables, debug=0):
+def buildCache(dbPath, sqlPath, pricesPath, importTables, defaultZero=False, debug=0):
     """
         Rebuilds the SQlite database from source files.
 
@@ -338,7 +346,7 @@ def buildCache(dbPath, sqlPath, pricesPath, importTables, debug=0):
         processImportFile(tempDB, Path(importName), importTable, debug=debug)
 
     # Parse the prices file
-    processPricesFile(tempDB, pricesPath, debug=debug)
+    processPricesFile(tempDB, pricesPath, defaultZero=defaultZero, debug=debug)
 
     # Database is ready; copy it to a persistent store.
     if debug: print("* Populating SQLite database file '%s'" % dbPath)

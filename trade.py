@@ -55,9 +55,6 @@ originName, destName = "Any", "Any"
 origins = []
 maxUnits = 0
 
-# Multi-function display, optional
-mfd = None
-
 ######################################################################
 # Database and calculator modules.
 
@@ -94,7 +91,7 @@ class NoDataError(TradeException):
         return "Error: {}\n".format(self.errorStr) + \
         "This can happen if you have not yet entered any price data for the station(s) involved, " + \
             "if there are no profitable trades between them, " + \
-            "or the items are marked as 'n/a' (did you use '-zero' when updating?).\n" + \
+            "or the items are marked as 'n/a'.\n" + \
         "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n" + \
         "Or see https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data for more help.\n"
 
@@ -189,80 +186,87 @@ def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=
     return subParser
 
 
+def printHeading(text):
+    """ Print a line of text followed by a matching line of '-'s. """
+    print(text)
+    print('-' * len(text))
+
+
 ######################################################################
 # Checklist functions
 
-def doStep(stepNo, action, detail=None, extra=None):
-    stepNo += 1
-    if mfd:
-        mfd.display("#%d %s" % (stepNo, action), detail or "", extra or "")
-    input("   %3d: %s: " % (stepNo, " ".join([item for item in [action, detail, extra] if item])))
-    return stepNo
+class Checklist(object):
+    def __init__(self, tdb, mfd):
+        self.tdb = tdb
+        self.mfd = mfd
+
+    def doStep(self, action, detail=None, extra=None):
+        self.stepNo += 1
+        try:
+            self.mfd.display("#{} {}".format(self.stepNo, action), detail or "", extra or "")
+        except AttributeError: pass
+        input("   {:<3}: {}: ".format(self.stepNo, " ".join([item for item in [action, detail, extra] if item])))
 
 
-def note(str, addBreak=True):
-    print("(i) %s (i)" % str)
-    if addBreak:
+    def note(self, str, addBreak=True):
+        print("(i) {} (i){}".format(str, "\n" if addBreak else ""))
+
+
+    def run(self, route, credits):
+        tdb, mfd = self.tdb, self.mfd
+        stations, hops, jumps = route.route, route.hops, route.jumps
+        lastHopIdx = len(stations) - 1
+        gainCr = 0
+        self.stepNo = 0
+
+        printHeading("(i) BEGINNING CHECKLIST FOR {} (i)".format(route.str()))
         print()
 
-
-def doChecklist(route, credits):
-    stepNo, gainCr = 0, 0
-    stations, hops, jumps = route.route, route.hops, route.jumps
-    lastHopIdx = len(stations) - 1
-
-    title = "(i) BEGINNING CHECKLIST FOR %s (i)" % route.str()
-    underline = '-' * len(title)
-
-    print(title)
-    print(underline)
-    print()
-    if args.detail:
-        print(route.summary())
-        print()
-
-    for idx in range(lastHopIdx):
-        hopNo = idx + 1
-        cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
-
-        # Tell them what they need to buy.
         if args.detail:
-            note("HOP %d of %d" % (hopNo, lastHopIdx))
-
-        note("Buy at %s" % cur.name())
-        for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, 'Buy %d x' % qty, trade.name(), '@ %scr' % localedNo(trade.costCr))
-        if args.detail:
-            stepNo = doStep(stepNo, 'Refuel')
-        print()
-
-        # If there is a next hop, describe how to get there.
-        note("Fly %s" % " -> ".join([ jump.name() for jump in jumps[idx] ]))
-        if idx < len(hops) and jumps[idx]:
-            for jump in jumps[idx][1:]:
-                stepNo = doStep(stepNo, 'Jump to', '%s' % (jump.name()))
-        if args.detail:
-            stepNo = doStep(stepNo, 'Dock at', '%s' % nxt.str())
-        print()
-
-        note("Sell at %s" % nxt.name())
-        for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
-            stepNo = doStep(stepNo, 'Sell %s x' % localedNo(qty), trade.name(), '@ %scr' % localedNo(trade.costCr + trade.gainCr))
-        print()
-
-        gainCr += hop[1]
-        if args.detail and gainCr > 0:
-            note("GAINED: %scr, CREDITS: %scr" % (localedNo(gainCr), localedNo(credits + gainCr)))
-
-        if hopNo < lastHopIdx:
-            print()
-            print("--------------------------------------")
+            print(route.summary())
             print()
 
-    if mfd:
-        mfd.display('FINISHED', "+%scr" % localedNo(gainCr), "=%scr" % localedNo(credits + gainCr))
-        mfd.attention(3)
-        time.sleep(1.5)
+        for idx in range(lastHopIdx):
+            hopNo = idx + 1
+            cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
+            sortedTradeOptions = sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True)
+
+            # Tell them what they need to buy.
+            if args.detail:
+                self.note("HOP {} of {}".format(hopNo, lastHopIdx))
+
+            self.note("Buy at {}".format(cur.name()))
+            for (trade, qty) in sortedTradeOptions:
+                self.doStep('Buy {} x'.format(qty), trade.name(), '@ {}cr'.format(localedNo(trade.costCr)))
+            if args.detail:
+                self.doStep('Refuel')
+            print()
+
+            # If there is a next hop, describe how to get there.
+            self.note("Fly {}".format(" -> ".join([ jump.name() for jump in jumps[idx] ])))
+            if idx < len(hops) and jumps[idx]:
+                for jump in jumps[idx][1:]:
+                    self.doStep('Jump to', jump.name())
+            if args.detail:
+                self.doStep('Dock at', nxt.str())
+            print()
+
+            self.note("Sell at {}".format(nxt.name()))
+            for (trade, qty) in sortedTradeOptions:
+                self.doStep('Sell {} x'.format(localedNo(qty)), trade.name(), '@ {}cr'.format(localedNo(trade.costCr + trade.gainCr)))
+            print()
+
+            gainCr += hop[1]
+            if args.detail and gainCr > 0:
+                self.note("GAINED: {}cr, CREDITS: {}cr".format(localedNo(gainCr), localedNo(credits + gainCr)))
+
+            if hopNo < lastHopIdx:
+                print("\n--------------------------------------\n")
+
+        if mfd:
+            mfd.display('FINISHED', "+{}cr".format(localedNo(gainCr)), "={}cr".format(localedNo(credits + gainCr)))
+            mfd.attention(3)
+            time.sleep(1.5)
 
 
 ######################################################################
@@ -347,7 +351,7 @@ def processRunArguments(args):
         Process arguments to the 'run' option.
     """
 
-    global origins, originStation, finalStation, maxUnits, originName, destName, mfd, unspecifiedHops
+    global origins, originStation, finalStation, maxUnits, originName, destName, unspecifiedHops
 
     if args.credits < 0:
         raise CommandLineError("Invalid (negative) value for initial credits")
@@ -434,7 +438,9 @@ def processRunArguments(args):
 
     if args.x52pro:
         from mfd import X52ProMFD
-        mfd = X52ProMFD()
+        args.mfd = X52ProMFD()
+    else:
+        args.mfd = None
 
 
 def runCommand(args):
@@ -478,9 +484,9 @@ def runCommand(args):
 
     if args.debug: print("unspecified hops {}, numHops {}, viaStations {}".format(unspecifiedHops, numHops, len(viaStations)))
     for hopNo in range(numHops):
-        if mfd:
-            mfd.display('TradeDangerous', 'CALCULATING', 'Hop {}'.format(hopNo))
         if calc.debug: print("# Hop %d" % hopNo)
+        if args.mfd:
+            args.mfd.display('TradeDangerous', 'CALCULATING', 'Hop {}'.format(hopNo))
 
         restrictTo = None
         if hopNo == lastHop and finalStation:
@@ -516,7 +522,8 @@ def runCommand(args):
     # User wants to be guided through the route.
     if args.checklist:
         assert args.routes == 1
-        doChecklist(routes[0], args.credits)
+        cl = Checklist(tdb, args.mfd)
+        cl.run(routes[0], args.credits)
 
 
 ######################################################################
@@ -606,13 +613,14 @@ def editUpdate(args, stationID):
         sys.exit(1)
     absoluteFilename = None
     try:
+        elementMask = prices.Element.basic
+        if args.supply: elementMask |= prices.Element.supply
+        if args.timestamps: elementMask |= prices.Element.timestamp
         # Open the file and dump data to it.
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            withModified = args.all # or args.timestamps
-            withLevels   = args.all # or args.levels
-            prices.dumpPrices(args.db, withModified=withModified, withLevels=withLevels, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
+            prices.dumpPrices(args.db, elementMask, file=tmpFile, stationID=stationID, defaultZero=args.forceNa, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -646,14 +654,14 @@ def editUpdate(args, stationID):
         if args.debug:
             print("# File changed - importing data.")
 
-        buildcache.processPricesFile(db=tdb.getDB(), pricesPath=tmpPath, stationID=stationID, debug=args.debug)
+        buildcache.processPricesFile(db=tdb.getDB(), pricesPath=tmpPath, stationID=stationID, defaultZero=args.forceNa, debug=args.debug)
 
         # If everything worked, we need to re-build the prices file.
         if args.debug:
             print("# Update complete, regenerating .prices file")
 
         with tdb.pricesPath.open("w") as pricesFile:
-            prices.dumpPrices(args.db, withModified=True, withLevels=True, file=pricesFile, debug=args.debug)
+            prices.dumpPrices(args.db, prices.Element.full, file=pricesFile, debug=args.debug)
 
         # Update the DB file so we don't regenerate it.
         pathlib.Path(args.db).touch()
@@ -671,8 +679,8 @@ def updateCommand(args):
     station = tdb.lookupStation(args.station)
     stationID = station.ID
 
-    if args.zero and not args.all:
-        raise CommandLineError("TEMPORARY: --zero requires --all for the time being, just so you understand the connection.")
+    if args.all or args.zero:
+        raise CommandLineError("--all and --zero have been removed. Use '--supply' (-S for short) if you want to edit demand and stock values during update. Use '--timestamps' (-T for short) if you want to include timestamps.")
 
     if args._editing:
         # User specified one of the options to use an editor.
@@ -730,9 +738,7 @@ def localCommand(args):
         if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     ly = args.ly or tdb.maxSystemLinkLy
 
-    title = "Local systems to {} within {} ly.".format(srcSystem.name(), ly)
-    print(title)
-    print('-' * len(title))
+    printHeading("Local systems to {} within {} ly.".format(srcSystem.name(), ly))
 
     distances = { }
 
@@ -826,9 +832,7 @@ def navCommand(args):
         print(titleFormat.format(src=srcSystem.name(), dst=dstSystem.name(), mly=maxLyPer))
 
     if labelFormat:
-        label = labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly')
-        print(label)
-        print('-' * len(label))
+        printHeading(labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly'))
 
     lastHop, totalLy = None, 0.00
     def present(action, system):
@@ -1006,8 +1010,11 @@ def main():
         ],
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
-            ParseArgument('--all', help='Generates the temporary file with all columns and new timestamp.', action='store_true', default=False),
-            ParseArgument('--zero', help='(with --all) Show "0" for unknown demand/stock values instead of "-1".', action='store_true', default=False),
+            ParseArgument('--all', help='DEPRECATED - See --supply and --timestamps instead.', action='store_true', default=False),
+            ParseArgument('--zero', help='DEPRECATED - See --force-na instead.', action='store_true', default=False),
+            ParseArgument('--supply', '-S', help='Includes demand and stock (supply) values in the update.', action='store_true', default=False),
+            ParseArgument('--timestamps', '-T', help='Includes timestamps in the update.', action='store_true', default=False),
+            ParseArgument('--force-na', '-0', help="Forces 'unk' supply to become 'n/a' by default", action='store_true', default=False, dest='forceNa'),
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),
@@ -1041,7 +1048,8 @@ def main():
     tdb = TradeDB(debug=args.debug, dbFilename=args.db)
 
     # run the commands
-    return args.proc(args)
+    commandFunction = args.proc
+    return commandFunction(args)
 
 
 ######################################################################
@@ -1052,6 +1060,3 @@ if __name__ == "__main__":
         main()
     except (TradeException) as e:
         print("%s: %s" % (sys.argv[0], str(e)))
-    if mfd:
-        mfd.finish()
-
