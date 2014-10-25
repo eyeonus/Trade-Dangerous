@@ -12,6 +12,14 @@ import os
 import re
 import sqlite3
 
+
+class Element(object):
+    basic     = (1 << 0)
+    supply    = (1 << 1)
+    timestamp = (1 << 2)
+    full      = (basic | supply | timestamp)
+
+
 ######################################################################
 # Main
 
