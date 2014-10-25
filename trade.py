@@ -189,6 +189,12 @@ def makeSubParser(subparsers, name, help, commandFunc, arguments=None, switches=
     return subParser
 
 
+def printHeading(text):
+    """ Print a line of text followed by a matching line of '-'s. """
+    print(text)
+    print('-' * len(text))
+
+
 ######################################################################
 # Checklist functions
 
@@ -730,9 +736,7 @@ def localCommand(args):
         if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     ly = args.ly or tdb.maxSystemLinkLy
 
-    title = "Local systems to {} within {} ly.".format(srcSystem.name(), ly)
-    print(title)
-    print('-' * len(title))
+    printHeading("Local systems to {} within {} ly.".format(srcSystem.name(), ly))
 
     distances = { }
 
@@ -826,9 +830,7 @@ def navCommand(args):
         print(titleFormat.format(src=srcSystem.name(), dst=dstSystem.name(), mly=maxLyPer))
 
     if labelFormat:
-        label = labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly')
-        print(label)
-        print('-' * len(label))
+        printHeading(labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly'))
 
     lastHop, totalLy = None, 0.00
     def present(action, system):
@@ -1052,6 +1054,3 @@ if __name__ == "__main__":
         main()
     except (TradeException) as e:
         print("%s: %s" % (sys.argv[0], str(e)))
-    if mfd:
-        mfd.finish()
-
