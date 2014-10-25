@@ -237,8 +237,6 @@ def priceLineNegotiator(priceFile, db, debug=0):
 
 
 def processPricesFile(db, pricesPath, stationID=None, debug=0):
-    global currentTimestamp
-
     if debug: print("* Processing Prices file '{}'".format(str(pricesPath)))
 
     if stationID:
