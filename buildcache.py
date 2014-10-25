@@ -113,7 +113,7 @@ class UnitsAndLevel(object):
         'H': 3, '3': 3,
     }
     # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-\d+)$')
+    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-?\d+)$')
     # Split a <units><level> reading
     splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[\?LMH])$', re.IGNORECASE)
 
@@ -126,7 +126,7 @@ class UnitsAndLevel(object):
         else:
             matches = self.splitLRe.match(ucReading) or self.splitAtRe.match(ucReading)
             if not matches:
-                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[\?LMH], got '{}'".format(category, reading))
+                raise ValueError("Invalid {} units/level value. Expected 'unk', <units>L<level> or <units>[?LMH], got '{}'".format(category, reading))
             units, level = matches.group('units', 'level')
             try:
                 self.units, self.level = int(units), UnitsAndLevel.levels[level]
