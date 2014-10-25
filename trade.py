@@ -91,7 +91,7 @@ class NoDataError(TradeException):
         return "Error: {}\n".format(self.errorStr) + \
         "This can happen if you have not yet entered any price data for the station(s) involved, " + \
             "if there are no profitable trades between them, " + \
-            "or the items are marked as 'n/a' (did you use '-zero' when updating?).\n" + \
+            "or the items are marked as 'n/a'.\n" + \
         "See 'trade.py update -h' for help entering prices, or obtain a '.prices' file from the interwebs.\n" + \
         "Or see https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data for more help.\n"
 
@@ -613,13 +613,14 @@ def editUpdate(args, stationID):
         sys.exit(1)
     absoluteFilename = None
     try:
+        elementMask = prices.Element.basic
+        if args.supply: elementMask |= prices.Element.supply
+        if args.timestamps: elementMask |= prices.Element.timestamp
         # Open the file and dump data to it.
         with tmpPath.open("w") as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
-            withModified = args.all # or args.timestamps
-            withLevels   = args.all # or args.levels
-            prices.dumpPrices(args.db, withModified=withModified, withLevels=withLevels, file=tmpFile, stationID=stationID, defaultZero=args.zero, debug=args.debug)
+            prices.dumpPrices(args.db, elementMask, file=tmpFile, stationID=stationID, defaultZero=args.forceNa, debug=args.debug)
 
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
@@ -653,14 +654,14 @@ def editUpdate(args, stationID):
         if args.debug:
             print("# File changed - importing data.")
 
-        buildcache.processPricesFile(db=tdb.getDB(), pricesPath=tmpPath, stationID=stationID, debug=args.debug)
+        buildcache.processPricesFile(db=tdb.getDB(), pricesPath=tmpPath, stationID=stationID, defaultZero=args.forceNa, debug=args.debug)
 
         # If everything worked, we need to re-build the prices file.
         if args.debug:
             print("# Update complete, regenerating .prices file")
 
         with tdb.pricesPath.open("w") as pricesFile:
-            prices.dumpPrices(args.db, withModified=True, withLevels=True, file=pricesFile, debug=args.debug)
+            prices.dumpPrices(args.db, prices.Element.full, file=pricesFile, debug=args.debug)
 
         # Update the DB file so we don't regenerate it.
         pathlib.Path(args.db).touch()
@@ -678,8 +679,8 @@ def updateCommand(args):
     station = tdb.lookupStation(args.station)
     stationID = station.ID
 
-    if args.zero and not args.all:
-        raise CommandLineError("TEMPORARY: --zero requires --all for the time being, just so you understand the connection.")
+    if args.all or args.zero:
+        raise CommandLineError("--all and --zero have been removed. Use '--supply' (-S for short) if you want to edit demand and stock values during update. Use '--timestamps' (-T for short) if you want to include timestamps.")
 
     if args._editing:
         # User specified one of the options to use an editor.
@@ -1009,8 +1010,11 @@ def main():
         ],
         switches = [
             ParseArgument('--editor', help='Generates a text file containing the prices for the station and loads it into the specified editor.', default=None, type=str, action=EditAction),
-            ParseArgument('--all', help='Generates the temporary file with all columns and new timestamp.', action='store_true', default=False),
-            ParseArgument('--zero', help='(with --all) Show "0" for unknown demand/stock values instead of "-1".', action='store_true', default=False),
+            ParseArgument('--all', help='DEPRECATED - See --supply and --timestamps instead.', action='store_true', default=False),
+            ParseArgument('--zero', help='DEPRECATED - See --force-na instead.', action='store_true', default=False),
+            ParseArgument('--supply', '-S', help='Includes demand and stock (supply) values in the update.', action='store_true', default=False),
+            ParseArgument('--timestamps', '-T', help='Includes timestamps in the update.', action='store_true', default=False),
+            ParseArgument('--force-na', '-0', help="Forces 'unk' supply to become 'n/a' by default", action='store_true', default=False, dest='forceNa'),
             [   # Mutually exclusive group:
                 ParseArgument('--sublime', help='Like --editor but uses Sublime Text (2 or 3), which is nice.', action=EditActionStoreTrue),
                 ParseArgument('--notepad', help='Like --editor but uses Notepad.', action=EditActionStoreTrue),

@@ -23,8 +23,12 @@ class Element(object):
 ######################################################################
 # Main
 
-def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None, file=None, defaultZero=False, debug=0):
+def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=False, debug=0):
     """ Generate a 'prices' list for the given list of stations using data from the DB. """
+
+    withSupply = (elementMask & Element.supply)
+    withTimes  = (elementMask & Element.timestamp)
+
     conn = sqlite3.connect(str(dbFilename))     # so we can handle a Path object too
     cur  = conn.cursor()
 
@@ -132,10 +136,10 @@ def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None,
     levelWidth = 8
 
     file.write("#     {:<{width}} {:>{crwidth}} {:>{crwidth}}".format("Item Name", "Sell Cr", "Buy Cr", width=longestNameLen, crwidth=maxCrWidth))
-    if withLevels:
+    if withSupply:
         file.write("  {:>{lvlwidth}} {:>{lvlwidth}}".format("Demand", "Stock", lvlwidth=levelWidth))
-    if withModified:
-        file.write("  {}".format("Modified"))
+    if withTimes:
+        file.write("  {}".format("Timestamp"))
     file.write("\n\n")
 
     for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
@@ -158,17 +162,17 @@ def dumpPrices(dbFilename, withModified=False, withLevels=False, stationID=None,
             lastCat = category
 
         file.write("      {:<{width}} {:{crwidth}d} {:{crwidth}d}".format(items[itemID], fromStn, toStn, width=longestNameLen, crwidth=maxCrWidth))
-        if withLevels:
+        if withSupply:
             file.write("  {:>{lvlwidth}} {:>{lvlwidth}}".format(
                         itemQtyAndLevel(demand, demandLevel),
                         itemQtyAndLevel(stock, stockLevel),
                         lvlwidth=levelWidth,
                     ))
-        if withModified:
+        if withTimes:
             file.write("  {}".format(modified or 'now'))
         file.write("\n")
 
 
 if __name__ == "__main__":
     from tradedb import TradeDB
-    dumpPrices(TradeDB.defaultDB, withModified=True, withLevels=True)
+    dumpPrices(TradeDB.defaultDB, elementMask=Element.full)

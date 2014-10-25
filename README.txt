@@ -23,6 +23,13 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.6.1 Oct 25/2014
+. (kfsone) Added "--supply" (-S) which shows supply (demand and stock) fields when editing,
+. (kfsone) Added "--timestamps" (-T) which shows timestamp field when editing,
+. (kfsone) Added "--force-na" (-0) which replaces 'unk' values with 'n/a' (use with care),
+. (kfsone) Deprecated "--all" and "--zero",
+. (kfsone) Minor fixes to new .prices format
+
 v4.6.0 Oct 24/2014
 . (kfsone) New extended .prices format:
   <item name> <sell> <buy> <demand> <stock> [<time>]
@@ -58,16 +65,6 @@ v4.4.0 Oct 19/2014
 . (Gazelle/Community) Merged Gazelle's update with community sources Star/Station
   data. Thanks to Gazelle, Smacker, RedWizzard, Haringer, Wolverine.
   It's only data but it's a big update and a lot of work went into it :)
-
-v4.3.0 Oct 17/2014
-. (gazelle) Added "--zero" option to "update --all" which makes the default
-   value for demand/stock levels "0" instead of "-1". (-1 means 'unknown'.
-   Use this option if you are editing timestamps and stock levels and all
-   those '-'s get in your way)
-. (gazelle) Moved Star, System, etc data out of ".sql" file and into
-   per-table ".csv" files. This should make it much easier for people to
-   share and synchronize data and make it less daunting for people to
-   maintain their data files. Great work, Gazelle!
 
 (See end of file for older changes)
 
@@ -354,21 +351,26 @@ UPDATE sub-command:
   the prices for a given station into a text file and let you edit it
   with your favorite editor.
 
-  trade.py update [--editor <executable> | --sublime | --notepad | --npp | --vim] station
+  trade.py update
 
     --editor <executable name or path>
       e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
       Saves the prices in a human-readable format and loads that into
       an editor. Make changes and save to update the database.
 
-    --all
-      Exposes timestamp, demand and stock value columns.
+    --supply
+    -S
+      Exposes the "demand" and "stock" columns.
 
-    --zero
-      Requires --all
-      Causes unknown demand/stock levels to show as 0 instead of -1.
-      Use this when you are actively editing those fields and the -1s
-      get in your way.
+    --timestamps
+    -T
+      Exposes the "timestamp" column.
+
+    --force-na
+    -0
+      Changes the default demand/stock to be "n/a".
+      CAUTION: "n/a" indicates that the item is either not bought
+      or not sold at this station, and TD will ignore it accordingly.
 
     --sublime
     --subl
@@ -391,9 +393,13 @@ UPDATE sub-command:
 
   Examples:
     trade.py update "aulin enterprise" --notepad
-    trade.py update chango --subl
+    trade.py update chango --subl --supply
     trade.py update anderson --editor "C:\Program Files\Microsoft Office\WordPad.exe"
-    trade.py update wcm
+    trade.py update wcm --timestamps
+    trade.py update --sub --sup --time --zero aulin
+  aka:
+    trade.py update --sub -ST0 aulin
+
 
 NAV sub-command:
 
@@ -599,6 +605,16 @@ See "cli.py" for examples.
 
 == Change Log Archive
 ==============================================================================
+
+v4.3.0 Oct 17/2014
+. (gazelle) Added "--zero" option to "update --all" which makes the default
+   value for demand/stock levels "0" instead of "-1". (-1 means 'unknown'.
+   Use this option if you are editing timestamps and stock levels and all
+   those '-'s get in your way)
+. (gazelle) Moved Star, System, etc data out of ".sql" file and into
+   per-table ".csv" files. This should make it much easier for people to
+   share and synchronize data and make it less daunting for people to
+   maintain their data files. Great work, Gazelle!
 
 v4.2.3 Oct 17/2014
 . (ShadowGar, Smacker65) Imported Harbinger and RedWizzard system data,
