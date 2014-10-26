@@ -62,8 +62,6 @@ from tradeexcept import TradeException
 from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
-tdb = None
-
 ######################################################################
 # Helpers
 
@@ -272,7 +270,7 @@ class Checklist(object):
 ######################################################################
 # "run" command functionality.
 
-def parseAvoids(args):
+def parseAvoids(tdb, args):
     """
         Process a list of avoidances.
     """
@@ -330,7 +328,7 @@ def parseAvoids(args):
         ))
 
 
-def parseVias(args):
+def parseVias(tdb, args):
     """
         Process a list of station names and build them into a
         list of waypoints for the route.
@@ -346,7 +344,7 @@ def parseVias(args):
         viaStations.add(station)
 
 
-def processRunArguments(args):
+def processRunArguments(tdb, args):
     """
         Process arguments to the 'run' option.
     """
@@ -384,9 +382,9 @@ def processRunArguments(args):
             raise CommandLineError("More than one hop required to use same from/to destination")
 
     if args.avoid:
-        parseAvoids(args)
+        parseAvoids(tdb, args)
     if args.via:
-        parseVias(args)
+        parseVias(tdb, args)
 
     unspecifiedHops = args.hops + (0 if originStation else 1) - (1 if finalStation else 0)
     if len(viaStations) > unspecifiedHops:
@@ -445,17 +443,15 @@ def processRunArguments(args):
         args.mfd = None
 
 
-def runCommand(args):
+def runCommand(tdb, args):
     """ Calculate trade runs. """
-
-    global tdb
 
     if args.debug: print("# 'run' mode")
 
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
 
-    processRunArguments(args)
+    processRunArguments(tdb, args)
 
     startCr = args.credits - args.insurance
     routes = [
@@ -564,7 +560,7 @@ def getEditorPaths(args, editorName, envVar, windowsFolders, winExe, nixExe):
     raise CommandLineError("ERROR: Unable to locate {} editor.\nEither specify the path to your editor with --editor or set the {} environment variable to point to it.".format(editorName, envVar))
 
 
-def editUpdate(args, stationID):
+def editUpdate(tdb, args, stationID):
     """
         Dump the price data for a specific station to a file and
         launch the user's text editor to let them make changes
@@ -673,7 +669,7 @@ def editUpdate(args, stationID):
         if absoluteFilename: tmpPath.unlink()
 
 
-def updateCommand(args):
+def updateCommand(tdb, args):
     """
         Allow the user to update the prices database.
     """
@@ -686,7 +682,7 @@ def updateCommand(args):
 
     if args._editing:
         # User specified one of the options to use an editor.
-        return editUpdate(args, stationID)
+        return editUpdate(tdb, args, stationID)
 
     if args.debug: print('# guided "update" mode station:{}'.format(args.station))
 
@@ -696,7 +692,7 @@ def updateCommand(args):
 ######################################################################
 #
 
-def lookupSystem(name, intent):
+def lookupSystemByNameOrStation(tdb, name, intent):
     """
         Look up a name using either a system or station name.
     """
@@ -710,7 +706,7 @@ def lookupSystem(name, intent):
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
 
-def distanceAlongPill(sc, percent):
+def distanceAlongPill(tdb, sc, percent):
     """
         Estimate a distance along the Pill using 2 reference systems
     """
@@ -727,12 +723,13 @@ def distanceAlongPill(sc, percent):
 
     return dotProduct / length
 
-def localCommand(args):
+
+def localCommand(tdb, args):
     """
         Local systems
     """
 
-    srcSystem = lookupSystem(args.system, 'system')
+    srcSystem = lookupSystemByNameOrStation(tdb, args.system, 'system')
 
     if args.ship:
         ship = tdb.lookupShip(args.ship)
@@ -757,20 +754,21 @@ def localCommand(args):
         pillLength = ""
         if args.pill or args.percent:
             pillLengthFormat = " [{:4.0f}%]" if args.percent else " [{:5.1f}]"
-            pillLength = pillLengthFormat.format(distanceAlongPill(system, args.percent))
+            pillLength = pillLengthFormat.format(distanceAlongPill(tdb, system, args.percent))
         print("{:5.2f}{} {}".format(dist, pillLength, system.str()))
         if args.detail:
             for (station) in system.stations:
                 stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
                 print("\t<{}>{}".format(station.str(), stationDistance))
 
-def navCommand(args):
+
+def navCommand(tdb, args):
     """
         Give player directions A->B
     """
 
-    srcSystem = lookupSystem(args.start, 'start')
-    dstSystem = lookupSystem(args.end, 'end')
+    srcSystem = lookupSystemByNameOrStation(tdb, args.start, 'start')
+    dstSystem = lookupSystemByNameOrStation(tdb, args.end, 'end')
 
     avoiding = []
     if args.ship:
@@ -857,12 +855,10 @@ def navCommand(args):
 ######################################################################
 # functionality for the "cleanup" command
 
-def cleanupCommand(args):
+def cleanupCommand(tdb, args):
     """
         Perform maintenance on the database.
     """
-
-    global tdb
 
     if args.minutes <= 0:
         raise CommandLineError("Invalid --minutes specification.")
@@ -927,7 +923,7 @@ def cleanupCommand(args):
 
 
 def main():
-    global args, tdb
+    global args
 
     parser = argparse.ArgumentParser(description='Trade run calculator', add_help=False, epilog='For help on a specific command, use the command followed by -h.')
     parser.set_defaults(_editing=False)
@@ -1055,7 +1051,7 @@ def main():
 
     # run the commands
     commandFunction = args.proc
-    return commandFunction(args)
+    return commandFunction(tdb, args)
 
 
 ######################################################################
