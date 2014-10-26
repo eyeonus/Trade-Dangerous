@@ -427,6 +427,8 @@ def processRunArguments(args):
                  (finalStation and finalStation in viaStations)):
             raise CommandLineError("from/to/via repeat conflicts with --unique")
 
+    tdb.loadTrades()
+
     if originStation and originStation.itemCount == 0:
         raise NoDataError("Start station {} doesn't have any price data.".format(originStation.name()))
     if finalStation and finalStation.itemCount == 0:
@@ -738,6 +740,8 @@ def localCommand(args):
         if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     ly = args.ly or tdb.maxSystemLinkLy
 
+    tdb.buildLinks()
+
     printHeading("Local systems to {} within {} ly.".format(srcSystem.name(), ly))
 
     distances = { }
@@ -780,6 +784,8 @@ def navCommand(args):
 
     openList = { srcSystem: 0.0 }
     distances = { srcSystem: [ 0.0, None ] }
+
+    tdb.buildLinks()
 
     # As long as the open list is not empty, keep iterating.
     while openList and not dstSystem in distances:
@@ -1045,7 +1051,7 @@ def main():
                 os.chdir(str(exePath))
 
     # load the database
-    tdb = TradeDB(debug=args.debug, dbFilename=args.db)
+    tdb = TradeDB(debug=args.debug, dbFilename=args.db, buildLinks=False, includeTrades=False)
 
     # run the commands
     commandFunction = args.proc
