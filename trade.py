@@ -421,7 +421,7 @@ def processRunArguments(tdb, args):
         raise CommandLineError("Requested unique trip with more hops than there are stations...")
     if args.unique:
         if ((originStation and originStation == finalStation) or
-                (originStation and originStation in viaStations) or
+                 (originStation and originStation in viaStations) or
                  (finalStation and finalStation in viaStations)):
             raise CommandLineError("from/to/via repeat conflicts with --unique")
 
