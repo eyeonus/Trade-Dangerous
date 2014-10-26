@@ -474,15 +474,15 @@ class TradeDB(object):
         # Generate a series of symmetric pairs (A->B, A->C, A->D, B->C, B->D, C->D)
         # so we only calculate each distance once, and then add a link each way.
         # (A->B distance populates A->B and B->A, etc)
-        numLinks = 0
+        self.numLinks = 0
         for (lhs, rhs) in itertools.combinations(self.systemByID.values(), 2):
             dX, dY, dZ = rhs.posX - lhs.posX, rhs.posY - lhs.posY, rhs.posZ - lhs.posZ
             distSq = (dX * dX) + (dY * dY) + (dZ * dZ)
             if distSq <= longestJumpSq:
                 System.linkSystems(lhs, rhs, distSq)
-                numLinks += 1
+                    self.numLinks += 1
 
-        if self.debug > 2: print("# Number of links between systems: %d" % numLinks)
+        if self.debug > 2: print("# Number of links between systems: %d" % self.numLinks)
 
 
     def lookupSystem(self, key):
