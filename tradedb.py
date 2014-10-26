@@ -52,6 +52,7 @@ class SystemNotStationError(TradeException):
     """
     pass
 
+
 ######################################################################
 
 
@@ -357,6 +358,8 @@ class TradeDB(object):
         self.importTables = TradeDB.defaultTables
         self.debug = debug
         self.conn = None
+        self.numLinks = None
+        self.tradingCount = None
 
         self.reloadCache()
 
