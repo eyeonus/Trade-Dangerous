@@ -755,7 +755,7 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self, dbFilename=None, maxSystemLinkLy=None):
+    def load(self, dbFilename=None, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
@@ -789,9 +789,11 @@ class TradeDB(object):
             self.maxSystemLinkLy = maxSystemLinkLy
         if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
 
-        self.buildLinks()
+        if buildLinks:
+            self.buildLinks()
 
-        self.loadTrades()
+        if includeTrades:
+            self.loadTrades()
 
         # In debug mode, check that everything looks sane.
         if self.debug:
