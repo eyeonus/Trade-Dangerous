@@ -369,6 +369,7 @@ def commandLineBuildCache():
     dbFilename = TradeDB.defaultDB
     sqlFilename = TradeDB.defaultSQL
     pricesFilename = TradeDB.defaultPrices
+    importTables = TradeDB.defaultTables
 
     # Check command line for -w/--debug inputs.
     import argparse
@@ -396,7 +397,7 @@ def commandLineBuildCache():
     if not pricesPath.exists():
         print("Prices file '{}' does not exist.".format(args.prices))
 
-    buildCache(dbPath, sqlPath, pricesPath, args.debug)
+    buildCache(dbPath, sqlPath, pricesPath, importTables, debug=args.debug)
 
 
 if __name__ == '__main__':
