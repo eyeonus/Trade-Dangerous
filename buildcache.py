@@ -26,6 +26,7 @@ import csv
 from pathlib import Path
 from collections import namedtuple
 from tradeexcept import TradeException
+from data import corrections
 
 # Find the non-comment part of a string
 noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)*)\s*(#|$)')
@@ -196,9 +197,10 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
             matches = systemStationRe.match(text)
             if matches:
                 # Change which station we're at
-                stationName = "%s/%s" % (matches.group(1).upper(), matches.group(2))
-                stationID, categoryID, uiOrder = systemByName[stationName], None, 0
-                if debug > 1: print("NEW STATION: {}".format(stationName))
+                systemName, stationName = (corrections.correct(matches.group(1)), corrections.correct(matches.group(2)))
+                facility = systemName.upper() + '/' + stationName
+                stationID, categoryID, uiOrder = systemByName[facility], None, 0
+                if debug > 1: print("NEW STATION: {}".format(facility))
                 continue
             if not stationID:
                 print("Expecting: '@ SYSTEM / Station'.")
