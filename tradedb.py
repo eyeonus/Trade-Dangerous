@@ -107,17 +107,6 @@ class Station(object):
         system.addStation(self)
 
 
-    def addTrade(self, dest, trade):
-        """
-            Add an entry reflecting that an item can be bought at this
-            station and sold for a gain at another.
-        """
-        # TODO: Something smarter.
-        if not dest in self.tradingWith:
-            self.tradingWith[dest] = []
-        self.tradingWith[dest].append(trade)
-
-
     def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
         """
             Gets a list of the Station destinations that can be reached
@@ -716,8 +705,12 @@ class TradeDB(object):
         if self.numLinks is None:
             self.buildLinks()
 
-        # I could make a view that does this, but then it makes it fiddly to
-        # port this to another database that perhaps doesn't support views.
+        # NOTE: Overconsumption.
+        # We currently fetch ALL possible trades with no regard for reachability;
+        # as the database grows this will become problematic and we should switch
+        # to some form of lazy load - that is, given a star, load all potential
+        # trades it has within a given ly range (based on a multiple of max-ly and
+        # max jumps).
         stmt = """
                 SELECT src.station_id, dst.station_id
                      , src.item_id
@@ -735,15 +728,24 @@ class TradeDB(object):
                         AND dst.demand_level != 0
                         AND src.ui_order > 0
                         AND dst.ui_order > 0
-                 ORDER BY profit DESC
+                 ORDER BY src.station_id, dst.station_id, profit DESC
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
         self.tradingCount = 0
+
+        prevSrcStnID, prevDstStnID = None, None
+        srcStn, dstStn = None, None
+        tradingWith = None
+
         for (srcStnID, dstStnID, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
-            self.tradingCount += 1
-            srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
-            srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
+            if srcStnID != prevSrcStnID:
+                srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
+            if dstStnID != prevDstStnID:
+                dstStn, prevDstStnID = stations[dstStnID], dstStnID
+                tradingWith = srcStn.tradingWith[dstStn] = []
+                self.tradingCount += 1
+            tradingWith.append(Trade(items[itemID], itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
 
     def getTrades(self, src, dst):
