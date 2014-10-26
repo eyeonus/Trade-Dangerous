@@ -460,7 +460,7 @@ class TradeDB(object):
         if self.debug > 1: print("# Loaded %d Systems" % len(systemByID))
 
 
-    def buildLinks(self, longestJumpLy):
+    def buildLinks(self):
         """
             Populate the list of reachable systems for every star system.
 
@@ -469,7 +469,7 @@ class TradeDB(object):
             to be "links".
         """
 
-        longestJumpSq = longestJumpLy ** 2  # So we don't have to sqrt every distance
+        longestJumpSq = self.maxSystemLinkLy ** 2  # So we don't have to sqrt every distance
 
         # Generate a series of symmetric pairs (A->B, A->C, A->D, B->C, B->D, C->D)
         # so we only calculate each distance once, and then add a link each way.
@@ -789,7 +789,7 @@ class TradeDB(object):
             self.maxSystemLinkLy = maxSystemLinkLy
         if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
 
-        self.buildLinks(self.maxSystemLinkLy)
+        self.buildLinks()
 
         self.loadTrades()
 
