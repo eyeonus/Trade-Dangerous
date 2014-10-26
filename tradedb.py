@@ -713,6 +713,9 @@ class TradeDB(object):
             lists in descending order of profit (highest profit first)
         """
 
+        if self.numLinks is None:
+            self.buildLinks()
+
         # I could make a view that does this, but then it makes it fiddly to
         # port this to another database that perhaps doesn't support views.
         stmt = """
