@@ -511,7 +511,7 @@ def runCommand(args):
         routes = [ route for route in routes if viaStations & set(route.route[viaStartPos:]) ]
 
     if not routes:
-        print("No routes matched your critera, or price data for that route is missing.")
+        print("No profitable trades matched your critera, or price data along the route is missing.")
         return
 
     routes.sort()
