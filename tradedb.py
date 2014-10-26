@@ -464,7 +464,7 @@ class TradeDB(object):
             dX, dY, dZ = rhs.posX - lhs.posX, rhs.posY - lhs.posY, rhs.posZ - lhs.posZ
             distSq = (dX * dX) + (dY * dY) + (dZ * dZ)
             if distSq <= longestJumpSq:
-                lhs.links[rhs] = rhs.links[lhs] = distSq
+                lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
                 self.numLinks += 1
 
         if self.debug > 2: print("# Number of links between systems: %d" % self.numLinks)
