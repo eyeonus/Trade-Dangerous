@@ -23,6 +23,12 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.6.2 Oct 25/2014
+. (kfsone) Added support for self-correcting star/station name changes,
+. (kfsone) Added name corrections for maddavo's current TradeDangerous.prices,
+. (kfsone) Assorted minor API changes,
+. (kfsone) Minor startup optimization pass
+
 v4.6.1 Oct 25/2014
 . (kfsone) Added "--supply" (-S) which shows supply (demand and stock) fields when editing,
 . (kfsone) Added "--timestamps" (-T) which shows timestamp field when editing,

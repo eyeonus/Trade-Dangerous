@@ -52,6 +52,7 @@ class SystemNotStationError(TradeException):
     """
     pass
 
+
 ######################################################################
 
 
@@ -66,11 +67,6 @@ class System(object):
         self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
         self.links = {}
         self.stations = []
-
-
-    @staticmethod
-    def linkSystems(lhs, rhs, distSq):
-        lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
 
 
     def addStation(self, station):
@@ -106,17 +102,6 @@ class Station(object):
         system.addStation(self)
 
 
-    def addTrade(self, dest, trade):
-        """
-            Add an entry reflecting that an item can be bought at this
-            station and sold for a gain at another.
-        """
-        # TODO: Something smarter.
-        if not dest in self.tradingWith:
-            self.tradingWith[dest] = []
-        self.tradingWith[dest].append(trade)
-
-
     def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
         """
             Gets a list of the Station destinations that can be reached
@@ -126,6 +111,7 @@ class Station(object):
         avoiding = avoiding or []
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
+        maxLyPerSq = maxLyPer ** 2
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -134,13 +120,13 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
+        Node = namedtuple('Node', [ 'system', 'via', 'distLySq' ])
 
         openList = [ Node(self.system, [], 0) ]
-        pathList = { system.ID: Node(system, None, 0.0)
+        pathList = { system.ID: Node(system, None, -1.0)
                             # include avoids so we only have
                             # to consult one place for exclusions
-                        for system in avoiding + [ self ]
+                        for system in avoiding
                             # the avoid list may contain stations,
                             # which affects destinations but not vias
                         if isinstance(system, System) }
@@ -156,18 +142,18 @@ class Station(object):
             jumps += 1
 
             for node in ring:
-                for (destSys, destDist) in node.system.links.items():
-                    if destDist > maxLyPer: continue
-                    dist = node.distLy + destDist
+                for (destSys, destDistSq) in node.system.links.items():
+                    if destDistSq > maxLyPerSq: continue
+                    distSq = node.distLySq + destDistSq
                     # If we already have a shorter path, do nothing
                     try:
-                        if dist >= pathList[destSys.ID].distLy: continue
+                        if distSq >= pathList[destSys.ID].distLySq: continue
                     except KeyError: pass
                     # Add to the path list
-                    pathList[destSys.ID] = Node(destSys, node.via, dist)
+                    pathList[destSys.ID] = Node(destSys, node.via, distSq)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += [ Node(destSys, node.via + [destSys], dist) ]
+                    openList += [ Node(destSys, node.via + [destSys], distSq) ]
 
         Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
 
@@ -183,10 +169,10 @@ class Station(object):
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
         for node in pathList.values():
-            if node.distLy > epsilon:       # Values indistinguishable from zero are avoidances
+            if node.distLySq >= 0.0:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
                     if not station in avoidStations:
-                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], math.sqrt(node.distLySq)) ]
 
         return destStations
 
@@ -334,7 +320,7 @@ class TradeDB(object):
     # File containing text description of prices
     defaultPrices = './data/TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
-    # WARNING: order is important because of dependencys!
+    # WARNING: order is important because of dependencies!
     defaultTables = [
                       [ './data/Added.csv', 'Added' ],
                       [ './data/System.csv', 'System' ],
@@ -349,7 +335,7 @@ class TradeDB(object):
                     ]
 
 
-    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0, maxSystemLinkLy=None):
+    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
         self.dbPath = Path(dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
@@ -357,10 +343,12 @@ class TradeDB(object):
         self.importTables = TradeDB.defaultTables
         self.debug = debug
         self.conn = None
+        self.numLinks = None
+        self.tradingCount = None
 
         self.reloadCache()
 
-        self.load(maxSystemLinkLy=maxSystemLinkLy)
+        self.load(maxSystemLinkLy=maxSystemLinkLy, buildLinks=buildLinks, includeTrades=includeTrades)
 
 
     ############################################################
@@ -457,7 +445,7 @@ class TradeDB(object):
         if self.debug > 1: print("# Loaded %d Systems" % len(systemByID))
 
 
-    def buildLinks(self, longestJumpLy):
+    def buildLinks(self):
         """
             Populate the list of reachable systems for every star system.
 
@@ -466,20 +454,20 @@ class TradeDB(object):
             to be "links".
         """
 
-        longestJumpSq = longestJumpLy ** 2  # So we don't have to sqrt every distance
+        longestJumpSq = self.maxSystemLinkLy ** 2  # So we don't have to sqrt every distance
 
         # Generate a series of symmetric pairs (A->B, A->C, A->D, B->C, B->D, C->D)
         # so we only calculate each distance once, and then add a link each way.
         # (A->B distance populates A->B and B->A, etc)
-        numLinks = 0
+        self.numLinks = 0
         for (lhs, rhs) in itertools.combinations(self.systemByID.values(), 2):
             dX, dY, dZ = rhs.posX - lhs.posX, rhs.posY - lhs.posY, rhs.posZ - lhs.posZ
             distSq = (dX * dX) + (dY * dY) + (dZ * dZ)
             if distSq <= longestJumpSq:
-                System.linkSystems(lhs, rhs, distSq)
-                numLinks += 1
+                lhs.links[rhs] = rhs.links[lhs] = distSq
+                self.numLinks += 1
 
-        if self.debug > 2: print("# Number of links between systems: %d" % numLinks)
+        if self.debug > 2: print("# Number of links between systems: %d" % self.numLinks)
 
 
     def lookupSystem(self, key):
@@ -710,8 +698,15 @@ class TradeDB(object):
             lists in descending order of profit (highest profit first)
         """
 
-        # I could make a view that does this, but then it makes it fiddly to
-        # port this to another database that perhaps doesn't support views.
+        if self.numLinks is None:
+            self.buildLinks()
+
+        # NOTE: Overconsumption.
+        # We currently fetch ALL possible trades with no regard for reachability;
+        # as the database grows this will become problematic and we should switch
+        # to some form of lazy load - that is, given a star, load all potential
+        # trades it has within a given ly range (based on a multiple of max-ly and
+        # max jumps).
         stmt = """
                 SELECT src.station_id, dst.station_id
                      , src.item_id
@@ -729,15 +724,24 @@ class TradeDB(object):
                         AND dst.demand_level != 0
                         AND src.ui_order > 0
                         AND dst.ui_order > 0
-                 ORDER BY profit DESC
+                 ORDER BY src.station_id, dst.station_id, profit DESC
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
         self.tradingCount = 0
+
+        prevSrcStnID, prevDstStnID = None, None
+        srcStn, dstStn = None, None
+        tradingWith = None
+
         for (srcStnID, dstStnID, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
-            self.tradingCount += 1
-            srcStn, dstStn, item = stations[srcStnID], stations[dstStnID], items[itemID]
-            srcStn.addTrade(dstStn, Trade(item, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
+            if srcStnID != prevSrcStnID:
+                srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
+            if dstStnID != prevDstStnID:
+                dstStn, prevDstStnID = stations[dstStnID], dstStnID
+                tradingWith = srcStn.tradingWith[dstStn] = []
+                self.tradingCount += 1
+            tradingWith.append(Trade(items[itemID], itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
 
     def getTrades(self, src, dst):
@@ -749,7 +753,7 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self, dbFilename=None, maxSystemLinkLy=None):
+    def load(self, dbFilename=None, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
@@ -783,9 +787,11 @@ class TradeDB(object):
             self.maxSystemLinkLy = maxSystemLinkLy
         if self.debug > 2: print("# Max ship jump distance: %s @ %f" % (longestJumper.name(), self.maxSystemLinkLy))
 
-        self.buildLinks(self.maxSystemLinkLy)
+        if buildLinks:
+            self.buildLinks()
 
-        self.loadTrades()
+        if includeTrades:
+            self.loadTrades()
 
         # In debug mode, check that everything looks sane.
         if self.debug:

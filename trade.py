@@ -62,8 +62,6 @@ from tradeexcept import TradeException
 from tradedb import TradeDB, AmbiguityError
 from tradecalc import Route, TradeCalc, localedNo
 
-tdb = None
-
 ######################################################################
 # Helpers
 
@@ -272,7 +270,7 @@ class Checklist(object):
 ######################################################################
 # "run" command functionality.
 
-def parseAvoids(args):
+def parseAvoids(tdb, args):
     """
         Process a list of avoidances.
     """
@@ -330,7 +328,7 @@ def parseAvoids(args):
         ))
 
 
-def parseVias(args):
+def parseVias(tdb, args):
     """
         Process a list of station names and build them into a
         list of waypoints for the route.
@@ -346,7 +344,7 @@ def parseVias(args):
         viaStations.add(station)
 
 
-def processRunArguments(args):
+def processRunArguments(tdb, args):
     """
         Process arguments to the 'run' option.
     """
@@ -384,9 +382,9 @@ def processRunArguments(args):
             raise CommandLineError("More than one hop required to use same from/to destination")
 
     if args.avoid:
-        parseAvoids(args)
+        parseAvoids(tdb, args)
     if args.via:
-        parseVias(args)
+        parseVias(tdb, args)
 
     unspecifiedHops = args.hops + (0 if originStation else 1) - (1 if finalStation else 0)
     if len(viaStations) > unspecifiedHops:
@@ -423,9 +421,11 @@ def processRunArguments(args):
         raise CommandLineError("Requested unique trip with more hops than there are stations...")
     if args.unique:
         if ((originStation and originStation == finalStation) or
-                (originStation and originStation in viaStations) or
+                 (originStation and originStation in viaStations) or
                  (finalStation and finalStation in viaStations)):
             raise CommandLineError("from/to/via repeat conflicts with --unique")
+
+    tdb.loadTrades()
 
     if originStation and originStation.itemCount == 0:
         raise NoDataError("Start station {} doesn't have any price data.".format(originStation.name()))
@@ -443,17 +443,15 @@ def processRunArguments(args):
         args.mfd = None
 
 
-def runCommand(args):
+def runCommand(tdb, args):
     """ Calculate trade runs. """
-
-    global tdb
 
     if args.debug: print("# 'run' mode")
 
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
 
-    processRunArguments(args)
+    processRunArguments(tdb, args)
 
     startCr = args.credits - args.insurance
     routes = [
@@ -511,7 +509,7 @@ def runCommand(args):
         routes = [ route for route in routes if viaStations & set(route.route[viaStartPos:]) ]
 
     if not routes:
-        print("No routes matched your critera, or price data for that route is missing.")
+        print("No profitable trades matched your critera, or price data along the route is missing.")
         return
 
     routes.sort()
@@ -562,7 +560,7 @@ def getEditorPaths(args, editorName, envVar, windowsFolders, winExe, nixExe):
     raise CommandLineError("ERROR: Unable to locate {} editor.\nEither specify the path to your editor with --editor or set the {} environment variable to point to it.".format(editorName, envVar))
 
 
-def editUpdate(args, stationID):
+def editUpdate(tdb, args, stationID):
     """
         Dump the price data for a specific station to a file and
         launch the user's text editor to let them make changes
@@ -671,7 +669,7 @@ def editUpdate(args, stationID):
         if absoluteFilename: tmpPath.unlink()
 
 
-def updateCommand(args):
+def updateCommand(tdb, args):
     """
         Allow the user to update the prices database.
     """
@@ -684,7 +682,7 @@ def updateCommand(args):
 
     if args._editing:
         # User specified one of the options to use an editor.
-        return editUpdate(args, stationID)
+        return editUpdate(tdb, args, stationID)
 
     if args.debug: print('# guided "update" mode station:{}'.format(args.station))
 
@@ -694,7 +692,7 @@ def updateCommand(args):
 ######################################################################
 #
 
-def lookupSystem(name, intent):
+def lookupSystemByNameOrStation(tdb, name, intent):
     """
         Look up a name using either a system or station name.
     """
@@ -708,7 +706,7 @@ def lookupSystem(name, intent):
             raise CommandLineError("Unknown {} system/station, '{}'".format(intent, name))
 
 
-def distanceAlongPill(sc, percent):
+def distanceAlongPill(tdb, sc, percent):
     """
         Estimate a distance along the Pill using 2 reference systems
     """
@@ -725,48 +723,53 @@ def distanceAlongPill(sc, percent):
 
     return dotProduct / length
 
-def localCommand(args):
+
+def localCommand(tdb, args):
     """
         Local systems
     """
 
-    srcSystem = lookupSystem(args.system, 'system')
+    srcSystem = lookupSystemByNameOrStation(tdb, args.system, 'system')
 
     if args.ship:
         ship = tdb.lookupShip(args.ship)
         args.ship = ship
         if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     ly = args.ly or tdb.maxSystemLinkLy
+    lySq = ly ** 2
+
+    tdb.buildLinks()
 
     printHeading("Local systems to {} within {} ly.".format(srcSystem.name(), ly))
 
     distances = { }
 
-    for (destSys, destDist) in srcSystem.links.items():
+    for (destSys, destDistSq) in srcSystem.links.items():
         if args.debug:
             print("Checking {} dist={:5.2f}".format(destSys.str(), destDist))
-        if destDist > ly:
+        if destDist > lySq:
             continue
-        distances[destSys] = destDist
+        distances[destSys] = math.sqrt(destDistSq)
 
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         pillLength = ""
         if args.pill or args.percent:
             pillLengthFormat = " [{:4.0f}%]" if args.percent else " [{:5.1f}]"
-            pillLength = pillLengthFormat.format(distanceAlongPill(system, args.percent))
+            pillLength = pillLengthFormat.format(distanceAlongPill(tdb, system, args.percent))
         print("{:5.2f}{} {}".format(dist, pillLength, system.str()))
         if args.detail:
             for (station) in system.stations:
                 stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
                 print("\t<{}>{}".format(station.str(), stationDistance))
 
-def navCommand(args):
+
+def navCommand(tdb, args):
     """
         Give player directions A->B
     """
 
-    srcSystem = lookupSystem(args.start, 'start')
-    dstSystem = lookupSystem(args.end, 'end')
+    srcSystem = lookupSystemByNameOrStation(tdb, args.start, 'start')
+    dstSystem = lookupSystemByNameOrStation(tdb, args.end, 'end')
 
     avoiding = []
     if args.ship:
@@ -774,6 +777,7 @@ def navCommand(args):
         args.ship = ship
         if args.maxLyPer is None: args.maxLyPer = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     maxLyPer = args.maxLyPer or tdb.maxSystemLinkLy
+    maxLyPerSq = maxLyPer ** 2
 
     if args.debug:
         print("# Route from {} to {} with max {} ly per jump.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
@@ -781,16 +785,20 @@ def navCommand(args):
     openList = { srcSystem: 0.0 }
     distances = { srcSystem: [ 0.0, None ] }
 
+    tdb.buildLinks()
+
     # As long as the open list is not empty, keep iterating.
     while openList and not dstSystem in distances:
         # Expand the search domain by one jump; grab the list of
         # nodes that are this many hops out and then clear the list.
         openNodes, openList = openList, {}
 
-        for (node, startDist) in openNodes.items():
-            for (destSys, destDist) in node.links.items():
-                if destDist > maxLyPer:
+        for (node, startDistSq) in openNodes.items():
+            startDist = math.sqrt(startDistSq)
+            for (destSys, destDistSq) in node.links.items():
+                if destDistSq > maxLyPerSq:
                     continue
+                destDist = math.sqrt(destDistSq)
                 dist = startDist + destDist
                 # If we already have a shorter path, do nothing
                 try:
@@ -851,12 +859,10 @@ def navCommand(args):
 ######################################################################
 # functionality for the "cleanup" command
 
-def cleanupCommand(args):
+def cleanupCommand(tdb, args):
     """
         Perform maintenance on the database.
     """
-
-    global tdb
 
     if args.minutes <= 0:
         raise CommandLineError("Invalid --minutes specification.")
@@ -921,7 +927,7 @@ def cleanupCommand(args):
 
 
 def main():
-    global args, tdb
+    global args
 
     parser = argparse.ArgumentParser(description='Trade run calculator', add_help=False, epilog='For help on a specific command, use the command followed by -h.')
     parser.set_defaults(_editing=False)
@@ -1045,11 +1051,11 @@ def main():
                 os.chdir(str(exePath))
 
     # load the database
-    tdb = TradeDB(debug=args.debug, dbFilename=args.db)
+    tdb = TradeDB(debug=args.debug, dbFilename=args.db, buildLinks=False, includeTrades=False)
 
     # run the commands
     commandFunction = args.proc
-    return commandFunction(args)
+    return commandFunction(tdb, args)
 
 
 ######################################################################
