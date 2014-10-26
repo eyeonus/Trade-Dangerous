@@ -69,11 +69,6 @@ class System(object):
         self.stations = []
 
 
-    @staticmethod
-    def linkSystems(lhs, rhs, distSq):
-        lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
-
-
     def addStation(self, station):
         if not station in self.stations:
             self.stations.append(station)
@@ -116,6 +111,7 @@ class Station(object):
         avoiding = avoiding or []
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
+        maxLyPerSq = maxLyPer ** 2
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -124,13 +120,13 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
+        Node = namedtuple('Node', [ 'system', 'via', 'distLySq' ])
 
         openList = [ Node(self.system, [], 0) ]
-        pathList = { system.ID: Node(system, None, 0.0)
+        pathList = { system.ID: Node(system, None, -1.0)
                             # include avoids so we only have
                             # to consult one place for exclusions
-                        for system in avoiding + [ self ]
+                        for system in avoiding
                             # the avoid list may contain stations,
                             # which affects destinations but not vias
                         if isinstance(system, System) }
@@ -146,18 +142,18 @@ class Station(object):
             jumps += 1
 
             for node in ring:
-                for (destSys, destDist) in node.system.links.items():
-                    if destDist > maxLyPer: continue
-                    dist = node.distLy + destDist
+                for (destSys, destDistSq) in node.system.links.items():
+                    if destDistSq > maxLyPerSq: continue
+                    distSq = node.distLySq + destDistSq
                     # If we already have a shorter path, do nothing
                     try:
-                        if dist >= pathList[destSys.ID].distLy: continue
+                        if distSq >= pathList[destSys.ID].distLySq: continue
                     except KeyError: pass
                     # Add to the path list
-                    pathList[destSys.ID] = Node(destSys, node.via, dist)
+                    pathList[destSys.ID] = Node(destSys, node.via, distSq)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += [ Node(destSys, node.via + [destSys], dist) ]
+                    openList += [ Node(destSys, node.via + [destSys], distSq) ]
 
         Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
 
@@ -173,10 +169,10 @@ class Station(object):
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
         for node in pathList.values():
-            if node.distLy > epsilon:       # Values indistinguishable from zero are avoidances
+            if node.distLySq >= 0.0:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
                     if not station in avoidStations:
-                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], math.sqrt(node.distLySq)) ]
 
         return destStations
 
@@ -468,8 +464,8 @@ class TradeDB(object):
             dX, dY, dZ = rhs.posX - lhs.posX, rhs.posY - lhs.posY, rhs.posZ - lhs.posZ
             distSq = (dX * dX) + (dY * dY) + (dZ * dZ)
             if distSq <= longestJumpSq:
-                System.linkSystems(lhs, rhs, distSq)
-                    self.numLinks += 1
+                lhs.links[rhs] = rhs.links[lhs] = distSq
+                self.numLinks += 1
 
         if self.debug > 2: print("# Number of links between systems: %d" % self.numLinks)
 
