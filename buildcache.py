@@ -135,6 +135,14 @@ class BuildCacheBaseException(TradeException):
         return "{}:{} {}".format(self.fileName, self.lineNo, self.error)
 
 
+class UnknownStationError(BuildCacheBaseException):
+    """
+        Raised when the file contains an unknown star/station name.
+    """
+    def __init__(self, fromFile, lineNo, key):
+        error = "Unrecognized STAR/Station, '{}'.".format(key)
+        super().__init__(fromFile, lineNo, error)
+
 class UnknownItemError(BuildCacheBaseException):
     """
         Raised in the case of an item name that we don't know.
@@ -363,11 +371,16 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
             systemName = corrections.correct(matches.group(1))
             stationName = corrections.correct(matches.group(2))
             facility = systemName.upper() + '/' + stationName
-            stationID = systemByName[facility]
             categoryID, uiOrder = None, 0
 
             if debug > 1:
                 print("NEW STATION: {}".format(facility))
+
+            # Make sure it's valid.
+            try:
+                stationID = systemByName[facility]
+            except KeyError:
+                raise UnknownStationError(priceFile, lineNo, facility)
 
             # Check for duplicates
             if stationID in processedStations:
