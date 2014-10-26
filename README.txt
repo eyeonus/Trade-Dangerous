@@ -23,6 +23,9 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v4.6.3 Oct 26/2014
+. (kfsone) Fixed distance-related breakage in 4.6.2
+
 v4.6.2 Oct 25/2014
 . (kfsone) Added support for self-correcting star/station name changes,
 . (kfsone) Added name corrections for maddavo's current TradeDangerous.prices,

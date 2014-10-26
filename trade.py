@@ -736,7 +736,6 @@ def localCommand(tdb, args):
         args.ship = ship
         if args.ly is None: args.ly = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     ly = args.ly or tdb.maxSystemLinkLy
-    lySq = ly ** 2
 
     tdb.buildLinks()
 
@@ -744,12 +743,12 @@ def localCommand(tdb, args):
 
     distances = { }
 
-    for (destSys, destDistSq) in srcSystem.links.items():
+    for (destSys, destDist) in srcSystem.links.items():
         if args.debug:
             print("Checking {} dist={:5.2f}".format(destSys.str(), destDist))
-        if destDist > lySq:
+        if destDist > ly:
             continue
-        distances[destSys] = math.sqrt(destDistSq)
+        distances[destSys] = destDist
 
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         pillLength = ""
@@ -777,7 +776,6 @@ def navCommand(tdb, args):
         args.ship = ship
         if args.maxLyPer is None: args.maxLyPer = (ship.maxLyFull if args.full else ship.maxLyEmpty)
     maxLyPer = args.maxLyPer or tdb.maxSystemLinkLy
-    maxLyPerSq = maxLyPer ** 2
 
     if args.debug:
         print("# Route from {} to {} with max {} ly per jump.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
@@ -793,12 +791,10 @@ def navCommand(tdb, args):
         # nodes that are this many hops out and then clear the list.
         openNodes, openList = openList, {}
 
-        for (node, startDistSq) in openNodes.items():
-            startDist = math.sqrt(startDistSq)
-            for (destSys, destDistSq) in node.links.items():
-                if destDistSq > maxLyPerSq:
+        for (node, startDist) in openNodes.items():
+            for (destSys, destDist) in node.links.items():
+                if destDist > maxLyPer:
                     continue
-                destDist = math.sqrt(destDistSq)
                 dist = startDist + destDist
                 # If we already have a shorter path, do nothing
                 try:
