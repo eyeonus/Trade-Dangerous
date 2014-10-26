@@ -334,7 +334,7 @@ class TradeDB(object):
     # File containing text description of prices
     defaultPrices = './data/TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
-    # WARNING: order is important because of dependencys!
+    # WARNING: order is important because of dependencies!
     defaultTables = [
                       [ './data/Added.csv', 'Added' ],
                       [ './data/System.csv', 'System' ],
