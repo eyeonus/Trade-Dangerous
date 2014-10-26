@@ -350,7 +350,7 @@ class TradeDB(object):
                     ]
 
 
-    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0, maxSystemLinkLy=None):
+    def __init__(self, dbFilename=None, sqlFilename=None, pricesFilename=None, debug=0, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
         self.dbPath = Path(dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
@@ -363,7 +363,7 @@ class TradeDB(object):
 
         self.reloadCache()
 
-        self.load(maxSystemLinkLy=maxSystemLinkLy)
+        self.load(maxSystemLinkLy=maxSystemLinkLy, buildLinks=buildLinks, includeTrades=includeTrades)
 
 
     ############################################################
