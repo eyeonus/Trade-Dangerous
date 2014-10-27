@@ -102,6 +102,8 @@ class Station(object):
         system.addStation(self)
 
 
+    Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
+
     def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
         """
             Gets a list of the Station destinations that can be reached
@@ -154,8 +156,6 @@ class Station(object):
                     # list so that it serves as the via list for all next-hops.
                     openList += [ Node(destSys, node.via + [destSys], dist) ]
 
-        Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
-
         destStations = []
         # always include the local stations, unless the user has indicated they are
         # avoiding this system. E.g. if you're in Chango but you've specified you
@@ -163,7 +163,7 @@ class Station(object):
         if not self.system in avoiding:
             for station in self.system.stations:
                 if station in self.tradingWith and not station in avoiding:
-                    destStations += [ Destination(self, station, [], 0.0) ]
+                    destStations += [ Station.Destination(self, station, [], 0.0) ]
 
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
@@ -171,7 +171,7 @@ class Station(object):
             if node.distLy >= 0.0:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
                     if not station in avoidStations:
-                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+                        destStations += [ Station.Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
 
         return destStations
 
