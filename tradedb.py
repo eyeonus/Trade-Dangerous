@@ -111,7 +111,6 @@ class Station(object):
         avoiding = avoiding or []
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
-        maxLyPerSq = maxLyPer ** 2
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -120,7 +119,7 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        Node = namedtuple('Node', [ 'system', 'via', 'distLySq' ])
+        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
 
         openList = [ Node(self.system, [], 0) ]
         pathList = { system.ID: Node(system, None, -1.0)
@@ -142,18 +141,18 @@ class Station(object):
             jumps += 1
 
             for node in ring:
-                for (destSys, destDistSq) in node.system.links.items():
-                    if destDistSq > maxLyPerSq: continue
-                    distSq = node.distLySq + destDistSq
+                for (destSys, destDist) in node.system.links.items():
+                    if destDist > maxLyPer: continue
+                    dist = node.distLy + destDist
                     # If we already have a shorter path, do nothing
                     try:
-                        if distSq >= pathList[destSys.ID].distLySq: continue
+                        if dist >= pathList[destSys.ID].distLy: continue
                     except KeyError: pass
                     # Add to the path list
-                    pathList[destSys.ID] = Node(destSys, node.via, distSq)
+                    pathList[destSys.ID] = Node(destSys, node.via, dist)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += [ Node(destSys, node.via + [destSys], distSq) ]
+                    openList += [ Node(destSys, node.via + [destSys], dist) ]
 
         Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
 
@@ -169,10 +168,10 @@ class Station(object):
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
         for node in pathList.values():
-            if node.distLySq >= 0.0:       # Values indistinguishable from zero are avoidances
+            if node.distLy >= 0.0:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
                     if not station in avoidStations:
-                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], math.sqrt(node.distLySq)) ]
+                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
 
         return destStations
 
