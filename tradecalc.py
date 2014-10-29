@@ -125,10 +125,11 @@ class Route(object):
 
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum([hop[1] for hop in hops])
+        numJumps = sum([len(hopJumps)-1 for hopJumps in jumps])
         return "\n".join([
             "Start CR: %10s" % localedNo(credits),
             "Hops    : %10s" % localedNo(len(hops)),
-            "Jumps   : %10s" % localedNo(sum([len(hopJumps)-1 for hopJumps in jumps])), # always includes start point
+            "Jumps   : %10s" % localedNo(numJumps), # always includes start point
             "Gain CR : %10s" % localedNo(ttlGainCr),
             "Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)),
             "Final CR: %10s" % localedNo(credits + ttlGainCr),
@@ -139,11 +140,6 @@ class TradeCalc(object):
     """
         Container for accessing trade calculations with common properties.
     """
-
-    # How fast do we expect stock to increase
-    # My estimate is +5% every 60s.
-    stockIncreaseRate = 0.05
-    stockIncreaseInterval = 5 * 60
 
     def __init__(self, tdb, debug=0, capacity=None, maxUnits=None, margin=0.01, unique=False, fit=None):
         self.tdb = tdb
@@ -169,9 +165,18 @@ class TradeCalc(object):
             item = items[offset]
             itemCost = item.costCr
             maxQty = min(maxUnits, cap, cr // itemCost)
-            if item.stock > 0 and item.stock < maxQty:
-                adjustment = math.ceil(item.stock * TradeCalc.stockIncreaseRate) * math.floor(item.srcAge / TradeCalc.stockIncreaseInterval)
-                maxQty = min(maxQty, item.stock + adjustment)
+
+            # Adjust for age for "M"/"H" items with low units.
+            if item.stock < maxQty and item.stock > 0:  # -1 = unknown
+                level = item.stockLevel
+                if level > 1:
+                    # Assume 2 units per 10 minutes for high,
+                    # 1 unit per 15 minutes for medium
+                    units = level - 1
+                    interval = (30 / level) * 60
+                    adjustment = units * math.floor(item.srcAge / interval)
+                    maxQty = min(maxQty, item.stock + adjustment)
+
             if maxQty > 0:
                 itemGain = item.gainCr
                 for qty in range(maxQty):
@@ -187,7 +192,12 @@ class TradeCalc(object):
                         if combWeight == bestLoad.units:
                             if combCost >= bestLoad.costCr:
                                 continue
-                    bestLoad = TradeLoad(load.items + subLoad.items, load.gainCr + subLoad.gainCr, load.costCr + subLoad.costCr, load.units + subLoad.units)
+                    bestLoad = TradeLoad(
+                                    load.items + subLoad.items,
+                                    load.gainCr + subLoad.gainCr,
+                                    load.costCr + subLoad.costCr,
+                                    load.units + subLoad.units
+                                )
             return bestLoad
 
         bestLoad = _fitCombos(0, credits, capacity)
@@ -222,11 +232,22 @@ class TradeCalc(object):
             for item in items[offset:]:
                 itemCostCr = item.costCr
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
-                if item.stock > 0 and item.stock < maxQty:
-                    adjustment = math.ceil(item.stock * TradeCalc.stockIncreaseRate) * math.floor(item.srcAge / TradeCalc.stockIncreaseInterval)
-                    maxQty = min(maxQty, item.stock + adjustment)
+
+                # Adjust for age for "M"/"H" items with low units.
+                if item.stock < maxQty and item.stock > 0:  # -1 = unknown
+                    level = item.stockLevel
+                    if level > 1:
+                        # Assume 2 units per 10 minutes for high,
+                        # 1 unit per 15 minutes for medium
+                        units = level - 1
+                        interval = (30 / level) * 60
+                        adjustment = units * math.floor(item.srcAge / interval)
+                        maxQty = min(maxQty, item.stock + adjustment)
+
                 if maxQty > 0:
-                    loadItems, loadCostCr, loadGainCr = [[item, maxQty]], maxQty * itemCostCr, maxQty * item.gainCr
+                    loadItems = [[item, maxQty]]
+                    loadCostCr = maxQty * itemCostCr
+                    loadGainCr = maxQty * item.gainCr
                     bestGainCr = -1
                     crLeft, capLeft = cr - loadCostCr, cap - maxQty
                     if crLeft > 0 and capLeft > 0:
@@ -234,7 +255,12 @@ class TradeCalc(object):
                         # is left in items after the item we just checked.
                         for subLoad in _fitCombos(offset + 1, crLeft, capLeft):
                             if subLoad.gainCr > 0 and subLoad.gainCr >= bestGainCr:
-                                yield TradeLoad(subLoad.items + loadItems, subLoad.gainCr + loadGainCr, subLoad.costCr + loadCostCr, subLoad.units + maxQty)
+                                yield TradeLoad(
+                                            subLoad.items + loadItems,
+                                            subLoad.gainCr + loadGainCr,
+                                            subLoad.costCr + loadCostCr,
+                                            subLoad.units + maxQty
+                                        )
                                 bestGainCr = subLoad.gainCr
                     # If there were no good additions, yield what we have.
                     if bestGainCr < 0:
