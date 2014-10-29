@@ -488,6 +488,26 @@ class TradeDB(object):
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
 
+    def lookupSystemRelaxed(self, key):
+        """
+            Lookup a System object by it's name or by the name of any of it's stations.
+        """
+        try:
+            return self.lookupSystem(key)
+        except LookupError:
+            pass
+        try:
+            nameList = self.stationByID.values()
+            station = TradeDB.listSearch("System or station", key, nameList, key=lambda entry: entry.dbname)
+            return station.system
+        except AmbiguityError as e:
+            # Check the ambiguities to see if they share a system
+            system = e.candidates[0].value.system
+            for i in range(1, len(e.candidates)):
+                if e.candidates[i].value.system != system:
+                    raise
+            return system
+
     ############################################################
     # Station data.
 
