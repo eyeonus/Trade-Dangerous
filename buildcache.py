@@ -88,7 +88,8 @@ $
 # new format:
 # <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
 qtyLevelFrag = r"""
-    unk                  # You can just write 'unknown'
+    unk                 # You can just write 'unknown'
+|   \?                  # alias for unknown
 |   n/a                 # alias for 0L0
 |   -                   # alias for 0L0
 |   \d+[\?LMH]          # Or <number><level> where level is L(ow), M(ed) or H(igh)
@@ -226,7 +227,7 @@ class UnitsAndLevel(object):
 
     def __init__(self, pricesFile, lineNo, category, reading):
         ucReading = reading.upper()
-        if ucReading in ("UNK", "-1L-1", "-1L0", "0L-1"):
+        if ucReading in ("UNK", "?", "-1L-1", "-1L0", "0L-1"):
             self.units, self.level = -1, -1
         elif ucReading in ("-", "-L-", "N/A", "0"):
             self.units, self.level = 0, 0
