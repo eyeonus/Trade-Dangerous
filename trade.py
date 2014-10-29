@@ -316,9 +316,9 @@ def parseAvoids(tdb, args):
             raise CommandLineError("Unknown item/system/station: %s" % avoid)
 
         # But if it matched more than once, whine about ambiguity
-        if item and system: raise AmbiguityError('Avoidance', avoid, item, system.str())
-        if item and station: raise AmbiguityError('Avoidance', avoid, item, station.str())
-        if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, system.str(), station.str())
+        if item and system: raise AmbiguityError('Avoidance', avoid, [ item, system.str() ])
+        if item and station: raise AmbiguityError('Avoidance', avoid, [ item, station.str() ])
+        if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, [ system.str(), station.str() ])
 
     if args.debug:
         print("Avoiding items %s, systems %s, stations %s" % (

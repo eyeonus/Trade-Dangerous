@@ -34,15 +34,22 @@ class AmbiguityError(TradeException):
         Attributes:
             lookupType - description of what was being queried,
             searchKey  - the key given to the search routine,
-            first      - the first potential match,
-            second     - the alternate match
+            candidates - list of candidates
+            key        - retrieve the display string for a candidate
     """
-    def __init__(self, lookupType, searchKey, first, second):
-        self.lookupType, self.searchKey, self.first, self.second = lookupType, searchKey, first, second
+    def __init__(self, lookupType, searchKey, candidates, key=lambda item:item):
+        self.lookupType = lookupType
+        self.searchKey = searchKey
+        self.candidates = candidates
+        self.key = key
 
 
     def __str__(self):
-        return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
+        return '{} lookup: "{}" could match either "{}" or "{}"'.format(
+                        self.lookupType, str(self.searchKey),
+                        str(key(self.candiates[0])),
+                        str(key(self.candidates[1])),
+                    )
 
 
 class SystemNotStationError(TradeException):
@@ -481,6 +488,26 @@ class TradeDB(object):
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
 
+    def lookupSystemRelaxed(self, key):
+        """
+            Lookup a System object by it's name or by the name of any of it's stations.
+        """
+        try:
+            return self.lookupSystem(key)
+        except LookupError:
+            pass
+        try:
+            nameList = self.stationByID.values()
+            station = TradeDB.listSearch("System or station", key, nameList, key=lambda entry: entry.dbname)
+            return station.system
+        except AmbiguityError as e:
+            # Check the ambiguities to see if they share a system
+            system = e.candidates[0].value.system
+            for i in range(1, len(e.candidates)):
+                if e.candidates[i].value.system != system:
+                    raise
+            return system
+
     ############################################################
     # Station data.
 
@@ -542,7 +569,7 @@ class TradeDB(object):
         # the same station otherwise we have an ambiguity. Some stations have the
         # same name as their star system (Aulin/Aulin Enterprise)
         if system and station and system != station.system:
-            raise AmbiguityError('Station', name, system.name(), station.name())
+            raise AmbiguityError('Station', name, [ system.name(), station.name() ])
 
         if station:
             return station
@@ -876,12 +903,12 @@ class TradeDB(object):
         # Whole word matches trump partial matches
         if wordMatches:
             if len(wordMatches) > 1:
-                raise AmbiguityError(listType, lookup, wordMatches[0].key, wordMatches[1].key)
+                raise AmbiguityError(listType, lookup, wordMatches, key=lambda item: item.key)
             return wordMatches[0].value
         # Fuzzy matches
         if partialMatches:
             if len(partialMatches) > 1:
-                raise AmbiguityError(listType, lookup, partialMatches[0].key, partialMatches[1].key)
+                raise AmbiguityError(listType, lookup, partialMatches, key=lambda item: item.key)
             return partialMatches[0].value
         # No matches
         raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
