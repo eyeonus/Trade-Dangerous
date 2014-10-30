@@ -17,6 +17,7 @@ items = {
     'HYDROGEN FUELS':   'Hydrogen Fuel',
     'MARINE SUPPLIES':  'Marine Equipment',
     'TERRAIN ENRICH SYS': 'Land Enrichment Systems',
+    'HEL-STATIC FURNACES': 'Microbial Furnaces',
 }
 
 def correctSystem(oldName):
