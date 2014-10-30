@@ -6,7 +6,8 @@ systems = {
 
 stations = {
     'LOUIS DE LACAILLE PROSPECT': 'Lacaille Prospect',
-    'HOPKINS HANGAR': 'Hopkins Hanger',
+    'HOPKINS HANGAR': 'Cori Terminal',
+    'HOPKINS HANGER': 'Cori Terminal',
 }
 
 categories = {
