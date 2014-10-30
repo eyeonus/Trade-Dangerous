@@ -10,7 +10,7 @@ stations = {
 }
 
 categories = {
-    'Drugs':            'Legal Drugs',
+    'DRUGS':            'Legal Drugs',
 }
 
 items = {
