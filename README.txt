@@ -23,6 +23,19 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v5.0.0 Oct 31/2014
+. (kfsone) Initial Beta 3 changes
+ - Improved the "corrections" system which facilitates changing names
+   between versions, you can now "correct" System, Station, Category
+   and Item names;
+ - Renamed "Drugs" to "Legal Drugs", guess we need to add "Illegal Drugs"
+ - Renamed some obvious items (Hel-Static Furnaces -> Microbial Furnaces),
+ - Added some items that looked new (but could be renames),
+ - Renamed Hopkins Hangar -> Cori Terminal
+
+v4.7.0 Oct 26/2014
+. (kfsone) Added "buy" sub-command for looking up sales of an item
+
 v4.6.3 Oct 26/2014
 . (kfsone) Fixed distance-related breakage in 4.6.2
 . (kfsone) Improved error feedback while processing .prices file
@@ -409,6 +422,36 @@ UPDATE sub-command:
     trade.py update --sub --sup --time --zero aulin
   aka:
     trade.py update --sub -ST0 aulin
+
+
+BUY sub-command:
+
+  Looks for stations selling the specified item: that means they have a non-zero
+  asking price and a stock level other than "n/a".
+
+  trade.py [-q | -q] buy [--quantity Q] [--near N] [--ly-per N] item [-P | -S]
+
+    --quantity Q
+      Requires that the stock level be unknown or at least this value,
+      --quantity 23
+
+    --near system
+    --near station
+      Only considers stations within reach of the specified system.
+      --near chango
+
+    --ly-per N.N
+      Sets the range of --near (requires --near)
+      --near chango --ly 10
+
+    --prices-sort
+    -P
+      Keeps items sorted by price when using --near
+      (otherwise items are listed by distance and then price)
+
+    --stock-sort
+    -S
+      Sorts items by stock available first and then price
 
 
 NAV sub-command:

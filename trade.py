@@ -316,9 +316,9 @@ def parseAvoids(tdb, args):
             raise CommandLineError("Unknown item/system/station: %s" % avoid)
 
         # But if it matched more than once, whine about ambiguity
-        if item and system: raise AmbiguityError('Avoidance', avoid, item, system.str())
-        if item and station: raise AmbiguityError('Avoidance', avoid, item, station.str())
-        if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, system.str(), station.str())
+        if item and system: raise AmbiguityError('Avoidance', avoid, [ item, system.str() ])
+        if item and station: raise AmbiguityError('Avoidance', avoid, [ item, station.str() ])
+        if system and station and station.system != system: raise AmbiguityError('Avoidance', avoid, [ system.str(), station.str() ])
 
     if args.debug:
         print("Avoiding items %s, systems %s, stations %s" % (
@@ -853,70 +853,91 @@ def navCommand(tdb, args):
 
 
 ######################################################################
-# functionality for the "cleanup" command
+# 
 
-def cleanupCommand(tdb, args):
+def buyCommand(tdb, args):
     """
-        Perform maintenance on the database.
+        Locate places selling a given item.
     """
 
-    if args.minutes <= 0:
-        raise CommandLineError("Invalid --minutes specification.")
+    item = tdb.lookupItem(args.item)
 
-    if not args.quiet:
-        print("* Performing database cleanup, expiring {} minute orphan records.{}".format(
-                args.minutes,
-                " DRY RUN." if args.dryRun else ""
-            ))
+    # Constraints
+    constraints = [ "(item_id = ?)", "buy_from > 0", "stock != 0" ]
+    bindValues = [ item.ID ]
 
-    # Get access to the DB in a transaction so that if something goes
-    # wrong or we are only doing a dry run, nothing will actually happen.
-    db = tdb.getDB()
-    db.isolation_level = None
-    cur = db.execute("BEGIN")
+    if args.quantity:
+        constraints.append("(stock = -1 or stock >= ?)")
+        bindValues.append(args.quantity)
 
-    # How many prices were there before?
-    beforeCount = cur.execute('SELECT COUNT(*) FROM Price').fetchone()[0]
+    near = args.near
+    if near:
+        tdb.buildLinks()
+        nearSystem = tdb.lookupSystem(near)
+        maxLy = float("inf") if args.maxLyPer is None else args.maxLyPer
+        # Uh - why haven't I made a function on System to get a
+        # list of all the systems within N hops at L ly per hop?
+        stations = []
+        for station in nearSystem.stations:
+            if station.itemCount > 0:
+                stations.append(str(station.ID))
+        for system, dist in nearSystem.links.items():
+            if dist <= maxLy:
+                for station in system.stations:
+                    if station.itemCount > 0:
+                        stations.append(str(station.ID))
+        if not stations:
+            raise NoDataError("No stations listed as selling items within range")
+        constraints.append("station_id IN ({})".format(','.join(stations)))
 
+    whereClause = ' AND '.join(constraints)
     stmt = """
-        SELECT OldPrice.item_id, OldPrice.station_id, OldPrice.modified, MIN(NewerPrice.modified)
-         FROM Price as OldPrice
-                INNER JOIN Price as NewerPrice
-                    ON (OldPrice.station_id = NewerPrice.station_id
-                        AND OldPrice.modified <= DATETIME(NewerPrice.modified, '-{} minute'))
-        GROUP BY 1, 2
-    """
-    deletions = []
-    for (itemID, stationID, oldTimestamp, newTimestamp) in cur.execute(stmt.format(args.minutes)):
-        if args.dryRun or args.debug:
-            item, station = tdb.itemByID[itemID], tdb.stationByID[stationID]
-            print("- {} @ {} : {} vs {}".format(station.str(), item.name(), oldTimestamp, newTimestamp))
-        deletions.append([itemID, stationID])
-    if not deletions:
-        if not args.quiet:
-            print("* Nothing to do.")
-        return None
+                SELECT station_id, buy_from, stock
+                  FROM Price
+                 WHERE {}
+            """.format(whereClause)
+    if args.debug:
+        print("* SQL: {}".format(stmt))
+    cur = tdb.query(stmt, bindValues)
 
-    cur.executemany("DELETE FROM Price WHERE item_id = ? AND station_id = ?", deletions)
+    from collections import namedtuple
+    Result = namedtuple('Result', [ 'station', 'cost', 'stock', 'dist' ])
+    results = []
+    stationByID = tdb.stationByID
+    dist = 0.0
+    for (stationID, costCr, stock) in cur:
+        stn = stationByID[stationID]
+        if near:
+            dist = stn.system.links[nearSystem] if stn.system != nearSystem else 0.0
+        results.append(Result(stationByID[stationID], costCr, stock, dist))
 
-    # And how many after what we were doing?
-    afterCount = cur.execute('SELECT COUNT(*) FROM Price').fetchone()[0]
+    if not results:
+        raise NoDataError("No available items found")
 
-    if args.debug or args.dryRun:
-        print("# Price records before: {}, after: {}".format(beforeCount, afterCount))
-
-    if not args.dryRun:
-        deleted = len(deletions)
-        if args.quiet < 2:
-            print("- Removed {} {}.".format(deleted, "entry" if deleted == 1 else "entries"))
-        db.execute("COMMIT")
+    if args.sortByStock:
+        results.sort(key=lambda result: result.cost)
+        results.sort(key=lambda result: result.stock, reverse=True)
     else:
-        if args.quiet < 2:
-            print("# DRY RUN: Database unmodified.")
-        db.execute("ROLLBACK")  # technically this is redundant
+        results.sort(key=lambda result: result.stock, reverse=True)
+        results.sort(key=lambda result: result.cost)
+        if near and not args.sortByPrice:
+            results.sort(key=lambda result: result.dist)
 
-    return deletions
-
+    maxStnNameLen = len(max(results, key=lambda result: len(result.station.dbname) + len(result.station.system.dbname) + 1).station.name())
+    printHeading("{:<{maxStnLen}} {:>10} {:>10} {:{distFmt}}".format(
+            "Station", "Cost", "Stock", "Ly" if near else "",
+            maxStnLen=maxStnNameLen,
+            distFmt=">6" if near else ""
+        ))
+    for result in results:
+        print("{:<{maxStnLen}} {:>10n} {:>10} {:{distFmt}}".format(
+                result.station.name(),
+                result.cost,
+                localedNo(result.stock) if result.stock > 0 else "",
+                result.dist if near else "",
+                maxStnLen=maxStnNameLen,
+                distFmt=">6.2f" if near else ""
+            ))
 
 ######################################################################
 # main entry point
@@ -939,13 +960,20 @@ def main():
 
     subparsers = parser.add_subparsers(dest='subparser', title='Commands')
 
-    # Maintenance on the database.
-    cleanupParser = makeSubParser(subparsers, 'cleanup', 'Remove stale price data.', cleanupCommand,
-        epilog='EMDN sometimes gets invalid data (either from Elite Dangerous UI issues or people deliberately submitting bad data). These items can be crudely detected by checking for price entries that are somewhat older than other entries for the same station.',
+    # Find places that are selling an item within range of a specified system.
+    buyParser = makeSubParser(subparsers, 'buy', 'Find places to buy a given item within range of a given station.', buyCommand,
+        arguments = [
+            ParseArgument('item', help='Name of item to query.', type=str),
+        ],
         switches = [
-            ParseArgument('--minutes', help='Cull prices which are this much older than other prices for the same station.', type=int, default=30),
-            ParseArgument('--dry-run', help="Show which records would be deleted, but don't actually delete anything.", dest='dryRun', default=False, action='store_true')
-        ]
+            ParseArgument('--quantity', help='Require at least this quantity.', type=int, default=0),
+            ParseArgument('--near', help='Find sellers within jump range of this system.', type=str),
+            ParseArgument('--ly-per', help='Maximum light years per jump.', metavar='N.NN', dest='maxLyPer', type=float, default=None),
+            [
+                ParseArgument('--price-sort', '-P', help='(When using --near) Sort by price not distance', dest='sortByPrice', action='store_true', default=False),
+                ParseArgument('--stock-sort', '-S', help='Sort by stock followed by price', dest='sortByStock', action='store_true', default=False),
+            ],
+        ],
     )
 
     # "nav" tells you how to get from one place to another.

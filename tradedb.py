@@ -34,15 +34,22 @@ class AmbiguityError(TradeException):
         Attributes:
             lookupType - description of what was being queried,
             searchKey  - the key given to the search routine,
-            first      - the first potential match,
-            second     - the alternate match
+            candidates - list of candidates
+            key        - retrieve the display string for a candidate
     """
-    def __init__(self, lookupType, searchKey, first, second):
-        self.lookupType, self.searchKey, self.first, self.second = lookupType, searchKey, first, second
+    def __init__(self, lookupType, searchKey, candidates, key=lambda item:item):
+        self.lookupType = lookupType
+        self.searchKey = searchKey
+        self.candidates = candidates
+        self.key = key
 
 
     def __str__(self):
-        return '%s lookup: "%s" could match either "%s" or "%s"' % (self.lookupType, str(self.searchKey), str(self.first), str(self.second))
+        return '{} lookup: "{}" could match either "{}" or "{}"'.format(
+                        self.lookupType, str(self.searchKey),
+                        str(key(self.candiates[0])),
+                        str(key(self.candidates[1])),
+                    )
 
 
 class SystemNotStationError(TradeException):
@@ -102,6 +109,8 @@ class Station(object):
         system.addStation(self)
 
 
+    Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
+
     def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
         """
             Gets a list of the Station destinations that can be reached
@@ -111,7 +120,6 @@ class Station(object):
         avoiding = avoiding or []
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
-        maxLyPerSq = maxLyPer ** 2
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -120,7 +128,7 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        Node = namedtuple('Node', [ 'system', 'via', 'distLySq' ])
+        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
 
         openList = [ Node(self.system, [], 0) ]
         pathList = { system.ID: Node(system, None, -1.0)
@@ -142,20 +150,18 @@ class Station(object):
             jumps += 1
 
             for node in ring:
-                for (destSys, destDistSq) in node.system.links.items():
-                    if destDistSq > maxLyPerSq: continue
-                    distSq = node.distLySq + destDistSq
+                for (destSys, destDist) in node.system.links.items():
+                    if destDist > maxLyPer: continue
+                    dist = node.distLy + destDist
                     # If we already have a shorter path, do nothing
                     try:
-                        if distSq >= pathList[destSys.ID].distLySq: continue
+                        if dist >= pathList[destSys.ID].distLy: continue
                     except KeyError: pass
                     # Add to the path list
-                    pathList[destSys.ID] = Node(destSys, node.via, distSq)
+                    pathList[destSys.ID] = Node(destSys, node.via, dist)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += [ Node(destSys, node.via + [destSys], distSq) ]
-
-        Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
+                    openList += [ Node(destSys, node.via + [destSys], dist) ]
 
         destStations = []
         # always include the local stations, unless the user has indicated they are
@@ -164,15 +170,15 @@ class Station(object):
         if not self.system in avoiding:
             for station in self.system.stations:
                 if station in self.tradingWith and not station in avoiding:
-                    destStations += [ Destination(self, station, [], 0.0) ]
+                    destStations += [ Station.Destination(self, station, [], 0.0) ]
 
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
         for node in pathList.values():
-            if node.distLySq >= 0.0:       # Values indistinguishable from zero are avoidances
+            if node.distLy >= 0.0:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
                     if not station in avoidStations:
-                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], math.sqrt(node.distLySq)) ]
+                        destStations += [ Station.Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
 
         return destStations
 
@@ -482,6 +488,26 @@ class TradeDB(object):
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
 
 
+    def lookupSystemRelaxed(self, key):
+        """
+            Lookup a System object by it's name or by the name of any of it's stations.
+        """
+        try:
+            return self.lookupSystem(key)
+        except LookupError:
+            pass
+        try:
+            nameList = self.stationByID.values()
+            station = TradeDB.listSearch("System or station", key, nameList, key=lambda entry: entry.dbname)
+            return station.system
+        except AmbiguityError as e:
+            # Check the ambiguities to see if they share a system
+            system = e.candidates[0].value.system
+            for i in range(1, len(e.candidates)):
+                if e.candidates[i].value.system != system:
+                    raise
+            return system
+
     ############################################################
     # Station data.
 
@@ -543,7 +569,7 @@ class TradeDB(object):
         # the same station otherwise we have an ambiguity. Some stations have the
         # same name as their star system (Aulin/Aulin Enterprise)
         if system and station and system != station.system:
-            raise AmbiguityError('Station', name, system.name(), station.name())
+            raise AmbiguityError('Station', name, [ system.name(), station.name() ])
 
         if station:
             return station
@@ -877,12 +903,12 @@ class TradeDB(object):
         # Whole word matches trump partial matches
         if wordMatches:
             if len(wordMatches) > 1:
-                raise AmbiguityError(listType, lookup, wordMatches[0].key, wordMatches[1].key)
+                raise AmbiguityError(listType, lookup, wordMatches, key=lambda item: item.key)
             return wordMatches[0].value
         # Fuzzy matches
         if partialMatches:
             if len(partialMatches) > 1:
-                raise AmbiguityError(listType, lookup, partialMatches[0].key, partialMatches[1].key)
+                raise AmbiguityError(listType, lookup, partialMatches, key=lambda item: item.key)
             return partialMatches[0].value
         # No matches
         raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
