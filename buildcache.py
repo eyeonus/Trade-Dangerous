@@ -330,7 +330,7 @@ def getItemByNameIndex(cur, itemNamesAreUnique):
         }
 
 
-def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
+def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
@@ -373,8 +373,7 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
             facility = systemName.upper() + '/' + stationName
             categoryID, uiOrder = None, 0
 
-            if debug > 1:
-                print("NEW STATION: {}".format(facility))
+            tdenv.DEBUG(1, "NEW STATION: {}", format(facility))
 
             # Make sure it's valid.
             try:
@@ -405,8 +404,7 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
             categoryName = matches.group(1)
             categoryID, uiOrder = categoriesByName[categoryName], 0
 
-            if debug > 1:
-                print("NEW CATEGORY: {}".format(categoryName))
+            tdenv.DEBUG(1, "NEW CATEGORY: {}", categoryName)
 
             continue
         if not categoryID:
@@ -448,7 +446,7 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
         try:
             itemID = itemByName[itemKey]
         except KeyError:
-            raise UnknownItemError(priceFile, lineNo, itemname)
+            raise UnknownItemError(priceFile, lineNo, itemName)
 
         # Check for duplicate items within the station.
         if itemID in processedItems:
@@ -471,12 +469,11 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
 
 ######################################################################
 
-def processPricesFile(db, pricesPath, stationID=None, defaultZero=False, debug=0):
-    if debug: print("* Processing Prices file '{}'".format(str(pricesPath)))
+def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
+    tdenv.DEBUG(0, "Processing Prices file '{}'", pricesPath)
 
     if stationID:
-        if debug:
-            print("* Deleting stale entries for {}".format(stationID))
+        tdenv.DEBUG(0, "Deleting stale entries for {}", stationID)
         db.execute(
             "DELETE FROM Price WHERE station_id = ?",
                 [stationID]
@@ -484,8 +481,8 @@ def processPricesFile(db, pricesPath, stationID=None, defaultZero=False, debug=0
 
     with pricesPath.open() as pricesFile:
         bindValues = []
-        for price in genSQLFromPriceLines(pricesFile, db, defaultZero, debug):
-            if debug > 2: print(price)
+        for price in genSQLFromPriceLines(tdenv, pricesFile, db, defaultZero):
+            tdenv.DEBUG(2, price)
             bindValues += [ price ]
         stmt = """
            INSERT OR REPLACE INTO Price (
@@ -509,11 +506,8 @@ def processPricesFile(db, pricesPath, stationID=None, defaultZero=False, debug=0
 
 ######################################################################
 
-def processImportFile(db, importPath, tableName, debug=0):
-    if debug:
-        print("* Processing import file '{}' for table '{}'". \
-                format(str(importPath), tableName)
-            )
+def processImportFile(tdenv, db, importPath, tableName, debug=0):
+    tdenv.DEBUG(0, "Processing import file '{}' for table '{}'", str(importPath), tableName)
 
     fkeySelectStr = "(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)"
 
@@ -554,15 +548,13 @@ def processImportFile(db, importPath, tableName, debug=0):
                 columns=','.join(bindColumns),
                 values=','.join(bindValues)
             )
-        if debug:
-            print("* SQL-Statement: {}".format(sql_stmt))
+        tdenv.DEBUG(1, "SQL-Statement: {}", sql_stmt)
 
         # import the data
         importCount = 0
         for linein in csvin:
             if len(linein) == columnCount:
-                if debug > 1:
-                    print("-        Values: {}".format(', '.join(linein)))
+                tdenv.DEBUG(2, "       Values: {}", ', '.join(linein))
                 db.execute(sql_stmt, linein)
                 importCount += 1
         db.commit()
@@ -573,7 +565,7 @@ def processImportFile(db, importPath, tableName, debug=0):
 
 ######################################################################
 
-def buildCache(dbPath, sqlPath, pricesPath, importTables, defaultZero=False, debug=0):
+def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=False):
     """
         Rebuilds the SQlite database from source files.
 
@@ -589,13 +581,11 @@ def buildCache(dbPath, sqlPath, pricesPath, importTables, defaultZero=False, deb
     """
 
     # Create an in-memory database to populate with our data.
-    if debug:
-        print("* Creating temporary database in memory")
+    tdenv.DEBUG(0, "Creating temporary database in memory")
     tempDB = sqlite3.connect(':memory:')
 
     # Read the SQL script so we are ready to populate structure, etc.
-    if debug:
-        print("* Executing SQL Script '{}' from '{}'".format(sqlPath, os.getcwd()))
+    tdenv.DEBUG(0, "Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
     with sqlPath.open() as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
@@ -603,88 +593,83 @@ def buildCache(dbPath, sqlPath, pricesPath, importTables, defaultZero=False, deb
     # import standard tables
     for (importName, importTable) in importTables:
         try:
-            processImportFile(tempDB, Path(importName), importTable, debug=debug)
+            processImportFile(tdenv, tempDB, Path(importName), importTable)
         except FileNotFoundError:
-            if debug:
-                print("WARNING: processImportFile found no {} file". \
-                        format(importName))
+            tdenv.DEBUG(0, "WARNING: processImportFile found no {} file", importName)
 
     # Parse the prices file
-    processPricesFile(tempDB, pricesPath, defaultZero=defaultZero, debug=debug)
+    processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
 
     # Database is ready; copy it to a persistent store.
-    if debug: print("* Populating SQLite database file '%s'" % dbPath)
+    tdenv.DEBUG(0, "Populating SQLite database file {}", str(dbPath))
     if dbPath.exists():
-        if debug: print("- Removing old database file")
+        tdenv.DEBUG(0, "Removing old database file")
         dbPath.unlink()
 
     newDB = sqlite3.connect(str(dbPath))
     importScript = "".join(tempDB.iterdump())
-    if debug > 3: print(importScript)
+    tdenv.DEBUG(3, importScript)
     newDB.executescript(importScript)
     newDB.commit()
 
-    if debug: print("* Finished")
+    tdenv.DEBUG(0, "Finished")
 
 
 ######################################################################
 
 def commandLineBuildCache():
-    # Because it looks less sloppy that doing this in if __name__ == '__main__'...
     from tradedb import TradeDB
-    dbFilename = TradeDB.defaultDB
-    sqlFilename = TradeDB.defaultSQL
-    pricesFilename = TradeDB.defaultPrices
-    importTables = TradeDB.defaultTables
 
-    # Check command line for -w/--debug inputs.
-    import argparse
-    parser = argparse.ArgumentParser(
-        description='Build TradeDangerous cache file from source files'
+    from tradeenv import TradeEnv, ParseArgument
+    arguments = [
+        ParseArgument(
+            '--sql', default=None, dest='sqlFilename',
+            help='Specify SQL script to execute.',
+        ),
+        ParseArgument(
+            '--prices', default=None, dest='pricesFilename',
+            help='Specify the prices file to load.',
+        ),
+        ParseArgument(
+            '-f', '--force', default=False, action='store_true',
+            dest='force',
+            help='Overwite existing file',
+        ),
+    ]
+    tdenv = TradeEnv(
+        description='Build TradeDangerous cache file from source files',
+        extraArgs=arguments,
     )
-
-    parser.add_argument(
-        '--db', default=dbFilename,
-        help='Specify database file to build. Default: {}'.format(dbFilename), 
-    )
-    parser.add_argument(
-        '--sql', default=sqlFilename,
-        help='Specify SQL script to execute. Default: {}'.format(sqlFilename),
-    )
-    parser.add_argument(
-        '--prices', default=pricesFilename,
-        help='Specify the prices file to load. Default: {}'.format(pricesFilename),
-    )
-    parser.add_argument(
-        '-f', '--force', default=False, action='store_true',
-        dest='force',
-        help='Overwite existing file',
-    )
-    parser.add_argument(
-        '-w', '--debug', dest='debug', default=0, action='count',
-        help='Increase level of diagnostic output',
-    )
-    args = parser.parse_args()
 
     import pathlib
 
     # Check that the file doesn't already exist.
-    dbPath = pathlib.Path(args.db)
-    sqlPath = pathlib.Path(args.sql)
-    pricesPath = pathlib.Path(args.prices)
-    if not args.force:
+    dbFilename = tdenv.dbFilename or TradeDB.defaultDB
+    sqlFilename = tdenv.sqlFilename or TradeDB.defaultSQL
+    pricesFilename = tdenv.pricesFilename or TradeDB.defaultPrices
+    importTables = TradeDB.defaultTables
+
+    dbPath = pathlib.Path(dbFilename)
+    sqlPath = pathlib.Path(sqlFilename)
+    pricesPath = pathlib.Path(pricesFilename)
+    if not tdenv.force:
         if dbPath.exists():
-            print("{}: ERROR: SQLite3 database '{}' already exists. Please remove it first.".format(sys.argv[0], args.db))
+            print("{}: ERROR: SQLite3 database '{}' already exists. "
+                    "Please remove it first.".format(
+                        sys.argv[0], dbFilename))
             sys.exit(1)
 
     if not sqlPath.exists():
-        print("SQL file '{}' does not exist.".format(args.sql))
+        print("SQL file '{}' does not exist.".format(sqlFilename))
         sys.exit(1)
 
     if not pricesPath.exists():
-        print("Prices file '{}' does not exist.".format(args.prices))
+        print("Prices file '{}' does not exist.".format(pricesFilename))
 
-    buildCache(dbPath, sqlPath, pricesPath, importTables, debug=args.debug)
+    try:
+        buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables)
+    except TradeException as e:
+        print("ERROR: {}".format(str(e)))
 
 
 if __name__ == '__main__':
