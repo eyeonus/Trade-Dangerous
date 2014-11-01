@@ -79,11 +79,12 @@ class CommandEnv(object):
 		self.checkVias()
 		self.checkShip()
 
-		return self._cmd.run(CommandResults(self))
+		results = CommandResults(self)
+		return self._cmd.run(results, self, tdb)
 
 
 	def render(self, results):
-		self._cmd.render(self, results)
+		self._cmd.render(self, results, self, self.tdb)
 
 
 	def checkMFD(self):

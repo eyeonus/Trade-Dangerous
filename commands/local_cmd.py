@@ -1,7 +1,9 @@
 from commands.commandenv import ResultRow
 from commands import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
-import math
+
+######################################################################
+# Parser config
 
 name='local'
 help='Calculate local systems.'
@@ -40,7 +42,15 @@ switches = [
 	),
 ]
 
+######################################################################
+# Helpers
+
 class PillCalculator(object):
+	"""
+		Helper that calculates the position of stars relative to
+		a line of stars.
+	"""
+
 	def __init__(self, tdb, startStar, endStar, percent):
 		lhs, rhs = tdb.lookupSystem(startStar), tdb.lookupSystem(endStar)
 		self.normal = [
@@ -63,8 +73,10 @@ class PillCalculator(object):
 		else:
 			return dotProduct / self.pillLength
 
+######################################################################
+# Perform query and populate result set
 
-def run(results):
+def run(results, cmdenv, tdb):
 	cmdenv = results.cmdenv
 	tdb = cmdenv.tdb
 	srcSystem = cmdenv.nearSystem
@@ -107,12 +119,15 @@ def run(results):
 
 	return results
 
+######################################################################
+# Transform result set into output
 
-def render(results):
-	cmdenv = results.cmdenv
+def render(results, cmdenv, tdb):
+	# Compare system names so we can tell 
+	longestNamed = max(results.rows,
+					key=lambda row: len(row.system.name()))
+	longestNameLen = len(longestNamed.system.name())
 
-	longestName = max(results.rows, key=lambda row: len(row.system.name()))
-	longestNameLen = len(longestName.system.name())
 	sysRowFmt = RowFormat().append(
 				ColumnFormat("System", '<', longestNameLen,
 						key=lambda row: row.system.name())
