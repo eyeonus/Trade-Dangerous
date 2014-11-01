@@ -341,14 +341,14 @@ class TradeDB(object):
 
 
     def __init__(self,
-                    tdenv,
+                    cmdenv,
                     sqlFilename=None,
                     pricesFilename=None,
                     buildLinks=True,
                     includeTrades=True
                 ):
-        self.tdenv = tdenv
-        self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
+        self.cmdenv = cmdenv
+        self.dbPath = Path(cmdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
         self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
@@ -359,7 +359,7 @@ class TradeDB(object):
 
         self.reloadCache()
 
-        self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
+        self.load(maxSystemLinkLy=cmdenv.maxSystemLinkLy,
                     buildLinks=buildLinks,
                     includeTrades=includeTrades,
                     )
@@ -371,7 +371,7 @@ class TradeDB(object):
     def getDB(self):
         if self.conn: return self.conn
         try:
-            self.tdenv.DEBUG(1, "Connecting to DB")
+            self.cmdenv.DEBUG(1, "Connecting to DB")
             import sqlite3
             return sqlite3.connect(self.dbURI)
         except ImportError as e:
@@ -420,18 +420,18 @@ class TradeDB(object):
                 # check if any of the table files have changed.
                 changedFiles = [ fileName for (fileName, _) in self.importTables if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp ]
                 if not changedFiles:
-                    self.tdenv.DEBUG(1, "DB Cache is up to date.")
+                    self.cmdenv.DEBUG(1, "DB Cache is up to date.")
                     return
-                self.tdenv.DEBUG(0, "Rebuilding DB Cache because of modified {}",
+                self.cmdenv.DEBUG(0, "Rebuilding DB Cache because of modified {}",
                                         ', '.join(changedFiles))
             else:
-                self.tdenv.DEBUG(0, "Rebuilding DB Cache [db:{}, sql:{}, prices:{}]",
+                self.cmdenv.DEBUG(0, "Rebuilding DB Cache [db:{}, sql:{}, prices:{}]",
                                         dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp)
         else:
-            self.tdenv.DEBUG(0, "Building DB Cache")
+            self.cmdenv.DEBUG(0, "Building DB Cache")
 
         import buildcache
-        buildcache.buildCache(self.tdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
+        buildcache.buildCache(self.cmdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
 
 
     ############################################################
@@ -457,7 +457,7 @@ class TradeDB(object):
             systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
-        self.tdenv.DEBUG(1, "Loaded {:n} Systems", len(systemByID))
+        self.cmdenv.DEBUG(1, "Loaded {:n} Systems", len(systemByID))
 
 
     def buildLinks(self):
@@ -482,9 +482,9 @@ class TradeDB(object):
                 lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
                 self.numLinks += 1
 
-        self.tdenv.DEBUG(2, "Number of links between systems: {:n}", self.numLinks)
+        self.cmdenv.DEBUG(2, "Number of links between systems: {:n}", self.numLinks)
 
-        if self.tdenv.debug:
+        if self.cmdenv.debug:
             self._validate()
 
 
@@ -545,7 +545,7 @@ class TradeDB(object):
             stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
 
         self.stationByID, self.stationByName = stationByID, stationByName
-        self.tdenv.DEBUG(1, "Loaded {:n} Stations", len(stationByID))
+        self.cmdenv.DEBUG(1, "Loaded {:n} Stations", len(stationByID))
 
 
     def lookupStation(self, name, system=None):
@@ -626,7 +626,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         self.shipByID = { row[0]: Ship(*row, stations=[]) for row in self.cur }
 
-        self.tdenv.DEBUG(1, "Loaded {} Ships", len(self.shipByID))
+        self.cmdenv.DEBUG(1, "Loaded {} Ships", len(self.shipByID))
 
 
     def lookupShip(self, name):
@@ -657,7 +657,7 @@ class TradeDB(object):
             """
         self.categoryByID = { ID: Category(ID, name, []) for (ID, name) in self.cur.execute(stmt) }
 
-        self.tdenv.DEBUG(1, "Loaded {} Categories", len(self.categoryByID))
+        self.cmdenv.DEBUG(1, "Loaded {} Categories", len(self.categoryByID))
 
 
     def lookupCategory(self, name):
@@ -703,12 +703,12 @@ class TradeDB(object):
             item = itemByID[itemID]
             item.altname = altName
             itemByName[altName] = item
-            self.tdenv.DEBUG(1, "'{}' alias for #{} '{}'", altName, itemID, item.fullname)
+            self.cmdenv.DEBUG(1, "'{}' alias for #{} '{}'", altName, itemID, item.fullname)
 
         self.itemByID = itemByID
         self.itemByName = itemByName
 
-        self.tdenv.DEBUG(1, "Loaded {:n} Items, {:n} AltItemNames",
+        self.cmdenv.DEBUG(1, "Loaded {:n} Items, {:n} AltItemNames",
                                 len(self.itemByID), aliases)
 
 
@@ -800,7 +800,7 @@ class TradeDB(object):
                 tdb.load() # x now points to an orphan Aulin
         """
 
-        self.tdenv.DEBUG(1, "Loading data")
+        self.cmdenv.DEBUG(1, "Loading data")
 
         conn = self.getDB()
         self.cur = conn.cursor()
@@ -822,7 +822,7 @@ class TradeDB(object):
             self.maxSystemLinkLy = longestJumper.maxLyEmpty
         else:
             self.maxSystemLinkLy = maxSystemLinkLy
-        self.tdenv.DEBUG(2, "Max ship jump distance: {} @ {:.02f}",
+        self.cmdenv.DEBUG(2, "Max ship jump distance: {} @ {:.02f}",
                                 longestJumper.name(), self.maxSystemLinkLy)
 
         if buildLinks:

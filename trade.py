@@ -29,67 +29,31 @@
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
 
-
-######################################################################
-# Imports
-
-import argparse             # For parsing command line args.
-import sys                  # Inevitably.
-import time
-import pathlib              # For path
-import os
-import math
-
-######################################################################
-# The thing I hate most about Python is the global lock. What kind
-# of idiot puts globals in their programs?
-import errno
-
-######################################################################
-# Database and calculator modules.
-
-from tradeexcept import TradeException
-from tradeenv import *
-from tradedb import TradeDB, AmbiguityError
-from tradecalc import Route, TradeCalc, localedNo
-
-######################################################################
-# Definitions for the sub-commands we support and their arguments.
-
-from subcommands.buy import subCommand_BUY
-from subcommands.local import subCommand_LOCAL
-from subcommands.nav import subCommand_NAV
-from subcommands.run import subCommand_RUN
-from subcommands.update import subCommand_UPDATE
-
-subCommandParsers = [
-	subCommand_BUY,
-	subCommand_LOCAL,
-	subCommand_NAV,
-	subCommand_RUN,
-	subCommand_UPDATE,
-]
-
 ######################################################################
 # main entry point
 
 
-def main():
-	# load arguments/environment
-	tdenv = TradeEnv('TradeDangerous: ED trading database tools.', subCommandParsers)
+def main(argv):
+	import commands
+	cmdIndex = commands.CommandIndex()
+	cmdEnv = cmdIndex.parse(sys.argv)
 
 	# load the database
-	tdb = TradeDB(tdenv, buildLinks=False, includeTrades=False)
+	from tradedb import TradeDB
+	tdb = TradeDB(cmdEnv, buildLinks=False, includeTrades=False)
 
-	tdenv.parse(tdb)
+	cmdEnv.parse(tdb)
 
 
 ######################################################################
 
 
 if __name__ == "__main__":
+	import tradeexcept
+	import sys
+
 	try:
-		main()
-	except (TradeException) as e:
+		main(sys.argv)
+	except tradeexcept.TradeException as e:
 		print("%s: %s" % (sys.argv[0], str(e)))
 
