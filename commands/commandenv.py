@@ -1,6 +1,23 @@
 from commands.exceptions import CommandLineError
 import pathlib
 
+class CommandResults(object):
+	"""
+		Encapsulates the results returned by running a command.
+	"""
+
+	def __init__(self, cmdenv):
+		self.cmdenv = cmdenv
+		self.summary, self.rows = {}, []
+
+	def render(self):
+		self.cmdenv._cmd.render(self)
+
+
+class ResultRow(object):
+	pass
+
+
 class CommandEnv(object):
 	"""
 		Base class for a TradeDangerous sub-command which has auxilliary
@@ -49,7 +66,7 @@ class CommandEnv(object):
 			print('#', outText.format(*args, **kwargs))
 
 
-	def parse(self, tdb):
+	def run(self, tdb):
 		"""
 			Set the current database context for this env and check that
 			the properties we have are valid.
@@ -61,6 +78,12 @@ class CommandEnv(object):
 		self.checkAvoids()
 		self.checkVias()
 		self.checkShip()
+
+		return self._cmd.run(CommandResults(self))
+
+
+	def render(self, results):
+		self._cmd.render(self, results)
 
 
 	def checkMFD(self):
@@ -189,3 +212,4 @@ class CommandEnv(object):
 			ship = self.ship = self.tdb.lookupShip(ship)
 			self.capacity = self.capacity or ship.capacity
 			self.maxLyPer = self.maxLyPer or ship.maxLyFull
+

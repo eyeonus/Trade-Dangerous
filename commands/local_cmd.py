@@ -1,3 +1,4 @@
+from commands.commandenv import ResultRow
 from commands import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
 import math
@@ -40,7 +41,7 @@ switches = [
 ]
 
 class PillCalculator(object):
-	def __init__(self, startStar, endStar, percent):
+	def __init__(self, tdb, startStar, endStar, percent):
 		lhs, rhs = tdb.lookupSystem(startStar), tdb.lookupSystem(endStar)
 		self.normal = [
 			rhs.posX - lhs.posX,
@@ -63,24 +64,18 @@ class PillCalculator(object):
 			return dotProduct / self.pillLength
 
 
-@staticmethod
-def check(tdb, tdenv):
-	pass
+def run(results):
+	cmdenv = results.cmdenv
+	tdb = cmdenv.tdb
+	srcSystem = cmdenv.nearSystem
 
-@staticmethod
-def run(tdb, tdenv, results):
-	srcSystem = tdenv.nearSystem
-
-	ly = tdenv.maxLyPer or tdb.maxSystemLinkLy
+	ly = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
 	tdb.buildLinks()
 
-	results.summary = {
-		'heading': {
-			'near': srcSystem,
-			'ly'  : ly
-		}
-	}
+	results.summary = ResultRow()
+	results.summary.near = srcSystem
+	results.summary.ly = ly
 
 	distances = { }
 
@@ -88,50 +83,54 @@ def run(tdb, tdenv, results):
 		if destDist <= ly:
 			distances[destSys] = destDist
 
-	detail = tdenv.detai
-	if tdenv.pill or tdenv.percent:
-		pillCalc = PillCalculator(tdb, pill.percent)
+	detail = cmdenv.detai
+	if cmdenv.pill or cmdenv.percent:
+		pillCalc = PillCalculator(tdb, "Eranin", "HIP 107457", pill.percent)
 	else:
 		pillCalc = None
 
 	for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
-		row = {
-			'system': system,
-			'dist'  : dist,
-		}
+		row = ResultRow()
+		row.system = system
+		row.dist = dist
 		if pillCalc:
-			row['pill'] = pillCalc.distance(system)
+			row.pill = pillCalc.distance(system)
+		else:
+			row.pill = None
+		row.stations = []
 		if detail:
-			row['stations'] = []
 			for (station) in system.stations:
 				row.stations.append({'station': station, 'dist': station.lsFromStar})
 				stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
 				print("\t<{}>{}".format(station.str(), stationDistance))
-		results.data.append(row)
+		results.rows.append(row)
 
 	return results
 
 
-@staticmethod
-def render(tdb, tdenv, results):
-	longestName = max(results.data, key=lambda row: row.system.name()).system.name()
+def render(results):
+	cmdenv = results.cmdenv
+
+	longestName = max(results.rows, key=lambda row: len(row.system.name()))
+	longestNameLen = len(longestName.system.name())
 	sysRowFmt = RowFormat().append(
-				ColumnFormat("System", '<', longestName,
+				ColumnFormat("System", '<', longestNameLen,
 						key=lambda row: row.system.name())
 			).append(
 				ColumnFormat("Dist", '>', '6', '.2f',
-						key=lambda row: row.system.name())
+						key=lambda row: row.dist)
 			)
 
-	if tdenv.percent:
+	if cmdenv.percent:
 		sysRowFmt.append(after='System',
 			col=ColumnFormat("Pill", '>', '4', '.0f', pre='[', post='%]',
-						key=lambda row: row.system.pill))
-	elif tdenv.pill:
+						key=lambda row: row.pill))
+	elif cmdenv.pill:
 		sysRowFmt.append(after='System',
-			col=ColumnFormat("PillLy", '>', '6', '.2f', pre='[', post=']'))
+			col=ColumnFormat("PillLy", '>', '6', '.2f', pre='[', post=']',
+						key=lambda row: row.pill))
 
-	if tdenv.detail:
+	if cmdenv.detail:
 		stnRowFmt = RowFormat(prefix='  +  ').append(
 				ColumnFormat("Station", '.<', 32,
 						key=lambda row: row.station.str())
@@ -145,13 +144,13 @@ def render(tdb, tdenv, results):
 	print("Systems within {sys}ly of {ly:<5.2f}.\n"
 			"{heading}\n"
 			"{subHeading}".format(
-				sys=results.heading.near.name(),
-				ly=results.heading.ly,
-				headig=heading,
+				sys=results.summary.near.name(),
+				ly=results.summary.ly,
+				heading=heading,
 				subHeading=subHeading
 		))
 
-	for row in results.data:
+	for row in results.rows:
 		print(sysRowFmt.format(row))
 		for stnRow in row.stations:
 			print(stnRowFmt.format(stnRow))

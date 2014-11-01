@@ -42,7 +42,8 @@ def main(argv):
 	from tradedb import TradeDB
 	tdb = TradeDB(cmdEnv, buildLinks=False, includeTrades=False)
 
-	cmdEnv.parse(tdb)
+	results = cmdEnv.run(tdb)
+	results.render()
 
 
 ######################################################################
