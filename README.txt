@@ -23,6 +23,9 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v5.0.1 In Progress
+. (kfsone) Issue #49 Errors in Ambiguity Error
+
 v5.0.0 Oct 31/2014
 . (kfsone) Initial Beta 3 changes
  - Improved the "corrections" system which facilitates changing names
