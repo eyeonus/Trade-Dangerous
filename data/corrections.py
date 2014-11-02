@@ -28,10 +28,10 @@ def correctSystem(oldName):
         return oldName
 
 def correctStation(oldName):
-	try:
-		return stations[oldName.upper()]
-	except KeyError:
-		return oldName
+    try:
+        return stations[oldName.upper()]
+    except KeyError:
+        return oldName
 
 def correctCategory(oldName):
     try:
