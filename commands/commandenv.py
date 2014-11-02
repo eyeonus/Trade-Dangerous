@@ -10,8 +10,10 @@ class CommandResults(object):
 		self.cmdenv = cmdenv
 		self.summary, self.rows = {}, []
 
-	def render(self):
-		self.cmdenv._cmd.render(self)
+	def render(self, cmdenv=None, tdb=None):
+		cmdenv = cmdenv or self.cmdenv
+		tdb = tdb or cmdenv.tdb
+		cmdenv._cmd.render(self, cmdenv, tdb)
 
 
 class ResultRow(object):
