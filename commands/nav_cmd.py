@@ -1,6 +1,4 @@
-from commands.commandenv import ResultRow
 from commands import MutuallyExclusiveGroup, ParseArgument
-from formatting import RowFormat, ColumnFormat
 
 ######################################################################
 # Parser config
@@ -40,6 +38,7 @@ switches = [
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
+    from commands.commandenv import ResultRow
 
     ### TODO: Implement
 
@@ -49,6 +48,8 @@ def run(results, cmdenv, tdb):
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
+    from formatting import RowFormat, ColumnFormat
+
     ### TODO: Implement
 
 def navCommand(tdb, cmdenv):
