@@ -209,8 +209,17 @@ class CommandEnv(object):
 	def checkShip(self):
 		""" Parse user-specified ship and populate capacity and maxLyPer from it. """
 		ship = getattr(self._props, 'ship', None)
-		if ship:
-			ship = self.ship = self.tdb.lookupShip(ship)
-			self.capacity = self.capacity or ship.capacity
-			self.maxLyPer = self.maxLyPer or ship.maxLyFull
+		if ship is None:
+			return
+
+		ship = self.ship = self.tdb.lookupShip(ship)
+
+		# Assume we want maxLyFull unless there's a --full that's explicitly False
+		if getattr(self._props, 'full', True):
+			shipMaxLy = ship.maxLyFull
+		else:
+			shipMaxLy = ship.maxLyEmpty
+
+		self.capacity = self.capacity or ship.capacity
+		self.maxLyPer = self.maxLyPer or shipMaxLy
 
