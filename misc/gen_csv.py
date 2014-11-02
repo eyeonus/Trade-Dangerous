@@ -48,7 +48,6 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
     reverseList = [ 'AltItemNames',
                     'Item',
                     'Price',
-                    'PriceHistory',
                     'ShipVendor',
                     'Station',
                     'UpgradeVendor'
@@ -70,7 +69,7 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
         # create CSV files
         if not quiet: print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
         with exportName.open("w") as exportFile:
-            exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, lineterminator="\n")
+            exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
 
             cur = conn.cursor()
             keyList = []
@@ -130,7 +129,8 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
 
             # finally generate the csv file
             lineCount = 0
-            exportOut.writerow(csvHead)
+            # no quotes for header line
+            exportFile.write("{}\n".format(",".join(csvHead)))
             for line in cur.execute(sqlStmt):
                 lineCount += 1
                 exportOut.writerow(list(line))
