@@ -238,17 +238,17 @@ class TradeCalc(object):
 
                 # Adjust for age for "M"/"H" items with low units.
                 if item.stock < maxQty and item.stock > 0:  # -1 = unknown
-					level = item.stockLevel
-					if level > 1:
-						# Assume 2 units per 10 minutes for high,
-						# 1 unit per 15 minutes for medium
-						units = level - 1
-						interval = (30 / level) * 60
-						speculativeRecovery = units * math.floor(item.srcAge / interval)
-					else:
-						# Low / Unknown - don't try to guess
-						speculativeRecovery = 0
-					maxQty = min(maxQty, item.stock + speculativeRecovery)
+                    level = item.stockLevel
+                    if level > 1:
+                        # Assume 2 units per 10 minutes for high,
+                        # 1 unit per 15 minutes for medium
+                        units = level - 1
+                        interval = (30 / level) * 60
+                        speculativeRecovery = units * math.floor(item.srcAge / interval)
+                    else:
+                        # Low / Unknown - don't try to guess
+                        speculativeRecovery = 0
+                    maxQty = min(maxQty, item.stock + speculativeRecovery)
 
                 if maxQty > 0:
                     loadItems = [[item, maxQty]]
