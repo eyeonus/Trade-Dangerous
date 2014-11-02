@@ -10,15 +10,15 @@ name=#'cmd'
 epilog=#None
 wantsTradeDB=True
 arguments = [
-	#ParseArgument('near', help='System to start from', type=str),
+    #ParseArgument('near', help='System to start from', type=str),
 ]
 switches = [
-	#ParseArgument('--ly-per',
-	#		help='Maximum light years per jump.',
-	#		dest='maxLyPer',
-	#		metavar='N.NN',
-	#		type=float,
-	#	),
+    #ParseArgument('--ly-per',
+    #       help='Maximum light years per jump.',
+    #       dest='maxLyPer',
+    #       metavar='N.NN',
+    #       type=float,
+    #   ),
 ]
 
 ######################################################################
@@ -29,12 +29,12 @@ switches = [
 
 def run(results, cmdenv, tdb):
 
-	### TODO: Implement
+    ### TODO: Implement
 
-	return results
+    return results
 
 ######################################################################
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
-	### TODO: Implement
+    ### TODO: Implement

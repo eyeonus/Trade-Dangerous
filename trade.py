@@ -34,30 +34,30 @@
 
 
 def main(argv):
-	import commands
-	cmdIndex = commands.CommandIndex()
-	cmdenv = cmdIndex.parse(sys.argv)
+    import commands
+    cmdIndex = commands.CommandIndex()
+    cmdenv = cmdIndex.parse(sys.argv)
 
-	from tradedb import TradeDB
-	if cmdenv.wantsTradeDB:
-		# load the database
-		tdb = TradeDB(cmdenv, buildLinks=False, includeTrades=False)
-	else:
-		tdb = TradeDB
+    from tradedb import TradeDB
+    if cmdenv.wantsTradeDB:
+        # load the database
+        tdb = TradeDB(cmdenv, buildLinks=False, includeTrades=False)
+    else:
+        tdb = TradeDB
 
-	results = cmdenv.run(tdb)
-	results.render()
+    results = cmdenv.run(tdb)
+    results.render()
 
 
 ######################################################################
 
 
 if __name__ == "__main__":
-	import tradeexcept
-	import sys
+    import tradeexcept
+    import sys
 
-	try:
-		main(sys.argv)
-	except tradeexcept.TradeException as e:
-		print("%s: %s" % (sys.argv[0], str(e)))
+    try:
+        main(sys.argv)
+    except tradeexcept.TradeException as e:
+        print("%s: %s" % (sys.argv[0], str(e)))
 

@@ -7,8 +7,8 @@ corrections = {
 }
 
 def correct(oldName):
-	try:
-		return corrections[oldName.upper()]
-	except KeyError:
-		return oldName
+    try:
+        return corrections[oldName.upper()]
+    except KeyError:
+        return oldName
 

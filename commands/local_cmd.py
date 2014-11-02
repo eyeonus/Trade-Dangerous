@@ -10,163 +10,163 @@ help='Calculate local systems.'
 epilog=None
 wantsTradeDB=True
 arguments = [
-	ParseArgument('near', help='System to measure from', type=str),
+    ParseArgument('near', help='System to measure from', type=str),
 ]
 switches = [
-	ParseArgument('--ship',
-			help='Use maximum jump distance of the specified ship.',
-			metavar='shiptype',
-			type=str,
-		),
-	ParseArgument('--full',
-			help='(With --ship) Limits the jump distance to that of a full ship.',
-			action='store_true',
-			default=False,
-		),
-	ParseArgument('--ly',
-			help='Maximum light years to measure.',
-			dest='maxLyPer',
-			metavar='N.NN',
-			type=float,
-		),
-	MutuallyExclusiveGroup(
-		ParseArgument('--pill',
-				help='Show distance along the pill in ly.',
-				action='store_true',
-				default=False,
-			),
-		ParseArgument('--percent',
-				help='Show distance along pill as percentage.',
-				action='store_true',
-				default=False,
-			),
-	),
+    ParseArgument('--ship',
+            help='Use maximum jump distance of the specified ship.',
+            metavar='shiptype',
+            type=str,
+        ),
+    ParseArgument('--full',
+            help='(With --ship) Limits the jump distance to that of a full ship.',
+            action='store_true',
+            default=False,
+        ),
+    ParseArgument('--ly',
+            help='Maximum light years to measure.',
+            dest='maxLyPer',
+            metavar='N.NN',
+            type=float,
+        ),
+    MutuallyExclusiveGroup(
+        ParseArgument('--pill',
+                help='Show distance along the pill in ly.',
+                action='store_true',
+                default=False,
+            ),
+        ParseArgument('--percent',
+                help='Show distance along pill as percentage.',
+                action='store_true',
+                default=False,
+            ),
+    ),
 ]
 
 ######################################################################
 # Helpers
 
 class PillCalculator(object):
-	"""
-		Helper that calculates the position of stars relative to
-		a line of stars.
-	"""
+    """
+        Helper that calculates the position of stars relative to
+        a line of stars.
+    """
 
-	def __init__(self, tdb, startStar, endStar, percent):
-		lhs, rhs = tdb.lookupSystem(startStar), tdb.lookupSystem(endStar)
-		self.normal = [
-			rhs.posX - lhs.posX,
-			rhs.posY - lhs.posY,
-			rhs.posZ - lhs.posZ
-		]
-		length2 = (normal[0]**2) + (normal[1]**2) + (normal[2]**2)
-		self.pillLength = math.sqrt(length2)
-		self.lhs = lhs
-		self.percent = percent
+    def __init__(self, tdb, startStar, endStar, percent):
+        lhs, rhs = tdb.lookupSystem(startStar), tdb.lookupSystem(endStar)
+        self.normal = [
+            rhs.posX - lhs.posX,
+            rhs.posY - lhs.posY,
+            rhs.posZ - lhs.posZ
+        ]
+        length2 = (normal[0]**2) + (normal[1]**2) + (normal[2]**2)
+        self.pillLength = math.sqrt(length2)
+        self.lhs = lhs
+        self.percent = percent
 
-	def distance(self, star):
-		lhs, normal = self.lhs, self.normal
-		dotProduct = ((normal[0] * (lhs.posX - star.posX)) +
-					  (normal[1] * (lhs.posY - star.posY)) +
-					  (normal[2] * (lhs.posZ - star.posZ)))
-		if self.percent:
-			return (100. * dotProduct / self.pillLength) / self.pillLength
-		else:
-			return dotProduct / self.pillLength
+    def distance(self, star):
+        lhs, normal = self.lhs, self.normal
+        dotProduct = ((normal[0] * (lhs.posX - star.posX)) +
+                      (normal[1] * (lhs.posY - star.posY)) +
+                      (normal[2] * (lhs.posZ - star.posZ)))
+        if self.percent:
+            return (100. * dotProduct / self.pillLength) / self.pillLength
+        else:
+            return dotProduct / self.pillLength
 
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-	cmdenv = results.cmdenv
-	tdb = cmdenv.tdb
-	srcSystem = cmdenv.nearSystem
+    cmdenv = results.cmdenv
+    tdb = cmdenv.tdb
+    srcSystem = cmdenv.nearSystem
 
-	ly = cmdenv.maxLyPer or tdb.maxSystemLinkLy
+    ly = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
-	tdb.buildLinks()
+    tdb.buildLinks()
 
-	results.summary = ResultRow()
-	results.summary.near = srcSystem
-	results.summary.ly = ly
+    results.summary = ResultRow()
+    results.summary.near = srcSystem
+    results.summary.ly = ly
 
-	distances = { }
+    distances = { }
 
-	for (destSys, destDist) in srcSystem.links.items():
-		if destDist <= ly:
-			distances[destSys] = destDist
+    for (destSys, destDist) in srcSystem.links.items():
+        if destDist <= ly:
+            distances[destSys] = destDist
 
-	detail = cmdenv.detai
-	if cmdenv.pill or cmdenv.percent:
-		pillCalc = PillCalculator(tdb, "Eranin", "HIP 107457", pill.percent)
-	else:
-		pillCalc = None
+    detail = cmdenv.detai
+    if cmdenv.pill or cmdenv.percent:
+        pillCalc = PillCalculator(tdb, "Eranin", "HIP 107457", pill.percent)
+    else:
+        pillCalc = None
 
-	for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
-		row = ResultRow()
-		row.system = system
-		row.dist = dist
-		if pillCalc:
-			row.pill = pillCalc.distance(system)
-		else:
-			row.pill = None
-		row.stations = []
-		if detail:
-			for (station) in system.stations:
-				row.stations.append({'station': station, 'dist': station.lsFromStar})
-				stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
-				print("\t<{}>{}".format(station.str(), stationDistance))
-		results.rows.append(row)
+    for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
+        row = ResultRow()
+        row.system = system
+        row.dist = dist
+        if pillCalc:
+            row.pill = pillCalc.distance(system)
+        else:
+            row.pill = None
+        row.stations = []
+        if detail:
+            for (station) in system.stations:
+                row.stations.append({'station': station, 'dist': station.lsFromStar})
+                stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
+                print("\t<{}>{}".format(station.str(), stationDistance))
+        results.rows.append(row)
 
-	return results
+    return results
 
 ######################################################################
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
-	# Compare system names so we can tell 
-	longestNamed = max(results.rows,
-					key=lambda row: len(row.system.name()))
-	longestNameLen = len(longestNamed.system.name())
+    # Compare system names so we can tell 
+    longestNamed = max(results.rows,
+                    key=lambda row: len(row.system.name()))
+    longestNameLen = len(longestNamed.system.name())
 
-	sysRowFmt = RowFormat().append(
-				ColumnFormat("System", '<', longestNameLen,
-						key=lambda row: row.system.name())
-			).append(
-				ColumnFormat("Dist", '>', '6', '.2f',
-						key=lambda row: row.dist)
-			)
+    sysRowFmt = RowFormat().append(
+                ColumnFormat("System", '<', longestNameLen,
+                        key=lambda row: row.system.name())
+            ).append(
+                ColumnFormat("Dist", '>', '6', '.2f',
+                        key=lambda row: row.dist)
+            )
 
-	if cmdenv.percent:
-		sysRowFmt.append(after='System',
-			col=ColumnFormat("Pill", '>', '4', '.0f', pre='[', post='%]',
-						key=lambda row: row.pill))
-	elif cmdenv.pill:
-		sysRowFmt.append(after='System',
-			col=ColumnFormat("PillLy", '>', '6', '.2f', pre='[', post=']',
-						key=lambda row: row.pill))
+    if cmdenv.percent:
+        sysRowFmt.append(after='System',
+            col=ColumnFormat("Pill", '>', '4', '.0f', pre='[', post='%]',
+                        key=lambda row: row.pill))
+    elif cmdenv.pill:
+        sysRowFmt.append(after='System',
+            col=ColumnFormat("PillLy", '>', '6', '.2f', pre='[', post=']',
+                        key=lambda row: row.pill))
 
-	if cmdenv.detail:
-		stnRowFmt = RowFormat(prefix='  +  ').append(
-				ColumnFormat("Station", '.<', 32,
-						key=lambda row: row.station.str())
-			).append(
-				ColumnFormat("Dist", '>', '9',
-						key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
-			)
+    if cmdenv.detail:
+        stnRowFmt = RowFormat(prefix='  +  ').append(
+                ColumnFormat("Station", '.<', 32,
+                        key=lambda row: row.station.str())
+            ).append(
+                ColumnFormat("Dist", '>', '9',
+                        key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
+            )
 
-	heading = sysRowFmt.str()
-	subHeading = '-' * len(heading)
-	print("Systems within {sys}ly of {ly:<5.2f}.\n"
-			"{heading}\n"
-			"{subHeading}".format(
-				sys=results.summary.near.name(),
-				ly=results.summary.ly,
-				heading=heading,
-				subHeading=subHeading
-		))
+    heading = sysRowFmt.str()
+    subHeading = '-' * len(heading)
+    print("Systems within {sys}ly of {ly:<5.2f}.\n"
+            "{heading}\n"
+            "{subHeading}".format(
+                sys=results.summary.near.name(),
+                ly=results.summary.ly,
+                heading=heading,
+                subHeading=subHeading
+        ))
 
-	for row in results.rows:
-		print(sysRowFmt.format(row))
-		for stnRow in row.stations:
-			print(stnRowFmt.format(stnRow))
+    for row in results.rows:
+        print(sysRowFmt.format(row))
+        for stnRow in row.stations:
+            print(stnRowFmt.format(stnRow))
