@@ -8,6 +8,7 @@ from formatting import RowFormat, ColumnFormat
 name='local'
 help='Calculate local systems.'
 epilog=None
+wantsTradeDB=True
 arguments = [
 	ParseArgument('near', help='System to measure from', type=str),
 ]

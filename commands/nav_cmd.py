@@ -8,6 +8,7 @@ from formatting import RowFormat, ColumnFormat
 help='Calculate a route between two systems.'
 name='nav'
 epilog=None
+wantsTradeDB=True
 arguments = [
 	ParseArgument('startSys', help='System to start from', type=str),
 	ParseArgument('endSys', help='System to end at', type=str),

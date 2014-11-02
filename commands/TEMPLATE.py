@@ -8,6 +8,7 @@ from formatting import RowFormat, ColumnFormat
 help=#'Terse description of command'
 name=#'cmd'
 epilog=#None
+wantsTradeDB=True
 arguments = [
 	#ParseArgument('near', help='System to start from', type=str),
 ]

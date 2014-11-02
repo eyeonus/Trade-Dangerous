@@ -34,6 +34,7 @@ class CommandEnv(object):
 		self._argv  = argv
 		self._cmd   = cmdModule
 		self._props = properties
+		self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
 
 		# We need to relocate to the working directory so that
 		# we can load a TradeDB after this without things going
