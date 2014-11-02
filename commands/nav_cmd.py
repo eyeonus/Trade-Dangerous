@@ -58,7 +58,6 @@ def navCommand(tdb, cmdenv):
 	srcSystem = cmdenv.startSystem
 	dstSystem = cmdenv.stopSystem
 
-	avoiding = []
 	maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
 	cmdenv.DEBUG(0, "Route from {} to {} with max {} ly per jump.",
@@ -134,9 +133,4 @@ def navCommand(tdb, cmdenv):
 	for viaSys in route[1:-1]:
 		present('Via', viaSys)
 	present('Arrive', dstSystem)
-
-
-
-subCommand_NAV = SubCommandParser(
-)
 
