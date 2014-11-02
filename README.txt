@@ -23,6 +23,21 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+v5.0.1 In Progress
+. (kfsone) Issue #49 Errors in Ambiguity Error
+. (kfsone) Issue #51 L and ? items weren't honoring qty limits
+. (kfsone) Issue #50 Interaction between -0 and demand for a sold item
+
+v5.0.0 Oct 31/2014
+. (kfsone) Initial Beta 3 changes
+ - Improved the "corrections" system which facilitates changing names
+   between versions, you can now "correct" System, Station, Category
+   and Item names;
+ - Renamed "Drugs" to "Legal Drugs", guess we need to add "Illegal Drugs"
+ - Renamed some obvious items (Hel-Static Furnaces -> Microbial Furnaces),
+ - Added some items that looked new (but could be renames),
+ - Renamed Hopkins Hangar -> Cori Terminal
+
 v4.7.0 Oct 26/2014
 . (kfsone) Added "buy" sub-command for looking up sales of an item
 

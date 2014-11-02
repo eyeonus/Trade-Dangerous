@@ -98,13 +98,10 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
 
     file.write("# File syntax:\n")
     file.write("# <item name> <sell> <buy> [ <demand units><level> <stock units><level> [<timestamp>] ]\n")
-    file.write("# You can write 'unk' for unknown demand/stock, 'n/a' if the item is unavailable,\n")
-    file.write("# level can be one of 'L', 'M' or 'H'.\n")
+    file.write("#   '?' or 'unk' indicates unknown values (don't care),\n")
+    file.write("#   '-' or 'n/a' indicates 'not available' item,\n")
+    file.write("#   Level can be '?', 'L', 'M' or 'H'\n")
     file.write("# If you omit the timestamp, the current time will be used when the file is loaded.\n")
-
-    if defaultZero:
-        file.write("\n")
-        file.write("# CAUTION: Items marked 'n/a' are ignored for trade planning.\n")
 
     file.write("\n")
 
@@ -119,9 +116,9 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
         if defaultZero and quantity == -1 and level == -1:
             quantity, level = 0, 0
         if quantity < 0 and level < 0:
-            return "unk"
+            return "?"
         if quantity == 0 and level == 0:
-            return "n/a"
+            return "-"
         # Quantity of -1 indicates 'unknown'
         quantityDesc = '?' if quantity < 0 else str(quantity)
         # try to use a descriptive for the level
@@ -141,6 +138,11 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
     if withTimes:
         file.write("  {}".format("Timestamp"))
     file.write("\n\n")
+
+
+    naIQL = itemQtyAndLevel(0, 0)
+    unkIQL = itemQtyAndLevel(-2, -2)
+    defIQL = itemQtyAndLevel(-1, -1)
 
     for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
         system = systems[sysID]
@@ -163,9 +165,21 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
 
         file.write("      {:<{width}} {:{crwidth}d} {:{crwidth}d}".format(items[itemID], fromStn, toStn, width=longestNameLen, crwidth=maxCrWidth))
         if withSupply:
+            # Is this item on sale?
+            if toStn > 0:
+                # Zero demand-price gets default demand, which will
+                # be either unknown or zero depending on -0.
+                # If there is a price, always default to unknown
+                # because it can be sold here but the demand is just
+                # not useful as data.
+                demandStr = defIQL if fromStn <= 0 else unkIQL
+                stockStr  = itemQtyAndLevel(stock, stockLevel)
+            else:
+                demandStr = itemQtyAndLevel(demand, demandLevel)
+                stockStr = naIQL
             file.write("  {:>{lvlwidth}} {:>{lvlwidth}}".format(
-                        itemQtyAndLevel(demand, demandLevel),
-                        itemQtyAndLevel(stock, stockLevel),
+                        demandStr,
+                        stockStr,
                         lvlwidth=levelWidth,
                     ))
         if withTimes:

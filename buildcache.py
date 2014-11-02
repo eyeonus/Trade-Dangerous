@@ -88,7 +88,8 @@ $
 # new format:
 # <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
 qtyLevelFrag = r"""
-    unk                  # You can just write 'unknown'
+    unk                 # You can just write 'unknown'
+|   \?                  # alias for unknown
 |   n/a                 # alias for 0L0
 |   -                   # alias for 0L0
 |   \d+[\?LMH]          # Or <number><level> where level is L(ow), M(ed) or H(igh)
@@ -226,7 +227,7 @@ class UnitsAndLevel(object):
 
     def __init__(self, pricesFile, lineNo, category, reading):
         ucReading = reading.upper()
-        if ucReading in ("UNK", "-1L-1", "-1L0", "0L-1"):
+        if ucReading in ("UNK", "?", "-1L-1", "-1L0", "0L-1"):
             self.units, self.level = -1, -1
         elif ucReading in ("-", "-L-", "N/A", "0"):
             self.units, self.level = 0, 0
@@ -368,10 +369,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         matches = systemStationRe.match(text)
         if matches:
             ### Change current station
-            systemName = corrections.correct(matches.group(1))
-            stationName = corrections.correct(matches.group(2))
-            facility = systemName.upper() + '/' + stationName
             categoryID, uiOrder = None, 0
+            systemName, stationName = matches.group(1, 2)
+            facility = systemName.upper() + '/' + stationName
 
             tdenv.DEBUG(1, "NEW STATION: {}", format(facility))
 
@@ -379,7 +379,15 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             try:
                 stationID = systemByName[facility]
             except KeyError:
-                raise UnknownStationError(priceFile, lineNo, facility)
+                systemName = corrections.correctSystem(systemName)
+                stationName = corrections.correctStation(stationName)
+                facility = systemName.upper() + '/' + stationName
+                try:
+                    stationID = systemByName[facility]
+                    if debug > 1:
+                        print("- Renamed: {}".format(facility))
+                except KeyError:
+                    raise UnknownStationError(priceFile, lineNo, facility)
 
             # Check for duplicates
             if stationID in processedStations:
@@ -401,10 +409,21 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         ### "+ Category" lines.
         matches = categoryRe.match(text)
         if matches:
+            uiOrder = 0
             categoryName = matches.group(1)
-            categoryID, uiOrder = categoriesByName[categoryName], 0
+            categoryID = categoriesByName[categoryName]
 
             tdenv.DEBUG(1, "NEW CATEGORY: {}", categoryName)
+
+            try:
+                categoryID = categoriesByName[categoryName]
+            except KeyError:
+                categoryName = corrections.correctCategory(categoryName)
+                try:
+                    categoryID = categoriesByName[categoryName]
+                    tdenv.DEBUG(1, "Renamed: {}", categoryName)
+                except KeyError:
+                    raise UnknownCategoryError(priceFile, lineNo, facility)
 
             continue
         if not categoryID:
@@ -438,15 +457,17 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             modified = None         # Use CURRENT_FILESTAMP
 
         # Look up the item ID.
-        if not itemNamesAreUnique:
-            itemPrefix = "{}:".format(categoryID)
-            itemKey = itemPrefix + itemName
-        else:
-            itemKey = itemName
+        itemPrefix = "" if itemNamesAreUnique else "{}:".format(categoryID)
         try:
-            itemID = itemByName[itemKey]
+            itemID = itemByName[itemPrefix + itemName]
         except KeyError:
-            raise UnknownItemError(priceFile, lineNo, itemName)
+            oldName = itemName
+            itemName = corrections.correctItem(itemName)
+            try:
+                itemID = itemByName[itemPrefix + itemName]
+                tdenv.DEBUG(1, "Renamed {} -> {}", oldName, itemName)
+            except KeyError:
+                raise UnknownItemError(priceFile, lineNo, itemName)
 
         # Check for duplicate items within the station.
         if itemID in processedItems:
@@ -548,13 +569,13 @@ def processImportFile(tdenv, db, importPath, tableName, debug=0):
                 columns=','.join(bindColumns),
                 values=','.join(bindValues)
             )
-        tdenv.DEBUG(1, "SQL-Statement: {}", sql_stmt)
+        tdenv.DEBUG(0, "SQL-Statement: {}", sql_stmt)
 
         # import the data
         importCount = 0
         for linein in csvin:
             if len(linein) == columnCount:
-                tdenv.DEBUG(2, "       Values: {}", ', '.join(linein))
+                tdenv.DEBUG(1, "       Values: {}", ', '.join(linein))
                 db.execute(sql_stmt, linein)
                 importCount += 1
         db.commit()

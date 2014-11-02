@@ -47,8 +47,8 @@ class AmbiguityError(TradeException):
     def __str__(self):
         return '{} lookup: "{}" could match either "{}" or "{}"'.format(
                         self.lookupType, str(self.searchKey),
-                        str(key(self.candiates[0])),
-                        str(key(self.candidates[1])),
+                        str(self.key(self.candidates[0])),
+                        str(self.key(self.candidates[1])),
                     )
 
 
