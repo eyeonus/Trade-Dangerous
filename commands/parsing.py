@@ -4,15 +4,6 @@ from argparse import Action as ArgAction
 ######################################################################
 # Parsing Helpers
 
-class HelpAction(ArgAction):
-    """
-        argparse action helper for printing the argument usage,
-        because Python 3.4's argparse is ever-so subtly very broken.
-    """
-    def __call__(self, parser, namespace, values, option_string=None):
-        raise UsageError("TradeDangerous help", parser.format_help())
-        
-
 class EditAction(ArgAction):
     """
         argparse action that stores a value and also flags args._editing

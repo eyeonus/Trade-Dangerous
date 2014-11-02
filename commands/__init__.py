@@ -11,6 +11,18 @@ commandList = [
     'local'
 ]
 
+######################################################################
+# Helpers
+
+class HelpAction(ArgAction):
+    """
+        argparse action helper for printing the argument usage,
+        because Python 3.4's argparse is ever-so subtly very broken.
+    """
+    def __call__(self, parser, namespace, values, option_string=None):
+        raise UsageError("TradeDangerous help", parser.format_help())
+        
+
 def addArguments(group, options, required, topGroup=None):
     """
         Registers a list of options to the specified group. Nodes
