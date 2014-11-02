@@ -1,5 +1,5 @@
 name@System.system_id,name,ls_from_star
-'10 Canum Venaticorum','10 Canum Venaticorum-Station',0,0
+'10 Canum Venaticorum','10 Canum Venaticorum-Station',0.0
 '10 Ursae Majoris','10 Ursae Majoris-Station',0.0
 '16 c Ursae Majoris','16 c Ursae Majoris-Station',0.0
 '17 Crateris','17 Crateris-Station',0.0
@@ -58,8 +58,8 @@ name@System.system_id,name,ls_from_star
 'Apura','Apura-Station',0.0
 'Arcturus','Arcturus-Station',0.0
 'Arin','Arin-Station',0.0
-'Asellus Primus','Beagle 2 Landing',1263
 'Asellus Primus','Foster Research Lab',169
+'Asellus Primus','Beagle 2 Landing',1263
 'Ashtart','Ashtart-Station',0.0
 'Atarapa','Atarapa-Station',0.0
 'Atum','Atum-Station',0.0
@@ -134,8 +134,8 @@ name@System.system_id,name,ls_from_star
 'Chechehet','Chechehet-Station',0.0
 'Chelmen','Chelmen-Station',0.0
 'Chemaku','Chemaku-Station',0.0
-'Chi Herculis','Gemar Orbital',901
 'Chi Herculis','Gorbatko Reserve',901
+'Chi Herculis','Gemar Orbital',901
 'Chini','Chini-Station',0.0
 'Chongquan','Chongquan-Station',0.0
 'Chontantici','Chontantici-Station',0.0
@@ -152,14 +152,14 @@ name@System.system_id,name,ls_from_star
 'Cybele','Cybele-Station',0.0
 'Czernovale','Czernovale-Station',0.0
 'Dagaz','Dagaz-Station',0.0
-'Dahan','Dahan 3 Metalworks',1853
 'Dahan','Dahan Gateway',468
+'Dahan','Dahan 3 Metalworks',1853
 'Dakantjarini','Dakantjarini-Station',0.0
 'Darahk','Darahk-Station',0.0
 'Demeter','Demeter-Station',0.0
-'Denebola','Chamitoff Point',7485
-'Denebola','Chomsky Point',1379
 'Denebola','Volkov Dock',567
+'Denebola','Chomsky Point',1379
+'Denebola','Chamitoff Point',7485
 'Dierfar','Dierfar-Station',0.0
 'Difu','Difu-Station',0.0
 'Divja Mu','Divja Mu-Station',0.0
@@ -175,8 +175,8 @@ name@System.system_id,name,ls_from_star
 'Ehlangai','Ehlangai-Station',0.0
 'Eme','Eme-Station',0.0
 'Enumclawilya','Enumclawilya-Station',0.0
-'Eranin','Azeban City',298
 'Eranin','Azeban Orbital',298
+'Eranin','Azeban City',298
 'Eranin','Eranin 4 Survey',2022
 'Eravarenth','Eravarenth-Station',0.0
 'Erlaza','Erlaza-Station',0.0
@@ -200,10 +200,10 @@ name@System.system_id,name,ls_from_star
 'G 146-5','G 146-5-Station',0.0
 'G 175-42','G 175-42-Station',0.0
 'G 180-18','Alexandria Gateway',8.59
-'G 180-18','Allen Ring',27.1
 'G 180-18','Rozhdestvensky Ring',13.9
-'G 181-6','Dezhurov Platform',21362
+'G 180-18','Allen Ring',27.1
 'G 181-6','Thomas Installation',483
+'G 181-6','Dezhurov Platform',21362
 'G 203-47','G 203-47-Station',0.0
 'G 224-46','G 224-46-Station',0.0
 'G 239-25','G 239-25-Station',0.0
@@ -436,9 +436,9 @@ name@System.system_id,name,ls_from_star
 'LHS 6197','LHS 6197-Station',0.0
 'LHS 6282','LHS 6282-Station',0.0
 'LHS 6309','Carey Colony',73
-'LHS 6309','Kaku Station',2671
 'LHS 6309','Ryumin Terminal',134
 'LHS 6309','Smeaton Port',2537
+'LHS 6309','Kaku Station',2671
 'LHS 64','LHS 64-Station',0.0
 'Li Quang','Li Quang-Station',0.0
 'Loga','Loga-Station',0.0
@@ -516,9 +516,9 @@ name@System.system_id,name,ls_from_star
 'Luyten 674-15','Luyten 674-15-Station',0.0
 'Luyten''s Star','Luyten''s Star-Station',0.0
 'Macomaneleng Mu','Macomaneleng Mu-Station',0.0
+'Magec','Xiaoguan Hub',131
 'Magec','Garriott Outpost',333
 'Magec','Trumpler Dock',4541
-'Magec','Xiaoguan Hub',131
 'Maitaokona','Maitaokona-Station',0.0
 'Maitis','Maitis-Station',0.0
 'Malanquiya','Malanquiya-Station',0.0
@@ -664,8 +664,8 @@ name@System.system_id,name,ls_from_star
 'Song Te Tians','Song Te Tians-Station',0.0
 'Sopdu','Sopdu-Station',0.0
 'Stein 2051','Stein 2051-Station',0.0
-'Styx','Chi Hub',652
 'Styx','Gerst Port',68.6
+'Styx','Chi Hub',652
 'Sudz','Sudz-Station',0.0
 'Sukub Tungatis','Sukub Tungatis-Station',0.0
 'Sukuruaco','Sukuruaco-Station',0.0
@@ -687,8 +687,8 @@ name@System.system_id,name,ls_from_star
 'Tefenhua','Tefenhua-Station',0.0
 'Teng Yeh','Garan Survey',3082
 'Teng Yeh','Haxel Station',3082
-'Teng Yeh','Korniyenko Dock',3111
 'Teng Yeh','Phillips Hub',3111
+'Teng Yeh','Korniyenko Dock',3111
 'Teng Yeh','Zhen Port',3138
 'Theta Cygni','Theta Cygni-Station',0.0
 'Theta Ursae Majoris','Theta Ursae Majoris-Station',0.0
@@ -704,7 +704,8 @@ name@System.system_id,name,ls_from_star
 'Tivertsi','Tivertsi-Station',0.0
 'Tollan','Tollan-Station',0.0
 'Trepin','Trepin-Station',0.0
-'Tripu','Tripu-Station',0.0
+'Tripu','Vinogradov Installation',2077
+'Tripu','Laval City',3411
 'Tsetan','Tsetan-Station',0.0
 'Tsohodiae','Tsohodiae-Station',0.0
 'Tun','Tun-Station',0.0
@@ -751,11 +752,11 @@ name@System.system_id,name,ls_from_star
 'Wolf 497','Wolf 497-Station',0.0
 'Wolf 54','Wolf 54-Station',0.0
 'Wolf 562','Wolf 562-Station',0.0
-'Wosyra Pao','Agnesi Refinery',125
-'Wosyra Pao','Burbank Settlement',79.5
 'Wosyra Pao','Kaku Terminal',54.6
 'Wosyra Pao','Kovalyonok City',62.4
+'Wosyra Pao','Burbank Settlement',79.5
 'Wosyra Pao','Onufrienko Settlement',91
+'Wosyra Pao','Agnesi Refinery',125
 'Wu Gondru','Wu Gondru-Station',0.0
 'Wunian','Wunian-Station',0.0
 'WX Ursa Majoris','WX Ursa Majoris-Station',0.0
