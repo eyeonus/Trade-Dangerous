@@ -36,13 +36,16 @@
 def main(argv):
 	import commands
 	cmdIndex = commands.CommandIndex()
-	cmdEnv = cmdIndex.parse(sys.argv)
+	cmdenv = cmdIndex.parse(sys.argv)
 
-	# load the database
 	from tradedb import TradeDB
-	tdb = TradeDB(cmdEnv, buildLinks=False, includeTrades=False)
+	if cmdenv.wantsTradeDB:
+		# load the database
+		tdb = TradeDB(cmdenv, buildLinks=False, includeTrades=False)
+	else:
+		tdb = TradeDB
 
-	results = cmdEnv.run(tdb)
+	results = cmdenv.run(tdb)
 	results.render()
 
 
