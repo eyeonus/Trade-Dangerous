@@ -520,6 +520,28 @@ class TradeDB(object):
                     raise
             return system
 
+
+    def genSystemsInRange(self, srcSystem, ly=None):
+        ly = ly or self.maxSystemLinkLy
+        if ly > srcSystem.maxRange:
+            lySq = ly * ly
+            maxRangeSq = srcSystem.maxRange ** 2
+            srcX, srcY, srcZ = srcSystem.posX, srcSystem.posY, srcSystem.posZ
+            for candidate in self.systemByID.values():
+                dist = float("inf")
+                try:
+                    dist = candidate.ranges[srcSystem]
+                except KeyError:
+                    canX, canY, canZ = candidate.posX, candidate.posZ, candidate.posZ
+                    dXSq, dYSq, dZSq = (canX - srcX) ** 2, (canY -- srcY) ** 2, (canZ -- srcZ) ** 2
+                    distSq = (dXSq + dySQ + dZSq)
+                    if distSq > maxRangeSq and distSq <= lySq:
+                        dist = math.sqrt(distSq)
+                if dist <= ly:
+                    srcSystem.ranges[candidate] = dist
+            yield from srcSystem.ranges
+
+
     ############################################################
     # Station data.
 
