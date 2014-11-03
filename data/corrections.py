@@ -1,6 +1,9 @@
 # Provides an interface for correcting star/station names that
 # have changed in recent versions.
 
+# Arbitrary, negative value to denote something that's been removed.
+DELETED = -111
+
 systems = {
 }
 
@@ -8,6 +11,7 @@ stations = {
     'LOUIS DE LACAILLE PROSPECT': 'Lacaille Prospect',
     'HOPKINS HANGAR': 'Cori Terminal',
     'HOPKINS HANGER': 'Cori Terminal',
+    'EJETA STATION': DELETED,
 }
 
 categories = {
@@ -28,10 +32,10 @@ def correctSystem(oldName):
         return oldName
 
 def correctStation(oldName):
-	try:
-		return stations[oldName.upper()]
-	except KeyError:
-		return oldName
+    try:
+        return stations[oldName.upper()]
+    except KeyError:
+        return oldName
 
 def correctCategory(oldName):
     try:
@@ -44,3 +48,4 @@ def correctItem(oldName):
         return items[oldName.upper()]
     except KeyError:
         return oldName
+

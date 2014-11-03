@@ -244,8 +244,11 @@ class TradeCalc(object):
                         # 1 unit per 15 minutes for medium
                         units = level - 1
                         interval = (30 / level) * 60
-                        adjustment = units * math.floor(item.srcAge / interval)
-                        maxQty = min(maxQty, item.stock + adjustment)
+                        speculativeRecovery = units * math.floor(item.srcAge / interval)
+                    else:
+                        # Low / Unknown - don't try to guess
+                        speculativeRecovery = 0
+                    maxQty = min(maxQty, item.stock + speculativeRecovery)
 
                 if maxQty > 0:
                     loadItems = [[item, maxQty]]
