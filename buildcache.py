@@ -373,7 +373,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             systemName, stationName = matches.group(1, 2)
             facility = systemName.upper() + '/' + stationName
 
-            tdenv.DEBUG(1, "NEW STATION: {}", format(facility))
+            tdenv.DEBUG(1, "NEW STATION: {}", facility)
 
             # Make sure it's valid.
             try:
@@ -384,8 +384,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 facility = systemName.upper() + '/' + stationName
                 try:
                     stationID = systemByName[facility]
-                    if debug > 1:
-                        print("- Renamed: {}".format(facility))
+                    tdenv.DEBUG(0, "Renamed: {}", facility)
                 except KeyError:
                     raise UnknownStationError(priceFile, lineNo, facility)
 
@@ -411,7 +410,6 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         if matches:
             uiOrder = 0
             categoryName = matches.group(1)
-            categoryID = categoriesByName[categoryName]
 
             tdenv.DEBUG(1, "NEW CATEGORY: {}", categoryName)
 

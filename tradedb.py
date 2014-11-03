@@ -104,19 +104,20 @@ class Station(object):
         self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
         system.stations.append(self)
 
-    class Destination(namedtuple('Destination', [
-                        'system', 'station', 'via', 'distLy' ])):
-        pass
-    class DestinationNode(namedtuple('DestinationNode', [
-                        'system', 'via', 'distLy' ])):
-        pass
-
 
     def getDestinations(self, maxJumps=None, maxLyPer=None):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
         """
+
+        class Destination(namedtuple('Destination', [
+                            'system', 'station', 'via', 'distLy' ])):
+            pass
+
+        class DestinationNode(namedtuple('DestinationNode', [
+                            'system', 'via', 'distLy' ])):
+            pass
 
         avoiding = self.tdenv.avoiding or []
         maxJumps = maxJumps or sys.maxsize
@@ -899,9 +900,6 @@ class TradeDB(object):
         return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
 
 
-    class ListSearchMatch(namedtuple('Match', [ 'key', 'value' ])):
-        pass
-
 
     @staticmethod
     def listSearch(listType, lookup, values, key=lambda item: item, val=lambda item: item):
@@ -915,6 +913,9 @@ class TradeDB(object):
             searching for "it" will return "It" because it provides an
             exact match of a key.
         """
+
+        class ListSearchMatch(namedtuple('Match', [ 'key', 'value' ])):
+            pass
 
         needle = TradeDB.normalizedStr(lookup)
         partialMatches, wordMatches = [], []
