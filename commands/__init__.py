@@ -21,7 +21,7 @@ class HelpAction(argparse.Action):
         because Python 3.4's argparse is ever-so subtly very broken.
     """
     def __call__(self, parser, namespace, values, option_string=None):
-        raise UsageError("TradeDangerous help", parser.format_help())
+        raise exceptions.UsageError("TradeDangerous help", parser.format_help())
         
 
 def addArguments(group, options, required, topGroup=None):
@@ -108,7 +108,9 @@ class CommandIndex(object):
 
     def parse(self, argv):
         if len(argv) <= 1 or argv[1] == '--help' or argv[1] == '-h':
-            raise UsageError("TradeDangerous provides a set of Trade Database facilities for Elite:Dangerous.", self.usage(argv))
+            raise exceptions.UsageError(
+                    "TradeDangerous provides a set of trade database "
+                    "facilities for Elite:Dangerous.", self.usage(argv))
 
         ### TODO: Break this model up a bit more so that
         ### we just try and import the command you specify,
