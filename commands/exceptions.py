@@ -22,7 +22,7 @@ class CommandLineError(TradeException):
         if self.usage:
             return "ERROR: {}\n\n{}".format(self.errorStr, self.usage)
         else:
-            return "ERROR: {}"
+            return "ERROR: {}".format(self.errorStr)
 
 
 class NoDataError(TradeException):
