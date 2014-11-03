@@ -60,12 +60,14 @@ class ColumnFormat(object):
         self.pre = pre or ''
         self.post = post or ''
 
+
     def str(self):
         return '{pre}{title:{align}{width}}{post}'.format(
                 title=self.name,
                 align=self.align, width=self.width,
                 pre=self.pre, post=self.post,
             )
+
 
     def format(self, value):
         return '{pre}{value:{align}{width}{qual}}{post}'.format(
@@ -107,6 +109,7 @@ class RowFormat(object):
         self.columns = []
         self.prefix = prefix or ""
 
+
     def append(self, column, after=None):
         columns = self.columns
         if after:
@@ -117,16 +120,23 @@ class RowFormat(object):
         columns.append(column)
         return self
 
+
     def insert(self, pos, column):
         if column is not None:
             self.columns.insert(pos, column)
 
+
     def str(self):
         return self.prefix + ' '.join(col.str() for col in self.columns)
 
+
+    def heading(self):
+        headline = self.str()
+        return headline, '-' * len(headline)
+
+
     def format(self, rowData):
         return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
-
 
 
 if __name__ == '__main__':
