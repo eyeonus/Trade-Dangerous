@@ -21,6 +21,7 @@ import math
 from pathlib import Path
 
 from tradeexcept import TradeException
+from tradeenv import TradeEnv
 
 import locale
 locale.setlocale(locale.LC_ALL, '')
@@ -341,14 +342,15 @@ class TradeDB(object):
 
 
     def __init__(self,
-                    cmdenv,
+                    tdenv=None,
                     sqlFilename=None,
                     pricesFilename=None,
                     buildLinks=True,
                     includeTrades=True
                 ):
-        self.cmdenv = cmdenv
-        self.dbPath = Path(cmdenv.dbFilename or TradeDB.defaultDB)
+        tdenv = tdenv or TradeEnv()
+        self.tdenv = tdenv
+        self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
         self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
@@ -359,7 +361,7 @@ class TradeDB(object):
 
         self.reloadCache()
 
-        self.load(maxSystemLinkLy=cmdenv.maxSystemLinkLy,
+        self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
                     buildLinks=buildLinks,
                     includeTrades=includeTrades,
                     )
@@ -371,7 +373,7 @@ class TradeDB(object):
     def getDB(self):
         if self.conn: return self.conn
         try:
-            self.cmdenv.DEBUG(1, "Connecting to DB")
+            self.tdenv.DEBUG(1, "Connecting to DB")
             import sqlite3
             return sqlite3.connect(self.dbURI)
         except ImportError as e:
@@ -420,18 +422,18 @@ class TradeDB(object):
                 # check if any of the table files have changed.
                 changedFiles = [ fileName for (fileName, _) in self.importTables if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp ]
                 if not changedFiles:
-                    self.cmdenv.DEBUG(1, "DB Cache is up to date.")
+                    self.tdenv.DEBUG(1, "DB Cache is up to date.")
                     return
-                self.cmdenv.DEBUG(0, "Rebuilding DB Cache because of modified {}",
+                self.tdenv.DEBUG(0, "Rebuilding DB Cache because of modified {}",
                                         ', '.join(changedFiles))
             else:
-                self.cmdenv.DEBUG(0, "Rebuilding DB Cache [db:{}, sql:{}, prices:{}]",
+                self.tdenv.DEBUG(0, "Rebuilding DB Cache [db:{}, sql:{}, prices:{}]",
                                         dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp)
         else:
-            self.cmdenv.DEBUG(0, "Building DB Cache")
+            self.tdenv.DEBUG(0, "Building DB Cache")
 
         import buildcache
-        buildcache.buildCache(self.cmdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
+        buildcache.buildCache(self.tdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
 
 
     ############################################################
@@ -457,7 +459,7 @@ class TradeDB(object):
             systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
-        self.cmdenv.DEBUG(1, "Loaded {:n} Systems", len(systemByID))
+        self.tdenv.DEBUG(1, "Loaded {:n} Systems", len(systemByID))
 
 
     def buildLinks(self):
@@ -482,9 +484,9 @@ class TradeDB(object):
                 lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
                 self.numLinks += 1
 
-        self.cmdenv.DEBUG(2, "Number of links between systems: {:n}", self.numLinks)
+        self.tdenv.DEBUG(2, "Number of links between systems: {:n}", self.numLinks)
 
-        if self.cmdenv.debug:
+        if self.tdenv.debug:
             self._validate()
 
 
@@ -545,7 +547,7 @@ class TradeDB(object):
             stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
 
         self.stationByID, self.stationByName = stationByID, stationByName
-        self.cmdenv.DEBUG(1, "Loaded {:n} Stations", len(stationByID))
+        self.tdenv.DEBUG(1, "Loaded {:n} Stations", len(stationByID))
 
 
     def lookupStation(self, name, system=None):
@@ -626,7 +628,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         self.shipByID = { row[0]: Ship(*row, stations=[]) for row in self.cur }
 
-        self.cmdenv.DEBUG(1, "Loaded {} Ships", len(self.shipByID))
+        self.tdenv.DEBUG(1, "Loaded {} Ships", len(self.shipByID))
 
 
     def lookupShip(self, name):
@@ -657,7 +659,7 @@ class TradeDB(object):
             """
         self.categoryByID = { ID: Category(ID, name, []) for (ID, name) in self.cur.execute(stmt) }
 
-        self.cmdenv.DEBUG(1, "Loaded {} Categories", len(self.categoryByID))
+        self.tdenv.DEBUG(1, "Loaded {} Categories", len(self.categoryByID))
 
 
     def lookupCategory(self, name):
@@ -703,12 +705,12 @@ class TradeDB(object):
             item = itemByID[itemID]
             item.altname = altName
             itemByName[altName] = item
-            self.cmdenv.DEBUG(1, "'{}' alias for #{} '{}'", altName, itemID, item.fullname)
+            self.tdenv.DEBUG(1, "'{}' alias for #{} '{}'", altName, itemID, item.fullname)
 
         self.itemByID = itemByID
         self.itemByName = itemByName
 
-        self.cmdenv.DEBUG(1, "Loaded {:n} Items, {:n} AltItemNames",
+        self.tdenv.DEBUG(1, "Loaded {:n} Items, {:n} AltItemNames",
                                 len(self.itemByID), aliases)
 
 
@@ -800,7 +802,7 @@ class TradeDB(object):
                 tdb.load() # x now points to an orphan Aulin
         """
 
-        self.cmdenv.DEBUG(1, "Loading data")
+        self.tdenv.DEBUG(1, "Loading data")
 
         conn = self.getDB()
         self.cur = conn.cursor()
@@ -822,7 +824,7 @@ class TradeDB(object):
             self.maxSystemLinkLy = longestJumper.maxLyEmpty
         else:
             self.maxSystemLinkLy = maxSystemLinkLy
-        self.cmdenv.DEBUG(2, "Max ship jump distance: {} @ {:.02f}",
+        self.tdenv.DEBUG(2, "Max ship jump distance: {} @ {:.02f}",
                                 longestJumper.name(), self.maxSystemLinkLy)
 
         if buildLinks:

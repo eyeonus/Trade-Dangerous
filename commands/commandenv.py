@@ -1,5 +1,9 @@
 from commands.exceptions import CommandLineError
+from tradeenv import TradeEnv
 import pathlib
+import sys
+import os
+
 
 class CommandResults(object):
     """
@@ -20,22 +24,22 @@ class ResultRow(object):
     pass
 
 
-class CommandEnv(object):
+class CommandEnv(TradeEnv):
     """
         Base class for a TradeDangerous sub-command which has auxilliary
         "environment" data in the form of command line options.
     """
 
-    def __init__(self, argv, cmdModule, properties):
+    def __init__(self, properties, argv, cmdModule):
+        super().__init__(properties=properties)
         self.tdb = None
         self.mfd = None
+        self.argv = argv or sys.argv
 
         if properties.detail and properties.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
 
-        self._argv  = argv
-        self._cmd   = cmdModule
-        self._props = properties
+        self._cmd   = cmdModule or __main__
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
 
         # We need to relocate to the working directory so that
@@ -50,23 +54,6 @@ class CommandEnv(object):
                                 cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
-
-
-    def __getattr__(self, key, default=None):
-        """ Fall back to _props when accessing attributes. """
-        try:
-            return getattr(self._props, key, default)
-        except AttributeError:
-            return default
-
-
-    def DEBUG(self, debugLevel, outText, *args, **kwargs):
-        """
-            Output text to stderr on the condition that
-            the current debug setting is higher than debugLevel
-        """
-        if self.debug > debugLevel:
-            print('#', outText.format(*args, **kwargs))
 
 
     def run(self, tdb):

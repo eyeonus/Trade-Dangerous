@@ -184,5 +184,5 @@ class CommandIndex(object):
 
         from commands.commandenv import CommandEnv
 
-        return CommandEnv(argv, cmdModule, properties)
+        return CommandEnv(properties, argv, cmdModule)
 
