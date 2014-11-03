@@ -1,4 +1,5 @@
 from commands import MutuallyExclusiveGroup, ParseArgument
+import math
 
 ######################################################################
 # Parser config
@@ -84,17 +85,24 @@ def run(results, cmdenv, tdb):
 
     ly = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
-    tdb.buildLinks()
-
     results.summary = ResultRow()
     results.summary.near = srcSystem
     results.summary.ly = ly
 
     distances = { }
 
-    for (destSys, destDist) in srcSystem.links.items():
-        if destDist <= ly:
-            distances[destSys] = destDist
+    # Calculate the bounding dimensions
+    srcX, srcY, srcZ = srcSystem.posX, srcSystem.posY, srcSystem.posZ
+    lySq = ly * ly
+
+    for destSys in tdb.systems():
+        distSq = (
+                    (destSys.posX - srcX) ** 2 +
+                    (destSys.posY - srcY) ** 2 +
+                    (destSys.posZ - srcZ) ** 2
+                )
+        if distSq <= lySq and destSys is not srcSystem:
+            distances[destSys] = math.sqrt(distSq)
 
     detail = cmdenv.detai
     if cmdenv.pill or cmdenv.percent:
@@ -157,16 +165,15 @@ def render(results, cmdenv, tdb):
                         key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
             )
 
-    heading = sysRowFmt.str()
-    subHeading = '-' * len(heading)
-    print("Systems within {sys}ly of {ly:<5.2f}.\n"
-            "{heading}\n"
-            "{subHeading}".format(
-                sys=results.summary.near.name(),
-                ly=results.summary.ly,
-                heading=heading,
-                subHeading=subHeading
-        ))
+    cmdenv.DEBUG(0,
+            "Systems within {ly:<5.2f}ly of {sys}.\n",
+                    sys=results.summary.near.name(),
+                    ly=results.summary.ly,
+        )
+
+    if cmdenv.detail:
+        heading, underline = sysRowFmt.heading()
+        print(heading, underline, sep='\n')
 
     for row in results.rows:
         print(sysRowFmt.format(row))
