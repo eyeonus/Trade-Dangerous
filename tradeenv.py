@@ -5,7 +5,7 @@ class TradeEnv(object):
     """
 
     def __init__(self, properties=None, **kwargs):
-        properties = properties or type('Properties', (), dict())
+        properties = properties or type('Properties', (), dict(debug=0))
 
         self._props = properties
         for arg, value in kwargs.items():
