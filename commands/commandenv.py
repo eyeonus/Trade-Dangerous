@@ -90,31 +90,24 @@ class CommandEnv(TradeEnv):
 
 
     def checkFromToNear(self):
-        origin = getattr(self._props, 'origin', None)
-        if origin:
-            self.startStation = self.tdb.lookupStation(origin)
-        else:
-            self.startStation = None
-        origin = getattr(self._props, 'startSys', None)
-        if origin:
-            self.startSystem = self.tdb.lookupSystemRelaxed(origin)
-        else:
-            self.startSystem = None
-        dest = getattr(self._props, 'dest', None)
-        if dest:
-            self.stopStation = self.tdb.lookupStation(dest)
-        else:
-            self.stopStation = None
-        dest = getattr(self._props, 'endSys', None)
-        if dest:
-            self.stopSystem = self.tdb.lookupSystemRelaxed(dest)
-        else:
-            self.stopSystem = None
-        near = getattr(self._props, 'near', None)
-        if near:
-            self.nearSystem = self.tdb.lookupSystemRelaxed(near)
-        else:
-            self.nearSystem = None
+        def check(label, fn, fieldName):
+            key = getattr(self._props, fieldName, None)
+            if key:
+                try:
+                    return fn(key)
+                except LookupError:
+                    raise CommandLineError(
+                            "Unrecognized {}: {}"
+                                .format(label, key))
+            return None
+
+        stnLookup = self.tdb.lookupStation
+        sysLookup = self.tdb.lookupSystemRelaxed
+        self.startStation = check('origin station', stnLookup, 'origin')
+        self.startSystem  = check('origin system', sysLookup, 'startSys')
+        self.stopStation  = check('destination station', stnLookup, 'dest')
+        self.stopSystem   = check('destination system', sysLookup, 'endSys')
+        self.nearSystem   = check('system', sysLookup, 'near')
 
 
     def checkAvoids(self):
