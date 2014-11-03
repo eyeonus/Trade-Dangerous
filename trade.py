@@ -61,4 +61,5 @@ if __name__ == "__main__":
         main(sys.argv)
     except tradeexcept.TradeException as e:
         print("%s: %s" % (sys.argv[0], str(e)))
+        sys.exit(1)
 
