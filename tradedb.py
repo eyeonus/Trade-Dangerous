@@ -533,7 +533,7 @@ class TradeDB(object):
             return system
 
 
-    def genSystemsInRange(self, system, ly):
+    def genSystemsInRange(self, system, ly, includeSelf=False):
         """
             Generator for systems within ly range of system using a
             lazily-populated, per-system cache.
@@ -542,6 +542,9 @@ class TradeDB(object):
 
         # Yield what we already have
         system = self.lookupSystem(system)
+        if includeSelf:
+            yield system, 0.
+
         cache = system._rangeCache
         if not cache:
             cache = system._rangeCache = System.RangeCache()
