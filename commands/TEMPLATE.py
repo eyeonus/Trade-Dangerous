@@ -1,4 +1,4 @@
-from commands import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 
 ######################################################################
 # Parser config

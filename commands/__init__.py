@@ -4,17 +4,18 @@ import pathlib
 import os
 import importlib
 
-from commands.exceptions import *
-from commands.parsing import *
+import commands.exceptions
+import commands.parsing
 
 commandList = [
+    'buildcache',
     'local'
 ]
 
 ######################################################################
 # Helpers
 
-class HelpAction(ArgAction):
+class HelpAction(argparse.Action):
     """
         argparse action helper for printing the argument usage,
         because Python 3.4's argparse is ever-so subtly very broken.
@@ -31,7 +32,7 @@ def addArguments(group, options, required, topGroup=None):
         mutually exclusive group of arguments.
     """
     for option in options:
-        if isinstance(option, MutuallyExclusiveGroup):
+        if isinstance(option, parsing.MutuallyExclusiveGroup):
             exGrp = (topGroup or group).add_mutually_exclusive_group()
             addArguments(exGrp, option.arguments, required, topGroup=group)
         else:
@@ -115,13 +116,13 @@ class CommandIndex(object):
         ### the user requests usage.
         cmdName = argv[1].lower()
         if cmdName not in commandList:
-            raise CommandLineError("Unrecognized command, '{}'".format(cmdName), self.usage(argv))
+            raise exceptions.CommandLineError("Unrecognized command, '{}'".format(cmdName), self.usage(argv))
 
         cmdModule = import_module(cmdName)
 
         class ArgParser(argparse.ArgumentParser):
             def error(self, message):
-                raise CommandLineError(message, self.format_usage())
+                raise exceptions.CommandLineError(message, self.format_usage())
 
         parser = ArgParser(
                     description="TradeDangerous: "+cmdName,
