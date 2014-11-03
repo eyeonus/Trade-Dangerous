@@ -382,8 +382,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 systemName = corrections.correctSystem(systemName)
                 stationName = corrections.correctStation(stationName)
                 if systemName == DELETED or stationName == DELETED:
-                    if debug > 1:
-                        print("- DELETED: {}".format(facility))
+                    tdenv.DEBUG(1, "DELETED: {}", facility)
                     stationID = DELETED
                     continue
                 facility = systemName.upper() + '/' + stationName
@@ -473,8 +472,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
-                if debug > 1:
-                    print("- DELETED {}".format(oldName))
+                tdenv.DEBUG(1, "DELETED {}", oldName)
                 continue
             try:
                 itemID = itemByName[itemPrefix + itemName]
@@ -540,7 +538,7 @@ def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
 
 ######################################################################
 
-def processImportFile(tdenv, db, importPath, tableName, debug=0):
+def processImportFile(tdenv, db, importPath, tableName):
     tdenv.DEBUG(0, "Processing import file '{}' for table '{}'", str(importPath), tableName)
 
     fkeySelectStr = "(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)"
@@ -592,9 +590,9 @@ def processImportFile(tdenv, db, importPath, tableName, debug=0):
                 db.execute(sql_stmt, linein)
                 importCount += 1
         db.commit()
-        if debug:
-            print("* {count} {table}s imported". \
-                format(count=importCount, table=tableName))
+        tdenv.DEBUG(0, "{count} {table}s imported",
+                            count=importCount,
+                            table=tableName)
 
 
 ######################################################################
