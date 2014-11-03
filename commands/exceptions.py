@@ -1,4 +1,5 @@
 from tradeexcept import TradeException
+import sys
 
 ######################################################################
 # Exceptions
