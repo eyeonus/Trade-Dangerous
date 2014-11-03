@@ -46,7 +46,8 @@ def main(argv):
         tdb = TradeDB
 
     results = cmdenv.run(tdb)
-    results.render()
+    if results:
+        results.render()
 
 
 ######################################################################
