@@ -77,11 +77,6 @@ class System(object):
         self.stations = []
 
 
-    def addStation(self, station):
-        if not station in self.stations:
-            self.stations.append(station)
-
-
     def name(self):
         return self.dbname.upper()
 
