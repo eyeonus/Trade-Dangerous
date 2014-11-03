@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
@@ -634,62 +633,3 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     tdenv.DEBUG(0, "Finished")
 
 
-######################################################################
-
-def commandLineBuildCache():
-    from tradedb import TradeDB
-
-    from tradeenv import TradeEnv, ParseArgument
-    arguments = [
-        ParseArgument(
-            '--sql', default=None, dest='sqlFilename',
-            help='Specify SQL script to execute.',
-        ),
-        ParseArgument(
-            '--prices', default=None, dest='pricesFilename',
-            help='Specify the prices file to load.',
-        ),
-        ParseArgument(
-            '-f', '--force', default=False, action='store_true',
-            dest='force',
-            help='Overwite existing file',
-        ),
-    ]
-    tdenv = TradeEnv(
-        description='Build TradeDangerous cache file from source files',
-        extraArgs=arguments,
-    )
-
-    import pathlib
-
-    # Check that the file doesn't already exist.
-    dbFilename = tdenv.dbFilename or TradeDB.defaultDB
-    sqlFilename = tdenv.sqlFilename or TradeDB.defaultSQL
-    pricesFilename = tdenv.pricesFilename or TradeDB.defaultPrices
-    importTables = TradeDB.defaultTables
-
-    dbPath = pathlib.Path(dbFilename)
-    sqlPath = pathlib.Path(sqlFilename)
-    pricesPath = pathlib.Path(pricesFilename)
-    if not tdenv.force:
-        if dbPath.exists():
-            print("{}: ERROR: SQLite3 database '{}' already exists. "
-                    "Please remove it first.".format(
-                        sys.argv[0], dbFilename))
-            sys.exit(1)
-
-    if not sqlPath.exists():
-        print("SQL file '{}' does not exist.".format(sqlFilename))
-        sys.exit(1)
-
-    if not pricesPath.exists():
-        print("Prices file '{}' does not exist.".format(pricesFilename))
-
-    try:
-        buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables)
-    except TradeException as e:
-        print("ERROR: {}".format(str(e)))
-
-
-if __name__ == '__main__':
-    commandLineBuildCache()
