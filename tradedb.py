@@ -15,7 +15,7 @@
 
 import re                   # Because irregular expressions are dull
 import sys
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import itertools
 import math
 from pathlib import Path
@@ -68,13 +68,23 @@ class System(object):
     """
         Describes a star system, which may contain one or more Station objects,
         and lists which stars it has a direct connection to.
+        Do not use _rangeCache directly, use TradeDB.genSystemsInRange.
     """
-    __slots__ = ('ID', 'dbname', 'posX', 'posY', 'posZ', 'links', 'stations')
+    __slots__ = ('ID', 'dbname', 'posX', 'posY', 'posZ', 'links', 'stations', '_rangeCache')
+
+    class RangeCache(object):
+        """
+            Lazily populated cache of neighboring systems.
+        """
+        def __init__(self):
+            self.systems = dict()
+            self.probedLySq = 0.
 
     def __init__(self, ID, dbname, posX, posY, posZ):
         self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
         self.links = {}
         self.stations = []
+        self._rangeCache = None
 
 
     def name(self):
@@ -438,6 +448,7 @@ class TradeDB(object):
     ############################################################
     # Star system data.
 
+
     def systems(self):
         """ Iterate through the list of systems. """
         yield from self.systemByID.values()
@@ -455,7 +466,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
         for (ID, name, posX, posY, posZ) in self.cur:
-            systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
+            sys = systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG(1, "Loaded {:n} Systems", len(systemByID))
@@ -522,25 +533,38 @@ class TradeDB(object):
             return system
 
 
-    def genSystemsInRange(self, srcSystem, ly=None):
-        ly = ly or self.maxSystemLinkLy
-        if ly > srcSystem.maxRange:
-            lySq = ly * ly
-            maxRangeSq = srcSystem.maxRange ** 2
-            srcX, srcY, srcZ = srcSystem.posX, srcSystem.posY, srcSystem.posZ
-            for candidate in self.systemByID.values():
-                dist = float("inf")
-                try:
-                    dist = candidate.ranges[srcSystem]
-                except KeyError:
-                    canX, canY, canZ = candidate.posX, candidate.posZ, candidate.posZ
-                    dXSq, dYSq, dZSq = (canX - srcX) ** 2, (canY -- srcY) ** 2, (canZ -- srcZ) ** 2
-                    distSq = (dXSq + dySQ + dZSq)
-                    if distSq > maxRangeSq and distSq <= lySq:
-                        dist = math.sqrt(distSq)
-                if dist <= ly:
-                    srcSystem.ranges[candidate] = dist
-            yield from srcSystem.ranges
+    def genSystemsInRange(self, system, ly):
+        """
+            Generator for systems within ly range of system using a
+            lazily-populated, per-system cache.
+            Note: Returned distances are squared
+        """
+
+        # Yield what we already have
+        system = self.lookupSystem(system)
+        cache = system._rangeCache
+        if not cache:
+            cache = system._rangeCache = System.RangeCache()
+        cachedSystems = cache.systems
+        lySq = ly * ly
+        for sys, distSq in cachedSystems.items():
+            if distSq <= lySq:
+                yield sys, distSq
+
+        probedLySq = cache.probedLySq
+        if lySq <= probedLySq:
+            return
+
+        sysX, sysY, sysZ = system.posX, system.posY, system.posZ
+        for candidate in self.systemByID.values():
+            distSq = (candidate.posX - sysX) ** 2
+            if distSq <= lySq:
+                distSq += ((candidate.posY - sysY) ** 2) + ((candidate.posZ - sysZ) ** 2)
+                if distSq <= lySq and distSq > probedLySq:
+                    cachedSystems[candidate] = distSq
+                    yield candidate, distSq
+
+        cache.probedLySq = lySq
 
 
     ############################################################
