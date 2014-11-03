@@ -27,13 +27,18 @@ locale.setlocale(locale.LC_ALL, '')
 from tradedb import System, Station
 from collections import namedtuple
 
-class TradeLoad(namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])):
+class TradeLoad(namedtuple('TradeLoad', [
+                'items', 'gainCr', 'costCr', 'units'
+                ])):
     def __bool__(self):
         return self.units > 0
 
 emptyLoad = TradeLoad([], 0, 0, 0)
 
-TradeHop = namedtuple('TradeHop', [ 'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly' ])
+class TradeHop(namedtuple('TradeHop', [
+                'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly'
+                ]):
+    pass
 
 ######################################################################
 # Classes

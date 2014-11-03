@@ -107,18 +107,23 @@ class Station(object):
     def __init__(self, ID, system, dbname, lsFromStar, itemCount):
         self.ID, self.system, self.dbname, self.lsFromStar, self.itemCount = ID, system, dbname, lsFromStar, itemCount
         self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
-        system.addStation(self)
+        system.stations.append(self)
+
+    class Destination(namedtuple('Destination', [
+                        'system', 'station', 'via', 'distLy' ])):
+        pass
+    class DestinationNode(namedtuple('DestinationNode', [
+                        'system', 'via', 'distLy' ])):
+        pass
 
 
-    Destination = namedtuple('Destination', [ 'system', 'station', 'via', 'distLy' ])
-
-    def getDestinations(self, maxJumps=None, maxLyPer=None, avoiding=None):
+    def getDestinations(self, maxJumps=None, maxLyPer=None):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
         """
 
-        avoiding = avoiding or []
+        avoiding = self.tdenv.avoiding or []
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
 
@@ -129,10 +134,8 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        Node = namedtuple('Node', [ 'system', 'via', 'distLy' ])
-
         openList = [ Node(self.system, [], 0) ]
-        pathList = { system.ID: Node(system, None, -1.0)
+        pathList = { system.ID: DestinationNode(system, None, -1.0)
                             # include avoids so we only have
                             # to consult one place for exclusions
                         for system in avoiding
@@ -159,7 +162,7 @@ class Station(object):
                         if dist >= pathList[destSys.ID].distLy: continue
                     except KeyError: pass
                     # Add to the path list
-                    pathList[destSys.ID] = Node(destSys, node.via, dist)
+                    pathList[destSys.ID] = DestinationNode(destSys, node.via, dist)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
                     openList += [ Node(destSys, node.via + [destSys], dist) ]
@@ -171,7 +174,7 @@ class Station(object):
         if not self.system in avoiding:
             for station in self.system.stations:
                 if station in self.tradingWith and not station in avoiding:
-                    destStations += [ Station.Destination(self, station, [], 0.0) ]
+                    destStations += [ Destination(self, station, [], 0.0) ]
 
         avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
@@ -179,7 +182,7 @@ class Station(object):
             if node.distLy >= 0.0:       # Values indistinguishable from zero are avoidances
                 for station in node.system.stations:
                     if not station in avoidStations:
-                        destStations += [ Station.Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
 
         return destStations
 
@@ -879,6 +882,10 @@ class TradeDB(object):
         return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
 
 
+    class ListSearchMatch(namedtuple('Match', [ 'key', 'value' ])):
+        pass
+
+
     @staticmethod
     def listSearch(listType, lookup, values, key=lambda item: item, val=lambda item: item):
         """
@@ -897,7 +904,6 @@ class TradeDB(object):
         # make a regex to match whole words
         wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
         # describe a match
-        Match = namedtuple('Match', [ 'key', 'value' ])
         for entry in values:
             entryKey = key(entry)
             normVal = TradeDB.normalizedStr(entryKey)
@@ -905,7 +911,7 @@ class TradeDB(object):
                 # If this is an exact match, ignore ambiguities.
                 if normVal == needle:
                     return val(entry)
-                match = Match(entryKey, val(entry))
+                match = ListSearchMatch(entryKey, val(entry))
                 if wordRe.match(entryKey):
                     wordMatches.append(match)
                 else:
