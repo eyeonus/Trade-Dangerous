@@ -354,6 +354,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     processedStations = {}
     processedItems = {}
     itemPrefix = ""
+    DELETED = corrections.DELETED
 
     for line in priceFile:
         lineNo += 1
@@ -380,6 +381,11 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             except KeyError:
                 systemName = corrections.correctSystem(systemName)
                 stationName = corrections.correctStation(stationName)
+                if systemName == DELETED or stationName == DELETED:
+                    if debug > 1:
+                        print("- DELETED: {}".format(facility))
+                    stationID = DELETED
+                    continue
                 facility = systemName.upper() + '/' + stationName
                 try:
                     stationID = systemByName[facility]
@@ -402,6 +408,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             # Need a station to process any other type of line.
             raise SyntaxError(priceFile, lineNo,
                                 "Expecting '@ SYSTEM / Station' line", text)
+        if stationID == DELETED:
+            # Ignore all values from a deleted station/system.
+            continue
 
         ########################################
         ### "+ Category" lines.
@@ -416,6 +425,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 categoryID = categoriesByName[categoryName]
             except KeyError:
                 categoryName = corrections.correctCategory(categoryName)
+                if categoryName == DELETED:
+                    ### TODO: Determine correct way to handle this.
+                    raise SyntaxError("Category has been deleted.")
                 try:
                     categoryID = categoriesByName[categoryName]
                     tdenv.DEBUG(1, "Renamed: {}", categoryName)
@@ -460,6 +472,10 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         except KeyError:
             oldName = itemName
             itemName = corrections.correctItem(itemName)
+            if itemName == DELETED:
+                if debug > 1:
+                    print("- DELETED {}".format(oldName))
+                continue
             try:
                 itemID = itemByName[itemPrefix + itemName]
                 tdenv.DEBUG(1, "Renamed {} -> {}", oldName, itemName)
