@@ -110,6 +110,10 @@ class RowFormat(object):
         self.prefix = prefix or ""
 
 
+    def addColumn(self, *args, **kwargs):
+        self.append(ColumnFormat(*args, **kwargs))
+
+
     def append(self, column, after=None):
         columns = self.columns
         if after:
