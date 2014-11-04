@@ -1,7 +1,7 @@
 ==============================================================================
 TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
-REQUIRES PYTHON 3.0 OR HIGHER.
+REQUIRES PYTHON 3.4 OR HIGHER.
 ==============================================================================
 
 == What is Trade Dangerous?
@@ -22,6 +22,43 @@ files from other commanders to fill out your database.
 
 == CHANGE LOG
 ==============================================================================
+
+v6.0.0
+. Major overhaul of command line interface and the internal command API.
+User Facing:
+- Numerous significant performance improvements, esp loading times,
+- Improved command-line feedback in assorted error conditions,
+- Various changes to support incoming data changes such as renaming
+ of items, categories, stations, etc,
+- Improved robustness around a lot of rough-edge cases,
+- "common" args (-v, -w) now come after the command (e.g. update -v),
+- "-q" has more effect (try 'nav' with -q -q),
+- "update" has better feedback on errors,
+- "update" will save your update as "prices.last" if there is an error
+  (weren't you tired of losing all your changes to a typo?)
+- "nav" command overhauled,
+- "local" command overhauled,
+Developer:
+- Sub-commands are now implemented in individual modules in the commands/
+ folder and suffixed _cmd (e.g. commands/buy_cmd.py)
+ See also commands/TEMPLATE.py for command boilerplate.
+ See commands/__init__.py for the command list,
+- Added "TradeEnv" container for transporting settings and arguments,
+- Added "CommandEnv" for parsing command line and populating a TradeEnv
+ based on the command-line origins (step towards user settings),
+- sub-commands are now split into a "run" and "render" phase so that
+ developers can leverage their functionality without having to parse
+ textual output. See "commands/buy_cmd.py" for an example,
+- Added "nose" based Unit Tests,
+- Made "buildcache" a trade.py sub-command rather than a standalone
+ tool. Use this if changes you make break your .db and for some reason
+ trade.py won't boot-strap itself. ('trade.py buildcache')
+TODO:
+. Finish implementing tests,
+. Make "update" have an option that just takes a filename to allow
+ people to import data from elsewhere more easily,
+. Convert "run" command because - that's kind of the point,
+. Document the command API in TEMPLATE.py
 
 v5.0.1 In Progress
 . (kfsone) Issue #49 Errors in Ambiguity Error
