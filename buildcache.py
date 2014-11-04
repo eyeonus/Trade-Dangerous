@@ -596,12 +596,29 @@ def processImportFile(db, importPath, tableName, debug=0):
 
         # import the data
         importCount = 0
+        lineNo = 0
         for linein in csvin:
             if len(linein) == columnCount:
                 if debug > 1:
                     print("-        Values: {}".format(', '.join(linein)))
-                db.execute(sql_stmt, linein)
+                try:
+                    db.execute(sql_stmt, linein)
+                except Exception as e:
+                    raise SystemExit(
+                        "*** INTERNAL ERROR: {err}\n"
+                        "CSV File: {file}:{line}\n"
+                        "SQL Query: {query}\n"
+                        "Params: {params}\n"
+                        .format(
+                            err=str(e),
+                            file=str(importPath),
+                            line=lineNo,
+                            query=sql_stmt.strip(),
+                            params=linein
+                        )
+                    ) from None
                 importCount += 1
+            ++lineNo
         db.commit()
         if debug:
             print("* {count} {table}s imported". \
