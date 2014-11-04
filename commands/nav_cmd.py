@@ -95,40 +95,28 @@ def run(results, cmdenv, tdb):
     except KeyError:
         print("No route found between {} and {} with {}ly jump limit.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
         return
-    route.reverse()
-    titleFormat = "From {src} to {dst} with {mly}ly per jump limit."
-    if cmdenv.detail:
-        labelFormat = "{act:<6} | {sys:<30} | {jly:<7} | {tly:<8}"
-        stepFormat = "{act:<6} | {sys:<30} | {jly:>7.2f} | {tly:>8.2f}"
-    elif not cmdenv.quiet:
-        labelFormat = "{sys:<30} ({jly:<7})"
-        stepFormat  = "{sys:<30} ({jly:>7.2f})"
-    elif cmdenv.quiet == 1:
-        titleFormat = "{src}->{dst} limit {mly}ly:"
-        labelFormat = None
-        stepFormat = " {sys}"
-    else:
-        titleFormat, labelFormat, stepFormat = None, None, "{sys}"
 
-    if titleFormat:
-        print(titleFormat.format(src=srcSystem.name(), dst=dstSystem.name(), mly=maxLyPer))
-
-    if labelFormat:
-        print(labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly'))
-
+    results.summary = ResultRow(
+                fromSys=srcSystem,
+                toSys=dstSystem,
+                maxLy=maxLyPer,
+            )
+    
     lastHop, totalLy = None, 0.00
-    def present(action, system):
-        nonlocal lastHop, totalLy
-        jumpLy = (distances[system][0] - distances[lastHop][0]) if lastHop else 0.00
+    route.reverse()
+    for hop in route:
+        jumpLy = (distances[hop][0] - distances[lastHop][0]) if lastHop else 0.00
         totalLy += jumpLy
-        print(stepFormat.format(act=action, sys=system.name(), jly=jumpLy, tly=totalLy))
-        lastHop = system
-
-    present('Depart', srcSystem)
-    for viaSys in route[1:-1]:
-        present('Via', viaSys)
-    present('Arrive', dstSystem)
-
+        row = ResultRow(
+                action='Via',
+                system=hop,
+                jumpLy=jumpLy,
+                totalLy=totalLy
+                )
+        results.rows.append(row)
+        lastHop = hop
+    results.rows[0].action='Depart'
+    results.rows[1].action='Arrive'
 
     return results
 
@@ -138,5 +126,31 @@ def run(results, cmdenv, tdb):
 def render(results, cmdenv, tdb):
     from formatting import RowFormat, ColumnFormat
 
-    ### TODO: Implement
+    if cmdenv.quiet > 1:
+        print(','.join(row.system.name() for row in results.rows))
+        return
+
+    longestNamed = max(results.rows,
+                    key=lambda row: len(row.system.name()))
+    longestNameLen = len(longestNamed.system.name())
+
+    rowFmt = RowFormat()
+    if cmdenv.detail:
+        rowFmt.addColumn("Action", '<', 6, key=lambda row: row.action)
+    rowFmt.addColumn("System", '<', longestNameLen,
+            key=lambda row: row.system.name())
+    rowFmt.addColumn("JumpLy", '>', '7', '.2f',
+            key=lambda row: row.jumpLy)
+    if cmdenv.detail:
+        rowFmt.addColumn("DistLy", '>', '7', '.2f',
+            key=lambda row: row.totalLy)
+
+    if not cmdenv.quiet:
+        heading, underline = rowFmt.heading()
+        print(heading, underline, sep='\n')
+    
+    for row in results.rows:
+        print(rowFmt.format(row))
+
+    return results
 
