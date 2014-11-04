@@ -58,14 +58,16 @@ name@System.system_id,name,ls_from_star
 'Apura','Apura-Station',0.0
 'Arcturus','Arcturus-Station',0.0
 'Arin','Arin-Station',0.0
-'Asellus Primus','Foster Research Lab',169
-'Asellus Primus','Beagle 2 Landing',1263
+'Asellus Primus','Foster Research Lab',171
+'Asellus Primus','Beagle 2 Landing',1252
 'Ashtart','Ashtart-Station',0.0
 'Atarapa','Atarapa-Station',0.0
 'Atum','Atum-Station',0.0
 'Audhisatsuri','Audhisatsuri-Station',0.0
 'Audusi','Audusi-Station',0.0
-'Aulin','Aulin Enterprise',0.0
+'Aulin','Yurchikhin Gateway',60.2
+'Aulin','Aulin Enterprise',117
+'Aulin','Binnie City',347
 'Aulis','Aulis-Station',0.0
 'Aurvandill','Aurvandill-Station',0.0
 'Awabatamori','Awabatamori-Station',0.0
@@ -82,7 +84,7 @@ name@System.system_id,name,ls_from_star
 'BD+26 2184','BD+26 2184-Station',0.0
 'BD+27 1739','BD+27 1739-Station',0.0
 'BD+29 2405','BD+29 2405-Station',0.0
-'BD+47 2112','BD+47 2112-Station',0.0
+'BD+47 2112','Olivas Settlement',230
 'BD+55 1519','BD+55 1519-Station',0.0
 'BD+57 2595','BD+57 2595-Station',0.0
 'BD+63 1764','BD+63 1764-Station',0.0
@@ -107,7 +109,8 @@ name@System.system_id,name,ls_from_star
 'Blata','Blata-Station',0.0
 'Blatrimpe','Blatrimpe-Station',0.0
 'Bogatiku','Bogatiku-Station',0.0
-'Bolg','Bolg-Station',0.0
+'Bolg','Moxon''s Mojo',935
+'Bolg','Payette Platform',1835
 'Borom Caquit','Borom Caquit-Station',0.0
 'Bragurom Du','Bragurom Du-Station',0.0
 'Brahma','Brahma-Station',0.0
@@ -129,13 +132,13 @@ name@System.system_id,name,ls_from_star
 'Cenil','Cenil-Station',0.0
 'Chaac','Chaac-Station',0.0
 'Chapoyo','Chapoyo-Station',0.0
-'Chara','Chara-Station',0.0
+'Chara','Reilly Refinery',11738
 'Chaxiraxi','Chaxiraxi-Station',0.0
 'Chechehet','Chechehet-Station',0.0
 'Chelmen','Chelmen-Station',0.0
 'Chemaku','Chemaku-Station',0.0
-'Chi Herculis','Gorbatko Reserve',901
-'Chi Herculis','Gemar Orbital',901
+'Chi Herculis','Gorbatko Reserve',899
+'Chi Herculis','Gemar Orbital',899
 'Chini','Chini-Station',0.0
 'Chongquan','Chongquan-Station',0.0
 'Chontantici','Chontantici-Station',0.0
@@ -153,7 +156,7 @@ name@System.system_id,name,ls_from_star
 'Czernovale','Czernovale-Station',0.0
 'Dagaz','Dagaz-Station',0.0
 'Dahan','Dahan Gateway',468
-'Dahan','Dahan 3 Metalworks',1853
+'Dahan','Dahan 3 Metalworks',1854
 'Dakantjarini','Dakantjarini-Station',0.0
 'Darahk','Darahk-Station',0.0
 'Demeter','Demeter-Station',0.0
@@ -175,9 +178,9 @@ name@System.system_id,name,ls_from_star
 'Ehlangai','Ehlangai-Station',0.0
 'Eme','Eme-Station',0.0
 'Enumclawilya','Enumclawilya-Station',0.0
-'Eranin','Azeban Orbital',298
-'Eranin','Azeban City',298
-'Eranin','Eranin 4 Survey',2022
+'Eranin','Azeban Orbital',294
+'Eranin','Azeban City',295
+'Eranin','Eranin 4 Survey',2024
 'Eravarenth','Eravarenth-Station',0.0
 'Erlaza','Erlaza-Station',0.0
 'Eta Corvi','Eta Corvi-Station',0.0
@@ -266,8 +269,8 @@ name@System.system_id,name,ls_from_star
 'Hun Banja','Hun Banja-Station',0.0
 'Huokang','Huokang-Station',0.0
 'Hyperion','Hyperion-Station',0.0
-'i Bootis','Chango Dock',1100
-'i Bootis','Maher Stellar Research',20927
+'i Bootis','Chango Dock',1098
+'i Bootis','Maher Stellar Research',20929
 'Igororai','Igororai-Station',0.0
 'Ikpenones','Ikpenones-Station',0.0
 'Issin','Issin-Station',0.0
@@ -324,7 +327,7 @@ name@System.system_id,name,ls_from_star
 'Lakluit','Lakluit-Station',0.0
 'Lalande 18115','Lalande 18115-Station',0.0
 'Lalande 22954','Lalande 22954-Station',0.0
-'Lalande 29917','Cori Terminal',0.0
+'Lalande 29917','Lalande 29917-Station',0.0
 'Lalande 30699','Lalande 30699-Station',0.0
 'Lalande 37923','Lalande 37923-Station',0.0
 'Las Xenangaresti','Las Xenangaresti-Station',0.0
@@ -436,9 +439,9 @@ name@System.system_id,name,ls_from_star
 'LHS 6197','LHS 6197-Station',0.0
 'LHS 6282','LHS 6282-Station',0.0
 'LHS 6309','Carey Colony',73
-'LHS 6309','Ryumin Terminal',134
-'LHS 6309','Smeaton Port',2537
-'LHS 6309','Kaku Station',2671
+'LHS 6309','Ryumin Terminal',133
+'LHS 6309','Smeaton Port',2531
+'LHS 6309','Kaku Station',2702
 'LHS 64','LHS 64-Station',0.0
 'Li Quang','Li Quang-Station',0.0
 'Loga','Loga-Station',0.0
@@ -486,8 +489,8 @@ name@System.system_id,name,ls_from_star
 'LP 90-39','LP 90-39-Station',0.0
 'LP 906-9','LP 906-9-Station',0.0
 'LP 908-11','LP 908-11-Station',0.0
-'LP 98-132','Freeport',183
-'LP 98-132','Prospect Five',390
+'LP 98-132','Freeport',184
+'LP 98-132','Prospect Five',389
 'LP Draconis','LP Draconis-Station',0.0
 'LTT 10482','LTT 10482-Station',0.0
 'LTT 12680','LTT 12680-Station',0.0
@@ -517,7 +520,7 @@ name@System.system_id,name,ls_from_star
 'Luyten''s Star','Luyten''s Star-Station',0.0
 'Macomaneleng Mu','Macomaneleng Mu-Station',0.0
 'Magec','Xiaoguan Hub',131
-'Magec','Garriott Outpost',333
+'Magec','Garriott Outpost',335
 'Magec','Trumpler Dock',4541
 'Maitaokona','Maitaokona-Station',0.0
 'Maitis','Maitis-Station',0.0
@@ -587,12 +590,12 @@ name@System.system_id,name,ls_from_star
 'Okuapang','Okuapang-Station',0.0
 'Olgrea','Olgrea-Station',0.0
 'Onduwatya','Onduwatya-Station',0.0
-'Opala','Meikle Point',1371
-'Opala','Onizuka''s Hold',1458
-'Opala','Romanenko Estate',1460
+'Opala','Meikle Point',1391
+'Opala','Onizuka''s Hold',1449
+'Opala','Romanenko Estate',1451
 'Ori','Ori-Station',0.0
 'OT Serpentis','OT Serpentis-Station',0.0
-'Ovid','Abe Works',377
+'Ovid','Abe Works',379
 'Ovid','Bradfield Orbital',377
 'Pachanu','Pachanu-Station',0.0
 'Pan','Pan-Station',0.0
@@ -694,12 +697,11 @@ name@System.system_id,name,ls_from_star
 'Theta Ursae Majoris','Theta Ursae Majoris-Station',0.0
 'Thosim Biamh','Thosim Biamh-Station',0.0
 'Thoth','Thoth-Station',0.0
-'Thottacahuan Wang','Thottacahuan-Station',0.0
 'Thraskias','Thraskias-Station',0.0
 'Tiapalan','Tiapalan-Station',0.0
 'Tiethay','Tiethay-Station',0.0
-'Tilian','Keeler Rest',197
-'Tilian','Maunder''s Hope',197
+'Tilian','Keeler Rest',196
+'Tilian','Maunder''s Hope',196
 'Tinia','Tinia-Station',0.0
 'Tivertsi','Tivertsi-Station',0.0
 'Tollan','Tollan-Station',0.0
@@ -760,7 +762,9 @@ name@System.system_id,name,ls_from_star
 'Wu Gondru','Wu Gondru-Station',0.0
 'Wunian','Wunian-Station',0.0
 'WX Ursa Majoris','WX Ursa Majoris-Station',0.0
-'Wyrd','Wyrd-Station',0.0
+'Wyrd','Vonarburg Co-operative',161
+'Wyrd','Bokeili Station',849
+'Wyrd','Gareth Edwards Park',849
 'Xelabara','Xelabara-Station',0.0
 'Xi Ursae Majoris','Xi Ursae Majoris-Station',0.0
 'Xi Wangkala','Xi Wangkala-Station',0.0
