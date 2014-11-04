@@ -10,7 +10,8 @@ import commands.parsing
 commandList = [
     'buildcache',
     'buy',
-    'local'
+    'local',
+    'nav'
 ]
 
 ######################################################################

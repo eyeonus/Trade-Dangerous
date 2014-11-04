@@ -1,4 +1,5 @@
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+import math
 
 ######################################################################
 # Parser config
@@ -29,6 +30,12 @@ switches = [
             metavar='N.NN',
             type=float,
         ),
+    ParseArgument('--aggressive',
+            help='Try more aggressively.',
+            action='count',
+            dest='aggressiveness',
+            default=1,
+        ),
 ]
 
 ######################################################################
@@ -40,26 +47,8 @@ switches = [
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
 
-    ### TODO: Implement
-
-    return results
-
-######################################################################
-# Transform result set into output
-
-def render(results, cmdenv, tdb):
-    from formatting import RowFormat, ColumnFormat
-
-    ### TODO: Implement
-
-def navCommand(tdb, cmdenv):
-    """
-        Give player directions A->B
-    """
-
     srcSystem = cmdenv.startSystem
     dstSystem = cmdenv.stopSystem
-
     maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
     cmdenv.DEBUG(0, "Route from {} to {} with max {} ly per jump.",
@@ -68,20 +57,24 @@ def navCommand(tdb, cmdenv):
     openList = { srcSystem: 0.0 }
     distances = { srcSystem: [ 0.0, None ] }
 
-    tdb.buildLinks()
-
     # As long as the open list is not empty, keep iterating.
-    while openList and not dstSystem in distances:
+    overshoot = cmdenv.aggressiveness * 4
+    while openList:
+        if dstSystem in distances:
+            overshoot -= 1
+            if overshoot == 0:
+                break
+
         # Expand the search domain by one jump; grab the list of
         # nodes that are this many hops out and then clear the list.
         openNodes, openList = openList, {}
 
+        gsir = tdb.genSystemsInRange
         for (node, startDist) in openNodes.items():
-            for (destSys, destDist) in node.links.items():
-                if destDist > maxLyPer:
-                    continue
+            for (destSys, destDistSq) in gsir(node, maxLyPer):
+                destDist = math.sqrt(destDistSq)
                 dist = startDist + destDist
-                # If we already have a shorter path, do nothing
+                # If we aready have a shorter path, do nothing
                 try:
                     distNode = distances[destSys]
                     if distNode[0] <= dist:
@@ -121,12 +114,12 @@ def navCommand(tdb, cmdenv):
         print(titleFormat.format(src=srcSystem.name(), dst=dstSystem.name(), mly=maxLyPer))
 
     if labelFormat:
-        cmdenv.printHeading(labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly'))
+        print(labelFormat.format(act='Action', sys='System', jly='Jump Ly', tly='Total Ly'))
 
     lastHop, totalLy = None, 0.00
     def present(action, system):
         nonlocal lastHop, totalLy
-        jumpLy = system.links[lastHop] if lastHop else 0.00
+        jumpLy = (distances[system][0] - distances[lastHop][0]) if lastHop else 0.00
         totalLy += jumpLy
         print(stepFormat.format(act=action, sys=system.name(), jly=jumpLy, tly=totalLy))
         lastHop = system
@@ -135,4 +128,15 @@ def navCommand(tdb, cmdenv):
     for viaSys in route[1:-1]:
         present('Via', viaSys)
     present('Arrive', dstSystem)
+
+
+    return results
+
+######################################################################
+# Transform result set into output
+
+def render(results, cmdenv, tdb):
+    from formatting import RowFormat, ColumnFormat
+
+    ### TODO: Implement
 
