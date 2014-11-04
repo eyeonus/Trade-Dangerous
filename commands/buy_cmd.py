@@ -131,9 +131,7 @@ def run(results, cmdenv, tdb):
             results.summary.sort = "Dist"
             results.rows.sort(key=lambda result: result.dist)
 
-    print(results.rows)
-
-    return None
+    return results
 
 #######################################################################
 ## Transform result set into output
@@ -141,21 +139,23 @@ def run(results, cmdenv, tdb):
 def render(results, cmdenv, tdb):
     from formatting import RowFormat, ColumnFormat
 
-    ### TODO: Implement
+    longestNamed = max(results.rows, key=lambda result: len(result.station.name()))
+    longestNameLen = len(longestNamed.station.name())
 
-#   maxStnNameLen = len(max(results, key=lambda result: len(result.station.dbname) + len(result.station.system.dbname) + 1).station.name())
-#   cmdenv.printHeading("{station:<{maxStnLen}} {cost:>10} {stock:>10} {dist:{distFmt}}".format(
-#                           station="Station", cost="Cost", stock="Stock",
-#                           dist="Ly" if near else "",
-#                           maxStnLen=maxStnNameLen,
-#                           distFmt=">6" if near else ""
-#       ))
-#   for result in results:
-#       print("{station:<{maxStnLen}} {cost:>10n} {stock:>10} {dist:{distFmt}}".format(
-#               station=result.station.name(),
-#               cost=result.cost,
-#               stock="{:n}".format(result.stock) if result.stock > 0 else "",
-#               dist=result.dist if near else "",
-#               maxStnLen=maxStnNameLen,
-#               distFmt=">6.2f" if near else ""
-#           ))
+    stnRowFmt = RowFormat()
+    stnRowFmt.addColumn('Station', '<', longestNameLen,
+            key=lambda row: row.station.name())
+    stnRowFmt.addColumn('Cost', '>', 10, 'n',
+            key=lambda row: row.price)
+    stnRowFmt.addColumn('Stock', '>', 10,
+            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else 'unknown')
+    if cmdenv.nearSystem:
+        stnRowFmt.addColumn('Dist', '>', 6, '.2f',
+                key=lambda row: row.dist)
+
+    if cmdenv.detail:
+        heading, underline = stnRowFmt.heading()
+        print(heading, underline, sep='\n')
+
+    for row in results.rows:
+        print(stnRowFmt.format(row))
