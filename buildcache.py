@@ -584,11 +584,28 @@ def processImportFile(tdenv, db, importPath, tableName):
 
         # import the data
         importCount = 0
+        lineNo = 0
         for linein in csvin:
             if len(linein) == columnCount:
                 tdenv.DEBUG(1, "       Values: {}", ', '.join(linein))
-                db.execute(sql_stmt, linein)
+                try:
+                    db.execute(sql_stmt, linein)
+                except Exception as e:
+                    raise SystemExit(
+                        "*** INTERNAL ERROR: {err}\n"
+                        "CSV File: {file}:{line}\n"
+                        "SQL Query: {query}\n"
+                        "Params: {params}\n"
+                        .format(
+                            err=str(e),
+                            file=str(importPath),
+                            line=lineNo,
+                            query=sql_stmt.strip(),
+                            params=linein
+                        )
+                    ) from None
                 importCount += 1
+            ++lineNo
         db.commit()
         tdenv.DEBUG(0, "{count} {table}s imported",
                             count=importCount,
