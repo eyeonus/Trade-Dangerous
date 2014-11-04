@@ -139,6 +139,11 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
         file.write("  {}".format("Timestamp"))
     file.write("\n\n")
 
+
+    naIQL = itemQtyAndLevel(0, 0)
+    unkIQL = itemQtyAndLevel(-2, -2)
+    defIQL = itemQtyAndLevel(-1, -1)
+
     for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
         system = systems[sysID]
         if system is not lastSys:
@@ -162,11 +167,16 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
         if withSupply:
             # Is this item on sale?
             if toStn > 0:
-                demandStr = itemQtyAndLevel(-2, -2)
+                # Zero demand-price gets default demand, which will
+                # be either unknown or zero depending on -0.
+                # If there is a price, always default to unknown
+                # because it can be sold here but the demand is just
+                # not useful as data.
+                demandStr = defIQL if fromStn <= 0 else unkIQL
                 stockStr  = itemQtyAndLevel(stock, stockLevel)
             else:
                 demandStr = itemQtyAndLevel(demand, demandLevel)
-                stockStr = itemQtyAndLevel(0, 0)
+                stockStr = naIQL
             file.write("  {:>{lvlwidth}} {:>{lvlwidth}}".format(
                         demandStr,
                         stockStr,

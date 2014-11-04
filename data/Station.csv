@@ -1,288 +1,789 @@
 name@System.system_id,name,ls_from_star
-'10 Canum Venaticorum','Trevithick Hub',0.0
-'14 Herculis','Ejeta Station',0.0
-'21 Draco','Williams Point',821.0
-'35 Draconis','Redi Settlement',0.0
-'36 Ursae Majoris','Richards Station',0.0
-'37 Xi Bootis','Leeuwenhoek Works',0.0
-'41 Gamma Serpentis','Speke Dock',0.0
-'44 chi Draconis','Adams Dock',0.0
-'44 chi Draconis','Ferguson Platform',0.0
-'47 Cassiopeiae','Lichtenberg City',0.0
-'47 Ursae Majoris','Rasmussen Relay',0.0
-'61 Ursae Majoris','Murray Claim',0.0
-'72 Herculis','Jernigan Landing',16010.0
-'86 Mu Herculis','Mcmonagle Hub',0.0
-'Acihaut','Cuffey Plant',0.0
-'Acihaut','Mastracchio Base',0.0
-'Ackycha','Hurston Base',0.0
-'Adepti','Lysenko Ring',0.0
-'Aganippe','Julian Market',0.0
-'Aladu Kuan Gon','Finch City',0.0
-'Alderamin','Sullivan Port',121778.0
-'Alrai','Resnik Dock',0.0
-'Andjeri','AvoGadro Landing',0.0
-'Ao Qin','Volterra Refinery',7619.0
-'Ao Shun','Nicollier City',0.0
-'Apishim','Hodgkinson Terminal',0.0
-'Arabha','Coulomb Gateway',0.0
-'Arcturus','Fort Harrison',0.0
-'Asellus Primus','Beagle 2 Landing',0.0
-'Asellus Primus','Foster Research Lab',0.0
-'Aulin','Aulin Enterprise',0.0
-'Aulin','Harbaugh Station',0.0
-'Aulin','Onufrienko Station',0.0
-'Aulis','Dezhurov Gateway',0.0
-'Aurea','Artsebarsky Port',0.0
-'Ba Bhumiang Ku','Bosch Station',0.0
-'Baga','Hovell Gateway',0.0
-'Bangati','Wul Vision',0.0
-'Basium','Lessing Refinery',0.0
-'BD+47 2112','Olivas Settlement',0.0
-'BD+63 1764','Van Scyoc Landing',0.0
-'BD+64 1452','Khayyam Outpost',0.0
-'BD+67 1409','Comino Hub',0.0
-'BD+71 1033','Burton Terminal',0.0
-'BD+74 526','Fife Ring',0.0
-'BD+75 58','Siemens Colony',0.0
-'BD+87 118','Armstrong Dock',0.0
-'Belobog','Clifford Point',0.0
-'Beta Comae Berenices','Landsteiner Plant',0.0
-'BF Canis Venatici','Lefschetz Installation',0.0
-'Bhotepa','Kazantsev Inheritance',0.0
-'Bolg','Moxon''s Mojo',0.0
-'Bolg','Wang Terminal',0.0
-'Boro Kacharis','Strekalov Terminal',357.0
-'Caer Bran','Browns Port',321.0
-'CE Bootis','Moseley Park',0.0
-'Chapoyo','Peano Reserve',0.0
-'Chara','Schade Dock',0.0
-'Chemetitana','Lanier',0.0
-'Chi Herculis','Gorbatko Reserve',0.0
-'Chirichianco','Garan Landing',295.0
-'Clotti','Heyerdahl Depot',0.0
-'CM Draco','Anderson Escape',2090000.0
-'Coelrind','Daimler Settlement',0.0
-'Connla','Nelson Port',5570.0
-'Coquenchis','Favier Port',0.0
-'CR Draco','Bruce Terminal',713.0
-'Cuages','Wundt Holdings',0.0
-'CW Ursae Majoris','Pike Vision',0.0
-'Dahan','Dahan 3 Metalworks',0.0
-'Dahan','Dahan Gateway',0.0
-'Darahk','Noblehome',0.0
-'Dharai','Gelfand Survey',0.0
-'Djedet','Galois Retreat',0.0
-'Ehlangai','Revin Laboratory',0.0
-'Er Lo Wu Di','Massimino Refinery',0.0
-'Eranin','Azeban City',0.0
-'Eranin','Azeban Orbital',0.0
-'Eranin','Eranin 4 Survey',0.0
-'Eta Cephei','Isherwood Ring',14.5
-'Evergreen','Boas Claim',0.0
-'Exbeur','Bush High',0.0
-'Flousop','Mcculley Refinery',0.0
-'Fu Haiting','Melvill Terminal',0.0
-'G 180-18','Murrays Port',0.0
-'G 203-47','Hopkins Settlement',0.0
-'G 203-47','Horowitz City',0.0
-'G 203-47','Zhen Outpost',1227.0
-'G 224-46','Chomsky Orbital',0.0
-'G 230-27','Trinh Dock',0.0
-'G 239-25','Bresnik Mine',0.0
-'Gera','Stephenson Hub',0.0
-'Gliese 9843','Haignere Platform',0.0
-'Grabri','Shriver Camp',0.0
-'h Draconis','Brislington',0.0
-'Haras','Brackett Terminal',0.0
-'Harpulo','Pausch Settlement',0.0
-'Hepa','Ryman Dock',0.0
-'Hera','Moore Station',0.0
-'HIP 105906','Scott Hub',0.0
-'HIP 107457','Smith Colony',0.0
-'HIP 110773','Wundt Colony',0.0
-'HIP 113477','Bradbury Colony',0.0
-'HIP 2422','Soukup Colony',0.0
-'HIP 2453','Fox Colony',0.0
-'HIP 91906','Gardner Dock',0.0
-'HR 158','Apgar Colony',0.0
-'HR 8133','Brunton Platform',0.0
-'HR 8423','Ito Stop',0.0
-'HR 8474','Linteris Colony',63.5
-'Hsini','Thesiger Station',0.0
-'Huokang','Darwin Terminal',0.0
-'Hyperion','Joliot-Curie Port',0.0
-'i Bootis','Chango Dock',0.0
-'i Bootis','Maher Stellar Research',0.0
-'Ithaca','Hume Depot',0.0
-'Jaoismonjin','Shaw Platform',0.0
-'Jieguaje','Feustel Station',0.0
-'Jurua','Sterkalov Settlement',0.0
-'Kambalua','Wright Camp',0.0
-'Kamchaultultula','Leclerc Settlement',0.0
-'Keian Gu','Ashton Enterprise',0.0
-'Keries','Derrickson''s Escape',0.0
-'Killke','Jacquard City',140758.0
-'Korubu','Hirase Terminal',0.0
-'Kulkanabossongma','Harrison Beacon',0.0
-'Kuunggati','Bryant Colony',102.0
-'Kwaraseti','Linaweaver Platform',0.0
-'Lalande 29917','Cori Terminal',0.0
-'Lalande 30699','Peral Installation',0.0
-'Lalande 37923','Of Merchiston Platform',0.0
-'LAWD 52','Bryant''s Colony',0.0
-'LFT 1072','Nansen Inheritance',0.0
-'LFT 1073','Roberts Camp',0.0
-'LFT 1421','Volkov Plant',772287.0
-'LFT 1446','Ray Colony',15319.0
-'LFT 880','Baker Platform',0.0
-'LFT 992','Szulkin Mines',0.0
-'LHS 1065','Battuta Terminal',0.0
-'LHS 1101','Apgar Landing',0.0
-'LHS 2123','Pangborn Point',0.0
-'LHS 2405','Fraas Dock',0.0
-'LHS 246','Kurland Dock',9.5
-'LHS 250','Zamka Dock',24.3
-'LHS 2522','Weyl Estate',0.0
-'LHS 2651','Kippax Depot',0.0
-'LHS 2764a','Maclean Station',0.0
-'LHS 2819','Tasaki Freeport',0.0
-'LHS 283','Renenbellot Oasis',0.0
-'LHS 287','Cox Ring',0.0
-'LHS 2884','Abnett Platform',0.0
-'LHS 2887','Massimino Dock',0.0
-'LHS 293','Onufriyenko Retreat',0.0
-'LHS 2936','Mcmullen Installation',0.0
-'LHS 3006','WCM Transfer Orbital',0.0
-'LHS 3057','Al-Khayyam Colony',0.0
-'LHS 3080','Malyshev Depot',0.0
-'LHS 3262','Lacaille Prospect',759.0
-'LHS 3262','Sy Base',0.0
-'LHS 350','Wiley Port',0.0
-'LHS 3549','Conrad Colony',0.0
-'LHS 355','Glashow Settlement',0.0
-'LHS 3586','Akiyama Holdings',0.0
-'LHS 3631','Merle Dock',0.0
-'LHS 371','Pudwill Gorie Port',0.0
-'LHS 3877','Hill Platform',0.0
-'LHS 391','Scheickart Depot',0.0
-'LHS 411','Schottky Port',0.0
-'LHS 417','Gernhardt Camp',0.0
-'LHS 5072','Dutton Beacon',27812.0
-'LHS 5287','Mcarthur''s Reach',0.0
-'LHS 6282','Stephens Terminal',0.0
-'LHS 6309','Rangarajan Platform',0.0
-'LHS 64','Fisher Platform',0.0
-'LP 1-52','Budarin Outpost',0.0
-'LP 102-320','Springer Port',0.0
-'LP 25-2','Fourneyron Station',0.0
-'LP 27-9','Murray Port',0.0
-'LP 29-188','Ashby Port',0.0
-'LP 320-359','Springer City',0.0
-'LP 322-836','Piccard Point',0.0
-'LP 440-38','Reynolds Colony',0.0
-'LP 45-128','Hobaugh Beacon',6.99
-'LP 48-567','Remec Hub',8.56
-'LP 5-88','Gurragchaa Station',1437.0
-'LP 64-194','Longyear Survey',0.0
-'LP 7-226','Christopher Colony',0.0
-'LP 71-157','Linenger Hub',10.3
-'LP 98-132','Freeport',0.0
-'LP 98-132','Prospect Five',0.0
-'LP Draconis','Kiernan Refinery',0.0
-'LTT 10482','Frobenius Platform',0.0
-'LTT 15294','Barcelos Base',0.0
-'LTT 16979','Amundsen Platform',0.0
-'LTT 17102','Berezin Landing',0.0
-'Lugiu Bezelana','Wisoff Survey',0.0
-'Macomaneleng Mu','Whitworth Vision',6.83
-'Magec','Xiaoguan Hub',0.0
-'Maidubii','Daley Estate',0.0
-'Malina','Humboldt Prospect',0.0
-'MCC 858','Harbaugh Vision',0.0
-'Meliae','Dupuy De Lomes Pride',0.0
-'Miola','Harris Hospital',0.0
-'Miquich','Onufrienko Hanger',0.0
-'Mistae','Preuss Laboratory',0.0
-'Mistana','Volynov Dock',0.0
-'Morgor','Romanek''s Folly',0.0
-'Moros','Ziemkiewicz Legacy',0.0
-'Moscab Kutja','Hughes-Fulford Base',10.4
-'Mullag','Gardner Gateway',0.0
-'Nang Ta-khian','Hadwell Orbital',0.0
-'Nang Ta-khian','Hay Point',0.0
-'Naraka','Novitski Oasis',0.0
-'Ngoloki Anaten','Hale Landing',0.0
-'Nguruai Trimpaso','Sawyer Outpost',0.0
-'Nimba','Fowler Estate',0.0
-'NLTT 46621','Bradley Inheritance',3507.0
-'NLTT 49528','Fullerton City',6153.0
-'NLTT 49528','Padalka Installation',0.0
-'NLTT 50716','Burbank Platform',0.0
-'NLTT 53889','Franke Orbital',0.0
-'Nyon T''ao Wujin','Filter Horizons',0.0
-'Opala','Romanenko Estate',0.0
-'Ori','Griffith Terminal',0.0
-'Ovid','Bradfield Orbital',0.0
-'Parcae','Windt Plant',0.0
-'Pareco','Nicollier Exchange',0.0
-'Pata Thewi','Agnesi Terminal',0.0
-'Paul-Friedrichs Star','Paul-Friedrichs Expedition Base Camp',0.0
-'Pemede','Goeppert-Mayer Gateway',605.0
-'Perendi','Guidoni Landing',0.0
-'Pi-fang','Brooks Estate',0.0
-'Poqomathi','Aitken Station',0.0
-'Psamathe','Ride Vision',0.0
-'Quiness','Lockyer Rest',0.0
-'Rahu','Weierstrass Refinery',0.0
-'Rakapila','Stone Enterprise',0.0
-'Reiene Maorai','Mitra Claim',0.0
-'Ross 1003','Vaugh Dock',0.0
-'Ross 1015','Bowersox Mines',0.0
-'Ross 1051','Abetti Platform',0.0
-'Ross 1057','Wang Estate',0.0
-'Ross 130','Coleman Settlement',0.0
-'Ross 211','Liwei Camp',0.0
-'Ross 640','Onnes Gateway',0.0
-'Ross 860','Lockhart Enterprise',0.0
-'Ross 905','Mitchell Refinery',0.0
-'San Guaralaru','Paulmier De Gonneville Arena',0.0
-'Sigma Bootis','Dupuy De Lome Holdings',0.0
-'Sofagre','Horowitz Reserve',0.0
-'StKM 1-1676','Robinson Port',0.0
-'Styx','Bixby Station',0.0
-'Styx','Wingrove Platform',0.0
-'Sumi','Hertz Hub',0.0
-'Surya','Burbank Camp',0.0
-'Tai Qing','Berezin Terminal',0.0
-'Taleachishvakhrud','Goldstein Mines',0.0
-'Tapari','Cowper Asylum',0.0
-'Tapipinouphinien','Pauling Beacon',0.0
-'Tatil','Klimuk Landing',0.0
-'Taurawa','Cernan City',0.0
-'Theta Draconis','Andreas Horizons',3334.0
-'Tilian','Keeler Rest',0.0
-'Tilian','Maunder''s Hope',0.0
-'Titicate','Griffin Ring',0.0
-'Toyota','Brule Colony',0.0
-'Tring','Linenger Landing',336.0
-'Tsetan','Moon Platform',300.0
-'Tun','Tun Wart',0.0
-'Tyr','Shaw Outpost',0.0
-'V1090 Herculis','Low Landing',42043.0
-'V740 Cassiopeiae','Morgan Stop',0.0
-'Vaccimici','Gannt Enterprise',0.0
-'Verboni','Hartdog Dock',0.0
-'Vetr','Solovyov Colony',6.69
-'Wikmeang','Bosch Base',0.0
-'WISE 1647+5632','Hirase Platform',0.0
-'Wolf 1409','Al-Khalili Refinery',0.0
-'Wolf 497','Kadenyuk Camp',0.0
-'Wolf 654','Diesel Survey',20.4
-'Wunjo','Burkin Depot',0.0
-'Wyrd','Vonarburg Co-operative',0.0
-'Xi Ursae Majoris','Comino Dock',0.0
-'Xi Wangkala','Skolem Settlement',0.0
-'Yoruba','Clement Plant',0.0
-'Zeta Herculis','Jemison Plant',0.0
-'Zhu Rong','Stuart Ring',0.0
+'10 Canum Venaticorum','10 Canum Venaticorum-Station',0.0
+'10 Ursae Majoris','10 Ursae Majoris-Station',0.0
+'16 c Ursae Majoris','16 c Ursae Majoris-Station',0.0
+'17 Crateris','17 Crateris-Station',0.0
+'20 Leonis Minoris','20 Leonis Minoris-Station',0.0
+'21 Draco','21 Draco-Station',0.0
+'24 Iota Crateris','24 Iota Crateris-Station',0.0
+'26 Draconis','26 Draconis-Station',0.0
+'35 Draconis','35 Draconis-Station',0.0
+'36 Ursae Majoris','36 Ursae Majoris-Station',0.0
+'37 Xi Bootis','37 Xi Bootis-Station',0.0
+'41 Gamma Serpentis','41 Gamma Serpentis-Station',0.0
+'44 chi Draconis','44 chi Draconis-Station',0.0
+'47 Cassiopeiae','47 Cassiopeiae-Station',0.0
+'47 Ursae Majoris','47 Ursae Majoris-Station',0.0
+'54 G. Antlia','54 G. Antlia-Station',0.0
+'59 Virginis','59 Virginis-Station',0.0
+'60 Tau Draconis','60 Tau Draconis-Station',0.0
+'61 Ursae Majoris','61 Ursae Majoris-Station',0.0
+'61 Virginis','61 Virginis-Station',0.0
+'66 Draconis','66 Draconis-Station',0.0
+'68 Draconis','68 Draconis-Station',0.0
+'70 Virginis','70 Virginis-Station',0.0
+'Abrogo','Abrogo-Station',0.0
+'Acihaut','Acihaut-Station',0.0
+'Acurukunabogamal','Acurukunabogamal-Station',0.0
+'Adityaraguala','Adityaraguala-Station',0.0
+'Aegilips','Aegilips-Station',0.0
+'Aeneas','Aeneas-Station',0.0
+'Aganippe','Aganippe-Station',0.0
+'Agwe','Agwe-Station',0.0
+'Akhenaten','Akhenaten-Station',0.0
+'Aknango','Aknango-Station',0.0
+'Al Mina','Al Mina-Station',0.0
+'Aladu Kuan Gon','Aladu Kuan Gon-Station',0.0
+'Alchita','Alchita-Station',0.0
+'Alcor','Alcor-Station',0.0
+'Algorab','Algorab-Station',0.0
+'Alrai','Alrai-Station',0.0
+'Ammapa','Ammapa-Station',0.0
+'Amun','Amun-Station',0.0
+'Anaiwal','Anaiwal-Station',0.0
+'Andancan','Andancan-Station',0.0
+'Andoe','Andoe-Station',0.0
+'Anemoi','Anemoi-Station',0.0
+'Anete','Anete-Station',0.0
+'Aninohini','Aninohini-Station',0.0
+'Anlave','Anlave-Station',0.0
+'Ansari','Ansari-Station',0.0
+'Antevorta','Antevorta-Station',0.0
+'Antinica','Antinica-Station',0.0
+'Anyanwu','Anyanwu-Station',0.0
+'Ao Guang','Ao Guang-Station',0.0
+'Ao Qin','Ao Qin-Station',0.0
+'Ao Shun','Ao Shun-Station',0.0
+'Apalai','Apalai-Station',0.0
+'Apura','Apura-Station',0.0
+'Arcturus','Arcturus-Station',0.0
+'Arin','Arin-Station',0.0
+'Asellus Primus','Foster Research Lab',171
+'Asellus Primus','Beagle 2 Landing',1252
+'Ashtart','Ashtart-Station',0.0
+'Atarapa','Atarapa-Station',0.0
+'Atum','Atum-Station',0.0
+'Audhisatsuri','Audhisatsuri-Station',0.0
+'Audusi','Audusi-Station',0.0
+'Aulin','Yurchikhin Gateway',60.2
+'Aulin','Aulin Enterprise',117
+'Aulin','Binnie City',347
+'Aulis','Aulis-Station',0.0
+'Aurvandill','Aurvandill-Station',0.0
+'Awabatamori','Awabatamori-Station',0.0
+'Awngtei','Awngtei-Station',0.0
+'Azaladshu','Azaladshu-Station',0.0
+'Baga','Baga-Station',0.0
+'Balmus','Balmus-Station',0.0
+'Bast','Bast-Station',0.0
+'Batani','Batani-Station',0.0
+'Baudus','Baudus-Station',0.0
+'BD+03 2279','BD+03 2279-Station',0.0
+'BD+03 2316','BD+03 2316-Station',0.0
+'BD+16 2404','BD+16 2404-Station',0.0
+'BD+26 2184','BD+26 2184-Station',0.0
+'BD+27 1739','BD+27 1739-Station',0.0
+'BD+29 2405','BD+29 2405-Station',0.0
+'BD+47 2112','Olivas Settlement',230
+'BD+55 1519','BD+55 1519-Station',0.0
+'BD+57 2595','BD+57 2595-Station',0.0
+'BD+63 1764','BD+63 1764-Station',0.0
+'BD+64 1452','BD+64 1452-Station',0.0
+'BD+65 1846','BD+65 1846-Station',0.0
+'BD+66 193','BD+66 193-Station',0.0
+'BD+67 1409','BD+67 1409-Station',0.0
+'BD+71 1033','BD+71 1033-Station',0.0
+'BD+72 545','BD+72 545-Station',0.0
+'BD+74 526','BD+74 526-Station',0.0
+'BD+87 118','BD+87 118-Station',0.0
+'BD-01 2784','BD-01 2784-Station',0.0
+'BD-18 3106','BD-18 3106-Station',0.0
+'Begou','Begou-Station',0.0
+'Belobog','Belobog-Station',0.0
+'BF Canis Venatici','BF Canis Venatici-Station',0.0
+'Bhaguti','Bhaguti-Station',0.0
+'Bhotega','Bhotega-Station',0.0
+'Bhotepa','Bhotepa-Station',0.0
+'Binbeal','Binbeal-Station',0.0
+'Bingui','Bingui-Station',0.0
+'Blata','Blata-Station',0.0
+'Blatrimpe','Blatrimpe-Station',0.0
+'Bogatiku','Bogatiku-Station',0.0
+'Bolg','Moxon''s Mojo',935
+'Bolg','Payette Platform',1835
+'Borom Caquit','Borom Caquit-Station',0.0
+'Bragurom Du','Bragurom Du-Station',0.0
+'Brahma','Brahma-Station',0.0
+'Bugas','Bugas-Station',0.0
+'Bumbo','Bumbo-Station',0.0
+'Bunda','Bunda-Station',0.0
+'Buryacuan Wu','Buryacuan Wu-Station',0.0
+'Caeronthudti','Caeronthudti-Station',0.0
+'Caicius','Caicius-Station',0.0
+'Caluayaksheper','Caluayaksheper-Station',0.0
+'Candjinan','Candjinan-Station',0.0
+'Carnoeck','Carnoeck-Station',0.0
+'Carnutenichuara','Carnutenichuara-Station',0.0
+'Catuntinigi','Catuntinigi-Station',0.0
+'Cavashira','Cavashira-Station',0.0
+'Cavins','Cavins-Station',0.0
+'CD-35 6972','CD-35 6972-Station',0.0
+'CE Bootis','CE Bootis-Station',0.0
+'Cenil','Cenil-Station',0.0
+'Chaac','Chaac-Station',0.0
+'Chapoyo','Chapoyo-Station',0.0
+'Chara','Reilly Refinery',11738
+'Chaxiraxi','Chaxiraxi-Station',0.0
+'Chechehet','Chechehet-Station',0.0
+'Chelmen','Chelmen-Station',0.0
+'Chemaku','Chemaku-Station',0.0
+'Chi Herculis','Gorbatko Reserve',899
+'Chi Herculis','Gemar Orbital',899
+'Chini','Chini-Station',0.0
+'Chongquan','Chongquan-Station',0.0
+'Chontantici','Chontantici-Station',0.0
+'Choujemait','Choujemait-Station',0.0
+'Ciguru','Ciguru-Station',0.0
+'Circios','Circios-Station',0.0
+'CM Draco','CM Draco-Station',0.0
+'Coelrind','Coelrind-Station',0.0
+'Coriccha','Coriccha-Station',0.0
+'Corioskeh Tryth','Corioskeh Tryth-Station',0.0
+'CPD-23 501','CPD-23 501-Station',0.0
+'CR Draco','CR Draco-Station',0.0
+'Cuages','Cuages-Station',0.0
+'Cybele','Cybele-Station',0.0
+'Czernovale','Czernovale-Station',0.0
+'Dagaz','Dagaz-Station',0.0
+'Dahan','Dahan Gateway',468
+'Dahan','Dahan 3 Metalworks',1854
+'Dakantjarini','Dakantjarini-Station',0.0
+'Darahk','Darahk-Station',0.0
+'Demeter','Demeter-Station',0.0
+'Denebola','Volkov Dock',567
+'Denebola','Chomsky Point',1379
+'Denebola','Chamitoff Point',7485
+'Dierfar','Dierfar-Station',0.0
+'Difu','Difu-Station',0.0
+'Divja Mu','Divja Mu-Station',0.0
+'Djedet','Djedet-Station',0.0
+'Doris','Doris-Station',0.0
+'DT Virginis','DT Virginis-Station',0.0
+'Duamta','Duamta-Station',0.0
+'DX 799','DX 799-Station',0.0
+'DX Cancri','DX Cancri-Station',0.0
+'Dyaushis','Dyaushis-Station',0.0
+'EGGR 431','EGGR 431-Station',0.0
+'Egovedunuvitra','Egovedunuvitra-Station',0.0
+'Ehlangai','Ehlangai-Station',0.0
+'Eme','Eme-Station',0.0
+'Enumclawilya','Enumclawilya-Station',0.0
+'Eranin','Azeban Orbital',294
+'Eranin','Azeban City',295
+'Eranin','Eranin 4 Survey',2024
+'Eravarenth','Eravarenth-Station',0.0
+'Erlaza','Erlaza-Station',0.0
+'Eta Corvi','Eta Corvi-Station',0.0
+'Eta Draconis','Eta Draconis-Station',0.0
+'Etznabihik Mangk','Etznabihik Mangk-Station',0.0
+'Evergreen','Evergreen-Station',0.0
+'Exbeur','Exbeur-Station',0.0
+'FAUST 2688','FAUST 2688-Station',0.0
+'Feng Huang','Feng Huang-Station',0.0
+'Fianna','Fianna-Station',0.0
+'Fionn','Fionn-Station',0.0
+'Flousop','Flousop-Station',0.0
+'FN Virginis','FN Virginis-Station',0.0
+'Friggirawi','Friggirawi-Station',0.0
+'Fu Haiting','Fu Haiting-Station',0.0
+'G 113-20','G 113-20-Station',0.0
+'G 121-8','G 121-8-Station',0.0
+'G 123-49','G 123-49-Station',0.0
+'G 14-6','G 14-6-Station',0.0
+'G 146-5','G 146-5-Station',0.0
+'G 175-42','G 175-42-Station',0.0
+'G 180-18','Alexandria Gateway',8.59
+'G 180-18','Rozhdestvensky Ring',13.9
+'G 180-18','Allen Ring',27.1
+'G 181-6','Thomas Installation',483
+'G 181-6','Dezhurov Platform',21362
+'G 203-47','G 203-47-Station',0.0
+'G 224-46','G 224-46-Station',0.0
+'G 239-25','G 239-25-Station',0.0
+'G 250-34','G 250-34-Station',0.0
+'G 65-9','G 65-9-Station',0.0
+'G 89-32','G 89-32-Station',0.0
+'GD 140','GD 140-Station',0.0
+'Gendalla','Gendalla-Station',0.0
+'Gendini','Gendini-Station',0.0
+'Gera','Gera-Station',0.0
+'Gliese 3371','Gliese 3371-Station',0.0
+'Gliese 9843','Gliese 9843-Station',0.0
+'Gomm Crua','Gomm Crua-Station',0.0
+'Gong Gu','Gong Gu-Station',0.0
+'GQ Virginis','GQ Virginis-Station',0.0
+'Grabri','Grabri-Station',0.0
+'Groombridge 1618','Groombridge 1618-Station',0.0
+'Guangul','Guangul-Station',0.0
+'Gunnovii','Gunnovii-Station',0.0
+'Guy','Guy-Station',0.0
+'h Draconis','h Draconis-Station',0.0
+'Hach','Hach-Station',0.0
+'Hadad','Hadad-Station',0.0
+'Haeditjaray','Haeditjaray-Station',0.0
+'Hagalaz','Hagalaz-Station',0.0
+'Haidjaram','Haidjaram-Station',0.0
+'Hambula','Hambula-Station',0.0
+'Haokah','Haokah-Station',0.0
+'Hared','Hared-Station',0.0
+'Haribaluayai','Haribaluayai-Station',0.0
+'Havat','Havat-Station',0.0
+'HDS 1879','HDS 1879-Station',0.0
+'Heheng De','Heheng De-Station',0.0
+'Helios','Helios-Station',0.0
+'HIP 105557','HIP 105557-Station',0.0
+'HIP 107457','HIP 107457-Station',0.0
+'HIP 109479','HIP 109479-Station',0.0
+'HIP 110773','HIP 110773-Station',0.0
+'HIP 111496','HIP 111496-Station',0.0
+'HIP 113477','HIP 113477-Station',0.0
+'HIP 113905','HIP 113905-Station',0.0
+'HIP 114099','HIP 114099-Station',0.0
+'HIP 114769','HIP 114769-Station',0.0
+'HIP 2422','HIP 2422-Station',0.0
+'HIP 2453','HIP 2453-Station',0.0
+'HIP 4907','HIP 4907-Station',0.0
+'HIP 85887','HIP 85887-Station',0.0
+'HIP 91906','HIP 91906-Station',0.0
+'Hlocidirus','Hlocidirus-Station',0.0
+'Hlooyn','Hlooyn-Station',0.0
+'Holiacan','Holiacan-Station',0.0
+'HR 3862','HR 3862-Station',0.0
+'HR 3991','HR 3991-Station',0.0
+'HR 4979','HR 4979-Station',0.0
+'HR 7925','HR 7925-Station',0.0
+'HR 8423','HR 8423-Station',0.0
+'HR 8472','HR 8472-Station',0.0
+'HR 8474','HR 8474-Station',0.0
+'Hsien Baji','Hsien Baji-Station',0.0
+'Hun Banja','Hun Banja-Station',0.0
+'Huokang','Huokang-Station',0.0
+'Hyperion','Hyperion-Station',0.0
+'i Bootis','Chango Dock',1098
+'i Bootis','Maher Stellar Research',20929
+'Igororai','Igororai-Station',0.0
+'Ikpenones','Ikpenones-Station',0.0
+'Issin','Issin-Station',0.0
+'Istanu','Istanu-Station',0.0
+'Ithaca','Ithaca-Station',0.0
+'Jaitu','Jaitu-Station',0.0
+'Janjak','Janjak-Station',0.0
+'Jata','Jata-Station',0.0
+'Jeidrungaragototo','Jeidrungaragototo-Station',0.0
+'Jetes','Jetes-Station',0.0
+'Jok Islese','Jok Islese-Station',0.0
+'Jolangen','Jolangen-Station',0.0
+'Juipedun','Juipedun-Station',0.0
+'Jula Oh','Jula Oh-Station',0.0
+'Jun','Jun-Station',0.0
+'Jungkurara','Jungkurara-Station',0.0
+'K Camelopardalis','K Camelopardalis-Station',0.0
+'Kaal','Kaal-Station',0.0
+'Kaha''i','Kaha''i-Station',0.0
+'Kali','Kali-Station',0.0
+'Kamchaultultula','Kamchaultultula-Station',0.0
+'Kanati','Kanati-Station',0.0
+'Kanos','Kanos-Station',0.0
+'Karovices','Karovices-Station',0.0
+'Kassi Hua','Kassi Hua-Station',0.0
+'Katae','Katae-Station',0.0
+'Kato','Kato-Station',0.0
+'Keiadjara','Keiadjara-Station',0.0
+'Keian Gu','Keian Gu-Station',0.0
+'Keling','Keling-Station',0.0
+'Keries','Derrickson''s Escape',270
+'Khernidjal','Khernidjal-Station',0.0
+'Kholedo','Kholedo-Station',0.0
+'Khong Qin Gu','Khong Qin Gu-Station',0.0
+'Kishia','Kishia-Station',0.0
+'Kokobujundji','Kokobujundji-Station',0.0
+'Kokoto','Kokoto-Station',0.0
+'Kongi','Kongi-Station',0.0
+'Korubu','Korubu-Station',0.0
+'Kotaition','Kotaition-Station',0.0
+'Krumine','Krumine-Station',0.0
+'Kuikian Batji','Kuikian Batji-Station',0.0
+'Kumana','Kumana-Station',0.0
+'Kunapalanezti','Kunapalanezti-Station',0.0
+'Kunbuluan','Kunbuluan-Station',0.0
+'Kungati','Kungati-Station',0.0
+'Kurngali','Kurngali-Station',0.0
+'Kurui Gubi','Kurui Gubi-Station',0.0
+'Kurunmindjuk','Kurunmindjuk-Station',0.0
+'Kushentinoni','Kushentinoni-Station',0.0
+'Kwakamitreyja','Kwakamitreyja-Station',0.0
+'Kwamennero Kojin','Kwamennero Kojin-Station',0.0
+'Labed','Labed-Station',0.0
+'Lakluit','Lakluit-Station',0.0
+'Lalande 18115','Lalande 18115-Station',0.0
+'Lalande 22954','Lalande 22954-Station',0.0
+'Lalande 29917','Lalande 29917-Station',0.0
+'Lalande 30699','Lalande 30699-Station',0.0
+'Lalande 37923','Lalande 37923-Station',0.0
+'Las Xenangaresti','Las Xenangaresti-Station',0.0
+'Latucairhemaiabi','Latucairhemaiabi-Station',0.0
+'LAWD 17','LAWD 17-Station',0.0
+'LAWD 52','LAWD 52-Station',0.0
+'LDS 2314','LDS 2314-Station',0.0
+'LDS 413','LDS 413-Station',0.0
+'Lei Ta Tetona','Lei Ta Tetona-Station',0.0
+'Leng Wanjadimuru','Leng Wanjadimuru-Station',0.0
+'LFT 1072','LFT 1072-Station',0.0
+'LFT 1421','LFT 1421-Station',0.0
+'LFT 1446','LFT 1446-Station',0.0
+'LFT 1748','LFT 1748-Station',0.0
+'LFT 424','LFT 424-Station',0.0
+'LFT 601','LFT 601-Station',0.0
+'LFT 625','LFT 625-Station',0.0
+'LFT 682','LFT 682-Station',0.0
+'LFT 698','LFT 698-Station',0.0
+'LFT 709','LFT 709-Station',0.0
+'LFT 820','LFT 820-Station',0.0
+'LFT 824','LFT 824-Station',0.0
+'LFT 859','LFT 859-Station',0.0
+'LFT 880','LFT 880-Station',0.0
+'LFT 90','LFT 90-Station',0.0
+'LFT 926','LFT 926-Station',0.0
+'LFT 945','LFT 945-Station',0.0
+'LFT 992','LFT 992-Station',0.0
+'LHS 1065','LHS 1065-Station',0.0
+'LHS 1101','LHS 1101-Station',0.0
+'LHS 1167','LHS 1167-Station',0.0
+'LHS 140','LHS 140-Station',0.0
+'LHS 1505','LHS 1505-Station',0.0
+'LHS 1663','LHS 1663-Station',0.0
+'LHS 1882','LHS 1882-Station',0.0
+'LHS 1923','LHS 1923-Station',0.0
+'LHS 1951','LHS 1951-Station',0.0
+'LHS 1963','LHS 1963-Station',0.0
+'LHS 2037','LHS 2037-Station',0.0
+'LHS 207','LHS 207-Station',0.0
+'LHS 2088','LHS 2088-Station',0.0
+'LHS 2123','LHS 2123-Station',0.0
+'LHS 215','LHS 215-Station',0.0
+'LHS 2157','LHS 2157-Station',0.0
+'LHS 2166','LHS 2166-Station',0.0
+'LHS 221','LHS 221-Station',0.0
+'LHS 2217','LHS 2217-Station',0.0
+'LHS 2233','LHS 2233-Station',0.0
+'LHS 224','LHS 224-Station',0.0
+'LHS 2274','LHS 2274-Station',0.0
+'LHS 229','LHS 229-Station',0.0
+'LHS 2314','LHS 2314-Station',0.0
+'LHS 2335','LHS 2335-Station',0.0
+'LHS 2337','LHS 2337-Station',0.0
+'LHS 2363','LHS 2363-Station',0.0
+'LHS 2405','LHS 2405-Station',0.0
+'LHS 2412','LHS 2412-Station',0.0
+'LHS 2429','LHS 2429-Station',0.0
+'LHS 246','LHS 246-Station',0.0
+'LHS 2471','LHS 2471-Station',0.0
+'LHS 2477','LHS 2477-Station',0.0
+'LHS 2482','LHS 2482-Station',0.0
+'LHS 2494','LHS 2494-Station',0.0
+'LHS 250','LHS 250-Station',0.0
+'LHS 2541','LHS 2541-Station',0.0
+'LHS 2552','LHS 2552-Station',0.0
+'LHS 259','LHS 259-Station',0.0
+'LHS 262','LHS 262-Station',0.0
+'LHS 2651','LHS 2651-Station',0.0
+'LHS 2661','LHS 2661-Station',0.0
+'LHS 2691','LHS 2691-Station',0.0
+'LHS 274','LHS 274-Station',0.0
+'LHS 2764a','LHS 2764a-Station',0.0
+'LHS 278','LHS 278-Station',0.0
+'LHS 2789','LHS 2789-Station',0.0
+'LHS 2819','LHS 2819-Station',0.0
+'LHS 283','LHS 283-Station',0.0
+'LHS 287','LHS 287-Station',0.0
+'LHS 2884','LHS 2884-Station',0.0
+'LHS 2887','LHS 2887-Station',0.0
+'LHS 2936','LHS 2936-Station',0.0
+'LHS 295','LHS 295-Station',0.0
+'LHS 3006','LHS 3006-Station',0.0
+'LHS 301','LHS 301-Station',0.0
+'LHS 302','LHS 302-Station',0.0
+'LHS 3057','LHS 3057-Station',0.0
+'LHS 306','LHS 306-Station',0.0
+'LHS 317','LHS 317-Station',0.0
+'LHS 3262','LHS 3262-Station',0.0
+'LHS 331','LHS 331-Station',0.0
+'LHS 336','LHS 336-Station',0.0
+'LHS 346','LHS 346-Station',0.0
+'LHS 351','LHS 351-Station',0.0
+'LHS 3549','LHS 3549-Station',0.0
+'LHS 355','LHS 355-Station',0.0
+'LHS 3586','LHS 3586-Station',0.0
+'LHS 3631','LHS 3631-Station',0.0
+'LHS 369','LHS 369-Station',0.0
+'LHS 371','LHS 371-Station',0.0
+'LHS 380','LHS 380-Station',0.0
+'LHS 3877','LHS 3877-Station',0.0
+'LHS 391','LHS 391-Station',0.0
+'LHS 411','LHS 411-Station',0.0
+'LHS 417','LHS 417-Station',0.0
+'LHS 450','LHS 450-Station',0.0
+'LHS 5072','LHS 5072-Station',0.0
+'LHS 5287','LHS 5287-Station',0.0
+'LHS 6128','LHS 6128-Station',0.0
+'LHS 6197','LHS 6197-Station',0.0
+'LHS 6282','LHS 6282-Station',0.0
+'LHS 6309','Carey Colony',73
+'LHS 6309','Ryumin Terminal',133
+'LHS 6309','Smeaton Port',2531
+'LHS 6309','Kaku Station',2702
+'LHS 64','LHS 64-Station',0.0
+'Li Quang','Li Quang-Station',0.0
+'Loga','Loga-Station',0.0
+'Logoni','Logoni-Station',0.0
+'Lokapuri','Lokapuri-Station',0.0
+'Lopu Maid Fo','Lopu Maid Fo-Station',0.0
+'LP 1-52','LP 1-52-Station',0.0
+'LP 102-320','LP 102-320-Station',0.0
+'LP 131-55','LP 131-55-Station',0.0
+'LP 167-64','LP 167-64-Station',0.0
+'LP 167-71','LP 167-71-Station',0.0
+'LP 211-12','LP 211-12-Station',0.0
+'LP 27-9','LP 27-9-Station',0.0
+'LP 29-188','LP 29-188-Station',0.0
+'LP 30-55','LP 30-55-Station',0.0
+'LP 320-359','LP 320-359-Station',0.0
+'LP 322-836','LP 322-836-Station',0.0
+'LP 36-115','LP 36-115-Station',0.0
+'LP 37-75','LP 37-75-Station',0.0
+'LP 377-100','LP 377-100-Station',0.0
+'LP 45-128','LP 45-128-Station',0.0
+'LP 465-14','LP 465-14-Station',0.0
+'LP 48-567','LP 48-567-Station',0.0
+'LP 488-37','LP 488-37-Station',0.0
+'LP 5-88','LP 5-88-Station',0.0
+'LP 51-17','LP 51-17-Station',0.0
+'LP 58-247','LP 58-247-Station',0.0
+'LP 60-205','LP 60-205-Station',0.0
+'LP 617-37','LP 617-37-Station',0.0
+'LP 64-194','LP 64-194-Station',0.0
+'LP 672-42','LP 672-42-Station',0.0
+'LP 673-13','LP 673-13-Station',0.0
+'LP 675-76','LP 675-76-Station',0.0
+'LP 71-157','LP 71-157-Station',0.0
+'LP 732-94','LP 732-94-Station',0.0
+'LP 734-11','LP 734-11-Station',0.0
+'LP 787-52','LP 787-52-Station',0.0
+'LP 792-20','LP 792-20-Station',0.0
+'LP 792-33','LP 792-33-Station',0.0
+'LP 793-33','LP 793-33-Station',0.0
+'LP 844-28','LP 844-28-Station',0.0
+'LP 847-48','LP 847-48-Station',0.0
+'LP 849-20','LP 849-20-Station',0.0
+'LP 855-34','LP 855-34-Station',0.0
+'LP 90-39','LP 90-39-Station',0.0
+'LP 906-9','LP 906-9-Station',0.0
+'LP 908-11','LP 908-11-Station',0.0
+'LP 98-132','Freeport',184
+'LP 98-132','Prospect Five',389
+'LP Draconis','LP Draconis-Station',0.0
+'LTT 10482','LTT 10482-Station',0.0
+'LTT 12680','LTT 12680-Station',0.0
+'LTT 12990','LTT 12990-Station',0.0
+'LTT 15294','LTT 15294-Station',0.0
+'LTT 16523','LTT 16523-Station',0.0
+'LTT 16979','LTT 16979-Station',0.0
+'LTT 3919','LTT 3919-Station',0.0
+'LTT 4131','LTT 4131-Station',0.0
+'LTT 4150','LTT 4150-Station',0.0
+'LTT 4376','LTT 4376-Station',0.0
+'LTT 4447','LTT 4447-Station',0.0
+'LTT 4461','LTT 4461-Station',0.0
+'LTT 4527','LTT 4527-Station',0.0
+'LTT 4549','LTT 4549-Station',0.0
+'LTT 4730','LTT 4730-Station',0.0
+'LTT 4772','LTT 4772-Station',0.0
+'LTT 4898','LTT 4898-Station',0.0
+'LTT 5131','LTT 5131-Station',0.0
+'LTT 5455','LTT 5455-Station',0.0
+'LU Velorum','LU Velorum-Station',0.0
+'Lucab Ku','Lucab Ku-Station',0.0
+'Luggerates','Luggerates-Station',0.0
+'Lugien Chabtani','Lugien Chabtani-Station',0.0
+'Luhman 16','Luhman 16-Station',0.0
+'Luyten 674-15','Luyten 674-15-Station',0.0
+'Luyten''s Star','Luyten''s Star-Station',0.0
+'Macomaneleng Mu','Macomaneleng Mu-Station',0.0
+'Magec','Xiaoguan Hub',131
+'Magec','Garriott Outpost',335
+'Magec','Trumpler Dock',4541
+'Maitaokona','Maitaokona-Station',0.0
+'Maitis','Maitis-Station',0.0
+'Malanquiya','Malanquiya-Station',0.0
+'Malina','Malina-Station',0.0
+'Maljenni','Maljenni-Station',0.0
+'Manarato','Manarato-Station',0.0
+'Manbai Chac Moco','Manbai Chac Moco-Station',0.0
+'Mankob','Mankob-Station',0.0
+'Mannheim','Mannheim-Station',0.0
+'Maranarinjhian Hsi','Maranarinjhian Hsi-Station',0.0
+'Marasing','Marasing-Station',0.0
+'Maraupol Bumbin','Maraupol Bumbin-Station',0.0
+'Marditj','Marditj-Station',0.0
+'Markanomovoy','Markanomovoy-Station',0.0
+'Marojini','Marojini-Station',0.0
+'Marsinatani','Marsinatani-Station',0.0
+'Maujinagoto','Maujinagoto-Station',0.0
+'Mbuthamovites','Mbuthamovites-Station',0.0
+'MCC 858','MCC 858-Station',0.0
+'Megrez','Megrez-Station',0.0
+'Melcior','Melcior-Station',0.0
+'Meliae','Meliae-Station',0.0
+'Midgcut','Midgcut-Station',0.0
+'Mildeptu','Mildeptu-Station',0.0
+'Mildjarayuta','Mildjarayuta-Station',0.0
+'Minawara','Minawara-Station',0.0
+'Miola','Miola-Station',0.0
+'Miquich','Miquich-Station',0.0
+'Mizar','Mizar-Station',0.0
+'Mobokomu','Mobokomu-Station',0.0
+'Mokojing','Mokojing-Station',0.0
+'Momoirent','Momoirent-Station',0.0
+'Morgor','Romanek''s Folly',917
+'Moros','Moros-Station',0.0
+'Moscab Kutja','Moscab Kutja-Station',0.0
+'Mu Nora','Mu Nora-Station',0.0
+'Muango','Muango-Station',0.0
+'Mufrid','Mufrid-Station',0.0
+'Mullag','Mullag-Station',0.0
+'Muncheim','Muncheim-Station',0.0
+'Nagariggam','Nagariggam-Station',0.0
+'Nahundi','Nahundi-Station',0.0
+'Nakuma','Nakuma-Station',0.0
+'Nang Ta-khian','Nang Ta-khian-Station',0.0
+'Naraka','Naraka-Station',0.0
+'Neche','Neche-Station',0.0
+'Nemepawe','Nemepawe-Station',0.0
+'Nener','Nener-Station',0.0
+'Ngardamayo','Ngardamayo-Station',0.0
+'Ngolitjali','Ngolitjali-Station',0.0
+'Ngoloki Anaten','Ngoloki Anaten-Station',0.0
+'Nicobarese','Nicobarese-Station',0.0
+'Njikan','Njikan-Station',0.0
+'NLTT 26813','NLTT 26813-Station',0.0
+'NLTT 34715','NLTT 34715-Station',0.0
+'NLTT 46621','NLTT 46621-Station',0.0
+'NLTT 48502','NLTT 48502-Station',0.0
+'NLTT 50716','NLTT 50716-Station',0.0
+'NLTT 53889','NLTT 53889-Station',0.0
+'Nuenets','Nuenets-Station',0.0
+'Nuguynici','Nuguynici-Station',0.0
+'Nuwang','Nuwang-Station',0.0
+'Nzam Cakua','Nzam Cakua-Station',0.0
+'Nzambassee','Nzambassee-Station',0.0
+'Okinoukhe','Okinoukhe-Station',0.0
+'Okuapang','Okuapang-Station',0.0
+'Olgrea','Olgrea-Station',0.0
+'Onduwatya','Onduwatya-Station',0.0
+'Opala','Meikle Point',1391
+'Opala','Onizuka''s Hold',1449
+'Opala','Romanenko Estate',1451
+'Ori','Ori-Station',0.0
+'OT Serpentis','OT Serpentis-Station',0.0
+'Ovid','Abe Works',379
+'Ovid','Bradfield Orbital',377
+'Pachanu','Pachanu-Station',0.0
+'Pan','Pan-Station',0.0
+'Pangluya','Pangluya-Station',0.0
+'Parcae','Parcae-Station',0.0
+'Paul-Friedrichs Star','Paul-Friedrichs Star-Station',0.0
+'Pemede','Pemede-Station',0.0
+'Perendi','Perendi-Station',0.0
+'Phra Zhan','Phra Zhan-Station',0.0
+'Pi-fang','Pi-fang-Station',0.0
+'Piran','Piran-Station',0.0
+'Pliny','Pliny-Station',0.0
+'Pollux','Pollux-Station',0.0
+'Popon','Popon-Station',0.0
+'PPM 41187','PPM 41187-Station',0.0
+'Privir','Privir-Station',0.0
+'Procyon','Procyon-Station',0.0
+'Psamathe','Psamathe-Station',0.0
+'PW Hydrae','PW Hydrae-Station',0.0
+'Quiness','Quiness-Station',0.0
+'Rabates','Rabates-Station',0.0
+'Rahu','Rahu-Station',0.0
+'Rakapila','Rakapila-Station',0.0
+'Ratri','Ratri-Station',0.0
+'Rauratunab','Rauratunab-Station',0.0
+'Rhea','Rhea-Station',0.0
+'Rho Cancri','Rho Cancri-Station',0.0
+'Ross 1003','Ross 1003-Station',0.0
+'Ross 1015','Ross 1015-Station',0.0
+'Ross 104','Ross 104-Station',0.0
+'Ross 1051','Ross 1051-Station',0.0
+'Ross 1057','Ross 1057-Station',0.0
+'Ross 112','Ross 112-Station',0.0
+'Ross 128','Ross 128-Station',0.0
+'Ross 130','Ross 130-Station',0.0
+'Ross 210','Ross 210-Station',0.0
+'Ross 211','Ross 211-Station',0.0
+'Ross 318','Ross 318-Station',0.0
+'Ross 446','Ross 446-Station',0.0
+'Ross 447','Ross 447-Station',0.0
+'Ross 486','Ross 486-Station',0.0
+'Ross 490','Ross 490-Station',0.0
+'Ross 667','Ross 667-Station',0.0
+'Ross 695','Ross 695-Station',0.0
+'Ross 85','Ross 85-Station',0.0
+'Ross 860','Ross 860-Station',0.0
+'Ross 905','Morukov Platform',16.6
+'Ross 905','Xing Dock',943
+'Ross 93','Ross 93-Station',0.0
+'Ross 986','Ross 986-Station',0.0
+'Sak Chelmir','Sak Chelmir-Station',0.0
+'Salarhul','Salarhul-Station',0.0
+'Samkyha','Samkyha-Station',0.0
+'Sanguru','Sanguru-Station',0.0
+'Seber','Seber-Station',0.0
+'Sekhemet','Sekhemet-Station',0.0
+'Selebegua','Selebegua-Station',0.0
+'Seting','Seting-Station',0.0
+'Shama','Shama-Station',0.0
+'Shamash','Shamash-Station',0.0
+'Shapash','Shapash-Station',0.0
+'Shebayeb','Shebayeb-Station',0.0
+'Sheela Na Gig','Sheela Na Gig-Station',0.0
+'Sigma Bootis','Sigma Bootis-Station',0.0
+'Skeggiko O','Skeggiko O-Station',0.0
+'Slatus','Slatus-Station',0.0
+'Sofagre','Sofagre-Station',0.0
+'Sokoji','Sokoji-Station',0.0
+'Song Te Tians','Song Te Tians-Station',0.0
+'Sopdu','Sopdu-Station',0.0
+'Stein 2051','Stein 2051-Station',0.0
+'Styx','Gerst Port',68.6
+'Styx','Chi Hub',652
+'Sudz','Sudz-Station',0.0
+'Sukub Tungatis','Sukub Tungatis-Station',0.0
+'Sukuruaco','Sukuruaco-Station',0.0
+'Supen','Supen-Station',0.0
+'Suraci','Suraci-Station',0.0
+'Surya','Surya-Station',0.0
+'T''ang Bumbain','T''ang Bumbain-Station',0.0
+'Tabassapisi','Tabassapisi-Station',0.0
+'Taexalkoloine','Taexalkoloine-Station',0.0
+'Taima Baijuhacmoora','Taima Baijuhacmoora-Station',0.0
+'Taleachishvakhrud','Taleachishvakhrud-Station',0.0
+'Taliesin','Taliesin-Station',0.0
+'Talitha','Talitha-Station',0.0
+'Taosha','Taosha-Station',0.0
+'Tarasa','Tarasa-Station',0.0
+'Tatil','Tatil-Station',0.0
+'Tau Bootis','Tau Bootis-Station',0.0
+'Tau-1 Hydrae','Tau-1 Hydrae-Station',0.0
+'Tefenhua','Tefenhua-Station',0.0
+'Teng Yeh','Garan Survey',3082
+'Teng Yeh','Haxel Station',3082
+'Teng Yeh','Phillips Hub',3111
+'Teng Yeh','Korniyenko Dock',3111
+'Teng Yeh','Zhen Port',3138
+'Theta Cygni','Theta Cygni-Station',0.0
+'Theta Ursae Majoris','Theta Ursae Majoris-Station',0.0
+'Thosim Biamh','Thosim Biamh-Station',0.0
+'Thoth','Thoth-Station',0.0
+'Thraskias','Thraskias-Station',0.0
+'Tiapalan','Tiapalan-Station',0.0
+'Tiethay','Tiethay-Station',0.0
+'Tilian','Keeler Rest',196
+'Tilian','Maunder''s Hope',196
+'Tinia','Tinia-Station',0.0
+'Tivertsi','Tivertsi-Station',0.0
+'Tollan','Tollan-Station',0.0
+'Trepin','Trepin-Station',0.0
+'Tripu','Vinogradov Installation',2077
+'Tripu','Laval City',3411
+'Tsetan','Tsetan-Station',0.0
+'Tsohodiae','Tsohodiae-Station',0.0
+'Tun','Tun-Station',0.0
+'Turmakul','Turmakul-Station',0.0
+'Tyche','Tyche-Station',0.0
+'Tyr','Tyr-Station',0.0
+'Udegoci','Udegoci-Station',0.0
+'V1090 Herculis','V1090 Herculis-Station',0.0
+'V2151 Cygni','V2151 Cygni-Station',0.0
+'V417 Hydrae','V417 Hydrae-Station',0.0
+'V419 Hydrae','V419 Hydrae-Station',0.0
+'V538 Aurigae','V538 Aurigae-Station',0.0
+'V740 Cassiopeiae','V740 Cassiopeiae-Station',0.0
+'V886 Centauri','V886 Centauri-Station',0.0
+'V989 Cassiopeiae','V989 Cassiopeiae-Station',0.0
+'Vega','Vega-Station',0.0
+'Veneri','Veneri-Station',0.0
+'Verboni','Verboni-Station',0.0
+'Vetr','Vetr-Station',0.0
+'VZ Corvi','VZ Corvi-Station',0.0
+'Wadjuk','Wadjuk-Station',0.0
+'Wakarendians','Wakarendians-Station',0.0
+'Wanggu','Wanggu-Station',0.0
+'Wathlanukh','Wathlanukh-Station',0.0
+'Wei Jung','Wei Jung-Station',0.0
+'Wen Tsakimori','Wen Tsakimori-Station',0.0
+'Widjararappan','Widjararappan-Station',0.0
+'Widjigarasir','Widjigarasir-Station',0.0
+'Wikmeang','Wikmeang-Station',0.0
+'WISE 1506+7027','WISE 1506+7027-Station',0.0
+'Wolf 1409','Wolf 1409-Station',0.0
+'Wolf 1478','Wolf 1478-Station',0.0
+'Wolf 1481','Wolf 1481-Station',0.0
+'Wolf 248','Wolf 248-Station',0.0
+'Wolf 294','Wolf 294-Station',0.0
+'Wolf 359','Wolf 359-Station',0.0
+'Wolf 369','Wolf 369-Station',0.0
+'Wolf 393','Wolf 393-Station',0.0
+'Wolf 417','Wolf 417-Station',0.0
+'Wolf 424','Wolf 424-Station',0.0
+'Wolf 437','Wolf 437-Station',0.0
+'Wolf 46','Wolf 46-Station',0.0
+'Wolf 485a','Wolf 485a-Station',0.0
+'Wolf 497','Wolf 497-Station',0.0
+'Wolf 54','Wolf 54-Station',0.0
+'Wolf 562','Wolf 562-Station',0.0
+'Wosyra Pao','Kaku Terminal',54.6
+'Wosyra Pao','Kovalyonok City',62.4
+'Wosyra Pao','Burbank Settlement',79.5
+'Wosyra Pao','Onufrienko Settlement',91
+'Wosyra Pao','Agnesi Refinery',125
+'Wu Gondru','Wu Gondru-Station',0.0
+'Wunian','Wunian-Station',0.0
+'WX Ursa Majoris','WX Ursa Majoris-Station',0.0
+'Wyrd','Vonarburg Co-operative',161
+'Wyrd','Bokeili Station',849
+'Wyrd','Gareth Edwards Park',849
+'Xelabara','Xelabara-Station',0.0
+'Xi Ursae Majoris','Xi Ursae Majoris-Station',0.0
+'Xi Wangkala','Xi Wangkala-Station',0.0
+'Xolotl','Xolotl-Station',0.0
+'Ya''Nomisiyaces','Ya''Nomisiyaces-Station',0.0
+'Yakan','Yakan-Station',0.0
+'Yakawana','Yakawana-Station',0.0
+'Yanyan','Yanyan-Station',0.0
+'Yarigui','Yarigui-Station',0.0
+'Ye''kuapemas','Ye''kuapemas-Station',0.0
+'Yeru Bao Hinu','Yeru Bao Hinu-Station',0.0
+'Yoruba','Yoruba-Station',0.0
+'Yuggsanawyddis','Yuggsanawyddis-Station',0.0
+'Yugusitanitou','Yugusitanitou-Station',0.0
+'Zangi','Zangi-Station',0.0
+'Zaraluvul','Zaraluvul-Station',0.0
+'Zenmaku','Zenmaku-Station',0.0
+'Zeta Herculis','Shepherd Ring',8171
+'Zombardgriti','Zombardgriti-Station',0.0
+'Zombo','Zombo-Station',0.0
+'Zopiates','Zopiates-Station',0.0
+'Zosma','Zosma-Station',0.0
