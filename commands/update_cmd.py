@@ -249,7 +249,10 @@ def editUpdate(tdb, cmdenv, stationID):
     finally:
         # Save a copy
         if absoluteFilename and tmpPath:
-            tmpPath.rename("prices.last")
+            lastPath = pathlib.Path("prices.last")
+            if lastPath.exists():
+                lastPath.unlink()
+            tmpPath.rename(lastPath)
 
 
 def guidedUpdate(cmdenv, tdb):
