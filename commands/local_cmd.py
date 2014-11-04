@@ -171,7 +171,7 @@ def render(results, cmdenv, tdb):
                     ly=results.summary.ly,
         )
 
-    if cmdenv.detail:
+    if not cmdenv.quiet:
         heading, underline = sysRowFmt.heading()
         print(heading, underline, sep='\n')
 
@@ -179,3 +179,4 @@ def render(results, cmdenv, tdb):
         print(sysRowFmt.format(row))
         for stnRow in row.stations:
             print(stnRowFmt.format(stnRow))
+

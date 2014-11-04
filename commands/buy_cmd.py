@@ -153,7 +153,7 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
-    if cmdenv.detail:
+    if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
 
