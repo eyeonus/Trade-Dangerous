@@ -239,16 +239,12 @@ def editUpdate(tdb, cmdenv, stationID):
                         "Boutros, boutros, ghali!",
                         "I'm Ed Winchester!",
                         "Suit you, sir! Oh!"
-                ])))
-            return
-
-        cmdenv.DEBUG(0, "File changed - importing data.")
-
-        importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
+        else:
+            cmdenv.DEBUG(0, "File changed - importing data.")
+            importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
 
         tmpPath.unlink()
         tmpPath = None
-        return
 
     finally:
         # Save a copy
