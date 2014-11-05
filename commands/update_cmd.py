@@ -239,6 +239,7 @@ def editUpdate(tdb, cmdenv, stationID):
                         "Boutros, boutros, ghali!",
                         "I'm Ed Winchester!",
                         "Suit you, sir! Oh!"
+                    ])))
         else:
             cmdenv.DEBUG(0, "File changed - importing data.")
             importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
