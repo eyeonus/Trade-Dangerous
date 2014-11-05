@@ -115,7 +115,7 @@ class Station(object):
         system.stations.append(self)
 
 
-    def getDestinations(self, maxJumps=None, maxLyPer=None):
+    def getDestinations(self, maxJumps=None, maxLyPer=None, avoidPlaces=None):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
@@ -129,9 +129,9 @@ class Station(object):
                             'system', 'via', 'distLy' ])):
             pass
 
-        avoiding = self.tdenv.avoiding or []
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
+        if avoidPlaces is None: avoidPlaces = []
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -140,11 +140,11 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        openList = [ Node(self.system, [], 0) ]
+        openList = [ DestinationNode(self.system, [], 0) ]
         pathList = { system.ID: DestinationNode(system, None, -1.0)
                             # include avoids so we only have
                             # to consult one place for exclusions
-                        for system in avoiding
+                        for system in avoidPlaces
                             # the avoid list may contain stations,
                             # which affects destinations but not vias
                         if isinstance(system, System) }
@@ -171,18 +171,18 @@ class Station(object):
                     pathList[destSys.ID] = DestinationNode(destSys, node.via, dist)
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += [ Node(destSys, node.via + [destSys], dist) ]
+                    openList += [ DestinationNode(destSys, node.via + [destSys], dist) ]
 
         destStations = []
         # always include the local stations, unless the user has indicated they are
         # avoiding this system. E.g. if you're in Chango but you've specified you
         # want to avoid Chango...
-        if not self.system in avoiding:
+        if not self.system in avoidPlaces:
             for station in self.system.stations:
-                if station in self.tradingWith and not station in avoiding:
+                if station in self.tradingWith and not station in avoidPlaces:
                     destStations += [ Destination(self, station, [], 0.0) ]
 
-        avoidStations = [ station for station in avoiding if isinstance(station, Station) ]
+        avoidStations = [ station for station in avoidPlaces if isinstance(station, Station) ]
         epsilon = sys.float_info.epsilon
         for node in pathList.values():
             if node.distLy >= 0.0:       # Values indistinguishable from zero are avoidances

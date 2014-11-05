@@ -37,7 +37,7 @@ emptyLoad = TradeLoad([], 0, 0, 0)
 
 class TradeHop(namedtuple('TradeHop', [
                 'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly'
-                ]):
+                ])):
     pass
 
 ######################################################################
@@ -354,8 +354,8 @@ class TradeCalc(object):
         """
 
         tdenv = self.tdenv
-        avoidItems = tdenv.avoidItems
-        avoidPlaces = tdenv.avoidSystems + tdenv.avoidStations
+        avoidItems = getattr(tdenv, 'avoidItems', [])
+        avoidPlaces = getattr(tdenv, 'avoidPlaces', [])
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer or 0
         maxLyPer = tdenv.maxLyPer
@@ -374,7 +374,7 @@ class TradeCalc(object):
             for dest in src.getDestinations(
                                 maxJumps=maxJumpsPer,
                                 maxLyPer=maxLyPer,
-                                avoiding=avoidPlaces,
+                                avoidPlaces=avoidPlaces,
                     ):
                 tdenv.DEBUG(2, "destSys {}, destStn {}, jumps {}, distLy {}",
                                 dest.system.name(),
