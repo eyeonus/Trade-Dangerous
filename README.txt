@@ -23,6 +23,11 @@ files from other commanders to fill out your database.
 == CHANGE LOG
 ==============================================================================
 
+CAUTION: So many systems changed with the Beta 3 update that old prices files
+won't stand a chance of containing many valid systems. You may want to obtain
+a fresh file from one of the online sources, e.g.
+maddavo's site: http://www.davek.com.au/td/default.asp
+
 v6.0.0
 . Major overhaul of command line interface and the internal command API.
 User Facing:
@@ -60,10 +65,11 @@ TODO:
 . Convert "run" command because - that's kind of the point,
 . Document the command API in TEMPLATE.py
 
-v5.0.1 In Progress
+v5.0.1 Nov 4/2014
 . (kfsone) Issue #49 Errors in Ambiguity Error
 . (kfsone) Issue #51 L and ? items weren't honoring qty limits
 . (kfsone) Issue #50 Interaction between -0 and demand for a sold item
+. (Smacker65) Beta 3 Systems with markets
 
 v5.0.0 Oct 31/2014
 . (kfsone) Initial Beta 3 changes
