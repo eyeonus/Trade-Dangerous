@@ -124,8 +124,9 @@ class CommandEnv(TradeEnv):
         try:
             avoidances = self._props.avoid
             if not avoidances:
-                return
+                raise AttributeError("Fake")
         except AttributeError:
+            self.avoidPlaces = []
             return
 
         tdb = self.tdb
@@ -179,6 +180,8 @@ class CommandEnv(TradeEnv):
                     [ system.name() for system in avoidSystems ],
                     [ station.name() for station in avoidStations ]
         ))
+
+        self.avoidPlaces = self.avoidSystems + self.avoidStations
 
 
     def checkVias(self):
