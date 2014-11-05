@@ -267,21 +267,13 @@ class Item(object):
 ######################################################################
 
 
-class Trade(object):
+class Trade(namedtuple('Trade', [
+            'item', 'itemID', 'costCr', 'gainCr', 'stock', 'stockLevel', 'demand', 'demandLevel', 'srcAge', 'dstAge'
+        ])):
     """
         Describes what it would cost and how much you would gain
         when selling an item between two specific stations.
     """
-    __slots__ = ('item', 'itemID', 'costCr', 'gainCr', 'stock', 'stockLevel', 'demand', 'demandLevel', 'srcAge', 'dstAge')
-    # TODO: Replace with a class within Station that describes asking and paying.
-    def __init__(self, item, itemID, costCr, gainCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge):
-        self.item, self.itemID = item, itemID
-        self.costCr, self.gainCr = costCr, gainCr
-        self.stock, self.stockLevel = stock, stockLevel
-        self.demand, self.demandLevel = demand, demandLevel
-        self.srcAge, self.dstAge = srcAge, dstAge
-
-
     def name(self):
         return self.item.name()
 
@@ -488,8 +480,7 @@ class TradeDB(object):
         # (A->B distance populates A->B and B->A, etc)
         self.numLinks = 0
         for (lhs, rhs) in itertools.combinations(self.systemByID.values(), 2):
-            dX, dY, dZ = rhs.posX - lhs.posX, rhs.posY - lhs.posY, rhs.posZ - lhs.posZ
-            distSq = (dX * dX) + (dY * dY) + (dZ * dZ)
+            distSq = (rhs.posX - lhs.posX) ** 2 + (rhs.posY - lhs.posY) ** 2 + (rhs.posZ - lhs.posZ) ** 2
             if distSq <= longestJumpSq:
                 lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
                 self.numLinks += 1
