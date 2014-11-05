@@ -311,20 +311,20 @@ def run(results, cmdenv, tdb):
     viaStartPos = 1 if startStn else 0
     cmdenv.maxJumps = None
 
-    print("From {fromStn}, To {toStn}, Via {via}, "
+    if cmdenv.detail:
+        print( "From {fromStn}, To {toStn}, Via {via}, "
                     "Cap {cap}, Credits {cr}, "
                     "Hops {hops}, Jumps/Hop {jumpsPer}, Ly/Jump {lyPer:.2f}"
                     "\n".format(
-                isInfo=True,
-                fromStn=startStn.name() if startStn else 'Anywhere',
-                toStn=stopStn.name() if stopStn else 'Anywhere',
-                via=';'.join([stn.name() for stn in viaSet]) or 'None',
-                cap=cmdenv.capacity,
-                cr=startCr,
-                hops=numHops,
-                jumpsPer=cmdenv.maxJumpsPer,
-                lyPer=cmdenv.maxLyPer,
-            ))
+                        fromStn=startStn.name() if startStn else 'Anywhere',
+                        toStn=stopStn.name() if stopStn else 'Anywhere',
+                        via=';'.join([stn.name() for stn in viaSet]) or 'None',
+                        cap=cmdenv.capacity,
+                        cr=startCr,
+                        hops=numHops,
+                        jumpsPer=cmdenv.maxJumpsPer,
+                        lyPer=cmdenv.maxLyPer,
+                ))
 
     # Instantiate the calculator object
     calc = TradeCalc(tdb, cmdenv)
