@@ -275,7 +275,7 @@ def getSystemByNameIndex(cur):
                       ON System.system_id = Station.system_id
         """)
     return {
-        "{}/{}".format(sysName.upper(), stnName): ID
+        "{}/{}".format(sysName.upper(), stnName.upper()): ID
             for (ID, sysName, stnName)
             in cur
     }
@@ -372,7 +372,7 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
             ### Change current station
             categoryID, uiOrder = None, 0
             systemName, stationName = matches.group(1, 2)
-            facility = systemName.upper() + '/' + stationName
+            facility = systemName.upper() + '/' + stationName.upper()
 
             if debug > 1:
                 print("NEW STATION: {}".format(facility))
@@ -388,7 +388,7 @@ def genSQLFromPriceLines(priceFile, db, defaultZero, debug=0):
                         print("- DELETED: {}".format(facility))
                     stationID = DELETED
                     continue
-                facility = systemName.upper() + '/' + stationName
+                facility = systemName.upper() + '/' + stationName.upper()
                 try:
                     stationID = systemByName[facility]
                     if debug > 1:
@@ -546,6 +546,25 @@ def processPricesFile(db, pricesPath, stationID=None, defaultZero=False, debug=0
 
 ######################################################################
 
+def deprecationCheckSystem(line):
+    correctSystem = corrections.correctSystem(line[0])
+    if correctSystem != line[0]:
+        print("System.csv: deprecated system: {}".format(line[0]))
+        line[0] = correctSystem
+
+
+def deprecationCheckStation(line):
+    correctSystem = corrections.correctSystem(line[0])
+    if correctSystem != line[0]:
+        print("Station.csv: deprecated system: {}".format(line[0]))
+        line[0] = correctSystem
+
+    correctStation = corrections.correctStation(line[1])
+    if correctStation != line[1]:
+        print("Station.csv: deprecated station: {}".format(line[1]))
+        line[1] = correctStation
+
+
 def processImportFile(db, importPath, tableName, debug=0):
     if debug:
         print("* Processing import file '{}' for table '{}'". \
@@ -594,11 +613,18 @@ def processImportFile(db, importPath, tableName, debug=0):
         if debug:
             print("* SQL-Statement: {}".format(sql_stmt))
 
+        # Check if there is a deprecation check for this table.
+        deprecationFn = getattr(sys.modules[__name__],
+                                "deprecationCheck"+tableName,
+                                None)
+
         # import the data
         importCount = 0
         lineNo = 0
+
         for linein in csvin:
             if len(linein) == columnCount:
+                if deprecationFn: deprecationFn(linein)
                 if debug > 1:
                     print("-        Values: {}".format(', '.join(linein)))
                 try:
