@@ -613,7 +613,7 @@ def processImportFile(tdenv, db, importPath, tableName):
         for linein in csvin:
             if len(linein) == columnCount:
                 tdenv.DEBUG(1, "       Values: {}", ', '.join(linein))
-                if deprecationFn: deprecationFn(linein, cmdenv.debug)
+                if deprecationFn: deprecationFn(linein, tdenv.debug)
                 try:
                     db.execute(sql_stmt, linein)
                 except Exception as e:
