@@ -546,22 +546,22 @@ def processPricesFile(db, pricesPath, stationID=None, defaultZero=False, debug=0
 
 ######################################################################
 
-def deprecationCheckSystem(line):
+def deprecationCheckSystem(line, debug):
     correctSystem = corrections.correctSystem(line[0])
     if correctSystem != line[0]:
-        print("System.csv: deprecated system: {}".format(line[0]))
+        if debug: print("! System.csv: deprecated system: {}".format(line[0]))
         line[0] = correctSystem
 
 
-def deprecationCheckStation(line):
+def deprecationCheckStation(line, debug):
     correctSystem = corrections.correctSystem(line[0])
     if correctSystem != line[0]:
-        print("Station.csv: deprecated system: {}".format(line[0]))
+        if debug: print("! Station.csv: deprecated system: {}".format(line[0]))
         line[0] = correctSystem
 
     correctStation = corrections.correctStation(line[1])
     if correctStation != line[1]:
-        print("Station.csv: deprecated station: {}".format(line[1]))
+        if debug: print("! Station.csv: deprecated station: {}".format(line[1]))
         line[1] = correctStation
 
 
@@ -624,7 +624,7 @@ def processImportFile(db, importPath, tableName, debug=0):
 
         for linein in csvin:
             if len(linein) == columnCount:
-                if deprecationFn: deprecationFn(linein)
+                if deprecationFn: deprecationFn(linein, debug)
                 if debug > 1:
                     print("-        Values: {}".format(', '.join(linein)))
                 try:
