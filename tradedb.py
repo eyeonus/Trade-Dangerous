@@ -282,10 +282,6 @@ class Trade(namedtuple('Trade', [
         return self.item.name()
 
 
-    def describe(self):
-        print(self.item, self.itemID, self.costCr, self.gainCr)
-
-
     def __repr__(self):
         return "Trade(item={}, itemID={}, costCr={}, gainCr={})".format(self.item.name(), self.itemID, self.costCr, self.gainCr)
 
