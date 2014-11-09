@@ -134,8 +134,8 @@ class Checklist(object):
         gainCr = 0
         self.stepNo = 0
 
-        printHeading("(i) BEGINNING CHECKLIST FOR {} (i)".format(route.str()))
-        print()
+        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.str())
+        print(heading, "\n", '-' * len(heading), "\n\n", sep='')
 
         cmdenv = self.cmdenv
         if cmdenv.detail:
@@ -187,7 +187,8 @@ class Checklist(object):
                         "+{:n}cr".format(gainCr),
                         "={:n}cr".format(credits + gainCr))
             mfd.attention(3)
-            time.sleep(1.5)
+            from time import sleep
+            sleep(1.5)
 
 
 def validateRunArguments(tdb, cmdenv):
@@ -388,7 +389,7 @@ def render(results, cmdenv, tdb):
     # User wants to be guided through the route.
     if cmdenv.checklist:
         assert cmdenv.routes == 1
-        cl = Checklist(tdb, cmdenv.mfd)
+        cl = Checklist(tdb, cmdenv)
         cl.run(routes[0], cmdenv.credits)
 
 
