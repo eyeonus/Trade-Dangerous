@@ -287,7 +287,7 @@ class Trade(namedtuple('Trade', [
 
 
     def __repr__(self):
-        return "Trade(item={}, itemID={}, costCr={}, gainCr={})".format(repr(self.item()), self.itemID, self.costCr, self.gainCr)
+        return "Trade(item={}, itemID={}, costCr={}, gainCr={})".format(self.item.name(), self.itemID, self.costCr, self.gainCr)
 
 
 ######################################################################
