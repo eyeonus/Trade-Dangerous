@@ -1,6 +1,8 @@
 # Provides an interface for correcting star/station names that
 # have changed in recent versions.
 
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+
 # Arbitrary, negative value to denote something that's been removed.
 DELETED = -111
 

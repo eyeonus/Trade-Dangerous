@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
@@ -12,6 +10,8 @@
 
 ######################################################################
 # Imports
+
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 import re                   # Because irregular expressions are dull
 import sys

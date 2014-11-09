@@ -1,3 +1,4 @@
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.exceptions import CommandLineError
 from tradeenv import TradeEnv
 import pathlib

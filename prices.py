@@ -1,11 +1,11 @@
-#! /usr/bin/env python
-#---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
 #  I guarantee there is at least one bug neither of us knew about.
 #---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Generate TradeDangerous.prices
+
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 import sys
 import os

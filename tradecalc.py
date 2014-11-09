@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
@@ -13,11 +11,9 @@
 ######################################################################
 # Imports
 
-import math
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
-# Let's not confuse the Americans by using long numbers that don't
-# pause with a comma every 3 digits, and lets not confuse the French
-# by putting commas after every 3 digits instead of a full stop.
+import math
 import locale
 locale.setlocale(locale.LC_ALL, '')
 

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+
 class ColumnFormat(object):
     """
         Describes formatting of a column to be populated with data.

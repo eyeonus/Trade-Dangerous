@@ -1,4 +1,3 @@
-#---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
@@ -16,6 +15,8 @@
 #
 #  TODO: Split prices into per-system or per-station files so that
 #  we can tell how old data for a specific system is.
+
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 import re
 import sqlite3

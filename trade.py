@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
@@ -28,6 +28,8 @@
 # DEVELOPERS: If you are a programmer who wants TD to do something
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
+
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 ######################################################################
 # main entry point
