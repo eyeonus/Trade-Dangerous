@@ -473,6 +473,8 @@ class TradeDB(object):
             to be "links".
         """
 
+        self.tdenv.DEBUG(1, "Building trade links")
+
         longestJumpSq = self.maxSystemLinkLy ** 2  # So we don't have to sqrt every distance
 
         # Generate a series of symmetric pairs (A->B, A->C, A->D, B->C, B->D, C->D)
@@ -778,6 +780,8 @@ class TradeDB(object):
 
         if self.numLinks is None:
             self.buildLinks()
+
+        self.tdenv.DEBUG(1, "Loading universal trade data")
 
         # NOTE: Overconsumption.
         # We currently fetch ALL possible trades with no regard for reachability;
