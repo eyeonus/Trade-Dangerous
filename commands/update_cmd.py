@@ -111,6 +111,7 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
 
 
 def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
+    cmdenv.DEBUG(0, "Importing data from {}".format(str(path)))
     buildcache.processPricesFile(cmdenv,
                      db=tdb.getDB(),
                      pricesPath=path,
@@ -241,7 +242,6 @@ def editUpdate(tdb, cmdenv, stationID):
                         "Suit you, sir! Oh!"
                     ])))
         else:
-            cmdenv.DEBUG(0, "File changed - importing data.")
             importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
 
         tmpPath.unlink()
