@@ -88,37 +88,79 @@ class Route(object):
         gainCr = 0
         route = self.route
 
+        hops = [
+                hop for hop in self.hops[0:len(self.hops)]
+            ]
+
+        # TODO: Write as a comprehension, just can't wrap my head
+        # around it this morning.
+        def genSubValues(key):
+            for hop in hops:
+                for (tr, qty) in hop[0]:
+                    yield key(tr)
+        longestNameLen = max(genSubValues(key=lambda tr: len(tr.name())))
+
         text = self.str() + ":\n"
         if detail > 1:
-            text += self.summary() + "\n" + "\n"
-        for i in range(len(route) - 1):
-            hop = self.hops[i]
+            if detail > 2:
+                text += self.summary() + "\n"
+            hopFmt = "  Load from {station}:\n{purchases}"
+            hopStepFmt = ("     {qty:>4} x {item:<{longestName}}"
+                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total\n")
+            jumpsFmt = ("  Jump {jumps} => "
+                        "Gain {gain:n}cr "
+                        "({tongain:n}cr/ton) "
+                        "=> {credits:n}cr\n")
+            footer = '  ' + '-' * 76 + "\n"
+            endFmt = ("  Finish at {station} "
+                        "gaining {gain:n}cr "
+                        "=> est {credits:n}cr total\n")
+        elif detail:
+            hopFmt = "  Load from {station}:{purchases}\n"
+            hopStepFmt = " {qty} x {item} (@{eacost}cr),"
+            jumpsFmt = "  Jump {jumps}\n"
+            footer = None
+            endFmt = ("  Finish {station} "
+                        "+ {gain:n}cr "
+                        "=> {credits:n}cr\n")
+        else:
+            hopFmt = "  {station}:{purchases}\n"
+            hopStepFmt = " {qty} x {item},"
+            jumpsFmt = None
+            footer = None
+            endFmt = "  {station} +{gain:n}cr"
+
+        for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
-            text += " >-> " if i == 0 else "  +  "
-            text += "At %s, Buy:" % (route[i].name())
-            for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
-                if detail > 1:
-                    text += "\n  |   %4d x %-30s" % (qty, trade.name())
-                    text += " @ %10scr each, %10scr total" % (localedNo(trade.costCr), localedNo(trade.costCr * qty))
-                elif detail:
-                    text += " %d x %s (@%dcr)" % (qty, trade.name(), trade.costCr)
-                else:
-                    text += " %d x %s" % (qty, trade.name())
-                text += ","
+            purchases = ""
+            for (trade, qty) in sorted(hop[0],
+                                        key=lambda tradeOpt:
+                                            tradeOpt[1] * tradeOpt[0].gainCr,
+                                        reverse=True):
+                purchases += hopStepFmt.format(
+                                    qty=qty, item=trade.name(),
+                                    eacost=trade.costCr,
+                                    ttlcost=trade.costCr*qty,
+                                    longestName=longestNameLen)
                 hopTonnes += qty
-            text += "\n"
-            if detail:
-                text += "  |   "
-                if detail > 1:
-                    text += "%scr => " % localedNo((credits + gainCr))
-                text += " -> ".join([ jump.name() for jump in self.jumps[i] ])
-                if detail > 1:
-                    text += " => Gain %scr (%scr/ton) => %scr" % (localedNo(hopGainCr), localedNo(hopGainCr / hopTonnes), localedNo(credits + gainCr + hopGainCr))
-                text += "\n"
+            text += hopFmt.format(station=route[i].name(), purchases=purchases)
+            if jumpsFmt:
+                jumps = ' -> '.join([ jump.name() for jump in self.jumps[i] ])
+                text += jumpsFmt.format(
+                            jumps=jumps,
+                            gain=hopGainCr,
+                            tongain=hopGainCr / hopTonnes,
+                            credits=credits + gainCr + hopGainCr
+                            )
+
             gainCr += hopGainCr
 
-        text += " <-< %s gaining %scr => %scr total" % (route[-1].name(), localedNo(gainCr), localedNo(credits + gainCr))
-        text += "\n"
+        text += footer or ""
+        text += endFmt.format(
+                        station=route[-1].name(),
+                        gain=gainCr,
+                        credits=credits + gainCr
+                        )
 
         return text
 
@@ -131,14 +173,21 @@ class Route(object):
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum([hop[1] for hop in hops])
         numJumps = sum([len(hopJumps)-1 for hopJumps in jumps])
-        return "\n".join([
-            "Start CR: %10s" % localedNo(credits),
-            "Hops    : %10s" % localedNo(len(hops)),
-            "Jumps   : %10s" % localedNo(numJumps), # always includes start point
-            "Gain CR : %10s" % localedNo(ttlGainCr),
-            "Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)),
-            "Final CR: %10s" % localedNo(credits + ttlGainCr),
-        ])
+        return (
+            "Start CR: {start:10n}\n"
+            "Hops    : {hops:10n}\n"
+            "Jumps   : {jumps:10n}\n"
+            "Gain CR : {gain:10n}\n"
+            "Gain/Hop: {hopgain:10n}\n"
+            "Final CR: {final:10n}\n" . format(
+                    start=credits,
+                    hops=len(hops),
+                    jumps=numJumps,
+                    gain=ttlGainCr,
+                    hopgain=ttlGainCr / len(hops),
+                    final=credits + ttlGainCr
+                )
+            )
 
 
 class TradeCalc(object):
@@ -420,9 +469,3 @@ class TradeCalc(object):
 
         return result
 
-
-def localedNo(num): # as in "transformed into the current locale"
-    """
-        Returns a locale-formatted version of a number, e.g. 1,234,456.
-    """
-    return locale.format('%d', num, grouping=True)

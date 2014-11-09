@@ -152,7 +152,7 @@ class Checklist(object):
 
             self.note("Buy at {}".format(cur.name()))
             for (trade, qty) in sortedTradeOptions:
-                self.doStep('Buy {} x'.format(qty), trade.name(), '@ {}cr'.format(localedNo(trade.costCr)))
+                self.doStep('Buy {:n} x'.format(qty), trade.name(), '@ {}cr'.format(trade.costCr))
             if cmdenv.detail:
                 self.doStep('Refuel')
             print()
@@ -168,18 +168,23 @@ class Checklist(object):
 
             self.note("Sell at {}".format(nxt.name()))
             for (trade, qty) in sortedTradeOptions:
-                self.doStep('Sell {} x'.format(localedNo(qty)), trade.name(), '@ {}cr'.format(localedNo(trade.costCr + trade.gainCr)))
+                self.doStep('Sell {:n} x'.format(qty),
+                            trade.name(), '@ {:n}cr'.format(
+                                trade.costCr + trade.gainCr))
             print()
 
             gainCr += hop[1]
             if cmdenv.detail and gainCr > 0:
-                self.note("GAINED: {}cr, CREDITS: {}cr".format(localedNo(gainCr), localedNo(credits + gainCr)))
+                self.note("GAINED: {:n}cr, CREDITS: {:n}cr".format(
+                            gainCr, credits + gainCr))
 
             if hopNo < lastHopIdx:
                 print("\n--------------------------------------\n")
 
         if mfd:
-            mfd.display('FINISHED', "+{}cr".format(localedNo(gainCr)), "={}cr".format(localedNo(credits + gainCr)))
+            mfd.display('FINISHED',
+                        "+{:n}cr".format(gainCr),
+                        "={:n}cr".format(credits + gainCr))
             mfd.attention(3)
             time.sleep(1.5)
 
@@ -265,7 +270,6 @@ def validateRunArguments(tdb, cmdenv):
 
     if cmdenv.mfd:
         cmdenv.mfd.display("Loading Trades")
-    tdb.loadTrades()
 
     if startStn and startStn.itemCount == 0:
         raise NoDataError("Start station {} doesn't have any price data.".format(
@@ -273,12 +277,16 @@ def validateRunArguments(tdb, cmdenv):
     if stopStn and stopStn.itemCount == 0:
         raise NoDataError("End station {} doesn't have any price data.".format(
                             stopStn.name()))
-    if stopStn and cmdenv.hops == 1 and startStn and not stopStn in startStn.tradingWith:
-        raise CommandLineError("No profitable items found between {} and {}".format(
+
+    tdb.loadTrades()
+
+    if startStn:
+        if stopStn and cmdenv.hops == 1 and not stopStn in startStn.tradingWith:
+            raise CommandLineError("No profitable items found between {} and {}".format(
                                 startStn.name(), stopStn.name()))
-    if startStn and len(startStn.tradingWith) == 0:
-        raise NoDataError("No data found for potential buyers for items from {}.".format(
-                            startStn.name()))
+        if len(startStn.tradingWith) == 0:
+            raise NoDataError("No data found for potential buyers for items from {}.".format(
+                                startStn.name()))
 
 ######################################################################
 # Perform query and populate result set
@@ -286,7 +294,7 @@ def validateRunArguments(tdb, cmdenv):
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
 
-    cmdenv.DEBUG(1, "'run' mode")
+    cmdenv.DEBUG(1, "loading trades")
 
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
@@ -300,6 +308,8 @@ def run(results, cmdenv, tdb):
     avoidStations = cmdenv.avoidStations
 
     startCr = cmdenv.credits - cmdenv.insurance
+
+    # seed the route table with starting places
     routes = [
         Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0)
             for src in cmdenv.origins
@@ -311,8 +321,8 @@ def run(results, cmdenv, tdb):
     viaStartPos = 1 if startStn else 0
     cmdenv.maxJumps = None
 
-    if cmdenv.detail:
-        print( "From {fromStn}, To {toStn}, Via {via}, "
+    cmdenv.DEBUG(0,
+                    "From {fromStn}, To {toStn}, Via {via}, "
                     "Cap {cap}, Credits {cr}, "
                     "Hops {hops}, Jumps/Hop {jumpsPer}, Ly/Jump {lyPer:.2f}"
                     "\n".format(
