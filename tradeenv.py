@@ -6,27 +6,20 @@ class TradeEnv(object):
         collection of operational parameters.
     """
 
+    defaults = {
+        'debug': 0,
+        'detail': 0,
+        'quiet': 0,
+    }
+
     def __init__(self, properties=None, **kwargs):
-        if not properties:
-            properties = type('Properties',
-                                (),
-                                dict(
-                                    debug=0,
-                                    detail=0,
-                                    quiet=0,
-                                ))
+        properties = properties or dict()
+        self.__dict__.update(TradeEnv.defaults)
+        if properties:
+            self.__dict__.update(properties.__dict__)
+        if kwargs:
+            self.__dict__.update(kwargs)
 
-        self._props = properties
-        for arg, value in kwargs.items():
-            setattr(self, arg, value)
-
-
-    def __getattr__(self, key, default=None):
-        """ Fall back to _props when accessing attributes. """
-        try:
-            return getattr(self._props, key, default)
-        except AttributeError:
-            return default
 
 
     def DEBUG(self, debugLevel, outText, *args, **kwargs):

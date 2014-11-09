@@ -7,6 +7,7 @@ import importlib
 
 import commands.exceptions
 import commands.parsing
+from commands.commandenv import CommandEnv
 
 commandList = [
     'buildcache',
@@ -189,8 +190,6 @@ class CommandIndex(object):
                 )
 
         properties = parser.parse_args(argv[1:])
-
-        from commands.commandenv import CommandEnv
 
         return CommandEnv(properties, argv, cmdModule)
 

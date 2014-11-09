@@ -39,7 +39,7 @@ class CommandEnv(TradeEnv):
         self.mfd = None
         self.argv = argv or sys.argv
 
-        if properties.detail and properties.quiet:
+        if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
 
         self._cmd   = cmdModule or __main__
@@ -48,7 +48,7 @@ class CommandEnv(TradeEnv):
         # We need to relocate to the working directory so that
         # we can load a TradeDB after this without things going
         # pear-shaped
-        if not properties.cwd and argv[0]:
+        if not self.cwd and argv[0]:
             cwdPath = pathlib.Path('.').resolve()
             exePath = pathlib.Path(argv[0]).parent.resolve()
             if cwdPath != exePath:
@@ -94,7 +94,7 @@ class CommandEnv(TradeEnv):
 
     def checkFromToNear(self):
         def check(label, fn, fieldName):
-            key = getattr(self._props, fieldName, None)
+            key = getattr(self, fieldName, None)
             if key:
                 try:
                     return fn(key)
@@ -123,7 +123,7 @@ class CommandEnv(TradeEnv):
         avoidStations = self.avoidStations = []
 
         try:
-            avoidances = self._props.avoid
+            avoidances = self.avoid
             if not avoidances:
                 raise AttributeError("Fake")
         except AttributeError:
@@ -187,7 +187,7 @@ class CommandEnv(TradeEnv):
 
     def checkVias(self):
         """ Process a list of station names and build them into a list of waypoints. """
-        viaStationNames = getattr(self._props, 'via', None)
+        viaStationNames = getattr(self, 'via', None)
         viaStations = self.viaStations = []
         # accept [ "a", "b,c", "d" ] by joining everything and then splitting it.
         if viaStationNames:
@@ -197,14 +197,14 @@ class CommandEnv(TradeEnv):
 
     def checkShip(self):
         """ Parse user-specified ship and populate capacity and maxLyPer from it. """
-        ship = getattr(self._props, 'ship', None)
+        ship = getattr(self, 'ship', None)
         if ship is None:
             return
 
         ship = self.ship = self.tdb.lookupShip(ship)
 
         # Assume we want maxLyFull unless there's a --full that's explicitly False
-        if getattr(self._props, 'full', True):
+        if getattr(self, 'full', True):
             shipMaxLy = ship.maxLyFull
         else:
             shipMaxLy = ship.maxLyEmpty
