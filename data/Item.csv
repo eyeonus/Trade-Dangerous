@@ -1,4 +1,4 @@
-name@Category.category_id,name
+name@Category.category_id,unq:name
 'Chemicals','Explosives'
 'Chemicals','Hydrogen Fuel'
 'Chemicals','Mineral Oil'
