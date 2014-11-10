@@ -21,6 +21,10 @@ class TradeEnv(object):
             self.__dict__.update(kwargs)
 
 
+    def __getattr__(self, key, default=None):
+        """ Return the default for attributes we don't have """
+        return default
+
 
     def DEBUG(self, debugLevel, outText, *args, **kwargs):
         """
