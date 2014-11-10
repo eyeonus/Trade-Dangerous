@@ -56,8 +56,16 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    import tradeexcept
     import sys
+    if sys.hexversion < 0x03040000:
+        raise SystemExit(
+			"Sorry: TradeDangerous requires Python 3.4 or higher.\n"
+			"For assistance, see:\n"
+			"\tFacebook Group: http://kfs.org/td/group\n"
+			"\tBitbucket Page: http://kfs.org/td/source\n"
+			"\tEDForum Thread: http://kfs.org/td/thread\n"
+			)
+    import tradeexcept
 
     try:
         main(sys.argv)
