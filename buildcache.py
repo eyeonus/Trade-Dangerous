@@ -155,30 +155,30 @@ class UnknownItemError(BuildCacheBaseException):
         super().__init__(fromFile, lineNo, error)
 
 
-class MultipleStationEntriesError(BuildCacheBaseException):
+class DuplicateKeyError(BuildCacheBaseException):
     """
-        Raised when one station appears multiple times in the same file.
-        Attributes:
-            facility    Facility name that was repeated
-            prevLineNo  Where the original entry was
+        Raised when an item is being redefined.
     """
+    def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
+        super().__init__(fromFile, lineNo,
+                "Second entry for {keytype} \"{keyval}\", "
+                "previous entry at line {prev}.".format(
+                    keytype=keyType,
+                    keyval=keyValue,
+                    prev=prevLineNo
+                ))
+
+
+class MultipleStationEntriesError(DuplicateKeyError):
+    """ Raised when a station appears multiple times in the same file. """
     def __init__(self, fromFile, lineNo, facility, prevLineNo):
-        error = "Second entry for station '{}', previous at line {}.". \
-                    format(facility, prevLineNo)
-        super().__init__(fromFile, lineNo, error)
+        super().__init__(fromFile, lineNo, 'station', facility, prevLineNo)
 
 
-class MultipleItemEntriesError(BuildCacheBaseException):
-    """
-        Raised when one item appears multiple times in the same station.
-        Attributes:
-            item        Name of the item that was repeated
-            prevLineNo  Where the original entry was
-    """
+class MultipleItemEntriesError(DuplicateKeyError):
+    """ Raised when one item appears multiple times in the same station. """
     def __init__(self, fromFile, lineNo, item, prevLineNo):
-        error = "Second entry for item '{}', previous at line {}.". \
-                    format(item, prevLineNo)
-        super().__init__(fromFile, lineNo, error)
+        super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
 
 
 class SyntaxError(BuildCacheBaseException):
@@ -591,23 +591,38 @@ def deprecationCheckStation(line, debug):
 def processImportFile(tdenv, db, importPath, tableName):
     tdenv.DEBUG(0, "Processing import file '{}' for table '{}'", str(importPath), tableName)
 
-    fkeySelectStr = "(SELECT {newValue} FROM {table} WHERE {table}.{column} = ?)"
+    fkeySelectStr = ("("
+            "SELECT {newValue}"
+            " FROM {table}"
+            " WHERE {table}.{column} = ?"
+            ")"
+    )
+    uniquePfx = "unq:"
 
     with importPath.open() as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
-        columnNames = next(csvin)
-        columnCount = len(columnNames)
+        columnDefs = next(csvin)
+        columnCount = len(columnDefs)
 
         # split up columns and values
-        # this is necessary because the insert might use a foreign key
+        # this is necessqary because the insert might use a foreign key
+        columnNames = []
         bindColumns = []
         bindValues  = []
-        for cName in columnNames:
+        uniqueIndexes = []
+        for (cIndex, cName) in enumerate(columnDefs):
             splitNames = cName.split('@')
+            # is this a unique index?
+            colName = splitNames[0]
+            if colName.startswith(uniquePfx):
+                uniqueIndexes += [ (cIndex, dict()) ]
+                colName = colName[len(uniquePfx):]
+            columnNames.append(colName)
+
             if len(splitNames) == 1:
                 # no foreign key, straight insert
-                bindColumns.append(splitNames[0])
+                bindColumns.append(colName)
                 bindValues.append('?')
             else:
                 # foreign key, we need to make a select
@@ -619,7 +634,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                     fkeySelectStr.format(
                         newValue=splitNames[1],
                         table=joinTable,
-                        column=splitNames[0]
+                        column=colName,
                     )
                 )
         # now we can make the sql statement
@@ -639,12 +654,26 @@ def processImportFile(tdenv, db, importPath, tableName):
 
         # import the data
         importCount = 0
-        lineNo = 0
 
         for linein in csvin:
+            lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG(1, "       Values: {}", ', '.join(linein))
                 if deprecationFn: deprecationFn(linein, tdenv.debug)
+                for (colNo, index) in uniqueIndexes:
+                    colValue = linein[colNo]
+                    try:
+                        prevLineNo = index[colValue]
+                    except KeyError:
+                        prevLineNo = 0
+                    if prevLineNo:
+                        raise DuplicateKeyError(
+                                importPath, lineNo,
+                                columnNames[colNo], colValue,
+                                prevLineNo
+                                )
+                    index[colValue] = lineNo
+
                 try:
                     db.execute(sql_stmt, linein)
                 except Exception as e:
@@ -662,7 +691,6 @@ def processImportFile(tdenv, db, importPath, tableName):
                         )
                     ) from None
                 importCount += 1
-            ++lineNo
         db.commit()
         tdenv.DEBUG(0, "{count} {table}s imported",
                             count=importCount,
