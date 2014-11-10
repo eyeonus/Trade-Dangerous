@@ -46,6 +46,7 @@ CREATE TABLE System
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  );
+CREATE INDEX idx_system_by_pos ON System (pos_x, pos_y, pos_z, system_id);
 
 
 CREATE TABLE Station
@@ -161,8 +162,8 @@ CREATE TABLE AltItemNames
 
 CREATE TABLE Price
  (
-   item_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
+   item_id INTEGER NOT NULL,
    ui_order INTEGER NOT NULL DEFAULT 0,
    -- how many credits will the station pay for this item?
    sell_to INTEGER NOT NULL,
@@ -174,7 +175,7 @@ CREATE TABLE Price
    stock INTEGER DEFAULT -1,
    stock_level INTEGER DEFAULT -1,
 
-   PRIMARY KEY (item_id, station_id),
+   PRIMARY KEY (station_id, item_id),
 
    FOREIGN KEY (item_id) REFERENCES Item(item_id)
    	ON UPDATE CASCADE
