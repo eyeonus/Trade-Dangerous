@@ -65,78 +65,6 @@ TODO:
 . Convert "run" command because - that's kind of the point,
 . Document the command API in TEMPLATE.py
 
-v5.0.1 Nov 4/2014
-. (kfsone) Issue #49 Errors in Ambiguity Error
-. (kfsone) Issue #51 L and ? items weren't honoring qty limits
-. (kfsone) Issue #50 Interaction between -0 and demand for a sold item
-. (Smacker65) Beta 3 Systems with markets
-
-v5.0.0 Oct 31/2014
-. (kfsone) Initial Beta 3 changes
- - Improved the "corrections" system which facilitates changing names
-   between versions, you can now "correct" System, Station, Category
-   and Item names;
- - Renamed "Drugs" to "Legal Drugs", guess we need to add "Illegal Drugs"
- - Renamed some obvious items (Hel-Static Furnaces -> Microbial Furnaces),
- - Added some items that looked new (but could be renames),
- - Renamed Hopkins Hangar -> Cori Terminal
-
-v4.7.0 Oct 26/2014
-. (kfsone) Added "buy" sub-command for looking up sales of an item
-
-v4.6.3 Oct 26/2014
-. (kfsone) Fixed distance-related breakage in 4.6.2
-. (kfsone) Improved error feedback while processing .prices file
-
-v4.6.2 Oct 25/2014
-. (kfsone) Added support for self-correcting star/station name changes,
-. (kfsone) Added name corrections for maddavo's current TradeDangerous.prices,
-. (kfsone) Assorted minor API changes,
-. (kfsone) Minor startup optimization pass
-
-v4.6.1 Oct 25/2014
-. (kfsone) Added "--supply" (-S) which shows supply (demand and stock) fields when editing,
-. (kfsone) Added "--timestamps" (-T) which shows timestamp field when editing,
-. (kfsone) Added "--force-na" (-0) which replaces 'unk' values with 'n/a' (use with care),
-. (kfsone) Deprecated "--all" and "--zero",
-. (kfsone) Minor fixes to new .prices format
-
-v4.6.0 Oct 24/2014
-. (kfsone) New extended .prices format:
-  <item name> <sell> <buy> <demand> <stock> [<time>]
-  Demand/stock can be:
-   unk     :-  "unknown" - treat as though always available
-   n/a     :-  "not available" - ignore in trade calcs
-   0       :-  alias for "n/a"
-  or the number of units followed by L, M or H, e.g.
-   10L     :- 10 units at Low
-   500M    :- 500 units at Medium
-   9000H   :- 9000 units at High
-  Note that the time has moved to the end of the line.
-  When updating data, you can either remove the time and have it
-  default to 'now' or you can explicitly write the word now.
-. (smacker65) Couple of station name corrections
-. (kfsone) Better feedback when price data could not be found
-. (kfsone) .prices wiki page
-. (smacker65) More star data and corrections
-. (gazelle) Fix for "--zero" and, e.g., "-1L0"
-
-v4.5.1 Oct 20/2014
-. (kfsone) Added --dir (-C) command line for specifying which directory you
-  want trade.py to look in for it's files.
-. (kfsone) trade.py will now default to trying to look for files relative
-  to where the "trade.py" script was called from. So if you run
-  "c:\tradedangerous\trade.py" it will look for the data directory as
-  "c:\tradedangerous\data\" (Issue #39)
-
-v4.5.0 Oct 20/2014
-. (Smacker65/Community) Smacker brings the star database up to 567 systems.
-
-v4.4.0 Oct 19/2014
-. (Gazelle/Community) Merged Gazelle's update with community sources Star/Station
-  data. Thanks to Gazelle, Smacker, RedWizzard, Haringer, Wolverine.
-  It's only data but it's a big update and a lot of work went into it :)
-
 (See end of file for older changes)
 
 
@@ -161,9 +89,9 @@ you through some simpler cases.
   instructions for the current step on the multi-function display of my
   X52 throttle...
 
-  trade.py --detail --detail --detail run --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --checklist --x52-pro
+  trade.py run --detail --detail --detail --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --checklist --x52-pro
 or
-  trade.py -vvv run --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 --check --x52
+  trade.py run -vvv --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 --check --x52
 
 Lets dial it back and start with something simpler:
 
@@ -209,7 +137,7 @@ the --detail option. This is one of the options common to all commands, and
 so it has to be specified before the command. It can be abbreviated "-v"
 (think: verbose)
 
- C:\TradeDangerous\> trade.py --detail run --ship hauler --credits 20000
+ C:\TradeDangerous\> trade.py run --detail --ship hauler --credits 20000
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
        |   Acihaut -> LHS3006 -> Aulin
@@ -233,7 +161,7 @@ The "--ly-per" argument (or it's --ly abbreviation) lets us tell TD to limit
 connections to a max jump distance, in this case of 5.2ly. Note that this
 time I'm using "-v" as a short-cut for "--detail"
 
- C:\TradeDangerous\> trade.py -v run --ship hauler --credits 20000 --ly-per 5.2
+ C:\TradeDangerous\> trade.py run -v --ship hauler --credits 20000 --ly-per 5.2
      >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
        |   Morgor -> Dahan -> Asellus
      -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
@@ -243,7 +171,7 @@ time I'm using "-v" as a short-cut for "--detail"
 Maybe you don't want to make multiple jumps between systems? Use the "--jumps"
 switch to lower or increase the number of jumps between systems on each hop:
 
-  C:\TradeDangerous\> trade.py -v run --ship hauler --credits 20000 --jumps 1
+  C:\TradeDangerous\> trade.py run -v --ship hauler --credits 20000 --jumps 1
     ERANIN Azeban -> DAHAN Gateway:
      >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
        |   Eranin -> Asellus
@@ -477,7 +405,7 @@ BUY sub-command:
   Looks for stations selling the specified item: that means they have a non-zero
   asking price and a stock level other than "n/a".
 
-  trade.py [-q | -q] buy [--quantity Q] [--near N] [--ly-per N] item [-P | -S]
+  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S]
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -508,7 +436,7 @@ NAV sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to routes with a full cargo hold.
 
-  trade.py [-q | -v] nav [--ship name [--full]] [--ly-per] from to
+  trade.py nav [-q | -v] [--ship name [--full]] [--ly-per] from to
 
     --ship name
       Uses the values for an empty ship to constrain jump ranges,
@@ -554,7 +482,7 @@ LOCAL sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to systems with a full cargo hold.
 
-  trade.py [-q | -v] local [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
+  trade.py local [-q | -v] [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
 
     --ship name
       Uses the values for an empty ship to constrain jump ranges,
@@ -585,19 +513,19 @@ LOCAL sub-command:
   Examples:
     > trade.py local --ly 11.0 dahan
     Local systems to DAHAN within 11.0 ly.
-	--------------------------------------
-	 4.66 Asellus Primus
-	 5.12 Morgor
-	 6.41 Eranin
-	 8.26 Meliae
-	 8.58 LHS 2884
-	 8.60 LP 98-132
-	 9.20 Aulis
-	 9.75 GD 319
-	10.08 BD+47 2112
-	10.33 i Bootis
+  	--------------------------------------
+  	 4.66 Asellus Primus
+  	 5.12 Morgor
+  	 6.41 Eranin
+  	 8.26 Meliae
+  	 8.58 LHS 2884
+  	 8.60 LP 98-132
+  	 9.20 Aulis
+  	 9.75 GD 319
+  	10.08 BD+47 2112
+  	10.33 i Bootis
     
-    > trade.py -v local --ly 11.0 sur
+    > trade.py local -v --ly 11.0 sur
     Local systems to SURYA within 11.0 ly.
     --------------------------------------
      9.22 [  2.2] 14 Herculis
@@ -606,7 +534,7 @@ LOCAL sub-command:
     10.59 [ 10.3] V1090 Herculis
     10.69 [ -1.6] Chi Herculis
     
-    > trade.py -vv local --ly 10.0 3006
+    > trade.py local -vv --ly 10.0 3006
     Local systems to LHS 3006 within 10.0 ly.
     -----------------------------------------
      5.64 [  0.4] Acihaut
@@ -692,20 +620,151 @@ a command line option (--sublime or just --subl) for invoking it.
 == That's nice, but I'm a programmer and I want to ...
 ==============================================================================
 
-Yeah, let me stop you there. 
+TradeDangerous is organized into modules, the key of which are:
 
-    from tradedb import *
-    from tradecalc import *
+  trade.tradedb.TradeDB
+    Presents the main database API; it loads stations, systems, ships, items
+    and provides query APIs for these.
 
-    tdb = TradeDB()
-    calc = TradeCalc(tdb, capacity=16, margin=0.01, unique=False)
+  trade.tradeenv.TradeEnv
+    Container for a bag of "properties" used across TD, such as debug level.
 
-Whatever it is you want to do, you can do from there.
+  trade.tradecalc.TradeCalc
+    The best profit calculator
 
-See "cli.py" for examples.
+  trade.tradeexcept.TradeExcept
+    Exception definitions
+
+  trade.mfd
+  trade.mfd.saitek
+    Multi-function display wrappers
+
+  trade.commands.commandenv.CommandEnv
+    Arg-parsing variant of TradeEnv
+
+  trade.commands.parsing
+    Helpers for creating argument lists for sub-commands
+
+  trade.commands.exceptions
+    Exceptions for sub-commands
+
+  trade.formatting:
+    Helper classes for presenting result sets
+
+
+Minimalist usage example:
+
+  import trade
+  tdb = trade.TradeDB()
+
+This creates a TradeDB instance using all-default parameters. It will take
+a while to complete because it loads the /entire/ database.
+
+You can override the environment by passing a "TradeEnv", which itself can
+be initialized with an argparse namespace or by passing default overrides:
+
+  import tradeenv
+  # Defaulted:
+  tdenv = TradeEnv()
+  # Use with argparse to use command-line switches for defaults
+  tdenv = TradeEnv(my_parser.parse())
+  # Override defaults directly
+  tdenv = TradeEnv(debug=1, detail=2)
+
+  import tradedb
+  tdb = tradedb.TradeDB(tdenv)
+
+Construction of a wholly-default TradeDB can take a while because it loads
+a lot of data that you often probably won't need. You can speed it up by
+disabling the bulk of this with:
+
+  tdb = TradeDB(tdenv, buildLinks=False, includeTrades=False)
+
+If you subsequently need this data, call
+
+  tdb.buildLinks()
+or
+  tdb.loadTrades()
+
+When TradeDB and TradeCalc do not currently provide built-in queries for
+the information you need, you can revert to the SQL Database with the
+TradeDB.query() and TradeDB.fetch_all() commands.
+
 
 == Change Log Archive
 ==============================================================================
+
+v5.0.1 Nov 4/2014
+. (kfsone) Issue #49 Errors in Ambiguity Error
+. (kfsone) Issue #51 L and ? items weren't honoring qty limits
+. (kfsone) Issue #50 Interaction between -0 and demand for a sold item
+. (Smacker65) Beta 3 Systems with markets
+
+v5.0.0 Oct 31/2014
+. (kfsone) Initial Beta 3 changes
+ - Improved the "corrections" system which facilitates changing names
+   between versions, you can now "correct" System, Station, Category
+   and Item names;
+ - Renamed "Drugs" to "Legal Drugs", guess we need to add "Illegal Drugs"
+ - Renamed some obvious items (Hel-Static Furnaces -> Microbial Furnaces),
+ - Added some items that looked new (but could be renames),
+ - Renamed Hopkins Hangar -> Cori Terminal
+
+v4.7.0 Oct 26/2014
+. (kfsone) Added "buy" sub-command for looking up sales of an item
+
+v4.6.3 Oct 26/2014
+. (kfsone) Fixed distance-related breakage in 4.6.2
+. (kfsone) Improved error feedback while processing .prices file
+
+v4.6.2 Oct 25/2014
+. (kfsone) Added support for self-correcting star/station name changes,
+. (kfsone) Added name corrections for maddavo's current TradeDangerous.prices,
+. (kfsone) Assorted minor API changes,
+. (kfsone) Minor startup optimization pass
+
+v4.6.1 Oct 25/2014
+. (kfsone) Added "--supply" (-S) which shows supply (demand and stock) fields when editing,
+. (kfsone) Added "--timestamps" (-T) which shows timestamp field when editing,
+. (kfsone) Added "--force-na" (-0) which replaces 'unk' values with 'n/a' (use with care),
+. (kfsone) Deprecated "--all" and "--zero",
+. (kfsone) Minor fixes to new .prices format
+
+v4.6.0 Oct 24/2014
+. (kfsone) New extended .prices format:
+  <item name> <sell> <buy> <demand> <stock> [<time>]
+  Demand/stock can be:
+   unk     :-  "unknown" - treat as though always available
+   n/a     :-  "not available" - ignore in trade calcs
+   0       :-  alias for "n/a"
+  or the number of units followed by L, M or H, e.g.
+   10L     :- 10 units at Low
+   500M    :- 500 units at Medium
+   9000H   :- 9000 units at High
+  Note that the time has moved to the end of the line.
+  When updating data, you can either remove the time and have it
+  default to 'now' or you can explicitly write the word now.
+. (smacker65) Couple of station name corrections
+. (kfsone) Better feedback when price data could not be found
+. (kfsone) .prices wiki page
+. (smacker65) More star data and corrections
+. (gazelle) Fix for "--zero" and, e.g., "-1L0"
+
+v4.5.1 Oct 20/2014
+. (kfsone) Added --dir (-C) command line for specifying which directory you
+  want trade.py to look in for it's files.
+. (kfsone) trade.py will now default to trying to look for files relative
+  to where the "trade.py" script was called from. So if you run
+  "c:\tradedangerous\trade.py" it will look for the data directory as
+  "c:\tradedangerous\data\" (Issue #39)
+
+v4.5.0 Oct 20/2014
+. (Smacker65/Community) Smacker brings the star database up to 567 systems.
+
+v4.4.0 Oct 19/2014
+. (Gazelle/Community) Merged Gazelle's update with community sources Star/Station
+  data. Thanks to Gazelle, Smacker, RedWizzard, Haringer, Wolverine.
+  It's only data but it's a big update and a lot of work went into it :)
 
 v4.3.0 Oct 17/2014
 . (gazelle) Added "--zero" option to "update --all" which makes the default
