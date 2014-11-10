@@ -23,6 +23,7 @@ import sqlite3
 import sys
 import os
 import csv
+import math
 from pathlib import Path
 from collections import namedtuple
 from tradeexcept import TradeException
@@ -697,6 +698,35 @@ def processImportFile(tdenv, db, importPath, tableName):
                             table=tableName)
 
 
+def generateSystemLinks(tdenv, db, maxLinkDist):
+    tdenv.DEBUG(0, "Generating SystemLinks table")
+    db.create_function("sqrt", 1, math.sqrt)
+    db.execute("""
+        CREATE TABLE SystemLinks
+            AS SELECT lhs.system_id AS lhs_id,
+                  rhs.system_id AS rhs_id,
+                  ((lhs.pos_x - rhs.pos_x) * (lhs.pos_x - rhs.pos_x)) +
+                  ((lhs.pos_y - rhs.pos_y) * (lhs.pos_y - rhs.pos_y)) +
+                  ((lhs.pos_z - rhs.pos_z) * (lhs.pos_z - rhs.pos_z)) dist
+              FROM    System AS lhs, System AS rhs
+              WHERE lhs.system_id != rhs.system_id
+                  AND rhs.pos_x BETWEEN lhs.pos_x - {mld} and lhs.pos_x + {mld}
+                  AND rhs.pos_y BETWEEN lhs.pos_y - {mld} and lhs.pos_y + {mld}
+                  AND rhs.pos_z BETWEEN lhs.pos_z - {mld} and lhs.pos_z + {mld}
+                  AND dist <= {mldsq}
+    """.format(
+            mld=maxLinkDist,
+            mldsq=maxLinkDist**2,
+        ))
+    db.execute("UPDATE SystemLinks SET dist = sqrt(dist)")
+    db.execute("""
+        CREATE UNIQUE INDEX
+            idx_system_links_systems
+            ON SystemLinks(lhs_id, rhs_id)
+    """)
+    db.commit()
+
+
 ######################################################################
 
 def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=False):
@@ -745,6 +775,8 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     tdenv.DEBUG(3, importScript)
     newDB.executescript(importScript)
     newDB.commit()
+
+    generateSystemLinks(tdenv, newDB, maxLinkDist=80)
 
     tdenv.DEBUG(0, "Finished")
 
