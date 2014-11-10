@@ -206,7 +206,7 @@ class SupplyError(BuildCacheBaseException):
 ######################################################################
 # Helpers
 
-class UnitsAndLevel(object):
+class Supply(object):
     """
         Helper class for breaking a units-and-level reading (e.g. -1L-1 or 50@M)
         into units and level values or throwing diagnostic messages to help the
@@ -216,40 +216,41 @@ class UnitsAndLevel(object):
     levels = {
         '-1': -1, '?': -1,
         '0': 0, '-': 0,
-        'L': 1, '1': 1,
-        'M': 2, '2': 2,
-        'H': 3, '3': 3,
+        'l': 1, 'L': 1, '1': 1,
+        'm': 2, 'M': 2, '2': 2,
+        'h': 3, 'H': 3, '3': 3,
     }
     # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(?P<units>\d+)L(?P<level>-?\d+)$')
+    splitLRe = re.compile(r'^(\d+)L(-?\d+)$', re.IGNORECASE)
     # Split a <units><level> reading
-    splitAtRe = re.compile(r'^(?P<units>\d+)(?P<level>[\?LMH])$', re.IGNORECASE)
+    splitAtRe = re.compile(r'^(\d+)([\?LMH])$', re.IGNORECASE)
 
-    def __init__(self, pricesFile, lineNo, category, reading):
-        ucReading = reading.upper()
-        if ucReading in ("UNK", "?", "-1L-1", "-1L0", "0L-1"):
-            self.units, self.level = -1, -1
-        elif ucReading in ("-", "-L-", "N/A", "0"):
-            self.units, self.level = 0, 0
+def parseSupply(pricesFile, lineNo, category, reading):
+        if reading in ("?", "unk", "UNK", "-1L-1", "-1L0", "0L-1"):
+            return (-1, -1)
+        elif reading in ("-", "0", "-L-", "n/a", "N/A"):
+            return (0, 0)
         else:
-            matches = self.splitLRe.match(ucReading) or \
-                        self.splitAtRe.match(ucReading)
+            matches = Supply.splitAtRe.match(reading) or \
+                        Supply.splitLRe.match(reading)
             if not matches:
                 raise SupplyError(
                         pricesFile, lineNo, category,
                         "Expected 'unk', <units>L<level> or <units>[?LMH]",
                         reading
                         )
-            units, level = matches.group('units', 'level')
-            try:
-                self.units, self.level = int(units), UnitsAndLevel.levels[level]
-            except KeyError:
-                raise SupplyError(pricesFile, lineNo, category,
-                        "Invalid level value", reading)
-            if self.units < 0:
+            units = int(matches.group(1))
+            if units < 0:
                 raise SupplyError(pricesFile, lineNo, category,
                         "Negative unit quantity. Please use 'unk' for unknown",
                         reading)
+            try:
+                level = Supply.levels[matches.group(2)]
+            except KeyError:
+                raise SupplyError(pricesFile, lineNo, category,
+                        "Invalid level value", reading)
+
+            return (units, level)
 
 
 class PriceEntry(namedtuple('PriceEntry', [
@@ -352,112 +353,91 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
     lineNo = 0
 
+    facility = None
     processedStations = {}
     processedItems = {}
     itemPrefix = ""
     DELETED = corrections.DELETED
 
-    for line in priceFile:
-        lineNo += 1
-        text = noCommentRe.match(line).group('text').strip()
-        # replace whitespace with single spaces
-        text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
-        if not text:
-            continue
 
-        ########################################
-        ### "@ STAR/Station" lines.
-        matches = systemStationRe.match(text)
-        if matches:
-            ### Change current station
-            categoryID, uiOrder = None, 0
-            systemName, stationName = matches.group(1, 2)
+    def changeStation(matches):
+        nonlocal categoryID, uiOrder, facility, stationID
+        nonlocal processedStations, processedItems
+
+        ### Change current station
+        categoryID, uiOrder = None, 0
+        systemName, stationName = matches.group(1, 2)
+        facility = systemName.upper() + '/' + stationName.upper()
+
+        tdenv.DEBUG(1, "NEW STATION: {}", facility)
+
+        # Make sure it's valid.
+        try:
+            stationID = systemByName[facility]
+        except KeyError:
+            stationID = -1
+
+        if stationID < 0:
+            systemName = corrections.correctSystem(systemName)
+            stationName = corrections.correctStation(stationName)
+            if systemName == DELETED or stationName == DELETED:
+                tdenv.DEBUG(1, "DELETED: {}", facility)
+                stationID = DELETED
             facility = systemName.upper() + '/' + stationName.upper()
-
-            tdenv.DEBUG(1, "NEW STATION: {}", facility)
-
-            # Make sure it's valid.
             try:
                 stationID = systemByName[facility]
+                tdenv.DEBUG(0, "Renamed: {}", facility)
             except KeyError:
-                systemName = corrections.correctSystem(systemName)
-                stationName = corrections.correctStation(stationName)
-                if systemName == DELETED or stationName == DELETED:
-                    tdenv.DEBUG(1, "DELETED: {}", facility)
-                    stationID = DELETED
-                    continue
-                facility = systemName.upper() + '/' + stationName.upper()
-                try:
-                    stationID = systemByName[facility]
-                    tdenv.DEBUG(0, "Renamed: {}", facility)
-                except KeyError:
-                    raise UnknownStationError(priceFile, lineNo, facility)
+                raise UnknownStationError(priceFile, lineNo, facility) from None
 
-            # Check for duplicates
-            if stationID in processedStations:
-                raise MultipleStationEntriesError(
-                            priceFile, lineNo, facility,
-                            processedStations[stationID]
-                        )
+        # Check for duplicates
+        if stationID in processedStations:
+            raise MultipleStationEntriesError(
+                        priceFile, lineNo, facility,
+                        processedStations[stationID]
+                    )
 
-            processedStations[stationID] = lineNo
-            processedItems = {}
+        processedStations[stationID] = lineNo
+        processedItems = {}
 
-            continue
-        if not stationID:
-            # Need a station to process any other type of line.
-            raise SyntaxError(priceFile, lineNo,
-                                "Expecting '@ SYSTEM / Station' line", text)
-        if stationID == DELETED:
-            # Ignore all values from a deleted station/system.
-            continue
 
-        ########################################
-        ### "+ Category" lines.
-        matches = categoryRe.match(text)
-        if matches:
-            uiOrder = 0
-            categoryName = matches.group(1)
+    def changeCategory(matches):
+        nonlocal uiOrder, categoryID
 
-            tdenv.DEBUG(1, "NEW CATEGORY: {}", categoryName)
+        categoryName, uiOrder = matches.group(1), 0
 
-            try:
-                categoryID = categoriesByName[categoryName]
-            except KeyError:
-                categoryName = corrections.correctCategory(categoryName)
-                if categoryName == DELETED:
-                    ### TODO: Determine correct way to handle this.
-                    raise SyntaxError("Category has been deleted.")
-                try:
-                    categoryID = categoriesByName[categoryName]
-                    tdenv.DEBUG(1, "Renamed: {}", categoryName)
-                except KeyError:
-                    raise UnknownCategoryError(priceFile, lineNo, facility)
+        tdenv.DEBUG(1, "NEW CATEGORY: {}", categoryName)
 
-            continue
-        if not categoryID:
-            # Need a category to process any other type of line.
-            raise SyntaxError(priceFile, lineNo,
-                                "Expecting '+ Category Name' line", text)
+        try:
+            categoryID = categoriesByName[categoryName]
+            return
+        except KeyError:
+            pass
 
-        ########################################
-        ### "Item sell buy ..." lines.
-        matches = itemPriceRe.match(text)
-        if not matches:
-            matches = newItemPriceRe.match(text)
-            if not matches:
-                raise SyntaxError(priceFile, lineNo,
-                                    "Unrecognized line/syntax", text)
+        categoryName = corrections.correctCategory(categoryName)
+        if categoryName == DELETED:
+            ### TODO: Determine correct way to handle this.
+            raise SyntaxError("Category has been deleted.")
+        try:
+            categoryID = categoriesByName[categoryName]
+            tdenv.DEBUG(1, "Renamed: {}", categoryName)
+        except KeyError:
+            raise UnknownCategoryError(priceFile, lineNo, facility)
 
+
+    def processItemLine(matches):
+        nonlocal uiOrder, processedItems
         itemName, modified = matches.group('item', 'time')
         stationPaying = int(matches.group('paying'))
         stationAsking = int(matches.group('asking'))
         demandString, stockString = matches.group('demand', 'stock')
         if demandString and stockString:
-            demand = UnitsAndLevel(priceFile, lineNo, 'demand', demandString)
-            stock  = UnitsAndLevel(priceFile, lineNo, 'stock',  stockString)
-            demandUnits, demandLevel = demand.units, demand.level
-            stockUnits, stockLevel = stock.units, stock.level
+            demandUnits, demandLevel = parseSupply(
+                    priceFile, lineNo, 'demand', demandString
+            )
+            stockUnits, stockLevel = parseSupply(
+                    priceFile, lineNo, 'stock',  stockString
+            )
         else:
             demandUnits, demandLevel = defaultUnits, defaultLevel
             stockUnits, stockLevel = defaultUnits, defaultLevel
@@ -470,11 +450,14 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         try:
             itemID = itemByName[itemPrefix + itemName]
         except KeyError:
+            itemID = -1
+        if itemID < 0:
+            print("correcting")
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
                 tdenv.DEBUG(1, "DELETED {}", oldName)
-                continue
+                return
             try:
                 itemID = itemByName[itemPrefix + itemName]
                 tdenv.DEBUG(1, "Renamed {} -> {}", oldName, itemName)
@@ -492,12 +475,59 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         processedItems[itemID] = lineNo
         uiOrder += 1
 
-        yield PriceEntry(stationID, itemID, 
+        return PriceEntry(stationID, itemID, 
                             stationPaying, stationAsking,
                             uiOrder, modified,
                             demandUnits, demandLevel,
                             stockUnits, stockLevel
                         )
+
+    for line in priceFile:
+        lineNo += 1
+        text = noCommentRe.match(line).group('text').strip()
+        # replace whitespace with single spaces
+        text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
+        if not text:
+            continue
+
+        ########################################
+        ### "@ STAR/Station" lines.
+        matches = systemStationRe.match(text)
+        if matches:
+            changeStation(matches)
+            continue
+
+        if not stationID:
+            # Need a station to process any other type of line.
+            raise SyntaxError(priceFile, lineNo,
+                                "Expecting '@ SYSTEM / Station' line", text)
+        if stationID == DELETED:
+            # Ignore all values from a deleted station/system.
+            continue
+
+        ########################################
+        ### "+ Category" lines.
+        matches = categoryRe.match(text)
+        if matches:
+            changeCategory(matches)
+            continue
+        if not categoryID:
+            # Need a category to process any other type of line.
+            raise SyntaxError(priceFile, lineNo,
+                                "Expecting '+ Category Name' line", text)
+
+        ########################################
+        ### "Item sell buy ..." lines.
+        matches = newItemPriceRe.match(text)
+        if not matches:
+            matches = itemPriceRe.match(text)
+            if not matches:
+                raise SyntaxError(priceFile, lineNo,
+                                    "Unrecognized line/syntax", text)
+
+        sql = processItemLine(matches)
+        if sql:
+            yield sql
 
 
 ######################################################################
