@@ -53,7 +53,7 @@ def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
 
     item = tdb.lookupItem(cmdenv.item)
-    cmdenv.DEBUG(0, "Looking up item {} (#{})", item.name(), item.ID)
+    cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
     # Constraints
     constraints = [ "(item_id = {})".format(item.ID), "buy_from > 0", "stock != 0" ]
@@ -73,13 +73,13 @@ def run(results, cmdenv, tdb):
         results.summary.near = nearSystem
         results.summary.ly = maxLy
 
-        cmdenv.DEBUG(0, "Searching within {}ly of {}", maxLy, nearSystem.name())
+        cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
 
         def genStationIDs():
             nonlocal distances
             for (sys, dist) in tdb.genSystemsInRange(
                             nearSystem, maxLy, includeSelf=True):
-                cmdenv.DEBUG(2, "Checking stations in {}", sys.name())
+                cmdenv.DEBUG2("Checking stations in {}", sys.name())
                 hadStation = False
                 for station in sys.stations:
                     if station.itemCount > 0:
@@ -103,14 +103,14 @@ def run(results, cmdenv, tdb):
                  FROM Price
                 WHERE {}
            """.format(whereClause)
-    cmdenv.DEBUG(0, 'SQL: {}', stmt)
+    cmdenv.DEBUG0('SQL: {}', stmt)
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
     for (stationID, priceCr, stock) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
-        cmdenv.DEBUG(2, "{} {}cr {} units", row.station.name(), priceCr, stock)
+        cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, stock)
         if nearSystem:
            row.dist = distances[row.station.system.ID]
         row.price = priceCr

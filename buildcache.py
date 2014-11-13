@@ -370,7 +370,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         systemName, stationName = matches.group(1, 2)
         facility = systemName.upper() + '/' + stationName.upper()
 
-        tdenv.DEBUG(1, "NEW STATION: {}", facility)
+        tdenv.DEBUG1("NEW STATION: {}", facility)
 
         # Make sure it's valid.
         try:
@@ -382,12 +382,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             systemName = corrections.correctSystem(systemName)
             stationName = corrections.correctStation(stationName)
             if systemName == DELETED or stationName == DELETED:
-                tdenv.DEBUG(1, "DELETED: {}", facility)
+                tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
             facility = systemName.upper() + '/' + stationName.upper()
             try:
                 stationID = systemByName[facility]
-                tdenv.DEBUG(0, "Renamed: {}", facility)
+                tdenv.DEBUG0("Renamed: {}", facility)
             except KeyError:
                 raise UnknownStationError(priceFile, lineNo, facility) from None
 
@@ -407,7 +407,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         categoryName, uiOrder = matches.group(1), 0
 
-        tdenv.DEBUG(1, "NEW CATEGORY: {}", categoryName)
+        tdenv.DEBUG1("NEW CATEGORY: {}", categoryName)
 
         try:
             categoryID = categoriesByName[categoryName]
@@ -421,7 +421,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             raise SyntaxError("Category has been deleted.")
         try:
             categoryID = categoriesByName[categoryName]
-            tdenv.DEBUG(1, "Renamed: {}", categoryName)
+            tdenv.DEBUG1("Renamed: {}", categoryName)
         except KeyError:
             raise UnknownCategoryError(priceFile, lineNo, facility)
 
@@ -457,11 +457,11 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
-                tdenv.DEBUG(1, "DELETED {}", oldName)
+                tdenv.DEBUG1("DELETED {}", oldName)
                 return
             try:
                 itemID = itemByName[itemPrefix + itemName]
-                tdenv.DEBUG(1, "Renamed {} -> {}", oldName, itemName)
+                tdenv.DEBUG1("Renamed {} -> {}", oldName, itemName)
             except KeyError:
                 raise UnknownItemError(priceFile, lineNo, itemName)
 
@@ -534,10 +534,10 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 ######################################################################
 
 def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
-    tdenv.DEBUG(0, "Processing Prices file '{}'", pricesPath)
+    tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
     if stationID:
-        tdenv.DEBUG(0, "Deleting stale entries for {}", stationID)
+        tdenv.DEBUG0("Deleting stale entries for {}", stationID)
         db.execute(
             "DELETE FROM Price WHERE station_id = ?",
                 [stationID]
@@ -546,7 +546,7 @@ def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
     with pricesPath.open() as pricesFile:
         bindValues = []
         for price in genSQLFromPriceLines(tdenv, pricesFile, db, defaultZero):
-            tdenv.DEBUG(2, price)
+            tdenv.DEBUG2(price)
             bindValues += [ price ]
         stmt = """
            INSERT OR REPLACE INTO Price (
@@ -590,7 +590,7 @@ def deprecationCheckStation(line, debug):
 
 
 def processImportFile(tdenv, db, importPath, tableName):
-    tdenv.DEBUG(0, "Processing import file '{}' for table '{}'", str(importPath), tableName)
+    tdenv.DEBUG0("Processing import file '{}' for table '{}'", str(importPath), tableName)
 
     fkeySelectStr = ("("
             "SELECT {newValue}"
@@ -646,7 +646,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                 columns=','.join(bindColumns),
                 values=','.join(bindValues)
             )
-        tdenv.DEBUG(0, "SQL-Statement: {}", sql_stmt)
+        tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
 
         # Check if there is a deprecation check for this table.
         deprecationFn = getattr(sys.modules[__name__],
@@ -659,7 +659,7 @@ def processImportFile(tdenv, db, importPath, tableName):
         for linein in csvin:
             lineNo = csvin.line_num
             if len(linein) == columnCount:
-                tdenv.DEBUG(1, "       Values: {}", ', '.join(linein))
+                tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn: deprecationFn(linein, tdenv.debug)
                 for (colNo, index) in uniqueIndexes:
                     colValue = linein[colNo]
@@ -693,13 +693,13 @@ def processImportFile(tdenv, db, importPath, tableName):
                     ) from None
                 importCount += 1
         db.commit()
-        tdenv.DEBUG(0, "{count} {table}s imported",
+        tdenv.DEBUG0("{count} {table}s imported",
                             count=importCount,
                             table=tableName)
 
 
 def generateSystemLinks(tdenv, db, maxLinkDist):
-    tdenv.DEBUG(0, "Generating SystemLinks table")
+    tdenv.DEBUG0("Generating SystemLinks table")
     db.create_function("sqrt", 1, math.sqrt)
     db.execute("""
         CREATE TABLE SystemLinks

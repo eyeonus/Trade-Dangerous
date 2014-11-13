@@ -337,7 +337,10 @@ class TradeCalc(object):
         if credits is None: credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
         capacity = tdenv.capacity
         avoidItems = tdenv.avoidItems
-        self.tdenv.DEBUG(0, "{} -> {} with {:n}cr", src.name(), dst.name(), credits)
+        self.tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
+                src.system.dbname, src.dbname,
+                dst.system.dbname, src.dbname,
+                credits)
 
         if not dst in src.tradingWith:
             raise ValueError("%s does not have a link to %s" % (src.name(), dst.name()))
@@ -410,7 +413,7 @@ class TradeCalc(object):
         safetyMargin = 1.0 - tdenv.margin
         unique = tdenv.unique
         for route in routes:
-            tdenv.DEBUG(1, "Route = {}", route.str())
+            tdenv.DEBUG1("Route = {}", route.str())
 
             src = route.route[-1]
             startCr = credits + int(route.gainCr * safetyMargin)
@@ -421,26 +424,26 @@ class TradeCalc(object):
                                 maxLyPer=maxLyPer,
                                 avoidPlaces=avoidPlaces,
                     ):
-                tdenv.DEBUG(2, "destSys {}, destStn {}, jumps {}, distLy {}",
+                tdenv.DEBUG2("destSys {}, destStn {}, jumps {}, distLy {}",
                                 dest.system.name(),
                                 dest.station.name(),
                                 "->".join([jump.str() for jump in dest.via]),
                                 dest.distLy)
                 if not dest.station in src.tradingWith:
-                    tdenv.DEBUG(3, "{} is not in my station list", dest.station.name())
+                    tdenv.DEBUG3("{} is not in my station list", dest.station.name())
                     continue
                 if restrictTo:
                     if not dest.station in restrictTo and not dest.system in restrictTo:
-                        tdenv.DEBUG(3, "{} doesn't match restrict {}",
+                        tdenv.DEBUG3("{} doesn't match restrict {}",
                                         dest.station.name(), restrictTo)
                         continue
                 if unique and dest.station in route.route:
-                    tdenv.DEBUG(3, "{} is already in the list, not unique", dest.station.name())
+                    tdenv.DEBUG3("{} is already in the list, not unique", dest.station.name())
                     continue
 
                 trade = self.getBestTrade(src, dest.station, startCr)
                 if not trade:
-                    tdenv.DEBUG(3, "No trade")
+                    tdenv.DEBUG3("No trade")
                     continue
 
                 dstID = dest.station.ID

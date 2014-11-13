@@ -52,7 +52,7 @@ def run(results, cmdenv, tdb):
     dstSystem = cmdenv.stopSystem
     maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
-    cmdenv.DEBUG(0, "Route from {} to {} with max {} ly per jump.",
+    cmdenv.DEBUG0("Route from {} to {} with max {} ly per jump.",
                     srcSystem.name(), dstSystem.name(), maxLyPer)
 
     openList = { srcSystem: 0.0 }

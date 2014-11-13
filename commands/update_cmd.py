@@ -74,7 +74,7 @@ class TemporaryFileExistsError(TradeException):
 
 
 def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
-    cmdenv.DEBUG(0, "Locating {} editor", editorName)
+    cmdenv.DEBUG0("Locating {} editor", editorName)
     try:
         return os.environ[envVar]
     except KeyError: pass
@@ -112,7 +112,7 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
 
 
 def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
-    cmdenv.DEBUG(0, "Importing data from {}".format(str(path)))
+    cmdenv.DEBUG0("Importing data from {}".format(str(path)))
     buildcache.processPricesFile(cmdenv,
                      db=tdb.getDB(),
                      pricesPath=path,
@@ -121,7 +121,7 @@ def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
             )
 
     # If everything worked, we need to re-build the prices file.
-    cmdenv.DEBUG(0, "Update complete, regenerating .prices file")
+    cmdenv.DEBUG0("Update complete, regenerating .prices file")
 
     with tdb.pricesPath.open("w") as pricesFile:
         prices.dumpPrices(dbFilename, prices.Element.full, file=pricesFile, debug=cmdenv.debug)
@@ -140,32 +140,32 @@ def editUpdate(tdb, cmdenv, stationID):
         database and regenerate the master .prices file.
     """
 
-    cmdenv.DEBUG(0, "'update' mode with editor. editor:{} station:{}",
+    cmdenv.DEBUG0("'update' mode with editor. editor:{} station:{}",
                     cmdenv.editor, cmdenv.origin)
 
     editor, editorArgs = cmdenv.editor, []
     if cmdenv.editing == 'sublime':
-        cmdenv.DEBUG(0, "Sublime mode")
+        cmdenv.DEBUG0("Sublime mode")
         editor = editor or getEditorPaths(cmdenv, 
                             "sublime", "SUBLIME_EDITOR",
                             ["Sublime Text 3", "Sublime Text 2"], "sublime_text.exe", "subl")
         editorArgs += [ "--wait" ]
     elif cmdenv.editing == 'npp':
-        cmdenv.DEBUG(0, "Notepad++ mode")
+        cmdenv.DEBUG0("Notepad++ mode")
         editor = editor or getEditorPaths(cmdenv,
                             "notepad++", "NOTEPADPP_EDITOR",
                             ["Notepad++"], "notepad++.exe", "notepad++")
         if not cmdenv.quiet:
             print("NOTE: You'll need to exit Notepad++ to return control back to trade.py")
     elif cmdenv.editing == "vim":
-        cmdenv.DEBUG(0, "VI iMproved mode")
+        cmdenv.DEBUG0("VI iMproved mode")
         if not editor:
             # Hack... Hackity hack, hack, hack.
             # This has a disadvantage in that: we don't check for just "vim" (no .exe) under Windows
             vimDirs = [ "Git\\share\\vim\\vim{}".format(vimVer) for vimVer in range(70,75) ]
             editor = getEditorPaths(cmdenv, "vim", "EDITOR", vimDirs, "vim.exe", "vim")
     elif cmdenv.editing == "notepad":
-        cmdenv.DEBUG(0, "Notepad mode")
+        cmdenv.DEBUG0("Notepad mode")
         editor = editor or "notepad.exe"  # herp
 
     try:
@@ -207,7 +207,7 @@ def editUpdate(tdb, cmdenv, stationID):
 
         # Launch the editor
         editorCommandLine = [ editor ] + editorArgs + [ absoluteFilename ]
-        cmdenv.DEBUG(0, "Invoking [{}]", ' '.join(editorCommandLine))
+        cmdenv.DEBUG0("Invoking [{}]", ' '.join(editorCommandLine))
         try:
             result = subprocess.call(editorCommandLine)
         except FileNotFoundError:

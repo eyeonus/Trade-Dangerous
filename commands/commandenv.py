@@ -53,7 +53,7 @@ class CommandEnv(TradeEnv):
             exePath = pathlib.Path(argv[0]).parent.resolve()
             if cwdPath != exePath:
                 self.cwd = str(exePath)
-                self.DEBUG(1, "cwd at launch was: {}, changing to {} to match trade.py",
+                self.DEBUG1("cwd at launch was: {}, changing to {} to match trade.py",
                                 cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
@@ -176,11 +176,11 @@ class CommandEnv(TradeEnv):
             if system and station and station.system != system:
                 raise AmbiguityError('Avoidance', avoid, [ system.str(), station.str() ])
 
-        self.DEBUG(0, "Avoiding items %s, systems %s, stations %s" % (
+        self.DEBUG0("Avoiding items {}, systems {}, stations {}",
                     [ item.name() for item in avoidItems ],
                     [ system.name() for system in avoidSystems ],
                     [ station.name() for station in avoidStations ]
-        ))
+        )
 
         self.avoidPlaces = self.avoidSystems + self.avoidStations
 

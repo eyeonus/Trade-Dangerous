@@ -296,7 +296,7 @@ def validateRunArguments(tdb, cmdenv):
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
 
-    cmdenv.DEBUG(1, "loading trades")
+    cmdenv.DEBUG1("loading trades")
 
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
@@ -323,7 +323,7 @@ def run(results, cmdenv, tdb):
     viaStartPos = 1 if startStn else 0
     cmdenv.maxJumps = None
 
-    cmdenv.DEBUG(0,
+    cmdenv.DEBUG0(
                     "From {fromStn}, To {toStn}, Via {via}, "
                     "Cap {cap}, Credits {cr}, "
                     "Hops {hops}, Jumps/Hop {jumpsPer}, Ly/Jump {lyPer:.2f}"
@@ -341,11 +341,11 @@ def run(results, cmdenv, tdb):
     # Instantiate the calculator object
     calc = TradeCalc(tdb, cmdenv)
 
-    cmdenv.DEBUG(1, "unspecified hops {}, numHops {}, viaSet {}",
+    cmdenv.DEBUG1("unspecified hops {}, numHops {}, viaSet {}",
                 cmdenv.unspecifiedHops, numHops, len(viaSet))
 
     for hopNo in range(numHops):
-        cmdenv.DEBUG(1, "Hop {}", hopNo)
+        cmdenv.DEBUG1("Hop {}", hopNo)
 
         restrictTo = None
         if hopNo == lastHop and stopStn:

@@ -23,14 +23,23 @@ class TradeEnv(object):
 
     def __getattr__(self, key, default=None):
         """ Return the default for attributes we don't have """
+        if key.startswith("DEBUG"):
+            # Self-assembling DEBUGN functions
+            def __DEBUG_ENABLED(outText, *args, **kwargs):
+                print('#', outText.format(*args, **kwargs))
+
+            def __DEBUG_DISABLED(*args, **kwargs):
+                pass
+
+            # Tried to call a .DEBUG<N> function which hasn't
+            # been called before; create a stub.
+            debugLevel = int(key[5:])
+            if self.debug > debugLevel:
+                debugFn = __DEBUG_ENABLED
+            else:
+                debugFn = __DEBUG_DISABLED
+            setattr(self, key, debugFn)
+            return debugFn
         return default
 
-
-    def DEBUG(self, debugLevel, outText, *args, **kwargs):
-        """
-            Output text to stderr on the condition that
-            the current debug setting is higher than debugLevel
-        """
-        if self.debug > debugLevel:
-            print('#', outText.format(*args, **kwargs))
 

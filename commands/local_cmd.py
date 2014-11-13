@@ -166,7 +166,7 @@ def render(results, cmdenv, tdb):
                         key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
             )
 
-    cmdenv.DEBUG(0,
+    cmdenv.DEBUG0(
             "Systems within {ly:<5.2f}ly of {sys}.\n",
                     sys=results.summary.near.name(),
                     ly=results.summary.ly,
