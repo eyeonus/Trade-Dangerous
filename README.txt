@@ -28,6 +28,9 @@ won't stand a chance of containing many valid systems. You may want to obtain
 a fresh file from one of the online sources, e.g.
 maddavo's site: http://www.davek.com.au/td/default.asp
 
+v5.0.2 Nov 11/2014
+. (smacker65) Merged in more systems from Slopey
+
 v5.0.1 Nov 4/2014
 . (kfsone) Issue #49 Errors in Ambiguity Error
 . (kfsone) Issue #51 L and ? items weren't honoring qty limits
@@ -799,4 +802,3 @@ v3.0 Aug 30/2014
   data will be loaded automatically.
   Cleaned up code, normalized the way I name functions, etc.
   Added more ship data, etc.
-
