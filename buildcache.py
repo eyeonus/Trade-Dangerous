@@ -699,7 +699,7 @@ def processImportFile(tdenv, db, importPath, tableName):
 
 
 def generateSystemLinks(tdenv, db, maxLinkDist):
-    tdenv.DEBUG0("Generating SystemLinks table")
+    tdenv.DEBUG0("Generating SystemLink table")
     db.create_function("sqrt", 1, math.sqrt)
     db.execute("""
         CREATE TABLE SystemLinks
@@ -745,11 +745,11 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     """
 
     # Create an in-memory database to populate with our data.
-    tdenv.DEBUG(0, "Creating temporary database in memory")
+    tdenv.DEBUG0("Creating temporary database in memory")
     tempDB = sqlite3.connect(':memory:')
 
     # Read the SQL script so we are ready to populate structure, etc.
-    tdenv.DEBUG(0, "Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
+    tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
     with sqlPath.open() as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
@@ -759,25 +759,25 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
         try:
             processImportFile(tdenv, tempDB, Path(importName), importTable)
         except FileNotFoundError:
-            tdenv.DEBUG(0, "WARNING: processImportFile found no {} file", importName)
+            tdenv.DEBUG0("WARNING: processImportFile found no {} file", importName)
 
     # Parse the prices file
     processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
 
     # Database is ready; copy it to a persistent store.
-    tdenv.DEBUG(0, "Populating SQLite database file {}", str(dbPath))
+    tdenv.DEBUG0("Populating SQLite database file {}", str(dbPath))
     if dbPath.exists():
-        tdenv.DEBUG(0, "Removing old database file")
+        tdenv.DEBUG0("Removing old database file")
         dbPath.unlink()
 
     newDB = sqlite3.connect(str(dbPath))
     importScript = "".join(tempDB.iterdump())
-    tdenv.DEBUG(3, importScript)
+    tdenv.DEBUG3(importScript)
     newDB.executescript(importScript)
     newDB.commit()
 
     generateSystemLinks(tdenv, newDB, maxLinkDist=80)
 
-    tdenv.DEBUG(0, "Finished")
+    tdenv.DEBUG0("Finished")
 
 
