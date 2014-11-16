@@ -722,10 +722,14 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
         are newer than the database.
     """
 
+    dbFilename = str(dbPath)
     # Create an in-memory database to populate with our data.
     tdenv.DEBUG0("Creating temporary database in memory")
-    tempDB = sqlite3.connect(':memory:')
+    tempDBName = dbFilename + ".new"
+    backupDBName = dbFilename  + ".prev"
+    tempPath, backupPath = Path(tempDBName), Path(backupDBName)
 
+    tempDB = sqlite3.connect(tempDBName)
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
     with sqlPath.open() as sqlFile:
@@ -742,20 +746,16 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     # Parse the prices file
     processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
 
-    # Database is ready; copy it to a persistent store.
-    tdenv.DEBUG0("Populating SQLite database file {}", str(dbPath))
-    if dbPath.exists():
-        tdenv.DEBUG0("Removing old database file")
-        dbPath.unlink()
     generateStationLink(tdenv, tempDB)
 
-    newDB = sqlite3.connect(str(dbPath))
-    importScript = "".join(tempDB.iterdump())
-    tdenv.DEBUG3(importScript)
-    newDB.executescript(importScript)
-    newDB.commit()
+    tempDB.close()
 
+    tdenv.DEBUG0("Swapping out db files")
+
+    if backupPath.exists():
+        backupPath.unlink()
+    dbPath.rename(backupPath)
+    tempPath.rename(dbPath)
 
     tdenv.DEBUG0("Finished")
-
 
