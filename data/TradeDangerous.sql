@@ -249,8 +249,8 @@ CREATE TABLE StationLink
    PRIMARY KEY (lhs_station_id, rhs_station_id)
  ) WITHOUT ROWID
 ;
-CREATE INDEX idx_stn_dist ON StationLink (lhs_station_id, dist, rhs_station_id);
-CREATE INDEX idx_stn_sys ON StationLink (lhs_system_id, rhs_system_id, dist);
+CREATE INDEX idx_stn_dist ON StationLink (lhs_station_id, dist);
+CREATE INDEX idx_stn_sys ON StationLink (lhs_system_id, dist);
 
 CREATE VIEW vPrice AS
 	SELECT	si.station_id AS station_id,
