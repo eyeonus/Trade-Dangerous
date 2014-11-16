@@ -557,21 +557,18 @@ def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
                     sells.append([ stnID, itemID, cr, units, level, modified ])
 
         if items:
-            print("itemBinds")
             db.executemany("""
                         INSERT INTO StationItem
                             (station_id, item_id, ui_order, modified)
                         VALUES (?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                     """, items)
         if sells:
-            print("sellingBinds")
             db.executemany("""
                         INSERT INTO StationSelling
                             (station_id, item_id, price, units, level, modified)
                         VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                     """, sells)
         if buys:
-            print("buyingBinds")
             db.executemany("""
                         INSERT INTO StationBuying
                             (station_id, item_id, price, units, level, modified)
@@ -710,24 +707,25 @@ def processImportFile(tdenv, db, importPath, tableName):
                             table=tableName)
 
 
-def generateSystemLinks(tdenv, db, maxLinkDist):
-    tdenv.DEBUG0("Generating SystemLink table")
+def generateStationLink(tdenv, db):
+    tdenv.DEBUG0("Generating StationLink table")
     db.create_function("sqrt", 1, math.sqrt)
     db.execute("""
-        INSERT INTO SystemLink (lhs_id, rhs_id, dist)
-            SELECT lhs.system_id AS lhs_id,
-                   rhs.system_id AS rhs_id,
-                   ((lhs.pos_x - rhs.pos_x) * (lhs.pos_x - rhs.pos_x)) +
-                   ((lhs.pos_y - rhs.pos_y) * (lhs.pos_y - rhs.pos_y)) +
-                   ((lhs.pos_z - rhs.pos_z) * (lhs.pos_z - rhs.pos_z)) dist
-              FROM System AS lhs, System AS rhs
-             WHERE lhs.system_id != rhs.system_id
-    """)
-    db.execute("UPDATE SystemLink SET dist = sqrt(dist)")
-    db.execute("""
-        CREATE INDEX
-            idx_system_links_systems
-            ON SystemLink(lhs_id, dist, rhs_id)
+        INSERT INTO StationLink
+            SELECT  lhs.system_id AS lhs_system_id,
+                    lhs.station_id AS lhs_station_id,
+                    rhs.system_id AS rhs_system_id,
+                    rhs.station_id AS rhs_station_id,
+                    ((lSys.pos_x - rSys.pos_x) * (lSys.pos_x - rSys.pos_x)) +
+                    ((lSys.pos_y - rSys.pos_y) * (lSys.pos_y - rSys.pos_y)) +
+                    ((lSys.pos_z - rSys.pos_z) * (lSys.pos_z - rSys.pos_z)) dist
+              FROM  System AS lSys
+                    INNER JOIN Station lhs
+                        ON (lSys.system_id = lhs.system_id),
+                    System AS rSys
+                    INNER JOIN Station rhs
+                        ON (rSys.system_id = rhs.system_id)
+             WHERE  lhs.system_id != rhs.system_id
     """)
     db.commit()
 
@@ -774,6 +772,7 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     if dbPath.exists():
         tdenv.DEBUG0("Removing old database file")
         dbPath.unlink()
+    generateStationLink(tdenv, tempDB)
 
     newDB = sqlite3.connect(str(dbPath))
     importScript = "".join(tempDB.iterdump())
@@ -781,7 +780,6 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     newDB.executescript(importScript)
     newDB.commit()
 
-    generateSystemLinks(tdenv, newDB, maxLinkDist=1000)
 
     tdenv.DEBUG0("Finished")
 
