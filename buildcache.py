@@ -53,10 +53,10 @@ itemPriceFrag = r"""
     (?P<item> .*?)
 \s+
     # price station is buying the item for
-    (?P<paying> \d+)
+    (?P<sell_to> \d+)
 \s+
     # price station is selling item for
-    (?P<asking> \d+)
+    (?P<buy_from> \d+)
 """
 
 # time formats per https://www.sqlite.org/lang_datefunc.html
@@ -67,7 +67,7 @@ itemPriceFrag = r"""
 timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
 # pre-4.6.0 extended format
-# <item name> <paying> <asking> [ <time> [ demand <units>L<level> stock <units>L<level> ] ]
+# <item name> <sell_to> <buy_from> [ <time> [ demand <units>L<level> stock <units>L<level> ] ]
 itemPriceRe = re.compile(r"""
 ^
     # name, prices
@@ -256,10 +256,9 @@ def parseSupply(pricesFile, lineNo, category, reading):
 
 class PriceEntry(namedtuple('PriceEntry', [
                                 'stationID', 'itemID', 
-                                'asking', 'paying',
                                 'uiOrder', 'modified',
-                                'demand', 'demandLevel',
-                                'stock', 'stockLevel'
+                                'sellTo', 'demand', 'demandLevel',
+                                'buyFrom', 'stock', 'stockLevel',
                             ])):
     pass
 
@@ -429,8 +428,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     def processItemLine(matches):
         nonlocal uiOrder, processedItems
         itemName, modified = matches.group('item', 'time')
-        stationPaying = int(matches.group('paying'))
-        stationAsking = int(matches.group('asking'))
+        sellTo = int(matches.group('sell_to'))
+        buyFrom = int(matches.group('buy_from'))
         demandString, stockString = matches.group('demand', 'stock')
         if demandString and stockString:
             demandUnits, demandLevel = parseSupply(
@@ -477,10 +476,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         uiOrder += 1
 
         return PriceEntry(stationID, itemID, 
-                            stationPaying, stationAsking,
                             uiOrder, modified,
-                            demandUnits, demandLevel,
-                            stockUnits, stockLevel
+                            sellTo, demandUnits, demandLevel,
+                            buyFrom, stockUnits, stockLevel
                         )
 
     for line in priceFile:
@@ -539,32 +537,46 @@ def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
     if stationID:
         tdenv.DEBUG0("Deleting stale entries for {}", stationID)
         db.execute(
-            "DELETE FROM Price WHERE station_id = ?",
+            "DELETE FROM StationItem WHERE station_id = ?",
                 [stationID]
         )
 
     with pricesPath.open() as pricesFile:
-        bindValues = []
+        items, buys, sells = [], [], []
         for price in genSQLFromPriceLines(tdenv, pricesFile, db, defaultZero):
             tdenv.DEBUG2(price)
-            bindValues += [ price ]
-        stmt = """
-           INSERT OR REPLACE INTO Price (
-                station_id, item_id,
-                sell_to, buy_from,
-                ui_order, modified,
-                demand, demand_level,
-                stock, stock_level
-            )
-           VALUES (
-                ?, ?,
-                ?, ?,
-                ?, IFNULL(?, CURRENT_TIMESTAMP),
-                ?, ?,
-                ?, ?
-            )
-        """
-        db.executemany(stmt, bindValues)
+            stnID, itemID = price.stationID, price.itemID
+            uiOrder, modified = price.uiOrder, price.modified
+            items.append([ stnID, itemID, uiOrder, modified ])
+            if uiOrder > 0:
+                cr, units, level = price.sellTo, price.demand, price.demandLevel
+                if cr > 0 and units != 0 and level != 0:
+                    buys.append([ stnID, itemID, cr, units, level, modified ])
+                cr, units, level = price.buyFrom, price.stock, price.stockLevel
+                if cr > 0 and units != 0 and level != 0:
+                    sells.append([ stnID, itemID, cr, units, level, modified ])
+
+        if items:
+            print("itemBinds")
+            db.executemany("""
+                        INSERT INTO StationItem
+                            (station_id, item_id, ui_order, modified)
+                        VALUES (?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                    """, items)
+        if sells:
+            print("sellingBinds")
+            db.executemany("""
+                        INSERT INTO StationSelling
+                            (station_id, item_id, price, units, level, modified)
+                        VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                    """, sells)
+        if buys:
+            print("buyingBinds")
+            db.executemany("""
+                        INSERT INTO StationBuying
+                            (station_id, item_id, price, units, level, modified)
+                        VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                    """, buys)
         db.commit()
 
 
@@ -702,27 +714,20 @@ def generateSystemLinks(tdenv, db, maxLinkDist):
     tdenv.DEBUG0("Generating SystemLink table")
     db.create_function("sqrt", 1, math.sqrt)
     db.execute("""
-        CREATE TABLE SystemLinks
-            AS SELECT lhs.system_id AS lhs_id,
-                  rhs.system_id AS rhs_id,
-                  ((lhs.pos_x - rhs.pos_x) * (lhs.pos_x - rhs.pos_x)) +
-                  ((lhs.pos_y - rhs.pos_y) * (lhs.pos_y - rhs.pos_y)) +
-                  ((lhs.pos_z - rhs.pos_z) * (lhs.pos_z - rhs.pos_z)) dist
-              FROM    System AS lhs, System AS rhs
-              WHERE lhs.system_id != rhs.system_id
-                  AND rhs.pos_x BETWEEN lhs.pos_x - {mld} and lhs.pos_x + {mld}
-                  AND rhs.pos_y BETWEEN lhs.pos_y - {mld} and lhs.pos_y + {mld}
-                  AND rhs.pos_z BETWEEN lhs.pos_z - {mld} and lhs.pos_z + {mld}
-                  AND dist <= {mldsq}
-    """.format(
-            mld=maxLinkDist,
-            mldsq=maxLinkDist**2,
-        ))
-    db.execute("UPDATE SystemLinks SET dist = sqrt(dist)")
+        INSERT INTO SystemLink (lhs_id, rhs_id, dist)
+            SELECT lhs.system_id AS lhs_id,
+                   rhs.system_id AS rhs_id,
+                   ((lhs.pos_x - rhs.pos_x) * (lhs.pos_x - rhs.pos_x)) +
+                   ((lhs.pos_y - rhs.pos_y) * (lhs.pos_y - rhs.pos_y)) +
+                   ((lhs.pos_z - rhs.pos_z) * (lhs.pos_z - rhs.pos_z)) dist
+              FROM System AS lhs, System AS rhs
+             WHERE lhs.system_id != rhs.system_id
+    """)
+    db.execute("UPDATE SystemLink SET dist = sqrt(dist)")
     db.execute("""
-        CREATE UNIQUE INDEX
+        CREATE INDEX
             idx_system_links_systems
-            ON SystemLinks(lhs_id, rhs_id)
+            ON SystemLink(lhs_id, dist, rhs_id)
     """)
     db.commit()
 
@@ -776,7 +781,7 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     newDB.executescript(importScript)
     newDB.commit()
 
-    generateSystemLinks(tdenv, newDB, maxLinkDist=80)
+    generateSystemLinks(tdenv, newDB, maxLinkDist=1000)
 
     tdenv.DEBUG0("Finished")
 

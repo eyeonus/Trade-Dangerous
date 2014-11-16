@@ -43,7 +43,7 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
 
     if stationID:
         # check if there are prices for the station
-        cur.execute("SELECT COUNT(*) FROM Price WHERE Price.station_id = {}".format(stationID))
+        cur.execute("SELECT COUNT(*) FROM StationItem WHERE Price.station_id = {}".format(stationID))
         priceCount = cur.fetchone()[0]
     else:
         # no station, no check

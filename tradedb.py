@@ -574,8 +574,11 @@ class TradeDB(object):
             If you have previously loaded Stations, this will orphan the old objects.
         """
         stmt = """
-                SELECT station_id, system_id, name, ls_from_star, (SELECT COUNT(*) FROM Price WHERE station_id = Station.station_id) itemCount
-                  FROM Station
+                SELECT  station_id, system_id, name, ls_from_star,
+                        (SELECT COUNT(*)
+                            FROM StationItem
+                            WHERE station_id = Station.station_id) AS itemCount
+                  FROM  Station
             """
         self.cur.execute(stmt)
         stationByID, stationByName = {}, {}
@@ -786,23 +789,19 @@ class TradeDB(object):
         # trades it has within a given ly range (based on a multiple of max-ly and
         # max jumps).
         stmt = """
-                SELECT src.station_id, dst.station_id
-                     , src.item_id
-                     , src.buy_from
-                     , dst.sell_to - src.buy_from AS profit
-                     , src.stock, src.stock_level
-                     , dst.demand, dst.demand_level
-                     , strftime('%s', 'now') - strftime('%s', src.modified) AS src_age
-                     , strftime('%s', 'now') - strftime('%s', dst.modified) AS dst_age
-                  FROM Price AS src INNER JOIN Price as dst
-                        ON src.item_id = dst.item_id
-                 WHERE src.buy_from > 0
-                        AND profit > 0
-                        AND src.stock_level != 0
-                        AND dst.demand_level != 0
-                        AND src.ui_order > 0
-                        AND dst.ui_order > 0
-                 ORDER BY src.station_id, dst.station_id, profit DESC
+                SELECT  ss.item_id
+                     ,  ss.station_id, sb.station_id
+                     ,  ss.price, sb.price - ss.price AS profit
+                     ,  ss.units, ss.level
+                     ,  sb.units, sb.level
+                     ,  strftime('%s', 'now') - strftime('%s', ss.modified)
+                     ,  strftime('%s', 'now') - strftime('%s', sb.modified)
+                  FROM  StationSelling AS ss
+                        INNER JOIN StationBuying AS sb
+                            ON (ss.item_id = sb.item_id
+                                AND ss.station_id != sb.station_id)
+                 WHERE  sb.price < ss.price
+                 ORDER  BY ss.station_id, ss.station_id, profit DESC
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
@@ -812,14 +811,14 @@ class TradeDB(object):
         srcStn, dstStn = None, None
         tradingWith = None
 
-        for (srcStnID, dstStnID, itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
+        for (itemID, srcStnID, dstStnID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
             if srcStnID != prevSrcStnID:
                 srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
             if dstStnID != prevDstStnID:
                 dstStn, prevDstStnID = stations[dstStnID], dstStnID
                 tradingWith = srcStn.tradingWith[dstStn] = []
                 self.tradingCount += 1
-            tradingWith.append(Trade(items[itemID], itemID, srcCostCr, profitCr, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
+            tradingWith.append(Trade(items[itemID], itemID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
 
     def getTrades(self, src, dst):

@@ -62,6 +62,7 @@ CREATE TABLE Station
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  );
+CREATE INDEX idx_station_by_system ON Station (system_id, station_id);
 
 
 CREATE TABLE Ship
@@ -159,73 +160,132 @@ CREATE TABLE AltItemNames
  )
 ;
 
+/*
+ * The table formerly known as "Price" is now broken
+ * up into 3 tables: StationItem keeps track of what
+ * items we think a station carries for presentation
+ * purposes.
+ *
+ * StationBuying is the items that a station is willing
+ * to pay for, but only carries entries that have a
+ * non-zero price, demand and demand-level.
+ *
+ * StationCarrying is the items that a station has in
+ * stock for players to buy, but only carries entries
+ * that have a non-zero price, stock and stock-level.
+ */
 
-CREATE TABLE Price
+CREATE TABLE StationItem
  (
-   station_id INTEGER NOT NULL,
-   item_id INTEGER NOT NULL,
-   ui_order INTEGER NOT NULL DEFAULT 0,
-   -- how many credits will the station pay for this item?
-   sell_to INTEGER NOT NULL,
-   -- how many credits must you pay to buy at this station?
-   buy_from INTEGER NOT NULL DEFAULT 0,
-   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-   demand INTEGER DEFAULT -1,
-   demand_level INTEGER DEFAULT -1,
-   stock INTEGER DEFAULT -1,
-   stock_level INTEGER DEFAULT -1,
+  station_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  ui_order INTEGER NOT NULL DEFAULT 0,
 
-   PRIMARY KEY (station_id, item_id),
+  PRIMARY KEY (station_id, item_id),
 
-   FOREIGN KEY (item_id) REFERENCES Item(item_id)
-   	ON UPDATE CASCADE
-      ON DELETE CASCADE,
-   FOREIGN KEY (station_id) REFERENCES Station(station_id)
-   	ON UPDATE CASCADE
-      ON DELETE CASCADE
- ) WITHOUT ROWID
+  FOREIGN KEY (item_id) REFERENCES Item(item_id)
+   ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (station_id) REFERENCES Station(station_id)
+   ON UPDATE CASCADE ON DELETE CASCADE
+ )
 ;
 
--- Some views I use now and again.
-
-CREATE VIEW vPriceDataAge AS
-    SELECT System.name, MIN(Price.modified)
-      FROM ((System INNER JOIN Station ON System.system_id = Station.system_id)
-            INNER JOIN Price on Station.station_id = Price.station_id)
-     GROUP BY 1
-     ORDER BY 2 DESC
+/*
+ * The most common query is going to be:
+ * onSale = stock(station_id)
+ * profitable = [
+ *  item for item in onSale
+ *    if someonePayingMoreFor(seller.item_id, seller.price)
+ * ]
+ * So we want selling indexed by station,item
+ * and we want buying indexed by item,station
+*/
+CREATE TABLE StationSelling
+ (
+  station_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  price INTEGER CHECK (price > 0),
+  units INTEGER CHECK (units == -1 OR units > 0),
+  level INTEGER CHECK (level == -1 OR level > 0),
+  modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  PRIMARY KEY (station_id, item_id),
+  FOREIGN KEY (item_id) REFERENCES Item(item_id)
+   ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (station_id) REFERENCES Station(station_id)
+   ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (station_id, item_id) REFERENCES StationItem (station_id, item_id)
+   ON UPDATE CASCADE ON DELETE CASCADE
+ )
 ;
 
-CREATE VIEW vOlderData AS
-    SELECT System.name, MIN(Price.modified)
-      FROM ((System INNER JOIN Station ON System.system_id = Station.system_id)
-            INNER JOIN Price on Station.station_id = Price.station_id)
-     WHERE Price.modified <= DATETIME(CURRENT_TIMESTAMP, '-2 day')
-     GROUP BY 1
-     ORDER BY 2 DESC
+CREATE TABLE StationBuying
+ (
+  item_id INTEGER NOT NULL,
+  station_id INTEGER NOT NULL,
+  price INTEGER CHECK (price > 0),
+  units INTEGER CHECK (units == -1 OR units > 0),
+  level INTEGER CHECK (level == -1 or level > 0),
+  modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  PRIMARY KEY (item_id, station_id),
+  FOREIGN KEY (item_id) REFERENCES Item(item_id)
+   ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (station_id) REFERENCES Station(station_id)
+   ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY (station_id, item_id) REFERENCES StationItem (station_id, item_id)
+   ON UPDATE CASCADE ON DELETE CASCADE
+ )
+;
+/* We're often going to be asking "using (item_id) where buying.price > selling.cost" */
+CREATE INDEX idx_buying_price ON StationBuying (item_id, price);
+
+CREATE TABLE SystemLink
+ (
+	lhs_id INTEGER NOT NULL,
+	rhs_id INTEGER NOT NULL,
+	dist DOUBLE NOT NULL
+ )
 ;
 
-CREATE VIEW vForSale AS
-   SELECT sy.name AS system
-        , st.name AS station
-        , c.name  AS category
-        , i.name  AS item
-        , p.buy_from AS asking
-        , p.stock
-        , p.stock_level
-        , p.sell_to AS paying
-        , p.demand
-        , p.demand_level
-        , STRFTIME('%s', 'now') - STRFTIME('%s', p.modified) AS age
-     FROM System AS sy
-          INNER JOIN Station as st ON (sy.system_id = st.system_id)
-          INNER JOIN Price AS p ON (st.station_id = p.station_id)
-          INNER JOIN Item AS I ON (p.item_id = i.item_id)
-          INNER JOIN Category AS C on (i.category_id = c.category_id)
+CREATE VIEW vPrice AS
+	SELECT	si.station_id AS station_id,
+			si.item_id AS item_id,
+			si.ui_order AS ui_order,
+			IFNULL(sb.price, 0) AS sell_to,
+			IFNULL(ss.price, 0) AS buy_from,
+			si.modified AS modified,
+            IFNULL(sb.units, 0) AS demand,
+            IFNULL(sb.level, 0) AS demand_level,
+            IFNULL(ss.units, 0) AS stock,
+            IFNULL(ss.level, 0) AS stock_level
+      FROM  StationItem AS si
+            LEFT OUTER JOIN StationBuying AS sb
+                USING (item_id, station_id)
+            LEFT OUTER JOIN StationSelling AS ss
+                USING (station_id, item_id)
 ;
 
-CREATE VIEW vForSaleOrdered AS
-   SELECT * FROM vForSale ORDER BY system, station, category, item
+CREATE VIEW vProfitableTrades AS
+	SELECT	srcStn.system_id AS src_system_id,
+			src.station_id AS src_station_id,
+			src.item_id AS item_id,
+			dst.station_id AS dst_station_id,
+			dstStn.system_id AS dst_system_id,
+			src.price AS cost,
+			dst.price - src.price AS profit,
+			link.dist AS dist
+	  FROM	StationSelling AS src
+			INNER JOIN StationBuying AS dst
+				ON (src.item_id = dst.item_id),
+			Station AS srcStn
+			INNER JOIN SystemLink AS link
+				ON (srcStn.system_id = link.lhs_id)
+			INNER JOIN Station AS dstStn
+				ON (link.rhs_id = dstStn.system_id)
+	 WHERE	src.station_id = srcStn.station_id
+	   AND	dst.station_id = dstStn.station_id
 ;
+
 
 COMMIT;
+

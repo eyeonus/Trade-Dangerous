@@ -425,8 +425,8 @@ class TradeCalc(object):
                                 avoidPlaces=avoidPlaces,
                     ):
                 tdenv.DEBUG2("destSys {}, destStn {}, jumps {}, distLy {}",
-                                dest.system.name(),
-                                dest.station.name(),
+                                dest.system.dbname,
+                                dest.station.dbname,
                                 "->".join([jump.str() for jump in dest.via]),
                                 dest.distLy)
                 if not dest.station in src.tradingWith:
