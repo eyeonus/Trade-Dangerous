@@ -544,7 +544,7 @@ def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
     with pricesPath.open() as pricesFile:
         items, buys, sells = [], [], []
         for price in genSQLFromPriceLines(tdenv, pricesFile, db, defaultZero):
-            tdenv.DEBUG2(price)
+            tdenv.DEBUG2(str(price))
             stnID, itemID = price.stationID, price.itemID
             uiOrder, modified = price.uiOrder, price.modified
             items.append([ stnID, itemID, uiOrder, modified ])
