@@ -56,11 +56,13 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
     # Constraints
-    constraints = [ "(item_id = {})".format(item.ID), "buy_from > 0", "stock != 0" ]
+    tables = "StationSelling AS ss"
+    constraints = [ "(item_id = {})".format(item.ID) ]
+    columns = [ 'ss.station_id', 'ss.price', 'ss.units' ]
     bindValues = [ ]
 
     if cmdenv.quantity:
-        constraints.append("(stock = -1 or stock >= ?)")
+        constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
 
     results.summary = ResultRow()
@@ -74,45 +76,40 @@ def run(results, cmdenv, tdb):
         results.summary.ly = maxLy
 
         cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
-
-        def genStationIDs():
-            nonlocal distances
-            for (sys, dist) in tdb.genSystemsInRange(
-                            nearSystem, maxLy, includeSelf=True):
-                cmdenv.DEBUG2("Checking stations in {}", sys.name())
-                hadStation = False
-                for station in sys.stations:
-                    if station.itemCount > 0:
-                        yield str(station.ID)
-                        hadStation = True
-                if hadStation:
-                    distances[sys.ID] = math.sqrt(dist)
-
-        stationList = "station_id IN ({})".format(
-                                ','.join(genStationIDs()))
-        if not distances:
-            raise NoDataError(
-                        "There are NO sales entries at ANY stations "
-                            "within {}ly of {}".format(item.name()))
-
-        constraints.append(stationList)
+        tables += (
+                " INNER JOIN StationLink AS sl"
+                " ON (sl.rhs_station_id = ss.station_id)"
+                )
+        columns.append('sl.dist')
+        constraints.append("(lhs_system_id = {})".format(
+                nearSystem.ID
+                ))
+        constraints.append("(dist <= {})".format(
+                maxLy
+                ))
+    else:
+        columns += [ '0' ]
 
     whereClause = ' AND '.join(constraints)
     stmt = """
-               SELECT station_id, buy_from, stock
-                 FROM Price
-                WHERE {}
-           """.format(whereClause)
+               SELECT {columns}
+                 FROM {tables}
+                WHERE {where}
+           """.format(
+                    columns=','.join(columns),
+                    tables=tables,
+                    where=whereClause
+                    )
     cmdenv.DEBUG0('SQL: {}', stmt)
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
-    for (stationID, priceCr, stock) in cur:
+    for (stationID, priceCr, stock, dist) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
         cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, stock)
         if nearSystem:
-           row.dist = distances[row.station.system.ID]
+           row.dist = dist
         row.price = priceCr
         row.stock = stock
         results.rows.append(row)
