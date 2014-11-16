@@ -32,7 +32,7 @@ from data import corrections
 ######################################################################
 # Regular expression patterns. Here be draegons.
 # If you add new patterns:
-# - use fragments and re.VERBOSE (see itemPriceRe)
+# - use fragments and re.VERBOSE
 # - use named captures (?P<name> ...)
 # - include comments
 
@@ -66,26 +66,6 @@ itemPriceFrag = r"""
 # 'now'
 timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
-# pre-4.6.0 extended format
-# <item name> <sell_to> <buy_from> [ <time> [ demand <units>L<level> stock <units>L<level> ] ]
-itemPriceRe = re.compile(r"""
-^
-    # name, prices
-    {base_f}
-    # extended section with time and possibly demand+stock info
-    (?:
-    \s+
-        {time_f}
-        # optional demand/stock after time
-        (?:
-            \s+ demand \s+ (?P<demand> -?\d+L-?\d+ | n/a | -L-)
-            \s+ stock \s+ (?P<stock> -?\d+L-?\d+ | n/a | -L-)
-        )?
-    )?
-\s*
-$
-""".format(base_f=itemPriceFrag, time_f=timeFrag), re.IGNORECASE + re.VERBOSE)
-
 # new format:
 # <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
 qtyLevelFrag = r"""
@@ -97,7 +77,7 @@ qtyLevelFrag = r"""
 |   0                   # alias for n/a
 |   bug
 """
-newItemPriceRe = re.compile(r"""
+itemPriceRe = re.compile(r"""
 ^
     {base_f}
 \s+ 
@@ -221,19 +201,16 @@ class Supply(object):
         'm': 2, 'M': 2, '2': 2,
         'h': 3, 'H': 3, '3': 3,
     }
-    # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(\d+)L(-?\d+)$', re.IGNORECASE)
     # Split a <units><level> reading
     splitAtRe = re.compile(r'^(\d+)([\?LMH])$', re.IGNORECASE)
 
 def parseSupply(pricesFile, lineNo, category, reading):
-        if reading in ("?", "unk", "UNK", "-1L-1", "-1L0", "0L-1"):
+        if reading == "?":
             return (-1, -1)
-        elif reading in ("-", "0", "-L-", "n/a", "N/A"):
+        elif reading == "-":
             return (0, 0)
         else:
-            matches = Supply.splitAtRe.match(reading) or \
-                        Supply.splitLRe.match(reading)
+            matches = Supply.splitAtRe.match(reading)
             if not matches:
                 raise SupplyError(
                         pricesFile, lineNo, category,
@@ -517,12 +494,10 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ########################################
         ### "Item sell buy ..." lines.
-        matches = newItemPriceRe.match(text)
+        matches = itemPriceRe.match(text)
         if not matches:
-            matches = itemPriceRe.match(text)
-            if not matches:
-                raise SyntaxError(priceFile, lineNo,
-                                    "Unrecognized line/syntax", text)
+            raise SyntaxError(priceFile, lineNo,
+                                "Unrecognized line/syntax", text)
 
         sql = processItemLine(matches)
         if sql:
