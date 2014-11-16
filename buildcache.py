@@ -761,6 +761,7 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
         tempPath.unlink()
 
     tempDB = sqlite3.connect(tempDBName)
+    tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
     with sqlPath.open() as sqlFile:

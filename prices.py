@@ -30,6 +30,7 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
     withTimes  = (elementMask & Element.timestamp)
 
     conn = sqlite3.connect(str(dbFilename))     # so we can handle a Path object too
+    conn.execute("PRAGMA foreign_keys=ON")
     cur  = conn.cursor()
 
     systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM System") }

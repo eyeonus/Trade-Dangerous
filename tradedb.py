@@ -372,7 +372,9 @@ class TradeDB(object):
         try:
             self.tdenv.DEBUG1("Connecting to DB")
             import sqlite3
-            return sqlite3.connect(self.dbURI)
+            conn = sqlite3.connect(self.dbURI)
+            conn.execute("PRAGMA foreign_keys=ON")
+            return conn
         except ImportError as e:
             print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
             raise e
