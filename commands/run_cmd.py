@@ -27,11 +27,20 @@ switches = [
             dest='origin',
             metavar='STATION',
         ),
-    ParseArgument('--to',
-            help='Final system/station.',
-            dest='dest',
-            metavar='STATION',
-        ),
+    MutuallyExclusiveGroup(
+        ParseArgument('--to',
+                help='Final system/station.',
+                dest='dest',
+                metavar='STATION',
+            ),
+        ParseArgument('--end',
+                help="Try to finish at one of these",
+                dest='ending',
+                metavar='STATION',
+                default=[],
+                action='append',
+            ),
+    ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
             action='append',
@@ -309,6 +318,13 @@ def run(results, cmdenv, tdb):
     avoidSystems = cmdenv.avoidSystems
     avoidStations = cmdenv.avoidStations
 
+    stopStations = []
+    if stopStn:
+        stopStations.append(stopStn)
+    for stn in cmdenv.ending:
+        stopStations.append(tdb.lookupStation(stn))
+    stopStations = set(stopStations)
+
     startCr = cmdenv.credits - cmdenv.insurance
 
     # seed the route table with starting places
@@ -348,8 +364,8 @@ def run(results, cmdenv, tdb):
         cmdenv.DEBUG1("Hop {}", hopNo)
 
         restrictTo = None
-        if hopNo == lastHop and stopStn:
-            restrictTo = set([stopStn])
+        if hopNo == lastHop and stopStations:
+            restrictTo = stopStations
             ### TODO:
             ### if hopsLeft < len(viaSet):
             ###   ... only keep routes that include len(viaSet)-hopsLeft routes
