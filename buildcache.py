@@ -711,21 +711,24 @@ def generateStationLink(tdenv, db):
     tdenv.DEBUG0("Generating StationLink table")
     db.create_function("sqrt", 1, math.sqrt)
     db.execute("""
-        INSERT INTO StationLink
+            INSERT INTO StationLink
             SELECT  lhs.system_id AS lhs_system_id,
                     lhs.station_id AS lhs_station_id,
                     rhs.system_id AS rhs_system_id,
                     rhs.station_id AS rhs_station_id,
-                    ((lSys.pos_x - rSys.pos_x) * (lSys.pos_x - rSys.pos_x)) +
-                    ((lSys.pos_y - rSys.pos_y) * (lSys.pos_y - rSys.pos_y)) +
-                    ((lSys.pos_z - rSys.pos_z) * (lSys.pos_z - rSys.pos_z)) dist
-              FROM  System AS lSys
-                    INNER JOIN Station lhs
-                        ON (lSys.system_id = lhs.system_id),
-                    System AS rSys
-                    INNER JOIN Station rhs
-                        ON (rSys.system_id = rhs.system_id)
-             WHERE  lhs.system_id != rhs.system_id
+                    sqrt(
+                        ((lSys.pos_x - rSys.pos_x) * (lSys.pos_x - rSys.pos_x)) +
+                        ((lSys.pos_y - rSys.pos_y) * (lSys.pos_y - rSys.pos_y)) +
+                        ((lSys.pos_z - rSys.pos_z) * (lSys.pos_z - rSys.pos_z))
+                        )
+              FROM  Station AS lhs
+                    INNER JOIN System AS lSys
+                        ON (lhs.system_id = lSys.system_id),
+                    Station AS rhs
+                    INNER JOIN System AS rSys
+                        ON (rhs.system_id = rSys.system_id)
+              WHERE
+                    lhs.system_id != rhs.system_id
     """)
     db.commit()
 
@@ -754,6 +757,9 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     backupDBName = dbFilename  + ".prev"
     tempPath, backupPath = Path(tempDBName), Path(backupDBName)
 
+    if tempPath.exists():
+        tempPath.unlink()
+
     tempDB = sqlite3.connect(tempDBName)
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
@@ -777,9 +783,10 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
 
     tdenv.DEBUG0("Swapping out db files")
 
-    if backupPath.exists():
-        backupPath.unlink()
-    dbPath.rename(backupPath)
+    if dbPath.exists():
+        if backupPath.exists():
+            backupPath.unlink()
+        dbPath.rename(backupPath)
     tempPath.rename(dbPath)
 
     tdenv.DEBUG0("Finished")

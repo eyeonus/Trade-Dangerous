@@ -241,16 +241,16 @@ CREATE INDEX idx_buying_price ON StationBuying (item_id, price);
 
 CREATE TABLE StationLink
  (
-	lhs_system_id INTEGER NOT NULL,
-	lhs_station_id INTEGER NOT NULL,
-	rhs_system_id INTEGER NOT NULL CHECK (lhs_system_id != rhs_system_id),
-	rhs_station_id INTEGER NOT NULL CHECK (lhs_station_id != rhs_station_id),
-	dist DOUBLE NOT NULL CHECK (dist > 0.0),
-	PRIMARY KEY (lhs_station_id, rhs_station_id)
- )
+   lhs_system_id INTEGER NOT NULL,
+   lhs_station_id INTEGER NOT NULL,
+   rhs_system_id INTEGER NOT NULL,
+   rhs_station_id INTEGER NOT NULL,
+   dist DOUBLE NOT NULL CHECK (dist > 0.0),
+   PRIMARY KEY (lhs_station_id, rhs_station_id)
+ ) WITHOUT ROWID
 ;
-CREATE INDEX idx_stn_dist ON StationLink (lhs_station_id, rhs_station_id);
-CREATE INDEX idx_stn_sys ON StationLink (lhs_system_id, rhs_system_id);
+CREATE INDEX idx_stn_dist ON StationLink (lhs_station_id, dist, rhs_station_id);
+CREATE INDEX idx_stn_sys ON StationLink (lhs_system_id, rhs_system_id, dist);
 
 CREATE VIEW vPrice AS
 	SELECT	si.station_id AS station_id,

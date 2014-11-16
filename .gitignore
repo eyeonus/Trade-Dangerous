@@ -10,6 +10,7 @@ data/TradeDangerous.db-journal
 data/TradeDangerous.prices
 market/
 *.orig
+*.prev
 
 wip/
 pycallgraph.png
