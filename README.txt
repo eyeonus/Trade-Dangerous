@@ -28,8 +28,34 @@ won't stand a chance of containing many valid systems. You may want to obtain
 a fresh file from one of the online sources, e.g.
 maddavo's site: http://www.davek.com.au/td/default.asp
 
-v6.0.0
+v6.0.1 Nov 16 2014 (kfsone)
+. Added "--end" option to "run" for multiple-choice route termination.
+. Database refactor to improve runtime performance
+-- Some commands were taking upto 50s to load data from the cache.
+-- By reorganizing some data and adding better indexes, the run command,
+-- for example, went from 60s+ with a full prices file down to 3-4.
+. Assorted minor functionality and perf improvements,
+. Various bug fixes
+
+NOTE: Rebuilding the cache can now take 2-8 seconds, but you only
+pay this price on the first usage after you import a new .prices file
+or update a station.
+
+Developers:
+. TradeDB.buildLinks now reads from the database instead of building
+the link table itself. Reduced execution time from 600+ms to 30ms.
+. TradeCalc.getBestHops will lazily load trades for the stations it
+is considering, so you do not need to call loadTrades, but you do
+still need to clal buildLinks at this time.
+. TradeDB now provides loadStationTrades([stationIDs]) which will
+load profitable trades *from* the specified list of stationIDs.
+. To test for a station not having loaded its trades:
+    if stn.tradingWith is None:
+        # Not loaded
+
+v6.0.0 Nov 09 2014 (kfsone)
 . Major overhaul of command line interface and the internal command API.
+
 User Facing:
 - Numerous significant performance improvements, esp loading times,
 - Improved command-line feedback in assorted error conditions,
@@ -43,6 +69,7 @@ User Facing:
   (weren't you tired of losing all your changes to a typo?)
 - "nav" command overhauled,
 - "local" command overhauled,
+
 Developer:
 - Sub-commands are now implemented in individual modules in the commands/
  folder and suffixed _cmd (e.g. commands/buy_cmd.py)
@@ -62,7 +89,6 @@ TODO:
 . Finish implementing tests,
 . Make "update" have an option that just takes a filename to allow
  people to import data from elsewhere more easily,
-. Convert "run" command because - that's kind of the point,
 . Document the command API in TEMPLATE.py
 
 (See end of file for older changes)
@@ -247,6 +273,15 @@ RUN sub-command:
        e.g.
          --to Beagle2
          --to Aulin
+
+     --end <station or system>
+       Instead of --to, allows you to specify multiple destinations and
+       TD will attempt to find a route that ends at one of them:
+       e.g.
+         --end beagle2
+           ^_ equivalent to "--to beagle2"
+         --end beagle2 --end freeport
+           ^_ finds a route terminating at EITHER beagle2 OR freeport
 
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
