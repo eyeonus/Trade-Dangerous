@@ -791,19 +791,9 @@ class TradeDB(object):
         # trades it has within a given ly range (based on a multiple of max-ly and
         # max jumps).
         stmt = """
-                SELECT  ss.item_id
-                     ,  ss.station_id, sb.station_id
-                     ,  ss.price, sb.price - ss.price AS profit
-                     ,  ss.units, ss.level
-                     ,  sb.units, sb.level
-                     ,  strftime('%s', 'now') - strftime('%s', ss.modified)
-                     ,  strftime('%s', 'now') - strftime('%s', sb.modified)
-                  FROM  StationSelling AS ss
-                        INNER JOIN StationBuying AS sb
-                            ON (ss.item_id = sb.item_id
-                                AND ss.station_id != sb.station_id)
-                 WHERE  ss.price < sb.price
-                 ORDER  BY ss.station_id, ss.station_id, profit DESC
+                SELECT  *
+                  FROM  vProfits
+                 ORDER  BY src_station_id, dst_station_id, gain DESC
                 """
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
