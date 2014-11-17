@@ -471,21 +471,30 @@ class TradeDB(object):
             to be "links".
         """
 
+        assert not self.numLinks
+
         self.tdenv.DEBUG1("Building trade links")
 
-        longestJumpSq = self.maxSystemLinkLy ** 2  # So we don't have to sqrt every distance
-
-        # Generate a series of symmetric pairs (A->B, A->C, A->D, B->C, B->D, C->D)
-        # so we only calculate each distance once, and then add a link each way.
-        # (A->B distance populates A->B and B->A, etc)
+        stmt = """
+                    SELECT DISTINCT lhs_system_id, rhs_system_id, dist
+                      FROM StationLink
+                     WHERE dist <= {} AND lhs_system_id != rhs_system_id
+                     ORDER BY lhs_system_id
+                 """.format(self.maxSystemLinkLy)
+        self.cur.execute(stmt)
+        systemByID = self.systemByID
+        lastLhsID, lhsLinks = None, None
         self.numLinks = 0
-        for (lhs, rhs) in itertools.combinations(self.systemByID.values(), 2):
-            distSq = (rhs.posX - lhs.posX) ** 2 + (rhs.posY - lhs.posY) ** 2 + (rhs.posZ - lhs.posZ) ** 2
-            if distSq <= longestJumpSq:
-                lhs.links[rhs] = rhs.links[lhs] = math.sqrt(distSq)
-                self.numLinks += 1
+        for lhsID, rhsID, dist in self.cur:
+            if lhsID != lastLhsID:
+                lhsLinks = systemByID[lhsID].links
+                lastLhsID = lhsID
+            lhsLinks[systemByID[rhsID]] = dist
+            self.numLinks += 1
 
-        self.tdenv.DEBUG2("Number of links between systems: {:n}", self.numLinks)
+        self.numLinks /= 2
+
+        self.tdenv.DEBUG1("Number of links between systems: {:n}", self.numLinks)
 
         if self.tdenv.debug:
             self._validate()
