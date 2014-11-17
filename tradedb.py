@@ -111,7 +111,7 @@ class Station(object):
 
     def __init__(self, ID, system, dbname, lsFromStar, itemCount):
         self.ID, self.system, self.dbname, self.lsFromStar, self.itemCount = ID, system, dbname, lsFromStar, itemCount
-        self.tradingWith = {}       # dict[tradingPartnerStation] -> [ available trades ]
+        self.tradingWith = None       # dict[tradingPartnerStation] -> [ available trades ]
         system.stations.append(self)
 
 
@@ -816,6 +816,8 @@ class TradeDB(object):
         for (itemID, srcStnID, dstStnID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
             if srcStnID != prevSrcStnID:
                 srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
+                assert srcStn.tradingWith is None
+                srcStn.tradingWith = {}
             if dstStnID != prevDstStnID:
                 dstStn, prevDstStnID = stations[dstStnID], dstStnID
                 tradingWith = srcStn.tradingWith[dstStn] = []
