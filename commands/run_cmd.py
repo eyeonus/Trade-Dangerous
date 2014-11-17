@@ -289,9 +289,8 @@ def validateRunArguments(tdb, cmdenv):
         raise NoDataError("End station {} doesn't have any price data.".format(
                             stopStn.name()))
 
-    tdb.loadTrades()
-
     if startStn:
+        tdb.loadStationTrades([startStn.ID])
         if stopStn and cmdenv.hops == 1 and not stopStn in startStn.tradingWith:
             raise CommandLineError("No profitable items found between {} and {}".format(
                                 startStn.name(), stopStn.name()))
@@ -311,6 +310,7 @@ def run(results, cmdenv, tdb):
         raise NoDataError("Database does not contain any profitable trades.")
 
     validateRunArguments(tdb, cmdenv)
+    tdb.buildLinks()
 
     from tradecalc import TradeCalc, Route
 
