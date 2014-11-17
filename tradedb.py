@@ -880,7 +880,7 @@ class TradeDB(object):
         # Check that system links are bi-directional
         for (name, sys) in self.systemByName.items():
             if not sys.links:
-                print("NOTE: System '%s' has no links" % name)
+                self.tdenv.DEBUG2("NOTE: System '%s' has no links" % name)
             if sys in sys.links:
                 raise ValueError("System %s has a link to itself!" % name)
             if name in sys.links:
