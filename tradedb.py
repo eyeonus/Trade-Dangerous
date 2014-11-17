@@ -802,7 +802,7 @@ class TradeDB(object):
                         INNER JOIN StationBuying AS sb
                             ON (ss.item_id = sb.item_id
                                 AND ss.station_id != sb.station_id)
-                 WHERE  sb.price < ss.price
+                 WHERE  ss.price < sb.price
                  ORDER  BY ss.station_id, ss.station_id, profit DESC
                 """
         self.cur.execute(stmt)
