@@ -824,6 +824,48 @@ class TradeDB(object):
             tradingWith.append(Trade(items[itemID], itemID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
 
 
+    def loadStationTrades(self, fromStationIDs):
+        """
+            Loads all profitable trades that could be made
+            from the specified list of stations. Does not
+            take reachability into account.
+        """
+
+        if not fromStationIDs:
+            return
+
+        assert isinstance(fromStationIDs, list)
+        assert isinstance(fromStationIDs[0], int)
+
+        self.tdenv.DEBUG1("Loading trades for {}".format(str(fromStationIDs)))
+
+        stmt = """
+                SELECT  *
+                  FROM  vProfits
+                 WHERE  src_station_id IN ({})
+                 ORDER  BY src_station_id, dst_station_id, gain DESC
+                """.format(','.join(str(ID) for ID in fromStationIDs))
+        self.cur.execute(stmt)
+        stations, items = self.stationByID, self.itemByID
+
+        prevSrcStnID, prevDstStnID = None, None
+        srcStn, dstStn = None, None
+        tradingWith = None
+        if self.tradingCount is None:
+            self.tradingCount = 0
+
+        for (itemID, srcStnID, dstStnID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
+            if srcStnID != prevSrcStnID:
+                srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
+                assert srcStn.tradingWith is None
+                srcStn.tradingWith = {}
+            if dstStnID != prevDstStnID:
+                dstStn, prevDstStnID = stations[dstStnID], dstStnID
+                tradingWith = srcStn.tradingWith[dstStn] = []
+                self.tradingCount += 1
+            tradingWith.append(Trade(items[itemID], itemID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
+
+
     def getTrades(self, src, dst):
         """ Returns a list of the Trade objects between src and dst. """
 
