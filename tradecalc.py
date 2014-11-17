@@ -412,6 +412,14 @@ class TradeCalc(object):
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
         unique = tdenv.unique
+
+        stationsNotYetLoaded = [
+                src.ID for src in [ route.route[-1] for route in routes ] 
+                    if src.tradingWith is None
+        ]
+        if stationsNotYetLoaded:
+            self.tdb.loadStationTrades(stationsNotYetLoaded)
+
         for route in routes:
             tdenv.DEBUG1("Route = {}", route.str())
 
