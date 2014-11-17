@@ -250,7 +250,7 @@ CREATE TABLE StationLink
  ) WITHOUT ROWID
 ;
 CREATE INDEX idx_stn_dist ON StationLink (lhs_station_id, dist);
-CREATE INDEX idx_stn_sys ON StationLink (lhs_system_id, dist);
+CREATE INDEX idx_sys_dist ON StationLink (lhs_system_id, dist, rhs_system_id);
 
 CREATE VIEW vPrice AS
 	SELECT	si.station_id AS station_id,
