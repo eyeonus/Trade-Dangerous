@@ -270,6 +270,31 @@ CREATE VIEW vPrice AS
                 USING (station_id, item_id)
 ;
 
+
+CREATE VIEW vProfits AS
+  SELECT  ss.item_id          AS item_id
+       ,  ss.station_id       AS src_station_id
+       ,  sb.station_id       AS dst_station_id
+       ,  ss.price            AS cost
+       ,  sb.price - ss.price AS gain
+       ,  ss.units            AS stock_units
+       ,  ss.level            AS stock_level
+       ,  sb.units            AS demand_units
+       ,  sb.level            AS demand_level
+       ,  strftime('%s', 'now') -
+            strftime('%s', ss.modified)
+            AS src_age
+       ,  strftime('%s', 'now') -
+            strftime('%s', sb.modified)
+            AS dst_age
+    FROM  StationSelling AS ss
+          INNER JOIN StationBuying AS sb
+              ON (ss.item_id = sb.item_id
+                  AND ss.station_id != sb.station_id)
+   WHERE  ss.price < sb.price
+;
+
+
 CREATE VIEW vProfitableTrades AS
 	SELECT	src.station_id AS src_station_id,
 			src.item_id AS item_id,
