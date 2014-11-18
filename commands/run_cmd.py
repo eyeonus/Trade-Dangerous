@@ -118,6 +118,11 @@ switches = [
 # Helpers
 
 class Checklist(object):
+    """
+        Class for encapsulating display of a route as a series of
+        steps to be 'checked off' as the user passes through them.
+    """
+
     def __init__(self, tdb, cmdenv):
         self.tdb = tdb
         self.cmdenv = cmdenv
@@ -240,15 +245,23 @@ def validateRunArguments(tdb, cmdenv):
             raise NoDataError("No price data available for via station {}.".format(
                                 station.name()))
 
-    unspecifiedHops = (
-        cmdenv.hops +
-            (0 if cmdenv.startStation else 1) -(1 if cmdenv.stopStation else 0)
-    )
-    if len(viaSet) > unspecifiedHops:
-        raise CommandLineError("Too many vias: {} stations vs {} hops available.".format(
-                len(viaSet), unspecifiedHops
-        ))
-    cmdenv.unspecifiedHops = unspecifiedHops
+    # How many of the hops do not have pre-determined stations. For example,
+    # when the user uses "--from", they pre-determine the starting station.
+    fixedRoutePoints = 0
+    if cmdenv.startStation:
+        fixedRoutePoints += 1
+    if cmdenv.stopStation:
+        fixedRoutePoints += 1
+    totalRoutePoints = cmdenv.hops + 1
+    adhocRoutePoints = totalRoutePoints - fixedRoutePoints
+    if len(viaSet) > adhocRoutePoints:
+        raise CommandLineError(
+                "Route is not long enough for the list of '--via' "
+                "destinations you gave. Reduce the vias or try again "
+                "with '--hops {}' or greater.\n".format(
+                    len(viaSet) + fixedRoutePoints - 1
+                ))
+    cmdenv.adhocHops = adhocRoutePoints - 1
 
     if cmdenv.capacity is None:
         raise CommandLineError("Missing '--capacity' or '--ship' argument")
@@ -357,8 +370,8 @@ def run(results, cmdenv, tdb):
     # Instantiate the calculator object
     calc = TradeCalc(tdb, cmdenv)
 
-    cmdenv.DEBUG1("unspecified hops {}, numHops {}, viaSet {}",
-                cmdenv.unspecifiedHops, numHops, len(viaSet))
+    cmdenv.DEBUG1("numHops {}, vias {}, adhocHops {}",
+                numHops, len(viaSet), cmdenv.adhocHops)
 
     for hopNo in range(numHops):
         cmdenv.DEBUG1("Hop {}", hopNo)
@@ -374,7 +387,7 @@ def run(results, cmdenv, tdb):
             ### already include 2 of the vias, on hop 5, require all 3.
             if viaSet:
                 routes = [ route for route in routes if viaSet & set(route.route[viaStartPos:]) ]
-        elif cmdenv.unspecifiedHops == len(viaSet):
+        elif cmdenv.adhocHops == len(viaSet):
             # Everywhere we're going is in the viaSet.
             restrictTo = viaSet
 
