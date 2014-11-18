@@ -192,7 +192,7 @@ class CommandEnv(TradeEnv):
         # accept [ "a", "b,c", "d" ] by joining everything and then splitting it.
         if viaStationNames:
             for via in ",".join(viaStationNames).split(","):
-                viaStations.add(self.tdb.lookupStation(via))
+                viaStations.append(self.tdb.lookupStation(via))
 
 
     def checkShip(self):
