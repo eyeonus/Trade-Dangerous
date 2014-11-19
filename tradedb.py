@@ -102,6 +102,15 @@ class System(object):
 ######################################################################
 
 
+class Destination(namedtuple('Destination', [
+                    'system', 'station', 'via', 'distLy' ])):
+    pass
+
+class DestinationNode(namedtuple('DestinationNode', [
+                    'system', 'via', 'distLy' ])):
+    pass
+
+
 class Station(object):
     """
         Describes a station within a given system along with what trade
@@ -125,14 +134,6 @@ class Station(object):
             from this Station within the specified constraints.
             Limits to stations we are trading with if trading is True.
         """
-
-        class Destination(namedtuple('Destination', [
-                            'system', 'station', 'via', 'distLy' ])):
-            pass
-
-        class DestinationNode(namedtuple('DestinationNode', [
-                            'system', 'via', 'distLy' ])):
-            pass
 
         if trading:
             if not self.tradingWith:
