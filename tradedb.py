@@ -384,6 +384,7 @@ class TradeDB(object):
         self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
         self.importTables = TradeDB.defaultTables
         self.conn = None
+        self.cur = None
         self.numLinks = None
         self.tradingCount = None
 
@@ -918,7 +919,7 @@ class TradeDB(object):
 
         self.tdenv.DEBUG1("Loading data")
 
-        conn = self.getDB()
+        self.conn = conn = self.getDB()
         self.cur = conn.cursor()
 
         # Load raw tables. Stations will be linked to systems, but nothing else.
