@@ -145,7 +145,6 @@ class Station(object):
         if avoidPlaces is None:
             avoidPlaces = []
 
-
         # The open list is the list of nodes we should consider next for
         # potential destinations.
         # The path list is a list of the destinations we've found and the
@@ -153,7 +152,7 @@ class Station(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        openList = [ DestinationNode(self.system, [], 0) ]
+        openList = [ DestinationNode(self.system, [self.system], 0) ]
         pathList = { system.ID: DestinationNode(system, None, -1.0)
                             # include avoids so we only have
                             # to consult one place for exclusions
@@ -184,10 +183,11 @@ class Station(object):
                     except KeyError:
                         pass
                     # Add to the path list
-                    pathList[destSys.ID] = DestinationNode(destSys, node.via, dist)
+                    destNode = DestinationNode(destSys, node.via + [destSys], dist)
+                    pathList[destSys.ID] = destNode
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
-                    openList += [ DestinationNode(destSys, node.via + [destSys], dist) ]
+                    openList.append(destNode)
 
         destStations = []
         # always include the local stations, unless the user has indicated they are
@@ -198,13 +198,12 @@ class Station(object):
                 if (trading and station not in tradingWith):
                     continue
                 if station not in avoidPlaces:
-                    destStations += [ Destination(self, station, [], 0.0) ]
+                    destStations.append(Destination(self, station, [], 0.0))
 
         avoidStations = [
                 station for station in avoidPlaces
                     if isinstance(station, Station)
                 ]
-        epsilon = sys.float_info.epsilon
         for node in pathList.values():
             # negative values are avoidances
             if node.distLy < 0.0:
@@ -214,13 +213,12 @@ class Station(object):
                     continue
                 if station in avoidStations:
                     continue
-                route = [self.system] + node.via + [station.system]
-                destStations += [
-                                Destination(node.system,
-                                station,
-                                route,
-                                node.distLy)
-                        ]
+                destStations.append(
+                            Destination(node.system,
+                                    station,
+                                    node.via,
+                                    node.distLy)
+                        )
 
         return destStations
 
@@ -784,7 +782,7 @@ class TradeDB(object):
             """
         aliases = 0
         for (altName, itemID) in self.cur.execute(stmt):
-            assert not altName in itemByName
+            assert altName not in itemByName
             aliases += 1
             item = itemByID[itemID]
             item.altname = altName
@@ -961,7 +959,7 @@ class TradeDB(object):
             if name in sys.links:
                 raise ValueError("System %s's name occurs in sys.links" % name)
             for link in sys.links:
-                if not sys in link.links:
+                if sys not in link.links:
                     raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
 
