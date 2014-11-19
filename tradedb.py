@@ -115,10 +115,15 @@ class Station(object):
         system.stations.append(self)
 
 
-    def getDestinations(self, maxJumps=None, maxLyPer=None, avoidPlaces=None):
+    def getDestinations(self,
+            maxJumps=None,
+            maxLyPer=None,
+            avoidPlaces=None,
+            trading=False):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
+            Limits to stations we are trading with if trading is True.
         """
 
         class Destination(namedtuple('Destination', [
@@ -129,9 +134,16 @@ class Station(object):
                             'system', 'via', 'distLy' ])):
             pass
 
+        if trading:
+            if not self.tradingWith:
+                return []
+            tradingWith = self.tradingWith
+
         maxJumps = maxJumps or sys.maxsize
         maxLyPer = maxLyPer or float("inf")
-        if avoidPlaces is None: avoidPlaces = []
+        if avoidPlaces is None:
+            avoidPlaces = []
+
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -161,12 +173,15 @@ class Station(object):
 
             for node in ring:
                 for (destSys, destDist) in node.system.links.items():
-                    if destDist > maxLyPer: continue
+                    if destDist > maxLyPer:
+                        continue
                     dist = node.distLy + destDist
                     # If we already have a shorter path, do nothing
                     try:
-                        if dist >= pathList[destSys.ID].distLy: continue
-                    except KeyError: pass
+                        if dist >= pathList[destSys.ID].distLy:
+                            continue
+                    except KeyError:
+                        pass
                     # Add to the path list
                     pathList[destSys.ID] = DestinationNode(destSys, node.via, dist)
                     # Add to the open list but also include node to the via
@@ -177,18 +192,34 @@ class Station(object):
         # always include the local stations, unless the user has indicated they are
         # avoiding this system. E.g. if you're in Chango but you've specified you
         # want to avoid Chango...
-        if not self.system in avoidPlaces:
+        if self.system not in avoidPlaces:
             for station in self.system.stations:
-                if station in self.tradingWith and not station in avoidPlaces:
+                if (trading and station not in tradingWith):
+                    continue
+                if station not in avoidPlaces:
                     destStations += [ Destination(self, station, [], 0.0) ]
 
-        avoidStations = [ station for station in avoidPlaces if isinstance(station, Station) ]
+        avoidStations = [
+                station for station in avoidPlaces
+                    if isinstance(station, Station)
+                ]
         epsilon = sys.float_info.epsilon
         for node in pathList.values():
-            if node.distLy >= 0.0:       # Values indistinguishable from zero are avoidances
-                for station in node.system.stations:
-                    if not station in avoidStations:
-                        destStations += [ Destination(node.system, station, [self.system] + node.via + [station.system], node.distLy) ]
+            # negative values are avoidances
+            if node.distLy < 0.0:
+                continue
+            for station in node.system.stations:
+                if (trading and station not in tradingWith):
+                    continue
+                if station in avoidStations:
+                    continue
+                route = [self.system] + node.via + [station.system]
+                destStations += [
+                                Destination(node.system,
+                                station,
+                                route,
+                                node.distLy)
+                        ]
 
         return destStations
 
