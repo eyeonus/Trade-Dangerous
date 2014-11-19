@@ -431,15 +431,14 @@ class TradeCalc(object):
                                 maxJumps=maxJumpsPer,
                                 maxLyPer=maxLyPer,
                                 avoidPlaces=avoidPlaces,
+                                trading=True,
                     ):
                 tdenv.DEBUG2("destSys {}, destStn {}, jumps {}, distLy {}",
                                 dest.system.dbname,
                                 dest.station.dbname,
                                 "->".join([jump.str() for jump in dest.via]),
                                 dest.distLy)
-                if not dest.station in src.tradingWith:
-                    tdenv.DEBUG3("{} is not in my station list", dest.station.name())
-                    continue
+                assert dest.station in src.tradingWith
                 if restrictTo:
                     if not dest.station in restrictTo and not dest.system in restrictTo:
                         tdenv.DEBUG3("{} doesn't match restrict {}",
