@@ -55,7 +55,6 @@ stations = {
     "CHAXIRAXI-STATION": "Brother's Progress",
     "CHEMAKU-STATION": "Bartoe Platform",
     "CHONGQUAN-STATION": "Eisele Park",
-    "CHU HUB": "Chi Hub",
     "CM DRACO-STATION": "Anderson Escape",
     "COELRIND-STATION": "Siegel Hanger",
     "CORICCHA-STATION": "Cunningham",
