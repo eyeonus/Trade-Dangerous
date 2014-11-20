@@ -30,6 +30,11 @@ switches = [
             metavar='N.NN',
             type=float,
         ),
+    ParseArgument('--limit',
+            help='Maximum number of results to list.',
+            default=None,
+            type=int,
+        ),
     MutuallyExclusiveGroup(
         ParseArgument('--price-sort', '-P',
                 help='(When using --near) Sort by price not distance',
@@ -128,6 +133,10 @@ def run(results, cmdenv, tdb):
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Dist"
             results.rows.sort(key=lambda result: result.dist)
+
+    limit = cmdenv.limit or 0
+    if limit > 0:
+        results.rows = results.rows[:limit]
 
     return results
 
