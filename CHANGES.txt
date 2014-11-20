@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.0.3 WIP
+. (kfsone) Fixed sqrt crash in buildCache.py in multi-station systems
+
 BETA 3: 
 CAUTION: So many systems changed with the Beta 3 update that old prices files
 won't stand a chance of containing many valid systems. You may want to obtain
