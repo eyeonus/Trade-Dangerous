@@ -1,4 +1,4 @@
-name@System.system_id,name,ls_from_star
+name@System.system_id,unq:name,ls_from_star
 '10 Canum Venaticorum','Janifer Port',0.0
 '10 Ursae Majoris','10 Ursae Majoris-Station',0.0
 '16 c Ursae Majoris','16 c Ursae Majoris-Station',0.0
@@ -189,7 +189,7 @@ name@System.system_id,name,ls_from_star
 'Etznabihik Mangk','Etznabihik Mangk-Station',0.0
 'Evergreen','Evergreen-Station',0.0
 'Exbeur','Exbeur-Station',0.0
-'FAUST 2688','FAUST 2688-Station',0.0
+'FAUST 2688','Faust 2688-Station',0.0
 'Feng Huang','Murdoch Plant',0.0
 'Fianna','Fianna-Station',0.0
 'Fionn','Fionn-Station',0.0
@@ -432,7 +432,7 @@ name@System.system_id,name,ls_from_star
 'LHS 3877','LHS 3877-Station',0.0
 'LHS 391','Savinykh Works',0.0
 'LHS 411','Kuhn Colony',0.0
-'LHS 417','GERNHARDT CAMP',0.0
+'LHS 417','Gernhardt Camp',0.0
 'LHS 450','Wilson Relay',0.0
 'LHS 5072','LHS 5072-Station',0.0
 'LHS 5287','LHS 5287-Station',0.0
@@ -496,7 +496,7 @@ name@System.system_id,name,ls_from_star
 'LTT 10482','Hubble Relay',0.0
 'LTT 12680','LTT 12680-Station',0.0
 'LTT 12990','LTT 12990-Station',0.0
-'LTT 15294','TEM RING',0.0
+'LTT 15294','Tem Ring',0.0
 'LTT 16523','LTT 16523-Station',0.0
 'LTT 16979','LTT 16979-Station',0.0
 'LTT 3919','LTT 3919-Station',0.0
@@ -538,7 +538,7 @@ name@System.system_id,name,ls_from_star
 'Marditj','Marditj-Station',0.0
 'Markanomovoy','Markanomovoy-Station',0.0
 'Marojini','Marojini-Station',0.0
-'Marsinatani','HEWISH RELAY',0.0
+'Marsinatani','Hewish Relay',0.0
 'Maujinagoto','Maujinagoto-Station',0.0
 'Mbuthamovites','Mbuthamovites-Station',0.0
 'MCC 858','Jacquard Orbital',0.0

@@ -3,10 +3,15 @@ import.txt
 tmp
 *2.py
 *.laccdb
+*.pyc
 
 data/TradeDangerous.db
 data/TradeDangerous.db-journal
 data/TradeDangerous.prices
+misc/*.csv
 market/
 *.orig
-misc/*.csv
+*.prev
+
+wip/
+pycallgraph.png

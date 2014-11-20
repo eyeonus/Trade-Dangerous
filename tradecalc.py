@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-#---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
@@ -13,11 +11,9 @@
 ######################################################################
 # Imports
 
-import math
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
-# Let's not confuse the Americans by using long numbers that don't
-# pause with a comma every 3 digits, and lets not confuse the French
-# by putting commas after every 3 digits instead of a full stop.
+import math
 import locale
 locale.setlocale(locale.LC_ALL, '')
 
@@ -27,13 +23,18 @@ locale.setlocale(locale.LC_ALL, '')
 from tradedb import System, Station
 from collections import namedtuple
 
-class TradeLoad(namedtuple('TradeLoad', [ 'items', 'gainCr', 'costCr', 'units' ])):
+class TradeLoad(namedtuple('TradeLoad', [
+                'items', 'gainCr', 'costCr', 'units'
+                ])):
     def __bool__(self):
         return self.units > 0
 
 emptyLoad = TradeLoad([], 0, 0, 0)
 
-TradeHop = namedtuple('TradeHop', [ 'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly' ])
+class TradeHop(namedtuple('TradeHop', [
+                'destSys', 'destStn', 'load', 'gainCr', 'jumps', 'ly'
+                ])):
+    pass
 
 ######################################################################
 # Classes
@@ -83,37 +84,79 @@ class Route(object):
         gainCr = 0
         route = self.route
 
+        hops = [
+                hop for hop in self.hops[0:len(self.hops)]
+            ]
+
+        # TODO: Write as a comprehension, just can't wrap my head
+        # around it this morning.
+        def genSubValues(key):
+            for hop in hops:
+                for (tr, qty) in hop[0]:
+                    yield key(tr)
+        longestNameLen = max(genSubValues(key=lambda tr: len(tr.name())))
+
         text = self.str() + ":\n"
         if detail > 1:
-            text += self.summary() + "\n" + "\n"
-        for i in range(len(route) - 1):
-            hop = self.hops[i]
+            if detail > 2:
+                text += self.summary() + "\n"
+            hopFmt = "  Load from {station}:\n{purchases}"
+            hopStepFmt = ("     {qty:>4} x {item:<{longestName}}"
+                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total\n")
+            jumpsFmt = ("  Jump {jumps} => "
+                        "Gain {gain:n}cr "
+                        "({tongain:n}cr/ton) "
+                        "=> {credits:n}cr\n")
+            footer = '  ' + '-' * 76 + "\n"
+            endFmt = ("  Finish at {station} "
+                        "gaining {gain:n}cr "
+                        "=> est {credits:n}cr total\n")
+        elif detail:
+            hopFmt = "  Load from {station}:{purchases}\n"
+            hopStepFmt = " {qty} x {item} (@{eacost}cr),"
+            jumpsFmt = "  Jump {jumps}\n"
+            footer = None
+            endFmt = ("  Finish {station} "
+                        "+ {gain:n}cr "
+                        "=> {credits:n}cr\n")
+        else:
+            hopFmt = "  {station}:{purchases}\n"
+            hopStepFmt = " {qty} x {item},"
+            jumpsFmt = None
+            footer = None
+            endFmt = "  {station} +{gain:n}cr"
+
+        for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
-            text += " >-> " if i == 0 else "  +  "
-            text += "At %s, Buy:" % (route[i].name())
-            for (trade, qty) in sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True):
-                if detail > 1:
-                    text += "\n  |   %4d x %-30s" % (qty, trade.name())
-                    text += " @ %10scr each, %10scr total" % (localedNo(trade.costCr), localedNo(trade.costCr * qty))
-                elif detail:
-                    text += " %d x %s (@%dcr)" % (qty, trade.name(), trade.costCr)
-                else:
-                    text += " %d x %s" % (qty, trade.name())
-                text += ","
+            purchases = ""
+            for (trade, qty) in sorted(hop[0],
+                                        key=lambda tradeOpt:
+                                            tradeOpt[1] * tradeOpt[0].gainCr,
+                                        reverse=True):
+                purchases += hopStepFmt.format(
+                                    qty=qty, item=trade.name(),
+                                    eacost=trade.costCr,
+                                    ttlcost=trade.costCr*qty,
+                                    longestName=longestNameLen)
                 hopTonnes += qty
-            text += "\n"
-            if detail:
-                text += "  |   "
-                if detail > 1:
-                    text += "%scr => " % localedNo((credits + gainCr))
-                text += " -> ".join([ jump.name() for jump in self.jumps[i] ])
-                if detail > 1:
-                    text += " => Gain %scr (%scr/ton) => %scr" % (localedNo(hopGainCr), localedNo(hopGainCr / hopTonnes), localedNo(credits + gainCr + hopGainCr))
-                text += "\n"
+            text += hopFmt.format(station=route[i].name(), purchases=purchases)
+            if jumpsFmt:
+                jumps = ' -> '.join([ jump.name() for jump in self.jumps[i] ])
+                text += jumpsFmt.format(
+                            jumps=jumps,
+                            gain=hopGainCr,
+                            tongain=hopGainCr / hopTonnes,
+                            credits=credits + gainCr + hopGainCr
+                            )
+
             gainCr += hopGainCr
 
-        text += " <-< %s gaining %scr => %scr total" % (route[-1].name(), localedNo(gainCr), localedNo(credits + gainCr))
-        text += "\n"
+        text += footer or ""
+        text += endFmt.format(
+                        station=route[-1].name(),
+                        gain=gainCr,
+                        credits=credits + gainCr
+                        )
 
         return text
 
@@ -126,14 +169,21 @@ class Route(object):
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum([hop[1] for hop in hops])
         numJumps = sum([len(hopJumps)-1 for hopJumps in jumps])
-        return "\n".join([
-            "Start CR: %10s" % localedNo(credits),
-            "Hops    : %10s" % localedNo(len(hops)),
-            "Jumps   : %10s" % localedNo(numJumps), # always includes start point
-            "Gain CR : %10s" % localedNo(ttlGainCr),
-            "Gain/Hop: %10s" % localedNo(ttlGainCr / len(hops)),
-            "Final CR: %10s" % localedNo(credits + ttlGainCr),
-        ])
+        return (
+            "Start CR: {start:10n}\n"
+            "Hops    : {hops:10n}\n"
+            "Jumps   : {jumps:10n}\n"
+            "Gain CR : {gain:10n}\n"
+            "Gain/Hop: {hopgain:10n}\n"
+            "Final CR: {final:10n}\n" . format(
+                    start=credits,
+                    hops=len(hops),
+                    jumps=numJumps,
+                    gain=ttlGainCr,
+                    hopgain=ttlGainCr / len(hops),
+                    final=credits + ttlGainCr
+                )
+            )
 
 
 class TradeCalc(object):
@@ -141,13 +191,9 @@ class TradeCalc(object):
         Container for accessing trade calculations with common properties.
     """
 
-    def __init__(self, tdb, debug=0, capacity=None, maxUnits=None, margin=0.01, unique=False, fit=None):
+    def __init__(self, tdb, tdenv, fit=None):
         self.tdb = tdb
-        self.debug = debug
-        self.capacity = capacity or 4
-        self.margin = float(margin)
-        self.unique = unique
-        self.maxUnits = maxUnits or 0
+        self.tdenv = tdenv
         self.defaultFit = fit or self.fastFit
 
 
@@ -281,38 +327,45 @@ class TradeCalc(object):
         return bestLoad
 
 
-    def getBestTrade(self, src, dst, credits, capacity=None, avoidItems=None, focusItems=None, fitFunction=None):
+    def getBestTrade(self, src, dst, credits=None, fitFunction=None):
         """
             Find the most profitable trade between stations src and dst.
             If avoidItems is populated, the items in it will not be considered for trading.
-            If focusItems is populated, only items listed in it will be considered for trading.
             'fitFunction' lets you specify a function to use for performing the fit.
         """
-        if not avoidItems: avoidItems = []
-        if not focusItems: focusItems = []
-        if self.debug: print("# %s -> %s with %dcr" % (src.name(), dst.name(), credits))
+        tdenv = self.tdenv
+        if credits is None: credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
+        capacity = tdenv.capacity
+        avoidItems = tdenv.avoidItems
+        self.tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
+                src.system.dbname, src.dbname,
+                dst.system.dbname, src.dbname,
+                credits)
 
         if not dst in src.tradingWith:
             raise ValueError("%s does not have a link to %s" % (src.name(), dst.name()))
 
-        capacity = capacity or self.capacity
         if not capacity:
             raise ValueError("zero capacity")
 
-        maxUnits = self.maxUnits or capacity
+        maxUnits = getattr(tdenv, 'limit') or capacity
 
         items = src.tradingWith[dst]
         if avoidItems:
             items = [ item for item in items if not item.item in avoidItems ]
-        if focusItems:
-            items = [ item for item in items if item.item in focusItems ]
 
         # Remove any items with less gain (value) than the cheapest item, or that are outside our budget.
         # This should reduce the search domain for the majority of cases, especially low-end searches.
         if items:
             firstItem = min(items, key=lambda item: item.costCr)
             firstCost, firstGain = firstItem.costCr, firstItem.gainCr
-            items = [item for item in items if item.costCr <= credits and (item.gainCr > firstGain or item == firstItem)]
+            items = [ item
+                        for item
+                        in items
+                        if item.costCr <= credits and (
+                            item.gainCr > firstGain or
+                            item == firstItem)
+                    ]
 
         # Make sure there's still something to trade.
         if not items:
@@ -325,37 +378,18 @@ class TradeCalc(object):
         firstItem = items[0]
         if maxUnits >= capacity and firstItem.costCr * capacity <= credits:
             if firstItem.stock < 0 or firstItem.stock >= maxUnits:
-                return TradeLoad([[items[0], capacity]], capacity * firstItem.gainCr, capacity * firstItem.costCr, capacity)
+                return TradeLoad([[items[0], capacity]],
+                            capacity * firstItem.gainCr,
+                            capacity * firstItem.costCr,
+                            capacity
+                        )
 
         # Go ahead and find the best combination out of what's left.
         fitFunction = fitFunction or self.defaultFit
         return fitFunction(items, credits, capacity, maxUnits)
 
 
-    def getBestHopFrom(self, src, credits, capacity=None, maxJumps=None, maxLyPer=None):
-        """
-            Determine the best trade run from a given station.
-        """
-        src = self.tdb.lookupStation(src)
-        bestHop = None
-        for dest in src.getDestinations(maxJumps=maxJumps, maxLyPer=maxLyPer):
-            load = self.getBestTrade(src, dest.station, credits, capacity=capacity)
-            if not load:
-                continue
-            if bestHop:
-                if load.gainCr > bestHop.gainCr: continue
-                if load.gainCr == bestHop.gainCr:
-                    if dest.jumps > bestHop.jumps: continue
-                    if dest.jumps == bestHop.jumps:
-                        if dest.ly >= bestHop.ly:
-                            continue
-            bestHop = TradeHop(destSys=dest.system, destStn=dest.station, load=load.items, gainCr=load.gainCr, jumps=dest.jumps, ly=dest.ly)
-        return bestHop
-
-
-    def getBestHops(self, routes, credits,
-                    restrictTo=None, avoidItems=None, avoidPlaces=None, maxJumps=None,
-                    maxJumpsPer=None, maxLyPer=None):
+    def getBestHops(self, routes, restrictTo=None):
         """
             Given a list of routes, try all available next hops from each
             route.
@@ -367,42 +401,56 @@ class TradeCalc(object):
             more profit, there's no point continuing the A->C->D path.
         """
 
-        if not avoidItems: avoidItems = []
-        if not avoidPlaces: avoidPlaces = []
+        tdenv = self.tdenv
+        avoidItems = getattr(tdenv, 'avoidItems', [])
+        avoidPlaces = getattr(tdenv, 'avoidPlaces', [])
         assert not restrictTo or isinstance(restrictTo, set)
+        maxJumpsPer = tdenv.maxJumpsPer or 0
+        maxLyPer = tdenv.maxLyPer
+        credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
 
         bestToDest = {}
-        safetyMargin = 1.0 - self.margin
-        unique = self.unique
-        perJumpLimit = maxJumpsPer if (maxJumpsPer or 0) > 0 else 0
+        safetyMargin = 1.0 - tdenv.margin
+        unique = tdenv.unique
+
+        stationsNotYetLoaded = [
+                src.ID for src in [ route.route[-1] for route in routes ] 
+                    if src.tradingWith is None
+        ]
+        if stationsNotYetLoaded:
+            self.tdb.loadStationTrades(stationsNotYetLoaded)
+
         for route in routes:
+            tdenv.DEBUG1("Route = {}", route.str())
+
             src = route.route[-1]
-            if self.debug: print("# route = %s" % route.str())
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
-            jumpLimit = perJumpLimit
-            if (maxJumps or 0) > 0:
-                jumpLimit = min(maxJumps - routeJumps, perJumpLimit) if perJumpLimit > 0 else maxJumps - routeJumps
-                if jumpLimit <= 0:
-                    continue
 
-            for dest in src.getDestinations(maxJumps=jumpLimit, maxLyPer=maxLyPer, avoiding=avoidPlaces):
-                if self.debug > 1:
-                    print("#destSys = %s, destStn = %s, jumps = %s, distLy = %s" % (dest.system.name(), dest.station.name(), "->".join([jump.str() for jump in dest.via]), dest.distLy))
-                if not dest.station in src.tradingWith:
-                    if self.debug > 2: print("#%s is not in my station list" % dest.station.name())
-                    continue
+            for dest in src.getDestinations(
+                                maxJumps=maxJumpsPer,
+                                maxLyPer=maxLyPer,
+                                avoidPlaces=avoidPlaces,
+                                trading=True,
+                    ):
+                tdenv.DEBUG2("destSys {}, destStn {}, jumps {}, distLy {}",
+                                dest.system.dbname,
+                                dest.station.dbname,
+                                "->".join([jump.str() for jump in dest.via]),
+                                dest.distLy)
+                assert dest.station in src.tradingWith
                 if restrictTo:
                     if not dest.station in restrictTo and not dest.system in restrictTo:
-                        if self.debug > 2: print("#%s doesn't match restrict %s" % (dest.station.name(), restrictTo))
+                        tdenv.DEBUG3("{} doesn't match restrict {}",
+                                        dest.station.name(), restrictTo)
                         continue
                 if unique and dest.station in route.route:
-                    if self.debug > 2: print("#%s is already in the list, not unique" % dest.station.name())
+                    tdenv.DEBUG3("{} is already in the list, not unique", dest.station.name())
                     continue
 
-                trade = self.getBestTrade(src, dest.station, startCr, avoidItems=avoidItems)
+                trade = self.getBestTrade(src, dest.station, startCr)
                 if not trade:
-                    if self.debug > 2: print("#* No trade")
+                    tdenv.DEBUG3("No trade")
                     continue
 
                 dstID = dest.station.ID
@@ -427,9 +475,3 @@ class TradeCalc(object):
 
         return result
 
-
-def localedNo(num): # as in "transformed into the current locale"
-    """
-        Returns a locale-formatted version of a number, e.g. 1,234,456.
-    """
-    return locale.format('%d', num, grouping=True)

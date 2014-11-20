@@ -1,4 +1,4 @@
-name@Item.item_id,alt_name
+unq:name@Item.item_id,unq:alt_name
 'Agri-Medicines','agriculturalmedicines'
 'Consumer Tech','consumertechnology'
 'Dom. Appliances','domesticappliances'
