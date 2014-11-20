@@ -1,7 +1,7 @@
 ==============================================================================
 TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
-REQUIRES PYTHON 3.4 OR HIGHER.
+REQUIRES PYTHON 3.0 OR HIGHER.
 ==============================================================================
 
 == What is Trade Dangerous?
@@ -725,6 +725,7 @@ When TradeDB and TradeCalc do not currently provide built-in queries for
 the information you need, you can revert to the SQL Database with the
 TradeDB.query() and TradeDB.fetch_all() commands.
 
+See "cli.py" for examples.
 
 == Change Log Archive
 ==============================================================================
