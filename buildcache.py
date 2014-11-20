@@ -716,11 +716,15 @@ def generateStationLink(tdenv, db):
                     lhs.station_id AS lhs_station_id,
                     rhs.system_id AS rhs_system_id,
                     rhs.station_id AS rhs_station_id,
-                    sqrt(
-                        ((lSys.pos_x - rSys.pos_x) * (lSys.pos_x - rSys.pos_x)) +
-                        ((lSys.pos_y - rSys.pos_y) * (lSys.pos_y - rSys.pos_y)) +
-                        ((lSys.pos_z - rSys.pos_z) * (lSys.pos_z - rSys.pos_z))
-                        )
+                    case when lhs.system_id != rhs.system_id then
+                        sqrt(
+                            ((lSys.pos_x - rSys.pos_x) * (lSys.pos_x - rSys.pos_x)) +
+                            ((lSys.pos_y - rSys.pos_y) * (lSys.pos_y - rSys.pos_y)) +
+                            ((lSys.pos_z - rSys.pos_z) * (lSys.pos_z - rSys.pos_z))
+                            )
+                    else
+                        0.00
+                    end
               FROM  Station AS lhs
                     INNER JOIN System AS lSys
                         ON (lhs.system_id = lSys.system_id),
