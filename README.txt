@@ -28,6 +28,12 @@ won't stand a chance of containing many valid systems. You may want to obtain
 a fresh file from one of the online sources, e.g.
 maddavo's site: http://www.davek.com.au/td/default.asp
 
+v6.0.2 Nov 20 2014
+. (maddavo) Imported additional systems
+. (kfsone) Big performance improvements
+. (kfsone) Added '--limit' to 'buy' sub-command
+. (kfsone) Stop forcing "Chu hub" to be "Chi hub" (Styx)
+
 v6.0.1 Nov 16 2014 (kfsone)
 . Added "--end" option to "run" for multiple-choice route termination.
 . Database refactor to improve runtime performance
@@ -450,6 +456,10 @@ BUY sub-command:
     --near station
       Only considers stations within reach of the specified system.
       --near chango
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
 
     --ly-per N.N
       Sets the range of --near (requires --near)
@@ -931,4 +941,6 @@ v3.0 Aug 30/2014
   data will be loaded automatically.
   Cleaned up code, normalized the way I name functions, etc.
   Added more ship data, etc.
+
+
 
