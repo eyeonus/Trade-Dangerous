@@ -727,8 +727,8 @@ def generateStationLink(tdenv, db):
                     Station AS rhs
                     INNER JOIN System AS rSys
                         ON (rhs.system_id = rSys.system_id)
-              WHERE
-                    lhs.station_id != rhs.station_id
+              WHERE lhs.station_id != rhs.station_id
+                AND lhs.system_id  != rhs.system_id
     """)
     db.commit()
 
