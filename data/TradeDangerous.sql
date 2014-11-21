@@ -37,7 +37,7 @@ CREATE TABLE System
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
    pos_z DOUBLE NOT NULL,
-   added_id INTEGER,
+   added_id INTEGER NOT NULL,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    UNIQUE (name),
