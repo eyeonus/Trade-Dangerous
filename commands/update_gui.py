@@ -2,7 +2,7 @@ import tkinter as tk
 import tkinter.messagebox as mbox
 import tkinter.ttk as ttk
 import sqlite3
-
+from pathlib import Path
 
 class Item(object):
     def __init__(self, ID, catID, name, displayNo):
@@ -11,8 +11,8 @@ class Item(object):
 
 
 class UpdateFrame(tk.Frame):
-    def __init__(self, stationID, root=None):
-        tk.Frame.__init__(self, root, relief=tk.GROOVE)
+    def __init__(self, root, dbPath, stationID):
+        tk.Frame.__init__(self, root)
 
         self.root = root
 
@@ -36,7 +36,7 @@ class UpdateFrame(tk.Frame):
         self.results = None
         self.headings = []
 
-        self.createWidgets(stationID)
+        self.createWidgets(dbPath, stationID)
 
 
     def onFrameConfigure(self, event):
@@ -164,10 +164,10 @@ class UpdateFrame(tk.Frame):
         self.endRow()
 
 
-    def createWidgets(self, stationID):
+    def createWidgets(self, dbPath, stationID):
         self.addHeadings()
 
-        db = sqlite3.connect("data/TradeDangerous.db")
+        db = sqlite3.connect(str(dbPath))
         db.row_factory = sqlite3.Row
         cur = db.cursor()
 
@@ -181,7 +181,7 @@ class UpdateFrame(tk.Frame):
             """, [stationID])
         (self.sysName, self.stnName) = (cur.fetchone())
 
-        self.root.title("{} / {}".format(self.sysName, self.stnName))
+        self.root.title("{}/{}".format(self.sysName.upper(), self.stnName))
 
         cur.execute("""
             SELECT  cat.category_id AS ID,
@@ -235,7 +235,7 @@ class UpdateFrame(tk.Frame):
             self.addItemRow(row["ID"], cat, itemName, paying, asking, demand, supply)
 
 
-    def results(self):
+    def getResults(self):
         lastCat = None
 
         txt = (
@@ -262,7 +262,7 @@ class UpdateFrame(tk.Frame):
 
             if asking == 0:
                 stock = "-"
-            elif asking > 0:
+            elif asking > 0 and not demand:
                 demand = "?"
 
             txt += ("     {item:<30s} "
@@ -279,15 +279,17 @@ class UpdateFrame(tk.Frame):
         self.results = txt
 
 
-def render(stationID):
+def render(dbPath, stationID, tmpPath):
     root = tk.Tk()
-    frame = UpdateFrame(stationID=stationID, root=root)
+    frame = UpdateFrame(root, dbPath, stationID)
     frame.pack(side="top", fill="both", expand=True)
     frame.mainloop()
-    if not frame.resultsDone:
-        frame.results()
-    with open("prices.tmp", "w") as fh:
-        print(self.results, file=fh)
+    if not frame.results:
+        frame.getResults()
+    with tmpPath.open("w") as fh:
+        print(frame.results, file=fh)
+
 
 if __name__ == "__main__":
-    render(stationID=374)
+    render(Path("data/TradeDangerous.db"), 374, Path("update.prices"))
+    print("- Wrote to update.prices")
