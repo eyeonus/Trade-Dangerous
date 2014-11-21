@@ -462,8 +462,8 @@ class TradeDB(object):
         else:
             self.tdenv.DEBUG0("Building DB Cache")
 
-        import buildcache
-        buildcache.buildCache(self.tdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
+        import cache
+        cache.buildCache(self.tdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
 
 
     ############################################################

@@ -3,7 +3,7 @@ from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from tradeexcept import TradeException
 from commands.exceptions import CommandLineError
 import prices
-import buildcache
+import cache
 import subprocess
 import os
 import pathlib
@@ -140,7 +140,7 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
 
 def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
     cmdenv.DEBUG0("Importing data from {}".format(str(path)))
-    buildcache.processPricesFile(cmdenv,
+    cache.processPricesFile(cmdenv,
                      db=tdb.getDB(),
                      pricesPath=path,
                      stationID=stationID,
