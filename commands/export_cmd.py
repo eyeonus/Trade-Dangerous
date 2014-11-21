@@ -199,6 +199,7 @@ def run(results, cmdenv, tdb):
             exportFile.write("{}\n".format(",".join(csvHead)))
             for line in cur.execute(sqlStmt):
                 lineCount += 1
+                cmdenv.DEBUG2("{count}: {values}".format(count=lineCount, values=list(line)))
                 exportOut.writerow(list(line))
             cmdenv.DEBUG1("{count} {table}s exported".format(count=lineCount, table=tableName))
 
