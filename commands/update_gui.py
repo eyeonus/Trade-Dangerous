@@ -15,9 +15,12 @@ class UpdateFrame(tk.Frame):
         tk.Frame.__init__(self, root)
 
         self.root = root
+        self.style = ttk.Style()
+        self.style.theme_use("default")
 
-        self.canvas = tk.Canvas(root, borderwidth=0, background="#ffffff")
-        self.frame = tk.Frame(self.canvas, background="#ffffff")
+        self.canvas = tk.Canvas(root, borderwidth=0)
+        self.canvas.bind_all("<MouseWheel>", self.onMouseWheel)
+        self.frame = tk.Frame(self.canvas)
         self.vsb = tk.Scrollbar(root, orient="vertical", command=self.canvas.yview)
         self.canvas.configure(yscrollcommand=self.vsb.set)
 
@@ -41,6 +44,10 @@ class UpdateFrame(tk.Frame):
 
     def onFrameConfigure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+
+    def onMouseWheel(self, event):
+        self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
 
 
     def query(self, itemName, pos):

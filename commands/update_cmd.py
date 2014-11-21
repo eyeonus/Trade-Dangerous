@@ -46,6 +46,12 @@ switches = [
             default=False,
             dest='forceNa',
         ),
+    ParseArgument('--experimental-gui', '-G',
+            help="Use the experimental built-in GUI",
+            action='store_true',
+            default=False,
+            dest='gui',
+        ),
     MutuallyExclusiveGroup(
         ParseArgument('--sublime', 
                 help='Like --editor but uses Sublime Text (2 or 3), which is nice.',
@@ -288,8 +294,14 @@ def guidedUpdate(tdb, cmdenv):
 
 def run(results, cmdenv, tdb):
     if not cmdenv.editor and not cmdenv.editing:
-        guidedUpdate(tdb, cmdenv)
-        return None
+        if cmdenv.gui:
+            guidedUpdate(tdb, cmdenv)
+            return None
+        raise CommandLineError(
+            "The GUI for updates is currently experimental. "
+            "Either use one of the editors or specify the "
+            "--experimental-gui (--exp or -G for short) "
+            "flags.\n")
 
     # User specified one of the options to use an editor.
     editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
