@@ -43,6 +43,7 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
     if not quiet: print("Using database '{}'".format(dbFilename))
     conn = sqlite3.connect(str(dbFilename))
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
 
     # for some tables the first two columns will be reversed
     reverseList = [ 'AltItemNames',
