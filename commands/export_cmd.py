@@ -45,8 +45,15 @@ ignoreList = [ 'StationLink',
 
 help='CSV exporter for TradeDangerous database.'
 name='export'
-epilog=None
-wantsTradeDB=False
+epilog=(
+        "CAUTION: If you don't specify a different path, the current "
+        "CSV files in the data directory will be overwritten with "
+        "the current content of the database.\n "
+        "If you have changed any CSV file and didn't rebuild the "
+        "database, they will be lost.\n "
+        "Use the 'buildcache' command first to rebuild the database."
+)
+wantsTradeDB=False           # because we don't want the DB to be rebuild
 arguments = [
 ]
 switches = [
