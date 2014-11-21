@@ -68,7 +68,7 @@ def run(results, cmdenv, tdb):
         raise CommandLineError(
                     "Prices file does not exist: {}".format(pricesFilename))
 
-    from buildcache import buildCache
+    from cache import buildCache
     buildCache(cmdenv, dbPath, sqlPath, pricesPath, importTables)
 
     return None
