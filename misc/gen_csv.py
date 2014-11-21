@@ -47,9 +47,9 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
     # for some tables the first two columns will be reversed
     reverseList = [ 'AltItemNames',
                     'Item',
-                    'Price',
                     'ShipVendor',
                     'Station',
+                    'StationBuying',
                     'UpgradeVendor'
                   ]
 
@@ -64,9 +64,13 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
                                    ORDER BY name
                                """.format(tableStmt)):
         tableName = row['name']
-        exportName = Path(exportPath).joinpath("{table}.csv".format(table=tableName))
+        if tableName == 'StationLink':
+            # ignore table StationLink
+            if not quiet: print("Ignore Table '{table}'".format(table=tableName))
+            continue
 
         # create CSV files
+        exportName = Path(exportPath).joinpath("{table}.csv".format(table=tableName))
         if not quiet: print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
         with exportName.open("w") as exportFile:
             exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
@@ -74,9 +78,11 @@ def exportTables(dbFilename, exportPath, exportTable=None, quiet=True, debug=0):
             cur = conn.cursor()
             keyList = []
             for key in cur.execute("PRAGMA foreign_key_list('%s')" % tableName):
-                # only support FK joins with the same column name
-                if key['from'] == key['to']:
-                    keyList += [ {'table': key['table'], 'column': key['from']} ]
+                # ignore FKs to table StationItem
+                if key['table'] != 'StationItem':
+                    # only support FK joins with the same column name
+                    if key['from'] == key['to']:
+                        keyList += [ {'table': key['table'], 'column': key['from']} ]
 
             pkCount = 0
             for col in cur.execute("PRAGMA table_info('%s')" % tableName):
