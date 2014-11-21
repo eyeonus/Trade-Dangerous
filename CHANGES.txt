@@ -2,14 +2,16 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.0.3 WIP
+v6.0.3 Nov 21 2014
 . (kfsone) Added a GUI to the "update" sub-command, it's experimental:
    - Use <tab>/<shift-tab> to cycle across rows,
    - Use <enter> to drop to the first column of the next line,
    - Scrolling is currently broken - you have to manually scroll. Ick.
    - Use the "--exp" flag to indicate your understanding it is experimental.
      e.g.: trade.py update --exp aulin
-. (kfsone) Fixed sqrt crash in buildCache.py in multi-station systems
+. (kfsone) Fixed sqrt crash in buildCache.py in multi-station systems,
+. (kfsone) Fixed "local" command not showing stations when using "--detail",
+. (kfsone) Renamed "buildcache.py" to "cache.py"
 
 BETA 3: 
 CAUTION: So many systems changed with the Beta 3 update that old prices files
