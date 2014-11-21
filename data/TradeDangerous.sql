@@ -245,7 +245,7 @@ CREATE TABLE StationLink
    lhs_station_id INTEGER NOT NULL,
    rhs_system_id INTEGER NOT NULL,
    rhs_station_id INTEGER NOT NULL,
-   dist DOUBLE NOT NULL CHECK (dist > 0.0),
+   dist DOUBLE NOT NULL CHECK (dist > 0.0 or lhs_system_id == rhs_system_id),
    PRIMARY KEY (lhs_station_id, rhs_station_id)
  ) WITHOUT ROWID
 ;
