@@ -105,7 +105,7 @@ def run(results, cmdenv, tdb):
         if distSq <= lySq and destSys is not srcSystem:
             distances[destSys] = math.sqrt(distSq)
 
-    detail = cmdenv.detai
+    detail = cmdenv.detail
     if cmdenv.pill or cmdenv.percent:
         pillCalc = PillCalculator(tdb, "Eranin", "HIP 107457", pill.percent)
     else:
@@ -122,9 +122,7 @@ def run(results, cmdenv, tdb):
         row.stations = []
         if detail:
             for (station) in system.stations:
-                row.stations.append({'station': station, 'dist': station.lsFromStar})
-                stationDistance = " {} ls".format(station.lsFromStar) if station.lsFromStar > 0 else ""
-                print("\t<{}>{}".format(station.str(), stationDistance))
+                row.stations.append(ResultRow(station=station, dist=station.lsFromStar))
         results.rows.append(row)
 
     return results
@@ -159,7 +157,7 @@ def render(results, cmdenv, tdb):
 
     if cmdenv.detail:
         stnRowFmt = RowFormat(prefix='  +  ').append(
-                ColumnFormat("Station", '.<', 32,
+                ColumnFormat("Station", '<', 32,
                         key=lambda row: row.station.str())
             ).append(
                 ColumnFormat("Dist", '>', '9',
