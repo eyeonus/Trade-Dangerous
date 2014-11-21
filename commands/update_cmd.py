@@ -73,6 +73,27 @@ class TemporaryFileExistsError(TradeException):
     pass
 
 
+def getTemporaryPath(cmdenv):
+	tmpPath = pathlib.Path("prices.tmp")
+	if tmpPath.exists():
+		if not cmdenv.force:
+			raise TemporaryFileExistsError(
+	                "Temporary file already exists: {}\n"
+	                "(Check you aren't already editing in another window"
+	                    .format(tmpPath)
+	                )
+		tmpPath.unlink()
+	return tmpPath
+
+
+def saveTemporaryFile(tmpPath):
+	if tmpPath.exists():
+	    lastPath = pathlib.Path("prices.last")
+	    if lastPath.exists():
+	        lastPath.unlink()
+	    tmpPath.rename(lastPath)
+
+
 def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
     cmdenv.DEBUG0("Locating {} editor", editorName)
     try:
@@ -176,13 +197,7 @@ def editUpdate(tdb, cmdenv, stationID):
         pass
 
     # Create a temporary text file with a list of the price data.
-    tmpPath = pathlib.Path("prices.tmp")
-    if tmpPath.exists():
-        raise TemporaryFileExistsError(
-                "Temporary file already exists: {}\n"
-                "(Check you aren't already editing in another window"
-                    .format(tmpPath)
-                )
+    tmpPath = getTemporaryPath(cmdenv)
 
     absoluteFilename = None
     dbFilename = cmdenv.dbFilename or tdb.defaultDB
@@ -251,14 +266,21 @@ def editUpdate(tdb, cmdenv, stationID):
     finally:
         # Save a copy
         if absoluteFilename and tmpPath:
-            lastPath = pathlib.Path("prices.last")
-            if lastPath.exists():
-                lastPath.unlink()
-            tmpPath.rename(lastPath)
+        	saveTemporaryFile(tmpPath)
 
 
-def guidedUpdate(cmdenv, tdb):
-    raise CommandLineError("Guided update mode not implemented yet. See -h for help.")
+def guidedUpdate(tdb, cmdenv):
+	stationID = cmdenv.startStation.ID
+	dbFilename = cmdenv.dbFilename or tdb.defaultDB
+	tmpPath = getTemporaryPath(cmdenv)
+
+	from commands.update_gui import render
+	try:
+		render(tdb.dbPath, stationID, tmpPath)
+		cmdenv.DEBUG0("Got results, importing")
+		importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
+	finally:
+		saveTemporaryFile(tmpPath)
 
 
 ######################################################################
@@ -267,6 +289,7 @@ def guidedUpdate(cmdenv, tdb):
 def run(results, cmdenv, tdb):
     if not cmdenv.editor and not cmdenv.editing:
         guidedUpdate(tdb, cmdenv)
+        return None
 
     # User specified one of the options to use an editor.
     editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
