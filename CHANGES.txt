@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.0.4 Nov 21 2014 (Beta 3.9.1)
+. (kfsone) Reactive Armor changed to Reactive Armour
+
+
 v6.0.3 Nov 21 2014
 . (kfsone) Added a GUI to the "update" sub-command, it's experimental:
    - Use <tab>/<shift-tab> to cycle across rows,
