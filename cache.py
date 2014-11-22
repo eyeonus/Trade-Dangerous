@@ -366,7 +366,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ### Change current station
         categoryID, uiOrder = None, 0
-        systemName, stationName = matches.group(1, 2)
+        systemNameIn, stationNameIn = matches.group(1, 2)
+        systemName, stationName = systemNameIn, stationNameIn
         facility = systemName.upper() + '/' + stationName.upper()
 
         tdenv.DEBUG1("NEW STATION: {}", facility)
@@ -379,7 +380,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         if stationID < 0:
             systemName = corrections.correctSystem(systemName)
-            stationName = corrections.correctStation(stationName)
+            stationName = corrections.correctStation(systemName, stationName)
             if systemName == DELETED or stationName == DELETED:
                 tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
@@ -388,7 +389,29 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 stationID = systemByName[facility]
                 tdenv.DEBUG0("Renamed: {}", facility)
             except KeyError:
-                raise UnknownStationError(priceFile, lineNo, facility) from None
+                if tdenv.corrections:
+                    ### HACK: HERE BE DRAEGONS
+                    # Stations we didn't have a name for are named {STAR}-STATION,
+                    # this is a catch-all for the case where we have a .prices
+                    # that provides the actual name for the station but we don't
+                    # yet have a corrections.py/Station.csv entry for it.
+                    # Run with --corrections to generate a list of corrections.py
+                    # additions.
+                    altStationName = systemName.upper() + "-STATION"
+                    altFacility = systemName.upper() + '/' + altStationName
+                    try:
+                        stationID = systemByName[altFacility]
+                    except KeyError:
+                        stationID = -1
+                    if stationID >= 0:
+                        facility = altFacility
+                        if altStationName in corrections.stations:
+                            raise Exception(altStationName + " conflicts")
+                        print("  \"{}\": \"{}\",".format(
+                                    facility, stationNameIn,
+                                ), file=sys.stderr)
+                if stationID < 0 :
+                    raise UnknownStationError(priceFile, lineNo, facility) from None
 
         # Check for duplicates
         if stationID in processedStations:
@@ -592,7 +615,7 @@ def deprecationCheckStation(line, debug):
         if debug: print("! Station.csv: deprecated system: {}".format(line[0]))
         line[0] = correctSystem
 
-    correctStation = corrections.correctStation(line[1])
+    correctStation = corrections.correctStation(correctSystem, line[1])
     if correctStation != line[1]:
         if debug: print("! Station.csv: deprecated station: {}".format(line[1]))
         line[1] = correctStation
