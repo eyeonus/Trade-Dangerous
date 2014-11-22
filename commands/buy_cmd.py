@@ -97,7 +97,7 @@ def run(results, cmdenv, tdb):
 
     whereClause = ' AND '.join(constraints)
     stmt = """
-               SELECT {columns}
+               SELECT DISTINCT {columns}
                  FROM {tables}
                 WHERE {where}
            """.format(
