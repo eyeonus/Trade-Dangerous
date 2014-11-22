@@ -434,9 +434,7 @@ class TradeDB(object):
         if self.dbPath.exists():
             # We're looking to see if the .sql file or .prices file
             # was modified or created more recently than the last time
-            # we *created* the db file.
-            dbFileCreatedTimestamp = self.dbPath.stat().st_mtime
-
+            # we created/modified the db file.
             def getMostRecentTimestamp(altPath):
                 try:
                     stat = altPath.stat()
@@ -444,7 +442,9 @@ class TradeDB(object):
                 except FileNotFoundError:
                     return 0
 
-            sqlTimestamp, pricesTimestamp = getMostRecentTimestamp(self.sqlPath), getMostRecentTimestamp(self.pricesPath)
+            dbFileCreatedTimestamp = getMostRecentTimestamp(self.dbPath)
+            sqlTimestamp = getMostRecentTimestamp(self.sqlPath)
+            pricesTimestamp = getMostRecentTimestamp(self.pricesPath)
 
             # rebuild if the sql or prices file is more recent than the db file
             if max(sqlTimestamp, pricesTimestamp) < dbFileCreatedTimestamp:
