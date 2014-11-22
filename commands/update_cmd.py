@@ -153,8 +153,8 @@ def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
     with tdb.pricesPath.open("w") as pricesFile:
         prices.dumpPrices(dbFilename, prices.Element.full, file=pricesFile, debug=cmdenv.debug)
 
-        # Update the DB file so we don't regenerate it.
-        pathlib.Path(dbFilename).touch()
+    # Update the DB file so we don't regenerate it.
+    os.utime(dbFilename)
 
 
 def editUpdate(tdb, cmdenv, stationID):
