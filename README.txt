@@ -535,6 +535,44 @@ LOCAL sub-command:
 == ADDING OR CHANGING PRICE DATA
 ==============================================================================
 
+*** Experimental GUI in 6.0 ***
+*******************************
+
+
+As of v6.0 I've added an experimental GUI for updating prices. I'm still
+working out some of the issues, in particular you currently have to manually
+size and scroll the window.
+
+To use it, simply type:
+
+  trade.py update Aulin
+
+or whichever station you need to update. While it is in experimental status,
+you'll be asked to provide an extra switch.
+
+- To save your changes:
+
+Click the window's close button, don't alt-f4 or command-q.
+
+- To remove an item:
+
+Set the 'paying' and 'asking' values to 0
+
+- To move around
+
+ . Use tab/shift-tab to cycle thru cells,
+ . Use up/down arrows to move between rows,
+ . Press ENTER to move to the first column of the next line,
+
+- To add items to a station:
+
+Use the "-A" switch and leave the items you don't want empty.
+
+
+*** Other ways of editing Price Data ***
+****************************************
+
+
 TradeDangerous uses a human-readable text format for price information. This
 is designed to closely resemble what we see in the market screens in-game.
 
@@ -660,3 +698,4 @@ loading" by functions like TradeCalc.getBestHops().
 When TradeDB and TradeCalc do not currently provide built-in queries for
 the information you need, you can revert to the SQL Database with the
 TradeDB.query() and TradeDB.fetch_all() commands.
+
