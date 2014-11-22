@@ -57,6 +57,21 @@ switches = [
             default=False,
             dest='gui',
         ),
+    ParseArgument('--height', '-H',
+            help="[GUI] Specify height of the window",
+            type=int,
+            default=800,
+        ),
+    ParseArgument('--front', '-F',
+            help=(
+                "[GUI] Keep the GUI infront of other windows; "
+                "this allows you to put the window infront of "
+                "the game UI if you run the game in windowed mode."
+                ),
+            action='store_true',
+            default=False,
+            dest='alwaysOnTop',
+        ),
     MutuallyExclusiveGroup(
         ParseArgument('--sublime', 
                 help='Like --editor but uses Sublime Text (2 or 3), which is nice.',
