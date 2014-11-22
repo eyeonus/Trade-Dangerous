@@ -295,7 +295,7 @@ name@System.system_id,unq:name,ls_from_star
 'Ross 1015','Bowersox Mines',0.0
 'Ross 104','Glenn Dock',0.0
 'Ross 1051','Abetti Platform',0.0
-'ROSS 1057','Wang Estate',0.0
+'Ross 1057','Wang Estate',0.0
 'Ross 128','Warren Prison Mine',0.0
 'Ross 130','Huxley Relay',0.0
 'Ross 210','Viktorenko Park',0.0
@@ -312,6 +312,7 @@ name@System.system_id,unq:name,ls_from_star
 'Shama','Clairaut Port',0.0
 'Shebayeb','Volta Landing',0.0
 'Sheela Na Gig','Birkhoff Terminal',0.0
+'Shinrarta Dezhra','Jameson Memorial',0.0
 'Sigma Bootis','Meikle Platform',0.0
 'Slatus','Hoffman Orbital',0.0
 'Sofagre','Markov Park',0.0
@@ -350,10 +351,10 @@ name@System.system_id,unq:name,ls_from_star
 'Wanggu','Besonders Port',0.0
 'Wei Jung','Cooper Dock',0.0
 'Wikmeang','Ivanov Hub',0.0
-'WISE 1506+7027','Silverberg Relay',0.0
+'Wise 1506+7027','Silverberg Relay',0.0
 'Wolf 1409','Carter Vision',0.0
 'Wolf 1478','Franklin Orbital',0.0
-'WOLF 248','Hencke Centre',0.0
+'Wolf 248','Hencke Centre',0.0
 'Wolf 294','Hippalus Station',0.0
 'Wolf 359','Lomas Orbiter',0.0
 'Wolf 393','Lichtenberg Horizons',0.0
