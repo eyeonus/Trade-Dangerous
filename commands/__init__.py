@@ -15,6 +15,7 @@ commandList = [
     'local',
     'nav',
     'run',
+    'sell',
     'update',
 ]
 
