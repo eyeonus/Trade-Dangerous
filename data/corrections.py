@@ -8,6 +8,7 @@ DELETED = -111
 
 systems = {
     "LTT 4549": "Shinrarta Dezhra",
+    "KAMCHAULTULTULA": "Aiabiko",
 #ADD_SYSTEMS_HERE
 }
 
