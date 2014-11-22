@@ -452,7 +452,6 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         except KeyError:
             itemID = -1
         if itemID < 0:
-            print("correcting")
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
