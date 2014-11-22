@@ -10,26 +10,16 @@ class Item(object):
         self.displayNo = displayNo
 
 
-class UpdateFrame(tk.Frame):
+class UpdateGUI(tk.Canvas):
+    """
+        Implements a tk canvas which displays an editor
+        for TradeDangerous Price Updates
+    """
+
     def __init__(self, root, dbPath, stationID):
-        tk.Frame.__init__(self, root)
+        super().__init__(root, borderwidth=0, width=464, height=400)
 
         self.root = root
-        self.style = ttk.Style()
-        self.style.theme_use("default")
-
-        self.canvas = tk.Canvas(root, borderwidth=0)
-        self.canvas.bind_all("<MouseWheel>", self.onMouseWheel)
-        self.frame = tk.Frame(self.canvas)
-        self.vsb = tk.Scrollbar(root, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.vsb.set)
-
-        self.vsb.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.canvas.create_window((4,4), window=self.frame, anchor="nw", tags="self.frame")
-
-        self.frame.bind("<Configure>", self.onFrameConfigure)
-
         self.rowNo = 0
         self.colNo = 0
         self.items = {}
@@ -39,20 +29,40 @@ class UpdateFrame(tk.Frame):
         self.results = None
         self.headings = []
 
+        self.bind_all("<MouseWheel>", self.onMouseWheel)
+        self.vsb = tk.Scrollbar(root, orient="vertical", command=self.yview)
+        self.configure(yscrollcommand=self.vsb.set)
+        self.vsb.pack(side="right", fill="y")
+
+        self.frame = tk.Frame(self)
+        self.frame.bind("<Configure>", self.onFrameConfigure)
+        self.frame.rowconfigure(0, weight=1)
+        self.frame.columnconfigure(0, weight=1)
+
         self.createWidgets(dbPath, stationID)
 
         self.focusOn(0, 0)
 
+        self.create_window((4,4), window=self.frame, anchor="nw", tags="self.frame")
+        self.pack(fill=tk.BOTH, expand=True)
+
+
 
     def onFrameConfigure(self, event):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        """ Handle the <Configure> event for the frame """
+
+        self.configure(scrollregion=self.bbox("all"))
 
 
     def onMouseWheel(self, event):
-        self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
+        """ Translate mouse wheel inputs to scroll bar motions """
+
+        self.yview_scroll(int(-1 * (event.delta/120)), "units")
 
 
     def focusOn(self, displayNo, pos):
+        """ Set focus to a widget and select the text in it """
+
         row = self.itemDisplays[displayNo]
         widget = row[pos][0]
         widget.focus_set()
@@ -60,27 +70,36 @@ class UpdateFrame(tk.Frame):
 
 
     def query(self, itemName, pos):
+        """ Find the cell for a given item name and a position """
+
         item = self.items[itemName]
         row = self.itemDisplays[item.displayNo]
         return item, row, row[pos][1].get()
 
 
     def validate(self, item, row, value, pos):
+        """ For checking the contents of a widget. TBD """
+
         return True
 
 
-    def handleShiftTab(self, itemName, pos, event):
+    def onShiftTab(self, itemName, pos, event):
+        """ Process user pressing Shift+TAB """
+
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
             return
         if pos > 0 or item.displayNo > 0:
             # Natural flow
             return
+
         self.root.bell()
         return "break"
 
 
-    def handleTab(self, itemName, pos, event):
+    def onTab(self, itemName, pos, event):
+        """ Process user pressing TAB """
+
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
             return
@@ -92,7 +111,13 @@ class UpdateFrame(tk.Frame):
         return "break"
 
 
-    def handleReturn(self, itemName, pos, event):
+    def onReturn(self, itemName, pos, event):
+        """
+            When the user hits <Return>, advance to
+            the first cell on the next line, or if
+            we are at the bottom of the list, beep.
+        """
+        
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
             return
@@ -103,6 +128,35 @@ class UpdateFrame(tk.Frame):
             return "break"
 
         self.focusOn(newDisplayNo, 0)
+
+
+    def onUp(self, itemName, pos, event):
+        """ Handle the user pressing up, go up a row """
+
+        item, row, value = self.query(itemName, pos)
+        if not self.validate(item, row, value, pos):
+            return
+        # can we go up a line?
+        if item.displayNo <= 0:
+            self.root.bell()
+            return "break"
+
+        self.focusOn(item.displayNo - 1, pos)
+
+
+    def onDown(self, itemName, pos, event):
+        """ Handle the user pressing down, go down a row """
+
+        item, row, value = self.query(itemName, pos)
+        if not self.validate(item, row, value, pos):
+            return
+        # can we go up a line?
+        newDisplayNo = item.displayNo + 1
+        if newDisplayNo >= len(self.itemDisplays):
+            self.root.bell()
+            return "break"
+
+        self.focusOn(newDisplayNo, pos)
 
 
     def endRow(self):
@@ -139,11 +193,15 @@ class UpdateFrame(tk.Frame):
                 justify=tk.RIGHT,
                 textvariable=inputVal)
         inputEl.bind('<Shift-Key-Tab>',
-                lambda evt: self.handleShiftTab(item, pos, evt))
+                lambda evt: self.onShiftTab(item, pos, evt))
         inputEl.bind('<Key-Tab>',
-                lambda evt: self.handleTab(item, pos, evt))
+                lambda evt: self.onTab(item, pos, evt))
         inputEl.bind('<Key-Return>',
-                lambda evt: self.handleReturn(item, pos, evt))
+                lambda evt: self.onReturn(item, pos, evt))
+        inputEl.bind('<Key-Down>',
+                lambda evt: self.onDown(item, pos, evt))
+        inputEl.bind('<Key-Up>',
+                lambda evt: self.onUp(item, pos, evt))
         self.addWidget(inputEl, sticky='E')
         row.append((inputEl, inputVal))
 
@@ -297,15 +355,15 @@ class UpdateFrame(tk.Frame):
 
 def render(dbPath, stationID, tmpPath):
     root = tk.Tk()
-    frame = UpdateFrame(root, dbPath, stationID)
-    frame.pack(side="top", fill="both", expand=True)
-    frame.mainloop()
-    if not frame.results:
-        frame.getResults()
+    gui = UpdateGUI(root, dbPath, stationID)
+    gui.mainloop()
+    if not gui.results:
+        gui.getResults()
     with tmpPath.open("w") as fh:
-        print(frame.results, file=fh)
+        print(gui.results, file=fh)
 
 
 if __name__ == "__main__":
     render(Path("data/TradeDangerous.db"), 374, Path("update.prices"))
     print("- Wrote to update.prices")
+
