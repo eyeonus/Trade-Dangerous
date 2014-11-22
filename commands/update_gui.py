@@ -41,6 +41,8 @@ class UpdateFrame(tk.Frame):
 
         self.createWidgets(dbPath, stationID)
 
+        self.focusOn(0, 0)
+
 
     def onFrameConfigure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -48,6 +50,13 @@ class UpdateFrame(tk.Frame):
 
     def onMouseWheel(self, event):
         self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
+
+
+    def focusOn(self, displayNo, pos):
+        row = self.itemDisplays[displayNo]
+        widget = row[pos][0]
+        widget.focus_set()
+        widget.selection_range(0, tk.END)
 
 
     def query(self, itemName, pos):
@@ -92,8 +101,8 @@ class UpdateFrame(tk.Frame):
         if newDisplayNo >= len(self.itemDisplays):
             self.root.bell()
             return "break"
-        row = self.itemDisplays[newDisplayNo]
-        row[0][0].focus_set()
+
+        self.focusOn(newDisplayNo, 0)
 
 
     def endRow(self):
