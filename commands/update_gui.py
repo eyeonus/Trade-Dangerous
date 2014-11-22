@@ -252,29 +252,37 @@ class UpdateGUI(tk.Canvas):
         db.row_factory = sqlite3.Row
         cur = db.cursor()
 
-        cur.execute("""
-            SELECT  item.category_id AS catID,
-                    item.item_id AS ID,
-                    item.name AS name,
-                    IFNULL(sb.price, '') AS paying,
-                    IFNULL(ss.price, '') AS asking,
-                    IFNULL(sb.units, 0) AS demandUnits,
-                    IFNULL(sb.level, 0) AS demandLevel,
-                    IFNULL(ss.units, 0) AS stockUnits,
-                    IFNULL(ss.level, 0) AS stockLevel
-              FROM  Category AS cat
-                    INNER JOIN Item item
-                        USING (category_id)
-                    INNER JOIN StationItem si
-                        USING (item_id)
-                    LEFT OUTER JOIN StationBuying sb
-                        USING (station_id, item_id)
-                    LEFT OUTER JOIN StationSelling ss
-                        USING (station_id, item_id)
-             WHERE  si.station_id = ?
-             ORDER  BY cat.name, si.ui_order
-                """, [stationID])
         self.categories = self.tdb.categoryByID
+
+        # if the user specified "--all", force listing of all items
+        siJoin = "INNER" if not cmdenv.all else "LEFT OUTER"
+        stmt = """
+                SELECT  item.category_id AS catID,
+                        item.item_id AS ID,
+                        item.name AS name,
+                        IFNULL(sb.price, '') AS paying,
+                        IFNULL(ss.price, '') AS asking,
+                        IFNULL(sb.units, 0) AS demandUnits,
+                        IFNULL(sb.level, 0) AS demandLevel,
+                        IFNULL(ss.units, 0) AS stockUnits,
+                        IFNULL(ss.level, 0) AS stockLevel
+                  FROM  (
+                            Category AS cat
+                                INNER JOIN Item item
+                                    USING (category_id)
+                        ) {siJoin} JOIN
+                            StationItem si
+                                ON (si.item_id = item.item_id
+                                    AND si.station_id = ?)
+                            LEFT OUTER JOIN StationBuying sb
+                                USING (station_id, item_id)
+                            LEFT OUTER JOIN StationSelling ss
+                                USING (station_id, item_id)
+                 ORDER  BY cat.name, si.ui_order, item.name
+                """.format(
+                            siJoin=siJoin
+                    )
+        cur.execute(stmt, [station.ID])
 
         def describeSupply(units, level):
             if not level:
