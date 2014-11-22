@@ -151,7 +151,6 @@ def run(results, cmdenv, tdb):
             csvHead    = []
             stmtColumn = []
             stmtTable  = [ tableName ]
-            stmtWhere  = []
             stmtOrder  = []
 
             # iterate over all columns of the table
@@ -165,8 +164,10 @@ def run(results, cmdenv, tdb):
                     # there must be a "name" column in the referenced table
                     csvHead += [ "name@{}.{}".format(key['table'], key['column']) ]
                     stmtColumn += [ "{}.name".format(key['table']) ]
-                    stmtWhere += [ "{}.{} = {}.{}".format(tableName, col['name'], key['table'], key['column']) ]
-                    stmtTable += [ key['table'] ]
+                    if col['notnull']:
+                        stmtTable += [ 'INNER JOIN {} USING({})'.format(key['table'], key['column']) ]
+                    else:
+                        stmtTable += [ 'LEFT OUTER JOIN {} USING({})'.format(key['table'], key['column']) ]
                     stmtOrder += [ "{}.name".format(key['table']) ]
                 else:
                     # ordinary column
@@ -186,9 +187,7 @@ def run(results, cmdenv, tdb):
                     stmtOrder[0], stmtOrder[1] = stmtOrder[1], stmtOrder[0]
 
             # build the SQL statement
-            sqlStmt = "SELECT {} FROM {}".format(",".join(stmtColumn),",".join(stmtTable))
-            if len(stmtWhere) > 0:
-                sqlStmt += " WHERE {}".format(" AND ".join(stmtWhere))
+            sqlStmt = "SELECT {} FROM {}".format(",".join(stmtColumn)," ".join(stmtTable))
             if len(stmtOrder) > 0:
                 sqlStmt += " ORDER BY {}".format(",".join(stmtOrder))
             cmdenv.DEBUG0("SQL: %s" % sqlStmt)
