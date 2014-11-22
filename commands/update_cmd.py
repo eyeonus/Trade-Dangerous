@@ -138,25 +138,6 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
             )
 
 
-def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
-    cmdenv.DEBUG0("Importing data from {}".format(str(path)))
-    cache.processPricesFile(cmdenv,
-                     db=tdb.getDB(),
-                     pricesPath=path,
-                     stationID=stationID,
-                     defaultZero=cmdenv.forceNa
-            )
-
-    # If everything worked, we need to re-build the prices file.
-    cmdenv.DEBUG0("Update complete, regenerating .prices file")
-
-    with tdb.pricesPath.open("w") as pricesFile:
-        prices.dumpPrices(dbFilename, prices.Element.full, file=pricesFile, debug=cmdenv.debug)
-
-    # Update the DB file so we don't regenerate it.
-    os.utime(dbFilename)
-
-
 def editUpdate(tdb, cmdenv, stationID):
     """
         Dump the price data for a specific station to a file and
@@ -264,7 +245,7 @@ def editUpdate(tdb, cmdenv, stationID):
                         "Suit you, sir! Oh!"
                     ])))
         else:
-            importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
+            cache.importDataFromFile(cmdenv, tdb, tmpPath)
 
         tmpPath.unlink()
         tmpPath = None

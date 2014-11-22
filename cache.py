@@ -155,6 +155,16 @@ class UnknownItemError(BuildCacheBaseException):
         error = "Unrecognized item name, '{}'.".format(itemName)
         super().__init__(fromFile, lineNo, error)
 
+class UnknownCategoryError(BuildCacheBaseException):
+    """
+        Raised in the case of a categrory name that we don't know.
+        Attributes:
+            categoryName   Key we tried to look up.
+    """
+    def __init__(self, fromFile, lineNo, categoryName):
+        error = "Unrecognized category name, '{}'.".format(categoryName)
+        super().__init__(fromFile, lineNo, error)
+
 
 class DuplicateKeyError(BuildCacheBaseException):
     """
@@ -423,6 +433,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         processedStations[stationID] = lineNo
         processedItems = {}
 
+        # Clear old entries for this station.
+        db.execute(
+            "DELETE FROM StationItem WHERE station_id = ?",
+                [stationID]
+        )
+
 
     def changeCategory(matches):
         nonlocal uiOrder, categoryID
@@ -445,7 +461,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             categoryID = categoriesByName[categoryName]
             tdenv.DEBUG1("Renamed: {}", categoryName)
         except KeyError:
-            raise UnknownCategoryError(priceFile, lineNo, facility)
+            raise UnknownCategoryError(priceFile, lineNo, categoryName)
 
 
     def processItemLine(matches):
@@ -553,15 +569,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 ######################################################################
 
-def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
+def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
-
-    if stationID:
-        tdenv.DEBUG0("Deleting stale entries for {}", stationID)
-        db.execute(
-            "DELETE FROM StationItem WHERE station_id = ?",
-                [stationID]
-        )
 
     with pricesPath.open() as pricesFile:
         items, buys, sells = [], [], []
@@ -813,4 +822,40 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     tempPath.rename(dbPath)
 
     tdenv.DEBUG0("Finished")
+
+
+######################################################################
+
+def importDataFromFile(tdenv, tdb, path, reset=False):
+    """
+        Import price data from a file on a per-station basis,
+        that is when a new station is encountered, delete any
+        existing records for that station in the database.
+    """
+
+    if reset:
+        tdenv.DEBUG0("Resetting price data")
+        tdb.cur.execute("DELETE FROM StationItem")
+
+    tdenv.DEBUG0("Importing data from {}".format(str(path)))
+    processPricesFile(tdenv,
+            db=tdb.getDB(),
+            pricesPath=path,
+            defaultZero=tdenv.forceNa,
+            )
+
+    # If everything worked, we may need to re-build the prices file.
+    if path != tdb.pricesPath:
+        import prices
+        tdenv.DEBUG0("Update complete, regenerating .prices file")
+        with tdb.pricesPath.open("w") as pricesFile:
+            prices.dumpPrices(
+                    tdb.dbURI,
+                    prices.Element.full,
+                    file=pricesFile,
+                    debug=tdenv.debug)
+
+    # Update the DB file so we don't regenerate it.
+    os.utime(tdb.dbURI)
+
 
