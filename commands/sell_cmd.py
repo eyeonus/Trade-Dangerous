@@ -6,21 +6,16 @@ import math
 ######################################################################
 # Parser config
 
-help='Find places to buy a given item within range of a given station.'
-name='buy'
+help='Find places to sell a given item within range of a given station.'
+name='sell'
 epilog=None
 wantsTradeDB=True
 arguments = [
-    ParseArgument('item', help='Name of item to query.', type=str),
+    ParseArgument('item', help='Name of item you want to sell.', type=str),
 ]
 switches = [
-    ParseArgument('--quantity',
-            help='Require at least this quantity.',
-            default=0,
-            type=int,
-        ),
     ParseArgument('--near',
-            help='Find sellers within jump range of this system.',
+            help='Find buyers within jump range of this system.',
             type=str
         ),
     ParseArgument('--ly-per',
@@ -35,20 +30,12 @@ switches = [
             default=None,
             type=int,
         ),
-    MutuallyExclusiveGroup(
-        ParseArgument('--price-sort', '-P',
-                help='(When using --near) Sort by price not distance',
-                action='store_true',
-                default=False,
-                dest='sortByPrice',
-            ),
-        ParseArgument('--stock-sort', '-S',
-            help='Sort by stock followed by price',
+    ParseArgument('--price-sort', '-P',
+            help='(When using --near) Sort by price not distance',
             action='store_true',
             default=False,
-            dest='sortByStock',
+            dest='sortByPrice',
         ),
-    ),
 ]
 
 ######################################################################
@@ -61,9 +48,9 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
     # Constraints
-    tables = "StationSelling AS ss"
+    tables = "StationBuying AS sb"
     constraints = [ "(item_id = {})".format(item.ID) ]
-    columns = [ 'ss.station_id', 'ss.price', 'ss.units' ]
+    columns = [ 'sb.station_id', 'sb.price', 'sb.units' ]
     bindValues = [ ]
 
     if cmdenv.quantity:
@@ -83,7 +70,7 @@ def run(results, cmdenv, tdb):
         cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
         tables += (
                 " INNER JOIN StationLink AS sl"
-                " ON (sl.rhs_station_id = ss.station_id)"
+                " ON (sl.rhs_station_id = sb.station_id)"
                 )
         columns.append('sl.dist')
         constraints.append("(lhs_system_id = {})".format(
@@ -109,36 +96,32 @@ def run(results, cmdenv, tdb):
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
-    for (stationID, priceCr, stock, dist) in cur:
+    for (stationID, priceCr, demand, dist) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
-        cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, stock)
+        cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, demand)
         if nearSystem:
            row.dist = dist
         row.price = priceCr
-        row.stock = stock
+        row.demand = demand
         results.rows.append(row)
 
     if not results.rows:
         raise NoDataError("No available items found")
 
-    if cmdenv.sortByStock:
-        results.summary.sort = "Stock"
-        results.rows.sort(key=lambda result: result.price)
-        results.rows.sort(key=lambda result: result.stock, reverse=True)
-    else:
-        results.summary.sort = "Price"
-        results.rows.sort(key=lambda result: result.stock, reverse=True)
-        results.rows.sort(key=lambda result: result.price)
-        if nearSystem and not cmdenv.sortByPrice:
-            results.summary.sort = "Dist"
-            results.rows.sort(key=lambda result: result.dist)
+    results.summary.sort = "Price"
+    results.rows.sort(key=lambda result: result.demand, reverse=True)
+    results.rows.sort(key=lambda result: result.price, reverse=True)
+    if nearSystem and not cmdenv.sortByPrice:
+        results.summary.sort = "Dist"
+        results.rows.sort(key=lambda result: result.dist)
 
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
 
     return results
+
 
 #######################################################################
 ## Transform result set into output
@@ -154,8 +137,9 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.station.name())
     stnRowFmt.addColumn('Cost', '>', 10, 'n',
             key=lambda row: row.price)
-    stnRowFmt.addColumn('Stock', '>', 10,
-            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else 'unknown')
+    if cmdenv.detail:
+        stnRowFmt.addColumn('Demand', '>', 10,
+                key=lambda row: '{:n}'.format(row.demand) if row.demand >= 0 else 'unknown')
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
@@ -166,3 +150,4 @@ def render(results, cmdenv, tdb):
 
     for row in results.rows:
         print(stnRowFmt.format(row))
+

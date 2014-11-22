@@ -10,25 +10,18 @@ class Item(object):
         self.displayNo = displayNo
 
 
-class UpdateFrame(tk.Frame):
-    def __init__(self, root, dbPath, stationID):
-        tk.Frame.__init__(self, root)
+class UpdateGUI(tk.Canvas):
+    """
+        Implements a tk canvas which displays an editor
+        for TradeDangerous Price Updates
+    """
+
+    def __init__(self, root, tdb, cmdenv):
+        super().__init__(root, borderwidth=0, width=500, height=440)
 
         self.root = root
-        self.style = ttk.Style()
-        self.style.theme_use("default")
-
-        self.canvas = tk.Canvas(root, borderwidth=0)
-        self.canvas.bind_all("<MouseWheel>", self.onMouseWheel)
-        self.frame = tk.Frame(self.canvas)
-        self.vsb = tk.Scrollbar(root, orient="vertical", command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.vsb.set)
-
-        self.vsb.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-        self.canvas.create_window((4,4), window=self.frame, anchor="nw", tags="self.frame")
-
-        self.frame.bind("<Configure>", self.onFrameConfigure)
+        self.tdb = tdb
+        self.cmdenv = cmdenv
 
         self.rowNo = 0
         self.colNo = 0
@@ -39,39 +32,77 @@ class UpdateFrame(tk.Frame):
         self.results = None
         self.headings = []
 
-        self.createWidgets(dbPath, stationID)
+        self.bind_all("<MouseWheel>", self.onMouseWheel)
+        self.vsb = tk.Scrollbar(root, orient="vertical", command=self.yview)
+        self.configure(yscrollcommand=self.vsb.set)
+        self.vsb.pack(side="right", fill="y")
+
+        self.frame = tk.Frame(self)
+        self.frame.bind("<Configure>", self.onFrameConfigure)
+        self.frame.rowconfigure(0, weight=1)
+        self.frame.columnconfigure(0, weight=1)
+
+        self.createWidgets()
+
+        self.focusOn(0, 0)
+
+        self.create_window((4,4), window=self.frame, anchor="nw", tags="self.frame")
+        self.pack(fill=tk.BOTH, expand=True)
+
 
 
     def onFrameConfigure(self, event):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        """ Handle the <Configure> event for the frame """
+
+        self.configure(scrollregion=self.bbox("all"))
 
 
     def onMouseWheel(self, event):
-        self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
+        """ Translate mouse wheel inputs to scroll bar motions """
+
+        self.yview_scroll(int(-1 * (event.delta/120)), "units")
+
+
+    def focusOn(self, displayNo, pos):
+        """ Set focus to a widget and select the text in it """
+
+        row = self.itemDisplays[displayNo]
+        widget = row[pos][0]
+        widget.focus_set()
+        widget.selection_range(0, tk.END)
 
 
     def query(self, itemName, pos):
+        """ Find the cell for a given item name and a position """
+
         item = self.items[itemName]
         row = self.itemDisplays[item.displayNo]
         return item, row, row[pos][1].get()
 
 
     def validate(self, item, row, value, pos):
+        """ For checking the contents of a widget. TBD """
+
         return True
 
 
-    def handleShiftTab(self, itemName, pos, event):
+    def onShiftTab(self, itemName, pos, event):
+        """ Process user pressing Shift+TAB """
+
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
             return
         if pos > 0 or item.displayNo > 0:
             # Natural flow
             return
+
         self.root.bell()
         return "break"
 
 
-    def handleTab(self, itemName, pos, event):
+    def onTab(self, itemName, pos, event):
+        """ Process user pressing TAB """
+
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
             return
@@ -83,7 +114,13 @@ class UpdateFrame(tk.Frame):
         return "break"
 
 
-    def handleReturn(self, itemName, pos, event):
+    def onReturn(self, itemName, pos, event):
+        """
+            When the user hits <Return>, advance to
+            the first cell on the next line, or if
+            we are at the bottom of the list, beep.
+        """
+        
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
             return
@@ -92,8 +129,37 @@ class UpdateFrame(tk.Frame):
         if newDisplayNo >= len(self.itemDisplays):
             self.root.bell()
             return "break"
-        row = self.itemDisplays[newDisplayNo]
-        row[0][0].focus_set()
+
+        self.focusOn(newDisplayNo, 0)
+
+
+    def onUp(self, itemName, pos, event):
+        """ Handle the user pressing up, go up a row """
+
+        item, row, value = self.query(itemName, pos)
+        if not self.validate(item, row, value, pos):
+            return
+        # can we go up a line?
+        if item.displayNo <= 0:
+            self.root.bell()
+            return "break"
+
+        self.focusOn(item.displayNo - 1, pos)
+
+
+    def onDown(self, itemName, pos, event):
+        """ Handle the user pressing down, go down a row """
+
+        item, row, value = self.query(itemName, pos)
+        if not self.validate(item, row, value, pos):
+            return
+        # can we go up a line?
+        newDisplayNo = item.displayNo + 1
+        if newDisplayNo >= len(self.itemDisplays):
+            self.root.bell()
+            return "break"
+
+        self.focusOn(newDisplayNo, pos)
 
 
     def endRow(self):
@@ -130,11 +196,15 @@ class UpdateFrame(tk.Frame):
                 justify=tk.RIGHT,
                 textvariable=inputVal)
         inputEl.bind('<Shift-Key-Tab>',
-                lambda evt: self.handleShiftTab(item, pos, evt))
+                lambda evt: self.onShiftTab(item, pos, evt))
         inputEl.bind('<Key-Tab>',
-                lambda evt: self.handleTab(item, pos, evt))
+                lambda evt: self.onTab(item, pos, evt))
         inputEl.bind('<Key-Return>',
-                lambda evt: self.handleReturn(item, pos, evt))
+                lambda evt: self.onReturn(item, pos, evt))
+        inputEl.bind('<Key-Down>',
+                lambda evt: self.onDown(item, pos, evt))
+        inputEl.bind('<Key-Up>',
+                lambda evt: self.onUp(item, pos, evt))
         self.addWidget(inputEl, sticky='E')
         row.append((inputEl, inputVal))
 
@@ -160,7 +230,7 @@ class UpdateFrame(tk.Frame):
         self.items[itemName] = item
         self.itemList.append(item)
 
-        self.addLabel(itemName)
+        self.addLabel(itemName.upper())
         self.addInput(itemName, paying, row)
         self.addInput(itemName, asking, row)
         self.addInput(itemName, demand, row)
@@ -171,54 +241,48 @@ class UpdateFrame(tk.Frame):
         self.endRow()
 
 
-    def createWidgets(self, dbPath, stationID):
+    def createWidgets(self):
         self.addHeadings()
 
-        db = sqlite3.connect(str(dbPath))
+        tdb, cmdenv = self.tdb, self.cmdenv
+        station = cmdenv.startStation
+        self.root.title(station.name())
+
+        db = tdb.getDB()
         db.row_factory = sqlite3.Row
         cur = db.cursor()
 
-        cur.execute("""
-            SELECT  sys.name, stn.name
-              FROM  Station AS stn
-                        INNER JOIN System AS sys
-                            USING (system_id)
-             WHERE  stn.station_id = ?
-             LIMIT  1
-            """, [stationID])
-        (self.sysName, self.stnName) = (cur.fetchone())
+        self.categories = self.tdb.categoryByID
 
-        self.root.title("{}/{}".format(self.sysName.upper(), self.stnName))
-
-        cur.execute("""
-            SELECT  cat.category_id AS ID,
-                    cat.name AS name
-              FROM  Category AS cat
-              """)
-        self.categories = { row["ID"]: row["name"] for row in cur }
-
-        cur.execute("""
-            SELECT  item.category_id AS catID,
-                    item.item_id AS ID,
-                    item.name AS name,
-                    IFNULL(sb.price, '') AS paying,
-                    IFNULL(ss.price, '') AS asking,
-                    IFNULL(sb.units, 0) AS demandUnits,
-                    IFNULL(sb.level, 0) AS demandLevel,
-                    IFNULL(ss.units, 0) AS stockUnits,
-                    IFNULL(ss.level, 0) AS stockLevel
-              FROM  Category AS cat
-                    INNER JOIN Item item
-                        USING (category_id)
-                    INNER JOIN StationItem si
-                        USING (item_id)
-                    LEFT OUTER JOIN StationBuying sb
-                        USING (station_id, item_id)
-                    LEFT OUTER JOIN StationSelling ss
-                        USING (station_id, item_id)
-             WHERE  si.station_id = ?
-             ORDER  BY cat.name, si.ui_order
-                """, [stationID])
+        # if the user specified "--all", force listing of all items
+        siJoin = "INNER" if not cmdenv.all else "LEFT OUTER"
+        stmt = """
+                SELECT  item.category_id AS catID,
+                        item.item_id AS ID,
+                        item.name AS name,
+                        IFNULL(sb.price, '') AS paying,
+                        IFNULL(ss.price, '') AS asking,
+                        IFNULL(sb.units, 0) AS demandUnits,
+                        IFNULL(sb.level, 0) AS demandLevel,
+                        IFNULL(ss.units, 0) AS stockUnits,
+                        IFNULL(ss.level, 0) AS stockLevel
+                  FROM  (
+                            Category AS cat
+                                INNER JOIN Item item
+                                    USING (category_id)
+                        ) {siJoin} JOIN
+                            StationItem si
+                                ON (si.item_id = item.item_id
+                                    AND si.station_id = ?)
+                            LEFT OUTER JOIN StationBuying sb
+                                USING (station_id, item_id)
+                            LEFT OUTER JOIN StationSelling ss
+                                USING (station_id, item_id)
+                 ORDER  BY cat.name, si.ui_order, item.name
+                """.format(
+                            siJoin=siJoin
+                    )
+        cur.execute(stmt, [station.ID])
 
         def describeSupply(units, level):
             if not level:
@@ -233,7 +297,7 @@ class UpdateFrame(tk.Frame):
         for row in cur:
             cat = row["catID"]
             if cat != lastCat:
-                self.addSection(self.categories[cat])
+                self.addSection(self.categories[cat].name())
                 lastCat = cat
             itemName = row["name"]
             paying, asking = row["paying"], row["asking"]
@@ -248,15 +312,14 @@ class UpdateFrame(tk.Frame):
         txt = (
                 "# Generated by TDGUI\n"
                 "\n"
-                "@ {sys}/{stn}\n".format(
-                    sys=self.sysName.upper(),
-                    stn=self.stnName
+                "@ {stn}\n".format(
+                    stn=self.cmdenv.startStation.name(),
                 )
             )
         for item in self.itemList:
             if item.catID != lastCat:
                 lastCat = item.catID
-                txt += (" + {}\n".format(self.categories[lastCat]))
+                txt += (" + {}\n".format(self.categories[lastCat].dbname))
 
             row = self.itemDisplays[item.displayNo]
             rowvals = [ val[1].get() for val in row ]
@@ -267,10 +330,14 @@ class UpdateFrame(tk.Frame):
             demand = rowvals[2]
             stock  = rowvals[3]
 
+            if not paying and not asking:
+                continue
+
+            if paying and not demand:
+                demand = "?"
+
             if asking == 0:
                 stock = "-"
-            elif asking > 0 and not demand:
-                demand = "?"
 
             txt += ("     {item:<30s} "
                     "{paying:>10} "
@@ -286,17 +353,17 @@ class UpdateFrame(tk.Frame):
         self.results = txt
 
 
-def render(dbPath, stationID, tmpPath):
+def render(tdb, cmdenv, tmpPath):
     root = tk.Tk()
-    frame = UpdateFrame(root, dbPath, stationID)
-    frame.pack(side="top", fill="both", expand=True)
-    frame.mainloop()
-    if not frame.results:
-        frame.getResults()
+    gui = UpdateGUI(root, tdb, cmdenv)
+    gui.mainloop()
+    if not gui.results:
+        gui.getResults()
     with tmpPath.open("w") as fh:
-        print(frame.results, file=fh)
+        print(gui.results, file=fh)
 
 
 if __name__ == "__main__":
     render(Path("data/TradeDangerous.db"), 374, Path("update.prices"))
     print("- Wrote to update.prices")
+

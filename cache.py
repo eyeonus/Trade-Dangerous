@@ -155,6 +155,16 @@ class UnknownItemError(BuildCacheBaseException):
         error = "Unrecognized item name, '{}'.".format(itemName)
         super().__init__(fromFile, lineNo, error)
 
+class UnknownCategoryError(BuildCacheBaseException):
+    """
+        Raised in the case of a categrory name that we don't know.
+        Attributes:
+            categoryName   Key we tried to look up.
+    """
+    def __init__(self, fromFile, lineNo, categoryName):
+        error = "Unrecognized category name, '{}'.".format(categoryName)
+        super().__init__(fromFile, lineNo, error)
+
 
 class DuplicateKeyError(BuildCacheBaseException):
     """
@@ -366,7 +376,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ### Change current station
         categoryID, uiOrder = None, 0
-        systemName, stationName = matches.group(1, 2)
+        systemNameIn, stationNameIn = matches.group(1, 2)
+        systemName, stationName = systemNameIn, stationNameIn
         facility = systemName.upper() + '/' + stationName.upper()
 
         tdenv.DEBUG1("NEW STATION: {}", facility)
@@ -379,7 +390,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         if stationID < 0:
             systemName = corrections.correctSystem(systemName)
-            stationName = corrections.correctStation(stationName)
+            stationName = corrections.correctStation(systemName, stationName)
             if systemName == DELETED or stationName == DELETED:
                 tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
@@ -388,7 +399,29 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 stationID = systemByName[facility]
                 tdenv.DEBUG0("Renamed: {}", facility)
             except KeyError:
-                raise UnknownStationError(priceFile, lineNo, facility) from None
+                if tdenv.corrections:
+                    ### HACK: HERE BE DRAEGONS
+                    # Stations we didn't have a name for are named {STAR}-STATION,
+                    # this is a catch-all for the case where we have a .prices
+                    # that provides the actual name for the station but we don't
+                    # yet have a corrections.py/Station.csv entry for it.
+                    # Run with --corrections to generate a list of corrections.py
+                    # additions.
+                    altStationName = systemName.upper() + "-STATION"
+                    altFacility = systemName.upper() + '/' + altStationName
+                    try:
+                        stationID = systemByName[altFacility]
+                    except KeyError:
+                        stationID = -1
+                    if stationID >= 0:
+                        facility = altFacility
+                        if altStationName in corrections.stations:
+                            raise Exception(altStationName + " conflicts")
+                        print("  \"{}\": \"{}\",".format(
+                                    facility, stationNameIn,
+                                ), file=sys.stderr)
+                if stationID < 0 :
+                    raise UnknownStationError(priceFile, lineNo, facility) from None
 
         # Check for duplicates
         if stationID in processedStations:
@@ -399,6 +432,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         processedStations[stationID] = lineNo
         processedItems = {}
+
+        # Clear old entries for this station.
+        db.execute(
+            "DELETE FROM StationItem WHERE station_id = ?",
+                [stationID]
+        )
 
 
     def changeCategory(matches):
@@ -422,7 +461,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             categoryID = categoriesByName[categoryName]
             tdenv.DEBUG1("Renamed: {}", categoryName)
         except KeyError:
-            raise UnknownCategoryError(priceFile, lineNo, facility)
+            raise UnknownCategoryError(priceFile, lineNo, categoryName)
 
 
     def processItemLine(matches):
@@ -452,7 +491,6 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         except KeyError:
             itemID = -1
         if itemID < 0:
-            print("correcting")
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
@@ -531,15 +569,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 ######################################################################
 
-def processPricesFile(tdenv, db, pricesPath, stationID=None, defaultZero=False):
+def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
-
-    if stationID:
-        tdenv.DEBUG0("Deleting stale entries for {}", stationID)
-        db.execute(
-            "DELETE FROM StationItem WHERE station_id = ?",
-                [stationID]
-        )
 
     with pricesPath.open() as pricesFile:
         items, buys, sells = [], [], []
@@ -592,7 +623,7 @@ def deprecationCheckStation(line, debug):
         if debug: print("! Station.csv: deprecated system: {}".format(line[0]))
         line[0] = correctSystem
 
-    correctStation = corrections.correctStation(line[1])
+    correctStation = corrections.correctStation(correctSystem, line[1])
     if correctStation != line[1]:
         if debug: print("! Station.csv: deprecated station: {}".format(line[1]))
         line[1] = correctStation
@@ -791,4 +822,40 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     tempPath.rename(dbPath)
 
     tdenv.DEBUG0("Finished")
+
+
+######################################################################
+
+def importDataFromFile(tdenv, tdb, path, reset=False):
+    """
+        Import price data from a file on a per-station basis,
+        that is when a new station is encountered, delete any
+        existing records for that station in the database.
+    """
+
+    if reset:
+        tdenv.DEBUG0("Resetting price data")
+        tdb.getDB().execute("DELETE FROM StationItem")
+
+    tdenv.DEBUG0("Importing data from {}".format(str(path)))
+    processPricesFile(tdenv,
+            db=tdb.getDB(),
+            pricesPath=path,
+            defaultZero=tdenv.forceNa,
+            )
+
+    # If everything worked, we may need to re-build the prices file.
+    if path != tdb.pricesPath:
+        import prices
+        tdenv.DEBUG0("Update complete, regenerating .prices file")
+        with tdb.pricesPath.open("w") as pricesFile:
+            prices.dumpPrices(
+                    tdb.dbURI,
+                    prices.Element.full,
+                    file=pricesFile,
+                    debug=tdenv.debug)
+
+    # Update the DB file so we don't regenerate it.
+    os.utime(tdb.dbURI)
+
 

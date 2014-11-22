@@ -2,6 +2,20 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.0.4 Nov 21 2014 (Beta 3.9.1)
+. (kfsone) Added "sell" command (find places to sell a specific item)
+. (kfsone) Reactive Armor changed to Reactive Armour
+. (kfsone) Added 'Chemical Waste'
+. (kfsone) Update GUI now consistently selects text on entering a cell
+. (kfsone) Update GUI now selects the first column of the first line on startup
+. (kfsone) Update GUI now supports up/down key inputs and has a default size
+. (kfsone) Issue#57 Fixed extra cache rebuilds after doing an 'update'
+. (kfsone) Changing .prices won't force a full rebuild of the cache
+. (kfsone) Better integrated update gui (improved startup times)
+. (kfsone) Added "--all" (-A) option to 'update -G' to show ALL items
+. (kfsone) (Update GUI) Set 'selling' and 'asking' to 0 to delete an item
+. (kfsone) Fixed "buy" command showing multiple hits for multi-station systems
+
 v6.0.3 Nov 21 2014
 . (kfsone) Added a GUI to the "update" sub-command, it's experimental:
    - Use <tab>/<shift-tab> to cycle across rows,

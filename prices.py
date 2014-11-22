@@ -77,7 +77,7 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
                     Item INNER JOIN Category
                         USING (category_id)
                     {stationWhere}
-              ORDER BY Station.system_id, Station.station_id, Category.name, Item.name
+              ORDER BY stn.system_id, stn.station_id, Category.name, Item.name
         """
     else:
         stmt = """

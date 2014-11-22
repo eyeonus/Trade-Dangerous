@@ -40,6 +40,11 @@ switches = [
             action='store_true',
             default=False,
         ),
+    ParseArgument('--all', '-A',
+            help='List all known items.',
+            action='store_true',
+            default=False,
+        ),
     ParseArgument('--force-na', '-0', 
             help="Forces 'unk' supply to become 'n/a' by default",
             action='store_true',
@@ -80,24 +85,24 @@ class TemporaryFileExistsError(TradeException):
 
 
 def getTemporaryPath(cmdenv):
-	tmpPath = pathlib.Path("prices.tmp")
-	if tmpPath.exists():
-		if not cmdenv.force:
-			raise TemporaryFileExistsError(
-	                "Temporary file already exists: {}\n"
-	                "(Check you aren't already editing in another window"
-	                    .format(tmpPath)
-	                )
-		tmpPath.unlink()
-	return tmpPath
+    tmpPath = pathlib.Path("prices.tmp")
+    if tmpPath.exists():
+        if not cmdenv.force:
+            raise TemporaryFileExistsError(
+                    "Temporary file already exists: {}\n"
+                    "(Check you aren't already editing in another window"
+                        .format(tmpPath)
+                    )
+        tmpPath.unlink()
+    return tmpPath
 
 
 def saveTemporaryFile(tmpPath):
-	if tmpPath.exists():
-	    lastPath = pathlib.Path("prices.last")
-	    if lastPath.exists():
-	        lastPath.unlink()
-	    tmpPath.rename(lastPath)
+    if tmpPath.exists():
+        lastPath = pathlib.Path("prices.last")
+        if lastPath.exists():
+            lastPath.unlink()
+        tmpPath.rename(lastPath)
 
 
 def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
@@ -136,25 +141,6 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
             "or set the {} environment variable to point to it."
                 .format(editorName, envVar)
             )
-
-
-def importDataFromFile(cmdenv, tdb, path, stationID, dbFilename):
-    cmdenv.DEBUG0("Importing data from {}".format(str(path)))
-    cache.processPricesFile(cmdenv,
-                     db=tdb.getDB(),
-                     pricesPath=path,
-                     stationID=stationID,
-                     defaultZero=cmdenv.forceNa
-            )
-
-    # If everything worked, we need to re-build the prices file.
-    cmdenv.DEBUG0("Update complete, regenerating .prices file")
-
-    with tdb.pricesPath.open("w") as pricesFile:
-        prices.dumpPrices(dbFilename, prices.Element.full, file=pricesFile, debug=cmdenv.debug)
-
-        # Update the DB file so we don't regenerate it.
-        pathlib.Path(dbFilename).touch()
 
 
 def editUpdate(tdb, cmdenv, stationID):
@@ -264,7 +250,7 @@ def editUpdate(tdb, cmdenv, stationID):
                         "Suit you, sir! Oh!"
                     ])))
         else:
-            importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
+            cache.importDataFromFile(cmdenv, tdb, tmpPath)
 
         tmpPath.unlink()
         tmpPath = None
@@ -272,21 +258,26 @@ def editUpdate(tdb, cmdenv, stationID):
     finally:
         # Save a copy
         if absoluteFilename and tmpPath:
-        	saveTemporaryFile(tmpPath)
+            saveTemporaryFile(tmpPath)
 
 
 def guidedUpdate(tdb, cmdenv):
-	stationID = cmdenv.startStation.ID
-	dbFilename = cmdenv.dbFilename or tdb.defaultDB
-	tmpPath = getTemporaryPath(cmdenv)
+    dbFilename = cmdenv.dbFilename or tdb.defaultDB
+    tmpPath = getTemporaryPath(cmdenv)
 
-	from commands.update_gui import render
-	try:
-		render(tdb.dbPath, stationID, tmpPath)
-		cmdenv.DEBUG0("Got results, importing")
-		importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
-	finally:
-		saveTemporaryFile(tmpPath)
+    from commands.update_gui import render
+    try:
+        render(tdb, cmdenv, tmpPath)
+        cmdenv.DEBUG0("Got results, importing")
+        cache.importDataFromFile(cmdenv, tdb, tmpPath)
+    except Exception as e:
+        print("*** ERROR ENCOUNTERED ***")
+        print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
+                "prices.last"
+                ))
+        raise
+    finally:
+        saveTemporaryFile(tmpPath)
 
 
 ######################################################################

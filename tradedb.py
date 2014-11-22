@@ -22,6 +22,7 @@ from pathlib import Path
 
 from tradeexcept import TradeException
 from tradeenv import TradeEnv
+import cache
 
 import locale
 locale.setlocale(locale.LC_ALL, '')
@@ -432,38 +433,44 @@ class TradeDB(object):
         """
 
         if self.dbPath.exists():
-            # We're looking to see if the .sql file or .prices file
-            # was modified or created more recently than the last time
-            # we *created* the db file.
-            dbFileCreatedTimestamp = self.dbPath.stat().st_mtime
+            dbFileStamp = self.dbPath.stat().st_mtime
 
-            def getMostRecentTimestamp(altPath):
-                try:
-                    stat = altPath.stat()
-                    return max(stat.st_mtime, stat.st_ctime)
-                except FileNotFoundError:
-                    return 0
+            paths = [ self.sqlPath ]
+            paths += [ Path(f) for (f, _) in self.importTables ]
 
-            sqlTimestamp, pricesTimestamp = getMostRecentTimestamp(self.sqlPath), getMostRecentTimestamp(self.pricesPath)
+            changedPaths = [
+                    [path, path.stat().st_mtime]
+                        for path in paths
+                        if path.exists() and
+                            path.stat().st_mtime > dbFileStamp
+                    ]
 
-            # rebuild if the sql or prices file is more recent than the db file
-            if max(sqlTimestamp, pricesTimestamp) < dbFileCreatedTimestamp:
-                # sql and prices file are older than the db, db may be upto date,
-                # check if any of the table files have changed.
-                changedFiles = [ fileName for (fileName, _) in self.importTables if getMostRecentTimestamp(Path(fileName)) > dbFileCreatedTimestamp ]
-                if not changedFiles:
+            if not changedPaths:
+                # Do we need to reload the .prices file?
+                if not self.pricesPath.exists():
+                    self.tdenv.DEBUG1("No .prices file to load")
+                    return
+
+                pricesStamp = self.pricesPath.stat().st_mtime
+                if pricesStamp <= dbFileStamp:
                     self.tdenv.DEBUG1("DB Cache is up to date.")
                     return
-                self.tdenv.DEBUG0("Rebuilding DB Cache because of modified {}",
-                                        ', '.join(changedFiles))
-            else:
-                self.tdenv.DEBUG0("Rebuilding DB Cache [db:{}, sql:{}, prices:{}]",
-                                        dbFileCreatedTimestamp, sqlTimestamp, pricesTimestamp)
+
+                self.tdenv.DEBUG0(".prices has changed: re-importing")
+                cache.importDataFromFile(self.tdenv, self, self.pricesPath, reset=True)
+                return
+
+            self.tdenv.DEBUG0("Rebuilding DB Cache [{}]", str(changedPaths))
         else:
             self.tdenv.DEBUG0("Building DB Cache")
 
-        import cache
-        cache.buildCache(self.tdenv, dbPath=self.dbPath, sqlPath=self.sqlPath, pricesPath=self.pricesPath, importTables=self.importTables)
+        cache.buildCache(
+                self.tdenv,
+                dbPath=self.dbPath,
+                sqlPath=self.sqlPath,
+                pricesPath=self.pricesPath,
+                importTables=self.importTables
+                )
 
 
     ############################################################
