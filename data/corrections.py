@@ -66,7 +66,8 @@ stations = {
     "DIFU-STATION": "Backers Pledge High",
     "DIVIS ENTERPRISE": "Divis Enterprise",
     "DORIS-STATION": "Isherwood Dock",
-    "DT VIRGINIS-STATION": "Chun Station",
+    "DT VIRGINIS-STATION": "Chun Vision",
+    "CHUN STATION": "Chun Vision",
     "DUAMTA-STATION": "Rutherford Gateway",
     "DX 799-STATION": "Shargin Plant",
     "DX CANCRI-STATION": "Horowitz Landing",
@@ -267,7 +268,7 @@ stations = {
     "SOPDU-STATION": "Borlaug Camp",
     "STEIN 2051-STATION": "Trevithick Port",
     "STURCKOW CITY": "Sturckow City",
-    "STYX-STATION": "Chi Hub",
+    "STYX-STATION": "Chu Hub",
     "SUDZ-STATION": "Divis Enterprise",
     "SUKUB TUNGATIS-STATION": "Allen Horizons",
     "SURACI-STATION": "Priestley Ring",
@@ -332,7 +333,11 @@ def correctSystem(oldName):
     except KeyError:
         return oldName
 
-def correctStation(oldName):
+def correctStation(systemName, oldName):
+    try:
+        return stations[systemName.upper() + "/" + oldName.upper()]
+    except KeyError:
+        pass
     try:
         return stations[oldName.upper()]
     except KeyError:
