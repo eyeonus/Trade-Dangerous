@@ -257,15 +257,14 @@ def editUpdate(tdb, cmdenv, stationID):
 
 
 def guidedUpdate(tdb, cmdenv):
-	stationID = cmdenv.startStation.ID
 	dbFilename = cmdenv.dbFilename or tdb.defaultDB
 	tmpPath = getTemporaryPath(cmdenv)
 
 	from commands.update_gui import render
 	try:
-		render(tdb.dbPath, stationID, tmpPath)
+		render(tdb, cmdenv, tmpPath)
 		cmdenv.DEBUG0("Got results, importing")
-		importDataFromFile(cmdenv, tdb, tmpPath, stationID, dbFilename)
+		cache.importDataFromFile(cmdenv, tdb, tmpPath)
 	finally:
 		saveTemporaryFile(tmpPath)
 

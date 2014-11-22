@@ -10,6 +10,7 @@ v6.0.4 Nov 21 2014 (Beta 3.9.1)
 . (kfsone) Update GUI now supports up/down key inputs and has a default size
 . (kfsone) Issue#57 Fixed extra cache rebuilds after doing an 'update'
 . (kfsone) Changing .prices won't force a full rebuild of the cache
+. (kfsone) Better integrated update gui (improved startup times)
 
 v6.0.3 Nov 21 2014
 . (kfsone) Added a GUI to the "update" sub-command, it's experimental:
