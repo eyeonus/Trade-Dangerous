@@ -117,7 +117,7 @@ def run(results, cmdenv, tdb):
         results.rows.append(row)
         lastHop = hop
     results.rows[0].action='Depart'
-    results.rows[1].action='Arrive'
+    results.rows[-1].action='Arrive'
 
     return results
 
