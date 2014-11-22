@@ -7,6 +7,7 @@ v6.0.4 Nov 21 2014 (Beta 3.9.1)
 . (kfsone) Added 'Chemical Waste'
 . (kfsone) Update GUI now consistently selects text on entering a cell
 . (kfsone) Update GUI now selects the first column of the first line on startup
+. (kfsone) Update GUI now supports up/down key inputs and has a default size
 
 v6.0.3 Nov 21 2014
 . (kfsone) Added a GUI to the "update" sub-command, it's experimental:
