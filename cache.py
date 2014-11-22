@@ -835,7 +835,7 @@ def importDataFromFile(tdenv, tdb, path, reset=False):
 
     if reset:
         tdenv.DEBUG0("Resetting price data")
-        tdb.cur.execute("DELETE FROM StationItem")
+        tdb.getDB().execute("DELETE FROM StationItem")
 
     tdenv.DEBUG0("Importing data from {}".format(str(path)))
     processPricesFile(tdenv,
