@@ -457,7 +457,7 @@ class TradeDB(object):
                     return
 
                 self.tdenv.DEBUG0(".prices has changed: re-importing")
-                cache.importDataFromFile(self.tdenv, self, self.pricesPath)
+                cache.importDataFromFile(self.tdenv, self, self.pricesPath, reset=True)
                 return
 
             self.tdenv.DEBUG0("Rebuilding DB Cache [{}]", str(changedPaths))
