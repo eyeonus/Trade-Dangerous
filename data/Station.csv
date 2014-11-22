@@ -160,7 +160,7 @@ name@System.system_id,unq:name,ls_from_star
 'LFT 820','Bailey Landing',0.0
 'LFT 859','Stross City',0.0
 'LFT 880','Baker Platform',0.0
-'LFT 926','Onizuka Platform',0.0
+'LFT 926','Meredith City',0.0
 'LFT 945','Hahn Base',0.0
 'LFT 992','Szulkin mines',0.0
 'LHS 1065','Hornblower Platform',0.0
@@ -247,7 +247,7 @@ name@System.system_id,unq:name,ls_from_star
 'Marasing','Thiele Enterprise',0.0
 'Markanomovoy','Compton Dock',0.0
 'Marsinatani','Hewish Relay',0.0
-'MAUJINAGOTO','Halsell Point',0.0
+'Maujinagoto','Halsell Point',0.0
 'MCC 858','Jacquard Orbital',0.0
 'Melcior','Goddard Dock',0.0
 'Meliae','Shawl Beacon',0.0
@@ -267,6 +267,11 @@ name@System.system_id,unq:name,ls_from_star
 'NLTT 46621','Hope Point',0.0
 'NLTT 48502','Webb Holdings',0.0
 'NLTT 53889','Roosa Platform',0.0
+'Nuenets','Shriver Hub',0.0
+'Nuenets','Laliberte Enterprise',0.0
+'Nuenets','Harbaugh Port',0.0,
+'Nuenets','Forrester Dock',0.0
+'Nuenets','Ryazanski Dock',0.0
 'Nuwang','Schade Outpost',0.0
 'Nzambassee','Garriott Stop',0.0
 'Okinoukhe','Stableford Ring',0.0
