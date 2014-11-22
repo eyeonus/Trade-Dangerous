@@ -826,7 +826,7 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
 
 ######################################################################
 
-def importDataFromFile(tdenv, tdb, path, reset=False):
+def importDataFromFile(tdb, tdenv, path, reset=False):
     """
         Import price data from a file on a per-station basis,
         that is when a new station is encountered, delete any

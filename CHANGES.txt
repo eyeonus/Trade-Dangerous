@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.0.5 Nov 22 2014 (w/Gamma 1)
+. (kfsone) Added "import" sub-command for loading 1+ stations from a file
+. (kfsone) Added Pilot's Federation/Jameson Memorial
+
 v6.0.4 Nov 21 2014 (Beta 3.9.1)
 . (kfsone) Added "sell" command (find places to sell a specific item)
 . (kfsone) Reactive Armor changed to Reactive Armour

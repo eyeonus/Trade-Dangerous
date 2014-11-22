@@ -13,6 +13,7 @@ commandList = [
     'buildcache',
     'buy',
     'local',
+    'import',
     'nav',
     'run',
     'sell',

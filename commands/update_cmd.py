@@ -250,7 +250,7 @@ def editUpdate(tdb, cmdenv, stationID):
                         "Suit you, sir! Oh!"
                     ])))
         else:
-            cache.importDataFromFile(cmdenv, tdb, tmpPath)
+            cache.importDataFromFile(tdb, cmdenv, tmpPath)
 
         tmpPath.unlink()
         tmpPath = None
@@ -269,7 +269,7 @@ def guidedUpdate(tdb, cmdenv):
     try:
         render(tdb, cmdenv, tmpPath)
         cmdenv.DEBUG0("Got results, importing")
-        cache.importDataFromFile(cmdenv, tdb, tmpPath)
+        cache.importDataFromFile(tdb, cmdenv, tmpPath)
     except Exception as e:
         print("*** ERROR ENCOUNTERED ***")
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
