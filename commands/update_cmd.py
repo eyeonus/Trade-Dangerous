@@ -85,24 +85,24 @@ class TemporaryFileExistsError(TradeException):
 
 
 def getTemporaryPath(cmdenv):
-	tmpPath = pathlib.Path("prices.tmp")
-	if tmpPath.exists():
-		if not cmdenv.force:
-			raise TemporaryFileExistsError(
-	                "Temporary file already exists: {}\n"
-	                "(Check you aren't already editing in another window"
-	                    .format(tmpPath)
-	                )
-		tmpPath.unlink()
-	return tmpPath
+    tmpPath = pathlib.Path("prices.tmp")
+    if tmpPath.exists():
+        if not cmdenv.force:
+            raise TemporaryFileExistsError(
+                    "Temporary file already exists: {}\n"
+                    "(Check you aren't already editing in another window"
+                        .format(tmpPath)
+                    )
+        tmpPath.unlink()
+    return tmpPath
 
 
 def saveTemporaryFile(tmpPath):
-	if tmpPath.exists():
-	    lastPath = pathlib.Path("prices.last")
-	    if lastPath.exists():
-	        lastPath.unlink()
-	    tmpPath.rename(lastPath)
+    if tmpPath.exists():
+        lastPath = pathlib.Path("prices.last")
+        if lastPath.exists():
+            lastPath.unlink()
+        tmpPath.rename(lastPath)
 
 
 def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
@@ -258,20 +258,26 @@ def editUpdate(tdb, cmdenv, stationID):
     finally:
         # Save a copy
         if absoluteFilename and tmpPath:
-        	saveTemporaryFile(tmpPath)
+            saveTemporaryFile(tmpPath)
 
 
 def guidedUpdate(tdb, cmdenv):
-	dbFilename = cmdenv.dbFilename or tdb.defaultDB
-	tmpPath = getTemporaryPath(cmdenv)
+    dbFilename = cmdenv.dbFilename or tdb.defaultDB
+    tmpPath = getTemporaryPath(cmdenv)
 
-	from commands.update_gui import render
-	try:
-		render(tdb, cmdenv, tmpPath)
-		cmdenv.DEBUG0("Got results, importing")
-		cache.importDataFromFile(cmdenv, tdb, tmpPath)
-	finally:
-		saveTemporaryFile(tmpPath)
+    from commands.update_gui import render
+    try:
+        render(tdb, cmdenv, tmpPath)
+        cmdenv.DEBUG0("Got results, importing")
+        cache.importDataFromFile(cmdenv, tdb, tmpPath)
+    except Exception as e:
+        print("*** ERROR ENCOUNTERED ***")
+        print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
+                "prices.last"
+                ))
+        raise
+    finally:
+        saveTemporaryFile(tmpPath)
 
 
 ######################################################################
