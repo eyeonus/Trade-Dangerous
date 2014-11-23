@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.messagebox as mbox
 import tkinter.ttk as ttk
 import sqlite3
+import re
 from pathlib import Path
 
 class Item(object):
@@ -17,7 +18,14 @@ class UpdateGUI(tk.Canvas):
     """
 
     def __init__(self, root, tdb, cmdenv):
-        super().__init__(root, borderwidth=0, width=500, height=440)
+        width = cmdenv.width or 512
+        height = cmdenv.height or 640
+        sticky = 1 if cmdenv.alwaysOnTop else 0
+
+        super().__init__(root, borderwidth=0, width=width, height=height)
+        root.geometry("{}x{}-0+0".format(
+                    width+32, height
+                ))
 
         self.root = root
         self.tdb = tdb
@@ -31,6 +39,8 @@ class UpdateGUI(tk.Canvas):
         self.itemDisplays = []
         self.results = None
         self.headings = []
+
+        root.wm_attributes("-topmost", sticky)
 
         self.bind_all("<MouseWheel>", self.onMouseWheel)
         self.vsb = tk.Scrollbar(root, orient="vertical", command=self.yview)
@@ -218,7 +228,7 @@ class UpdateGUI(tk.Canvas):
         addHeading("Paying")
         addHeading("Asking")
         addHeading("Demand")
-        addHeading("Stock")
+        addHeading("Supply")
         self.endRow()
 
 
@@ -338,6 +348,12 @@ class UpdateGUI(tk.Canvas):
 
             if asking == 0:
                 stock = "-"
+            elif not stock:
+                stock = "?"
+
+            if re.match('^\d+$', stock):
+                if int(stock) != 0:
+                    stock += '?'
 
             txt += ("     {item:<30s} "
                     "{paying:>10} "

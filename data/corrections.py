@@ -7,12 +7,17 @@ from __future__ import absolute_import, with_statement, print_function, division
 DELETED = -111
 
 systems = {
+    "LTT 4549": "Shinrarta Dezhra",
+    "KAMCHAULTULTULA": "Aiabiko",
+#ADD_SYSTEMS_HERE
 }
 
 stations = {
     "STYX/STYX-STATION": "Searfoss Plant",
     "STYX/CHI HUB": "Searfoss Plant",
     "STYX/CHU HUB": "Searfoss Plant",
+    "LFT 926/ONIZUKA PLATFORM": "Meredith City",
+#ADD_STATIONS_HERE
 }
 
 categories = {
