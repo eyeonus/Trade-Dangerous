@@ -421,7 +421,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                                     facility, stationNameIn,
                                 ), file=sys.stderr)
                 if stationID < 0 :
-                    raise UnknownStationError(priceFile, lineNo, facility) from None
+                    ex = UnknownStationError(priceFile, lineNo, facility)
+                    if not tdenv.ignoreUnknown:
+                        raise ex
+                    stationID = DELETED
+                    print(ex)
+                    return
 
         # Check for duplicates
         if stationID in processedStations:
@@ -443,6 +448,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     def changeCategory(matches):
         nonlocal uiOrder, categoryID
 
+        categoryID = -1
         categoryName, uiOrder = matches.group(1), 0
 
         tdenv.DEBUG1("NEW CATEGORY: {}", categoryName)
@@ -461,7 +467,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             categoryID = categoriesByName[categoryName]
             tdenv.DEBUG1("Renamed: {}", categoryName)
         except KeyError:
-            raise UnknownCategoryError(priceFile, lineNo, categoryName)
+            ex = UnknownCategoryError(priceFile, lineNo, categoryName)
+            if not tdenv.ignoreUnknown:
+                raise ex
+            print(ex)
+            categoryID = DELETED
+            return
 
 
     def processItemLine(matches):
@@ -500,7 +511,11 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 itemID = itemByName[itemPrefix + itemName]
                 tdenv.DEBUG1("Renamed {} -> {}", oldName, itemName)
             except KeyError:
-                raise UnknownItemError(priceFile, lineNo, itemName)
+                ex = UnknownItemError(priceFile, lineNo, itemName)
+                if not tdenv.ignoreUnknown:
+                    raise ex
+                print(ex)
+                return
 
         # Check for duplicate items within the station.
         if itemID in processedItems:
@@ -552,6 +567,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             # Need a category to process any other type of line.
             raise SyntaxError(priceFile, lineNo,
                                 "Expecting '+ Category Name' line", text)
+
+        if categoryID == DELETED:
+            continue
 
         ########################################
         ### "Item sell buy ..." lines.
