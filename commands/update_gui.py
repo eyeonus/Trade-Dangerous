@@ -2,6 +2,7 @@ import tkinter as tk
 import tkinter.messagebox as mbox
 import tkinter.ttk as ttk
 import sqlite3
+import re
 from pathlib import Path
 
 class Item(object):
@@ -347,6 +348,12 @@ class UpdateGUI(tk.Canvas):
 
             if asking == 0:
                 stock = "-"
+            elif not stock:
+                stock = "?"
+
+            if re.match('^\d+$', stock):
+                if int(stock) != 0:
+                    stock += '?'
 
             txt += ("     {item:<30s} "
                     "{paying:>10} "
