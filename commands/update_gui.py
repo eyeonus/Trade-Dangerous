@@ -228,7 +228,7 @@ class UpdateGUI(tk.Canvas):
         addHeading("Paying")
         addHeading("Asking")
         addHeading("Demand")
-        addHeading("Stock")
+        addHeading("Supply")
         self.endRow()
 
 
