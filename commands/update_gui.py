@@ -13,45 +13,44 @@ class Item(object):
         self.displayNo = displayNo
 
 
-class ScrollingCanvas(tk.Canvas):
+class ScrollingCanvas(tk.Frame):
     """
         Tk.Canvas with scrollbar
     """
 
-    def __init__(
-            self,
-            root,
-            width=None,
-            height=None,
-            sticky=False
-            ):
-        width = width or 512
-        height = height or 640
-        sticky = sticky or 0
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
 
-        super().__init__(root, borderwidth=0, width=width, height=height)
-        self.root = root
-        self.canvas = canvas = self
+        self.canvas = canvas = tk.Canvas(self, borderwidth=0)
+        canvas.grid(row=0, column=0)
+        canvas.grid_rowconfigure(0, weight=1)
+        canvas.grid_columnconfigure(0, weight=1)
 
-        # Allow the window to be always-on-top
-        root.wm_attributes("-topmost", sticky)
-
-        vsb = tk.Scrollbar(root,
+        vsb = tk.Scrollbar(parent,
                     orient=tk.VERTICAL,
                     command=canvas.yview)
-        vsb.pack(side="right", fill="y")
+        vsb.grid(row=0, column=1)
+        vsb.pack(side="right", fill=tk.BOTH, expand=False)
 
-        self.configure(yscrollcommand=vsb.set)
+        canvas.configure(yscrollcommand=vsb.set)
 
-        self.interior = tk.Frame(canvas)
-        self.create_window((4,4), window=self.interior, anchor="nw", tags="self.interior")
-        self.interior.bind("<Configure>", self.onFrameConfigure)
-        self.interior.rowconfigure(0, weight=1)
-        self.interior.columnconfigure(0, weight=1)
+        self.interior = interior = tk.Frame(canvas)
+        canvas.create_window((4,4), window=interior, anchor="nw", tags="interior")
+        interior.bind("<Configure>", self.onFrameConfigure)
+        interior.rowconfigure(0, weight=1)
+        interior.columnconfigure(0, weight=1)
+        interior.columnconfigure(1, weight=1)
+        interior.columnconfigure(2, weight=1)
+        interior.columnconfigure(3, weight=1)
+        interior.columnconfigure(4, weight=1)
 
-        canvas.pack(fill=tk.BOTH, expand=True)
+        canvas.grid(row=0, column=0)
+        canvas.pack(side="left", fill=tk.BOTH, expand=True)
 
         self.bind_all("<MouseWheel>", self.onMouseWheel)
+
+        self.pack(side="left", fill=tk.BOTH, expand=True)
 
 
     def onFrameConfigure(self, event):
@@ -72,15 +71,12 @@ class UpdateGUI(ScrollingCanvas):
         for TradeDangerous Price Updates
     """
 
-    def __init__(self, root, tdb, cmdenv):
-        width = cmdenv.width or 512
+    def __init__(self, parent, tdb, cmdenv):
+        super().__init__(parent)
+
+        width = cmdenv.width or 600
         height = cmdenv.height or 640
         sticky = 1 if cmdenv.alwaysOnTop else 0
-
-        super().__init__(root, width=width, height=height)
-        root.geometry("{}x{}-0+0".format(
-                    width+32, height
-                ))
 
         self.tdb = tdb
         self.cmdenv = cmdenv
@@ -97,6 +93,13 @@ class UpdateGUI(ScrollingCanvas):
         self.createWidgets()
 
         self.focusOn(0, 0)
+
+        parent.geometry("{}x{}-0+0".format(
+                    width+16, height
+                ))
+
+        # Allow the window to be always-on-top
+        parent.wm_attributes("-topmost", sticky)
 
 
     def focusOn(self, displayNo, pos):
@@ -116,6 +119,10 @@ class UpdateGUI(ScrollingCanvas):
         return item, row, row[pos][1].get()
 
 
+    def setValue(self, row, pos, value):
+        row[pos][1].set(value)
+
+
     def validate(self, item, row, value, pos):
         """ For checking the contents of a widget. TBD """
 
@@ -127,12 +134,12 @@ class UpdateGUI(ScrollingCanvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         if pos > 0 or item.displayNo > 0:
             # Natural flow
             return
 
-        self.root.bell()
+        self.parent.bell()
         return "break"
 
 
@@ -141,12 +148,12 @@ class UpdateGUI(ScrollingCanvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         if pos + 1 < len(row):
             return
         if item.displayNo + 1 < len(self.itemDisplays):
             return
-        self.root.bell()
+        self.parent.bell()
         return "break"
 
 
@@ -159,11 +166,11 @@ class UpdateGUI(ScrollingCanvas):
         
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         # advance to the first entry on the next row
         newDisplayNo = item.displayNo + 1
         if newDisplayNo >= len(self.itemDisplays):
-            self.root.bell()
+            self.parent.bell()
             return "break"
 
         self.focusOn(newDisplayNo, 0)
@@ -174,10 +181,10 @@ class UpdateGUI(ScrollingCanvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         # can we go up a line?
         if item.displayNo <= 0:
-            self.root.bell()
+            self.parent.bell()
             return "break"
 
         self.focusOn(item.displayNo - 1, pos)
@@ -188,11 +195,11 @@ class UpdateGUI(ScrollingCanvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         # can we go up a line?
         newDisplayNo = item.displayNo + 1
         if newDisplayNo >= len(self.itemDisplays):
-            self.root.bell()
+            self.parent.bell()
             return "break"
 
         self.focusOn(newDisplayNo, pos)
@@ -282,7 +289,7 @@ class UpdateGUI(ScrollingCanvas):
 
         tdb, cmdenv = self.tdb, self.cmdenv
         station = cmdenv.startStation
-        self.root.title(station.name())
+        self.parent.title(station.name())
 
         db = tdb.getDB()
         db.row_factory = sqlite3.Row
@@ -396,16 +403,11 @@ class UpdateGUI(ScrollingCanvas):
 
 
 def render(tdb, cmdenv, tmpPath):
-    root = tk.Tk()
-    gui = UpdateGUI(root, tdb, cmdenv)
+    parent = tk.Tk()
+    gui = UpdateGUI(parent, tdb, cmdenv)
     gui.mainloop()
     if not gui.results:
         gui.getResults()
     with tmpPath.open("w") as fh:
         print(gui.results, file=fh)
-
-
-if __name__ == "__main__":
-    render(Path("data/TradeDangerous.db"), 374, Path("update.prices"))
-    print("- Wrote to update.prices")
 
