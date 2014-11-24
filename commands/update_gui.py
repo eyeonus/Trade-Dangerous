@@ -13,7 +13,60 @@ class Item(object):
         self.displayNo = displayNo
 
 
-class UpdateGUI(tk.Canvas):
+class ScrollingCanvas(tk.Canvas):
+    """
+        Tk.Canvas with scrollbar
+    """
+
+    def __init__(
+            self,
+            root,
+            width=None,
+            height=None,
+            sticky=False
+            ):
+        width = width or 512
+        height = height or 640
+        sticky = sticky or 0
+
+        super().__init__(root, borderwidth=0, width=width, height=height)
+        self.root = root
+        self.canvas = canvas = self
+
+        # Allow the window to be always-on-top
+        root.wm_attributes("-topmost", sticky)
+
+        vsb = tk.Scrollbar(root,
+                    orient=tk.VERTICAL,
+                    command=canvas.yview)
+        vsb.pack(side="right", fill="y")
+
+        self.configure(yscrollcommand=vsb.set)
+
+        self.interior = tk.Frame(canvas)
+        self.create_window((4,4), window=self.interior, anchor="nw", tags="self.interior")
+        self.interior.bind("<Configure>", self.onFrameConfigure)
+        self.interior.rowconfigure(0, weight=1)
+        self.interior.columnconfigure(0, weight=1)
+
+        canvas.pack(fill=tk.BOTH, expand=True)
+
+        self.bind_all("<MouseWheel>", self.onMouseWheel)
+
+
+    def onFrameConfigure(self, event):
+        """ Handle the <Configure> event for the frame """
+
+        self.canvas.configure(scrollregion=self.interior.bbox("all"))
+
+
+    def onMouseWheel(self, event):
+        """ Translate mouse wheel inputs to scroll bar motions """
+
+        self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
+
+
+class UpdateGUI(ScrollingCanvas):
     """
         Implements a tk canvas which displays an editor
         for TradeDangerous Price Updates
@@ -24,12 +77,11 @@ class UpdateGUI(tk.Canvas):
         height = cmdenv.height or 640
         sticky = 1 if cmdenv.alwaysOnTop else 0
 
-        super().__init__(root, borderwidth=0, width=width, height=height)
+        super().__init__(root, width=width, height=height)
         root.geometry("{}x{}-0+0".format(
                     width+32, height
                 ))
 
-        self.root = root
         self.tdb = tdb
         self.cmdenv = cmdenv
 
@@ -42,40 +94,9 @@ class UpdateGUI(tk.Canvas):
         self.results = None
         self.headings = []
 
-        # Allow the window to be always-on-top
-        root.wm_attributes("-topmost", sticky)
-
-        self.bind_all("<MouseWheel>", self.onMouseWheel)
-        self.vsb = tk.Scrollbar(root,
-                            orient=tk.VERTICAL,
-                            command=self.yview)
-        self.configure(yscrollcommand=self.vsb.set)
-        self.vsb.pack(side="right", fill="y")
-
-        self.frame = tk.Frame(self)
-        self.frame.bind("<Configure>", self.onFrameConfigure)
-        self.frame.rowconfigure(0, weight=1)
-        self.frame.columnconfigure(0, weight=1)
-
         self.createWidgets()
 
         self.focusOn(0, 0)
-
-        self.create_window((4,4), window=self.frame, anchor="nw", tags="self.frame")
-        self.pack(fill=tk.BOTH, expand=True)
-
-
-
-    def onFrameConfigure(self, event):
-        """ Handle the <Configure> event for the frame """
-
-        self.configure(scrollregion=self.bbox("all"))
-
-
-    def onMouseWheel(self, event):
-        """ Translate mouse wheel inputs to scroll bar motions """
-
-        self.yview_scroll(int(-1 * (event.delta/120)), "units")
 
 
     def focusOn(self, displayNo, pos):
@@ -189,12 +210,12 @@ class UpdateGUI(tk.Canvas):
 
 
     def addLabel(self, text):
-        lab = tk.Label(self.frame, text=text)
+        lab = tk.Label(self.interior, text=text)
         return self.addWidget(lab, sticky='W', padx=16)
 
 
     def addSection(self, text):
-        widget = tk.Label(self.frame, text=text, fg='blue')
+        widget = tk.Label(self.interior, text=text, fg='blue')
         widget.grid(row=self.rowNo, column=0, columnspan=5, sticky='W')
         self.endRow()
         return widget
@@ -206,7 +227,7 @@ class UpdateGUI(tk.Canvas):
         inputVal = tk.StringVar()
         inputVal.set(str(defValue))
 
-        inputEl = tk.Entry(self.frame,
+        inputEl = tk.Entry(self.interior,
                 width=10,
                 justify=tk.RIGHT,
                 textvariable=inputVal)
@@ -227,7 +248,7 @@ class UpdateGUI(tk.Canvas):
     def addHeadings(self):
         def addHeading(text):
             self.headings.append(text)
-            lab = tk.Label(self.frame, text=text, fg='blue')
+            lab = tk.Label(self.interior, text=text, fg='blue')
             self.addWidget(lab, sticky='W', padx=16)
         addHeading("Item")
         addHeading("Paying")
