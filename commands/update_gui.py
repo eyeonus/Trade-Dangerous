@@ -6,6 +6,8 @@ import re
 from pathlib import Path
 
 class Item(object):
+    """ Describe a listed, tradeable item """
+
     def __init__(self, ID, catID, name, displayNo):
         self.ID, self.catID, self.name = ID, catID, name
         self.displayNo = displayNo
@@ -40,10 +42,13 @@ class UpdateGUI(tk.Canvas):
         self.results = None
         self.headings = []
 
+        # Allow the window to be always-on-top
         root.wm_attributes("-topmost", sticky)
 
         self.bind_all("<MouseWheel>", self.onMouseWheel)
-        self.vsb = tk.Scrollbar(root, orient="vertical", command=self.yview)
+        self.vsb = tk.Scrollbar(root,
+                            orient=tk.VERTICAL,
+                            command=self.yview)
         self.configure(yscrollcommand=self.vsb.set)
         self.vsb.pack(side="right", fill="y")
 
