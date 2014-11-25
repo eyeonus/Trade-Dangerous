@@ -88,7 +88,9 @@ name@System.system_id,unq:name,ls_from_star
 'Difu','Backers Pledge High',0.0
 'Doris','Isherwood Dock',0.0
 'DT Virginis','Chun Vision',0.0
-'Duamta','Rutherford Gateway',0.0
+'Duamta','Davis Terminal',0.0
+'Duamta','Herrington City',0.0
+'Duamta','Polyakov Station',0.0
 'DX 799','Shargin Plant',0.0
 'DX Cancri','Horowitz Landing',0.0
 'Dyaushis','Helmholtz Station',0.0
@@ -410,6 +412,7 @@ name@System.system_id,unq:name,ls_from_star
 'Wolf 248','Hencke Centre',0.0
 'Wolf 294','Hippalus Station',0.0
 'Wolf 359','Lomas Orbiter',0.0
+'Wolf 359','Powell High',0.0
 'Wolf 393','Lichtenberg Horizons',0.0
 'Wolf 417','Egan Port',0.0
 'Wolf 424','Sping Terminal',0.0
