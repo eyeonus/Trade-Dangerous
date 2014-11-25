@@ -658,7 +658,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     )
     uniquePfx = "unq:"
 
-    with importPath.open() as importFile:
+    with importPath.open(encoding='utf-8') as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
         columnDefs = next(csvin)

@@ -130,7 +130,7 @@ def run(results, cmdenv, tdb):
         if not cmdenv.quiet:
             print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
 
-        with exportName.open("w") as exportFile:
+        with exportName.open("w", encoding='utf-8') as exportFile:
             exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
 
             cur = conn.cursor()
