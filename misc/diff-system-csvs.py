@@ -29,7 +29,7 @@ class Loc(namedtuple('Loc', [ 'x', 'y', 'z' ])):
 class Item(namedtuple('Item', [ 'norm', 'name', 'loc' ])):
     pass
 
-normalizeRe = re.compile('[^A-Za-z0-9]')
+normalizeRe = re.compile('[^A-Za-z0-9\' ]')
 
 def readFile(filename):
     path = Path(filename)
@@ -50,6 +50,16 @@ def readFile(filename):
             z = float(line[3])
 
             normalized = normalizeRe.sub('', name).upper()
+            try:
+                prevEntry = names[normalized]
+            except KeyError:
+                pass
+            else:
+                print("Name clash: {}, this entry: {}, prev entry: {}".format(
+                            normalized,
+                            name,
+                            prevEntry.name
+                        ))
             item = Item(normalized, name, Loc(x, y, z))
             names[normalized] = item
             if item.loc in locs:
