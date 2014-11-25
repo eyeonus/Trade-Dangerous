@@ -125,105 +125,6 @@ class Station(object):
         system.stations.append(self)
 
 
-    def getDestinations(self,
-            maxJumps=None,
-            maxLyPer=None,
-            avoidPlaces=None,
-            trading=False):
-        """
-            Gets a list of the Station destinations that can be reached
-            from this Station within the specified constraints.
-            Limits to stations we are trading with if trading is True.
-        """
-
-        if trading:
-            if not self.tradingWith:
-                return []
-            tradingWith = self.tradingWith
-
-        maxJumps = maxJumps or sys.maxsize
-        maxLyPer = maxLyPer or float("inf")
-        if avoidPlaces is None:
-            avoidPlaces = []
-
-        # The open list is the list of nodes we should consider next for
-        # potential destinations.
-        # The path list is a list of the destinations we've found and the
-        # shortest path to them. It doubles as the "closed list".
-        # The closed list is the list of nodes we've already been to (so
-        # that we don't create loops A->B->C->A->B->C->...)
-
-        openList = [ DestinationNode(self.system, [self.system], 0) ]
-        pathList = { system.ID: DestinationNode(system, None, -1.0)
-                            # include avoids so we only have
-                            # to consult one place for exclusions
-                        for system in avoidPlaces
-                            # the avoid list may contain stations,
-                            # which affects destinations but not vias
-                        if isinstance(system, System) }
-
-        # As long as the open list is not empty, keep iterating.
-        jumps = 0
-        while openList and jumps < maxJumps:
-            # Expand the search domain by one jump; grab the list of
-            # nodes that are this many hops out and then clear the list.
-            ring, openList = openList, []
-            # All of the destinations we are about to consider will
-            # either be on the closed list or they will be +1 jump away.
-            jumps += 1
-
-            for node in ring:
-                for (destSys, destDist) in node.system.links.items():
-                    if destDist > maxLyPer:
-                        continue
-                    dist = node.distLy + destDist
-                    # If we already have a shorter path, do nothing
-                    try:
-                        if dist >= pathList[destSys.ID].distLy:
-                            continue
-                    except KeyError:
-                        pass
-                    # Add to the path list
-                    destNode = DestinationNode(destSys, node.via + [destSys], dist)
-                    pathList[destSys.ID] = destNode
-                    # Add to the open list but also include node to the via
-                    # list so that it serves as the via list for all next-hops.
-                    openList.append(destNode)
-
-        destStations = []
-        # always include the local stations, unless the user has indicated they are
-        # avoiding this system. E.g. if you're in Chango but you've specified you
-        # want to avoid Chango...
-        if self.system not in avoidPlaces:
-            for station in self.system.stations:
-                if (trading and station not in tradingWith):
-                    continue
-                if station not in avoidPlaces:
-                    destStations.append(Destination(self, station, [], 0.0))
-
-        avoidStations = [
-                station for station in avoidPlaces
-                    if isinstance(station, Station)
-                ]
-        for node in pathList.values():
-            # negative values are avoidances
-            if node.distLy < 0.0:
-                continue
-            for station in node.system.stations:
-                if (trading and station not in tradingWith):
-                    continue
-                if station in avoidStations:
-                    continue
-                destStations.append(
-                            Destination(node.system,
-                                    station,
-                                    node.via,
-                                    node.distLy)
-                        )
-
-        return destStations
-
-
     def name(self):
         return '%s/%s' % (self.system.name(), self.dbname)
 
@@ -695,6 +596,110 @@ class TradeDB(object):
 
         nameList = system.stations if system else self.stationByID.values()
         return TradeDB.listSearch("Station", name, nameList, key=lambda entry: entry.dbname)
+
+
+    def getDestinations(self,
+            origin,
+            maxJumps=None,
+            maxLyPer=None,
+            avoidPlaces=None,
+            trading=False):
+        """
+            Gets a list of the Station destinations that can be reached
+            from this Station within the specified constraints.
+            Limits to stations we are trading with if trading is True.
+        """
+
+        assert isinstance(origin, Station)
+
+        if trading:
+            if not origin.tradingWith:
+                return []
+            tradingWith = origin.tradingWith
+
+        maxJumps = maxJumps or sys.maxsize
+        maxLyPer = maxLyPer or self.maxSystemLinkLy
+        if avoidPlaces is None:
+            avoidPlaces = []
+
+        # The open list is the list of nodes we should consider next for
+        # potential destinations.
+        # The path list is a list of the destinations we've found and the
+        # shortest path to them. It doubles as the "closed list".
+        # The closed list is the list of nodes we've already been to (so
+        # that we don't create loops A->B->C->A->B->C->...)
+
+        origSys = origin.system
+        openList = [ DestinationNode(origSys, [origSys], 0) ]
+        pathList = { system.ID: DestinationNode(system, None, -1.0)
+                            # include avoids so we only have
+                            # to consult one place for exclusions
+                        for system in avoidPlaces
+                            # the avoid list may contain stations,
+                            # which affects destinations but not vias
+                        if isinstance(system, System) }
+
+        # As long as the open list is not empty, keep iterating.
+        jumps = 0
+        while openList and jumps < maxJumps:
+            # Expand the search domain by one jump; grab the list of
+            # nodes that are this many hops out and then clear the list.
+            ring, openList = openList, []
+            # All of the destinations we are about to consider will
+            # either be on the closed list or they will be +1 jump away.
+            jumps += 1
+
+            for node in ring:
+                gsir = self.genSystemsInRange(node.system, maxLyPer, False)
+                for (destSys, destDist) in gsir:
+                    dist = node.distLy + math.sqrt(destDist)
+                    # If we already have a shorter path, do nothing
+                    try:
+                        prevDist = pathList[destSys.ID].distLy
+                    except KeyError:
+                        pass
+                    else:
+                        if dist >= prevDist:
+                            continue
+                    # Add to the path list
+                    destNode = DestinationNode(destSys, node.via + [destSys], dist)
+                    pathList[destSys.ID] = destNode
+                    # Add to the open list but also include node to the via
+                    # list so that it serves as the via list for all next-hops.
+                    openList.append(destNode)
+
+        destStations = []
+        # always include the local stations, unless the user has indicated they are
+        # avoiding this system. E.g. if you're in Chango but you've specified you
+        # want to avoid Chango...
+        if origSys not in avoidPlaces:
+            for station in origSys.stations:
+                if (trading and station not in tradingWith):
+                    continue
+                if station not in avoidPlaces:
+                    destStations.append(Destination(origSys, station, [], 0.0))
+
+        avoidStations = [
+                station for station in avoidPlaces
+                    if isinstance(station, Station)
+                ]
+        for node in pathList.values():
+            # negative values are avoidances
+            if node.distLy < 0.0:
+                continue
+            for station in node.system.stations:
+                if (trading and station not in tradingWith):
+                    continue
+                if station in avoidStations:
+                    continue
+                destStations.append(
+                            Destination(node.system,
+                                    station,
+                                    node.via,
+                                    node.distLy)
+                        )
+
+        return destStations
 
 
     ############################################################
