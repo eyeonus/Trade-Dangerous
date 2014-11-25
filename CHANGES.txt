@@ -7,6 +7,7 @@ v6.0.5 Nov 22 2014 (w/Gamma 1)
 . (kfsone) Added "--height" (-H) option to update GUI
 . (kfsone) Added "--front" (-F) to keep the update gui infront of TD
 . (kfsone) Added Pilot's Federation/Jameson Memorial
+. (kfsone) Added '--ignore-unknown' option to buildcache
 
 v6.0.4 Nov 21 2014 (Beta 3.9.1)
 . (kfsone) Added "sell" command (find places to sell a specific item)

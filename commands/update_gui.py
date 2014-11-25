@@ -6,28 +6,78 @@ import re
 from pathlib import Path
 
 class Item(object):
+    """ Describe a listed, tradeable item """
+
     def __init__(self, ID, catID, name, displayNo):
         self.ID, self.catID, self.name = ID, catID, name
         self.displayNo = displayNo
 
 
-class UpdateGUI(tk.Canvas):
+class ScrollingCanvas(tk.Frame):
+    """
+        Tk.Canvas with scrollbar
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+
+        self.canvas = canvas = tk.Canvas(self, borderwidth=0)
+        canvas.grid(row=0, column=0)
+        canvas.grid_rowconfigure(0, weight=1)
+        canvas.grid_columnconfigure(0, weight=1)
+
+        vsb = tk.Scrollbar(parent,
+                    orient=tk.VERTICAL,
+                    command=canvas.yview)
+        vsb.grid(row=0, column=1)
+        vsb.pack(side="right", fill=tk.BOTH, expand=False)
+
+        canvas.configure(yscrollcommand=vsb.set)
+
+        self.interior = interior = tk.Frame(canvas)
+        canvas.create_window((4,4), window=interior, anchor="nw", tags="interior")
+        interior.bind("<Configure>", self.onFrameConfigure)
+        interior.rowconfigure(0, weight=1)
+        interior.columnconfigure(0, weight=1)
+        interior.columnconfigure(1, weight=1)
+        interior.columnconfigure(2, weight=1)
+        interior.columnconfigure(3, weight=1)
+        interior.columnconfigure(4, weight=1)
+
+        canvas.grid(row=0, column=0)
+        canvas.pack(side="left", fill=tk.BOTH, expand=True)
+
+        self.bind_all("<MouseWheel>", self.onMouseWheel)
+
+        self.pack(side="left", fill=tk.BOTH, expand=True)
+
+
+    def onFrameConfigure(self, event):
+        """ Handle the <Configure> event for the frame """
+
+        self.canvas.configure(scrollregion=self.interior.bbox("all"))
+
+
+    def onMouseWheel(self, event):
+        """ Translate mouse wheel inputs to scroll bar motions """
+
+        self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
+
+
+class UpdateGUI(ScrollingCanvas):
     """
         Implements a tk canvas which displays an editor
         for TradeDangerous Price Updates
     """
 
-    def __init__(self, root, tdb, cmdenv):
-        width = cmdenv.width or 512
+    def __init__(self, parent, tdb, cmdenv):
+        super().__init__(parent)
+
+        width = cmdenv.width or 600
         height = cmdenv.height or 640
         sticky = 1 if cmdenv.alwaysOnTop else 0
 
-        super().__init__(root, borderwidth=0, width=width, height=height)
-        root.geometry("{}x{}-0+0".format(
-                    width+32, height
-                ))
-
-        self.root = root
         self.tdb = tdb
         self.cmdenv = cmdenv
 
@@ -40,37 +90,16 @@ class UpdateGUI(tk.Canvas):
         self.results = None
         self.headings = []
 
-        root.wm_attributes("-topmost", sticky)
-
-        self.bind_all("<MouseWheel>", self.onMouseWheel)
-        self.vsb = tk.Scrollbar(root, orient="vertical", command=self.yview)
-        self.configure(yscrollcommand=self.vsb.set)
-        self.vsb.pack(side="right", fill="y")
-
-        self.frame = tk.Frame(self)
-        self.frame.bind("<Configure>", self.onFrameConfigure)
-        self.frame.rowconfigure(0, weight=1)
-        self.frame.columnconfigure(0, weight=1)
-
         self.createWidgets()
 
         self.focusOn(0, 0)
 
-        self.create_window((4,4), window=self.frame, anchor="nw", tags="self.frame")
-        self.pack(fill=tk.BOTH, expand=True)
+        parent.geometry("{}x{}-0+0".format(
+                    width+16, height
+                ))
 
-
-
-    def onFrameConfigure(self, event):
-        """ Handle the <Configure> event for the frame """
-
-        self.configure(scrollregion=self.bbox("all"))
-
-
-    def onMouseWheel(self, event):
-        """ Translate mouse wheel inputs to scroll bar motions """
-
-        self.yview_scroll(int(-1 * (event.delta/120)), "units")
+        # Allow the window to be always-on-top
+        parent.wm_attributes("-topmost", sticky)
 
 
     def focusOn(self, displayNo, pos):
@@ -90,6 +119,10 @@ class UpdateGUI(tk.Canvas):
         return item, row, row[pos][1].get()
 
 
+    def setValue(self, row, pos, value):
+        row[pos][1].set(value)
+
+
     def validate(self, item, row, value, pos):
         """ For checking the contents of a widget. TBD """
 
@@ -101,12 +134,12 @@ class UpdateGUI(tk.Canvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         if pos > 0 or item.displayNo > 0:
             # Natural flow
             return
 
-        self.root.bell()
+        self.parent.bell()
         return "break"
 
 
@@ -115,12 +148,12 @@ class UpdateGUI(tk.Canvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         if pos + 1 < len(row):
             return
         if item.displayNo + 1 < len(self.itemDisplays):
             return
-        self.root.bell()
+        self.parent.bell()
         return "break"
 
 
@@ -133,11 +166,11 @@ class UpdateGUI(tk.Canvas):
         
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         # advance to the first entry on the next row
         newDisplayNo = item.displayNo + 1
         if newDisplayNo >= len(self.itemDisplays):
-            self.root.bell()
+            self.parent.bell()
             return "break"
 
         self.focusOn(newDisplayNo, 0)
@@ -148,10 +181,10 @@ class UpdateGUI(tk.Canvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         # can we go up a line?
         if item.displayNo <= 0:
-            self.root.bell()
+            self.parent.bell()
             return "break"
 
         self.focusOn(item.displayNo - 1, pos)
@@ -162,11 +195,11 @@ class UpdateGUI(tk.Canvas):
 
         item, row, value = self.query(itemName, pos)
         if not self.validate(item, row, value, pos):
-            return
+            return "break"
         # can we go up a line?
         newDisplayNo = item.displayNo + 1
         if newDisplayNo >= len(self.itemDisplays):
-            self.root.bell()
+            self.parent.bell()
             return "break"
 
         self.focusOn(newDisplayNo, pos)
@@ -184,12 +217,12 @@ class UpdateGUI(tk.Canvas):
 
 
     def addLabel(self, text):
-        lab = tk.Label(self.frame, text=text)
+        lab = tk.Label(self.interior, text=text)
         return self.addWidget(lab, sticky='W', padx=16)
 
 
     def addSection(self, text):
-        widget = tk.Label(self.frame, text=text, fg='blue')
+        widget = tk.Label(self.interior, text=text, fg='blue')
         widget.grid(row=self.rowNo, column=0, columnspan=5, sticky='W')
         self.endRow()
         return widget
@@ -201,7 +234,7 @@ class UpdateGUI(tk.Canvas):
         inputVal = tk.StringVar()
         inputVal.set(str(defValue))
 
-        inputEl = tk.Entry(self.frame,
+        inputEl = tk.Entry(self.interior,
                 width=10,
                 justify=tk.RIGHT,
                 textvariable=inputVal)
@@ -222,7 +255,7 @@ class UpdateGUI(tk.Canvas):
     def addHeadings(self):
         def addHeading(text):
             self.headings.append(text)
-            lab = tk.Label(self.frame, text=text, fg='blue')
+            lab = tk.Label(self.interior, text=text, fg='blue')
             self.addWidget(lab, sticky='W', padx=16)
         addHeading("Item")
         addHeading("Paying")
@@ -256,7 +289,7 @@ class UpdateGUI(tk.Canvas):
 
         tdb, cmdenv = self.tdb, self.cmdenv
         station = cmdenv.startStation
-        self.root.title(station.name())
+        self.parent.title(station.name())
 
         db = tdb.getDB()
         db.row_factory = sqlite3.Row
@@ -370,16 +403,11 @@ class UpdateGUI(tk.Canvas):
 
 
 def render(tdb, cmdenv, tmpPath):
-    root = tk.Tk()
-    gui = UpdateGUI(root, tdb, cmdenv)
+    parent = tk.Tk()
+    gui = UpdateGUI(parent, tdb, cmdenv)
     gui.mainloop()
     if not gui.results:
         gui.getResults()
     with tmpPath.open("w") as fh:
         print(gui.results, file=fh)
-
-
-if __name__ == "__main__":
-    render(Path("data/TradeDangerous.db"), 374, Path("update.prices"))
-    print("- Wrote to update.prices")
 

@@ -40,7 +40,16 @@ switches = [
             "replace a defaulted station name. Corrections are "
             "printed to stderr so you can capture them and add them "
             "to your data/corrections.py."
-            )
+            ),
+    ),
+    ParseArgument(
+        '--ignore-unknown',
+        default=False, action='store_true',
+        dest='ignoreUnknown',
+        help=(
+            "Data for systems, stations and items that are not "
+            "recognized is reported as warning but skipped."
+        ),
     ),
 ]
 

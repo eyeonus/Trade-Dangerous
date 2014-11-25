@@ -6,7 +6,7 @@ name@System.system_id,unq:name,ls_from_star
 '37 Xi Bootis','Schirba Plant',0.0
 '41 Gamma Serpentis','Abe Landing',0.0
 '44 Chi Draconis','Lawson Camp',0.0
-'47 URSAE MAJORIS','Avdeyev Beacon',0.0
+'47 Ursae Majoris','Avdeyev Beacon',0.0
 '54 G. Antlia','Boas Orbital',0.0
 '61 Ursae Majoris','Worlidge Dock',0.0
 '61 Virginis','Artsebarsky Station',0.0
@@ -46,6 +46,9 @@ name@System.system_id,unq:name,ls_from_star
 'Aulis','Dezhurov Gateway',0.0
 'Azaladshu','Goddard Outpost',0.0
 'Baga','Shipton Exchange',0.0
+'Barnard''s Star','Boston Base',0
+'Barnard''s Star','Levi-Strauss Installation',0
+'Barnard''s Star','Miller Depot',0
 'Bast','White Hart Lane',0.0
 'Baudus','Agnesi City',0.0
 'BD+29 2405','Shaara City',0.0
@@ -119,6 +122,7 @@ name@System.system_id,unq:name,ls_from_star
 'Gunnovii','Wilder Prospect',0.0
 'H Draconis','Brislington',0.0
 'Hach','Mohmand Settlement',0.0
+'Hach','Zudov Orbital',0.0
 'Hadad','Levy settlement',0.0
 'Hagalaz','De Andrade Ring',0.0
 'Hambula','Qureshi Hub',0.0
@@ -151,6 +155,7 @@ name@System.system_id,unq:name,ls_from_star
 'Kholedo','Cowpercity',0.0
 'Kokobujundji','Buchli Station',0.0
 'Korubu','Markov Gateway',0.0
+'Kushen','Blalock Terminal',0.0
 'Kotaition','Bykovsky Vision',0.0
 'Kuikian Batji','ALI INSTALLATION',0.0
 'Kunbuluan','Ayerdhal Orbital',0.0
@@ -212,23 +217,26 @@ name@System.system_id,unq:name,ls_from_star
 'LHS 3631','Currie Hub',0.0
 'LHS 369','Cavendish Port',0.0
 'LHS 371','Fischer Works',0.0
+'LHS 380','Qureshi Orbital',0.0
 'LHS 3877','Fischer Colony',0.0
 'LHS 391','Savinykh Works',0.0
+'LHS 397','Zillig Depot',0.0
 'LHS 411','Kuhn Colony',0.0
 'LHS 417','Gernhardt Camp',0.0
 'LHS 450','Wilson Relay',0.0
-'LHS 5072','NORTHROP DOCK',0.0
+'LHS 5072','Northrop Dock',0.0
 'LHS 5287','McArthur''s Reach',0.0
 'LHS 6282','Kendrick Base',0.0
 'LHS 6309','Smeaton Port',0.0
-'LHS 64','Kopra Survey',0.0
+'LHS 64','Wiberg Hanger',0.0
+'LHS 64','McArthur Colony',0.0
 'Li Quang','Boodt Gateway',0.0
 'Logoni','Knight Platform',0.0
 'Lokapuri','McArthur Dock',0.0
 'LP 102-320','Shepard Hub',0.0
 'LP 167-64','Chu City',0.0
 'LP 29-188','Smith Enterprise',0.0
-'LP 30-55','REIS DOCK',0.0
+'LP 30-55','Reis Dock',0.0
 'LP 320-359','Fisher Camp',0.0
 'LP 322-836','Bolotov Port',0.0
 'LP 45-128','Salam Point',0.0
@@ -244,6 +252,7 @@ name@System.system_id,unq:name,ls_from_star
 'LTT 10482','Hubble Relay',0.0
 'LTT 15294','Tem Ring',0.0
 'LTT 16523','Fozard Survey',0.0
+'LTT 3572','Horowitz Hub',0.0
 'LTT 4131','Ponce de Leon Station',0.0
 'LTT 4150','Meikle Orbital',0.0
 'LTT 4461','Artsebarsky Gateway',0.0
@@ -251,6 +260,8 @@ name@System.system_id,unq:name,ls_from_star
 'Lucab Ku','Potter Station',0.0
 'Luggerates','Stewart Settlement',0.0
 'Lugien Chabtani','Conklin Ring',0.0
+'Luhman 16','Heisenberg Colony',0.0
+'Luhman 16','Jenner Orbital',0.0
 'Luyten 674-15','Sinclair Relay',0.0
 'Luyten''s Star','Still Outpost',0.0
 'Magec','Xiaoguan Hub',0.0
@@ -265,6 +276,8 @@ name@System.system_id,unq:name,ls_from_star
 'Melcior','Goddard Dock',0.0
 'Meliae','Shawl Beacon',0.0
 'Mildeptu','Gerst Platform',0.0
+'Mildeptu','Buchli City',0.0
+'Mildeptu','Singer Enterprise',0.0
 'Miola','Harris Hospital',0.0
 'Mizar','Borel Park',0.0
 'Morgor','Romanek''s Folly',0.0
@@ -279,6 +292,7 @@ name@System.system_id,unq:name,ls_from_star
 'Nicobarese','Berezovoy Station',0.0
 'NLTT 46621','Hope Point',0.0
 'NLTT 48502','Webb Holdings',0.0
+'NLTT 49528','O''Connor Landing',0.0
 'NLTT 53889','Roosa Platform',0.0
 'Nuenets','Shriver Hub',0.0
 'Nuenets','Laliberte Enterprise',0.0
@@ -298,7 +312,9 @@ name@System.system_id,unq:name,ls_from_star
 'Pangluya','Bradbury Works',0.0
 'Parcae','Sturckow terminal',0.0
 'Paul-Friedrichs Star','Paul-Friedrichs Base Camp',0.0
-'Pemede','Berners-Lee Terminal',0.0
+'Pemede','Leavitt Orbital',0.0
+'Pemede','Gurragchaa Hub',0.0
+'Pemede','Gidzenko Terminal',0.0
 'Perendi','Shepherd Installation',0.0
 'Pi-fang','Brooks Estate',0.0
 'Piran','Garcia Gateway',0.0
@@ -316,6 +332,7 @@ name@System.system_id,unq:name,ls_from_star
 'Ross 1057','Wang Estate',0.0
 'Ross 128','Warren Prison Mine',0.0
 'Ross 130','Huxley Relay',0.0
+'Ross 154','Birkeland City',0.0
 'Ross 210','Swift Gateway',0.0
 'Ross 210','Fernandes De Queiros Dock',0.0
 'Ross 210','Fu City',0.0
@@ -343,6 +360,13 @@ name@System.system_id,unq:name,ls_from_star
 'Slatus','Hoffman Orbital',0.0
 'Sofagre','Markov Park',0.0
 'Sokoji','Cavendish Relay',0.0
+'Sol','Abraham Lincoln',0.0
+'Sol','Burnell Station',0.0
+'Sol','Daedalus',0.0
+'Sol','Galileo',0.0
+'Sol','Li Qing Jao',0.0
+'Sol','M.Gorbachev',0.0
+'Sol','Mars High',0.0
 'Song Te Tians','La Cosa Dock',0.0
 'Sopdu','Borlaug Camp',0.0
 'Stein 2051','TREVITHICK PORT',0.0
@@ -377,9 +401,12 @@ name@System.system_id,unq:name,ls_from_star
 'Wanggu','Besonders Port',0.0
 'Wei Jung','Cooper Dock',0.0
 'Wikmeang','Ivanov Hub',0.0
+'Wise 0855-0714','Yamazaki Landing',0.0
+'Wise 1506+7027','Dobrovolskiy Enterprise',0.0
 'Wise 1506+7027','Silverberg Relay',0.0
 'Wolf 1409','Carter Vision',0.0
 'Wolf 1478','Franklin Orbital',0.0
+'Wolf 1481','Velazquez Gateway',0.0
 'Wolf 248','Hencke Centre',0.0
 'Wolf 294','Hippalus Station',0.0
 'Wolf 359','Lomas Orbiter',0.0
@@ -390,7 +417,10 @@ name@System.system_id,unq:name,ls_from_star
 'Wolf 46','Fischer City',0.0
 'Wolf 497','Bamford Station',0.0
 'Wolf 54','Meeking''s Way',0.0
-'Wolf 562','LEONICENO CAMP',0.0
+'Wolf 562','Leoniceno Camp',0.0
+'Wolf 562','Berners-Lee Terminal',0.0
+'Wolf 562','Hopkins Port',0.0
+'Wolf 562','Nagel Enterprise',0.0
 'Wosyra Pao','Kaku Terminal',0.0
 'Wunian','Sellers Landing',0.0
 'WX Ursa Majoris','Teng-Hui Terminal',0.0
