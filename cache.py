@@ -394,6 +394,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             if systemName == DELETED or stationName == DELETED:
                 tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
+                return
             facility = systemName.upper() + '/' + stationName.upper()
             try:
                 stationID = systemByName[facility]
