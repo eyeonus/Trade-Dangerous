@@ -275,9 +275,10 @@ class TradeDB(object):
                     sqlFilename=None,
                     pricesFilename=None,
                     buildLinks=True,
-                    includeTrades=True
+                    includeTrades=True,
+                    debug=None,
                 ):
-        tdenv = tdenv or TradeEnv()
+        tdenv = tdenv or TradeEnv(debug)
         self.tdenv = tdenv
         self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
