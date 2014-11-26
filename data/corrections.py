@@ -74,10 +74,7 @@ systems = {
 }
 
 stations = {
-    "STYX/STYX-STATION": "Searfoss Plant",
-    "STYX/CHI HUB": "Searfoss Plant",
-    "STYX/CHU HUB": "Searfoss Plant",
-    "LFT 926/ONIZUKA PLATFORM": "Meredith City",
+    "CHEMAKU/BARTOE PLATFORM": DELETED,
 
 #ADD_STATIONS_HERE
 }
