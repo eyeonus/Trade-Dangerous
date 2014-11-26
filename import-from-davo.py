@@ -104,7 +104,7 @@ if __name__ == "__main__":
         print("import")
         tdb = tradedb.TradeDB(debug=opt_debug, buildLinks=False, includeTrades=False)
         if opt_ignoreUnk:
-            tdb.tdenv.ignoreUnkown = True
+            tdb.tdenv.ignoreUnknown = True
         cache.importDataFromFile(tdb, tdb.tdenv, pathlib.Path(priceFile))
 
     if opt_debug:
