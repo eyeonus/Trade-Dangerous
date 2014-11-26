@@ -590,6 +590,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
+    assert isinstance(pricesPath, Path)
+
     with pricesPath.open() as pricesFile:
         items, buys, sells = [], [], []
         for price in genSQLFromPriceLines(tdenv, pricesFile, db, defaultZero):
