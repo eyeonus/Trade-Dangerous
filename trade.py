@@ -30,22 +30,23 @@
 # to empower other programmers to do cool stuff.
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+import os
+import commands
+import tradedb
 
 ######################################################################
 # main entry point
 
 
 def main(argv):
-    import commands
     cmdIndex = commands.CommandIndex()
     cmdenv = cmdIndex.parse(sys.argv)
 
-    from tradedb import TradeDB
     if cmdenv.wantsTradeDB:
         # load the database
-        tdb = TradeDB(cmdenv, buildLinks=False, includeTrades=False)
+        tdb = tradedb.TradeDB(cmdenv, buildLinks=False, includeTrades=False)
     else:
-        tdb = TradeDB
+        tdb = tradedb.TradeDB
 
     results = cmdenv.run(tdb)
     if results:
@@ -59,16 +60,20 @@ if __name__ == "__main__":
     import sys
     if sys.hexversion < 0x03040000:
         raise SystemExit(
-			"Sorry: TradeDangerous requires Python 3.4 or higher.\n"
-			"For assistance, see:\n"
-			"\tFacebook Group: http://kfs.org/td/group\n"
-			"\tBitbucket Page: http://kfs.org/td/source\n"
-			"\tEDForum Thread: http://kfs.org/td/thread\n"
-			)
+            "Sorry: TradeDangerous requires Python 3.4 or higher.\n"
+            "For assistance, see:\n"
+            "\tFacebook Group: http://kfs.org/td/group\n"
+            "\tBitbucket Page: http://kfs.org/td/source\n"
+            "\tEDForum Thread: http://kfs.org/td/thread\n"
+            )
     import tradeexcept
 
     try:
-        main(sys.argv)
+        if "CPROF" in os.environ:
+            import cProfile
+            cProfile.run("main(sys.argv)")
+        else:
+            main(sys.argv)
     except tradeexcept.TradeException as e:
         print("%s: %s" % (sys.argv[0], str(e)))
         sys.exit(1)
