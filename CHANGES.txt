@@ -7,6 +7,8 @@ v6.0.6 Nov 25 2014
 . (maddavo/kfsone) Import of ~20,000 systems
 . (kfsone) GUI tweaks
 . (kfsone) Station cleanup
+. (kfsone) Various new stations
+. (kfsone) Various minor bug fixes
 
 v6.0.5 Nov 22 2014 (w/Gamma 1)
 . (kfsone) Added "import" sub-command for loading 1+ stations from a file
