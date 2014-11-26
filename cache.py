@@ -723,7 +723,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn: deprecationFn(linein, tdenv.debug)
                 for (colNo, index) in uniqueIndexes:
-                    colValue = linein[colNo]
+                    colValue = linein[colNo].upper()
                     try:
                         prevLineNo = index[colValue]
                     except KeyError:
