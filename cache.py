@@ -394,6 +394,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             if systemName == DELETED or stationName == DELETED:
                 tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
+                return
             facility = systemName.upper() + '/' + stationName.upper()
             try:
                 stationID = systemByName[facility]
@@ -589,6 +590,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
+
+    assert isinstance(pricesPath, Path)
 
     with pricesPath.open() as pricesFile:
         items, buys, sells = [], [], []
