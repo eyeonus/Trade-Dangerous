@@ -221,6 +221,7 @@ name@System.system_id,unq:name,ls_from_star
 'LHS 369','Cavendish Port',0.0
 'LHS 371','Fischer Works',0.0
 'LHS 380','Qureshi Orbital',0.0
+'LHS 3749','Roddenberry Orbital',0.0
 'LHS 3877','Fischer Colony',0.0
 'LHS 391','Savinykh Works',0.0
 'LHS 397','Zillig Depot',0.0
@@ -254,7 +255,14 @@ name@System.system_id,unq:name,ls_from_star
 'LP Draconis','McDivitt Settlement',0.0
 'LTT 10482','Hubble Relay',0.0
 'LTT 15294','Tem Ring',0.0
-'LTT 16523','Fozard Survey',0.0
+'LTT 16523','Kraepelin Gateway',0.0
+'LTT 16523','Jacquard Orbital',0.0
+'LTT 16523','Curbeam Terminal',0.0
+'LTT 16523','Bohm Hub',0.0
+'LTT 16523','Arrhenius Orbital',0.0
+'LTT 16523','Kondakova Ring',0.0
+'LTT 16523','Stott Dock',0.0
+'LTT 16523','Ivins Market',0.0
 'LTT 3572','Horowitz Hub',0.0
 'LTT 4131','Ponce de Leon Station',0.0
 'LTT 4150','Meikle Orbital',0.0
@@ -275,7 +283,9 @@ name@System.system_id,unq:name,ls_from_star
 'Markanomovoy','Compton Dock',0.0
 'Marsinatani','Hewish Relay',0.0
 'Maujinagoto','Halsell Point',0.0
-'MCC 858','Jacquard Orbital',0.0
+'MCC 858','Rennie City',0.0
+'MCC 858','Fraley Orbital',0.0
+'MCC 858','Al-Farabi Port',0.0
 'Melcior','Goddard Dock',0.0
 'Meliae','Shawl Beacon',0.0
 'Mildeptu','Gerst Platform',0.0
@@ -433,7 +443,11 @@ name@System.system_id,unq:name,ls_from_star
 'Xi Ursae Majoris','Joule Settlement',0.0
 'Xi Wangkala','Ross Colony',0.0
 'Yanyan','Morin City',0.0
-'Yarigui','Schade City',0.0
+'Yarigui','Walker Ring',0.0
+'Yarigui','Salgari Hub',0.0
+'Yarigui','Kier Ring',0.0
+'Yarigui','Lem Dock',0.0
+'Yarigui','Moore Orbital',0.0
 'Ye''Kuapemas','Hawke''s Progress',0.0
 'Zaraluvul','Sturckow City',0.0
 'Zeta Herculis','Shepherd Ring',0.0
