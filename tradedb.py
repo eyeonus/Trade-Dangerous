@@ -278,7 +278,7 @@ class TradeDB(object):
                     includeTrades=True,
                     debug=None,
                 ):
-        tdenv = tdenv or TradeEnv(debug)
+        tdenv = tdenv or TradeEnv(debug=debug)
         self.tdenv = tdenv
         self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
