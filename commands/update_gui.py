@@ -30,10 +30,10 @@ updateUiHelp = (
 "\n"
 "'Demand' is disabled unless you use '--use-demand'.\n"
 "\n"
-"'Supply' should be:\n"
+"'Stock' should be:\n"
 "  '-' or '0' if no units are available,\n"
-"  empty or '?' if SUPPLY is over 10,000,\n"
-"  or the SUPPLY number followed by L, M or H.\n"
+"  empty or '?' if STOCK is over 10,000,\n"
+"  or the STOCK number followed by L, M or H.\n"
 "E.g.\n"
 "  1L, 50M, 3000H.\n"
 "\n"
@@ -255,7 +255,7 @@ class UpdateGUI(ScrollingCanvas):
             if re.match(r'^(-|\?|\d+[LlMmHh\?])$', value):
                 return True
             mbox.showerror(
-                        "Invalid supply value",
+                        "Invalid stock value",
                         "If the item is in-supply, this field should "
                         "be the number of units followed by one of 'L', "
                         "'M' or 'H'.\n"
@@ -406,7 +406,7 @@ class UpdateGUI(ScrollingCanvas):
         addHeading("Paying")
         addHeading("Asking")
         addHeading("Demand")
-        addHeading("Supply")
+        addHeading("Stock")
         self.endRow()
 
 
@@ -511,8 +511,8 @@ class UpdateGUI(ScrollingCanvas):
             itemName = row["name"]
             paying, asking = row["paying"], row["asking"]
             demand = describeSupply(row["demandUnits"], row["demandLevel"])
-            supply = describeSupply(row["stockUnits"], row["stockLevel"])
-            self.addItemRow(row["ID"], cat, itemName, paying, asking, demand, supply)
+            stock = describeSupply(row["stockUnits"], row["stockLevel"])
+            self.addItemRow(row["ID"], cat, itemName, paying, asking, demand, stock)
 
 
         for row in self.itemDisplays:
