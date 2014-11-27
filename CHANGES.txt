@@ -7,6 +7,7 @@ v6.0.7 Nov 26 2014
 . (kfsone) Friendly message instead of crash when local finds no stars
 . (kfsone) Added "--ignore-unkown" (-i) to "import"
 . (kfsone) "import" without a filename will now present an open file dialog
+. (gazelle) Added "export" sub-command to generate csv files of the current database
 API:
 . (kfsone) You can now have optional positional arguments in command lines
 
