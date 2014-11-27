@@ -20,6 +20,30 @@ http://stackoverflow.com/questions/27055936/python3-tk-scrollbar-and-focus
 
 """
 
+updateUiHelp = (
+"ABOUT THE EDITOR:\n"
+"The columns shown here represent the columns in the "
+"in-game Commodites Market UI and are in the same order.\n"
+"\n"
+"WHAT TO ENTER:\n"
+"Leave items blank if they are NOT listed in the game UI.\n"
+"\n"
+"'Demand' is disabled unless you use '--use-demand'.\n"
+"\n"
+"'Supply' should be:\n"
+"  '-' or '0' if no units are available,\n"
+"  empty or '?' if SUPPLY is over 10,000,\n"
+"  or the SUPPLY number followed by L, M or H.\n"
+"E.g.\n"
+"  1L, 50M, 3000H.\n"
+"\n"
+"SAVING:\n"
+"To save your data, click one of the window's close buttons.\n"
+"\n"
+"NAVIGATION:\n"
+"- Use Tab, Shift-Tab, Up/Down Arrow and Enter to navigate.\n"
+)
+
 class Item(object):
     """ Describe a listed, tradeable item """
 
@@ -105,15 +129,15 @@ class UpdateGUI(ScrollingCanvas):
         for TradeDangerous Price Updates
     """
 
-    def __init__(self, parent, tdb, cmdenv):
+    def __init__(self, parent, tdb, tdenv):
         super().__init__(parent)
 
-        width = cmdenv.width or 600
-        height = cmdenv.height or 640
-        sticky = 1 if cmdenv.alwaysOnTop else 0
+        width = tdenv.width or 600
+        height = tdenv.height or 640
+        sticky = 1 if tdenv.alwaysOnTop else 0
 
         self.tdb = tdb
-        self.cmdenv = cmdenv
+        self.tdenv = tdenv
 
         self.rowNo = 0
         self.colNo = 0
@@ -145,31 +169,115 @@ class UpdateGUI(ScrollingCanvas):
         widget.selection_range(0, tk.END)
 
 
-    def query(self, itemName, pos):
-        """ Find the cell for a given item name and a position """
-
-        item = self.items[itemName]
-        row = self.itemDisplays[item.displayNo]
-        return item, row, row[pos][1].get()
-
-
     def setValue(self, row, pos, value):
         row[pos][1].set(value)
+        return value
 
 
-    def validate(self, item, row, value, pos):
+    def getValue(self, row, pos):
+        return row[pos][1].get()
+
+
+    def validateRow(self, row):
+        paying = row[0][1].get()
+        if not paying or paying == "0":
+            paying = ""
+            for col in row:
+                col[1].set("")
+            row[1][0].configure(state=tk.DISABLED)
+            row[2][0].configure(state=tk.DISABLED)
+        else:
+            row[1][0].configure(state=tk.NORMAL)
+            if self.tdenv.useDemand:
+                row[2][0].configure(state=tk.NORMAL)
+            else:
+                row[2][0].configure(state=tk.DISABLED)
+                row[2][1].set("")
+
+        asking = row[1][1].get()
+        if asking == "0":
+            row[1][1].set("")
+            asking = ""
+        if not asking:
+            row[3][0].configure(state=tk.DISABLED)
+            row[3][1].set("")
+        else:
+            row[3][0].configure(state=tk.NORMAL)
+            if not row[3][1].get():
+                row[3][1].set("?")
+
+
+    def validate(self, widget):
         """ For checking the contents of a widget. TBD """
+        item, row, pos = widget.item, widget.row, widget.pos
+
+        value = widget.val.get()
+        re.sub(" +", "", value)
+        re.sub(",", "", value)
+        widget.val.set(value)
+
+        self.validateRow(row)
+
+        if pos == 0:
+            if not value or value == "0":
+                return True
+
+            if not re.match(r'^\d+$', value):
+                mbox.showerror(
+                        "Invalid Paying price",
+                        "Price must be an numeric value (e.g. 1234)"
+                        )
+                return False
+
+        if pos <= 1:
+            if not re.match(r'^\d+$', value):
+                mbox.showerror(
+                        "Invalid Paying price",
+                        "Price must be an numeric value (e.g. 1234)"
+                        )
+                return False
+
+            return True
+
+        if pos == 3:
+            value = widget.val.get()
+            if value == "0":
+                value = "-"
+            if value == "":
+                value = "?"
+            re.sub(",", "", value)
+            widget.val.set(value)
+            if re.match(r'^(-|\?|\d+[LlMmHh\?])$', value):
+                return True
+            mbox.showerror(
+                        "Invalid supply value",
+                        "Supply value must be one of: "
+                        "'-' or '0' for not available, "
+                        "empty or '?' for 'unknown', "
+                        "otherwise the value should be "
+                        "the number of units followed by "
+                        "a letter indicating the level.\n"
+                        "\n"
+                        "Examples:\n"
+                        "'1L' for 1 LOW, "
+                        "'30M' for  30 MED,"
+                        "'1000H' for 1000 HIGH.\n"
+                        "\n"
+                        "We recommend you only enter units "
+                        "when the value is under 10,000\n"
+                    )
+            return False
 
         return True
 
 
-    def onShiftTab(self, itemName, pos, event):
+    def onShiftTab(self, event):
         """ Process user pressing Shift+TAB """
 
-        item, row, value = self.query(itemName, pos)
-        if not self.validate(item, row, value, pos):
+        widget = event.widget
+        if not self.validate(widget):
             return "break"
-        if pos > 0 or item.displayNo > 0:
+        if widget.pos > 0 or widget.item.displayNo > 0:
             # Natural flow
             return
 
@@ -177,32 +285,32 @@ class UpdateGUI(ScrollingCanvas):
         return "break"
 
 
-    def onTab(self, itemName, pos, event):
+    def onTab(self, event):
         """ Process user pressing TAB """
 
-        item, row, value = self.query(itemName, pos)
-        if not self.validate(item, row, value, pos):
+        widget = event.widget
+        if not self.validate(widget):
             return "break"
-        if pos + 1 < len(row):
+        if widget.pos + 1 < len(widget.row):
             return
-        if item.displayNo + 1 < len(self.itemDisplays):
+        if widget.item.displayNo + 1 < len(self.itemDisplays):
             return
         self.parent.bell()
         return "break"
 
 
-    def onReturn(self, itemName, pos, event):
+    def onReturn(self, event):
         """
             When the user hits <Return>, advance to
             the first cell on the next line, or if
             we are at the bottom of the list, beep.
         """
         
-        item, row, value = self.query(itemName, pos)
-        if not self.validate(item, row, value, pos):
+        widget = event.widget
+        if not self.validate(widget):
             return "break"
         # advance to the first entry on the next row
-        newDisplayNo = item.displayNo + 1
+        newDisplayNo = widget.item.displayNo + 1
         if newDisplayNo >= len(self.itemDisplays):
             self.parent.bell()
             return "break"
@@ -210,33 +318,33 @@ class UpdateGUI(ScrollingCanvas):
         self.focusOn(newDisplayNo, 0)
 
 
-    def onUp(self, itemName, pos, event):
+    def onUp(self, event):
         """ Handle the user pressing up, go up a row """
 
-        item, row, value = self.query(itemName, pos)
-        if not self.validate(item, row, value, pos):
+        widget = event.widget
+        if not self.validate(widget):
             return "break"
         # can we go up a line?
-        if item.displayNo <= 0:
+        if widget.item.displayNo <= 0:
             self.parent.bell()
             return "break"
 
-        self.focusOn(item.displayNo - 1, pos)
+        self.focusOn(item.displayNo - 1, widget.pos)
 
 
-    def onDown(self, itemName, pos, event):
+    def onDown(self, event):
         """ Handle the user pressing down, go down a row """
 
-        item, row, value = self.query(itemName, pos)
-        if not self.validate(item, row, value, pos):
+        widget = event.widget
+        if not self.validate(widget):
             return "break"
         # can we go up a line?
-        newDisplayNo = item.displayNo + 1
+        newDisplayNo = widget.item.displayNo + 1
         if newDisplayNo >= len(self.itemDisplays):
             self.parent.bell()
             return "break"
 
-        self.focusOn(newDisplayNo, pos)
+        self.focusOn(newDisplayNo, widget.pos)
 
 
     def endRow(self):
@@ -272,16 +380,17 @@ class UpdateGUI(ScrollingCanvas):
                 width=10,
                 justify=tk.RIGHT,
                 textvariable=inputVal)
-        inputEl.bind('<Shift-Key-Tab>',
-                lambda evt: self.onShiftTab(item, pos, evt))
-        inputEl.bind('<Key-Tab>',
-                lambda evt: self.onTab(item, pos, evt))
-        inputEl.bind('<Key-Return>',
-                lambda evt: self.onReturn(item, pos, evt))
-        inputEl.bind('<Key-Down>',
-                lambda evt: self.onDown(item, pos, evt))
-        inputEl.bind('<Key-Up>',
-                lambda evt: self.onUp(item, pos, evt))
+        inputEl.item = item
+        inputEl.row = row
+        inputEl.pos = pos
+        inputEl.val = inputVal
+
+        inputEl.bind('<Shift-Key-Tab>', self.onShiftTab)
+        inputEl.bind('<Key-Tab>', self.onTab)
+        inputEl.bind('<Key-Return>', self.onReturn)
+        inputEl.bind('<Key-Down>', self.onDown)
+        inputEl.bind('<Key-Up>', self.onUp)
+        inputEl.bind('<FocusOut>', lambda evt: self.validateRow(evt.widget.row))
         self.addWidget(inputEl, sticky='E')
         row.append((inputEl, inputVal))
 
@@ -307,11 +416,11 @@ class UpdateGUI(ScrollingCanvas):
         self.items[itemName] = item
         self.itemList.append(item)
 
-        self.addLabel(itemName.upper())
-        self.addInput(itemName, paying, row)
-        self.addInput(itemName, asking, row)
-        self.addInput(itemName, demand, row)
-        self.addInput(itemName, stock, row)
+        self.addLabel(item.name.upper())
+        self.addInput(item, paying, row)
+        self.addInput(item, asking, row)
+        self.addInput(item, demand, row)
+        self.addInput(item, stock, row)
 
         self.itemDisplays.append(row)
 
@@ -321,8 +430,8 @@ class UpdateGUI(ScrollingCanvas):
     def createWidgets(self):
         self.addHeadings()
 
-        tdb, cmdenv = self.tdb, self.cmdenv
-        station = cmdenv.startStation
+        tdb, tdenv = self.tdb, self.tdenv
+        station = tdenv.startStation
         self.parent.title(station.name())
 
         db = tdb.getDB()
@@ -331,8 +440,29 @@ class UpdateGUI(ScrollingCanvas):
 
         self.categories = self.tdb.categoryByID
 
+        # Do we have entries for this station?
+        cur.execute("""
+                    SELECT  COUNT(*)
+                      FROM  StationItem
+                     WHERE  station_id = ?
+                """, [station.ID]
+            )
+        self.newStation = False if int(cur.fetchone()[0]) else True
+
+        if self.newStation and not tdenv.all:
+            def splashScreen():
+                mbox.showinfo(
+                        "New Station!",
+                        "There is currently no price data for this station "
+                        "in the database!\n\n" + updateUiHelp,
+                        parent=self,
+                        )
+                self.itemDisplays[0][0][0].focus_set()
+            self.parent.after(750, splashScreen)
+
         # if the user specified "--all", force listing of all items
-        siJoin = "INNER" if not cmdenv.all else "LEFT OUTER"
+        fetchAll = (self.newStation or tdenv.all)
+        siJoin = "LEFT OUTER" if fetchAll else "INNER"
         stmt = """
                 SELECT  item.category_id AS catID,
                         item.item_id AS ID,
@@ -383,6 +513,10 @@ class UpdateGUI(ScrollingCanvas):
             self.addItemRow(row["ID"], cat, itemName, paying, asking, demand, supply)
 
 
+        for row in self.itemDisplays:
+            self.validateRow(row)
+
+
     def getResults(self):
         lastCat = None
 
@@ -390,7 +524,7 @@ class UpdateGUI(ScrollingCanvas):
                 "# Generated by TDGUI\n"
                 "\n"
                 "@ {stn}\n".format(
-                    stn=self.cmdenv.startStation.name(),
+                    stn=self.tdenv.startStation.name(),
                 )
             )
         for item in self.itemList:
@@ -436,12 +570,11 @@ class UpdateGUI(ScrollingCanvas):
         self.results = txt
 
 
-def render(tdb, cmdenv, tmpPath):
+def render(tdb, tdenv, tmpPath):
     parent = tk.Tk()
-    gui = UpdateGUI(parent, tdb, cmdenv)
+    gui = UpdateGUI(parent, tdb, tdenv)
     gui.mainloop()
-    if not gui.results:
-        gui.getResults()
+    gui.getResults()
     with tmpPath.open("w") as fh:
         print(gui.results, file=fh)
 
