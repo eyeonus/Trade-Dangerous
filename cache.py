@@ -100,7 +100,7 @@ qtyLevelFrag = r"""
 newItemPriceRe = re.compile(r"""
 ^
     {base_f}
-\s+ 
+\s+
     # demand units and level
     (?P<demand> {qtylvl_f})
 \s+
@@ -265,7 +265,7 @@ def parseSupply(pricesFile, lineNo, category, reading):
 
 
 class PriceEntry(namedtuple('PriceEntry', [
-                                'stationID', 'itemID', 
+                                'stationID', 'itemID',
                                 'uiOrder', 'modified',
                                 'sellTo', 'demand', 'demandLevel',
                                 'buyFrom', 'stock', 'stockLevel',
@@ -529,7 +529,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         processedItems[itemID] = lineNo
         uiOrder += 1
 
-        return PriceEntry(stationID, itemID, 
+        return PriceEntry(stationID, itemID,
                             uiOrder, modified,
                             sellTo, demandUnits, demandLevel,
                             buyFrom, stockUnits, stockLevel
@@ -661,7 +661,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     )
     uniquePfx = "unq:"
 
-    with importPath.open() as importFile:
+    with importPath.open(encoding='utf-8') as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
         columnDefs = next(csvin)
