@@ -51,7 +51,8 @@ def addArguments(group, options, required, topGroup=None):
             if option.args[0][0] == '-':
                 group.add_argument(*(option.args), required=required, **(option.kwargs))
             else:
-                group.add_argument(*(option.args), **(option.kwargs))
+                nargs = '1' if required else '?'
+                group.add_argument(*(option.args), nargs=nargs, **(option.kwargs))
 
 
 def import_module(cmdName):
