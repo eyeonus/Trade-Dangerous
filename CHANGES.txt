@@ -2,6 +2,16 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.1 Nov 27 2014
+Optimization:
+. (kfsone) Removed support for old pre v5 .prices files
+. (kfsone) Streamlined demand/stock columns; these now only support:
+  - and 0  for "not available",
+  ?        for "who cares",
+  nn[?LMH] for number of units and unknown, low, medium or high
+(This makes the parser several times faster)
+. (kfsone) Made parsing .prices file several times faster
+
 v6.1.0 Nov 26 2014
 . (gazelle) Added "export" sub-command to generate csv files of the current database
 . (kfsone) Made the update-gui significantly more user friendly.

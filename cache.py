@@ -66,27 +66,6 @@ itemPriceFrag = r"""
 # 'now'
 timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
-# pre-4.6.0 extended format
-# <item name> <sell_to> <buy_from> [ <time> [ demand <units>L<level> stock <units>L<level> ] ]
-itemPriceRe = re.compile(r"""
-^
-    # name, prices
-    {base_f}
-    # extended section with time and possibly demand+stock info
-    (?:
-    \s+
-        {time_f}
-        # optional demand/stock after time
-        (?:
-            \s+ demand \s+ (?P<demand> -?\d+L-?\d+ | n/a | -L-)
-            \s+ stock \s+ (?P<stock> -?\d+L-?\d+ | n/a | -L-)
-        )?
-    )?
-\s*
-$
-""".format(base_f=itemPriceFrag, time_f=timeFrag), re.IGNORECASE + re.VERBOSE)
-
-# new format:
 # <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
 qtyLevelFrag = r"""
     unk                 # You can just write 'unknown'
@@ -217,51 +196,37 @@ class SupplyError(BuildCacheBaseException):
 ######################################################################
 # Helpers
 
-class Supply(object):
-    """
-        Helper class for breaking a units-and-level reading (e.g. -1L-1 or 50@M)
-        into units and level values or throwing diagnostic messages to help the
-        user figure out what data error was made.
-    """
-    # Map textual representations of levels back into integer values
-    levels = {
-        '-1': -1, '?': -1,
-        '0': 0, '-': 0,
-        'l': 1, 'L': 1, '1': 1,
-        'm': 2, 'M': 2, '2': 2,
-        'h': 3, 'H': 3, '3': 3,
-    }
-    # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(\d+)L(-?\d+)$', re.IGNORECASE)
-    # Split a <units><level> reading
-    splitAtRe = re.compile(r'^(\d+)([\?LMH])$', re.IGNORECASE)
-
 def parseSupply(pricesFile, lineNo, category, reading):
-        if reading in ("?", "unk", "UNK", "-1L-1", "-1L0", "0L-1"):
+    if len(reading) == 1:
+        if reading == "?":
             return (-1, -1)
-        elif reading in ("-", "0", "-L-", "n/a", "N/A"):
+        elif reading == "-" or reading == "0":
             return (0, 0)
-        else:
-            matches = Supply.splitAtRe.match(reading) or \
-                        Supply.splitLRe.match(reading)
-            if not matches:
-                raise SupplyError(
-                        pricesFile, lineNo, category,
-                        "Expected 'unk', <units>L<level> or <units>[?LMH]",
-                        reading
-                        )
-            units = int(matches.group(1))
-            if units < 0:
-                raise SupplyError(pricesFile, lineNo, category,
-                        "Negative unit quantity. Please use 'unk' for unknown",
-                        reading)
-            try:
-                level = Supply.levels[matches.group(2)]
-            except KeyError:
-                raise SupplyError(pricesFile, lineNo, category,
-                        "Invalid level value", reading)
+    else:
+        units, level = reading[0:-1], reading[-1]
+        levelNo = "??LMH".find(level.upper()) -1
+        if levelNo < -1:
+            raise SupplyError(
+                        pricesFile, lineNo, category, reading,
+                        "Unrecognized level suffix '{}', "
+                        "expected one of 'L', 'M', 'H' or '?'".format(
+                            level
+                    ))
+        try:
+            unitsNo = int(units)
+            if unitsNo <= 0:
+                raise ValueError("unsigned unit count")
+            return (unitsNo, levelNo)
+        except ValueError:
+            pass
 
-            return (units, level)
+    raise SupplyError(
+                pricesFile, lineNo, category, reading,
+                "Unrecognized units/level value: {}, "
+                "expected '-', '?', or a number followed "
+                "by a level (L, M, H or ?).".format(
+                    level
+            ))
 
 
 class PriceEntry(namedtuple('PriceEntry', [
@@ -389,13 +354,13 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             stationID = -1
 
         if stationID < 0:
-            systemName = corrections.correctSystem(systemName)
-            stationName = corrections.correctStation(systemName, stationName)
+            systemName = corrections.correctSystem(systemName).upper()
+            stationName = corrections.correctStation(systemName, stationName).upper()
             if systemName == DELETED or stationName == DELETED:
                 tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
                 return
-            facility = systemName.upper() + '/' + stationName.upper()
+            facility = systemName + '/' + stationName
             try:
                 stationID = systemByName[facility]
                 tdenv.DEBUG0("Renamed: {}", facility)
@@ -408,8 +373,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                     # yet have a corrections.py/Station.csv entry for it.
                     # Run with --corrections to generate a list of corrections.py
                     # additions.
-                    altStationName = systemName.upper() + "-STATION"
-                    altFacility = systemName.upper() + '/' + altStationName
+                    altStationName = systemName + "-STATION"
+                    altFacility = systemName + '/' + altStationName
                     try:
                         stationID = systemByName[altFacility]
                     except KeyError:
@@ -537,6 +502,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
     for line in priceFile:
         lineNo += 1
+        if len(line) <= 3 or line.startswith('#'):
+            continue
+
         text = noCommentRe.match(line).group('text').strip()
         # replace whitespace with single spaces
         text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
@@ -545,8 +513,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ########################################
         ### "@ STAR/Station" lines.
-        matches = systemStationRe.match(text)
-        if matches:
+        if text.startswith('@'):
+            matches = systemStationRe.match(text)
+            if not matches:
+                raise SyntaxError("Unrecognized '@' line: {}".format(
+                            text
+                        ))
             changeStation(matches)
             continue
 
@@ -560,8 +532,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ########################################
         ### "+ Category" lines.
-        matches = categoryRe.match(text)
-        if matches:
+        if text.startswith('+'):
+            matches = categoryRe.match(text)
+            if not matches:
+                    raise SyntaxError("Unrecognized '+' line: {}".format(
+                                text
+                            ))
             changeCategory(matches)
             continue
         if not categoryID:
@@ -576,10 +552,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         ### "Item sell buy ..." lines.
         matches = newItemPriceRe.match(text)
         if not matches:
-            matches = itemPriceRe.match(text)
-            if not matches:
-                raise SyntaxError(priceFile, lineNo,
-                                    "Unrecognized line/syntax", text)
+            raise SyntaxError(priceFile, lineNo,
+                        "Unrecognized line/syntax", text)
 
         sql = processItemLine(matches)
         if sql:
