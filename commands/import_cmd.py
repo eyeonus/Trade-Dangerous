@@ -18,7 +18,7 @@ name='import'
 epilog=None
 wantsTradeDB=True
 arguments = [
-    ParseArgument('filename', help='Name of the file to read.', type=str),
+    ParseArgument('filename', help='Name of the file to read. If the filename is - an open file dialog will be presented.', type=str),
 ]
 switches = [
     ParseArgument(
@@ -36,7 +36,32 @@ switches = [
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
+    # If the filename specified was "-" or None, then go ahead
+    # and present the user with an open file dialog.
+    if not cmdenv.filename or cmdenv.filename == "-":
+        import tkinter
+        from tkinter.filedialog import askopenfilename
+        tk = tkinter.Tk()
+        tk.withdraw()
+        filetypes = (
+                ("TradeDangerous '.prices' Files", "*.prices"),
+                ("All Files", "*.*"),
+                )
+        filename = askopenfilename(
+                    title="Select the file to import",
+                    initialfile="TradeDangerous.prices",
+                    filetypes=filetypes,
+                    initialdir='.',
+                )
+        if not filename:
+            raise SystemExit("Aborted")
+
+    # check the file exists.
     filePath = Path(cmdenv.filename)
+    if not filePath.is_file():
+        raise CommandLineError("File not found: {}".format(
+                    str(filePath)
+                ))
     cache.importDataFromFile(tdb, cmdenv, filePath)
     return None
 
