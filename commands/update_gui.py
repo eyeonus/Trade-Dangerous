@@ -220,6 +220,7 @@ class UpdateGUI(ScrollingCanvas):
 
         if pos == 0:
             if not value or value == "0":
+                widget.val.set("")
                 return True
 
             if not re.match(r'^\d+$', value):
@@ -230,6 +231,10 @@ class UpdateGUI(ScrollingCanvas):
                 return False
 
         if pos <= 1:
+            if not value or value == "0":
+                widget.val.set("")
+                return True
+
             if not re.match(r'^\d+$', value):
                 mbox.showerror(
                         "Invalid Paying price",
@@ -251,21 +256,18 @@ class UpdateGUI(ScrollingCanvas):
                 return True
             mbox.showerror(
                         "Invalid supply value",
-                        "Supply value must be one of: "
-                        "'-' or '0' for not available, "
-                        "empty or '?' for 'unknown', "
-                        "otherwise the value should be "
-                        "the number of units followed by "
-                        "a letter indicating the level.\n"
+                        "If the item is in-supply, this field should "
+                        "be the number of units followed by one of 'L', "
+                        "'M' or 'H'.\n"
                         "\n"
-                        "Examples:\n"
-                        "'1L' for 1 LOW, "
-                        "'30M' for  30 MED,"
-                        "'1000H' for 1000 HIGH.\n"
+                        "If the item is out-of-supply, use '-' or '0'.\n"
                         "\n"
-                        "We recommend you only enter units "
-                        "when the value is under 10,000\n"
+                        "TIP: Leave the value as '?' if there are more "
+                        "than 10,000 units available.\n"
+                        "\n"
+                        "EXAMPLE: If the UI says '2341 LOW', type '2341L'.\n"
                     )
+            widget.val.set("?")
             return False
 
         return True
@@ -329,7 +331,7 @@ class UpdateGUI(ScrollingCanvas):
             self.parent.bell()
             return "break"
 
-        self.focusOn(item.displayNo - 1, widget.pos)
+        self.focusOn(widget.item.displayNo - 1, widget.pos)
 
 
     def onDown(self, event):
