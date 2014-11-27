@@ -60,15 +60,35 @@ name@System.system_id,unq:name,ls_from_star
 'Alit','Rittenhouse Dock',0.0
 'Alit','Rosse Terminal',0.0
 'Alit','Webb Port',0.0
-'Alrai','Becquerel Gateway',0.0
+'Alrai','Bounds Hub',0.0
+'Altair','Grandin Gateway',0.0
+'Altair','Solo Orbiter',0.0
+'Altair','Tereshkova Dock',0.0
+'Amait','Oramus Legacy',0.0
+'Amarak','Vela Port',0.0
+'Amarak','Werner Von Siemens Vison',0.0
 'Ammapa','Bamford Enterprise',0.0
+'Anapos','Remek Platform',0.0
+'Ancanec','Watts Horizons',0.0
 'Andoe','Moffitt Settlement',0.0
+'Anek Wang','Henize Hub',0.0
 'Anemoi','Abasheli Point',0.0
+'Anlave','Bain Dock',0.0
+'Anlave','Brunton Gateway',0.0
+'Anlave','Hogg City',0.0
+'Anlave','Kobayashi City',0.0
 'Anlave','Suri Park',0.0
+'Anotchadiae','Crown Dock',0.0
+'Anotchadiae','Malerba Orbital',0.0
+'Anotchadiae','Pawelczyk Hub',0.0
 'Ansari','Wiberg Colony',0.0
 'Antinica','Benyovszky Terminal',0.0
 'Ao Guang','Kotov Settlement',0.0
+'Ao Konbul','Peirce Freeport',0.0
 'Ao Qin','Chapman Hub',0.0
+'Apadecavi','Barnes Ring',0.0
+'Apadecavi','Fontenay City',0.0
+'Apadecavi','Nelder City',0.0
 'Apalai','Gubarev Base',0.0
 'Apura','Harris Dock',0.0
 'Arcturus','Fort Harrison',0.0
@@ -228,13 +248,13 @@ name@System.system_id,unq:name,ls_from_star
 'LHS 2233','O''Donnell Survey',0.0
 'LHS 2363','Kennan Platform',0.0
 'LHS 246','Ellis Laboratory',0.0
-'LHS 2471','Baird City',0.0
-'LHS 2471','Teng-Hui Dock',0.0
-'LHS 2471','Precourt Hub',0.0
 'LHS 2471','Artsebarsky Enterprise',0.0
+'LHS 2471','Baird City',0.0
+'LHS 2471','Belyayev Terminal',0.0
 'LHS 2471','Fossey Port',0.0
 'LHS 2471','Michelson Gateway',0.0
-'LHS 2471','Belyayev Terminal',0.0
+'LHS 2471','Precourt Hub',0.0
+'LHS 2471','Teng-Hui Dock',0.0
 'LHS 2494','Heceta Colony',0.0
 'LHS 250','Kovalevsky Enterprise',0.0
 'LHS 2541','Artyukhin Platform',0.0
