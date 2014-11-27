@@ -10,15 +10,17 @@ import commands.parsing
 from commands.commandenv import CommandEnv
 
 commandList = [
+
     'buildcache',
     'buy',
-    'local',
+    'export',
     'import',
+    'local',
     'nav',
     'run',
     'sell',
     'update',
-    'export',
+
 ]
 
 ######################################################################
