@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v6.0.7 Nov 26 2014
 . (kfsone) Removed 'pill' options from local command
 . (kfsone) Friendly message instead of crash when local finds no stars
+. (kfsone) Added "--ignore-unkown" (-i) to "import"
 
 v6.0.6 Nov 25 2014
 . (kfsone) Issue#63 Trade calculator was not seeing some non-trade jumps

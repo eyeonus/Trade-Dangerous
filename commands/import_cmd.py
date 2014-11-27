@@ -21,6 +21,15 @@ arguments = [
     ParseArgument('filename', help='Name of the file to read.', type=str),
 ]
 switches = [
+    ParseArgument(
+        '--ignore-unknown', '-i',
+        default=False, action='store_true',
+        dest='ignoreUnknown',
+        help=(
+            "Data for systems, stations and items that are not "
+            "recognized is reported as warning but skipped."
+        ),
+    ),
 ]
 
 ######################################################################

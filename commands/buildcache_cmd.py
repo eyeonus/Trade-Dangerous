@@ -43,7 +43,7 @@ switches = [
             ),
     ),
     ParseArgument(
-        '--ignore-unknown',
+        '--ignore-unknown', '-i',
         default=False, action='store_true',
         dest='ignoreUnknown',
         help=(
