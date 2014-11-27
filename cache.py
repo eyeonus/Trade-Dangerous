@@ -828,7 +828,12 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
             tdenv.DEBUG0("WARNING: processImportFile found no {} file", importName)
 
     # Parse the prices file
-    processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
+    if pricesPath.exists():
+        processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
+    elif not tdenv.quiet:
+        print("NOTE: Missing \"{}\" file - no price data".format(
+                    str(pricesPath)
+                ), file=sys.stderr)
 
     generateStationLink(tdenv, tempDB)
 
@@ -853,6 +858,11 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
         that is when a new station is encountered, delete any
         existing records for that station in the database.
     """
+
+    if not path.exists():
+        raise TradeException("No such file: {}".format(
+                    str(path)
+                ))
 
     if reset:
         tdenv.DEBUG0("Resetting price data")
