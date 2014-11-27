@@ -5,6 +5,21 @@ import sqlite3
 import re
 from pathlib import Path
 
+"""
+This is a crude attempt at a GUI for updating trade prices.
+It needs a lot of love to be less... Shitty.
+
+TODO:
+. Add a way to add a new line,
+. Add a way to reorder lines,
+. Add a Save button,
+. Add pre-exit validation (and don't exit if there's a problem),
+
+Thanks to Bryan Okler for solving the focus tracking issue:
+http://stackoverflow.com/questions/27055936/python3-tk-scrollbar-and-focus
+
+"""
+
 class Item(object):
     """ Describe a listed, tradeable item """
 
@@ -15,7 +30,7 @@ class Item(object):
 
 class ScrollingCanvas(tk.Frame):
     """
-        Tk.Canvas with scrollbar
+        Tk.Canvas with scrollbar.
     """
 
     def __init__(self, parent):
@@ -34,10 +49,11 @@ class ScrollingCanvas(tk.Frame):
         vsb.pack(side="right", fill=tk.BOTH, expand=False)
 
         canvas.configure(yscrollcommand=vsb.set)
+        canvas.configure(yscrollincrement=4)
 
         self.interior = interior = tk.Frame(canvas)
-        canvas.create_window((4,4), window=interior, anchor="nw", tags="interior")
-        interior.bind("<Configure>", self.onFrameConfigure)
+        canvas.create_window(0, 0, window=interior, anchor="nw", tags="interior")
+        canvas.bind("<Configure>", self.onConfigure)
         interior.rowconfigure(0, weight=1)
         interior.columnconfigure(0, weight=1)
         interior.columnconfigure(1, weight=1)
@@ -49,12 +65,13 @@ class ScrollingCanvas(tk.Frame):
         canvas.pack(side="left", fill=tk.BOTH, expand=True)
 
         self.bind_all("<MouseWheel>", self.onMouseWheel)
+        canvas.bind_all("<FocusIn>", self.scrollIntoView)
 
         self.pack(side="left", fill=tk.BOTH, expand=True)
 
 
-    def onFrameConfigure(self, event):
-        """ Handle the <Configure> event for the frame """
+    def onConfigure(self, event):
+        """ Handle resizing """
 
         self.canvas.configure(scrollregion=self.interior.bbox("all"))
 
@@ -62,7 +79,24 @@ class ScrollingCanvas(tk.Frame):
     def onMouseWheel(self, event):
         """ Translate mouse wheel inputs to scroll bar motions """
 
-        self.canvas.yview_scroll(int(-1 * (event.delta/120)), "units")
+        self.canvas.yview_scroll(int(-1 * (event.delta/4)), "units")
+
+
+    def scrollIntoView(self, event):
+        """ Scroll so that a given widget is in focus """
+
+        canvas = self.canvas
+        widget_top = event.widget.winfo_y()
+        widget_bottom = widget_top + event.widget.winfo_height()
+        canvas_top = canvas.canvasy(0)
+        canvas_bottom = canvas_top + canvas.winfo_height()
+
+        if widget_bottom >= canvas_bottom:
+            delta = int(canvas_bottom - widget_bottom)
+            canvas.yview_scroll(-delta, "units")
+        elif widget_top < canvas_top:
+            delta = int(widget_top - canvas_top)
+            canvas.yview_scroll(delta, "units")
 
 
 class UpdateGUI(ScrollingCanvas):
