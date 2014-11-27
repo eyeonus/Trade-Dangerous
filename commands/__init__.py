@@ -18,6 +18,7 @@ commandList = [
     'run',
     'sell',
     'update',
+    'export',
 ]
 
 ######################################################################
@@ -30,7 +31,7 @@ class HelpAction(argparse.Action):
     """
     def __call__(self, parser, namespace, values, option_string=None):
         raise exceptions.UsageError("TradeDangerous help", parser.format_help())
-        
+
 
 def addArguments(group, options, required, topGroup=None):
     """

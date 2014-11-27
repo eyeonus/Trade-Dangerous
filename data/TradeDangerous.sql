@@ -156,7 +156,11 @@ CREATE TABLE AltItemNames
    alt_name VARCHAR(40) NOT NULL COLLATE nocase,
    item_id INTEGER NOT NULL,
 
-   PRIMARY KEY (alt_name, item_id)
+   PRIMARY KEY (alt_name, item_id),
+
+   FOREIGN KEY (item_id) REFERENCES Item(item_id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
  )
 ;
 
