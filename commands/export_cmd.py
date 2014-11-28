@@ -90,11 +90,8 @@ def getUniqueIndex(conn, tableName):
     for idxRow in idxCursor.execute("PRAGMA index_list('%s')" % tableName):
         if idxRow['unique']:
             # it's a unique index
-            unqCount = 0
             unqCursor = conn.cursor()
             for unqRow in unqCursor.execute("PRAGMA index_info('%s')" % idxRow['name']):
-                # count columns and remember the last name
-                unqCount += 1
                 unqIndex.append(unqRow['name'])
             return unqIndex
     return unqIndex
