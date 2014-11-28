@@ -68,6 +68,12 @@ switches = [
             type=str,
             default=None
         ),
+    ParseArgument('--delete-empty',
+            help='Delete CSV files without content.',
+            dest='deleteEmpty',
+            action='store_true',
+            default=False
+        ),
 ]
 
 ######################################################################
@@ -130,6 +136,7 @@ def run(results, cmdenv, tdb):
         if not cmdenv.quiet:
             print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
 
+        lineCount = 0
         with exportName.open("w", encoding='utf-8', newline="\n") as exportFile:
             exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
 
@@ -193,13 +200,17 @@ def run(results, cmdenv, tdb):
             cmdenv.DEBUG0("SQL: %s" % sqlStmt)
 
             # finally generate the csv file
-            lineCount = 0
-            # no quotes for header line
+            # write header line without quotes
             exportFile.write("{}\n".format(",".join(csvHead)))
             for line in cur.execute(sqlStmt):
                 lineCount += 1
                 cmdenv.DEBUG2("{count}: {values}".format(count=lineCount, values=list(line)))
                 exportOut.writerow(list(line))
             cmdenv.DEBUG1("{count} {table}s exported".format(count=lineCount, table=tableName))
+        if cmdenv.deleteEmpty and lineCount == 0:
+            # delete file if emtpy
+            exportName.unlink()
+            if not cmdenv.quiet:
+                print("Delete empty file {file}'".format(file=exportName))
 
     return None
