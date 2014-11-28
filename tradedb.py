@@ -532,12 +532,13 @@ class TradeDB(object):
                   FROM  Station
             """
         self.cur.execute(stmt)
-        stationByID, stationByName = {}, {}
+        stationByID = {}
         systemByID = self.systemByID
         for (ID, systemID, name, lsFromStar, itemCount) in self.cur:
-            stationByID[ID] = stationByName[name] = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
+            station = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
+            stationByID[ID] = station
 
-        self.stationByID, self.stationByName = stationByID, stationByName
+        self.stationByID = stationByID
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
 
 
