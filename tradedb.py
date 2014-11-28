@@ -247,7 +247,12 @@ class TradeDB(object):
             normalizedStr       -   Normalizes a search index string.
     """
 
-    normalizeRe = re.compile(r'[ \t\'\"\.\-_]')
+    # Translation map for normalizing strings
+    normalizeTrans = str.maketrans(
+            'abcdefghijklmnopqrstuvwxyz',
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            '[]()*+-.,{}:'
+            )
     # The DB cache
     defaultDB = './data/TradeDangerous.db'
     # File containing SQL to build the DB cache from
@@ -1024,17 +1029,18 @@ class TradeDB(object):
         class ListSearchMatch(namedtuple('Match', [ 'key', 'value' ])):
             pass
 
-        needle = TradeDB.normalizedStr(lookup)
+        normTrans = TradeDB.normalizeTrans
+        needle = lookup.translate(normTrans)
         partialMatches, wordMatches = [], []
         # make a regex to match whole words
         wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
         # describe a match
         for entry in values:
             entryKey = key(entry)
-            normVal = TradeDB.normalizedStr(entryKey)
+            normVal = entryKey.translate(normTrans)
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
-                if normVal == needle:
+                if len(normVal) == len(needle):
                     return val(entry)
                 match = ListSearchMatch(entryKey, val(entry))
                 if wordRe.match(entryKey):
@@ -1056,11 +1062,12 @@ class TradeDB(object):
 
 
     @staticmethod
-    def normalizedStr(str):
+    def normalizedStr(text):
         """
             Returns a case folded, sanitized version of 'str' suitable for
-            performing simple and partial matches against. Removes whitespace,
-            hyphens, underscores, periods and apostrophes.
+            performing simple and partial matches against. Removes various
+            punctuation characters that don't contribute to name uniqueness.
+            NOTE: No-longer removes whitespaces or apostrophes.
         """
-        return TradeDB.normalizeRe.sub('', str).casefold()
+        return text.translate(TradeDB.normalizeTrans)
 
