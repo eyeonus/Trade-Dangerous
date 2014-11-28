@@ -556,6 +556,121 @@ class TradeDB(object):
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
 
 
+    def lookupSystemAndStation(self, systemName, stationName):
+        raise Exception("Not implemented yet")
+
+
+    def lookupPlace(self, name):
+        """
+            Lookup the station/system specified by 'name' which can be the
+            name of a System or Station or it can be "System/Station" when
+            the user needs to disambiguate a station. In this case, both
+            system and station can be partial matches.
+
+            The system tries to allow partial matches as well as matches
+            which omit whitespaces. In order to do this and still support
+            the massive namespace of Stars and Systems, we rank the
+            matches so that exact matches win, and only inferior close
+            matches are looked at if no exacts are found.
+        """
+        slashPos = name.find('/')
+        if slashPos > 0:
+            # Slash indicates it's, e.g., AULIN/ENTERPRISE
+            system, station = name[0:slashPos], name[slashPos+1:]
+            return lookupSystemAndStation(self, system, station)
+        
+        exactMatches = []
+        closeMatches = []
+        wordMatches = []
+        candidates = []
+
+        normTrans = TradeDB.normalizeTrans
+        trimTrans = str.maketrans('', '', ' \'')
+
+        nameNorm = name.translate(normTrans)
+        nameTrimmed = nameNorm.translate(trimTrans)
+
+        nameLen = len(name)
+        nameNormLen = len(nameNorm)
+        nameTrimmedLen = len(nameTrimmed)
+
+        def consider(placeList):
+            """ Try the specified namespace """
+            for place in placeList:
+                placeName = place.dbname
+                placeNameNorm = placeName.translate(normTrans)
+                placeNameNormLen = len(placeNameNorm)
+
+                if nameTrimmedLen > placeNameNormLen:
+                    # The needle is bigger than this haystack.
+                    continue
+
+                # If the lengths match, do a direct comparison.
+                if len(placeName) == nameLen:
+                    if placeNameNorm == nameNorm:
+                        exactMatches.append(place)
+                    continue
+                if placeNameNormLen == nameNormLen:
+                    if placeNameNorm == nameNorm:
+                        closeMatches.append(place)
+                    continue
+
+                if nameNormLen < placeNameNormLen:
+                    if placeNameNorm.startswith(nameNorm):
+                        if placeNameNorm[nameNormLen] == ' ':
+                            # E.g. 'aulin' vs 'aulin enterprise'
+                            wordMatches.append(place)
+                        else:
+                            # E.g. "Russ' vs 'Russo'
+                            candidates.append(place)
+                        continue
+
+                if not placeNameNorm.startswith(nameNorm[0]):
+                    # Optimization: check if the first letters
+                    # match before we attempt
+                    continue
+
+                # Lets drop whitespace and remaining punctuation...
+                placeNameTrimmed = placeNameNorm.translate(trimTrans)
+                placeNameTrimmedLen = len(placeNameTrimmed)
+                if placeNameTrimmedLen == placeNameNormLen:
+                    # No change
+                    continue
+
+                # A match here is not exact but still fairly interesting
+                if len(placeNameTrimmed) == nameTrimmedLen:
+                    if placeNameTrimmed == nameTrimmed:
+                        closeMatches.append(place)
+                    continue
+                if placeNameTrimmed.startswith(nameTrimmed):
+                    candidates.append(place)
+
+        consider(self.systemByID.values())
+        consider(self.stationByID.values())
+
+        if exactMatches:
+            if len(exactMatches) == 1:
+                return exactMatches[0]
+        elif closeMatches:
+            if len(closeMatches) == 1:
+                return closeMatches[0]
+        elif wordMatches:
+            if len(wordMatches) == 1:
+                return wordMatches[0]
+        elif candidates:
+            if len(candidates) == 1:
+                return candidates[0]
+        else:
+            # Nothing matched
+            raise TradeException("Unrecognized place: {}".format(name))
+    
+        # More than one match
+        raise AmbiguityError(
+                    'System/Station', name,
+                    exactMatches + closeMatches + wordMatches + candidates,
+                    key=lambda place: place.name())
+
+
     def lookupStation(self, name, system=None):
         """
             Look up a Station object by it's name or system.
