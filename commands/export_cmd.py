@@ -83,6 +83,22 @@ def search_dict(list, key, val):
     for row in list:
         if row[key] == val: return row
 
+def getUniqueIndex(conn, tableName):
+    # return the first unique index
+    idxCursor = conn.cursor()
+    unqIndex = []
+    for idxRow in idxCursor.execute("PRAGMA index_list('%s')" % tableName):
+        if idxRow['unique']:
+            # it's a unique index
+            unqCount = 0
+            unqCursor = conn.cursor()
+            for unqRow in unqCursor.execute("PRAGMA index_info('%s')" % idxRow['name']):
+                # count columns and remember the last name
+                unqCount += 1
+                unqIndex.append(unqRow['name'])
+            return unqIndex
+    return unqIndex
+
 ######################################################################
 # Perform query and populate result set
 
@@ -113,6 +129,9 @@ def run(results, cmdenv, tdb):
     else:
         bindValues = []
         tableStmt = ''
+
+    # prefix for unique columns
+    uniquePfx = "unq:"
 
     tableCursor = conn.cursor()
     for row in tableCursor.execute("""
@@ -159,6 +178,7 @@ def run(results, cmdenv, tdb):
             stmtColumn = []
             stmtTable  = [ tableName ]
             stmtOrder  = []
+            unqIndex   = getUniqueIndex(conn, tableName)
 
             # iterate over all columns of the table
             for col in cur.execute("PRAGMA table_info('%s')" % tableName):
@@ -169,7 +189,11 @@ def run(results, cmdenv, tdb):
                 key = search_dict(keyList, 'column', col['name'])
                 if key:
                     # there must be a "name" column in the referenced table
-                    csvHead += [ "name@{}.{}".format(key['table'], key['column']) ]
+                    if col['name'] in unqIndex:
+                        # column is part of an unique index
+                        csvHead += [ uniquePfx + "name@{}.{}".format(key['table'], key['column']) ]
+                    else:
+                        csvHead += [ "name@{}.{}".format(key['table'], key['column']) ]
                     stmtColumn += [ "{}.name".format(key['table']) ]
                     if col['notnull']:
                         stmtTable += [ 'INNER JOIN {} USING({})'.format(key['table'], key['column']) ]
@@ -178,9 +202,9 @@ def run(results, cmdenv, tdb):
                     stmtOrder += [ "{}.name".format(key['table']) ]
                 else:
                     # ordinary column
-                    if col['name'] == 'name':
-                        # name columns must be unique
-                        csvHead += [ 'unq:name' ]
+                    if col['name'] in unqIndex:
+                        # column is part of an unique index
+                        csvHead += [ uniquePfx + col['name'] ]
                         stmtOrder += [ "{}.{}".format(tableName, col['name']) ]
                     else:
                         csvHead += [ col['name'] ]
