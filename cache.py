@@ -245,26 +245,19 @@ class PriceEntry(namedtuple('PriceEntry', [
 def getSystemByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
-            SELECT station_id, system.name, station.name
+            SELECT station_id,
+                    UPPER(system.name) || '/' || UPPER(station.name)
               FROM System
                    INNER JOIN Station
-                      ON System.system_id = Station.system_id
+                      USING (system_id)
         """)
-    return {
-        "{}/{}".format(sysName.upper(), stnName.upper()): ID
-            for (ID, sysName, stnName)
-            in cur
-    }
+    return { name: ID for (ID, name) in cur }
 
 
 def getCategoriesByNameIndex(cur):
     """ Build category name => id index """
     cur.execute("SELECT category_id, name FROM category")
-    return {
-        name: ID
-            for (ID, name)
-            in cur
-    }
+    return { name: ID for (ID, name) in cur }
 
 
 def testItemNamesUniqueAcrossCategories(cur):
