@@ -14,6 +14,7 @@ import csv
 #       of the database:
 #          * The table should only have one UNIQUE index
 #          * The referenced table must have one UNIQUE index
+#          * The FK columns must have the same name in both tables
 #          * One column primary keys will be handled by the database engine
 #
 ######################################################################
