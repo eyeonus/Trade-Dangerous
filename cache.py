@@ -645,7 +645,7 @@ def processImportFile(tdenv, db, importPath, tableName):
             # is this a unique index?
             colName = splitNames[0]
             if colName.startswith(uniquePfx):
-                uniqueIndexes += [ (cIndex, dict()) ]
+                uniqueIndexes += [ cIndex ]
                 colName = colName[len(uniquePfx):]
             columnNames.append(colName)
 
@@ -683,25 +683,35 @@ def processImportFile(tdenv, db, importPath, tableName):
 
         # import the data
         importCount = 0
+        uniqueIndex = dict()
 
         for linein in csvin:
             lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn: deprecationFn(linein, tdenv.debug)
-                for (colNo, index) in uniqueIndexes:
-                    colValue = linein[colNo].upper()
+                if uniqueIndexes:
+                    # Need to construct the actual unique index key as
+                    # something less likely to collide with manmade
+                    # values when it's a compound.
+                    keyValues = [
+                            str(linein[col]).upper()
+                            for col in uniqueIndexes
+                            ]
+                    key = ":!:".join(keyValues)
                     try:
-                        prevLineNo = index[colValue]
+                        prevLineNo = uniqueIndex[key]
                     except KeyError:
                         prevLineNo = 0
                     if prevLineNo:
+                        # Make a human-readable key
+                        key = "/".join(keyValues)
                         raise DuplicateKeyError(
                                 importPath, lineNo,
-                                columnNames[colNo], colValue,
+                                "entry", key,
                                 prevLineNo
                                 )
-                    index[colValue] = lineNo
+                    uniqueIndex[key] = lineNo
 
                 try:
                     db.execute(sql_stmt, linein)
