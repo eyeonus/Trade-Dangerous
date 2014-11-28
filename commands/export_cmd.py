@@ -165,8 +165,9 @@ def run(results, cmdenv, tdb):
         bindValues = []
         tableStmt = ''
 
-    # prefix for unique columns
+    # prefix for unique/ignore columns
     uniquePfx = "unq:"
+    ignorePfx = "!"
 
     tableCursor = conn.cursor()
     for row in tableCursor.execute("""
@@ -238,7 +239,9 @@ def run(results, cmdenv, tdb):
                             csvPfx = ''
                             joinStmt = 'USING({})'.format(keyRow['joinColumn'])
                         else:
-                            csvPfx = '!'
+                            # this column must be ignored by the importer, it's only
+                            # used to resolve the FK relation
+                            csvPfx = ignorePfx
                             joinStmt = 'ON {}.{} = {}.{}'.format(keyRow['table'], keyRow['joinColumn'], keyRow['joinTable'], keyRow['joinColumn'])
                         if col['name'] in unqIndex:
                             # column is part of an unique index
