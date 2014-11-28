@@ -151,7 +151,7 @@ class DuplicateKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
         super().__init__(fromFile, lineNo,
-                "Second entry for {keytype} \"{keyval}\", "
+                "Second occurance of {keytype} \"{keyval}\", "
                 "previous entry at line {prev}.".format(
                     keytype=keyType,
                     keyval=keyValue,
@@ -245,26 +245,19 @@ class PriceEntry(namedtuple('PriceEntry', [
 def getSystemByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
-            SELECT station_id, system.name, station.name
+            SELECT station_id,
+                    UPPER(system.name) || '/' || UPPER(station.name)
               FROM System
                    INNER JOIN Station
-                      ON System.system_id = Station.system_id
+                      USING (system_id)
         """)
-    return {
-        "{}/{}".format(sysName.upper(), stnName.upper()): ID
-            for (ID, sysName, stnName)
-            in cur
-    }
+    return { name: ID for (ID, name) in cur }
 
 
 def getCategoriesByNameIndex(cur):
     """ Build category name => id index """
     cur.execute("SELECT category_id, name FROM category")
-    return {
-        name: ID
-            for (ID, name)
-            in cur
-    }
+    return { name: ID for (ID, name) in cur }
 
 
 def testItemNamesUniqueAcrossCategories(cur):
@@ -652,7 +645,7 @@ def processImportFile(tdenv, db, importPath, tableName):
             # is this a unique index?
             colName = splitNames[0]
             if colName.startswith(uniquePfx):
-                uniqueIndexes += [ (cIndex, dict()) ]
+                uniqueIndexes += [ cIndex ]
                 colName = colName[len(uniquePfx):]
             columnNames.append(colName)
 
@@ -690,25 +683,35 @@ def processImportFile(tdenv, db, importPath, tableName):
 
         # import the data
         importCount = 0
+        uniqueIndex = dict()
 
         for linein in csvin:
             lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn: deprecationFn(linein, tdenv.debug)
-                for (colNo, index) in uniqueIndexes:
-                    colValue = linein[colNo].upper()
+                if uniqueIndexes:
+                    # Need to construct the actual unique index key as
+                    # something less likely to collide with manmade
+                    # values when it's a compound.
+                    keyValues = [
+                            str(linein[col]).upper()
+                            for col in uniqueIndexes
+                            ]
+                    key = ":!:".join(keyValues)
                     try:
-                        prevLineNo = index[colValue]
+                        prevLineNo = uniqueIndex[key]
                     except KeyError:
                         prevLineNo = 0
                     if prevLineNo:
+                        # Make a human-readable key
+                        key = "/".join(keyValues)
                         raise DuplicateKeyError(
                                 importPath, lineNo,
-                                columnNames[colNo], colValue,
+                                "entry", key,
                                 prevLineNo
                                 )
-                    index[colValue] = lineNo
+                    uniqueIndex[key] = lineNo
 
                 try:
                     db.execute(sql_stmt, linein)

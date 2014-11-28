@@ -56,13 +56,14 @@ CREATE TABLE Station
    system_id INTEGER NOT NULL,
    ls_from_star DOUBLE NOT NULL,
 
-   UNIQUE (name),
+   UNIQUE (system_id, name),
 
    FOREIGN KEY (system_id) REFERENCES System(system_id)
    	ON UPDATE CASCADE
    	ON DELETE CASCADE
  );
 CREATE INDEX idx_station_by_system ON Station (system_id, station_id);
+CREATE INDEX idx_station_by_name ON Station (name);
 
 
 CREATE TABLE Ship
