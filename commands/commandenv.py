@@ -4,6 +4,7 @@ from tradeenv import TradeEnv
 import pathlib
 import sys
 import os
+from tradedb import AmbiguityError, System, Station
 
 
 class CommandResults(object):
@@ -93,24 +94,46 @@ class CommandEnv(TradeEnv):
 
 
     def checkFromToNear(self):
-        def check(label, fn, fieldName):
+        def check(label, fieldName, wantStation):
             key = getattr(self, fieldName, None)
-            if key:
-                try:
-                    return fn(key)
-                except LookupError:
-                    raise CommandLineError(
-                            "Unrecognized {}: {}"
-                                .format(label, key))
-            return None
+            if not key:
+                return None
 
-        stnLookup = self.tdb.lookupStation
-        sysLookup = self.tdb.lookupSystemRelaxed
-        self.startStation = check('origin station', stnLookup, 'origin')
-        self.startSystem  = check('origin system', sysLookup, 'startSys')
-        self.stopStation  = check('destination station', stnLookup, 'dest')
-        self.stopSystem   = check('destination system', sysLookup, 'endSys')
-        self.nearSystem   = check('system', sysLookup, 'near')
+            try:
+                place = self.tdb.lookupPlace(key)
+            except LookupError:
+                raise CommandLineError(
+                        "Unrecognized {}: {}"
+                            .format(label, key))
+            if not wantStation:
+                if isinstance(place, Station):
+                    return place.system
+                return place
+
+
+            if isinstance(place, Station):
+                return place
+
+            # it's a system, we want a station
+            if not place.stations:
+                raise CommandLineError(
+                        "Station name required for {}: "
+                        "{} is a SYSTEM but has no stations.".format(
+                            label, key
+                        ))
+            if len(place.stations) > 1:
+                raise AmbiguityError(
+                        label, key, place.stations,
+                        key=lambda: key.name()
+                )
+
+            return place.stations[0]
+
+        self.startStation = check('origin station', 'origin', True)
+        self.startSystem  = check('origin system', 'startSys', True)
+        self.stopStation  = check('destination station', 'dest', True)
+        self.stopSystem   = check('destination system', 'endSys', False)
+        self.nearSystem   = check('system', 'near', False)
 
 
     def checkAvoids(self):
