@@ -273,7 +273,7 @@ def editUpdate(tdb, cmdenv, stationID):
         else:
             cache.importDataFromFile(tdb, cmdenv, tmpPath)
 
-        savePath = Path("updated.prices")
+        savePath = pathlib.Path("updated.prices")
         if savePath.exists():
             savePath.unlink()
         tmpPath.rename(savePath)
@@ -298,6 +298,14 @@ def guidedUpdate(tdb, cmdenv):
         render(tdb, cmdenv, tmpPath)
         cmdenv.DEBUG0("Got results, importing")
         cache.importDataFromFile(tdb, cmdenv, tmpPath)
+        savePath = pathlib.Path("updated.prices")
+        if savePath.exists():
+            savePath.unlink()
+        tmpPath.rename(savePath)
+        if not cmdenv.quiet:
+            print("- Copy of changes saved as '{}'".format(
+                    str(savePath)
+            ))
     except Exception as e:
         print("*** ERROR ENCOUNTERED ***")
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
