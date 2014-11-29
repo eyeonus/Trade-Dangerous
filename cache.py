@@ -79,17 +79,20 @@ qtyLevelFrag = r"""
 newItemPriceRe = re.compile(r"""
 ^
     {base_f}
-\s+
-    # demand units and level
-    (?P<demand> {qtylvl_f})
-\s+
-    # stock units and level
-    (?P<stock> {qtylvl_f})
-    # time is optional
-    (?:
+    (
     \s+
-        {time_f}
+        # demand units and level
+        (?P<demand> {qtylvl_f})
+    \s+
+        # stock units and level
+        (?P<stock> {qtylvl_f})
+        # time is optional
+        (?:
+        \s+
+            {time_f}
+        )?
     )?
+
 \s*
 $
 """.format(base_f=itemPriceFrag, qtylvl_f=qtyLevelFrag, time_f=timeFrag),

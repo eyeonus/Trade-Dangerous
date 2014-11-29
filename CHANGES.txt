@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.2 Nov 28 2014
+. (kfsone) Fix for importing data without demand/supply
 . (kfsone) Adding support for stations with the same name in diff systems
 . (kfsone) Removed import-from-maddavo.py
 . (kfsone) Added support for URLs in "import" sub-command
