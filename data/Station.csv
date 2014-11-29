@@ -283,6 +283,12 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 3057','Wallace Colony',0.0
 'LHS 3262','Lacaille Prospect',0.0
 'LHS 331','Hopkinson City',0.0
+'LHS 3447','Dalton Gateway',110152.0
+'LHS 3447','Fairbairn Station',109985.0
+'LHS 3447','Oleskiw Station',110007.0
+'LHS 3447','Trevithick Dock',109854.0
+'LHS 3447','Worlidge Terminal',109974.0
+'LHS 3447','Yaping Enterprise',109920.0
 'LHS 351','Brunel Hub',0.0
 'LHS 3549','Baydukov Base',0.0
 'LHS 355','Foucault Landing',0.0
@@ -514,6 +520,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Wyrd','Vonarburg Co-Operative',0.0
 'Xi Ursae Majoris','Joule Settlement',0.0
 'Xi Wangkala','Ross Colony',0.0
+'Yakabugai','Levi-Montalcini City',509.0
 'Yanyan','Morin City',0.0
 'Yarigui','Kier Ring',0.0
 'Yarigui','Lem Dock',0.0
