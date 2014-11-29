@@ -362,6 +362,36 @@ UPDATE sub-command:
   aka:
     trade.py update --sub -ST0 aulin
 
+IMPORT sub-command:
+
+  Provides a way to import prices data from a file or a web site. You can use this
+  to import data for a few stations or an entire .prices file from a friend.
+
+  For instance, if you 'update'd a station and there was an error importing it,
+  the data is usually saved as "prices.last". You can open this file and correct
+  the error and then import it, rather than having to re-enter all of the data.
+
+  trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
+
+    filename
+      Specifies the name of the file to load
+      e.g.
+        import.prices
+
+    url
+      Specifies web adress to retrieve the data from
+      e.g.
+        http://kfs.org/td/prices
+
+    --maddavo
+      Like 'url' but specifies the URL for maddavo's .prices file
+
+    --ignore-unknown
+    -i
+      Any systems, stations, categories or items that aren't recognized
+      by this version of TD will be reported but import will continue.
+ 
+
 
 BUY sub-command:
 

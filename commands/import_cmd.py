@@ -2,6 +2,9 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
 import math
+import re
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 import cache
 from pathlib import Path
@@ -20,10 +23,20 @@ wantsTradeDB=True
 arguments = [
 ]
 switches = [
-    ParseArgument('filename',
-        help='Name of the file to read.',
-        type=str,
-        default=None,
+    MutuallyExclusiveGroup(
+        ParseArgument('filename',
+            help='Name of the file to read.',
+            type=str,
+            default=None,
+        ),
+        MutuallyExclusiveGroup(
+            ParseArgument('--maddavo',
+                help='Import prices from Maddavo\'s site.',
+                dest='url',
+                action='store_const',
+                const="http://www.davek.com.au/td/prices.asp",
+            ),
+        ),
     ),
     ParseArgument(
         '--ignore-unknown', '-i',
@@ -37,11 +50,37 @@ switches = [
 ]
 
 ######################################################################
+# Helpers
+
+def download(cmdenv, url):
+    """
+        Download a prices file from the web.
+    """
+
+    req = Request(url)
+
+    cmdenv.DEBUG0("Fetching: {}", url)
+    f = urlopen(req)
+    cmdenv.DEBUG0(str(f.info()))
+    data = f.read().decode()
+
+    dstFile = "import.prices"
+    with open(dstFile, "w") as fh:
+        print(data, file=fh)
+
+    return dstFile
+
+
+######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
     # If the filename specified was "-" or None, then go ahead
     # and present the user with an open file dialog.
+
+    if cmdenv.url:
+        cmdenv.filename = download(cmdenv, cmdenv.url)
+
     if not cmdenv.filename:
         import tkinter
         from tkinter.filedialog import askopenfilename
@@ -60,6 +99,9 @@ def run(results, cmdenv, tdb):
         if not filename:
             raise SystemExit("Aborted")
         cmdenv.filename = filename
+
+    if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
+        cmdenv.filename = download(cmdenv.filename)
 
     # check the file exists.
     filePath = Path(cmdenv.filename)
