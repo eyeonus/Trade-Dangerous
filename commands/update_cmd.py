@@ -277,7 +277,10 @@ def editUpdate(tdb, cmdenv, stationID):
         if savePath.exists():
             savePath.unlink()
         tmpPath.rename(savePath)
-        tmpPath.unlink()
+        if not cmdenv.quiet:
+            print("- Copy of changes saved as '{}'".format(
+                    str(savePath)
+            ))
         tmpPath = None
 
     finally:
