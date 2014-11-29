@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.2 Nov 28 2014
+. (gazelle) Improvements to .CSV file handling,
+. (gazelle) Additional stations, data cleanup, etc.
 . (kfsone) Fix for importing data without demand/supply
 . (kfsone) Adding support for stations with the same name in diff systems
 . (kfsone) Removed import-from-maddavo.py
