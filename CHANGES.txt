@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.2 Nov 28 2014
+. (kfsone) System/Station name lookups are more friendly again
 . (kfsone) '-q' now silences "unknown ..." warnings when importing with "-i"
 . (gazelle) Improvements to .CSV file handling,
 . (gazelle) Additional stations, data cleanup, etc.

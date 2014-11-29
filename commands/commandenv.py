@@ -124,7 +124,7 @@ class CommandEnv(TradeEnv):
             if len(place.stations) > 1:
                 raise AmbiguityError(
                         label, key, place.stations,
-                        key=lambda: key.name()
+                        key=lambda key: key.name()
                 )
 
             return place.stations[0]
