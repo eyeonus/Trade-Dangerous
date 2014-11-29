@@ -387,7 +387,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                     if not tdenv.ignoreUnknown:
                         raise ex
                     stationID = DELETED
-                    print(ex)
+                    if not tdenv.quiet:
+                        print(ex)
                     return
 
         # Check for duplicates
@@ -432,7 +433,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             ex = UnknownCategoryError(priceFile, lineNo, categoryName)
             if not tdenv.ignoreUnknown:
                 raise ex
-            print(ex)
+            if not tdenv.quiet:
+                print(ex)
             categoryID = DELETED
             return
 
@@ -476,7 +478,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 ex = UnknownItemError(priceFile, lineNo, itemName)
                 if not tdenv.ignoreUnknown:
                     raise ex
-                print(ex)
+                if not tdenv.quiet:
+                    print(ex)
                 return
 
         # Check for duplicate items within the station.
