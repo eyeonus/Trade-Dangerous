@@ -471,20 +471,22 @@ class TradeDB(object):
             Lookup a System object by it's name or by the name of any of it's stations.
         """
         try:
-            return self.lookupSystem(key)
-        except LookupError:
-            pass
-        try:
-            nameList = self.stationByID.values()
-            station = TradeDB.listSearch("System or station", key, nameList, key=lambda entry: entry.dbname)
-            return station.system
-        except AmbiguityError as e:
-            # Check the ambiguities to see if they share a system
-            system = e.candidates[0].value.system
-            for i in range(1, len(e.candidates)):
-                if e.candidates[i].value.system != system:
-                    raise
-            return system
+            place = self.lookupPlace(key)
+            if isinstance(place, Station):
+                return place.system
+            else:
+                return place
+        except AmbiguityError e:
+            # See if the ambiguity resolves down to a single system.
+            for candidate in e.candidates:
+                if isinstance(candidate, Station):
+                    systems.add(candidate.system)
+                else:
+                    systems.add(candidate)
+            if len(systems) == 1:
+                return systems[0]
+            # Nope, genuine ambiguity
+            raise
 
 
     def genSystemsInRange(self, system, ly, includeSelf=False):
@@ -494,8 +496,10 @@ class TradeDB(object):
             Note: Returned distances are squared
         """
 
+        place = self.lookupPlace(system)
+        system = place.system if isinstance(system, Station) else place
+
         # Yield what we already have
-        system = self.lookupSystem(system)
         if includeSelf:
             yield system, 0.
 
