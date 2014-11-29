@@ -577,6 +577,9 @@ class TradeDB(object):
             matches so that exact matches win, and only inferior close
             matches are looked at if no exacts are found.
         """
+        if isinstance(name, System) or isinstance(name, Station):
+            return name
+
         slashPos = name.find('/')
         if slashPos > 0:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
