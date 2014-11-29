@@ -476,7 +476,7 @@ class TradeDB(object):
                 return place.system
             else:
                 return place
-        except AmbiguityError e:
+        except AmbiguityError as e:
             # See if the ambiguity resolves down to a single system.
             for candidate in e.candidates:
                 if isinstance(candidate, Station):
