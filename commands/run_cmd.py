@@ -1,6 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
+from tradedb import Station
 
 ######################################################################
 # Parser config
@@ -30,7 +31,7 @@ switches = [
     MutuallyExclusiveGroup(
         ParseArgument('--to',
                 help='Final system/station.',
-                dest='dest',
+                dest='endSys',
                 metavar='STATION',
             ),
         ParseArgument('--end',
@@ -231,6 +232,11 @@ def validateRunArguments(tdb, cmdenv):
         cmdenv.origins = [ cmdenv.startStation ]
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
+
+    if cmdenv.stopSystem:
+        if isinstance(cmdenv.stopSystem, Station):
+            cmdenv.stopStation = cmdenv.stopSystem
+        cmdenv.ending = set(cmdenv.ending + cmdenv.stopSystem.stations)
 
     if cmdenv.stopStation:
         if cmdenv.hops == 1 and cmdenv.startStation:

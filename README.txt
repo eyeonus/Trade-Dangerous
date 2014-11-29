@@ -197,10 +197,12 @@ RUN sub-command:
          --from Gateway
 
      --to <station or system>
-       Lets you specify the final destination
+       Lets you specify the final destination. If you specify a station, it
+       will finish at that exact station. If you specify a system, it will
+       try all the stations in the target system.
        e.g.
          --to Beagle2
-         --to Aulin
+         --to lhs64
 
      --end <station or system>
        Instead of --to, allows you to specify multiple destinations and
