@@ -577,6 +577,9 @@ EXPORT sub-command:
     -T TABLE[,TABLE,...]
       Specify a comma separated list of tablenames to export.
 
+    --delete-empty
+      Delete CSV files without content.
+
   Examples:
     > trade.py export --path misc
     Using database './data/TradeDangerous.db'

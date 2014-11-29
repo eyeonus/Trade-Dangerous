@@ -10,12 +10,12 @@ import csv
 #
 # Generate the CSV files for the master data of the database.
 #
-# Note: This script makes some assumptions about the structure
-# of the database:
-#   * The column name of an foreign key reference must be the same
-#   * The referenced table must have a column named "name"
-#     which is UNIQUE
-#   * One column primary keys will be handled by the database engine
+# Note: This command makes some assumptions about the structure
+#       of the database:
+#          * The table should only have one UNIQUE index
+#          * The referenced table must have one UNIQUE index
+#          * The FK columns must have the same name in both tables
+#          * One column primary keys will be handled by the database engine
 #
 ######################################################################
 # CAUTION: If the database structure gets changed this script might
@@ -68,14 +68,68 @@ switches = [
             type=str,
             default=None
         ),
+    ParseArgument('--delete-empty',
+            help='Delete CSV files without content.',
+            dest='deleteEmpty',
+            action='store_true',
+            default=False
+        ),
 ]
 
 ######################################################################
 # Helpers
 
-def search_dict(list, key, val):
+def search_keyList(list, val):
     for row in list:
-        if row[key] == val: return row
+        if row['from'] == row['to'] == val: return row
+
+def getUniqueIndex(conn, tableName):
+    # return the first unique index
+    idxCursor = conn.cursor()
+    unqIndex = []
+    for idxRow in idxCursor.execute("PRAGMA index_list('%s')" % tableName):
+        if idxRow['unique']:
+            # it's a unique index
+            unqCursor = conn.cursor()
+            for unqRow in unqCursor.execute("PRAGMA index_info('%s')" % idxRow['name']):
+                unqIndex.append(unqRow['name'])
+            return unqIndex
+    return unqIndex
+
+def getFKeyList(conn, tableName):
+    # get all single column FKs
+    keyList = []
+    keyCount = -1
+    keyCursor = conn.cursor()
+    for keyRow in keyCursor.execute("PRAGMA foreign_key_list('%s')" % tableName):
+        if keyRow['seq'] == 0:
+            keyCount += 1
+            keyList.append( {'table': keyRow['table'],
+                             'from': keyRow['from'],
+                             'to': keyRow['to']}
+                          )
+        if keyRow['seq'] == 1:
+            # if there is a second column, remove it from the list
+            keyList.remove( keyList[keyCount] )
+            keyCount -= 1
+
+    return keyList
+
+def buildFKeyStmt(conn, tableName, key):
+    unqIndex = getUniqueIndex(conn, key['table'])
+    keyList  = getFKeyList(conn, key['table'])
+    keyStmt = []
+    for colName in unqIndex:
+        # check if the column is a foreign key
+        keyKey = search_keyList(keyList, colName)
+        if keyKey:
+            newStmt = buildFKeyStmt(conn, key['table'], keyKey)
+            for row in newStmt:
+                keyStmt.append(row)
+        else:
+            keyStmt.append( {'table': tableName, 'column': colName, 'joinTable': key['table'], 'joinColumn': key['to']} )
+
+    return keyStmt
 
 ######################################################################
 # Perform query and populate result set
@@ -108,6 +162,10 @@ def run(results, cmdenv, tdb):
         bindValues = []
         tableStmt = ''
 
+    # prefix for unique/ignore columns
+    uniquePfx = "unq:"
+    ignorePfx = "!"
+
     tableCursor = conn.cursor()
     for row in tableCursor.execute("""
                                       SELECT name
@@ -130,61 +188,77 @@ def run(results, cmdenv, tdb):
         if not cmdenv.quiet:
             print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
 
+        lineCount = 0
         with exportName.open("w", encoding='utf-8', newline="\n") as exportFile:
             exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
 
             cur = conn.cursor()
-            keyList = []
-            for key in cur.execute("PRAGMA foreign_key_list('%s')" % tableName):
-                # ignore FKs to table StationItem
-                if key['table'] != 'StationItem':
-                    # only support FK joins with the same column name
-                    if key['from'] == key['to']:
-                        keyList += [ {'table': key['table'], 'column': key['from']} ]
 
+            # check for single PRIMARY KEY
             pkCount = 0
-            for col in cur.execute("PRAGMA table_info('%s')" % tableName):
+            for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
                 # count the columns of the primary key
-                if col['pk'] > 0: pkCount += 1
+                if columnRow['pk'] > 0: pkCount += 1
+
+            # build column list
+            columnList = []
+            for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
+                # if there is only one PK column, ignore it
+                if columnRow['pk'] > 0 and pkCount == 1: continue
+                columnList.append(columnRow)
+
+            # reverse the first two columns for some tables
+            if tableName in reverseList:
+                columnList[0], columnList[1] = columnList[1], columnList[0]
 
             # initialize helper lists
             csvHead    = []
             stmtColumn = []
             stmtTable  = [ tableName ]
             stmtOrder  = []
+            unqIndex   = getUniqueIndex(conn, tableName)
+            keyList    = getFKeyList(conn, tableName)
+
+            cmdenv.DEBUG0('UNIQUE: ' + ", ".join(unqIndex))
 
             # iterate over all columns of the table
-            for col in cur.execute("PRAGMA table_info('%s')" % tableName):
-                # if there is only one PK column, ignore it
-                if col['pk'] > 0 and pkCount == 1: continue
-
+            for col in columnList:
                 # check if the column is a foreign key
-                key = search_dict(keyList, 'column', col['name'])
+                key = search_keyList(keyList, col['name'])
                 if key:
-                    # there must be a "name" column in the referenced table
-                    csvHead += [ "name@{}.{}".format(key['table'], key['column']) ]
-                    stmtColumn += [ "{}.name".format(key['table']) ]
-                    if col['notnull']:
-                        stmtTable += [ 'INNER JOIN {} USING({})'.format(key['table'], key['column']) ]
-                    else:
-                        stmtTable += [ 'LEFT OUTER JOIN {} USING({})'.format(key['table'], key['column']) ]
-                    stmtOrder += [ "{}.name".format(key['table']) ]
+                    # make the join statement
+                    keyStmt = buildFKeyStmt(conn, tableName, key)
+                    for keyRow in keyStmt:
+                        if cmdenv.debug > 0:
+                            print('FK-Stmt: {}'.format(keyRow))
+                        # is the join for the same table
+                        if keyRow['table'] == tableName:
+                            csvPfx = ''
+                            joinStmt = 'USING({})'.format(keyRow['joinColumn'])
+                        else:
+                            # this column must be ignored by the importer, it's only
+                            # used to resolve the FK relation
+                            csvPfx = ignorePfx
+                            joinStmt = 'ON {}.{} = {}.{}'.format(keyRow['table'], keyRow['joinColumn'], keyRow['joinTable'], keyRow['joinColumn'])
+                        if col['name'] in unqIndex:
+                            # column is part of an unique index
+                            csvPfx = uniquePfx + csvPfx
+                        csvHead += [ "{}{}@{}.{}".format(csvPfx, keyRow['column'], keyRow['joinTable'], keyRow['joinColumn']) ]
+                        stmtColumn += [ "{}.{}".format(keyRow['joinTable'], keyRow['column']) ]
+                        if col['notnull']:
+                            stmtTable += [ 'INNER JOIN {} {}'.format(keyRow['joinTable'], joinStmt) ]
+                        else:
+                            stmtTable += [ 'LEFT OUTER JOIN {} {}'.format(keyRow['joinTable'], joinStmt) ]
+                        stmtOrder += [ "{}.{}".format(keyRow['joinTable'], keyRow['column']) ]
                 else:
                     # ordinary column
-                    if col['name'] == 'name':
-                        # name columns must be unique
-                        csvHead += [ 'unq:name' ]
+                    if col['name'] in unqIndex:
+                        # column is part of an unique index
+                        csvHead += [ uniquePfx + col['name'] ]
                         stmtOrder += [ "{}.{}".format(tableName, col['name']) ]
                     else:
                         csvHead += [ col['name'] ]
                     stmtColumn += [ "{}.{}".format(tableName, col['name']) ]
-
-            # reverse the first two columns for some tables
-            if tableName in reverseList:
-                csvHead[0], csvHead[1] = csvHead[1], csvHead[0]
-                stmtColumn[0], stmtColumn[1] = stmtColumn[1], stmtColumn[0]
-                if len(stmtOrder) > 1:
-                    stmtOrder[0], stmtOrder[1] = stmtOrder[1], stmtOrder[0]
 
             # build the SQL statement
             sqlStmt = "SELECT {} FROM {}".format(",".join(stmtColumn)," ".join(stmtTable))
@@ -193,13 +267,17 @@ def run(results, cmdenv, tdb):
             cmdenv.DEBUG0("SQL: %s" % sqlStmt)
 
             # finally generate the csv file
-            lineCount = 0
-            # no quotes for header line
+            # write header line without quotes
             exportFile.write("{}\n".format(",".join(csvHead)))
             for line in cur.execute(sqlStmt):
                 lineCount += 1
                 cmdenv.DEBUG2("{count}: {values}".format(count=lineCount, values=list(line)))
                 exportOut.writerow(list(line))
             cmdenv.DEBUG1("{count} {table}s exported".format(count=lineCount, table=tableName))
+        if cmdenv.deleteEmpty and lineCount == 0:
+            # delete file if emtpy
+            exportName.unlink()
+            if not cmdenv.quiet:
+                print("Delete empty file {file}'".format(file=exportName))
 
     return None
