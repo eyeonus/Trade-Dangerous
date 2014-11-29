@@ -130,7 +130,7 @@ class CommandEnv(TradeEnv):
             return place.stations[0]
 
         self.startStation = check('origin station', 'origin', True)
-        self.startSystem  = check('origin system', 'startSys', True)
+        self.startSystem  = check('origin system', 'startSys', False)
         self.stopStation  = check('destination station', 'dest', True)
         self.stopSystem   = check('destination system', 'endSys', False)
         self.nearSystem   = check('system', 'near', False)
