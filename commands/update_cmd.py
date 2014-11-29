@@ -273,6 +273,10 @@ def editUpdate(tdb, cmdenv, stationID):
         else:
             cache.importDataFromFile(tdb, cmdenv, tmpPath)
 
+        savePath = Path("updated.prices")
+        if savePath.exists():
+            savePath.unlink()
+        tmpPath.rename(savePath)
         tmpPath.unlink()
         tmpPath = None
 
