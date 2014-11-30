@@ -251,7 +251,6 @@ class TradeDB(object):
             fetch_all           -   Generator that yields all the rows retrieved by an sql cursor.
 
         Static methods:
-            distanceSq          -   Returns the square of the distance between two points.
             listSearch          -   Performs a partial-match search of a list for a value.
             normalizedStr       -   Normalizes a search index string.
     """
@@ -723,19 +722,6 @@ class TradeDB(object):
         return system.stations[0]
 
 
-    def lookupStationExplicitly(self, name, system=None):
-        """
-            Look up a Station object by it's name.
-        """
-        if isinstance(name, Station):
-            if system and name.system.ID != system.ID:
-                raise LookupError("Station '{}' is not in System '{}'".format(name.dbname, system.dbname))
-            return name
-
-        nameList = system.stations if system else self.stationByID.values()
-        return TradeDB.listSearch("Station", name, nameList, key=lambda entry: entry.dbname)
-
-
     def getDestinations(self,
             origin,
             maxJumps=None,
@@ -1117,34 +1103,6 @@ class TradeDB(object):
 
     ############################################################
     # General purpose static methods.
-
-    @staticmethod
-    def distanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
-        """
-            Calculate the square of the distance between two points.
-
-            Pythagoras theorem: distance = root( (x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2 )
-
-            But calculating square roots is not cheap and if you don't
-            need the distance for display, etc, then returning the
-            square saves an expensive calculation:
-
-            IF   root(A^2 + B^2 + C^2) == root(D^2 + E^2 + F^2)
-            THEN (A^2 + B^2 + C^2) == (D^2 + E^2 + F^2)
-
-            So instead of having to sqrt all of our distances in a complex
-            set, we can do this:
-
-            maxDistSq = 300 ** 2   # check for items < 300ly
-            inRange = []
-            for (lhs, rhs) in items:
-                distSq = distanceSq(lhs.x, lhs.y, lhs.z, rhs.x, rhs.y, rhs.z)
-                if distSq <= maxDistSq:
-                    inRange += [[lhs, rhs]]
-        """
-        return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
-
-
 
     @staticmethod
     def listSearch(listType, lookup, values, key=lambda item: item, val=lambda item: item):
