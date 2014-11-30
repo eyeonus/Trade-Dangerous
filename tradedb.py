@@ -769,12 +769,16 @@ class TradeDB(object):
 
         origSys = origin.system
         openList = [ DestinationNode(origSys, [origSys], 0) ]
+        # I don't want to have to consult both the pathList
+        # AND the avoid list every time I'm considering a
+        # station, so copy the avoid list into the pathList
+        # with a negative distance so I can ignore them again
+        # when I scrape the pathList.
+        # Don't copy stations because those only affect our
+        # termination points, and not the systems we can
+        # pass through en-route.
         pathList = { system.ID: DestinationNode(system, None, -1.0)
-                            # include avoids so we only have
-                            # to consult one place for exclusions
                         for system in avoidPlaces
-                            # the avoid list may contain stations,
-                            # which affects destinations but not vias
                         if isinstance(system, System) }
 
         # As long as the open list is not empty, keep iterating.
@@ -817,10 +821,8 @@ class TradeDB(object):
                 if station not in avoidPlaces:
                     destStations.append(Destination(origSys, station, [], 0.0))
 
-        avoidStations = [
-                station for station in avoidPlaces
-                    if isinstance(station, Station)
-                ]
+        # We have a system-to-system path list, now we
+        # need stations to terminate at.
         for node in pathList.values():
             # negative values are avoidances
             if node.distLy < 0.0:
@@ -828,7 +830,7 @@ class TradeDB(object):
             for station in node.system.stations:
                 if (trading and station not in tradingWith):
                     continue
-                if station in avoidStations:
+                if station in avoidPlaces:
                     continue
                 destStations.append(
                             Destination(node.system,
