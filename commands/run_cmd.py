@@ -1,6 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
+from tradedb import Station
 
 ######################################################################
 # Parser config
@@ -30,7 +31,7 @@ switches = [
     MutuallyExclusiveGroup(
         ParseArgument('--to',
                 help='Final system/station.',
-                dest='dest',
+                dest='endSys',
                 metavar='STATION',
             ),
         ParseArgument('--end',
@@ -232,6 +233,11 @@ def validateRunArguments(tdb, cmdenv):
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
+    if cmdenv.stopSystem:
+        if isinstance(cmdenv.stopSystem, Station):
+            cmdenv.stopStation = cmdenv.stopSystem
+        cmdenv.ending = set(cmdenv.ending + cmdenv.stopSystem.stations)
+
     if cmdenv.stopStation:
         if cmdenv.hops == 1 and cmdenv.startStation:
             if cmdenv.startStation == cmdenv.stopStation:
@@ -328,8 +334,8 @@ def run(results, cmdenv, tdb):
     from tradecalc import TradeCalc, Route
 
     startStn, stopStn, viaSet = cmdenv.startStation, cmdenv.stopStation, cmdenv.viaSet
-    avoidSystems = cmdenv.avoidSystems
-    avoidStations = cmdenv.avoidStations
+
+    avoidPlaces = cmdenv.avoidPlaces
 
     stopStations = []
     if stopStn:
@@ -344,8 +350,7 @@ def run(results, cmdenv, tdb):
     routes = [
         Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0)
             for src in cmdenv.origins
-            if not (src in avoidStations or
-                    src.system in avoidSystems)
+            if src not in avoidPlaces and src.system not in avoidPlaces
     ]
     numHops = cmdenv.hops
     lastHop = numHops - 1

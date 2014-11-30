@@ -1,6 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import CommandLineError
+import sys
 
 ######################################################################
 # Parser config
@@ -43,7 +44,7 @@ switches = [
             ),
     ),
     ParseArgument(
-        '--ignore-unknown',
+        '--ignore-unknown', '-i',
         default=False, action='store_true',
         dest='ignoreUnknown',
         help=(
@@ -82,10 +83,6 @@ def run(results, cmdenv, tdb):
     if not sqlPath.exists():
         raise CommandLineError(
                     "SQL File does not exist: {}".format(sqlFilename))
-
-    if not pricesPath.exists():
-        raise CommandLineError(
-                    "Prices file does not exist: {}".format(pricesFilename))
 
     from cache import buildCache
     buildCache(cmdenv, dbPath, sqlPath, pricesPath, importTables)

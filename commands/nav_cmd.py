@@ -35,7 +35,7 @@ switches = [
             help='Try more aggressively.',
             action='count',
             dest='aggressiveness',
-            default=1,
+            default=0,
         ),
 ]
 
@@ -59,7 +59,7 @@ def run(results, cmdenv, tdb):
     distances = { srcSystem: [ 0.0, None ] }
 
     # As long as the open list is not empty, keep iterating.
-    overshoot = cmdenv.aggressiveness * 4
+    overshoot = (cmdenv.aggressiveness * 4) + 1
     while openList:
         if dstSystem in distances:
             overshoot -= 1

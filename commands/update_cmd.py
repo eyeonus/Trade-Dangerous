@@ -45,6 +45,12 @@ switches = [
             action='store_true',
             default=False,
         ),
+    ParseArgument('--use-demand', '-D',
+            help='Unlock the "Demand" column in the GUI.',
+            action='store_true',
+            dest='useDemand',
+            default=False,
+        ),
     ParseArgument('--force-na', '-0', 
             help="Forces 'unk' supply to become 'n/a' by default",
             action='store_true',
@@ -267,7 +273,14 @@ def editUpdate(tdb, cmdenv, stationID):
         else:
             cache.importDataFromFile(tdb, cmdenv, tmpPath)
 
-        tmpPath.unlink()
+        savePath = pathlib.Path("updated.prices")
+        if savePath.exists():
+            savePath.unlink()
+        tmpPath.rename(savePath)
+        if not cmdenv.quiet:
+            print("- Copy of changes saved as '{}'".format(
+                    str(savePath)
+            ))
         tmpPath = None
 
     finally:
@@ -285,6 +298,14 @@ def guidedUpdate(tdb, cmdenv):
         render(tdb, cmdenv, tmpPath)
         cmdenv.DEBUG0("Got results, importing")
         cache.importDataFromFile(tdb, cmdenv, tmpPath)
+        savePath = pathlib.Path("updated.prices")
+        if savePath.exists():
+            savePath.unlink()
+        tmpPath.rename(savePath)
+        if not cmdenv.quiet:
+            print("- Copy of changes saved as '{}'".format(
+                    str(savePath)
+            ))
     except Exception as e:
         print("*** ERROR ENCOUNTERED ***")
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(

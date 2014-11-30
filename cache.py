@@ -66,27 +66,6 @@ itemPriceFrag = r"""
 # 'now'
 timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
-# pre-4.6.0 extended format
-# <item name> <sell_to> <buy_from> [ <time> [ demand <units>L<level> stock <units>L<level> ] ]
-itemPriceRe = re.compile(r"""
-^
-    # name, prices
-    {base_f}
-    # extended section with time and possibly demand+stock info
-    (?:
-    \s+
-        {time_f}
-        # optional demand/stock after time
-        (?:
-            \s+ demand \s+ (?P<demand> -?\d+L-?\d+ | n/a | -L-)
-            \s+ stock \s+ (?P<stock> -?\d+L-?\d+ | n/a | -L-)
-        )?
-    )?
-\s*
-$
-""".format(base_f=itemPriceFrag, time_f=timeFrag), re.IGNORECASE + re.VERBOSE)
-
-# new format:
 # <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
 qtyLevelFrag = r"""
     unk                 # You can just write 'unknown'
@@ -100,17 +79,20 @@ qtyLevelFrag = r"""
 newItemPriceRe = re.compile(r"""
 ^
     {base_f}
-\s+ 
-    # demand units and level
-    (?P<demand> {qtylvl_f})
-\s+
-    # stock units and level
-    (?P<stock> {qtylvl_f})
-    # time is optional
-    (?:
+    (
     \s+
-        {time_f}
+        # demand units and level
+        (?P<demand> {qtylvl_f})
+    \s+
+        # stock units and level
+        (?P<stock> {qtylvl_f})
+        # time is optional
+        (?:
+        \s+
+            {time_f}
+        )?
     )?
+
 \s*
 $
 """.format(base_f=itemPriceFrag, qtylvl_f=qtyLevelFrag, time_f=timeFrag),
@@ -172,7 +154,7 @@ class DuplicateKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
         super().__init__(fromFile, lineNo,
-                "Second entry for {keytype} \"{keyval}\", "
+                "Second occurance of {keytype} \"{keyval}\", "
                 "previous entry at line {prev}.".format(
                     keytype=keyType,
                     keyval=keyValue,
@@ -217,55 +199,41 @@ class SupplyError(BuildCacheBaseException):
 ######################################################################
 # Helpers
 
-class Supply(object):
-    """
-        Helper class for breaking a units-and-level reading (e.g. -1L-1 or 50@M)
-        into units and level values or throwing diagnostic messages to help the
-        user figure out what data error was made.
-    """
-    # Map textual representations of levels back into integer values
-    levels = {
-        '-1': -1, '?': -1,
-        '0': 0, '-': 0,
-        'l': 1, 'L': 1, '1': 1,
-        'm': 2, 'M': 2, '2': 2,
-        'h': 3, 'H': 3, '3': 3,
-    }
-    # Split a <units>L<level> reading
-    splitLRe = re.compile(r'^(\d+)L(-?\d+)$', re.IGNORECASE)
-    # Split a <units><level> reading
-    splitAtRe = re.compile(r'^(\d+)([\?LMH])$', re.IGNORECASE)
-
 def parseSupply(pricesFile, lineNo, category, reading):
-        if reading in ("?", "unk", "UNK", "-1L-1", "-1L0", "0L-1"):
+    if len(reading) == 1:
+        if reading == "?":
             return (-1, -1)
-        elif reading in ("-", "0", "-L-", "n/a", "N/A"):
+        elif reading == "-" or reading == "0":
             return (0, 0)
-        else:
-            matches = Supply.splitAtRe.match(reading) or \
-                        Supply.splitLRe.match(reading)
-            if not matches:
-                raise SupplyError(
-                        pricesFile, lineNo, category,
-                        "Expected 'unk', <units>L<level> or <units>[?LMH]",
-                        reading
-                        )
-            units = int(matches.group(1))
-            if units < 0:
-                raise SupplyError(pricesFile, lineNo, category,
-                        "Negative unit quantity. Please use 'unk' for unknown",
-                        reading)
-            try:
-                level = Supply.levels[matches.group(2)]
-            except KeyError:
-                raise SupplyError(pricesFile, lineNo, category,
-                        "Invalid level value", reading)
+    else:
+        units, level = reading[0:-1], reading[-1]
+        levelNo = "??LMH".find(level.upper()) -1
+        if levelNo < -1:
+            raise SupplyError(
+                        pricesFile, lineNo, category, reading,
+                        "Unrecognized level suffix '{}', "
+                        "expected one of 'L', 'M', 'H' or '?'".format(
+                            level
+                    ))
+        try:
+            unitsNo = int(units)
+            if unitsNo <= 0:
+                raise ValueError("unsigned unit count")
+            return (unitsNo, levelNo)
+        except ValueError:
+            pass
 
-            return (units, level)
+    raise SupplyError(
+                pricesFile, lineNo, category, reading,
+                "Unrecognized units/level value: {}, "
+                "expected '-', '?', or a number followed "
+                "by a level (L, M, H or ?).".format(
+                    level
+            ))
 
 
 class PriceEntry(namedtuple('PriceEntry', [
-                                'stationID', 'itemID', 
+                                'stationID', 'itemID',
                                 'uiOrder', 'modified',
                                 'sellTo', 'demand', 'demandLevel',
                                 'buyFrom', 'stock', 'stockLevel',
@@ -280,26 +248,19 @@ class PriceEntry(namedtuple('PriceEntry', [
 def getSystemByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
-            SELECT station_id, system.name, station.name
+            SELECT station_id,
+                    UPPER(system.name) || '/' || UPPER(station.name)
               FROM System
                    INNER JOIN Station
-                      ON System.system_id = Station.system_id
+                      USING (system_id)
         """)
-    return {
-        "{}/{}".format(sysName.upper(), stnName.upper()): ID
-            for (ID, sysName, stnName)
-            in cur
-    }
+    return { name: ID for (ID, name) in cur }
 
 
 def getCategoriesByNameIndex(cur):
     """ Build category name => id index """
     cur.execute("SELECT category_id, name FROM category")
-    return {
-        name: ID
-            for (ID, name)
-            in cur
-    }
+    return { name: ID for (ID, name) in cur }
 
 
 def testItemNamesUniqueAcrossCategories(cur):
@@ -363,6 +324,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
     lineNo = 0
 
+    categoryName = None
     facility = None
     processedStations = {}
     processedItems = {}
@@ -389,13 +351,13 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             stationID = -1
 
         if stationID < 0:
-            systemName = corrections.correctSystem(systemName)
-            stationName = corrections.correctStation(systemName, stationName)
+            systemName = corrections.correctSystem(systemName).upper()
+            stationName = corrections.correctStation(systemName, stationName).upper()
             if systemName == DELETED or stationName == DELETED:
                 tdenv.DEBUG1("DELETED: {}", facility)
                 stationID = DELETED
                 return
-            facility = systemName.upper() + '/' + stationName.upper()
+            facility = systemName + '/' + stationName
             try:
                 stationID = systemByName[facility]
                 tdenv.DEBUG0("Renamed: {}", facility)
@@ -408,8 +370,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                     # yet have a corrections.py/Station.csv entry for it.
                     # Run with --corrections to generate a list of corrections.py
                     # additions.
-                    altStationName = systemName.upper() + "-STATION"
-                    altFacility = systemName.upper() + '/' + altStationName
+                    altStationName = systemName + "-STATION"
+                    altFacility = systemName + '/' + altStationName
                     try:
                         stationID = systemByName[altFacility]
                     except KeyError:
@@ -426,7 +388,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                     if not tdenv.ignoreUnknown:
                         raise ex
                     stationID = DELETED
-                    print(ex)
+                    if not tdenv.quiet:
+                        print(ex)
                     return
 
         # Check for duplicates
@@ -447,7 +410,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 
     def changeCategory(matches):
-        nonlocal uiOrder, categoryID
+        nonlocal uiOrder, categoryID, categoryName
 
         categoryID = -1
         categoryName, uiOrder = matches.group(1), 0
@@ -471,7 +434,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             ex = UnknownCategoryError(priceFile, lineNo, categoryName)
             if not tdenv.ignoreUnknown:
                 raise ex
-            print(ex)
+            if not tdenv.quiet:
+                print(ex)
             categoryID = DELETED
             return
 
@@ -515,7 +479,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 ex = UnknownItemError(priceFile, lineNo, itemName)
                 if not tdenv.ignoreUnknown:
                     raise ex
-                print(ex)
+                if not tdenv.quiet:
+                    print(ex)
                 return
 
         # Check for duplicate items within the station.
@@ -529,7 +494,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         processedItems[itemID] = lineNo
         uiOrder += 1
 
-        return PriceEntry(stationID, itemID, 
+        return PriceEntry(stationID, itemID,
                             uiOrder, modified,
                             sellTo, demandUnits, demandLevel,
                             buyFrom, stockUnits, stockLevel
@@ -537,6 +502,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
     for line in priceFile:
         lineNo += 1
+        if len(line) <= 3 or line.startswith('#'):
+            continue
+
         text = noCommentRe.match(line).group('text').strip()
         # replace whitespace with single spaces
         text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
@@ -545,8 +513,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ########################################
         ### "@ STAR/Station" lines.
-        matches = systemStationRe.match(text)
-        if matches:
+        if text.startswith('@'):
+            matches = systemStationRe.match(text)
+            if not matches:
+                raise SyntaxError("Unrecognized '@' line: {}".format(
+                            text
+                        ))
             changeStation(matches)
             continue
 
@@ -560,8 +532,12 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
         ########################################
         ### "+ Category" lines.
-        matches = categoryRe.match(text)
-        if matches:
+        if text.startswith('+'):
+            matches = categoryRe.match(text)
+            if not matches:
+                    raise SyntaxError("Unrecognized '+' line: {}".format(
+                                text
+                            ))
             changeCategory(matches)
             continue
         if not categoryID:
@@ -576,10 +552,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
         ### "Item sell buy ..." lines.
         matches = newItemPriceRe.match(text)
         if not matches:
-            matches = itemPriceRe.match(text)
-            if not matches:
-                raise SyntaxError(priceFile, lineNo,
-                                    "Unrecognized line/syntax", text)
+            raise SyntaxError(priceFile, lineNo,
+                        "Unrecognized line/syntax", text)
 
         sql = processItemLine(matches)
         if sql:
@@ -656,12 +630,13 @@ def processImportFile(tdenv, db, importPath, tableName):
     fkeySelectStr = ("("
             "SELECT {newValue}"
             " FROM {table}"
-            " WHERE {table}.{column} = ?"
+            " WHERE {stmt}"
             ")"
     )
     uniquePfx = "unq:"
+    ignorePfx = "!"
 
-    with importPath.open() as importFile:
+    with importPath.open(encoding='utf-8') as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
         columnDefs = next(csvin)
@@ -669,18 +644,22 @@ def processImportFile(tdenv, db, importPath, tableName):
 
         # split up columns and values
         # this is necessqary because the insert might use a foreign key
-        columnNames = []
         bindColumns = []
         bindValues  = []
+        joinHelper  = []
         uniqueIndexes = []
         for (cIndex, cName) in enumerate(columnDefs):
             splitNames = cName.split('@')
             # is this a unique index?
             colName = splitNames[0]
             if colName.startswith(uniquePfx):
-                uniqueIndexes += [ (cIndex, dict()) ]
+                uniqueIndexes += [ cIndex ]
                 colName = colName[len(uniquePfx):]
-            columnNames.append(colName)
+            if colName.startswith(ignorePfx):
+                # this column is only used to resolve an FK
+                colName = colName[len(ignorePfx):]
+                joinHelper.append( "{}@{}".format(colName, splitNames[1]) )
+                continue
 
             if len(splitNames) == 1:
                 # no foreign key, straight insert
@@ -688,15 +667,22 @@ def processImportFile(tdenv, db, importPath, tableName):
                 bindValues.append('?')
             else:
                 # foreign key, we need to make a select
-                splitJoin    = splitNames[1].split('.')
-                joinTable    = splitJoin[0]
-                joinColumn   = splitJoin[1]
-                bindColumns.append(joinColumn)
+                splitJoin = splitNames[1].split('.')
+                joinTable = [ splitJoin[0] ]
+                joinStmt  = []
+                for joinRow in joinHelper:
+                    helperNames = joinRow.split('@')
+                    helperJoin = helperNames[1].split('.')
+                    joinTable.append( "INNER JOIN {} USING({})".format(helperJoin[0], helperJoin[1]) )
+                    joinStmt.append( "{}.{} = ?".format(helperJoin[0], helperNames[0]) )
+                joinHelper = []
+                joinStmt.append("{}.{} = ?".format(splitJoin[0], colName))
+                bindColumns.append(splitJoin[1])
                 bindValues.append(
                     fkeySelectStr.format(
                         newValue=splitNames[1],
-                        table=joinTable,
-                        column=colName,
+                        table=" ".join(joinTable),
+                        stmt=" AND ".join(joinStmt),
                     )
                 )
         # now we can make the sql statement
@@ -716,25 +702,35 @@ def processImportFile(tdenv, db, importPath, tableName):
 
         # import the data
         importCount = 0
+        uniqueIndex = dict()
 
         for linein in csvin:
             lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn: deprecationFn(linein, tdenv.debug)
-                for (colNo, index) in uniqueIndexes:
-                    colValue = linein[colNo].upper()
+                if uniqueIndexes:
+                    # Need to construct the actual unique index key as
+                    # something less likely to collide with manmade
+                    # values when it's a compound.
+                    keyValues = [
+                            str(linein[col]).upper()
+                            for col in uniqueIndexes
+                            ]
+                    key = ":!:".join(keyValues)
                     try:
-                        prevLineNo = index[colValue]
+                        prevLineNo = uniqueIndex[key]
                     except KeyError:
                         prevLineNo = 0
                     if prevLineNo:
+                        # Make a human-readable key
+                        key = "/".join(keyValues)
                         raise DuplicateKeyError(
                                 importPath, lineNo,
-                                columnNames[colNo], colValue,
+                                "entry", key,
                                 prevLineNo
                                 )
-                    index[colValue] = lineNo
+                    uniqueIndex[key] = lineNo
 
                 try:
                     db.execute(sql_stmt, linein)
@@ -753,6 +749,9 @@ def processImportFile(tdenv, db, importPath, tableName):
                         )
                     ) from None
                 importCount += 1
+            else:
+                if not tdenv.quiet:
+                    print("Wrong number of columns ({}:{}): {}".format(importPath, lineNo, ', '.join(linein)))
         db.commit()
         tdenv.DEBUG0("{count} {table}s imported",
                             count=importCount,
@@ -828,7 +827,12 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
             tdenv.DEBUG0("WARNING: processImportFile found no {} file", importName)
 
     # Parse the prices file
-    processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
+    if pricesPath.exists():
+        processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
+    elif not tdenv.quiet:
+        print("NOTE: Missing \"{}\" file - no price data".format(
+                    str(pricesPath)
+                ), file=sys.stderr)
 
     generateStationLink(tdenv, tempDB)
 
@@ -853,6 +857,11 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
         that is when a new station is encountered, delete any
         existing records for that station in the database.
     """
+
+    if not path.exists():
+        raise TradeException("No such file: {}".format(
+                    str(path)
+                ))
 
     if reset:
         tdenv.DEBUG0("Resetting price data")

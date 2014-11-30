@@ -197,10 +197,12 @@ RUN sub-command:
          --from Gateway
 
      --to <station or system>
-       Lets you specify the final destination
+       Lets you specify the final destination. If you specify a station, it
+       will finish at that exact station. If you specify a system, it will
+       try all the stations in the target system.
        e.g.
          --to Beagle2
-         --to Aulin
+         --to lhs64
 
      --end <station or system>
        Instead of --to, allows you to specify multiple destinations and
@@ -361,6 +363,36 @@ UPDATE sub-command:
     trade.py update --sub --sup --time --zero aulin
   aka:
     trade.py update --sub -ST0 aulin
+
+IMPORT sub-command:
+
+  Provides a way to import prices data from a file or a web site. You can use this
+  to import data for a few stations or an entire .prices file from a friend.
+
+  For instance, if you 'update'd a station and there was an error importing it,
+  the data is usually saved as "prices.last". You can open this file and correct
+  the error and then import it, rather than having to re-enter all of the data.
+
+  trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
+
+    filename
+      Specifies the name of the file to load
+      e.g.
+        import.prices
+
+    url
+      Specifies web adress to retrieve the data from
+      e.g.
+        http://kfs.org/td/prices
+
+    --maddavo
+      Like 'url' but specifies the URL for maddavo's .prices file
+
+    --ignore-unknown
+    -i
+      Any systems, stations, categories or items that aren't recognized
+      by this version of TD will be reported but import will continue.
+ 
 
 
 BUY sub-command:
@@ -530,6 +562,48 @@ LOCAL sub-command:
      9.72 [  4.9] LP 98-132
           <Freeport>
           <Prospect Five>
+
+EXPORT sub-command:
+
+  This command generates the CSV data files of the current database. It
+  defaults to export all tables and overwrites the files in the data directory.
+  CAUTION: If you have changed any CSV file and didn't rebuild the database, they
+           will be lost. Use the 'buildcache' command first to rebuild the database.
+
+  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...]]
+
+    --path PATH
+      Specify the save location of the CSV files. Default to './data'
+
+    --tables TABLE[,TABLE,...]
+    -T TABLE[,TABLE,...]
+      Specify a comma separated list of tablenames to export.
+
+    --delete-empty
+      Delete CSV files without content.
+
+  Examples:
+    > trade.py export --path misc
+    Using database './data/TradeDangerous.db'
+    Export Table 'Added' to 'misc\Added.csv'
+    Export Table 'AltItemNames' to 'misc\AltItemNames.csv'
+    Export Table 'Category' to 'misc\Category.csv'
+    Export Table 'Item' to 'misc\Item.csv'
+    Export Table 'Ship' to 'misc\Ship.csv'
+    Export Table 'ShipVendor' to 'misc\ShipVendor.csv'
+    Export Table 'Station' to 'misc\Station.csv'
+    Export Table 'StationBuying' to 'misc\StationBuying.csv'
+    Export Table 'StationItem' to 'misc\StationItem.csv'
+    Ignore Table 'StationLink'
+    Export Table 'StationSelling' to 'misc\StationSelling.csv'
+    Export Table 'System' to 'misc\System.csv'
+    Export Table 'Upgrade' to 'misc\Upgrade.csv'
+    Export Table 'UpgradeVendor' to 'misc\UpgradeVendor.csv'
+
+    > trade.py export -T System,Station
+    Using database './data/TradeDangerous.db'
+    Export Table 'Station' to 'data\Station.csv'
+    Export Table 'System' to 'data\System.csv'
 
 ==============================================================================
 == ADDING OR CHANGING PRICE DATA

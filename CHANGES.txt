@@ -2,6 +2,71 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.3 Nov 30 2014
+. (kfsone) "avoid" now handles systems/stations discretely
+  - avoiding a station means you won't land there but you can
+    pass through the system,
+  - avoiding a system means you won't land there or fly thru it,
+. (kfsone) Improvements to name disambiguation:
+  When specifying a "place" name (system or station) you can resolve
+  any ambiguities with a new syntax:
+    @name
+      Means "this is a system name, don't conflict with stations"
+    /name or @/name
+      Means "this is a station, don't conflict with systems"
+    name/name  or  @name/name
+      Means "this is a system name and a station name"
+. (kfsone) Improved matching algorithm
+
+To see the difference, try:
+
+  trade.py local --ly 5 bea
+  trade.py local --ly 5 @bea
+  trade.py local --ly 5 @/bea
+  trade.py local --ly 5 prim/bea
+
+
+v6.1.2 Nov 28 2014
+. (kfsone) GUI now saves its updates as "updated.prices" so you can upload them
+. (kfsone) "run" now accepts a system OR station as the destination
+. (kfsone) System/Station name lookups are more friendly again
+. (kfsone) '-q' now silences "unknown ..." warnings when importing with "-i"
+. (gazelle) Improvements to .CSV file handling,
+. (gazelle) Additional stations, data cleanup, etc.
+. (kfsone) Fix for importing data without demand/supply
+. (kfsone) Adding support for stations with the same name in diff systems
+. (kfsone) Removed import-from-maddavo.py
+. (kfsone) Added support for URLs in "import" sub-command
+. (kfsone) Added "--maddavo" option to "import" to import maddavo's data
+e.g.
+  trade.py import -i http://kfs.org/td/prices
+or
+  trade.py import -i --maddavo
+
+
+v6.1.1 Nov 27 2014
+Optimization:
+. (kfsone) Removed support for old pre v5 .prices files
+. (kfsone) Streamlined demand/stock columns; these now only support:
+  - and 0  for "not available",
+  ?        for "who cares",
+  nn[?LMH] for number of units and unknown, low, medium or high
+(This makes the parser several times faster)
+. (kfsone) Made parsing .prices file several times faster
+
+v6.1.0 Nov 26 2014
+. (gazelle) Added "export" sub-command to generate csv files of the current database
+. (kfsone) Made the update-gui significantly more user friendly.
+. (kfsone) Handle cases where .prices file is missing, e.g. bootstrap
+
+v6.0.7 Nov 26 2014
+. (kfsone) Removed 'pill' options from local command
+. (kfsone) Friendly message instead of crash when local finds no stars
+. (kfsone) Added "--ignore-unkown" (-i) to "import"
+. (kfsone) "import" without a filename will now present an open file dialog
+API:
+. (kfsone) You can now have optional positional arguments in command lines
+
 v6.0.6 Nov 25 2014
 . (kfsone) Issue#63 Trade calculator was not seeing some non-trade jumps
 . (maddavo/kfsone) Import of ~20,000 systems

@@ -10,14 +10,17 @@ import commands.parsing
 from commands.commandenv import CommandEnv
 
 commandList = [
+
     'buildcache',
     'buy',
-    'local',
+    'export',
     'import',
+    'local',
     'nav',
     'run',
     'sell',
     'update',
+
 ]
 
 ######################################################################
@@ -30,7 +33,7 @@ class HelpAction(argparse.Action):
     """
     def __call__(self, parser, namespace, values, option_string=None):
         raise exceptions.UsageError("TradeDangerous help", parser.format_help())
-        
+
 
 def addArguments(group, options, required, topGroup=None):
     """
@@ -48,7 +51,10 @@ def addArguments(group, options, required, topGroup=None):
             if option.args[0][0] == '-':
                 group.add_argument(*(option.args), required=required, **(option.kwargs))
             else:
-                group.add_argument(*(option.args), **(option.kwargs))
+                if required:
+                    group.add_argument(*(option.args), **(option.kwargs))
+                else:
+                    group.add_argument(*(option.args), nargs='?', **(option.kwargs))
 
 
 def import_module(cmdName):

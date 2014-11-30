@@ -1,6 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 import math
+from tradeexcept import TradeException
 
 ######################################################################
 # Parser config
@@ -29,50 +30,7 @@ switches = [
             metavar='N.NN',
             type=float,
         ),
-    MutuallyExclusiveGroup(
-        ParseArgument('--pill',
-                help='Show distance along the pill in ly.',
-                action='store_true',
-                default=False,
-            ),
-        ParseArgument('--percent',
-                help='Show distance along pill as percentage.',
-                action='store_true',
-                default=False,
-            ),
-    ),
 ]
-
-######################################################################
-# Helpers
-
-class PillCalculator(object):
-    """
-        Helper that calculates the position of stars relative to
-        a line of stars.
-    """
-
-    def __init__(self, tdb, startStar, endStar, percent):
-        lhs, rhs = tdb.lookupSystem(startStar), tdb.lookupSystem(endStar)
-        self.normal = [
-            rhs.posX - lhs.posX,
-            rhs.posY - lhs.posY,
-            rhs.posZ - lhs.posZ
-        ]
-        length2 = (normal[0]**2) + (normal[1]**2) + (normal[2]**2)
-        self.pillLength = math.sqrt(length2)
-        self.lhs = lhs
-        self.percent = percent
-
-    def distance(self, star):
-        lhs, normal = self.lhs, self.normal
-        dotProduct = ((normal[0] * (lhs.posX - star.posX)) +
-                      (normal[1] * (lhs.posY - star.posY)) +
-                      (normal[2] * (lhs.posZ - star.posZ)))
-        if self.percent:
-            return (100. * dotProduct / self.pillLength) / self.pillLength
-        else:
-            return dotProduct / self.pillLength
 
 ######################################################################
 # Perform query and populate result set
@@ -106,19 +64,10 @@ def run(results, cmdenv, tdb):
             distances[destSys] = math.sqrt(distSq)
 
     detail = cmdenv.detail
-    if cmdenv.pill or cmdenv.percent:
-        pillCalc = PillCalculator(tdb, "Eranin", "HIP 107457", pill.percent)
-    else:
-        pillCalc = None
-
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         row = ResultRow()
         row.system = system
         row.dist = dist
-        if pillCalc:
-            row.pill = pillCalc.distance(system)
-        else:
-            row.pill = None
         row.stations = []
         if detail:
             for (station) in system.stations:
@@ -133,6 +82,12 @@ def run(results, cmdenv, tdb):
 def render(results, cmdenv, tdb):
     from formatting import RowFormat, ColumnFormat
 
+    if not results or not results.rows:
+        raise TradeException("No systems found within {}ly of {}.".format(
+                    results.summary.ly,
+                    results.summary.near.name(),
+                ))
+
     # Compare system names so we can tell 
     longestNamed = max(results.rows,
                     key=lambda row: len(row.system.name()))
@@ -145,15 +100,6 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Dist", '>', '6', '.2f',
                         key=lambda row: row.dist)
             )
-
-    if cmdenv.percent:
-        sysRowFmt.append(after='System',
-            col=ColumnFormat("Pill", '>', '4', '.0f', pre='[', post='%]',
-                        key=lambda row: row.pill))
-    elif cmdenv.pill:
-        sysRowFmt.append(after='System',
-            col=ColumnFormat("PillLy", '>', '6', '.2f', pre='[', post=']',
-                        key=lambda row: row.pill))
 
     if cmdenv.detail:
         stnRowFmt = RowFormat(prefix='  +  ').append(
