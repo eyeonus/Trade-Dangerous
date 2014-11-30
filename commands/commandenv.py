@@ -142,8 +142,7 @@ class CommandEnv(TradeEnv):
         """
 
         avoidItems = self.avoidItems = []
-        avoidSystems = self.avoidSystems = []
-        avoidStations = self.avoidStations = []
+        avoidPlaces = self.avoidPlaces = []
 
         try:
             avoidances = self.avoid
@@ -168,44 +167,28 @@ class CommandEnv(TradeEnv):
                     continue
             except LookupError:
                 pass
-            # Is it a system perhaps?
+            # Or is it a place?
             try:
-                system = tdb.lookupSystem(avoid)
-                avoidSystems.append(system)
-                if tdb.normalizedStr(system.str()) == tdb.normalizedStr(avoid):
+                place = tdb.lookupPlace(avoid)
+                avoidPlaces.append(place)
+                if tdb.normalizedStr(place.name()) == tdb.normalizedStr(avoid):
                     continue
+                continue
             except LookupError:
-                pass
-            # Or perhaps it is a station
-            try:
-                station = tdb.lookupStationExplicitly(avoid)
-                if (not system) or (station.system is not system):
-                    avoidSystems.append(station.system)
-                    avoidStations.append(station)
-                if tdb.normalizedStr(station.str()) == tdb.normalizedStr(avoid):
-                    continue
-            except LookupError as e:
                 pass
 
             # If it was none of the above, whine about it
-            if not (item or system or station):
+            if not (item or place):
                 raise CommandLineError("Unknown item/system/station: {}".format(avoid))
 
             # But if it matched more than once, whine about ambiguity
-            if item and system:
-                raise AmbiguityError('Avoidance', avoid, [ item, system.str() ])
-            if item and station:
-                raise AmbiguityError('Avoidance', avoid, [ item, station.str() ])
-            if system and station and station.system != system:
-                raise AmbiguityError('Avoidance', avoid, [ system.str(), station.str() ])
+            if item and place:
+                raise AmbiguityError('Avoidance', avoid, [ item, place.str() ])
 
-        self.DEBUG0("Avoiding items {}, systems {}, stations {}",
+        self.DEBUG0("Avoiding items {}, places {}",
                     [ item.name() for item in avoidItems ],
-                    [ system.name() for system in avoidSystems ],
-                    [ station.name() for station in avoidStations ]
+                    [ place.name() for place in avoidPlaces ],
         )
-
-        self.avoidPlaces = self.avoidSystems + self.avoidStations
 
 
     def checkVias(self):

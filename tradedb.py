@@ -36,27 +36,27 @@ class AmbiguityError(TradeException):
         Attributes:
             lookupType - description of what was being queried,
             searchKey  - the key given to the search routine,
-            candidates - list of candidates
+            anyMatch - list of anyMatch
             key        - retrieve the display string for a candidate
     """
-    def __init__(self, lookupType, searchKey, candidates, key=lambda item:item):
+    def __init__(self, lookupType, searchKey, anyMatch, key=lambda item:item):
         self.lookupType = lookupType
         self.searchKey = searchKey
-        self.candidates = candidates
+        self.anyMatch = anyMatch
         self.key = key
 
 
     def __str__(self):
-        candidates, key = self.candidates, self.key
-        if len(candidates) > 10:
+        anyMatch, key = self.anyMatch, self.key
+        if len(anyMatch) > 10:
             opportunities = ", ".join([
-                        key(c) for c in candidates[:10]
+                        key(c) for c in anyMatch[:10]
                     ] + ["..."])
         else:
             opportunities = ", ".join([
-                        key(c) for c in candidates[0:-1]
+                        key(c) for c in anyMatch[0:-1]
                     ])
-            opportunities += " or " + key(candidates[-1])
+            opportunities += " or " + key(anyMatch[-1])
         return '{} lookup: "{}" could match {}'.format(
                         self.lookupType, str(self.searchKey),
                         opportunities
@@ -251,7 +251,6 @@ class TradeDB(object):
             fetch_all           -   Generator that yields all the rows retrieved by an sql cursor.
 
         Static methods:
-            distanceSq          -   Returns the square of the distance between two points.
             listSearch          -   Performs a partial-match search of a list for a value.
             normalizedStr       -   Normalizes a search index string.
     """
@@ -478,7 +477,7 @@ class TradeDB(object):
                 return place
         except AmbiguityError as e:
             # See if the ambiguity resolves down to a single system.
-            for candidate in e.candidates:
+            for candidate in e.anyMatch:
                 if isinstance(candidate, Station):
                     systems.add(candidate.system)
                 else:
@@ -560,10 +559,6 @@ class TradeDB(object):
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
 
 
-    def lookupSystemAndStation(self, systemName, stationName):
-        raise Exception("Not implemented yet")
-
-
     def lookupPlace(self, name):
         """
             Lookup the station/system specified by 'name' which can be the
@@ -576,34 +571,51 @@ class TradeDB(object):
             the massive namespace of Stars and Systems, we rank the
             matches so that exact matches win, and only inferior close
             matches are looked at if no exacts are found.
+
+            Legal annotations:
+                system
+                station
+                @system    [explicitly a system name]
+                /station   [explicitly a station name]
+                system/station
+                @system/station
         """
         if isinstance(name, System) or isinstance(name, Station):
             return name
 
         slashPos = name.find('/')
-        if slashPos > 0:
+        nameOff = 1 if name.startswith('@') else 0
+        if slashPos > nameOff:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
-            system, station = name[0:slashPos], name[slashPos+1:]
-            return lookupSystemAndStation(self, system, station)
-        
-        exactMatches = []
-        closeMatches = []
-        wordMatches = []
-        candidates = []
+            sysName, stnName = name[nameOff:slashPos], name[slashPos+1:]
+        elif slashPos == nameOff:
+            sysName, stnName = None, name[nameOff+1:]
+        elif nameOff:
+            # It's explicitly a station
+            sysName, stnName = name[nameOff:], None
+        else:
+            # It could be either, use the name for both.
+            sysName = stnName = name[nameOff:]
 
-        normTrans = TradeDB.normalizeTrans
-        trimTrans = str.maketrans('', '', ' \'')
+        exactMatch = []
+        closeMatch = []
+        wordMatch = []
+        anyMatch = []
 
-        nameNorm = name.translate(normTrans)
-        nameTrimmed = nameNorm.translate(trimTrans)
+        def lookup(name, candidates):
+            """ Search candidates for the given name """
 
-        nameLen = len(name)
-        nameNormLen = len(nameNorm)
-        nameTrimmedLen = len(nameTrimmed)
+            normTrans = TradeDB.normalizeTrans
+            trimTrans = str.maketrans('', '', ' \'')
 
-        def consider(placeList):
-            """ Try the specified namespace """
-            for place in placeList:
+            nameNorm = name.translate(normTrans)
+            nameTrimmed = nameNorm.translate(trimTrans)
+
+            nameLen = len(name)
+            nameNormLen = len(nameNorm)
+            nameTrimmedLen = len(nameTrimmed)
+
+            for place in candidates:
                 placeName = place.dbname
                 placeNameNorm = placeName.translate(normTrans)
                 placeNameNormLen = len(placeNameNorm)
@@ -615,21 +627,28 @@ class TradeDB(object):
                 # If the lengths match, do a direct comparison.
                 if len(placeName) == nameLen:
                     if placeNameNorm == nameNorm:
-                        exactMatches.append(place)
+                        exactMatch.append(place)
                     continue
                 if placeNameNormLen == nameNormLen:
                     if placeNameNorm == nameNorm:
-                        closeMatches.append(place)
+                        closeMatch.append(place)
                     continue
 
                 if nameNormLen < placeNameNormLen:
-                    if placeNameNorm.startswith(nameNorm):
+                    subPos = placeNameNorm.find(nameNorm)
+                    if subPos == 0:
                         if placeNameNorm[nameNormLen] == ' ':
-                            # E.g. 'aulin' vs 'aulin enterprise'
-                            wordMatches.append(place)
+                            # first word
+                            wordMatch.append(place)
                         else:
-                            # E.g. "Russ' vs 'Russo'
-                            candidates.append(place)
+                            anyMatch.append(place)
+                        continue
+                    elif subPos > 0:
+                        if placeNameNorm[subPos] == ' ' and \
+                                placeNameNorm[subPos + nameNormLen] == ' ':
+                            wordMatch.append(place)
+                        else:
+                            anyMatch.append(place)
                         continue
 
                 if not placeNameNorm.startswith(nameNorm[0]):
@@ -647,34 +666,53 @@ class TradeDB(object):
                 # A match here is not exact but still fairly interesting
                 if len(placeNameTrimmed) == nameTrimmedLen:
                     if placeNameTrimmed == nameTrimmed:
-                        closeMatches.append(place)
+                        closeMatch.append(place)
                     continue
-                if placeNameTrimmed.startswith(nameTrimmed):
-                    candidates.append(place)
+                if placeNameTrimmed.find(nameTrimmed) >= 0:
+                    anyMatch.append(place)
 
-        consider(self.systemByID.values())
-        consider(self.stationByID.values())
+        if sysName:
+            lookup(sysName, self.systemByID.values())
+        if stnName:
+            # Are we considering the name as a station?
+            # (we don't if they type, e,g '@aulin')
+            # compare against nameOff to allow '@/station'
+            if slashPos > nameOff + 1:
+                # "sys/station"; the user should have specified a system
+                # name and we should be able to narrow down which
+                # stations we compare against. Check first if there are
+                # any matches.
+                stationCandidates = []
+                for sys in itertools.chain(
+                        exactMatch, closeMatch, wordMatch, anyMatch
+                        ):
+                    stationCandidates += sys.stations
+                # Clear out the candidate lists
+                exactMatch = []
+                closeMatch = []
+                wordMatch = []
+                anyMatch = []
+            else:
+                # Consider against all station names
+                stationCandidates = self.stationByID.values()
+            lookup(stnName, stationCandidates)
 
-        if exactMatches:
-            if len(exactMatches) == 1:
-                return exactMatches[0]
-        elif closeMatches:
-            if len(closeMatches) == 1:
-                return closeMatches[0]
-        elif wordMatches:
-            if len(wordMatches) == 1:
-                return wordMatches[0]
-        elif candidates:
-            if len(candidates) == 1:
-                return candidates[0]
-        else:
-            # Nothing matched
+        # consult the match sets in ranking order for a single
+        # match, which denotes a win at that tier. For example,
+        # if there is one exact match, we don't care how many
+        # close matches there were.
+        for matchSet in exactMatch, closeMatch, wordMatch, anyMatch:
+            if len(matchSet) == 1:
+                return matchSet[0]
+
+        # Nothing matched
+        if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
             raise TradeException("Unrecognized place: {}".format(name))
     
         # More than one match
         raise AmbiguityError(
                     'System/Station', name,
-                    exactMatches + closeMatches + wordMatches + candidates,
+                    exactMatch + closeMatch + wordMatch + anyMatch,
                     key=lambda place: place.name())
 
 
@@ -723,19 +761,6 @@ class TradeDB(object):
         return system.stations[0]
 
 
-    def lookupStationExplicitly(self, name, system=None):
-        """
-            Look up a Station object by it's name.
-        """
-        if isinstance(name, Station):
-            if system and name.system.ID != system.ID:
-                raise LookupError("Station '{}' is not in System '{}'".format(name.dbname, system.dbname))
-            return name
-
-        nameList = system.stations if system else self.stationByID.values()
-        return TradeDB.listSearch("Station", name, nameList, key=lambda entry: entry.dbname)
-
-
     def getDestinations(self,
             origin,
             maxJumps=None,
@@ -769,12 +794,16 @@ class TradeDB(object):
 
         origSys = origin.system
         openList = [ DestinationNode(origSys, [origSys], 0) ]
+        # I don't want to have to consult both the pathList
+        # AND the avoid list every time I'm considering a
+        # station, so copy the avoid list into the pathList
+        # with a negative distance so I can ignore them again
+        # when I scrape the pathList.
+        # Don't copy stations because those only affect our
+        # termination points, and not the systems we can
+        # pass through en-route.
         pathList = { system.ID: DestinationNode(system, None, -1.0)
-                            # include avoids so we only have
-                            # to consult one place for exclusions
                         for system in avoidPlaces
-                            # the avoid list may contain stations,
-                            # which affects destinations but not vias
                         if isinstance(system, System) }
 
         # As long as the open list is not empty, keep iterating.
@@ -817,10 +846,8 @@ class TradeDB(object):
                 if station not in avoidPlaces:
                     destStations.append(Destination(origSys, station, [], 0.0))
 
-        avoidStations = [
-                station for station in avoidPlaces
-                    if isinstance(station, Station)
-                ]
+        # We have a system-to-system path list, now we
+        # need stations to terminate at.
         for node in pathList.values():
             # negative values are avoidances
             if node.distLy < 0.0:
@@ -828,7 +855,7 @@ class TradeDB(object):
             for station in node.system.stations:
                 if (trading and station not in tradingWith):
                     continue
-                if station in avoidStations:
+                if station in avoidPlaces:
                     continue
                 destStations.append(
                             Destination(node.system,
@@ -1117,34 +1144,6 @@ class TradeDB(object):
     # General purpose static methods.
 
     @staticmethod
-    def distanceSq(lhsX, lhsY, lhsZ, rhsX, rhsY, rhsZ):
-        """
-            Calculate the square of the distance between two points.
-
-            Pythagoras theorem: distance = root( (x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2 )
-
-            But calculating square roots is not cheap and if you don't
-            need the distance for display, etc, then returning the
-            square saves an expensive calculation:
-
-            IF   root(A^2 + B^2 + C^2) == root(D^2 + E^2 + F^2)
-            THEN (A^2 + B^2 + C^2) == (D^2 + E^2 + F^2)
-
-            So instead of having to sqrt all of our distances in a complex
-            set, we can do this:
-
-            maxDistSq = 300 ** 2   # check for items < 300ly
-            inRange = []
-            for (lhs, rhs) in items:
-                distSq = distanceSq(lhs.x, lhs.y, lhs.z, rhs.x, rhs.y, rhs.z)
-                if distSq <= maxDistSq:
-                    inRange += [[lhs, rhs]]
-        """
-        return ((rhsX - lhsX) ** 2) + ((rhsY - lhsY) ** 2) + ((rhsZ - lhsZ) ** 2)
-
-
-
-    @staticmethod
     def listSearch(listType, lookup, values, key=lambda item: item, val=lambda item: item):
         """
             Searches [values] for 'lookup' for least-ambiguous matches,
@@ -1162,7 +1161,7 @@ class TradeDB(object):
 
         normTrans = TradeDB.normalizeTrans
         needle = lookup.translate(normTrans)
-        partialMatches, wordMatches = [], []
+        partialMatch, wordMatch = [], []
         # make a regex to match whole words
         wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
         # describe a match
@@ -1175,19 +1174,19 @@ class TradeDB(object):
                     return val(entry)
                 match = ListSearchMatch(entryKey, val(entry))
                 if wordRe.match(entryKey):
-                    wordMatches.append(match)
+                    wordMatch.append(match)
                 else:
-                    partialMatches.append(match)
+                    partialMatch.append(match)
         # Whole word matches trump partial matches
-        if wordMatches:
-            if len(wordMatches) > 1:
-                raise AmbiguityError(listType, lookup, wordMatches, key=lambda item: item.key)
-            return wordMatches[0].value
+        if wordMatch:
+            if len(wordMatch) > 1:
+                raise AmbiguityError(listType, lookup, wordMatch, key=lambda item: item.key)
+            return wordMatch[0].value
         # Fuzzy matches
-        if partialMatches:
-            if len(partialMatches) > 1:
-                raise AmbiguityError(listType, lookup, partialMatches, key=lambda item: item.key)
-            return partialMatches[0].value
+        if partialMatch:
+            if len(partialMatch) > 1:
+                raise AmbiguityError(listType, lookup, partialMatch, key=lambda item: item.key)
+            return partialMatch[0].value
         # No matches
         raise LookupError("Error: '%s' doesn't match any %s" % (lookup, listType))
 

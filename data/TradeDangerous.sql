@@ -1,12 +1,20 @@
+-- Definitions for all of the tables used in the SQLite
+-- cache database.
 --
--- This file contains definitions for all of the tables with
--- the exception of the price data.
+-- Source data for TradeDangerous is stored in various
+-- ".csv" files which provide relatively constant data
+-- such as star names, the list of known tradeable items,
+-- etc.
 --
--- Price data is stored in a non-SQL format in the top level
--- in a file called "TradeDangerous.prices"
+-- Per-station price data is sourced from ".prices" files
+-- which are designed to be human readable text that
+-- closely aproximates the in-game UI.
 --
--- If either file is changed, TradeDangerous will rebuild it's
--- sqlite3 database the next time it's run.
+-- When the .SQL file or the .CSV files change, TD will
+-- destroy and rebuild the cache next time it is run.
+--
+-- When the .prices file is changed, only the price data
+-- is reset.
 --
 -- You can edit this file, if you really need to, if you know
 -- what you are doing. Or you can use the 'sqlite3' command
