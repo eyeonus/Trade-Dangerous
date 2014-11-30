@@ -334,8 +334,8 @@ def run(results, cmdenv, tdb):
     from tradecalc import TradeCalc, Route
 
     startStn, stopStn, viaSet = cmdenv.startStation, cmdenv.stopStation, cmdenv.viaSet
-    avoidSystems = cmdenv.avoidSystems
-    avoidStations = cmdenv.avoidStations
+
+    avoidPlaces = cmdenv.avoidPlaces
 
     stopStations = []
     if stopStn:
@@ -350,8 +350,7 @@ def run(results, cmdenv, tdb):
     routes = [
         Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0)
             for src in cmdenv.origins
-            if not (src in avoidStations or
-                    src.system in avoidSystems)
+            if src not in avoidPlaces and src.system not in avoidPlaces
     ]
     numHops = cmdenv.hops
     lastHop = numHops - 1
