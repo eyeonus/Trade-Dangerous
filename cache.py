@@ -324,6 +324,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
     lineNo = 0
 
+    categoryName = None
     facility = None
     processedStations = {}
     processedItems = {}
@@ -409,7 +410,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 
     def changeCategory(matches):
-        nonlocal uiOrder, categoryID
+        nonlocal uiOrder, categoryID, categoryName
 
         categoryID = -1
         categoryName, uiOrder = matches.group(1), 0
