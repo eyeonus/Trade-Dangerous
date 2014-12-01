@@ -331,7 +331,7 @@ def run(results, cmdenv, tdb):
     if cmdenv.destPlace and isinstance(cmdenv.destPlace, System):
         stopStations = set(cmdenv.destPlace.stations)
     else:
-        stopstations = set()
+        stopStations = set()
 
     startCr = cmdenv.credits - cmdenv.insurance
 
