@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from tradeexcept import TradeException
 from commands.exceptions import CommandLineError
+from tradedb import System, Station
 import prices
 import cache
 import subprocess
@@ -21,7 +22,7 @@ epilog=("Generates a human-readable version of the price list for a given statio
             "check for changes.")
 wantsTradeDB=True
 arguments = [
-    ParseArgument('origin', help='Name of the station to update.', type=str)
+    ParseArgument('starting', help='Name of the station to update.', type=str)
 ]
 switches = [
     ParseArgument('--editor',
@@ -124,6 +125,22 @@ def saveTemporaryFile(tmpPath):
         if lastPath.exists():
             lastPath.unlink()
         tmpPath.rename(lastPath)
+
+
+def saveCopyOfChanges(cmdenv, dbFilename, stationID):
+    dumpPath = pathlib.Path("updated.prices")
+    with dumpPath.open("w") as dumpFile:
+        # Remember the filename so we know we need to delete it.
+        prices.dumpPrices(dbFilename, prices.Element.full,
+                file=dumpFile,
+                stationID=stationID,
+                defaultZero=False,
+                debug=cmdenv.debug,
+                )
+    if not cmdenv.quiet:
+        print("- Copy of changes saved as '{}'".format(
+                str(dumpPath)
+        ))
 
 
 def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
@@ -273,14 +290,9 @@ def editUpdate(tdb, cmdenv, stationID):
         else:
             cache.importDataFromFile(tdb, cmdenv, tmpPath)
 
-        savePath = pathlib.Path("updated.prices")
-        if savePath.exists():
-            savePath.unlink()
-        tmpPath.rename(savePath)
-        if not cmdenv.quiet:
-            print("- Copy of changes saved as '{}'".format(
-                    str(savePath)
-            ))
+        saveCopyOfChanges(cmdenv, dbFilename, stationID)
+
+        tmpPath.unlink()
         tmpPath = None
 
     finally:
@@ -291,6 +303,7 @@ def editUpdate(tdb, cmdenv, stationID):
 
 def guidedUpdate(tdb, cmdenv):
     dbFilename = cmdenv.dbFilename or tdb.defaultDB
+    stationID = cmdenv.startStation.ID
     tmpPath = getTemporaryPath(cmdenv)
 
     from commands.update_gui import render
@@ -298,14 +311,12 @@ def guidedUpdate(tdb, cmdenv):
         render(tdb, cmdenv, tmpPath)
         cmdenv.DEBUG0("Got results, importing")
         cache.importDataFromFile(tdb, cmdenv, tmpPath)
-        savePath = pathlib.Path("updated.prices")
-        if savePath.exists():
-            savePath.unlink()
-        tmpPath.rename(savePath)
-        if not cmdenv.quiet:
-            print("- Copy of changes saved as '{}'".format(
-                    str(savePath)
-            ))
+
+        saveCopyOfChanges(cmdenv, dbFilename, stationID)
+
+        tmpPath.unlink()
+        tmpPath = None
+
     except Exception as e:
         print("*** ERROR ENCOUNTERED ***")
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
@@ -313,13 +324,26 @@ def guidedUpdate(tdb, cmdenv):
                 ))
         raise
     finally:
-        saveTemporaryFile(tmpPath)
+        if tmpPath:
+            saveTemporaryFile(tmpPath)
 
 
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
+    place = cmdenv.origPlace
+    if isinstance(place, System):
+        system = place
+        if len(system.stations) != 1:
+            raise CommandLineError(
+                    "'{}' is a system, not a station.".format(
+                        system.name()
+                    ))
+        cmdenv.startStation = system.stations[0]
+    else:
+        cmdenv.startStation = place
+
     if not cmdenv.editor and not cmdenv.editing:
         if cmdenv.gui:
             guidedUpdate(tdb, cmdenv)
