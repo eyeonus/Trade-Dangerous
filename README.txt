@@ -4,6 +4,8 @@ Copyright (C) Oliver "kfsone" Smith, July 2014
 REQUIRES PYTHON 3.0 OR HIGHER.
 ==============================================================================
 
+[For recent changes see CHANGES.txt]
+
 == What is Trade Dangerous?
 ==============================================================================
 
@@ -18,89 +20,6 @@ factors that into the shopping for each subsequent hop.
 TradeDangerous data is manually entered: The tool provides an easy editor
 for correcting prices at a given station, but you can also retrieve ".prices"
 files from other commanders to fill out your database.
-
-
-== CHANGE LOG
-==============================================================================
-
-CAUTION: So many systems changed with the Beta 3 update that old prices files
-won't stand a chance of containing many valid systems. You may want to obtain
-a fresh file from one of the online sources, e.g.
-maddavo's site: http://www.davek.com.au/td/default.asp
-
-v5.0.1 Nov 4/2014
-. (kfsone) Issue #49 Errors in Ambiguity Error
-. (kfsone) Issue #51 L and ? items weren't honoring qty limits
-. (kfsone) Issue #50 Interaction between -0 and demand for a sold item
-. (Smacker65) Beta 3 Systems with markets
-
-v5.0.0 Oct 31/2014
-. (kfsone) Initial Beta 3 changes
- - Improved the "corrections" system which facilitates changing names
-   between versions, you can now "correct" System, Station, Category
-   and Item names;
- - Renamed "Drugs" to "Legal Drugs", guess we need to add "Illegal Drugs"
- - Renamed some obvious items (Hel-Static Furnaces -> Microbial Furnaces),
- - Added some items that looked new (but could be renames),
- - Renamed Hopkins Hangar -> Cori Terminal
-
-v4.7.0 Oct 26/2014
-. (kfsone) Added "buy" sub-command for looking up sales of an item
-
-v4.6.3 Oct 26/2014
-. (kfsone) Fixed distance-related breakage in 4.6.2
-. (kfsone) Improved error feedback while processing .prices file
-
-v4.6.2 Oct 25/2014
-. (kfsone) Added support for self-correcting star/station name changes,
-. (kfsone) Added name corrections for maddavo's current TradeDangerous.prices,
-. (kfsone) Assorted minor API changes,
-. (kfsone) Minor startup optimization pass
-
-v4.6.1 Oct 25/2014
-. (kfsone) Added "--supply" (-S) which shows supply (demand and stock) fields when editing,
-. (kfsone) Added "--timestamps" (-T) which shows timestamp field when editing,
-. (kfsone) Added "--force-na" (-0) which replaces 'unk' values with 'n/a' (use with care),
-. (kfsone) Deprecated "--all" and "--zero",
-. (kfsone) Minor fixes to new .prices format
-
-v4.6.0 Oct 24/2014
-. (kfsone) New extended .prices format:
-  <item name> <sell> <buy> <demand> <stock> [<time>]
-  Demand/stock can be:
-   unk     :-  "unknown" - treat as though always available
-   n/a     :-  "not available" - ignore in trade calcs
-   0       :-  alias for "n/a"
-  or the number of units followed by L, M or H, e.g.
-   10L     :- 10 units at Low
-   500M    :- 500 units at Medium
-   9000H   :- 9000 units at High
-  Note that the time has moved to the end of the line.
-  When updating data, you can either remove the time and have it
-  default to 'now' or you can explicitly write the word now.
-. (smacker65) Couple of station name corrections
-. (kfsone) Better feedback when price data could not be found
-. (kfsone) .prices wiki page
-. (smacker65) More star data and corrections
-. (gazelle) Fix for "--zero" and, e.g., "-1L0"
-
-v4.5.1 Oct 20/2014
-. (kfsone) Added --dir (-C) command line for specifying which directory you
-  want trade.py to look in for it's files.
-. (kfsone) trade.py will now default to trying to look for files relative
-  to where the "trade.py" script was called from. So if you run
-  "c:\tradedangerous\trade.py" it will look for the data directory as
-  "c:\tradedangerous\data\" (Issue #39)
-
-v4.5.0 Oct 20/2014
-. (Smacker65/Community) Smacker brings the star database up to 567 systems.
-
-v4.4.0 Oct 19/2014
-. (Gazelle/Community) Merged Gazelle's update with community sources Star/Station
-  data. Thanks to Gazelle, Smacker, RedWizzard, Haringer, Wolverine.
-  It's only data but it's a big update and a lot of work went into it :)
-
-(See end of file for older changes)
 
 
 ==============================================================================
@@ -124,9 +43,9 @@ you through some simpler cases.
   instructions for the current step on the multi-function display of my
   X52 throttle...
 
-  trade.py --detail --detail --detail run --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --checklist --x52-pro
+  trade.py run --detail --detail --detail --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --checklist --x52-pro
 or
-  trade.py -vvv run --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 --check --x52
+  trade.py run -vvv --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 --check --x52
 
 Lets dial it back and start with something simpler:
 
@@ -172,7 +91,7 @@ the --detail option. This is one of the options common to all commands, and
 so it has to be specified before the command. It can be abbreviated "-v"
 (think: verbose)
 
- C:\TradeDangerous\> trade.py --detail run --ship hauler --credits 20000
+ C:\TradeDangerous\> trade.py run --detail --ship hauler --credits 20000
     ACIHAUT Cuffey -> DAHAN Gateway:
      >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
        |   Acihaut -> LHS3006 -> Aulin
@@ -196,7 +115,7 @@ The "--ly-per" argument (or it's --ly abbreviation) lets us tell TD to limit
 connections to a max jump distance, in this case of 5.2ly. Note that this
 time I'm using "-v" as a short-cut for "--detail"
 
- C:\TradeDangerous\> trade.py -v run --ship hauler --credits 20000 --ly-per 5.2
+ C:\TradeDangerous\> trade.py run -v --ship hauler --credits 20000 --ly-per 5.2
      >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
        |   Morgor -> Dahan -> Asellus
      -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
@@ -206,7 +125,7 @@ time I'm using "-v" as a short-cut for "--detail"
 Maybe you don't want to make multiple jumps between systems? Use the "--jumps"
 switch to lower or increase the number of jumps between systems on each hop:
 
-  C:\TradeDangerous\> trade.py -v run --ship hauler --credits 20000 --jumps 1
+  C:\TradeDangerous\> trade.py run -v --ship hauler --credits 20000 --jumps 1
     ERANIN Azeban -> DAHAN Gateway:
      >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
        |   Eranin -> Asellus
@@ -278,10 +197,21 @@ RUN sub-command:
          --from Gateway
 
      --to <station or system>
-       Lets you specify the final destination
+       Lets you specify the final destination. If you specify a station, it
+       will finish at that exact station. If you specify a system, it will
+       try all the stations in the target system.
        e.g.
          --to Beagle2
-         --to Aulin
+         --to lhs64
+
+     --end <station or system>
+       Instead of --to, allows you to specify multiple destinations and
+       TD will attempt to find a route that ends at one of them:
+       e.g.
+         --end beagle2
+           ^_ equivalent to "--to beagle2"
+         --end beagle2 --end freeport
+           ^_ finds a route terminating at EITHER beagle2 OR freeport
 
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
@@ -434,13 +364,43 @@ UPDATE sub-command:
   aka:
     trade.py update --sub -ST0 aulin
 
+IMPORT sub-command:
+
+  Provides a way to import prices data from a file or a web site. You can use this
+  to import data for a few stations or an entire .prices file from a friend.
+
+  For instance, if you 'update'd a station and there was an error importing it,
+  the data is usually saved as "prices.last". You can open this file and correct
+  the error and then import it, rather than having to re-enter all of the data.
+
+  trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
+
+    filename
+      Specifies the name of the file to load
+      e.g.
+        import.prices
+
+    url
+      Specifies web adress to retrieve the data from
+      e.g.
+        http://kfs.org/td/prices
+
+    --maddavo
+      Like 'url' but specifies the URL for maddavo's .prices file
+
+    --ignore-unknown
+    -i
+      Any systems, stations, categories or items that aren't recognized
+      by this version of TD will be reported but import will continue.
+ 
+
 
 BUY sub-command:
 
   Looks for stations selling the specified item: that means they have a non-zero
   asking price and a stock level other than "n/a".
 
-  trade.py [-q | -q] buy [--quantity Q] [--near N] [--ly-per N] item [-P | -S]
+  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S]
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -450,6 +410,10 @@ BUY sub-command:
     --near station
       Only considers stations within reach of the specified system.
       --near chango
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
 
     --ly-per N.N
       Sets the range of --near (requires --near)
@@ -471,7 +435,7 @@ NAV sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to routes with a full cargo hold.
 
-  trade.py [-q | -v] nav [--ship name [--full]] [--ly-per] from to
+  trade.py nav [-q | -v] [--ship name [--full]] [--ly-per] from to
 
     --ship name
       Uses the values for an empty ship to constrain jump ranges,
@@ -517,7 +481,7 @@ LOCAL sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to systems with a full cargo hold.
 
-  trade.py [-q | -v] local [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
+  trade.py local [-q | -v] [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
 
     --ship name
       Uses the values for an empty ship to constrain jump ranges,
@@ -548,19 +512,19 @@ LOCAL sub-command:
   Examples:
     > trade.py local --ly 11.0 dahan
     Local systems to DAHAN within 11.0 ly.
-	--------------------------------------
-	 4.66 Asellus Primus
-	 5.12 Morgor
-	 6.41 Eranin
-	 8.26 Meliae
-	 8.58 LHS 2884
-	 8.60 LP 98-132
-	 9.20 Aulis
-	 9.75 GD 319
-	10.08 BD+47 2112
-	10.33 i Bootis
+  	--------------------------------------
+  	 4.66 Asellus Primus
+  	 5.12 Morgor
+  	 6.41 Eranin
+  	 8.26 Meliae
+  	 8.58 LHS 2884
+  	 8.60 LP 98-132
+  	 9.20 Aulis
+  	 9.75 GD 319
+  	10.08 BD+47 2112
+  	10.33 i Bootis
     
-    > trade.py -v local --ly 11.0 sur
+    > trade.py local -v --ly 11.0 sur
     Local systems to SURYA within 11.0 ly.
     --------------------------------------
      9.22 [  2.2] 14 Herculis
@@ -569,7 +533,7 @@ LOCAL sub-command:
     10.59 [ 10.3] V1090 Herculis
     10.69 [ -1.6] Chi Herculis
     
-    > trade.py -vv local --ly 10.0 3006
+    > trade.py local -vv --ly 10.0 3006
     Local systems to LHS 3006 within 10.0 ly.
     -----------------------------------------
      5.64 [  0.4] Acihaut
@@ -599,9 +563,89 @@ LOCAL sub-command:
           <Freeport>
           <Prospect Five>
 
+EXPORT sub-command:
+
+  This command generates the CSV data files of the current database. It
+  defaults to export all tables and overwrites the files in the data directory.
+  CAUTION: If you have changed any CSV file and didn't rebuild the database, they
+           will be lost. Use the 'buildcache' command first to rebuild the database.
+
+  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...]]
+
+    --path PATH
+      Specify the save location of the CSV files. Default to './data'
+
+    --tables TABLE[,TABLE,...]
+    -T TABLE[,TABLE,...]
+      Specify a comma separated list of tablenames to export.
+
+    --delete-empty
+      Delete CSV files without content.
+
+  Examples:
+    > trade.py export --path misc
+    Using database './data/TradeDangerous.db'
+    Export Table 'Added' to 'misc\Added.csv'
+    Export Table 'AltItemNames' to 'misc\AltItemNames.csv'
+    Export Table 'Category' to 'misc\Category.csv'
+    Export Table 'Item' to 'misc\Item.csv'
+    Export Table 'Ship' to 'misc\Ship.csv'
+    Export Table 'ShipVendor' to 'misc\ShipVendor.csv'
+    Export Table 'Station' to 'misc\Station.csv'
+    Export Table 'StationBuying' to 'misc\StationBuying.csv'
+    Export Table 'StationItem' to 'misc\StationItem.csv'
+    Ignore Table 'StationLink'
+    Export Table 'StationSelling' to 'misc\StationSelling.csv'
+    Export Table 'System' to 'misc\System.csv'
+    Export Table 'Upgrade' to 'misc\Upgrade.csv'
+    Export Table 'UpgradeVendor' to 'misc\UpgradeVendor.csv'
+
+    > trade.py export -T System,Station
+    Using database './data/TradeDangerous.db'
+    Export Table 'Station' to 'data\Station.csv'
+    Export Table 'System' to 'data\System.csv'
+
 ==============================================================================
 == ADDING OR CHANGING PRICE DATA
 ==============================================================================
+
+*** Experimental GUI in 6.0 ***
+*******************************
+
+
+As of v6.0 I've added an experimental GUI for updating prices. I'm still
+working out some of the issues, in particular you currently have to manually
+size and scroll the window.
+
+To use it, simply type:
+
+  trade.py update Aulin
+
+or whichever station you need to update. While it is in experimental status,
+you'll be asked to provide an extra switch.
+
+- To save your changes:
+
+Click the window's close button, don't alt-f4 or command-q.
+
+- To remove an item:
+
+Set the 'paying' and 'asking' values to 0
+
+- To move around
+
+ . Use tab/shift-tab to cycle thru cells,
+ . Use up/down arrows to move between rows,
+ . Press ENTER to move to the first column of the next line,
+
+- To add items to a station:
+
+Use the "-A" switch and leave the items you don't want empty.
+
+
+*** Other ways of editing Price Data ***
+****************************************
+
 
 TradeDangerous uses a human-readable text format for price information. This
 is designed to closely resemble what we see in the market screens in-game.
@@ -655,148 +699,77 @@ a command line option (--sublime or just --subl) for invoking it.
 == That's nice, but I'm a programmer and I want to ...
 ==============================================================================
 
-Yeah, let me stop you there. 
+TradeDangerous is organized into modules, the key of which are:
 
-    from tradedb import *
-    from tradecalc import *
+  trade.tradedb.TradeDB
+    Presents the main database API; it loads stations, systems, ships, items
+    and provides query APIs for these.
 
-    tdb = TradeDB()
-    calc = TradeCalc(tdb, capacity=16, margin=0.01, unique=False)
+  trade.tradeenv.TradeEnv
+    Container for a bag of "properties" used across TD, such as debug level.
 
-Whatever it is you want to do, you can do from there.
+  trade.tradecalc.TradeCalc
+    The best profit calculator
 
-See "cli.py" for examples.
+  trade.tradeexcept.TradeExcept
+    Exception definitions
 
-== Change Log Archive
-==============================================================================
+  trade.mfd
+  trade.mfd.saitek
+    Multi-function display wrappers
 
-v4.3.0 Oct 17/2014
-. (gazelle) Added "--zero" option to "update --all" which makes the default
-   value for demand/stock levels "0" instead of "-1". (-1 means 'unknown'.
-   Use this option if you are editing timestamps and stock levels and all
-   those '-'s get in your way)
-. (gazelle) Moved Star, System, etc data out of ".sql" file and into
-   per-table ".csv" files. This should make it much easier for people to
-   share and synchronize data and make it less daunting for people to
-   maintain their data files. Great work, Gazelle!
+  trade.commands.commandenv.CommandEnv
+    Arg-parsing variant of TradeEnv
 
-v4.2.3 Oct 17/2014
-. (ShadowGar, Smacker65) Imported Harbinger and RedWizzard system data,
-  also added tracking of where data has come from. Thanks also to Wolverine
-  for his work identifying data sources.
+  trade.commands.parsing
+    Helpers for creating argument lists for sub-commands
 
-v4.2.2 Oct 16/2014
-. (kfsone) user-friendlified errors generated by TD
-. (kfsone) gave "update" sub-command a "--npp" option (notepad++)
-. (kfsone) gave "update" sub-command a "--vim" option (vim editor)
+  trade.commands.exceptions
+    Exceptions for sub-commands
 
-v4.2.1 Oct 15/2014
-. (ShadowGar) Added more Stars and corrected HAGALAZ
-. (kfsone) sort items by name rather than id when building .prices files
-. (kfsone) improved the instructional comments in .prices files
-. (kfsone) Big README.txt cleanup
+  trade.formatting:
+    Helper classes for presenting result sets
 
-v4.2.0 Oct 15/2014
-. (Smacker65) Added "local" sub-command (lists systems within jump range of you)
 
-v4.1.0 Oct 15/2014
-. (gazelle) ".prices" file is no-longer included in the git repository,
-  instead you'll need to download one or populate your own
-. (gazelle) added the "--all" option to the "update" sub-command,
-. (kfsone) fixed problems caused when the .prices file is missing and there is
-  limited or no data available - user should get better feedback now.
+Minimalist usage example:
 
-v4.0.4 Oct 15/2014
-. (kfsone) Issue #20 Improved fuzzy-matching of system/star names
-. (gazelle) Fixed "Lacaille Prospect"
-. (kfsone) "trade.py" is now executable by default on Linux/MacOS
+  import trade
+  tdb = trade.TradeDB()
 
-v4.0.3 Oct 12/2014
-. (kfsone) Issue #17 "--avoid gold" conflicted with "Goldstein Mines"
-. (Smacker65) Issue #13 "Nelson Port" was listed as "Nelson Point"
-. (kfsone) Issue #12 "-w" was failing because Rigel has no links
-. (kfsone) Issue #11 Partial name matches weren't generating an ambiguity (e.g. 'ra' or 'ross')
-. (kfsone) Issue #19 Beryllium and Gallium were incorrectly identified as Minerals
+This creates a TradeDB instance using all-default parameters. It will take
+a while to complete because it loads the /entire/ database.
 
-v4.0.2 Oct 06/2014
-. (ShadowGar) More systems/stations from
+You can override the environment by passing a "TradeEnv", which itself can
+be initialized with an argparse namespace or by passing default overrides:
 
-v4.0.1 Oct 06/2014
-. (kfsone)  Improved "--sublime" option, now supports Sublime Text 2 and works under Mac/Lin
+  import tradeenv
+  # Defaulted:
+  tdenv = TradeEnv()
+  # Use with argparse to use command-line switches for defaults
+  tdenv = TradeEnv(my_parser.parse())
+  # Override defaults directly
+  tdenv = TradeEnv(debug=1, detail=2)
 
-v4.0 Oct 05/2014
-. (ShadowGar) Updated to Beta 2 - All credit to ShadowGar
+  import tradedb
+  tdb = tradedb.TradeDB(tdenv)
 
-v3.9 Sep 21/2014
-  NOTE: '--detail' (-v) is now a common option, i.e. must come before sub-command
-    trade.py cleanup -v    << won't work any more
-    trade.py -v cleanup    << new order
-  Added 'nav' sub-command for navigation assistance:
-    trade.py nav [--ship name [--full]] [--ly-per] from to
-  Added '--quiet' (-q) common option for reducing level of detail, e.g.
-    trade.py -q cleanup
+Construction of a wholly-default TradeDB can take a while because it loads
+a lot of data that you often probably won't need. You can speed it up by
+disabling the bulk of this with:
 
-v3.8 Sep 17/2014
-  Fix for Issue #7: --avoid not working with systems that have no stations,
-  Additional help text,
-  General cleanup,
-  Running "emdn-tap.py -v" will show price changes,
+  tdb = TradeDB(tdenv, buildLinks=False, includeTrades=False)
 
-v3.7 Sep 15/2014
-  Fixed excessive CPU usage in emdn-tap.py (ty, jojje)
-  Added 'cleanup' command to help remove bad data from emdn
-    EMDN isn't foolproof, and sometimes receives invalid or
-    deliberately poisoned data. The best way to detect this
-    is currently to look for prices that are somewhat older
-    than the rest of the information received for the same
-    station. This command checks for those records and
-    removes them.
-  emdn-tap now tries harder to honor commit intervals.
-API Changes:
-  makeSubParser now takes an epilog  
+If you subsequently need this data, call
 
-v3.6 Sep 12/2014
-  Added DB support for tracking item stock/demand levels,
-  TradeCalc will now factor stock levels when present,
-  Minor performance/memory tweak
-  emdn-tap:
-    Now accepts --warn-to argument,
-    Applies filters to what data it will accept,
-    Records item stock/demand levels to the DB
+  tdb.buildLinks()
+or
+  tdb.loadTrades()
 
-v3.5 Sep 06/2014
-  The emdn-tap tool now uses the compressed JSON stream rather than
-  the CSV stream - saves you bandwidth.
+As of TD 6.0 you should need to load this data less and less. A lot of
+work went into refactoring the SQLite DB and introducing more "lazy
+loading" by functions like TradeCalc.getBestHops().
 
-v3.4 Sep 05/2014
-  Added emdn-tap.py script which pulls data from EMDN network.
-  "--via" now accepts multiple and/or comma separated stations so you can plan
-  a very specific shopping-list route.
-
-v3.3 Sep 04/2014
-  Updated README to include sub-commands,
-  Fixed a 'file not found' error running trade.py the first time with no arguments,
-  Made specific CATEGORY/Item lookups possible (e.g. "Metals/Gold"),
-  Added games internal names for items to the database,
-  Enabled internal-name lookups for items (e.g. 'heliostaticfurnaces'),
-  Fixed a bug where two names for the same thing caused ambiguity (duh!),
-API changes:
-  TradeDB.listSearch() now also takes a val() argument,
-  Added a simple EMDN access module (emdn directory),
-  Cleaned up various __repr__ functions now I know what __repr__ is for,
-
-v3.2 Sep 03/2014
-  Internal cleanup of how we process sub-commands
-
-v3.1 Sep 01/2014
-  Introduced sub-commands:
-  - "run" command provides the old default behavior of calculating a run,
-  - "update" command provides ways to update price database easily,
-
-v3.0 Aug 30/2014
-  Major overhaul. No-longer requires Microsoft Access DB. To update prices,
-  edit the data/TradeDangerous.prices file. When you next run the tool, new
-  data will be loaded automatically.
-  Cleaned up code, normalized the way I name functions, etc.
-  Added more ship data, etc.
+When TradeDB and TradeCalc do not currently provide built-in queries for
+the information you need, you can revert to the SQL Database with the
+TradeDB.query() and TradeDB.fetch_all() commands.
 

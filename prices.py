@@ -1,11 +1,11 @@
-#! /usr/bin/env python
-#---------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
 #  I guarantee there is at least one bug neither of us knew about.
 #---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Generate TradeDangerous.prices
+
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 import sys
 import os
@@ -30,57 +30,83 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
     withTimes  = (elementMask & Element.timestamp)
 
     conn = sqlite3.connect(str(dbFilename))     # so we can handle a Path object too
+    conn.execute("PRAGMA foreign_keys=ON")
     cur  = conn.cursor()
 
-    systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM system") }
-    stations = { ID: name for (ID, name) in cur.execute("SELECT station_id, name FROM station") }
-    categories = { ID: name for (ID, name) in cur.execute("SELECT category_id, name FROM category") }
-    items = { ID: name for (ID, name) in cur.execute("SELECT item_id, name FROM item") }
+    systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM System") }
+    stations = {
+            ID: [ name, systems[sysID] ]
+                for (ID, name, sysID)
+                in cur.execute("SELECT station_id, name, system_id FROM Station")
+    }
+    categories = { ID: name for (ID, name) in cur.execute("SELECT category_id, name FROM Category") }
+    items = {
+            ID: [ name, categories[catID] ]
+                for (ID, name, catID)
+                in cur.execute("SELECT item_id, name, category_id FROM Item")
+    }
 
     # find longest item name
-    longestName = max(items.values(), key=lambda name: len(name))
-    longestNameLen = len(longestName)
+    longestName = max(items.values(), key=lambda ent: len(ent[0]))
+    longestNameLen = len(longestName[0])
 
     if stationID:
         # check if there are prices for the station
-        cur.execute("SELECT COUNT(*) FROM Price WHERE Price.station_id = {}".format(stationID))
+        cur.execute("""
+            SELECT  COUNT(*)
+              FROM  StationItem
+             WHERE station_id = {}
+            """.format(stationID))
         priceCount = cur.fetchone()[0]
     else:
         # no station, no check
         priceCount = 1
 
-    stationClause = "1" if not stationID else "Station.station_id = {}".format(stationID)
     defaultDemandVal = 0 if defaultZero else -1
+    if stationID:
+        stationWhere = "WHERE stn.station_id = {}".format(stationID)
+    else:
+        stationWhere = ""
     if priceCount == 0:
         # no prices, generate an emtpy one with all items
-        cur.execute("""
-            SELECT  Station.system_id, Station.station_id, Item.category_id, Item.item_id,
+        stmt = """
+            SELECT  stn.station_id, Item.item_id,
                     0, 0, NULL,
                     {defDemand}, {defDemand}, {defDemand}, {defDemand}
-               FROM Item LEFT OUTER JOIN Station, Category
-              WHERE {stationClause}
-                AND Item.category_id = Category.category_id
-              ORDER BY Station.system_id, Station.station_id, Category.name, Item.name
-        """.format(stationClause=stationClause, defDemand=defaultDemandVal))
+               FROM Station AS stn,
+                    Item INNER JOIN Category
+                        USING (category_id)
+                    {stationWhere}
+              ORDER BY stn.system_id, stn.station_id, Category.name, Item.name
+        """
     else:
-        cur.execute("""
-            SELECT  Station.system_id
-                    , Price.station_id
-                    , Item.category_id
-                    , Price.item_id
-                    , Price.sell_to
-                    , Price.buy_from
-                    , Price.modified
-                    , IFNULL(Price.demand, {defDemand})
-                    , IFNULL(Price.demand_level, {defDemand})
-                    , IFNULL(Price.stock, {defDemand})
-                    , IFNULL(Price.stock_level, {defDemand})
-              FROM  Station, Item, Category, Price
-             WHERE  {stationClause}  -- station clause
-                    AND Station.station_id = Price.station_id
-                    AND (Item.category_id = Category.category_id) AND Item.item_id = Price.item_id
-             ORDER  BY Station.system_id, Station.station_id, Category.name, Price.ui_order, Item.name
-        """.format(stationClause=stationClause, defDemand=defaultDemandVal))
+        stmt = """
+            SELECT  si.station_id, si.item_id
+                    , IFNULL(sb.price, 0)
+                    , IFNULL(ss.price, 0)
+                    , si.modified
+                    , IFNULL(sb.units, {defDemand})
+                    , IFNULL(sb.level, {defDemand})
+                    , IFNULL(ss.units, {defDemand})
+                    , IFNULL(ss.level, {defDemand})
+              FROM  Station stn
+                    INNER JOIN StationItem AS si USING (station_id)
+                    INNER JOIN Item AS itm USING (item_id)
+                    INNER JOIN Category AS cat USING (category_id)
+                    LEFT OUTER JOIN StationBuying AS sb
+                        ON (si.station_id = sb.station_id
+                            AND si.item_id = sb.item_id)
+                    LEFT OUTER JOIN StationSelling AS ss
+                        ON (si.station_id = ss.station_id
+                            AND si.item_id = ss.item_id)
+                    {stationWhere}
+             ORDER  BY stn.station_id, cat.name, si.ui_order, itm.name
+        """
+
+    sql = stmt.format(stationWhere=stationWhere, defDemand=defaultDemandVal)
+    if debug:
+        print(sql)
+    cur.execute(sql)
 
     lastSys, lastStn, lastCat = None, None, None
 
@@ -144,26 +170,27 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
     unkIQL = itemQtyAndLevel(-2, -2)
     defIQL = itemQtyAndLevel(-1, -1)
 
-    for (sysID, stnID, catID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
-        system = systems[sysID]
+    for (stnID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
+        station, system = stations[stnID]
         if system is not lastSys:
             if lastStn: file.write("\n\n")
             lastStn, lastCat = None, None
             lastSys = system
-
-        station = stations[stnID]
         if station is not lastStn:
             if lastStn: file.write("\n")
             lastCat = None
             file.write("@ {}/{}\n".format(system.upper(), station))
             lastStn = station
 
-        category = categories[catID]
+        item, category = items[itemID]
         if category is not lastCat:
             file.write("   + {}\n".format(category))
             lastCat = category
 
-        file.write("      {:<{width}} {:{crwidth}d} {:{crwidth}d}".format(items[itemID], fromStn, toStn, width=longestNameLen, crwidth=maxCrWidth))
+        file.write("      {:<{width}} {:{crwidth}d} {:{crwidth}d}".format(
+                item, fromStn, toStn,
+                width=longestNameLen, crwidth=maxCrWidth
+        ))
         if withSupply:
             # Is this item on sale?
             if toStn > 0:
