@@ -328,8 +328,11 @@ def run(results, cmdenv, tdb):
 
     avoidPlaces = cmdenv.avoidPlaces
 
-    if cmdenv.destPlace and isinstance(cmdenv.destPlace, System):
-        stopStations = set(cmdenv.destPlace.stations)
+    if cmdenv.destPlace:
+        if isinstance(cmdenv.destPlace, System):
+            stopStations = set(cmdenv.destPlace.stations)
+        else:
+            stopStations = set([cmdenv.destPlace])
     else:
         stopStations = set()
 
