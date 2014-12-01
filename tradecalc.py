@@ -339,7 +339,7 @@ class TradeCalc(object):
         avoidItems = tdenv.avoidItems
         self.tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
                 src.system.dbname, src.dbname,
-                dst.system.dbname, src.dbname,
+                dst.system.dbname, dst.dbname,
                 credits)
 
         if not dst in src.tradingWith:
@@ -435,7 +435,7 @@ class TradeCalc(object):
                                 avoidPlaces=avoidPlaces,
                                 trading=True,
                     ):
-                tdenv.DEBUG2("destSys {}, destStn {}, jumps {}, distLy {}",
+                tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",
                                 dest.system.dbname,
                                 dest.station.dbname,
                                 "->".join([jump.str() for jump in dest.via]),
