@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
-from tradedb import Station
+from tradedb import System, Station
 
 ######################################################################
 # Parser config
@@ -28,20 +28,11 @@ switches = [
             dest='origin',
             metavar='STATION',
         ),
-    MutuallyExclusiveGroup(
-        ParseArgument('--to',
-                help='Final system/station.',
-                dest='endSys',
-                metavar='STATION',
-            ),
-        ParseArgument('--end',
-                help="Try to finish at one of these",
-                dest='ending',
-                metavar='STATION',
-                default=[],
-                action='append',
-            ),
-    ),
+    ParseArgument('--to',
+            help='Final system/station.',
+            dest='ending',
+            metavar='PLACE',
+        ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
             action='append',
@@ -233,30 +224,30 @@ def validateRunArguments(tdb, cmdenv):
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
-    if cmdenv.stopSystem:
-        if isinstance(cmdenv.stopSystem, Station):
-            cmdenv.stopStation = cmdenv.stopSystem
-        cmdenv.ending = set(cmdenv.ending + cmdenv.stopSystem.stations)
+    if cmdenv.destPlace and isinstance(cmdenv.destPlace, Station):
+        cmdenv.stopStation = cmdenv.destPlace
+    else:
+        cmdenv.stopStation = None
 
     if cmdenv.stopStation:
         if cmdenv.hops == 1 and cmdenv.startStation:
             if cmdenv.startStation == cmdenv.stopStation:
                 raise CommandLineError("Same to/from; more than one hop required.")
-    else:
-        cmdenv.stopStation = None
 
     viaSet = cmdenv.viaSet = set(cmdenv.viaStations)
-    for station in viaSet:
-        if station.itemCount == 0:
-            raise NoDataError("No price data available for via station {}.".format(
-                                station.name()))
+    for place in viaSet:
+        if isinstance(place, Station) and not station.itemCount:
+            raise NoDataError(
+                        "No price data available for via station {}.".format(
+                            station.name()
+                    ))
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
     fixedRoutePoints = 0
     if cmdenv.startStation:
         fixedRoutePoints += 1
-    if cmdenv.stopStation:
+    if cmdenv.destPlace:
         fixedRoutePoints += 1
     totalRoutePoints = cmdenv.hops + 1
     adhocRoutePoints = totalRoutePoints - fixedRoutePoints
@@ -333,16 +324,14 @@ def run(results, cmdenv, tdb):
 
     from tradecalc import TradeCalc, Route
 
-    startStn, stopStn, viaSet = cmdenv.startStation, cmdenv.stopStation, cmdenv.viaSet
+    startStn, viaSet = cmdenv.startStation, cmdenv.viaSet
 
     avoidPlaces = cmdenv.avoidPlaces
 
-    stopStations = []
-    if stopStn:
-        stopStations.append(stopStn)
-    for stn in cmdenv.ending:
-        stopStations.append(tdb.lookupStation(stn))
-    stopStations = set(stopStations)
+    if cmdenv.destPlace and isinstance(cmdenv.destPlace, System):
+        stopStations = set(cmdenv.destPlace.stations)
+    else:
+        stopstations = set()
 
     startCr = cmdenv.credits - cmdenv.insurance
 
@@ -363,7 +352,7 @@ def run(results, cmdenv, tdb):
                     "Hops {hops}, Jumps/Hop {jumpsPer}, Ly/Jump {lyPer:.2f}"
                     "\n".format(
                         fromStn=startStn.name() if startStn else 'Anywhere',
-                        toStn=stopStn.name() if stopStn else 'Anywhere',
+                        toStn=str([s.name() for s in stopStations]) if stopStations else 'Anywhere',
                         via=';'.join([stn.name() for stn in viaSet]) or 'None',
                         cap=cmdenv.capacity,
                         cr=startCr,

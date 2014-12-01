@@ -10,8 +10,8 @@ name='nav'
 epilog=None
 wantsTradeDB=True
 arguments = [
-    ParseArgument('startSys', help='System to start from', type=str),
-    ParseArgument('endSys', help='System to end at', type=str),
+    ParseArgument('starting', help='System to start from', type=str),
+    ParseArgument('ending', help='System to end at', type=str),
 ]
 switches = [
     ParseArgument('--ship',
@@ -48,8 +48,12 @@ switches = [
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
 
-    srcSystem = cmdenv.startSystem
-    dstSystem = cmdenv.stopSystem
+    srcSystem, dstSystem = cmdenv.origPlace, cmdenv.destPlace
+    if isinstance(srcSystem, Station):
+        srcSystem = srcSystem.system
+    if isinstance(dstSystem, Station):
+        dstSystem = dstSystem.system
+
     maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
 
     cmdenv.DEBUG0("Route from {} to {} with max {} ly per jump.",

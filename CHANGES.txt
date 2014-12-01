@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.3 Nov 30 2014
+. (kfsone) Fixed "run" and "nav" not understanding stations correctly
 . (kfsone) "avoid" now handles systems/stations discretely
   - avoiding a station means you won't land there but you can
     pass through the system,
