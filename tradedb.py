@@ -780,7 +780,8 @@ class TradeDB(object):
                 return []
             tradingWith = origin.tradingWith
 
-        maxJumps = maxJumps or sys.maxsize
+        if maxJumps is None:
+            maxJumps = sys.maxsize
         maxLyPer = maxLyPer or self.maxSystemLinkLy
         if avoidPlaces is None:
             avoidPlaces = []
