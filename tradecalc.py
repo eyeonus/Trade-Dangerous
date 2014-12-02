@@ -168,7 +168,11 @@ class Route(object):
 
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum([hop[1] for hop in hops])
-        numJumps = sum([len(hopJumps)-1 for hopJumps in jumps])
+        numJumps = sum([
+                len(hopJumps)-1
+                for hopJumps in jumps
+                if hopJumps     # don't include in-system hops
+                ])
         return (
             "Start CR: {start:10n}\n"
             "Hops    : {hops:10n}\n"
