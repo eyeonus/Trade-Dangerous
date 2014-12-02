@@ -128,6 +128,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bolg','Moxon''s Mojo',0.0
 'Bragurom Du','Comino Station',0.0
 'Brahma','Banks Landing',0.0
+'Bunda','Cori Orbital',0.0
+'Bunda','Faraday Ring',0.0
+'Bunda','Walz Dock',0.0
 'CE Bootis','Sellers Relay',0.0
 'Cenil','Xing Hub',0.0
 'Chaac','Antonio De Andrade',0.0
@@ -174,6 +177,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Feng Huang','Murdoch Plant',0.0
 'Flousop','Fawcett Installation',0.0
 'FN Virginis','Priestley Port',0.0
+'Fong Wang','Polya Station',0.0
+'Fong Wang','Schachner Dock',0.0
+'Fong Wang','Volterra Hub',0.0
 'Friggirawi','Griffin Station',0.0
 'G 121-8','Brosnan Gateway',0.0
 'G 123-49','JET-GANG',0.0
@@ -229,6 +235,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Keries','Derrickson''s Escape',0.0
 'Kholedo','Asaro Dock',0.0
 'Kholedo','Lopez de Dillalobos Colony',0.0
+'Kishpakho','Crown City',0.0
 'Korubu','Markov Gateway',0.0
 'Kotaition','Bykovsky Vision',0.0
 'Kuikian Batji','ALI INSTALLATION',0.0
@@ -240,6 +247,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lalande 29917','Cori Terminal',0.0
 'Lalande 30699','Johnson Works',0.0
 'Lalande 37923','Keyes City',0.0
+'Laukang','Matheson Orbital',0.0
 'LAWD 52','Guerrero Horizons',0.0
 'LDS 2314','McDonald Colony',0.0
 'Lei Manako','Debye Port',0.0
@@ -387,6 +395,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Mullag','Kelly City',0.0
 'Nakuma','Nelder Mines',0.0
 'Nang Ta-khian','Hay Point',0.0
+'Nangkano','Sarafanov Hub',0.0
 'Nener','Popov Dock',0.0
 'Ngaislan','Murdoch Station',0.0
 'Ngolitjali','Vinogradov platform',0.0
@@ -466,6 +475,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Shinrarta Dezhra','Jameson Memorial',0.0
 'Shoujeman','Baxter Camp',0.0
 'Sigma Bootis','Meikle Platform',0.0
+'Skeggiko O','Kuo Terminal',0.0
 'Slatus','Hoffman Orbital',0.0
 'Sofagre','Markov Park',0.0
 'Sokoji','Cavendish Relay',0.0
@@ -505,6 +515,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tyr','Glashow Dock',0.0
 'V417 Hydrae','Clervoy Vista',0.0
 'V538 Aurigae','Card Park',0.0
+'V886 Centauri','Garriott Terminal',0.0
 'V989 Cassiopeiae','Low Works',0.0
 'Vetr','Wisoff Depot',0.0
 'Wanggu','Besonders Port',0.0
