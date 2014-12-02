@@ -1,7 +1,7 @@
 ==============================================================================
 TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
-REQUIRES PYTHON 3.0 OR HIGHER.
+REQUIRES PYTHON 3.4 OR HIGHER.
 ==============================================================================
 
 [For recent changes see CHANGES.txt]

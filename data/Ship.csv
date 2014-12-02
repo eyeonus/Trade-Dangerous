@@ -2,6 +2,7 @@ unq:name,capacity,mass,drive_rating,max_ly_empty,max_ly_full,max_speed,boost_spe
 'Anaconda',228,2600,52345.0,19.7,17.6,180,235
 'Asp Explorer',38,0,0.0,0.0,0.0,250,340
 'Cobra',36,114,1155.0,9.94,7.3,280,400
+'Dropship',56,580,0.0,0.0,0.0,180,300
 'Eagle',6,52,348.0,6.59,6.0,240,350
 'Hauler',16,39,348.0,8.74,6.1,200,246
 'Lakon Type 6',100,113,3455.0,29.36,15.64,220,329
