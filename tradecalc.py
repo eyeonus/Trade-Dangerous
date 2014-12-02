@@ -140,7 +140,7 @@ class Route(object):
                                     longestName=longestNameLen)
                 hopTonnes += qty
             text += hopFmt.format(station=route[i].name(), purchases=purchases)
-            if jumpsFmt:
+            if jumpsFmt and self.jumps[i]:
                 jumps = ' -> '.join([ jump.name() for jump in self.jumps[i] ])
                 text += jumpsFmt.format(
                             jumps=jumps,
@@ -168,7 +168,11 @@ class Route(object):
 
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum([hop[1] for hop in hops])
-        numJumps = sum([len(hopJumps)-1 for hopJumps in jumps])
+        numJumps = sum([
+                len(hopJumps)-1
+                for hopJumps in jumps
+                if hopJumps     # don't include in-system hops
+                ])
         return (
             "Start CR: {start:10n}\n"
             "Hops    : {hops:10n}\n"
@@ -406,7 +410,7 @@ class TradeCalc(object):
         avoidItems = getattr(tdenv, 'avoidItems', [])
         avoidPlaces = getattr(tdenv, 'avoidPlaces', [])
         assert not restrictTo or isinstance(restrictTo, set)
-        maxJumpsPer = tdenv.maxJumpsPer or 0
+        maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
         credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
 

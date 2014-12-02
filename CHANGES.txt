@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.4 Dec 01 2014
+. (kfsone) Fix miscount of jumps when same-system hops were in a route,
+. (kfsone) run --jumps=0 now limits to same-system options
+. (kfsone) Fixed empty "Jump" lines in nav output for same-system hop
+. (Eggplant!) More Stations
+
 v6.1.3 Nov 30 2014
 . (gazelle) More Station and Ship data
 . (kfsone) Changed UPDATE command to use places, check for stations, and to
