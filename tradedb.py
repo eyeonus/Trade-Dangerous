@@ -1081,7 +1081,7 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self, dbFilename=None, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
+    def load(self, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
