@@ -236,7 +236,7 @@ class TradeDB(object):
 
         Attributes:
             dbPath              -   Path object describing the db location.
-            dbURI               -   String representation of the db location (e.g. filename).
+            dbFilename          -   str(dbPath)
             conn                -   The database connection.
 
         Methods:
@@ -285,23 +285,26 @@ class TradeDB(object):
 
     def __init__(self,
                     tdenv=None,
-                    sqlFilename=None,
-                    pricesFilename=None,
                     load=True,
                     buildLinks=False,
                     includeTrades=False,
                     debug=None,
                 ):
-        self.tdenv = tdenv = tdenv or TradeEnv(debug=(debug or 0))
-        self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
-        self.dbURI = str(self.dbPath)
-        self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
-        self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
-        self.importTables = TradeDB.defaultTables
         self.conn = None
         self.cur = None
         self.numLinks = None
         self.tradingCount = None
+
+        self.tdenv = tdenv = tdenv or TradeEnv(debug=(debug or 0))
+
+        self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
+        self.sqlPath = Path(tdenv.sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
+        self.importTables = TradeDB.defaultTables
+
+        self.dbFilename = str(self.dbPath)
+        self.sqlFilename = str(self.sqlPath)
+        self.pricesFilename = str(self.pricesPath)
 
         if load:
             self.reloadCache()
@@ -319,7 +322,7 @@ class TradeDB(object):
         try:
             self.tdenv.DEBUG1("Connecting to DB")
             import sqlite3
-            conn = sqlite3.connect(self.dbURI)
+            conn = sqlite3.connect(self.dbFilename)
             conn.execute("PRAGMA foreign_keys=ON")
             return conn
         except ImportError as e:

@@ -880,12 +880,12 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
         tdenv.DEBUG0("Update complete, regenerating .prices file")
         with tdb.pricesPath.open("w") as pricesFile:
             prices.dumpPrices(
-                    tdb.dbURI,
+                    tdb.dbFilename,
                     prices.Element.full,
                     file=pricesFile,
                     debug=tdenv.debug)
 
     # Update the DB file so we don't regenerate it.
-    os.utime(tdb.dbURI)
+    os.utime(tdb.dbFilename)
 
 
