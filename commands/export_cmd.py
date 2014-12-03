@@ -138,20 +138,19 @@ def run(results, cmdenv, tdb):
     from tradedb import TradeDB
 
     # check database exists
-    dbFilename = cmdenv.dbFilename or TradeDB.defaultDB
-    if not Path(dbFilename).is_file():
+    if not tdb.dbPath.is_file():
         raise CommandLineError("Database '{}' not found.".format(dbFilename))
 
     # check export path exists
-    if not Path(cmdenv.path).is_dir():
+    exportDir = Path(cmdenv.path)
+    if not exportDir.is_dir():
         raise CommandLineError("Save location '{}' not found.".format(cmdenv.path))
 
     # connect to the database
     if not cmdenv.quiet:
-        print("Using database '{}'".format(dbFilename))
-    conn = sqlite3.connect(dbFilename)
+        print("Using database '{}'".format(tdb.dbFilename))
+    conn = tdb.getDB()
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
 
     # extract tables from command line
     if cmdenv.tables:
@@ -184,12 +183,14 @@ def run(results, cmdenv, tdb):
             continue
 
         # create CSV files
-        exportName = Path(cmdenv.path).joinpath("{table}.csv".format(table=tableName))
+        exportPath = (exportDir / Path(tableName)).with_suffix(".csv")
         if not cmdenv.quiet:
-            print("Export Table '{table}' to '{file}'".format(table=tableName, file=exportName))
+            print("Export Table '{table}' to '{file}'".format(
+                    table=tableName, file=str(exportPath)
+                    ))
 
         lineCount = 0
-        with exportName.open("w", encoding='utf-8', newline="\n") as exportFile:
+        with exportPath.open("w", encoding='utf-8', newline="\n") as exportFile:
             exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
 
             cur = conn.cursor()
@@ -276,8 +277,8 @@ def run(results, cmdenv, tdb):
             cmdenv.DEBUG1("{count} {table}s exported".format(count=lineCount, table=tableName))
         if cmdenv.deleteEmpty and lineCount == 0:
             # delete file if emtpy
-            exportName.unlink()
+            exportPath.unlink()
             if not cmdenv.quiet:
-                print("Delete empty file {file}'".format(file=exportName))
+                print("Delete empty file {file}'".format(file=exportPath))
 
     return None
