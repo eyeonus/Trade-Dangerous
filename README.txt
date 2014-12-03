@@ -1,7 +1,7 @@
 ==============================================================================
 TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
-REQUIRES PYTHON 3.0 OR HIGHER.
+REQUIRES PYTHON 3.4 OR HIGHER.
 ==============================================================================
 
 [For recent changes see CHANGES.txt]
@@ -372,6 +372,10 @@ IMPORT sub-command:
   For instance, if you 'update'd a station and there was an error importing it,
   the data is usually saved as "prices.last". You can open this file and correct
   the error and then import it, rather than having to re-enter all of the data.
+
+  NOTE: Items not listed for a station in an import are considered unavailable at
+  that station. If you have an entry for Beagle2/Food and you import a file that
+  does not include Beagle2/Food, Beagle2/Food will be removed from your db.
 
   trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
 

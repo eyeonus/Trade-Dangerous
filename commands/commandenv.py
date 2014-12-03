@@ -129,10 +129,17 @@ class CommandEnv(TradeEnv):
 
             return place.stations[0]
 
+        def lookupPlace(label, fieldName):
+            key = getattr(self, fieldName, None)
+            if key:
+                return self.tdb.lookupPlace(key)
+            return None
+
+
         self.startStation = check('origin station', 'origin', True)
-        self.startSystem  = check('origin system', 'startSys', False)
         self.stopStation  = check('destination station', 'dest', True)
-        self.stopSystem   = check('destination system', 'endSys', False)
+        self.origPlace    = lookupPlace('origin', 'starting')
+        self.destPlace    = lookupPlace('destination', 'ending')
         self.nearSystem   = check('system', 'near', False)
 
 

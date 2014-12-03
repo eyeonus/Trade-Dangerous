@@ -1,4 +1,18 @@
 unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cost
+'Eravate','Ackerman Market','Eagle',44800
+'Eravate','Ackerman Market','Hauler',52720
+'Eravate','Ackerman Market','Lakon Type 6',1045945
+'Eravate','Ackerman Market','Sidewinder',32000
+'Eravate','Cleve Hub','Cobra',379718
+'Eravate','Cleve Hub','Eagle',44800
+'Eravate','Cleve Hub','Hauler',52720
+'Eravate','Cleve Hub','Lakon Type 6',1045945
+'Eravate','Cleve Hub','Sidewinder',32000
+'Eravate','Russell Ring','Cobra',379718
+'Eravate','Russell Ring','Eagle',44800
+'Eravate','Russell Ring','Hauler',52720
+'Eravate','Russell Ring','Lakon Type 6',1045945
+'Eravate','Russell Ring','Sidewinder',32000
 'LHS 3447','Dalton Gateway','Asp Explorer',6661153
 'LHS 3447','Dalton Gateway','Hauler',52720
 'LHS 3447','Dalton Gateway','Lakon Type 9',76555842
@@ -9,3 +23,10 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'LHS 3447','Yaping Enterprise','Cobra',379718
 'LHS 3447','Yaping Enterprise','Lakon Type 6',1045945
 'LHS 3447','Yaping Enterprise','Viper',142931
+'Yakabugai','Serebrov Station','Anaconda',146969451
+'Yakabugai','Serebrov Station','Asp Explorer',6661153
+'Yakabugai','Serebrov Station','Dropship',37814205
+'Yakabugai','Serebrov Station','Eagle',44800
+'Yakabugai','Serebrov Station','Hauler',52720
+'Yakabugai','Serebrov Station','Lakon Type 9',76555842
+'Yakabugai','Serebrov Station','Sidewinder',32000

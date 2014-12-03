@@ -128,6 +128,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bolg','Moxon''s Mojo',0.0
 'Bragurom Du','Comino Station',0.0
 'Brahma','Banks Landing',0.0
+'Bunda','Cori Orbital',0.0
+'Bunda','Faraday Ring',0.0
+'Bunda','Walz Dock',0.0
 'CE Bootis','Sellers Relay',0.0
 'Cenil','Xing Hub',0.0
 'Chaac','Antonio De Andrade',0.0
@@ -162,12 +165,21 @@ unq:name@System.system_id,unq:name,ls_from_star
 'DX Cancri','Horowitz Landing',0.0
 'Dyaushis','Helmholtz Station',0.0
 'Eranin','Azeban City',0.0
+'Eravate','Ackerman Market',273.0
+'Eravate','Cleve Hub',36.7
+'Eravate','Maine Hub',496.0
+'Eravate','McMahon Dock',148.0
+'Eravate','Russell Ring',98.9
+'Eravate','Sylvester City',495.0
 'Eta Corvi','Ivins Plant',0.0
 'Eta Draconis','Zahn Orbital',0.0
 'Evergreen','Stafford Terminal',0.0
 'Feng Huang','Murdoch Plant',0.0
 'Flousop','Fawcett Installation',0.0
 'FN Virginis','Priestley Port',0.0
+'Fong Wang','Polya Station',0.0
+'Fong Wang','Schachner Dock',0.0
+'Fong Wang','Volterra Hub',0.0
 'Friggirawi','Griffin Station',0.0
 'G 121-8','Brosnan Gateway',0.0
 'G 123-49','JET-GANG',0.0
@@ -223,6 +235,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Keries','Derrickson''s Escape',0.0
 'Kholedo','Asaro Dock',0.0
 'Kholedo','Lopez de Dillalobos Colony',0.0
+'Kishpakho','Crown City',0.0
 'Korubu','Markov Gateway',0.0
 'Kotaition','Bykovsky Vision',0.0
 'Kuikian Batji','ALI INSTALLATION',0.0
@@ -234,6 +247,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lalande 29917','Cori Terminal',0.0
 'Lalande 30699','Johnson Works',0.0
 'Lalande 37923','Keyes City',0.0
+'Laukang','Matheson Orbital',0.0
 'LAWD 52','Guerrero Horizons',0.0
 'LDS 2314','McDonald Colony',0.0
 'Lei Manako','Debye Port',0.0
@@ -314,11 +328,11 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lokapuri','McArthur Dock',0.0
 'LP 102-320','Shepard Hub',0.0
 'LP 167-64','Chu City',0.0
-'LP 27-9','Drebbel Orbital',0.0
+'LP 27-9','Curbeam Dock',0.0
 'LP 27-9','Drebbel Hub',0.0
+'LP 27-9','Drebbel Orbital',0.0
 'LP 27-9','Kwolek Hub',0.0
 'LP 27-9','Shonin Orbital',0.0
-'LP 27-9','Curbeam Dock',0.0
 'LP 29-188','Smith Enterprise',0.0
 'LP 30-55','Reis Dock',0.0
 'LP 320-359','Fisher Camp',0.0
@@ -381,14 +395,15 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Mullag','Kelly City',0.0
 'Nakuma','Nelder Mines',0.0
 'Nang Ta-khian','Hay Point',0.0
+'Nangkano','Sarafanov Hub',0.0
 'Nener','Popov Dock',0.0
 'Ngaislan','Murdoch Station',0.0
 'Ngolitjali','Vinogradov platform',0.0
 'Nicobarese','Berezovoy Station',0.0
 'NLTT 46621','Hope Point',0.0
 'NLTT 48502','Webb Holdings',0.0
-'NLTT 49528','O''Connor Landing',0.0
 'NLTT 49528','Anning Hub',0.0
+'NLTT 49528','O''Connor Landing',0.0
 'NLTT 49528','Titov Settlement',0.0
 'NLTT 53889','Roosa Platform',0.0
 'Nuenets','Forrester Dock',0.0
@@ -447,6 +462,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ross 446','Nowak Laboratory',0.0
 'Ross 486','Brash Vision',0.0
 'Ross 490','Delucas Landing',0.0
+'Ross 765','Melroy Port',0.0
 'Ross 765','Pogue Platform',0.0
 'Ross 905','Morukov Platform',0.0
 'Ross 986','Jones Station',0.0
@@ -459,6 +475,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Shinrarta Dezhra','Jameson Memorial',0.0
 'Shoujeman','Baxter Camp',0.0
 'Sigma Bootis','Meikle Platform',0.0
+'Skeggiko O','Kuo Terminal',0.0
 'Slatus','Hoffman Orbital',0.0
 'Sofagre','Markov Park',0.0
 'Sokoji','Cavendish Relay',0.0
@@ -480,9 +497,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tabassapisi','Parise Camp',0.0
 'Talitha','Ross Platform',0.0
 'Tatil','Lloyd Terminal',0.0
+'Tatil','Roddenberry Dock',0.0
 'Tatil','Shepard Ring',0.0
 'Tatil','Swift Port',0.0
-'Tatil','Roddenberry Dock',0.0
 'Tau Bootis','Weitz Hub',0.0
 'Teliu Yuan','Buchli Station',0.0
 'Temba','Aguirre Terminal',0.0
@@ -498,6 +515,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tyr','Glashow Dock',0.0
 'V417 Hydrae','Clervoy Vista',0.0
 'V538 Aurigae','Card Park',0.0
+'V886 Centauri','Garriott Terminal',0.0
 'V989 Cassiopeiae','Low Works',0.0
 'Vetr','Wisoff Depot',0.0
 'Wanggu','Besonders Port',0.0
@@ -530,7 +548,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Wyrd','Vonarburg Co-Operative',0.0
 'Xi Ursae Majoris','Joule Settlement',0.0
 'Xi Wangkala','Ross Colony',0.0
+'Yakabugai','Aristotle Gateway',690.0
 'Yakabugai','Levi-Montalcini City',509.0
+'Yakabugai','Serebrov Station',365.0
 'Yanyan','Morin City',0.0
 'Yarigui','Kier Ring',0.0
 'Yarigui','Lem Dock',0.0
