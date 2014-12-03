@@ -64,11 +64,6 @@ def run(results, cmdenv, tdb):
     from tradedb import TradeDB
 
     # Check that the file doesn't already exist.
-    dbFilename = cmdenv.dbFilename or TradeDB.defaultDB
-    sqlFilename = cmdenv.sqlFilename or TradeDB.defaultSQL
-    pricesFilename = cmdenv.pricesFilename or TradeDB.defaultPrices
-    importTables = TradeDB.defaultTables
-
     if not cmdenv.force:
         if tdb.dbPath.exists():
             raise CommandLineError(
