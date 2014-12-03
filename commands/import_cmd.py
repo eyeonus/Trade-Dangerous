@@ -13,9 +13,9 @@ from pathlib import Path
 # Parser config
 
 help=(
-    "Imports price data from a '.prices' format file "
-    "without affecting data for stations not included "
-    "in the import file."
+    "Imports price data from a '.prices' format file. "
+    "Previous data for the stations included in the file "
+    "is removed, but other stations are not affected."
 )
 name='import'
 epilog=None
