@@ -18,6 +18,7 @@ class Element(object):
     supply    = (1 << 1)
     timestamp = (1 << 2)
     full      = (basic | supply | timestamp)
+    blanks    = (1 <<31)
 
 
 ######################################################################
@@ -28,6 +29,7 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
 
     withSupply = (elementMask & Element.supply)
     withTimes  = (elementMask & Element.timestamp)
+    getBlanks  = (elementMask & Element.blanks)
 
     conn = sqlite3.connect(str(dbFilename))     # so we can handle a Path object too
     conn.execute("PRAGMA foreign_keys=ON")
@@ -57,53 +59,56 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
               FROM  StationItem
              WHERE station_id = {}
             """.format(stationID))
-        priceCount = cur.fetchone()[0]
-    else:
-        # no station, no check
-        priceCount = 1
+        if not cur.fetchone()[0]:
+            getBlanks = True
 
     defaultDemandVal = 0 if defaultZero else -1
     if stationID:
         stationWhere = "WHERE stn.station_id = {}".format(stationID)
     else:
         stationWhere = ""
-    if priceCount == 0:
-        # no prices, generate an emtpy one with all items
-        stmt = """
-            SELECT  stn.station_id, Item.item_id,
-                    0, 0, NULL,
-                    {defDemand}, {defDemand}, {defDemand}, {defDemand}
-               FROM Station AS stn,
-                    Item INNER JOIN Category
-                        USING (category_id)
-                    {stationWhere}
-              ORDER BY stn.system_id, stn.station_id, Category.name, Item.name
-        """
-    else:
-        stmt = """
-            SELECT  si.station_id, si.item_id
-                    , IFNULL(sb.price, 0)
-                    , IFNULL(ss.price, 0)
-                    , si.modified
-                    , IFNULL(sb.units, {defDemand})
-                    , IFNULL(sb.level, {defDemand})
-                    , IFNULL(ss.units, {defDemand})
-                    , IFNULL(ss.level, {defDemand})
-              FROM  Station stn
-                    INNER JOIN StationItem AS si USING (station_id)
-                    INNER JOIN Item AS itm USING (item_id)
-                    INNER JOIN Category AS cat USING (category_id)
-                    LEFT OUTER JOIN StationBuying AS sb
-                        ON (si.station_id = sb.station_id
-                            AND si.item_id = sb.item_id)
-                    LEFT OUTER JOIN StationSelling AS ss
-                        ON (si.station_id = ss.station_id
-                            AND si.item_id = ss.item_id)
-                    {stationWhere}
-             ORDER  BY stn.station_id, cat.name, si.ui_order, itm.name
-        """
 
-    sql = stmt.format(stationWhere=stationWhere, defDemand=defaultDemandVal)
+    if getBlanks:
+        itemJoin = "LEFT OUTER"
+        ordering = "itm.name"
+    else:
+        itemJoin = "INNER"
+        ordering = "si.ui_order, itm.name"
+
+    cur.execute("SELECT CURRENT_TIMESTAMP")
+    now = cur.fetchone()[0]
+
+    stmt = """
+        SELECT  stn.station_id, itm.item_id
+                , IFNULL(sb.price, 0)
+                , IFNULL(ss.price, 0)
+                , si.modified
+                , IFNULL(sb.units, {defDemand})
+                , IFNULL(sb.level, {defDemand})
+                , IFNULL(ss.units, {defDemand})
+                , IFNULL(ss.level, {defDemand})
+          FROM  Station stn,
+                Category AS cat
+                INNER JOIN Item AS itm USING (category_id)
+                {itemJoin} JOIN StationItem AS si
+                    ON (si.station_id = stn.station_id
+                        AND si.item_id = itm.item_id)
+                LEFT OUTER JOIN StationBuying AS sb
+                    ON (si.station_id = sb.station_id
+                        AND si.item_id = sb.item_id)
+                LEFT OUTER JOIN StationSelling AS ss
+                    ON (si.station_id = ss.station_id
+                        AND si.item_id = ss.item_id)
+                {stationWhere}
+         ORDER  BY stn.station_id, cat.name, {ordering}
+    """
+
+    sql = stmt.format(
+            stationWhere=stationWhere,
+            defDemand=defaultDemandVal,
+            itemJoin=itemJoin,
+            ordering=ordering,
+            )
     if debug:
         print(sql)
     cur.execute(sql)
@@ -154,7 +159,6 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
             levelDesc = str(level)
         return "{}{}".format(quantityDesc, levelDesc)
 
-
     maxCrWidth = 7
     levelWidth = 8
 
@@ -165,12 +169,12 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
         file.write("  {}".format("Timestamp"))
     file.write("\n\n")
 
-
     naIQL = itemQtyAndLevel(0, 0)
     unkIQL = itemQtyAndLevel(-2, -2)
     defIQL = itemQtyAndLevel(-1, -1)
 
     for (stnID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
+        modified = modified or now
         station, system = stations[stnID]
         if system is not lastSys:
             if lastStn: file.write("\n\n")
@@ -209,8 +213,8 @@ def dumpPrices(dbFilename, elementMask, stationID=None, file=None, defaultZero=F
                         stockStr,
                         lvlwidth=levelWidth,
                     ))
-        if withTimes:
-            file.write("  {}".format(modified or 'now'))
+        if withTimes and modified:
+            file.write("  {}".format(modified))
         file.write("\n")
 
 
