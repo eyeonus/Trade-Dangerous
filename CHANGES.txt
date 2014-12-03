@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.4 Dec 01 2014
+. (kfsone) "updated.prices" will now contain line removals
 . (kfsone) 155 new systems from RedWizard
 . (Eggplant!) More Stations
 . (kfsone) Fix miscount of jumps when same-system hops were in a route,
