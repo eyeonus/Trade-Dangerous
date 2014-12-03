@@ -18,7 +18,6 @@ import sys
 from collections import namedtuple, defaultdict
 import itertools
 import math
-import os
 from pathlib import Path
 
 from tradeexcept import TradeException
@@ -294,7 +293,7 @@ class TradeDB(object):
                     debug=None,
                 ):
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
-        dataPath = Path(os.path.abspath(dataPath))
+        dataPath = Path(dataPath).resolve()
         self.tdenv = tdenv
         self.dbPath = dataPath / Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
