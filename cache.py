@@ -804,14 +804,13 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
     dbFilename = str(dbPath)
     # Create an in-memory database to populate with our data.
     tdenv.DEBUG0("Creating temporary database in memory")
-    tempDBName = dbFilename + ".new"
-    backupDBName = dbFilename  + ".prev"
-    tempPath, backupPath = Path(tempDBName), Path(backupDBName)
+    tempPath = dbPath.with_suffix(".new")
+    backupPath = dbPath.with_suffix(".prev")
 
     if tempPath.exists():
         tempPath.unlink()
 
-    tempDB = sqlite3.connect(tempDBName)
+    tempDB = sqlite3.connect(str(tempPath))
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
@@ -857,6 +856,8 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
         that is when a new station is encountered, delete any
         existing records for that station in the database.
     """
+
+    assert isinstance(path, Path)
 
     if not path.exists():
         raise TradeException("No such file: {}".format(
