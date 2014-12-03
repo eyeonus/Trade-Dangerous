@@ -27,7 +27,7 @@ import math
 from pathlib import Path
 from collections import namedtuple
 from tradeexcept import TradeException
-from data import corrections
+import corrections
 
 ######################################################################
 # Regular expression patterns. Here be draegons.
