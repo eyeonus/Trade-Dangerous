@@ -287,12 +287,12 @@ class TradeDB(object):
                     tdenv=None,
                     sqlFilename=None,
                     pricesFilename=None,
-                    buildLinks=True,
-                    includeTrades=True,
+                    load=True,
+                    buildLinks=False,
+                    includeTrades=False,
                     debug=None,
                 ):
-        tdenv = tdenv or TradeEnv(debug=(debug or 0))
-        self.tdenv = tdenv
+        self.tdenv = tdenv = tdenv or TradeEnv(debug=(debug or 0))
         self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
         self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
@@ -303,9 +303,9 @@ class TradeDB(object):
         self.numLinks = None
         self.tradingCount = None
 
-        self.reloadCache()
-
-        self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
+        if load:
+            self.reloadCache()
+            self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
                     buildLinks=buildLinks,
                     includeTrades=includeTrades,
                     )
