@@ -18,6 +18,7 @@ import sys
 from collections import namedtuple, defaultdict
 import itertools
 import math
+import os
 from pathlib import Path
 
 from tradeexcept import TradeException
@@ -262,29 +263,30 @@ class TradeDB(object):
             '[]()*+-.,{}:'
             )
     # The DB cache
-    defaultDB = './data/TradeDangerous.db'
+    defaultDB = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
-    defaultSQL = './data/TradeDangerous.sql'
+    defaultSQL = 'TradeDangerous.sql'
     # File containing text description of prices
-    defaultPrices = './data/TradeDangerous.prices'
+    defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencies!
     defaultTables = [
-                      [ './data/Added.csv', 'Added' ],
-                      [ './data/System.csv', 'System' ],
-                      [ './data/Station.csv', 'Station' ],
-                      [ './data/Ship.csv', 'Ship' ],
-                      [ './data/ShipVendor.csv', 'ShipVendor' ],
-                      [ './data/Upgrade.csv', 'Upgrade' ],
-                      [ './data/UpgradeVendor.csv', 'UpgradeVendor' ],
-                      [ './data/Category.csv', 'Category' ],
-                      [ './data/Item.csv', 'Item' ],
-                      [ './data/AltItemNames.csv', 'AltItemNames' ]
+                      [ 'Added.csv', 'Added' ],
+                      [ 'System.csv', 'System' ],
+                      [ 'Station.csv', 'Station' ],
+                      [ 'Ship.csv', 'Ship' ],
+                      [ 'ShipVendor.csv', 'ShipVendor' ],
+                      [ 'Upgrade.csv', 'Upgrade' ],
+                      [ 'UpgradeVendor.csv', 'UpgradeVendor' ],
+                      [ 'Category.csv', 'Category' ],
+                      [ 'Item.csv', 'Item' ],
+                      [ 'AltItemNames.csv', 'AltItemNames' ]
                     ]
 
 
     def __init__(self,
                     tdenv=None,
+                    dataPath='./data',
                     sqlFilename=None,
                     pricesFilename=None,
                     buildLinks=True,
@@ -292,12 +294,13 @@ class TradeDB(object):
                     debug=None,
                 ):
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
+        dataPath = Path(os.path.abspath(dataPath))
         self.tdenv = tdenv
-        self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
+        self.dbPath = dataPath / Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
-        self.sqlPath = Path(sqlFilename or TradeDB.defaultSQL)
-        self.pricesPath = Path(pricesFilename or TradeDB.defaultPrices)
-        self.importTables = TradeDB.defaultTables
+        self.sqlPath = dataPath / Path(sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = dataPath / Path(pricesFilename or TradeDB.defaultPrices)
+        self.importTables = [(str(dataPath / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
         self.conn = None
         self.cur = None
         self.numLinks = None
