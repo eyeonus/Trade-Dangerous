@@ -285,7 +285,6 @@ class TradeDB(object):
 
     def __init__(self,
                     tdenv=None,
-                    dataPath='./data',
                     sqlFilename=None,
                     pricesFilename=None,
                     buildLinks=True,
@@ -293,7 +292,7 @@ class TradeDB(object):
                     debug=None,
                 ):
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
-        dataPath = Path(dataPath).resolve()
+        dataPath = Path(tdenv.dataPath).resolve()
         self.tdenv = tdenv
         self.dbPath = dataPath / Path(tdenv.dbFilename or TradeDB.defaultDB)
         self.dbURI = str(self.dbPath)
