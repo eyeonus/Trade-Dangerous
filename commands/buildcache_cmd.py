@@ -64,28 +64,20 @@ def run(results, cmdenv, tdb):
     from tradedb import TradeDB
 
     # Check that the file doesn't already exist.
-    dbFilename = cmdenv.dbFilename or TradeDB.defaultDB
-    sqlFilename = cmdenv.sqlFilename or TradeDB.defaultSQL
-    pricesFilename = cmdenv.pricesFilename or TradeDB.defaultPrices
-    importTables = TradeDB.defaultTables
-
-    from pathlib import Path
-    dbPath = Path(dbFilename)
-    sqlPath = Path(sqlFilename)
-    pricesPath = Path(pricesFilename)
     if not cmdenv.force:
-        if dbPath.exists():
+        if tdb.dbPath.exists():
             raise CommandLineError(
-                    "SQLite3 database '{}' already exists. "
+                    "SQLite3 database '{}' already exists.\n"
                      "Either remove the file first or use the '-f' option."
-                        .format(dbFilename))
+                        .format(tdb.dbFilename))
 
-    if not sqlPath.exists():
+    if not tdb.sqlPath.exists():
         raise CommandLineError(
-                    "SQL File does not exist: {}".format(sqlFilename))
+                    "SQL File does not exist: {}"
+                        .format(tdb.sqlFilename))
 
     from cache import buildCache
-    buildCache(cmdenv, dbPath, sqlPath, pricesPath, importTables)
+    buildCache(tdb, cmdenv)
 
     return None
 

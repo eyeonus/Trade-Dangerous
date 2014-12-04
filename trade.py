@@ -42,11 +42,7 @@ def main(argv):
     cmdIndex = commands.CommandIndex()
     cmdenv = cmdIndex.parse(sys.argv)
 
-    if cmdenv.wantsTradeDB:
-        # load the database
-        tdb = tradedb.TradeDB(cmdenv, buildLinks=False, includeTrades=False)
-    else:
-        tdb = tradedb.TradeDB
+    tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
 
     results = cmdenv.run(tdb)
     if results:
