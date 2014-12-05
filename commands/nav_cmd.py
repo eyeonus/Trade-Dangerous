@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 import math
 from tradedb import System, Station
+from tradeexcept import TradeException
 
 ######################################################################
 # Parser config
@@ -43,25 +44,41 @@ switches = [
 ######################################################################
 # Helpers
 
-######################################################################
-# Perform query and populate result set
 
-def run(results, cmdenv, tdb):
-    from commands.commandenv import ResultRow
+class NoRouteError(TradeException):
+    pass
 
-    srcSystem, dstSystem = cmdenv.origPlace, cmdenv.destPlace
-    if isinstance(srcSystem, Station):
-        srcSystem = srcSystem.system
-    if isinstance(dstSystem, Station):
-        dstSystem = dstSystem.system
 
-    maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
-
-    cmdenv.DEBUG0("Route from {} to {} with max {} ly per jump.",
-                    srcSystem.name(), dstSystem.name(), maxLyPer)
-
-    openList = { srcSystem: 0.0 }
+def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
+    openList = dict()
     distances = { srcSystem: [ 0.0, None ] }
+
+    # Check for a direct route and seed the open list with the systems
+    # in direct-range of the origin.
+    for dstSys, distSq in tdb.genSystemsInRange(srcSystem, maxLyPer):
+        dist = math.sqrt(distSq)
+        distances[dstSys] = [ dist, srcSystem ]
+        if dstSys == dstSystem:
+            return [ srcSystem, dstSystem ], distances
+        openList[dstSys] = dist
+    # Is there only one system in the list?
+    if not openList:
+        raise NoRouteError(
+                "There are no systems within {}ly of {}.".format(
+                    maxLyPer, srcSystem.name()
+                ))
+
+    # Check whether the destination system has a connecting link
+    inRange = False
+    for dstSys, dist in tdb.genSystemsInRange(dstSystem, maxLyPer):
+        inRange = True
+        break
+    if not inRange:
+        raise NoRouteError(
+                "There are no systems within {}ly of {}.".format(
+                    maxLyPer, dstSystem.name()
+                ))
+        return None, None
 
     # As long as the open list is not empty, keep iterating.
     overshoot = (cmdenv.aggressiveness * 4) + 1
@@ -76,7 +93,7 @@ def run(results, cmdenv, tdb):
         openNodes, openList = openList, {}
 
         gsir = tdb.genSystemsInRange
-        for (node, startDist) in openNodes.items():
+        for node, startDist in openNodes.items():
             for (destSys, destDistSq) in gsir(node, maxLyPer):
                 destDist = math.sqrt(destDistSq)
                 dist = startDist + destDist
@@ -88,36 +105,64 @@ def run(results, cmdenv, tdb):
                     distNode[0], distNode[1] = dist, node
                 except KeyError:
                     distances[destSys] = [ dist, node ]
-                assert not destSys in openList or openList[destSys] > dist
                 openList[destSys] = dist
 
     # Unravel the route by tracing back the vias.
     route = [ dstSystem ]
-    try:
-        while route[-1] != srcSystem:
-            jumpEnd = route[-1]
+    while route[-1] != srcSystem:
+        jumpEnd = route[-1]
+        try:
             jumpStart = distances[jumpEnd][1]
-            route.append(jumpStart)
-    except KeyError:
-        print("No route found between {} and {} with {}ly jump limit.".format(srcSystem.name(), dstSystem.name(), maxLyPer))
-        return
+        except KeyError:
+            raise NoRouteError(
+                    "No route found between {} and {} "
+                        "with {}ly jump limit.".format(
+                            srcSystem.name(), dstSystem.name(), maxLyPer
+                    ))
+            return None, None
+        route.append(jumpStart)
+
+    return route, distances
+
+
+######################################################################
+# Perform query and populate result set
+
+def run(results, cmdenv, tdb):
+    from commands.commandenv import ResultRow
+
+    srcSystem, dstSystem = cmdenv.origPlace, cmdenv.destPlace
+    if isinstance(srcSystem, Station):
+        srcSystem = srcSystem.system
+    if isinstance(dstSystem, Station):
+        dstSystem = dstSystem.system
+
+    maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
+
+    cmdenv.DEBUG0("Route from {} to {} with max {}ly per jump.",
+                    srcSystem.name(), dstSystem.name(), maxLyPer)
+
+    route, distances = getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer)
 
     results.summary = ResultRow(
                 fromSys=srcSystem,
                 toSys=dstSystem,
                 maxLy=maxLyPer,
             )
-    
-    lastHop, totalLy = None, 0.00
+
+    lastHop, totalLy, dirLy = None, 0.00, 0.00
     route.reverse()
     for hop in route:
         jumpLy = (distances[hop][0] - distances[lastHop][0]) if lastHop else 0.00
         totalLy += jumpLy
+        if cmdenv.detail:
+            dirLy = math.sqrt(dstSystem.distToSq(hop))
         row = ResultRow(
                 action='Via',
                 system=hop,
                 jumpLy=jumpLy,
-                totalLy=totalLy
+                totalLy=totalLy,
+                dirLy=dirLy,
                 )
         results.rows.append(row)
         lastHop = hop
@@ -150,11 +195,14 @@ def render(results, cmdenv, tdb):
     if cmdenv.detail:
         rowFmt.addColumn("DistLy", '>', '7', '.2f',
             key=lambda row: row.totalLy)
+    if cmdenv.detail > 1:
+        rowFmt.addColumn("DirLy", '>', 7, '.2f',
+            key=lambda row: row.dirLy)
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-    
+
     for row in results.rows:
         print(rowFmt.format(row))
 
