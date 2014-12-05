@@ -26,7 +26,7 @@ arguments = [
 ]
 switches = [
     ParseArgument('--supply', '-S', 
-            help='[Text editing] Includes demand and stock (supply) values in the update.',
+            help='[DEPRECATED] Includes demand and stock (supply) values in the update.',
             action='store_true',
             default=False,
     ),
@@ -380,6 +380,9 @@ def run(results, cmdenv, tdb):
                 "--experimental-gui (--exp or -G for short) "
                 "flags.\n"
         )
+
+    if not cmdenv.quiet and cmdenv.supply:
+        print("NOTE: '--supply' (-S) is deprecated.")
 
     # User specified one of the options to use an editor.
     editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
