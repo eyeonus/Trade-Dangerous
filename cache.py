@@ -27,7 +27,7 @@ import math
 from pathlib import Path
 from collections import namedtuple
 from tradeexcept import TradeException
-from data import corrections
+import corrections
 
 ######################################################################
 # Regular expression patterns. Here be draegons.
@@ -786,7 +786,7 @@ def generateStationLink(tdenv, db):
 
 ######################################################################
 
-def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=False):
+def buildCache(tdb, tdenv):
     """
         Rebuilds the SQlite database from source files.
 
@@ -801,17 +801,19 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
         are newer than the database.
     """
 
-    dbFilename = str(dbPath)
+    dbPath = tdb.dbPath
+    sqlPath = tdb.sqlPath
+    pricesPath = tdb.pricesPath
+
     # Create an in-memory database to populate with our data.
     tdenv.DEBUG0("Creating temporary database in memory")
-    tempDBName = dbFilename + ".new"
-    backupDBName = dbFilename  + ".prev"
-    tempPath, backupPath = Path(tempDBName), Path(backupDBName)
+    tempPath = dbPath.with_suffix(".new")
+    backupPath = dbPath.with_suffix(".prev")
 
     if tempPath.exists():
         tempPath.unlink()
 
-    tempDB = sqlite3.connect(tempDBName)
+    tempDB = sqlite3.connect(str(tempPath))
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
@@ -820,7 +822,7 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
         tempDB.executescript(sqlScript)
 
     # import standard tables
-    for (importName, importTable) in importTables:
+    for (importName, importTable) in tdb.importTables:
         try:
             processImportFile(tdenv, tempDB, Path(importName), importTable)
         except FileNotFoundError:
@@ -828,7 +830,7 @@ def buildCache(tdenv, dbPath, sqlPath, pricesPath, importTables, defaultZero=Fal
 
     # Parse the prices file
     if pricesPath.exists():
-        processPricesFile(tdenv, tempDB, pricesPath, defaultZero=defaultZero)
+        processPricesFile(tdenv, tempDB, pricesPath)
     elif not tdenv.quiet:
         print("NOTE: Missing \"{}\" file - no price data".format(
                     str(pricesPath)
@@ -858,6 +860,8 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
         existing records for that station in the database.
     """
 
+    assert isinstance(path, Path)
+
     if not path.exists():
         raise TradeException("No such file: {}".format(
                     str(path)
@@ -871,7 +875,6 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
     processPricesFile(tdenv,
             db=tdb.getDB(),
             pricesPath=path,
-            defaultZero=tdenv.forceNa,
             )
 
     # If everything worked, we may need to re-build the prices file.
@@ -880,12 +883,12 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
         tdenv.DEBUG0("Update complete, regenerating .prices file")
         with tdb.pricesPath.open("w") as pricesFile:
             prices.dumpPrices(
-                    tdb.dbURI,
+                    tdb.dbFilename,
                     prices.Element.full,
                     file=pricesFile,
                     debug=tdenv.debug)
 
     # Update the DB file so we don't regenerate it.
-    os.utime(tdb.dbURI)
+    os.utime(tdb.dbFilename)
 
 
