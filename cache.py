@@ -650,9 +650,12 @@ def processImportFile(tdenv, db, importPath, tableName):
         tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
 
         # Check if there is a deprecation check for this table.
-        deprecationFn = getattr(sys.modules[__name__],
-                                "deprecationCheck"+tableName,
-                                None)
+        if tdenv.debug:
+            deprecationFn = getattr(sys.modules[__name__],
+                                    "deprecationCheck"+tableName,
+                                    None)
+        else:
+            deprecationFn = None
 
         # import the data
         importCount = 0
