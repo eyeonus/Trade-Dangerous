@@ -485,6 +485,7 @@ class TradeDB(object):
                 return place
         except AmbiguityError as e:
             # See if the ambiguity resolves down to a single system.
+            systems = []
             for candidate in e.anyMatch:
                 if isinstance(candidate, Station):
                     systems.add(candidate.system)
