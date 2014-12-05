@@ -97,6 +97,17 @@ class System(object):
         self._rangeCache = None
 
 
+    def distToSq(self, other):
+        """
+            Calculate the square of the distance (in ly)
+            to a given other star.
+        """
+        dx2 = (self.posX - other.posX) ** 2
+        dy2 = (self.posY - other.posY) ** 2
+        dz2 = (self.posZ - other.posZ) ** 2
+        return (dx2 + dy2 + dz2)
+
+
     def name(self):
         return self.dbname.upper()
 
@@ -492,8 +503,9 @@ class TradeDB(object):
             Note: Returned distances are squared
         """
 
-        place = self.lookupPlace(system)
-        system = place.system if isinstance(system, Station) else place
+        if not isinstance(system, System):
+            place = self.lookupPlace(system)
+            system = place.system if isinstance(system, Station) else place
 
         # Yield what we already have
         if includeSelf:

@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.5 Dec 04 2014
+. (kfsone) "nav" with -vv will show direct distance left to destination
+. (kfsone) Minor speed improvements to "nav"
 . (kfsone) Startup optimizations,
 . (kfsone) "update" command now always exposes supply and demand,
 . (kfsone) "--supply" (-S) is now deprecated for "update" command,
