@@ -236,7 +236,7 @@ class TradeDB(object):
 
         Attributes:
             dbPath              -   Path object describing the db location.
-            dbURI               -   String representation of the db location (e.g. filename).
+            dbFilename          -   str(dbPath)
             conn                -   The database connection.
 
         Methods:
@@ -285,28 +285,31 @@ class TradeDB(object):
 
     def __init__(self,
                     tdenv=None,
-                    sqlFilename=None,
-                    pricesFilename=None,
-                    buildLinks=True,
-                    includeTrades=True,
+                    load=True,
+                    buildLinks=False,
+                    includeTrades=False,
                     debug=None,
                 ):
-        tdenv = tdenv or TradeEnv(debug=(debug or 0))
-        dataPath = Path(tdenv.dataPath).resolve()
-        self.tdenv = tdenv
-        self.dbPath = dataPath / Path(tdenv.dbFilename or TradeDB.defaultDB)
-        self.dbURI = str(self.dbPath)
-        self.sqlPath = dataPath / Path(sqlFilename or TradeDB.defaultSQL)
-        self.pricesPath = dataPath / Path(pricesFilename or TradeDB.defaultPrices)
-        self.importTables = [(str(dataPath / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
         self.conn = None
         self.cur = None
         self.numLinks = None
         self.tradingCount = None
 
-        self.reloadCache()
+        self.tdenv = tdenv or TradeEnv(debug=(debug or 0))
 
-        self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
+        dataDir = Path(tdenv.dataDir).resolve()
+        self.dbPath = dataDir / Path(tdenv.dbFilename or TradeDB.defaultDB)
+        self.sqlPath = dataDir / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = dataDir / Path(tdenv.pricesFilename or TradeDB.defaultPrices)
+        self.importTables = [(str(dataDir / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
+
+        self.dbFilename = str(self.dbPath)
+        self.sqlFilename = str(self.sqlPath)
+        self.pricesFilename = str(self.pricesPath)
+
+        if load:
+            self.reloadCache()
+            self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
                     buildLinks=buildLinks,
                     includeTrades=includeTrades,
                     )
@@ -320,7 +323,7 @@ class TradeDB(object):
         try:
             self.tdenv.DEBUG1("Connecting to DB")
             import sqlite3
-            conn = sqlite3.connect(self.dbURI)
+            conn = sqlite3.connect(self.dbFilename)
             conn.execute("PRAGMA foreign_keys=ON")
             return conn
         except ImportError as e:
@@ -380,13 +383,7 @@ class TradeDB(object):
         else:
             self.tdenv.DEBUG0("Building DB Cache")
 
-        cache.buildCache(
-                self.tdenv,
-                dbPath=self.dbPath,
-                sqlPath=self.sqlPath,
-                pricesPath=self.pricesPath,
-                importTables=self.importTables
-                )
+        cache.buildCache(self, self.tdenv)
 
 
     ############################################################
@@ -1085,7 +1082,7 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self, dbFilename=None, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
+    def load(self, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
