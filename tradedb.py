@@ -492,8 +492,9 @@ class TradeDB(object):
             Note: Returned distances are squared
         """
 
-        place = self.lookupPlace(system)
-        system = place.system if isinstance(system, Station) else place
+        if not isinstance(system, System):
+            place = self.lookupPlace(system)
+            system = place.system if isinstance(system, Station) else place
 
         # Yield what we already have
         if includeSelf:
