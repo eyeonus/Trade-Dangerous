@@ -252,7 +252,7 @@ def editUpdate(tdb, cmdenv, stationID):
     tmpPath = getTemporaryPath(cmdenv)
 
     absoluteFilename = None
-    dbFilename = cmdenv.dbFilename or tdb.defaultDB
+    dbFilename = tdb.dbFilename
     try:
         elementMask = prices.Element.basic
         if cmdenv.supply: elementMask |= prices.Element.supply
@@ -327,7 +327,7 @@ def editUpdate(tdb, cmdenv, stationID):
 
 
 def guidedUpdate(tdb, cmdenv):
-    dbFilename = cmdenv.dbFilename or tdb.defaultDB
+    dbFilename = tdb.dbFilename
     stationID = cmdenv.startStation.ID
     tmpPath = getTemporaryPath(cmdenv)
 
