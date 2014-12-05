@@ -34,16 +34,6 @@ switches = [
         help='Overwrite existing file',
     ),
     ParseArgument(
-        '--corrections', default=False, action='store_true',
-        help=(
-            "EXPERT: "
-            "Allow- and generate corrections for- station names that "
-            "replace a defaulted station name. Corrections are "
-            "printed to stderr so you can capture them and add them "
-            "to your data/corrections.py."
-            ),
-    ),
-    ParseArgument(
         '--ignore-unknown', '-i',
         default=False, action='store_true',
         dest='ignoreUnknown',

@@ -150,14 +150,10 @@ class CommandEnv(TradeEnv):
 
         avoidItems = self.avoidItems = []
         avoidPlaces = self.avoidPlaces = []
-
-        try:
-            avoidances = self.avoid
-            if not avoidances:
-                raise AttributeError("Fake")
-        except AttributeError:
-            self.avoidPlaces = []
+        avoidances = self.avoid
+        if not self.avoid:
             return
+        avoidances = self.avoid
 
         tdb = self.tdb
 

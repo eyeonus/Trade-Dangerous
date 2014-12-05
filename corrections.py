@@ -43,10 +43,6 @@ def correctStation(systemName, oldName):
     try:
         return stations[systemName.upper() + "/" + oldName.upper()]
     except KeyError:
-        pass
-    try:
-        return stations[oldName.upper()]
-    except KeyError:
         return oldName
 
 
