@@ -263,44 +263,13 @@ def getCategoriesByNameIndex(cur):
     return { name: ID for (ID, name) in cur }
 
 
-def testItemNamesUniqueAcrossCategories(cur):
+def getItemByNameIndex(cur):
     """
-        Return True if no single item name appears twice.
-        In previous betas we had some items which appeared
-        in more than one category.
-    """
-    cur.execute("""
-            SELECT COUNT(*)
-              FROM (
-                SELECT name
-                  FROM Item
-                 GROUP BY name
-                HAVING COUNT(*) > 1
-              )
-        """)
-    nonUniqueItemCount = cur.fetchone()[0]
-    return (nonUniqueItemCount == 0)
-
-
-def getItemByNameIndex(cur, itemNamesAreUnique):
-    """
-        Generate item name index. If item names are not
+        Generate item name index.
         unique, prefix the name with the category id.
     """
-    if itemNamesAreUnique:
-        cur.execute("SELECT item_id, name FROM item")
-        return {
-            name: itemID
-                for (itemID, name)
-                in cur
-        }
-    else:
-        cur.execute("SELECT category_id, item_id, name FROM item")
-        return {
-            "{}:{}".format(catID, name): itemID
-                for (catID, itemID, name)
-                 in cur
-        }
+    cur.execute("SELECT item_id, name FROM item")
+    return { name: itemID for (itemID, name) in cur }
 
 
 def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
@@ -316,8 +285,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     systemByName = getSystemByNameIndex(cur)
     categoriesByName = getCategoriesByNameIndex(cur)
 
-    itemNamesAreUnique = testItemNamesUniqueAcrossCategories(cur)
-    itemByName = getItemByNameIndex(cur, itemNamesAreUnique)
+    itemByName = getItemByNameIndex(cur)
 
     defaultUnits = -1 if not defaultZero else 0
     defaultLevel = -1 if not defaultZero else 0
@@ -330,7 +298,6 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     processedItems = {}
     itemPrefix = ""
     DELETED = corrections.DELETED
-
 
     def changeStation(matches):
         nonlocal categoryID, uiOrder, facility, stationID
@@ -461,9 +428,8 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             modified = None         # Use CURRENT_FILESTAMP
 
         # Look up the item ID.
-        itemPrefix = "" if itemNamesAreUnique else "{}:".format(categoryID)
         try:
-            itemID = itemByName[itemPrefix + itemName]
+            itemID = itemByName[itemName]
         except KeyError:
             itemID = -1
         if itemID < 0:
@@ -473,7 +439,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 tdenv.DEBUG1("DELETED {}", oldName)
                 return
             try:
-                itemID = itemByName[itemPrefix + itemName]
+                itemID = itemByName[itemName]
                 tdenv.DEBUG1("Renamed {} -> {}", oldName, itemName)
             except KeyError:
                 ex = UnknownItemError(priceFile, lineNo, itemName)
