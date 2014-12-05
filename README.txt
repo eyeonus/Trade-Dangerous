@@ -322,10 +322,6 @@ UPDATE sub-command:
       Saves the prices in a human-readable format and loads that into
       an editor. Make changes and save to update the database.
 
-    --supply
-    -S
-      Exposes the "demand" and "stock" columns.
-
     --timestamps
     -T
       Exposes the "timestamp" column.
@@ -656,37 +652,60 @@ is designed to closely resemble what we see in the market screens in-game.
 
 To edit the data for a single station, use the "update" sub-command, e.g.
 
-  trade.py update --notepad Aulin
+  trade.py update --notepad beagle2
 
 This will open notepad with the data for Aulin, which will look something like:
 
-  @ AULIN/Aulin Enterprise
+  @ I BOOTIS/Beagle 2 Landing
      + Chemicals
-        Explosives                 50      0
-        Hydrogen Fuels             19      0
-        Mineral Oil               100      0
-        Pesticides                 21      0
+        Explosives                 50      0        ?      -
+        Hydrogen Fuels             19      0        ?      -
+        Mineral Oil               100      0        ?      -
+        Pesticides                 21      0        ?      -
      + Consumer Items
-        Clothing                  300      0
-        Consumer Tech            1112   1111
+        Clothing                  300      0        ?      -
+        Consumer Tech            1112   1111        ?    30L
 
 "@" lines specify a system/station.
 "+" lines specify a category.
 The remaining lines are items.
 
-  Explosives    50    0
+  Explosives    50    0    ?    -
 
 These fields are:
   <item name>
   <sale price> (how much the station pays)
   <buying price> (how much the station charges)
+  <demand> ('?' means "we don't care")
+  <stock>  ('-' means "not available")
 
 So you can see the only item this station is selling is Consumer Tech, which 
-the station wants 1111 credits for.
+the station wants 1111 credits for. The demand wasn't recorded (we generally
+aren't interested in demand levels since E:D doesn't seem to use them) and
+the items wasn't available for purchase *from* the station.
 
-TradeDangerous can also leverage the "DEMAND" and "STOCK" values from the
-market UI. To expose those when using "trade.py update", use the "--all"
-option. For more details of the extended format, see the Prices wiki page:
+TD will use the 'stock' values to limit how many units it can buy. For
+example, if you have money to buy 30 units from a station but the .prices
+data says only 10 are available, TD only tell you to buy 10 units and it
+will fill the rest of your hold up with other stuff.
+
+Demand and Stock both take a "supply level" value which is either "?", "-"
+or the number of units followed by the level: L for Low, M for Medium,
+H for High or ? for "don't care".
+
+   ?
+   -
+   1L
+   23M
+   3402H
+   444?
+
+Best Practice:
+
+ - Leave demand as ?, neither E:D or TD use it,
+ - Stock quantities over 10k are usuall irrelevant, leave them as ?,
+ 
+For more details of the .prices format, see the wiki page:
 https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data
 
 NOTE: The order items are listed within their category is saved between edits,
@@ -694,9 +713,6 @@ so if you switch "Explosives" and "Hydrogen Fuels" and then save it, they
 will show that way when you edit this station again.
 
 See "trade.py update -h" for more help with the update command.
-
-Note: My personal editor of choice is "Sublime Text", which is why there is
-a command line option (--sublime or just --subl) for invoking it.
 
 
 ==============================================================================

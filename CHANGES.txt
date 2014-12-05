@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.5 Dec 04 2014
+. (kfsone) Startup optimizations,
+. (kfsone) "update" command now always exposes supply and demand,
+. (kfsone) "--supply" (-S) is now deprecated for "update" command,
+
 v6.1.4 Dec 01 2014
 . (kfsone) "updated.prices" will now contain line removals
 . (kfsone) 155 new systems from RedWizard
