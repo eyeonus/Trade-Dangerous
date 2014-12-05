@@ -10,7 +10,7 @@ class TradeEnv(object):
         'debug': 0,
         'detail': 0,
         'quiet': 0,
-        'dataPath': './data',
+        'dataDir': './data',
     }
 
     def __init__(self, properties=None, **kwargs):
