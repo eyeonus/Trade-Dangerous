@@ -16,6 +16,8 @@ systems = {
 
 stations = {
     "CHEMAKU/BARTOE PLATFORM": DELETED,
+    "ERAVATE/ASKERMAN MARKET": "Ackerman Market",
+    "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
 
 #ADD_STATIONS_HERE
 }
