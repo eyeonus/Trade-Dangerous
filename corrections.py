@@ -18,6 +18,7 @@ stations = {
     "CHEMAKU/BARTOE PLATFORM": DELETED,
     "ERAVATE/ASKERMAN MARKET": "Ackerman Market",
     "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
+    "HALAI/GENKER STATION": "Cenker Station",
 
 #ADD_STATIONS_HERE
 }
