@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.6 Dec 06 2014
+. (eggplant) Made it possible to override the path to data files, etc,
+  by specifying a dataDir= argument to TradeEnv(). Default is still ./data
+
 v6.1.5 Dec 04 2014
 . (kfsone) "run" --from will now accept a System name
 . (kfsone) "update" GUI will now do some sanity checking on prices
