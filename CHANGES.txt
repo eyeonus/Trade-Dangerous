@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.5 Dec 04 2014
+. (kfsone) "run" --from will now accept a System name
+. (kfsone) "update" GUI will now do some sanity checking on prices
 . (kfsone) "nav" with -vv will show direct distance left to destination
 . (kfsone) Minor speed improvements to "nav"
 . (kfsone) Startup optimizations,

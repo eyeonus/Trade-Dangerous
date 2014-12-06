@@ -303,21 +303,21 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         if stationID < 0:
             try:
                 correctName = corrections.systems[systemName]
-                if correction == DELETED:
+                if correctName == DELETED:
                     tdenv.DEBUG1("DELETED: {}", systemName)
-                    stationID = correction
+                    stationID = DELETED
                     return
-                systemName = correction.upper()
+                systemName = correctName.upper()
             except KeyError:
                 pass
             try:
                 key = systemName + "/" + stationName.upper()
-                correction = corrections.stations[key]
-                if correction == DELETED:
+                correctName = corrections.stations[key]
+                if correctName == DELETED:
                     tdenv.DEBUG1("DELETED: {}", key)
-                    stationID = correction
+                    stationID = DELETED
                     return
-                stationName = correction.upper()
+                stationName = correctName.upper()
             except KeyError:
                 pass
             facility = systemName + '/' + stationName
@@ -652,8 +652,10 @@ def processImportFile(tdenv, db, importPath, tableName):
         # Check if there is a deprecation check for this table.
         if tdenv.debug:
             deprecationFn = getattr(sys.modules[__name__],
-                    "deprecationCheck"+tableName,
-                    None)
+                                    "deprecationCheck"+tableName,
+                                    None)
+        else:
+            deprecationFn = None
 
         # import the data
         importCount = 0

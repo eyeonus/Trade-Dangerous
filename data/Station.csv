@@ -284,7 +284,6 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Eranin','Azeban City',0.0
 'Eravarenth','Cooper Landing',0.0
 'Eravate','Ackerman Market',273.0
-'Eravate','Askerman Market',0.0
 'Eravate','Cleve Hub',36.7
 'Eravate','Maine Hub',496.0
 'Eravate','McMahon Dock',148.0
@@ -329,6 +328,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'G 180-18','Alexandria Gateway',0.0
 'G 181-6','Thomas Installation',0.0
 'G 203-47','Michelson Terminal',0.0
+'G 205-47','Bain Horizons',154000.0
 'G 230-27','Laplace Works',0.0
 'G 250-34','Cavendish Terminal',0.0
 'G 65-9','Marconi Port',0.0
@@ -375,7 +375,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Hadad','Levy settlement',0.0
 'Hagalaz','De Andrade Ring',0.0
 'Hahgwe','Skripochka Horizons',0.0
-'Halai','Genker Station',0.0
+'Halai','Cenker Station',0.0
+'Halai','Chaudhary Enterprise',0.0
+'Halai','Bartoe Terminal',0.0
 'Hambula','Qureshi Hub',0.0
 'Hanggardi','Soddy Market',0.0
 'Haraka','Blackman Station',0.0
@@ -996,6 +998,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tyr','Glashow',0.0
 'Ualapalor','Anderson Terminal',0.0
 'Ugraswarka','Baille City',0.0
+'Uluri','McDivitt Settlement',0.0
+'Uluri','Parker Beacon',0.0
 'Uoluskas','Moisuc Dock',0.0
 'Uszaa','Guest Installation',0.0
 'V2151 Cygni','Eyharts Hub',0.0
@@ -1065,7 +1069,6 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Xi Wangkala','Ross Colony',0.0
 'Yakabugai','Aristotle Gateway',690.0
 'Yakabugai','Levi-Montalcini City',509.0
-'Yakabugai','Serebov Station',0.0
 'Yakabugai','Serebrov Station',365.0
 'Yanyan','Morin City',0.0
 'Yarigui','Kier Ring',0.0
