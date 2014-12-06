@@ -59,7 +59,7 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
         dist = math.sqrt(distSq)
         distances[dstSys] = [ dist, srcSystem ]
         if dstSys == dstSystem:
-            return [ srcSystem, dstSystem ], distances
+            return [ dstSystem, srcSystem ], distances
         openList[dstSys] = dist
     # Is there only one system in the list?
     if not openList:
