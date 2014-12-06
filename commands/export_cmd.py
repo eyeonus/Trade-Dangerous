@@ -25,8 +25,6 @@ import csv
 ######################################################################
 # Default values
 
-defaultPath = Path("./data")
-
 # for some tables the first two columns will be reversed
 reverseList = [ 'AltItemNames',
                 'Item',
@@ -58,9 +56,9 @@ arguments = [
 ]
 switches = [
     ParseArgument('--path',
-            help="Specify save location of the CSV files. Default: '{}'".format(defaultPath),
+            help="Specify a different save location of the CSV files than the default.",
             type=str,
-            default=defaultPath
+            default=None
         ),
     ParseArgument('--tables', "-T",
             help='Specify comma separated tablenames to export.',
@@ -142,7 +140,11 @@ def run(results, cmdenv, tdb):
         raise CommandLineError("Database '{}' not found.".format(dbFilename))
 
     # check export path exists
-    exportDir = Path(cmdenv.path)
+    if cmdenv.path:
+        # the "--path" overwrites the default path of TD
+        exportDir = Path(cmdenv.path)
+    else:
+        exportDir = Path(cmdenv.dataDir)
     if not exportDir.is_dir():
         raise CommandLineError("Save location '{}' not found.".format(cmdenv.path))
 
