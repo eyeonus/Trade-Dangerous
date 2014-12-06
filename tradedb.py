@@ -309,7 +309,7 @@ class TradeDB(object):
         self.tdenv = tdenv or TradeEnv(debug=(debug or 0))
 
         dataDir = Path(tdenv.dataDir).resolve()
-        self.dbPath = dataDir / Path(tdenv.dbFilename or TradeDB.defaultDB)
+        self.dbPath = Path(tdenv.dbFilename or dataDir / TradeDB.defaultDB)
         self.sqlPath = dataDir / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         self.pricesPath = dataDir / Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         self.importTables = [(str(dataDir / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
@@ -719,7 +719,7 @@ class TradeDB(object):
         # Nothing matched
         if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
             raise TradeException("Unrecognized place: {}".format(name))
-    
+
         # More than one match
         raise AmbiguityError(
                     'System/Station', name,
