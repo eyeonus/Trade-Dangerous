@@ -25,7 +25,7 @@ switches = [
         ),
     ParseArgument('--from',
             help='Starting system/station.',
-            dest='origin',
+            dest='starting',
             metavar='STATION',
         ),
     ParseArgument('--to',
@@ -219,8 +219,17 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.maxJumpsPer < 0:
         raise CommandLineError("Negative jumps: you're already there?")
 
-    if cmdenv.startStation:
-        cmdenv.origins = [ cmdenv.startStation ]
+    if cmdenv.origPlace:
+        if isinstance(cmdenv.origPlace, System):
+            cmdenv.origins = list(cmdenv.origPlace.stations)
+            if not cmdenv.origins:
+                raise CommandLineError(
+                        "No stations at origin system, {}"
+                            .format(cmdenv.origPlace.name())
+                        )
+        else:
+            cmdenv.origins = [ cmdenv.origPlace ]
+            cmdenv.startStation = cmdenv.origPlace
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
@@ -245,7 +254,7 @@ def validateRunArguments(tdb, cmdenv):
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
     fixedRoutePoints = 0
-    if cmdenv.startStation:
+    if cmdenv.origPlace:
         fixedRoutePoints += 1
     if cmdenv.destPlace:
         fixedRoutePoints += 1
@@ -298,6 +307,14 @@ def validateRunArguments(tdb, cmdenv):
     if stopStn and stopStn.itemCount == 0:
         raise NoDataError("End station {} doesn't have any price data.".format(
                             stopStn.name()))
+    if cmdenv.origins:
+        tradingOrigins = [
+                stn for stn in cmdenv.origins
+                if stn.itemCount > 0
+        ]
+        if not tradingOrigins:
+            raise NoDataError("No price data at origin stations.")
+        cmdenv.origins = tradingOrigins
 
     if startStn:
         tdb.loadStationTrades([startStn.ID])
@@ -324,7 +341,7 @@ def run(results, cmdenv, tdb):
 
     from tradecalc import TradeCalc, Route
 
-    startStn, viaSet = cmdenv.startStation, cmdenv.viaSet
+    origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
 
     avoidPlaces = cmdenv.avoidPlaces
 
@@ -346,7 +363,7 @@ def run(results, cmdenv, tdb):
     ]
     numHops = cmdenv.hops
     lastHop = numHops - 1
-    viaStartPos = 1 if startStn else 0
+    viaStartPos = 1 if origPlace else 0
     cmdenv.maxJumps = None
 
     cmdenv.DEBUG0(
@@ -354,7 +371,7 @@ def run(results, cmdenv, tdb):
                     "Cap {cap}, Credits {cr}, "
                     "Hops {hops}, Jumps/Hop {jumpsPer}, Ly/Jump {lyPer:.2f}"
                     "\n".format(
-                        fromStn=startStn.name() if startStn else 'Anywhere',
+                        fromStn=origPlace.name() if origPlace else 'Anywhere',
                         toStn=str([s.name() for s in stopStations]) if stopStations else 'Anywhere',
                         via=';'.join([stn.name() for stn in viaSet]) or 'None',
                         cap=cmdenv.capacity,
