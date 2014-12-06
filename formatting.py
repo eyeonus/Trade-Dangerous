@@ -121,7 +121,7 @@ class RowFormat(object):
         if after:
             for idx, col in enumerate(columns, 1):
                 if col.name == after:
-                    columns.insert(idx, newColumn)
+                    columns.insert(idx, column)
                     return self
         columns.append(column)
         return self
