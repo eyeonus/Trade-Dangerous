@@ -242,6 +242,19 @@ class UpdateGUI(ScrollingCanvas):
                         )
                 return False
 
+        if pos == 1:
+            # Don't allow crazy difference between prices
+            paying = int(row[0][1].get())
+            asking = int(row[1][1].get())
+
+            if asking < paying:
+                mbox.showerror(
+                        "I DOUBT THAT!",
+                        "Stations never pay more for an item than "
+                        "they sell it for."
+                        )
+                return False
+
             return True
 
         if pos == 3:
