@@ -208,7 +208,7 @@ class UpdateGUI(ScrollingCanvas):
 
 
     def validate(self, widget):
-        """ For checking the contents of a widget. TBD """
+        """ For checking the contents of a widget. """
         item, row, pos = widget.item, widget.row, widget.pos
 
         value = widget.val.get()
@@ -248,12 +248,46 @@ class UpdateGUI(ScrollingCanvas):
             asking = int(row[1][1].get())
 
             if asking < paying:
+                widget.bell()
                 mbox.showerror(
                         "I DOUBT THAT!",
                         "Stations never pay more for an item than "
-                        "they sell it for."
+                        "they sell it for.",
                         )
                 return False
+
+            # https://forums.frontier.co.uk/showthread.php?t=34986&p=1162429&viewfull=1#post1162429
+            # It seems that stations usually pay within 25% of the
+            # asking price as a buy-back price. If the user gives
+            # us something out of those bounds, check with them.
+            if paying < asking * 0.75 or \
+                    paying < asking - 127:
+                widget.bell()
+                ok = mbox.askokcancel(
+                        "Are you sure about that?",
+                        "You've indicated that the station is:\n"
+                        "  PAYING: {:>10n}cr\n"
+                        "  ASKING: {:>10n}cr\n"
+                        "for {}.\n"
+                        "\n"
+                        "This is outside of expected tolerances, "
+                        "please check the numbers.\n"
+                        "\n"
+                        "If the numbers are correct, click OK and "
+                        "please post a screenshot of the market UI "
+                        "to the TD thread "
+                        "(http://kfs.org/td/thread)."
+                        .format(
+                                paying, asking,
+                                widget.item.name
+                                ),
+                        default=mbox.CANCEL,
+                        parent=widget,
+                        )
+                if not ok:
+                    widget.val.set("")
+                    widget.focus_set()
+                    return False
 
             return True
 
