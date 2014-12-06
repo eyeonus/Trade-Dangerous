@@ -245,10 +245,10 @@ def validateRunArguments(tdb, cmdenv):
 
     viaSet = cmdenv.viaSet = set(cmdenv.viaStations)
     for place in viaSet:
-        if isinstance(place, Station) and not station.itemCount:
+        if isinstance(place, Station) and not place.itemCount:
             raise NoDataError(
                         "No price data available for via station {}.".format(
-                            station.name()
+                            place.name()
                     ))
 
     # How many of the hops do not have pre-determined stations. For example,
