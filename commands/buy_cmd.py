@@ -35,6 +35,11 @@ switches = [
             default=None,
             type=int,
         ),
+    ParseArgument('--ages',
+            help='Show age of data.',
+            default=False,
+            action='store_true',
+        ),
     MutuallyExclusiveGroup(
         ParseArgument('--price-sort', '-P',
                 help='(When using --near) Sort by price not distance',
@@ -63,12 +68,23 @@ def run(results, cmdenv, tdb):
     # Constraints
     tables = "StationSelling AS ss"
     constraints = [ "(item_id = {})".format(item.ID) ]
-    columns = [ 'ss.station_id', 'ss.price', 'ss.units' ]
+    columns = [
+            'ss.station_id',
+            'ss.price',
+            'ss.units',
+    ]
     bindValues = [ ]
 
     if cmdenv.quantity:
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
+
+    if cmdenv.ages:
+        columns.append(
+               "julianday('now') - julianday(ss.modified)"
+        )
+    else:
+        columns.append('0')
 
     results.summary = ResultRow()
     results.summary.item = item
@@ -93,7 +109,7 @@ def run(results, cmdenv, tdb):
                 maxLy
                 ))
     else:
-        columns += [ '0' ]
+        columns.append('0')
 
     whereClause = ' AND '.join(constraints)
     stmt = """
@@ -109,7 +125,7 @@ def run(results, cmdenv, tdb):
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
-    for (stationID, priceCr, stock, dist) in cur:
+    for (stationID, priceCr, stock, age, dist) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
         cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, stock)
@@ -117,6 +133,7 @@ def run(results, cmdenv, tdb):
            row.dist = dist
         row.price = priceCr
         row.stock = stock
+        row.age = age
         results.rows.append(row)
 
     if not results.rows:
@@ -156,9 +173,14 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.price)
     stnRowFmt.addColumn('Stock', '>', 10,
             key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else 'unknown')
+
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
+
+    if cmdenv.ages:
+        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+                key=lambda row: row.age)
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

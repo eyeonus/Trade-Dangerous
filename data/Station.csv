@@ -78,7 +78,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Alyuto','Levinson Vision',0.0
 'Amait','Lopez De Villalobos Prospect',0.0
 'Amait','Oramus Legacy',0.0
-'Amarak','Vela Port',0.0
+'Amarak','Vela Port',1160.0
 'Amarak','Werner Von Siemens Vison',0.0
 'Ammapa','Bamford Enterprise',0.0
 'Anapos','Herschel Plant',0.0
@@ -118,10 +118,10 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ariameni','Landsteiner City',0.0
 'Ariameni','Patrick Enterprise',0.0
 'Arin','Kettle Landing',0.0
-'Aritimi','Armstrong Dock',0.0
+'Aritimi','Armstrong Dock',2100.0
 'Aritimi','Griggs Hub',0.0
-'Aritimi','Huygens Port',0.0
-'Aritimi','Padalka Orbital',0.0
+'Aritimi','Huygens Port',2100.0
+'Aritimi','Padalka Orbital',2100.0
 'Asellus Primus','Beagle 2 Landing',0.0
 'Asellus Primus','Foster Research Lab',0.0
 'Asphodel','John Irving Station',0.0
@@ -666,6 +666,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LP 816-60','Garratt Landing',0.0
 'LP 887-68','Hope Platform',0.0
 'LP 903-21','Avdeyev Settlement',0.0
+'LP 908-11','Huygens Ring',0.0
+'LP 908-11','Smith Hub',0.0
+'LP 908-11','So-yeon City',0.0
 'LP 926-40','Lee City',0.0
 'LP 98-132','Freeport',0.0
 'LP Draconis','McDivitt Settlement',0.0
