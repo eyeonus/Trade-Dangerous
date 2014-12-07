@@ -260,7 +260,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         by reading the file handle for price lines.
     """
 
-    stationID, categoryID, uiOrder = None, None, 0
+    stationID, categoryID = None, None
 
     cur = db.cursor()
 
@@ -283,11 +283,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     items, buys, sells = [], [], []
 
     def changeStation(matches):
-        nonlocal categoryID, uiOrder, facility, stationID
+        nonlocal categoryID, facility, stationID
         nonlocal processedStations, processedItems
 
         ### Change current station
-        categoryID, uiOrder = None, 0
+        categoryID = None
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn, stationNameIn
         facility = systemName.upper() + '/' + stationName.upper()
@@ -354,9 +354,9 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
 
     def changeCategory(matches):
-        nonlocal uiOrder, categoryID, categoryName
+        nonlocal categoryID, categoryName
 
-        categoryName, uiOrder = matches.group(1), 0
+        categoryName = matches.group(1)
 
         tdenv.DEBUG1("NEW CATEGORY: {}", categoryName)
 
@@ -384,7 +384,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
 
     def processItemLine(matches):
-        nonlocal uiOrder, processedItems
+        nonlocal processedItems
         nonlocal items, buys, sells
         itemName, modified = matches.group('item', 'time')
 
@@ -446,9 +446,8 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             modified = None         # Use CURRENT_FILESTAMP
 
         processedItems[itemID] = lineNo
-        uiOrder += 1
 
-        items.append([ stationID, itemID, uiOrder, modified ])
+        items.append([ stationID, itemID, modified ])
         if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
             buys.append([
                         stationID, itemID,
@@ -539,8 +538,8 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
         if items:
             db.executemany("""
                         INSERT INTO StationItem
-                            (station_id, item_id, ui_order, modified)
-                        VALUES (?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                            (station_id, item_id, modified)
+                        VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                     """, items)
         if sells:
             db.executemany("""

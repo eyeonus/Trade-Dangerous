@@ -1001,9 +1001,6 @@ class TradeDB(object):
 
             A trade is a connection between two stations where the SRC station
 
-            Ignore items that have a ui_order of 0 (my way of indicating the item is
-            either unavailable or black market).
-
             NOTE: Trades MUST be loaded such that they are populated into the
             lists in descending order of profit (highest profit first)
         """
