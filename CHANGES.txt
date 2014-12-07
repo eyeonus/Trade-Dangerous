@@ -3,6 +3,11 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.6 Dec 06 2014
+. (kfsone) Added "--start-jumps" (-s) option to "run" command which will
+  use actively trading stations within that number of jumps of your
+  specified system/station.
+. (kfsone) Added "--empty" to "run" command to tell it how far you can
+  jump when carrying zero cargo.
 . (kfsone) Include origin system in "local" command output (works well
   with -v to list local stations)
 . (kfsone) ui_order is now specified in Item.csv rather than per-item

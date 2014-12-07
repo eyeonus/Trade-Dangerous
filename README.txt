@@ -193,8 +193,9 @@ RUN sub-command:
      --from <station or system>
        Lets you specify the starting station
        e.g.
-         --from Dahan
-         --from Gateway
+         --from @Asellus/Beagle2
+         --fr beagle2
+         --fr asellusprim
 
      --to <station or system>
        Lets you specify the final destination. If you specify a station, it
@@ -204,14 +205,11 @@ RUN sub-command:
          --to Beagle2
          --to lhs64
 
-     --end <station or system>
-       Instead of --to, allows you to specify multiple destinations and
-       TD will attempt to find a route that ends at one of them:
-       e.g.
-         --end beagle2
-           ^_ equivalent to "--to beagle2"
-         --end beagle2 --end freeport
-           ^_ finds a route terminating at EITHER beagle2 OR freeport
+     --start-jumps N
+     -s N
+       Considers stations from stations upto this many jumps from your
+       specified start location.
+         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
 
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
@@ -245,6 +243,11 @@ RUN sub-command:
        e.g.
          --ly-per 19.1
          --ly-per 3
+
+     --empty-ly N.NN
+     --emp N.NN
+       DEFAULT: same as --ly-per
+       How far your ship can jump when empty (used by --start-jumps)
 
    Ship/Trade options:
      --capacity N
