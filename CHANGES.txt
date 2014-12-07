@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.6 Dec 06 2014
+. (kfsone) Include origin system in "local" command output (works well
+  with -v to list local stations)
 . (kfsone) ui_order is now specified in Item.csv rather than per-item
   (Microbial Furnaces and Mineral Extractors should now be in UI order :)
 . (gazelle) More Station data and some distances
