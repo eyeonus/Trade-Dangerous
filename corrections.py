@@ -20,6 +20,7 @@ stations = {
     "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
     "HALAI/GENKER STATION": "Cenker Station",
     "OPALA/ZAMK PLATFORM": "Zamka Platform",
+    "G 139-50/FILIPCHENKO": "Filipchenko City",
 
 #ADD_STATIONS_HERE
 }
