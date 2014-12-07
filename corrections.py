@@ -19,6 +19,7 @@ stations = {
     "ERAVATE/ASKERMAN MARKET": "Ackerman Market",
     "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
     "HALAI/GENKER STATION": "Cenker Station",
+    "OPALA/ZAMK PLATFORM": "Zamka Platform",
 
 #ADD_STATIONS_HERE
 }
