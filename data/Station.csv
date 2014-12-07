@@ -335,7 +335,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Fular','Kotov Orbital',0.0
 'G 121-8','Brosnan Gateway',0.0
 'G 123-49','JET-GANG',0.0
-'G 139-50','Filipchenko',0.0
+'G 139-50','Filipchenko City',0.0
 'G 14-6','Yamazaki Orbital',0.0
 'G 180-18','Alexandria Gateway',0.0
 'G 181-6','Thomas Installation',0.0
@@ -431,6 +431,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Holiacan','Melbourne',0.0
 'Holvait','Nikolayev Hanger',0.0
 'HR 1254','Ellis Orbital',0.0
+'HR 1254','Ivanishin City',0.0
 'HR 1254','Klimuk City',0.0
 'HR 1254','Linteris Enterprise',0.0
 'HR 1254','Potrykus Market',0.0
@@ -825,6 +826,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'NLTT 53889','Roosa Platform',0.0
 'NLTT 7856','Hussey Survey',0.0
 'Nu','Syromyatnikov Horizons',0.0
+'Nu Tauri','Faraday Dock',0.0
 'Nu Tauri','Parmitano Terminal',0.0
 'Nuenets','Forrester Dock',0.0
 'Nuenets','Harbaugh Port',0.0
