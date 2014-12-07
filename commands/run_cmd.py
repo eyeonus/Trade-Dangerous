@@ -63,6 +63,19 @@ switches = [
             metavar='N.NN',
             type=float,
         ),
+    ParseArgument('--empty-ly',
+            help='Maximum light years ship can jump when empty.',
+            dest='emptyLyPer',
+            metavar='N.NN',
+            type=float,
+            default=None,
+        ),
+    ParseArgument('--start-jumps', '-s',
+            help='Allow this many jumps before loading up.',
+            dest='startJumps',
+            default=0,
+            type=int,
+        ),
     ParseArgument('--limit',
             help='Maximum units of any one cargo item to buy (0: unlimited).',
             metavar='N',
@@ -197,6 +210,70 @@ class Checklist(object):
             sleep(1.5)
 
 
+def extendOriginsForStartJumps(tdb, cmdenv):
+    """
+    Find all the stations you could reach if you made a given
+    number of jumps away from the origin list.
+    """
+
+    startJumps = cmdenv.startJumps
+    if not startJumps:
+        return cmdenv.origins
+
+    origSys = [o.system for o in cmdenv.origins]
+    maxLyPer = cmdenv.emptyLyPer or cmdenv.maxLyPer
+    avoidPlaces = cmdenv.avoidPlaces
+    if cmdenv.debug:
+        cmdenv.DEBUG0(
+                "Checking start stations "
+                "{} jumps at "
+                "{}ly per jump "
+                "from {}",
+                    startJumps,
+                    maxLyPer,
+                    [sys.dbname for sys in origSys]
+                )
+
+    origSys = set(origSys)      # Places we're 
+    nextJump = set(origSys)
+    for jump in range(0, startJumps):
+        if not nextJump:
+            break
+        thisJump, nextJump = nextJump, set()
+        if cmdenv.debug:
+            cmdenv.DEBUG1(
+                    "Ring {}: {}",
+                    jump,
+                    [sys.dbname for sys in thisJump]
+                    )
+        for sys in thisJump:
+            for dest, dist in tdb.genSystemsInRange(sys, maxLyPer):
+                if dest not in avoidPlaces:
+                    origSys.add(dest)
+                    nextJump.add(dest)
+
+    if cmdenv.debug:
+        cmdenv.DEBUG0(
+                "Extended start systems: {}",
+                [sys.dbname for sys in origSys]
+                )
+
+    # Filter down to stations with trade data
+    origins = []
+    for sys in origSys:
+        for stn in sys.stations:
+            if stn.itemCount and stn not in avoidPlaces:
+                origins.append(stn) 
+
+    if cmdenv.debug:
+        cmdenv.DEBUG0(
+                "Extended start stations: {}",
+                [sys.name() for sys in origins]
+                )
+
+    return origins
+
+
 def validateRunArguments(tdb, cmdenv):
     """
         Process arguments to the 'run' option.
@@ -230,6 +307,7 @@ def validateRunArguments(tdb, cmdenv):
         else:
             cmdenv.origins = [ cmdenv.origPlace ]
             cmdenv.startStation = cmdenv.origPlace
+        cmdenv.origins = extendOriginsForStartJumps(tdb, cmdenv)
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
