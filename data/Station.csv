@@ -118,10 +118,10 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ariameni','Landsteiner City',0.0
 'Ariameni','Patrick Enterprise',0.0
 'Arin','Kettle Landing',0.0
-'Aritimi','Armstrong Dock',0.0
+'Aritimi','Armstrong Dock',2100.0
 'Aritimi','Griggs Hub',0.0
-'Aritimi','Huygens Port',0.0
-'Aritimi','Padalka Orbital',0.0
+'Aritimi','Huygens Port',2100.0
+'Aritimi','Padalka Orbital',2100.0
 'Asellus Primus','Beagle 2 Landing',0.0
 'Asellus Primus','Foster Research Lab',0.0
 'Asphodel','John Irving Station',0.0
