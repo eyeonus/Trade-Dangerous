@@ -533,7 +533,7 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
 
     assert isinstance(pricesPath, Path)
 
-    with pricesPath.open() as pricesFile:
+    with pricesPath.open('rU') as pricesFile:
         items, buys, sells = processPrices(tdenv, pricesFile, db, defaultZero)
         if items:
             db.executemany("""
@@ -589,7 +589,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     uniquePfx = "unq:"
     ignorePfx = "!"
 
-    with importPath.open(encoding='utf-8') as importFile:
+    with importPath.open('rU', encoding='utf-8') as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
         columnDefs = next(csvin)
@@ -773,7 +773,7 @@ def buildCache(tdb, tdenv):
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
-    with sqlPath.open() as sqlFile:
+    with sqlPath.open('rU') as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
 
