@@ -534,7 +534,7 @@ class UpdateGUI(ScrollingCanvas):
                                 USING (station_id, item_id)
                             LEFT OUTER JOIN StationSelling ss
                                 USING (station_id, item_id)
-                 ORDER  BY cat.name, si.ui_order, item.name
+                 ORDER  BY cat.name, item.ui_order
                 """.format(
                             siJoin=siJoin
                     )

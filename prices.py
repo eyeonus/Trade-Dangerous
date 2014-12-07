@@ -80,10 +80,8 @@ def dumpPrices(
 
     if getBlanks:
         itemJoin = "LEFT OUTER"
-        ordering = "itm.name"
     else:
         itemJoin = "INNER"
-        ordering = "si.ui_order, itm.name"
 
     cur.execute("SELECT CURRENT_TIMESTAMP")
     now = cur.fetchone()[0]
@@ -110,14 +108,13 @@ def dumpPrices(
                     ON (si.station_id = ss.station_id
                         AND si.item_id = ss.item_id)
                 {stationWhere}
-         ORDER  BY stn.station_id, cat.name, {ordering}
+         ORDER  BY stn.station_id, cat.name, itm.ui_order
     """
 
     sql = stmt.format(
             stationWhere=stationWhere,
             defDemand=defaultDemandVal,
             itemJoin=itemJoin,
-            ordering=ordering,
             )
     if debug:
         print(sql)

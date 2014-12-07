@@ -48,7 +48,7 @@ def run(results, cmdenv, tdb):
     results.summary.near = srcSystem
     results.summary.ly = ly
 
-    distances = { }
+    distances = { srcSystem: 0.0 }
 
     # Calculate the bounding dimensions
     srcX, srcY, srcZ = srcSystem.posX, srcSystem.posY, srcSystem.posZ

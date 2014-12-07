@@ -260,7 +260,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         by reading the file handle for price lines.
     """
 
-    stationID, categoryID, uiOrder = None, None, 0
+    stationID, categoryID = None, None
 
     cur = db.cursor()
 
@@ -283,11 +283,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     items, buys, sells = [], [], []
 
     def changeStation(matches):
-        nonlocal categoryID, uiOrder, facility, stationID
+        nonlocal categoryID, facility, stationID
         nonlocal processedStations, processedItems
 
         ### Change current station
-        categoryID, uiOrder = None, 0
+        categoryID = None
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn, stationNameIn
         facility = systemName.upper() + '/' + stationName.upper()
@@ -354,9 +354,9 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
 
     def changeCategory(matches):
-        nonlocal uiOrder, categoryID, categoryName
+        nonlocal categoryID, categoryName
 
-        categoryName, uiOrder = matches.group(1), 0
+        categoryName = matches.group(1)
 
         tdenv.DEBUG1("NEW CATEGORY: {}", categoryName)
 
@@ -384,7 +384,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
 
     def processItemLine(matches):
-        nonlocal uiOrder, processedItems
+        nonlocal processedItems
         nonlocal items, buys, sells
         itemName, modified = matches.group('item', 'time')
 
@@ -446,9 +446,8 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             modified = None         # Use CURRENT_FILESTAMP
 
         processedItems[itemID] = lineNo
-        uiOrder += 1
 
-        items.append([ stationID, itemID, uiOrder, modified ])
+        items.append([ stationID, itemID, modified ])
         if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
             buys.append([
                         stationID, itemID,
@@ -534,13 +533,13 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
 
     assert isinstance(pricesPath, Path)
 
-    with pricesPath.open() as pricesFile:
+    with pricesPath.open('rU') as pricesFile:
         items, buys, sells = processPrices(tdenv, pricesFile, db, defaultZero)
         if items:
             db.executemany("""
                         INSERT INTO StationItem
-                            (station_id, item_id, ui_order, modified)
-                        VALUES (?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                            (station_id, item_id, modified)
+                        VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                     """, items)
         if sells:
             db.executemany("""
@@ -590,7 +589,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     uniquePfx = "unq:"
     ignorePfx = "!"
 
-    with importPath.open(encoding='utf-8') as importFile:
+    with importPath.open('rU', encoding='utf-8') as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
         columnDefs = next(csvin)
@@ -774,7 +773,7 @@ def buildCache(tdb, tdenv):
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
-    with sqlPath.open() as sqlFile:
+    with sqlPath.open('rU') as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
 

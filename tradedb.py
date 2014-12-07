@@ -273,24 +273,24 @@ class TradeDB(object):
             '[]()*+-.,{}:'
             )
     # The DB cache
-    defaultDB = './data/TradeDangerous.db'
+    defaultDB = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
-    defaultSQL = './data/TradeDangerous.sql'
+    defaultSQL = 'TradeDangerous.sql'
     # File containing text description of prices
-    defaultPrices = './data/TradeDangerous.prices'
+    defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencies!
     defaultTables = [
-                      [ './data/Added.csv', 'Added' ],
-                      [ './data/System.csv', 'System' ],
-                      [ './data/Station.csv', 'Station' ],
-                      [ './data/Ship.csv', 'Ship' ],
-                      [ './data/ShipVendor.csv', 'ShipVendor' ],
-                      [ './data/Upgrade.csv', 'Upgrade' ],
-                      [ './data/UpgradeVendor.csv', 'UpgradeVendor' ],
-                      [ './data/Category.csv', 'Category' ],
-                      [ './data/Item.csv', 'Item' ],
-                      [ './data/AltItemNames.csv', 'AltItemNames' ]
+                      [ 'Added.csv', 'Added' ],
+                      [ 'System.csv', 'System' ],
+                      [ 'Station.csv', 'Station' ],
+                      [ 'Ship.csv', 'Ship' ],
+                      [ 'ShipVendor.csv', 'ShipVendor' ],
+                      [ 'Upgrade.csv', 'Upgrade' ],
+                      [ 'UpgradeVendor.csv', 'UpgradeVendor' ],
+                      [ 'Category.csv', 'Category' ],
+                      [ 'Item.csv', 'Item' ],
+                      [ 'AltItemNames.csv', 'AltItemNames' ]
                     ]
 
 
@@ -306,12 +306,13 @@ class TradeDB(object):
         self.numLinks = None
         self.tradingCount = None
 
-        self.tdenv = tdenv = tdenv or TradeEnv(debug=(debug or 0))
+        self.tdenv = tdenv or TradeEnv(debug=(debug or 0))
 
-        self.dbPath = Path(tdenv.dbFilename or TradeDB.defaultDB)
-        self.sqlPath = Path(tdenv.sqlFilename or TradeDB.defaultSQL)
-        self.pricesPath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
-        self.importTables = TradeDB.defaultTables
+        dataDir = Path(tdenv.dataDir).resolve()
+        self.dbPath = Path(tdenv.dbFilename or dataDir / TradeDB.defaultDB)
+        self.sqlPath = dataDir / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = dataDir / Path(tdenv.pricesFilename or TradeDB.defaultPrices)
+        self.importTables = [(str(dataDir / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
 
         self.dbFilename = str(self.dbPath)
         self.sqlFilename = str(self.sqlPath)
@@ -504,7 +505,9 @@ class TradeDB(object):
             Note: Returned distances are squared
         """
 
-        if not isinstance(system, System):
+        if isinstance(system, Station):
+            system = system.system
+        elif not isinstance(system, System):
             place = self.lookupPlace(system)
             system = place.system if isinstance(system, Station) else place
 
@@ -718,7 +721,7 @@ class TradeDB(object):
         # Nothing matched
         if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
             raise TradeException("Unrecognized place: {}".format(name))
-    
+
         # More than one match
         raise AmbiguityError(
                     'System/Station', name,
@@ -999,9 +1002,6 @@ class TradeDB(object):
             Populate the "Trades" table for stations.
 
             A trade is a connection between two stations where the SRC station
-
-            Ignore items that have a ui_order of 0 (my way of indicating the item is
-            either unavailable or black market).
 
             NOTE: Trades MUST be loaded such that they are populated into the
             lists in descending order of profit (highest profit first)

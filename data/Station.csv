@@ -277,7 +277,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'DX 799','Shargin Plant',0.0
 'DX Cancri','Horowitz Landing',0.0
 'Dyaushis','Helmholtz Station',0.0
-'Ekonir','Morey Vision',0.0
+'Ekonir','Kubasov Orbital',160.0
+'Ekonir','Morey Vision',108.0
 'Ekuru','Dana Platform',0.0
 'Enek','Carr Station',0.0
 'Enek','Milnor Port',0.0
@@ -316,9 +317,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Fortuna','Smith Terminal',0.0
 'Fortuna','Snyder Market',0.0
 'Freng','Werber Orbital',0.0
-'Frigaha','Aubakirov Orbital',0.0
-'Frigaha','Engle Orbital',0.0
-'Frigaha','Onizuka Landing',0.0
+'Frigaha','Aubakirov Orbital',227.0
+'Frigaha','Engle Orbital',74.6
+'Frigaha','Onizuka Landing',136.0
 'Friggirawi','Griffin Station',0.0
 'Fular','Kotov Orbital',0.0
 'G 121-8','Brosnan Gateway',0.0
@@ -454,7 +455,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Keries','Derrickson''s Escape',0.0
 'Kholedo','Asaro Dock',0.0
 'Kholedo','Lopez de Dillalobos Colony',0.0
-'Kini','Kadenyuk Orbital',0.0
+'Kini','Kadenyuk Orbital',14038.0
 'Kishpakho','Crown City',0.0
 'Kivah','Sadi Carnot Ring',0.0
 'Kokoimudji','Quinn Orbital',0.0
@@ -790,7 +791,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'NLTT 45576','Kadenyuk Outpost',0.0
 'NLTT 45576','Vo Refinery',0.0
 'NLTT 46621','Hope Point',0.0
-'NLTT 46709','Perrin Settlement',0.0
+'NLTT 46709','Perrin Settlement',1200.0
 'NLTT 48502','Webb Holdings',0.0
 'NLTT 49528','Anning Hub',0.0
 'NLTT 49528','O''Connor Landing',0.0
