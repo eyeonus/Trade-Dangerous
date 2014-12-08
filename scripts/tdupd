@@ -1,0 +1,11 @@
+#! /usr/bin/env bash
+# Usage: tdupd <station> [... trade.py options]
+#
+# Edits the specified station using the new GUI
+
+. ${TRADEDIR:-.}/config.sh
+
+cmd="\"${TRADEPY}\" update -GF $*"
+echo \$ $cmd
+eval "$cmd"
+

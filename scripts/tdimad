@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+# Usage: tdimad [... trade.py options]
+#
+# Downloads and imports data from maddavo
+
+. "${TRADEDIR:-.}/config.sh"
+
+cmd="\"${TRADEPY}\" import -i --maddavo $*"
+echo \$ $cmd
+eval "$cmd"
