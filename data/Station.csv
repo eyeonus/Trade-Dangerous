@@ -63,6 +63,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Akhenaten','Wang Platform',0.0
 'Aknango','Banks Station',0.0
 'Al Mina','Dana Port',0.0
+'Alacagui','Husband Refinery',0.0
 'Alcor','Macdonald Settlement',0.0
 'Alit','Albitzky Market',0.0
 'Alit','Bond Port',0.0
@@ -1009,6 +1010,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Uoluskas','Moisuc Dock',0.0
 'Uszaa','Guest Installation',0.0
 'V2151 Cygni','Eyharts Hub',0.0
+'V2689 Orionis','Capek Ring',0
+'V2689 Orionis','Hodgson Dock',0
+'V2689 Orionis','Wyndham Ring',0
 'V417 Hydrae','Clervoy Vista',0.0
 'V538 Aurigae','Card Park',0.0
 'V749 Herculis','Pauling Gateway',0.0
