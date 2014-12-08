@@ -264,6 +264,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Delphin','Joliot-Curie Dock',0.0
 'Delphin','Kondratyev Orbital',0.0
 'Delphin','Swigert Orbital',0.0
+'Delta Pavonis','Hooper Relay',195.0
 'Demeter','Marusek Settlement',0.0
 'Denebola','Volkov Dock',0.0
 'Difu','Backers Pledge High',0.0
@@ -387,6 +388,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'HDS 1879','Shaikh Dock',0.0
 'He Bo','Krylov Ring',0.0
 'He Bo','Roddenberry Station',0.0
+'Hecate','RJH1972',530.0
+'Hecate','William Bertram Ayres',962.0
 'Heheng De','Malchiodi Colony',0.0
 'Hemaki','Coriolis',0.0
 'Hemaki','Kizim',0.0
@@ -484,13 +487,13 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lalande 30699','Johnson Works',0.0
 'Lalande 37923','Keyes City',0.0
 'Laukang','Matheson Orbital',0.0
-'Lave','Castellan Station',0.0
-'Lave','Lave Station',0.0
-'Lave','Warinus',0.0
+'Lave','Castellan Station',44.7
+'Lave','Lave Station',303.0
+'Lave','Warinus',863.0
 'LAWD 52','Guerrero Horizons',0.0
 'LDS 2314','McDonald Colony',0.0
-'Leesti','George Lucas',0.0
-'Leesti','Kolmogorov Hub',0.0
+'Leesti','George Lucas',255.0
+'Leesti','Kolmogorov Hub',2964.0
 'Lei Manako','Debye Port',0.0
 'Lembava','Goldstein Port',0.0
 'LFT 1072','Forsskal Vision',0.0
@@ -507,8 +510,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LFT 859','Stross City',0.0
 'LFT 880','Baker Platform',0.0
 'LFT 90','Teller Ring',0.0
-'LFT 926','Meredith City',0.0
-'LFT 926','Meredith Station',0.0
+'LFT 926','Meredith City',369.0
 'LFT 945','Hahn Base',0.0
 'LFT 992','Szulkin mines',0.0
 'LHS 1065','Hornblower Platform',0.0
@@ -1031,7 +1033,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'WISE 1506+7027','Silverberg Relay',0.0
 'Wolf 1409','Carter Vision',0.0
 'Wolf 1478','Franklin Orbital',0.0
-'Wolf 1481','Velazquez Gateway',0.0
+'Wolf 1481','Velazquez Gateway',627.0
 'Wolf 1509','Bolotov Dock',0.0
 'Wolf 1509','Maclean Port',0.0
 'Wolf 248','Hencke Centre',0.0
@@ -1088,8 +1090,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Yggdrajang','Schade Platform',0.0
 'Yoruba','Carpenters Terminal',0.0
 'Zandu','Vaucanson Hub',0.0
-'Zaonce','Ridley Scott',0.0
-'Zaonce','Sawyer Station',0.0
+'Zaonce','Ridley Scott',394.0
+'Zaonce','Sawyer Station',2606.0
 'Zaraluvul','Sturckow City',0.0
 'Zephyrus','Eyo6',0.0
 'Zeta Aquilae','Julian Gateway',0.0
