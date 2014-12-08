@@ -290,6 +290,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         categoryID = None
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn, stationNameIn
+        corrected = False
         facility = systemName.upper() + '/' + stationName.upper()
 
         tdenv.DEBUG1("NEW STATION: {}", facility)
@@ -301,6 +302,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             stationID = -1
 
         if stationID < 0:
+            corrected = True
             try:
                 correctName = corrections.systems[systemName]
                 if correctName == DELETED:
@@ -338,6 +340,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         # Check for duplicates
         if stationID in processedStations:
+            if corrected:
+                # This is probably the old entry.
+                stationID = DELETED
+                return
             raise MultipleStationEntriesError(
                         priceFile, lineNo, facility,
                         processedStations[stationID]
