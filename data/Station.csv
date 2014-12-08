@@ -492,8 +492,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lave','Warinus',863.0
 'LAWD 52','Guerrero Horizons',0.0
 'LDS 2314','McDonald Colony',0.0
-'Leesti','George Lucas',0.0
-'Leesti','Kolmogorov Hub',0.0
+'Leesti','George Lucas',255.0
+'Leesti','Kolmogorov Hub',2964.0
 'Lei Manako','Debye Port',0.0
 'Lembava','Goldstein Port',0.0
 'LFT 1072','Forsskal Vision',0.0
@@ -1033,7 +1033,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'WISE 1506+7027','Silverberg Relay',0.0
 'Wolf 1409','Carter Vision',0.0
 'Wolf 1478','Franklin Orbital',0.0
-'Wolf 1481','Velazquez Gateway',0.0
+'Wolf 1481','Velazquez Gateway',627.0
 'Wolf 1509','Bolotov Dock',0.0
 'Wolf 1509','Maclean Port',0.0
 'Wolf 248','Hencke Centre',0.0
