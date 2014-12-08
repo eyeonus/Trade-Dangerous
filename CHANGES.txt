@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.6 Dec 06 2014
+. (gulasch) Station additions, corrections and distances
 . (kfsone) Added '--ages' option to "buy" command to show data age
 . (kfsone) Fix for line-numbers in .prices files sometimes being incorrect
 . (kfsone) Added "--start-jumps" (-s) option to "run" command which will
