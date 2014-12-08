@@ -261,7 +261,7 @@ class UpdateGUI(ScrollingCanvas):
             # asking price as a buy-back price. If the user gives
             # us something out of those bounds, check with them.
             if paying < asking * 0.75 or \
-                    paying < asking - 127:
+                    paying < asking - 200:
                 widget.bell()
                 ok = mbox.askokcancel(
                         "Are you sure about that?",
