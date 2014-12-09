@@ -1,6 +1,7 @@
 unq:name@System.system_id,unq:name,ls_from_star
 '10 Canum Venaticorum','Janifer Port',0.0
-'110 Herculis','Stirling Vision',0.0
+'110 Herculis','Jahn Hanger',169.0
+'110 Herculis','Stirling Vision',1302.0
 '15 Geminorum','Artsebarsky Dock',0.0
 '15 Geminorum','Ericsson Port',0.0
 '15 Geminorum','Gantt Station',0.0
@@ -12,15 +13,15 @@ unq:name@System.system_id,unq:name,ls_from_star
 '16 Cygni','Siemens Orbital',0.0
 '21 Draco','Roberts Port',0.0
 '26 Draconis','Bouch Beacon',0.0
-'31 Aquilae','Compton Hub',0.0
-'31 Aquilae','Hannu Dock',0.0
-'31 Aquilae','Ingstad Enterprise',0.0
-'31 Aquilae','Isherwood Gateway',0.0
-'31 Aquilae','Killough Orbital',0.0
-'31 Aquilae','Laird Gateway',0.0
-'31 Aquilae','Merchiston Terminal',0.0
-'31 Aquilae','Nearchus Hub',0.0
-'31 Aquilae','Russo Dock',0.0
+'31 Aquilae','Compton Hub',4646.0
+'31 Aquilae','Hannu Dock',4738.0
+'31 Aquilae','Ingstad Enterprise',4719.0
+'31 Aquilae','Isherwood Gateway',4622.0
+'31 Aquilae','Killough Orbital',4621.0
+'31 Aquilae','Laird Gateway',4720.0
+'31 Aquilae','Merchiston Terminal',4720.0
+'31 Aquilae','Nearchus Hub',4646.0
+'31 Aquilae','Russo Dock',4547.0
 '36 Ursae Majoris','Liwei Outpost',0.0
 '37 Geminorum','Chasles Port',0.0
 '37 Geminorum','Davidson Hub',0.0
@@ -29,6 +30,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 '37 Geminorum','Hinz Station',0.0
 '37 Geminorum','Stairs Terminal',0.0
 '37 Geminorum','Utley City',0.0
+'37 Librae','Roosa Market',1680.0
 '37 Xi Bootis','Schirba Plant',0.0
 '41 Gamma Serpentis','Abe Landing',0.0
 '44 chi Draconis','Lawson Camp',0.0
@@ -423,7 +425,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Hecate','William Bertram Ayres',962.0
 'Heheng De','Malchiodi Colony',0.0
 'Heike','Braun Enterprise',0.0
-'Heike','Brunel City',0.0
+'Heike','Brunel City',411.0
 'Heike','Cabana Dock',0.0
 'Heike','Haignere Orbital',0.0
 'Heike','Lyell Port',0.0
@@ -644,7 +646,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 3447','Yaping Enterprise',109920.0
 'LHS 346','Mcarthur Gateway',0.0
 'LHS 350','Al-Haytham Enterprise',0.0
-'LHS 3505','Olivas City',0.0
+'LHS 3505','Helmholtz Port',37000.0
+'LHS 3505','Hewish Station',37000.0
+'LHS 3505','Olivas City',2715.0
 'LHS 351','Brunel Hub',0.0
 'LHS 3549','Baydukov Base',0.0
 'LHS 355','Crown Terminal',0.0
@@ -791,6 +795,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Luyten 674-15','Sinclair Relay',0.0
 'Luyten''s Star','Ashby City',0.0
 'Luyten''s Star','Still Outpost',0.0
+'Mabe','Cummings Port',0.0
 'Magec','Xiaoguan Hub',0.0
 'Maitaokona','Gresley Gateway',0.0
 'Makah','Jacquard Works',0.0
@@ -1031,6 +1036,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Suyarang','Treshchov Orbital',0.0
 'Suyarang','Volta Ring',0.0
 'Tabassapisi','Parise Camp',0.0
+'Tago','Kregel Dock',193.0
 'Talitha','Ross Platform',0.0
 'Tamor','Seven Holm',0.0
 'Tangaroa','Asylum',0.0
@@ -1117,8 +1123,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Wolf 1409','Carter Vision',0.0
 'Wolf 1478','Franklin Orbital',0.0
 'Wolf 1481','Velazquez Gateway',627.0
-'Wolf 1509','Bolotov Dock',0.0
-'Wolf 1509','Maclean Port',0.0
+'Wolf 1509','Bolotov Dock',37856.0
+'Wolf 1509','Maclean Port',721.0
 'Wolf 248','Hencke Centre',0.0
 'Wolf 279','Bresnik Settlement',0.0
 'Wolf 287','Boas Terminal',0.0
