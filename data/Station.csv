@@ -297,6 +297,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Demeter','Marusek Settlement',0.0
 'Denebola','Volkov Dock',0.0
 'Difu','Backers Pledge High',0.0
+'Djaujang','Cochrane Refinery',0.0
+'Djaujang','Martins Prospect',0.0
 'Diso','Shifnalport',0.0
 'Doris','Isherwood Dock',0.0
 'DT Virginis','Chun Vision',0.0
@@ -860,6 +862,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ninsun','Ramanujan Dock',0.0
 'Njangari','Lee Hub',0.0
 'Njikan','Smeaton Port',0.0
+'NLTT 12130','Hodgkinson Colony',0.0
+'NLTT 12130','Rolland Settlement',0.0
 'NLTT 38960','Sarafanov Orbital',0.0
 'NLTT 45576','Kadenyuk Outpost',0.0
 'NLTT 45576','Vo Refinery',0.0
@@ -1035,6 +1039,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Suyarang','Shaw Terminal',0.0
 'Suyarang','Treshchov Orbital',0.0
 'Suyarang','Volta Ring',0.0
+'Swaza','Onnes Settlement',0.0
 'Tabassapisi','Parise Camp',0.0
 'Tago','Kregel Dock',193.0
 'Talitha','Ross Platform',0.0
