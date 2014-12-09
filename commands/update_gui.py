@@ -152,8 +152,10 @@ class UpdateGUI(ScrollingCanvas):
 
         self.focusOn(0, 0)
 
-        parent.geometry("{}x{}-0+0".format(
-                    width+16, height
+        parent.geometry("{}x{}{:+n}{:+n}".format(
+                    width+16, height,
+                    tdenv.windowX,
+                    tdenv.windowY,
                 ))
 
         # Allow the window to be always-on-top
@@ -261,7 +263,7 @@ class UpdateGUI(ScrollingCanvas):
             # asking price as a buy-back price. If the user gives
             # us something out of those bounds, check with them.
             if paying < asking * 0.75 or \
-                    paying < asking - 127:
+                    paying < asking - 200:
                 widget.bell()
                 ok = mbox.askokcancel(
                         "Are you sure about that?",

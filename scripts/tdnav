@@ -1,0 +1,10 @@
+#! /usr/bin/env bash
+# Usage: tdnav <from> <to> [... trade.py options]
+#
+# Finds a route from one place to another.
+
+. "${TRADEDIR:-.}/config.sh"
+
+cmd="\"${TRADEPY}\" nav --ly ${EMPTYLY} $*"
+echo \$ $cmd
+eval "$cmd"

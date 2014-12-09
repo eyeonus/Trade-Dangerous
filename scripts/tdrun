@@ -1,0 +1,28 @@
+#! /usr/bin/env bash
+# Usage: tdrun [... trade.py options]
+#
+# Calculates a trade run from <place> using trade.py
+
+
+. "${TRADEDIR:-.}/config.sh"
+
+origin="$1"; shift
+if [[
+        -z $origin || $origin == -*
+        ]]
+then
+    echo "ERROR: Usage: $0 <origin> ..."
+    exit 1
+fi
+
+cmd="\"${TRADEPY}\" run -vv \
+    --ly ${MAXLY} \
+    --empty ${EMPTYLY} \
+    --cap ${CAP} \
+    --jumps ${JUMPS} \
+    --cr ${CR} \
+    --from \"${origin}\" \
+    $@"
+echo \$ $cmd
+eval "$cmd"
+
