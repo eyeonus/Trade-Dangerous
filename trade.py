@@ -31,7 +31,7 @@
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 import os
-import commands
+from commands import *
 import tradedb
 
 ######################################################################

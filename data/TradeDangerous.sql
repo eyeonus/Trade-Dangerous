@@ -150,6 +150,7 @@ CREATE TABLE Item
    item_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    category_id INTEGER NOT NULL,
+   ui_order INTEGER NOT NULL DEFAULT 0,
 
    UNIQUE (category_id, name),
 
@@ -193,7 +194,6 @@ CREATE TABLE StationItem
   station_id INTEGER NOT NULL,
   item_id INTEGER NOT NULL,
   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  ui_order INTEGER NOT NULL DEFAULT 0,
 
   PRIMARY KEY (station_id, item_id),
 
@@ -268,7 +268,6 @@ CREATE INDEX idx_sys_dist ON StationLink (lhs_system_id, dist, rhs_system_id);
 CREATE VIEW vPrice AS
 	SELECT	si.station_id AS station_id,
 			si.item_id AS item_id,
-			si.ui_order AS ui_order,
 			IFNULL(sb.price, 0) AS sell_to,
 			IFNULL(ss.price, 0) AS buy_from,
 			si.modified AS modified,

@@ -26,7 +26,7 @@ arguments = [
 ]
 switches = [
     ParseArgument('--supply', '-S', 
-            help='[Text editing] Includes demand and stock (supply) values in the update.',
+            help='[DEPRECATED] Includes demand and stock (supply) values in the update.',
             action='store_true',
             default=False,
     ),
@@ -66,6 +66,24 @@ switches = [
             action='store_true',
             default=False,
             dest='alwaysOnTop',
+    ),
+    ParseArgument('--window-x', '-wx',
+            help=(
+                "[GUI] Specify the window X position "
+                "Use a negative value for a right-of-screen relative offset"
+                ),
+            default=-1,
+            dest='windowX',
+            type=int,
+    ),
+    ParseArgument('--window-y', '-wy',
+            help=(
+                "[GUI] Specify the window U position "
+                "Use a negative value for a bottom-of-screen relative offset"
+                ),
+            default=1,
+            dest='windowY',
+            type=int,
     ),
     MutuallyExclusiveGroup(
         ParseArgument('--experimental-gui', '-G',
@@ -380,6 +398,9 @@ def run(results, cmdenv, tdb):
                 "--experimental-gui (--exp or -G for short) "
                 "flags.\n"
         )
+
+    if not cmdenv.quiet and cmdenv.supply:
+        print("NOTE: '--supply' (-S) is deprecated.")
 
     # User specified one of the options to use an editor.
     editUpdate(tdb, cmdenv, cmdenv.startStation.ID)

@@ -16,6 +16,13 @@ systems = {
 
 stations = {
     "CHEMAKU/BARTOE PLATFORM": DELETED,
+    "ERAVATE/ASKERMAN MARKET": "Ackerman Market",
+    "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
+    "HALAI/GENKER STATION": "Cenker Station",
+    "LFT 926/MEREDITH STATION": "Meredith City",
+    "OPALA/ZAMK PLATFORM": "Zamka Platform",
+    "G 139-50/FILIPCHENKO": "Filipchenko City",
+    "AMARAK/WERNER VON SIEMENS VISON": "Werner Von Siemens Vision",
 
 #ADD_STATIONS_HERE
 }
@@ -42,10 +49,6 @@ def correctSystem(oldName):
 def correctStation(systemName, oldName):
     try:
         return stations[systemName.upper() + "/" + oldName.upper()]
-    except KeyError:
-        pass
-    try:
-        return stations[oldName.upper()]
     except KeyError:
         return oldName
 

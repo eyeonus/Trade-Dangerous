@@ -1,0 +1,21 @@
+#! /usr/bin/env bash
+# Usage: tdbuyfrom <station> <item> [... trade.py options]
+#
+# Finds stations near <station> that are selling <item>
+
+. "${TRADEDIR:-.}/config.sh"
+
+near="$1"; shift
+prod="$1"; shift
+if [[ 
+        -z $near || $near == -* ||
+        -z $prod || $prod == -* 
+        ]]
+then
+    echo "ERROR: Usage: $0 <near> <item> ..."
+    exit 1
+fi
+
+cmd="\"${TRADEPY}\" buy --near $near $prod $*"
+echo \$ $cmd
+eval "$cmd"

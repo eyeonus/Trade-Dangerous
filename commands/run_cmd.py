@@ -25,7 +25,7 @@ switches = [
         ),
     ParseArgument('--from',
             help='Starting system/station.',
-            dest='origin',
+            dest='starting',
             metavar='STATION',
         ),
     ParseArgument('--to',
@@ -62,6 +62,19 @@ switches = [
             dest='maxLyPer',
             metavar='N.NN',
             type=float,
+        ),
+    ParseArgument('--empty-ly',
+            help='Maximum light years ship can jump when empty.',
+            dest='emptyLyPer',
+            metavar='N.NN',
+            type=float,
+            default=None,
+        ),
+    ParseArgument('--start-jumps', '-s',
+            help='Allow this many jumps before loading up.',
+            dest='startJumps',
+            default=0,
+            type=int,
         ),
     ParseArgument('--limit',
             help='Maximum units of any one cargo item to buy (0: unlimited).',
@@ -197,6 +210,70 @@ class Checklist(object):
             sleep(1.5)
 
 
+def extendOriginsForStartJumps(tdb, cmdenv):
+    """
+    Find all the stations you could reach if you made a given
+    number of jumps away from the origin list.
+    """
+
+    startJumps = cmdenv.startJumps
+    if not startJumps:
+        return cmdenv.origins
+
+    origSys = [o.system for o in cmdenv.origins]
+    maxLyPer = cmdenv.emptyLyPer or cmdenv.maxLyPer
+    avoidPlaces = cmdenv.avoidPlaces
+    if cmdenv.debug:
+        cmdenv.DEBUG0(
+                "Checking start stations "
+                "{} jumps at "
+                "{}ly per jump "
+                "from {}",
+                    startJumps,
+                    maxLyPer,
+                    [sys.dbname for sys in origSys]
+                )
+
+    origSys = set(origSys)      # Places we're 
+    nextJump = set(origSys)
+    for jump in range(0, startJumps):
+        if not nextJump:
+            break
+        thisJump, nextJump = nextJump, set()
+        if cmdenv.debug:
+            cmdenv.DEBUG1(
+                    "Ring {}: {}",
+                    jump,
+                    [sys.dbname for sys in thisJump]
+                    )
+        for sys in thisJump:
+            for dest, dist in tdb.genSystemsInRange(sys, maxLyPer):
+                if dest not in avoidPlaces:
+                    origSys.add(dest)
+                    nextJump.add(dest)
+
+    if cmdenv.debug:
+        cmdenv.DEBUG0(
+                "Extended start systems: {}",
+                [sys.dbname for sys in origSys]
+                )
+
+    # Filter down to stations with trade data
+    origins = []
+    for sys in origSys:
+        for stn in sys.stations:
+            if stn.itemCount and stn not in avoidPlaces:
+                origins.append(stn) 
+
+    if cmdenv.debug:
+        cmdenv.DEBUG0(
+                "Extended start stations: {}",
+                [sys.name() for sys in origins]
+                )
+
+    return origins
+
+
 def validateRunArguments(tdb, cmdenv):
     """
         Process arguments to the 'run' option.
@@ -219,8 +296,18 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.maxJumpsPer < 0:
         raise CommandLineError("Negative jumps: you're already there?")
 
-    if cmdenv.startStation:
-        cmdenv.origins = [ cmdenv.startStation ]
+    if cmdenv.origPlace:
+        if isinstance(cmdenv.origPlace, System):
+            cmdenv.origins = list(cmdenv.origPlace.stations)
+            if not cmdenv.origins:
+                raise CommandLineError(
+                        "No stations at origin system, {}"
+                            .format(cmdenv.origPlace.name())
+                        )
+        else:
+            cmdenv.origins = [ cmdenv.origPlace ]
+            cmdenv.startStation = cmdenv.origPlace
+        cmdenv.origins = extendOriginsForStartJumps(tdb, cmdenv)
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
@@ -236,16 +323,16 @@ def validateRunArguments(tdb, cmdenv):
 
     viaSet = cmdenv.viaSet = set(cmdenv.viaStations)
     for place in viaSet:
-        if isinstance(place, Station) and not station.itemCount:
+        if isinstance(place, Station) and not place.itemCount:
             raise NoDataError(
                         "No price data available for via station {}.".format(
-                            station.name()
+                            place.name()
                     ))
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
     fixedRoutePoints = 0
-    if cmdenv.startStation:
+    if cmdenv.origPlace:
         fixedRoutePoints += 1
     if cmdenv.destPlace:
         fixedRoutePoints += 1
@@ -298,6 +385,14 @@ def validateRunArguments(tdb, cmdenv):
     if stopStn and stopStn.itemCount == 0:
         raise NoDataError("End station {} doesn't have any price data.".format(
                             stopStn.name()))
+    if cmdenv.origins:
+        tradingOrigins = [
+                stn for stn in cmdenv.origins
+                if stn.itemCount > 0
+        ]
+        if not tradingOrigins:
+            raise NoDataError("No price data at origin stations.")
+        cmdenv.origins = tradingOrigins
 
     if startStn:
         tdb.loadStationTrades([startStn.ID])
@@ -324,7 +419,7 @@ def run(results, cmdenv, tdb):
 
     from tradecalc import TradeCalc, Route
 
-    startStn, viaSet = cmdenv.startStation, cmdenv.viaSet
+    origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
 
     avoidPlaces = cmdenv.avoidPlaces
 
@@ -346,7 +441,7 @@ def run(results, cmdenv, tdb):
     ]
     numHops = cmdenv.hops
     lastHop = numHops - 1
-    viaStartPos = 1 if startStn else 0
+    viaStartPos = 1 if origPlace else 0
     cmdenv.maxJumps = None
 
     cmdenv.DEBUG0(
@@ -354,7 +449,7 @@ def run(results, cmdenv, tdb):
                     "Cap {cap}, Credits {cr}, "
                     "Hops {hops}, Jumps/Hop {jumpsPer}, Ly/Jump {lyPer:.2f}"
                     "\n".format(
-                        fromStn=startStn.name() if startStn else 'Anywhere',
+                        fromStn=origPlace.name() if origPlace else 'Anywhere',
                         toStn=str([s.name() for s in stopStations]) if stopStations else 'Anywhere',
                         via=';'.join([stn.name() for stn in viaSet]) or 'None',
                         cap=cmdenv.capacity,

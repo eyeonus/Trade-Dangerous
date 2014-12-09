@@ -36,14 +36,11 @@ import corrections
 # - use named captures (?P<name> ...)
 # - include comments
 
-## Find the non-comment part of a string
-noCommentRe = re.compile(r'^\s*(?P<text>(?:[^\\#]|\\.)*)\s*(#|$)')
-
 ## Match the '@ SYSTEM/Station' line
-systemStationRe = re.compile(r'^\@\s*(.*)\s*/\s*(.*)')
+systemStationRe = re.compile(r'^\@\s*(.*)/(.*)')
 
 ## Match the '+ Category' line
-categoryRe = re.compile(r'^\+\s*(.*?)\s*$')
+categoryRe = re.compile(r'^\+\s*(.*)')
 
 ## Price Line matching
 
@@ -53,10 +50,10 @@ itemPriceFrag = r"""
     (?P<item> .*?)
 \s+
     # price station is buying the item for
-    (?P<sell_to> \d+)
+    (?P<sell> \d+)
 \s+
     # price station is selling item for
-    (?P<buy_from> \d+)
+    (?P<buy> \d+)
 """
 
 # time formats per https://www.sqlite.org/lang_datefunc.html
@@ -200,28 +197,22 @@ class SupplyError(BuildCacheBaseException):
 # Helpers
 
 def parseSupply(pricesFile, lineNo, category, reading):
-    if len(reading) == 1:
-        if reading == "?":
-            return (-1, -1)
-        elif reading == "-" or reading == "0":
-            return (0, 0)
-    else:
-        units, level = reading[0:-1], reading[-1]
-        levelNo = "??LMH".find(level.upper()) -1
-        if levelNo < -1:
-            raise SupplyError(
-                        pricesFile, lineNo, category, reading,
-                        "Unrecognized level suffix '{}', "
-                        "expected one of 'L', 'M', 'H' or '?'".format(
-                            level
-                    ))
-        try:
-            unitsNo = int(units)
-            if unitsNo <= 0:
-                raise ValueError("unsigned unit count")
-            return (unitsNo, levelNo)
-        except ValueError:
-            pass
+    units, level = reading[0:-1], reading[-1]
+    levelNo = "??LMH".find(level.upper()) -1
+    if levelNo < -1:
+        raise SupplyError(
+                    pricesFile, lineNo, category, reading,
+                    "Unrecognized level suffix '{}', "
+                    "expected one of 'L', 'M', 'H' or '?'".format(
+                        level
+                ))
+    try:
+        unitsNo = int(units)
+        if unitsNo <= 0:
+            raise ValueError("unsigned unit count")
+        return unitsNo, levelNo
+    except ValueError:
+        pass
 
     raise SupplyError(
                 pricesFile, lineNo, category, reading,
@@ -230,15 +221,6 @@ def parseSupply(pricesFile, lineNo, category, reading):
                 "by a level (L, M, H or ?).".format(
                     level
             ))
-
-
-class PriceEntry(namedtuple('PriceEntry', [
-                                'stationID', 'itemID',
-                                'uiOrder', 'modified',
-                                'sellTo', 'demand', 'demandLevel',
-                                'buyFrom', 'stock', 'stockLevel',
-                            ])):
-    pass
 
 
 ######################################################################
@@ -263,61 +245,29 @@ def getCategoriesByNameIndex(cur):
     return { name: ID for (ID, name) in cur }
 
 
-def testItemNamesUniqueAcrossCategories(cur):
+def getItemByNameIndex(cur):
     """
-        Return True if no single item name appears twice.
-        In previous betas we had some items which appeared
-        in more than one category.
-    """
-    cur.execute("""
-            SELECT COUNT(*)
-              FROM (
-                SELECT name
-                  FROM Item
-                 GROUP BY name
-                HAVING COUNT(*) > 1
-              )
-        """)
-    nonUniqueItemCount = cur.fetchone()[0]
-    return (nonUniqueItemCount == 0)
-
-
-def getItemByNameIndex(cur, itemNamesAreUnique):
-    """
-        Generate item name index. If item names are not
+        Generate item name index.
         unique, prefix the name with the category id.
     """
-    if itemNamesAreUnique:
-        cur.execute("SELECT item_id, name FROM item")
-        return {
-            name: itemID
-                for (itemID, name)
-                in cur
-        }
-    else:
-        cur.execute("SELECT category_id, item_id, name FROM item")
-        return {
-            "{}:{}".format(catID, name): itemID
-                for (catID, itemID, name)
-                 in cur
-        }
+    cur.execute("SELECT item_id, name FROM item")
+    return { name: itemID for (itemID, name) in cur }
 
 
-def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
+def processPrices(tdenv, priceFile, db, defaultZero):
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
     """
 
-    stationID, categoryID, uiOrder = None, None, 0
+    stationID, categoryID = None, None
 
     cur = db.cursor()
 
     systemByName = getSystemByNameIndex(cur)
     categoriesByName = getCategoriesByNameIndex(cur)
 
-    itemNamesAreUnique = testItemNamesUniqueAcrossCategories(cur)
-    itemByName = getItemByNameIndex(cur, itemNamesAreUnique)
+    itemByName = getItemByNameIndex(cur)
 
     defaultUnits = -1 if not defaultZero else 0
     defaultLevel = -1 if not defaultZero else 0
@@ -330,19 +280,20 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
     processedItems = {}
     itemPrefix = ""
     DELETED = corrections.DELETED
-
+    items, buys, sells = [], [], []
 
     def changeStation(matches):
-        nonlocal categoryID, uiOrder, facility, stationID
+        nonlocal categoryID, facility, stationID
         nonlocal processedStations, processedItems
 
         ### Change current station
-        categoryID, uiOrder = None, 0
+        categoryID = None
         systemNameIn, stationNameIn = matches.group(1, 2)
-        systemName, stationName = systemNameIn, stationNameIn
-        facility = systemName.upper() + '/' + stationName.upper()
+        systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
+        corrected = False
+        facility = systemName + '/' + stationName
 
-        tdenv.DEBUG1("NEW STATION: {}", facility)
+        tdenv.DEBUG0("NEW STATION: {}", facility)
 
         # Make sure it's valid.
         try:
@@ -351,49 +302,51 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             stationID = -1
 
         if stationID < 0:
-            systemName = corrections.correctSystem(systemName).upper()
-            stationName = corrections.correctStation(systemName, stationName).upper()
-            if systemName == DELETED or stationName == DELETED:
-                tdenv.DEBUG1("DELETED: {}", facility)
-                stationID = DELETED
-                return
+            corrected = True
+            try:
+                correctName = corrections.systems[systemName]
+                if correctName == DELETED:
+                    tdenv.DEBUG1("DELETED: {}", systemName)
+                    stationID = DELETED
+                    return
+                systemName = correctName.upper()
+            except KeyError:
+                pass
+            try:
+                key = systemName + '/' + stationName
+                correctName = corrections.stations[key]
+                if correctName == DELETED:
+                    tdenv.DEBUG1("DELETED: {}", key)
+                    stationID = DELETED
+                    return
+                stationName = correctName.upper()
+            except KeyError:
+                pass
             facility = systemName + '/' + stationName
             try:
                 stationID = systemByName[facility]
-                tdenv.DEBUG0("Renamed: {}", facility)
+                tdenv.DEBUG1("Renamed: {}/{} -> {}", 
+                        systemNameIn, stationNameIn,
+                        facility
+                )
             except KeyError:
-                if tdenv.corrections:
-                    ### HACK: HERE BE DRAEGONS
-                    # Stations we didn't have a name for are named {STAR}-STATION,
-                    # this is a catch-all for the case where we have a .prices
-                    # that provides the actual name for the station but we don't
-                    # yet have a corrections.py/Station.csv entry for it.
-                    # Run with --corrections to generate a list of corrections.py
-                    # additions.
-                    altStationName = systemName + "-STATION"
-                    altFacility = systemName + '/' + altStationName
-                    try:
-                        stationID = systemByName[altFacility]
-                    except KeyError:
-                        stationID = -1
-                    if stationID >= 0:
-                        facility = altFacility
-                        if altStationName in corrections.stations:
-                            raise Exception(altStationName + " conflicts")
-                        print("  \"{}\": \"{}\",".format(
-                                    facility, stationNameIn,
-                                ), file=sys.stderr)
-                if stationID < 0 :
-                    ex = UnknownStationError(priceFile, lineNo, facility)
-                    if not tdenv.ignoreUnknown:
-                        raise ex
-                    stationID = DELETED
-                    if not tdenv.quiet:
-                        print(ex)
-                    return
+                stationID = -1
+
+        if stationID < 0 :
+            ex = UnknownStationError(priceFile, lineNo, facility)
+            if not tdenv.ignoreUnknown:
+                raise ex
+            stationID = DELETED
+            if not tdenv.quiet:
+                print(ex)
+            return
 
         # Check for duplicates
         if stationID in processedStations:
+            if corrected:
+                # This is probably the old entry.
+                stationID = DELETED
+                return
             raise MultipleStationEntriesError(
                         priceFile, lineNo, facility,
                         processedStations[stationID]
@@ -410,10 +363,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 
     def changeCategory(matches):
-        nonlocal uiOrder, categoryID, categoryName
+        nonlocal categoryID, categoryName
 
-        categoryID = -1
-        categoryName, uiOrder = matches.group(1), 0
+        categoryName = matches.group(1)
 
         tdenv.DEBUG1("NEW CATEGORY: {}", categoryName)
 
@@ -441,29 +393,13 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
 
 
     def processItemLine(matches):
-        nonlocal uiOrder, processedItems
+        nonlocal processedItems
+        nonlocal items, buys, sells
         itemName, modified = matches.group('item', 'time')
-        sellTo = int(matches.group('sell_to'))
-        buyFrom = int(matches.group('buy_from'))
-        demandString, stockString = matches.group('demand', 'stock')
-        if demandString and stockString:
-            demandUnits, demandLevel = parseSupply(
-                    priceFile, lineNo, 'demand', demandString
-            )
-            stockUnits, stockLevel = parseSupply(
-                    priceFile, lineNo, 'stock',  stockString
-            )
-        else:
-            demandUnits, demandLevel = defaultUnits, defaultLevel
-            stockUnits, stockLevel = defaultUnits, defaultLevel
-
-        if modified == 'now':
-            modified = None         # Use CURRENT_FILESTAMP
 
         # Look up the item ID.
-        itemPrefix = "" if itemNamesAreUnique else "{}:".format(categoryID)
         try:
-            itemID = itemByName[itemPrefix + itemName]
+            itemID = itemByName[itemName]
         except KeyError:
             itemID = -1
         if itemID < 0:
@@ -473,7 +409,7 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                 tdenv.DEBUG1("DELETED {}", oldName)
                 return
             try:
-                itemID = itemByName[itemPrefix + itemName]
+                itemID = itemByName[itemName]
                 tdenv.DEBUG1("Renamed {} -> {}", oldName, itemName)
             except KeyError:
                 ex = UnknownItemError(priceFile, lineNo, itemName)
@@ -491,25 +427,64 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
                         processedItems[itemID]
                     )
 
-        processedItems[itemID] = lineNo
-        uiOrder += 1
+        sellTo, buyFrom = matches.group('sell', 'buy')
+        sellTo, buyFrom = int(sellTo), int(buyFrom)
+        demandString, stockString = matches.group('demand', 'stock')
+        if demandString and stockString:
+            if demandString == "?":
+                demandUnits, demandLevel = -1, -1
+            elif demandString == "-":
+                demandUnits, demandLevel = 0, 0
+            else:
+                demandUnits, demandLevel = parseSupply(
+                        priceFile, lineNo, 'demand', demandString
+                )
+            if stockString == "?":
+                stockUnits, stockLevel = -1, -1
+            elif stockString == "-":
+                stockUnits, stockLevel = 0, 0
+            else:
+                stockUnits, stockLevel = parseSupply(
+                        priceFile, lineNo, 'stock',  stockString
+                )
+        else:
+            demandUnits, demandLevel = defaultUnits, defaultLevel
+            stockUnits, stockLevel = defaultUnits, defaultLevel
 
-        return PriceEntry(stationID, itemID,
-                            uiOrder, modified,
-                            sellTo, demandUnits, demandLevel,
-                            buyFrom, stockUnits, stockLevel
-                        )
+        if modified == 'now':
+            modified = None         # Use CURRENT_FILESTAMP
+
+        processedItems[itemID] = lineNo
+
+        items.append([ stationID, itemID, modified ])
+        if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
+            buys.append([
+                        stationID, itemID,
+                        sellTo, demandUnits, demandLevel,
+                        modified
+                    ])
+        if buyFrom > 0 and stockUnits != 0 and stockLevel != 0:
+            sells.append([
+                        stationID, itemID,
+                        buyFrom, stockUnits, stockLevel,
+                        modified
+                    ])
 
     for line in priceFile:
         lineNo += 1
-        if len(line) <= 3 or line.startswith('#'):
-            continue
+        commentPos = line.find("#")
+        if commentPos >= 0:
+            if commentPos == 0:
+                continue
+            line = line[:commentPos]
+        text = line.strip()
 
-        text = noCommentRe.match(line).group('text').strip()
-        # replace whitespace with single spaces
-        text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
         if not text:
             continue
+
+        # replace whitespace with single spaces
+        if text.find("  "):
+            text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
 
         ########################################
         ### "@ STAR/Station" lines.
@@ -555,9 +530,9 @@ def genSQLFromPriceLines(tdenv, priceFile, db, defaultZero):
             raise SyntaxError(priceFile, lineNo,
                         "Unrecognized line/syntax", text)
 
-        sql = processItemLine(matches)
-        if sql:
-            yield sql
+        processItemLine(matches)
+
+    return items, buys, sells
 
 
 ######################################################################
@@ -567,26 +542,13 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
 
     assert isinstance(pricesPath, Path)
 
-    with pricesPath.open() as pricesFile:
-        items, buys, sells = [], [], []
-        for price in genSQLFromPriceLines(tdenv, pricesFile, db, defaultZero):
-            tdenv.DEBUG2(str(price))
-            stnID, itemID = price.stationID, price.itemID
-            uiOrder, modified = price.uiOrder, price.modified
-            items.append([ stnID, itemID, uiOrder, modified ])
-            if uiOrder > 0:
-                cr, units, level = price.sellTo, price.demand, price.demandLevel
-                if cr > 0 and units != 0 and level != 0:
-                    buys.append([ stnID, itemID, cr, units, level, modified ])
-                cr, units, level = price.buyFrom, price.stock, price.stockLevel
-                if cr > 0 and units != 0 and level != 0:
-                    sells.append([ stnID, itemID, cr, units, level, modified ])
-
+    with pricesPath.open('rU') as pricesFile:
+        items, buys, sells = processPrices(tdenv, pricesFile, db, defaultZero)
         if items:
             db.executemany("""
                         INSERT INTO StationItem
-                            (station_id, item_id, ui_order, modified)
-                        VALUES (?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                            (station_id, item_id, modified)
+                        VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                     """, items)
         if sells:
             db.executemany("""
@@ -636,7 +598,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     uniquePfx = "unq:"
     ignorePfx = "!"
 
-    with importPath.open(encoding='utf-8') as importFile:
+    with importPath.open('rU', encoding='utf-8') as importFile:
         csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
         # first line must be the column names
         columnDefs = next(csvin)
@@ -696,9 +658,12 @@ def processImportFile(tdenv, db, importPath, tableName):
         tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
 
         # Check if there is a deprecation check for this table.
-        deprecationFn = getattr(sys.modules[__name__],
-                                "deprecationCheck"+tableName,
-                                None)
+        if tdenv.debug:
+            deprecationFn = getattr(sys.modules[__name__],
+                                    "deprecationCheck"+tableName,
+                                    None)
+        else:
+            deprecationFn = None
 
         # import the data
         importCount = 0
@@ -817,7 +782,7 @@ def buildCache(tdb, tdenv):
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
-    with sqlPath.open() as sqlFile:
+    with sqlPath.open('rU') as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
 

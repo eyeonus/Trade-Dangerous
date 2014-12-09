@@ -1,82 +1,82 @@
-unq:name@Category.category_id,unq:name
-'Chemicals','Explosives'
-'Chemicals','Hydrogen Fuel'
-'Chemicals','Mineral Oil'
-'Chemicals','Pesticides'
-'Consumer Items','Clothing'
-'Consumer Items','Consumer Tech'
-'Consumer Items','Dom. Appliances'
-'Foods','Algae'
-'Foods','Animal Meat'
-'Foods','Coffee'
-'Foods','Fish'
-'Foods','Food Cartridges'
-'Foods','Fruit and Vegetables'
-'Foods','Grain'
-'Foods','Synthetic Meat'
-'Foods','Tea'
-'Industrial Materials','Alloys'
-'Industrial Materials','Plastics'
-'Industrial Materials','Polymers'
-'Industrial Materials','Semiconductors'
-'Industrial Materials','Superconductors'
-'Legal Drugs','Beer'
-'Legal Drugs','Liquor'
-'Legal Drugs','Narcotics'
-'Legal Drugs','Tobacco'
-'Legal Drugs','Wine'
-'Machinery','Atmospheric Processors'
-'Machinery','Crop Harvesters'
-'Machinery','Marine Equipment'
-'Machinery','Microbial Furnaces'
-'Machinery','Mineral Extractors'
-'Machinery','Power Generators'
-'Machinery','Water Purifiers'
-'Medicines','Agri-Medicines'
-'Medicines','Basic Medicines'
-'Medicines','Combat Stabilisers'
-'Medicines','Performance Enhancers'
-'Medicines','Progenitor Cells'
-'Metals','Aluminium'
-'Metals','Beryllium'
-'Metals','Cobalt'
-'Metals','Copper'
-'Metals','Gallium'
-'Metals','Gold'
-'Metals','Indium'
-'Metals','Lithium'
-'Metals','Palladium'
-'Metals','Platinum'
-'Metals','Silver'
-'Metals','Tantalum'
-'Metals','Titanium'
-'Metals','Uranium'
-'Minerals','Bauxite'
-'Minerals','Bertrandite'
-'Minerals','Coltan'
-'Minerals','Gallite'
-'Minerals','Indite'
-'Minerals','Lepidolite'
-'Minerals','Rutile'
-'Minerals','Uraninite'
-'Technology','Advanced Catalysers'
-'Technology','Animal Monitors'
-'Technology','Aquaponic Systems'
-'Technology','Auto-Fabricators'
-'Technology','Bioreducing Lichen'
-'Technology','Computer Components'
-'Technology','H.E. Suits'
-'Technology','Land Enrichment Systems'
-'Technology','Resonating Separators'
-'Technology','Robotics'
-'Textiles','Cotton'
-'Textiles','Leather'
-'Textiles','Natural Fabrics'
-'Textiles','Synthetic Fabrics'
-'Waste','Biowaste'
-'Waste','Chemical Waste'
-'Waste','Scrap'
-'Weapons','Battle Weapons'
-'Weapons','Non-Lethal Wpns'
-'Weapons','Personal Weapons'
-'Weapons','Reactive Armour'
+unq:name@Category.category_id,unq:name,ui_order
+'Chemicals','Explosives',1
+'Chemicals','Hydrogen Fuel',2
+'Chemicals','Mineral Oil',3
+'Chemicals','Pesticides',4
+'Consumer Items','Clothing',1
+'Consumer Items','Consumer Tech',2
+'Consumer Items','Dom. Appliances',3
+'Foods','Algae',1
+'Foods','Animal Meat',2
+'Foods','Coffee',3
+'Foods','Fish',4
+'Foods','Food Cartridges',5
+'Foods','Fruit and Vegetables',6
+'Foods','Grain',7
+'Foods','Synthetic Meat',8
+'Foods','Tea',9
+'Industrial Materials','Alloys',1
+'Industrial Materials','Plastics',2
+'Industrial Materials','Polymers',3
+'Industrial Materials','Semiconductors',4
+'Industrial Materials','Superconductors',5
+'Legal Drugs','Beer',1
+'Legal Drugs','Liquor',2
+'Legal Drugs','Narcotics',3
+'Legal Drugs','Tobacco',4
+'Legal Drugs','Wine',5
+'Machinery','Atmospheric Processors',1
+'Machinery','Crop Harvesters',2
+'Machinery','Marine Equipment',3
+'Machinery','Microbial Furnaces',5
+'Machinery','Mineral Extractors',4
+'Machinery','Power Generators',6
+'Machinery','Water Purifiers',7
+'Medicines','Agri-Medicines',1
+'Medicines','Basic Medicines',2
+'Medicines','Combat Stabilisers',3
+'Medicines','Performance Enhancers',4
+'Medicines','Progenitor Cells',5
+'Metals','Aluminium',1
+'Metals','Beryllium',2
+'Metals','Cobalt',3
+'Metals','Copper',4
+'Metals','Gallium',5
+'Metals','Gold',6
+'Metals','Indium',7
+'Metals','Lithium',8
+'Metals','Palladium',9
+'Metals','Platinum',10
+'Metals','Silver',11
+'Metals','Tantalum',12
+'Metals','Titanium',13
+'Metals','Uranium',14
+'Minerals','Bauxite',1
+'Minerals','Bertrandite',2
+'Minerals','Coltan',3
+'Minerals','Gallite',4
+'Minerals','Indite',5
+'Minerals','Lepidolite',6
+'Minerals','Rutile',7
+'Minerals','Uraninite',8
+'Technology','Advanced Catalysers',1
+'Technology','Animal Monitors',2
+'Technology','Aquaponic Systems',3
+'Technology','Auto-Fabricators',4
+'Technology','Bioreducing Lichen',5
+'Technology','Computer Components',6
+'Technology','H.E. Suits',7
+'Technology','Land Enrichment Systems',8
+'Technology','Resonating Separators',9
+'Technology','Robotics',10
+'Textiles','Cotton',1
+'Textiles','Leather',2
+'Textiles','Natural Fabrics',3
+'Textiles','Synthetic Fabrics',4
+'Waste','Biowaste',1
+'Waste','Chemical Waste',2
+'Waste','Scrap',3
+'Weapons','Battle Weapons',1
+'Weapons','Non-Lethal Wpns',2
+'Weapons','Personal Weapons',3
+'Weapons','Reactive Armour',4

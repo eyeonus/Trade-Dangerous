@@ -193,8 +193,9 @@ RUN sub-command:
      --from <station or system>
        Lets you specify the starting station
        e.g.
-         --from Dahan
-         --from Gateway
+         --from @Asellus/Beagle2
+         --fr beagle2
+         --fr asellusprim
 
      --to <station or system>
        Lets you specify the final destination. If you specify a station, it
@@ -204,14 +205,11 @@ RUN sub-command:
          --to Beagle2
          --to lhs64
 
-     --end <station or system>
-       Instead of --to, allows you to specify multiple destinations and
-       TD will attempt to find a route that ends at one of them:
-       e.g.
-         --end beagle2
-           ^_ equivalent to "--to beagle2"
-         --end beagle2 --end freeport
-           ^_ finds a route terminating at EITHER beagle2 OR freeport
+     --start-jumps N
+     -s N
+       Considers stations from stations upto this many jumps from your
+       specified start location.
+         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
 
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
@@ -245,6 +243,11 @@ RUN sub-command:
        e.g.
          --ly-per 19.1
          --ly-per 3
+
+     --empty-ly N.NN
+     --emp N.NN
+       DEFAULT: same as --ly-per
+       How far your ship can jump when empty (used by --start-jumps)
 
    Ship/Trade options:
      --capacity N
@@ -321,10 +324,6 @@ UPDATE sub-command:
       e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
       Saves the prices in a human-readable format and loads that into
       an editor. Make changes and save to update the database.
-
-    --supply
-    -S
-      Exposes the "demand" and "stock" columns.
 
     --timestamps
     -T
@@ -656,37 +655,60 @@ is designed to closely resemble what we see in the market screens in-game.
 
 To edit the data for a single station, use the "update" sub-command, e.g.
 
-  trade.py update --notepad Aulin
+  trade.py update --notepad beagle2
 
 This will open notepad with the data for Aulin, which will look something like:
 
-  @ AULIN/Aulin Enterprise
+  @ I BOOTIS/Beagle 2 Landing
      + Chemicals
-        Explosives                 50      0
-        Hydrogen Fuels             19      0
-        Mineral Oil               100      0
-        Pesticides                 21      0
+        Explosives                 50      0        ?      -
+        Hydrogen Fuels             19      0        ?      -
+        Mineral Oil               100      0        ?      -
+        Pesticides                 21      0        ?      -
      + Consumer Items
-        Clothing                  300      0
-        Consumer Tech            1112   1111
+        Clothing                  300      0        ?      -
+        Consumer Tech            1112   1111        ?    30L
 
 "@" lines specify a system/station.
 "+" lines specify a category.
 The remaining lines are items.
 
-  Explosives    50    0
+  Explosives    50    0    ?    -
 
 These fields are:
   <item name>
   <sale price> (how much the station pays)
   <buying price> (how much the station charges)
+  <demand> ('?' means "we don't care")
+  <stock>  ('-' means "not available")
 
 So you can see the only item this station is selling is Consumer Tech, which 
-the station wants 1111 credits for.
+the station wants 1111 credits for. The demand wasn't recorded (we generally
+aren't interested in demand levels since E:D doesn't seem to use them) and
+the items wasn't available for purchase *from* the station.
 
-TradeDangerous can also leverage the "DEMAND" and "STOCK" values from the
-market UI. To expose those when using "trade.py update", use the "--all"
-option. For more details of the extended format, see the Prices wiki page:
+TD will use the 'stock' values to limit how many units it can buy. For
+example, if you have money to buy 30 units from a station but the .prices
+data says only 10 are available, TD only tell you to buy 10 units and it
+will fill the rest of your hold up with other stuff.
+
+Demand and Stock both take a "supply level" value which is either "?", "-"
+or the number of units followed by the level: L for Low, M for Medium,
+H for High or ? for "don't care".
+
+   ?
+   -
+   1L
+   23M
+   3402H
+   444?
+
+Best Practice:
+
+ - Leave demand as ?, neither E:D or TD use it,
+ - Stock quantities over 10k are usuall irrelevant, leave them as ?,
+ 
+For more details of the .prices format, see the wiki page:
 https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data
 
 NOTE: The order items are listed within their category is saved between edits,
@@ -694,9 +716,6 @@ so if you switch "Explosives" and "Hydrogen Fuels" and then save it, they
 will show that way when you edit this station again.
 
 See "trade.py update -h" for more help with the update command.
-
-Note: My personal editor of choice is "Sublime Text", which is why there is
-a command line option (--sublime or just --subl) for invoking it.
 
 
 ==============================================================================

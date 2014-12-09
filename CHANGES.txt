@@ -2,6 +2,47 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.8 [wip]
+. (kfsone) Download counter to "import", use -q to silence it
+. (kfsone) Fixed case-sensitivity matching station names that changed
+. (kfsone) 48 new stations
+. (kfsone) "update -G" now takes "-wx" and "-wy" arguments for setting the
+  position of the GUI window. Try -wx=-220 -wy=220
+. (kfsone) Updated config.sh and tdupd to take advantage of -wx and -wy
+
+v6.1.7 Dec 07 2014
+. (kfsone) Added "scripts" directory with bash scripts
+  See scripts/README.txt
+. (kfsone) Allow bigger price differences for most costly items in the UI,
+  thanks to Bariri for the reports
+. (eggplant) More station data
+
+v6.1.6 Dec 06 2014
+. (gulasch) Station additions, corrections and distances
+. (kfsone) Added '--ages' option to "buy" command to show data age
+. (kfsone) Fix for line-numbers in .prices files sometimes being incorrect
+. (kfsone) Added "--start-jumps" (-s) option to "run" command which will
+  use actively trading stations within that number of jumps of your
+  specified system/station.
+. (kfsone) Added "--empty" to "run" command to tell it how far you can
+  jump when carrying zero cargo.
+. (kfsone) Include origin system in "local" command output (works well
+  with -v to list local stations)
+. (kfsone) ui_order is now specified in Item.csv rather than per-item
+  (Microbial Furnaces and Mineral Extractors should now be in UI order :)
+. (gazelle) More Station data and some distances
+. (eggplant) Made it possible to override the path to data files, etc,
+  by specifying a dataDir= argument to TradeEnv(). Default is still ./data
+
+v6.1.5 Dec 04 2014
+. (kfsone) "run" --from will now accept a System name
+. (kfsone) "update" GUI will now do some sanity checking on prices
+. (kfsone) "nav" with -vv will show direct distance left to destination
+. (kfsone) Minor speed improvements to "nav"
+. (kfsone) Startup optimizations,
+. (kfsone) "update" command now always exposes supply and demand,
+. (kfsone) "--supply" (-S) is now deprecated for "update" command,
+
 v6.1.4 Dec 01 2014
 . (kfsone) "updated.prices" will now contain line removals
 . (kfsone) 155 new systems from RedWizard

@@ -1,0 +1,22 @@
+#! /usr/bin/env bash
+# Usage: tdloc <place> <maxly> [... trade.py options]
+#
+# Finds systems and their stations local to <place>
+# that are within <ly> range.
+
+. "${TRADEDIR:-.}/config.sh"
+
+place=$1; shift
+ly=$1; shift
+if [[
+        -z $place || $place == -* ||
+        -z $ly || $ly == -*
+        ]]
+then
+    echo "ERROR: Usage: $0 <place> <ly> ..."
+    exit 1
+fi
+
+cmd="\"${TRADEPY}\" local \"$place\" --ly \"$ly\" $*"
+echo \$ $cmd
+eval "$cmd"

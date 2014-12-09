@@ -152,8 +152,10 @@ class UpdateGUI(ScrollingCanvas):
 
         self.focusOn(0, 0)
 
-        parent.geometry("{}x{}-0+0".format(
-                    width+16, height
+        parent.geometry("{}x{}{:+n}{:+n}".format(
+                    width+16, height,
+                    tdenv.windowX,
+                    tdenv.windowY,
                 ))
 
         # Allow the window to be always-on-top
@@ -208,7 +210,7 @@ class UpdateGUI(ScrollingCanvas):
 
 
     def validate(self, widget):
-        """ For checking the contents of a widget. TBD """
+        """ For checking the contents of a widget. """
         item, row, pos = widget.item, widget.row, widget.pos
 
         value = widget.val.get()
@@ -241,6 +243,53 @@ class UpdateGUI(ScrollingCanvas):
                         "Price must be an numeric value (e.g. 1234)"
                         )
                 return False
+
+        if pos == 1:
+            # Don't allow crazy difference between prices
+            paying = int(row[0][1].get())
+            asking = int(row[1][1].get())
+
+            if asking < paying:
+                widget.bell()
+                mbox.showerror(
+                        "I DOUBT THAT!",
+                        "Stations never pay more for an item than "
+                        "they sell it for.",
+                        )
+                return False
+
+            # https://forums.frontier.co.uk/showthread.php?t=34986&p=1162429&viewfull=1#post1162429
+            # It seems that stations usually pay within 25% of the
+            # asking price as a buy-back price. If the user gives
+            # us something out of those bounds, check with them.
+            if paying < asking * 0.75 or \
+                    paying < asking - 200:
+                widget.bell()
+                ok = mbox.askokcancel(
+                        "Are you sure about that?",
+                        "You've indicated that the station is:\n"
+                        "  PAYING: {:>10n}cr\n"
+                        "  ASKING: {:>10n}cr\n"
+                        "for {}.\n"
+                        "\n"
+                        "This is outside of expected tolerances, "
+                        "please check the numbers.\n"
+                        "\n"
+                        "If the numbers are correct, click OK and "
+                        "please post a screenshot of the market UI "
+                        "to the TD thread "
+                        "(http://kfs.org/td/thread)."
+                        .format(
+                                paying, asking,
+                                widget.item.name
+                                ),
+                        default=mbox.CANCEL,
+                        parent=widget,
+                        )
+                if not ok:
+                    widget.val.set("")
+                    widget.focus_set()
+                    return False
 
             return True
 
@@ -487,7 +536,7 @@ class UpdateGUI(ScrollingCanvas):
                                 USING (station_id, item_id)
                             LEFT OUTER JOIN StationSelling ss
                                 USING (station_id, item_id)
-                 ORDER  BY cat.name, si.ui_order, item.name
+                 ORDER  BY cat.name, item.ui_order
                 """.format(
                             siJoin=siJoin
                     )
