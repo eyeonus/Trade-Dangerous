@@ -1014,7 +1014,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Sol','Burnell Station',0.0
 'Sol','Columbus',0.0
 'Sol','Daedalus',0.0
-'Sol','Galileo',0.0
+'Sol','Galileo',509.0
 'Sol','Li Qing Jao',0.0
 'Sol','M.Gorbachev',0.0
 'Sol','Mars High',0.0
@@ -1153,10 +1153,10 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Wolf 497','Vetulani Holdings',0.0
 'Wolf 54','Meeking''s Way',0.0
 'Wolf 54','Souper Matt',0.0
-'Wolf 562','Berners-Lee Terminal',0.0
-'Wolf 562','Hopkins Port',0.0
-'Wolf 562','Leoniceno Camp',0.0
-'Wolf 562','Nagel Enterprise',0.0
+'Wolf 562','Berners-Lee Terminal',122.0
+'Wolf 562','Faris Gateway',3222.0
+'Wolf 562','Hopkins Port',37.0
+'Wolf 562','Nagel Enterprise',21.0
 'Wolf 718','White Station',0.0
 'Wolf 750','Gregory Orbital',0.0
 'Wolf 750','Neumann Gateway',0.0
