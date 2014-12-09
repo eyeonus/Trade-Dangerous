@@ -23,6 +23,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 '37 Geminorum','Hinz Station',0.0
 '37 Geminorum','Stairs Terminal',0.0
 '37 Geminorum','Utley City',0.0
+'37 Librae','Roosa Market',1680.0
 '37 Xi Bootis','Schirba Plant',0.0
 '41 Gamma Serpentis','Abe Landing',0.0
 '44 chi Draconis','Lawson Camp',0.0
@@ -994,7 +995,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Suyarang','Treshchov Orbital',0.0
 'Suyarang','Volta Ring',0.0
 'Tabassapisi','Parise Camp',0.0
-'Tago','Kregel Dock',0.0
+'Tago','Kregel Dock',193.0
 'Talitha','Ross Platform',0.0
 'Tamor','Seven Holm',0.0
 'Tangaroa','Asylum',0.0
