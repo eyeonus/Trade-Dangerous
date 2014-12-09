@@ -4,6 +4,12 @@ unq:name@System.system_id,unq:name,ls_from_star
 '15 Geminorum','Artsebarsky Dock',0.0
 '15 Geminorum','Ericsson Port',0.0
 '15 Geminorum','Gantt Station',0.0
+'16 Cygni','Borisenko Dock',0.0
+'16 Cygni','Hoffman Terminal',0.0
+'16 Cygni','Kaleri Market',0.0
+'16 Cygni','Northrop Port',0.0
+'16 Cygni','Payette Market',0.0
+'16 Cygni','Siemens Orbital',0.0
 '21 Draco','Roberts Port',0.0
 '26 Draconis','Bouch Beacon',0.0
 '31 Aquilae','Compton Hub',0.0
@@ -81,7 +87,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Amait','Lopez De Villalobos Prospect',0.0
 'Amait','Oramus Legacy',0.0
 'Amarak','Vela Port',1160.0
-'Amarak','Werner Von Siemens Vison',0.0
+'Amarak','Werner Von Siemens Vision',0.0
 'Ambiliates','Hanke-Woods Terminal',0.0
 'Ammapa','Bamford Enterprise',0.0
 'Anapos','Herschel Plant',0.0
@@ -185,6 +191,13 @@ unq:name@System.system_id,unq:name,ls_from_star
 'BD+71 1033','Fourneyron Port',0.0
 'BD+74 526','Smith Prospect',0.0
 'BD+75 58','Stephenson Station',0.0
+'Belalans','Ban Hub',0.0
+'Belalans','Boscovich Ring',0.0
+'Belalans','Fairey Vision',0.0
+'Belalans','Luu Dock',0.0
+'Belalans','Mandel Dock',0.0
+'Belalans','Powers Hub',0.0
+'Belalans','Shoemaker City',0.0
 'Beta-1 Tucanae','Adams Orbital',0.0
 'BF Canis Venatici','Kornbluth Dock',0.0
 'Bhritzameno','Feynman Terminal',0.0
@@ -234,6 +247,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Chemaku','Kaku City',0.0
 'Chemaku','Kaku Orbital',0.0
 'Chemaku','Lawson Station',0.0
+'Chi Eridani','Armstrong Mines',0.0
+'Chi Eridani','Steve Masters',0.0
+'Chi Eridani','The Ascending Phoenix',0.0
 'Chi Herculis','Gorbatko Reserve',0.0
 'Chicomoztoc','Fabricius Gateway',0.0
 'Chicomoztoc','Goldschmidt Port',0.0
@@ -366,6 +382,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Gnowee','Kelleam Port',0.0
 'Gondul','Fiorilla Dock',0.0
 'Gong Gu','Cheli Dock',0.0
+'Gorgon','Brandenstein Station',0.0
+'Gorgon','Burnet City',0.0
+'Gorgon','Ray Hub',0.0
 'GQ Virginis','Garriott Colony',0.0
 'Grabri','Platform',0.0
 'Granthaimi','Parmitano Colony',0.0
@@ -406,6 +425,10 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Heheng De','Malchiodi Colony',0.0
 'Heike','Braun Enterprise',0.0
 'Heike','Brunel City',411.0
+'Heike','Cabana Dock',0.0
+'Heike','Haignere Orbital',0.0
+'Heike','Lyell Port',0.0
+'Heike','McMonagle Orbital',0.0
 'Hemaki','Coriolis',0.0
 'Hemaki','Kizim',0.0
 'Heveri','Birdseye Enterprise',0.0
@@ -446,6 +469,12 @@ unq:name@System.system_id,unq:name,ls_from_star
 'HR 1257','Millar Settlement',0.0
 'HR 3991','Greenland Exchange',0.0
 'HR 4979','Iqbal Hub',0.0
+'HR 7451','Brady Port',0.0
+'HR 7451','Cheli Gateway',0.0
+'HR 7451','Comino Terminal',0.0
+'HR 7451','Gillekens Station',0.0
+'HR 7451','Goddard Terminal',0.0
+'HR 7451','Hire Port',0.0
 'HR 8170','Fiennes Vision',0.0
 'Hreintania','Kozeyev Gateway',0.0
 'Hsien Baji','Novitski Mines',0.0
@@ -485,6 +514,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Kivah','Sadi Carnot Ring',0.0
 'Kokoimudji','Quinn Orbital',0.0
 'Kokoimudji','Siodmak Station',0.0
+'Kokojina','Ali Ring',0.0
 'Kolitja','Nakaya Station',0.0
 'Komovoy','Gentle Dock',0.0
 'Korubu','Markov Gateway',0.0
@@ -521,6 +551,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lei Manako','Debye Port',0.0
 'Lembava','Goldstein Port',0.0
 'LFT 1072','Forsskal Vision',0.0
+'LFT 1425','Hirase Market',0.0
 'LFT 1446','Bosch Settlement',0.0
 'LFT 1448','Dirac Enterprise',0.0
 'LFT 1664','Shull Settlement',0.0
@@ -537,6 +568,11 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LFT 926','Meredith City',369.0
 'LFT 945','Hahn Base',0.0
 'LFT 992','Szulkin mines',0.0
+'Lhangkambe','Baker Orbital',0.0
+'Lhangkambe','Detmer Orbital',0.0
+'Lhangkambe','Glidden Gateway',0.0
+'Lhangkambe','Jacquard Dock',0.0
+'Lhangkambe','Yeliseyev Terminal',0.0
 'LHS 1065','Hornblower Platform',0.0
 'LHS 1101','Bondar City',0.0
 'LHS 115','Aleksandrov Gateway',0.0
@@ -790,7 +826,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Miphifa','Happis',0.0
 'Mirdi','Mcdivitt Settlement',0.0
 'Mizar','Judson Station',0.0
-'Mokosh','Bethe Station',0.0
+'Mokosh','Bethe Station',2500.0
 'Mokosh','Lubin Orbital',0.0
 'Mombaluma','Bennett Colony',0.0
 'Mombaluma','Hughes-Fulford Terminal',0.0
@@ -819,6 +855,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Nima','Rashid Dock',0.0
 'Nima','Rushworth Terminal',0.0
 'Ninsun','Ramanujan Dock',0.0
+'Njangari','Lee Hub',0.0
 'Njikan','Smeaton Port',0.0
 'NLTT 38960','Sarafanov Orbital',0.0
 'NLTT 45576','Kadenyuk Outpost',0.0
@@ -1023,6 +1060,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Thiin','Euler Orbital',0.0
 'Thiin','Kotov Terminal',0.0
 'Thraskias','Herreshoff Station',0.0
+'Thrutis','Kingsbury Dock',0.0
 'Tiethay','Santos Plant1',0.0
 'Tilian','Maunder''s Hope',0.0
 'Timocani','Pennington Terminal',0.0
@@ -1032,6 +1070,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tionisla','Ing Ring',0.0
 'Tollan','Bayliss Base',0.0
 'Tote','Whitelaw Enterprise',0.0
+'Toxandji','Alvares Dock',0.0
+'Toxandji','Morrow Port',0.0
+'Toxandji','Tsunenaga Orbital',0.0
 'Trella','Titto Colony',0.0
 'Tripu','Vinogradov Installation',0.0
 'Tsohodiae','Barba Port',0.0
@@ -1039,6 +1080,11 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tyr','Glashow',0.0
 'Tyr','Glashow Dock',0.0
 'Ualapalor','Anderson Terminal',0.0
+'Ualapalor','Leichhardt City',0.0
+'Ualapalor','Nesvadba Dock',0.0
+'Ualapalor','Preuss Station',0.0
+'Ualapalor','Rochon Ring',0.0
+'Ualapalor','Wagner City',0.0
 'Ugraswarka','Baille City',0.0
 'Uluri','McDivitt Settlement',0.0
 'Uluri','Parker Beacon',0.0
@@ -1052,7 +1098,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'V538 Aurigae','Card Park',0.0
 'V749 Herculis','Pauling Gateway',0.0
 'V774 Herculis','Mendel Mines',0.0
-'V775 Herculi','Beatty Port',0.0
+'V775 Herculi','Beatty Port',870000.0
 'V775 Herculi','Vonarburg Enterprise',0.0
 'V886 Centauri','Garriott Terminal',0.0
 'V886 Centauri','Tanner City',0.0

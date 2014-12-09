@@ -3,8 +3,10 @@ from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
 import math
 import re
+import time
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+import urllib.error
 
 import cache
 from pathlib import Path
@@ -52,6 +54,24 @@ switches = [
 ######################################################################
 # Helpers
 
+def makeUnit(value):
+    units = [ '', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+    unitSize = int(value)
+    for unit in units:
+        if unitSize <= 640:
+            return "{:5.2f}{}B".format(unitSize, unit)
+        unitSize /= 1024
+    return None
+    
+
+def rateVal(fetched, started):
+    now = time.time()
+    if fetched == 0 or now <= started:
+        return "..."
+    units = (makeUnit(fetched / (now - started))+"/s") or "FAST!"
+    return units
+
+
 def download(cmdenv, url):
     """
         Download a prices file from the web.
@@ -59,14 +79,51 @@ def download(cmdenv, url):
 
     req = Request(url)
 
-    cmdenv.DEBUG0("Fetching: {}", url)
-    f = urlopen(req)
+    if not cmdenv.quiet:
+        print("Connecting to server")
+    try:
+        f = urlopen(req)
+    except urllib.error.URLError as e:
+        raise TradeException(
+                "Unable to connect ("+url+")\n" +
+                str(e)
+        )
     cmdenv.DEBUG0(str(f.info()))
-    data = f.read().decode()
+
+    # Figure out how much data we have
+    bytes = int(f.getheader('Content-Length'))
+    maxBytesLen = len("{:>n}".format(bytes))
+    fetched = 0
+    started = time.time()
+
+    # Fetch four memory pages at a time
+    chunkSize = 4096 * 4
 
     dstFile = "import.prices"
     with open(dstFile, "w") as fh:
-        print(data, file=fh)
+        # Use the 'while True' approach so that we always print the
+        # download status including, especially, the 100% report.
+        while True:
+            if not cmdenv.quiet:
+                print("Download: "
+                        "{:>{len}n}/{:>{len}n} bytes "
+                        "| {:>10s} "
+                        "| {:>5.2f}% "
+                        .format(
+                                fetched, bytes,
+                                rateVal(fetched, started),
+                                (fetched * 100 / bytes),
+                                len=maxBytesLen
+                ), end='\r')
+
+            if fetched >= bytes:
+                if not cmdenv.quiet:
+                    print()
+                break
+            
+            chunk = f.read(chunkSize)
+            fetched += len(chunk)
+            print(chunk.decode(), file=fh, end="")
 
     return dstFile
 
@@ -80,6 +137,7 @@ def run(results, cmdenv, tdb):
 
     if cmdenv.url:
         cmdenv.filename = download(cmdenv, cmdenv.url)
+        assert cmdenv.filename
 
     if not cmdenv.filename:
         import tkinter
@@ -109,6 +167,7 @@ def run(results, cmdenv, tdb):
         raise CommandLineError("File not found: {}".format(
                     str(filePath)
                 ))
+
     cache.importDataFromFile(tdb, cmdenv, filePath)
     return None
 

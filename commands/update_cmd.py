@@ -67,6 +67,24 @@ switches = [
             default=False,
             dest='alwaysOnTop',
     ),
+    ParseArgument('--window-x', '-wx',
+            help=(
+                "[GUI] Specify the window X position "
+                "Use a negative value for a right-of-screen relative offset"
+                ),
+            default=-1,
+            dest='windowX',
+            type=int,
+    ),
+    ParseArgument('--window-y', '-wy',
+            help=(
+                "[GUI] Specify the window U position "
+                "Use a negative value for a bottom-of-screen relative offset"
+                ),
+            default=1,
+            dest='windowY',
+            type=int,
+    ),
     MutuallyExclusiveGroup(
         ParseArgument('--experimental-gui', '-G',
                 help="Use the experimental built-in GUI",
