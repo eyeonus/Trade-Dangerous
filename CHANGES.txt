@@ -5,10 +5,11 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v6.1.8 [wip]
 . (kfsone) Download counter to "import", use -q to silence it
 . (kfsone) Fixed case-sensitivity matching station names that changed
-. (kfsone) 48 new stations
+. (kfsone) 60 new stations
 . (kfsone) "update -G" now takes "-wx" and "-wy" arguments for setting the
   position of the GUI window. Try -wx=-220 -wy=220
 . (kfsone) Updated config.sh and tdupd to take advantage of -wx and -wy
+. (eggplant) More stations and distances
 
 v6.1.7 Dec 07 2014
 . (kfsone) Added "scripts" directory with bash scripts
