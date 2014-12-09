@@ -152,8 +152,10 @@ class UpdateGUI(ScrollingCanvas):
 
         self.focusOn(0, 0)
 
-        parent.geometry("{}x{}-0+0".format(
-                    width+16, height
+        parent.geometry("{}x{}{:+n}{:+n}".format(
+                    width+16, height,
+                    tdenv.windowX,
+                    tdenv.windowY,
                 ))
 
         # Allow the window to be always-on-top

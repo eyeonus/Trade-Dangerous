@@ -14,6 +14,9 @@ CMDR="YourName"
 # Current credit balance
 CR=270742
 
+# Set the position of the update window relative to top-right of screen
+UPD_ARGS="-wx=-40 -wy=40"
+
 # You can only have one set of variables "live" at a time, comment out
 # old ships while you are not flying them, then you can just uncomment
 # them later on.
