@@ -289,11 +289,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         ### Change current station
         categoryID = None
         systemNameIn, stationNameIn = matches.group(1, 2)
-        systemName, stationName = systemNameIn, stationNameIn
+        systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
         corrected = False
-        facility = systemName.upper() + '/' + stationName.upper()
+        facility = systemName + '/' + stationName
 
-        tdenv.DEBUG1("NEW STATION: {}", facility)
+        tdenv.DEBUG0("NEW STATION: {}", facility)
 
         # Make sure it's valid.
         try:
@@ -313,7 +313,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             except KeyError:
                 pass
             try:
-                key = systemName + "/" + stationName.upper()
+                key = systemName + '/' + stationName
                 correctName = corrections.stations[key]
                 if correctName == DELETED:
                     tdenv.DEBUG1("DELETED: {}", key)
@@ -325,7 +325,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             facility = systemName + '/' + stationName
             try:
                 stationID = systemByName[facility]
-                tdenv.DEBUG0("Renamed: {}", facility)
+                tdenv.DEBUG1("Renamed: {}/{} -> {}", 
+                        systemNameIn, stationNameIn,
+                        facility
+                )
             except KeyError:
                 stationID = -1
 
