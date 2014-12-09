@@ -5,7 +5,7 @@
 
 . ${TRADEDIR:-.}/config.sh
 
-cmd="\"${TRADEPY}\" update -GF $*"
+cmd="\"${TRADEPY}\" update -GF ${UPD_ARGS} $*"
 echo \$ $cmd
 eval "$cmd"
 
