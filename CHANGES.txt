@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.8 [wip]
+. (kfsone) Download counter to "import", use -q to silence it
+
 v6.1.7 Dec 07 2014
 . (kfsone) Added "scripts" directory with bash scripts
   See scripts/README.txt
