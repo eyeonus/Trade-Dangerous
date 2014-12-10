@@ -225,6 +225,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Caspatsuria','Binney Dock',0.0
 'CD-25 1159','Paulmier De Gonneville Landing',0.0
 'CD-34 9020','Back Enterprise',0.0
+'CD-75 661','Kirk Dock',0.0
 'CE Bootis','Moskowitz Gateway',0.0
 'CE Bootis','Sellers Relay',0.0
 'Cebalrai','Hornblower Dock',0.0
@@ -286,6 +287,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Dagaz','Wakata Refinery',0.0
 'Dahan','Dahan Gateway',0.0
 'Daikulcandi','Chretien Oudemans Hanger',0.0
+'Damna','Nemere Market',0.0
 'Darahk','Noblehome',0.0
 'Delphin','Aristole Orbital',0.0
 'Delphin','Clark Orbital',0.0
@@ -325,6 +327,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Eravate','Sylvester City',495.0
 'Eta Corvi','Ivins Plant',0.0
 'Eta Draconis','Zahn Orbital',0.0
+'Ethgreze','Bloch Station',0.0
 'Euryale','Eg Main Hq',0.0
 'Euryale','Gantt Enterprise',0.0
 'Evergreen','Stafford Terminal',0.0
