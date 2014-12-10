@@ -60,8 +60,7 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
 
     # Check for a direct route and seed the open list with the systems
     # in direct-range of the origin.
-    for dstSys, distSq in tdb.genSystemsInRange(srcSystem, maxLyPer):
-        dist = math.sqrt(distSq)
+    for dstSys, dist in tdb.genSystemsInRange(srcSystem, maxLyPer):
         distances[dstSys] = [ dist, srcSystem ]
         if dstSys == dstSystem:
             return [ dstSystem, srcSystem ], distances
@@ -106,10 +105,9 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
 
         gsir = tdb.genSystemsInRange
         for node, startDist in openNodes.items():
-            for (destSys, destDistSq) in gsir(node, maxLyPer):
+            for (destSys, destDist) in gsir(node, maxLyPer):
                 if destSys in avoiding:
                     continue
-                destDist = math.sqrt(destDistSq)
                 dist = startDist + destDist
                 # If we aready have a shorter path, do nothing
                 try:

@@ -234,7 +234,7 @@ def extendOriginsForStartJumps(tdb, cmdenv):
                     [sys.dbname for sys in origSys]
                 )
 
-    origSys = set(origSys)      # Places we're 
+    origSys = set(origSys)
     nextJump = set(origSys)
     for jump in range(0, startJumps):
         if not nextJump:
