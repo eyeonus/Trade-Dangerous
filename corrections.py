@@ -10,6 +10,7 @@ systems = {
     'MANTOAC': "Mantóac",
     "NANTOAC": "Nantóac",
     "LIFTHRUTI": "Lífthruti",
+    "SETING": DELETED,
 
 #ADD_SYSTEMS_HERE
 }
@@ -23,6 +24,7 @@ stations = {
     "OPALA/ZAMK PLATFORM": "Zamka Platform",
     "G 139-50/FILIPCHENKO": "Filipchenko City",
     "AMARAK/WERNER VON SIEMENS VISON": "Werner Von Siemens Vision",
+    "SETING/COX LANDING": DELETED,
 
 #ADD_STATIONS_HERE
 }
