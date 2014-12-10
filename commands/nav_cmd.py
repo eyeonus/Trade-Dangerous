@@ -39,6 +39,11 @@ switches = [
             dest='aggressiveness',
             default=0,
         ),
+    ParseArgument('--avoid',
+            help='Exclude a system from the route. If you specify a station, '
+                 'the system that station is in will be avoided instead.',
+            action='append',
+        ),
 ]
 
 ######################################################################
@@ -80,6 +85,13 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
                 ))
         return None, None
 
+    avoiding = frozenset([
+            place.system if isinstance(place, Station) else place
+            for place in cmdenv.avoidPlaces
+    ])
+    if avoiding:
+        cmdenv.DEBUG0("Avoiding: {}", list(avoiding))
+
     # As long as the open list is not empty, keep iterating.
     overshoot = (cmdenv.aggressiveness * 4) + 1
     while openList:
@@ -95,6 +107,8 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
         gsir = tdb.genSystemsInRange
         for node, startDist in openNodes.items():
             for (destSys, destDistSq) in gsir(node, maxLyPer):
+                if destSys in avoiding:
+                    continue
                 destDist = math.sqrt(destDistSq)
                 dist = startDist + destDist
                 # If we aready have a shorter path, do nothing

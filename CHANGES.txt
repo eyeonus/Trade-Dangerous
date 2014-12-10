@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.8 [wip]
+. (kfsone) #79 support for "--avoid" in the "nav" command
 . (kfsone) Download counter to "import", use -q to silence it
 . (kfsone) Fixed case-sensitivity matching station names that changed
 . (kfsone) 60 new stations
