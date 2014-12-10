@@ -25,11 +25,6 @@ arguments = [
     ParseArgument('starting', help='Name of the station to update.', type=str)
 ]
 switches = [
-    ParseArgument('--supply', '-S', 
-            help='[DEPRECATED] Includes demand and stock (supply) values in the update.',
-            action='store_true',
-            default=False,
-    ),
     ParseArgument('--timestamps', '-T', 
             help='[Text editing] Includes timestamps in the update.',
             action='store_true',
@@ -86,7 +81,7 @@ switches = [
             type=int,
     ),
     MutuallyExclusiveGroup(
-        ParseArgument('--experimental-gui', '-G',
+        ParseArgument('--gui', '-G',
                 help="Use the experimental built-in GUI",
                 action='store_true',
                 default=False,

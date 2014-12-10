@@ -9,152 +9,129 @@ REQUIRES PYTHON 3.4 OR HIGHER.
 == What is Trade Dangerous?
 ==============================================================================
 
-TradeDangerous is a cargo run optimizer for Elite: Dangerous that calculates
-everything from simple one-jump stops between stations to calculating complex
-multi-stop routes with light-year, jumps-per-stop, and all sorts of other
-things.
+TradeDangerous is set of powerful trading tools for Elite Dangerous, organized
+around one of the most powerful trade run optimizers available.
 
-For multi-stop routes, it takes into account the money you are making and
-factors that into the shopping for each subsequent hop.
+The TRO is a heavy hitter that can calculate complex routes with multiple-
+stops while taking into account the profits you make along the route.
 
-TradeDangerous data is manually entered: The tool provides an easy editor
-for correcting prices at a given station, but you can also retrieve ".prices"
-files from other commanders to fill out your database.
+The price data in TradeDangerous is either manually entered (by your) or
+crowd sources (e.g. http://www.davek.com.au/td).
 
 
-==============================================================================
-== TRADE DANGEROUS: USAGE
+== What can it do for me?
 ==============================================================================
 
-Lets start with a fully fleshed out example command line and then I'll walk
-you through some simpler cases.
+I'm at Mokosh/Bethe Station with 5000cr, room for 8 cargo units and a
+ship that can go 8.56ly per jump.
 
-  I have a Lakon Type 6 and 50,000 credits. I want to keep 20,000 credits
-  aside for insurance incase bad things happen. My ship is kitted out so
-  it is limited to 12 light year jumps, but I'll try 3 jumps between each
-  station. I don't like the long drive to Anderson's escape so don't go
-  there, and I want to avoid Gold because it's usually scarce.
+We ask:
 
-  I have a mission at Cuffey and I want to finish at Aulin to outfit.
+    trade.py run --from Mokosh/Bethe --credits 5000 --capacity 8 --ly-per 8.56
+or in abbreviated form:
+    trade.py run --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
 
-  Plan me a route from Chango with 6 stops to make money.
+And TD will give us a 2-leg trade run that'll may more than double our money:
 
-  Show me the route in detail, walk me through each step and put the
-  instructions for the current step on the multi-function display of my
-  X52 throttle...
+    1: MOKOSH/Bethe Station -> GRANTHAIMI/Parmitano Colony:
+    2:  MOKOSH/Bethe Station: 8 x Mineral Extractors,
+    3:  V774 HERCULIS/Mendel Mines: 4 x Gallite, 4 x Rutile,
+    4:  GRANTHAIMI/Parmitano Colony +6,340cr
 
-  trade.py run --detail --detail --detail --ship type6 --credits 50000 --insurance 20000 --ly-per 12 --jumps 3 --avoid anderson --avoid gold --via cuffey --to aulin --from chango --hops 6 --checklist --x52-pro
-or
-  trade.py run -vvv --sh type6 --cr 50000 --ins 20000 --ly 12 --ju 3 --av anderson,gold --via cuffey --to aulin --fr chango --hops 6 --check --x52
+Line 1 tells us the start and end stations for this route.
 
-Lets dial it back and start with something simpler:
+Line 2 tells us what to pick up at our first station.
 
-You're sitting in a hauler at Chango with 20,000 credits and you have time
-for 2 hops, you might run it like this:
+Line 3 tells us the first hop of our run. When we get here, we sell all the
+cargo we are carrying and pick up a new load.
 
- C:\TradeDangerous\> trade.py run --ship hauler --from Chango --credits 20000
-
-The 'run' keyword indicates you want to calculate a trade run. Trade tries to
-be flexible, so you could shorten this down to:
-
-  trade.py --sh hauler --fr chan --cr 20000
-
-And the output might look like this:
-
-    I BOOTIS Chango -> DAHAN Gateway:
-     >-> I BOOTIS Chango      Buy 16*Fish (389cr),
-     -+- LHS3006 WCM          Buy 13*Bertrandite (1871cr), 3*Lepidolite (323cr),
-     <-< DAHAN Gateway gaining 13806cr => 33806cr total
-
-The route goes from Chango to Gateway via LHS 3006. At Chango, you pick up 16
-fish at 389 credits each. Fly to LHS 3006 and dock at WCM and sell your fish,
-and pick up 13 Bertrandite and 3 units of Lepidolite. Set sail for Gateway in
-Dahan ... and profit.
-
-To the tune of 13,806cr.
-
-If you leave out the '--from' option, TradeDangerous will do the same
-calculation for every station in the database and tell you where the best
-possible 2-hop run is:
-
- C:\TradeDangerous\> trade.py run --ship hauler --credits 20000
-    ACIHAUT Cuffey -> DAHAN Gateway:
-     >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
-     -+- AULIN Enterprise     Buy 13*Combat Stabilisers (2179cr), 3*Synthetic Meat (87cr),
-     <-< DAHAN Gateway gaining 20035cr => 40035cr total
-
-By starting from Cuffey and making our way to Gateway, we'd make 2,000 credits
-more.
-
-But how was it expecting us to get from Cuffey to Aulin? For this, there is
-the --detail option. This is one of the options common to all commands, and
-so it has to be specified before the command. It can be abbreviated "-v"
-(think: verbose)
-
- C:\TradeDangerous\> trade.py run --detail --ship hauler --credits 20000
-    ACIHAUT Cuffey -> DAHAN Gateway:
-     >-> ACIHAUT Cuffey       Buy 16*Lithium (1129cr),
-       |   Acihaut -> LHS3006 -> Aulin
-     -+- AULIN Enterprise     Buy 13*Combat Stabilisers (2179cr), 3*Synthetic Meat (87cr),
-       |   Aulin -> Eranin -> Dahan
-     <-< DAHAN Gateway gaining 20035cr => 40035cr total
-
-The route starts at Cuffey station in Acihaut. Then you jump to LHS 3006 and
-then Aulin, where you dock at Enterprise. Then you jump from Aulin to Eranin
-and finally to Dahan to dock at Gateway.
-
-I use the term "hop" to describe picking up goods at one station, crossing
-systems and docking at another station and selling the goods; the term "jump"
-to describe a hyperspace trip between two individual star systems.
-
-One problem:
-
-The hauler can't make the above journey with cargo and weapons.
-
-The "--ly-per" argument (or it's --ly abbreviation) lets us tell TD to limit
-connections to a max jump distance, in this case of 5.2ly. Note that this
-time I'm using "-v" as a short-cut for "--detail"
-
- C:\TradeDangerous\> trade.py run -v --ship hauler --credits 20000 --ly-per 5.2
-     >-> MORGOR Romaneks      Buy 14*Gallite (1376cr),
-       |   Morgor -> Dahan -> Asellus
-     -+- ASELLUS Beagle2      Buy 13*Advanced Catalysts (2160cr), 2*H.E. Suits (115cr), 1*Scrap (34cr),
-       |   Asellus -> Dahan
-     <-< DAHAN Gateway gaining 18640cr => 38640cr total
-
-Maybe you don't want to make multiple jumps between systems? Use the "--jumps"
-switch to lower or increase the number of jumps between systems on each hop:
-
-  C:\TradeDangerous\> trade.py run -v --ship hauler --credits 20000 --jumps 1
-    ERANIN Azeban -> DAHAN Gateway:
-     >-> ERANIN Azeban        Buy 16*Coffee (1092cr),
-       |   Eranin -> Asellus
-     -+- ASELLUS Beagle2      Buy 11*Advanced Catalysts (2160cr), 5*H.E. Suits (115cr),
-       |   Asellus -> Dahan
-     <-< DAHAN Gateway gaining 13870cr => 33870cr total
-
-TD also takes a "--insurance" option which tells it to put some money aside
-for insurance payments. This lets you put the actual amount of credits you
-have without having to remember to subtract your insurance each time.
+Line 4 tells us the last hop of our run and how much we gain when we sell our
+remaining cargo here.
 
 
-==============================================================================
-== COMMAND LINE OPTIONS
+... but how do I get there?
+
+There's a command for that
+
+    trade.py nav mok/beth herc/mendel --ly 8.56
+    System         JumpLy
+    ---------------------
+    MOKOSH           0.00
+    LTT 15449        6.23
+    V774 HERCULIS    4.90
+
+But we could also just ask TD to give us more detail with our trade run ("-v"):
+
+    trade.py run -v --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
+    1: MOKOSH/Bethe Station -> GRANTHAIMI/Parmitano Colony:
+    2:  Load from MOKOSH/Bethe Station: 8 x Mineral Extractors (@491cr),
+    3:  Jump MOKOSH -> LTT 15449 -> V774 HERCULIS
+    4:  Load from V774 HERCULIS/Mendel Mines: 4 x Gallite (@1663cr), 4 x Rutile (@223cr),
+    5:  Jump V774 HERCULIS -> LTT 15449 -> GRANTHAIMI
+    6:  Finish GRANTHAIMI/Parmitano Colony + 6,340cr => 11,340cr
+
+Lines 2 and 4 now include the expected buying prices so you don't get herped
+by out of date price data.
+
+Lines 3 and 5 tell us our jump routes between legs.
+
+(For even more detail "-v -v" or "-vv" or "-vvv")
+
+At this point, you probably have lots of questions.
+
+
+== TradeDangerous: Setup
 ==============================================================================
 
-trade.py is a front-end to several tools - a trade run calculator, a tool for
-updating prices at a given station, and more to come.
+At the moment, the primary interface to TradeDangerous' goodness is through
+a command line tool, "trade.py". I've built TD in a modular, open source way
+so that other programmers can use it to power their own tools, hopefully
+tools with web or graphical interfaces.
 
-You can type "trade.py -h" for basic usage, or for help on a specific sub-
-command, you can use "trade.py command -h" for example
+For instructions on how to get setup with TD see the wiki:
+  http://bitbucket.org/kfsone/tradedangerous/wiki/
+and click the "Setup Guide" link.
 
-  trade.py run -h
 
-will show you how to use the 'run' sub-command.
+== Command Line Options
+==============================================================================
+
+TD functionality is broken up into "sub-commands". For instance, when we
+refer to the "update" command, we mean "trade.py update ...".
+
+If you run 'trade.py' without any commands or options, it will give you
+a list of the sub-commands available. You can find out more details
+about a specific command, such as 'local', by typing:
+
+    trade.py local --help
+
+Each command has a number of optional/required arguments that can be
+specified.
+
+Optional arguments are denoted by a keyword that starts with one or
+two dashes ('--from', '-S'). The difference between long and short
+versions? Readability. You can also 'stack' short versions, for
+example "update -F -G -A" can be written as "-FGA".
+
+There are "switches" which turn a feature on or off, such as
+'--detail' which makes the command more verbose or '--quiet' which
+makes it less noisy.
+
+Others are "parameters" which take a value, for example '--from Sol'
+would state the starting location for a command. You can write these
+as '--param value' or '--param=value'. You can often get away with
+just the first couple of letters, e.g. "--cr" for "--credits".
+
+In the list below, you'll see "--detail" and "-v" listed together.
+This indicates that "-v" is the short-form for "--detail".
+
+Basic Usage:
+
+    trade.py command arguments
+
 
 Common Options:
-  These can be used with any command, so they must be specified before the
-  command itself.
+  These can be used with ALL TD commands
 
      --detail
      -v
@@ -176,12 +153,40 @@ Common Options:
        each use increases the verbosity: i.e. --debug --debug is more verbose.
        Short version is stackable, e.g. "-w -w -w" or "-www"
 
+
 Sub Commands:
+
+For additional help on a specific command, such as 'update' use
+
   trade.py run ...
-    Calculates a trade run.
+    Calculates a trade run
+
+  trade.py nav ...
+    Calculates a route between two systems
+
+  trade.py import ...
+    Reads prices from a file and loads them into the cache
 
   trade.py update ...
-    Provides an interface for updating the prices at a station.
+    Provides a way to enter/update price data for a station
+
+  trade.py buy ...
+    Finds places to buy a given item
+
+  trade.py sell ...
+    Finds places to sell a given item
+
+  trade.py local ...
+    Lists systems (and optionally, stations) in the vacinity
+    of a given system
+
+Advanced Commands:
+
+  trade.py buildcache
+    Rebuilds the cache (data/TradeDangerous.db)
+
+  trade.py export ...
+    Exports data from the db to .csv files
 
 
 RUN sub-command:
@@ -235,45 +240,11 @@ RUN sub-command:
        e.g.
          -jumps-per 5
 
-     --ly-per N.NN
-     --ly N.NN
-       DEFAULT: based on --ship
-       Maximum distance your ship can jump between systems at full capacity.
-       NOTE: You can increase your range by selling your weapons.
-       e.g.
-         --ly-per 19.1
-         --ly-per 3
-
-     --empty-ly N.NN
-     --emp N.NN
-       DEFAULT: same as --ly-per
-       How far your ship can jump when empty (used by --start-jumps)
-
-   Ship/Trade options:
-     --capacity N
-     --cap N
-       DEFAULT: based on --ship
-       Maximum items you can carry on each hop.
-   
-     --credits N
-     --cr N
-       How many credits to start with
-       e.g.
-         --credits 20000
-
-     --insurance N   DEFAULT: 0
-     --ins N
-       How many credits to hold back for insurance purposes
-       e.g.
-         --insurance 1000
-         --ins 5000
-
-     --limit N   DEFAULT: 0
-       If set, limits the maximum number of units of any cargo
-       item you will buy on any trade hop, incase you want to
-       hedge your bets or be a good economy citizen.
-       e.g.
-         --capacity 16 --limit 8
+     --start-jumps N
+     -s N
+       [Requires --from]
+       Include stations within N jumps of the start system as potential
+       starting locations.
 
      --avoid ITEM/SYSTEM/STATION
      --avoid AVOID,AVOID,...,AVOID
@@ -287,16 +258,54 @@ RUN sub-command:
          --avoid prise
          --av gold,aulin,enterprise,anderson
 
+   Ship/Trade options:
+     --capacity N
+     --cap N
+       Maximum items you can carry on each hop.
+
+     --credits N
+     --cr N
+       How many credits to start with
+       e.g.
+         --credits 20000
+
+     --ly-per N.NN
+     --ly N.NN
+       Maximum distance your ship can jump between systems at full capacity.
+       NOTE: You can increase your range by selling your weapons.
+       e.g.
+         --ly-per 19.1
+         --ly-per 3
+
+     --empty-ly N.NN
+     --emp N.NN
+       DEFAULT: same as --ly-per
+       How far your ship can jump when empty (used by --start-jumps)
+
+     --limit N   DEFAULT: 0
+       If set, limits the maximum number of units of any cargo
+       item you will buy on any trade hop, incase you want to
+       hedge your bets or be a good economy citizen.
+       e.g.
+         --capacity 16 --limit 8
+
+     --insurance N   DEFAULT: 0
+     --ins N
+       How many credits to hold back for insurance purposes
+       e.g.
+         --insurance 1000
+         --ins 5000
+
      --margin N.NN   DEFAULT: 0.01
        At the end of each hop, reduce the profit by this much (0.02 = 2%),
        to allow a margin of error in the accuracy of prices.
        e.g.
          --margin 0      (no margin)
          --margin 0.01   (1% margin)
-   
+
    Other options:
      --routes N   DEFAULT: 1
-       Shows the top N routes; 
+       Shows the top N routes;
 
      --checklist
      --check
@@ -320,6 +329,33 @@ UPDATE sub-command:
 
   trade.py update
 
+    --gui
+    -G
+      Enables the new built-in GUI.
+
+    --front
+    -F
+      [With --gui/-G]
+      If ED is running in windowed mode, keeps the TD gui infront of
+      of the ED window.
+
+    --window-x nnn, --window-y nnn
+    -wx nnn, -wy nnn
+      [With --gui/-G]
+      Lets you position the update window. Use negative values to
+      anchor to the right/bottom of the screen.
+      e.g.
+        trade.py update -GF -wx=-220 -wy=200
+
+    --height nnn
+    -H nnn
+      [With --gui/-G]
+      Specifies the default heigh tof the update window.
+
+    --all
+    -A
+      Shows all items including those not currently available at the station.
+
     --editor <executable name or path>
       e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
       Saves the prices in a human-readable format and loads that into
@@ -327,6 +363,7 @@ UPDATE sub-command:
 
     --timestamps
     -T
+      [With text editor only]
       Exposes the "timestamp" column.
 
     --force-na
@@ -359,9 +396,9 @@ UPDATE sub-command:
     trade.py update chango --subl --supply
     trade.py update anderson --editor "C:\Program Files\Microsoft Office\WordPad.exe"
     trade.py update wcm --timestamps
-    trade.py update --sub --sup --time --zero aulin
+    trade.py update --sup --time --zero aulin
   aka:
-    trade.py update --sub -ST0 aulin
+    trade.py update --sub -T0 aulin
 
 IMPORT sub-command:
 
@@ -395,7 +432,6 @@ IMPORT sub-command:
     -i
       Any systems, stations, categories or items that aren't recognized
       by this version of TD will be reported but import will continue.
- 
 
 
 BUY sub-command:
@@ -403,7 +439,7 @@ BUY sub-command:
   Looks for stations selling the specified item: that means they have a non-zero
   asking price and a stock level other than "n/a".
 
-  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S]
+  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -432,27 +468,53 @@ BUY sub-command:
       Sorts items by stock available first and then price
 
 
+SELL sub-command:
+
+  Looks for stations buying the specified item.
+
+  trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
+
+    --quantity Q
+      Requires that the stock level be unknown or at least this value,
+      --quantity 23
+
+    --near system
+    --near station
+      Only considers stations within reach of the specified system.
+      --near chango
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
+
+    --ly-per N.N
+      Sets the range of --near (requires --near)
+      --near chango --ly 10
+
+    --prices-sort
+    -P
+      Keeps items sorted by price when using --near
+      (otherwise items are listed by distance and then price)
+
+
 NAV sub-command:
 
   Provides details of routes without worrying about trade. By default, if
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to routes with a full cargo hold.
 
-  trade.py nav [-q | -v] [--ship name [--full]] [--ly-per] from to
-
-    --ship name
-      Uses the values for an empty ship to constrain jump ranges,
-      --ship=ana
-      --ship type6
-      --ship 6
-
-    --full
-      Used with --ship, uses the max range of the ship with a full load,
-      --ship cobra --full
+  trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
 
     --ly-per N.NN
       Constrains jumps to a maximum ly distance
       --ly-per 3.2
+
+    --avoid place
+      Produces a route that does not fly through place. If place is a
+      station, the system it is in will be avoided.
+
+    --stations
+      Shows the number of stations at each system.
 
     from
       Name of the starting system or a station in the system,
@@ -461,22 +523,22 @@ NAV sub-command:
       Name of the destination system or a station in the system,
 
   Examples:
-    > trade.py nav --ship=type6 5287 2887
-    From LHS 5287 to LHS 2887 with 29.36ly per jump limit.
-    System                         (Jump Ly)
-    ----------------------------------------
-    LHS 5287                       (   0.00)
-    I BOOTIS                       (  19.94)
-    LHS 2887                       (  17.14)
+    > trade.py nav mok/be v7/me --ly 8.56
+    System         JumpLy
+    ---------------------
+    MOKOSH           0.00
+    LTT 15449        6.23
+    V774 HERCULIS    4.90
 
-    > trade.py -v nav --ship=type6 --full 5287 2887
-    From LHS 5287 to LHS 2887 with 15.64ly per jump limit.
-    Action | System                         | Jump Ly | Total Ly
-    ------------------------------------------------------------
-    Depart | LHS 5287                       |    0.00 |     0.00
-    Via    | ASELLUS PRIMUS                 |   14.47 |    14.47
-    Via    | BD+47 2112                     |   11.81 |    26.28
-    Arrive | LHS 2887                       |   11.73 |    38.01
+    > trade.py nav mok/be v7/me --ly 8.56 -vv --stations
+    Action System         JumpLy Stations  DistLy   DirLy
+    -----------------------------------------------------
+    Depart MOKOSH           0.00        2    0.00   10.73
+    Via    LTT 15449        6.23        8    6.23    4.90
+    Arrive V774 HERCULIS    4.90        1   11.13    0.00
+
+    ('DirLy' is the direct distance left to the destination)
+
 
 LOCAL sub-command:
 
@@ -484,87 +546,51 @@ LOCAL sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to systems with a full cargo hold.
 
-  trade.py local [-q | -v] [--ship name [--full]] [--ly N.NN] [--pill | --percent] system
-
-    --ship name
-      Uses the values for an empty ship to constrain jump ranges,
-      --ship=ana
-      --ship type6
-      --ship 6
-
-    --full
-      Used with --ship, uses the max range of the ship with a full load,
-      --ship cobra --full
+  trade.py local [-q | -v] [--ly N.NN] [--ages] system
 
     --ly N.NN
       Constrains local systems to a maximum ly distance
       --ly 20.0
-    
-    --pill
-      Show estimated length along the Pill in ly
-
-    --percent
-      Like --pill but shows percentage instead
 
     -v
-      Show stations
-      
+      Show stations + their distance from star
+
+    --ages
+      Show stations + the age of their price data
+
     system
       Name of the system or a station in the system,
 
   Examples:
-    > trade.py local --ly 11.0 dahan
-    Local systems to DAHAN within 11.0 ly.
-  	--------------------------------------
-  	 4.66 Asellus Primus
-  	 5.12 Morgor
-  	 6.41 Eranin
-  	 8.26 Meliae
-  	 8.58 LHS 2884
-  	 8.60 LP 98-132
-  	 9.20 Aulis
-  	 9.75 GD 319
-  	10.08 BD+47 2112
-  	10.33 i Bootis
-    
-    > trade.py local -v --ly 11.0 sur
-    Local systems to SURYA within 11.0 ly.
-    --------------------------------------
-     9.22 [  2.2] 14 Herculis
-     9.23 [  1.0] Vaccimici
-     9.35 [ 10.0] CM Draco
-    10.59 [ 10.3] V1090 Herculis
-    10.69 [ -1.6] Chi Herculis
-    
-    > trade.py local -vv --ly 10.0 3006
-    Local systems to LHS 3006 within 10.0 ly.
-    -----------------------------------------
-     5.64 [  0.4] Acihaut
-          <Cuffey Plant>
-          <Mastracchio Base>
-     6.00 [  5.1] G 239-25
-          <Bresnik Mine>
-     6.47 [  1.1] Nang Ta-khian
-          <Hay Point>
-          <Hadwell Orbital>
-     7.51 [ -0.0] Eranin
-          <Azeban City>
-          <Azeban Orbital>
-          <Eranin 4 Survey>
-     7.74 [ -4.9] Aulin
-          <Aulin Enterprise>
-          <Harbaugh Station>
-          <Onufrienko Station>
-     8.12 [ -2.8] i Bootis
-          <Chango Dock>
-          <Maher Stellar Research>
-     8.52 [ -6.4] BD+47 2112
-          <Olivas Settlement>
-     8.78 [  7.9] Lalande 29917
-     9.40 [  5.7] DN Draconis
-     9.72 [  4.9] LP 98-132
-          <Freeport>
-          <Prospect Five>
+    > trade.py local mokosh --ly 6
+    System        Dist
+    ------------------
+    MOKOSH        0.00
+    GRANTHAIMI    2.24
+    LHS 3333      5.54
+
+    > trade.py local mokosh --ly 6 -v
+    System        Dist
+      +  Station                                Dist
+    ------------------------------------------------
+    MOKOSH        0.00
+      +  Bethe Station                      2500.0ls
+      +  Lubin Orbital
+    GRANTHAIMI    2.24
+      +  Parmitano Colony
+    LHS 3333      5.54
+
+    > trade.py local mokosh --ly 6 --ages
+    System        Dist
+      +  Station                          Age/days
+    ----------------------------------------------
+    MOKOSH        0.00
+      +  Bethe Station                        1.75
+      +  Lubin Orbital                        0.60
+    GRANTHAIMI    2.24
+      +  Parmitano Colony                     5.03
+    LHS 3333      5.54
+
 
 EXPORT sub-command:
 
@@ -682,7 +708,7 @@ These fields are:
   <demand> ('?' means "we don't care")
   <stock>  ('-' means "not available")
 
-So you can see the only item this station is selling is Consumer Tech, which 
+So you can see the only item this station is selling is Consumer Tech, which
 the station wants 1111 credits for. The demand wasn't recorded (we generally
 aren't interested in demand levels since E:D doesn't seem to use them) and
 the items wasn't available for purchase *from* the station.
@@ -707,7 +733,7 @@ Best Practice:
 
  - Leave demand as ?, neither E:D or TD use it,
  - Stock quantities over 10k are usuall irrelevant, leave them as ?,
- 
+
 For more details of the .prices format, see the wiki page:
 https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data
 
