@@ -16,17 +16,6 @@ arguments = [
     ParseArgument('ending', help='System to end at', type=str),
 ]
 switches = [
-    ParseArgument('--ship',
-            help='Use the maximum jump distance of the specified ship.',
-            metavar='shiptype',
-            type=str,
-        ),
-    ParseArgument('--full',
-            help='(With --ship) '
-                    'Limits the jump distance to that of a full ship.',
-            action='store_true',
-            default=False,
-        ),
     ParseArgument('--ly-per',
             help='Maximum light years per jump.',
             dest='maxLyPer',
@@ -47,7 +36,7 @@ switches = [
     ParseArgument('--stations',
             help='Show system\'s stations',
             dest='showstations',
- 	    action='store_true',
+        action='store_true',
             default=False
         ),
 ]

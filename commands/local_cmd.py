@@ -15,16 +15,6 @@ arguments = [
     ParseArgument('near', help='System to measure from', type=str),
 ]
 switches = [
-    ParseArgument('--ship',
-            help='Use maximum jump distance of the specified ship.',
-            metavar='shiptype',
-            type=str,
-        ),
-    ParseArgument('--full',
-            help='(With --ship) Limits the jump distance to that of a full ship.',
-            action='store_true',
-            default=False,
-        ),
     ParseArgument('--ly',
             help='Maximum light years to measure.',
             dest='maxLyPer',

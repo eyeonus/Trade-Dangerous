@@ -71,7 +71,6 @@ class CommandEnv(TradeEnv):
         self.checkFromToNear()
         self.checkAvoids()
         self.checkVias()
-        self.checkShip()
 
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
@@ -203,21 +202,4 @@ class CommandEnv(TradeEnv):
             for via in ",".join(viaStationNames).split(","):
                 viaStations.append(self.tdb.lookupStation(via))
 
-
-    def checkShip(self):
-        """ Parse user-specified ship and populate capacity and maxLyPer from it. """
-        ship = getattr(self, 'ship', None)
-        if ship is None:
-            return
-
-        ship = self.ship = self.tdb.lookupShip(ship)
-
-        # Assume we want maxLyFull unless there's a --full that's explicitly False
-        if getattr(self, 'full', True):
-            shipMaxLy = ship.maxLyFull
-        else:
-            shipMaxLy = ship.maxLyEmpty
-
-        self.capacity = self.capacity or ship.capacity
-        self.maxLyPer = self.maxLyPer or shipMaxLy
 
