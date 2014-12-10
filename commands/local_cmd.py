@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 import math
 from tradeexcept import TradeException
+import itertools
 
 ######################################################################
 # Parser config
@@ -29,6 +30,11 @@ switches = [
             dest='maxLyPer',
             metavar='N.NN',
             type=float,
+        ),
+    ParseArgument('--ages',
+            help='Show stations and the age of their price data.',
+            default=False,
+            action='store_true',
         ),
 ]
 
@@ -63,15 +69,42 @@ def run(results, cmdenv, tdb):
         if distSq <= lySq and destSys is not srcSystem:
             distances[destSys] = math.sqrt(distSq)
 
-    detail = cmdenv.detail
+    showStations = cmdenv.detail or cmdenv.ages
+    ages = {}
+    if cmdenv.ages:
+        stationIDs = ",".join([
+                ",".join(str(stn.ID) for stn in sys.stations)
+                for sys in distances.keys()
+                if sys.stations
+        ])
+        stmt = """
+                SELECT  si.station_id,
+                        JULIANDAY('NOW') - JULIANDAY(MAX(si.modified))
+                  FROM  StationItem AS si
+                 WHERE  si.station_id IN ({})
+                 GROUP  BY 1
+                """.format(stationIDs)
+        cmdenv.DEBUG0("Fetching ages: {}", stmt)
+        for ID, age in tdb.query(stmt):
+            ages[ID] = age
+
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         row = ResultRow()
         row.system = system
         row.dist = dist
         row.stations = []
-        if detail:
+        if showStations:
             for (station) in system.stations:
-                row.stations.append(ResultRow(station=station, dist=station.lsFromStar))
+                try:
+                    age = "{:7.2f}".format(ages[station.ID])
+                except:
+                    age = "-"
+                rr = ResultRow(
+                        station=station,
+                        dist=station.lsFromStar,
+                        age=age
+                )
+                row.stations.append(rr)
         results.rows.append(row)
 
     return results
@@ -97,17 +130,25 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("System", '<', longestNameLen,
                         key=lambda row: row.system.name())
             ).append(
-                ColumnFormat("Dist", '>', '6', '.2f',
+                ColumnFormat("Dist", '>', '7', '.2f',
                         key=lambda row: row.dist)
             )
 
-    if cmdenv.detail:
+    showStations = cmdenv.detail or cmdenv.ages
+    if showStations:
         stnRowFmt = RowFormat(prefix='  +  ').append(
                 ColumnFormat("Station", '<', 32,
                         key=lambda row: row.station.str())
-            ).append(
-                ColumnFormat("Dist", '>', '9',
+            )
+        if cmdenv.detail:
+            stnRowFmt.append(
+                ColumnFormat("Dist", '>', '10',
                         key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
+            )
+        if cmdenv.ages:
+            stnRowFmt.append(
+                ColumnFormat("Age/days", '>', 7,
+                        key=lambda row: row.age)
             )
 
     cmdenv.DEBUG0(
@@ -118,6 +159,9 @@ def render(results, cmdenv, tdb):
 
     if not cmdenv.quiet:
         heading, underline = sysRowFmt.heading()
+        if showStations:
+            print(heading)
+            heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
 
     for row in results.rows:

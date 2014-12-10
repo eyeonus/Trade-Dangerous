@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.1.9 [wip]
+. (kfsone) Added '--ages' option to 'local' to show price data age
+
 v6.1.8 Dec 09 2014
 . (kfsone) Huge performance improvement to "nav",
 . (kfsone) Performance improvement to "run",
