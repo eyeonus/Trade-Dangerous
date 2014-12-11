@@ -88,7 +88,7 @@ class System(object):
         """
         def __init__(self):
             self.systems = dict()
-            self.probedLySq = 0.
+            self.probedLy = 0.
 
     def __init__(self, ID, dbname, posX, posY, posZ):
         self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
@@ -502,7 +502,6 @@ class TradeDB(object):
         """
             Generator for systems within ly range of system using a
             lazily-populated, per-system cache.
-            Note: Returned distances are squared
         """
 
         if isinstance(system, Station):
@@ -519,25 +518,53 @@ class TradeDB(object):
         if not cache:
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
-        lySq = ly * ly
-        for sys, distSq in cachedSystems.items():
-            if distSq <= lySq:
-                yield sys, distSq
+        probedLy = cache.probedLy
+        if probedLy > ly:
+            # Cache may contain values outside our view
+            for sys, dist in cachedSystems.items():
+                if dist <= ly:
+                    yield sys, dist
+        else:
+            # No need to be conditional inside the loop
+            yield from cachedSystems.items()
 
-        probedLySq = cache.probedLySq
-        if lySq <= probedLySq:
+        if probedLy >= ly:
+            # If the cache already covered us, we can leave
             return
 
+        # Consult the database for stars we haven't seen.
         sysX, sysY, sysZ = system.posX, system.posY, system.posZ
-        for candidate in self.systemByID.values():
-            distSq = (candidate.posX - sysX) ** 2
+        self.cur.execute("""
+                SELECT  sys.system_id
+                  FROM  System AS sys
+                 WHERE  sys.pos_x BETWEEN ? AND ?
+                   AND  sys.pos_y BETWEEN ? AND ?
+                   AND  sys.pos_z BETWEEN ? AND ?
+                   AND  sys.system_id != ?
+        """, [
+                sysX - ly, sysX + ly,
+                sysY - ly, sysY + ly,
+                sysZ - ly, sysZ + ly,
+                system.ID,
+        ])
+        knownIDs = frozenset(
+            system.ID for system in cachedSystems.keys()
+        )
+        lySq = ly * ly
+        for candID, in self.cur:
+            if candID in knownIDs:
+                continue
+            candidate = self.systemByID[candID]
+            distSq = (
+                    (candidate.posX - sysX) ** 2 +
+                    (candidate.posY - sysY) ** 2 +
+                    (candidate.posZ - sysZ) ** 2
+            )
             if distSq <= lySq:
-                distSq += ((candidate.posY - sysY) ** 2) + ((candidate.posZ - sysZ) ** 2)
-                if distSq <= lySq and distSq > probedLySq:
-                    cachedSystems[candidate] = distSq
-                    yield candidate, distSq
+                cachedSystems[candidate] = dist = math.sqrt(distSq)
+                yield candidate, dist
 
-        cache.probedLySq = lySq
+        cache.probedLy = ly
 
 
     ############################################################
@@ -833,7 +860,7 @@ class TradeDB(object):
             for node in ring:
                 gsir = self.genSystemsInRange(node.system, maxLyPer, False)
                 for (destSys, destDist) in gsir:
-                    dist = node.distLy + math.sqrt(destDist)
+                    dist = node.distLy + destDist
                     # If we already have a shorter path, do nothing
                     try:
                         prevDist = pathList[destSys.ID].distLy

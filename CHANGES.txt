@@ -2,15 +2,24 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.1.8 [wip]
-. (kfsone) #79 support for "--avoid" in the "nav" command
-. (kfsone) Download counter to "import", use -q to silence it
-. (kfsone) Fixed case-sensitivity matching station names that changed
-. (kfsone) 60 new stations
+v6.1.9 [wip]
+. (gulasch) Stations and distances
+. (kfsone) Mineral and Microbial are now in the correct order,
+. (kfsone) Big documentation cleanup,
+. (mhuges) Added '--stations' to 'nav' to show a station count,
+. (kfsone) Added '--ages' option to 'local' to show price data age,
+
+v6.1.8 Dec 09 2014
+. (kfsone) Huge performance improvement to "nav",
+. (kfsone) Performance improvement to "run",
+. (kfsone) #79 support for "--avoid" in the "nav" command,
+. (kfsone) Download counter to "import", use -q to silence it,
+. (kfsone) Fixed case-sensitivity matching station names that changed,
+. (kfsone) 60 new stations,
 . (kfsone) "update -G" now takes "-wx" and "-wy" arguments for setting the
-  position of the GUI window. Try -wx=-220 -wy=220
+  position of the GUI window. Try -wx=-220 -wy=220,
 . (kfsone) Updated config.sh and tdupd to take advantage of -wx and -wy
-. (eggplant) More stations and distances
+. (eggplant) More stations and distances,
 
 v6.1.7 Dec 07 2014
 . (kfsone) Added "scripts" directory with bash scripts
