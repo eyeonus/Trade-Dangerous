@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.9 [wip]
+. (gulasch) Stations and distances
 . (kfsone) Mineral and Microbial are now in the correct order,
 . (kfsone) Big documentation cleanup,
 . (mhuges) Added '--stations' to 'nav' to show a station count,
