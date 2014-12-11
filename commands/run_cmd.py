@@ -13,11 +13,6 @@ arguments = [
     ParseArgument('--credits', help='Starting credits.', metavar='CR', type=int)
 ]
 switches = [
-    ParseArgument('--ship',
-            help='Set capacity and ly-per from ship type.',
-            metavar='shiptype',
-            type=str,
-        ),
     ParseArgument('--capacity',
             help='Maximum capacity of cargo hold.',
             metavar='N',
@@ -234,7 +229,7 @@ def extendOriginsForStartJumps(tdb, cmdenv):
                     [sys.dbname for sys in origSys]
                 )
 
-    origSys = set(origSys)      # Places we're 
+    origSys = set(origSys)
     nextJump = set(origSys)
     for jump in range(0, startJumps):
         if not nextJump:
@@ -348,9 +343,9 @@ def validateRunArguments(tdb, cmdenv):
     cmdenv.adhocHops = adhocRoutePoints - 1
 
     if cmdenv.capacity is None:
-        raise CommandLineError("Missing '--capacity' or '--ship' argument")
+        raise CommandLineError("Missing '--capacity'")
     if cmdenv.maxLyPer is None:
-        raise CommandLineError("Missing '--ly-per' or '--ship' argument")
+        raise CommandLineError("Missing '--ly-per'")
     if cmdenv.capacity < 0:
         raise CommandLineError("Invalid (negative) cargo capacity")
     if cmdenv.capacity > 1000:

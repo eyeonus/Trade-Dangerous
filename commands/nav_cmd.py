@@ -16,17 +16,6 @@ arguments = [
     ParseArgument('ending', help='System to end at', type=str),
 ]
 switches = [
-    ParseArgument('--ship',
-            help='Use the maximum jump distance of the specified ship.',
-            metavar='shiptype',
-            type=str,
-        ),
-    ParseArgument('--full',
-            help='(With --ship) '
-                    'Limits the jump distance to that of a full ship.',
-            action='store_true',
-            default=False,
-        ),
     ParseArgument('--ly-per',
             help='Maximum light years per jump.',
             dest='maxLyPer',
@@ -38,6 +27,17 @@ switches = [
             action='count',
             dest='aggressiveness',
             default=0,
+        ),
+    ParseArgument('--avoid',
+            help='Exclude a system from the route. If you specify a station, '
+                 'the system that station is in will be avoided instead.',
+            action='append',
+        ),
+    ParseArgument('--stations',
+            help='Show system\'s stations',
+            dest='showstations',
+        action='store_true',
+            default=False
         ),
 ]
 
@@ -55,8 +55,7 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
 
     # Check for a direct route and seed the open list with the systems
     # in direct-range of the origin.
-    for dstSys, distSq in tdb.genSystemsInRange(srcSystem, maxLyPer):
-        dist = math.sqrt(distSq)
+    for dstSys, dist in tdb.genSystemsInRange(srcSystem, maxLyPer):
         distances[dstSys] = [ dist, srcSystem ]
         if dstSys == dstSystem:
             return [ dstSystem, srcSystem ], distances
@@ -80,6 +79,13 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
                 ))
         return None, None
 
+    avoiding = frozenset([
+            place.system if isinstance(place, Station) else place
+            for place in cmdenv.avoidPlaces
+    ])
+    if avoiding:
+        cmdenv.DEBUG0("Avoiding: {}", list(avoiding))
+
     # As long as the open list is not empty, keep iterating.
     overshoot = (cmdenv.aggressiveness * 4) + 1
     while openList:
@@ -94,8 +100,9 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
 
         gsir = tdb.genSystemsInRange
         for node, startDist in openNodes.items():
-            for (destSys, destDistSq) in gsir(node, maxLyPer):
-                destDist = math.sqrt(destDistSq)
+            for (destSys, destDist) in gsir(node, maxLyPer):
+                if destSys in avoiding:
+                    continue
                 dist = startDist + destDist
                 # If we aready have a shorter path, do nothing
                 try:
@@ -192,6 +199,9 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.system.name())
     rowFmt.addColumn("JumpLy", '>', '7', '.2f',
             key=lambda row: row.jumpLy)
+    if cmdenv.showstations:
+        rowFmt.addColumn("Stations", '>', 2, 
+            key=lambda row: len(row.system.stations))
     if cmdenv.detail:
         rowFmt.addColumn("DistLy", '>', '7', '.2f',
             key=lambda row: row.totalLy)
