@@ -28,8 +28,8 @@ unq:name@Category.category_id,unq:name,ui_order
 'Machinery','Atmospheric Processors',1
 'Machinery','Crop Harvesters',2
 'Machinery','Marine Equipment',3
-'Machinery','Microbial Furnaces',5
-'Machinery','Mineral Extractors',4
+'Machinery','Microbial Furnaces',4
+'Machinery','Mineral Extractors',5
 'Machinery','Power Generators',6
 'Machinery','Water Purifiers',7
 'Medicines','Agri-Medicines',1
