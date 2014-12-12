@@ -1,15 +1,14 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+
 from commands.exceptions import *
-import math
-import re
-import time
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
-import urllib.error
+from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from pathlib import Path
 
 import cache
-from pathlib import Path
+import math
+import plugins
+import re
+import transfers
 
 ######################################################################
 # Parser config
@@ -31,13 +30,16 @@ switches = [
             type=str,
             default=None,
         ),
-        MutuallyExclusiveGroup(
-            ParseArgument('--maddavo',
-                help='Import prices from Maddavo\'s site.',
-                dest='url',
-                action='store_const',
-                const="http://www.davek.com.au/td/prices.asp",
-            ),
+        ParseArgument('--maddavo',
+            help='[Deprecated] Import prices from Maddavo\'s site. Use "--plug=madadvo" instead.',
+            dest='plug',
+            action='store_const',
+            const='maddavo',
+        ),
+        ParseArgument('--plug',
+                help="Use the specified import plugin.",
+                type=str,
+                default=None,
         ),
     ),
     ParseArgument(
@@ -54,91 +56,42 @@ switches = [
 ######################################################################
 # Helpers
 
-def makeUnit(value):
-    units = [ '', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
-    unitSize = int(value)
-    for unit in units:
-        if unitSize <= 640:
-            return "{:5.2f}{}B".format(unitSize, unit)
-        unitSize /= 1024
-    return None
-    
-
-def rateVal(fetched, started):
-    now = time.time()
-    if fetched == 0 or now <= started:
-        return "..."
-    units = (makeUnit(fetched / (now - started))+"/s") or "FAST!"
-    return units
-
-
-def download(cmdenv, url):
-    """
-        Download a prices file from the web.
-    """
-
-    req = Request(url)
-
-    if not cmdenv.quiet:
-        print("Connecting to server")
-    try:
-        f = urlopen(req)
-    except urllib.error.URLError as e:
-        raise TradeException(
-                "Unable to connect ("+url+")\n" +
-                str(e)
-        )
-    cmdenv.DEBUG0(str(f.info()))
-
-    # Figure out how much data we have
-    bytes = int(f.getheader('Content-Length'))
-    maxBytesLen = len("{:>n}".format(bytes))
-    fetched = 0
-    started = time.time()
-
-    # Fetch four memory pages at a time
-    chunkSize = 4096 * 4
-
-    dstFile = "import.prices"
-    with open(dstFile, "w") as fh:
-        # Use the 'while True' approach so that we always print the
-        # download status including, especially, the 100% report.
-        while True:
-            if not cmdenv.quiet:
-                print("Download: "
-                        "{:>{len}n}/{:>{len}n} bytes "
-                        "| {:>10s} "
-                        "| {:>5.2f}% "
-                        .format(
-                                fetched, bytes,
-                                rateVal(fetched, started),
-                                (fetched * 100 / bytes),
-                                len=maxBytesLen
-                ), end='\r')
-
-            if fetched >= bytes:
-                if not cmdenv.quiet:
-                    print()
-                break
-            
-            chunk = f.read(chunkSize)
-            fetched += len(chunk)
-            print(chunk.decode(), file=fh, end="")
-
-    return dstFile
-
 
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    # If the filename specified was "-" or None, then go ahead
-    # and present the user with an open file dialog.
+    if cmdenv.maddavo:
+        raise CommandLineError(
+                "--maddavo is deprecated: "
+                "please use --plug=maddavo instead"
+        )
+
+    # If we're using a plugin, initialize that first.
+    if cmdenv.plug:
+        try:
+            pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
+        except plugins.PluginException as e:
+            raise CommandLineError("Plugin Error: "+str(e))
+
+        # Initialize the plugin
+        plugin = pluginClass(tdb, cmdenv)
+
+        # Run the plugin. If it returns False, then it did everything
+        # that needs doing and we can stop now.
+        # If it returns True, it is returning control to the module.
+        if not plugin.run():
+            return None
+
+    if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
+        cmdenv.url, cmdenv.filename = cmdenv.filename, None
 
     if cmdenv.url:
-        cmdenv.filename = download(cmdenv, cmdenv.url)
-        assert cmdenv.filename
+        cmdenv.filename = cmdenv.filename or "import.prices"
+        transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
 
+    # If the filename specified was "-" or None, then go ahead
+    # and present the user with an open file dialog.
     if not cmdenv.filename:
         import tkinter
         from tkinter.filedialog import askopenfilename
@@ -158,15 +111,17 @@ def run(results, cmdenv, tdb):
             raise SystemExit("Aborted")
         cmdenv.filename = filename
 
-    if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
-        cmdenv.filename = download(cmdenv.filename)
-
     # check the file exists.
     filePath = Path(cmdenv.filename)
     if not filePath.is_file():
         raise CommandLineError("File not found: {}".format(
                     str(filePath)
                 ))
+
+    if cmdenv.plug:
+        if not plugin.finish():
+            cache.regeneratePricesFile()
+            return None
 
     cache.importDataFromFile(tdb, cmdenv, filePath)
     return None

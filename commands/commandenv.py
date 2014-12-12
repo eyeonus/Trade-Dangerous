@@ -1,10 +1,12 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from commands import *
 from commands.exceptions import CommandLineError
+from tradedb import AmbiguityError, System, Station
 from tradeenv import TradeEnv
+
+import os
 import pathlib
 import sys
-import os
-from tradedb import AmbiguityError, System, Station
 
 
 class CommandResults(object):

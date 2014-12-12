@@ -15,7 +15,7 @@ class TradeEnv(object):
 
     def __init__(self, properties=None, **kwargs):
         properties = properties or dict()
-        self.__dict__.update(TradeEnv.defaults)
+        self.__dict__.update(self.defaults)
         if properties:
             self.__dict__.update(properties.__dict__)
         if kwargs:

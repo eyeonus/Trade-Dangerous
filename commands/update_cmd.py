@@ -7,6 +7,7 @@ import prices
 import cache
 import subprocess
 import os
+import sys
 import pathlib
 
 ######################################################################
@@ -382,17 +383,22 @@ def run(results, cmdenv, tdb):
     else:
         cmdenv.startStation = place
 
-    if cmdenv.gui:
+    if cmdenv.gui or (not cmdenv.editor and not cmdenv.editing):
+        if not cmdenv.quiet:
+            print(
+                    "NOTE:\n"
+                    ". The Update UI is still somewhat experimental.\n"
+                    ". Press CTRL-C here to abort editing, or else "
+                    "just close the window to save.\n"
+                    ". Use '-q' to hide this message,\n"
+                    ". '-F' to make the update window appear infront "
+                    "of Elite: Dangerous (Windowed),\n"
+                    ". '-A' to force all items to show if stuff is "
+                    "missing from a station.",
+                    file=sys.stderr
+            )
         guidedUpdate(tdb, cmdenv)
         return None
-
-    if not cmdenv.editor and not cmdenv.editing:
-        raise CommandLineError(
-                "The GUI for updates is currently experimental. "
-                "Either use one of the editors or specify the "
-                "--experimental-gui (--exp or -G for short) "
-                "flags.\n"
-        )
 
     if not cmdenv.quiet and cmdenv.supply:
         print("NOTE: '--supply' (-S) is deprecated.")
