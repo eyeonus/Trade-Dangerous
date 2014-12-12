@@ -10,14 +10,24 @@ help='Calculate best trade run.'
 name='run'
 epilog=None
 arguments = [
-    ParseArgument('--credits', help='Starting credits.', metavar='CR', type=int)
-]
-switches = [
     ParseArgument('--capacity',
             help='Maximum capacity of cargo hold.',
             metavar='N',
             type=int,
         ),
+    ParseArgument('--credits',
+            help='Starting credits.',
+            metavar='CR',
+            type=int,
+        ),
+    ParseArgument('--ly-per',
+            help='Maximum light years per jump.',
+            dest='maxLyPer',
+            metavar='N.NN',
+            type=float,
+        ),
+]
+switches = [
     ParseArgument('--from',
             help='Starting system/station.',
             dest='starting',
@@ -51,12 +61,6 @@ switches = [
             dest='maxJumpsPer',
             metavar='N',
             type=int,
-        ),
-    ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
         ),
     ParseArgument('--empty-ly',
             help='Maximum light years ship can jump when empty.',

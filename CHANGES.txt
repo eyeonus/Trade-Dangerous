@@ -3,9 +3,15 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.9 [wip]
-. (kfsone) Big documentation cleanup.
-. (mhuges) Added '--stations' to 'nav' to show a station count
-. (kfsone) Added '--ages' option to 'local' to show price data age
+. (kfsone) "-G" is now the default for "update"
+. (kfsone) "--capacity" and "--ly-per" are now required "run" arguments
+. (kfsone) "local --ly=0" now works as expected
+. (kfsone) Tell the user when we rebulid the cache (-q to silence)
+. (gulasch) Stations and distances
+. (kfsone) Mineral and Microbial are now in the correct order,
+. (kfsone) Big documentation cleanup,
+. (mhuges) Added '--stations' to 'nav' to show a station count,
+. (kfsone) Added '--ages' option to 'local' to show price data age,
 
 v6.1.8 Dec 09 2014
 . (kfsone) Huge performance improvement to "nav",
