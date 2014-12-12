@@ -77,9 +77,14 @@ class ImportPluginBase(PluginBase):
     tries to import the data. This gives you an opportunity to
     modify, parse or even import the data yourself.
 
-    Return True from finish() if you want the import command
-    to proceed with calling cache.importDataFromFile as
-    normal, otherwise return False.
+    Returning False from finish() ends processing, the import
+    command will rebuild the main .prices file and exit. This
+    allows you to write a plugin that does its own processing
+    of a custom .prices format, for example.
+
+    Returning True will allow the import command to proceed
+    with import as normal. This allows, for example, a plugin
+    that pre-processes the .prices file before import is called.
     """
 
     defaultImportFile = "import.prices"

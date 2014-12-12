@@ -18,16 +18,18 @@
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
+from collections import namedtuple
+from pathlib import Path
+from tradeexcept import TradeException
+
+import corrections
+import csv
+import math
+import os
+import prices
 import re
 import sqlite3
 import sys
-import os
-import csv
-import math
-from pathlib import Path
-from collections import namedtuple
-from tradeexcept import TradeException
-import corrections
 
 ######################################################################
 # Regular expression patterns. Here be draegons.
@@ -820,6 +822,20 @@ def buildCache(tdb, tdenv):
 
     tdenv.DEBUG0("Finished")
 
+######################################################################
+
+def regeneratePricesFile(tdb, tdenv):
+    tdenv.DEBUG0("Regenerating .prices file")
+
+    with tdb.pricesPath.open("w") as pricesFile:
+        prices.dumpPrices(
+                tdb.dbFilename,
+                prices.Element.full,
+                file=pricesFile,
+                debug=tdenv.debug)
+
+    # Update the DB file so we don't regenerate it.
+    os.utime(tdb.dbFilename)
 
 ######################################################################
 
@@ -849,16 +865,4 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
 
     # If everything worked, we may need to re-build the prices file.
     if path != tdb.pricesPath:
-        import prices
-        tdenv.DEBUG0("Update complete, regenerating .prices file")
-        with tdb.pricesPath.open("w") as pricesFile:
-            prices.dumpPrices(
-                    tdb.dbFilename,
-                    prices.Element.full,
-                    file=pricesFile,
-                    debug=tdenv.debug)
-
-    # Update the DB file so we don't regenerate it.
-    os.utime(tdb.dbFilename)
-
-
+        regeneratePricesFile(tdb, tdenv)
