@@ -1,17 +1,28 @@
-class Plugin(object):
+class PluginException(Exception):
+    """
+    Base class for exceptions thrown by plugins.
+    """
+
+
+class PluginBase(object):
     """
     Base class for plugin implementation.
 
-    The first call is to "isExpectingData()" to determine if there
-    is any expectation of new data. For instance, you might check
-    to check the timestamp on a file in a dropbox folder.
+    To implement a plugin, create a file in the plugins directory
+    called "mypluginname_pin.py". This file should implement a
+    class, Plugin, derived from plugins.PluginBase.
+
+    When the user invokes the plugin, td will start by calling the
+    "isExpectingData()" member function to determine if there is
+    any expectation of new data. For instance, you might check to
+    check the timestamp on a file in a dropbox folder.
 
     Next, prepareData() is called to fetch or load the data, which
     should return True if there is data to be processed, otherwise
     it should return False.
 
-    In the case of prepareData() return True, processData() is
-    called to process the data.
+    Finally, in the case of prepareData() returning True, member
+    function processData() is called to process the data.
     """
 
     defaultImportFile = "import.prices"
@@ -27,7 +38,7 @@ class Plugin(object):
         Return False if there is definitely no new data,
         otherwise return True.
         """
-        raise Exception("Not implemented")
+        raise PluginException("Not implemented")
 
 
     def prepareData(self):
@@ -37,7 +48,7 @@ class Plugin(object):
         a local file.
         Return True if there is data to be processed.
         """
-        raise Exception("Not implemented")
+        raise PluginException("Not implemented")
 
 
     def processData(self):
@@ -45,5 +56,5 @@ class Plugin(object):
         Plugin Must Implement:
         Handle the data that has been retrieved.
         """
-        raise Exception("Not implemented")
+        raise PluginException("Not implemented")
 
