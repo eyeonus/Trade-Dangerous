@@ -1,13 +1,14 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from commands.commandenv import CommandEnv
+
 import argparse             # For parsing command line args.
-import sys
-import pathlib
-import os
 import importlib
+import os
+import pathlib
+import sys
 
 import commands.exceptions
 import commands.parsing
-from commands.commandenv import CommandEnv
 
 commandList = [
 
