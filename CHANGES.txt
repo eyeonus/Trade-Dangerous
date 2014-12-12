@@ -2,7 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.1.9 [wip]
+v6.2.0 Dec 11 2014
+. (kfsone) Added plugin system for "import", added a maddavo plugin.
+. (kfsone) "-G" is now the default for "update"
+. (kfsone) "--capacity" and "--ly-per" are now required "run" arguments
+. (kfsone) "local --ly=0" now works as expected
+. (kfsone) Tell the user when we rebulid the cache (-q to silence)
 . (gulasch) Stations and distances
 . (kfsone) Mineral and Microbial are now in the correct order,
 . (kfsone) Big documentation cleanup,

@@ -183,6 +183,13 @@ unq:name@System.system_id,unq:name,ls_from_star
 'BD+34 1378','Vance Terminal',0.0
 'BD+35 3145','Metcalf Vision',11600.0
 'BD+39 3048','Froude Settlement',0.0
+'BD+43 2989','Crown Dock',5000.0
+'BD+43 2989','Levi-Strauss Hub',400.0
+'BD+43 2989','McNair Orbital',20000.0
+'BD+43 2989','Melvill Orbital',400.0
+'BD+43 2989','Newton Orbital',22000.0
+'BD+43 2989','Read Hub',1400.0
+'BD+43 2989','Schirra Station',1000.0
 'BD+47 2112','Olivas Settlement',0.0
 'BD+49 1280','Archimedes City',0.0
 'BD+49 1280','Laplace Orbital',0.0
@@ -299,9 +306,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Demeter','Marusek Settlement',0.0
 'Denebola','Volkov Dock',0.0
 'Difu','Backers Pledge High',0.0
+'Diso','Shifnalport',0.0
 'Djaujang','Cochrane Refinery',0.0
 'Djaujang','Martins Prospect',0.0
-'Diso','Shifnalport',0.0
 'Doris','Isherwood Dock',0.0
 'DT Virginis','Chun Vision',0.0
 'Duamta','Davis Terminal',0.0
@@ -807,6 +814,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Makah','Jacquard Works',0.0
 'Maljenni','Lazarev Depot',0.0
 'Manarato','Goldstein Installation',0.0
+'Mannona','Thornycroft Penal Colony',0.0
 'Maorsi','Karachkina City',0.0
 'Marasing','Thiele Enterprise',0.0
 'Markanomovoy','Compton Dock',0.0

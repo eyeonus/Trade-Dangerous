@@ -306,7 +306,8 @@ class TradeDB(object):
         self.numLinks = None
         self.tradingCount = None
 
-        self.tdenv = tdenv or TradeEnv(debug=(debug or 0))
+        tdenv = tdenv or TradeEnv(debug=(debug or 0))
+        self.tdenv = tdenv
 
         dataDir = Path(tdenv.dataDir).resolve()
         self.dbPath = Path(tdenv.dbFilename or dataDir / TradeDB.defaultDB)
@@ -690,11 +691,6 @@ class TradeDB(object):
                         else:
                             anyMatch.append(place)
                         continue
-
-                if not placeNameNorm.startswith(nameNorm[0]):
-                    # Optimization: check if the first letters
-                    # match before we attempt
-                    continue
 
                 # Lets drop whitespace and remaining punctuation...
                 placeNameTrimmed = placeNameNorm.translate(trimTrans)

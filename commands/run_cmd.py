@@ -10,14 +10,24 @@ help='Calculate best trade run.'
 name='run'
 epilog=None
 arguments = [
-    ParseArgument('--credits', help='Starting credits.', metavar='CR', type=int)
-]
-switches = [
     ParseArgument('--capacity',
             help='Maximum capacity of cargo hold.',
             metavar='N',
             type=int,
         ),
+    ParseArgument('--credits',
+            help='Starting credits.',
+            metavar='CR',
+            type=int,
+        ),
+    ParseArgument('--ly-per',
+            help='Maximum light years per jump.',
+            dest='maxLyPer',
+            metavar='N.NN',
+            type=float,
+        ),
+]
+switches = [
     ParseArgument('--from',
             help='Starting system/station.',
             dest='starting',
@@ -51,12 +61,6 @@ switches = [
             dest='maxJumpsPer',
             metavar='N',
             type=int,
-        ),
-    ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
         ),
     ParseArgument('--empty-ly',
             help='Maximum light years ship can jump when empty.',
@@ -306,10 +310,16 @@ def validateRunArguments(tdb, cmdenv):
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
-    if cmdenv.destPlace and isinstance(cmdenv.destPlace, Station):
-        cmdenv.stopStation = cmdenv.destPlace
-    else:
-        cmdenv.stopStation = None
+    cmdenv.stopStation = None
+    if cmdenv.destPlace:
+        if isinstance(cmdenv.destPlace, Station):
+            cmdenv.stopStation = cmdenv.destPlace
+        elif isinstance(cmdenv.destPlace, System):
+            if not cmdenv.destPlace.stations:
+                raise CommandLineError(
+                        "No known/trading stations in {}.".format(
+                            cmdenv.destPlace.name()
+                ))
 
     if cmdenv.stopStation:
         if cmdenv.hops == 1 and cmdenv.startStation:
