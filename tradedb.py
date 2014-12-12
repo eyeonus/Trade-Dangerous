@@ -691,11 +691,6 @@ class TradeDB(object):
                             anyMatch.append(place)
                         continue
 
-                if not placeNameNorm.startswith(nameNorm[0]):
-                    # Optimization: check if the first letters
-                    # match before we attempt
-                    continue
-
                 # Lets drop whitespace and remaining punctuation...
                 placeNameTrimmed = placeNameNorm.translate(trimTrans)
                 placeNameTrimmedLen = len(placeNameTrimmed)
