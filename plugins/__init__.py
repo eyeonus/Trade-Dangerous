@@ -9,8 +9,24 @@ class PluginBase(object):
     Base class for plugin implementation.
 
     To implement a plugin, create a file in the plugins directory
-    called "mypluginname_pin.py". This file should implement a
-    class, Plugin, derived from plugins.PluginBase.
+    called "mypluginname_plug.py". This file should implement
+    plugin classes derived from the appropriate plugins base,
+    e.g. for an import pluggin:
+
+        import plugins
+
+        class ImportPlugin(plugins.ImportPluginBase):
+            # your implementation here
+    """
+
+    def __init__(self, tdb, tdenv):
+        self.tdb = tdb
+        self.tdenv = tdenv
+
+
+class ImportPluginBase(PluginBase):
+    """
+    Base class for import plugins.
 
     When the user invokes the plugin, td will start by calling the
     "isExpectingData()" member function to determine if there is
@@ -27,10 +43,10 @@ class PluginBase(object):
 
     defaultImportFile = "import.prices"
 
-
-    def __init__(self, tdb, cmdenv):
+    def __init__(self, tdb, tdenv):
+        super().__init__(tdb, tdenv)
         self.tdb = tdb
-        self.cmdenv = cmdenv
+        self.tdenv = tdenv
 
 
     def isExpectingData(self):
