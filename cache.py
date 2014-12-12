@@ -766,12 +766,17 @@ def buildCache(tdb, tdenv):
         are newer than the database.
     """
 
+    if not tdenv.quiet:
+        print(
+                "NOTE: Rebuilding cache file: this may take a moment",
+                file=sys.stderr
+        )
+
     dbPath = tdb.dbPath
     sqlPath = tdb.sqlPath
     pricesPath = tdb.pricesPath
 
     # Create an in-memory database to populate with our data.
-    tdenv.DEBUG0("Creating temporary database in memory")
     tempPath = dbPath.with_suffix(".new")
     backupPath = dbPath.with_suffix(".prev")
 

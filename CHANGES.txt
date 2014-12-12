@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.9 [wip]
+. (kfsone) Tell the user when we rebulid the cache (-q to silence)
 . (gulasch) Stations and distances
 . (kfsone) Mineral and Microbial are now in the correct order,
 . (kfsone) Big documentation cleanup,
