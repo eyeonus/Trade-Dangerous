@@ -1,0 +1,114 @@
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+import urllib.error
+import time
+
+
+######################################################################
+# Helpers
+
+
+def makeUnit(value):
+    """
+    Convert a value in bytes into a Kb, Mb, Gb etc.
+    """
+
+    units = [ '', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+    unitSize = int(value)
+    for unit in units:
+        if unitSize <= 640:
+            return "{:5.2f}{}B".format(unitSize, unit)
+        unitSize /= 1024
+    return None
+    
+
+def rateVal(bytes, started):
+    """
+    Determine the rate at which data has been transferred.
+
+    bytes:
+        The number of bytes transferred.
+
+    started:
+        The time.time() when the transfer started.
+    """
+
+    now = time.time()
+    if bytes == 0 or now <= started:
+        return "..."
+    units = (makeUnit(bytes / (now - started))+"/s") or "FAST!"
+    return units
+
+
+def download(
+            cmdenv, url, localFile,
+            headers=None,
+        ):
+    """
+    Fetch data from a URL and save the output
+    to a local file. Returns the response headers.
+
+    cmdenv:
+        TradeEnv we're working under
+
+    url:
+        URL we're fetching (http, https or ftp)
+
+    localFile:
+        Name of the local file to open.
+
+    headers:
+        dict() of additional HTTP headers to send
+    """
+
+    if headers:
+        req = Request(url, headers=headers)
+    else:
+        req = Request(url)
+
+    if not cmdenv.quiet:
+        print("Connecting to server: {}".format(url))
+    try:
+        f = urlopen(req)
+    except urllib.error.URLError as e:
+        raise TradeException(
+                "Unable to connect ("+url+")\n"+str(e)
+        )
+    cmdenv.DEBUG0(str(f.info()))
+
+    # Figure out how much data we have
+    bytes = int(f.getheader('Content-Length'))
+    maxBytesLen = len("{:>n}".format(bytes))
+    fetched = 0
+    started = time.time()
+
+    # Fetch four memory pages at a time
+    chunkSize = 4096 * 4
+
+    with open(localFile, "w") as fh:
+        # Use the 'while True' approach so that we always print the
+        # download status including, especially, the 100% report.
+        while True:
+            if not cmdenv.quiet:
+                print("Download: "
+                        "{:>{len}n}/{:>{len}n} bytes "
+                        "| {:>10s} "
+                        "| {:>5.2f}% "
+                        .format(
+                                fetched, bytes,
+                                rateVal(fetched, started),
+                                (fetched * 100 / bytes),
+                                len=maxBytesLen
+                ), end='\r')
+
+            if fetched >= bytes:
+                if not cmdenv.quiet:
+                    print()
+                break
+            
+            chunk = f.read(chunkSize)
+            fetched += len(chunk)
+            print(chunk.decode(), file=fh, end="")
+
+    return f.getheaders()
+
