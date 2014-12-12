@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.1.9 [wip]
+. (kfsone) "-G" is now the default for "update"
 . (kfsone) "--capacity" and "--ly-per" are now required "run" arguments
 . (kfsone) "local --ly=0" now works as expected
 . (kfsone) Tell the user when we rebulid the cache (-q to silence)
