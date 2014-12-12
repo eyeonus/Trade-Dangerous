@@ -20,6 +20,7 @@ switches = [
             dest='maxLyPer',
             metavar='N.NN',
             type=float,
+            default=None,
         ),
     ParseArgument('--ages',
             help='Show stations and the age of their price data.',
@@ -38,7 +39,9 @@ def run(results, cmdenv, tdb):
     tdb = cmdenv.tdb
     srcSystem = cmdenv.nearSystem
 
-    ly = cmdenv.maxLyPer or tdb.maxSystemLinkLy
+    ly = cmdenv.maxLyPer
+    if ly is None:
+        ly = tdb.maxSystemLinkLy
 
     results.summary = ResultRow()
     results.summary.near = srcSystem
