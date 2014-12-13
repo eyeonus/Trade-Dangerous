@@ -3,8 +3,12 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.2.1 [wip]
+. (kfsone) Fixed item name matching (--avoid)
+. (kfsone) Fixed use of via in "run"
 . (kfsone) Exposed cache.regeneratePricesFile()
 . (kfsone) Call regeneratePricesFile() after calling plugin.finish()
+. (kfsone) General code cleanup (removed buildLinks and loadTrades)
+. (kfsone) Added VisualStudio pyproj (great for performance analysis)
 
 v6.2.0 Dec 11 2014
 . (kfsone) Added plugin system for "import", added a maddavo plugin.
