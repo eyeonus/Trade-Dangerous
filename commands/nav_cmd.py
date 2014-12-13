@@ -22,12 +22,6 @@ switches = [
             metavar='N.NN',
             type=float,
         ),
-    ParseArgument('--aggressive',
-            help='Try more aggressively.',
-            action='count',
-            dest='aggressiveness',
-            default=0,
-        ),
     ParseArgument('--avoid',
             help='Exclude a system from the route. If you specify a station, '
                  'the system that station is in will be avoided instead.',
@@ -87,12 +81,7 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
         cmdenv.DEBUG0("Avoiding: {}", list(avoiding))
 
     # As long as the open list is not empty, keep iterating.
-    overshoot = (cmdenv.aggressiveness * 4) + 1
-    while openList:
-        if dstSystem in distances:
-            overshoot -= 1
-            if overshoot == 0:
-                break
+    while openList and dstSystem not in distances:
 
         # Expand the search domain by one jump; grab the list of
         # nodes that are this many hops out and then clear the list.

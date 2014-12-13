@@ -326,13 +326,18 @@ def validateRunArguments(tdb, cmdenv):
             if cmdenv.startStation == cmdenv.stopStation:
                 raise CommandLineError("Same to/from; more than one hop required.")
 
-    viaSet = cmdenv.viaSet = set(cmdenv.viaStations)
+    viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
+    viaSystems = set()
     for place in viaSet:
-        if isinstance(place, Station) and not place.itemCount:
-            raise NoDataError(
-                        "No price data available for via station {}.".format(
-                            place.name()
-                    ))
+        if isinstance(place, Station):
+            if not place.itemCount:
+                raise NoDataError(
+                            "No price data available for via station {}.".format(
+                                place.name()
+                        ))
+            viaSystems.add(place.system)
+        else:
+            viaSystems.add(place)
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
@@ -343,7 +348,7 @@ def validateRunArguments(tdb, cmdenv):
         fixedRoutePoints += 1
     totalRoutePoints = cmdenv.hops + 1
     adhocRoutePoints = totalRoutePoints - fixedRoutePoints
-    if len(viaSet) > adhocRoutePoints:
+    if len(viaSystems) > adhocRoutePoints:
         raise CommandLineError(
                 "Route is not long enough for the list of '--via' "
                 "destinations you gave. Reduce the vias or try again "
@@ -376,8 +381,8 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.unique and cmdenv.hops >= len(tdb.stationByID):
         raise CommandLineError("Requested unique trip with more hops than there are stations...")
     if cmdenv.unique:
-        startConflict = (startStn and (startStn == stop or startStn in viaSet))
-        stopConflict  = (stop and stop in viaSet)
+        startConflict = (startStn and (startStn == stopStn or startStn in viaSet))
+        stopConflict  = (stopStn and stopStn in viaSet)
         if startConflict or stopConflict:
             raise CommandLineError("from/to/via repeat conflicts with --unique")
 
@@ -408,6 +413,21 @@ def validateRunArguments(tdb, cmdenv):
             raise NoDataError("No data found for potential buyers for items from {}.".format(
                                 startStn.name()))
 
+
+######################################################################
+
+
+def filterByVia(routes, viaSet, viaStartPos):
+    matchedRoutes = list(routes)
+    for route in routes:
+        met = 0
+        for hop in route.route[viaStartPos:]:
+            if hop in viaSet or hop.system in viaSet:
+                met += 1
+        if met >= len(viaSet):
+            matchedRoutes.append(route)
+    return matchedRoutes
+
 ######################################################################
 # Perform query and populate result set
 
@@ -420,7 +440,6 @@ def run(results, cmdenv, tdb):
         raise NoDataError("Database does not contain any profitable trades.")
 
     validateRunArguments(tdb, cmdenv)
-    tdb.buildLinks()
 
     from tradecalc import TradeCalc, Route
 
@@ -483,15 +502,14 @@ def run(results, cmdenv, tdb):
             ### routes that include a, b or c. On hop 4, only include routes that
             ### already include 2 of the vias, on hop 5, require all 3.
             if viaSet:
-                routes = [ route for route in routes if viaSet & set(route.route[viaStartPos:]) ]
-        elif cmdenv.adhocHops == len(viaSet):
-            # Everywhere we're going is in the viaSet.
+                routes = filterByVia(routes, viaSet, viaStartPos)
+        elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
         routes = calc.getBestHops(routes, restrictTo=restrictTo)
 
     if viaSet:
-        routes = [ route for route in routes if viaSet & set(route.route[viaStartPos:]) ]
+        routes = filterByVia(routes, viaSet, viaStartPos)
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
