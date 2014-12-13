@@ -25,6 +25,7 @@ stations = {
     "G 139-50/FILIPCHENKO": "Filipchenko City",
     "AMARAK/WERNER VON SIEMENS VISON": "Werner Von Siemens Vision",
     "SETING/COX LANDING": DELETED,
+    "TRELLA/TITTO COLONY": "Tito Colony",
 
 #ADD_STATIONS_HERE
 }
