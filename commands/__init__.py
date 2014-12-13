@@ -1,27 +1,29 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from commands.commandenv import CommandEnv
+
 import argparse             # For parsing command line args.
-import sys
-import pathlib
-import os
 import importlib
+import os
+import pathlib
+import sys
 
 import commands.exceptions
 import commands.parsing
-from commands.commandenv import CommandEnv
 
-commandList = [
+import commands.buildcache_cmd
+import commands.buy_cmd
+import commands.export_cmd
+import commands.import_cmd
+import commands.local_cmd
+import commands.nav_cmd
+import commands.run_cmd
+import commands.sell_cmd
+import commands.update_cmd
 
-    'buildcache',
-    'buy',
-    'export',
-    'import',
-    'local',
-    'nav',
-    'run',
-    'sell',
-    'update',
-
-]
+commandIndex = {
+    cmd[0:cmd.find('_cmd')]: getattr(commands, cmd)
+    for cmd in commands.__dir__() if cmd.endswith("_cmd")
+}
 
 ######################################################################
 # Helpers
@@ -57,11 +59,6 @@ def addArguments(group, options, required, topGroup=None):
                     group.add_argument(*(option.args), nargs='?', **(option.kwargs))
 
 
-def import_module(cmdName):
-    """ Import the module for a give command name. """
-    return importlib.import_module("commands.{}_cmd".format(cmdName.lower()))
-
-
 class CommandIndex(object):
     def usage(self, argv):
         """
@@ -70,11 +67,6 @@ class CommandIndex(object):
             commands, generated programatically,
             and the outlying command functionality.
         """
-
-        index = {}
-        for command in commandList:
-            module = import_module(command)
-            index[command] = module
 
         from textwrap import TextWrapper
 
@@ -105,7 +97,7 @@ class CommandIndex(object):
 
         # List each command with its help text
         lastCmdName = None
-        for cmdName, cmd in sorted(index.items()):
+        for cmdName, cmd in sorted(commandIndex.items()):
             tw.initial_indent = cmdFmt.format(cmdName)
             text += tw.fill(cmd.help) + "\n"
             lastCmdName = cmdName
@@ -131,10 +123,10 @@ class CommandIndex(object):
         ### and only worry about an index when that fails or
         ### the user requests usage.
         cmdName = argv[1].lower()
-        if cmdName not in commandList:
+        try:
+            cmdModule = commandIndex[cmdName]
+        except KeyError:
             raise exceptions.CommandLineError("Unrecognized command, '{}'".format(cmdName), self.usage(argv))
-
-        cmdModule = import_module(cmdName)
 
         class ArgParser(argparse.ArgumentParser):
             def error(self, message):

@@ -310,10 +310,16 @@ def validateRunArguments(tdb, cmdenv):
     else:
         cmdenv.origins = [ station for station in tdb.stationByID.values() ]
 
-    if cmdenv.destPlace and isinstance(cmdenv.destPlace, Station):
-        cmdenv.stopStation = cmdenv.destPlace
-    else:
-        cmdenv.stopStation = None
+    cmdenv.stopStation = None
+    if cmdenv.destPlace:
+        if isinstance(cmdenv.destPlace, Station):
+            cmdenv.stopStation = cmdenv.destPlace
+        elif isinstance(cmdenv.destPlace, System):
+            if not cmdenv.destPlace.stations:
+                raise CommandLineError(
+                        "No known/trading stations in {}.".format(
+                            cmdenv.destPlace.name()
+                ))
 
     if cmdenv.stopStation:
         if cmdenv.hops == 1 and cmdenv.startStation:

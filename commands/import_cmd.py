@@ -1,13 +1,14 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
-from commands.exceptions import *
-import math
-import re
 
-import transfers
+from commands.exceptions import *
+from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from pathlib import Path
 
 import cache
-from pathlib import Path
+import math
+import plugins
+import re
+import transfers
 
 ######################################################################
 # Parser config
@@ -29,13 +30,16 @@ switches = [
             type=str,
             default=None,
         ),
-        MutuallyExclusiveGroup(
-            ParseArgument('--maddavo',
-                help='Import prices from Maddavo\'s site.',
-                dest='url',
-                action='store_const',
-                const="http://www.davek.com.au/td/prices.asp",
-            ),
+        ParseArgument('--maddavo',
+            help='[Deprecated] Import prices from Maddavo\'s site. Use "--plug=madadvo" instead.',
+            dest='plug',
+            action='store_const',
+            const='maddavo',
+        ),
+        ParseArgument('--plug',
+                help="Use the specified import plugin.",
+                type=str,
+                default=None,
         ),
     ),
     ParseArgument(
@@ -52,17 +56,42 @@ switches = [
 ######################################################################
 # Helpers
 
+
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    # If the filename specified was "-" or None, then go ahead
-    # and present the user with an open file dialog.
+    if cmdenv.maddavo:
+        raise CommandLineError(
+                "--maddavo is deprecated: "
+                "please use --plug=maddavo instead"
+        )
+
+    # If we're using a plugin, initialize that first.
+    if cmdenv.plug:
+        try:
+            pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
+        except plugins.PluginException as e:
+            raise CommandLineError("Plugin Error: "+str(e))
+
+        # Initialize the plugin
+        plugin = pluginClass(tdb, cmdenv)
+
+        # Run the plugin. If it returns False, then it did everything
+        # that needs doing and we can stop now.
+        # If it returns True, it is returning control to the module.
+        if not plugin.run():
+            return None
+
+    if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
+        cmdenv.url, cmdenv.filename = cmdenv.filename, None
 
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
 
+    # If the filename specified was "-" or None, then go ahead
+    # and present the user with an open file dialog.
     if not cmdenv.filename:
         import tkinter
         from tkinter.filedialog import askopenfilename
@@ -82,15 +111,17 @@ def run(results, cmdenv, tdb):
             raise SystemExit("Aborted")
         cmdenv.filename = filename
 
-    if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
-        cmdenv.filename = download(cmdenv.filename)
-
     # check the file exists.
     filePath = Path(cmdenv.filename)
     if not filePath.is_file():
         raise CommandLineError("File not found: {}".format(
                     str(filePath)
                 ))
+
+    if cmdenv.plug:
+        if not plugin.finish():
+            cache.regeneratePricesFile()
+            return None
 
     cache.importDataFromFile(tdb, cmdenv, filePath)
     return None

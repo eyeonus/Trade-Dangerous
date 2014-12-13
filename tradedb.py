@@ -306,7 +306,8 @@ class TradeDB(object):
         self.numLinks = None
         self.tradingCount = None
 
-        self.tdenv = tdenv or TradeEnv(debug=(debug or 0))
+        tdenv = tdenv or TradeEnv(debug=(debug or 0))
+        self.tdenv = tdenv
 
         dataDir = Path(tdenv.dataDir).resolve()
         self.dbPath = Path(tdenv.dbFilename or dataDir / TradeDB.defaultDB)

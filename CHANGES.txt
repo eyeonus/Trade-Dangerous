@@ -2,7 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.1.9 [wip]
+v6.2.1 [wip]
+. (kfsone) Exposed cache.regeneratePricesFile()
+. (kfsone) Call regeneratePricesFile() after calling plugin.finish()
+
+v6.2.0 Dec 11 2014
+. (kfsone) Added plugin system for "import", added a maddavo plugin.
 . (kfsone) "-G" is now the default for "update"
 . (kfsone) "--capacity" and "--ly-per" are now required "run" arguments
 . (kfsone) "local --ly=0" now works as expected
