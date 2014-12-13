@@ -137,6 +137,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Aritimi','Griggs Hub',0.0
 'Aritimi','Huygens Port',2100.0
 'Aritimi','Padalka Orbital',2100.0
+'Aruagea','Hornby Colony',14482.0
 'Asellus Primus','Beagle 2 Landing',0.0
 'Asellus Primus','Foster Research Lab',0.0
 'Asphodel','John Irving Station',0.0
@@ -187,6 +188,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'BD+33 801','Apt Plant',0.0
 'BD+34 1378','Vance Terminal',0.0
 'BD+35 3145','Metcalf Vision',11600.0
+'BD+38 3327','Lynn Base',3302.0
 'BD+39 3048','Froude Settlement',0.0
 'BD+43 2989','Crown Dock',5000.0
 'BD+43 2989','Levi-Strauss Hub',400.0
@@ -211,6 +213,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Belalans','Mandel Dock',0.0
 'Belalans','Powers Hub',0.0
 'Belalans','Shoemaker City',0.0
+'Belinara','Efremov City',400.0
+'Belinara','Hopkinson Orbital',544.0
 'Beta-1 Tucanae','Adams Orbital',0.0
 'BF Canis Venatici','Kornbluth Dock',0.0
 'Bhritzameno','Feynman Terminal',0.0
