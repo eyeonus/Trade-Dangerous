@@ -443,6 +443,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Heike','Haignere Orbital',0.0
 'Heike','Lyell Port',0.0
 'Heike','McMonagle Orbital',0.0
+'Helvetitj','Friend Orbital',0.0
 'Hemaki','Coriolis',0.0
 'Hemaki','Kizim',0.0
 'Heveri','Birdseye Enterprise',0.0
@@ -1154,8 +1155,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Wolf 359','Powell High',0.0
 'Wolf 393','Lichtenberg Horizons',0.0
 'Wolf 417','Egan Port',0.0
-'Wolf 424','Pontes Terminal',0.0
-'Wolf 424','Readdy Gateway',0.0
+'Wolf 424','Pontes Terminal',1234.0
+'Wolf 424','Readdy Gateway',1244.0
 'Wolf 424','Sping Terminal',0.0
 'Wolf 437','Fischer Platform',0.0
 'Wolf 46','Fischer City',0.0
@@ -1170,7 +1171,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Wolf 562','Faris Gateway',3222.0
 'Wolf 562','Hopkins Port',37.0
 'Wolf 562','Nagel Enterprise',21.0
-'Wolf 718','White Station',0.0
+'Wolf 718','Filipchenko Dock',0.0
+'Wolf 718','Song Refinery',28.0
+'Wolf 718','White Station',27.0
 'Wolf 750','Gregory Orbital',0.0
 'Wolf 750','Neumann Gateway',0.0
 'Wolf 750','Nikolayev Settlement',0.0
