@@ -30,6 +30,11 @@ switches = [
             default=None,
             type=int,
         ),
+    ParseArgument('--ages',
+            help='Show age of data.',
+            default=False,
+            action='store_true',
+        ),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance',
             action='store_true',
@@ -67,6 +72,13 @@ def run(results, cmdenv, tdb):
     if cmdenv.quantity:
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
+
+    if cmdenv.ages:
+        columns.append(
+               "julianday('now') - julianday(sb.modified)"
+        )
+    else:
+        columns.append('0')
 
     nearSystem = cmdenv.nearSystem
     if nearSystem:
@@ -106,7 +118,7 @@ def run(results, cmdenv, tdb):
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
-    for (stationID, priceCr, demand) in cur:
+    for (stationID, priceCr, demand, age) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
         cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, demand)
@@ -114,6 +126,7 @@ def run(results, cmdenv, tdb):
            row.dist = systemRanges[row.station.system]
         row.price = priceCr
         row.demand = demand
+        row.age = age
         results.rows.append(row)
 
     if not results.rows:
@@ -153,6 +166,10 @@ def render(results, cmdenv, tdb):
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
+
+    if cmdenv.ages:
+        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+                key=lambda row: row.age)
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
