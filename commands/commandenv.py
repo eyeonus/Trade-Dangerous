@@ -163,7 +163,7 @@ class CommandEnv(TradeEnv):
         # individually.
         for avoid in ','.join(avoidances).split(','):
             # Is it an item?
-            item, system, station = None, None, None
+            item, place = None, None
             try:
                 item = tdb.lookupItem(avoid)
                 avoidItems.append(item)

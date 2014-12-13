@@ -420,7 +420,6 @@ def run(results, cmdenv, tdb):
         raise NoDataError("Database does not contain any profitable trades.")
 
     validateRunArguments(tdb, cmdenv)
-    tdb.buildLinks()
 
     from tradecalc import TradeCalc, Route
 

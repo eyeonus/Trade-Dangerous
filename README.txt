@@ -806,12 +806,10 @@ Construction of a wholly-default TradeDB can take a while because it loads
 a lot of data that you often probably won't need. You can speed it up by
 disabling the bulk of this with:
 
-  tdb = TradeDB(tdenv, buildLinks=False, includeTrades=False)
+  tdb = TradeDB(tdenv, loadTrades=False)
 
 If you subsequently need this data, call
 
-  tdb.buildLinks()
-or
   tdb.loadTrades()
 
 As of TD 6.0 you should need to load this data less and less. A lot of
