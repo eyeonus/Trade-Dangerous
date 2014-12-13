@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.2.1 [wip]
+. (kfsone) "buy" now shows average cost if you specify --detail (-v)
+. (kfsone) "sell" now shows average value if you specify --detail (-v)
 . (kfsone) Fixed item name matching (--avoid)
 . (kfsone) Fixed use of via in "run"
 . (kfsone) Exposed cache.regeneratePricesFile()

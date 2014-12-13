@@ -65,6 +65,17 @@ def run(results, cmdenv, tdb):
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
+    results.summary = ResultRow()
+    results.summary.item = item
+
+    if cmdenv.detail:
+        avgPrice = tdb.query("""
+                SELECT CAST(AVG(ss.price) AS INT)
+                  FROM StationSelling AS ss
+                 WHERE ss.item_id = ?
+        """, [item.ID]).fetchone()[0]
+        results.summary.avg = avgPrice
+
     # Constraints
     tables = "StationSelling AS ss"
     constraints = [ "(item_id = {})".format(item.ID) ]
@@ -85,9 +96,6 @@ def run(results, cmdenv, tdb):
         )
     else:
         columns.append('0')
-
-    results.summary = ResultRow()
-    results.summary.item = item
 
     nearSystem = cmdenv.nearSystem
     distances = dict()
@@ -188,3 +196,10 @@ def render(results, cmdenv, tdb):
 
     for row in results.rows:
         print(stnRowFmt.format(row))
+
+    if cmdenv.detail:
+        print("{:{lnl}} {:>10n}".format(
+                "-- Average",
+                results.summary.avg,
+                lnl=longestNameLen,
+        ))
