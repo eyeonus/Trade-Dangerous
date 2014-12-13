@@ -69,26 +69,28 @@ def run(results, cmdenv, tdb):
         bindValues.append(cmdenv.quantity)
 
     nearSystem = cmdenv.nearSystem
-    distances = dict()
     if nearSystem:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
 
         cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
+        systemRanges = {
+            system: dist
+            for system, dist in tdb.genSystemsInRange(
+                    nearSystem,
+                    maxLy,
+                    includeSelf=True,
+            )
+        }
         tables += (
-                " INNER JOIN StationLink AS sl"
-                " ON (sl.rhs_station_id = sb.station_id)"
-                )
-        columns.append('sl.dist')
-        constraints.append("(lhs_system_id = {})".format(
-                nearSystem.ID
-                ))
-        constraints.append("(dist <= {})".format(
-                maxLy
-                ))
-    else:
-        columns += [ '0' ]
+                " INNER JOIN Station AS stn"
+                " ON (stn.station_id = sb.station_id)"
+        )
+        constraints.append("(stn.system_id IN ({}))".format(
+            ",".join(['?'] * len(systemRanges))
+        ))
+        bindValues += list(system.ID for system in systemRanges.keys())
 
     whereClause = ' AND '.join(constraints)
     stmt = """
@@ -104,12 +106,12 @@ def run(results, cmdenv, tdb):
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
-    for (stationID, priceCr, demand, dist) in cur:
+    for (stationID, priceCr, demand) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
         cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, demand)
         if nearSystem:
-           row.dist = dist
+           row.dist = systemRanges[row.station.system]
         row.price = priceCr
         row.demand = demand
         results.rows.append(row)
