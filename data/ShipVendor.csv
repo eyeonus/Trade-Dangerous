@@ -13,6 +13,14 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Eravate','Russell Ring','Hauler',52720
 'Eravate','Russell Ring','Lakon Type 6',1045945
 'Eravate','Russell Ring','Sidewinder',32000
+'LFT 1448','Dirac Enterprise','Anaconda',146969451
+'LFT 1448','Dirac Enterprise','Asp Explorer',6661153
+'LFT 1448','Dirac Enterprise','Cobra',379718
+'LFT 1448','Dirac Enterprise','Dropship',37814205
+'LFT 1448','Dirac Enterprise','Hauler',52720
+'LFT 1448','Dirac Enterprise','Lakon Type 6',1045945
+'LFT 1448','Dirac Enterprise','Lakon Type 9',76555842
+'LFT 1448','Dirac Enterprise','Sidewinder',32000
 'LHS 3447','Dalton Gateway','Asp Explorer',6661153
 'LHS 3447','Dalton Gateway','Hauler',52720
 'LHS 3447','Dalton Gateway','Lakon Type 9',76555842
@@ -23,6 +31,24 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'LHS 3447','Yaping Enterprise','Cobra',379718
 'LHS 3447','Yaping Enterprise','Lakon Type 6',1045945
 'LHS 3447','Yaping Enterprise','Viper',142931
+'LTT 15574','Haxel Port','Adder',87808
+'LTT 15574','Haxel Port','Cobra',379718
+'LTT 15574','Haxel Port','Dropship',37814205
+'LTT 15574','Haxel Port','Eagle',44800
+'LTT 15574','Haxel Port','Hauler',52720
+'LTT 15574','Haxel Port','Lakon Type 6',1045945
+'LTT 15574','Haxel Port','Lakon Type 7',17472252
+'LTT 15574','Haxel Port','Lakon Type 9',76555842
+'LTT 15574','Haxel Port','Sidewinder',32000
+'LTT 15574','Haxel Port','Viper',142931
+'Obambivas','Clebsch Terminal','Asp Explorer',6661153
+'Obambivas','Clebsch Terminal','Orca',48539887
+'Obambivas','Clebsch Terminal','Sidewinder',32000
+'Obambivas','Galouye Terminal','Orca',48539887
+'Obambivas','Galouye Terminal','Sidewinder',32000
+'Obambivas','Kennan Orbital','Cobra',379718
+'Obambivas','Kennan Orbital','Lakon Type 6',1045945
+'Obambivas','Kennan Orbital','Lakon Type 7',17472252
 'Yakabugai','Serebrov Station','Anaconda',146969451
 'Yakabugai','Serebrov Station','Asp Explorer',6661153
 'Yakabugai','Serebrov Station','Dropship',37814205

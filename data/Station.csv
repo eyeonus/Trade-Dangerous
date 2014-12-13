@@ -580,7 +580,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LFT 1072','Forsskal Vision',0.0
 'LFT 1425','Hirase Market',0.0
 'LFT 1446','Bosch Settlement',0.0
-'LFT 1448','Dirac Enterprise',0.0
+'LFT 1448','Dirac Enterprise',313.0
 'LFT 1664','Shull Settlement',0.0
 'LFT 1664','Teng-Hui Colony',0.0
 'LFT 1748','Longyear Port',0.0
@@ -778,7 +778,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LTT 15449','Malerba Station',0.0
 'LTT 15449','Reilly Dock',0.0
 'LTT 15449','Roentgen Port',0.0
-'LTT 15574','Descartes Gateway',0.0
+'LTT 15574','Descartes Gateway',387.0
+'LTT 15574','Haxel Port',603.0
+'LTT 15574','Yaping Dock',1297.0
 'LTT 1572','Young Dock',0.0
 'LTT 1582','Pimi Ring',0.0
 'LTT 1598','Covington Dock',0.0
@@ -914,7 +916,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Nyal','Chadwick Colony',0.0
 'Nzambassee','Broderick Orbital',0.0
 'Nzambassee','Garriott Stop',0.0
-'Obambivas','Kennan Orbital',0.0
+'Obambivas','Clebsch Terminal',593.0
+'Obambivas','Galouye Terminal',431.0
+'Obambivas','Kennan Orbital',431.0
 'Okinoukhe','Stableford Ring',0.0
 'Okuapang','Pribylov Park',0.0
 'Ongerinja','Vogel Platform',0.0
@@ -1108,6 +1112,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Toxandji','Alvares Dock',0.0
 'Toxandji','Morrow Port',0.0
 'Toxandji','Tsunenaga Orbital',0.0
+'Trella','Tito Colony',812.0
 'Trella','Titto Colony',0.0
 'Tripu','Vinogradov Installation',0.0
 'Tsohodiae','Barba Port',0.0
