@@ -661,6 +661,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 295','White Settlement',0.0
 'LHS 3006','WCM Transfer Orbital',0.0
 'LHS 3057','Wallace Colony',0.0
+'LHS 3197','Szilard Orbital',97.0
 'LHS 3262','Lacaille Prospect',0.0
 'LHS 331','Hopkinson City',0.0
 'LHS 332','Pelt Penal Colony',0.0
@@ -708,6 +709,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 5072','Northrop Dock',0.0
 'LHS 5287','McArthur''s Reach',0.0
 'LHS 531','Nelson Terminal',0.0
+'LHS 54','Nelson Dock',840.0
+'LHS 54','Popper Enterprise',1590.0
 'LHS 6282','Kendrick Base',0.0
 'LHS 6309','Bester Terminal',0.0
 'LHS 6309','Jones Station',0.0
