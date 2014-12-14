@@ -11,6 +11,6 @@ unq:name,capacity,mass,drive_rating,max_ly_empty,max_ly_full,max_speed,boost_spe
 'Lakon Type 7',104,420,0.0,0.0,0.0,180,300
 'Lakon Type 9',220,1000,0.0,17.72,0.0,130,200
 'Orca',72,580,0.0,7.5,0.0,300,380
-'Phyton',82,350,0.0,13.24,0.0,250,280
+'Python',82,350,0.0,13.24,0.0,250,280
 'Sidewinder',4,25,0.0,7.56,0.0,220,320
 'Viper',4,60,0.0,6.92,0.0,320,400
