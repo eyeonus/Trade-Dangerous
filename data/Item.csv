@@ -59,8 +59,8 @@ unq:name@Category.category_id,unq:name,ui_order
 'Minerals','Lepidolite',6
 'Minerals','Rutile',7
 'Minerals','Uraninite',8
-'Slaves','Imperial Slaves',1
-'Slaves','Slaves',2
+'Slavery','Imperial Slaves',1
+'Slavery','Slaves',2
 'Technology','Advanced Catalysers',1
 'Technology','Animal Monitors',2
 'Technology','Aquaponic Systems',3
