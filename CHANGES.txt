@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.2.1 [wip]
+. (gazelle) Stations, distances, ship data
 . (gulasch) Stations and distances
 . (kfsone) "sell" now has a --ages option too
 . (kfsone) "buy" and "sell" --near now checks the station/system too
