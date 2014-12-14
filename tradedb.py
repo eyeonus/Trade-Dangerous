@@ -80,7 +80,7 @@ class System(object):
         and lists which stars it has a direct connection to.
         Do not use _rangeCache directly, use TradeDB.genSystemsInRange.
     """
-    __slots__ = ('ID', 'dbname', 'posX', 'posY', 'posZ', 'links', 'stations', '_rangeCache')
+    __slots__ = ('ID', 'dbname', 'posX', 'posY', 'posZ', 'stations', '_rangeCache')
 
     class RangeCache(object):
         """
@@ -92,7 +92,6 @@ class System(object):
 
     def __init__(self, ID, dbname, posX, posY, posZ):
         self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
-        self.links = {}
         self.stations = []
         self._rangeCache = None
 
@@ -117,7 +116,9 @@ class System(object):
 
 
     def __repr__(self):
-        return "System(ID={}, dbname='{}', posX={}, posY={}, posZ={})".format(self.ID, re.escape(self.dbname), self.posX, self.posY, self.posZ)
+        return "System(ID={},dbname='{}',posX={},posY={},posZ={})".format(
+                self.ID, re.escape(self.dbname), self.posX, self.posY, self.posZ
+        )
 
 
 ######################################################################
@@ -252,7 +253,6 @@ class TradeDB(object):
 
         Methods:
             load                -   Reloads entire database. CAUTION: Destructive - Orphans existing records you reference.
-            loadTrades          -   Reloads just the price data. CAUTION: Destructive - Orphans existing records.
             lookupSystem        -   Return a system matching "name" with ambiguity detection.
             lookupStation       -   Return a station matching "name" with ambiguity detection.
             lookupShip          -   Return a ship matching "name" with ambiguity detection.
@@ -272,6 +272,8 @@ class TradeDB(object):
             'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
             '[]()*+-.,{}:'
             )
+    trimTrans = str.maketrans('', '', ' \'')
+
     # The DB cache
     defaultDB = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
@@ -297,13 +299,10 @@ class TradeDB(object):
     def __init__(self,
                     tdenv=None,
                     load=True,
-                    buildLinks=False,
-                    includeTrades=False,
                     debug=None,
                 ):
         self.conn = None
         self.cur = None
-        self.numLinks = None
         self.tradingCount = None
 
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
@@ -321,10 +320,9 @@ class TradeDB(object):
 
         if load:
             self.reloadCache()
-            self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy,
-                    buildLinks=buildLinks,
-                    includeTrades=includeTrades,
-                    )
+            self.load(
+                    maxSystemLinkLy=tdenv.maxSystemLinkLy,
+            )
 
 
     ############################################################
@@ -423,44 +421,6 @@ class TradeDB(object):
 
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
-
-
-    def buildLinks(self):
-        """
-            Populate the list of reachable systems for every star system.
-
-            Not every system can reach every other, and we use the longest jump
-            that can be made by a ship to limit how many connections we consider
-            to be "links".
-        """
-
-        assert not self.numLinks
-
-        self.tdenv.DEBUG1("Building trade links")
-
-        stmt = """
-                    SELECT DISTINCT lhs_system_id, rhs_system_id, dist
-                      FROM StationLink
-                     WHERE dist <= {} AND lhs_system_id != rhs_system_id
-                     ORDER BY lhs_system_id
-                 """.format(self.maxSystemLinkLy)
-        self.cur.execute(stmt)
-        systemByID = self.systemByID
-        lastLhsID, lhsLinks = None, None
-        self.numLinks = 0
-        for lhsID, rhsID, dist in self.cur:
-            if lhsID != lastLhsID:
-                lhsLinks = systemByID[lhsID].links
-                lastLhsID = lhsID
-            lhsLinks[systemByID[rhsID]] = dist
-            self.numLinks += 1
-
-        self.numLinks /= 2
-
-        self.tdenv.DEBUG1("Number of links between systems: {:n}", self.numLinks)
-
-        if self.tdenv.debug:
-            self._validate()
 
 
     def lookupSystem(self, key):
@@ -647,7 +607,7 @@ class TradeDB(object):
             """ Search candidates for the given name """
 
             normTrans = TradeDB.normalizeTrans
-            trimTrans = str.maketrans('', '', ' \'')
+            trimTrans = TradeDB.trimTrans
 
             nameNorm = name.translate(normTrans)
             nameTrimmed = nameNorm.translate(trimTrans)
@@ -743,7 +703,10 @@ class TradeDB(object):
 
         # Nothing matched
         if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
-            raise TradeException("Unrecognized place: {}".format(name))
+            # Note: this was a TradeException and may need to be again,
+            # but then we need to catch that error in commandenv
+            # when we process avoids
+            raise LookupError("Unrecognized place: {}".format(name))
 
         # More than one match
         raise AmbiguityError(
@@ -1020,52 +983,6 @@ class TradeDB(object):
     ############################################################
     # Price data.
 
-    def loadTrades(self):
-        """
-            Populate the "Trades" table for stations.
-
-            A trade is a connection between two stations where the SRC station
-
-            NOTE: Trades MUST be loaded such that they are populated into the
-            lists in descending order of profit (highest profit first)
-        """
-
-        if self.numLinks is None:
-            self.buildLinks()
-
-        self.tdenv.DEBUG1("Loading universal trade data")
-
-        # NOTE: Overconsumption.
-        # We currently fetch ALL possible trades with no regard for reachability;
-        # as the database grows this will become problematic and we should switch
-        # to some form of lazy load - that is, given a star, load all potential
-        # trades it has within a given ly range (based on a multiple of max-ly and
-        # max jumps).
-        stmt = """
-                SELECT  *
-                  FROM  vProfits
-                 ORDER  BY src_station_id, dst_station_id, gain DESC
-                """
-        self.cur.execute(stmt)
-        stations, items = self.stationByID, self.itemByID
-        self.tradingCount = 0
-
-        prevSrcStnID, prevDstStnID = None, None
-        srcStn, dstStn = None, None
-        tradingWith = None
-
-        for (itemID, srcStnID, dstStnID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
-            if srcStnID != prevSrcStnID:
-                srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
-                assert srcStn.tradingWith is None
-                srcStn.tradingWith = {}
-            if dstStnID != prevDstStnID:
-                dstStn, prevDstStnID = stations[dstStnID], dstStnID
-                tradingWith = srcStn.tradingWith[dstStn] = []
-                self.tradingCount += 1
-            tradingWith.append(Trade(items[itemID], itemID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
-
-
     def loadStationTrades(self, fromStationIDs):
         """
             Loads all profitable trades that could be made
@@ -1117,13 +1034,13 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
-    def load(self, maxSystemLinkLy=None, buildLinks=True, includeTrades=True):
+    def load(self, maxSystemLinkLy=None):
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
             taken references to:
                 tdb.load()
-                x = tdb.lookupStation("Aulin")
+                x = tdb.lookupPlace("Aulin")
                 tdb.load() # x now points to an orphan Aulin
         """
 
@@ -1149,29 +1066,9 @@ class TradeDB(object):
             self.maxSystemLinkLy = longestJumper.maxLyEmpty
         else:
             self.maxSystemLinkLy = maxSystemLinkLy
+
         self.tdenv.DEBUG2("Max ship jump distance: {} @ {:.02f}",
                                 longestJumper.name(), self.maxSystemLinkLy)
-
-        if buildLinks:
-            self.buildLinks()
-
-        if includeTrades:
-            self.loadTrades()
-
-
-    def _validate(self):
-        # Check that things correctly reference themselves.
-        # Check that system links are bi-directional
-        for (name, sys) in self.systemByName.items():
-            if not sys.links:
-                self.tdenv.DEBUG2("NOTE: System '%s' has no links" % name)
-            if sys in sys.links:
-                raise ValueError("System %s has a link to itself!" % name)
-            if name in sys.links:
-                raise ValueError("System %s's name occurs in sys.links" % name)
-            for link in sys.links:
-                if sys not in link.links:
-                    raise ValueError("System %s does not have a reciprocal link in %s's links" % (name, link.str()))
 
 
     ############################################################
@@ -1194,14 +1091,15 @@ class TradeDB(object):
             pass
 
         normTrans = TradeDB.normalizeTrans
-        needle = lookup.translate(normTrans)
+        trimTrans = TradeDB.trimTrans
+        needle = lookup.translate(normTrans).translate(trimTrans)
         partialMatch, wordMatch = [], []
         # make a regex to match whole words
         wordRe = re.compile(r'\b{}\b'.format(lookup), re.IGNORECASE)
         # describe a match
         for entry in values:
             entryKey = key(entry)
-            normVal = entryKey.translate(normTrans)
+            normVal = entryKey.translate(normTrans).translate(trimTrans)
             if normVal.find(needle) > -1:
                 # If this is an exact match, ignore ambiguities.
                 if len(normVal) == len(needle):
@@ -1233,5 +1131,9 @@ class TradeDB(object):
             punctuation characters that don't contribute to name uniqueness.
             NOTE: No-longer removes whitespaces or apostrophes.
         """
-        return text.translate(TradeDB.normalizeTrans)
+        return text.translate(
+                TradeDB.normalizeTrans
+        ).translate(
+                TradeDB.trimTrans
+        )
 

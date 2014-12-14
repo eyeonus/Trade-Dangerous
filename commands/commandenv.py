@@ -163,7 +163,7 @@ class CommandEnv(TradeEnv):
         # individually.
         for avoid in ','.join(avoidances).split(','):
             # Is it an item?
-            item, system, station = None, None, None
+            item, place = None, None
             try:
                 item = tdb.lookupItem(avoid)
                 avoidItems.append(item)
@@ -197,11 +197,11 @@ class CommandEnv(TradeEnv):
 
     def checkVias(self):
         """ Process a list of station names and build them into a list of waypoints. """
-        viaStationNames = getattr(self, 'via', None)
-        viaStations = self.viaStations = []
+        viaPlaceNames = getattr(self, 'via', None)
+        viaPlaces = self.viaPlaces = []
         # accept [ "a", "b,c", "d" ] by joining everything and then splitting it.
-        if viaStationNames:
-            for via in ",".join(viaStationNames).split(","):
-                viaStations.append(self.tdb.lookupStation(via))
+        if viaPlaceNames:
+            for via in ",".join(viaPlaceNames).split(","):
+                viaPlaces.append(self.tdb.lookupPlace(via))
 
 
