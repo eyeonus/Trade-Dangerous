@@ -28,6 +28,7 @@ stations = {
     "APOYOTA/FLINTSTATION": "Flint Station",
     "APOYOTA/HAHNRELAY": "Hahn Relay",
     "EKONIR/MOREYVISION": "Morey Vision",
+    "TRELLA/TITTO COLONY": "Tito Colony",
 
 #ADD_STATIONS_HERE
 }
