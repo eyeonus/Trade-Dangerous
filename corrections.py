@@ -35,6 +35,7 @@ stations = {
 
 categories = {
     'DRUGS':            'Legal Drugs',
+    'SLAVES':           'Slavery',
 }
 
 items = {

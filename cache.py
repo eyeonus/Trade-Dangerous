@@ -593,44 +593,49 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
 
 ######################################################################
 
-def deprecationCheckSystem(importPath, lineNo, line, debug):
-    correctSystem = corrections.correctSystem(line[0])
-    if correctSystem != line[0]:
-        if correctSystem == corrections.DELETED:
-            raise DeletedKeyError(
-                    importPath, lineNo,
-                    'System', line[0]
-            )
-        raise DeprecatedKeyError(
-                importPath, lineNo,
-                'System', line[0], correctSystem
-        )
+
+def depCheck(importPath, lineNo, depType, key, correctKey):
+    if correctKey == key:
+        return
+    if correctKey == corrections.DELETED:
+        raise DeletedKeyError(importPath, lineNo, depType, key)
+    raise DeprecatedKeyError(importPath, lineNo, depType, key, correctKey)
 
 
-def deprecationCheckStation(importPath, lineNo, line, debug):
-    correctSystem = corrections.correctSystem(line[0])
-    if correctSystem != line[0]:
-        if correctSystem == corrections.DELETED:
-            raise DeletedKeyError(
-                    importPath, lineNo,
-                    'System', line[0]
-            )
-        raise DeprecatedKeyError(
-                importPath, lineNo,
-                'System', line[0], correctSystem
-        )
+def deprecationCheckSystem(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'System',
+        line[0], corrections.correctSystem(line[0]),
+    )
 
-    correctStation = corrections.correctStation(correctSystem, line[1])
-    if correctStation != line[1]:
-        if correctStation == corrections.DELETED:
-            raise DeletedKeyError(
-                    importPath, lineNo,
-                    'Station', line[1]
-            )
-        raise DeprecatedKeyError(
-                importPath, lineNo,
-                'Station', line[0]+"/"+line[1], correctStation
-        )
+
+def deprecationCheckStation(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'System',
+        line[0], corrections.correctSystem(line[0]),
+    )
+    depCheck(
+        importPath, lineNo, 'Station',
+        line[1], corrections.correctStation(line[0], line[1]),
+    )
+
+
+def deprecationCheckCategory(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'Category',
+        line[0], corrections.correctCategory(line[0]),
+    )
+
+
+def deprecationCheckItem(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'Category',
+        line[0], corrections.correctCategory(line[0]),
+    )
+    depCheck(
+        importPath, lineNo, 'Item',
+        line[1], corrections.correctItem(line[1]),
+    )
 
 
 def processImportFile(tdenv, db, importPath, tableName):
@@ -718,7 +723,7 @@ def processImportFile(tdenv, db, importPath, tableName):
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn:
-                    deprecationFn(importPath, lineNo, linein, tdenv.debug)
+                    deprecationFn(importPath, lineNo, linein)
                 if uniqueIndexes:
                     # Need to construct the actual unique index key as
                     # something less likely to collide with manmade

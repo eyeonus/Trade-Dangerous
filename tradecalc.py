@@ -102,7 +102,7 @@ class Route(object):
                 text += self.summary() + "\n"
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = ("     {qty:>4} x {item:<{longestName}}"
-                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total\n")
+                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total {age}\n")
             jumpsFmt = ("  Jump {jumps} => "
                         "Gain {gain:n}cr "
                         "({tongain:n}cr/ton) "
@@ -126,6 +126,21 @@ class Route(object):
             footer = None
             endFmt = "  {station} +{gain:n}cr"
 
+        def makeAge(value):
+            value = int(value / 3600)
+            if value < 1:
+                return "<1hr"
+            if value == 1:
+                return "1hr"
+            if value < 48:
+                return str(value) + "hrs"
+            value = int(value / 24)
+            if value < 90:
+                return str(value) + "days"
+            value = int(value / 31)
+            return str(value) + "mths"
+
+
         for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
             purchases = ""
@@ -133,11 +148,15 @@ class Route(object):
                                         key=lambda tradeOpt:
                                             tradeOpt[1] * tradeOpt[0].gainCr,
                                         reverse=True):
+                age = max(trade.srcAge, trade.dstAge)
+                age = "("+makeAge(max(trade.srcAge, trade.dstAge))+")"
                 purchases += hopStepFmt.format(
                                     qty=qty, item=trade.name(),
                                     eacost=trade.costCr,
                                     ttlcost=trade.costCr*qty,
-                                    longestName=longestNameLen)
+                                    longestName=longestNameLen,
+                                    age=age,
+                )
                 hopTonnes += qty
             text += hopFmt.format(station=route[i].name(), purchases=purchases)
             if jumpsFmt and self.jumps[i]:
