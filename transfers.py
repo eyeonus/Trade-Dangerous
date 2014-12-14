@@ -1,7 +1,11 @@
+from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+
+from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-import urllib.error
+
 import time
+import urllib.error
 
 
 ######################################################################

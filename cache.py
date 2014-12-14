@@ -161,6 +161,30 @@ class DuplicateKeyError(BuildCacheBaseException):
                 ))
 
 
+class DeletedKeyError(BuildCacheBaseException):
+    """
+    Raised when a key value in a .csv file is marked as DELETED in the
+    corrections file.
+    """
+    def __init__(self, fromFile, lineNo, keyType, keyValue):
+        super().__init__(fromFile, lineNo,
+                "{} '{}' is marked as DELETED and should not be used.\n".format(
+                    keyType, keyValue
+        ))
+
+
+class DeprecatedKeyError(BuildCacheBaseException):
+    """
+    Raised when a key value in a .csv file has a correction; the old
+    name should not appear in the .csv file.
+    """
+    def __init__(self, fromFile, lineNo, keyType, keyValue, newValue):
+        super().__init__(fromFile, lineNo,
+                "{} '{}' is deprecated and should be replaced with '{}'.\n".format(
+                    keyType, keyValue, newValue
+        ))
+
+
 class MultipleStationEntriesError(DuplicateKeyError):
     """ Raised when a station appears multiple times in the same file. """
     def __init__(self, fromFile, lineNo, facility, prevLineNo):
@@ -569,23 +593,44 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
 
 ######################################################################
 
-def deprecationCheckSystem(line, debug):
+def deprecationCheckSystem(importPath, lineNo, line, debug):
     correctSystem = corrections.correctSystem(line[0])
     if correctSystem != line[0]:
-        if debug: print("! System.csv: deprecated system: {}".format(line[0]))
-        line[0] = correctSystem
+        if correctSystem == corrections.DELETED:
+            raise DeletedKeyError(
+                    importPath, lineNo,
+                    'System', line[0]
+            )
+        raise DeprecatedKeyError(
+                importPath, lineNo,
+                'System', line[0], correctSystem
+        )
 
 
-def deprecationCheckStation(line, debug):
+def deprecationCheckStation(importPath, lineNo, line, debug):
     correctSystem = corrections.correctSystem(line[0])
     if correctSystem != line[0]:
-        if debug: print("! Station.csv: deprecated system: {}".format(line[0]))
-        line[0] = correctSystem
+        if correctSystem == corrections.DELETED:
+            raise DeletedKeyError(
+                    importPath, lineNo,
+                    'System', line[0]
+            )
+        raise DeprecatedKeyError(
+                importPath, lineNo,
+                'System', line[0], correctSystem
+        )
 
     correctStation = corrections.correctStation(correctSystem, line[1])
     if correctStation != line[1]:
-        if debug: print("! Station.csv: deprecated station: {}".format(line[1]))
-        line[1] = correctStation
+        if correctStation == corrections.DELETED:
+            raise DeletedKeyError(
+                    importPath, lineNo,
+                    'Station', line[1]
+            )
+        raise DeprecatedKeyError(
+                importPath, lineNo,
+                'Station', line[0]+"/"+line[1], correctStation
+        )
 
 
 def processImportFile(tdenv, db, importPath, tableName):
@@ -660,12 +705,9 @@ def processImportFile(tdenv, db, importPath, tableName):
         tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
 
         # Check if there is a deprecation check for this table.
-        if tdenv.debug:
-            deprecationFn = getattr(sys.modules[__name__],
-                                    "deprecationCheck"+tableName,
-                                    None)
-        else:
-            deprecationFn = None
+        deprecationFn = getattr(sys.modules[__name__],
+                                "deprecationCheck"+tableName,
+                                None)
 
         # import the data
         importCount = 0
@@ -675,7 +717,8 @@ def processImportFile(tdenv, db, importPath, tableName):
             lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
-                if deprecationFn: deprecationFn(linein, tdenv.debug)
+                if deprecationFn:
+                    deprecationFn(importPath, lineNo, linein, tdenv.debug)
                 if uniqueIndexes:
                     # Need to construct the actual unique index key as
                     # something less likely to collide with manmade
