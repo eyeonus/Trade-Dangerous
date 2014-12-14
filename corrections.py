@@ -29,6 +29,7 @@ stations = {
     "APOYOTA/HAHNRELAY": "Hahn Relay",
     "EKONIR/MOREYVISION": "Morey Vision",
     "TRELLA/TITTO COLONY": "Tito Colony",
+    "ORERVE/WATSON SATION": "Watson Station",
 
 #ADD_STATIONS_HERE
 }
