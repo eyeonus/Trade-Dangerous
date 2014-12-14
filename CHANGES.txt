@@ -2,15 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.2.1 [wip]
-. (kfsone) Stations
-. (gazelle) Stations
-. (mseven) Stations
-. (gulasch) Stations and distances
+v6.2.1 Dec 12 2014
+. (kfsone) Added "olddata" command
 . (kfsone) "run" (with -vv) will now show data age
 . (kfsone) Gamma 2.0.5 renamed "Slaves" category to "Slavery"
-. (gazelle) Stations, distances, ship data
-. (gulasch) Stations and distances
 . (kfsone) "sell" now has a --ages option too
 . (kfsone) "buy" and "sell" --near now checks the station/system too
 . (kfsone) "buy" now shows average cost if you specify --detail (-v)
@@ -21,6 +16,7 @@ v6.2.1 [wip]
 . (kfsone) Call regeneratePricesFile() after calling plugin.finish()
 . (kfsone) General code cleanup (removed buildLinks and loadTrades)
 . (kfsone) Added VisualStudio pyproj (great for performance analysis)
++ Stations, distances, ship data: gazelle, gulasch, kfsone, mseven
 
 v6.2.0 Dec 11 2014
 . (kfsone) Added plugin system for "import", added a maddavo plugin.
