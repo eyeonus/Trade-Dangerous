@@ -49,6 +49,16 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Obambivas','Kennan Orbital','Cobra',379718
 'Obambivas','Kennan Orbital','Lakon Type 6',1045945
 'Obambivas','Kennan Orbital','Lakon Type 7',17472252
+'Wolf 562','Hopkins Port','Adder',87808
+'Wolf 562','Hopkins Port','Cobra',379718
+'Wolf 562','Hopkins Port','Dropship',37814205
+'Wolf 562','Hopkins Port','Eagle',44800
+'Wolf 562','Hopkins Port','Lakon Type 7',17472252
+'Wolf 562','Hopkins Port','Lakon Type 9',76555842
+'Wolf 562','Hopkins Port','Orca',48539887
+'Wolf 562','Hopkins Port','Python',56978179
+'Wolf 562','Hopkins Port','Sidewinder',32000
+'Wolf 562','Hopkins Port','Viper',142931
 'Yakabugai','Serebrov Station','Anaconda',146969451
 'Yakabugai','Serebrov Station','Asp Explorer',6661153
 'Yakabugai','Serebrov Station','Dropship',37814205

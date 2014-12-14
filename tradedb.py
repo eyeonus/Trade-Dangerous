@@ -236,7 +236,20 @@ class Trade(namedtuple('Trade', [
 
 
     def __repr__(self):
-        return "Trade(item={}, itemID={}, costCr={}, gainCr={})".format(self.item.name(), self.itemID, self.costCr, self.gainCr)
+        return ("Trade("
+                "item={},itemID={},"
+                "costCr={},gainCr={},"
+                "stock={},stockLevel={},"
+                "demand={},demandLevel={},"
+                "srcAge={},dstAge={}"
+                ")".format(
+                    self.item.name(), self.itemID,
+                    self.costCr, self.gainCr,
+                    self.stock, self.stockLevel,
+                    self.demand, self.demandLevel,
+                    self.srcAge, self.dstAge,
+                )
+        )
 
 
 ######################################################################
