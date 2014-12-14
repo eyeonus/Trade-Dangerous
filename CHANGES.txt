@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.2.1 [wip]
+. (kfsone) "run" (with -vv) will now show data age
 . (kfsone) Gamma 2.0.5 renamed "Slaves" category to "Slavery"
 . (gazelle) Stations, distances, ship data
 . (gulasch) Stations and distances
