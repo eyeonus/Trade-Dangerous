@@ -808,6 +808,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LTT 4487','Borman Colony',0.0
 'LTT 4487','Gubarev Installation',0.0
 'LTT 4497','Gantt Port',0.0
+'LTT 4846','Carey Gateway',0.0
+'LTT 4846','Edwards Hub',0.0
+'LTT 4846','Mullane Port',0.0
 'LTT 5212','Abnett Port',0.0
 'LTT 5212','Harrison Hub',0.0
 'LTT 5455','Blaha Legacy',0.0
@@ -818,6 +821,15 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Lu Yupik','Edison Settlement',0.0
 'Lucab Ku','Potter Station',0.0
 'Luggerates','Stewart Settlement',0.0
+'Lugh','Adamson Enterprise',0.0
+'Lugh','Balandin Gateway',0.0
+'Lugh','Cavendish Ring',0.0
+'Lugh','Hartsfield Market',0.0
+'Lugh','Knight Dock',0.0
+'Lugh','Maclean Hub',0.0
+'Lugh','Prunariu Orbital',0.0
+'Lugh','Read Gateway',0.0
+'Lugh','Seega Port',0.0
 'Luhman 16','Heisenberg Colony',0.0
 'Luhman 16','Jenner Orbital',0.0
 'Luyten 674-15','Sinclair Relay',0.0
