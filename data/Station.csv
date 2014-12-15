@@ -364,8 +364,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Euryale','Eg Main Hq',0.0
 'Euryale','Gantt Enterprise',0.0
 'Evergreen','Forsskal Hub',112.0
-'Evergreen','McCaffrey Enterprise',144.0
 'Evergreen','Kazantsev Ring',144.0
+'Evergreen','McCaffrey Enterprise',144.0
 'Farowalan','Bamford City',0.0
 'Feng Huang','Murdoch Plant',0.0
 'Finteno','Kolmogorov Station',0.0
@@ -509,9 +509,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'HIP 74243','Bean City',0.0
 'HIP 74255','Guest City',0.0
 'HIP 74255','Vela City',0.0
-'HIP 87369','Carey Port',1576
-'HIP 87369','Kerwin Orbital',41426
-'HIP 87369','Landsteiner Gateway',43763
+'HIP 87369','Carey Port',1576.0
+'HIP 87369','Kerwin Orbital',41426.0
+'HIP 87369','Landsteiner Gateway',43763.0
 'Ho Hsien','Bushnell Enterprise',670.0
 'Ho Hsien','Dutton Station',670.0
 'Holiacan','Hopi',0.0
