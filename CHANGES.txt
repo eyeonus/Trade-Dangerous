@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.2.2 [wip]
+. (kfsone) Added "--max-days" to run command
++ Stations, ships: kfsone
+
 v6.2.1 Dec 12 2014
 . (kfsone) Added "olddata" command
 . (kfsone) "run" (with -vv) will now show data age
