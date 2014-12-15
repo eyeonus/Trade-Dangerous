@@ -30,6 +30,11 @@ switches = [
             default=None,
             type=int,
         ),
+    ParseArgument('--ages',
+            help='Show age of data.',
+            default=False,
+            action='store_true',
+        ),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance',
             action='store_true',
@@ -47,6 +52,17 @@ def run(results, cmdenv, tdb):
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
+    results.summary = ResultRow()
+    results.summary.item = item
+
+    if cmdenv.detail:
+        avgPrice = tdb.query("""
+                SELECT CAST(AVG(sb.price) AS INT)
+                  FROM StationSelling AS sb
+                 WHERE sb.item_id = ?
+        """, [item.ID]).fetchone()[0]
+        results.summary.avg = avgPrice
+
     # Constraints
     tables = "StationBuying AS sb"
     constraints = [ "(item_id = {})".format(item.ID) ]
@@ -57,30 +73,36 @@ def run(results, cmdenv, tdb):
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
 
-    results.summary = ResultRow()
-    results.summary.item = item
+    if cmdenv.ages:
+        columns.append(
+               "julianday('now') - julianday(sb.modified)"
+        )
+    else:
+        columns.append('0')
 
     nearSystem = cmdenv.nearSystem
-    distances = dict()
     if nearSystem:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
 
         cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
+        systemRanges = {
+            system: dist
+            for system, dist in tdb.genSystemsInRange(
+                    nearSystem,
+                    maxLy,
+                    includeSelf=True,
+            )
+        }
         tables += (
-                " INNER JOIN StationLink AS sl"
-                " ON (sl.rhs_station_id = sb.station_id)"
-                )
-        columns.append('sl.dist')
-        constraints.append("(lhs_system_id = {})".format(
-                nearSystem.ID
-                ))
-        constraints.append("(dist <= {})".format(
-                maxLy
-                ))
-    else:
-        columns += [ '0' ]
+                " INNER JOIN Station AS stn"
+                " ON (stn.station_id = sb.station_id)"
+        )
+        constraints.append("(stn.system_id IN ({}))".format(
+            ",".join(['?'] * len(systemRanges))
+        ))
+        bindValues += list(system.ID for system in systemRanges.keys())
 
     whereClause = ' AND '.join(constraints)
     stmt = """
@@ -96,14 +118,15 @@ def run(results, cmdenv, tdb):
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
-    for (stationID, priceCr, demand, dist) in cur:
+    for (stationID, priceCr, demand, age) in cur:
         row = ResultRow()
         row.station = stationByID[stationID]
         cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, demand)
         if nearSystem:
-           row.dist = dist
+           row.dist = systemRanges[row.station.system]
         row.price = priceCr
         row.demand = demand
+        row.age = age
         results.rows.append(row)
 
     if not results.rows:
@@ -144,6 +167,10 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
+    if cmdenv.ages:
+        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+                key=lambda row: row.age)
+
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
@@ -151,3 +178,9 @@ def render(results, cmdenv, tdb):
     for row in results.rows:
         print(stnRowFmt.format(row))
 
+    if cmdenv.detail:
+        print("{:{lnl}} {:>10n}".format(
+                "-- Average",
+                results.summary.avg,
+                lnl=longestNameLen,
+        ))

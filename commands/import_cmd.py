@@ -120,6 +120,7 @@ def run(results, cmdenv, tdb):
 
     if cmdenv.plug:
         if not plugin.finish():
+            cache.regeneratePricesFile()
             return None
 
     cache.importDataFromFile(tdb, cmdenv, filePath)

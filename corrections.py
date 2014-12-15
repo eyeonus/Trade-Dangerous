@@ -25,12 +25,18 @@ stations = {
     "G 139-50/FILIPCHENKO": "Filipchenko City",
     "AMARAK/WERNER VON SIEMENS VISON": "Werner Von Siemens Vision",
     "SETING/COX LANDING": DELETED,
+    "APOYOTA/FLINTSTATION": "Flint Station",
+    "APOYOTA/HAHNRELAY": "Hahn Relay",
+    "EKONIR/MOREYVISION": "Morey Vision",
+    "TRELLA/TITTO COLONY": "Tito Colony",
+    "ORERVE/WATSON SATION": "Watson Station",
 
 #ADD_STATIONS_HERE
 }
 
 categories = {
     'DRUGS':            'Legal Drugs',
+    'SLAVES':           'Slavery',
 }
 
 items = {

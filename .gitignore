@@ -9,7 +9,6 @@ data/TradeDangerous.db
 data/TradeDangerous.db-journal
 data/TradeDangerous.prices
 *.prices
-TradeDangerous.sln
 *.suo
 *.pyperf
 misc/*.csv
