@@ -223,6 +223,13 @@ RUN sub-command:
          --via Enterprise
          --via Chango
 
+     --max-days-old N.NN
+     -MD N.NN
+       Filters out price data that exceeds a specified age in days
+       e.g.
+         --max-days-old 7     (data less than a week old)
+         -MD=2                (data less than 2 days old)
+
      --unique
      --uni
        Only show routes which do not visit any station twice
@@ -239,12 +246,6 @@ RUN sub-command:
        Limit the number of systems jumped to between each station
        e.g.
          -jumps-per 5
-
-     --start-jumps N
-     -s N
-       [Requires --from]
-       Include stations within N jumps of the start system as potential
-       starting locations.
 
      --avoid ITEM/SYSTEM/STATION
      --avoid AVOID,AVOID,...,AVOID

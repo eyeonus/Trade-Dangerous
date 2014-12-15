@@ -360,7 +360,7 @@ class TradeCalc(object):
         if credits is None: credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
         capacity = tdenv.capacity
         avoidItems = tdenv.avoidItems
-        self.tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
+        tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
                 src.system.dbname, src.dbname,
                 dst.system.dbname, dst.dbname,
                 credits)
@@ -376,6 +376,12 @@ class TradeCalc(object):
         items = src.tradingWith[dst]
         if avoidItems:
             items = [ item for item in items if not item.item in avoidItems ]
+        if tdenv.maxAge:
+            # convert from days to seconds
+            cutoffSeconds = tdenv.maxAge * (24 * 60 * 60)
+            items = [ item for item in items
+                        if max(item.srcAge, item.dstAge) < cutoffSeconds
+            ]
 
         # Remove any items with less gain (value) than the cheapest item, or that are outside our budget.
         # This should reduce the search domain for the majority of cases, especially low-end searches.
