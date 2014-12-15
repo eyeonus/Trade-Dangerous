@@ -332,6 +332,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Diso','Shifnalport',0.0
 'Djaujang','Cochrane Refinery',0.0
 'Djaujang','Martins Prospect',0.0
+'Djendelis','Atwater Enterprise',272.0
+'Djendelis','Faris Ring',376.0
+'Djendelis','Simonyi City',498.0
 'Doris','Isherwood Dock',0.0
 'DT Virginis','Chun Vision',0.0
 'Duamta','Davis Terminal',0.0
@@ -504,6 +507,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'HIP 74243','Bean City',0.0
 'HIP 74255','Guest City',0.0
 'HIP 74255','Vela City',0.0
+'HIP 87369','Carey Port',1576
+'HIP 87369','Kerwin Orbital',41426
+'HIP 87369','Landsteiner Gateway',43763
 'Ho Hsien','Bushnell Enterprise',670.0
 'Ho Hsien','Dutton Station',670.0
 'Holiacan','Hopi',0.0
@@ -678,6 +684,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 295','White Settlement',0.0
 'LHS 3006','WCM Transfer Orbital',0.0
 'LHS 3057','Wallace Colony',0.0
+'LHS 3197','Szilard Orbital',97.0
 'LHS 3262','Lacaille Prospect',0.0
 'LHS 331','Hopkinson City',0.0
 'LHS 332','Pelt Penal Colony',0.0
@@ -725,6 +732,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 5072','Northrop Dock',0.0
 'LHS 5287','McArthur''s Reach',0.0
 'LHS 531','Nelson Terminal',0.0
+'LHS 54','Nelson Dock',840.0
+'LHS 54','Popper Enterprise',1590.0
 'LHS 6282','Kendrick Base',0.0
 'LHS 6309','Beliaev Port',0.0
 'LHS 6309','Bester Terminal',0.0
@@ -790,6 +799,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LP 71-157','Buckland Colony',0.0
 'LP 732-94','Sellers Hub',0.0
 'LP 816-60','Garratt Landing',0.0
+'LP 862-184','Mayr Hangar',156.0
+'LP 862-184','Winne Plant',106.0
 'LP 887-68','Hope Platform',0.0
 'LP 903-21','Avdeyev Settlement',0.0
 'LP 908-11','Huygens Ring',0.0
@@ -906,6 +917,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Mombaluma','Bennett Colony',0.0
 'Mombaluma','Hughes-Fulford Terminal',0.0
 'Mombaluma','Leavitt Orbital',0.0
+'Montet','Seddon Gateway',1542.0
+'Montet','Thirsk Enterprise',7772.0
 'Morgor','Romanek''s Folly',0.0
 'Moroecani','La Cosa Dock',0.0
 'Moros','Ellis Port',0.0
