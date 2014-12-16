@@ -66,8 +66,9 @@ from mfd import MissingDeviceError
 
 import ctypes
 import ctypes.wintypes
-
 import logging
+import os
+import platform
 
 S_OK = 0x00000000
 E_HANDLE = 0x80070006
@@ -311,7 +312,7 @@ class DirectOutputDevice(object):
     direct_output = None
     debug_level = 0
 
-    def __init__(self, dll_path="C:\\Program Files (x86)\\Saitek\\DirectOutput\\DirectOutput.dll", debug_level=0, name=None):
+    def __init__(self, debug_level=0, name=None):
         """
         Initialises device, creates internal state (device_handle) and registers callbacks.
 
@@ -319,15 +320,25 @@ class DirectOutputDevice(object):
 
         logging.info("DirectOutputDevice.__init__")
 
+        prog_dir = os.environ["ProgramFiles"]
+        if platform.machine().endswith('86'):
+            # 32-bit machine, nothing to worry about
+            pass
+        elif platform.machine().endswith('64'):
+            # 64-bit machine, are we a 32-bit python?
+            if platform.architecture()[0] == '32bit':
+                prog_dir = os.environ["ProgramFiles(x86)"]
+        dll_path = os.path.join(prog_dir, "Saitek\\DirectOutput\\DirectOutput.dll")
+
         self.application_name = name or DirectOutputDevice.application_name
         self.debug_level = debug_level
 
         try:
-            logging.debug("DirectOutputDevice -> DirectOutput")
+            logging.debug("DirectOutputDevice -> DirectOutput: {}".format(dll_path))
             self.direct_output = DirectOutput(dll_path)
             logging.debug("direct_output = {}".format(self.direct_output))
         except WindowsError as e:
-            logging.warning("DLLError {}".format(e.winerror))
+            logging.warning("DLLError: {}: {}".format(dll_path, e.winerror))
             raise DLLError(e.winerror) from None
 
         result = self.direct_output.Initialize(self.application_name)

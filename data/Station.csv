@@ -535,6 +535,15 @@ unq:name@System.system_id,unq:name,ls_from_star
 'HR 8170','Fiennes Vision',0.0
 'Hreintania','Kozeyev Gateway',0.0
 'Hsien Baji','Novitski Mines',0.0
+'Hu Jona','Crichton Station',16340.0
+'Hu Jona','Crown Dock',1998.0
+'Hu Jona','Hyecho Terminal',173.0
+'Hu Jona','Kovalevskaya Dock',567.0
+'Hu Jona','Pratchett Station',2000.0
+'Hu Jona','Roddenberry Orbital',791.0
+'Hu Jona','Rowley Terminal',160.0
+'Hu Jona','Russell Station',90.8
+'Hu Jona','Zoline Station',254.0
 'Huokang','Solovyev City',0.0
 'Hyperion','Ivens Ring',0.0
 'i Bootis','Chango Dock',0.0
@@ -1197,6 +1206,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'V2689 Orionis','Capek Ring',0.0
 'V2689 Orionis','Hodgson Dock',0.0
 'V2689 Orionis','Wyndham Ring',0.0
+'V401 Hydrae','Hinz Terminal',5828.0
+'V401 Hydrae','Swanwick Terminal',3837.0
 'V417 Hydrae','Clervoy Vista',0.0
 'V538 Aurigae','Card Park',0.0
 'V749 Herculis','Pauling Gateway',0.0
