@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.2.2 [wip]
+. (kfsone) "--check --mfd" should now work if you have 64-bit drivers
 . (kfsone) Added "--max-days" to run command
 + Stations, ships: kfsone
 
