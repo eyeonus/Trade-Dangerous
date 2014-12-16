@@ -333,6 +333,7 @@ def validateRunArguments(tdb, cmdenv):
                 raise CommandLineError("Same to/from; more than one hop required.")
 
     viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
+    cmdenv.DEBUG0("Via: {}", viaSet)
     viaSystems = set()
     for place in viaSet:
         if isinstance(place, Station):
@@ -344,6 +345,18 @@ def validateRunArguments(tdb, cmdenv):
             viaSystems.add(place.system)
         else:
             viaSystems.add(place)
+
+    avoids = cmdenv.avoidPlaces or []
+    for via in viaSet:
+        if isinstance(via, Station):
+            conflict = (via in avoids or via.system in avoids)
+        else:
+            conflict = (via in avoids)
+        if conflict:
+            raise CommandLineError(
+                    "Via {} conflicts with avoid list".format(
+                        via
+            ))
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
@@ -413,26 +426,55 @@ def validateRunArguments(tdb, cmdenv):
     if startStn:
         tdb.loadStationTrades([startStn.ID])
         if stopStn and cmdenv.hops == 1 and not stopStn in startStn.tradingWith:
-            raise CommandLineError("No profitable items found between {} and {}".format(
-                                startStn.name(), stopStn.name()))
+            raise CommandLineError(
+                    "No profitable items found between {} and {}".format(
+                        startStn.name(), stopStn.name()))
         if len(startStn.tradingWith) == 0:
-            raise NoDataError("No data found for potential buyers for items from {}.".format(
-                                startStn.name()))
+            raise NoDataError(
+                    "No data found for potential buyers for items from {}.".format(
+                        startStn.name()))
 
 
 ######################################################################
 
 
 def filterByVia(routes, viaSet, viaStartPos):
-    matchedRoutes = list(routes)
+    if not routes:
+        return []
+
+    matchedRoutes = []
+    partialRoutes = {}
+    maxMet = 0
     for route in routes:
         met = 0
         for hop in route.route[viaStartPos:]:
             if hop in viaSet or hop.system in viaSet:
                 met += 1
-        if met >= len(viaSet):
-            matchedRoutes.append(route)
-    return matchedRoutes
+        if met > 0:
+            if met >= len(viaSet):
+                matchedRoutes.append(route)
+            else:
+                if met > maxMet:
+                    partialRoutes[met] = []
+                if met >= maxMet:
+                    maxMet = met
+                    partialRoutes[met].append(route)
+
+    if matchedRoutes:
+        return matchedRoutes, None
+
+    if not maxMet:
+        raise NoDataError(
+                "No routes were found which matched your 'via' selections."
+        )
+
+    return partialRoutes[maxMet], (
+            "No runs visited all of your via destinations. "
+            "Listing runs that matched at least {}.".format(
+                    maxMet
+            )
+    )
+
 
 ######################################################################
 # Perform query and populate result set
@@ -501,35 +543,37 @@ def run(results, cmdenv, tdb):
         restrictTo = None
         if hopNo == lastHop and stopStations:
             restrictTo = stopStations
-            ### TODO:
-            ### if hopsLeft < len(viaSet):
-            ###   ... only keep routes that include len(viaSet)-hopsLeft routes
-            ### Thus: If you specify 5 hops via a,b,c and we are on hop 3, only keep
-            ### routes that include a, b or c. On hop 4, only include routes that
-            ### already include 2 of the vias, on hop 5, require all 3.
-            if viaSet:
-                routes = filterByVia(routes, viaSet, viaStartPos)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
         routes = calc.getBestHops(routes, restrictTo=restrictTo)
 
-    if viaSet:
-        routes = filterByVia(routes, viaSet, viaStartPos)
+    results.summary = ResultRow()
+    results.summary.exception = None
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
+
+    if viaSet:
+        routes, caution = filterByVia(routes, viaSet, viaStartPos)
+        if caution:
+            results.summary.exception = caution
 
     routes.sort()
     results.data = routes
 
     return results
 
+
 ######################################################################
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
     from formatting import RowFormat, ColumnFormat
+
+    exception = results.summary.exception
+    if exception:
+        print("\aCAUTION: {}\n".format(exception))
 
     routes = results.data
 
