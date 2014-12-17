@@ -1,5 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
+from pathlib import Path
 from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -47,6 +48,7 @@ def rateVal(bytes, started):
 def download(
             cmdenv, url, localFile,
             headers=None,
+            backup=False,
         ):
     """
     Fetch data from a URL and save the output
@@ -89,16 +91,20 @@ def download(
     # Fetch four memory pages at a time
     chunkSize = 4096 * 4
 
-    with open(localFile, "w") as fh:
+    tmpPath = Path(localFile + ".dl")
+    actPath = Path(localFile)
+
+    with tmpPath.open("w") as fh:
         # Use the 'while True' approach so that we always print the
         # download status including, especially, the 100% report.
         while True:
             if not cmdenv.quiet:
-                print("Download: "
+                print("{}: "
                         "{:>{len}n}/{:>{len}n} bytes "
                         "| {:>10s} "
                         "| {:>5.2f}% "
                         .format(
+                                localFile,
                                 fetched, bytes,
                                 rateVal(fetched, started),
                                 (fetched * 100 / bytes),
@@ -113,6 +119,17 @@ def download(
             chunk = f.read(chunkSize)
             fetched += len(chunk)
             print(chunk.decode(), file=fh, end="")
+
+    # Swap the file into place
+    if backup:
+        bakPath = Path(localFile + ".bak")
+        if bakPath.exists():
+            bakPath.unlink()
+        if actPath.exists():
+            actPath.rename(localFile + ".bak")
+    if actPath.exists():
+        actPath.unlink()
+    tmpPath.rename(actPath)
 
     return f.getheaders()
 
