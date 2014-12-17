@@ -30,6 +30,7 @@ stations = {
     "EKONIR/MOREYVISION": "Morey Vision",
     "TRELLA/TITTO COLONY": "Tito Colony",
     "ORERVE/WATSON SATION": "Watson Station",
+    "MCC 858/ROB HUBBARD RING": "Ron Hubbard Ring",
 
 #ADD_STATIONS_HERE
 }
