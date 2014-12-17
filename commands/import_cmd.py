@@ -61,6 +61,14 @@ switches = [
             "recognized is reported as warning but skipped."
         ),
     ),
+    ParseArgument(
+        '--option', '-O',
+        default=[], action='append',
+        dest='pluginOptions',
+        help=(
+            "Provides a way to pass additional arguments to plugins."
+        ),
+    ),
 ]
 
 ######################################################################
