@@ -42,6 +42,16 @@ switches = [
                 default=None,
         ),
     ),
+    ParseArgument('--url',
+        help='Name of the file to read.',
+        type=str,
+        default=None,
+    ),
+    ParseArgument('--download',
+        help='Stop after downloading.',
+        action='store_true',
+        default=False,
+    ),
     ParseArgument(
         '--ignore-unknown', '-i',
         default=False, action='store_true',
@@ -89,6 +99,8 @@ def run(results, cmdenv, tdb):
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
+        if cmdenv.download:
+            return None
 
     # If the filename specified was "-" or None, then go ahead
     # and present the user with an open file dialog.
