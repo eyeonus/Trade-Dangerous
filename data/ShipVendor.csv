@@ -58,6 +58,15 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Hu Jona','Russell Station','Lakon Type 6',1045945
 'Hu Jona','Russell Station','Lakon Type 7',17472252
 'Hu Jona','Russell Station','Sidewinder',32000
+'HR 8170','Fiennes Vision','Adder',87808
+'HR 8170','Fiennes Vision','Asp Explorer',6661153
+'HR 8170','Fiennes Vision','Cobra',379718
+'HR 8170','Fiennes Vision','Dropship',37814205
+'HR 8170','Fiennes Vision','Lakon Type 6',1045945
+'HR 8170','Fiennes Vision','Orca',48539887
+'HR 8170','Fiennes Vision','Python',56978179
+'HR 8170','Fiennes Vision','Sidewinder',32000
+'HR 8170','Fiennes Vision','Viper',142931
 'LFT 1448','Dirac Enterprise','Anaconda',146969451
 'LFT 1448','Dirac Enterprise','Asp Explorer',6661153
 'LFT 1448','Dirac Enterprise','Cobra',379718

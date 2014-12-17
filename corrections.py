@@ -46,6 +46,10 @@ items = {
     'TERRAIN ENRICH SYS': 'Land Enrichment Systems',
     'HEL-STATIC FURNACES': 'Microbial Furnaces',
     'REACTIVE ARMOR': 'Reactive Armour',
+    'COTTON': DELETED,
+    'ALLOYS': DELETED,
+    'PLASTICS': DELETED,
+    'COMBAT STABILISERS': DELETED,
 }
 
 def correctSystem(oldName):

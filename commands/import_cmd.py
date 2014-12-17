@@ -20,7 +20,7 @@ help=(
 )
 name='import'
 epilog=None
-wantsTradeDB=True
+wantsTradeDB=False
 arguments = [
 ]
 switches = [
@@ -42,6 +42,16 @@ switches = [
                 default=None,
         ),
     ),
+    ParseArgument('--url',
+        help='Name of the file to read.',
+        type=str,
+        default=None,
+    ),
+    ParseArgument('--download',
+        help='Stop after downloading.',
+        action='store_true',
+        default=False,
+    ),
     ParseArgument(
         '--ignore-unknown', '-i',
         default=False, action='store_true',
@@ -49,6 +59,14 @@ switches = [
         help=(
             "Data for systems, stations and items that are not "
             "recognized is reported as warning but skipped."
+        ),
+    ),
+    ParseArgument(
+        '--option', '-O',
+        default=[], action='append',
+        dest='pluginOptions',
+        help=(
+            "Provides a way to pass additional arguments to plugins."
         ),
     ),
 ]
@@ -89,6 +107,8 @@ def run(results, cmdenv, tdb):
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
+        if cmdenv.download:
+            return None
 
     # If the filename specified was "-" or None, then go ahead
     # and present the user with an open file dialog.

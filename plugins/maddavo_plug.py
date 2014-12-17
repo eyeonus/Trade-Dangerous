@@ -18,12 +18,29 @@ class ImportPlugin(plugins.ImportPluginBase):
 
 
     def run(self):
+        if self.getOption("syscsv"):
+            transfers.download(
+                self.tdenv,
+                "http://www.davek.com.au/td/System.csv",
+                "data/System.csv",
+                backup=True,
+            )
+        if self.getOption("stncsv"):
+            transfers.download(
+                self.tdenv,
+                "http://www.davek.com.au/td/Station.csv",
+                "data/Station.csv",
+                backup=True,
+            )
         # Download 
         transfers.download(
                 self.tdenv,
                 "http://www.davek.com.au/td/prices.asp",
                 self.filename,
         )
+
+        if self.tdenv.download:
+            return False
 
         # Temporarily disable "ignoreUnkown"
         mytdenv = tradeenv.TradeEnv(properties=self.tdenv)

@@ -2,7 +2,15 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.2.2 [wip]
+v6.2.2 Dec 17 2014
+. (kfsone) Removed Alloys, Combat Stabilisers, Cotton and Plastics
+  [there was no entry for them anywhere in the price database]
+. (kfsone) Plugins can now have their own options
+    maddavo's plugin will take --option=syscsv and
+      --option=stncsv to download those .csv files
+. (kfsone) Added "--download" option to "import" to stop after downloading
+. (kfsone) Added "--url" option to "import", e.g.
+    trade.py import --download --url http://kfs.org/td/prices kfs.prices
 . (kfsone) "--check --mfd" should now work if you have 64-bit drivers
 . (kfsone) Added "--max-days" to run command
 + Stations, ships: kfsone
