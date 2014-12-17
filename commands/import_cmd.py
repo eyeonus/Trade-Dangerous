@@ -20,7 +20,7 @@ help=(
 )
 name='import'
 epilog=None
-wantsTradeDB=True
+wantsTradeDB=False
 arguments = [
 ]
 switches = [
