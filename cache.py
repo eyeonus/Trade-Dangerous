@@ -719,6 +719,8 @@ def processImportFile(tdenv, db, importPath, tableName):
         uniqueIndex = dict()
 
         for linein in csvin:
+            if not linein:
+                continue
             lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
