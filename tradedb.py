@@ -13,16 +13,16 @@
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
-import re                   # Because irregular expressions are dull
-import sys
 from collections import namedtuple, defaultdict
+from pathlib import Path
+from tradeenv import TradeEnv
+from tradeexcept import TradeException
+
+import cache
 import itertools
 import math
-from pathlib import Path
-
-from tradeexcept import TradeException
-from tradeenv import TradeEnv
-import cache
+import re
+import sys
 
 import locale
 locale.setlocale(locale.LC_ALL, '')
