@@ -831,8 +831,9 @@ def buildCache(tdb, tdenv):
     elif not tdenv.quiet:
         print("NOTE: Missing \"{}\" file - no price data".format(
                     str(pricesPath)
-                ), file=sys.stderr)
+            ), file=sys.stderr)
 
+    tempDB.commit()
     tempDB.close()
 
     tdenv.DEBUG0("Swapping out db files")
