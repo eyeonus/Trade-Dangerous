@@ -596,11 +596,13 @@ LOCAL sub-command:
 EXPORT sub-command:
 
   This command generates the CSV data files of the current database. It
-  defaults to export all tables and overwrites the files in the data directory.
-  CAUTION: If you have changed any CSV file and didn't rebuild the database, they
-           will be lost. Use the 'buildcache' command first to rebuild the database.
+  defaults to export all (except the price) tables and overwrites the files
+  in the data directory.
+  CAUTION: If you have changed any CSV file and didn't rebuild the database,
+           they will be lost. Use the 'buildcache' command first to rebuild
+           the database.
 
-  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...]]
+  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...] | --all-tables ]
 
     --path PATH
       Specify the save location of the CSV files. Default to './data'
@@ -609,31 +611,33 @@ EXPORT sub-command:
     -T TABLE[,TABLE,...]
       Specify a comma separated list of tablenames to export.
 
+	--all-tables
+	  Include the price tables for export.
+
     --delete-empty
       Delete CSV files without content.
 
   Examples:
     > trade.py export --path misc
     Using database './data/TradeDangerous.db'
-    Export Table 'Added' to 'misc\Added.csv'
-    Export Table 'AltItemNames' to 'misc\AltItemNames.csv'
-    Export Table 'Category' to 'misc\Category.csv'
-    Export Table 'Item' to 'misc\Item.csv'
-    Export Table 'Ship' to 'misc\Ship.csv'
-    Export Table 'ShipVendor' to 'misc\ShipVendor.csv'
-    Export Table 'Station' to 'misc\Station.csv'
-    Export Table 'StationBuying' to 'misc\StationBuying.csv'
-    Export Table 'StationItem' to 'misc\StationItem.csv'
-    Ignore Table 'StationLink'
-    Export Table 'StationSelling' to 'misc\StationSelling.csv'
-    Export Table 'System' to 'misc\System.csv'
-    Export Table 'Upgrade' to 'misc\Upgrade.csv'
-    Export Table 'UpgradeVendor' to 'misc\UpgradeVendor.csv'
+    Export Table 'Added' to 'misc/Added.csv'
+    Export Table 'AltItemNames' to 'misc/AltItemNames.csv'
+    Export Table 'Category' to 'misc/Category.csv'
+    Export Table 'Item' to 'misc/Item.csv'
+    Export Table 'Ship' to 'misc/Ship.csv'
+    Export Table 'ShipVendor' to 'misc/ShipVendor.csv'
+    Export Table 'Station' to 'misc/Station.csv'
+    Ignore Table 'StationBuying'
+    Ignore Table 'StationItem'
+    Ignore Table 'StationSelling'
+    Export Table 'System' to 'misc/System.csv'
+    Export Table 'Upgrade' to 'misc/Upgrade.csv'
+    Export Table 'UpgradeVendor' to 'misc/UpgradeVendor.csv'
 
     > trade.py export -T System,Station
     Using database './data/TradeDangerous.db'
-    Export Table 'Station' to 'data\Station.csv'
-    Export Table 'System' to 'data\System.csv'
+    Export Table 'Station' to 'data/Station.csv'
+    Export Table 'System' to 'data/System.csv'
 
 ==============================================================================
 == ADDING OR CHANGING PRICE DATA

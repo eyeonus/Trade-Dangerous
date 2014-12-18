@@ -60,11 +60,19 @@ switches = [
             type=str,
             default=None
         ),
-    ParseArgument('--tables', "-T",
-            help='Specify comma separated tablenames to export.',
-            metavar='TABLE[,TABLE,...]',
-            type=str,
-            default=None
+    MutuallyExclusiveGroup(
+        ParseArgument('--tables', "-T",
+                help='Specify comma separated tablenames to export.',
+                metavar='TABLE[,TABLE,...]',
+                type=str,
+                default=None
+            ),
+        ParseArgument('--all-tables',
+                help='Include the price tables for export.',
+                dest='allTables',
+                action='store_true',
+                default=False
+            ),
         ),
     ParseArgument('--delete-empty',
             help='Delete CSV files without content.',
@@ -162,6 +170,10 @@ def run(results, cmdenv, tdb):
     else:
         bindValues = []
         tableStmt = ''
+        if not cmdenv.allTables:
+            ignoreList.append("StationItem")
+            ignoreList.append("StationBuying")
+            ignoreList.append("StationSelling")
 
     # prefix for unique/ignore columns
     uniquePfx = "unq:"
