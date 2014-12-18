@@ -96,7 +96,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         dateRe = ImportPlugin.dateRe
         lastStn = None
         updatedStations = set()
-        with open("import.prices", "rU") as fh:
+        with open("import.prices", "rU", encoding="utf-8") as fh:
             firstLine = fh.readline()
             m = re.match(
                     r'^#!\s*trade.py\s*import\s*.*\s*--timestamp\s*"([^"]+)"',
