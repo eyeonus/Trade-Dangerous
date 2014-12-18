@@ -234,8 +234,10 @@ def parseSupply(pricesFile, lineNo, category, reading):
                 ))
     try:
         unitsNo = int(units)
-        if unitsNo <= 0:
+        if unitsNo < 0:
             raise ValueError("unsigned unit count")
+        if unitsNo == 0:
+            return 0, 0
         return unitsNo, levelNo
     except ValueError:
         pass
@@ -831,8 +833,9 @@ def buildCache(tdb, tdenv):
     elif not tdenv.quiet:
         print("NOTE: Missing \"{}\" file - no price data".format(
                     str(pricesPath)
-                ), file=sys.stderr)
+            ), file=sys.stderr)
 
+    tempDB.commit()
     tempDB.close()
 
     tdenv.DEBUG0("Swapping out db files")
