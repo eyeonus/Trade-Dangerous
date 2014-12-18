@@ -2,6 +2,7 @@ import cache
 import pathlib
 import plugins
 import re
+import tradedb
 import tradeenv
 import transfers
 
@@ -62,6 +63,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def run(self):
         if not self.getOption("skipdl"):
+            cacheNeedsRebuild = False
             if self.getOption("syscsv"):
                 transfers.download(
                     self.tdenv,
@@ -69,6 +71,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "data/System.csv",
                     backup=True,
                 )
+                cacheNeedsRebuild = True
             if self.getOption("stncsv"):
                 transfers.download(
                     self.tdenv,
@@ -76,6 +79,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "data/Station.csv",
                     backup=True,
                 )
+                cacheNeedsRebuild = True
             # Download 
             transfers.download(
                     self.tdenv,
@@ -85,6 +89,17 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if self.tdenv.download:
             return False
+
+        if cacheNeedsRebuild:
+            tdb = self.tdb
+            # Make sure we disconnect from the db
+            if tdb.conn:
+                tdb.conn.close()
+            tdb.conn = tdb.cur = None
+            tdb.reloadCache()
+            tdb.load(
+                    maxSystemLinkLy=tdenv.maxSystemLinkLy,
+                    )
 
         prevImportDate = self.load_timestamp()
 
