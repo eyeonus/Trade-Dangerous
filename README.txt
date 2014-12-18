@@ -602,17 +602,17 @@ EXPORT sub-command:
            they will be lost. Use the 'buildcache' command first to rebuild
            the database.
 
-  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...] | --all-tables ]
+  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...] | --all-tables ] [--delete-empty]
 
     --path PATH
-      Specify the save location of the CSV files. Default to './data'
+      Specify the save location of the CSV files. Defaults to './data'
 
     --tables TABLE[,TABLE,...]
     -T TABLE[,TABLE,...]
       Specify a comma separated list of tablenames to export.
 
-	--all-tables
-	  Include the price tables for export.
+    --all-tables
+      Include the price tables for export.
 
     --delete-empty
       Delete CSV files without content.
