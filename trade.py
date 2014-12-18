@@ -30,8 +30,11 @@
 # to empower other programmers to do cool stuff.
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-import os
+
 from commands import *
+from plugins import PluginException
+
+import os
 import tradedb
 
 ######################################################################
@@ -70,9 +73,13 @@ if __name__ == "__main__":
             cProfile.run("main(sys.argv)")
         else:
             main(sys.argv)
+    except PluginException as e:
+        print("Plugin Error: {}".format(e))
+        if 'EXCEPTIONS' in os.environ:
+            raise e
+        sys.exit(1)
     except tradeexcept.TradeException as e:
         print("%s: %s" % (sys.argv[0], str(e)))
-        import os
         if 'EXCEPTIONS' in os.environ:
             raise e
         sys.exit(1)
