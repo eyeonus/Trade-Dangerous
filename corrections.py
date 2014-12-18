@@ -50,6 +50,11 @@ items = {
     'ALLOYS': DELETED,
     'PLASTICS': DELETED,
     'COMBAT STABILISERS': DELETED,
+    'CONSUMER TECH': 'Consumer Technology',
+    'DOM. APPLIANCES': 'Domestic Appliances',
+    'FRUIT AND VEGETABLES': 'Fruit And Vegetables',
+    'NON-LETHAL WPNS': 'Non-Lethal Weapons',
+
 }
 
 def correctSystem(oldName):
