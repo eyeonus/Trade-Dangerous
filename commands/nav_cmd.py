@@ -27,12 +27,6 @@ switches = [
                  'the system that station is in will be avoided instead.',
             action='append',
         ),
-    ParseArgument('--stations',
-            help='Show system\'s stations',
-            dest='showstations',
-        action='store_true',
-            default=False
-        ),
 ]
 
 ######################################################################
@@ -188,7 +182,7 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.system.name())
     rowFmt.addColumn("JumpLy", '>', '7', '.2f',
             key=lambda row: row.jumpLy)
-    if cmdenv.showstations:
+    if cmdenv.detail:
         rowFmt.addColumn("Stations", '>', 2, 
             key=lambda row: len(row.system.stations))
     if cmdenv.detail:

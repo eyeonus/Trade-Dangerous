@@ -4,14 +4,14 @@ unq:name@Category.category_id,unq:name,ui_order
 'Chemicals','Mineral Oil',3
 'Chemicals','Pesticides',4
 'Consumer Items','Clothing',1
-'Consumer Items','Consumer Tech',2
-'Consumer Items','Dom. Appliances',3
+'Consumer Items','Consumer Technology',2
+'Consumer Items','Domestic Appliances',3
 'Foods','Algae',1
 'Foods','Animal Meat',2
 'Foods','Coffee',3
 'Foods','Fish',4
 'Foods','Food Cartridges',5
-'Foods','Fruit and Vegetables',6
+'Foods','Fruit And Vegetables',6
 'Foods','Grain',7
 'Foods','Synthetic Meat',8
 'Foods','Tea',9
@@ -76,6 +76,6 @@ unq:name@Category.category_id,unq:name,ui_order
 'Waste','Chemical Waste',2
 'Waste','Scrap',3
 'Weapons','Battle Weapons',1
-'Weapons','Non-Lethal Wpns',2
+'Weapons','Non-Lethal Weapons',2
 'Weapons','Personal Weapons',3
 'Weapons','Reactive Armour',4

@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.2.3 [wip]
+. (kfsone) Changed "nav" to show station count with "-v" instead of "--stations"
+. (kfsone) Removed the StationLink table - cache builds should be MUCH faster
+
 v6.2.2 Dec 17 2014
 . (kfsone) Removed Alloys, Combat Stabilisers, Cotton and Plastics
   [there was no entry for them anywhere in the price database]
