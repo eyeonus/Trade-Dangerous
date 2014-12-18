@@ -35,7 +35,7 @@ reverseList = [ 'AltItemNames',
 ]
 
 # some tables are ignored
-ignoreList = [ 'StationLink',
+ignoreList = [
 ]
 
 ######################################################################

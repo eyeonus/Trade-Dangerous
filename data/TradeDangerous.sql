@@ -252,19 +252,6 @@ CREATE TABLE StationBuying
 /* We're often going to be asking "using (item_id) where buying.price > selling.cost" */
 CREATE INDEX idx_buying_price ON StationBuying (item_id, price);
 
-CREATE TABLE StationLink
- (
-   lhs_system_id INTEGER NOT NULL,
-   lhs_station_id INTEGER NOT NULL,
-   rhs_system_id INTEGER NOT NULL,
-   rhs_station_id INTEGER NOT NULL,
-   dist DOUBLE NOT NULL CHECK (dist > 0.0 or lhs_system_id == rhs_system_id),
-   PRIMARY KEY (lhs_station_id, rhs_station_id)
- ) WITHOUT ROWID
-;
-CREATE INDEX idx_stn_dist ON StationLink (lhs_station_id, dist);
-CREATE INDEX idx_sys_dist ON StationLink (lhs_system_id, dist, rhs_system_id);
-
 CREATE VIEW vPrice AS
 	SELECT	si.station_id AS station_id,
 			si.item_id AS item_id,
@@ -304,22 +291,6 @@ CREATE VIEW vProfits AS
               ON (ss.item_id = sb.item_id
                   AND ss.station_id != sb.station_id)
    WHERE  ss.price < sb.price
-;
-
-
-CREATE VIEW vProfitableTrades AS
-	SELECT	src.station_id AS src_station_id,
-			src.item_id AS item_id,
-			dst.station_id AS dst_station_id,
-			src.price AS cost,
-			dst.price - src.price AS profit,
-			link.dist AS dist
-	  FROM	StationSelling AS src
-			INNER JOIN StationBuying AS dst
-				ON (src.item_id = dst.item_id AND dst.price > src.price)
-			INNER JOIN StationLink AS link
-				ON (src.station_id = link.lhs_station_id
-					AND dst.station_id = link.rhs_station_id)
 ;
 
 
