@@ -234,8 +234,10 @@ def parseSupply(pricesFile, lineNo, category, reading):
                 ))
     try:
         unitsNo = int(units)
-        if unitsNo <= 0:
+        if unitsNo < 0:
             raise ValueError("unsigned unit count")
+        if unitsNo == 0:
+            return 0, 0
         return unitsNo, levelNo
     except ValueError:
         pass
