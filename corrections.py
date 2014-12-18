@@ -49,7 +49,6 @@ items = {
     'COTTON': DELETED,
     'ALLOYS': DELETED,
     'PLASTICS': DELETED,
-    'COMBAT STABILISERS': DELETED,
 }
 
 def correctSystem(oldName):
