@@ -8,6 +8,7 @@ tmp
 data/TradeDangerous.db
 data/TradeDangerous.db-journal
 data/TradeDangerous.prices
+data/*.stamp
 *.prices
 *.suo
 *.pyperf

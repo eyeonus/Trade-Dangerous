@@ -4,22 +4,20 @@ unq:name@Category.category_id,unq:name,ui_order
 'Chemicals','Mineral Oil',3
 'Chemicals','Pesticides',4
 'Consumer Items','Clothing',1
-'Consumer Items','Consumer Tech',2
-'Consumer Items','Dom. Appliances',3
+'Consumer Items','Consumer Technology',2
+'Consumer Items','Domestic Appliances',3
 'Foods','Algae',1
 'Foods','Animal Meat',2
 'Foods','Coffee',3
 'Foods','Fish',4
 'Foods','Food Cartridges',5
-'Foods','Fruit and Vegetables',6
+'Foods','Fruit And Vegetables',6
 'Foods','Grain',7
 'Foods','Synthetic Meat',8
 'Foods','Tea',9
-'Industrial Materials','Alloys',1
-'Industrial Materials','Plastics',2
-'Industrial Materials','Polymers',3
-'Industrial Materials','Semiconductors',4
-'Industrial Materials','Superconductors',5
+'Industrial Materials','Polymers',1
+'Industrial Materials','Semiconductors',2
+'Industrial Materials','Superconductors',3
 'Legal Drugs','Beer',1
 'Legal Drugs','Liquor',2
 'Legal Drugs','Narcotics',3
@@ -34,9 +32,8 @@ unq:name@Category.category_id,unq:name,ui_order
 'Machinery','Water Purifiers',7
 'Medicines','Agri-Medicines',1
 'Medicines','Basic Medicines',2
-'Medicines','Combat Stabilisers',3
-'Medicines','Performance Enhancers',4
-'Medicines','Progenitor Cells',5
+'Medicines','Performance Enhancers',3
+'Medicines','Progenitor Cells',4
 'Metals','Aluminium',1
 'Metals','Beryllium',2
 'Metals','Cobalt',3
@@ -71,14 +68,13 @@ unq:name@Category.category_id,unq:name,ui_order
 'Technology','Land Enrichment Systems',8
 'Technology','Resonating Separators',9
 'Technology','Robotics',10
-'Textiles','Cotton',1
-'Textiles','Leather',2
-'Textiles','Natural Fabrics',3
-'Textiles','Synthetic Fabrics',4
+'Textiles','Leather',1
+'Textiles','Natural Fabrics',2
+'Textiles','Synthetic Fabrics',3
 'Waste','Biowaste',1
 'Waste','Chemical Waste',2
 'Waste','Scrap',3
 'Weapons','Battle Weapons',1
-'Weapons','Non-Lethal Wpns',2
+'Weapons','Non-Lethal Weapons',2
 'Weapons','Personal Weapons',3
 'Weapons','Reactive Armour',4

@@ -2,7 +2,26 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.2.2 [wip]
+v6.2.3 Dec 17 2014
+. (kfsone) "maddavo" import plugin:
+            . --opt=skipdl will use previous downloads
+            . added timestamp tracking/checking (data/maddavo.stamp)
+            . don't rebuild the cache if nothing new was downloaded,
+            . use "-v" to see stats on what updates you've downloaded,
+            . use "-q" to see less output when using the plugin
+. (kfsone) Changed "nav" to show station count with "-v" instead of "--stations"
+. (kfsone) Removed the StationLink table - cache builds should be MUCH faster
+
+v6.2.2 Dec 17 2014
+. (kfsone) Removed Alloys, Combat Stabilisers, Cotton and Plastics
+  [there was no entry for them anywhere in the price database]
+. (kfsone) Plugins can now have their own options
+    maddavo's plugin will take --option=syscsv and
+      --option=stncsv to download those .csv files
+. (kfsone) Added "--download" option to "import" to stop after downloading
+. (kfsone) Added "--url" option to "import", e.g.
+    trade.py import --download --url http://kfs.org/td/prices kfs.prices
+. (kfsone) "--check --mfd" should now work if you have 64-bit drivers
 . (kfsone) Added "--max-days" to run command
 + Stations, ships: kfsone
 

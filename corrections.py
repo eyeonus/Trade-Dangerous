@@ -30,6 +30,7 @@ stations = {
     "EKONIR/MOREYVISION": "Morey Vision",
     "TRELLA/TITTO COLONY": "Tito Colony",
     "ORERVE/WATSON SATION": "Watson Station",
+    "MCC 467/ROB HUBBARD RING": "Ron Hubbard Ring",
 
 #ADD_STATIONS_HERE
 }
@@ -45,6 +46,15 @@ items = {
     'TERRAIN ENRICH SYS': 'Land Enrichment Systems',
     'HEL-STATIC FURNACES': 'Microbial Furnaces',
     'REACTIVE ARMOR': 'Reactive Armour',
+    'COTTON': DELETED,
+    'ALLOYS': DELETED,
+    'PLASTICS': DELETED,
+    'COMBAT STABILISERS': DELETED,
+    'CONSUMER TECH': 'Consumer Technology',
+    'DOM. APPLIANCES': 'Domestic Appliances',
+    'FRUIT AND VEGETABLES': 'Fruit And Vegetables',
+    'NON-LETHAL WPNS': 'Non-Lethal Weapons',
+
 }
 
 def correctSystem(oldName):

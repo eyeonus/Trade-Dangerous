@@ -321,11 +321,11 @@ class TradeDB(object):
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
         self.tdenv = tdenv
 
-        dataDir = Path(tdenv.dataDir).resolve()
-        self.dbPath = Path(tdenv.dbFilename or dataDir / TradeDB.defaultDB)
-        self.sqlPath = dataDir / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
-        self.pricesPath = dataDir / Path(tdenv.pricesFilename or TradeDB.defaultPrices)
-        self.importTables = [(str(dataDir / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
+        self.dataPath = dataPath = Path(tdenv.dataDir).resolve()
+        self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
+        self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
+        self.pricesPath = dataPath / Path(tdenv.pricesFilename or TradeDB.defaultPrices)
+        self.importTables = [(str(dataPath / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
 
         self.dbFilename = str(self.dbPath)
         self.sqlFilename = str(self.sqlPath)

@@ -719,6 +719,8 @@ def processImportFile(tdenv, db, importPath, tableName):
         uniqueIndex = dict()
 
         for linein in csvin:
+            if not linein:
+                continue
             lineNo = csvin.line_num
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
@@ -772,31 +774,6 @@ def processImportFile(tdenv, db, importPath, tableName):
                             count=importCount,
                             table=tableName)
 
-
-def generateStationLink(tdenv, db):
-    tdenv.DEBUG0("Generating StationLink table")
-    db.create_function("sqrt", 1, math.sqrt)
-    db.execute("""
-            INSERT INTO StationLink
-            SELECT  lhs.system_id AS lhs_system_id,
-                    lhs.station_id AS lhs_station_id,
-                    rhs.system_id AS rhs_system_id,
-                    rhs.station_id AS rhs_station_id,
-                    sqrt(
-                        ((lSys.pos_x - rSys.pos_x) * (lSys.pos_x - rSys.pos_x)) +
-                        ((lSys.pos_y - rSys.pos_y) * (lSys.pos_y - rSys.pos_y)) +
-                        ((lSys.pos_z - rSys.pos_z) * (lSys.pos_z - rSys.pos_z))
-                        ) AS dist
-              FROM  Station AS lhs
-                    INNER JOIN System AS lSys
-                        ON (lhs.system_id = lSys.system_id),
-                    Station AS rhs
-                    INNER JOIN System AS rSys
-                        ON (rhs.system_id = rSys.system_id)
-              WHERE
-                    lhs.station_id != rhs.station_id
-    """)
-    db.commit()
 
 
 ######################################################################
@@ -854,10 +831,9 @@ def buildCache(tdb, tdenv):
     elif not tdenv.quiet:
         print("NOTE: Missing \"{}\" file - no price data".format(
                     str(pricesPath)
-                ), file=sys.stderr)
+            ), file=sys.stderr)
 
-    generateStationLink(tdenv, tempDB)
-
+    tempDB.commit()
     tempDB.close()
 
     tdenv.DEBUG0("Swapping out db files")

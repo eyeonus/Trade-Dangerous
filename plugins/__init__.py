@@ -23,8 +23,35 @@ class PluginBase(object):
     """
 
     def __init__(self, tdb, tdenv):
+        """
+        Parameters:
+            tdb
+                Instance of TradeDB
+            tdenv
+                Instance of TradeEnv
+        """
         self.tdb = tdb
         self.tdenv = tdenv
+
+        self.options = {}
+        for opt in tdenv.pluginOptions or []:
+            equals = opt.find('=')
+            if equals < 0:
+                key, value = opt, True
+            else:
+                key, value = opt[:equals], opt[equals+1:]
+            self.options[key.lower()] = value
+
+
+    def getOption(self, key):
+        """
+        Case-sensitive plugin-option lookup.
+        """
+        lkey = key.lower()
+        try:
+            return self.options[lkey]
+        except KeyError:
+            return None
 
 
     def run(self):
@@ -90,9 +117,14 @@ class ImportPluginBase(PluginBase):
     defaultImportFile = "import.prices"
 
     def __init__(self, tdb, tdenv):
+        """
+        Parameters:
+            tdb
+                Instance of TradeDB
+            tdenv
+                Instance of TradeEnv
+        """
         super().__init__(tdb, tdenv)
-        self.tdb = tdb
-        self.tdenv = tdenv
 
 
     def run(self):
