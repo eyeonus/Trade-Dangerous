@@ -1,10 +1,10 @@
 unq:!name@Category.category_id,unq:name@Item.item_id,unq:alt_name
-'Consumer Items','Consumer Tech','consumertechnology'
-'Consumer Items','Dom. Appliances','domesticappliances'
+'Consumer Items','Consumer Technology','consumertechnology'
+'Consumer Items','Domestic Appliances','domesticappliances'
 'Legal Drugs','Narcotics','basicnarcotics'
 'Machinery','Microbial Furnaces','heliostaticfurnaces'
 'Medicines','Agri-Medicines','agriculturalmedicines'
 'Technology','H.E. Suits','hazardousenvironmentsuits'
 'Technology','Land Enrichment Systems','terrainenrichmentsystems'
-'Weapons','Non-Lethal Wpns','nonlethalweapons'
+'Weapons','Non-Lethal Weapons','nonlethalweapons'
 'Weapons','Reactive Armour','reactivearmour'
