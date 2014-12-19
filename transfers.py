@@ -12,6 +12,9 @@ import urllib.error
 ######################################################################
 # Helpers
 
+class HTTP404(TradeException):
+    pass
+
 
 def makeUnit(value):
     """
@@ -76,6 +79,12 @@ def download(
         print("Connecting to server: {}".format(url))
     try:
         f = urlopen(req)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise HTTP404("{}: {}".format(e, url))
+        raise TradeException(
+                "HTTP Error: "+url+": "+str(e)
+        )
     except urllib.error.URLError as e:
         raise TradeException(
                 "Unable to connect ("+url+")\n"+str(e)
