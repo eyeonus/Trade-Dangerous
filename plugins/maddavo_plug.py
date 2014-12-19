@@ -18,9 +18,13 @@ class ImportPlugin(plugins.ImportPluginBase):
     dateRe = re.compile(r"(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)")
 
     options = {
-        'syscsv':   "Also download System.csv from the site.",
-        'stncsv':   "Also download Station.csv from the site.",
-        'skipdl':   "Skip doing any downloads.",
+        'buildcache':   "Forces a rebuild of the cache before processing "
+                        "of the .prices file.",
+        'syscsv':       "Also download System.csv from the site.",
+        'stncsv':       "Also download Station.csv from the site.",
+        'skipdl':       "Skip doing any downloads.",
+        'force':        "Process prices even if timestamps suggest "
+                        "there is no new data."
     }
 
 
@@ -62,36 +66,52 @@ class ImportPlugin(plugins.ImportPluginBase):
 
 
     def run(self):
-        cacheNeedsRebuild = False
+        tdb, tdenv = self.tdb, self.tdenv
+
+        cacheNeedsRebuild = self.getOption("buildcache")
         if not self.getOption("skipdl"):
             if self.getOption("syscsv"):
                 transfers.download(
-                    self.tdenv,
+                    tdenv,
                     "http://www.davek.com.au/td/System.csv",
                     "data/System.csv",
                     backup=True,
                 )
                 cacheNeedsRebuild = True
             if self.getOption("stncsv"):
-                transfers.download(
-                    self.tdenv,
-                    "http://www.davek.com.au/td/station.asp",
-                    "data/Station.csv",
-                    backup=True,
-                )
+                try:
+                    transfers.download(
+                        tdenv,
+                        "http://www.davek.com.au/td/Station.csv",
+                        "data/Station.csv",
+                        backup=True,
+                    )
+                except transfers.HTTP404 as e:
+                    if not tdenv.quiet:
+                        print("Got HTTP 404 Error: Trying alternate URL...")
+                    transfers.download(
+                        tdenv,
+                        "http://www.davek.com.au/td/station.asp",
+                        "data/Station.csv",
+                        backup=True,
+                    )
                 cacheNeedsRebuild = True
             # Download 
             transfers.download(
-                    self.tdenv,
+                    tdenv,
                     "http://www.davek.com.au/td/prices.asp",
                     self.filename,
             )
 
-        if self.tdenv.download:
+        if tdenv.download:
+            if cacheNeedsRebuild:
+                print("NOTE: Did not rebuild cache")
             return False
 
+        tdenv.ignoreUnknown = True
+
         if cacheNeedsRebuild:
-            tdb = self.tdb
+            tdb = tdb
             # Make sure we disconnect from the db
             if tdb.conn:
                 tdb.conn.close()
@@ -146,11 +166,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                             ))
 
         if numNewLines == 0:
-            if not self.tdenv.quiet:
-                print("No new data - nothing to do - doing nothing.")
-            return False
+            if not tdenv.quiet:
+                print("Cache is up-to date / no new price entries.")
+            if not self.getOption("force"):
+                return False
 
-        if self.tdenv.detail:
+        if tdenv.detail:
             print(
                 "Date of last import   : {}\n"
                 "Timestamp of import   : {}\n"
@@ -166,8 +187,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ))
 
         numStationsUpdated = len(updatedStations)
-        if not self.tdenv.quiet and numStationsUpdated:
-            if len(updatedStations) > 12 and self.tdenv.detail < 2:
+        if not tdenv.quiet and numStationsUpdated:
+            if len(updatedStations) > 12 and tdenv.detail < 2:
                 updatedStations = list(updatedStations)[:10] + ["..."]
             print("{} {} updated:\n{}".format(
                 numStationsUpdated,
@@ -175,12 +196,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ', '.join(updatedStations)
             ))
 
-        # Temporarily disable "ignoreUnkown"
-        mytdenv = tradeenv.TradeEnv(properties=self.tdenv)
-        mytdenv.ignoreUnknown = True
         cache.importDataFromFile(
-                self.tdb,
-                mytdenv,
+                tdb,
+                tdenv,
                 pathlib.Path(self.filename),
         )
 
