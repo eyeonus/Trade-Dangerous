@@ -13,6 +13,16 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Aptet','Torricelli Port','Lakon Type 7',17472252
 'Aptet','Torricelli Port','Lakon Type 9',76555842
 'Aptet','Torricelli Port','Sidewinder',32000
+'Bunuvivia','Ellison Enterprise','Adder',87808
+'Bunuvivia','Ellison Enterprise','Cobra',379718
+'Bunuvivia','Ellison Enterprise','Dropship',37814205
+'Bunuvivia','Ellison Enterprise','Eagle',44800
+'Bunuvivia','Ellison Enterprise','Hauler',52720
+'Bunuvivia','Ellison Enterprise','Lakon Type 6',1045945
+'Bunuvivia','Ellison Enterprise','Lakon Type 7',17472252
+'Bunuvivia','Ellison Enterprise','Lakon Type 9',76555842
+'Bunuvivia','Ellison Enterprise','Sidewinder',32000
+'Bunuvivia','Ellison Enterprise','Viper',142931
 'Calor','Julian Hub','Adder',87808
 'Calor','Julian Hub','Hauler',52720
 'Calor','Julian Hub','Lakon Type 6',1045945

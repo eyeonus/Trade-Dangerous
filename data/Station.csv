@@ -251,6 +251,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bunda','Cori Orbital',0.0
 'Bunda','Faraday Ring',0.0
 'Bunda','Walz Dock',0.0
+'Bunuvivia','Ellison Enterprise',1028.0
+'Bunuvivia','Greenland City',1444.0
 'Caerus','Whymper City',0.0
 'Calor','Cleave Refinery',27.7
 'Calor','Julian Hub',20.5
@@ -492,10 +494,10 @@ unq:name@System.system_id,unq:name,ls_from_star
 'He Bo','Roddenberry Station',0.0
 'Hecate','RJH1972',530.0
 'Hecate','William Bertram Ayres',962.0
-'Heheng De','Malchiodi Colony',0.0
 'Heheng','Clark Enterprise',0.0
 'Heheng','Onufriyenko Terminal',0.0
 'Heheng','Stefanyshyn-Piper Hub',0.0
+'Heheng De','Malchiodi Colony',0.0
 'Heike','Braun Enterprise',0.0
 'Heike','Brunel City',411.0
 'Heike','Cabana Dock',0.0
@@ -1008,9 +1010,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'NLTT 52560','Gresley Orbital',0.0
 'NLTT 53889','Roosa Platform',0.0
 'NLTT 7856','Hussey Survey',0.0
+'Nu','Syromyatnikov Horizons',0.0
 'Nu Tauri','Faraday Dock',0.0
 'Nu Tauri','Parmitano Terminal',0.0
-'Nu','Syromyatnikov Horizons',0.0
 'Nuenets','Forrester Dock',0.0
 'Nuenets','Harbaugh Port',0.0
 'Nuenets','Laliberte Enterprise',0.0
@@ -1231,8 +1233,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tripu','Titov Orbital',0.0
 'Tsohodiae','Barba Port',0.0
 'Tun','Tun''s Wart',0.0
-'Tyr','Glashow Dock',0.0
 'Tyr','Glashow',0.0
+'Tyr','Glashow Dock',0.0
 'Ualapalor','Anderson Terminal',0.0
 'Ualapalor','Leichhardt City',0.0
 'Ualapalor','Nesvadba Dock',0.0
