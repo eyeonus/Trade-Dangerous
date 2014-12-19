@@ -75,7 +75,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.getOption("stncsv"):
                 transfers.download(
                     self.tdenv,
-                    "http://www.davek.com.au/td/Station.csv",
+                    "http://www.davek.com.au/td/station.asp",
                     "data/Station.csv",
                     backup=True,
                 )
