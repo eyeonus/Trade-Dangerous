@@ -94,7 +94,7 @@ def download(
     tmpPath = Path(localFile + ".dl")
     actPath = Path(localFile)
 
-    with tmpPath.open("w") as fh:
+    with tmpPath.open("wb") as fh:
         # Use the 'while True' approach so that we always print the
         # download status including, especially, the 100% report.
         while True:
@@ -118,7 +118,7 @@ def download(
             
             chunk = f.read(chunkSize)
             fetched += len(chunk)
-            print(chunk.decode(), file=fh, end="")
+            fh.write(chunk)
 
     # Swap the file into place
     if backup:
