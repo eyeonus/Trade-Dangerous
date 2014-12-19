@@ -62,8 +62,8 @@ class ImportPlugin(plugins.ImportPluginBase):
 
 
     def run(self):
+        cacheNeedsRebuild = False
         if not self.getOption("skipdl"):
-            cacheNeedsRebuild = False
             if self.getOption("syscsv"):
                 transfers.download(
                     self.tdenv,
