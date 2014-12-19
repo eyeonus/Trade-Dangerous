@@ -276,4 +276,10 @@ _td_main()
 	esac
 	return 0
 }
-complete -X '*__pycache__' -F _td_main trade.py
+complete -X '*__pycache__' -F _td_main   trade.py
+complete -X '*__pycache__' -F _td_buy    tdbuyfrom
+complete -X '*__pycache__' -F _td_import tdimad
+complete -X '*__pycache__' -F _td_local  tdloc
+complete -X '*__pycache__' -F _td_nav    tdnav
+complete -X '*__pycache__' -F _td_run    tdrun
+complete -X '*__pycache__' -F _td_update tdupd
