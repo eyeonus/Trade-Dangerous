@@ -7,6 +7,24 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Aiabiko','White Orbital','Lakon Type 6',1045945
 'Aiabiko','White Orbital','Lakon Type 7',17472252
 'Aiabiko','White Orbital','Sidewinder',32000
+'Aptet','Torricelli Port','Dropship',37814205
+'Aptet','Torricelli Port','Hauler',52720
+'Aptet','Torricelli Port','Lakon Type 6',1045945
+'Aptet','Torricelli Port','Lakon Type 7',17472252
+'Aptet','Torricelli Port','Lakon Type 9',76555842
+'Aptet','Torricelli Port','Sidewinder',32000
+'Calor','Julian Hub','Adder',87808
+'Calor','Julian Hub','Hauler',52720
+'Calor','Julian Hub','Lakon Type 6',1045945
+'Calor','Julian Hub','Lakon Type 9',76555842
+'Calor','Julian Hub','Sidewinder',32000
+'Calor','Julian Hub','Viper',142931
+'Dimoco','Edison Orbital','Cobra',379718
+'Dimoco','Edison Orbital','Lakon Type 6',1045945
+'Dimoco','Edison Orbital','Lakon Type 9',76555842
+'Dimoco','Meitner Ring','Eagle',44800
+'Dimoco','Meitner Ring','Orca',48539887
+'Dimoco','Meitner Ring','Sidewinder',32000
 'Djendelis','Atwater Enterprise','Adder',87808
 'Djendelis','Atwater Enterprise','Cobra',379718
 'Djendelis','Atwater Enterprise','Dropship',37814205
@@ -53,11 +71,6 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'HIP 87369','Carey Port','Lakon Type 7',17472252
 'HIP 87369','Carey Port','Sidewinder',32000
 'HIP 87369','Carey Port','Viper',142931
-'Hu Jona','Russell Station','Eagle',44800
-'Hu Jona','Russell Station','Hauler',52720
-'Hu Jona','Russell Station','Lakon Type 6',1045945
-'Hu Jona','Russell Station','Lakon Type 7',17472252
-'Hu Jona','Russell Station','Sidewinder',32000
 'HR 8170','Fiennes Vision','Adder',87808
 'HR 8170','Fiennes Vision','Asp Explorer',6661153
 'HR 8170','Fiennes Vision','Cobra',379718
@@ -67,6 +80,11 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'HR 8170','Fiennes Vision','Python',56978179
 'HR 8170','Fiennes Vision','Sidewinder',32000
 'HR 8170','Fiennes Vision','Viper',142931
+'Hu Jona','Russell Station','Eagle',44800
+'Hu Jona','Russell Station','Hauler',52720
+'Hu Jona','Russell Station','Lakon Type 6',1045945
+'Hu Jona','Russell Station','Lakon Type 7',17472252
+'Hu Jona','Russell Station','Sidewinder',32000
 'LFT 1448','Dirac Enterprise','Anaconda',146969451
 'LFT 1448','Dirac Enterprise','Asp Explorer',6661153
 'LFT 1448','Dirac Enterprise','Cobra',379718
@@ -103,6 +121,22 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Obambivas','Kennan Orbital','Cobra',379718
 'Obambivas','Kennan Orbital','Lakon Type 6',1045945
 'Obambivas','Kennan Orbital','Lakon Type 7',17472252
+'Tauerni','Rushworth Port','Adder',87808
+'Tauerni','Rushworth Port','Eagle',44800
+'Tauerni','Rushworth Port','Hauler',52720
+'Tauerni','Rushworth Port','Lakon Type 9',76555842
+'Tauerni','Rushworth Port','Sidewinder',32000
+'Tauerni','Rushworth Port','Viper',142931
+'Thiansi','Worlidge Port','Cobra',379718
+'Thiansi','Worlidge Port','Dropship',37814205
+'Thiansi','Worlidge Port','Eagle',44800
+'Thiansi','Worlidge Port','Hauler',52720
+'Thiansi','Worlidge Port','Lakon Type 6',1045945
+'Thiansi','Worlidge Port','Lakon Type 9',76555842
+'Thiansi','Worlidge Port','Orca',48539887
+'Thiansi','Worlidge Port','Python',56978179
+'Thiansi','Worlidge Port','Sidewinder',32000
+'Thiansi','Worlidge Port','Viper',142931
 'Wolf 562','Hopkins Port','Adder',87808
 'Wolf 562','Hopkins Port','Cobra',379718
 'Wolf 562','Hopkins Port','Dropship',37814205

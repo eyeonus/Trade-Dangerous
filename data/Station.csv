@@ -132,6 +132,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Apalai','Gubarev Base',0.0
 'Apoyota','Flint Station',0.0
 'Apoyota','Hahn Relay',0.0
+'Aptet','Torricelli Port',296.0
 'Apura','Harris Dock',0.0
 'Arcturus','Fort Harrison',0.0
 'Arexe','Janes Horizons',0.0
@@ -251,6 +252,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bunda','Faraday Ring',0.0
 'Bunda','Walz Dock',0.0
 'Caerus','Whymper City',0.0
+'Calor','Cleave Refinery',27.7
+'Calor','Julian Hub',20.5
+'Calor','Papin Terminal',36.9
 'Cama','Jacquard Gateway',0.0
 'Caspatsuria','Binney Dock',0.0
 'CD-25 1159','Paulmier De Gonneville Landing',0.0
@@ -341,6 +345,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Demeter','Marusek Settlement',0.0
 'Denebola','Volkov Dock',0.0
 'Difu','Backers Pledge High',0.0
+'Dimoco','Edison Orbital',290.0
+'Dimoco','Meitner Ring',454.0
 'Diso','Shifnalport',0.0
 'Djaujang','Cochrane Refinery',0.0
 'Djaujang','Martins Prospect',0.0
@@ -486,10 +492,10 @@ unq:name@System.system_id,unq:name,ls_from_star
 'He Bo','Roddenberry Station',0.0
 'Hecate','RJH1972',530.0
 'Hecate','William Bertram Ayres',962.0
+'Heheng De','Malchiodi Colony',0.0
 'Heheng','Clark Enterprise',0.0
 'Heheng','Onufriyenko Terminal',0.0
 'Heheng','Stefanyshyn-Piper Hub',0.0
-'Heheng De','Malchiodi Colony',0.0
 'Heike','Braun Enterprise',0.0
 'Heike','Brunel City',411.0
 'Heike','Cabana Dock',0.0
@@ -940,6 +946,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Mehua','Bennett Port',0.0
 'Melcior','Goddard Dock',0.0
 'Meliae','Shawl Beacon',0.0
+'Menambe','Beadle Settlement',230.0
 'Midgard','Rontgen Port',0.0
 'Mildeptu','Buchli City',0.0
 'Mildeptu','Gerst Platform',0.0
@@ -1001,9 +1008,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'NLTT 52560','Gresley Orbital',0.0
 'NLTT 53889','Roosa Platform',0.0
 'NLTT 7856','Hussey Survey',0.0
-'Nu','Syromyatnikov Horizons',0.0
 'Nu Tauri','Faraday Dock',0.0
 'Nu Tauri','Parmitano Terminal',0.0
+'Nu','Syromyatnikov Horizons',0.0
 'Nuenets','Forrester Dock',0.0
 'Nuenets','Harbaugh Port',0.0
 'Nuenets','Laliberte Enterprise',0.0
@@ -1034,6 +1041,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'OU Geminorum','Haignere City',0.0
 'Ovid','Abe Works',0.0
 'Ovid','Bradfield Orbital',0.0
+'Ovimbundu','Popov Works',13.1
+'Ovimbundu','Xing Relay',9.94
 'Pachanu','Aubakirov Hub',0.0
 'Pan','Gunn Plant',0.0
 'Pangluya','Bradbury Works',0.0
@@ -1182,6 +1191,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tatil','Swift Port',0.0
 'Tau Bootis','Weitz Hub',0.0
 'Tau-3 Eridani','Musabayev City',0.0
+'Tauerni','Fincke Dock',1146.0
+'Tauerni','Rushworth Port',9.67
 'Tawi','De Kamp Dock',0.0
 'Tegmen','Novitski Station',0.0
 'Telenisates','Tull Mines',0.0
@@ -1194,6 +1205,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Teng Yeh','Morgan Gateway',0.0
 'Tewi','Meuron Survey',0.0
 'Theta Ursae Majoris','Landsteiner Silo',0.0
+'Thiansi','Buffett Ring',586.0
+'Thiansi','Newman Ring',586.0
+'Thiansi','Worlidge Port',442.0
 'Thiin','Brandenstein Enterprise',0.0
 'Thiin','Euler Orbital',0.0
 'Thiin','Kotov Terminal',0.0
@@ -1217,8 +1231,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tripu','Titov Orbital',0.0
 'Tsohodiae','Barba Port',0.0
 'Tun','Tun''s Wart',0.0
-'Tyr','Glashow',0.0
 'Tyr','Glashow Dock',0.0
+'Tyr','Glashow',0.0
 'Ualapalor','Anderson Terminal',0.0
 'Ualapalor','Leichhardt City',0.0
 'Ualapalor','Nesvadba Dock',0.0
