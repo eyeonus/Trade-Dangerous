@@ -222,6 +222,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'BD+74 526','Smith Prospect',0
 'BD+75 58','Stephenson Station',0
 'BD-02 4304','Bean Enterprise',0
+'Begovans','Bohm City',1266
+'Begovans','Thomson Platform',898
 'Belalans','Ban Hub',0
 'Belalans','Boscovich Ring',0
 'Belalans','Fairey Vision',0
@@ -277,6 +279,13 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Cama','Jacquard Gateway',0
 'Carnoeck','Bacon City',0
 'Caspatsuria','Binney Dock',0
+'Cauani','Bentham Terminal',65
+'Cauani','Eilenberg Port',96
+'Cauani','Hardy City',143
+'Cauani','Harrison Hub',46
+'Cauani','Napier Orbital',2840
+'Cauani','Poisson Hub',189
+'Cauani','Woolley Orbital',342
 'CD-25 1159','Paulmier De Gonneville Landing',0
 'CD-34 9020','Back Enterprise',0
 'CD-75 661','Kirk Dock',0
@@ -371,6 +380,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Delta Phoenicis','Trading Post',0
 'Demeter','Marusek Settlement',0
 'Denebola','Volkov Dock',0
+'Dharm','Sacco Dock',632
 'Difu','Backers Pledge High',0
 'Dimoco','Edison Orbital',290
 'Dimoco','Meitner Ring',454
@@ -528,6 +538,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Haraka','Blackman Station',0
 'Hared','Morey Refinery',0
 'Hared','Poisson Settlement',0
+'Hariti','Goeppert-Mayer Station',1080
 'Hastar','Alvares Enterprise',0
 'HDS 1879','Hedin orbital',0
 'HDS 1879','Shaikh Dock',0
@@ -597,8 +608,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'HR 1257','Millar Settlement',0
 'HR 3991','Greenland Exchange',0
 'HR 4979','Iqbal Hub',0
-'HR 6987','Creighton Port',0
-'HR 6987','Taylor City',0
+'HR 6987','Creighton Port',5976
+'HR 6987','Taylor City',3480
 'HR 7451','Brady Port',0
 'HR 7451','Cheli Gateway',0
 'HR 7451','Comino Terminal',0
@@ -1281,6 +1292,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'StKM 1-626','Fujimori Terminal',0
 'Styx','Boyle Terminal',0
 'Styx','Searfoss Plant',0
+'Suchagga','Sherrington Platform',251
 'Sudz','Divis Enterprise',0
 'Suhte','Cavendish Station',0
 'Suraci','Priestley Ring',0
@@ -1300,6 +1312,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tangaroa','Asylum',0
 'Tangaroa','Sovica',0
 'Tanmark','Cassie-L-Peia',0
+'Taotiges','Holland Port',88
+'Taotiges','Kimberlin Refinery',67
+'Taotiges','Yano Terminal',1892
 'Tatil','Lloyd Terminal',0
 'Tatil','Roddenberry Dock',0
 'Tatil','Shepard Ring',0
