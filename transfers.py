@@ -12,6 +12,9 @@ import urllib.error
 ######################################################################
 # Helpers
 
+class HTTP404(TradeException):
+    pass
+
 
 def makeUnit(value):
     """
@@ -76,6 +79,12 @@ def download(
         print("Connecting to server: {}".format(url))
     try:
         f = urlopen(req)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise HTTP404("{}: {}".format(e, url))
+        raise TradeException(
+                "HTTP Error: "+url+": "+str(e)
+        )
     except urllib.error.URLError as e:
         raise TradeException(
                 "Unable to connect ("+url+")\n"+str(e)
@@ -94,7 +103,7 @@ def download(
     tmpPath = Path(localFile + ".dl")
     actPath = Path(localFile)
 
-    with tmpPath.open("w") as fh:
+    with tmpPath.open("wb") as fh:
         # Use the 'while True' approach so that we always print the
         # download status including, especially, the 100% report.
         while True:
@@ -118,7 +127,7 @@ def download(
             
             chunk = f.read(chunkSize)
             fetched += len(chunk)
-            print(chunk.decode(), file=fh, end="")
+            fh.write(chunk)
 
     # Swap the file into place
     if backup:

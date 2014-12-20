@@ -49,7 +49,6 @@ items = {
     'COTTON': DELETED,
     'ALLOYS': DELETED,
     'PLASTICS': DELETED,
-    'COMBAT STABILISERS': DELETED,
     'CONSUMER TECH': 'Consumer Technology',
     'DOM. APPLIANCES': 'Domestic Appliances',
     'FRUIT AND VEGETABLES': 'Fruit And Vegetables',

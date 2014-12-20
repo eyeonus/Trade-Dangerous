@@ -32,8 +32,9 @@ unq:name@Category.category_id,unq:name,ui_order
 'Machinery','Water Purifiers',7
 'Medicines','Agri-Medicines',1
 'Medicines','Basic Medicines',2
-'Medicines','Performance Enhancers',3
-'Medicines','Progenitor Cells',4
+'Medicines','Combat Stabilisers',3
+'Medicines','Performance Enhancers',4
+'Medicines','Progenitor Cells',5
 'Metals','Aluminium',1
 'Metals','Beryllium',2
 'Metals','Cobalt',3

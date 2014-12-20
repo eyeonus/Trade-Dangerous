@@ -13,6 +13,8 @@ tradedangerous folder and edit as needed.
 
 WINDOWS USERS: Read the <WINDOWS USERS> section before proceeding.
 
+BASH USERS: Read the <BASH USERS> section for command line completion.
+
 <THE SCRIPTS>:
 
 The main magic here is the "config.sh" file, keep that up to date
@@ -131,6 +133,26 @@ Type the following from a prompt:
 $ chmod a+x scripts/td*
 
 </WINDOWS-USERS>
+
+<BASH USERS>:
+
+The file "td-completion.bash" does add an auto completion for the bash
+shell. If you don't know what that is you better stick with the scripts
+or learn something new.
+
+Copy the file "td-completion.bash" into your $HOME directory and add the
+following lines to your .bashrc file:
+
+---8<---8<---8<---8<---8<---8<---8<---8<---
+if [[ -f ~/td-completion.bash ]]; then
+	. ~/td-completion.bash
+fi
+--->8--->8--->8--->8--->8--->8--->8--->8---
+
+You need to exit and start the bash shell to make it work, or just
+type in the command as seen above.
+
+</BASH-USERS>
 
 
 -Oliver

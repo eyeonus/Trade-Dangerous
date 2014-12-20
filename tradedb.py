@@ -13,16 +13,16 @@
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
-import re                   # Because irregular expressions are dull
-import sys
 from collections import namedtuple, defaultdict
+from pathlib import Path
+from tradeenv import TradeEnv
+from tradeexcept import TradeException
+
+import cache
 import itertools
 import math
-from pathlib import Path
-
-from tradeexcept import TradeException
-from tradeenv import TradeEnv
-import cache
+import re
+import sys
 
 import locale
 locale.setlocale(locale.LC_ALL, '')
@@ -929,7 +929,10 @@ class TradeDB(object):
                 SELECT category_id, name
                   FROM Category
             """
-        self.categoryByID = { ID: Category(ID, name, []) for (ID, name) in self.cur.execute(stmt) }
+        self.categoryByID = {
+                ID: Category(ID, name, [])
+                    for (ID, name) in self.cur.execute(stmt)
+        }
 
         self.tdenv.DEBUG1("Loaded {} Categories", len(self.categoryByID))
 
@@ -938,7 +941,11 @@ class TradeDB(object):
         """
             Look up a category by name
         """
-        return TradeDB.listSearch("Category", name, self.categoryByID.values(), key=lambda cat: cat.dbname)
+        return TradeDB.listSearch(
+                "Category", name,
+                self.categoryByID.values(),
+                key=lambda cat: cat.dbname
+        )
 
 
     def items(self):
@@ -959,7 +966,11 @@ class TradeDB(object):
         itemByID, itemByName = {}, {}
         for (ID, name, categoryID) in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
-            item = Item(ID, name, category, '{}/{}'.format(category.dbname, name), None)
+            item = Item(
+                    ID, name, category,
+                    '{}/{}'.format(category.dbname, name),
+                    None
+            )
             itemByID[ID] = item
             itemByName[name] = item
             category.items.append(item)
@@ -977,20 +988,29 @@ class TradeDB(object):
             item = itemByID[itemID]
             item.altname = altName
             itemByName[altName] = item
-            self.tdenv.DEBUG1("'{}' alias for #{} '{}'", altName, itemID, item.fullname)
+            self.tdenv.DEBUG1(
+                    "'{}' alias for #{} '{}'",
+                    altName, itemID, item.fullname
+            )
 
         self.itemByID = itemByID
         self.itemByName = itemByName
 
-        self.tdenv.DEBUG1("Loaded {:n} Items, {:n} AltItemNames",
-                                len(self.itemByID), aliases)
+        self.tdenv.DEBUG1(
+                "Loaded {:n} Items, {:n} AltItemNames",
+                len(self.itemByID), aliases
+        )
 
 
     def lookupItem(self, name):
         """
             Look up an Item by name using "CATEGORY/Item"
         """
-        return TradeDB.listSearch("Item", name, self.itemByName.items(), key=lambda kvTup: kvTup[0], val=lambda kvTup: kvTup[1])
+        return TradeDB.listSearch(
+                "Item", name, self.itemByName.items(),
+                key=lambda kvTup: kvTup[0],
+                val=lambda kvTup: kvTup[1]
+        )
 
 
     ############################################################
@@ -1026,16 +1046,30 @@ class TradeDB(object):
         if self.tradingCount is None:
             self.tradingCount = 0
 
-        for (itemID, srcStnID, dstStnID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge) in self.cur:
+        for (
+                itemID,
+                srcStnID, dstStnID,
+                srcPriceCr, profit,
+                stock, stockLevel,
+                demand, demandLevel,
+                srcAge, dstAge
+        ) in self.cur:
             if srcStnID != prevSrcStnID:
-                srcStn, prevSrcStnID, prevDstStnID = stations[srcStnID], srcStnID, None
+                srcStn = stations[srcStnID]
+                prevSrcStnID = srcStnID
+                prevDstStnID = None
                 assert srcStn.tradingWith is None
                 srcStn.tradingWith = {}
             if dstStnID != prevDstStnID:
                 dstStn, prevDstStnID = stations[dstStnID], dstStnID
                 tradingWith = srcStn.tradingWith[dstStn] = []
                 self.tradingCount += 1
-            tradingWith.append(Trade(items[itemID], itemID, srcPriceCr, profit, stock, stockLevel, demand, demandLevel, srcAge, dstAge))
+            tradingWith.append(Trade(
+                    items[itemID], itemID,
+                    srcPriceCr, profit,
+                    stock, stockLevel,
+                    demand, demandLevel,
+                    srcAge, dstAge))
 
 
     def getTrades(self, src, dst):
