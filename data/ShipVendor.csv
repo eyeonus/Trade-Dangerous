@@ -103,6 +103,28 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'LFT 1448','Dirac Enterprise','Lakon Type 6',1045945
 'LFT 1448','Dirac Enterprise','Lakon Type 9',76555842
 'LFT 1448','Dirac Enterprise','Sidewinder',32000
+'Lhangkambe','Detmer Orbital','Adder',87808
+'Lhangkambe','Detmer Orbital','Dropship',37814205
+'Lhangkambe','Detmer Orbital','Eagle',44800
+'Lhangkambe','Detmer Orbital','Hauler',52720
+'Lhangkambe','Detmer Orbital','Lakon Type 7',17472252
+'Lhangkambe','Detmer Orbital','Lakon Type 9',76555842
+'Lhangkambe','Detmer Orbital','Sidewinder',32000
+'Lhangkambe','Detmer Orbital','Viper',142931
+'Lhangkambe','Jacquard Dock','Adder',87808
+'Lhangkambe','Jacquard Dock','Dropship',37814205
+'Lhangkambe','Jacquard Dock','Eagle',44800
+'Lhangkambe','Jacquard Dock','Hauler',52720
+'Lhangkambe','Jacquard Dock','Lakon Type 7',17472252
+'Lhangkambe','Jacquard Dock','Lakon Type 9',76555842
+'Lhangkambe','Jacquard Dock','Sidewinder',32000
+'Lhangkambe','Jacquard Dock','Viper',142931
+'Lhangkambe','Yeliseyev Terminal','Adder',87808
+'Lhangkambe','Yeliseyev Terminal','Cobra',379718
+'Lhangkambe','Yeliseyev Terminal','Eagle',44800
+'Lhangkambe','Yeliseyev Terminal','Hauler',52720
+'Lhangkambe','Yeliseyev Terminal','Sidewinder',32000
+'Lhangkambe','Yeliseyev Terminal','Viper',142931
 'LHS 3447','Dalton Gateway','Asp Explorer',6661153
 'LHS 3447','Dalton Gateway','Hauler',52720
 'LHS 3447','Dalton Gateway','Lakon Type 9',76555842
@@ -131,6 +153,16 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cos
 'Obambivas','Kennan Orbital','Cobra',379718
 'Obambivas','Kennan Orbital','Lakon Type 6',1045945
 'Obambivas','Kennan Orbital','Lakon Type 7',17472252
+'Peradjariu','Vries Port','Adder',87808
+'Peradjariu','Vries Port','Anaconda',146969451
+'Peradjariu','Vries Port','Cobra',379718
+'Peradjariu','Vries Port','Eagle',44800
+'Peradjariu','Vries Port','Hauler',52720
+'Peradjariu','Vries Port','Lakon Type 6',1045945
+'Peradjariu','Vries Port','Lakon Type 9',76555842
+'Peradjariu','Vries Port','Python',56978179
+'Peradjariu','Vries Port','Sidewinder',32000
+'Peradjariu','Vries Port','Viper',142931
 'Tauerni','Rushworth Port','Adder',87808
 'Tauerni','Rushworth Port','Eagle',44800
 'Tauerni','Rushworth Port','Hauler',52720

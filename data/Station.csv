@@ -61,6 +61,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Adriatikuru','Morrow Gateway',0
 'Adriatikuru','Oliver Market',145
 'Aegaeon','Schweickart Station',0
+'Aequeelg','Hopkins Plant',1756
+'Aequeelg','Robinson Station',19.1
 'AG+21 1754','Oleskiw Hanger',0
 'AG+21 1754','Still Horizons',0
 'Aganippe','Julian Market',0
@@ -743,11 +745,11 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LFT 926','Meredith City',369
 'LFT 945','Hahn Base',0
 'LFT 992','Szulkin mines',0
-'Lhangkambe','Baker Orbital',0
-'Lhangkambe','Detmer Orbital',0
-'Lhangkambe','Glidden Gateway',0
-'Lhangkambe','Jacquard Dock',0
-'Lhangkambe','Yeliseyev Terminal',0
+'Lhangkambe','Baker Orbital',2073
+'Lhangkambe','Detmer Orbital',422045
+'Lhangkambe','Glidden Gateway',423881
+'Lhangkambe','Jacquard Dock',423303
+'Lhangkambe','Yeliseyev Terminal',916
 'LHS 1065','Hornblower Platform',0
 'LHS 1101','Bondar City',0
 'LHS 115','Aleksandrov Gateway',0
@@ -1170,6 +1172,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Pemede','Gidzenko Terminal',0
 'Pemede','Gurragchaa Hub',0
 'Pemede','Leavitt Orbital',0
+'Peradjariu','Morris Dock',958
+'Peradjariu','Vries Port',686
 'Perendi','Shepherd Installation',0
 'Pi-fang','Brooks Estate',0
 'Piran','Garcia Gateway',0
@@ -1242,6 +1246,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Saktsak','Bursch Enterprise',2053
 'Salarhul','Lavoisier Outpost',0
 'Samkyha','Tesla Station',0
+'Seditya','Serre Prospect',402
+'Seditya','Zamyatin Landing',17919
 'Shama','Clairaut Port',0
 'Shebayeb','Volta Landing',0
 'Sheela Na Gig','Birkhoff Terminal',0
@@ -1264,6 +1270,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Siren','Conrad Port',0
 'Skeggiko O','Kuo Terminal',0
 'Slatus','Hoffman Orbital',0
+'Slavanibo','Irwin Mines',1854
+'Slavanibo','Melnick Works',1320
 'Sofagre','Markov Park',0
 'Sokoji','Cavendish Relay',0
 'Sol','Abraham Lincoln',0
