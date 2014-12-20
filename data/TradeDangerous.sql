@@ -62,7 +62,7 @@ CREATE TABLE Station
    station_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    system_id INTEGER NOT NULL,
-   ls_from_star DOUBLE NOT NULL,
+   ls_from_star INTEGER NOT NULL,
 
    UNIQUE (system_id, name),
 
