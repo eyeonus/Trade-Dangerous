@@ -430,7 +430,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
         for (ID, name, posX, posY, posZ) in self.cur:
-            sys = systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
+            systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
@@ -446,6 +446,37 @@ class TradeDB(object):
             return key.system
 
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
+
+
+    def addLocalSystem(self, name, x, y, z):
+        """
+        Add a system to the local cache and memory copy.
+        """
+
+        db = self.getDB()
+        cur = db.cursor()
+        cur.execute("""
+                INSERT INTO System (
+                    name, pos_x, pos_y, pos_z, added_id
+                ) VALUES (
+                    ?, ?, ?, ?,
+                    (SELECT added_id
+                       FROM Added
+                      WHERE name = ?)
+                )
+        """, [
+                name, x, y, z, 'Local',
+        ])
+        ID = cur.lastrowid
+        system = System(ID, name, x, y, z)
+        self.systemByID[ID] = system
+        self.systemByName[name] = system
+        db.commit()
+        if not self.tdenv.quiet:
+            print("- Added new system #{}: {} [{},{},{}]".format(
+                    ID, name, x, y, z
+            ))
+        return system
 
 
     def lookupSystemRelaxed(self, key):
@@ -571,6 +602,33 @@ class TradeDB(object):
 
         self.stationByID = stationByID
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
+
+
+    def addLocalStation(self, system, name, lsFromStar):
+        """
+        Add a station to the local cache and memory copy.
+        """
+
+        db = self.getDB()
+        cur = db.cursor()
+        cur.execute("""
+                INSERT INTO Station (
+                    name, system_id, ls_from_star
+                ) VALUES (
+                    ?, ?, ?
+                )
+        """, [
+                name, system.ID, lsFromStar
+        ])
+        ID = cur.lastrowid
+        station = Station(ID, system, name, lsFromStar, 0)
+        self.stationByID[ID] = station
+        db.commit()
+        if not self.tdenv.quiet:
+            print("- Added new station #{}: {}/{} [{}ls]".format(
+                    ID, system.name(), name, lsFromStar
+            ))
+        return station
 
 
     def lookupPlace(self, name):
