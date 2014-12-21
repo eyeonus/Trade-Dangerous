@@ -877,7 +877,6 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LHS 6309','Pierce Station',0
 'LHS 6309','Starzl Station',0
 'LHS 64','McArthur Colony',0
-'LHS 64','Wiberg Hangar',0
 'LHS 64','Wiberg Hanger',0
 'Li Quang','Boodt Gateway',0
 'Liabeze','Lyulka Beacon',0
@@ -935,7 +934,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'LP 71-157','Buckland Colony',0
 'LP 732-94','Sellers Hub',0
 'LP 816-60','Garratt Landing',0
-'LP 862-184','Mayr Hangar',156
+'LP 862-184','Mayr Hanger',156
 'LP 862-184','Winne Plant',106
 'LP 887-68','Hope Platform',0
 'LP 90-39','Guerrero Terminal',0
@@ -1365,7 +1364,6 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tripu','Vinogradov Installation',0
 'Tsohodiae','Barba Port',0
 'Tun','Tun''s Wart',0
-'Tyr','Glashow',0
 'Tyr','Glashow Dock',0
 'Ualapalor','Anderson Terminal',0
 'Ualapalor','Leichhardt City',0
