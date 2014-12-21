@@ -63,6 +63,7 @@ CREATE TABLE Station
    name VARCHAR(40) COLLATE nocase,
    system_id INTEGER NOT NULL,
    ls_from_star INTEGER NOT NULL,
+   blackmarket TEXT(1) NOT NULL DEFAULT '?' CHECK (blackmarket IN ('?', 'Y', 'N')),
 
    UNIQUE (system_id, name),
 
