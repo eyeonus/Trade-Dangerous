@@ -36,6 +36,9 @@ stations = {
     "LHS 64/WIBERG HANGAR": DELETED,    # "Hanger",
     "LP 862-184/MAYR HANGAR": "Mayr Hanger",
     "TYR/GLASHOW": DELETED,
+    "EGOVAE/ENOATE MARKET": "Endate Market",
+    "WOLF 1301/SAUNDER'S DIVE": "Saunders's Dive",
+    "VEQUESS/AGNEWS FOLLY": "Agnews' Folly",
 
 #ADD_STATIONS_HERE
 }

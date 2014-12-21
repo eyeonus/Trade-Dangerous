@@ -2,6 +2,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 '10 Canum Venaticorum','Collins Port',0
 '10 Canum Venaticorum','He Port',0
 '10 Canum Venaticorum','Litke Port',0
+'11 Cephei','Cook Gateway',0
 '110 Herculis','Jahn Hanger',169
 '110 Herculis','Stirling Vision',1302
 '15 Geminorum','Artsebarsky Dock',2250.49
@@ -79,6 +80,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Aiabiko','White Orbital',0
 'Akhenaten','Wang Platform',0
 'Aknango','Banks Station',0
+'Aknango','Bischoff Dock',0
+'Aknango','Pinto Hub',0
+'Aknango','Skolem Landing',0
 'Al Mina','Dana Port',0
 'Alacagui','Husband Refinery',0
 'Alacarakmo','Julian Survey',0
@@ -180,9 +184,11 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bagan','Stephenson Port',0
 'Baijungu','Ferguson Market',0
 'Baijungu','Gorbatko Enterprise',0
+'Baltah''sine','Baltha''sine Station',0
 'Barnard''s Star','Boston Base',0
 'Barnard''s Star','Levi-Strauss Installation',0
 'Barnard''s Star','Miller Depot',0
+'Bast','Hart Station',0
 'Bast','White Hart Lane',0
 'Baudus','Agnesi City',0
 'BD+03 1552','Bailey Station',0
@@ -250,11 +256,15 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bhil Mina','Zholobov Terminal',0
 'Bhritzameno','Feynman Terminal',0
 'Bieltani','Marshburn Enterprise',0
+'Bitjala','Walker Dock',0
+'Bitjala','Wedge Terminal',0
 'Blata','Gurragchaa Holdings',0
 'Blata','Nowak Landing',0
 'Blata','Sinclair Orbital',0
 'Bodb Dearg','Qushji Landing',0
 'Bolg','Moxon''s Mojo',0
+'Borasetani','Hodgson Vision',0
+'Borasetani','Katzenstein Terminal',0
 'Borr','Armstrong City',0
 'Bragurom Du','Comino Station',0
 'Brahma','Banks Landing',0
@@ -278,6 +288,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Calor','Papin Terminal',36.9
 'Cama','Jacquard Gateway',0
 'Carnoeck','Bacon City',0
+'Cartu','Anderson Vision',0
+'Cartu','Giraud Ring',0
+'Cartu','Hughes Gateway',0
 'Caspatsuria','Binney Dock',0
 'Cauani','Bentham Terminal',65
 'Cauani','Eilenberg Port',96
@@ -365,6 +378,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Daha','Tombaugh City',0
 'Dahan','Dahan Gateway',0
 'Daikulcandi','Chretien Oudemans Hanger',0
+'Dalevard','Haxel City',0
+'Dalevard','Shepherd City',0
 'Damna','Nemere Market',0
 'Dao Zi','Bohr Gateway',0
 'Dao Zi','Coleman Orbital',0
@@ -406,6 +421,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ekonir','Kubasov Orbital',160
 'Ekonir','Morey Vision',108
 'Ekuru','Dana Platform',0
+'El','Titov Station',0
 'El Tio','Kludze Dock',0
 'Eleu','Bao Orbital',0
 'Eleu','Elder Station',0
@@ -637,12 +653,18 @@ unq:name@System.system_id,unq:name,ls_from_star
 'i Bootis','Chango Dock',0
 'Icontia','Betancourt Refinery',0
 'Igala','Laliberte Camp',0
+'Igbirikan','Barratt Hub',0
+'Igbirikan','Lyakhov Station',0
 'Imeuts','Clark Terminal',0
+'Iota Hydri','Babcock Vision',0
+'Iota Hydri','Iben Hub',0
 'Iranadhisa','Corte-Real Market',0
 'Iranadhisa','Kingsmill Port',0
 'Istanu','Haber Prospect',0
 'Istanu','Hayden Ring',0
 'Ithaca','Hume Depot',0
+'Jarildekald','Elvstrom Platform',0
+'Jarildekald','Reed Stop',0
 'Jaroua','McCool City',0
 'Jawola','Sutcliffe Platform',0
 'Jera','Mitchell Orbital',0
@@ -654,6 +676,11 @@ unq:name@System.system_id,unq:name,ls_from_star
 'K Camelopardalis','Foda Orbital',0
 'K Camelopardalis','Payette Hub',0
 'Kaba','Robinson Station',0
+'Kadu mist','Burroughs City',0
+'Kadu mist','Darnielle Terminal',0
+'Kadu mist','Shosuke Gateway',0
+'Kadu mist','Stephens City',0
+'Kadu mist','Yolen Gateway',0
 'Kaha''i','Bohm Station',0
 'Kaliki','Trimble Station',0
 'Kaline','Due Station',0
@@ -683,6 +710,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Koljankirna','Jendrassik Vision',0
 'Komovoy','Gentle Dock',0
 'Korubu','Markov Gateway',0
+'Kosena','Gwynn Enterprise',0
 'Kotaition','Bykovsky Vision',0
 'Kotilem','Lunney Port',0
 'Kremainn','Volta Station',0
@@ -1029,6 +1057,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Maitaokona','Gresley Gateway',0
 'Makah','Jacquard Works',0
 'Maljenni','Lazarev Depot',0
+'Malloc','Julian Gateway',0
+'Malloc','Onizuka Ring',0
 'Manarato','Goldstein Installation',0
 'Manathajeri','Bennett Stop',0
 'Manathajeri','Lysenko Mine',0
@@ -1043,6 +1073,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Maujavant','Jordan Settlement',0
 'Maujinagoto','Gooch Hub',0
 'Maujinagoto','Reilly Settlement',0
+'Mazahun','Arnold Dock',0
 'Mbukuravi','Fullerton Horizons',0
 'MCC 445','Aksyonov Orbital',0
 'MCC 467','Brunel Port',0
@@ -1099,6 +1130,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ngaislan','Murdoch Station',0
 'Ngolitjali','Vinogradov platform',0
 'Nicobarese','Berezovoy Station',0
+'Nihursaga','Hardwick Hub',0
 'Nima','Burbank Orbital',0
 'Nima','Rashid Dock',0
 'Nima','Rushworth Terminal',0
@@ -1155,12 +1187,17 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ovimbaia','Morris City',0
 'Ovimbundu','Popov Works',13.1
 'Ovimbundu','Xing Relay',9.94
+'Oxossi','Kapteyn Hub',0
+'Oxossi','Shinjo Station',0
 'Pachanu','Aubakirov Hub',0
 'Pan','Gunn Plant',0
 'Pangluya','Bradbury Works',0
 'Panoi','Garan Hub',0
 'Panoi','Garn Settlement',0
 'Panopi','Gillekens Holdings',0
+'Paraudika','Hottot Station',0
+'Paraudika','Mouhot Port',0
+'Paraudika','Tem Station',0
 'Parcae','Sturckow terminal',0
 'Paul-Friedrichs Star','Paul-Friedrichs Base Camp',0
 'Payayan','Mills Park',0
@@ -1174,6 +1211,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Popocatepetl','Arago Refinery',0
 'Potriti','Hartsfield Plant',0
 'PPM 41187','Burnet Port',0
+'Priva','Dugan Dock',0
 'Privir','Lambert Station',0
 'Procyon','Davy Dock',0
 'Procyon','Manakov Dock',0
@@ -1186,6 +1224,12 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Rakapila','Stone Enterprise',0
 'Rangchan','Boole Ring',0
 'Rangchan','Bradbury Station',0
+'Raurugba','Endate Enterprise',0
+'Raurugba','Jackson Hub',0
+'Raurugba','Ritchey Landing',0
+'Redonesses','Ellern Orbital',0
+'Redonesses','Monge Enterprise',0
+'Redonesses','Shapiro Colony',0
 'Reorte','Almagro Port',0
 'Reorte','Davies High',0
 'Reshas','Banks Port',0
@@ -1233,12 +1277,17 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ross 733','Strekalov Gateway',0
 'Ross 765','Melroy Port',0
 'Ross 765','Pogue Platform',0
+'Ross 780','Acton Ring',0
+'Ross 780','Aristotle Gateway',0
+'Ross 780','Fossum Terminal',0
 'Ross 905','Jenner Refinery',0
 'Ross 905','Morukov Platform',0
 'Ross 986','Jones Station',0
 'Saktsak','Bursch Enterprise',2053
 'Salarhul','Lavoisier Outpost',0
 'Samkyha','Tesla Station',0
+'Shakapa','Gibson Dock',0
+'Shakapa','Ore Horizons',0
 'Shama','Clairaut Port',0
 'Shebayeb','Volta Landing',0
 'Sheela Na Gig','Birkhoff Terminal',0
@@ -1261,6 +1310,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Siren','Conrad Port',0
 'Skeggiko O','Kuo Terminal',0
 'Slatus','Hoffman Orbital',0
+'Soch','Seamans Vision',0
+'Soch','Whitcomb Ring',0
 'Sofagre','Markov Park',0
 'Sokoji','Cavendish Relay',0
 'Sol','Abraham Lincoln',0
@@ -1352,6 +1403,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Tionisla','Coulter City',0
 'Tionisla','Ing Ring',0
 'Tollan','Bayliss Base',0
+'Toog','Bosch Mines',0
 'Toromona','Lorenz Station',0
 'Tote','Whitelaw Enterprise',0
 'Toxandji','Alvares Dock',0
@@ -1374,6 +1426,7 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Ugraswarka','Baille City',0
 'Uluri','McDivitt Settlement',0
 'Uluri','Parker Beacon',0
+'Umaitis','Stott Station',0
 'Undadja','Mcarthur Hanger',0
 'Undadja','Rutherford Depot',0
 'Uoluskas','Moisuc Dock',0
@@ -1398,7 +1451,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'V886 Centauri','Tanner City',0
 'V989 Cassiopeiae','Low Works',0
 'V989 Cassiopeiae','Tarelkin Refinery',0
-'Vequess','Agnews Folly',0
+'Vequess','Agnews'' Folly',0
+'Vequess','Cuffey Orbital',0
 'Vertumnus','Rawn City',0
 'Vetr','Aristotle Horizons',0
 'Vetr','Ehrlich City',0
@@ -1417,6 +1471,9 @@ unq:name@System.system_id,unq:name,ls_from_star
 'WISE 0855-0714','Yamazaki Landing',0
 'WISE 1506+7027','Dobrovolskiy Enterprise',0
 'WISE 1506+7027','Silverberg Relay',0
+'Wolf 1301','Denton Installation',0
+'Wolf 1301','Menezes Installation',0
+'Wolf 1301','Saunders''s Dive',0
 'Wolf 1409','Carter Vision',0
 'Wolf 1478','Franklin Orbital',0
 'Wolf 1481','Velazquez Gateway',627
