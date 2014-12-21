@@ -39,6 +39,7 @@ stations = {
     "EGOVAE/ENOATE MARKET": "Endate Market",
     "WOLF 1301/SAUNDER'S DIVE": "Saunders's Dive",
     "VEQUESS/AGNEWS FOLLY": "Agnews' Folly",
+    "ONGKAMPAN/PATTERSON STATION:274": DELETED,
 
 #ADD_STATIONS_HERE
 }
