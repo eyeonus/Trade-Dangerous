@@ -1,198 +1,206 @@
-unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id,cost
-'Aiabiko','White Orbital','Anaconda',146969451
-'Aiabiko','White Orbital','Asp Explorer',6661153
-'Aiabiko','White Orbital','Dropship',37814205
-'Aiabiko','White Orbital','Eagle',44800
-'Aiabiko','White Orbital','Hauler',52720
-'Aiabiko','White Orbital','Lakon Type 6',1045945
-'Aiabiko','White Orbital','Lakon Type 7',17472252
-'Aiabiko','White Orbital','Sidewinder',32000
-'Aptet','Torricelli Port','Dropship',37814205
-'Aptet','Torricelli Port','Hauler',52720
-'Aptet','Torricelli Port','Lakon Type 6',1045945
-'Aptet','Torricelli Port','Lakon Type 7',17472252
-'Aptet','Torricelli Port','Lakon Type 9',76555842
-'Aptet','Torricelli Port','Sidewinder',32000
-'Bunuvivia','Ellison Enterprise','Adder',87808
-'Bunuvivia','Ellison Enterprise','Cobra',379718
-'Bunuvivia','Ellison Enterprise','Dropship',37814205
-'Bunuvivia','Ellison Enterprise','Eagle',44800
-'Bunuvivia','Ellison Enterprise','Hauler',52720
-'Bunuvivia','Ellison Enterprise','Lakon Type 6',1045945
-'Bunuvivia','Ellison Enterprise','Lakon Type 7',17472252
-'Bunuvivia','Ellison Enterprise','Lakon Type 9',76555842
-'Bunuvivia','Ellison Enterprise','Sidewinder',32000
-'Bunuvivia','Ellison Enterprise','Viper',142931
-'Calor','Julian Hub','Adder',87808
-'Calor','Julian Hub','Hauler',52720
-'Calor','Julian Hub','Lakon Type 6',1045945
-'Calor','Julian Hub','Lakon Type 9',76555842
-'Calor','Julian Hub','Sidewinder',32000
-'Calor','Julian Hub','Viper',142931
-'Dimoco','Edison Orbital','Cobra',379718
-'Dimoco','Edison Orbital','Lakon Type 6',1045945
-'Dimoco','Edison Orbital','Lakon Type 9',76555842
-'Dimoco','Meitner Ring','Eagle',44800
-'Dimoco','Meitner Ring','Orca',48539887
-'Dimoco','Meitner Ring','Sidewinder',32000
-'Djendelis','Atwater Enterprise','Adder',87808
-'Djendelis','Atwater Enterprise','Cobra',379718
-'Djendelis','Atwater Enterprise','Dropship',37814205
-'Djendelis','Atwater Enterprise','Eagle',44800
-'Djendelis','Atwater Enterprise','Hauler',52720
-'Djendelis','Atwater Enterprise','Lakon Type 6',1045945
-'Djendelis','Atwater Enterprise','Lakon Type 7',17472252
-'Djendelis','Atwater Enterprise','Lakon Type 9',76555842
-'Djendelis','Atwater Enterprise','Sidewinder',32000
-'Djendelis','Atwater Enterprise','Viper',142931
-'Eravate','Ackerman Market','Eagle',44800
-'Eravate','Ackerman Market','Hauler',52720
-'Eravate','Ackerman Market','Lakon Type 6',1045945
-'Eravate','Ackerman Market','Sidewinder',32000
-'Eravate','Cleve Hub','Cobra',379718
-'Eravate','Cleve Hub','Eagle',44800
-'Eravate','Cleve Hub','Hauler',52720
-'Eravate','Cleve Hub','Lakon Type 6',1045945
-'Eravate','Cleve Hub','Sidewinder',32000
-'Eravate','Russell Ring','Cobra',379718
-'Eravate','Russell Ring','Eagle',44800
-'Eravate','Russell Ring','Hauler',52720
-'Eravate','Russell Ring','Lakon Type 6',1045945
-'Eravate','Russell Ring','Sidewinder',32000
-'Gong Gu','Kelly Dock','Adder',87808
-'Gong Gu','Kelly Dock','Asp Explorer',6661153
-'Gong Gu','Kelly Dock','Cobra',379718
-'Gong Gu','Kelly Dock','Dropship',37814205
-'Gong Gu','Kelly Dock','Eagle',44800
-'Gong Gu','Kelly Dock','Hauler',52720
-'Gong Gu','Kelly Dock','Lakon Type 6',1045945
-'Gong Gu','Kelly Dock','Lakon Type 7',17472252
-'Gong Gu','Kelly Dock','Lakon Type 9',76555842
-'Gong Gu','Kelly Dock','Python',56978179
-'Gong Gu','Kelly Dock','Sidewinder',32000
-'Gong Gu','Kelly Dock','Viper',142931
-'HIP 87369','Carey Port','Adder',87808
-'HIP 87369','Carey Port','Asp Explorer',6661153
-'HIP 87369','Carey Port','Cobra',379718
-'HIP 87369','Carey Port','Dropship',37814205
-'HIP 87369','Carey Port','Eagle',44800
-'HIP 87369','Carey Port','Hauler',52720
-'HIP 87369','Carey Port','Lakon Type 6',1045945
-'HIP 87369','Carey Port','Lakon Type 7',17472252
-'HIP 87369','Carey Port','Sidewinder',32000
-'HIP 87369','Carey Port','Viper',142931
-'HR 8170','Fiennes Vision','Adder',87808
-'HR 8170','Fiennes Vision','Asp Explorer',6661153
-'HR 8170','Fiennes Vision','Cobra',379718
-'HR 8170','Fiennes Vision','Dropship',37814205
-'HR 8170','Fiennes Vision','Lakon Type 6',1045945
-'HR 8170','Fiennes Vision','Orca',48539887
-'HR 8170','Fiennes Vision','Python',56978179
-'HR 8170','Fiennes Vision','Sidewinder',32000
-'HR 8170','Fiennes Vision','Viper',142931
-'Hu Jona','Russell Station','Eagle',44800
-'Hu Jona','Russell Station','Hauler',52720
-'Hu Jona','Russell Station','Lakon Type 6',1045945
-'Hu Jona','Russell Station','Lakon Type 7',17472252
-'Hu Jona','Russell Station','Sidewinder',32000
-'LFT 1448','Dirac Enterprise','Anaconda',146969451
-'LFT 1448','Dirac Enterprise','Asp Explorer',6661153
-'LFT 1448','Dirac Enterprise','Cobra',379718
-'LFT 1448','Dirac Enterprise','Dropship',37814205
-'LFT 1448','Dirac Enterprise','Hauler',52720
-'LFT 1448','Dirac Enterprise','Lakon Type 6',1045945
-'LFT 1448','Dirac Enterprise','Lakon Type 9',76555842
-'LFT 1448','Dirac Enterprise','Sidewinder',32000
-'Lhangkambe','Detmer Orbital','Adder',87808
-'Lhangkambe','Detmer Orbital','Dropship',37814205
-'Lhangkambe','Detmer Orbital','Eagle',44800
-'Lhangkambe','Detmer Orbital','Hauler',52720
-'Lhangkambe','Detmer Orbital','Lakon Type 7',17472252
-'Lhangkambe','Detmer Orbital','Lakon Type 9',76555842
-'Lhangkambe','Detmer Orbital','Sidewinder',32000
-'Lhangkambe','Detmer Orbital','Viper',142931
-'Lhangkambe','Jacquard Dock','Adder',87808
-'Lhangkambe','Jacquard Dock','Dropship',37814205
-'Lhangkambe','Jacquard Dock','Eagle',44800
-'Lhangkambe','Jacquard Dock','Hauler',52720
-'Lhangkambe','Jacquard Dock','Lakon Type 7',17472252
-'Lhangkambe','Jacquard Dock','Lakon Type 9',76555842
-'Lhangkambe','Jacquard Dock','Sidewinder',32000
-'Lhangkambe','Jacquard Dock','Viper',142931
-'Lhangkambe','Yeliseyev Terminal','Adder',87808
-'Lhangkambe','Yeliseyev Terminal','Cobra',379718
-'Lhangkambe','Yeliseyev Terminal','Eagle',44800
-'Lhangkambe','Yeliseyev Terminal','Hauler',52720
-'Lhangkambe','Yeliseyev Terminal','Sidewinder',32000
-'Lhangkambe','Yeliseyev Terminal','Viper',142931
-'LHS 3447','Dalton Gateway','Asp Explorer',6661153
-'LHS 3447','Dalton Gateway','Hauler',52720
-'LHS 3447','Dalton Gateway','Lakon Type 9',76555842
-'LHS 3447','Dalton Gateway','Sidewinder',32000
-'LHS 3447','Worlidge Terminal','Cobra',379718
-'LHS 3447','Worlidge Terminal','Lakon Type 6',1045945
-'LHS 3447','Worlidge Terminal','Viper',142931
-'LHS 3447','Yaping Enterprise','Cobra',379718
-'LHS 3447','Yaping Enterprise','Lakon Type 6',1045945
-'LHS 3447','Yaping Enterprise','Viper',142931
-'LTT 15574','Haxel Port','Adder',87808
-'LTT 15574','Haxel Port','Cobra',379718
-'LTT 15574','Haxel Port','Dropship',37814205
-'LTT 15574','Haxel Port','Eagle',44800
-'LTT 15574','Haxel Port','Hauler',52720
-'LTT 15574','Haxel Port','Lakon Type 6',1045945
-'LTT 15574','Haxel Port','Lakon Type 7',17472252
-'LTT 15574','Haxel Port','Lakon Type 9',76555842
-'LTT 15574','Haxel Port','Sidewinder',32000
-'LTT 15574','Haxel Port','Viper',142931
-'Obambivas','Clebsch Terminal','Asp Explorer',6661153
-'Obambivas','Clebsch Terminal','Orca',48539887
-'Obambivas','Clebsch Terminal','Sidewinder',32000
-'Obambivas','Galouye Terminal','Orca',48539887
-'Obambivas','Galouye Terminal','Sidewinder',32000
-'Obambivas','Kennan Orbital','Cobra',379718
-'Obambivas','Kennan Orbital','Lakon Type 6',1045945
-'Obambivas','Kennan Orbital','Lakon Type 7',17472252
-'Peradjariu','Vries Port','Adder',87808
-'Peradjariu','Vries Port','Anaconda',146969451
-'Peradjariu','Vries Port','Cobra',379718
-'Peradjariu','Vries Port','Eagle',44800
-'Peradjariu','Vries Port','Hauler',52720
-'Peradjariu','Vries Port','Lakon Type 6',1045945
-'Peradjariu','Vries Port','Lakon Type 9',76555842
-'Peradjariu','Vries Port','Python',56978179
-'Peradjariu','Vries Port','Sidewinder',32000
-'Peradjariu','Vries Port','Viper',142931
-'Tauerni','Rushworth Port','Adder',87808
-'Tauerni','Rushworth Port','Eagle',44800
-'Tauerni','Rushworth Port','Hauler',52720
-'Tauerni','Rushworth Port','Lakon Type 9',76555842
-'Tauerni','Rushworth Port','Sidewinder',32000
-'Tauerni','Rushworth Port','Viper',142931
-'Thiansi','Worlidge Port','Cobra',379718
-'Thiansi','Worlidge Port','Dropship',37814205
-'Thiansi','Worlidge Port','Eagle',44800
-'Thiansi','Worlidge Port','Hauler',52720
-'Thiansi','Worlidge Port','Lakon Type 6',1045945
-'Thiansi','Worlidge Port','Lakon Type 9',76555842
-'Thiansi','Worlidge Port','Orca',48539887
-'Thiansi','Worlidge Port','Python',56978179
-'Thiansi','Worlidge Port','Sidewinder',32000
-'Thiansi','Worlidge Port','Viper',142931
-'Wolf 562','Hopkins Port','Adder',87808
-'Wolf 562','Hopkins Port','Cobra',379718
-'Wolf 562','Hopkins Port','Dropship',37814205
-'Wolf 562','Hopkins Port','Eagle',44800
-'Wolf 562','Hopkins Port','Lakon Type 7',17472252
-'Wolf 562','Hopkins Port','Lakon Type 9',76555842
-'Wolf 562','Hopkins Port','Orca',48539887
-'Wolf 562','Hopkins Port','Python',56978179
-'Wolf 562','Hopkins Port','Sidewinder',32000
-'Wolf 562','Hopkins Port','Viper',142931
-'Yakabugai','Serebrov Station','Anaconda',146969451
-'Yakabugai','Serebrov Station','Asp Explorer',6661153
-'Yakabugai','Serebrov Station','Dropship',37814205
-'Yakabugai','Serebrov Station','Eagle',44800
-'Yakabugai','Serebrov Station','Hauler',52720
-'Yakabugai','Serebrov Station','Lakon Type 9',76555842
-'Yakabugai','Serebrov Station','Sidewinder',32000
+unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id
+'Aiabiko','White Orbital','Anaconda'
+'Aiabiko','White Orbital','Asp Explorer'
+'Aiabiko','White Orbital','Dropship'
+'Aiabiko','White Orbital','Eagle'
+'Aiabiko','White Orbital','Hauler'
+'Aiabiko','White Orbital','Lakon Type 6'
+'Aiabiko','White Orbital','Lakon Type 7'
+'Aiabiko','White Orbital','Sidewinder'
+'Aptet','Torricelli Port','Dropship'
+'Aptet','Torricelli Port','Hauler'
+'Aptet','Torricelli Port','Lakon Type 6'
+'Aptet','Torricelli Port','Lakon Type 7'
+'Aptet','Torricelli Port','Lakon Type 9'
+'Aptet','Torricelli Port','Sidewinder'
+'Bunuvivia','Ellison Enterprise','Adder'
+'Bunuvivia','Ellison Enterprise','Cobra'
+'Bunuvivia','Ellison Enterprise','Dropship'
+'Bunuvivia','Ellison Enterprise','Eagle'
+'Bunuvivia','Ellison Enterprise','Hauler'
+'Bunuvivia','Ellison Enterprise','Lakon Type 6'
+'Bunuvivia','Ellison Enterprise','Lakon Type 7'
+'Bunuvivia','Ellison Enterprise','Lakon Type 9'
+'Bunuvivia','Ellison Enterprise','Sidewinder'
+'Bunuvivia','Ellison Enterprise','Viper'
+'Calor','Julian Hub','Adder'
+'Calor','Julian Hub','Hauler'
+'Calor','Julian Hub','Lakon Type 6'
+'Calor','Julian Hub','Lakon Type 9'
+'Calor','Julian Hub','Sidewinder'
+'Calor','Julian Hub','Viper'
+'Dimoco','Edison Orbital','Cobra'
+'Dimoco','Edison Orbital','Lakon Type 6'
+'Dimoco','Edison Orbital','Lakon Type 9'
+'Dimoco','Meitner Ring','Eagle'
+'Dimoco','Meitner Ring','Orca'
+'Dimoco','Meitner Ring','Sidewinder'
+'Djendelis','Atwater Enterprise','Adder'
+'Djendelis','Atwater Enterprise','Cobra'
+'Djendelis','Atwater Enterprise','Dropship'
+'Djendelis','Atwater Enterprise','Eagle'
+'Djendelis','Atwater Enterprise','Hauler'
+'Djendelis','Atwater Enterprise','Lakon Type 6'
+'Djendelis','Atwater Enterprise','Lakon Type 7'
+'Djendelis','Atwater Enterprise','Lakon Type 9'
+'Djendelis','Atwater Enterprise','Sidewinder'
+'Djendelis','Atwater Enterprise','Viper'
+'Eravate','Ackerman Market','Eagle'
+'Eravate','Ackerman Market','Hauler'
+'Eravate','Ackerman Market','Lakon Type 6'
+'Eravate','Ackerman Market','Sidewinder'
+'Eravate','Cleve Hub','Cobra'
+'Eravate','Cleve Hub','Eagle'
+'Eravate','Cleve Hub','Hauler'
+'Eravate','Cleve Hub','Lakon Type 6'
+'Eravate','Cleve Hub','Sidewinder'
+'Eravate','Russell Ring','Cobra'
+'Eravate','Russell Ring','Eagle'
+'Eravate','Russell Ring','Hauler'
+'Eravate','Russell Ring','Lakon Type 6'
+'Eravate','Russell Ring','Sidewinder'
+'Gong Gu','Kelly Dock','Adder'
+'Gong Gu','Kelly Dock','Asp Explorer'
+'Gong Gu','Kelly Dock','Cobra'
+'Gong Gu','Kelly Dock','Dropship'
+'Gong Gu','Kelly Dock','Eagle'
+'Gong Gu','Kelly Dock','Hauler'
+'Gong Gu','Kelly Dock','Lakon Type 6'
+'Gong Gu','Kelly Dock','Lakon Type 7'
+'Gong Gu','Kelly Dock','Lakon Type 9'
+'Gong Gu','Kelly Dock','Python'
+'Gong Gu','Kelly Dock','Sidewinder'
+'Gong Gu','Kelly Dock','Viper'
+'HIP 87369','Carey Port','Adder'
+'HIP 87369','Carey Port','Asp Explorer'
+'HIP 87369','Carey Port','Cobra'
+'HIP 87369','Carey Port','Dropship'
+'HIP 87369','Carey Port','Eagle'
+'HIP 87369','Carey Port','Hauler'
+'HIP 87369','Carey Port','Lakon Type 6'
+'HIP 87369','Carey Port','Lakon Type 7'
+'HIP 87369','Carey Port','Sidewinder'
+'HIP 87369','Carey Port','Viper'
+'HR 8170','Fiennes Vision','Adder'
+'HR 8170','Fiennes Vision','Asp Explorer'
+'HR 8170','Fiennes Vision','Cobra'
+'HR 8170','Fiennes Vision','Dropship'
+'HR 8170','Fiennes Vision','Lakon Type 6'
+'HR 8170','Fiennes Vision','Orca'
+'HR 8170','Fiennes Vision','Python'
+'HR 8170','Fiennes Vision','Sidewinder'
+'HR 8170','Fiennes Vision','Viper'
+'Hu Jona','Russell Station','Eagle'
+'Hu Jona','Russell Station','Hauler'
+'Hu Jona','Russell Station','Lakon Type 6'
+'Hu Jona','Russell Station','Lakon Type 7'
+'Hu Jona','Russell Station','Sidewinder'
+'LFT 1448','Dirac Enterprise','Anaconda'
+'LFT 1448','Dirac Enterprise','Asp Explorer'
+'LFT 1448','Dirac Enterprise','Cobra'
+'LFT 1448','Dirac Enterprise','Dropship'
+'LFT 1448','Dirac Enterprise','Hauler'
+'LFT 1448','Dirac Enterprise','Lakon Type 6'
+'LFT 1448','Dirac Enterprise','Lakon Type 9'
+'LFT 1448','Dirac Enterprise','Sidewinder'
+'Lhangkambe','Detmer Orbital','Adder'
+'Lhangkambe','Detmer Orbital','Dropship'
+'Lhangkambe','Detmer Orbital','Eagle'
+'Lhangkambe','Detmer Orbital','Hauler'
+'Lhangkambe','Detmer Orbital','Lakon Type 7'
+'Lhangkambe','Detmer Orbital','Lakon Type 9'
+'Lhangkambe','Detmer Orbital','Sidewinder'
+'Lhangkambe','Detmer Orbital','Viper'
+'Lhangkambe','Jacquard Dock','Adder'
+'Lhangkambe','Jacquard Dock','Dropship'
+'Lhangkambe','Jacquard Dock','Eagle'
+'Lhangkambe','Jacquard Dock','Hauler'
+'Lhangkambe','Jacquard Dock','Lakon Type 7'
+'Lhangkambe','Jacquard Dock','Lakon Type 9'
+'Lhangkambe','Jacquard Dock','Sidewinder'
+'Lhangkambe','Jacquard Dock','Viper'
+'Lhangkambe','Yeliseyev Terminal','Adder'
+'Lhangkambe','Yeliseyev Terminal','Cobra'
+'Lhangkambe','Yeliseyev Terminal','Eagle'
+'Lhangkambe','Yeliseyev Terminal','Hauler'
+'Lhangkambe','Yeliseyev Terminal','Sidewinder'
+'Lhangkambe','Yeliseyev Terminal','Viper'
+'LHS 3447','Dalton Gateway','Asp Explorer'
+'LHS 3447','Dalton Gateway','Hauler'
+'LHS 3447','Dalton Gateway','Lakon Type 9'
+'LHS 3447','Dalton Gateway','Sidewinder'
+'LHS 3447','Worlidge Terminal','Cobra'
+'LHS 3447','Worlidge Terminal','Lakon Type 6'
+'LHS 3447','Worlidge Terminal','Viper'
+'LHS 3447','Yaping Enterprise','Cobra'
+'LHS 3447','Yaping Enterprise','Lakon Type 6'
+'LHS 3447','Yaping Enterprise','Viper'
+'LTT 15574','Haxel Port','Adder'
+'LTT 15574','Haxel Port','Cobra'
+'LTT 15574','Haxel Port','Dropship'
+'LTT 15574','Haxel Port','Eagle'
+'LTT 15574','Haxel Port','Hauler'
+'LTT 15574','Haxel Port','Lakon Type 6'
+'LTT 15574','Haxel Port','Lakon Type 7'
+'LTT 15574','Haxel Port','Lakon Type 9'
+'LTT 15574','Haxel Port','Sidewinder'
+'LTT 15574','Haxel Port','Viper'
+'Obambivas','Clebsch Terminal','Asp Explorer'
+'Obambivas','Clebsch Terminal','Orca'
+'Obambivas','Clebsch Terminal','Sidewinder'
+'Obambivas','Galouye Terminal','Orca'
+'Obambivas','Galouye Terminal','Sidewinder'
+'Obambivas','Kennan Orbital','Cobra'
+'Obambivas','Kennan Orbital','Lakon Type 6'
+'Obambivas','Kennan Orbital','Lakon Type 7'
+'Ongkampan','Rawat Hub','Adder'
+'Ongkampan','Rawat Hub','Anaconda'
+'Ongkampan','Rawat Hub','Cobra'
+'Ongkampan','Rawat Hub','Eagle'
+'Ongkampan','Rawat Hub','Hauler'
+'Ongkampan','Rawat Hub','Lakon Type 6'
+'Ongkampan','Rawat Hub','Sidewinder'
+'Ongkampan','Rawat Hub','Viper'
+'Peradjariu','Vries Port','Adder'
+'Peradjariu','Vries Port','Anaconda'
+'Peradjariu','Vries Port','Cobra'
+'Peradjariu','Vries Port','Eagle'
+'Peradjariu','Vries Port','Hauler'
+'Peradjariu','Vries Port','Lakon Type 6'
+'Peradjariu','Vries Port','Lakon Type 9'
+'Peradjariu','Vries Port','Python'
+'Peradjariu','Vries Port','Sidewinder'
+'Peradjariu','Vries Port','Viper'
+'Tauerni','Rushworth Port','Adder'
+'Tauerni','Rushworth Port','Eagle'
+'Tauerni','Rushworth Port','Hauler'
+'Tauerni','Rushworth Port','Lakon Type 9'
+'Tauerni','Rushworth Port','Sidewinder'
+'Tauerni','Rushworth Port','Viper'
+'Thiansi','Worlidge Port','Cobra'
+'Thiansi','Worlidge Port','Dropship'
+'Thiansi','Worlidge Port','Eagle'
+'Thiansi','Worlidge Port','Hauler'
+'Thiansi','Worlidge Port','Lakon Type 6'
+'Thiansi','Worlidge Port','Lakon Type 9'
+'Thiansi','Worlidge Port','Orca'
+'Thiansi','Worlidge Port','Python'
+'Thiansi','Worlidge Port','Sidewinder'
+'Thiansi','Worlidge Port','Viper'
+'Wolf 562','Hopkins Port','Adder'
+'Wolf 562','Hopkins Port','Cobra'
+'Wolf 562','Hopkins Port','Dropship'
+'Wolf 562','Hopkins Port','Eagle'
+'Wolf 562','Hopkins Port','Lakon Type 7'
+'Wolf 562','Hopkins Port','Lakon Type 9'
+'Wolf 562','Hopkins Port','Orca'
+'Wolf 562','Hopkins Port','Python'
+'Wolf 562','Hopkins Port','Sidewinder'
+'Wolf 562','Hopkins Port','Viper'
+'Yakabugai','Serebrov Station','Anaconda'
+'Yakabugai','Serebrov Station','Asp Explorer'
+'Yakabugai','Serebrov Station','Dropship'
+'Yakabugai','Serebrov Station','Eagle'
+'Yakabugai','Serebrov Station','Hauler'
+'Yakabugai','Serebrov Station','Lakon Type 9'
+'Yakabugai','Serebrov Station','Sidewinder'
