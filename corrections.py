@@ -31,6 +31,8 @@ stations = {
     "TRELLA/TITTO COLONY": "Tito Colony",
     "ORERVE/WATSON SATION": "Watson Station",
     "MCC 467/ROB HUBBARD RING": "Ron Hubbard Ring",
+    "GCRV 4654/HERZEFELD LANDING": DELETED,
+    "LHS 220/CULPEPERCOLONY": DELETED,
 
 #ADD_STATIONS_HERE
 }
