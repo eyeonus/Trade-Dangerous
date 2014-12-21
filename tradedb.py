@@ -161,7 +161,7 @@ class Station(object):
 ######################################################################
 
 
-class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
+class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'cost', 'stations' ])):
     def name(self):
         return self.dbname
 
@@ -952,7 +952,7 @@ class TradeDB(object):
             If you have previously loaded Ships, this will orphan the old objects.
         """
         stmt = """
-                SELECT ship_id, name, capacity, mass, drive_rating, max_ly_empty, max_ly_full, max_speed, boost_speed
+                SELECT ship_id, name, cost
                   FROM Ship
             """
         self.cur.execute(stmt)
@@ -1173,13 +1173,9 @@ class TradeDB(object):
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
         if not maxSystemLinkLy:
-            longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
-            self.maxSystemLinkLy = longestJumper.maxLyEmpty
+            self.maxSystemLinkLy = 30
         else:
             self.maxSystemLinkLy = maxSystemLinkLy
-
-        self.tdenv.DEBUG2("Max ship jump distance: {} @ {:.02f}",
-                                longestJumper.name(), self.maxSystemLinkLy)
 
 
     ############################################################
