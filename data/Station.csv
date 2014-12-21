@@ -81,6 +81,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Aiabiko','Treshchov Port',0
 'Aiabiko','Weston Dock',0
 'Aiabiko','White Orbital',0
+'Akbulun','Birdseye Colony',25
+'Akbulun','Levchenko Dock',12
 'Akhenaten','Wang Platform',0
 'Aknango','Banks Station',0
 'Aknango','Bischoff Dock',0
@@ -195,6 +197,8 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Bast','Hart Station',0
 'Bast','White Hart Lane',0
 'Baudus','Agnesi City',0
+'BD+01 3657','Hamsettlement:251',0
+'BD+01 3657','Sacco Base:350',0
 'BD+03 1552','Bailey Station',0
 'BD+03 1552','Narita Ring',0
 'BD+08 1303','Chomsky Ring',0
@@ -1185,7 +1189,15 @@ unq:name@System.system_id,unq:name,ls_from_star
 'Okinoukhe','Stableford Ring',0
 'Okuapang','Pribylov Park',0
 'Ongerinja','Vogel Platform',0
-'Ongkampan','Rawat Hub',0
+'Ongkampan','Abernathy Gateway:111',0
+'Ongkampan','Carstensz Dock:197',0
+'Ongkampan','Ehrenfried Kegel Port:66',0
+'Ongkampan','Fawcett Gateway:360',0
+'Ongkampan','Patterson Station:274',0
+'Ongkampan','Rawat Hub',48
+'Ongkampan','Ross Station:475',0
+'Ongkampan','Thompson Station:155',0
+'Ongkampan','Vercors Orbital:111',0
 'Opala','Onizuka''s Hold',0
 'Opala','Romanenko Estate',0
 'Opala','Zamka Platform',0
