@@ -5,7 +5,7 @@ import re
 
 
 argStr = ' '.join(sys.argv[1:])
-m = re.match(r'^(.*)/(.*)(\:([\d]+))?', argStr)
+m = re.match(r'^(.*)/(.*?)(\:([\d]+))?', argStr)
 sys, stn, dist = m.group(1, 2, 3)
 sys = sys.title()
 stn = stn.title()
