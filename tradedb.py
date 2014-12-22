@@ -569,7 +569,10 @@ class TradeDB(object):
                         (candidate.posY - sysY) ** 2 +
                         (candidate.posZ - sysZ) ** 2
                 )
-                cachedSystems[candidate] = dist = math.sqrt(distSq)
+                # we need to check the distance because we are selecting
+                # a cube but need a sphere
+                if distSq <= lySq:
+                    cachedSystems[candidate] = dist = math.sqrt(distSq)
 
             cache.probedLy = probedLy = ly
 
