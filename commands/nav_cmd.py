@@ -140,12 +140,12 @@ def run(results, cmdenv, tdb):
                 maxLy=maxLyPer,
             )
 
-    lastHop, totalLy, dirLy = None, 0.00, 0.00
+    totalLy, dirLy = 0.00, 0.00
     route.reverse()
     for hop in route:
-        jumpLy = (distances[hop][0] - distances[lastHop][0]) if lastHop else 0.00
-        totalLy += jumpLy
+        jumpLy = math.sqrt(hop.distToSq(distances[hop][1])) if distances[hop][1] else 0.00
         if cmdenv.detail:
+            totalLy = math.sqrt(srcSystem.distToSq(hop))
             dirLy = math.sqrt(dstSystem.distToSq(hop))
         row = ResultRow(
                 action='Via',
@@ -155,7 +155,6 @@ def run(results, cmdenv, tdb):
                 dirLy=dirLy,
                 )
         results.rows.append(row)
-        lastHop = hop
     results.rows[0].action='Depart'
     results.rows[-1].action='Arrive'
 
@@ -183,7 +182,7 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn("JumpLy", '>', '7', '.2f',
             key=lambda row: row.jumpLy)
     if cmdenv.detail:
-        rowFmt.addColumn("Stations", '>', 2, 
+        rowFmt.addColumn("Stations", '>', 2,
             key=lambda row: len(row.system.stations))
     if cmdenv.detail:
         rowFmt.addColumn("DistLy", '>', '7', '.2f',
