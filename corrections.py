@@ -7,24 +7,12 @@ from __future__ import absolute_import, with_statement, print_function, division
 DELETED = -111
 
 systems = {
-    'MANTOAC': "Mantóac",
-    "NANTOAC": "Nantóac",
-    "LIFTHRUTI": "Lífthruti",
-    "SETING": DELETED,
 
 #ADD_SYSTEMS_HERE
 }
 
 stations = {
-    "CHEMAKU/BARTOE PLATFORM": DELETED,
-    "ERAVATE/ASKERMAN MARKET": "Ackerman Market",
-    "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
-    "HALAI/GENKER STATION": "Cenker Station",
-    "LFT 926/MEREDITH STATION": "Meredith City",
-    "OPALA/ZAMK PLATFORM": "Zamka Platform",
-    "G 139-50/FILIPCHENKO": "Filipchenko City",
     "AMARAK/WERNER VON SIEMENS VISON": "Werner Von Siemens Vision",
-    "SETING/COX LANDING": DELETED,
     "APOYOTA/FLINTSTATION": "Flint Station",
     "APOYOTA/HAHNRELAY": "Hahn Relay",
     "EKONIR/MOREYVISION": "Morey Vision",
