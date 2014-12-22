@@ -138,10 +138,13 @@ class Station(object):
         Describes a station within a given system along with what trade
         opportunities it presents.
     """
-    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith', 'itemCount')
+    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'blackMarket', 'tradingWith', 'itemCount')
 
-    def __init__(self, ID, system, dbname, lsFromStar, itemCount):
-        self.ID, self.system, self.dbname, self.lsFromStar, self.itemCount = ID, system, dbname, lsFromStar, itemCount
+    def __init__(self, ID, system, dbname, lsFromStar, blackMarket, itemCount):
+        self.ID, self.system, self.dbname = ID, system, dbname
+        self.lsFromStar = lsFromStar
+        self.blackMarket = blackMarket
+        self.itemCount = itemCount
         self.tradingWith = None       # dict[tradingPartnerStation] -> [ available trades ]
         system.stations.append(self)
 
@@ -155,7 +158,12 @@ class Station(object):
 
 
     def __repr__(self):
-        return "Station(ID={}, system='{}', dbname='{}', lsFromStar={})".format(self.ID, re.escape(self.system.dbname), re.escape(self.dbname), self.lsFromStar)
+        return "Station(ID={}, system='{}', dbname='{}', lsFromStar={})".format(
+                self.ID,
+                re.escape(self.system.dbname),
+                re.escape(self.dbname),
+                self.lsFromStar
+        )
 
 
 ######################################################################
@@ -337,6 +345,16 @@ class TradeDB(object):
                     maxSystemLinkLy=tdenv.maxSystemLinkLy,
             )
 
+    @staticmethod
+    def calculateDistance2(lx, ly, lz, rx, ry, rz):
+        """
+        Returns the square of the distance between two points
+        """
+        dX = (lx - rx)
+        dY = (ly - ry)
+        dZ = (lz - rz)
+        return (dX ** 2) + (dY ** 2) + (dZ ** 2)
+
 
     ############################################################
     # Access to the underlying database.
@@ -348,6 +366,7 @@ class TradeDB(object):
             import sqlite3
             conn = sqlite3.connect(self.dbFilename)
             conn.execute("PRAGMA foreign_keys=ON")
+            conn.create_function('dist2', 6, TradeDB.calculateDistance2)
             return conn
         except ImportError as e:
             print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
@@ -584,7 +603,7 @@ class TradeDB(object):
             If you have previously loaded Stations, this will orphan the old objects.
         """
         stmt = """
-                SELECT  station_id, system_id, name, ls_from_star,
+                SELECT  station_id, system_id, name, ls_from_star, blackMarket,
                         (SELECT COUNT(*)
                             FROM StationItem
                             WHERE station_id = Station.station_id) AS itemCount
@@ -593,15 +612,21 @@ class TradeDB(object):
         self.cur.execute(stmt)
         stationByID = {}
         systemByID = self.systemByID
-        for (ID, systemID, name, lsFromStar, itemCount) in self.cur:
-            station = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
+        for (
+            ID, systemID, name, lsFromStar, blackMarket, itemCount
+        ) in self.cur:
+            station = Station(
+                    ID, systemByID[systemID], name,
+                    lsFromStar, blackMarket,
+                    itemCount
+            )
             stationByID[ID] = station
 
         self.stationByID = stationByID
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
 
 
-    def addLocalStation(self, system, name, lsFromStar):
+    def addLocalStation(self, system, name, lsFromStar, blackMarket):
         """
         Add a station to the local cache and memory copy.
         """
@@ -610,20 +635,20 @@ class TradeDB(object):
         cur = db.cursor()
         cur.execute("""
                 INSERT INTO Station (
-                    name, system_id, ls_from_star
+                    name, system_id, ls_from_star, blackMarket
                 ) VALUES (
-                    ?, ?, ?
+                    ?, ?, ?, ?
                 )
         """, [
                 name, system.ID, lsFromStar
         ])
         ID = cur.lastrowid
-        station = Station(ID, system, name, lsFromStar, 0)
+        station = Station(ID, system, name, lsFromStar, blackMarket, 0)
         self.stationByID[ID] = station
         db.commit()
         if not self.tdenv.quiet:
-            print("- Added new station #{}: {}/{} [{}ls]".format(
-                    ID, system.name(), name, lsFromStar
+            print("- Added new station #{}: {}/{} [ls:{}, bm:{}]".format(
+                    ID, system.name(), name, lsFromStar, blackMarket
             ))
         return station
 

@@ -74,7 +74,7 @@ def lookup_system(tdb, tdenv, name, x, y, z):
     return None
 
 
-def lookup_station(tdb, tdenv, system, name, lsFromStar):
+def lookup_station(tdb, tdenv, system, name, lsFromStar, blackMarket):
     normalizedName = tradedb.TradeDB.normalizedStr(name)
     for stn in system.stations:
         stnNormalizedName = tradedb.TradeDB.normalizedStr(stn.dbname)
@@ -97,7 +97,7 @@ def lookup_station(tdb, tdenv, system, name, lsFromStar):
             return stn
 
     if tdenv.addUnknown:
-        return tdb.addLocalStation(system, name, lsFromStar)
+        return tdb.addLocalStation(system, name, lsFromStar, blackMarket)
 
     return None
 
@@ -119,6 +119,13 @@ def load_prices_json(
     stnData = data['stn']
     stnName = stnData['name']
     lsFromStar = stnData['ls']
+
+    try:
+        blackMarket = stnData['bm'].upper()
+        if not blackMarket in [ 'Y', 'N' ]:
+            blackMarket = '?'
+    except KeyError:
+        blackMarket = '?'
 
     system = lookup_system(
             tdb, tdenv,
@@ -145,6 +152,7 @@ def load_prices_json(
             system,
             stnName,
             lsFromStar,
+            blackMarket,
             )
     if not station:
         if tdenv.ignoreUnknown:

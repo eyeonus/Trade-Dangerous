@@ -136,9 +136,9 @@ def addStation(conn, sysName, stnName, distLs, blackMarket):
     cur = conn.cursor()
     cur.execute("""
             INSERT  INTO Station
-                    (system_id, name, ls_from_star)
-            VALUES  (?, ?, ?)
-    """, [systemID, stnName, distLs])
+                    (system_id, name, ls_from_star, blackMarket)
+            VALUES  (?, ?, ?, ?)
+    """, [systemID, stnName, distLs, blackMarket])
     stationID = cur.lastrowid
     conn.commit()
 
