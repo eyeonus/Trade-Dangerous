@@ -1159,6 +1159,7 @@ class TradeDB(object):
         dstStn = self.lookupStation(dst)
         return srcStn.tradingWith[dstStn]
 
+
     def close(self):
         self.cur = None
         if self.conn:
