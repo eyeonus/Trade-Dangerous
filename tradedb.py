@@ -337,6 +337,16 @@ class TradeDB(object):
                     maxSystemLinkLy=tdenv.maxSystemLinkLy,
             )
 
+    @staticmethod
+    def calculateDistance2(lx, ly, lz, rx, ry, rz):
+        """
+        Returns the square of the distance between two points
+        """
+        dX = (lx - rx)
+        dY = (ly - ry)
+        dZ = (lz - rz)
+        return (dX ** 2) + (dY ** 2) + (dZ ** 2)
+
 
     ############################################################
     # Access to the underlying database.
@@ -348,6 +358,7 @@ class TradeDB(object):
             import sqlite3
             conn = sqlite3.connect(self.dbFilename)
             conn.execute("PRAGMA foreign_keys=ON")
+            conn.create_function('dist2', 6, TradeDB.calculateDistance2)
             return conn
         except ImportError as e:
             print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
