@@ -1,16 +1,16 @@
-unq:name,capacity,mass,drive_rating,max_ly_empty,max_ly_full,max_speed,boost_speed
-'Adder',6,35,0.0,9.12,0.0,220,320
-'Anaconda',114,400,0.0,19.5,0.0,180,240
-'Asp Explorer',38,280,0.0,13.2,0.0,250,340
-'Clipper',100,400,0.0,7.75,0.0,300,380
-'Cobra',18,180,0.0,10.46,0.0,280,400
-'Dropship',56,580,0.0,8.21,0.0,180,300
-'Eagle',6,50,0.0,8.47,0.0,240,350
-'Hauler',12,14,0.0,10.46,0.0,200,300
-'Lakon Type 6',50,155,0.0,12.39,0.0,220,350
-'Lakon Type 7',104,420,0.0,0.0,0.0,180,300
-'Lakon Type 9',220,1000,0.0,17.72,0.0,130,200
-'Orca',72,580,0.0,7.5,0.0,300,380
-'Python',82,350,0.0,13.24,0.0,250,280
-'Sidewinder',4,25,0.0,7.56,0.0,220,320
-'Viper',4,60,0.0,6.92,0.0,320,400
+unq:name,cost
+'Adder',87808
+'Anaconda',146969451
+'Asp Explorer',6661153
+'Clipper',0
+'Cobra',379718
+'Dropship',37814205
+'Eagle',44800
+'Hauler',52720
+'Lakon Type 6',1045945
+'Lakon Type 7',17472252
+'Lakon Type 9',76555842
+'Orca',48539887
+'Python',56978179
+'Sidewinder',32000
+'Viper',142931

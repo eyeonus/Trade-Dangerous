@@ -7,30 +7,27 @@ from __future__ import absolute_import, with_statement, print_function, division
 DELETED = -111
 
 systems = {
-    'MANTOAC': "Mantóac",
-    "NANTOAC": "Nantóac",
-    "LIFTHRUTI": "Lífthruti",
-    "SETING": DELETED,
 
 #ADD_SYSTEMS_HERE
 }
 
 stations = {
-    "CHEMAKU/BARTOE PLATFORM": DELETED,
-    "ERAVATE/ASKERMAN MARKET": "Ackerman Market",
-    "YAKABUGAI/SEREBOV STATION": "Serebrov Station",
-    "HALAI/GENKER STATION": "Cenker Station",
-    "LFT 926/MEREDITH STATION": "Meredith City",
-    "OPALA/ZAMK PLATFORM": "Zamka Platform",
-    "G 139-50/FILIPCHENKO": "Filipchenko City",
     "AMARAK/WERNER VON SIEMENS VISON": "Werner Von Siemens Vision",
-    "SETING/COX LANDING": DELETED,
     "APOYOTA/FLINTSTATION": "Flint Station",
     "APOYOTA/HAHNRELAY": "Hahn Relay",
     "EKONIR/MOREYVISION": "Morey Vision",
     "TRELLA/TITTO COLONY": "Tito Colony",
     "ORERVE/WATSON SATION": "Watson Station",
     "MCC 467/ROB HUBBARD RING": "Ron Hubbard Ring",
+    "GCRV 4654/HERZEFELD LANDING": DELETED,
+    "LHS 220/CULPEPERCOLONY": DELETED,
+    "LHS 64/WIBERG HANGAR": DELETED,    # "Hanger",
+    "LP 862-184/MAYR HANGAR": "Mayr Hanger",
+    "TYR/GLASHOW": DELETED,
+    "EGOVAE/ENOATE MARKET": "Endate Market",
+    "WOLF 1301/SAUNDER'S DIVE": "Saunders's Dive",
+    "VEQUESS/AGNEWS FOLLY": "Agnews' Folly",
+    "ONGKAMPAN/PATTERSON STATION:274": DELETED,
 
 #ADD_STATIONS_HERE
 }
