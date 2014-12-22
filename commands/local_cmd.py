@@ -95,7 +95,8 @@ def run(results, cmdenv, tdb):
                 rr = ResultRow(
                         station=station,
                         dist=station.lsFromStar,
-                        age=age
+                        age=age,
+                        blackMarket=station.blackMarket,
                 )
                 row.stations.append(rr)
         results.rows.append(row)
@@ -127,17 +128,22 @@ def render(results, cmdenv, tdb):
                         key=lambda row: row.dist)
             )
 
+    marketStates = { 'Y': 'Yes', 'N': 'No', '?': 'Unk' }
     showStations = cmdenv.detail or cmdenv.ages
     if showStations:
         stnRowFmt = RowFormat(prefix='  +  ').append(
                 ColumnFormat("Station", '<', 32,
-                        key=lambda row: row.station.str())
+                    key=lambda row: row.station.str())
             )
         if cmdenv.detail:
             stnRowFmt.append(
                 ColumnFormat("Dist", '>', '10',
-                        key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
+                    key=lambda row: '{}ls'.format(row.dist) if row.dist else '')
             )
+            stnRowFmt.append(
+                ColumnFormat("BMkt", '>', '4',
+                    key=lambda row: marketStates[row.blackMarket]
+            ))
         if cmdenv.ages:
             stnRowFmt.append(
                 ColumnFormat("Age/days", '>', 7,
