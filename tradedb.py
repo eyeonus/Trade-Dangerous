@@ -541,7 +541,6 @@ class TradeDB(object):
 
         probedLy = cache.probedLy
         if ly > probedLy:
-            print("recalc {}".format(system.dbname))
             # Consult the database for stars we haven't seen.
             sysX, sysY, sysZ = system.posX, system.posY, system.posZ
             self.cur.execute("""
@@ -1159,6 +1158,7 @@ class TradeDB(object):
         srcStn = self.lookupStation(src)
         dstStn = self.lookupStation(dst)
         return srcStn.tradingWith[dstStn]
+
 
     def close(self):
         self.cur = None
