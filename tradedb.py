@@ -515,15 +515,49 @@ class TradeDB(object):
             place = self.lookupPlace(system)
             system = place.system if isinstance(system, Station) else place
 
-        # Yield what we already have
-        if includeSelf:
-            yield system, 0.
-
         cache = system._rangeCache
         if not cache:
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
+
         probedLy = cache.probedLy
+        if ly > probedLy:
+            print("recalc {}".format(system.dbname))
+            # Consult the database for stars we haven't seen.
+            sysX, sysY, sysZ = system.posX, system.posY, system.posZ
+            self.cur.execute("""
+                    SELECT  sys.system_id
+                      FROM  System AS sys
+                     WHERE  sys.pos_x BETWEEN ? AND ?
+                       AND  sys.pos_y BETWEEN ? AND ?
+                       AND  sys.pos_z BETWEEN ? AND ?
+                       AND  sys.system_id != ?
+            """, [
+                    sysX - ly, sysX + ly,
+                    sysY - ly, sysY + ly,
+                    sysZ - ly, sysZ + ly,
+                    system.ID,
+            ])
+            knownIDs = frozenset(
+                system.ID for system in cachedSystems.keys()
+            )
+            lySq = ly * ly
+            for candID, in self.cur:
+                if candID in knownIDs:
+                    continue
+                candidate = self.systemByID[candID]
+                distSq = (
+                        (candidate.posX - sysX) ** 2 +
+                        (candidate.posY - sysY) ** 2 +
+                        (candidate.posZ - sysZ) ** 2
+                )
+                cachedSystems[candidate] = dist = math.sqrt(distSq)
+
+            cache.probedLy = probedLy = ly
+
+        if includeSelf:
+            yield system, 0.
+
         if probedLy > ly:
             # Cache may contain values outside our view
             for sys, dist in cachedSystems.items():
@@ -533,43 +567,6 @@ class TradeDB(object):
             # No need to be conditional inside the loop
             yield from cachedSystems.items()
 
-        if probedLy >= ly:
-            # If the cache already covered us, we can leave
-            return
-
-        # Consult the database for stars we haven't seen.
-        sysX, sysY, sysZ = system.posX, system.posY, system.posZ
-        self.cur.execute("""
-                SELECT  sys.system_id
-                  FROM  System AS sys
-                 WHERE  sys.pos_x BETWEEN ? AND ?
-                   AND  sys.pos_y BETWEEN ? AND ?
-                   AND  sys.pos_z BETWEEN ? AND ?
-                   AND  sys.system_id != ?
-        """, [
-                sysX - ly, sysX + ly,
-                sysY - ly, sysY + ly,
-                sysZ - ly, sysZ + ly,
-                system.ID,
-        ])
-        knownIDs = frozenset(
-            system.ID for system in cachedSystems.keys()
-        )
-        lySq = ly * ly
-        for candID, in self.cur:
-            if candID in knownIDs:
-                continue
-            candidate = self.systemByID[candID]
-            distSq = (
-                    (candidate.posX - sysX) ** 2 +
-                    (candidate.posY - sysY) ** 2 +
-                    (candidate.posZ - sysZ) ** 2
-            )
-            if distSq <= lySq:
-                cachedSystems[candidate] = dist = math.sqrt(distSq)
-                yield candidate, dist
-
-        cache.probedLy = ly
 
 
     ############################################################
