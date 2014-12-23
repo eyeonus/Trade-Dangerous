@@ -569,7 +569,8 @@ class TradeDB(object):
                         (candidate.posY - sysY) ** 2 +
                         (candidate.posZ - sysZ) ** 2
                 )
-                cachedSystems[candidate] = dist = math.sqrt(distSq)
+                if distSq <= lySq:
+                    cachedSystems[candidate] = math.sqrt(distSq)
 
             cache.probedLy = probedLy = ly
 
