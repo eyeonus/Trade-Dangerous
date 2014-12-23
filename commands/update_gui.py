@@ -214,7 +214,7 @@ class UpdateGUI(ScrollingCanvas):
         minCr, avgCr, maxCr = stats
         widget.configure(bg = 'white')
 
-        if cr < minCr and cr < int(avgCr * 0.7):
+        if cr < int(minCr / 1.01) and cr < int(avgCr * 0.7):
             widget.bell()
             ok = mbox.askokcancel(
                     "Very low price",
@@ -232,7 +232,7 @@ class UpdateGUI(ScrollingCanvas):
                 return False
             widget.configure(bg = '#ff8080')
 
-        if cr > maxCr and int(cr * 0.7) > avgCr:
+        if cr >= (maxCr * 1.01) and int(cr * 0.7) > avgCr:
             widget.bell()
             ok = mbox.askokcancel(
                     "Very high price",
