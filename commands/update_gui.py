@@ -132,7 +132,7 @@ class UpdateGUI(ScrollingCanvas):
     def __init__(self, parent, tdb, tdenv):
         super().__init__(parent)
 
-        width = tdenv.width or 600
+        width = tdenv.width or 640
         height = tdenv.height or 640
         sticky = 1 if tdenv.alwaysOnTop else 0
 
