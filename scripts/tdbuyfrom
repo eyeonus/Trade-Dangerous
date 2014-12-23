@@ -16,6 +16,6 @@ then
     exit 1
 fi
 
-cmd="\"${TRADEPY}\" buy --age -vv --near $near $prod $*"
+cmd="\"${TRADEPY}\" buy -vv --near $near $prod $*"
 echo \$ $cmd
 eval "$cmd"

@@ -80,13 +80,21 @@ def titleFixup(text):
     return text
 
 
-def addStation(conn, sysName, stnName, distLs, blackMarket):
+def addStation(
+        conn,
+        sysName,
+        stnName,
+        distLs,
+        blackMarket,
+        maxPadSize,
+        ):
     """
     Adds a station to the csv and db if not already present.
     """
 
     assert isinstance(distLs, int)
     assert blackMarket in [ '?', 'Y', 'N' ]
+    assert maxPadSize in [ '?', 'S', 'M', 'L' ]
 
     sysName = sysName.upper()
     stnName = titleFixup(stnName)
@@ -124,27 +132,38 @@ def addStation(conn, sysName, stnName, distLs, blackMarket):
 
     # Add to the .csv first.
     with open(csvFile, "ab") as fh:
-        fh.write("'{}','{}',{},'{}'\n".format(
+        fh.write("'{}','{}',{},'{}','{}'\n".format(
                 sysCsvName,
                 stnCsvName,
                 distLs,
                 blackMarket,
+                maxPadSize,
         ).encode())
 
     # Now insert into the DB.
     cur = conn.cursor()
     cur.execute("""
-            INSERT  INTO Station
-                    (system_id, name, ls_from_star, blackMarket)
-            VALUES  (?, ?, ?, ?)
-    """, [systemID, stnName, distLs, blackMarket])
+            INSERT  INTO Station (
+                system_id,
+                name,
+                ls_from_star,
+                blackmarket,
+                max_pad_size
+            ) VALUES  (?, ?, ?, ?, ?)
+    """, [
+            systemID,
+            stnName,
+            distLs,
+            blackMarket,
+            maxPadSize
+    ])
     stationID = cur.lastrowid
     conn.commit()
 
-    print("ADDED: #{}: {}/{} ls={}, bm={}".format(
+    print("ADDED: #{}: {}/{} ls={}, bm={}, mps={}".format(
             stationID,
             sysName, stnName,
-            distLs, blackMarket
+            distLs, blackMarket, maxPadSize,
     ))
 
 
