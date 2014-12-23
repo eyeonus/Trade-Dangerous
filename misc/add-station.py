@@ -90,7 +90,6 @@ def addStation(conn, sysName, stnName, distLs, blackMarket):
 
     sysName = sysName.upper()
     stnName = titleFixup(stnName)
-    print(sysName, stnName)
 
     # Check the database
     systemID, sysName = lookupSystem(conn, sysName)
