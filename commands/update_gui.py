@@ -132,7 +132,7 @@ class UpdateGUI(ScrollingCanvas):
     def __init__(self, parent, tdb, tdenv):
         super().__init__(parent)
 
-        width = tdenv.width or 600
+        width = tdenv.width or 640
         height = tdenv.height or 640
         sticky = 1 if tdenv.alwaysOnTop else 0
 
@@ -209,6 +209,50 @@ class UpdateGUI(ScrollingCanvas):
                 row[3][1].set("?")
 
 
+    def checkValueAgainstStats(self, widget, stats):
+        cr = int(widget.val.get())
+        minCr, avgCr, maxCr = stats
+        widget.configure(bg = 'white')
+
+        if cr < int(minCr / 1.01) and cr < int(avgCr * 0.7):
+            widget.bell()
+            ok = mbox.askokcancel(
+                    "Very low price",
+                    "The price you entered is very low.\n"
+                    "\n"
+                    "Your input was: {}\n"
+                    "Previous low..: {}\n"
+                    "\n"
+                    "Is it correct?".format(
+                        cr, minCr,
+            ))
+            if not ok:
+                widget.val.set("")
+                widget.focus_set()
+                return False
+            widget.configure(bg = '#ff8080')
+
+        if cr >= (maxCr * 1.01) and int(cr * 0.7) > avgCr:
+            widget.bell()
+            ok = mbox.askokcancel(
+                    "Very high price",
+                    "The price you entered is very high.\n"
+                    "\n"
+                    "Your input was..: {}\n"
+                    "Previous highest: {}\n"
+                    "\n"
+                    "Is it correct?".format(
+                        cr, maxCr,
+            ))
+            if not ok:
+                widget.val.set("")
+                widget.focus_set()
+                return False
+            widget.configure(bg = '#8080ff')
+
+        return True
+
+
     def validate(self, widget):
         """ For checking the contents of a widget. """
         item, row, pos = widget.item, widget.row, widget.pos
@@ -230,6 +274,11 @@ class UpdateGUI(ScrollingCanvas):
                         "Invalid Paying price",
                         "Price must be an numeric value (e.g. 1234)"
                         )
+                return False
+
+            # is it lower than the value?
+            payStats = self.payStats[item.ID]
+            if not self.checkValueAgainstStats(widget, payStats):
                 return False
 
         if pos <= 1:
@@ -258,11 +307,15 @@ class UpdateGUI(ScrollingCanvas):
                         )
                 return False
 
+            askStats = self.askStats[item.ID]
+            if not self.checkValueAgainstStats(widget, askStats):
+                return False
+
             # https://forums.frontier.co.uk/showthread.php?t=34986&p=1162429&viewfull=1#post1162429
             # It seems that stations usually pay within 25% of the
             # asking price as a buy-back price. If the user gives
             # us something out of those bounds, check with them.
-            if paying < int(asking * 0.72) or \
+            if paying < int(asking * 0.70) or \
                     paying < asking - 250:
                 widget.bell()
                 ok = mbox.askokcancel(
@@ -456,6 +509,8 @@ class UpdateGUI(ScrollingCanvas):
         addHeading("Asking")
         addHeading("Demand")
         addHeading("Stock")
+        addHeading("AvgPay")
+        addHeading("AvgAsk")
         self.endRow()
 
 
@@ -467,11 +522,16 @@ class UpdateGUI(ScrollingCanvas):
         self.items[itemName] = item
         self.itemList.append(item)
 
+        payStats = self.payStats[item.ID]
+        askStats = self.askStats[item.ID]
+
         self.addLabel(item.name.upper())
         self.addInput(item, paying, row)
         self.addInput(item, asking, row)
         self.addInput(item, demand, row)
         self.addInput(item, stock, row)
+        self.addLabel(payStats[1])
+        self.addLabel(askStats[1])
 
         self.itemDisplays.append(row)
 
@@ -499,6 +559,27 @@ class UpdateGUI(ScrollingCanvas):
                 """, [station.ID]
             )
         self.newStation = False if int(cur.fetchone()[0]) else True
+
+        cur.execute("""
+                SELECT  item_id, MIN(price), AVG(price), MAX(price)
+                  FROM  StationBuying
+                 WHERE  station_id != ?
+                 GROUP  BY 1
+        """, [station.ID])
+        self.payStats = {
+                ID: [ minCr, int(avgCr), maxCr ]
+                for ID, minCr, avgCr, maxCr in cur
+        }
+        cur.execute("""
+                SELECT  item_id, MIN(price), AVG(price), MAX(price)
+                  FROM  StationSelling
+                 WHERE  station_id != ?
+                 GROUP  BY 1
+        """, [station.ID])
+        self.askStats = {
+                ID: [ minCr, int(avgCr), maxCr ]
+                for ID, minCr, avgCr, maxCr in cur
+        }
 
         if self.newStation and not tdenv.all:
             def splashScreen():

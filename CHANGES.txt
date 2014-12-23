@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.2.5 [wip]
+. (bgol) Fixed weirdness with rangeCache
+. (bgol/kfsone) Fixed jump distances and performance of "nav" command
+
 v6.2.4 Dec 21 2014
 . (kfsone) Experimental "add-station" command in misc,
 . (kfsone) Added "--near" to olddata command,

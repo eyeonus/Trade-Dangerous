@@ -58,7 +58,13 @@ class Route(object):
         """
             Returns a new route describing the sum of this route plus a new hop.
         """
-        return Route(self.route + [dst], self.hops + [hop], self.startCr, self.gainCr + hop[1], self.jumps + [jumps])
+        return Route(
+                self.route + [dst],
+                self.hops + [hop],
+                self.startCr,
+                self.gainCr + hop[1],
+                self.jumps + [jumps]
+        )
 
 
     def __lt__(self, rhs):
