@@ -515,12 +515,12 @@ class TradeCalc(object):
                     tdenv.DEBUG3("No trade")
                     continue
 
-                # Calculate total K-lightseconds supercruise time to 1dp.
+                # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
                 score = trade.gainCr
                 if lsPenalty:
-                    supercruiseKls = int((srcStation.lsFromStar + dstStation.lsFromStar) / 100) / 10
-                    score *= (1 - lsPenalty * supercruiseKls)
+                    supercruiseKls = dstStation.lsFromStar / 1000
+                    score *= (1 - (lsPenalty * supercruiseKls))
                 dstID = dstStation.ID
                 try:
                     # See if there is already a candidate for this destination
