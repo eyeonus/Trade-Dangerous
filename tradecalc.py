@@ -44,17 +44,18 @@ class Route(object):
         Describes a series of CargoRuns, that is CargoLoads
         between several stations. E.g. Chango -> Gateway -> Enterprise
     """
-    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps')
+    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score')
 
-    def __init__(self, stations, hops, startCr, gainCr, jumps):
+    def __init__(self, stations, hops, startCr, gainCr, jumps, score):
         self.route = stations
         self.hops = hops
         self.startCr = startCr
         self.gainCr = gainCr
         self.jumps = jumps
+        self.score = score
 
 
-    def plus(self, dst, hop, jumps):
+    def plus(self, dst, hop, jumps, score):
         """
             Returns a new route describing the sum of this route plus a new hop.
         """
@@ -63,18 +64,19 @@ class Route(object):
                 self.hops + [hop],
                 self.startCr,
                 self.gainCr + hop[1],
-                self.jumps + [jumps]
+                self.jumps + [jumps],
+                self.score + score,
         )
 
 
     def __lt__(self, rhs):
-        if rhs.gainCr < self.gainCr: # reversed
+        if rhs.score < self.score: # reversed
             return True
-        return rhs.gainCr == self.gainCr and len(rhs.jumps) < len(self.jumps)
+        return rhs.score == self.score and len(rhs.jumps) < len(self.jumps)
 
 
     def __eq__(self, rhs):
-        return self.gainCr == rhs.gainCr and len(self.jumps) == len(rhs.jumps)
+        return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
 
 
     def str(self):
@@ -113,6 +115,7 @@ class Route(object):
                         "Gain {gain:n}cr "
                         "({tongain:n}cr/ton) "
                         "=> {credits:n}cr\n")
+            dockFmt = "  Dock at {station}\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = ("  Finish at {station} "
                         "gaining {gain:n}cr "
@@ -122,6 +125,7 @@ class Route(object):
             hopStepFmt = " {qty} x {item} (@{eacost}cr),"
             jumpsFmt = "  Jump {jumps}\n"
             footer = None
+            dockFmt = "  Dock at {station}\n"
             endFmt = ("  Finish {station} "
                         "+ {gain:n}cr "
                         "=> {credits:n}cr\n")
@@ -130,6 +134,7 @@ class Route(object):
             hopStepFmt = " {qty} x {item},"
             jumpsFmt = None
             footer = None
+            dockFmt = None
             endFmt = "  {station} +{gain:n}cr"
 
         def makeAge(value):
@@ -157,22 +162,30 @@ class Route(object):
                 age = max(trade.srcAge, trade.dstAge)
                 age = "("+makeAge(max(trade.srcAge, trade.dstAge))+")"
                 purchases += hopStepFmt.format(
-                                    qty=qty, item=trade.name(),
-                                    eacost=trade.costCr,
-                                    ttlcost=trade.costCr*qty,
-                                    longestName=longestNameLen,
-                                    age=age,
+                        qty=qty, item=trade.name(),
+                        eacost=trade.costCr,
+                        ttlcost=trade.costCr*qty,
+                        longestName=longestNameLen,
+                        age=age,
                 )
                 hopTonnes += qty
             text += hopFmt.format(station=route[i].name(), purchases=purchases)
             if jumpsFmt and self.jumps[i]:
                 jumps = ' -> '.join([ jump.name() for jump in self.jumps[i] ])
                 text += jumpsFmt.format(
-                            jumps=jumps,
-                            gain=hopGainCr,
-                            tongain=hopGainCr / hopTonnes,
-                            credits=credits + gainCr + hopGainCr
-                            )
+                        jumps=jumps,
+                        gain=hopGainCr,
+                        tongain=hopGainCr / hopTonnes,
+                        credits=credits + gainCr + hopGainCr
+                )
+            if dockFmt:
+                stnName = route[i+1].name()
+                if lsFromStar >= 100:
+                    lsFromStar = route[i+1].lsFromStar
+                stnName += " ({:n}ls)".format(lsFromStar)
+                text += dockFmt.format(
+                        station=stnName
+                )
 
             gainCr += hopGainCr
 
@@ -350,7 +363,12 @@ class TradeCalc(object):
 
         bestLoad = emptyLoad
         for result in _fitCombos(0, credits, capacity):
-            if not bestLoad or (result.gainCr > bestLoad.gainCr or (result.gainCr == bestLoad.gainCr and (result.units < bestLoad.units or (result.units == bestLoad.units and result.costCr < bestLoad.costCr)))):
+            if not bestLoad or \
+                    (result.gainCr > bestLoad.gainCr or \
+                        (result.gainCr == bestLoad.gainCr and \
+                            (result.units < bestLoad.units or \
+                                (result.units == bestLoad.units and \
+                                    result.costCr < bestLoad.costCr)))):
                 bestLoad = result
 
         return bestLoad
@@ -456,59 +474,72 @@ class TradeCalc(object):
         if stationsNotYetLoaded:
             tdb.loadStationTrades(stationsNotYetLoaded)
 
+        # Penalty is expressed as percentage, reduce it to a multiplier
+        if tdenv.lsPenalty:
+            lsPenalty = tdenv.lsPenalty / 100
+        else:
+            lsPenalty = 0
+
         for route in routes:
             tdenv.DEBUG1("Route = {}", route.str())
 
-            src = route.route[-1]
+            srcStation = route.route[-1]
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
             for dest in tdb.getDestinations(
-                                src,
+                                srcStation,
                                 maxJumps=maxJumpsPer,
                                 maxLyPer=maxLyPer,
                                 avoidPlaces=avoidPlaces,
                                 trading=True,
                     ):
+                dstSystem, dstStation = dest.system, dest.station
+                dstLy = dest.distLy
                 tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",
-                                dest.system.dbname,
-                                dest.station.dbname,
+                                dstSystem.dbname,
+                                dstStation.dbname,
                                 "->".join([jump.str() for jump in dest.via]),
-                                dest.distLy)
-                assert dest.station in src.tradingWith
+                                dstLy)
                 if restrictTo:
-                    if not dest.station in restrictTo and not dest.system in restrictTo:
+                    if not dstStation in restrictTo and not dstSystem in restrictTo:
                         tdenv.DEBUG3("{} doesn't match restrict {}",
-                                        dest.station.name(), restrictTo)
+                                        dstStation.name(), restrictTo)
                         continue
-                if unique and dest.station in route.route:
-                    tdenv.DEBUG3("{} is already in the list, not unique", dest.station.name())
+                if unique and dstStation in route.route:
+                    tdenv.DEBUG3("{} is already in the list, not unique", dstStation.name())
                     continue
 
-                trade = self.getBestTrade(src, dest.station, startCr)
+                trade = self.getBestTrade(srcStation, dstStation, startCr)
                 if not trade:
                     tdenv.DEBUG3("No trade")
                     continue
 
-                dstID = dest.station.ID
+                # Calculate total K-lightseconds supercruise time to 1dp.
+                # This will amortize for the start/end stations
+                score = trade.gainCr
+                if lsPenalty:
+                    supercruiseKls = int((srcStation.lsFromStar + dstStation.lsFromStar) / 100) / 10
+                    score *= (1 - lsPenalty * supercruiseKls)
+                dstID = dstStation.ID
                 try:
                     # See if there is already a candidate for this destination
-                    (bestStn, bestRoute, bestTrade, bestJumps, bestLy) = bestToDest[dstID]
+                    (bestStn, bestRoute, bestTrade, bestJumps, bestLy, bestScore) = bestToDest[dstID]
                     # Check if it is a better option than we just produced
-                    bestRouteGainCr = bestRoute.gainCr + bestTrade[1]
-                    newRouteGainCr = route.gainCr + trade[1]
-                    if bestRouteGainCr > newRouteGainCr:
+                    bestTradeScore = bestRoute.score + bestScore
+                    newTradeScore = route.score + score
+                    if bestTradeScore > newTradeScore:
                         continue
-                    if bestRouteGainCr == newRouteGainCr and bestLy <= dest.distLy:
+                    if bestTradeScore == newTradeScore and bestLy <= dstLy:
                         continue
                 except KeyError:
                     # No existing candidate, we win by default
                     pass
-                bestToDest[dstID] = [ dest.station, route, trade, dest.via, dest.distLy ]
+                bestToDest[dstID] = [ dstStation, route, trade, dest.via, dstLy, score ]
 
         result = []
-        for (dst, route, trade, jumps, ly) in bestToDest.values():
-            result.append(route.plus(dst, trade, jumps))
+        for (dst, route, trade, jumps, ly, score) in bestToDest.values():
+            result.append(route.plus(dst, trade, jumps, score))
 
         return result
 
