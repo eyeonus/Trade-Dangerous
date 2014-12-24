@@ -138,10 +138,22 @@ class Station(object):
         Describes a station within a given system along with what trade
         opportunities it presents.
     """
-    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'tradingWith', 'itemCount')
+    __slots__ = (
+            'ID', 'system', 'dbname',
+            'lsFromStar', 'blackMarket', 'maxPadSize',
+            'tradingWith', 'itemCount'
+    )
 
-    def __init__(self, ID, system, dbname, lsFromStar, itemCount):
-        self.ID, self.system, self.dbname, self.lsFromStar, self.itemCount = ID, system, dbname, lsFromStar, itemCount
+    def __init__(
+            self, ID, system, dbname,
+            lsFromStar, blackMarket, maxPadSize,
+            itemCount,
+            ):
+        self.ID, self.system, self.dbname = ID, system, dbname
+        self.lsFromStar = lsFromStar
+        self.blackMarket = blackMarket
+        self.maxPadSize = maxPadSize
+        self.itemCount = itemCount
         self.tradingWith = None       # dict[tradingPartnerStation] -> [ available trades ]
         system.stations.append(self)
 
@@ -155,13 +167,25 @@ class Station(object):
 
 
     def __repr__(self):
-        return "Station(ID={}, system='{}', dbname='{}', lsFromStar={})".format(self.ID, re.escape(self.system.dbname), re.escape(self.dbname), self.lsFromStar)
+        return ("Station("
+                    "ID={}, system='{}', dbname='{}', "
+                    "lsFromStar={}, "
+                    "blackMarket='{}', "
+                    "maxPadSize='{}'"
+                    ")".format(
+                self.ID,
+                re.escape(self.system.dbname),
+                re.escape(self.dbname),
+                self.lsFromStar,
+                self.blackMarket,
+                self.maxPadSize,
+        ))
 
 
 ######################################################################
 
 
-class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'capacity', 'mass', 'driveRating', 'maxLyEmpty', 'maxLyFull', 'maxSpeed', 'boostSpeed', 'stations' ])):
+class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'cost', 'stations' ])):
     def name(self):
         return self.dbname
 
@@ -309,6 +333,11 @@ class TradeDB(object):
                     ]
 
 
+    # Translation matrixes for attributes -> common presentation
+    marketStates = { '?': '?', 'Y': 'Yes', 'N': 'No' }
+    padSizes = { '?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg' }
+
+
     def __init__(self,
                     tdenv=None,
                     load=True,
@@ -337,6 +366,16 @@ class TradeDB(object):
                     maxSystemLinkLy=tdenv.maxSystemLinkLy,
             )
 
+    @staticmethod
+    def calculateDistance2(lx, ly, lz, rx, ry, rz):
+        """
+        Returns the square of the distance between two points
+        """
+        dX = (lx - rx)
+        dY = (ly - ry)
+        dZ = (lz - rz)
+        return (dX ** 2) + (dY ** 2) + (dZ ** 2)
+
 
     ############################################################
     # Access to the underlying database.
@@ -348,6 +387,7 @@ class TradeDB(object):
             import sqlite3
             conn = sqlite3.connect(self.dbFilename)
             conn.execute("PRAGMA foreign_keys=ON")
+            conn.create_function('dist2', 6, TradeDB.calculateDistance2)
             return conn
         except ImportError as e:
             print("ERROR: You don't appear to have the Python sqlite3 module installed. Impressive. No, wait, the other one: crazy.")
@@ -430,7 +470,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
         for (ID, name, posX, posY, posZ) in self.cur:
-            sys = systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
+            systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
@@ -446,6 +486,37 @@ class TradeDB(object):
             return key.system
 
         return TradeDB.listSearch("System", key, self.systems(), key=lambda system: system.dbname)
+
+
+    def addLocalSystem(self, name, x, y, z):
+        """
+        Add a system to the local cache and memory copy.
+        """
+
+        db = self.getDB()
+        cur = db.cursor()
+        cur.execute("""
+                INSERT INTO System (
+                    name, pos_x, pos_y, pos_z, added_id
+                ) VALUES (
+                    ?, ?, ?, ?,
+                    (SELECT added_id
+                       FROM Added
+                      WHERE name = ?)
+                )
+        """, [
+                name, x, y, z, 'Local',
+        ])
+        ID = cur.lastrowid
+        system = System(ID, name, x, y, z)
+        self.systemByID[ID] = system
+        self.systemByName[name] = system
+        db.commit()
+        if not self.tdenv.quiet:
+            print("- Added new system #{}: {} [{},{},{}]".format(
+                    ID, name, x, y, z
+            ))
+        return system
 
 
     def lookupSystemRelaxed(self, key):
@@ -484,15 +555,49 @@ class TradeDB(object):
             place = self.lookupPlace(system)
             system = place.system if isinstance(system, Station) else place
 
-        # Yield what we already have
-        if includeSelf:
-            yield system, 0.
-
         cache = system._rangeCache
         if not cache:
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
+
         probedLy = cache.probedLy
+        if ly > probedLy:
+            # Consult the database for stars we haven't seen.
+            sysX, sysY, sysZ = system.posX, system.posY, system.posZ
+            self.cur.execute("""
+                    SELECT  sys.system_id
+                      FROM  System AS sys
+                     WHERE  sys.pos_x BETWEEN ? AND ?
+                       AND  sys.pos_y BETWEEN ? AND ?
+                       AND  sys.pos_z BETWEEN ? AND ?
+                       AND  sys.system_id != ?
+            """, [
+                    sysX - ly, sysX + ly,
+                    sysY - ly, sysY + ly,
+                    sysZ - ly, sysZ + ly,
+                    system.ID,
+            ])
+            knownIDs = frozenset(
+                system.ID for system in cachedSystems.keys()
+            )
+            lySq = ly * ly
+            for candID, in self.cur:
+                if candID in knownIDs:
+                    continue
+                candidate = self.systemByID[candID]
+                distSq = (
+                        (candidate.posX - sysX) ** 2 +
+                        (candidate.posY - sysY) ** 2 +
+                        (candidate.posZ - sysZ) ** 2
+                )
+                if distSq <= lySq:
+                    cachedSystems[candidate] = math.sqrt(distSq)
+
+            cache.probedLy = probedLy = ly
+
+        if includeSelf:
+            yield system, 0.
+
         if probedLy > ly:
             # Cache may contain values outside our view
             for sys, dist in cachedSystems.items():
@@ -502,43 +607,6 @@ class TradeDB(object):
             # No need to be conditional inside the loop
             yield from cachedSystems.items()
 
-        if probedLy >= ly:
-            # If the cache already covered us, we can leave
-            return
-
-        # Consult the database for stars we haven't seen.
-        sysX, sysY, sysZ = system.posX, system.posY, system.posZ
-        self.cur.execute("""
-                SELECT  sys.system_id
-                  FROM  System AS sys
-                 WHERE  sys.pos_x BETWEEN ? AND ?
-                   AND  sys.pos_y BETWEEN ? AND ?
-                   AND  sys.pos_z BETWEEN ? AND ?
-                   AND  sys.system_id != ?
-        """, [
-                sysX - ly, sysX + ly,
-                sysY - ly, sysY + ly,
-                sysZ - ly, sysZ + ly,
-                system.ID,
-        ])
-        knownIDs = frozenset(
-            system.ID for system in cachedSystems.keys()
-        )
-        lySq = ly * ly
-        for candID, in self.cur:
-            if candID in knownIDs:
-                continue
-            candidate = self.systemByID[candID]
-            distSq = (
-                    (candidate.posX - sysX) ** 2 +
-                    (candidate.posY - sysY) ** 2 +
-                    (candidate.posZ - sysZ) ** 2
-            )
-            if distSq <= lySq:
-                cachedSystems[candidate] = dist = math.sqrt(distSq)
-                yield candidate, dist
-
-        cache.probedLy = ly
 
 
     ############################################################
@@ -556,7 +624,8 @@ class TradeDB(object):
             If you have previously loaded Stations, this will orphan the old objects.
         """
         stmt = """
-                SELECT  station_id, system_id, name, ls_from_star,
+                SELECT  station_id, system_id, name,
+                        ls_from_star, blackmarket, max_pad_size,
                         (SELECT COUNT(*)
                             FROM StationItem
                             WHERE station_id = Station.station_id) AS itemCount
@@ -565,12 +634,60 @@ class TradeDB(object):
         self.cur.execute(stmt)
         stationByID = {}
         systemByID = self.systemByID
-        for (ID, systemID, name, lsFromStar, itemCount) in self.cur:
-            station = Station(ID, systemByID[systemID], name, lsFromStar, itemCount)
+        for (
+            ID, systemID, name,
+            lsFromStar, blackMarket, maxPadSize,
+            itemCount
+        ) in self.cur:
+            station = Station(
+                    ID, systemByID[systemID], name,
+                    lsFromStar, blackMarket, maxPadSize,
+                    itemCount
+            )
             stationByID[ID] = station
 
         self.stationByID = stationByID
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
+
+
+    def addLocalStation(
+            self,
+            system,
+            name,
+            lsFromStar,
+            blackMarket,
+            maxPadSize,
+            ):
+        """
+        Add a station to the local cache and memory copy.
+        """
+
+        db = self.getDB()
+        cur = db.cursor()
+        cur.execute("""
+                INSERT INTO Station (
+                    name,
+                    system_id,
+                    ls_from_star,
+                    blackMarket,
+                    max_pad_size,
+                ) VALUES (
+                    ?, ?, ?, ?, ?
+                )
+        """, [
+                name, system.ID, lsFromStar, maxPadSize,
+        ])
+        ID = cur.lastrowid
+        station = Station(ID, system, name, lsFromStar, blackMarket, 0)
+        self.stationByID[ID] = station
+        db.commit()
+        if not self.tdenv.quiet:
+            print("- Added new station #{}:"
+                    "{}/{} [ls:{}, bm:{}, mps:]".format(
+                    ID, system.name(), name,
+                    lsFromStar, blackMarket, maxPadSize,
+            ))
+        return station
 
 
     def lookupPlace(self, name):
@@ -894,7 +1011,7 @@ class TradeDB(object):
             If you have previously loaded Ships, this will orphan the old objects.
         """
         stmt = """
-                SELECT ship_id, name, capacity, mass, drive_rating, max_ly_empty, max_ly_full, max_speed, boost_speed
+                SELECT ship_id, name, cost
                   FROM Ship
             """
         self.cur.execute(stmt)
@@ -1081,6 +1198,13 @@ class TradeDB(object):
         return srcStn.tradingWith[dstStn]
 
 
+    def close(self):
+        self.cur = None
+        if self.conn:
+            self.conn.close()
+        self.conn = None
+
+
     def load(self, maxSystemLinkLy=None):
         """
             Populate/re-populate this instance of TradeDB with data.
@@ -1109,13 +1233,9 @@ class TradeDB(object):
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
         if not maxSystemLinkLy:
-            longestJumper = max(ships.values(), key=lambda ship: ship.maxLyEmpty)
-            self.maxSystemLinkLy = longestJumper.maxLyEmpty
+            self.maxSystemLinkLy = 30
         else:
             self.maxSystemLinkLy = maxSystemLinkLy
-
-        self.tdenv.DEBUG2("Max ship jump distance: {} @ {:.02f}",
-                                longestJumper.name(), self.maxSystemLinkLy)
 
 
     ############################################################

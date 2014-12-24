@@ -37,35 +37,19 @@ class NoRouteError(TradeException):
     pass
 
 
+class Distance(object):
+    def __init__(self, start, end, dist):
+        self.start, self.end, self.dist = start, end, dist
+
+    def __repr__(self):
+        return "Distance({}, {}, {})".format(
+                self.start, self.end, self.dist
+        )
+
+
 def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
-    openList = dict()
-    distances = { srcSystem: [ 0.0, None ] }
-
-    # Check for a direct route and seed the open list with the systems
-    # in direct-range of the origin.
-    for dstSys, dist in tdb.genSystemsInRange(srcSystem, maxLyPer):
-        distances[dstSys] = [ dist, srcSystem ]
-        if dstSys == dstSystem:
-            return [ dstSystem, srcSystem ], distances
-        openList[dstSys] = dist
-    # Is there only one system in the list?
-    if not openList:
-        raise NoRouteError(
-                "There are no systems within {}ly of {}.".format(
-                    maxLyPer, srcSystem.name()
-                ))
-
-    # Check whether the destination system has a connecting link
-    inRange = False
-    for dstSys, dist in tdb.genSystemsInRange(dstSystem, maxLyPer):
-        inRange = True
-        break
-    if not inRange:
-        raise NoRouteError(
-                "There are no systems within {}ly of {}.".format(
-                    maxLyPer, dstSystem.name()
-                ))
-        return None, None
+    openList = { srcSystem: 0 }
+    distances = { srcSystem: Distance(srcSystem, srcSystem, 0.0) }
 
     avoiding = frozenset([
             place.system if isinstance(place, Station) else place
@@ -74,8 +58,13 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
     if avoiding:
         cmdenv.DEBUG0("Avoiding: {}", list(avoiding))
 
-    # As long as the open list is not empty, keep iterating.
-    while openList and dstSystem not in distances:
+    leastHops = False
+
+    # Once we find a path, we can curb any remaining paths that
+    # are longer. This allows us to search aggresively until we
+    # find the shortest route.
+    shortestDist = float("inf")
+    while openList:
 
         # Expand the search domain by one jump; grab the list of
         # nodes that are this many hops out and then clear the list.
@@ -87,32 +76,37 @@ def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
                 if destSys in avoiding:
                     continue
                 dist = startDist + destDist
+                if dist >= shortestDist:
+                    continue
                 # If we aready have a shorter path, do nothing
                 try:
                     distNode = distances[destSys]
-                    if distNode[0] <= dist:
+                    if distances[destSys].dist <= dist:
                         continue
-                    distNode[0], distNode[1] = dist, node
                 except KeyError:
-                    distances[destSys] = [ dist, node ]
+                    pass
+                distances[destSys] = Distance(node, destSys, dist)
                 openList[destSys] = dist
+                if destSys == dstSystem:
+                    shortestDist = dist
 
     # Unravel the route by tracing back the vias.
     route = [ dstSystem ]
-    while route[-1] != srcSystem:
-        jumpEnd = route[-1]
+    jumpEnd = dstSystem
+    while jumpEnd != srcSystem:
         try:
-            jumpStart = distances[jumpEnd][1]
+            distEnt = distances[jumpEnd]
         except KeyError:
             raise NoRouteError(
                     "No route found between {} and {} "
                         "with {}ly jump limit.".format(
                             srcSystem.name(), dstSystem.name(), maxLyPer
                     ))
-            return None, None
-        route.append(jumpStart)
 
-    return route, distances
+        route.append(distEnt.start)
+        jumpEnd = distEnt.start
+
+    return route
 
 
 ######################################################################
@@ -132,7 +126,7 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0("Route from {} to {} with max {}ly per jump.",
                     srcSystem.name(), dstSystem.name(), maxLyPer)
 
-    route, distances = getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer)
+    route = getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer)
 
     results.summary = ResultRow(
                 fromSys=srcSystem,
@@ -140,22 +134,22 @@ def run(results, cmdenv, tdb):
                 maxLy=maxLyPer,
             )
 
-    lastHop, totalLy, dirLy = None, 0.00, 0.00
+    lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     route.reverse()
-    for hop in route:
-        jumpLy = (distances[hop][0] - distances[lastHop][0]) if lastHop else 0.00
+    for jumpSys in route:
+        jumpLy = math.sqrt(lastSys.distToSq(jumpSys))
         totalLy += jumpLy
         if cmdenv.detail:
-            dirLy = math.sqrt(dstSystem.distToSq(hop))
+            dirLy = math.sqrt(jumpSys.distToSq(dstSystem))
         row = ResultRow(
                 action='Via',
-                system=hop,
+                system=jumpSys,
                 jumpLy=jumpLy,
                 totalLy=totalLy,
                 dirLy=dirLy,
                 )
         results.rows.append(row)
-        lastHop = hop
+        lastSys = jumpSys
     results.rows[0].action='Depart'
     results.rows[-1].action='Arrive'
 

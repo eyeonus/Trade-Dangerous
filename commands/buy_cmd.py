@@ -1,6 +1,8 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
+from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from tradedb import TradeDB
+
 import math
 
 ######################################################################
@@ -18,35 +20,35 @@ switches = [
             help='Require at least this quantity.',
             default=0,
             type=int,
-        ),
+    ),
     ParseArgument('--near',
             help='Find sellers within jump range of this system.',
             type=str
-        ),
-    ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
+    ),
+    ParseArgument('--ly',
+            help='[Requires --near] Systems within this range of --near.',
             default=None,
             dest='maxLyPer',
             metavar='N.NN',
             type=float,
-        ),
+    ),
     ParseArgument('--limit',
             help='Maximum number of results to list.',
             default=None,
             type=int,
-        ),
+    ),
     ParseArgument('--ages',
             help='Show age of data.',
             default=False,
             action='store_true',
-        ),
+    ),
     MutuallyExclusiveGroup(
         ParseArgument('--price-sort', '-P',
                 help='(When using --near) Sort by price not distance',
                 action='store_true',
                 default=False,
                 dest='sortByPrice',
-            ),
+        ),
         ParseArgument('--stock-sort', '-S',
             help='Sort by stock followed by price',
             action='store_true',
@@ -61,6 +63,9 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
+
+    if cmdenv.ages and not cmdenv.quiet:
+        print("--ages is now enabled by default.")
 
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
@@ -83,19 +88,13 @@ def run(results, cmdenv, tdb):
             'ss.station_id',
             'ss.price',
             'ss.units',
+            "JULIANDAY('NOW') - JULIANDAY(ss.modified)",
     ]
     bindValues = [ ]
 
     if cmdenv.quantity:
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
-
-    if cmdenv.ages:
-        columns.append(
-               "julianday('now') - julianday(ss.modified)"
-        )
-    else:
-        columns.append('0')
 
     nearSystem = cmdenv.nearSystem
     if nearSystem:
@@ -182,15 +181,16 @@ def render(results, cmdenv, tdb):
     stnRowFmt.addColumn('Cost', '>', 10, 'n',
             key=lambda row: row.price)
     stnRowFmt.addColumn('Stock', '>', 10,
-            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else 'unknown')
+            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
 
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
-    if cmdenv.ages:
-        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
-                key=lambda row: row.age)
+    stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+            key=lambda row: row.age)
+    stnRowFmt.addColumn("Pad", '>', '3',
+            key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

@@ -210,7 +210,7 @@ def dumpPrices(
                 level = levelDesc[stockLevel + 1]
                 stockStr = units + level
         else:
-            if demandLevel == 0:
+            if fromStn == 0 or demandLevel == 0:
                 demandStr = naIQL
             elif demandLevel < 0 and demand <= 0:
                 demandStr = defIQL

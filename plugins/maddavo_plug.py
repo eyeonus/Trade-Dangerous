@@ -79,22 +79,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
                 cacheNeedsRebuild = True
             if self.getOption("stncsv"):
-                try:
-                    transfers.download(
-                        tdenv,
-                        "http://www.davek.com.au/td/Station.csv",
-                        "data/Station.csv",
-                        backup=True,
-                    )
-                except transfers.HTTP404 as e:
-                    if not tdenv.quiet:
-                        print("Got HTTP 404 Error: Trying alternate URL...")
-                    transfers.download(
-                        tdenv,
-                        "http://www.davek.com.au/td/station.asp",
-                        "data/Station.csv",
-                        backup=True,
-                    )
+                transfers.download(
+                    tdenv,
+                    "http://www.davek.com.au/td/station.asp",
+                    "data/Station.csv",
+                    backup=True,
+                )
                 cacheNeedsRebuild = True
             # Download 
             transfers.download(

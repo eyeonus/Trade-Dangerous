@@ -86,6 +86,12 @@ switches = [
             type=float,
             dest='maxAge',
         ),
+    ParseArgument('--ls-penalty', '--lsp',
+            help="Penalty per 1kls stations are from their stars.",
+            default=0.5,
+            type=float,
+            dest='lsPenalty'
+        ),
     ParseArgument('--unique',
             help='Only visit each station once.',
             action='store_true',
@@ -507,7 +513,7 @@ def run(results, cmdenv, tdb):
 
     # seed the route table with starting places
     routes = [
-        Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0)
+        Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0, score=0)
             for src in cmdenv.origins
             if src not in avoidPlaces and src.system not in avoidPlaces
     ]

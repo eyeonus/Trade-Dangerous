@@ -49,6 +49,7 @@ def main(argv):
 
     results = cmdenv.run(tdb)
     if results:
+        tdb.close()
         results.render()
 
 

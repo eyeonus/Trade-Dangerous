@@ -2,13 +2,37 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.2.4 [wip]
+v6.3.1 [wip]
+. (kfsone) Added "--ls-penalty" ("--lsp") for biasing "run" calculations
+   in favor of shorter supercruise times.
++ Stations, data: kfsone
+
+v6.3.0 Dec 23 2014
+. (OpenSS) Script for Windows users (see scripts/README.txt)!
+. (kfsone) Added support for pad sizes at stations,
+. (kfsone) Revamped output from "local", "buy", "sell" and "olddata".
+    - "--ages" is the default now (so the option is not needed),
+    - Added pad size display,
+    - Improved black market display,
+    - Changed '+' to '/' for consistency on station lines,
+. (bgol) Fixed weirdness with rangeCache
+. (bgol/kfsone) Fixed jump distances and performance of "nav" command
++ Stations, Data: kfsone
+
+v6.2.4 Dec 21 2014
+. (kfsone) Experimental "add-station" command in misc,
+. (kfsone) Added "--near" to olddata command,
+. (kfsone) Route calculation performance,
+. (kfsone) Added "Black Market" flag to station data,
+. (kfsone) Added Black Market indicators to "local" command,
+. (kfsone) Reorganized Ship and ShipVendor data (prices are ship based now),
+. (kfsone) Draft version of "jsonprices",
 . (gazelle) Auto-completion for bash users (see scripts/README.txt)
 . (gazelle) Nice overhaul of the csv export command
 . (kfsone) Fix for UTF-8 decoding error,
 . (kfsone) Rebuild cache before .prices file after downloading .csvs
 . (maddavo) Combat Stabilisers do exist
-+ Systems, Stations, Data: Maddavo, Gazelle
++ Systems, Stations, Data: Maddavo, Gazelle, Kfsone, many others
 
 v6.2.3 Dec 17 2014
 . (kfsone) "maddavo" import plugin:
