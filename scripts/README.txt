@@ -60,8 +60,17 @@ $ tdupd <station>
 
 
 <WINDOWS USERS>:
-For Windows users, you'll need "bash" from the msysgit package. You
-can download it here: http://msysgit.github.io/
+
+For Windows users, there are two options.
+
+1. There is a basic trade.bat file which can import market data and
+calculate simple trade runs. This trade.bat file can be run without
+any further requirements once you have Python 3.4 installed. More
+documentation for this option can be found in the <BATCH-FILE> section
+of this file
+
+2. To use the more powerful bash scripts you'll need "bash" from the
+msysgit package. You can download it here: http://msysgit.github.io/
 
 Once it's installed, press the Windows key and type: git
 
@@ -154,6 +163,86 @@ type in the command as seen above.
 
 </BASH-USERS>
 
+<BATCH-FILE>:
+
+The trade.bat file was created by OpenSS to enable some simple usage
+of Trade Dangerous without needing to install bash.
+
+It currently implements:
+1.  Updating the local Trade Dangerous database to reflect the
+    database run at Maddavo's Market Share
+    (http://www.davek.com.au/td/default.asp).
+    This should give you a decent database to start running trade runs.
+2.  Importing a local "import.prices" file such as would be produced
+    from EliteOCR.
+    This can be used to add more recent market information to
+    the database.
+3.  Setting/Overriding currently stored default values.
+    This is simply an ease-of-use feature to prevent having to type
+    values multiple times.
+4.  Ask Trade Dangerous to calculate a trade run.
+    This will ask a series of questions and calculate a run.
+
+Set Up:
+
+If you will be using the same ship for an extended period of time, it
+would be a good idea to set the default values (located at the top of
+the trade.bat file) before you run it to prevent being asked for the
+values each time the file is run. You can edit the file by right
+clicking it and choosing "Edit". This will enable you to set default
+values for your ship's capacity and range as well as setting options
+such as how many hops (station visits) and jumps (hyperdrive jumps) to
+make as well as the maximum age of the market data to use.
+
+When you set these values make sure you do not leave a space after the
+"=" sign. Eg: set DEFAULT_CAPACITY=40
+
+Usage:
+
+Throughout the batch file the following conventions are used:
+() Round brackets signify the letter to enter for that part of the menu.
+   (I)n this example you would enter "i" and press enter
+[] Square brackets signify the default value that has been set in the
+   "Set Up" section above. This value will be automatically used if
+   you press enter
+
+When the batch file is first run it will ask if you want it to update
+the local database to match Maddavo's Market Share. It is generally a
+good idea to do this to ensure you have the most recent trade data to
+work with. This is highly recommended for the first run of the batch
+file to make sure there is actually some data to work with.
+
+Main Menu:
+
+The main menu will appear as such:
+(U)pdate, (I)mport, (P)references or (R)un
+Each option is detailed below.
+
+  Update:
+  This is the same update that is run when the batch file is first
+  opened. It will obtain the latest market data from Maddavo.
+
+  Import:
+  Import local market data from "import.prices". If you are using
+  EliteOCR you can set the "export directory" in EliteOCR's
+  preferences to match the main directory of Trade Dangerous
+  (not the scripts folder) and when you choose "Export Trade
+  Dangerous" in EliteOCR it should be placed in the right location to
+  simply choose Import from the batch file's main menu.
+
+  Preferences:
+  These are the values used to calculate trade runs. You can use this
+  to override the values set under the "Set Up" section above.
+
+  Run:
+  This is where you can start making credits. It will ask you for your
+  current credits and location and ask Trade Dangerous to calculate a
+  route according to the default values set above. If these values
+  have not been set, you will be asked for them and they will be stored
+  for the rest of the batch file session. They can be changed again
+  in the preferences option from the main menu.
+
+</BATCH-FILE>
 
 -Oliver
 

@@ -1,6 +1,8 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import *
+from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from tradedb import TradeDB
+
 import math
 
 ######################################################################
@@ -62,6 +64,9 @@ switches = [
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
 
+    if cmdenv.ages and not cmdenv.quiet:
+        print("--ages is now enabled by default.")
+
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
@@ -83,19 +88,13 @@ def run(results, cmdenv, tdb):
             'ss.station_id',
             'ss.price',
             'ss.units',
+            "JULIANDAY('NOW') - JULIANDAY(ss.modified)",
     ]
     bindValues = [ ]
 
     if cmdenv.quantity:
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
-
-    if cmdenv.ages:
-        columns.append(
-               "julianday('now') - julianday(ss.modified)"
-        )
-    else:
-        columns.append('0')
 
     nearSystem = cmdenv.nearSystem
     if nearSystem:
@@ -182,15 +181,16 @@ def render(results, cmdenv, tdb):
     stnRowFmt.addColumn('Cost', '>', 10, 'n',
             key=lambda row: row.price)
     stnRowFmt.addColumn('Stock', '>', 10,
-            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else 'unknown')
+            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
 
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
-    if cmdenv.ages:
-        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
-                key=lambda row: row.age)
+    stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+            key=lambda row: row.age)
+    stnRowFmt.addColumn("Pad", '>', '3',
+            key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

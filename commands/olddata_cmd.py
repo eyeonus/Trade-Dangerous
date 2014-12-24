@@ -1,8 +1,10 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
-import math
+from tradedb import TradeDB
 from tradeexcept import TradeException
+
 import itertools
+import math
 
 ######################################################################
 # Parser config
@@ -156,19 +158,25 @@ def render(results, cmdenv, tdb):
     longestNameLen = len(longestNamed.station.name())
 
     rowFmt = RowFormat().append(
-                ColumnFormat("Station", '<', longestNameLen,
-                        key=lambda row: row.station.name())
-            ).append(
-                ColumnFormat("Age/days", '>', '8', '.2f',
-                        key=lambda row: row.age)
-            ).append(
-                ColumnFormat("Ls/Star", '>', '10',
-                        key=lambda row: row.ls)
-            )
+            ColumnFormat("Station", '<', longestNameLen,
+                    key=lambda row: row.station.name())
+    )
 
     if cmdenv.nearSystem:
         rowFmt.addColumn('Dist', '>', 6, '.2f',
                 key=lambda row: math.sqrt(row.dist2))
+    
+    rowFmt.append(
+            ColumnFormat("Age/days", '>', '8', '.2f',
+                    key=lambda row: row.age)
+    ).append(
+            ColumnFormat("Ls/Star", '>', '10',
+                    key=lambda row: row.ls)
+    ).append(
+            ColumnFormat("Pad", '>', '3',
+                    key=lambda row: \
+                        TradeDB.padSizes[row.station.maxPadSize])
+    )
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()

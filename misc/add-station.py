@@ -4,7 +4,7 @@
 #
 # Usage:
 #
-#  add-station.py <system name> /
+#  add-station.py <system name> / <station name> :: ls=n :: bm=[?YN] :: pad=[?SML]
 
 
 import re
@@ -80,13 +80,21 @@ def titleFixup(text):
     return text
 
 
-def addStation(conn, sysName, stnName, distLs, blackMarket):
+def addStation(
+        conn,
+        sysName,
+        stnName,
+        distLs,
+        blackMarket,
+        maxPadSize,
+        ):
     """
     Adds a station to the csv and db if not already present.
     """
 
     assert isinstance(distLs, int)
     assert blackMarket in [ '?', 'Y', 'N' ]
+    assert maxPadSize in [ '?', 'S', 'M', 'L' ]
 
     sysName = sysName.upper()
     stnName = titleFixup(stnName)
@@ -124,27 +132,38 @@ def addStation(conn, sysName, stnName, distLs, blackMarket):
 
     # Add to the .csv first.
     with open(csvFile, "ab") as fh:
-        fh.write("'{}','{}',{},'{}'\n".format(
+        fh.write("'{}','{}',{},'{}','{}'\n".format(
                 sysCsvName,
                 stnCsvName,
                 distLs,
                 blackMarket,
+                maxPadSize,
         ).encode())
 
     # Now insert into the DB.
     cur = conn.cursor()
     cur.execute("""
-            INSERT  INTO Station
-                    (system_id, name, ls_from_star, blackMarket)
-            VALUES  (?, ?, ?, ?)
-    """, [systemID, stnName, distLs, blackMarket])
+            INSERT  INTO Station (
+                system_id,
+                name,
+                ls_from_star,
+                blackmarket,
+                max_pad_size
+            ) VALUES  (?, ?, ?, ?, ?)
+    """, [
+            systemID,
+            stnName,
+            distLs,
+            blackMarket,
+            maxPadSize
+    ])
     stationID = cur.lastrowid
     conn.commit()
 
-    print("ADDED: #{}: {}/{} ls={}, bm={}".format(
+    print("ADDED: #{}: {}/{} ls={}, bm={}, mps={}".format(
             stationID,
             sysName, stnName,
-            distLs, blackMarket
+            distLs, blackMarket, maxPadSize,
     ))
 
 
@@ -153,15 +172,18 @@ def usage():
             "Usage: "
             "{} System Name "
                 "/ Station Name "
-                "[/ ls:###] "
-                "[/ bm:y | / bm:n]"
+                "[/ ls=###] "
+                "[/ bm=y|n ]"
+                "[/ pad=s|m|l ]"
             "\n"
-            "ls:###  (e.g. ls:0 or ls:1001)\n"
+            "ls=###  (e.g. ls=0 or ls=1001)\n"
                 "    Distance in light seconds from star to station.\n"
-            "bm:y\n"
+            "bm=y\n"
                 "    Station has confirmed black market.\n"
-            "bm:n\n"
+            "bm=n\n"
                 "    Station has confirmed absence of black market."
+            "pad=s or pad=m or pad=l\n"
+                "    Maximum pad size the station supports."
     )
 
 def main():
@@ -169,6 +191,7 @@ def main():
 
     dist = 0
     blackMarket = '?'
+    maxPadSize = '?'
 
     if len(sys.argv) <= 1 or \
             sys.argv[1] in ('--help', '-h', '-?', '/?', '/help'):
@@ -185,31 +208,40 @@ def main():
 
     for i in range(2, len(values)):
         val = values[i].lower()
-        if val.startswith('ls:'):
+        if val.startswith('ls='):
             dist = val[3:]
             try:
                 dist = int(dist)
             except ValueError:
                 raise AddStationError(
-                        "Expecting integer value after 'ls:', got %s" % dist
+                        "Expecting integer value after 'ls=', got %s" % dist
                 )
-        elif val.startswith('bm:'):
-            if val == 'bm:y':
+        elif val.startswith('bm='):
+            if val == 'bm=y':
                 blackMarket = 'Y'
-            elif val == 'bm:n':
+            elif val == 'bm=n':
                 blackMarket = 'N'
-            elif val == 'bm:?':
+            elif val == 'bm=?':
                 blackMarket = '?'
             else:
                 raise AddStationError(
                         "Unrecognized blackmarket switch: %s" % val
                 )
+        elif val.startswith("pad="):
+            if val == 'pad=s':
+                maxPadSize = 'S'
+            elif val == 'pad=m':
+                maxPadSize = 'M'
+            elif val == 'pad=l':
+                maxPadSize = 'L'
+            elif val == 'pad=?':
+                maxPadSize = '?'
         else:
             raise AddStationError(
                     "Unrecognized station option: {}".format(val)
             )
 
-    addStation(conn, values[0], values[1], dist, blackMarket)
+    addStation(conn, values[0], values[1], dist, blackMarket, maxPadSize)
 
 
 if __name__ == "__main__":
