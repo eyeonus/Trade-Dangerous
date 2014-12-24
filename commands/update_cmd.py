@@ -334,7 +334,12 @@ def editUpdate(tdb, cmdenv, stationID):
         tmpPath.unlink()
         tmpPath = None
 
-    finally:
+    except Exception as e:
+        print("ERROR:", e)
+        print()
+        print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
+                "prices.last"
+        ))
         # Save a copy
         if absoluteFilename and tmpPath:
             saveTemporaryFile(tmpPath)
@@ -357,12 +362,12 @@ def guidedUpdate(tdb, cmdenv):
         tmpPath = None
 
     except Exception as e:
-        print("*** ERROR ENCOUNTERED ***")
+        print("ERROR:", e)
+        print()
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
                 "prices.last"
         ))
-        raise
-    finally:
+    
         if tmpPath:
             saveTemporaryFile(tmpPath)
 

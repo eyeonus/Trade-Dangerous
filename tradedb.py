@@ -138,12 +138,21 @@ class Station(object):
         Describes a station within a given system along with what trade
         opportunities it presents.
     """
-    __slots__ = ('ID', 'system', 'dbname', 'lsFromStar', 'blackMarket', 'tradingWith', 'itemCount')
+    __slots__ = (
+            'ID', 'system', 'dbname',
+            'lsFromStar', 'blackMarket', 'maxPadSize',
+            'tradingWith', 'itemCount'
+    )
 
-    def __init__(self, ID, system, dbname, lsFromStar, blackMarket, itemCount):
+    def __init__(
+            self, ID, system, dbname,
+            lsFromStar, blackMarket, maxPadSize,
+            itemCount,
+            ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = lsFromStar
         self.blackMarket = blackMarket
+        self.maxPadSize = maxPadSize
         self.itemCount = itemCount
         self.tradingWith = None       # dict[tradingPartnerStation] -> [ available trades ]
         system.stations.append(self)
@@ -158,12 +167,19 @@ class Station(object):
 
 
     def __repr__(self):
-        return "Station(ID={}, system='{}', dbname='{}', lsFromStar={})".format(
+        return ("Station("
+                    "ID={}, system='{}', dbname='{}', "
+                    "lsFromStar={}, "
+                    "blackMarket='{}', "
+                    "maxPadSize='{}'"
+                    ")".format(
                 self.ID,
                 re.escape(self.system.dbname),
                 re.escape(self.dbname),
-                self.lsFromStar
-        )
+                self.lsFromStar,
+                self.blackMarket,
+                self.maxPadSize,
+        ))
 
 
 ######################################################################
@@ -315,6 +331,11 @@ class TradeDB(object):
                       [ 'Item.csv', 'Item' ],
                       [ 'AltItemNames.csv', 'AltItemNames' ]
                     ]
+
+
+    # Translation matrixes for attributes -> common presentation
+    marketStates = { '?': '?', 'Y': 'Yes', 'N': 'No' }
+    padSizes = { '?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg' }
 
 
     def __init__(self,
@@ -603,7 +624,8 @@ class TradeDB(object):
             If you have previously loaded Stations, this will orphan the old objects.
         """
         stmt = """
-                SELECT  station_id, system_id, name, ls_from_star, blackMarket,
+                SELECT  station_id, system_id, name,
+                        ls_from_star, blackmarket, max_pad_size,
                         (SELECT COUNT(*)
                             FROM StationItem
                             WHERE station_id = Station.station_id) AS itemCount
@@ -613,11 +635,13 @@ class TradeDB(object):
         stationByID = {}
         systemByID = self.systemByID
         for (
-            ID, systemID, name, lsFromStar, blackMarket, itemCount
+            ID, systemID, name,
+            lsFromStar, blackMarket, maxPadSize,
+            itemCount
         ) in self.cur:
             station = Station(
                     ID, systemByID[systemID], name,
-                    lsFromStar, blackMarket,
+                    lsFromStar, blackMarket, maxPadSize,
                     itemCount
             )
             stationByID[ID] = station
@@ -626,7 +650,14 @@ class TradeDB(object):
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
 
 
-    def addLocalStation(self, system, name, lsFromStar, blackMarket):
+    def addLocalStation(
+            self,
+            system,
+            name,
+            lsFromStar,
+            blackMarket,
+            maxPadSize,
+            ):
         """
         Add a station to the local cache and memory copy.
         """
@@ -635,20 +666,26 @@ class TradeDB(object):
         cur = db.cursor()
         cur.execute("""
                 INSERT INTO Station (
-                    name, system_id, ls_from_star, blackMarket
+                    name,
+                    system_id,
+                    ls_from_star,
+                    blackMarket,
+                    max_pad_size,
                 ) VALUES (
-                    ?, ?, ?, ?
+                    ?, ?, ?, ?, ?
                 )
         """, [
-                name, system.ID, lsFromStar
+                name, system.ID, lsFromStar, maxPadSize,
         ])
         ID = cur.lastrowid
         station = Station(ID, system, name, lsFromStar, blackMarket, 0)
         self.stationByID[ID] = station
         db.commit()
         if not self.tdenv.quiet:
-            print("- Added new station #{}: {}/{} [ls:{}, bm:{}]".format(
-                    ID, system.name(), name, lsFromStar, blackMarket
+            print("- Added new station #{}:"
+                    "{}/{} [ls:{}, bm:{}, mps:]".format(
+                    ID, system.name(), name,
+                    lsFromStar, blackMarket, maxPadSize,
             ))
         return station
 

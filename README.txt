@@ -547,7 +547,7 @@ LOCAL sub-command:
   given a ship, it uses the max dry range of the ship. Use --full if you
   want to restrict to systems with a full cargo hold.
 
-  trade.py local [-q | -v] [--ly N.NN] [--ages] system
+  trade.py local [-q | -v] [--ly N.NN] system
 
     --ly N.NN
       Constrains local systems to a maximum ly distance
@@ -556,8 +556,8 @@ LOCAL sub-command:
     -v
       Show stations + their distance from star
 
-    --ages
-      Show stations + the age of their price data
+    -vv (or -v -v or --detail --detail)
+      Include count of items at station
 
     system
       Name of the system or a station in the system,
@@ -571,26 +571,27 @@ LOCAL sub-command:
     LHS 3333      5.54
 
     > trade.py local mokosh --ly 6 -v
-    System        Dist
-      +  Station                                Dist
-    ------------------------------------------------
-    MOKOSH        0.00
-      +  Bethe Station                      2500.0ls
-      +  Lubin Orbital
-    GRANTHAIMI    2.24
-      +  Parmitano Colony
-    LHS 3333      5.54
+    System              Dist
+      /  Station                                Dist Age/days BMkt Pad
+    ------------------------------------------------------------------
+    MOKOSH              0.00
+      /  Bethe Station                        2500ls     8.27    N   M
+      /  Lubin Orbital                             ?     0.85    Y   L
+    GRANTHAIMI          2.24
+      /  Parmitano Colony                          ?     5.88    ?   ?
+    LHS 3333            5.54
 
-    > trade.py local mokosh --ly 6 --ages
-    System        Dist
-      +  Station                          Age/days
-    ----------------------------------------------
-    MOKOSH        0.00
-      +  Bethe Station                        1.75
-      +  Lubin Orbital                        0.60
-    GRANTHAIMI    2.24
-      +  Parmitano Colony                     5.03
-    LHS 3333      5.54
+       Mokosh/Bethe Station is 2500ls from its star, the data is 8 days old,
+       there is no black market, and the largest pad size is Medium
+
+       Lubin Orbital's distance is not known, the data is less than a day old,
+       it has a black market, and it has Large pads.
+
+       Parmitano Colony distance unknown, data nearly 6 days old, the
+       black market status is unknown as is the pad size.
+
+    Adding detail ('-vv' or '-v -v' or '--detail --detail') would add
+    a count of the number of items we have prices for at each station.
 
 
 EXPORT sub-command:

@@ -2,9 +2,16 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.2.5 [wip]
+v6.3.0 Dec 23 2014
+. (kfsone) Added support for pad sizes at stations,
+. (kfsone) Revamped output from "local", "buy", "sell" and "olddata".
+    - "--ages" is the default now (so the option is not needed),
+    - Added pad size display,
+    - Improved black market display,
+    - Changed '+' to '/' for consistency on station lines,
 . (bgol) Fixed weirdness with rangeCache
 . (bgol/kfsone) Fixed jump distances and performance of "nav" command
++ Stations, Data: kfsone
 
 v6.2.4 Dec 21 2014
 . (kfsone) Experimental "add-station" command in misc,
