@@ -111,11 +111,8 @@ class Route(object):
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = ("     {qty:>4} x {item:<{longestName}}"
                             " {eacost:>10n}cr each, {ttlcost:>10n}cr total {age}\n")
-            jumpsFmt = ("  Jump {jumps} => "
-                        "Gain {gain:n}cr "
-                        "({tongain:n}cr/ton) "
-                        "=> {credits:n}cr\n")
-            dockFmt = "  Dock at {station}\n"
+            jumpsFmt = ("  Jump {jumps}\n")
+            dockFmt = "  Unload at {station} => Gain {gain:n}cr ({tongain:n}cr/ton) => {credits:n}cr\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = ("  Finish at {station} "
                         "gaining {gain:n}cr "
@@ -184,7 +181,10 @@ class Route(object):
                 if lsFromStar > 0:
                     stnName += " ({:n}ls)".format(lsFromStar)
                 text += dockFmt.format(
-                        station=stnName
+                        station=stnName,
+                        gain=hopGainCr,
+                        tongain=hopGainCr / hopTonnes,
+                        credits=credits + gainCr + hopGainCr
                 )
 
             gainCr += hopGainCr
