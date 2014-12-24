@@ -181,7 +181,7 @@ class Route(object):
             if dockFmt:
                 stnName = route[i+1].name()
                 lsFromStar = route[i+1].lsFromStar
-                if lsFromStar >= 100:
+                if lsFromStar > 0:
                     stnName += " ({:n}ls)".format(lsFromStar)
                 text += dockFmt.format(
                         station=stnName
