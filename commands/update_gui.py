@@ -210,9 +210,12 @@ class UpdateGUI(ScrollingCanvas):
 
 
     def checkValueAgainstStats(self, widget, stats):
-        cr = int(widget.val.get())
-        minCr, avgCr, maxCr = stats
         widget.configure(bg = 'white')
+        minCr, avgCr, maxCr = stats
+        if not avgCr:
+            return True
+
+        cr = int(widget.val.get())
 
         if cr < int(minCr / 1.01) and cr < int(avgCr * 0.7):
             widget.bell()
@@ -561,21 +564,29 @@ class UpdateGUI(ScrollingCanvas):
         self.newStation = False if int(cur.fetchone()[0]) else True
 
         cur.execute("""
-                SELECT  item_id, MIN(price), AVG(price), MAX(price)
-                  FROM  StationBuying
-                 WHERE  station_id != ?
+                SELECT  item.item_id,
+                        IFNULL(MIN(price), 0),
+                        IFNULL(AVG(price), 0),
+                        IFNULL(MAX(price), 0)
+                  FROM  Item
+                        LEFT OUTER JOIN StationBuying AS sb
+                            ON (item.item_id = sb.item_id)
                  GROUP  BY 1
-        """, [station.ID])
+        """)
         self.payStats = {
                 ID: [ minCr, int(avgCr), maxCr ]
                 for ID, minCr, avgCr, maxCr in cur
         }
         cur.execute("""
-                SELECT  item_id, MIN(price), AVG(price), MAX(price)
-                  FROM  StationSelling
-                 WHERE  station_id != ?
+                SELECT  item.item_id,
+                        IFNULL(MIN(price), 0),
+                        IFNULL(AVG(price), 0),
+                        IFNULL(MAX(price), 0)
+                  FROM  Item
+                        LEFT OUTER JOIN StationSelling AS ss
+                            ON (item.item_id = ss.item_id)
                  GROUP  BY 1
-        """, [station.ID])
+        """)
         self.askStats = {
                 ID: [ minCr, int(avgCr), maxCr ]
                 for ID, minCr, avgCr, maxCr in cur

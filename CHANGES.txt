@@ -2,7 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.3.1 [wip]
+. (kfsone) Added "--ls-penalty" ("--lsp") for biasing "run" calculations
+   in favor of shorter supercruise times.
++ Stations, data: kfsone
+
 v6.3.0 Dec 23 2014
+. (OpenSS) Script for Windows users (see scripts/README.txt)!
 . (kfsone) Added support for pad sizes at stations,
 . (kfsone) Revamped output from "local", "buy", "sell" and "olddata".
     - "--ages" is the default now (so the option is not needed),

@@ -230,6 +230,16 @@ RUN sub-command:
          --max-days-old 7     (data less than a week old)
          -MD=2                (data less than 2 days old)
 
+     --ls-penalty N.NN
+     --lsp N.NN
+       DEFAULT: 0.5
+       Reduces the score of routes by this percentage for every 1000ls
+       you have to travel to stations, which helps prioritize routes
+       with a shorter supercruise time.
+       e.g.
+         --ls-penalty 2.5
+         --lsp=0              (disables this feature)
+
      --unique
      --uni
        Only show routes which do not visit any station twice
