@@ -7,6 +7,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 DELETED = -111
 
 systems = {
+    "ARGETLAMH": "Argetlámh",
 
 #ADD_SYSTEMS_HERE
 }
