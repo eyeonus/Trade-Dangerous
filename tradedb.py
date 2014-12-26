@@ -354,7 +354,11 @@ class TradeDB(object):
         self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         self.pricesPath = dataPath / Path(tdenv.pricesFilename or TradeDB.defaultPrices)
-        self.importTables = [(str(dataPath / Path(x[0])), x[1]) for x in TradeDB.defaultTables]
+        self.importTables = [
+                (str(dataPath / Path(fn)), tn)
+                for fn, tn in TradeDB.defaultTables
+        ]
+        self.importPaths = { tn: tp for tp, tn in self.importTables }
 
         self.dbFilename = str(self.dbPath)
         self.sqlFilename = str(self.sqlPath)
@@ -670,15 +674,15 @@ class TradeDB(object):
                     system_id,
                     ls_from_star,
                     blackMarket,
-                    max_pad_size,
+                    max_pad_size
                 ) VALUES (
                     ?, ?, ?, ?, ?
                 )
         """, [
-                name, system.ID, lsFromStar, maxPadSize,
+                name, system.ID, lsFromStar, blackMarket, maxPadSize,
         ])
         ID = cur.lastrowid
-        station = Station(ID, system, name, lsFromStar, blackMarket, 0)
+        station = Station(ID, system, name, lsFromStar, blackMarket, maxPadSize, 0)
         self.stationByID[ID] = station
         db.commit()
         if not self.tdenv.quiet:
