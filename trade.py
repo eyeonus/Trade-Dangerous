@@ -75,7 +75,7 @@ if __name__ == "__main__":
         else:
             main(sys.argv)
     except PluginException as e:
-        print("Plugin Error: {}".format(e))
+        print("PLUGIN ERROR: {}".format(e))
         if 'EXCEPTIONS' in os.environ:
             raise e
         sys.exit(1)
