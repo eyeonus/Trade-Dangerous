@@ -131,14 +131,14 @@ def addStation(
         ))
 
     # Add to the .csv first.
-    with open(csvFile, "ab") as fh:
+    with open(csvFile, "a") as fh:
         fh.write("'{}','{}',{},'{}','{}'\n".format(
                 sysCsvName,
                 stnCsvName,
                 distLs,
                 blackMarket,
                 maxPadSize,
-        ).encode())
+        ))
 
     # Now insert into the DB.
     cur = conn.cursor()

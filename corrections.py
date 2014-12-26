@@ -7,6 +7,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 DELETED = -111
 
 systems = {
+    "ARGETLAMH": "Argetlámh",
 
 #ADD_SYSTEMS_HERE
 }
@@ -31,6 +32,7 @@ stations = {
     "ZETA AQUILAE/OEFELIEN": DELETED,
     "ZETA AQUILAE/JULIAN GATEWAY": DELETED,
     "GROOMBRIDGE 1618/FRANKUN RING": "Franklin Ring",
+    "WOLF 46/FISCHER CITY": DELETED,
 
 #ADD_STATIONS_HERE
 }

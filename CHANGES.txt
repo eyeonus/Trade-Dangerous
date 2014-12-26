@@ -5,7 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v6.3.1 [wip]
 . (kfsone) Added "--ls-penalty" ("--lsp") for biasing "run" calculations
    in favor of shorter supercruise times.
-+ Stations, data: kfsone
++ Stations, Systems, data: kfsone, maddavo, gazelle, shirkan
 
 v6.3.0 Dec 23 2014
 . (OpenSS) Script for Windows users (see scripts/README.txt)!
