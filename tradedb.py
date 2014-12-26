@@ -670,29 +670,77 @@ class TradeDB(object):
         cur = db.cursor()
         cur.execute("""
                 INSERT INTO Station (
-                    name,
-                    system_id,
-                    ls_from_star,
-                    blackMarket,
-                    max_pad_size
+                    name, system_id,
                 ) VALUES (
-                    ?, ?, ?, ?, ?
+                    ?, ?
                 )
-        """, [
-                name, system.ID, lsFromStar, blackMarket, maxPadSize,
-        ])
+        """, [ name, system.ID ])
         ID = cur.lastrowid
-        station = Station(ID, system, name, lsFromStar, blackMarket, maxPadSize, 0)
+        station = Station(ID, system, name, 0, '?', '?', 0)
         self.stationByID[ID] = station
         db.commit()
         if not self.tdenv.quiet:
             print("- Added new station #{}:"
-                    "{}/{} [ls:{}, bm:{}, mps:]".format(
+                    "{}/{}".format(
                     ID, system.name(), name,
-                    lsFromStar, blackMarket, maxPadSize,
             ))
         return station
 
+    def updateLocalStation(
+            self, station,
+            lsFromStar=None,
+            blackMarket=None,
+            maxPadSize=None,
+            force=False,
+            ):
+        """
+        Alter the properties of a station in-memory and in the DB.
+        """
+        changes = False
+        if lsFromStar is not None:
+            assert lsFromStar >= 0
+            if lsFromStar != station.lsFromStar:
+                if lsFromStar > 0 or force:
+                    station.lsFromStar = lsFromStar
+                    changes = True
+        if blackMarket is not None:
+            blackMarket = blackMarket.upper()
+            assert blackMarket in [ '?', 'Y', 'N' ]
+            if blackMarket != station.blackMarket:
+                if blackMarket != '?' or force:
+                    station.blackMarket = blackMarket
+                    changes = True
+        if maxPadSize is not None:
+            maxPadSize = maxPadSize.upper()
+            assert maxPadSize in [ '?', 'S', 'M', 'L' ]
+            if maxPadSize != station.maxPadSize:
+                if maxPadSize != '?' or force:
+                    station.maxPadSize = maxPadSize
+                    changes = True
+        if not changes:
+            return False
+        db = self.getDB()
+        db.execute("""
+            UPDATE Station
+               SET ls_from_star={},
+                   blackmarket={},
+                   max_pad_size={}
+             WHERE station_id = {}
+        """, [
+            station.lsFromStar,
+            station.blackMarket,
+            station.maxPadSize,
+            station.ID
+        ])
+        db.commit()
+        if not self.tdenv.quiet:
+            print("- {}/{}: ls={}, bm={}, pad={}".format(
+                    station.name(),
+                    station.lsFromStar,
+                    station.blackMarket,
+                    station.maxPadSize,
+            ))
+        return True
 
     def lookupPlace(self, name):
         """
@@ -1236,10 +1284,7 @@ class TradeDB(object):
 
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
-        if not maxSystemLinkLy:
-            self.maxSystemLinkLy = 30
-        else:
-            self.maxSystemLinkLy = maxSystemLinkLy
+        self.maxSystemLinkLy = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
 
 
     ############################################################
