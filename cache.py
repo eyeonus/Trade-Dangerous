@@ -112,10 +112,15 @@ class BuildCacheBaseException(TradeException):
     def __init__(self, fromFile, lineNo, error=None):
         self.fileName = fromFile.name
         self.lineNo = lineNo
+        self.category = "ERROR"
         self.error = error or "UNKNOWN ERROR"
 
     def __str__(self):
-        return "{}:{} {}".format(self.fileName, self.lineNo, self.error)
+        return "{}:{} {} {}".format(
+                self.fileName, self.lineNo,
+                self.category,
+                self.error,
+        )
 
 
 class UnknownStationError(BuildCacheBaseException):
@@ -310,6 +315,18 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     DELETED = corrections.DELETED
     items, buys, sells = [], [], []
 
+    warnings = 0
+
+    def ignoreOrWarn(error):
+        nonlocal warnings
+        if not tdenv.ignoreUnknown:
+            raise error
+        if not tdenv.quiet:
+            error.category = "WARNING"
+            print(error)
+        warnings += 1
+
+
     def changeStation(matches):
         nonlocal categoryID, facility, stationID
         nonlocal processedStations, processedItems
@@ -361,12 +378,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 stationID = -1
 
         if stationID < 0 :
-            ex = UnknownStationError(priceFile, lineNo, facility)
-            if not tdenv.ignoreUnknown:
-                raise ex
             stationID = DELETED
-            if not tdenv.quiet:
-                print(ex)
+            ignoreOrWarn(
+                    UnknownStationError(priceFile, lineNo, facility)
+            )
             return
 
         # Check for duplicates
@@ -411,12 +426,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             categoryID = categoriesByName[categoryName]
             tdenv.DEBUG1("Renamed: {}", categoryName)
         except KeyError:
-            ex = UnknownCategoryError(priceFile, lineNo, categoryName)
-            if not tdenv.ignoreUnknown:
-                raise ex
-            if not tdenv.quiet:
-                print(ex)
             categoryID = DELETED
+            ignoreOrWarn(
+                UnknownCategoryError(priceFile, lineNo, categoryName)
+            )
             return
 
 
@@ -440,11 +453,9 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 itemID = itemByName[itemName]
                 tdenv.DEBUG1("Renamed {} -> {}", oldName, itemName)
             except KeyError:
-                ex = UnknownItemError(priceFile, lineNo, itemName)
-                if not tdenv.ignoreUnknown:
-                    raise ex
-                if not tdenv.quiet:
-                    print(ex)
+                ignoreOrWarn(
+                    UnknownItemError(priceFile, lineNo, itemName)
+                )
                 return
 
         # Check for duplicate items within the station.
@@ -560,7 +571,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processItemLine(matches)
 
-    return items, buys, sells
+    return warnings, items, buys, sells
 
 
 ######################################################################
@@ -571,26 +582,33 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
     assert isinstance(pricesPath, Path)
 
     with pricesPath.open('rU') as pricesFile:
-        items, buys, sells = processPrices(tdenv, pricesFile, db, defaultZero)
-        if items:
-            db.executemany("""
-                        INSERT INTO StationItem
-                            (station_id, item_id, modified)
-                        VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                    """, items)
-        if sells:
-            db.executemany("""
-                        INSERT INTO StationSelling
-                            (station_id, item_id, price, units, level, modified)
-                        VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                    """, sells)
-        if buys:
-            db.executemany("""
-                        INSERT INTO StationBuying
-                            (station_id, item_id, price, units, level, modified)
-                        VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                    """, buys)
-        db.commit()
+        warnings, items, buys, sells = processPrices(
+                tdenv, pricesFile, db, defaultZero
+        )
+ 
+    if items:
+        db.executemany("""
+                    INSERT INTO StationItem
+                        (station_id, item_id, modified)
+                    VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                """, items)
+    if sells:
+        db.executemany("""
+                    INSERT INTO StationSelling
+                        (station_id, item_id, price, units, level, modified)
+                    VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                """, sells)
+    if buys:
+        db.executemany("""
+                    INSERT INTO StationBuying
+                        (station_id, item_id, price, units, level, modified)
+                    VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
+                """, buys)
+
+    db.commit()
+
+    if warnings and not tdenv.quiet:
+        print("Import completed despite warnings")
 
 
 ######################################################################
