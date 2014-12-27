@@ -1,5 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import CommandEnv
+from textwrap import TextWrapper
 
 import argparse             # For parsing command line args.
 import importlib
@@ -68,8 +69,6 @@ class CommandIndex(object):
             commands, generated programatically,
             and the outlying command functionality.
         """
-
-        from textwrap import TextWrapper
 
         text = (
             "Usage: {prog} <command>\n\n"
@@ -187,7 +186,7 @@ class CommandIndex(object):
                 )
         stdArgs.add_argument('--link-ly', '-L',
                     help='Maximum lightyears between systems to be considered linked.',
-                    default=None, dest='linkLy',
+                    default=None, dest='maxSystemLinkLy',
                 )
 
         properties = parser.parse_args(argv[1:])

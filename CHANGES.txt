@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.3.1 [wip]
+. (kfsone) You can now use "--opt=help" to get help for plugins, e.g.
+   trade.py import --plugin=maddavo --opt=help
 . (kfsone) Added "--ls-penalty" ("--lsp") for biasing "run" calculations
    in favor of shorter supercruise times.
 + Stations, Systems, data: kfsone, maddavo, gazelle, shirkan

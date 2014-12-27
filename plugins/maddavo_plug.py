@@ -17,7 +17,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     stampFile = "maddavo.stamp"
     dateRe = re.compile(r"(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)")
 
-    options = {
+    pluginOptions = {
         'buildcache':   "Forces a rebuild of the cache before processing "
                         "of the .prices file.",
         'syscsv':       "Also download System.csv from the site.",
