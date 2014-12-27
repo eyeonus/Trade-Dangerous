@@ -62,7 +62,8 @@ CREATE TABLE Station
    station_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    system_id INTEGER NOT NULL,
-   ls_from_star INTEGER NOT NULL,
+   ls_from_star INTEGER NOT NULL DEFAULT 0
+       CHECK (ls_from_star >= 0),
    blackmarket TEXT(1) NOT NULL DEFAULT '?'
        CHECK (blackmarket IN ('?', 'Y', 'N')),
    max_pad_size TEXT(1) NOT NULL DEFAULT '?'

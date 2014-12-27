@@ -1,5 +1,6 @@
-import importlib
+from textwrap import TextWrapper
 
+import importlib
 
 class PluginException(Exception):
     """
@@ -34,13 +35,66 @@ class PluginBase(object):
         self.tdenv = tdenv
 
         self.options = {}
+        try:
+            pluginOptions = self.pluginOptions
+        except AttributeError:
+            pluginOptions = {}
+
         for opt in tdenv.pluginOptions or []:
             equals = opt.find('=')
             if equals < 0:
                 key, value = opt, True
             else:
                 key, value = opt[:equals], opt[equals+1:]
+            keyName = key.lower()
+            if not keyName in pluginOptions:
+                if keyName == "help":
+                    raise SystemExit(self.usage())
+
+                if not pluginOptions:
+                    raise PluginException(
+                        "This plugin does not support any options."
+                    )
+
+                raise PluginException(
+                    "Unknown plugin option: '{}'.\n"
+                    "\n"
+                    "Valid options for this plugin:\n"
+                    "  {}.\n"
+                    "\n"
+                    "Use '--opt=help' for details.\n"
+                    .format(
+                        opt,
+                        ', '.join(
+                            opt for opt in sorted(pluginOptions.keys())
+                )))
             self.options[key.lower()] = value
+
+
+    def usage(self):
+        tw = TextWrapper(
+                width=78,
+                drop_whitespace=True,
+                expand_tabs=True,
+                fix_sentence_endings=True,
+                break_long_words=True,
+                break_on_hyphens=True,
+        )
+
+        text = tw.fill(self.__doc__.strip()) + "\n\n"
+
+        try:
+            options = self.pluginOptions
+        except AttributeError:
+            return text + "This plugin does not support any options.\n"
+
+        tw.subsequent_indent=' ' * 16,
+        text += "Options supported by this plugin:\n"
+        for opt in sorted(options.keys()):
+            text += "--opt={:<12}  ".format(opt)
+            text += tw.fill(options[opt].strip()) + "\n"
+
+        return text
 
 
     def getOption(self, key):

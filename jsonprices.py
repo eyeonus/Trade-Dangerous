@@ -74,32 +74,30 @@ def lookup_system(tdb, tdenv, name, x, y, z):
     return None
 
 
-def lookup_station(tdb, tdenv, system, name, lsFromStar, blackMarket):
+def lookup_station(
+        tdb, tdenv,
+        system, name,
+        lsFromStar, blackMarket, maxPadSize
+        ):
+    station = None
     normalizedName = tradedb.TradeDB.normalizedStr(name)
     for stn in system.stations:
         stnNormalizedName = tradedb.TradeDB.normalizedStr(stn.dbname)
         if stnNormalizedName == normalizedName:
-            if lsFromStar and not stn.lsFromStar:
-                tdenv.DEBUG0(
-                        "- Updating station {}: "
-                        " dist from star = {}",
-                        stn.name(),
-                        lsFromStar
-                )
-                db = tdb.getDB()
-                db.execute(
-                        "UPDATE Station "
-                        "SET dist_from_star = ? "
-                        "WHERE station_id = ?",
-                        [lsFromStar, stn.ID]
-                )
-                db.commit()
-            return stn
+            station = stn
+            break
 
-    if tdenv.addUnknown:
-        return tdb.addLocalStation(system, name, lsFromStar, blackMarket)
+    if not station:
+        if not tdenv.addUnknown:
+            return None
+        station = tdb.addLocalStation(system, name)
 
-    return None
+    # Now set the parameters
+    tdb.updateLocalStation(
+            stn, lsFromStar, blackMarket, maxPadSize
+    )
+    return station
+
 
 def load_prices_json(
         tdb,
