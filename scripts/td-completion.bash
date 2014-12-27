@@ -182,12 +182,12 @@ _td_run()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--capacity|--credits|--ly-per|--from|--to|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--limit|--max-days-old|-MD|--margin|--insurance|--routes)
+	--capacity|--credits|--ly-per|--from|--to|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--limit|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes)
 		# argument required
 		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps -s --limit --max-days-old -MD --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps -s --limit --max-days-old -MD --ls-penalty --lsp --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac

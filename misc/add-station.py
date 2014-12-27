@@ -131,14 +131,14 @@ def addStation(
         ))
 
     # Add to the .csv first.
-    with open(csvFile, "ab") as fh:
+    with open(csvFile, "a") as fh:
         fh.write("'{}','{}',{},'{}','{}'\n".format(
                 sysCsvName,
                 stnCsvName,
                 distLs,
                 blackMarket,
                 maxPadSize,
-        ).encode())
+        ))
 
     # Now insert into the DB.
     cur = conn.cursor()
@@ -160,7 +160,7 @@ def addStation(
     stationID = cur.lastrowid
     conn.commit()
 
-    print("ADDED: #{}: {}/{} ls={}, bm={}, mps={}".format(
+    print("ADDED: #{}: {}/{} ls={}, bm={}, pad={}".format(
             stationID,
             sysName, stnName,
             distLs, blackMarket, maxPadSize,
