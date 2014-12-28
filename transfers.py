@@ -52,6 +52,7 @@ def download(
             cmdenv, url, localFile,
             headers=None,
             backup=False,
+            shebang=None,
         ):
     """
     Fetch data from a URL and save the output
@@ -68,6 +69,9 @@ def download(
 
     headers:
         dict() of additional HTTP headers to send
+
+    shebang:
+        function to call on the first line
     """
 
     if headers:
@@ -104,6 +108,13 @@ def download(
     actPath = Path(localFile)
 
     with tmpPath.open("wb") as fh:
+        if shebang:
+            line = f.readline().decode()
+            shebang(line)
+            shebang = None
+            fh.write(line.encode())
+            fetched += len(line)
+
         # Use the 'while True' approach so that we always print the
         # download status including, especially, the 100% report.
         while True:
@@ -124,7 +135,7 @@ def download(
                 if not cmdenv.quiet:
                     print()
                 break
-            
+
             chunk = f.read(chunkSize)
             fetched += len(chunk)
             fh.write(chunk)
