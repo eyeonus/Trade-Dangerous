@@ -1198,7 +1198,7 @@ class TradeDB(object):
         assert isinstance(fromStationIDs, list)
         assert isinstance(fromStationIDs[0], int)
 
-        self.tdenv.DEBUG1("Loading trades for {}".format(str(fromStationIDs)))
+        self.tdenv.DEBUG1("Loading trades for {}", fromStationIDs)
 
         stmt = """
                 SELECT  *
@@ -1206,6 +1206,7 @@ class TradeDB(object):
                  WHERE  src_station_id IN ({})
                  ORDER  BY src_station_id, dst_station_id, gain DESC
                 """.format(','.join(str(ID) for ID in fromStationIDs))
+        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
         self.cur.execute(stmt)
         stations, items = self.stationByID, self.itemByID
 

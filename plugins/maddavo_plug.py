@@ -2,6 +2,7 @@ import cache
 import pathlib
 import plugins
 import re
+import time
 import tradedb
 import tradeenv
 import transfers
@@ -43,30 +44,70 @@ class ImportPlugin(plugins.ImportPluginBase):
         doesn't contain a date.
         """
 
-        prevImportDate = "0000-00-00 00:00:00"
-        try:
-            fh = self.stampPath.open('rU')
-            line = fh.readline().split('\n')
-            if line and line[0]:
-                if ImportPlugin.dateRe.match(line[0]):
-                    return line[0]
-        except FileNotFoundError:
-            pass
+        prevImportDate = None
+        lastRunDays = float("inf")
+        if self.stampPath.is_file():
+            try:
+                fh = self.stampPath.open('rU')
+                line = fh.readline().split('\n')
+                if line and line[0]:
+                    if ImportPlugin.dateRe.match(line[0]):
+                        prevImportDate = line[0]
+                line = fh.readline().split('\n')
+                if line and line[0]:
+                    lastRunAge = time.time() - float(line[0])
+                    lastRunDays = lastRunAge / (24 * 60 * 60)
+            except FileNotFoundError:
+                pass
 
-        return "0000-00-00 00:00:00"
+        if not prevImportDate:
+            prevImportDate = "0000-00-00 00:00:00"
+        return prevImportDate, lastRunDays
 
 
-    def save_timestamp(self, newestDate):
+    def save_timestamp(self, newestDate, startTime):
         """
         Save a date to the timestamp file.
         """
 
         with self.stampPath.open('w') as fh:
             print(newestDate, file=fh)
+            print(startTime, file=fh)
+
+
+    def checkShebang(self, line, checkAge):
+        m = re.match(
+                r'^#!\s*trade.py\s*import\s*.*\s*--timestamp\s*"([^"]+)"',
+                line
+        )
+        if not m:
+            raise PluginException("Data is not Maddavo's prices list: " + line)
+        self.importDate = m.group(1)
+        if checkAge and not self.getOption("force"):
+            if self.importDate <= self.prevImportDate:
+                raise SystemExit(
+                        "Local data is already current [{}].".format(
+                            self.importDate
+                ))
+            if self.tdenv.detail:
+                print("New timestamp: {}, Old timestamp: {}".format(
+                    self.importDate,
+                    self.prevImportDate
+                ))
 
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
+
+        # It takes a while to download these files, so we want
+        # to record the start time before we download. What we
+        # care about is when we downloaded relative to when the
+        # files were previously generated.
+
+        startTime = time.time()
+
+        prevImportDate, lastRunDays = self.load_timestamp()
+        self.prevImportDate = prevImportDate
 
         cacheNeedsRebuild = self.getOption("buildcache")
         if not self.getOption("skipdl"):
@@ -87,10 +128,27 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
                 cacheNeedsRebuild = True
             # Download 
+            if lastRunDays < 1.9:
+                priceFile = "prices-2d.asp"
+            else:
+                if not tdenv.quiet:
+                    if lastRunDays < 99:
+                        print(
+                                "NOTE: Last download was ~{:.2f} days "
+                                "ago, downloading full file".format(
+                                    lastRunDays
+                        ))
+                    else:
+                        print(
+                                "NOTE: Stale/missing local copy, "
+                                "downloading full .prices file."
+                        )
+                priceFile = "prices.asp"
             transfers.download(
                     tdenv,
-                    "http://www.davek.com.au/td/prices.asp",
+                    "http://www.davek.com.au/td/"+priceFile,
                     self.filename,
+                    shebang=lambda line: self.checkShebang(line, True),
             )
 
         if tdenv.download:
@@ -111,8 +169,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                     maxSystemLinkLy=tdenv.maxSystemLinkLy,
                     )
 
-        prevImportDate = self.load_timestamp()
-
         # Scan the file for the latest data.
         firstDate = None
         newestDate = prevImportDate
@@ -122,14 +178,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         lastStn = None
         updatedStations = set()
         with open("import.prices", "rU", encoding="utf-8") as fh:
+            # skip the shebang.
             firstLine = fh.readline()
-            m = re.match(
-                    r'^#!\s*trade.py\s*import\s*.*\s*--timestamp\s*"([^"]+)"',
-                    firstLine
-            )
-            if not m:
-                raise PluginException("File does not look like a maddavo import.")
-            importDate = m.group(1)
+            self.checkShebang(firstLine, False)
+            importDate = self.importDate
 
             for line in fh:
                 if line.startswith('@'):
@@ -155,44 +207,42 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     date
                             ))
 
-        if numNewLines == 0:
-            if not tdenv.quiet:
-                print("Cache is up-to date / no new price entries.")
-            if not self.getOption("force"):
-                return False
+        if numNewLines == 0 and not tdenv.quiet:
+            print("No new price entries found.")
 
-        if tdenv.detail:
-            print(
-                "Date of last import   : {}\n"
-                "Timestamp of import   : {}\n"
-                "Oldest update in file : {}\n"
-                "Newest update in file : {}\n"
-                "Number of new entries : {}\n"
-                .format(
-                    prevImportDate,
-                    importDate,
-                    firstDate,
-                    newestDate,
-                    numNewLines,
+        if numNewLines > 0 or self.getOption("force"):
+            if tdenv.detail:
+                print(
+                    "Date of last import   : {}\n"
+                    "Timestamp of import   : {}\n"
+                    "Oldest update in file : {}\n"
+                    "Newest update in file : {}\n"
+                    "Number of new entries : {}\n"
+                    .format(
+                        prevImportDate,
+                        importDate,
+                        firstDate,
+                        newestDate,
+                        numNewLines,
+                    ))
+
+            numStationsUpdated = len(updatedStations)
+            if not tdenv.quiet and numStationsUpdated:
+                if len(updatedStations) > 12 and tdenv.detail < 2:
+                    updatedStations = list(updatedStations)[:10] + ["..."]
+                print("{} {} updated:\n{}".format(
+                    numStationsUpdated,
+                    "stations" if numStationsUpdated > 1 else "station",
+                    ', '.join(updatedStations)
                 ))
 
-        numStationsUpdated = len(updatedStations)
-        if not tdenv.quiet and numStationsUpdated:
-            if len(updatedStations) > 12 and tdenv.detail < 2:
-                updatedStations = list(updatedStations)[:10] + ["..."]
-            print("{} {} updated:\n{}".format(
-                numStationsUpdated,
-                "stations" if numStationsUpdated > 1 else "station",
-                ', '.join(updatedStations)
-            ))
+            cache.importDataFromFile(
+                    tdb,
+                    tdenv,
+                    pathlib.Path(self.filename),
+            )
 
-        cache.importDataFromFile(
-                tdb,
-                tdenv,
-                pathlib.Path(self.filename),
-        )
-
-        self.save_timestamp(newestDate)
+        self.save_timestamp(importDate, startTime)
 
         # We did all the work
         return False

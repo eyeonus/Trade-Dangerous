@@ -520,7 +520,11 @@ class TradeCalc(object):
                 score = trade.gainCr
                 if lsPenalty:
                     supercruiseKls = dstStation.lsFromStar / 1000
-                    score *= (1 - (lsPenalty * supercruiseKls))
+                    penalty = lsPenalty * supercruiseKls
+                    if supercruiseKls > 4:
+                        boost = supercruiseKls / 250
+                        penalty *= boost
+                    score *= (1 - penalty)
                 dstID = dstStation.ID
                 try:
                     # See if there is already a candidate for this destination

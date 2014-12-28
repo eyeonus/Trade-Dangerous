@@ -160,7 +160,7 @@ def addStation(
     stationID = cur.lastrowid
     conn.commit()
 
-    print("ADDED: #{}: {}/{} ls={}, bm={}, mps={}".format(
+    print("ADDED: #{}: {}/{} ls={}, bm={}, pad={}".format(
             stationID,
             sysName, stnName,
             distLs, blackMarket, maxPadSize,
