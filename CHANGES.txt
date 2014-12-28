@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.3.1 [wip]
+. (kfsone) Fixed #111 import not rebuilding cache
 . (kfsone) "maddavo" plugin is now much smarter
    - will try to download a smaller prices file,
    - will check the first line of the file to see if it's an update

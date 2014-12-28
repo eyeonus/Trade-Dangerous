@@ -30,12 +30,6 @@ switches = [
             type=str,
             default=None,
         ),
-        ParseArgument('--maddavo',
-            help='[Deprecated] Import prices from Maddavo\'s site. Use "--plug=madadvo" instead.',
-            dest='plug',
-            action='store_const',
-            const='maddavo',
-        ),
         ParseArgument('--plug',
                 help="Use the specified import plugin.",
                 type=str,
@@ -79,12 +73,6 @@ switches = [
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    if cmdenv.maddavo:
-        raise CommandLineError(
-                "--maddavo is deprecated: "
-                "please use --plug=maddavo instead"
-        )
-
     # If we're using a plugin, initialize that first.
     if cmdenv.plug:
         try:
@@ -100,6 +88,9 @@ def run(results, cmdenv, tdb):
         # If it returns True, it is returning control to the module.
         if not plugin.run():
             return None
+
+    tdb.reloadCache()
+    tdb.close()
 
     if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
         cmdenv.url, cmdenv.filename = cmdenv.filename, None
