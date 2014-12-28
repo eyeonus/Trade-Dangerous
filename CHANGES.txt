@@ -3,6 +3,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.3.1 [wip]
+. (kfsone) "maddavo" plugin is now much smarter
+   - will try to download a smaller prices file,
+   - will check the first line of the file to see if it's an update
+     before downloading the whole thing :)
 . (kfsone) You can now use "--opt=help" to get help for plugins, e.g.
    trade.py import --plugin=maddavo --opt=help
 . (kfsone) Added "--ls-penalty" ("--lsp") for biasing "run" calculations
