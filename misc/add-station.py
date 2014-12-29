@@ -17,20 +17,6 @@ class AddStationError(Exception):
     pass
 
 
-def grepl(regex, filename):
-    """
-    Search a file for a regex, return -1 if not found,
-    otherwise returns the line number of the first match.
-    """
-
-    lineNo = 0
-    with open(filename, "rU") as fh:
-        for line in fh:
-            if regex.search(line):
-                return lineNo
-            lineNo += 1
-    return -1
-
 
 def lookupSystem(conn, sysName):
     cur = conn.cursor()
@@ -87,6 +73,7 @@ def addStation(
         distLs,
         blackMarket,
         maxPadSize,
+        update=False,
         ):
     """
     Adds a station to the csv and db if not already present.
@@ -106,44 +93,16 @@ def addStation(
                 "Unrecognized system {}.".format(sysName)
         )
 
-    stationID = lookupStation(conn, systemID, stnName)
-    if stationID:
+    originalID = lookupStation(conn, systemID, stnName)
+    if originalID and not update:
         raise AddStationError(
                 "Station matching {}/{} found in db cache.".format(
                     sysName, stnName,
         ))
 
-    sysCsvName = sysName.replace("'", "''")
-    stnCsvName = stnName.replace("'", "''")
-
-    # Does it already exist in the .csv file?
-    grepRe = re.compile(r"'{}','{}',".format(
-                sysCsvName, stnCsvName
-            ), re.IGNORECASE
-    )
-
-    csvFile = "data/Station.csv"
-    matchLine = grepl(grepRe, csvFile)
-    if matchLine >= 0:
-        raise AddStationError(
-                "{}/{} found in {} at line {}".format(
-                    sysCsvName, stnCsvName, csvFile, matchLine,
-        ))
-
-    # Add to the .csv first.
-    with open(csvFile, "a") as fh:
-        fh.write("'{}','{}',{},'{}','{}'\n".format(
-                sysCsvName,
-                stnCsvName,
-                distLs,
-                blackMarket,
-                maxPadSize,
-        ))
-
-    # Now insert into the DB.
     cur = conn.cursor()
     cur.execute("""
-            INSERT  INTO Station (
+            INSERT OR REPLACE INTO Station (
                 system_id,
                 name,
                 ls_from_star,
@@ -160,7 +119,8 @@ def addStation(
     stationID = cur.lastrowid
     conn.commit()
 
-    print("ADDED: #{}: {}/{} ls={}, bm={}, pad={}".format(
+    print("{}: #{}: {}/{} ls={}, bm={}, pad={}".format(
+            "ADDED" if not originalID else "UPDATED",
             stationID,
             sysName, stnName,
             distLs, blackMarket, maxPadSize,
@@ -197,9 +157,15 @@ def main():
             sys.argv[1] in ('--help', '-h', '-?', '/?', '/help'):
         usage()
 
+    update = False
+    args = sys.argv[1:]
+    if args[0] == '-u':
+        update = True
+        args = args[1:]
+
     # Join args together into a string, then break them
     # apart on /s and remove padding
-    argStr = ' '.join(sys.argv[1:]).replace('::', '/')
+    argStr = ' '.join(args).replace('::', '/')
     values = [ s.strip() for s in argStr.split('/') ]
 
     if len(values) < 2:
@@ -241,7 +207,7 @@ def main():
                     "Unrecognized station option: {}".format(val)
             )
 
-    addStation(conn, values[0], values[1], dist, blackMarket, maxPadSize)
+    addStation(conn, values[0], values[1], dist, blackMarket, maxPadSize, update=update)
 
 
 if __name__ == "__main__":

@@ -158,16 +158,13 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdenv.ignoreUnknown = True
 
-        if cacheNeedsRebuild:
-            tdb = tdb
-            # Make sure we disconnect from the db
-            if tdb.conn:
-                tdb.conn.close()
-            tdb.conn = tdb.cur = None
-            tdb.reloadCache()
-            tdb.load(
-                    maxSystemLinkLy=tdenv.maxSystemLinkLy,
-                    )
+        # Let the system decide if it needs to reload-cache
+        tdb.close()
+        tdb.reloadCache()
+        tdb.load(
+                maxSystemLinkLy=tdenv.maxSystemLinkLy,
+        )
+        tdb.close()
 
         # Scan the file for the latest data.
         firstDate = None
@@ -186,6 +183,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             for line in fh:
                 if line.startswith('@'):
                     lastStn = line[2:-1]
+                    continue
                 if not line.startswith(' ') or len(line) < minLen:
                     continue
                 m = dateRe.search(line)

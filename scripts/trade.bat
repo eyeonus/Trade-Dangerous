@@ -10,7 +10,7 @@ rem --== Set default values above to prevent being asked each run ==--
 set /P update=Update database from maddavo? (Y\N): 
 if /I not "%update%"=="Y" goto menu
 :update
-..\trade.py import --maddavo --option=stncsv --option=syscsv -v
+..\trade.py import --plug=maddavo --option=stncsv --option=syscsv -v
 echo Update Complete
 pause
 :menu

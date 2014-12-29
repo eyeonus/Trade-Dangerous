@@ -2,7 +2,20 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.3.1 [wip]
+WIP:
+. (kfsone) buy, sell, nav and local now have consistent presentation
+  of each station's distance from the star, labelled "StnLs", while
+  interstellar distances are labelled "DistLy".
+
+v6.3.1 Dec 28 2014
+. (kfsone) Removed '--supply' from "update" completely,
+. (kfsone) Improved the "--ls-penalty" from a flat line to a curve,
+   so really, stupidly, ridiculously distant stations (looking at you,
+   Alpha centauri) really have to be mind-blowing to show up.
+. (kfsone) "run" command output shows score of routes,
+. (kfsone) "misc/add-station" now has a "-u" option for updates,
+. (kfsone) "misc/add-station" no-longer writes to the csv file
+   (after adding stations do: trade.py export --table Station)
 . (kfsone) Fixed #111 import not rebuilding cache
 . (kfsone) "maddavo" plugin is now much smarter
    - will try to download a smaller prices file,
