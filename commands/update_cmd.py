@@ -268,8 +268,7 @@ def editUpdate(tdb, cmdenv, stationID):
     absoluteFilename = None
     dbFilename = tdb.dbFilename
     try:
-        elementMask = prices.Element.basic
-        if cmdenv.supply: elementMask |= prices.Element.supply
+        elementMask = prices.Element.basic | prices.Element.supply
         if cmdenv.timestamps: elementMask |= prices.Element.timestamp
         if cmdenv.all: elementMask |= prices.Element.blanks
         # Open the file and dump data to it.
@@ -392,24 +391,17 @@ def run(results, cmdenv, tdb):
         if not cmdenv.quiet:
             print(
                     "NOTE:\n"
-                    ". The Update UI is still somewhat experimental.\n"
-                    ". Press CTRL-C here to abort editing, or else "
-                    "just close the window to save.\n"
-                    ". Use '-q' to hide this message,\n"
-                    ". '-F' to make the update window appear infront "
-                    "of Elite: Dangerous (Windowed),\n"
-                    ". '-A' to force all items to show if stuff is "
-                    "missing from a station.",
+                    ". Press CTRL-C here to abort edit, otherwise "
+                    "just close the update window to save.\n"
+                    ". '-F' makes the window show in-front of the "
+                    "E:D Window.\n"
+                    ". '-A' forces all items to be listed.\n",
                     file=sys.stderr
             )
         guidedUpdate(tdb, cmdenv)
-        return None
-
-    if not cmdenv.quiet and cmdenv.supply:
-        print("NOTE: '--supply' (-S) is deprecated.")
-
-    # User specified one of the options to use an editor.
-    editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
+    else:
+        # User specified one of the options to use an editor.
+        editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
 
     return None
 
