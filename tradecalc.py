@@ -104,7 +104,10 @@ class Route(object):
                     yield key(tr)
         longestNameLen = max(genSubValues(key=lambda tr: len(tr.name())))
 
-        text = self.str() + ":\n"
+        text = self.str()
+        if detail >= 1:
+            text += " (score: {:f})".format(self.score)
+        text += "\n"
         if detail > 1:
             if detail > 2:
                 text += self.summary() + "\n"
@@ -519,11 +522,14 @@ class TradeCalc(object):
                 # This will amortize for the start/end stations
                 score = trade.gainCr
                 if lsPenalty:
-                    supercruiseKls = dstStation.lsFromStar / 1000
-                    penalty = lsPenalty * supercruiseKls
-                    if supercruiseKls > 4:
-                        boost = supercruiseKls / 250
-                        penalty *= boost
+                    # Only want 1dp
+                    cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                    # Produce a curve that favors distances under 1kls
+                    # positively, starts to penalize distances over 1k,
+                    # and after 4kls starts to penalize aggresively
+                    # http://goo.gl/Otj2XP
+                    penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                    penalty *= lsPenalty
                     score *= (1 - penalty)
                 dstID = dstStation.ID
                 try:
