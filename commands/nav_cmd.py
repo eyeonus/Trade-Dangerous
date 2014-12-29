@@ -27,6 +27,11 @@ switches = [
                  'the system that station is in will be avoided instead.',
             action='append',
         ),
+    ParseArgument('--via',
+            help='Require specified systems/stations to be en-route (in order).',
+            action='append',
+            metavar='PLACE[,PLACE,...]',
+        ),
 ]
 
 ######################################################################
@@ -126,7 +131,18 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0("Route from {} to {} with max {}ly per jump.",
                     srcSystem.name(), dstSystem.name(), maxLyPer)
 
-    route = getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer)
+    # Build a list of src->dst pairs
+    hops = [ [ srcSystem, None ] ]
+    if cmdenv.viaPlaces:
+        for hop in cmdenv.viaPlaces:
+            hops[0][1] = hop
+            hops.insert(0, [hop, None])
+    hops[0][1] = dstSystem
+
+    route = [ ]
+    for hop in hops:
+        hopRoute = getRoute(cmdenv, tdb, hop[0], hop[1], maxLyPer)
+        route = route[:-1] + hopRoute
 
     results.summary = ResultRow(
                 fromSys=srcSystem,
