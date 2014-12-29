@@ -186,6 +186,7 @@ class CommandIndex(object):
                 )
         stdArgs.add_argument('--link-ly', '-L',
                     help='Maximum lightyears between systems to be considered linked.',
+                    type=float,
                     default=None, dest='maxSystemLinkLy',
                 )
 
