@@ -113,7 +113,7 @@ class Route(object):
                 text += self.summary() + "\n"
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = ("     {qty:>4} x {item:<{longestName}}"
-                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total {age}\n")
+                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total,  data from {age}\n")
             jumpsFmt = ("  Jump {jumps}\n")
             dockFmt = "  Unload at {station} => Gain {gain:n}cr ({tongain:n}cr/ton) => {credits:n}cr\n"
             footer = '  ' + '-' * 76 + "\n"
@@ -159,8 +159,14 @@ class Route(object):
                                         key=lambda tradeOpt:
                                             tradeOpt[1] * tradeOpt[0].gainCr,
                                         reverse=True):
-                age = max(trade.srcAge, trade.dstAge)
-                age = "("+makeAge(max(trade.srcAge, trade.dstAge))+")"
+                # Are they within 30 minutes of each other?
+                if abs(trade.srcAge - trade.dstAge) <= (30*60):
+                    age = max(trade.srcAge, trade.dstAge)
+                    age = makeAge(age)
+                else:
+                    srcAge = makeAge(trade.srcAge)
+                    dstAge = makeAge(trade.dstAge)
+                    age = "{} and {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
                         qty=qty, item=trade.name(),
                         eacost=trade.costCr,
