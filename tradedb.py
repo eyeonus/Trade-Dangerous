@@ -162,6 +162,18 @@ class Station(object):
         return '%s/%s' % (self.system.name(), self.dbname)
 
 
+    def distFromStar(self):
+        """Describes the distance from the station to the star."""
+        ls = self.lsFromStar
+        if not ls:
+            return '?'
+        if ls < 4000:
+            return '{:n}'.format(ls)
+        if ls < 40000:
+            return '{:.1f}K'.format(ls / 1000)
+        return '{:.2f}ly'.format(ls / (365*24*60*60))
+
+
     def str(self):
         return self.dbname
 

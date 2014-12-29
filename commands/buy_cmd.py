@@ -37,11 +37,6 @@ switches = [
             default=None,
             type=int,
     ),
-    ParseArgument('--ages',
-            help='Show age of data.',
-            default=False,
-            action='store_true',
-    ),
     MutuallyExclusiveGroup(
         ParseArgument('--price-sort', '-P',
                 help='(When using --near) Sort by price not distance',
@@ -63,9 +58,6 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
-
-    if cmdenv.ages and not cmdenv.quiet:
-        print("--ages is now enabled by default.")
 
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
@@ -157,7 +149,7 @@ def run(results, cmdenv, tdb):
         results.rows.sort(key=lambda result: result.stock, reverse=True)
         results.rows.sort(key=lambda result: result.price)
         if nearSystem and not cmdenv.sortByPrice:
-            results.summary.sort = "Dist"
+            results.summary.sort = "Ly"
             results.rows.sort(key=lambda result: result.dist)
 
     limit = cmdenv.limit or 0
@@ -184,11 +176,13 @@ def render(results, cmdenv, tdb):
             key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
 
     if cmdenv.nearSystem:
-        stnRowFmt.addColumn('Dist', '>', 6, '.2f',
+        stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
     stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
             key=lambda row: row.age)
+    stnRowFmt.addColumn("StnLs", '>', 10,
+            key=lambda row: row.station.distFromStar())
     stnRowFmt.addColumn("Pad", '>', '3',
             key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
 

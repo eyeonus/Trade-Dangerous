@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+WIP:
+. (kfsone) buy, sell, nav and local now have consistent presentation
+  of each station's distance from the star, labelled "StnLs", while
+  interstellar distances are labelled "DistLy".
+
 v6.3.1 Dec 28 2014
 . (kfsone) Removed '--supply' from "update" completely,
 . (kfsone) Improved the "--ls-penalty" from a flat line to a curve,

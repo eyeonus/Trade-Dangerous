@@ -94,13 +94,8 @@ def run(results, cmdenv, tdb):
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
                     age = "-"
-                if station.lsFromStar:
-                    ls = '{}ls'.format(station.lsFromStar)
-                else:
-                    ls = '?'
                 rr = ResultRow(
                         station=station,
-                        ls=ls,
                         age=age,
                 )
                 row.stations.append(rr)
@@ -139,8 +134,8 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Station", '<', 32,
                     key=lambda row: row.station.str())
         ).append(
-                ColumnFormat("Dist", '>', '10',
-                    key=lambda row: row.ls)
+                ColumnFormat("StnLs", '>', '10',
+                    key=lambda row: row.station.distFromStar())
         ).append(
                 ColumnFormat("Age/days", '>', 7,
                         key=lambda row: row.age)
