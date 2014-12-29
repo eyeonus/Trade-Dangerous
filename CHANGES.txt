@@ -6,6 +6,8 @@ WIP:
 . (kfsone) buy, sell, nav and local now have consistent presentation
   of each station's distance from the star, labelled "StnLs", while
   interstellar distances are labelled "DistLy".
+. (OpenSS) Added 'quick update' to scripts/trade.bat
++ Stations, data, etc: kfsone, gazelle, shirkan
 
 v6.3.1 Dec 28 2014
 . (kfsone) Removed '--supply' from "update" completely,
