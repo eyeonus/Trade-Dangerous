@@ -475,7 +475,7 @@ def filterByVia(routes, viaSet, viaStartPos):
         )
 
     return partialRoutes[maxMet], (
-            "No runs visited all of your via destinations. "
+            "SORRY: No runs visited all of your via destinations. "
             "Listing runs that matched at least {}.".format(
                     maxMet
             )
@@ -543,6 +543,9 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG1("numHops {}, vias {}, adhocHops {}",
                 numHops, len(viaSet), cmdenv.adhocHops)
 
+    results.summary = ResultRow()
+    results.summary.exception = ""
+
     for hopNo in range(numHops):
         cmdenv.DEBUG1("Hop {}", hopNo)
 
@@ -552,10 +555,33 @@ def run(results, cmdenv, tdb):
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
-        routes = calc.getBestHops(routes, restrictTo=restrictTo)
-
-    results.summary = ResultRow()
-    results.summary.exception = None
+        newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
+        if not newRoutes and hopNo > 0:
+            if restrictTo:
+                restrictions = list(restrictTo)
+                if len(restrictions) == 1:
+                    dests = restrictions[0].name()
+                elif len(set(stn.system for stn in restrictions)) == 1:
+                    dests = restrictions[0].system.name()
+                else:
+                    dests = ", ".join([
+                            stn.name() for stn in restrictions[0:-1]
+                    ])
+                    dests += " or " + restrictions[-1].name()
+                results.summary.exception += (
+                        "SORRY: Could not find any routes that "
+                        "delivered a profit to {} at hop #{}\n"
+                        "You may need to add more hops to your route.\n"
+                        .format(
+                            dests, hopNo + 1
+                        )
+                )
+                break
+            results.summary.exception += (
+                "SORRY: Could not find routes beyond hop #%d\n" % (hopNo + 1)
+            )
+            break
+        routes = newRoutes
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
@@ -563,7 +589,7 @@ def run(results, cmdenv, tdb):
     if viaSet:
         routes, caution = filterByVia(routes, viaSet, viaStartPos)
         if caution:
-            results.summary.exception = caution
+            results.summary.exception += caution + "\n"
 
     routes.sort()
     results.data = routes
@@ -579,7 +605,10 @@ def render(results, cmdenv, tdb):
 
     exception = results.summary.exception
     if exception:
-        print("\aCAUTION: {}\n".format(exception))
+        print('#' * 76)
+        print("\a{}".format(exception), end="")
+        print('#' * 76)
+        print()
 
     routes = results.data
 

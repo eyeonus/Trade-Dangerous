@@ -371,30 +371,6 @@ def guidedUpdate(tdb, cmdenv):
             saveTemporaryFile(tmpPath)
 
 
-def uploadUpdated():
-    try:
-        import requests
-    except ImportError:
-        if platform.system() == "Windows":
-            prompt = "C:\ThisDir\>"
-        else:
-            prompt = "$"
-        raise SystemExit("""Missing 'requests' module:
-
-You don't appear to have the Python module "requests" installed.
-
-It can be installed with Python's package installer, e.g:
-  {prompt} pip install requests
-
-For additional help, consult:
-  Bitbucket Wiki    http://kfs.org/td/wiki
-  Facebook Group    http://kfs.org/td/group
-  ED Forum Thread   http://kfs.org/td/thread
-""".format(
-            prompt=prompt
-    ))
-
-
 ######################################################################
 # Perform query and populate result set
 
