@@ -576,14 +576,12 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
 ######################################################################
 
-def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
+def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
-    assert isinstance(pricesPath, Path)
-
-    with pricesPath.open('rU') as pricesFile:
+    with pricesFh or pricesPath.open('rU') as pricesFh:
         warnings, items, buys, sells = processPrices(
-                tdenv, pricesFile, db, defaultZero
+                tdenv, pricesFh, db, defaultZero
         )
  
     if items:
@@ -883,16 +881,14 @@ def regeneratePricesFile(tdb, tdenv):
 
 ######################################################################
 
-def importDataFromFile(tdb, tdenv, path, reset=False):
+def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     """
         Import price data from a file on a per-station basis,
         that is when a new station is encountered, delete any
         existing records for that station in the database.
     """
 
-    assert isinstance(path, Path)
-
-    if not path.exists():
+    if not pricesFh and not path.exists():
         raise TradeException("No such file: {}".format(
                     str(path)
                 ))
@@ -905,6 +901,7 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
     processPricesFile(tdenv,
             db=tdb.getDB(),
             pricesPath=path,
+            pricesFh=pricesFh,
             )
 
     # If everything worked, we may need to re-build the prices file.
