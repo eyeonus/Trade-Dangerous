@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 WIP:
+. (kfsone) Improved the feedback from run when routes go wrong.
 . (kfsone) fixed "--link-ly" causing a 'TypeError' in various places,
 . (kfsone) "nav" now supports "--via"; destinations are processed in-order.
 . (kfsone) buy, sell, nav and local now have consistent presentation
