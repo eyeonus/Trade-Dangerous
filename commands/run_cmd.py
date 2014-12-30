@@ -570,7 +570,7 @@ def run(results, cmdenv, tdb):
                     dests += " or " + restrictions[-1].name()
                 results.summary.exception += (
                         "SORRY: Could not find any routes that "
-                        "reached {} at hop #{}\n"
+                        "delivered a profit to {} at hop #{}\n"
                         "You may need to add more hops to your route.\n"
                         .format(
                             dests, hopNo + 1
