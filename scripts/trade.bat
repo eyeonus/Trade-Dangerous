@@ -15,12 +15,18 @@ echo Update Complete
 pause
 :menu
 cls
-set /P menu=(U)pdate, (I)mport, (P)references or (R)un: 
+set /P menu=(U)pdate, (Q)uick Update, (I)mport, (P)references or (R)un: 
 if /I "%menu%"=="U" goto update
+if /I "%menu%"=="Q" goto quickupdate
 if /I "%menu%"=="I" goto import
 if /I "%menu%"=="P" goto preferences
 if /I "%menu%"=="R" goto run
 echo Invalid Selection
+pause
+goto menu
+:quickupdate
+..\trade.py import --plug=maddavo -v
+echo Quick Update Complete
 pause
 goto menu
 :preferences

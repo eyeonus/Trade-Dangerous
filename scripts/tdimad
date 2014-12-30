@@ -5,6 +5,6 @@
 
 . "${TRADEDIR:-.}/config.sh"
 
-cmd="\"${TRADEPY}\" import --plug=maddavo $*"
+cmd="${TRADEPY} import --plug=maddavo $*"
 echo \$ $cmd
 eval "$cmd"

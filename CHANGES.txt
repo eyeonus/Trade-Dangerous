@@ -3,9 +3,13 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 WIP:
+. (kfsone) fixed "--link-ly" causing a 'TypeError' in various places,
+. (kfsone) "nav" now supports "--via"; destinations are processed in-order.
 . (kfsone) buy, sell, nav and local now have consistent presentation
   of each station's distance from the star, labelled "StnLs", while
   interstellar distances are labelled "DistLy".
+. (OpenSS) Added 'quick update' to scripts/trade.bat
++ Stations, data, etc: kfsone, gazelle, shirkan
 
 v6.3.1 Dec 28 2014
 . (kfsone) Removed '--supply' from "update" completely,

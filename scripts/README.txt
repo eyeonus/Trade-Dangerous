@@ -215,12 +215,17 @@ file to make sure there is actually some data to work with.
 Main Menu:
 
 The main menu will appear as such:
-(U)pdate, (I)mport, (P)references or (R)un
+(U)pdate, (Q)uick Update, (I)mport, (P)references or (R)un
 Each option is detailed below.
 
   Update:
   This is the same update that is run when the batch file is first
   opened. It will obtain the latest market data from Maddavo.
+
+  Quick Update:
+  This update will only update the latest market data from Maddavo.
+  It will not update the Systems and Stations data. Useful if you just
+  want new trade prices.
 
   Import:
   Import local market data from "import.prices". If you are using

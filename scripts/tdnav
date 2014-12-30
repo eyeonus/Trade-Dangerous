@@ -5,6 +5,6 @@
 
 . "${TRADEDIR:-.}/config.sh"
 
-cmd="\"${TRADEPY}\" nav --ly ${EMPTYLY} $*"
+cmd="${TRADEPY} nav --ly ${EMPTYLY} $*"
 echo \$ $cmd
 eval "$cmd"

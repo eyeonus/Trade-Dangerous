@@ -128,7 +128,7 @@ class UnknownStationError(BuildCacheBaseException):
         Raised when the file contains an unknown star/station name.
     """
     def __init__(self, fromFile, lineNo, key):
-        error = "Unrecognized STAR/Station, '{}'.".format(key)
+        error = 'Unrecognized STAR/Station: "{}"'.format(key)
         super().__init__(fromFile, lineNo, error)
 
 class UnknownItemError(BuildCacheBaseException):
@@ -138,7 +138,7 @@ class UnknownItemError(BuildCacheBaseException):
             itemName   Key we tried to look up.
     """
     def __init__(self, fromFile, lineNo, itemName):
-        error = "Unrecognized item name, '{}'.".format(itemName)
+        error = 'Unrecognized item name: "{}"'.format(itemName)
         super().__init__(fromFile, lineNo, error)
 
 class UnknownCategoryError(BuildCacheBaseException):
@@ -148,7 +148,7 @@ class UnknownCategoryError(BuildCacheBaseException):
             categoryName   Key we tried to look up.
     """
     def __init__(self, fromFile, lineNo, categoryName):
-        error = "Unrecognized category name, '{}'.".format(categoryName)
+        error = 'Unrecognized category name: "{}"'.format(categoryName)
         super().__init__(fromFile, lineNo, error)
 
 
@@ -233,7 +233,7 @@ def parseSupply(pricesFile, lineNo, category, reading):
     if levelNo < -1:
         raise SupplyError(
                     pricesFile, lineNo, category, reading,
-                    "Unrecognized level suffix '{}', "
+                    'Unrecognized level suffix: "{}": '
                     "expected one of 'L', 'M', 'H' or '?'".format(
                         level
                 ))
@@ -249,7 +249,7 @@ def parseSupply(pricesFile, lineNo, category, reading):
 
     raise SupplyError(
                 pricesFile, lineNo, category, reading,
-                "Unrecognized units/level value: {}, "
+                'Unrecognized units/level value: "{}": '
                 "expected '-', '?', or a number followed "
                 "by a level (L, M, H or ?).".format(
                     level
