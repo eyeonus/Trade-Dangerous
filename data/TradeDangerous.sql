@@ -51,8 +51,8 @@ CREATE TABLE System
    UNIQUE (name),
 
     FOREIGN KEY (added_id) REFERENCES Added(added_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
  );
 CREATE INDEX idx_system_by_pos ON System (pos_x, pos_y, pos_z, system_id);
 
@@ -72,8 +72,8 @@ CREATE TABLE Station
    UNIQUE (system_id, name),
 
    FOREIGN KEY (system_id) REFERENCES System(system_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
  );
 CREATE INDEX idx_station_by_system ON Station (system_id, station_id);
 CREATE INDEX idx_station_by_name ON Station (name);
@@ -97,11 +97,11 @@ CREATE TABLE ShipVendor
    PRIMARY KEY (ship_id, station_id),
 
    FOREIGN KEY (ship_id) REFERENCES Ship(ship_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE,
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
    FOREIGN KEY (station_id) REFERENCES Station(station_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
 
@@ -125,11 +125,11 @@ CREATE TABLE UpgradeVendor
    PRIMARY KEY (upgrade_id, station_id),
 
    FOREIGN KEY (upgrade_id) REFERENCES Upgrade(upgrade_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE,
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
    FOREIGN KEY (station_id) REFERENCES Station(station_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
 
@@ -153,8 +153,8 @@ CREATE TABLE Item
    UNIQUE (category_id, name),
 
    FOREIGN KEY (category_id) REFERENCES Category(category_id)
-   	ON UPDATE CASCADE
-   	ON DELETE CASCADE
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
  );
 
 
@@ -229,6 +229,7 @@ CREATE TABLE StationSelling
    ON UPDATE CASCADE ON DELETE CASCADE
  )
 ;
+CREATE INDEX idx_selling_price ON StationSelling (item_id, price);
 
 CREATE TABLE StationBuying
  (
@@ -251,11 +252,11 @@ CREATE TABLE StationBuying
 CREATE INDEX idx_buying_price ON StationBuying (item_id, price);
 
 CREATE VIEW vPrice AS
-	SELECT	si.station_id AS station_id,
-			si.item_id AS item_id,
-			IFNULL(sb.price, 0) AS sell_to,
-			IFNULL(ss.price, 0) AS buy_from,
-			si.modified AS modified,
+    SELECT  si.station_id AS station_id,
+            si.item_id AS item_id,
+            IFNULL(sb.price, 0) AS sell_to,
+            IFNULL(ss.price, 0) AS buy_from,
+            si.modified AS modified,
             IFNULL(sb.units, 0) AS demand,
             IFNULL(sb.level, 0) AS demand_level,
             IFNULL(ss.units, 0) AS stock,
