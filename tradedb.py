@@ -256,6 +256,19 @@ class Item(object):
 ######################################################################
 
 
+class RareItem(namedtuple('RareItem', [
+            'rareID', 'source', 'name', 'costCr', 'maxAlloc',
+        ])):
+    """
+    Describes a RareItem
+    """
+    def name(self):
+        return self.name
+
+
+######################################################################
+
+
 class Trade(namedtuple('Trade', [
             'item', 'itemID', 'costCr', 'gainCr', 'stock', 'stockLevel', 'demand', 'demandLevel', 'srcAge', 'dstAge'
         ])):
@@ -1201,6 +1214,38 @@ class TradeDB(object):
 
 
     ############################################################
+    # Rare Items
+
+    def _loadRareItems(self):
+        """
+        Populate the RareItem list.
+        """
+        stmt = """
+                SELECT  rare_id,
+                        station_id,
+                        name,
+                        cost,
+                        max_allocation
+                  FROM  RareItem
+        """
+        self.cur.execute(stmt)
+
+        rareItemByID, rareItemByName = {}, {}
+        stationByID = self.stationByID
+        for (ID, stnID, name, cost, maxAlloc) in self.cur:
+            station = stationByID[stnID]
+            rare = RareItem(ID, station, name, cost, maxAlloc)
+            rareItemByID[ID] = rareItemByName[name] = rare
+        self.rareItemByID = rareItemByID
+        self.rareItemByName = rareItemByName
+
+        self.tdenv.DEBUG1(
+                "Loaded {:n} RareItems",
+                len(rareItemByID)
+        )
+
+
+    ############################################################
     # Price data.
 
     def loadStationTrades(self, fromStationIDs):
@@ -1298,6 +1343,7 @@ class TradeDB(object):
         self._loadShips()
         self._loadCategories()
         self._loadItems()
+        self._loadRareItems()
 
         systems, stations, ships, items = self.systemByID, self.stationByID, self.shipByID, self.itemByID
 
