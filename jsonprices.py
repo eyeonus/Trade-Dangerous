@@ -16,7 +16,7 @@ class UnknownStationError(TradeException):
 
 def lookup_system(tdb, tdenv, name, x, y, z):
     try:
-        system = tdb.systemByName[name]
+        system = tdb.systemByName[name.upper()]
     except KeyError:
         system = None
     if not system:

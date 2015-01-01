@@ -19,11 +19,10 @@ unq:name@Category.category_id,unq:name,ui_order
 'Industrial Materials','Semiconductors',2
 'Industrial Materials','Superconductors',3
 'Legal Drugs','Beer',1
-'Legal Drugs','Centauri Mega Gin',2
-'Legal Drugs','Liquor',3
-'Legal Drugs','Narcotics',4
-'Legal Drugs','Tobacco',5
-'Legal Drugs','Wine',6
+'Legal Drugs','Liquor',2
+'Legal Drugs','Narcotics',3
+'Legal Drugs','Tobacco',4
+'Legal Drugs','Wine',5
 'Machinery','Atmospheric Processors',1
 'Machinery','Crop Harvesters',2
 'Machinery','Marine Equipment',3

@@ -18,6 +18,7 @@ import commands.import_cmd
 import commands.local_cmd
 import commands.nav_cmd
 import commands.olddata_cmd
+import commands.rare_cmd
 import commands.run_cmd
 import commands.sell_cmd
 import commands.update_cmd

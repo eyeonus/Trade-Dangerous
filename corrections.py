@@ -7,7 +7,11 @@ from __future__ import absolute_import, with_statement, print_function, division
 DELETED = -111
 
 systems = {
-    "ARGETLAMH": "Argetlámh",
+    "ARGETLAMH": "ARGETLáMH",
+    "TAVYTERE": "ALRAI SECTOR ON-T B3-2",
+    "PANTAA CEZISA": "GEORGE PANTAZIS",
+    "DJALI": "HERCULIS SECTOR QD-T B3-4",
+    "22 LYNCIS": "PEPPER",
 
 #ADD_SYSTEMS_HERE
 }
@@ -56,6 +60,7 @@ items = {
     'DOM. APPLIANCES': 'Domestic Appliances',
     'FRUIT AND VEGETABLES': 'Fruit And Vegetables',
     'NON-LETHAL WPNS': 'Non-Lethal Weapons',
+    'CENTAURI MEGA GIN': DELETED,
 
 }
 
