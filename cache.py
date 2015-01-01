@@ -310,6 +310,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     categoryName = None
     facility = None
     processedStations = {}
+    processedSystems = set()
     processedItems = {}
     itemPrefix = ""
     DELETED = corrections.DELETED
@@ -395,6 +396,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                         processedStations[stationID]
                     )
 
+        processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
 
@@ -571,7 +573,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processItemLine(matches)
 
-    return warnings, items, buys, sells
+
+    numSys = len(processedSystems)
+    numStn = len(processedStations)
+
+    return warnings, items, buys, sells, numSys, numStn
 
 
 ######################################################################
@@ -580,7 +586,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
     with pricesFh or pricesPath.open('rU') as pricesFh:
-        warnings, items, buys, sells = processPrices(
+        warnings, items, buys, sells, numSys, numStn = processPrices(
                 tdenv, pricesFh, db, defaultZero
         )
  
@@ -605,8 +611,18 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
 
     db.commit()
 
-    if warnings and not tdenv.quiet:
-        print("Import completed despite warnings")
+    if not tdenv.quiet:
+        if warnings:
+            print("NOTE: Import completed despite warnings")
+        print("Import complete: "
+                "{} items ({} buy prices, {} sell prices) "
+                "for {} stations "
+                "in {} systems".format(
+                    len(items),
+                    len(buys), len(sells),
+                    numStn,
+                    numSys,
+        ))
 
 
 ######################################################################
