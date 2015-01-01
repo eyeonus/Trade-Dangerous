@@ -173,7 +173,7 @@ class DeletedKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue):
         super().__init__(fromFile, lineNo,
-                "{} '{}' is marked as DELETED and should not be used.\n".format(
+                "{} '{}' is marked as DELETED and should not be used.".format(
                     keyType, keyValue
         ))
 
@@ -185,7 +185,7 @@ class DeprecatedKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, newValue):
         super().__init__(fromFile, lineNo,
-                "{} '{}' is deprecated and should be replaced with '{}'.\n".format(
+                "{} '{}' is deprecated and should be replaced with '{}'.".format(
                     keyType, keyValue, newValue
         ))
 
@@ -611,18 +611,16 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
 
     db.commit()
 
-    if not tdenv.quiet:
-        if warnings:
-            print("NOTE: Import completed despite warnings")
-        print("Import complete: "
-                "{} items ({} buy prices, {} sell prices) "
-                "for {} stations "
-                "in {} systems".format(
+    tdenv.NOTE(
+            "Import complete: "
+                "{:n} items ({:n} buy prices, {:n} sell prices) "
+                "for {:n} stations "
+                "in {:n} systems",
                     len(items),
                     len(buys), len(sells),
                     numStn,
                     numSys,
-        ))
+    )
 
 
 ######################################################################
@@ -759,7 +757,13 @@ def processImportFile(tdenv, db, importPath, tableName):
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn:
-                    deprecationFn(importPath, lineNo, linein)
+                    try:
+                        deprecationFn(importPath, lineNo, linein)
+                    except (DeprecatedKeyError, DeletedKeyError) as e:
+                        if not tdenv.ignoreUnknown:
+                            raise e
+                        tdenv.NOTE("{}", e)
+                        continue
                 if uniqueIndexes:
                     # Need to construct the actual unique index key as
                     # something less likely to collide with manmade
@@ -801,8 +805,12 @@ def processImportFile(tdenv, db, importPath, tableName):
                     ) from None
                 importCount += 1
             else:
-                if not tdenv.quiet:
-                    print("Wrong number of columns ({}:{}): {}".format(importPath, lineNo, ', '.join(linein)))
+                tdenv.NOTE(
+                        "Wrong number of columns ({}:{}): {}",
+                            importPath,
+                            lineNo,
+                            ', '.join(linein)
+                )
         db.commit()
         tdenv.DEBUG0("{count} {table}s imported",
                             count=importCount,
@@ -827,11 +835,10 @@ def buildCache(tdb, tdenv):
         are newer than the database.
     """
 
-    if not tdenv.quiet:
-        print(
-                "NOTE: Rebuilding cache file: this may take a moment",
-                file=sys.stderr
-        )
+    tdenv.NOTE(
+            "Rebuilding cache file: this may take a moment.",
+            file=sys.stderr
+    )
 
     dbPath = tdb.dbPath
     sqlPath = tdb.sqlPath
@@ -862,10 +869,12 @@ def buildCache(tdb, tdenv):
     # Parse the prices file
     if pricesPath.exists():
         processPricesFile(tdenv, tempDB, pricesPath)
-    elif not tdenv.quiet:
-        print("NOTE: Missing \"{}\" file - no price data".format(
-                    str(pricesPath)
-            ), file=sys.stderr)
+    else:
+        tdenv.NOTE(
+                "Missing \"{}\" file - no price data.",
+                    pricesPath,
+                    file=sys.stderr,
+        )
 
     tempDB.commit()
     tempDB.close()
