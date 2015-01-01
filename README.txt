@@ -189,6 +189,58 @@ Advanced Commands:
     Exports data from the db to .csv files
 
 
+
+RARE sub-command:
+
+  This command looks for known rare items within the space around
+  a specified system.
+
+  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort]
+
+     <system>
+       System to center search on
+       e.g.
+         Lave
+         @Sol
+
+     --ly N.NN
+       DEFAULT: 42
+       Maximum distance to search from center system.
+       e.g.
+         --ly 0     (unlimited)
+         --ly 21.2
+
+     --limit N
+       Maximum number of results to show
+       e.g.
+         --limit 10
+
+     --price-sort
+     -P
+       Sort by price rather than proximity
+
+     --quiet
+     -q
+       Don't include the header lines
+
+
+  Examples:
+
+    $ trade.py rare sol --ly 10
+    Station                       Rare                    Cost DistLy  Alloc
+    ------------------------------------------------------------------------
+    ALPHA CENTAURI/Hutton Orbital Centauri Mega Gin      3,319   4.38      7
+
+    $ trade.py rare @neto --ly 50 --price --limit 5
+    Station                   Rare                             Cost DistLy  Alloc
+    -----------------------------------------------------------------------------
+    XIHE/Zhen Dock            Xihe Biomorphic Companions      4,482  48.10      7
+    VEGA/Taylor City          Vega Slimweed                   2,398  33.44      0
+    LFT 1421/Ehrlich Orbital  Void Extract Coffee             2,357  26.45      0
+    ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
+    V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
+
+
 RUN sub-command:
 
   This command provides the primary trade run calculator functionality (it provides

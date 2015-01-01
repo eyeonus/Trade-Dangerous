@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.4.0 Jan 01 2015
+. (kfsone) Added "rare" sub-command,
 . (kfsone) Added RareItem table,
 . (kfsone) Imported systems from EDStarCoord,
 . (kfsone) Added a LOT of stations,
