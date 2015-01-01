@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 import math
-from tradedb import System, Station
+from tradedb import System, Station, TradeDB
 from tradeexcept import TradeException
 
 ######################################################################
@@ -31,6 +31,10 @@ switches = [
             help='Require specified systems/stations to be en-route (in order).',
             action='append',
             metavar='PLACE[,PLACE,...]',
+        ),
+    ParseArgument('--stations', '-S',
+            help='Include station details.',
+            action='store_true',
         ),
 ]
 
@@ -164,6 +168,18 @@ def run(results, cmdenv, tdb):
                 totalLy=totalLy,
                 dirLy=dirLy,
                 )
+        row.stations = []
+        if cmdenv.stations:
+            for (station) in jumpSys.stations:
+                try:
+                    age = "{:7.2f}".format(ages[station.ID])
+                except:
+                    age = "-"
+                rr = ResultRow(
+                        station=station,
+                        age=age,
+                )
+                row.stations.append(rr)
         results.rows.append(row)
         lastSys = jumpSys
     results.rows[0].action='Depart'
@@ -202,12 +218,43 @@ def render(results, cmdenv, tdb):
         rowFmt.addColumn("DirLy", '>', 7, '.2f',
             key=lambda row: row.dirLy)
 
+    showStations = cmdenv.stations
+    if showStations:
+        stnRowFmt = RowFormat(prefix='  /  ').append(
+                ColumnFormat("Station", '<', 32,
+                    key=lambda row: row.station.str())
+        ).append(
+                ColumnFormat("StnLs", '>', '10',
+                    key=lambda row: row.station.distFromStar())
+        ).append(
+                ColumnFormat("Age/days", '>', 7,
+                        key=lambda row: row.age)
+        ).append(
+                ColumnFormat("BMkt", '>', '4',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.blackMarket])
+        ).append(
+                ColumnFormat("Pad", '>', '3',
+                    key=lambda row: \
+                        TradeDB.padSizes[row.station.maxPadSize])
+        )
+        if cmdenv.detail > 1:
+            stnRowFmt.append(
+                ColumnFormat("Itms", ">", 4,
+                    key=lambda row: row.station.itemCount)
+            )
+
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
+        if showStations:
+            print(heading)
+            heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
 
     for row in results.rows:
         print(rowFmt.format(row))
+        for stnRow in row.stations:
+            print(stnRowFmt.format(stnRow))
 
     return results
 
