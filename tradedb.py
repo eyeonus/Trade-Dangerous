@@ -342,6 +342,7 @@ class TradeDB(object):
                       [ 'Category.csv', 'Category' ],
                       [ 'Item.csv', 'Item' ],
                       [ 'AltItemNames.csv', 'AltItemNames' ],
+                      [ 'RareItem.csv', 'RareItem' ],
                     ]
 
 

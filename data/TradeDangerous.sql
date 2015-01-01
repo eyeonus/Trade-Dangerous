@@ -134,6 +134,22 @@ CREATE TABLE UpgradeVendor
 ;
 
 
+CREATE TABLE RareItem
+ (
+   rare_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   station_id INTEGER NOT NULL,
+   name VARCHAR(40) COLLATE nocase,
+   cost INTEGER,
+   max_allocation INTEGER,
+
+   UNIQUE (name),
+
+   FOREIGN KEY (station_id) REFERENCES Station(station_id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE
+ )
+;
+
 CREATE TABLE Category
  (
    category_id INTEGER PRIMARY KEY AUTOINCREMENT,

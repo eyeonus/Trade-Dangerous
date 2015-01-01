@@ -1,0 +1,105 @@
+!name@System.system_id,name@Station.station_id,unq:name,cost,max_allocation
+'39 TAURI','Porta','Tauri Chimes',938,17
+'AEGAEON','Schweickart Station','Chateau De Aegaeon',0,14
+'AERIAL','Andrade Legacy','Edan Apples of Aerial',621,15
+'ALACARAKMO','Weyl Gateway','Alacarakmo Skin Art',1421,14
+'ALPHA CENTAURI','Hutton Orbital','Centauri Mega Gin',3319,7
+'ALTAIR','Solo Orbiter','Altairian Skin',489,18
+'ALYA','Malaspina Gateway','Alya Body Soup',454,16
+'ANDULIGA','Celsius Estate','Anduliga Fire Works',891,0
+'ANY NA','Libby Orbital','Any Na Coffee',1790,11
+'AROUCA','Shipton Orbital','Arouca Conventula Sweets',1203,0
+'AZ CANCRI','Fisher Station','Az Cancri Formula 42',6442,7
+'BALTAH''SINE','Baltha''Sine Station','Baltha''sine Vacuum Krill',825,18
+'BANKI','Parsons Vista','Banki Amphibious Leather',634,18
+'BAST','Hart Station','Bast Snake Gin',1080,10
+'BELALANS','Boscovich Ring','Belalans Ray Leather',882,11
+'BORASETANI','Katzenstein Terminal','Borasetani Pathogenetics',8269,0
+'CD-75 661','Kirk Dock','CD-75 Kitten Brand Coffee',2373,12
+'CHERBONES','Chalker Landing','Cherbones Blood Crystals',12550,0
+'CHI ERIDANI','Steve Masters','Chi Eridani Marine Paste',784,18
+'COQUIM','Hirayama Installation','Coquim Spongiform Victuals',255,20
+'DAMNA','Nemere Market','Damna Carapaces',315,0
+'DEA MOTRONA','Pinzon Dock','Motrona Experience Jelly',7420,0
+'DELTA PHOENICIS','Trading Post','Delta Phoenicis Palms',412,17
+'DEURINGAS','Shukor Hub','Deuringas Truffles',1892,0
+'DISO','Shifnalport','Diso Ma Corn',180,15
+'ELEU','Finney Dock','Eleu Thermals',873,0
+'EPSILON INDI','Mansfield Orbiter','Indi Bourbon',978,11
+'ERANIN','Azeban City','Eranin Pearl Whiskey',1620,8
+'ESHU','Shajn Terminal','Eshu Umbrellas',2050,0
+'ESUSEKU','Savinykh Orbital','Esuseku Caviar',2450,0
+'ETHGREZE','Bloch Station','Ethgreze Tea Buds',3261,7
+'FUJIN','Futen Spaceport','Fujin Tea',1003,10
+'GEAWEN','Obruchev Legacy','Geawen Dance Dust',1022,26
+'GEORGE PANTAZIS','Zamka Platform','Pantaa Prayer Sticks',1827,9
+'GERAS','Yurchikhin Port','Gerasian Gueuze Beer',456,24
+'GOMAN','Gustav Sporer Port','Goman Yaupon Coffee',1451,0
+'HAIDEN','Searfoss Enterprise','Haiden Black Brew',1347,0
+'HAVASUPAI','Lovelace Port','Havasupai Dream Catcher',9636,0
+'HECATE','RJH1972','Live Hecate Sea Worms',1190,13
+'HEIKE','Brunel City','Ceremonial Heike Tea',0,8
+'HELVETITJ','Friend Orbital','Helvetitj Pearls',1810,0
+'HIP 10175','Stefanyshyn-Piper Station','HIP 10175 Bush Meat',2105,13
+'HIP 41181','Andersson Station','HIP Proto-Squid',1488,0
+'HIP 59533','Burnham Beacon','Burnham Bile Distillate',806,0
+'HOLVA','Kreutz Orbital','Holva Duelling Blades',6518,0
+'HR 7221','Veron City','HR 7221 Wheat',415,0
+'IRUKAMA','Blaauw City','Giant Irukama Snails',1810,16
+'JARADHARRE','Gohar Station','Jaradharre Puzzle Box',12706,4
+'JAROUA','McCool City','Jaroua Rice',0,0
+'KACHIRIGIN','Nowak Orbital','Kachirigin Filter Leeches',473,10
+'KAMITRA','Hammel Terminal','Kamitra Cigars',6218,6
+'KAMORIN','Godwin Vision','Kamorin Historic Weapons',2678,10
+'KAPPA FORNACIS','Harvestport','Onion Head',775,17
+'KARETII','Sinclair Platform','Karetii Couture',5225,5
+'KARSUKI TI','West Market','Karsuki Locusts',915,0
+'KINAGO','Fozard Ring','Kinago Violins',7279,3
+'KONGGA','Laplace Ring','Kongga Ale',585,16
+'KORRO KUNG','Lonchakov Orbital','Koro Kung Pellets',220,20
+'LAVE','Lave Station','Lavian Brandy',3500,7
+'LEESTI','George Lucas','Azure Milk',3010,7
+'LEESTI','George Lucas','Leestian Evil Juice',334,14
+'LFT 1421','Ehrlich Orbital','Void Extract Coffee',2357,0
+'LP 375-25','King Gateway','Honesty Pills',0,13
+'MECHUCOS','Brandenstein Port','Mechucos High Tea',1345,8
+'MEDB','Vela Dock','Medb Starlube',416,18
+'MOKOJING','Noli Terminal','Mokojing Beast Feast',2681,0
+'MOMUS REACH','Tartarus Point','Momus Bog Spaniel',1825,7
+'MUKUSUBII','Ledyard Dock','Mukusubii Chitin-os',661,0
+'MULACHI','Clark Terminal','Mulachi Giant Fungus',86,0
+'NERITUS','Toll Ring','Neritus Berries',850,13
+'NGADANDARI','Consolmagno Horizons','Ngadandari Fire Opals',16028,0
+'NGUNA','Biggle Hub','Nguna Modern Antiques',930,18
+'NJANGARI','Lee Hub','Njangari Saddles',0,10
+'OCHOENG','Roddenberry Gateway','Ochoeng Chillies',998,14
+'ORRERE','Sharon Lee Free Market','Orrerian Vicious Brew',533,16
+'PHIAGRE','Greeboski''s Outpost','Giant Verrix',6552,6
+'QUECHUA','Crown Ring','Albino Quechua Mammoth Meat',2538,10
+'RAJUKRU','Snyder Terminal','Rajukru Multi-Stoves',682,17
+'RAPA BAO','Flagg Gateway','Rapa Bao Snake Skins',550,0
+'RUSANI','Fernandes Market','Rusani Old Smokey',5810,0
+'SANUMA','Dunyach Gateway','Sanuma Decorative Meat',860,25
+'SHINRARTA DEZHRA','Jameson Memorial','Waters of Shintara',7495,5
+'TANMARK','Cassie-L-Peia','Tanmark Tranquil Tea',1814,9
+'TARACH TOR','Tranquillity','Tarach Spice',1056,8
+'THRUTIS','Kingsbury Dock','Thrutis Cream',925,0
+'TIOLCE','Gordon Terminal','Tiolce Waste 2 Paste',1153,13
+'TOXANDJI','Tsunenaga Orbital','Toxandji Virocide',535,18
+'USZAA','Guest Installation','Uszaian Tree Grub',965,14
+'UTGAROAR','Fort Klarix','Utgaroar Millennial Eggs',1795,15
+'UZUMOKU','Sverdrup Ring','Uzumoku Low-G Wings',8496,0
+'V1090 HERCULIS','Kaku Plant','Herculis Body Rub',160,20
+'VANAYEQUI','Clauss Hub','Vanayequi Ceratomorpha Fur',615,0
+'VEGA','Taylor City','Vega Slimweed',2398,0
+'VIDAVANTA','Lee Mines','Vidavantian Lace',6771,0
+'VOLKHAB','Vernadsky Dock','Volkhab Bee Drones',3262,6
+'WHEEMETE','Eisinga Enterprise','Wheemete Wheat Cakes',262,0
+'WITCHHAUL','Hornby Terminal','Witchhaul Kobe Beef',4520,9
+'WOLF 1301','Saunders''s Dive','Wolf Fesh',712,13
+'WULPA','Williams Gateway','Wulpa Hyperbore Systems',1175,10
+'WUTHIELO KU','Tarter Dock','Wuthielo Ku Froth',420,17
+'XIHE','Zhen Dock','Xihe Biomorphic Companions',4482,7
+'YASO KONDI','Wheeler Market','Yaso Kondi Leaf',6060,5
+'ZAONCE','Ridley Scott','Leathery Eggs',23115,1
+'ZEESSZE','Nicollier Hanger','Zeessze Ant Grub Glue',380,0

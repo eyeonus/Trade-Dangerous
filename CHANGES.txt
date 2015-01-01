@@ -2,7 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-WIP:
+v6.4.0 Jan 01 2015
+. (kfsone) Added RareItem table,
+. (kfsone) Imported systems from EDStarCoord,
+. (kfsone) Added a LOT of stations,
+. (kfsone) Converted all SYSTEM names to upper case in the database,
+
+v6.3.2 Dec 31 2014
 . (kfsone) Added experimental "upload-to-maddavo" (misc/madupload.py)
 . (kfsone) Improved the feedback from run when routes go wrong.
 . (kfsone) fixed "--link-ly" causing a 'TypeError' in various places,
