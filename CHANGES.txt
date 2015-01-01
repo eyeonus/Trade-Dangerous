@@ -4,6 +4,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 Work In Progress:
 . (kfsone) Import reports stats on completion (so its more obvious it worked)
+. (kfsone) "NOTE" now indicates a line that can be hidden using "-q",
+. (kfsone) Deleted/Deprecated keys in .csv files are now warnings with "-i",
 
 v6.4.0 Jan 01 2015
 . (kfsone) Added "rare" sub-command,
