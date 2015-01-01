@@ -4,6 +4,20 @@ class TradeEnv(object):
     """
         Container for a TradeDangerous "environment", which is a
         collection of operational parameters.
+
+        To print debug lines, use DEBUG<N>, e.g. DEBUG0, which
+        takes a format() string and parameters, e.g.
+
+            DEBUG1("hello, {world}{}", "!", world="world")
+
+        is equivalent to:
+
+            if tdenv.debug >= 1:
+                print("#hello, {world}{}".format(
+                        "!", world="world"
+                ))
+
+        Use "NOTE" to print remarks which can be disabled with -q.
     """
 
     defaults = {
@@ -41,6 +55,22 @@ class TradeEnv(object):
                 debugFn = __DEBUG_DISABLED
             setattr(self, key, debugFn)
             return debugFn
+
+        if key == "NOTE":
+            def __NOTE_ENABLED(outText, *args, file=None, **kwargs):
+                print("NOTE:", outText.format(*args, **kwargs), file=file)
+
+            def __NOTE_DISABLED(*args, **kwargs):
+                pass
+
+            # Tried to call "NOTE" but it hasn't been called yet,
+            if not self.quiet:
+                noteFn = __NOTE_ENABLED
+            else:
+                noteFn = __NOTE_DISABLED
+            setattr(self, key, noteFn)
+            return noteFn
+
         return default
 
 
