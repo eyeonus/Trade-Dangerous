@@ -1,5 +1,7 @@
 !name@System.system_id,name@Station.station_id,unq:name,cost,max_allocation
 '39 TAURI','Porta','Tauri Chimes',938,17
+'47 CETI','Glushko Station','Aepyornis Egg',2654,7
+'47 CETI','Kaufmanis Hub','Ceti Rabbits',1675,12
 'AEGAEON','Schweickart Station','Chateau De Aegaeon',0,14
 'AERIAL','Andrade Legacy','Edan Apples of Aerial',621,15
 'ALACARAKMO','Weyl Gateway','Alacarakmo Skin Art',1421,14
@@ -24,7 +26,7 @@
 'DELTA PHOENICIS','Trading Post','Delta Phoenicis Palms',412,17
 'DEURINGAS','Shukor Hub','Deuringas Truffles',1892,0
 'DISO','Shifnalport','Diso Ma Corn',180,15
-'ELEU','Finney Dock','Eleu Thermals',873,0
+'ELEU','Finney Dock','Eleu Thermals',873,13
 'EPSILON INDI','Mansfield Orbiter','Indi Bourbon',978,11
 'ERANIN','Azeban City','Eranin Pearl Whiskey',1620,8
 'ESHU','Shajn Terminal','Eshu Umbrellas',2050,0

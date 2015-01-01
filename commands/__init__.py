@@ -18,7 +18,7 @@ import commands.import_cmd
 import commands.local_cmd
 import commands.nav_cmd
 import commands.olddata_cmd
-import commands.rare_cmd
+import commands.rares_cmd
 import commands.run_cmd
 import commands.sell_cmd
 import commands.update_cmd
@@ -123,11 +123,33 @@ class CommandIndex(object):
         ### we just try and import the command you specify,
         ### and only worry about an index when that fails or
         ### the user requests usage.
-        cmdName = argv[1].lower()
+        cmdName, cmdModule = argv[1].casefold(), None
         try:
             cmdModule = commandIndex[cmdName]
         except KeyError:
-            raise exceptions.CommandLineError("Unrecognized command, '{}'".format(cmdName), self.usage(argv))
+            pass
+
+        if not cmdModule:
+            candidates = []
+            for name, module in commandIndex.items():
+                if name.startswith(cmdName):
+                    candidates.append([name, module])
+            if not candidates:
+                raise exceptions.CommandLineError(
+                        "Unrecognized command, '{}'".format(cmdName),
+                        self.usage(argv)
+                )
+            if len(candidates) > 1:
+                raise exceptions.CommandLineError(
+                        "Ambiguous command, '{}', "
+                        "could match: {}".format(
+                            cmdName,
+                            ', '.join(c[0] for c in candidates)
+                        ),
+                        self.usage(argv)
+                )
+            argv[1] = cmdName = candidates[0][0]
+            cmdModule = candidates[0][1]
 
         class ArgParser(argparse.ArgumentParser):
             def error(self, message):

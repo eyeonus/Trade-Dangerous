@@ -2,12 +2,25 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Work In Progress:
+. (kfsone) Import reports stats on completion (so its more obvious it worked)
+. (kfsone) "NOTE" now indicates a line that can be hidden using "-q",
+. (kfsone) Deleted/Deprecated keys in .csv files are now warnings with "-i",
+. (kfsone) command names can now be partial, e.g. "loc" for "local",
+        "ra", "rar" or "rare" for "rares"
+. (kfsone) Show stationLS and pad size in rares display
+. (kfsone) Added "--stations" option to "nav" command to show station details,
+. (kfsone) Added "--reverse" to "rares" command, to make it easier to find
+        far away alternatives:
+        $ trade.py rare --near neto --ly 160 --reverse --limit 10
+
 v6.4.0 Jan 01 2015
 . (kfsone) Added "rare" sub-command,
 . (kfsone) Added RareItem table,
 . (kfsone) Imported systems from EDStarCoord,
 . (kfsone) Added a LOT of stations,
 . (kfsone) Converted all SYSTEM names to upper case in the database,
++ Data: kfsone, gazelle
 
 v6.3.2 Dec 31 2014
 . (kfsone) Added experimental "upload-to-maddavo" (misc/madupload.py)

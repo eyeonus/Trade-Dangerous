@@ -9,7 +9,7 @@ import math
 # Parser config
 
 help='Find rares near your current local.'
-name='rare'
+name='rares'
 epilog=None
 wantsTradeDB=True
 arguments = [
@@ -20,7 +20,7 @@ switches = [
             help='Maximum distance to search.',
             metavar='LY',
             type=float,
-            default=42,
+            default=180,
             dest='maxLyPer',
     ),
     ParseArgument('--limit',
@@ -30,6 +30,12 @@ switches = [
     ),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance',
+            action='store_true',
+            default=False,
+            dest='sortByPrice',
+    ),
+    ParseArgument('--reverse', '-r',
+            help='Reverse the list.',
             action='store_true',
             default=False,
             dest='sortByPrice',
@@ -60,6 +66,10 @@ def run(results, cmdenv, tdb):
         row.dist = math.sqrt(dist)
         results.rows.append(row)
 
+    if not results:
+        print("No matches found.")
+        return None
+
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
@@ -67,6 +77,9 @@ def run(results, cmdenv, tdb):
         # order by distance, cost
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
         results.rows.sort(key=lambda row: row.dist)
+
+    if cmdenv.reverse:
+        results.rows.reverse()
 
     limit = cmdenv.limit or 0
     if limit > 0:
@@ -96,6 +109,12 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.dist)
     rowFmt.addColumn('Alloc', '>', 6, 'n',
             key=lambda row: row.rare.maxAlloc)
+    rowFmt.addColumn("StnLs", '>', 10,
+            key=lambda row: row.rare.station.distFromStar())
+    rowFmt.addColumn("Pad", '>', '3',
+            key=lambda row: \
+                    TradeDB.padSizes[row.rare.station.maxPadSize]
+    )
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
