@@ -6,6 +6,8 @@ Work In Progress:
 . (kfsone) Import reports stats on completion (so its more obvious it worked)
 . (kfsone) "NOTE" now indicates a line that can be hidden using "-q",
 . (kfsone) Deleted/Deprecated keys in .csv files are now warnings with "-i",
+. (kfsone) command names can now be partial, e.g. "loc" for "local",
+           "ra", "rar" or "rare" for "rares"
 
 v6.4.0 Jan 01 2015
 . (kfsone) Added "rare" sub-command,

@@ -9,7 +9,7 @@ import math
 # Parser config
 
 help='Find rares near your current local.'
-name='rare'
+name='rares'
 epilog=None
 wantsTradeDB=True
 arguments = [
