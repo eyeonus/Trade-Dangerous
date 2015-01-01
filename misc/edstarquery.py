@@ -22,7 +22,7 @@ class EDStarQuery(object):
             }
         }
         for k, v in kwargs.items():
-            self.params.filter[k] = v
+            self.params['data']['filter'][k] = v
 
         self.jsData = None
 
@@ -58,5 +58,5 @@ if __name__ == "__main__":
     systems = data['systems']
 
     for sysinfo in systems:
-        print(sysinfo['id'], sysinfo['name'], sysinfo['coord'])
+        print(sysinfo['id'], sysinfo['name'], sysinfo['coord'], sysinfo['createdate'])
 

@@ -108,7 +108,7 @@ class System(object):
 
 
     def name(self):
-        return self.dbname.upper()
+        return self.dbname
 
 
     def str(self):
@@ -141,7 +141,7 @@ class Station(object):
     __slots__ = (
             'ID', 'system', 'dbname',
             'lsFromStar', 'blackMarket', 'maxPadSize',
-            'tradingWith', 'itemCount'
+            'tradingWith', 'itemCount',
     )
 
     def __init__(
@@ -341,7 +341,7 @@ class TradeDB(object):
                       [ 'UpgradeVendor.csv', 'UpgradeVendor' ],
                       [ 'Category.csv', 'Category' ],
                       [ 'Item.csv', 'Item' ],
-                      [ 'AltItemNames.csv', 'AltItemNames' ]
+                      [ 'AltItemNames.csv', 'AltItemNames' ],
                     ]
 
 
@@ -486,7 +486,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
         for (ID, name, posX, posY, posZ) in self.cur:
-            systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
+            systemByID[ID] = systemByName[name.upper()] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
@@ -524,9 +524,9 @@ class TradeDB(object):
                 name, x, y, z, 'Local',
         ])
         ID = cur.lastrowid
-        system = System(ID, name, x, y, z)
+        system = System(ID, name.upper(), x, y, z)
         self.systemByID[ID] = system
-        self.systemByName[name] = system
+        self.systemByName[system.dbname] = system
         db.commit()
         if not self.tdenv.quiet:
             print("- Added new system #{}: {} [{},{},{}]".format(
@@ -782,15 +782,16 @@ class TradeDB(object):
         nameOff = 1 if name.startswith('@') else 0
         if slashPos > nameOff:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
-            sysName, stnName = name[nameOff:slashPos], name[slashPos+1:]
+            sysName, stnName = name[nameOff:slashPos].upper(), name[slashPos+1:]
         elif slashPos == nameOff:
             sysName, stnName = None, name[nameOff+1:]
         elif nameOff:
             # It's explicitly a station
-            sysName, stnName = name[nameOff:], None
+            sysName, stnName = name[nameOff:].upper(), None
         else:
             # It could be either, use the name for both.
-            sysName = stnName = name[nameOff:]
+            stnName = name[nameOff:]
+            sysName = stnName.upper()
 
         exactMatch = []
         closeMatch = []
@@ -862,7 +863,11 @@ class TradeDB(object):
                     anyMatch.append(place)
 
         if sysName:
-            lookup(sysName, self.systemByID.values())
+            try:
+                sys = self.systemByName[sysName]
+                return sys
+            except KeyError:
+                lookup(sysName, self.systemByID.values())
         if stnName:
             # Are we considering the name as a station?
             # (we don't if they type, e,g '@aulin')
