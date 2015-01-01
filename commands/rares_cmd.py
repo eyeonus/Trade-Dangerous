@@ -20,7 +20,7 @@ switches = [
             help='Maximum distance to search.',
             metavar='LY',
             type=float,
-            default=42,
+            default=180,
             dest='maxLyPer',
     ),
     ParseArgument('--limit',
@@ -30,6 +30,12 @@ switches = [
     ),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance',
+            action='store_true',
+            default=False,
+            dest='sortByPrice',
+    ),
+    ParseArgument('--reverse', '-r',
+            help='Reverse the list.',
             action='store_true',
             default=False,
             dest='sortByPrice',
@@ -60,6 +66,10 @@ def run(results, cmdenv, tdb):
         row.dist = math.sqrt(dist)
         results.rows.append(row)
 
+    if not results:
+        print("No matches found.")
+        return None
+
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
@@ -67,6 +77,9 @@ def run(results, cmdenv, tdb):
         # order by distance, cost
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
         results.rows.sort(key=lambda row: row.dist)
+
+    if cmdenv.reverse:
+        results.rows.reverse()
 
     limit = cmdenv.limit or 0
     if limit > 0:
