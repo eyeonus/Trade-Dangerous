@@ -263,7 +263,7 @@ class RareItem(namedtuple('RareItem', [
     Describes a RareItem
     """
     def name(self):
-        return self.name
+        return self.dbname
 
 
 ######################################################################
