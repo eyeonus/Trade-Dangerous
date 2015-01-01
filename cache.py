@@ -762,6 +762,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                     except (DeprecatedKeyError, DeletedKeyError) as e:
                         if not tdenv.ignoreUnknown:
                             raise e
+                        e.category = "WARNING"
                         tdenv.NOTE("{}", e)
                         continue
                 if uniqueIndexes:
