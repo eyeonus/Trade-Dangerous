@@ -24,11 +24,6 @@ switches = [
             type=float,
             default=None,
         ),
-    ParseArgument('--ages',
-            help='Show stations and the age of their price data.',
-            default=False,
-            action='store_true',
-        ),
 ]
 
 ######################################################################
