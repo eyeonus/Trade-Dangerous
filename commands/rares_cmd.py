@@ -96,6 +96,12 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.dist)
     rowFmt.addColumn('Alloc', '>', 6, 'n',
             key=lambda row: row.rare.maxAlloc)
+    rowFmt.addColumn("StnLs", '>', 10,
+            key=lambda row: row.rare.station.distFromStar())
+    rowFmt.addColumn("Pad", '>', '3',
+            key=lambda row: \
+                    TradeDB.padSizes[row.rare.station.maxPadSize]
+    )
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
