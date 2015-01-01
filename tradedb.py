@@ -257,7 +257,7 @@ class Item(object):
 
 
 class RareItem(namedtuple('RareItem', [
-            'rareID', 'source', 'name', 'costCr', 'maxAlloc',
+            'rareID', 'station', 'name', 'costCr', 'maxAlloc',
         ])):
     """
     Describes a RareItem
