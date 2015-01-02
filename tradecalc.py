@@ -459,6 +459,7 @@ class TradeCalc(object):
         stationsNotYetLoaded = [
                 src.ID for src in [ route.route[-1] for route in routes ] 
                     if src.tradingWith is None
+                    and src.itemCount
         ]
         if stationsNotYetLoaded:
             tdb.loadStationTrades(stationsNotYetLoaded)
