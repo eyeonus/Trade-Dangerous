@@ -46,6 +46,8 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id
 'APTET','Torricelli Port','Lakon Type 7'
 'APTET','Torricelli Port','Lakon Type 9'
 'APTET','Torricelli Port','Sidewinder'
+'BAST','Hart Station','Cobra'
+'BAST','Hart Station','Eagle'
 'BHRITZAMENO','Feynman Terminal','Adder'
 'BHRITZAMENO','Feynman Terminal','Asp Explorer'
 'BHRITZAMENO','Feynman Terminal','Cobra'
