@@ -38,7 +38,6 @@ switches = [
             help='Reverse the list.',
             action='store_true',
             default=False,
-            dest='sortByPrice',
     ),
 ]
 
@@ -74,7 +73,6 @@ def run(results, cmdenv, tdb):
         results.rows.sort(key=lambda row: row.dist)
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
     else:
-        # order by distance, cost
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
         results.rows.sort(key=lambda row: row.dist)
 
