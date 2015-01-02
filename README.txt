@@ -190,12 +190,12 @@ Advanced Commands:
 
 
 
-RARE sub-command:
+RARES sub-command:
 
   This command looks for known rare items within the space around
   a specified system.
 
-  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort]
+  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
 
      <system>
        System to center search on
@@ -219,6 +219,11 @@ RARE sub-command:
      -P
        Sort by price rather than proximity
 
+     --reverse
+     -r
+       Reverse the order, can be used with "--ly" and "--limit" to find
+       the furthest-away rares
+
      --quiet
      -q
        Don't include the header lines
@@ -240,6 +245,14 @@ RARE sub-command:
     ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
     V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
 
+    Finding where to take a rare from Bast:
+    $ trade.py rare bast --ly 180 -r --limit 4
+    Station                      Rare                        Cost DistLy  Alloc      StnLs Pad
+    ------------------------------------------------------------------------------------------
+    DELTA PHOENICIS/Trading Post Delta Phoenicis Palms        412 179.42     17      3,743 Lrg
+    DEURINGAS/Shukor Hub         Deuringas Truffles         1,892 174.22      0          ? Lrg
+    HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
+    ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
 RUN sub-command:
 
@@ -577,7 +590,7 @@ NAV sub-command:
       station, the system it is in will be avoided.
 
     --stations
-      Shows the number of stations at each system.
+      Lists stations at each stop
 
     from
       Name of the starting system or a station in the system,
@@ -595,10 +608,19 @@ NAV sub-command:
 
     > trade.py nav mok/be v7/me --ly 8.56 -vv --stations
     Action System         JumpLy Stations  DistLy   DirLy
-    -----------------------------------------------------
+      /  Station                               StnLs Age/days BMkt Pad Itms
+    -----------------------------------------------------------------------
     Depart MOKOSH           0.00        2    0.00   10.73
-    Via    LTT 15449        6.23        8    6.23    4.90
-    Arrive V774 HERCULIS    4.90        1   11.13    0.00
+      /  Bethe Station                         2,500        -    ?   ?   67
+      /  Lubin Orbital                             ?        -    ?   ?   67
+    Via    LTT 15449        6.23        9    6.23    4.90
+      /  Barry Terminal                           21        -    ?   ?   54
+      /  Binet Port                               14        -   No   ?   54
+      /  Bose Station                             53        -    ?   ?   53
+      ...
+    Arrive V774 HERCULIS    4.90        2   11.13    0.00
+      /  Lazutkin Colony                         704        -    ?   ?    0
+      /  Mendel Mines                            473        -    ?   ?   61
 
     ('DirLy' is the direct distance left to the destination)
 
