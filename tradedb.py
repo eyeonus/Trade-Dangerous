@@ -879,7 +879,7 @@ class TradeDB(object):
         if sysName:
             try:
                 sys = self.systemByName[sysName]
-                return sys
+                exactMatch = [ sys ]
             except KeyError:
                 lookup(sysName, self.systemByID.values())
         if stnName:
