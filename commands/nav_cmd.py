@@ -156,6 +156,25 @@ def run(results, cmdenv, tdb):
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     route.reverse()
+
+    if cmdenv.stations:
+        stationIDs = ",".join([
+                ",".join(str(stn.ID) for stn in sys.stations)
+                for sys in route
+                if sys.stations
+        ])
+        stmt = """
+                SELECT  si.station_id,
+                        JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
+                  FROM  StationItem AS si
+                 WHERE  si.station_id IN ({})
+                 GROUP  BY 1
+                """.format(stationIDs)
+        cmdenv.DEBUG0("Fetching ages: {}", stmt)
+        ages = {}
+        for ID, age in tdb.query(stmt):
+            ages[ID] = age
+
     for jumpSys in route:
         jumpLy = math.sqrt(lastSys.distToSq(jumpSys))
         totalLy += jumpLy
