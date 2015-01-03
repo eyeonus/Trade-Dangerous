@@ -1305,6 +1305,53 @@ class TradeDB(object):
                     srcAge, dstAge))
 
 
+    def loadDirectTrades(self, fromStation, toStation):
+        """
+            Loads all profitable trades that could be made
+            from the specified list of stations. Does not
+            take reachability into account.
+        """
+
+        self.tdenv.DEBUG1("Loading trades for {}->{}",
+                fromStation.name(), toStation.name()
+        )
+
+        stmt = """
+                SELECT  item_id,
+                        cost, gain,
+                        stock_units, stock_level,
+                        demand_units, demand_level,
+                        src_age, dst_age,
+                  FROM  vProfits
+                 WHERE  src_station_id = ? and dst_station_id = ?
+                 ORDER  gain DESC
+        """
+        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
+        self.cur.execute(stmt, [ fromStation.ID, toStation.ID ])
+
+        trading = []
+        for (
+                itemID,
+                srcPriceCr, profit,
+                stock, stockLevel,
+                demand, demandLevel,
+                srcAge, dstAge
+        ) in self.cur:
+            trading.append(Trade(
+                    items[itemID], itemID,
+                    srcPriceCr, profit,
+                    stock, stockLevel,
+                    demand, demandLevel,
+                    srcAge, dstAge))
+
+        if fromStation.tradingWith is None:
+            fromStation.tradingWith = {}
+        if trading:
+            fromStation.tradingWith[toStation] = trading
+        else:
+            del fromStation.tradingWith[toStation]
+
+
     def getTrades(self, src, dst):
         """ Returns a list of the Trade objects between src and dst. """
 
