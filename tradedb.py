@@ -57,7 +57,7 @@ class AmbiguityError(TradeException):
                         key(c) for c in anyMatch[0:-1]
                     ])
             opportunities += " or " + key(anyMatch[-1])
-        return '{} lookup: "{}" could match {}'.format(
+        return '{} "{}" could match {}'.format(
                         self.lookupType, str(self.searchKey),
                         opportunities
                     )
