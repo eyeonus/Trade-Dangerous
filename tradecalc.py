@@ -370,7 +370,9 @@ class TradeCalc(object):
             'fitFunction' lets you specify a function to use for performing the fit.
         """
         tdenv = self.tdenv
-        if credits is None: credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
+        if credits is None:
+            credits = getattr(tdenv, 'credits', 0) or 0
+            credits -= (getattr(tdenv, 'insurance', 0) or 0)
         capacity = tdenv.capacity
         avoidItems = tdenv.avoidItems
         tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
