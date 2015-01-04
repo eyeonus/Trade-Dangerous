@@ -4,6 +4,7 @@ from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import CommandLineError
 from pathlib import Path
 
+import os
 import sqlite3
 
 ######################################################################
@@ -128,5 +129,8 @@ def run(results, cmdenv, tdb):
             # delete file if emtpy
             filePath.unlink()
             cmdenv.DEBUG0("Delete empty file {file}'".format(file=filePath))
+
+    # Update the DB file so we don't regenerate it.
+    os.utime(str(tdb.dbPath))
 
     return None
