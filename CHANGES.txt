@@ -2,7 +2,15 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-Work In Progress:
+[wip]
++ Data: kfsone, gazelle, maddavo, Christian Andersen, Jared Buntain,
+        Sebastian Pro
+
+v6.4.1 Jan 04 2015
+. (kfsone) Added the "station" sub-command for querying, adding, updating or
+        removing stations from the .db and .csv files. See
+           trade.py station --help
+        or the README.txt for more information.
 . (kfsone) Import reports stats on completion (so its more obvious it worked)
 . (kfsone) "NOTE" now indicates a line that can be hidden using "-q",
 . (kfsone) Deleted/Deprecated keys in .csv files are now warnings with "-i",
