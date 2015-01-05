@@ -249,7 +249,7 @@ def checkSystemAndStation(tdb, cmdenv):
         except LookupError:
             raise CommandLineError(
                     "Unknown SYSTEM name: \"{}\"".format(
-                        systemName
+                        sysName
             ))
 
         # check the station does not exist
