@@ -694,6 +694,11 @@ class TradeDB(object):
         Add a station to the local cache and memory copy.
         """
 
+        blackMarket = blackMarket.upper()
+        maxPadSize = maxPadSize.upper()
+        assert blackMarket in "?YN"
+        assert maxPadSize in "?SML"
+
         self.tdenv.DEBUG0(
                 "Adding {}/{} ls={}, bm={}, pad={}",
                 system.name(),
@@ -715,7 +720,7 @@ class TradeDB(object):
                 )
         """, [
                 name, system.ID,
-                lsFromStar, blackMarket, maxPadSize,
+                lsFromStar, blackMarket.upper(), maxPadSize.upper(),
         ])
         ID = cur.lastrowid
         station = Station(
