@@ -238,7 +238,7 @@ def checkSystemAndStation(tdb, cmdenv):
                     envSysName, envStnName
         ))
 
-    cmdenv.system, cmdenv.station = sysName, stnName
+    cmdenv.system, cmdenv.station = sysName, titleFixup(stnName)
 
     # If we're adding a station, we need to check that the system
     # exists and that it doesn't contain a close-match for this
@@ -332,8 +332,8 @@ def run(results, cmdenv, tdb):
         result = updateStation(tdb, cmdenv, station)
         return checkResultAndExportStations(tdb, cmdenv, result)
     elif cmdenv.remove:
-        result = deleteStation(tdb, cmdenv, station)
-        checkResultAndExportStations(tdb, cmdenv, result)
+        result = removeStation(tdb, cmdenv, station)
+        return checkResultAndExportStations(tdb, cmdenv, result)
 
     # Otherwise, it's just a query
     results.summary = ResultRow()
