@@ -42,6 +42,7 @@ stations = {
     "HR 5451/MACOONALO HUB": DELETED,
     "V774 HERCULIS/MENOEL MINES": "Mendel Mines",
     "VALDA/CLAIRAUT OOCK": "Clairaut Dock",
+    "LEESTI/GEORGELUCAS": "George Lucas",
 
 #ADD_STATIONS_HERE
 }
