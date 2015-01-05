@@ -390,6 +390,8 @@ class TradeDB(object):
         self.sqlFilename = str(self.sqlPath)
         self.pricesFilename = str(self.pricesPath)
 
+        self.avgSelling, self.avgBuying = None, None
+
         if load:
             self.reloadCache()
             self.load(
@@ -1233,6 +1235,42 @@ class TradeDB(object):
                 key=lambda kvTup: kvTup[0],
                 val=lambda kvTup: kvTup[1]
         )
+
+
+    def getAverageSelling(self):
+        """
+        Query the database for average selling prices of all items.
+        """
+        if not self.avgSelling:
+            self.avgSelling = {
+                ID: int(cr)
+                for ID, cr in self.getDB().execute("""
+                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
+                      FROM  Item
+                            LEFT OUTER JOIN StationSelling
+                                USING (item_id)
+                     GROUP  BY 1
+                """)
+            }
+        return self.avgSelling
+
+
+    def getAverageBuying(self):
+        """
+        Query the database for average buying prices of all items.
+        """
+        if not self.avgBuying:
+            self.avgBuying = {
+                ID: int(cr)
+                for ID, cr in self.getDB().execute("""
+                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
+                      FROM  Item
+                            LEFT OUTER JOIN StationBuying
+                                USING (item_id)
+                     GROUP  BY 1
+                """)
+            }
+        return self.avgBuying
 
 
     ############################################################
