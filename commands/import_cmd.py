@@ -142,3 +142,4 @@ def run(results, cmdenv, tdb):
     cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh)
 
     return None
+    
