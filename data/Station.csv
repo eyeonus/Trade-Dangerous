@@ -1655,6 +1655,8 @@ unq:name@System.system_id,unq:name,ls_from_star,blackmarket,max_pad_size
 'LAWD 52','Leichhardt Enterprise',2200,'?','?'
 'LAWD 52','Tem Terminal',671,'?','?'
 'LAZDONES','Cori Hub',0,'?','?'
+'LAZDONES','Gregory Hub',115,'N','?'
+'LAZDONES','McCoy Terminal',62,'N','?'
 'LDS 2314','McDonald Colony',0,'?','?'
 'LDS 413','Borlaug Hub',38685,'?','M'
 'LDS 413','Germar Terminal',34095,'?','L'
