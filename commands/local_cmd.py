@@ -1,5 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from commands.commandenv import ResultRow
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB
 from tradeexcept import TradeException
 
@@ -30,8 +32,6 @@ switches = [
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    from commands.commandenv import ResultRow
-
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
     srcSystem = cmdenv.nearSystem
@@ -102,8 +102,6 @@ def run(results, cmdenv, tdb):
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
-    from formatting import RowFormat, ColumnFormat
-
     if not results or not results.rows:
         raise TradeException("No systems found within {}ly of {}.".format(
                     results.summary.ly,
