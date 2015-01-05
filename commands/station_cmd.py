@@ -305,7 +305,7 @@ def checkResultAndExportStations(tdb, cmdenv, result):
     if not result:
         return None
     if cmdenv.noExport:
-        tdb.DEBUG0("no-export set, not exporting stations")
+        cmdenv.DEBUG0("no-export set, not exporting stations")
         return None
 
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "Station")
