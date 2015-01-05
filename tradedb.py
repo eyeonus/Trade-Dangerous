@@ -390,6 +390,8 @@ class TradeDB(object):
         self.sqlFilename = str(self.sqlPath)
         self.pricesFilename = str(self.pricesPath)
 
+        self.avgSelling, self.avgBuying = None, None
+
         if load:
             self.reloadCache()
             self.load(
@@ -692,24 +694,45 @@ class TradeDB(object):
         Add a station to the local cache and memory copy.
         """
 
+        self.tdenv.DEBUG0(
+                "Adding {}/{} ls={}, bm={}, pad={}",
+                system.name(),
+                name,
+                lsFromStar,
+                blackMarket,
+                maxPadSize
+        )
+
         db = self.getDB()
         cur = db.cursor()
         cur.execute("""
                 INSERT INTO Station (
                     name, system_id,
+                    ls_from_star, blackmarket, max_pad_size
                 ) VALUES (
-                    ?, ?
+                    ?, ?,
+                    ?, ?, ?
                 )
-        """, [ name, system.ID ])
+        """, [
+                name, system.ID,
+                lsFromStar, blackMarket, maxPadSize,
+        ])
         ID = cur.lastrowid
-        station = Station(ID, system, name, 0, '?', '?', 0)
+        station = Station(
+                ID, system, name,
+                lsFromStar=lsFromStar,
+                blackMarket=blackMarket,
+                maxPadSize=maxPadSize,
+                itemCount=0,
+        )
         self.stationByID[ID] = station
         db.commit()
-        if not self.tdenv.quiet:
-            print("- Added new station #{}:"
-                    "{}/{}".format(
-                    ID, system.name(), name,
-            ))
+        self.tdenv.NOTE(
+                "{} (#{}) added to {} db: "
+                "ls={}, bm={}, pad={}",
+                    station.name(), station.ID, self.dbPath,
+                    lsFromStar, blackMarket, maxPadSize,
+        )
         return station
 
     def updateLocalStation(
@@ -744,14 +767,15 @@ class TradeDB(object):
                     station.maxPadSize = maxPadSize
                     changes = True
         if not changes:
+            self.tdenv.NOTE("No changes")
             return False
         db = self.getDB()
         db.execute("""
             UPDATE Station
-               SET ls_from_star={},
-                   blackmarket={},
-                   max_pad_size={}
-             WHERE station_id = {}
+               SET ls_from_star=?,
+                   blackmarket=?,
+                   max_pad_size=?
+             WHERE station_id = ?
         """, [
             station.lsFromStar,
             station.blackMarket,
@@ -759,13 +783,13 @@ class TradeDB(object):
             station.ID
         ])
         db.commit()
-        if not self.tdenv.quiet:
-            print("- {}/{}: ls={}, bm={}, pad={}".format(
-                    station.name(),
-                    station.lsFromStar,
-                    station.blackMarket,
-                    station.maxPadSize,
-            ))
+        self.tdenv.NOTE(
+                "{} (#{}) updated in {}: ls={}, bm={}, pad={}",
+                station.name(), station.ID, self.dbPath,
+                station.lsFromStar,
+                station.blackMarket,
+                station.maxPadSize,
+        )
         return True
 
     def lookupPlace(self, name):
@@ -1211,6 +1235,42 @@ class TradeDB(object):
                 key=lambda kvTup: kvTup[0],
                 val=lambda kvTup: kvTup[1]
         )
+
+
+    def getAverageSelling(self):
+        """
+        Query the database for average selling prices of all items.
+        """
+        if not self.avgSelling:
+            self.avgSelling = {
+                ID: int(cr)
+                for ID, cr in self.getDB().execute("""
+                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
+                      FROM  Item
+                            LEFT OUTER JOIN StationSelling
+                                USING (item_id)
+                     GROUP  BY 1
+                """)
+            }
+        return self.avgSelling
+
+
+    def getAverageBuying(self):
+        """
+        Query the database for average buying prices of all items.
+        """
+        if not self.avgBuying:
+            self.avgBuying = {
+                ID: int(cr)
+                for ID, cr in self.getDB().execute("""
+                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
+                      FROM  Item
+                            LEFT OUTER JOIN StationBuying
+                                USING (item_id)
+                     GROUP  BY 1
+                """)
+            }
+        return self.avgBuying
 
 
     ############################################################

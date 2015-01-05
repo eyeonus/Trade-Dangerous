@@ -3,8 +3,9 @@ from __future__ import absolute_import, with_statement, print_function, division
 from pathlib import Path
 from tradeexcept import TradeException
 
-import sqlite3
 import csv
+import os
+import sqlite3
 
 ######################################################################
 # TradeDangerous :: Modules :: CSV Exporter
@@ -213,5 +214,8 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
             tdenv.DEBUG2("{count}: {values}".format(count=lineCount, values=list(line)))
             exportOut.writerow(list(line))
         tdenv.DEBUG1("{count} {table}s exported".format(count=lineCount, table=tableName))
+
+    # Update the DB file so we don't regenerate it.
+    os.utime(str(tdb.dbPath))
 
     return lineCount, exportPath

@@ -161,14 +161,14 @@ For additional help on a specific command, such as 'update' use
   trade.py run ...
     Calculates a trade run
 
+  trade.py update ...
+    Provides a way to enter/update price data for a station
+
   trade.py nav ...
     Calculates a route between two systems
 
   trade.py import ...
     Reads prices from a file and loads them into the cache
-
-  trade.py update ...
-    Provides a way to enter/update price data for a station
 
   trade.py buy ...
     Finds places to buy a given item
@@ -180,6 +180,12 @@ For additional help on a specific command, such as 'update' use
     Lists systems (and optionally, stations) in the vacinity
     of a given system
 
+  trade.py rares ...
+    Helps to find rares.
+
+  trade.py olddata ...
+    Lists old data
+
 Advanced Commands:
 
   trade.py buildcache
@@ -188,71 +194,9 @@ Advanced Commands:
   trade.py export ...
     Exports data from the db to .csv files
 
+  trade.py station ...
+    Query, add, update or remove stations
 
-
-RARES sub-command:
-
-  This command looks for known rare items within the space around
-  a specified system.
-
-  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
-
-     <system>
-       System to center search on
-       e.g.
-         Lave
-         @Sol
-
-     --ly N.NN
-       DEFAULT: 42
-       Maximum distance to search from center system.
-       e.g.
-         --ly 0     (unlimited)
-         --ly 21.2
-
-     --limit N
-       Maximum number of results to show
-       e.g.
-         --limit 10
-
-     --price-sort
-     -P
-       Sort by price rather than proximity
-
-     --reverse
-     -r
-       Reverse the order, can be used with "--ly" and "--limit" to find
-       the furthest-away rares
-
-     --quiet
-     -q
-       Don't include the header lines
-
-
-  Examples:
-
-    $ trade.py rare sol --ly 10
-    Station                       Rare                    Cost DistLy  Alloc
-    ------------------------------------------------------------------------
-    ALPHA CENTAURI/Hutton Orbital Centauri Mega Gin      3,319   4.38      7
-
-    $ trade.py rare @neto --ly 50 --price --limit 5
-    Station                   Rare                             Cost DistLy  Alloc
-    -----------------------------------------------------------------------------
-    XIHE/Zhen Dock            Xihe Biomorphic Companions      4,482  48.10      7
-    VEGA/Taylor City          Vega Slimweed                   2,398  33.44      0
-    LFT 1421/Ehrlich Orbital  Void Extract Coffee             2,357  26.45      0
-    ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
-    V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
-
-    Finding where to take a rare from Bast:
-    $ trade.py rare bast --ly 180 -r --limit 4
-    Station                      Rare                        Cost DistLy  Alloc      StnLs Pad
-    ------------------------------------------------------------------------------------------
-    DELTA PHOENICIS/Trading Post Delta Phoenicis Palms        412 179.42     17      3,743 Lrg
-    DEURINGAS/Shukor Hub         Deuringas Truffles         1,892 174.22      0          ? Lrg
-    HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
-    ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
 RUN sub-command:
 
@@ -476,6 +420,7 @@ UPDATE sub-command:
   aka:
     trade.py update --sub -T0 aulin
 
+
 IMPORT sub-command:
 
   Provides a way to import prices data from a file or a web site. You can use this
@@ -510,67 +455,69 @@ IMPORT sub-command:
       by this version of TD will be reported but import will continue.
 
 
-BUY sub-command:
+RARES sub-command:
 
-  Looks for stations selling the specified item: that means they have a non-zero
-  asking price and a stock level other than "n/a".
+  This command looks for known rare items within the space around
+  a specified system.
 
-  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
+  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
 
-    --quantity Q
-      Requires that the stock level be unknown or at least this value,
-      --quantity 23
+     <system>
+       System to center search on
+       e.g.
+         Lave
+         @Sol
 
-    --near system
-    --near station
-      Only considers stations within reach of the specified system.
-      --near chango
+     --ly N.NN
+       DEFAULT: 42
+       Maximum distance to search from center system.
+       e.g.
+         --ly 0     (unlimited)
+         --ly 21.2
 
-    --limit N
-      Limit how many results re shown
-      --limit 5
+     --limit N
+       Maximum number of results to show
+       e.g.
+         --limit 10
 
-    --ly-per N.N
-      Sets the range of --near (requires --near)
-      --near chango --ly 10
+     --price-sort
+     -P
+       Sort by price rather than proximity
 
-    --prices-sort
-    -P
-      Keeps items sorted by price when using --near
-      (otherwise items are listed by distance and then price)
+     --reverse
+     -r
+       Reverse the order, can be used with "--ly" and "--limit" to find
+       the furthest-away rares
 
-    --stock-sort
-    -S
-      Sorts items by stock available first and then price
+     --quiet
+     -q
+       Don't include the header lines
 
 
-SELL sub-command:
+  Examples:
 
-  Looks for stations buying the specified item.
+    $ trade.py rare sol --ly 10
+    Station                       Rare                    Cost DistLy  Alloc
+    ------------------------------------------------------------------------
+    ALPHA CENTAURI/Hutton Orbital Centauri Mega Gin      3,319   4.38      7
 
-  trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
+    $ trade.py rare @neto --ly 50 --price --limit 5
+    Station                   Rare                             Cost DistLy  Alloc
+    -----------------------------------------------------------------------------
+    XIHE/Zhen Dock            Xihe Biomorphic Companions      4,482  48.10      7
+    VEGA/Taylor City          Vega Slimweed                   2,398  33.44      0
+    LFT 1421/Ehrlich Orbital  Void Extract Coffee             2,357  26.45      0
+    ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
+    V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
 
-    --quantity Q
-      Requires that the stock level be unknown or at least this value,
-      --quantity 23
-
-    --near system
-    --near station
-      Only considers stations within reach of the specified system.
-      --near chango
-
-    --limit N
-      Limit how many results re shown
-      --limit 5
-
-    --ly-per N.N
-      Sets the range of --near (requires --near)
-      --near chango --ly 10
-
-    --prices-sort
-    -P
-      Keeps items sorted by price when using --near
-      (otherwise items are listed by distance and then price)
+    Finding where to take a rare from Bast:
+    $ trade.py rare bast --ly 180 -r --limit 4
+    Station                      Rare                        Cost DistLy  Alloc      StnLs Pad
+    ------------------------------------------------------------------------------------------
+    DELTA PHOENICIS/Trading Post Delta Phoenicis Palms        412 179.42     17      3,743 Lrg
+    DEURINGAS/Shukor Hub         Deuringas Truffles         1,892 174.22      0          ? Lrg
+    HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
+    ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
 
 NAV sub-command:
@@ -678,6 +625,69 @@ LOCAL sub-command:
     a count of the number of items we have prices for at each station.
 
 
+BUY sub-command:
+
+  Looks for stations selling the specified item: that means they have a non-zero
+  asking price and a stock level other than "n/a".
+
+  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
+
+    --quantity Q
+      Requires that the stock level be unknown or at least this value,
+      --quantity 23
+
+    --near system
+    --near station
+      Only considers stations within reach of the specified system.
+      --near chango
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
+
+    --ly-per N.N
+      Sets the range of --near (requires --near)
+      --near chango --ly 10
+
+    --prices-sort
+    -P
+      Keeps items sorted by price when using --near
+      (otherwise items are listed by distance and then price)
+
+    --stock-sort
+    -S
+      Sorts items by stock available first and then price
+
+
+SELL sub-command:
+
+  Looks for stations buying the specified item.
+
+  trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
+
+    --quantity Q
+      Requires that the stock level be unknown or at least this value,
+      --quantity 23
+
+    --near system
+    --near station
+      Only considers stations within reach of the specified system.
+      --near chango
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
+
+    --ly-per N.N
+      Sets the range of --near (requires --near)
+      --near chango --ly 10
+
+    --prices-sort
+    -P
+      Keeps items sorted by price when using --near
+      (otherwise items are listed by distance and then price)
+
+
 EXPORT sub-command:
 
   This command generates the CSV data files of the current database. It
@@ -723,6 +733,55 @@ EXPORT sub-command:
     Using database './data/TradeDangerous.db'
     Export Table 'Station' to 'data/Station.csv'
     Export Table 'System' to 'data/System.csv'
+
+
+STATION sub-command:
+
+  This command can be used to add a new station:
+
+    > trade.py station --add "i bootis/nowhere port"
+    > trade.py station -a "i bootis/nowhere port" --ls 123 --pad m
+
+  Or it can be used to delete a station:
+
+    > trade.py station --remove "i bootis/nowhere port"
+    > trade.py station -rm "i bootis/nowhere port"
+
+  Or it can be used to update the ls-from-star, pad-size, or blackmarket
+  flags of an existing station:
+
+    > trade.py station --update "i bootis/nowhere port" --pad=L --ls-from-star=123 --black-market=N
+    > trade.py station -u "i bootis/nowhere port" --pad L --ls 123 --bm=N
+
+  If can also be used to show some basic data about a given station:
+
+    > trade.py station -v i bootis/chango
+    Station Data:
+    System....: I BOOTIS (#10438 @ -22.375,34.84375,4.0)
+    Station...: Chango Dock (#1288)
+    In System.: Maher Stellar Research
+    Stn/Ls....: 1,095
+    B/Market..: Yes
+    Pad Size..: Lrg
+    Prices....: 33
+    Price Age.: 6.77 days
+    Best Buy..: (Buy from this station)
+        Tea*                           @   1,217cr (Avg Sell   1,570cr)
+        Coffee*                        @   1,047cr (Avg Sell   1,369cr)
+        Fish*                          @     296cr (Avg Sell     482cr)
+    Best Sale.: (Sell to this station)
+        Marine Equipment*              @   4,543cr (Avg Buy   3,937cr)
+        Crop Harvesters*               @   2,568cr (Avg Buy   1,997cr)
+        Domestic Appliances*           @     714cr (Avg Buy     445cr)
+
+
+    This shows that 'Tea' is a star buy at this station: it is being
+    sold by the station for 1217cr but the average selling price is
+    1570credits.
+
+    A star trade (indicated by '*') is at least 10% better than the
+    average trading price for that commodity.
+
 
 ==============================================================================
 == ADDING OR CHANGING PRICE DATA
