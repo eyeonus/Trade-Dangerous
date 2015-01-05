@@ -301,7 +301,7 @@ def removeStation(tdb, cmdenv, station):
             station.name(), station.ID, tdb.dbPath)
 
 
-def checkResultAndMaybeExportStations(tdb, cmdenv, result):
+def checkResultAndExportStations(tdb, cmdenv, result):
     if not result:
         return None
     if cmdenv.noExport:
