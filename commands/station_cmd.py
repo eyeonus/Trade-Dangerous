@@ -161,7 +161,7 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
             upperName, list(stationNames),
     ))
     candidates = difflib.get_close_matches(
-            upperName, stationNames, cutoff=0.4,
+            upperName, stationNames, cutoff=0.6,
     )
     for cand in candidates:
         similarities.add(cand)
@@ -249,7 +249,7 @@ def checkSystemAndStation(tdb, cmdenv):
         except LookupError:
             raise CommandLineError(
                     "Unknown SYSTEM name: \"{}\"".format(
-                        systemName
+                        sysName
             ))
 
         # check the station does not exist
@@ -305,7 +305,7 @@ def checkResultAndExportStations(tdb, cmdenv, result):
     if not result:
         return None
     if cmdenv.noExport:
-        tdb.DEBUG0("no-export set, not exporting stations")
+        cmdenv.DEBUG0("no-export set, not exporting stations")
         return None
 
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "Station")
