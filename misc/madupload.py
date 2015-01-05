@@ -3,6 +3,7 @@
 import pathlib
 import platform
 import re
+import sys
 
 try:
     import requests
@@ -35,6 +36,8 @@ For additional help, see:
 
 upload_url = 'http://www.davek.com.au/td/uploaddata.asp'
 upfile = "updated.prices"
+if len(sys.argv) > 1:
+    upfile = sys.argv[1]
 
 
 ############################################################################
@@ -49,8 +52,8 @@ r = requests.post(
         upload_url,
         files={
             'Filename': (
-                'updated.prices',
-                open('updated.prices', 'rb'),
+                upfile,
+                open(upfile, 'rb'),
                 'text/plain',
                 {
                     "Expires": '300',
