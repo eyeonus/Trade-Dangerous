@@ -21,6 +21,7 @@ import commands.olddata_cmd
 import commands.rares_cmd
 import commands.run_cmd
 import commands.sell_cmd
+import commands.station_cmd
 import commands.update_cmd
 
 commandIndex = {
