@@ -161,7 +161,7 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
             upperName, list(stationNames),
     ))
     candidates = difflib.get_close_matches(
-            upperName, stationNames, cutoff=0.4,
+            upperName, stationNames, cutoff=0.6,
     )
     for cand in candidates:
         similarities.add(cand)
