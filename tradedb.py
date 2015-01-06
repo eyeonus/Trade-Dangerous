@@ -87,7 +87,7 @@ class System(object):
             Lazily populated cache of neighboring systems.
         """
         def __init__(self):
-            self.systems = dict()
+            self.systems = []
             self.probedLy = 0.
 
     def __init__(self, ID, dbname, posX, posY, posZ):
@@ -609,13 +609,9 @@ class TradeDB(object):
                     sysZ - ly, sysZ + ly,
                     system.ID,
             ])
-            knownIDs = frozenset(
-                system.ID for system in cachedSystems.keys()
-            )
             lySq = ly * ly
-            for candID, in self.cur:
-                if candID in knownIDs:
-                    continue
+            cachedSystems = cache.systems = []
+            for (candID,) in self.cur:
                 candidate = self.systemByID[candID]
                 distSq = (
                         (candidate.posX - sysX) ** 2 +
@@ -623,8 +619,9 @@ class TradeDB(object):
                         (candidate.posZ - sysZ) ** 2
                 )
                 if distSq <= lySq:
-                    cachedSystems[candidate] = math.sqrt(distSq)
+                    cachedSystems.append((candidate, math.sqrt(distSq)))
 
+            cachedSystems.sort(key=lambda ent: ent[1])
             cache.probedLy = probedLy = ly
 
         if includeSelf:
@@ -632,13 +629,12 @@ class TradeDB(object):
 
         if probedLy > ly:
             # Cache may contain values outside our view
-            for sys, dist in cachedSystems.items():
+            for sys, dist in cachedSystems:
                 if dist <= ly:
                     yield sys, dist
         else:
             # No need to be conditional inside the loop
-            yield from cachedSystems.items()
-
+            yield from cachedSystems
 
 
     ############################################################
@@ -1057,6 +1053,8 @@ class TradeDB(object):
             # All of the destinations we are about to consider will
             # either be on the closed list or they will be +1 jump away.
             jumps += 1
+
+            ring.sort(key=lambda dn: dn.distLy)
 
             for node in ring:
                 gsir = self.genSystemsInRange(node.system, maxLyPer, False)

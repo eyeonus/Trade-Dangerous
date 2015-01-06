@@ -429,17 +429,6 @@ def validateRunArguments(tdb, cmdenv):
             raise NoDataError("No price data at origin stations.")
         cmdenv.origins = tradingOrigins
 
-    if startStn:
-        tdb.loadStationTrades([startStn.ID])
-        if stopStn and cmdenv.hops == 1 and not stopStn in startStn.tradingWith:
-            raise CommandLineError(
-                    "No profitable items found between {} and {}".format(
-                        startStn.name(), stopStn.name()))
-        if len(startStn.tradingWith) == 0:
-            raise NoDataError(
-                    "No data found for potential buyers for items from {}.".format(
-                        startStn.name()))
-
 
 ######################################################################
 
@@ -547,7 +536,8 @@ def run(results, cmdenv, tdb):
     results.summary.exception = ""
 
     for hopNo in range(numHops):
-        cmdenv.DEBUG1("Hop {}", hopNo)
+        if not cmdenv.quiet:
+            print("Hop {}...".format(hopNo), end='\r')
 
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -582,6 +572,8 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
+    if not cmdenv.quiet:
+        print("{:20}".format(" "), end='\r')
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")

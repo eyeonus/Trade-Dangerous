@@ -12,6 +12,7 @@
 # Imports
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from collections import defaultdict
 
 import math
 import locale
@@ -20,7 +21,7 @@ locale.setlocale(locale.LC_ALL, '')
 ######################################################################
 # Stuff that passes for classes (but isn't)
 
-from tradedb import System, Station
+from tradedb import System, Station, Trade
 from collections import namedtuple
 
 class TradeLoad(namedtuple('TradeLoad', [
@@ -247,6 +248,42 @@ class TradeCalc(object):
         self.tdenv = tdenv
         self.defaultFit = fit or self.fastFit
 
+        db = self.tdb.getDB()
+
+        selling = self.stationsSelling = defaultdict(list)
+        buying = self.stationsBuying = defaultdict(list)
+        stnByID = self.tdb.stationByID
+
+        lastStnID, stn = 0, None
+        sellCount, buyCount = 0, 0
+        avoidItemIDs = set([ item.ID for item in tdenv.avoidItems ])
+        tdenv.DEBUG1("TradeCalc loading StationSelling values")
+        for stnID, itmID, cr, units, lev in db.execute("""
+                SELECT  station_id, item_id, price, units, level
+                  FROM  StationSelling
+                """):
+            if itmID not in avoidItemIDs:
+                if stnID != lastStnID:
+                    stn = selling[stnID]
+                    lastStnID = stnID
+                stn.append([itmID, cr, units, lev])
+                sellCount += 1
+        tdenv.DEBUG0("Loaded {} selling values".format(sellCount))
+
+        lastStnID, stn = 0, None
+        tdenv.DEBUG1("TradeCalc loading StationBuying values")
+        for stnID, itmID, cr, units, lev in db.execute("""
+                SELECT  station_id, item_id, price, units, level
+                  FROM  StationBuying
+                """):
+            if itmID not in avoidItemIDs:
+                if stnID != lastStnID:
+                    stn = buying[stnID]
+                    lastStnID = stnID
+                stn.append([itmID, cr, units, lev])
+                buyCount += 1
+        tdenv.DEBUG0("Loaded {} buying values".format(buyCount))
+
 
     def bruteForceFit(self, items, credits, capacity, maxUnits):
         """
@@ -374,23 +411,22 @@ class TradeCalc(object):
             credits = getattr(tdenv, 'credits', 0) or 0
             credits -= (getattr(tdenv, 'insurance', 0) or 0)
         capacity = tdenv.capacity
-        avoidItems = tdenv.avoidItems
         tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
                 src.system.dbname, src.dbname,
                 dst.system.dbname, dst.dbname,
                 credits)
 
-        if not dst in src.tradingWith:
-            raise ValueError("%s does not have a link to %s" % (src.name(), dst.name()))
-
         if not capacity:
             raise ValueError("zero capacity")
-
         maxUnits = getattr(tdenv, 'limit') or capacity
 
-        items = src.tradingWith[dst]
-        if avoidItems:
-            items = [ item for item in items if not item.item in avoidItems ]
+        try:
+            items = src.tradingWith[dst]
+        except KeyError:
+            items = None
+        if not items:
+            raise ValueError("%s does not trade with %s" % (src.name(), dst.name()))
+
         if tdenv.maxAge:
             # convert from days to seconds
             cutoffSeconds = tdenv.maxAge * (24 * 60 * 60)
@@ -401,15 +437,11 @@ class TradeCalc(object):
         # Remove any items with less gain (value) than the cheapest item, or that are outside our budget.
         # This should reduce the search domain for the majority of cases, especially low-end searches.
         if items:
-            firstItem = min(items, key=lambda item: item.costCr)
-            firstCost, firstGain = firstItem.costCr, firstItem.gainCr
-            items = [ item
-                        for item
-                        in items
-                        if item.costCr <= credits and (
-                            item.gainCr > firstGain or
-                            item == firstItem)
-                    ]
+            if max(items, key=lambda item: item.costCr).costCr > credits:
+                items = [
+                        item for item in items
+                        if item.costCr <= credits
+                ]
 
         # Make sure there's still something to trade.
         if not items:
@@ -432,6 +464,37 @@ class TradeCalc(object):
         fitFunction = fitFunction or self.defaultFit
         return fitFunction(items, credits, capacity, maxUnits)
 
+
+    def _getTrades(self, srcStation, srcSelling, dstStation):
+        try:
+            dstBuying = self.stationsBuying[dstStation.ID]
+        except KeyError:
+            srcStation.tradingWith[dstStation] = None
+            return None
+
+        itemIdx = self.tdb.itemByID
+        trading = []
+        for buy in dstBuying:
+            buyItemID = buy[0]
+            for sell in srcSelling:
+                sellItemID = sell[0]
+                if sellItemID == buyItemID:
+                    buyCr, sellCr = buy[1], sell[1]
+                    if sellCr < buyCr:
+                        trading.append(Trade(
+                                itemIdx[buyItemID],
+                                buyItemID,
+                                sellCr, buyCr - sellCr,
+                                sell[2], sell[3],
+                                buy[2], buy[3],
+                                0, 0,
+                        ))
+                    break # from srcSelling
+
+        trading.sort(key=lambda trade: trade.gainCr, reverse=True)
+        srcStation.tradingWith[dstStation] = trading
+
+        return trading
 
     def getBestHops(self, routes, restrictTo=None):
         """
@@ -458,14 +521,6 @@ class TradeCalc(object):
         safetyMargin = 1.0 - tdenv.margin
         unique = tdenv.unique
 
-        stationsNotYetLoaded = [
-                src.ID for src in [ route.route[-1] for route in routes ] 
-                    if src.tradingWith is None
-                    and src.itemCount
-        ]
-        if stationsNotYetLoaded:
-            tdb.loadStationTrades(stationsNotYetLoaded)
-
         # Penalty is expressed as percentage, reduce it to a multiplier
         if tdenv.lsPenalty:
             lsPenalty = tdenv.lsPenalty / 100
@@ -479,25 +534,53 @@ class TradeCalc(object):
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
+            try:
+                srcSelling = self.stationsSelling[srcStation.ID]
+            except KeyError:
+                srcSelling = None
+            if not srcSelling:
+                tdenv.DEBUG1("Nothing sold - next.")
+                continue
+
             for dest in tdb.getDestinations(
                                 srcStation,
                                 maxJumps=maxJumpsPer,
                                 maxLyPer=maxLyPer,
                                 avoidPlaces=avoidPlaces,
-                                trading=True,
                     ):
                 dstSystem, dstStation = dest.system, dest.station
                 dstLy = dest.distLy
-                tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",
-                                dstSystem.dbname,
-                                dstStation.dbname,
-                                "->".join([jump.str() for jump in dest.via]),
-                                dstLy)
+
+                if dstStation is srcStation:
+                    continue
+
+                if tdenv.debug >= 1:
+                    tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",
+                                    dstSystem.dbname,
+                                    dstStation.dbname,
+                                    "->".join([jump.str() for jump in dest.via]),
+                                    dstLy)
+
                 if restrictTo:
                     if not dstStation in restrictTo and not dstSystem in restrictTo:
-                        tdenv.DEBUG3("{} doesn't match restrict {}",
-                                        dstStation.name(), restrictTo)
+                        if tdenv.debug >= 3:
+                            tdenv.DEBUG3("{} doesn't match restrict {}",
+                                            dstStation.name(), restrictTo)
                         continue
+
+                # Do we have something to trade?
+                try:
+                    trading = srcStation.tradingWith[dstStation]
+                except (TypeError, KeyError):
+                    if srcStation.tradingWith is None:
+                        srcStation.tradingWith = {}
+                    trading = self._getTrades(srcStation, srcSelling, dstStation)
+
+                if not trading:
+                    if tdenv.debug >= 1:
+                        tdenv.DEBUG1("Not buying what we're selling.")
+                    continue
+
                 if unique and dstStation in route.route:
                     tdenv.DEBUG3("{} is already in the list, not unique", dstStation.name())
                     continue
