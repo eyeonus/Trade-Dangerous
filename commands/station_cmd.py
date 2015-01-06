@@ -198,19 +198,7 @@ def checkSystemAndStation(tdb, cmdenv):
     # can be arrays. We need to make strings out of the arrays,
     # and then sanitize them for the '@SYS/STN' format, and
     # build a separate system and station name out of that.
-    envStnName = ' '.join(cmdenv.station).strip()
-    if cmdenv.system:
-        envSysName = ' '.join(cmdenv.system).strip().upper()
-        while envSysName.startswith('@'):
-            envSysName = envSysName[1:]
-        if not envSysName:
-            raise CommandLineError("Invalid system name: {}".format(
-                    ' '.join(cmdenv.system).strip()
-            ))
-    else:
-        envSysName = None
-
-    sysName, stnName = envSysName or "", envStnName or ""
+    stnName = ' '.join(cmdenv.station).strip()
 
     # Clean up the station name and potentially lift the system
     # name out of it.
@@ -222,21 +210,27 @@ def checkSystemAndStation(tdb, cmdenv):
     if slashPos > 0:
         sysName, stnName = stnName[:slashPos], stnName[slashPos+1:]
         sysName = sysName.upper()
+    else:
+        sysName = None
 
     if not stnName:
         raise CommandLineError("Invalid station name: {}".format(
                 envStnName
         ))
 
-    # Check for the case of different system names specified via
-    # --system and --station SYS/STN. But if the user does
-    # --system SYS --station SYS/STN then we allow that.
-    if envSysName and sysName != envSysName:
-        raise CommandLineError(
-                "Mismatch between --system {} and "
-                "system specified in station name ({})".format(
-                    envSysName, envStnName
-        ))
+    if cmdenv.system:
+        envSysName = ' '.join(cmdenv.system).upper()
+        if envSysName != sysName:
+            raise CommandLineError(
+                    "Mismatch between \"--system {}\" and "
+                    "system name in station specifier "
+                    "(\"{}\")".format(
+                        envSysName, sysName,
+            ))
+        sysName = envSysName
+
+    if not sysName:
+        raise CommandLineError("No system name specified")
 
     cmdenv.system, cmdenv.station = sysName, titleFixup(stnName)
 
