@@ -220,7 +220,7 @@ def checkSystemAndStation(tdb, cmdenv):
 
     if cmdenv.system:
         envSysName = ' '.join(cmdenv.system).upper()
-        if envSysName != sysName:
+        if sysName and envSysName != sysName:
             raise CommandLineError(
                     "Mismatch between \"--system {}\" and "
                     "system name in station specifier "
