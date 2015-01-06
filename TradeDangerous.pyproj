@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>run -vv --ly 10.38 --empty 11.16 --cap 18 --jumps 6 --cr 131366 --from "aritimi" -s 3</CommandLineArguments>
+    <CommandLineArguments>buildcache -f -i</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -32,23 +32,26 @@
     <Compile Include="commands\import_cmd.py" />
     <Compile Include="commands\local_cmd.py" />
     <Compile Include="commands\nav_cmd.py" />
+    <Compile Include="commands\olddata_cmd.py" />
     <Compile Include="commands\parsing.py" />
+    <Compile Include="commands\rares_cmd.py" />
     <Compile Include="commands\run_cmd.py" />
     <Compile Include="commands\sell_cmd.py" />
+    <Compile Include="commands\station_cmd.py" />
     <Compile Include="commands\test_commands.py" />
     <Compile Include="commands\update_cmd.py" />
     <Compile Include="commands\update_gui.py" />
     <Compile Include="commands\__init__.py" />
     <Compile Include="corrections.py" />
+    <Compile Include="csvexport.py" />
     <Compile Include="formatting.py" />
     <Compile Include="mfd\saitek\directoutput.py" />
     <Compile Include="mfd\saitek\x52pro.py" />
     <Compile Include="mfd\saitek\__init__.py" />
     <Compile Include="mfd\__init__.py" />
-    <Compile Include="misc\coord64.py" />
-    <Compile Include="misc\diff-system-csvs.py" />
-    <Compile Include="misc\edstarquery.py" />
     <Compile Include="mkstats.py" />
+    <Compile Include="plugins\maddavo_plug.py" />
+    <Compile Include="plugins\__init__.py" />
     <Compile Include="prices.py" />
     <Compile Include="pygui.py" />
     <Compile Include="trade.py" />
@@ -57,7 +60,6 @@
     <Compile Include="tradeenv.py" />
     <Compile Include="tradeexcept.py" />
     <Compile Include="trading.py" />
-    <Compile Include="xfer.py" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="CHANGES.txt" />
@@ -71,22 +73,13 @@
     <Content Include="data\System.csv" />
     <Content Include="data\TradeDangerous.sql" />
     <Content Include="README.txt" />
-    <Content Include="scripts\config.sh" />
-    <Content Include="scripts\README.txt" />
-    <Content Include="scripts\tdbuyfrom" />
-    <Content Include="scripts\tdimad" />
-    <Content Include="scripts\tdloc" />
-    <Content Include="scripts\tdnav" />
-    <Content Include="scripts\tdrun" />
-    <Content Include="scripts\tdupd" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="commands" />
     <Folder Include="data" />
     <Folder Include="mfd" />
     <Folder Include="mfd\saitek" />
-    <Folder Include="misc" />
-    <Folder Include="scripts" />
+    <Folder Include="plugins\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
+from csvexport import exportTableToFile
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from commands.exceptions import CommandLineError
 from pathlib import Path
@@ -64,11 +65,9 @@ switches = [
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    from csvexport import exportTableToFile
-
     # check database exists
     if not tdb.dbPath.is_file():
-        raise CommandLineError("Database '{}' not found.".format(dbFilename))
+        raise CommandLineError("Database '{}' not found.".format(tdb.dbPath))
 
     # check export path exists
     if cmdenv.path:
