@@ -1,5 +1,3 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 class TradeException(Exception):
     """
         Distinguishes runtime logical errors (such as no data for what you

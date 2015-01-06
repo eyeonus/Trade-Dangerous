@@ -1395,6 +1395,7 @@ class TradeDB(object):
         self.cur.execute(stmt, [ fromStation.ID, toStation.ID ])
 
         trading = []
+        items = self.itemByID
         for (
                 itemID,
                 srcPriceCr, profit,

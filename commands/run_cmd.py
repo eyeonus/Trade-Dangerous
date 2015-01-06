@@ -157,7 +157,7 @@ class Checklist(object):
         print("(i) {} (i){}".format(str, "\n" if addBreak else ""))
 
 
-    def run(self, route, credits):
+    def run(self, route, cr):
         tdb, mfd = self.tdb, self.mfd
         stations, hops, jumps = route.route, route.hops, route.jumps
         lastHopIdx = len(stations) - 1
@@ -207,7 +207,7 @@ class Checklist(object):
             gainCr += hop[1]
             if cmdenv.detail and gainCr > 0:
                 self.note("GAINED: {:n}cr, CREDITS: {:n}cr".format(
-                            gainCr, credits + gainCr))
+                            gainCr, cr + gainCr))
 
             if hopNo < lastHopIdx:
                 print("\n--------------------------------------\n")
@@ -215,7 +215,7 @@ class Checklist(object):
         if mfd:
             mfd.display('FINISHED',
                         "+{:n}cr".format(gainCr),
-                        "={:n}cr".format(credits + gainCr))
+                        "={:n}cr".format(cr + gainCr))
             mfd.attention(3)
             from time import sleep
             sleep(1.5)
