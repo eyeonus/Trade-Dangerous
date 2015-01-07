@@ -20,7 +20,7 @@ locale.setlocale(locale.LC_ALL, '')
 ######################################################################
 # Stuff that passes for classes (but isn't)
 
-from tradedb import System, Station
+from tradedb import System, Station, TradeDB
 from collections import namedtuple
 
 class TradeLoad(namedtuple('TradeLoad', [
@@ -137,6 +137,29 @@ class Route(object):
             dockFmt = None
             endFmt = "  {station} +{gain:n}cr"
 
+        if detail > 1:
+            def decorateStation(station):
+                ls = station.lsFromStar
+                bm = station.blackMarket
+                pad = station.maxPadSize
+                if not ls:
+                    if bm == '?' and pad == '?':
+                        return station.name() + ' (no details)'
+                    return '{} ({}/bm, {}/pad)'.format(
+                            station.name(),
+                            TradeDB.marketStatesExt[bm],
+                            TradeDB.padSizesExt[pad],
+                    )
+                return '{} ({}/star, {}/bm, {}/pad)'.format(
+                        station.name(),
+                        station.distFromStar(True),
+                        TradeDB.marketStatesExt[bm],
+                        TradeDB.padSizesExt[pad],
+                )
+        else:
+            def decorateStation(station):
+                return station.name()
+
         def makeAge(value):
             value = int(value / 3600)
             if value < 1:
@@ -175,7 +198,7 @@ class Route(object):
                         age=age,
                 )
                 hopTonnes += qty
-            text += hopFmt.format(station=route[i].name(), purchases=purchases)
+            text += hopFmt.format(station=decorateStation(route[i]), purchases=purchases)
             if jumpsFmt and self.jumps[i]:
                 jumps = ' -> '.join([ jump.name() for jump in self.jumps[i] ])
                 text += jumpsFmt.format(
@@ -185,12 +208,10 @@ class Route(object):
                         credits=credits + gainCr + hopGainCr
                 )
             if dockFmt:
-                stnName = route[i+1].name()
-                lsFromStar = route[i+1].lsFromStar
-                if lsFromStar > 0:
-                    stnName += " ({:n}ls)".format(lsFromStar)
+                stn = route[i+1]
+                stnName = stn.name()
                 text += dockFmt.format(
-                        station=stnName,
+                        station=decorateStation(stn),
                         gain=hopGainCr,
                         tongain=hopGainCr / hopTonnes,
                         credits=credits + gainCr + hopGainCr
@@ -200,7 +221,7 @@ class Route(object):
 
         text += footer or ""
         text += endFmt.format(
-                        station=route[-1].name(),
+                        station=decorateStation(route[-1]),
                         gain=gainCr,
                         credits=credits + gainCr
                         )
@@ -485,6 +506,7 @@ class TradeCalc(object):
                                 maxLyPer=maxLyPer,
                                 avoidPlaces=avoidPlaces,
                                 trading=True,
+                                maxPadSize=tdenv.padSize,
                     ):
                 dstSystem, dstStation = dest.system, dest.station
                 dstLy = dest.distLy

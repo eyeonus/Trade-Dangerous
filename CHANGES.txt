@@ -2,7 +2,19 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-[wip]
+v6.5.0 Jan 06 2015
+. (sarbian/kfsone) Added "--pad-size" option to "run" command to
+        restrict results to given pad sizes.
+        e.g.
+          tdrun sol --hops 2 --pad-size ml?  (med, lrg or unk)
+          tdrun sol --hops 2 --pad-size m?   (med or unk)
+          tdrun sol --hops 2 --pad-size ?    (*only* unk)
+. (kfsone) Added "--pad-size" to buy, sell, local and rare commands.
+        e.g.
+          trade.py buy algae --near sol --ly 20 --pad ml?
+          trade.py buy algae --near sol --ly 20 --pad l
+        or find stations that need data:
+          trade.py local sol --ly 20 --pad ?
 + Data: kfsone, gazelle, maddavo, Christian Andersen, Jared Buntain,
         Sebastian Pro
 
