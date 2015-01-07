@@ -123,17 +123,23 @@ def run(results, cmdenv, tdb):
         cmdenv.filename = filename
 
     # check the file exists.
-    filePath = Path(cmdenv.filename)
-    if not filePath.is_file():
-        raise CommandLineError("File not found: {}".format(
-                    str(filePath)
-                ))
+    if cmdenv.filename != "-":
+        fh = None
+        filePath = Path(cmdenv.filename)
+        if not filePath.is_file():
+            raise CommandLineError("File not found: {}".format(
+                        str(filePath)
+                    ))
+    else:
+        filePath = "stdin"
+        fh = sys.stdin
 
     if cmdenv.plug:
         if not plugin.finish():
             cache.regeneratePricesFile()
             return None
 
-    cache.importDataFromFile(tdb, cmdenv, filePath)
-    return None
+    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh)
 
+    return None
+    

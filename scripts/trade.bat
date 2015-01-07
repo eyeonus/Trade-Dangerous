@@ -10,17 +10,23 @@ rem --== Set default values above to prevent being asked each run ==--
 set /P update=Update database from maddavo? (Y\N): 
 if /I not "%update%"=="Y" goto menu
 :update
-..\trade.py import --maddavo --option=stncsv --option=syscsv -v
+..\trade.py import --plug=maddavo --option=stncsv --option=syscsv -v
 echo Update Complete
 pause
 :menu
 cls
-set /P menu=(U)pdate, (I)mport, (P)references or (R)un: 
+set /P menu=(U)pdate, (Q)uick Update, (I)mport, (P)references or (R)un: 
 if /I "%menu%"=="U" goto update
+if /I "%menu%"=="Q" goto quickupdate
 if /I "%menu%"=="I" goto import
 if /I "%menu%"=="P" goto preferences
 if /I "%menu%"=="R" goto run
 echo Invalid Selection
+pause
+goto menu
+:quickupdate
+..\trade.py import --plug=maddavo -v
+echo Quick Update Complete
 pause
 goto menu
 :preferences

@@ -57,7 +57,7 @@ class AmbiguityError(TradeException):
                         key(c) for c in anyMatch[0:-1]
                     ])
             opportunities += " or " + key(anyMatch[-1])
-        return '{} lookup: "{}" could match {}'.format(
+        return '{} "{}" could match {}'.format(
                         self.lookupType, str(self.searchKey),
                         opportunities
                     )
@@ -108,7 +108,7 @@ class System(object):
 
 
     def name(self):
-        return self.dbname.upper()
+        return self.dbname
 
 
     def str(self):
@@ -141,7 +141,7 @@ class Station(object):
     __slots__ = (
             'ID', 'system', 'dbname',
             'lsFromStar', 'blackMarket', 'maxPadSize',
-            'tradingWith', 'itemCount'
+            'tradingWith', 'itemCount',
     )
 
     def __init__(
@@ -160,6 +160,18 @@ class Station(object):
 
     def name(self):
         return '%s/%s' % (self.system.name(), self.dbname)
+
+
+    def distFromStar(self):
+        """Describes the distance from the station to the star."""
+        ls = self.lsFromStar
+        if not ls:
+            return '?'
+        if ls < 4000:
+            return '{:n}'.format(ls)
+        if ls < 40000:
+            return '{:.1f}K'.format(ls / 1000)
+        return '{:.2f}ly'.format(ls / (365*24*60*60))
 
 
     def str(self):
@@ -239,6 +251,19 @@ class Item(object):
                 self.ID, re.escape(self.dbname), repr(self.category), re.escape(self.fullname),
                 "'{}'".format(re.escape(self.altname) if self.altname else 'None')
             )
+
+
+######################################################################
+
+
+class RareItem(namedtuple('RareItem', [
+            'rareID', 'station', 'dbname', 'costCr', 'maxAlloc',
+        ])):
+    """
+    Describes a RareItem
+    """
+    def name(self):
+        return self.dbname
 
 
 ######################################################################
@@ -329,7 +354,8 @@ class TradeDB(object):
                       [ 'UpgradeVendor.csv', 'UpgradeVendor' ],
                       [ 'Category.csv', 'Category' ],
                       [ 'Item.csv', 'Item' ],
-                      [ 'AltItemNames.csv', 'AltItemNames' ]
+                      [ 'AltItemNames.csv', 'AltItemNames' ],
+                      [ 'RareItem.csv', 'RareItem' ],
                     ]
 
 
@@ -363,6 +389,8 @@ class TradeDB(object):
         self.dbFilename = str(self.dbPath)
         self.sqlFilename = str(self.sqlPath)
         self.pricesFilename = str(self.pricesPath)
+
+        self.avgSelling, self.avgBuying = None, None
 
         if load:
             self.reloadCache()
@@ -474,7 +502,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
         for (ID, name, posX, posY, posZ) in self.cur:
-            systemByID[ID] = systemByName[name] = System(ID, name, posX, posY, posZ)
+            systemByID[ID] = systemByName[name.upper()] = System(ID, name, posX, posY, posZ)
 
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
@@ -512,9 +540,9 @@ class TradeDB(object):
                 name, x, y, z, 'Local',
         ])
         ID = cur.lastrowid
-        system = System(ID, name, x, y, z)
+        system = System(ID, name.upper(), x, y, z)
         self.systemByID[ID] = system
-        self.systemByName[name] = system
+        self.systemByName[system.dbname] = system
         db.commit()
         if not self.tdenv.quiet:
             print("- Added new system #{}: {} [{},{},{}]".format(
@@ -666,24 +694,50 @@ class TradeDB(object):
         Add a station to the local cache and memory copy.
         """
 
+        blackMarket = blackMarket.upper()
+        maxPadSize = maxPadSize.upper()
+        assert blackMarket in "?YN"
+        assert maxPadSize in "?SML"
+
+        self.tdenv.DEBUG0(
+                "Adding {}/{} ls={}, bm={}, pad={}",
+                system.name(),
+                name,
+                lsFromStar,
+                blackMarket,
+                maxPadSize
+        )
+
         db = self.getDB()
         cur = db.cursor()
         cur.execute("""
                 INSERT INTO Station (
                     name, system_id,
+                    ls_from_star, blackmarket, max_pad_size
                 ) VALUES (
-                    ?, ?
+                    ?, ?,
+                    ?, ?, ?
                 )
-        """, [ name, system.ID ])
+        """, [
+                name, system.ID,
+                lsFromStar, blackMarket.upper(), maxPadSize.upper(),
+        ])
         ID = cur.lastrowid
-        station = Station(ID, system, name, 0, '?', '?', 0)
+        station = Station(
+                ID, system, name,
+                lsFromStar=lsFromStar,
+                blackMarket=blackMarket,
+                maxPadSize=maxPadSize,
+                itemCount=0,
+        )
         self.stationByID[ID] = station
         db.commit()
-        if not self.tdenv.quiet:
-            print("- Added new station #{}:"
-                    "{}/{}".format(
-                    ID, system.name(), name,
-            ))
+        self.tdenv.NOTE(
+                "{} (#{}) added to {} db: "
+                "ls={}, bm={}, pad={}",
+                    station.name(), station.ID, self.dbPath,
+                    lsFromStar, blackMarket, maxPadSize,
+        )
         return station
 
     def updateLocalStation(
@@ -718,14 +772,15 @@ class TradeDB(object):
                     station.maxPadSize = maxPadSize
                     changes = True
         if not changes:
+            self.tdenv.NOTE("No changes")
             return False
         db = self.getDB()
         db.execute("""
             UPDATE Station
-               SET ls_from_star={},
-                   blackmarket={},
-                   max_pad_size={}
-             WHERE station_id = {}
+               SET ls_from_star=?,
+                   blackmarket=?,
+                   max_pad_size=?
+             WHERE station_id = ?
         """, [
             station.lsFromStar,
             station.blackMarket,
@@ -733,13 +788,13 @@ class TradeDB(object):
             station.ID
         ])
         db.commit()
-        if not self.tdenv.quiet:
-            print("- {}/{}: ls={}, bm={}, pad={}".format(
-                    station.name(),
-                    station.lsFromStar,
-                    station.blackMarket,
-                    station.maxPadSize,
-            ))
+        self.tdenv.NOTE(
+                "{} (#{}) updated in {}: ls={}, bm={}, pad={}",
+                station.name(), station.ID, self.dbPath,
+                station.lsFromStar,
+                station.blackMarket,
+                station.maxPadSize,
+        )
         return True
 
     def lookupPlace(self, name):
@@ -770,15 +825,16 @@ class TradeDB(object):
         nameOff = 1 if name.startswith('@') else 0
         if slashPos > nameOff:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
-            sysName, stnName = name[nameOff:slashPos], name[slashPos+1:]
+            sysName, stnName = name[nameOff:slashPos].upper(), name[slashPos+1:]
         elif slashPos == nameOff:
             sysName, stnName = None, name[nameOff+1:]
         elif nameOff:
             # It's explicitly a station
-            sysName, stnName = name[nameOff:], None
+            sysName, stnName = name[nameOff:].upper(), None
         else:
             # It could be either, use the name for both.
-            sysName = stnName = name[nameOff:]
+            stnName = name[nameOff:]
+            sysName = stnName.upper()
 
         exactMatch = []
         closeMatch = []
@@ -850,7 +906,11 @@ class TradeDB(object):
                     anyMatch.append(place)
 
         if sysName:
-            lookup(sysName, self.systemByID.values())
+            try:
+                sys = self.systemByName[sysName]
+                exactMatch = [ sys ]
+            except KeyError:
+                lookup(sysName, self.systemByID.values())
         if stnName:
             # Are we considering the name as a station?
             # (we don't if they type, e,g '@aulin')
@@ -1182,6 +1242,74 @@ class TradeDB(object):
         )
 
 
+    def getAverageSelling(self):
+        """
+        Query the database for average selling prices of all items.
+        """
+        if not self.avgSelling:
+            self.avgSelling = {
+                ID: int(cr)
+                for ID, cr in self.getDB().execute("""
+                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
+                      FROM  Item
+                            LEFT OUTER JOIN StationSelling
+                                USING (item_id)
+                     GROUP  BY 1
+                """)
+            }
+        return self.avgSelling
+
+
+    def getAverageBuying(self):
+        """
+        Query the database for average buying prices of all items.
+        """
+        if not self.avgBuying:
+            self.avgBuying = {
+                ID: int(cr)
+                for ID, cr in self.getDB().execute("""
+                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
+                      FROM  Item
+                            LEFT OUTER JOIN StationBuying
+                                USING (item_id)
+                     GROUP  BY 1
+                """)
+            }
+        return self.avgBuying
+
+
+    ############################################################
+    # Rare Items
+
+    def _loadRareItems(self):
+        """
+        Populate the RareItem list.
+        """
+        stmt = """
+                SELECT  rare_id,
+                        station_id,
+                        name,
+                        cost,
+                        max_allocation
+                  FROM  RareItem
+        """
+        self.cur.execute(stmt)
+
+        rareItemByID, rareItemByName = {}, {}
+        stationByID = self.stationByID
+        for (ID, stnID, name, cost, maxAlloc) in self.cur:
+            station = stationByID[stnID]
+            rare = RareItem(ID, station, name, cost, maxAlloc)
+            rareItemByID[ID] = rareItemByName[name] = rare
+        self.rareItemByID = rareItemByID
+        self.rareItemByName = rareItemByName
+
+        self.tdenv.DEBUG1(
+                "Loaded {:n} RareItems",
+                len(rareItemByID)
+        )
+
+
     ############################################################
     # Price data.
 
@@ -1242,6 +1370,54 @@ class TradeDB(object):
                     srcAge, dstAge))
 
 
+    def loadDirectTrades(self, fromStation, toStation):
+        """
+            Loads all profitable trades that could be made
+            from the specified list of stations. Does not
+            take reachability into account.
+        """
+
+        self.tdenv.DEBUG1("Loading trades for {}->{}",
+                fromStation.name(), toStation.name()
+        )
+
+        stmt = """
+                SELECT  item_id,
+                        cost, gain,
+                        stock_units, stock_level,
+                        demand_units, demand_level,
+                        src_age, dst_age,
+                  FROM  vProfits
+                 WHERE  src_station_id = ? and dst_station_id = ?
+                 ORDER  gain DESC
+        """
+        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
+        self.cur.execute(stmt, [ fromStation.ID, toStation.ID ])
+
+        trading = []
+        items = self.itemByID
+        for (
+                itemID,
+                srcPriceCr, profit,
+                stock, stockLevel,
+                demand, demandLevel,
+                srcAge, dstAge
+        ) in self.cur:
+            trading.append(Trade(
+                    items[itemID], itemID,
+                    srcPriceCr, profit,
+                    stock, stockLevel,
+                    demand, demandLevel,
+                    srcAge, dstAge))
+
+        if fromStation.tradingWith is None:
+            fromStation.tradingWith = {}
+        if trading:
+            fromStation.tradingWith[toStation] = trading
+        else:
+            del fromStation.tradingWith[toStation]
+
+
     def getTrades(self, src, dst):
         """ Returns a list of the Trade objects between src and dst. """
 
@@ -1280,6 +1456,7 @@ class TradeDB(object):
         self._loadShips()
         self._loadCategories()
         self._loadItems()
+        self._loadRareItems()
 
         systems, stations, ships, items = self.systemByID, self.stationByID, self.shipByID, self.itemByID
 

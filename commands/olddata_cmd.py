@@ -163,15 +163,15 @@ def render(results, cmdenv, tdb):
     )
 
     if cmdenv.nearSystem:
-        rowFmt.addColumn('Dist', '>', 6, '.2f',
+        rowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: math.sqrt(row.dist2))
     
     rowFmt.append(
             ColumnFormat("Age/days", '>', '8', '.2f',
                     key=lambda row: row.age)
     ).append(
-            ColumnFormat("Ls/Star", '>', '10',
-                    key=lambda row: row.ls)
+            ColumnFormat("StnLs", '>', '10',
+                    key=lambda row: row.station.distFromStar())
     ).append(
             ColumnFormat("Pad", '>', '3',
                     key=lambda row: \

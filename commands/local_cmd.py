@@ -1,5 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from commands.commandenv import ResultRow
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB
 from tradeexcept import TradeException
 
@@ -24,19 +26,12 @@ switches = [
             type=float,
             default=None,
         ),
-    ParseArgument('--ages',
-            help='Show stations and the age of their price data.',
-            default=False,
-            action='store_true',
-        ),
 ]
 
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    from commands.commandenv import ResultRow
-
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
     srcSystem = cmdenv.nearSystem
@@ -94,13 +89,8 @@ def run(results, cmdenv, tdb):
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
                     age = "-"
-                if station.lsFromStar:
-                    ls = '{}ls'.format(station.lsFromStar)
-                else:
-                    ls = '?'
                 rr = ResultRow(
                         station=station,
-                        ls=ls,
                         age=age,
                 )
                 row.stations.append(rr)
@@ -112,8 +102,6 @@ def run(results, cmdenv, tdb):
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
-    from formatting import RowFormat, ColumnFormat
-
     if not results or not results.rows:
         raise TradeException("No systems found within {}ly of {}.".format(
                     results.summary.ly,
@@ -139,8 +127,8 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Station", '<', 32,
                     key=lambda row: row.station.str())
         ).append(
-                ColumnFormat("Dist", '>', '10',
-                    key=lambda row: row.ls)
+                ColumnFormat("StnLs", '>', '10',
+                    key=lambda row: row.station.distFromStar())
         ).append(
                 ColumnFormat("Age/days", '>', 7,
                         key=lambda row: row.age)

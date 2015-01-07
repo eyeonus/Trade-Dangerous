@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 import math
-from tradedb import System, Station
+from tradedb import System, Station, TradeDB
 from tradeexcept import TradeException
 
 ######################################################################
@@ -26,6 +26,15 @@ switches = [
             help='Exclude a system from the route. If you specify a station, '
                  'the system that station is in will be avoided instead.',
             action='append',
+        ),
+    ParseArgument('--via',
+            help='Require specified systems/stations to be en-route (in order).',
+            action='append',
+            metavar='PLACE[,PLACE,...]',
+        ),
+    ParseArgument('--stations', '-S',
+            help='Include station details.',
+            action='store_true',
         ),
 ]
 
@@ -126,7 +135,18 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0("Route from {} to {} with max {}ly per jump.",
                     srcSystem.name(), dstSystem.name(), maxLyPer)
 
-    route = getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer)
+    # Build a list of src->dst pairs
+    hops = [ [ srcSystem, None ] ]
+    if cmdenv.viaPlaces:
+        for hop in cmdenv.viaPlaces:
+            hops[0][1] = hop
+            hops.insert(0, [hop, None])
+    hops[0][1] = dstSystem
+
+    route = [ ]
+    for hop in hops:
+        hopRoute = getRoute(cmdenv, tdb, hop[0], hop[1], maxLyPer)
+        route = route[:-1] + hopRoute
 
     results.summary = ResultRow(
                 fromSys=srcSystem,
@@ -136,6 +156,25 @@ def run(results, cmdenv, tdb):
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     route.reverse()
+
+    if cmdenv.stations:
+        stationIDs = ",".join([
+                ",".join(str(stn.ID) for stn in sys.stations)
+                for sys in route
+                if sys.stations
+        ])
+        stmt = """
+                SELECT  si.station_id,
+                        JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
+                  FROM  StationItem AS si
+                 WHERE  si.station_id IN ({})
+                 GROUP  BY 1
+                """.format(stationIDs)
+        cmdenv.DEBUG0("Fetching ages: {}", stmt)
+        ages = {}
+        for ID, age in tdb.query(stmt):
+            ages[ID] = age
+
     for jumpSys in route:
         jumpLy = math.sqrt(lastSys.distToSq(jumpSys))
         totalLy += jumpLy
@@ -148,6 +187,18 @@ def run(results, cmdenv, tdb):
                 totalLy=totalLy,
                 dirLy=dirLy,
                 )
+        row.stations = []
+        if cmdenv.stations:
+            for (station) in jumpSys.stations:
+                try:
+                    age = "{:7.2f}".format(ages[station.ID])
+                except:
+                    age = "-"
+                rr = ResultRow(
+                        station=station,
+                        age=age,
+                )
+                row.stations.append(rr)
         results.rows.append(row)
         lastSys = jumpSys
     results.rows[0].action='Depart'
@@ -186,12 +237,43 @@ def render(results, cmdenv, tdb):
         rowFmt.addColumn("DirLy", '>', 7, '.2f',
             key=lambda row: row.dirLy)
 
+    showStations = cmdenv.stations
+    if showStations:
+        stnRowFmt = RowFormat(prefix='  /  ').append(
+                ColumnFormat("Station", '<', 32,
+                    key=lambda row: row.station.str())
+        ).append(
+                ColumnFormat("StnLs", '>', '10',
+                    key=lambda row: row.station.distFromStar())
+        ).append(
+                ColumnFormat("Age/days", '>', 7,
+                        key=lambda row: row.age)
+        ).append(
+                ColumnFormat("BMkt", '>', '4',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.blackMarket])
+        ).append(
+                ColumnFormat("Pad", '>', '3',
+                    key=lambda row: \
+                        TradeDB.padSizes[row.station.maxPadSize])
+        )
+        if cmdenv.detail > 1:
+            stnRowFmt.append(
+                ColumnFormat("Itms", ">", 4,
+                    key=lambda row: row.station.itemCount)
+            )
+
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
+        if showStations:
+            print(heading)
+            heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
 
     for row in results.rows:
         print(rowFmt.format(row))
+        for stnRow in row.stations:
+            print(stnRowFmt.format(stnRow))
 
     return results
 

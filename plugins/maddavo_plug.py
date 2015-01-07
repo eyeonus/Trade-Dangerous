@@ -110,7 +110,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.prevImportDate = prevImportDate
 
         cacheNeedsRebuild = self.getOption("buildcache")
-        if not self.getOption("skipdl"):
+        skipDownload = self.getOption("skipdl")
+        forceParse = self.getOption("force") or skipDownload
+
+        if not skipDownload:
             if self.getOption("syscsv"):
                 transfers.download(
                     tdenv,
@@ -131,18 +134,18 @@ class ImportPlugin(plugins.ImportPluginBase):
             if lastRunDays < 1.9:
                 priceFile = "prices-2d.asp"
             else:
-                if not tdenv.quiet:
-                    if lastRunDays < 99:
-                        print(
-                                "NOTE: Last download was ~{:.2f} days "
-                                "ago, downloading full file".format(
-                                    lastRunDays
-                        ))
-                    else:
-                        print(
-                                "NOTE: Stale/missing local copy, "
-                                "downloading full .prices file."
-                        )
+                if lastRunDays < 99:
+                    tdenv.NOTE(
+                            "Last download was ~{:.2f} days "
+                            "ago, downloading full file",
+                                lastRunDays
+                    )
+                else:
+                    tdenv.NOTE(
+                            "Stale/missing local copy, "
+                            "downloading full .prices file."
+                    )
+
                 priceFile = "prices.asp"
             transfers.download(
                     tdenv,
@@ -153,21 +156,19 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if tdenv.download:
             if cacheNeedsRebuild:
-                print("NOTE: Did not rebuild cache")
+                tdenv.NOTE("Did not rebuild cache")
             return False
 
         tdenv.ignoreUnknown = True
 
-        if cacheNeedsRebuild:
-            tdb = tdb
-            # Make sure we disconnect from the db
-            if tdb.conn:
-                tdb.conn.close()
-            tdb.conn = tdb.cur = None
-            tdb.reloadCache()
-            tdb.load(
-                    maxSystemLinkLy=tdenv.maxSystemLinkLy,
-                    )
+        # Let the system decide if it needs to reload-cache
+        tdenv.DEBUG0("Checking the cache")
+        tdb.close()
+        tdb.reloadCache()
+        tdb.load(
+                maxSystemLinkLy=tdenv.maxSystemLinkLy,
+        )
+        tdb.close()
 
         # Scan the file for the latest data.
         firstDate = None
@@ -177,6 +178,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         dateRe = ImportPlugin.dateRe
         lastStn = None
         updatedStations = set()
+        tdenv.DEBUG0("Reading prices data")
         with open("import.prices", "rU", encoding="utf-8") as fh:
             # skip the shebang.
             firstLine = fh.readline()
@@ -186,6 +188,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             for line in fh:
                 if line.startswith('@'):
                     lastStn = line[2:-1]
+                    continue
                 if not line.startswith(' ') or len(line) < minLen:
                     continue
                 m = dateRe.search(line)
@@ -207,10 +210,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     date
                             ))
 
-        if numNewLines == 0 and not tdenv.quiet:
-            print("No new price entries found.")
+        if numNewLines == 0:
+            tdenv.NOTE("No new price entries found.")
 
-        if numNewLines > 0 or self.getOption("force"):
+        if numNewLines > 0 or forceParse:
             if tdenv.detail:
                 print(
                     "Date of last import   : {}\n"
@@ -230,11 +233,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             if not tdenv.quiet and numStationsUpdated:
                 if len(updatedStations) > 12 and tdenv.detail < 2:
                     updatedStations = list(updatedStations)[:10] + ["..."]
-                print("{} {} updated:\n{}".format(
+                tdenv.NOTE("{} {} updated:\n{}",
                     numStationsUpdated,
                     "stations" if numStationsUpdated > 1 else "station",
                     ', '.join(updatedStations)
-                ))
+                )
 
             cache.importDataFromFile(
                     tdb,

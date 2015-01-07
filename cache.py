@@ -128,7 +128,7 @@ class UnknownStationError(BuildCacheBaseException):
         Raised when the file contains an unknown star/station name.
     """
     def __init__(self, fromFile, lineNo, key):
-        error = "Unrecognized STAR/Station, '{}'.".format(key)
+        error = 'Unrecognized STAR/Station: "{}"'.format(key)
         super().__init__(fromFile, lineNo, error)
 
 class UnknownItemError(BuildCacheBaseException):
@@ -138,7 +138,7 @@ class UnknownItemError(BuildCacheBaseException):
             itemName   Key we tried to look up.
     """
     def __init__(self, fromFile, lineNo, itemName):
-        error = "Unrecognized item name, '{}'.".format(itemName)
+        error = 'Unrecognized item name: "{}"'.format(itemName)
         super().__init__(fromFile, lineNo, error)
 
 class UnknownCategoryError(BuildCacheBaseException):
@@ -148,7 +148,7 @@ class UnknownCategoryError(BuildCacheBaseException):
             categoryName   Key we tried to look up.
     """
     def __init__(self, fromFile, lineNo, categoryName):
-        error = "Unrecognized category name, '{}'.".format(categoryName)
+        error = 'Unrecognized category name: "{}"'.format(categoryName)
         super().__init__(fromFile, lineNo, error)
 
 
@@ -173,7 +173,7 @@ class DeletedKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue):
         super().__init__(fromFile, lineNo,
-                "{} '{}' is marked as DELETED and should not be used.\n".format(
+                "{} '{}' is marked as DELETED and should not be used.".format(
                     keyType, keyValue
         ))
 
@@ -185,7 +185,7 @@ class DeprecatedKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, newValue):
         super().__init__(fromFile, lineNo,
-                "{} '{}' is deprecated and should be replaced with '{}'.\n".format(
+                "{} '{}' is deprecated and should be replaced with '{}'.".format(
                     keyType, keyValue, newValue
         ))
 
@@ -233,7 +233,7 @@ def parseSupply(pricesFile, lineNo, category, reading):
     if levelNo < -1:
         raise SupplyError(
                     pricesFile, lineNo, category, reading,
-                    "Unrecognized level suffix '{}', "
+                    'Unrecognized level suffix: "{}": '
                     "expected one of 'L', 'M', 'H' or '?'".format(
                         level
                 ))
@@ -249,7 +249,7 @@ def parseSupply(pricesFile, lineNo, category, reading):
 
     raise SupplyError(
                 pricesFile, lineNo, category, reading,
-                "Unrecognized units/level value: {}, "
+                'Unrecognized units/level value: "{}": '
                 "expected '-', '?', or a number followed "
                 "by a level (L, M, H or ?).".format(
                     level
@@ -310,6 +310,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     categoryName = None
     facility = None
     processedStations = {}
+    processedSystems = set()
     processedItems = {}
     itemPrefix = ""
     DELETED = corrections.DELETED
@@ -395,6 +396,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                         processedStations[stationID]
                     )
 
+        processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
 
@@ -571,19 +573,21 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processItemLine(matches)
 
-    return warnings, items, buys, sells
+
+    numSys = len(processedSystems)
+    numStn = len(processedStations)
+
+    return warnings, items, buys, sells, numSys, numStn
 
 
 ######################################################################
 
-def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
+def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
-    assert isinstance(pricesPath, Path)
-
-    with pricesPath.open('rU') as pricesFile:
-        warnings, items, buys, sells = processPrices(
-                tdenv, pricesFile, db, defaultZero
+    with pricesFh or pricesPath.open('rU') as pricesFh:
+        warnings, items, buys, sells, numSys, numStn = processPrices(
+                tdenv, pricesFh, db, defaultZero
         )
  
     if items:
@@ -607,8 +611,16 @@ def processPricesFile(tdenv, db, pricesPath, defaultZero=False):
 
     db.commit()
 
-    if warnings and not tdenv.quiet:
-        print("Import completed despite warnings")
+    tdenv.NOTE(
+            "Import complete: "
+                "{:n} items ({:n} buyers, {:n} sellers) "
+                "for {:n} stations "
+                "in {:n} systems",
+                    len(items),
+                    len(buys), len(sells),
+                    numStn,
+                    numSys,
+    )
 
 
 ######################################################################
@@ -745,7 +757,14 @@ def processImportFile(tdenv, db, importPath, tableName):
             if len(linein) == columnCount:
                 tdenv.DEBUG1("       Values: {}", ', '.join(linein))
                 if deprecationFn:
-                    deprecationFn(importPath, lineNo, linein)
+                    try:
+                        deprecationFn(importPath, lineNo, linein)
+                    except (DeprecatedKeyError, DeletedKeyError) as e:
+                        if not tdenv.ignoreUnknown:
+                            raise e
+                        e.category = "WARNING"
+                        tdenv.NOTE("{}", e)
+                        continue
                 if uniqueIndexes:
                     # Need to construct the actual unique index key as
                     # something less likely to collide with manmade
@@ -787,8 +806,12 @@ def processImportFile(tdenv, db, importPath, tableName):
                     ) from None
                 importCount += 1
             else:
-                if not tdenv.quiet:
-                    print("Wrong number of columns ({}:{}): {}".format(importPath, lineNo, ', '.join(linein)))
+                tdenv.NOTE(
+                        "Wrong number of columns ({}:{}): {}",
+                            importPath,
+                            lineNo,
+                            ', '.join(linein)
+                )
         db.commit()
         tdenv.DEBUG0("{count} {table}s imported",
                             count=importCount,
@@ -813,11 +836,10 @@ def buildCache(tdb, tdenv):
         are newer than the database.
     """
 
-    if not tdenv.quiet:
-        print(
-                "NOTE: Rebuilding cache file: this may take a moment",
-                file=sys.stderr
-        )
+    tdenv.NOTE(
+            "Rebuilding cache file: this may take a moment.",
+            file=sys.stderr
+    )
 
     dbPath = tdb.dbPath
     sqlPath = tdb.sqlPath
@@ -848,10 +870,12 @@ def buildCache(tdb, tdenv):
     # Parse the prices file
     if pricesPath.exists():
         processPricesFile(tdenv, tempDB, pricesPath)
-    elif not tdenv.quiet:
-        print("NOTE: Missing \"{}\" file - no price data".format(
-                    str(pricesPath)
-            ), file=sys.stderr)
+    else:
+        tdenv.NOTE(
+                "Missing \"{}\" file - no price data.",
+                    pricesPath,
+                    file=sys.stderr,
+        )
 
     tempDB.commit()
     tempDB.close()
@@ -883,16 +907,14 @@ def regeneratePricesFile(tdb, tdenv):
 
 ######################################################################
 
-def importDataFromFile(tdb, tdenv, path, reset=False):
+def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     """
         Import price data from a file on a per-station basis,
         that is when a new station is encountered, delete any
         existing records for that station in the database.
     """
 
-    assert isinstance(path, Path)
-
-    if not path.exists():
+    if not pricesFh and not path.exists():
         raise TradeException("No such file: {}".format(
                     str(path)
                 ))
@@ -905,6 +927,7 @@ def importDataFromFile(tdb, tdenv, path, reset=False):
     processPricesFile(tdenv,
             db=tdb.getDB(),
             pricesPath=path,
+            pricesFh=pricesFh,
             )
 
     # If everything worked, we may need to re-build the prices file.

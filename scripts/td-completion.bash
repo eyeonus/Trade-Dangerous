@@ -1,7 +1,7 @@
 # bash completition for Trade Dangerous
 # see http://kfs.org/td/source
 
-common_opts="-h --help --debug -w --detail -v --quiet -q --db --cwd -C --link-ly -L"
+common_opts="--help --debug --detail --quiet --db --cwd --link-ly"
 
 _td_file_list()
 {
@@ -42,7 +42,7 @@ _td_buildcache()
 		;;
 	*)
 		_td_common && return 0
-		opts="--sql --prices -f --force --ignore-unknown -i ${common_opts}"
+		opts="--sql --prices --force --ignore-unknown ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -56,12 +56,12 @@ _td_buy()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--quantity|--near|--ly-per|--limit)
+	--quantity|--near|--ly|--limit)
 		# argument required
 		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly-per --limit --ages --price-sort -P --stock-sort -S ${common_opts}"
+		opts="--quantity --near --ly --limit --price-sort --stock-sort ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -83,7 +83,7 @@ _td_export()
 		;;
 	*)
 		_td_common && return 0
-		opts="--path --tables -T --all-tables --delete-empty ${common_opts}"
+		opts="--path --tables --all-tables --delete-empty ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -110,7 +110,7 @@ _td_import()
 		;;
 	*)
 		_td_common && return 0
-		opts="--maddavo --plug --url --download --ignore-unknown -i --option -O ${common_opts}"
+		opts="--plug --url --download --ignore-unknown --option ${common_opts}"
 		_td_file_list -f "$cur"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
@@ -130,7 +130,7 @@ _td_local()
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly --ages ${common_opts}"
+		opts="--ly ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -144,12 +144,12 @@ _td_nav()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--ly-per|--avoid)
+	--ly-per|--avoid|--via)
 		# argument required
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly-per --avoid ${common_opts}"
+		opts="--ly-per --avoid --via --stations ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -163,12 +163,31 @@ _td_olddata()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--limit)
+	--limit|--near|--ly)
 		# argument required
 		;;
 	*)
 		_td_common && return 0
-		opts="--limit ${common_opts}"
+		opts="--limit --near --ly ${common_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	esac
+	return 0
+}
+
+_td_rares()
+{
+	local cur prev opts
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	case ${prev} in
+	--ly|--limit)
+		# argument required
+		;;
+	*)
+		_td_common && return 0
+		opts="--ly --limit --price-sort --reverse ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -187,7 +206,7 @@ _td_run()
 		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps -s --limit --max-days-old -MD --ls-penalty --lsp --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --limit --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -206,7 +225,7 @@ _td_sell()
 		;;
 	*)
 		_td_common && return 0
-		opts="--near --ly-per --limit --ages --price-sort -P ${common_opts}"
+		opts="--near --ly-per --limit --price-sort ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -225,7 +244,7 @@ _td_update()
 		;;
 	*)
 		_td_common && return 0
-		opts="--timestamps -T --all -A --use-demand -D --force-na -0 --height -H --front -F --window-x -wx --window-y -wy --gui -G --editor --sublime --notepad --npp --vim ${common_opts}"
+		opts="--timestamps --all --use-demand --force-na --height --front --window-x --window-y --gui --editor --sublime --notepad --npp --vim ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -261,6 +280,9 @@ _td_main()
 	olddata)
 		_td_olddata
 		;;
+	rares)
+		_td_rares
+		;;
 	run)
 		_td_run
 		;;
@@ -271,7 +293,7 @@ _td_main()
 		_td_update
 		;;
 	*)
-		opts="buildcache buy export import local nav olddata run sell update"
+		opts="buildcache buy export import local nav olddata rares run sell update"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 	esac
 	return 0

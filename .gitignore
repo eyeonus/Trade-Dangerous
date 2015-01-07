@@ -20,3 +20,4 @@ market/
 wip/
 pycallgraph.png
 /config.sh
+venv/

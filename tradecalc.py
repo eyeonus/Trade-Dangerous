@@ -104,13 +104,16 @@ class Route(object):
                     yield key(tr)
         longestNameLen = max(genSubValues(key=lambda tr: len(tr.name())))
 
-        text = self.str() + ":\n"
+        text = self.str()
+        if detail >= 1:
+            text += " (score: {:f})".format(self.score)
+        text += "\n"
         if detail > 1:
             if detail > 2:
                 text += self.summary() + "\n"
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = ("     {qty:>4} x {item:<{longestName}}"
-                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total {age}\n")
+                            " {eacost:>10n}cr each, {ttlcost:>10n}cr total,  data from {age}\n")
             jumpsFmt = ("  Jump {jumps}\n")
             dockFmt = "  Unload at {station} => Gain {gain:n}cr ({tongain:n}cr/ton) => {credits:n}cr\n"
             footer = '  ' + '-' * 76 + "\n"
@@ -156,8 +159,14 @@ class Route(object):
                                         key=lambda tradeOpt:
                                             tradeOpt[1] * tradeOpt[0].gainCr,
                                         reverse=True):
-                age = max(trade.srcAge, trade.dstAge)
-                age = "("+makeAge(max(trade.srcAge, trade.dstAge))+")"
+                # Are they within 30 minutes of each other?
+                if abs(trade.srcAge - trade.dstAge) <= (30*60):
+                    age = max(trade.srcAge, trade.dstAge)
+                    age = makeAge(age)
+                else:
+                    srcAge = makeAge(trade.srcAge)
+                    dstAge = makeAge(trade.dstAge)
+                    age = "{} and {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
                         qty=qty, item=trade.name(),
                         eacost=trade.costCr,
@@ -256,17 +265,7 @@ class TradeCalc(object):
 
             # Adjust for age for "M"/"H" items with low units.
             if item.stock < maxQty and item.stock > 0:  # -1 = unknown
-                level = item.stockLevel
-                if level > 1:
-                    # Assume 2 units per 10 minutes for high,
-                    # 1 unit per 15 minutes for medium
-                    units = level - 1
-                    interval = (30 / level) * 60
-                    speculativeRecovery = units * math.floor(item.srcAge / interval)
-                else:
-                    # Low / Unknown - don't try to guess
-                    speculativeRecovery = 0
-                maxQty = min(maxQty, item.stock + speculativeRecovery)
+                maxQty = min(maxQty, item.stock)
 
             if maxQty > 0:
                 itemGain = item.gainCr
@@ -326,17 +325,7 @@ class TradeCalc(object):
 
                 # Adjust for age for "M"/"H" items with low units.
                 if item.stock < maxQty and item.stock > 0:  # -1 = unknown
-                    level = item.stockLevel
-                    if level > 1:
-                        # Assume 2 units per 10 minutes for high,
-                        # 1 unit per 15 minutes for medium
-                        units = level - 1
-                        interval = (30 / level) * 60
-                        speculativeRecovery = units * math.floor(item.srcAge / interval)
-                    else:
-                        # Low / Unknown - don't try to guess
-                        speculativeRecovery = 0
-                    maxQty = min(maxQty, item.stock + speculativeRecovery)
+                    maxQty = min(maxQty, item.stock)
 
                 if maxQty > 0:
                     loadItems = [[item, maxQty]]
@@ -381,7 +370,9 @@ class TradeCalc(object):
             'fitFunction' lets you specify a function to use for performing the fit.
         """
         tdenv = self.tdenv
-        if credits is None: credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
+        if credits is None:
+            credits = getattr(tdenv, 'credits', 0) or 0
+            credits -= (getattr(tdenv, 'insurance', 0) or 0)
         capacity = tdenv.capacity
         avoidItems = tdenv.avoidItems
         tdenv.DEBUG0("{}/{} -> {}/{} with {:n}cr",
@@ -470,6 +461,7 @@ class TradeCalc(object):
         stationsNotYetLoaded = [
                 src.ID for src in [ route.route[-1] for route in routes ] 
                     if src.tradingWith is None
+                    and src.itemCount
         ]
         if stationsNotYetLoaded:
             tdb.loadStationTrades(stationsNotYetLoaded)
@@ -519,11 +511,14 @@ class TradeCalc(object):
                 # This will amortize for the start/end stations
                 score = trade.gainCr
                 if lsPenalty:
-                    supercruiseKls = dstStation.lsFromStar / 1000
-                    penalty = lsPenalty * supercruiseKls
-                    if supercruiseKls > 4:
-                        boost = supercruiseKls / 250
-                        penalty *= boost
+                    # Only want 1dp
+                    cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                    # Produce a curve that favors distances under 1kls
+                    # positively, starts to penalize distances over 1k,
+                    # and after 4kls starts to penalize aggresively
+                    # http://goo.gl/Otj2XP
+                    penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                    penalty *= lsPenalty
                     score *= (1 - penalty)
                 dstID = dstStation.ID
                 try:
