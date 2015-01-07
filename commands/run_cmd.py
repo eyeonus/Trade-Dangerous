@@ -117,6 +117,11 @@ switches = [
             metavar='N',
             type=int,
         ),
+   ParseArgument('--pad-size', '-p',
+            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            metavar='PADSIZES',
+            dest='padSize',
+        ),
     ParseArgument('--checklist',
             help='Provide a checklist flow for the route.',
             action='store_true',
@@ -512,10 +517,13 @@ def run(results, cmdenv, tdb):
     startCr = cmdenv.credits - cmdenv.insurance
 
     # seed the route table with starting places
+    maxPadSize = cmdenv.padSize.upper() if cmdenv.padSize else None
     routes = [
         Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0, score=0)
             for src in cmdenv.origins
-            if src not in avoidPlaces and src.system not in avoidPlaces
+            if (src not in avoidPlaces) and \
+               (src.system not in avoidPlaces) and \
+               (src.checkPadSize(maxPadSize))
     ]
     numHops = cmdenv.hops
     lastHop = numHops - 1

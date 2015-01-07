@@ -25,7 +25,12 @@ switches = [
             metavar='N.NN',
             type=float,
             default=None,
-        ),
+    ),
+    ParseArgument('--pad-size', '-p',
+            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            metavar='PADSIZES',
+            dest='padSize',
+    ),
 ]
 
 ######################################################################
@@ -78,6 +83,7 @@ def run(results, cmdenv, tdb):
         for ID, age in tdb.query(stmt):
             ages[ID] = age
 
+    padSize = cmdenv.padSize
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         row = ResultRow()
         row.system = system
@@ -85,6 +91,8 @@ def run(results, cmdenv, tdb):
         row.stations = []
         if showStations:
             for (station) in system.stations:
+                if padSize and not station.checkPadSize(padSize):
+                    continue
                 try:
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
