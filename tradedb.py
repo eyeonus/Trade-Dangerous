@@ -162,15 +162,24 @@ class Station(object):
         return '%s/%s' % (self.system.name(), self.dbname)
 
 
-    def distFromStar(self):
+    def checkPadSize(self, maxPadSize):
+        return (not maxPadSize or self.maxPadSize in maxPadSize)
+
+
+    def distFromStar(self, addSuffix=False):
         """Describes the distance from the station to the star."""
         ls = self.lsFromStar
         if not ls:
-            return '?'
+            if addSuffix:
+                return "Unk"
+            else:
+                return '?'
         if ls < 4000:
-            return '{:n}'.format(ls)
+            suffix = 'ls' if addSuffix else ''
+            return '{:n}'.format(ls)+suffix
         if ls < 40000:
-            return '{:.1f}K'.format(ls / 1000)
+            suffix = 'ls' if addSuffix else ''
+            return '{:.1f}'.format(ls / 1000)+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
 
@@ -361,7 +370,9 @@ class TradeDB(object):
 
     # Translation matrixes for attributes -> common presentation
     marketStates = { '?': '?', 'Y': 'Yes', 'N': 'No' }
+    marketStatesExt = { '?': 'Unk', 'Y': 'Yes', 'N': 'No' }
     padSizes = { '?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg' }
+    padSizesExt = { '?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg' }
 
 
     def __init__(self,
@@ -1007,7 +1018,8 @@ class TradeDB(object):
             maxJumps=None,
             maxLyPer=None,
             avoidPlaces=None,
-            trading=False):
+            trading=False,
+            maxPadSize=None):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
@@ -1085,6 +1097,8 @@ class TradeDB(object):
             for station in origSys.stations:
                 if (trading and station not in tradingWith):
                     continue
+                if (maxPadSize and not station.checkPadSize(maxPadSize)):
+                    continue
                 if station not in avoidPlaces:
                     destStations.append(Destination(origSys, station, [], 0.0))
 
@@ -1098,6 +1112,8 @@ class TradeDB(object):
                 if (trading and station not in tradingWith):
                     continue
                 if station in avoidPlaces:
+                    continue
+                if (maxPadSize and not station.checkPadSize(maxPadSize)):
                     continue
                 destStations.append(
                             Destination(node.system,
@@ -1395,6 +1411,7 @@ class TradeDB(object):
         self.cur.execute(stmt, [ fromStation.ID, toStation.ID ])
 
         trading = []
+        items = self.itemByID
         for (
                 itemID,
                 srcPriceCr, profit,

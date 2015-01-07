@@ -8,8 +8,8 @@ import os
 import pathlib
 import sys
 
-import commands.exceptions
-import commands.parsing
+import commands.exceptions as exceptions
+import commands.parsing as parsing
 
 import commands.buildcache_cmd
 import commands.buy_cmd
@@ -38,7 +38,10 @@ class HelpAction(argparse.Action):
         because Python 3.4's argparse is ever-so subtly very broken.
     """
     def __call__(self, parser, namespace, values, option_string=None):
-        raise exceptions.UsageError("TradeDangerous help", parser.format_help())
+        raise exceptions.UsageError(
+                "TradeDangerous help",
+                parser.format_help()
+        )
 
 
 def addArguments(group, options, required, topGroup=None):

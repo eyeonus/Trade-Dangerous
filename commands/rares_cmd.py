@@ -28,6 +28,11 @@ switches = [
             default=None,
             type=int,
     ),
+    ParseArgument('--pad-size', '-p',
+            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            metavar='PADSIZES',
+            dest='padSize',
+    ),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance',
             action='store_true',
@@ -55,7 +60,10 @@ def run(results, cmdenv, tdb):
 
     maxLySq = cmdenv.maxLyPer ** 2
 
+    padSize = cmdenv.padSize
     for rare in tdb.rareItemByID.values():
+        if padSize and not rare.station.checkPadSize(padSize):
+            continue
         dist = start.distToSq(rare.station.system)
         if maxLySq > 0 and dist > maxLySq:
             continue
@@ -109,6 +117,10 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.rare.maxAlloc)
     rowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.rare.station.distFromStar())
+    rowFmt.addColumn('B/mkt', '>', 4,
+            key=lambda row: \
+                    TradeDB.marketStates[row.rare.station.blackMarket]
+    )
     rowFmt.addColumn("Pad", '>', '3',
             key=lambda row: \
                     TradeDB.padSizes[row.rare.station.maxPadSize]
