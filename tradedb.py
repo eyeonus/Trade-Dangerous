@@ -74,6 +74,15 @@ class SystemNotStationError(TradeException):
 ######################################################################
 
 
+def makeStellarGridKey(x, y, z):
+    """
+    The Stellar Grid is a map of systems based on their Stellar
+    co-ordinates rounded down to 32lys. This makes it much easier
+    to find stars within rectangular volumes.
+    """
+    return (int(x) >> 5, int(y) >> 5, int(z) >> 5)
+
+
 class System(object):
     """
         Describes a star system, which may contain one or more Station objects,
@@ -575,6 +584,41 @@ class TradeDB(object):
             raise
 
 
+    def buildStellarGrid(self):
+        stellarGrid = self.stellarGrid = dict()
+        for system in self.systemByID.values():
+            key = makeStellarGridKey(system.posX, system.posY, system.posZ)
+            try:
+                grid = stellarGrid[key]
+            except KeyError:
+                grid = stellarGrid[key] = []
+            grid.append(system)      
+
+
+    def genStellarGrid(self, system, ly):
+        sysX, sysY, sysZ = system.posX, system.posY, system.posZ
+        lwrBound = makeStellarGridKey(sysX - ly, sysY - ly, sysZ - ly)
+        uprBound = makeStellarGridKey(sysX + ly, sysY + ly, sysZ + ly)
+        lySq = ly ** 2
+        stellarGrid = self.stellarGrid
+        for x in range(lwrBound[0], uprBound[0]+1):
+            for y in range(lwrBound[1], uprBound[1]+1):
+                for z in range(lwrBound[2], uprBound[2]+1):
+                    try:
+                        grid = stellarGrid[(x,y,z)]
+                    except KeyError:
+                        continue
+                    for candidate in grid:
+                        distSq = (candidate.posX - sysX) ** 2
+                        if distSq > lySq:
+                            continue
+                        distSq += (candidate.posY - sysY) ** 2
+                        if distSq > lySq:
+                            continue
+                        distSq += (candidate.posZ - sysZ) ** 2
+                        if distSq <= lySq:
+                            yield candidate, distSq
+
     def genSystemsInRange(self, system, ly, includeSelf=False):
         """
             Generator for systems within ly range of system using a
@@ -592,34 +636,19 @@ class TradeDB(object):
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
 
+        if self.stellarGrid is None:
+            self.buildStellarGrid()
+
         probedLy = cache.probedLy
         if ly > probedLy:
             # Consult the database for stars we haven't seen.
-            sysX, sysY, sysZ = system.posX, system.posY, system.posZ
-            self.cur.execute("""
-                    SELECT  sys.system_id
-                      FROM  System AS sys
-                     WHERE  sys.pos_x BETWEEN ? AND ?
-                       AND  sys.pos_y BETWEEN ? AND ?
-                       AND  sys.pos_z BETWEEN ? AND ?
-                       AND  sys.system_id != ?
-            """, [
-                    sysX - ly, sysX + ly,
-                    sysY - ly, sysY + ly,
-                    sysZ - ly, sysZ + ly,
-                    system.ID,
-            ])
-            lySq = ly * ly
             cachedSystems = cache.systems = []
-            for (candID,) in self.cur:
-                candidate = self.systemByID[candID]
-                distSq = (
-                        (candidate.posX - sysX) ** 2 +
-                        (candidate.posY - sysY) ** 2 +
-                        (candidate.posZ - sysZ) ** 2
-                )
-                if distSq <= lySq:
-                    cachedSystems.append((candidate, math.sqrt(distSq)))
+            for cand, distSq in self.genStellarGrid(system, ly):
+                if cand is not system:
+                    cachedSystems.append((
+                            cand,
+                            math.sqrt(distSq)
+                    ))
 
             cachedSystems.sort(key=lambda ent: ent[1])
             cache.probedLy = probedLy = ly
@@ -635,7 +664,6 @@ class TradeDB(object):
         else:
             # No need to be conditional inside the loop
             yield from cachedSystems
-
 
     ############################################################
     # Station data.
@@ -676,6 +704,7 @@ class TradeDB(object):
 
         self.stationByID = stationByID
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
+        self.stellarGrid = None
 
 
     def addLocalStation(
@@ -1057,8 +1086,10 @@ class TradeDB(object):
             ring.sort(key=lambda dn: dn.distLy)
 
             for node in ring:
-                gsir = self.genSystemsInRange(node.system, maxLyPer, False)
-                for (destSys, destDist) in gsir:
+                for (destSys, destDist) in self.genSystemsInRange(
+                        node.system, maxLyPer, False
+                        ):
+                    assert destSys != node.system
                     dist = node.distLy + destDist
                     # If we already have a shorter path, do nothing
                     try:

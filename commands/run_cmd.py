@@ -536,8 +536,10 @@ def run(results, cmdenv, tdb):
     results.summary.exception = ""
 
     for hopNo in range(numHops):
-        if not cmdenv.quiet:
-            print("Hop {}...".format(hopNo), end='\r')
+        if not cmdenv.quiet and not cmdenv.debug:
+            print("* Hop {}...".format(hopNo+1), end='\r')
+        elif cmdenv.debug:
+            cmdenv.DEBUG0("Hop {}...")
 
         restrictTo = None
         if hopNo == lastHop and stopStations:
