@@ -37,6 +37,11 @@ switches = [
             default=None,
             type=int,
     ),
+    ParseArgument('--pad-size', '-p',
+            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            metavar='PADSIZES',
+            dest='padSize',
+    ),
     MutuallyExclusiveGroup(
         ParseArgument('--price-sort', '-P',
                 help='(When using --near) Sort by price not distance',
@@ -125,11 +130,15 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0('SQL: {}', stmt)
     cur = tdb.query(stmt, bindValues)
 
+    padSize = cmdenv.padSize
+
     stationByID = tdb.stationByID
     for (stationID, priceCr, stock, age) in cur:
+        station = stationByID[stationID]
+        if padSize and not station.checkPadSize(padSize):
+            continue
         row = ResultRow()
-        row.station = stationByID[stationID]
-        cmdenv.DEBUG2("{} {}cr {} units", row.station.name(), priceCr, stock)
+        row.station = station
         if nearSystem:
            row.dist = systemRanges[row.station.system]
         row.price = priceCr
@@ -183,6 +192,8 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.age)
     stnRowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.station.distFromStar())
+    stnRowFmt.addColumn('B/mkt', '>', 4,
+            key=lambda row: TradeDB.marketStates[row.station.blackMarket])
     stnRowFmt.addColumn("Pad", '>', '3',
             key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
 

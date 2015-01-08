@@ -73,6 +73,7 @@ class CommandEnv(TradeEnv):
         self.checkFromToNear()
         self.checkAvoids()
         self.checkVias()
+        self.checkPadSize()
 
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
@@ -204,4 +205,21 @@ class CommandEnv(TradeEnv):
             for via in ",".join(viaPlaceNames).split(","):
                 viaPlaces.append(self.tdb.lookupPlace(via))
 
+    def checkPadSize(self):
+        padSize = getattr(self, 'padSize', None)
+        if not padSize:
+            return
+        padSize = ''.join(sorted(list(set(padSize)))).upper()
+        if padSize == '?LMS':
+            self.padSize = None
+            return
+        self.padSize = padSize = padSize.upper()
+        for value in padSize:
+            if not value in 'SML?':
+                raise CommandLineError(
+                        "Invalid --pad-size '{}'; "
+                        "use one or more of S, M, L or ?".format(
+                            padSize
+                ))
+        self.padSize = padSize
 

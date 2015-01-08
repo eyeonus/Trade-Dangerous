@@ -239,6 +239,16 @@ RUN sub-command:
          --max-days-old 7     (data less than a week old)
          -MD=2                (data less than 2 days old)
 
+     --pad-size SML?
+     --pad SML?
+     -p
+       Limit results to stations that match one of the pad sizes
+       specified.
+         --pad ML?            (med, lrg or unknown only)
+         -o ML?                 ""    ""      ""    ""
+         --pad ?              (unknown only),
+         --pad L              (large only, ignores unknown)
+
      --ls-penalty N.NN
      --lsp N.NN
        DEFAULT: 0.5
@@ -480,6 +490,16 @@ RARES sub-command:
        e.g.
          --limit 10
 
+    --pad-size SML?
+    --pad SML?
+    -p
+      Limit results to stations that match one of the pad sizes
+      specified.
+        --pad ML?            (med, lrg or unknown only)
+        -o ML?                 ""    ""      ""    ""
+        --pad ?              (unknown only),
+        --pad L              (large only, ignores unknown)
+
      --price-sort
      -P
        Sort by price rather than proximity
@@ -584,6 +604,16 @@ LOCAL sub-command:
       Constrains local systems to a maximum ly distance
       --ly 20.0
 
+    --pad-size SML?
+    --pad SML?
+    -p
+      Limit results to stations that match one of the pad sizes
+      specified.
+        --pad ML?            (med, lrg or unknown only)
+        -o ML?                 ""    ""      ""    ""
+        --pad ?              (unknown only),
+        --pad L              (large only, ignores unknown)
+
     -v
       Show stations + their distance from star
 
@@ -649,6 +679,16 @@ BUY sub-command:
       Sets the range of --near (requires --near)
       --near chango --ly 10
 
+    --pad-size SML?
+    --pad SML?
+    -p
+      Limit results to stations that match one of the pad sizes
+      specified.
+        --pad ML?            (med, lrg or unknown only)
+        -o ML?                 ""    ""      ""    ""
+        --pad ?              (unknown only),
+        --pad L              (large only, ignores unknown)
+
     --prices-sort
     -P
       Keeps items sorted by price when using --near
@@ -681,6 +721,16 @@ SELL sub-command:
     --ly-per N.N
       Sets the range of --near (requires --near)
       --near chango --ly 10
+
+    --pad-size SML?
+    --pad SML?
+    -p
+      Limit results to stations that match one of the pad sizes
+      specified.
+        --pad ML?            (med, lrg or unknown only)
+        -o ML?                 ""    ""      ""    ""
+        --pad ?              (unknown only),
+        --pad L              (large only, ignores unknown)
 
     --prices-sort
     -P
