@@ -599,11 +599,12 @@ class TradeCalc(object):
 
         restrictStations = set()
         if restrictTo:
-            for place in restrictStations:
+            for place in restrictTo:
                 if isinstance(place, Station):
                     restrictStations.add(place)
                 elif isinstance(place, System) and place.stations:
                     restrictStations += place.stations
+        restrictStations = set(restrictStations)
 
         for route in routes:
             tdenv.DEBUG1("Route = {}", route.str())
