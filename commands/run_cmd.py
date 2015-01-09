@@ -547,7 +547,7 @@ def run(results, cmdenv, tdb):
         if not cmdenv.quiet and not cmdenv.debug:
             print("* Hop {}...".format(hopNo+1), end='\r')
         elif cmdenv.debug:
-            cmdenv.DEBUG0("Hop {}...")
+            cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
         restrictTo = None
         if hopNo == lastHop and stopStations:
