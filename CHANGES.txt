@@ -2,6 +2,19 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.6.0 Jan 08 2015
+. (kfsone) Overhaul of loading of trades and adjancent-system finding
+  - Item data is loaded as discrete sales and purchases in TradeCalc,
+  - Trades (X Selling, Y Buying) are lazily populated by TradeCalc,
+  - TradeDB now builds a "StellarGrid" rather than relying on the
+    database for locality searches; massive perf improvement for Windows
+  - Reduces memory footprint and should fix memory errors 32-bit users
+    were having.
+. (kfsone) Fixed import command barfing if you didn't specify a filename
+. (kfsone) Added a hop-no display during "run" command,
+. (kfsone) Fixed a stupid command line problem with 'station' command,
++ Data: Path O'Gen, kfsone
+
 v6.5.0 Jan 06 2015
 . (sarbian/kfsone) Added "--pad-size" option to "run" command to
         restrict results to given pad sizes.
