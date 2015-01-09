@@ -21,3 +21,4 @@ wip/
 pycallgraph.png
 /config.sh
 venv/
+.venv/
