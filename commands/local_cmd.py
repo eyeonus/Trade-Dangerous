@@ -13,10 +13,15 @@ import math
 
 name='local'
 help='Calculate local systems.'
-epilog=None
+epilog="See also the 'station' sub-command."
 wantsTradeDB=True
 arguments = [
-    ParseArgument('near', help='System to measure from', type=str),
+    ParseArgument(
+            'near',
+            help='Name of the system to query from.',
+            type=str,
+            metavar='SYSTEMNAME',
+    ),
 ]
 switches = [
     ParseArgument('--ly',
