@@ -79,8 +79,7 @@ def run(results, cmdenv, tdb):
         raise CommandLineError("Save location '{}' not found.".format(str(exportPath)))
 
     # connect to the database
-    if not cmdenv.quiet:
-        print("Using database '{}'".format(tdb.dbFilename))
+    cmdenv.NOTE("Using database '{}'", tdb.dbPath)
     conn = tdb.getDB()
     conn.row_factory = sqlite3.Row
 
@@ -114,12 +113,10 @@ def run(results, cmdenv, tdb):
         tableName = row['name']
         if tableName in ignoreList:
             # ignore the table
-            if not cmdenv.quiet:
-                print("Ignore Table '{table}'".format(table=tableName))
+            cmdenv.NOTE("Ignore Table '{table}'", table=tableName)
             continue
 
-        if not cmdenv.quiet:
-            print("Export Table '{table}'".format(table=tableName))
+        cmdenv.NOTE("Export Table '{table}'", table=tableName)
 
         # create CSV files
         lineCount, filePath = exportTableToFile(tdb, cmdenv, tableName, exportPath)
