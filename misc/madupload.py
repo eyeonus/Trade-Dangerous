@@ -19,6 +19,8 @@ You don't appear to have the Python module "requests" installed.
 
 It can be installed with Python's package installer, e.g:
   {prompt} pip install requests
+or
+  {prompt} pip3 install requests
 
 For additional help, see:
   Bitbucket Wiki    http://kfs.org/td/wiki
