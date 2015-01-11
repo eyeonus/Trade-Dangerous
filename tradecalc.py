@@ -697,13 +697,13 @@ class TradeCalc(object):
                                     "->".join([jump.str() for jump in dest.via]),
                                     dest.distLy)
 
-                if restricting:
+                if restrictStations:
                     if dstStation not in restricting:
                         continue
 
                 considerStation(dstStation, dest)
 
-                if restricting:
+                if restrictStations:
                     restricting.remove(dstStation)
                     if not restricting:
                         break
