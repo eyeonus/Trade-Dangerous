@@ -231,7 +231,7 @@ class Route(object):
                 else:
                     srcAge = makeAge(trade.srcAge)
                     dstAge = makeAge(trade.dstAge)
-                    age = "{} and {}".format(srcAge, dstAge)
+                    age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
                         qty=qty, item=trade.name(),
                         eacost=trade.costCr,
