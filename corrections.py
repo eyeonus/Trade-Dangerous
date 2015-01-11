@@ -45,6 +45,7 @@ stations = {
     "HR 5451/MACOONALD HUB": "MacDonald Hub",
     "HR 5451/MACOONALO HUB": "MacDonald Hub",
     "JAWOLA/SUTCLIFFEPLATFORM": "Sutcliffe Platform",
+    "KANOS/LEE STATION": DELETED,
     "LEESTI/GEORGELUCAS": "George Lucas",
     "LFT 1446/BOSCH SETTLEMENT": DELETED,
     "LHS 1101/BONDAR CITY": DELETED,
