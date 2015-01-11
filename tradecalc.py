@@ -604,7 +604,7 @@ class TradeCalc(object):
                 if isinstance(place, Station):
                     restrictStations.add(place)
                 elif isinstance(place, System) and place.stations:
-                    restrictStations += place.stations
+                    restrictStations.update(place.stations)
         restrictStations = set(restrictStations)
 
         for route in routes:
