@@ -63,31 +63,49 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
-
-    item = tdb.lookupItem(cmdenv.item)
-    cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
+    try:
+        item = tdb.lookupItem(cmdenv.item)
+        cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
+    except LookupError:
+        item = tdb.lookupShip(cmdenv.item)
+        cmdenv.DEBUG0("Looking up ship {} (#{})", item.name(), item.ID)
+        cmdenv.ship = True
 
     results.summary = ResultRow()
     results.summary.item = item
 
     if cmdenv.detail:
-        avgPrice = tdb.query("""
-                SELECT CAST(AVG(ss.price) AS INT)
-                  FROM StationSelling AS ss
-                 WHERE ss.item_id = ?
-        """, [item.ID]).fetchone()[0]
-        results.summary.avg = avgPrice
+        if cmdenv.ship:
+            results.summary.avg = item.cost
+        else:
+            avgPrice = tdb.query("""
+                    SELECT CAST(AVG(ss.price) AS INT)
+                      FROM StationSelling AS ss
+                     WHERE ss.item_id = ?
+            """, [item.ID]).fetchone()[0]
+            results.summary.avg = avgPrice
 
     # Constraints
-    tables = "StationSelling AS ss"
-    constraints = [ "(item_id = {})".format(item.ID) ]
-    columns = [
+    if cmdenv.ship:
+        tables = "ShipVendor AS ss"
+        constraints = [ "(ship_id = {})".format(item.ID) ]
+        columns = [
+            'ss.station_id',
+            '0',
+            '1',
+            "0",
+            ]
+        bindValues = [ ]
+    else:
+        tables = "StationSelling AS ss"
+        constraints = [ "(item_id = {})".format(item.ID) ]
+        columns = [
             'ss.station_id',
             'ss.price',
             'ss.units',
             "JULIANDAY('NOW') - JULIANDAY(ss.modified)",
-    ]
-    bindValues = [ ]
+            ]
+        bindValues = [ ]
 
     if cmdenv.quantity:
         constraints.append("(units = -1 or units >= ?)")
@@ -189,17 +207,19 @@ def render(results, cmdenv, tdb):
     stnRowFmt = RowFormat()
     stnRowFmt.addColumn('Station', '<', longestNameLen,
             key=lambda row: row.station.name())
-    stnRowFmt.addColumn('Cost', '>', 10, 'n',
-            key=lambda row: row.price)
-    stnRowFmt.addColumn('Stock', '>', 10,
-            key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
+    if not cmdenv.ship:
+        stnRowFmt.addColumn('Cost', '>', 10, 'n',
+                key=lambda row: row.price)
+        stnRowFmt.addColumn('Stock', '>', 10,
+                key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
 
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
-    stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
-            key=lambda row: row.age)
+    if not cmdenv.ship:
+        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+                key=lambda row: row.age)
     stnRowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.station.distFromStar())
     stnRowFmt.addColumn('B/mkt', '>', 4,
@@ -216,7 +236,7 @@ def render(results, cmdenv, tdb):
 
     if cmdenv.detail:
         print("{:{lnl}} {:>10n}".format(
-                "-- Average",
+                "-- Average" if not cmdenv.ship else "-- Ship Cost",
                 results.summary.avg,
                 lnl=longestNameLen,
         ))
