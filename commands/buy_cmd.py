@@ -108,14 +108,21 @@ def run(results, cmdenv, tdb):
                     includeSelf=True,
             )
         }
-        tables += (
-                " INNER JOIN Station AS stn"
-                " ON (stn.station_id = ss.station_id)"
-        )
-        constraints.append("(stn.system_id IN ({}))".format(
-            ",".join(['?'] * len(systemRanges))
-        ))
-        bindValues += list(system.ID for system in systemRanges.keys())
+        # We need to ensure we use less than 999 bind values in total.
+        # If we don't filter in the query, we'll filter by stations in
+        # systemRanges when building our result rows
+        if len(systemRanges) > 999-len(bindValues):
+            cmdenv.DEBUG0("Too many matching systems ({}) for SQL filter. "
+                          "Hard way it is.".format(len(systemRanges)))
+        else:
+            tables += (
+                    " INNER JOIN Station AS stn"
+                    " ON (stn.station_id = ss.station_id)"
+            )
+            constraints.append("(stn.system_id IN ({}))".format(
+                ",".join(['?'] * len(systemRanges))
+            ))
+            bindValues += list(system.ID for system in systemRanges.keys())
 
     whereClause = ' AND '.join(constraints)
     stmt = """
@@ -140,7 +147,10 @@ def run(results, cmdenv, tdb):
         row = ResultRow()
         row.station = station
         if nearSystem:
-           row.dist = systemRanges[row.station.system]
+            # check the system was in our range query
+            if row.station.system not in systemRanges:
+                continue
+            row.dist = systemRanges[row.station.system]
         row.price = priceCr
         row.stock = stock
         row.age = age
