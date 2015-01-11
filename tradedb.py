@@ -411,6 +411,7 @@ class TradeDB(object):
         self.pricesFilename = str(self.pricesPath)
 
         self.avgSelling, self.avgBuying = None, None
+        self.tradingStationCount = 0
 
         if load:
             self.reloadCache()
@@ -701,6 +702,7 @@ class TradeDB(object):
         self.cur.execute(stmt)
         stationByID = {}
         systemByID = self.systemByID
+        self.tradingStationCount = 0
         for (
             ID, systemID, name,
             lsFromStar, blackMarket, maxPadSize,
@@ -711,6 +713,8 @@ class TradeDB(object):
                     lsFromStar, blackMarket, maxPadSize,
                     itemCount
             )
+            if itemCount > 0:
+                self.tradingStationCount += 1
             stationByID[ID] = station
 
         self.stationByID = stationByID

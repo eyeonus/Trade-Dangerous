@@ -231,7 +231,7 @@ class Route(object):
                 else:
                     srcAge = makeAge(trade.srcAge)
                     dstAge = makeAge(trade.dstAge)
-                    age = "{} and {}".format(srcAge, dstAge)
+                    age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
                         qty=qty, item=trade.name(),
                         eacost=trade.costCr,
@@ -585,6 +585,7 @@ class TradeCalc(object):
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
+        reqBlackMarket = getattr(tdenv, 'blackMarket', False)
         credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
 
         bestToDest = {}
@@ -603,7 +604,7 @@ class TradeCalc(object):
                 if isinstance(place, Station):
                     restrictStations.add(place)
                 elif isinstance(place, System) and place.stations:
-                    restrictStations += place.stations
+                    restrictStations.update(place.stations)
         restrictStations = set(restrictStations)
 
         for route in routes:
@@ -686,6 +687,9 @@ class TradeCalc(object):
                 if unique and dstStation in route.route:
                     continue
 
+                if reqBlackMarket and dstStation.blackMarket != 'Y':
+                    continue
+
                 if tdenv.debug >= 1:
                     tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",
                                     dstStation.system.dbname,
@@ -693,13 +697,13 @@ class TradeCalc(object):
                                     "->".join([jump.str() for jump in dest.via]),
                                     dest.distLy)
 
-                if restricting:
+                if restrictStations:
                     if dstStation not in restricting:
                         continue
 
                 considerStation(dstStation, dest)
 
-                if restricting:
+                if restrictStations:
                     restricting.remove(dstStation)
                     if not restricting:
                         break

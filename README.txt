@@ -221,9 +221,15 @@ RUN sub-command:
 
      --start-jumps N
      -s N
-       Considers stations from stations upto this many jumps from your
+       Considers stations from systems upto this many jumps from your
        specified start location.
          --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
+
+     --end-jumps N
+     -e N
+       Considers stations from systems upto this many jumps from your
+       specified destination (--to).
+         --to lave -e 3      (find runs that end within 3 jumps of lave)
 
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
@@ -248,6 +254,10 @@ RUN sub-command:
          -o ML?                 ""    ""      ""    ""
          --pad ?              (unknown only),
          --pad L              (large only, ignores unknown)
+
+     --black-market
+     -bm
+       Only consider stations that have a black market.
 
      --ls-penalty N.NN
      --lsp N.NN
