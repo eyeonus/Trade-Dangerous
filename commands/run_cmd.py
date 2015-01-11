@@ -634,7 +634,7 @@ def run(results, cmdenv, tdb):
 
         restrictTo = None
         if hopNo == lastHop and stopStations:
-            restrictTo = stopStations
+            restrictTo = set(stopStations)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
