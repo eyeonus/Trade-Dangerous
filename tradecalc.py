@@ -585,6 +585,7 @@ class TradeCalc(object):
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
+        reqBlackMarket = getattr(tdenv, 'blackMarket', False)
         credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
 
         bestToDest = {}
@@ -684,6 +685,9 @@ class TradeCalc(object):
                     continue
 
                 if unique and dstStation in route.route:
+                    continue
+
+                if reqBlackMarket and dstStation.blackMarket != 'Y':
                     continue
 
                 if tdenv.debug >= 1:
