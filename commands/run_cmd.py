@@ -287,7 +287,66 @@ def extendOriginsForStartJumps(tdb, cmdenv):
                 [sys.name() for sys in origins]
                 )
 
+<<<<<<< HEAD
     return origins
+=======
+    if hops != 2:
+        return
+    if isinstance(place, Station) and place in viaSet:
+        raise CommandLineError(
+                "{} used in {} and --via with only 2 hops".format(
+                    place.name(),
+                    anchorName,
+        ))
+
+
+def checkStationSuitability(cmdenv, station, src):
+    if not station.itemCount:
+        raise NoDataError(
+                "No price data in local database "
+                "for {} station: {}".format(
+                    src, station.name(),
+        ))
+    mps = cmdenv.maxPadSize
+    if mps and not station.checkPadSize(mps):
+        raise CommandLineError(
+                "{} station {} does not meet pad-size "
+                "requirement.".format(
+                    src, station.name(),
+        ))
+    if src != "--from":
+        bm = cmdenv.blackMarket
+        if bm and station.blackMarket != 'Y':
+            raise CommandLineError(
+                    "{} station {} does not meet black-market "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+
+
+def filterStationSet(src, cmdenv, stnSet):
+    if not stnSet:
+        return stnSet
+    bm, mps = cmdenv.blackMarket, cmdenv.maxPadSize
+    for place in stnSet:
+        if not isinstance(place, Station):
+            continue
+        if place.itemCount == 0:
+            stnSet.remove(place)
+            continue
+        if mps and not place.checkPadSize(mps):
+            stnSet.remove(place)
+            continue
+        if bm and place.blackMarket != 'Y':
+            stnSet.remove(place)
+            continue
+    if not stnSet:
+        raise CommandLineError(
+                "No {} station met your criteria.".format(
+                    src
+        ))
+    return stnSet
+>>>>>>> 20c0505f0af40cc8ff50f1eb6a22573f486f2c0d
 
 
 def validateRunArguments(tdb, cmdenv):
@@ -321,6 +380,7 @@ def validateRunArguments(tdb, cmdenv):
                             .format(cmdenv.origPlace.name())
                         )
         else:
+            checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
             cmdenv.startStation = cmdenv.origPlace
         cmdenv.origins = extendOriginsForStartJumps(tdb, cmdenv)
@@ -551,7 +611,7 @@ def run(results, cmdenv, tdb):
 
         restrictTo = None
         if hopNo == lastHop and stopStations:
-            restrictTo = stopStations
+            restrictTo = set(stopStations)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
@@ -559,13 +619,17 @@ def run(results, cmdenv, tdb):
         if not newRoutes and hopNo > 0:
             if restrictTo:
                 restrictions = list(restrictTo)
+                restrictSystems = list(set([
+                    place if isinstance(place, System) else place.system
+                    for place in restrictTo
+                ]))
                 if len(restrictions) == 1:
                     dests = restrictions[0].name()
-                elif len(set(stn.system for stn in restrictions)) == 1:
-                    dests = restrictions[0].system.name()
+                elif len(restrictSystems) == 1:
+                    dests = restrictSystems[0].name()
                 else:
                     dests = ", ".join([
-                            stn.name() for stn in restrictions[0:-1]
+                            place.name() for place in restrictions[0:-1]
                     ])
                     dests += " or " + restrictions[-1].name()
                 results.summary.exception += (
