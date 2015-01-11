@@ -634,7 +634,7 @@ def run(results, cmdenv, tdb):
 
         restrictTo = None
         if hopNo == lastHop and stopStations:
-            restrictTo = stopStations
+            restrictTo = set(stopStations)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
@@ -642,16 +642,19 @@ def run(results, cmdenv, tdb):
         if not newRoutes and hopNo > 0:
             if restrictTo:
                 restrictions = list(restrictTo)
+                restrictSystems = list(set([
+                    place if isinstance(place, System) else place.system
+                    for place in restrictTo
+                ]))
                 if len(restrictions) == 1:
                     dests = restrictions[0].name()
-                elif len(set(stn.system for stn in restrictions)) == 1:
-                    dests = restrictions[0].system.name()
+                elif len(restrictSystems) == 1:
+                    dests = restrictSystems[0].name()
                 else:
                     dests = ", ".join([
-                            stn.name() for stn in restrictions[0:-1]
+                            place.name() for place in restrictions[0:-1]
                     ])
                     dests += " or " + restrictions[-1].name()
-                print(restrictions)
                 results.summary.exception += (
                         "SORRY: Could not find any routes that "
                         "delivered a profit to {} at hop #{}\n"

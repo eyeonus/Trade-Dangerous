@@ -231,7 +231,7 @@ class Route(object):
                 else:
                     srcAge = makeAge(trade.srcAge)
                     dstAge = makeAge(trade.dstAge)
-                    age = "{} and {}".format(srcAge, dstAge)
+                    age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
                         qty=qty, item=trade.name(),
                         eacost=trade.costCr,
@@ -604,7 +604,7 @@ class TradeCalc(object):
                 if isinstance(place, Station):
                     restrictStations.add(place)
                 elif isinstance(place, System) and place.stations:
-                    restrictStations += place.stations
+                    restrictStations.update(place.stations)
         restrictStations = set(restrictStations)
 
         for route in routes:
@@ -697,13 +697,13 @@ class TradeCalc(object):
                                     "->".join([jump.str() for jump in dest.via]),
                                     dest.distLy)
 
-                if restricting:
+                if restrictStations:
                     if dstStation not in restricting:
                         continue
 
                 considerStation(dstStation, dest)
 
-                if restricting:
+                if restrictStations:
                     restricting.remove(dstStation)
                     if not restricting:
                         break

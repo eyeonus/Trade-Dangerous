@@ -10,6 +10,10 @@ v6.6.1 Jan 10 2015
       e.g.
         trade.py run --from sol --to lave -e 3
         will find runs from sol to somewhere within 3 jumps of lave.
+. (kfsone) "rares" now has a friendly error when no rares are found
++ Data: kfsone, maddavo, Dave Ryalls, EDStarQuery/kfsone
+  [I'm adding several hundred new systems from EDStarQuery but I'm also
+   manually vetting all of them!]
 
 v6.6.0 Jan 08 2015
 . (kfsone) Overhaul of loading of trades and adjancent-system finding
