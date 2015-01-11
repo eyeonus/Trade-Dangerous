@@ -350,6 +350,30 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
         ))
 
 
+def checkStationSuitability(cmdenv, station, src):
+    if not station.itemCount:
+        raise NoDataError(
+                "No price data in local database "
+                "for {} station: {}".format(
+                    src, station.name(),
+        ))
+    mps = cmdenv.maxPadSize
+    if mps and not station.checkPadSize(mps):
+        raise CommandLineError(
+                "{} station {} does not meet pad-size "
+                "requirement.".format(
+                    src, station.name(),
+        ))
+    if src != "--from":
+        bm = cmdenv.blackMarket
+        if bm and station.blackMarket != 'Y':
+            raise CommandLineError(
+                    "{} station {} does not meet black-market "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+
+
 def filterStationSet(src, cmdenv, stnSet):
     if not stnSet:
         return stnSet
@@ -405,6 +429,7 @@ def validateRunArguments(tdb, cmdenv):
                             .format(cmdenv.origPlace.name())
                         )
         else:
+            checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
             cmdenv.startStation = cmdenv.origPlace
         cmdenv.origins = expandForJumps(
