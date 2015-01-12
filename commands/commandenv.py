@@ -47,6 +47,7 @@ class CommandEnv(TradeEnv):
 
         self._cmd   = cmdModule or __main__
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
+        self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
 
         # We need to relocate to the working directory so that
         # we can load a TradeDB after this without things going

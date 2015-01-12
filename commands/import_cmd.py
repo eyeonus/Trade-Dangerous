@@ -92,8 +92,9 @@ def run(results, cmdenv, tdb):
     tdb.reloadCache()
     tdb.close()
 
-    if re.match("^https?://", cmdenv.filename, re.IGNORECASE):
-        cmdenv.url, cmdenv.filename = cmdenv.filename, None
+    if cmdenv.filename:
+        if re.match(r"^https?://", cmdenv.filename, re.IGNORECASE):
+            cmdenv.url, cmdenv.filename = cmdenv.filename, None
 
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"

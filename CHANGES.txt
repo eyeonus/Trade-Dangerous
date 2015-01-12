@@ -2,6 +2,32 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.6.1 Jan 10 2015
+. (kfsone) Added "--blackmarket" option to "run" command, restrictions
+    to stations which have a black market.
+. (kfsone) Added "--end-jumps" ('-e') to "run" command, includes stations
+    from systems within this many jumps of the specified --to.
+      e.g.
+        trade.py run --from sol --to lave -e 3
+        will find runs from sol to somewhere within 3 jumps of lave.
+. (kfsone) "rares" now has a friendly error when no rares are found
++ Data: kfsone, maddavo, Dave Ryalls, EDStarQuery/kfsone
+  [I'm adding several hundred new systems from EDStarQuery but I'm also
+   manually vetting all of them!]
+
+v6.6.0 Jan 08 2015
+. (kfsone) Overhaul of loading of trades and adjancent-system finding
+  - Item data is loaded as discrete sales and purchases in TradeCalc,
+  - Trades (X Selling, Y Buying) are lazily populated by TradeCalc,
+  - TradeDB now builds a "StellarGrid" rather than relying on the
+    database for locality searches; massive perf improvement for Windows
+  - Reduces memory footprint and should fix memory errors 32-bit users
+    were having.
+. (kfsone) Fixed import command barfing if you didn't specify a filename
+. (kfsone) Added a hop-no display during "run" command,
+. (kfsone) Fixed a stupid command line problem with 'station' command,
++ Data: Path O'Gen, kfsone
+
 v6.5.0 Jan 06 2015
 . (sarbian/kfsone) Added "--pad-size" option to "run" command to
         restrict results to given pad sizes.
