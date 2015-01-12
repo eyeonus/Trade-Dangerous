@@ -866,6 +866,8 @@ def buildCache(tdb, tdenv):
             processImportFile(tdenv, tempDB, Path(importName), importTable)
         except FileNotFoundError:
             tdenv.DEBUG0("WARNING: processImportFile found no {} file", importName)
+        except StopIteration:
+            tdenv.NOTE("{} exists but is empty. Remove it or add the column definition line.", importName)
 
     # Parse the prices file
     if pricesPath.exists():

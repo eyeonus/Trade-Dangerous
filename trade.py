@@ -46,6 +46,27 @@ def main(argv):
     cmdenv = cmdIndex.parse(sys.argv)
 
     tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
+    if cmdenv.usesTradeData:
+        tsc = tdb.tradingStationCount
+        if tsc == 0:
+            raise exceptions.NoDataError(
+                    "There is no trading data for ANY station in "
+                    "the local database. Please enter or import "
+                    "price data."
+            )
+        if tsc == 1:
+            raise exceptions.NoDataError(
+                    "The local database only contains trading data "
+                    "for one station. Please enter or import data "
+                    "for additional stations."
+            )
+        if tsc < 8:
+            cmdenv.NOTE(
+                    "The local database only contains trading data "
+                    "for {} stations. Please enter or import data "
+                    "for additional stations.".format(
+                        tsc
+            ))
 
     results = cmdenv.run(tdb)
     if results:
