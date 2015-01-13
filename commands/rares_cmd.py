@@ -164,6 +164,9 @@ def render(results, cmdenv, tdb):
     the output of the command.
     """
 
+    if not results.rows:
+        raise CommandLineError("No items found.")
+
     # Calculate the longest station name in our list.
     longestStnName = max(results.rows, key=lambda result: len(result.rare.station.name())).rare.station
     longestStnNameLen = len(longestStnName.name())
