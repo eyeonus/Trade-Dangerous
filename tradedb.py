@@ -1185,6 +1185,8 @@ class TradeDB(object):
         pathList = { system.ID: DestinationNode(system, None, -1.0)
                         for system in avoidPlaces
                         if isinstance(system, System) }
+        if not origSys.ID in pathList:
+            pathList[origSys.ID] = openList[0]
 
         # As long as the open list is not empty, keep iterating.
         jumps = 0
@@ -1220,17 +1222,6 @@ class TradeDB(object):
                     openList.append(destNode)
 
         destStations = []
-        # always include the local stations, unless the user has indicated they are
-        # avoiding this system. E.g. if you're in Chango but you've specified you
-        # want to avoid Chango...
-        if origSys not in avoidPlaces:
-            for station in origSys.stations:
-                if (trading and station not in tradingWith):
-                    continue
-                if (maxPadSize and not station.checkPadSize(maxPadSize)):
-                    continue
-                if station not in avoidPlaces:
-                    destStations.append(Destination(origSys, station, [], 0.0))
 
         # We have a system-to-system path list, now we
         # need stations to terminate at.
