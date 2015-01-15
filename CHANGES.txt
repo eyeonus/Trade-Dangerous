@@ -2,6 +2,14 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[work in progress]
+. (kfsone) Added a "getRoute" function to TradeDB()
+        import tradedb
+        tdb = tradedb.TradeDB()
+        lave = tdb.lookupPlace("Lave")
+        barn = tdb.lookupPlace("Barnard's Star")
+        tdb.getRoute(lave, barn, maxJumpLy=12)
+
 v6.6.1 Jan 10 2015
 . (kfsone) Added "--blackmarket" option to "run" command, restrictions
     to stations which have a black market.

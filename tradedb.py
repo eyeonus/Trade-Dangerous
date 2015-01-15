@@ -19,12 +19,13 @@ from tradeenv import TradeEnv
 from tradeexcept import TradeException
 
 import cache
+import heapq
 import itertools
+import locale
 import math
 import re
 import sys
 
-import locale
 locale.setlocale(locale.LC_ALL, '')
 
 ######################################################################
@@ -676,6 +677,103 @@ class TradeDB(object):
         else:
             # No need to be conditional inside the loop
             yield from cachedSystems
+
+
+    def getRoute(self, origin, dest, maxJumpLy):
+        """
+        Find a shortest route between two systems with an additional
+        constraint that each system be a maximum of maxJumpLy from
+        the previous system.
+
+        Parameters:
+            origin
+                System (or station) to start from,
+            dest
+                System (or station) to terminate at.
+            maxJumpLy
+                Maximum light years between systems.
+
+        Returns:
+            None
+                No route was found
+
+            [(origin, 0),...(dest, N)]
+                A list of (system, distanceSoFar) values describing
+                the route.
+
+        Example:
+            If there are systems A, B and C such
+            that A->B is 7ly and B->C is 8ly then:
+
+                origin = lookupPlace("A")
+                dest = lookupPlace("C")
+                route = tdb.getRoute(origin, dest, 9)
+
+            The route should be:
+
+                [(System(A), 0), (System(B), 7), System(C), 15)]
+
+        """
+
+        if isinstance(origin, Station):
+            origin = origin.system
+        if isinstance(dest, Station):
+            dest = dest.system
+
+        if origin == dest:
+            return [(origin, 0), (dest, 0)]
+
+        # openSet is the list of nodes we want to visit, which will be
+        # used as a priority queue (heapq).
+        # Each element is a tuple of the 'priority' (the combination of
+        # the total distance to the node and the distance left from the
+        # node to the destination.
+        openSet = [(0, 0, origin.ID)]
+        # Track predecessor nodes for everwhere we visit
+        distances = { origin: (None, 0) }
+        destID = dest.ID
+        sysByID = self.systemByID
+
+        while openSet:
+            weight, curDist, curSysID = heapq.heappop(openSet)
+            # If we reached 'goal' we've found the shortest path.
+            if curSysID == destID:
+                break
+            curSys = sysByID[curSysID]
+            # A node might wind up multiple times on the open list,
+            # so check if we've already found a shorter distance to
+            # the system and if so, ignore it this time.
+            if curDist > distances[curSys][1]:
+                continue
+
+            for (nSys, nDist) in self.genSystemsInRange(curSys, maxJumpLy):
+                newDist = curDist + nDist
+                try:
+                    (prevSys, prevDist) = distances[nSys]
+                    if prevDist <= newDist:
+                        continue
+                except KeyError:
+                    pass
+                distances[nSys] = (curSys, newDist)
+                weight = math.sqrt(curSys.distToSq(nSys))
+                heapq.heappush(openSet, (newDist + weight, newDist, nSys.ID))
+
+        if not dest in distances:
+            return None
+
+        path = []
+
+        while True:
+            (prevSys, dist) = distances[dest]
+            path.append((dest, dist))
+            if dest == origin:
+                break
+            dest = prevSys
+
+        path.reverse()
+
+        return path
+
 
     ############################################################
     # Station data.
