@@ -1253,6 +1253,8 @@ class TradeDB(object):
                                     node.distLy)
                         )
 
+        destStations.sort(key=lambda dest: dest.distLy)
+
         return destStations
 
 
