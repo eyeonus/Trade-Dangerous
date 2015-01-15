@@ -1153,9 +1153,8 @@ class TradeDB(object):
             Limits to stations we are trading with if trading is True.
         """
 
-        assert isinstance(origin, Station)
-
         if trading:
+            assert isinstance(origin, Station)
             if not origin.tradingWith:
                 return []
             tradingWith = origin.tradingWith
@@ -1173,7 +1172,7 @@ class TradeDB(object):
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
 
-        origSys = origin.system
+        origSys = origin.system if isinstance(origin, Station) else origin
         openList = [ DestinationNode(origSys, [origSys], 0) ]
         # I don't want to have to consult both the pathList
         # AND the avoid list every time I'm considering a
