@@ -39,6 +39,9 @@ Classes:
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from collections import defaultdict
+from collections import namedtuple
+from tradedb import System, Station, Trade, TradeDB
+from tradeexcept import TradeException
 
 import locale
 import math
@@ -47,10 +50,36 @@ import time
 locale.setlocale(locale.LC_ALL, '')
 
 ######################################################################
-# Stuff that passes for classes (but isn't)
+# Exceptions
 
-from tradedb import System, Station, Trade, TradeDB
-from collections import namedtuple
+class BadTimestampError(TradeException):
+    def __init__(
+            self,
+            tableName,
+            tdb,
+            stationID, itemID,
+            modified
+            ):
+        self.tableName = tableName
+        self.station = tdb.stationByID[stationID]
+        self.item = tdb.itemByID[itemID]
+        self.modified = modified
+
+    def __str__(self):
+        return (
+                "Error loading price data from the local db:\n"
+                "{} has a {} entry for \"{}\" with an invalid "
+                "modified timestamp: '{}'.".format(
+                    self.station.name(), 
+                    self.tableName,
+                    self.item.name(),
+                    str(self.modified),
+                )
+        )
+
+
+######################################################################
+# Stuff that passes for classes (but isn't)
 
 class TradeLoad(namedtuple('TradeLoad', [
                 'items', 'gainCr', 'costCr', 'units'
@@ -322,16 +351,23 @@ class TradeCalc(object):
         tdenv.DEBUG1("TradeCalc loading StationSelling values")
         cur = db.execute("""
                 SELECT  station_id, item_id, price, units, level,
-                        strftime('%s', modified)
+                        strftime('%s', modified),
+                        modified
                   FROM  StationSelling
         """)
         now = int(time.time())
-        for stnID, itmID, cr, units, lev, timestamp in cur:
+        for stnID, itmID, cr, units, lev, timestamp, modified in cur:
             if itmID not in avoidItemIDs:
                 if stnID != lastStnID:
                     stn = selling[stnID]
                     lastStnID = stnID
-                ageS = now - int(timestamp)
+                try:
+                    ageS = now - int(timestamp)
+                except TypeError:
+                    raise BadTimestampError(
+                            "StationSelling", self.tdb,
+                            stnID, itmID, modified
+                    )
                 stn.append([itmID, cr, units, lev, ageS])
                 sellCount += 1
         tdenv.DEBUG0("Loaded {} selling values".format(sellCount))
@@ -340,16 +376,23 @@ class TradeCalc(object):
         tdenv.DEBUG1("TradeCalc loading StationBuying values")
         cur = db.execute("""
                 SELECT  station_id, item_id, price, units, level,
-                        strftime('%s', modified)
+                        strftime('%s', modified),
+                        modified
                   FROM  StationBuying
         """)
         now = int(time.time())
-        for stnID, itmID, cr, units, lev, timestamp in cur:
+        for stnID, itmID, cr, units, lev, timestamp, modified in cur:
             if itmID not in avoidItemIDs:
                 if stnID != lastStnID:
                     stn = buying[stnID]
                     lastStnID = stnID
-                ageS = now - int(timestamp)
+                try:
+                    ageS = now - int(timestamp)
+                except TypeError:
+                    raise BadTimestampError(
+                            "StationBuying", self.tdb,
+                            stnID, itmID, modified
+                    )
                 stn.append([itmID, cr, units, lev, ageS])
                 buyCount += 1
         tdenv.DEBUG0("Loaded {} buying values".format(buyCount))
