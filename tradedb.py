@@ -4,9 +4,45 @@
 #  I guarantee there is at least one bug neither of us knew about.
 #---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Database Module
-#
-#  Containers for describing the current TradeDangerous database
-#  and loading it from the SQLite database cache.
+
+"""
+Provides the primary classes used within TradeDangerous:
+
+TradeDB, System, Station, Ship, Item, RareItem and Trade.
+
+These classes are primarily for describing the database.
+
+
+Simplistic use might be:
+
+    import tradedb
+
+    # Create an instance: You can specify a debug level as a
+    # parameter, for more advanced configuration, see the
+    # tradeenv.TradeEnv() class.
+    tdb = tradedb.TradeDB()
+
+    # look up a System by name
+    sol = tdb.lookupSystem("SOL")
+    ibootis = tdb.lookupSystem("i BootiS")
+    ibootis = tdb.lookupSystem("ibootis")
+
+    # look up a Station by name
+    abe = tdb.lookupStation("Abraham Lincoln")
+    abe = tdb.lookupStation("Abraham Lincoln", sol)
+    abe = tdb.lookupStation("hamlinc")
+
+    # look up something that could be a system or station,
+    # where 'place' syntax can be:
+    #  SYS, STN, SYS/STN, @SYS, /STN or @SYS/STN
+    abe = tdb.lookupPlace("Abraham Lincoln")
+    abe = tdb.lookupPlace("HamLinc")
+    abe = tdb.lookupPlace("@SOL/HamLinc")
+    abe = tdb.lookupPlace("so/haml") 
+    abe = tdb.lookupPlace("sol/abraham lincoln")
+    abe = tdb.lookupPlace("@sol/abrahamlincoln")
+    james = tdb.lookupPlace("shin/jamesmem")
+"""
 
 ######################################################################
 # Imports
@@ -86,19 +122,21 @@ def makeStellarGridKey(x, y, z):
 
 class System(object):
     """
-        Describes a star system, which may contain one or more Station objects,
-        and lists which stars it has a direct connection to.
-        Do not use _rangeCache directly, use TradeDB.genSystemsInRange.
+    Describes a star system which may contain one or more Station objects.
+
+    Caution: Do not use _rangeCache directly, use TradeDB.genSystemsInRange.
     """
+
     __slots__ = ('ID', 'dbname', 'posX', 'posY', 'posZ', 'stations', '_rangeCache')
 
     class RangeCache(object):
         """
-            Lazily populated cache of neighboring systems.
+        Lazily populated cache of neighboring systems.
         """
         def __init__(self):
             self.systems = []
             self.probedLy = 0.
+
 
     def __init__(self, ID, dbname, posX, posY, posZ):
         self.ID, self.dbname, self.posX, self.posY, self.posZ = ID, dbname, posX, posY, posZ
@@ -106,14 +144,53 @@ class System(object):
         self._rangeCache = None
 
 
+
     def distToSq(self, other):
         """
-            Calculate the square of the distance (in ly)
-            to a given other star.
+        Returns the square of the distance between two systems.
+
+        Optimization Note:
+
+        This function returns the SQUARE of the distance.
+
+        For any given pair of numbers (n, m), if n > m then n^2 > m^2
+        and if n < m then n^2 < m^2 and if n == m n^2 == m^2.
+
+        The final step in a distance calculation is a sqrt() function,
+        which is expensive.
+
+        So when you only need distances for comparative purposes, such
+        as comparing a set of points against a given distance, it is
+        much more efficient to square the comparitor and test it
+        against the un-rooted distances.
+
+        Args:
+            other:
+                The other System to measure the distance between.
+
+        Returns:
+            Distance in light years (squared).
+
+        Example:
+            # Calculate which of [systems] is within 12 ly
+            # of System "target".
+            maxLySq = 12 ** 2   # Maximum of 12 ly.
+            inRange = []
+            for sys in systems:
+                if sys.distToSq(target) <= maxLySq:
+                    inRange.append(sys)
+
+            # Print the distance between two systems
+            print("{} -> {}: {}ly".format(
+                    lhs.name(), rhs.name(),
+                    math.sqrt(lhs.distToSq(rhs)),
+            ))
         """
+
         dx2 = (self.posX - other.posX) ** 2
         dy2 = (self.posY - other.posY) ** 2
         dz2 = (self.posZ - other.posZ) ** 2
+
         return (dx2 + dy2 + dz2)
 
 
@@ -145,8 +222,12 @@ class DestinationNode(namedtuple('DestinationNode', [
 
 class Station(object):
     """
-        Describes a station within a given system along with what trade
-        opportunities it presents.
+    Describes a station (trading or otherwise) in a system.
+
+    For obtaining trade information for a given station see one of:
+        TradeDB.loadStationTrades  (very slow and expensive)
+        TradeDB.loadDirectTrades   (can be expensive)
+        TradeCalc.getTrades        (fast and cheap)
     """
     __slots__ = (
             'ID', 'system', 'dbname',
@@ -173,11 +254,44 @@ class Station(object):
 
 
     def checkPadSize(self, maxPadSize):
+        """
+        Tests if the Station's max pad size matches one of the
+        values in 'maxPadSize'.
+
+        Args:
+            maxPadSize
+                A string of one or more max pad size values that
+                you want to match against.
+
+        Returns:
+            True
+                If self.maxPadSize is None or empty, or matches a
+                member of maxPadSize
+            False
+                If maxPadSize was not empty but self.maxPadSize
+                did not match it.
+
+        Examples:
+            # Require a medium max pad size - not small or large
+            station.checkPadSize("M")
+            # Require medium or unknown
+            station.checkPadSize("M?")
+            # Require small, large or unknown
+            station.checkPadSize("SL?")
+
+        """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
 
 
     def distFromStar(self, addSuffix=False):
-        """Describes the distance from the station to the star."""
+        """
+        Returns a textual description of the distance from this
+        Station to the parent star.
+
+        Args:
+            addSuffix[=False]:
+                Always add a unit suffix (ls, Kls, ly)
+        """
         ls = self.lsFromStar
         if not ls:
             if addSuffix:
@@ -226,8 +340,8 @@ class Ship(namedtuple('Ship', [ 'ID', 'dbname', 'cost', 'stations' ])):
 
 class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
     """
-        Items are organized into categories (Food, Drugs, Metals, etc).
-        Category object describes a category's ID, name and list of items.
+    Items are organized into categories (Food, Drugs, Metals, etc).
+    Category object describes a category's ID, name and list of items.
     """
     def name(self):
         return self.dbname.upper()
@@ -242,14 +356,14 @@ class Category(namedtuple('Category', [ 'ID', 'dbname', 'items' ])):
 
 class Item(object):
     """
-        Describes a product that can be bought/sold in the game.
+    Describes a product that can be bought/sold in the game.
 
-        Attributes:
-            ID       -- Database ID.
-            dbname   -- Name as it appears in-game and in the DB.
-            category -- Reference to the category.
-            fullname -- Combined category/dbname for lookups.
-            altname  -- The internal name used by the game.
+    Attributes:
+        ID       -- Database ID.
+        dbname   -- Name as it appears in-game and in the DB.
+        category -- Reference to the category.
+        fullname -- Combined category/dbname for lookups.
+        altname  -- The internal name used by the game.
     """
     __slots__ = ('ID', 'dbname', 'category', 'fullname', 'altname')
 
@@ -276,11 +390,19 @@ class Item(object):
 
 
 class RareItem(namedtuple('RareItem', [
-            'rareID', 'station', 'dbname', 'costCr', 'maxAlloc',
+            'ID', 'station', 'dbname', 'costCr', 'maxAlloc',
         ])):
     """
-    Describes a RareItem
+    Describes a RareItem from the database.
+
+    Attributes:
+        ID       -- Database ID,
+        station  -- Which Station this is bought from,
+        dbname   -- The name are presented in the database,
+        costCr   -- Buying price
+        maxAlloc -- How many the player can carry at a time,
     """
+
     def name(self):
         return self.dbname
 
@@ -292,8 +414,8 @@ class Trade(namedtuple('Trade', [
             'item', 'itemID', 'costCr', 'gainCr', 'stock', 'stockLevel', 'demand', 'demandLevel', 'srcAge', 'dstAge'
         ])):
     """
-        Describes what it would cost and how much you would gain
-        when selling an item between two specific stations.
+    Describes what it would cost and how much you would gain
+    when selling an item between two specific stations.
     """
     def name(self):
         return self.item.name()
@@ -514,8 +636,8 @@ class TradeDB(object):
 
     def _loadSystems(self):
         """
-            Initial load the (raw) list of systems.
-            If you have previously loaded Systems, this will orphan the old System objects.
+        Initial load the (raw) list of systems.
+        If you have previously loaded Systems, this will orphan the old System objects.
         """
         stmt = """
                 SELECT system_id, name, pos_x, pos_y, pos_z
@@ -532,7 +654,7 @@ class TradeDB(object):
 
     def lookupSystem(self, key):
         """
-            Look up a System object by it's name.
+        Look up a System object by it's name.
         """
         if isinstance(key, System):
             return key
@@ -575,7 +697,7 @@ class TradeDB(object):
 
     def lookupSystemRelaxed(self, key):
         """
-            Lookup a System object by it's name or by the name of any of it's stations.
+        Lookup a System object by it's name or by the name of any of it's stations.
         """
         try:
             place = self.lookupPlace(key)
@@ -597,7 +719,11 @@ class TradeDB(object):
             raise
 
 
-    def buildStellarGrid(self):
+    def __buildStellarGrid(self):
+        """
+        Divides the galaxy into a fixed-sized grid allowing us to
+        aggregate small numbers of stars by locality.
+        """
         stellarGrid = self.stellarGrid = dict()
         for system in self.systemByID.values():
             key = makeStellarGridKey(system.posX, system.posY, system.posZ)
@@ -609,6 +735,27 @@ class TradeDB(object):
 
 
     def genStellarGrid(self, system, ly):
+        """
+        Yields Systems within a given radius of a specified System.
+
+        Args:
+            system:
+                The System to center the search on,
+            ly:
+                The radius of the search around system,
+
+        Yields:
+            (candidate, distLySq)
+                candidate:
+                    System that was found,
+                distLySq:
+                    The *SQUARE* of the distance in light-years
+                    between system and candidate.
+                
+        """
+        if self.stellarGrid is None:
+            self.__buildStellarGrid()
+
         sysX, sysY, sysZ = system.posX, system.posY, system.posZ
         lwrBound = makeStellarGridKey(sysX - ly, sysY - ly, sysZ - ly)
         uprBound = makeStellarGridKey(sysX + ly, sysY + ly, sysZ + ly)
@@ -632,10 +779,27 @@ class TradeDB(object):
                         if distSq <= lySq:
                             yield candidate, distSq
 
+
     def genSystemsInRange(self, system, ly, includeSelf=False):
         """
-            Generator for systems within ly range of system using a
-            lazily-populated, per-system cache.
+        Yields Systems within a given radius of a specified System.
+        Results are sorted by distance and cached for subsequent
+        queries in the same run.
+
+        Args:
+            system:
+                The System to center the search on,
+            ly:
+                The radius of the search around system,
+            includeSelf:
+                Whether to include 'system' in the results or not.
+
+        Yields:
+            (candidate, distLy)
+                candidate:
+                    System that was found,
+                distLy:
+                    The distance in lightyears betwen system and candidate.
         """
 
         if isinstance(system, Station):
@@ -648,9 +812,6 @@ class TradeDB(object):
         if not cache:
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
-
-        if self.stellarGrid is None:
-            self.buildStellarGrid()
 
         probedLy = cache.probedLy
         if ly > probedLy:
@@ -679,19 +840,19 @@ class TradeDB(object):
             yield from cachedSystems
 
 
-    def getRoute(self, origin, dest, maxJumpLy):
+    def getRoute(self, origin, dest, maxJumpLy, avoiding=[]):
         """
         Find a shortest route between two systems with an additional
         constraint that each system be a maximum of maxJumpLy from
         the previous system.
 
-        Parameters:
-            origin
+        Args:
+            origin:
                 System (or station) to start from,
-            dest
-                System (or station) to terminate at.
-            maxJumpLy
-                Maximum light years between systems.
+            dest:
+                System (or station) to terminate at,
+            maxJumpLy:
+                Maximum light years between systems,
 
         Returns:
             None
@@ -733,12 +894,22 @@ class TradeDB(object):
         distances = { origin: (None, 0) }
         destID = dest.ID
         sysByID = self.systemByID
+        distTo = float("inf")
+
+        if avoiding:
+            if dest in avoiding:
+                raise ValueError("Destination is in avoidance list")
+            for avoid in avoiding:
+                if isinstance(avoid, System):
+                    distances[avoid] = (None, -1)
 
         while openSet:
             weight, curDist, curSysID = heapq.heappop(openSet)
             # If we reached 'goal' we've found the shortest path.
             if curSysID == destID:
                 break
+            if curDist >= distTo:
+                continue
             curSys = sysByID[curSysID]
             # A node might wind up multiple times on the open list,
             # so check if we've already found a shorter distance to
@@ -756,7 +927,11 @@ class TradeDB(object):
                     pass
                 distances[nSys] = (curSys, newDist)
                 weight = math.sqrt(curSys.distToSq(nSys))
-                heapq.heappush(openSet, (newDist + weight, newDist, nSys.ID))
+                nID = nSys.ID
+                # + 1 adds a penalty per jump
+                heapq.heappush(openSet, (newDist + weight + 1, newDist, nID))
+                if nID == destID:
+                    distTo = newDist
 
         if not dest in distances:
             return None
@@ -1204,7 +1379,6 @@ class TradeDB(object):
                 for (destSys, destDist) in self.genSystemsInRange(
                         node.system, maxLyPer, False
                         ):
-                    assert destSys != node.system
                     dist = node.distLy + destDist
                     # If we already have a shorter path, do nothing
                     try:

@@ -26,6 +26,7 @@ switches = [
             help='Exclude a system from the route. If you specify a station, '
                  'the system that station is in will be avoided instead.',
             action='append',
+            default=[],
         ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route (in order).',
@@ -44,78 +45,6 @@ switches = [
 
 class NoRouteError(TradeException):
     pass
-
-
-class Distance(object):
-    def __init__(self, start, end, dist):
-        self.start, self.end, self.dist = start, end, dist
-
-    def __repr__(self):
-        return "Distance({}, {}, {})".format(
-                self.start, self.end, self.dist
-        )
-
-
-def getRoute(cmdenv, tdb, srcSystem, dstSystem, maxLyPer):
-    openList = { srcSystem: 0 }
-    distances = { srcSystem: Distance(srcSystem, srcSystem, 0.0) }
-
-    avoiding = frozenset([
-            place.system if isinstance(place, Station) else place
-            for place in cmdenv.avoidPlaces
-    ])
-    if avoiding:
-        cmdenv.DEBUG0("Avoiding: {}", list(avoiding))
-
-    leastHops = False
-
-    # Once we find a path, we can curb any remaining paths that
-    # are longer. This allows us to search aggresively until we
-    # find the shortest route.
-    shortestDist = float("inf")
-    while openList:
-
-        # Expand the search domain by one jump; grab the list of
-        # nodes that are this many hops out and then clear the list.
-        openNodes, openList = openList, {}
-
-        gsir = tdb.genSystemsInRange
-        for node, startDist in openNodes.items():
-            for (destSys, destDist) in gsir(node, maxLyPer):
-                if destSys in avoiding:
-                    continue
-                dist = startDist + destDist
-                if dist >= shortestDist:
-                    continue
-                # If we aready have a shorter path, do nothing
-                try:
-                    distNode = distances[destSys]
-                    if distances[destSys].dist <= dist:
-                        continue
-                except KeyError:
-                    pass
-                distances[destSys] = Distance(node, destSys, dist)
-                openList[destSys] = dist
-                if destSys == dstSystem:
-                    shortestDist = dist
-
-    # Unravel the route by tracing back the vias.
-    route = [ dstSystem ]
-    jumpEnd = dstSystem
-    while jumpEnd != srcSystem:
-        try:
-            distEnt = distances[jumpEnd]
-        except KeyError:
-            raise NoRouteError(
-                    "No route found between {} and {} "
-                        "with {}ly jump limit.".format(
-                            srcSystem.name(), dstSystem.name(), maxLyPer
-                    ))
-
-        route.append(distEnt.start)
-        jumpEnd = distEnt.start
-
-    return route
 
 
 ######################################################################
@@ -143,9 +72,21 @@ def run(results, cmdenv, tdb):
             hops.insert(0, [hop, None])
     hops[0][1] = dstSystem
 
+    avoiding = [
+        avoid for avoid in cmdenv.avoidPlaces
+        if isinstance(avoid, System)
+    ]
+
     route = [ ]
     for hop in hops:
-        hopRoute = getRoute(cmdenv, tdb, hop[0], hop[1], maxLyPer)
+        hopRoute = tdb.getRoute(hop[0], hop[1], maxLyPer, avoiding)
+        if not hopRoute:
+            raise NoRouteError(
+                    "No route found between {} and {} "
+                    "with a max {}ly/jump limit.".format(
+                        hop[0].name(), hop[1].name(),
+                        maxLyPer,
+            ))
         route = route[:-1] + hopRoute
 
     results.summary = ResultRow(
@@ -155,7 +96,6 @@ def run(results, cmdenv, tdb):
             )
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
-    route.reverse()
 
     if cmdenv.stations:
         stationIDs = ",".join([
@@ -175,7 +115,7 @@ def run(results, cmdenv, tdb):
         for ID, age in tdb.query(stmt):
             ages[ID] = age
 
-    for jumpSys in route:
+    for (jumpSys, dist) in route:
         jumpLy = math.sqrt(lastSys.distToSq(jumpSys))
         totalLy += jumpLy
         if cmdenv.detail:

@@ -331,7 +331,7 @@ class Route(object):
 
 class TradeCalc(object):
     """
-        Container for accessing trade calculations with common properties.
+    Container for accessing trade calculations with common properties.
     """
 
     def __init__(self, tdb, tdenv, fit=None):
@@ -578,7 +578,7 @@ class TradeCalc(object):
         return fitFunction(items, credits, capacity, maxUnits)
 
 
-    def _getTrades(self, srcStation, srcSelling, dstStation):
+    def getTrades(self, srcStation, srcSelling, dstStation):
         try:
             dstBuying = self.stationsBuying[dstStation.ID]
         except KeyError:
@@ -609,16 +609,17 @@ class TradeCalc(object):
 
         return trading
 
+
     def getBestHops(self, routes, restrictTo=None):
         """
-            Given a list of routes, try all available next hops from each
-            route.
+        Given a list of routes, try all available next hops from each
+        route.
 
-            Store the results by destination so that we pick the
-            best route-to-point for each destination at each step.
+        Store the results by destination so that we pick the
+        best route-to-point for each destination at each step.
 
-            If we have two routes: A->B->D, A->C->D and A->B->D produces
-            more profit, there's no point continuing the A->C->D path.
+        If we have two routes: A->B->D, A->C->D and A->B->D produces
+        more profit, there's no point continuing the A->C->D path.
         """
 
         tdb = self.tdb
@@ -678,7 +679,7 @@ class TradeCalc(object):
                 try:
                     trading = srcTradingWith[dstStation]
                 except (TypeError, KeyError):
-                    trading = self._getTrades(srcStation, srcSelling, dstStation)
+                    trading = self.getTrades(srcStation, srcSelling, dstStation)
                 if not trading:
                     return
 
