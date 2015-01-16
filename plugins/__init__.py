@@ -142,17 +142,21 @@ class ImportPluginBase(PluginBase):
 
     Called by "import" as soon as argument parsing has been done.
 
-    An import plugin implements "run()" and "finish()". The
-    run sub-command invokes "run()" before it does any argument
-    parsing or validation.
+    An import plugin implements "run()" and "finish()".
 
-    If your plugin does all the work neccessary to achieve your
-    import, it should return False to indicate "job done". The
-    import command will then exit immediately.
+    On entry to the "import" function, before the database has
+    been loaded or the cache file generated, the plugin's
+    "run()" member is invoked.
 
-    If you return True, the import command will proceed with
-    argument checking, downloading data if a URL was provided
-    by the user or configured by your module.
+    This function can do as much or as little work as you need.
+
+    When you are done, return True to allow "import" to continue,
+    e.g. for example a plugin that simply sets the cmdenv.url to
+    a specific download would return True.
+
+    On the other hand, if you complete all the import work
+    relevant to your plugin, return None or False and the command
+    will early-out.
 
     "finish()" will then be called before the import command
     tries to import the data. This gives you an opportunity to
@@ -184,9 +188,17 @@ class ImportPluginBase(PluginBase):
     def run(self):
         """
         Plugin Must Implement:
-        Called immediately on import command startup; should return
-        True if import needs to continue proceesing, or False if the
-        plugin did everything that needs to be done.
+
+        Called immediately on entry to the import_cmd.run() function.
+        This means that you have no database access via the tdb object.
+
+        If you need to access data from the .db file, you should put
+        that code in the "finish()" object.
+
+        Returns:
+            True if you want the "import" command to continue (e.g.
+            to reach the call to "finish()",
+            False or None to early out after your return.
         """
         raise PluginException("Not implemented")
 
@@ -194,11 +206,16 @@ class ImportPluginBase(PluginBase):
     def finish(self):
         """
         Plugin Must Implement:
-        Called prior to the last step of import, before the actual
-        call to cache.importDataFromFile is invoked.
-        Returning False will cause the import command to exit,
-        returning True will allow the call to importDataFromFile
-        to proceed as usual.
+
+        Called after import has rebuilt the cache, loaded the DB data
+        into it's TradeDB instance, done any downloads and checked for
+        the presence of cmdenv.filename, but before it has tried to
+        import the .prices data.
+
+        Returns:
+            True if you want the "import" command to continue and
+            try to import the .prices data,
+            False or None to early out after your return.
         """
         raise PluginException("Not implemented")
 
@@ -225,3 +242,4 @@ def load(pluginName, typeName):
         ))
 
     return pluginClass
+
