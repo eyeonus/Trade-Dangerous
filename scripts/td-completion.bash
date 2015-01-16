@@ -201,12 +201,12 @@ _td_run()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--capacity|--credits|--ly-per|--from|--to|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--limit|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes)
+	--capacity|--credits|--ly-per|--from|--to|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--end-jumps|-e|--limit|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes)
 		# argument required
 		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --limit --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -226,6 +226,25 @@ _td_sell()
 	*)
 		_td_common && return 0
 		opts="--near --ly-per --limit --price-sort ${common_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	esac
+	return 0
+}
+
+_td_station()
+{
+	local cur prev opts
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	case ${prev} in
+	--system|--ls-from-star|--black-market|--pad-size|--confirm)
+		# argument required
+		;;
+	*)
+		_td_common && return 0
+		opts="--system --ls-from-star --black-market --pad-size --confirm --add --remove --update --no-export ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -289,11 +308,14 @@ _td_main()
 	sell)
 		_td_sell
 		;;
+    station)
+        _td_station
+        ;;
 	update)
 		_td_update
 		;;
 	*)
-		opts="buildcache buy export import local nav olddata rares run sell update"
+		opts="buildcache buy export import local nav olddata rares run sell station update"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 	esac
 	return 0

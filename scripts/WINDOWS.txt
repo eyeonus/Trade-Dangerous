@@ -1,0 +1,12 @@
+Windows Users:
+
+You can either choose to see the <WINDOWS USERS> section of the
+README.txt to install "bash" for Windows so that you can use the
+"tdrun" scripts, etc. Or you can use one of the two user-
+contributed .bat scripts
+
+scripts\trade.bat
+    Provided by commander Steve
+scripts\tradebrute.bat
+    Provided by commander Bruteman
+

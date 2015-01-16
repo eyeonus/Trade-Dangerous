@@ -2,6 +2,16 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[work in progress]
+. (tKE)  "buy" sub-command now supports ship names (find a ship vendor)
+. (kfsone) Partial code/documentation cleanup
+. (kfsone) Added a "getRoute" function to TradeDB()
+        import tradedb
+        tdb = tradedb.TradeDB()
+        lave = tdb.lookupPlace("Lave")
+        barn = tdb.lookupPlace("Barnard's Star")
+        tdb.getRoute(lave, barn, maxJumpLy=12)
+
 v6.6.1 Jan 10 2015
 . (kfsone) Added "--blackmarket" option to "run" command, restrictions
     to stations which have a black market.
@@ -11,7 +21,8 @@ v6.6.1 Jan 10 2015
         trade.py run --from sol --to lave -e 3
         will find runs from sol to somewhere within 3 jumps of lave.
 . (kfsone) "rares" now has a friendly error when no rares are found
-+ Data: kfsone, maddavo, Dave Ryalls, EDStarQuery/kfsone
++ Data: kfsone, maddavo, Dave Ryalls, NeoTron, Tyler Lund, Jared Buntain,
++ Stars: EDStarQuery/kfsone
   [I'm adding several hundred new systems from EDStarQuery but I'm also
    manually vetting all of them!]
 
