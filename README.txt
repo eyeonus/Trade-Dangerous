@@ -171,7 +171,7 @@ For additional help on a specific command, such as 'update' use
     Reads prices from a file and loads them into the cache
 
   trade.py buy ...
-    Finds places to buy a given item
+    Finds places to buy a given item/ship
 
   trade.py sell ...
     Finds places to sell a given item
@@ -667,8 +667,9 @@ LOCAL sub-command:
 
 BUY sub-command:
 
-  Looks for stations selling the specified item: that means they have a non-zero
-  asking price and a stock level other than "n/a".
+  Looks for stations selling the specified item or ship.
+  
+  For items, that means they have a non-zero asking price and a stock level other than "n/a".
 
   trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
 
@@ -695,7 +696,7 @@ BUY sub-command:
       Limit results to stations that match one of the pad sizes
       specified.
         --pad ML?            (med, lrg or unknown only)
-        -o ML?                 ""    ""      ""    ""
+        -p ML?                 ""    ""      ""    ""
         --pad ?              (unknown only),
         --pad L              (large only, ignores unknown)
 
