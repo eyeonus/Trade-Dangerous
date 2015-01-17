@@ -269,6 +269,15 @@ RUN sub-command:
          --ls-penalty 2.5
          --lsp=0              (disables this feature)
 
+     --ls-max N
+       DEFAULT: 0
+       Filter stations by their distance-to-star. Stations for which
+       distance-to-star is known that have a distance above this will
+       not be considered for trading.
+       e.g.
+         --ls-max 10000
+         --ls-m 32000
+
      --unique
      --uni
        Only show routes which do not visit any station twice
@@ -473,6 +482,12 @@ IMPORT sub-command:
     -i
       Any systems, stations, categories or items that aren't recognized
       by this version of TD will be reported but import will continue.
+
+      Unrecognized stations in the ".prices" file, or an import, will
+      have a placeholder station entry automatically created for them.
+
+      Note: When the cache is rebuilt, these stations will be lost, so
+      you may need to add the "-i" flag to the buildcache command.
 
 
 RARES sub-command:

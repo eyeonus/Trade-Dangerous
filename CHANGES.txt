@@ -2,7 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-[work in progress]
+v6.7.0 Jan 17 2015
+. (kfsone) ".prices" import automatically creates local placeholders
+        for unknown stations when using "-i", e.g:
+            trade.py buildcache -f -i
+            trade.py import --plug=maddavo  (this plugin sets -i for you)
 . (kfsone) Added a "--ls-max" option to "run" for filtering stations
 . (kfsone) +140 Systems
 . (tKE)  "buy" sub-command now supports ship names (find a ship vendor)
