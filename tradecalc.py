@@ -723,6 +723,7 @@ class TradeCalc(object):
                     maxLyPer=maxLyPer,
                     avoidPlaces=avoidPlaces,
                     maxPadSize=tdenv.padSize,
+                    maxLsFromStar=tdenv.maxLs,
                     ):
                 dstStation = dest.station
                 if dstStation is srcStation:
