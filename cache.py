@@ -158,7 +158,7 @@ class DuplicateKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
         super().__init__(fromFile, lineNo,
-                "Second occurance of {keytype} \"{keyval}\", "
+                "Second occurrance of {keytype} \"{keyval}\", "
                 "previous entry at line {prev}.".format(
                     keytype=keyType,
                     keyval=keyValue,
