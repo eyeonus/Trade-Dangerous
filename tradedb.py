@@ -1321,7 +1321,9 @@ class TradeDB(object):
             maxLyPer=None,
             avoidPlaces=None,
             trading=False,
-            maxPadSize=None):
+            maxPadSize=None,
+            maxLsFromStar=0,
+            ):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
@@ -1409,6 +1411,8 @@ class TradeDB(object):
                 if station in avoidPlaces:
                     continue
                 if (maxPadSize and not station.checkPadSize(maxPadSize)):
+                    continue
+                if (maxLsFromStar and station.lsFromStar > maxLsFromStar):
                     continue
                 destStations.append(
                             Destination(node.system,

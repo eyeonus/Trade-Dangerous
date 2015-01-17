@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 [work in progress]
+. (kfsone) Added a "--ls-max" option to "run" for filtering stations
+. (kfsone) +140 Systems
 . (tKE)  "buy" sub-command now supports ship names (find a ship vendor)
 . (kfsone) Partial code/documentation cleanup
 . (kfsone) Added a "getRoute" function to TradeDB()

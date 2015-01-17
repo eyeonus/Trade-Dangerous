@@ -91,7 +91,7 @@ switches = [
             metavar='N',
             type=int,
         ),
-    ParseArgument('--max-days-old', '-MD',
+    ParseArgument('--age', '--max-days-old', '-MD',
             help='Maximum age (in days) of trade data to use.',
             metavar='DAYS',
             type=float,
@@ -112,6 +112,13 @@ switches = [
             default=0.6,
             type=float,
             dest='lsPenalty'
+        ),
+    ParseArgument('--ls-max',
+            help='Only consider stations upto this many ls from their star.',
+            metavar='LS',
+            dest='maxLs',
+            type=int,
+            default=0,
         ),
     ParseArgument('--unique',
             help='Only visit each station once.',
@@ -372,12 +379,20 @@ def checkStationSuitability(cmdenv, station, src):
                     "requirement.".format(
                         src, station.name(),
             ))
+        mls = cmdenv.maxLs
+        if mls and station.lsFromStar > mls:
+            raise CommandLineError(
+                    "{} station {} does not meet max-ls requirement "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
 
 
 def filterStationSet(src, cmdenv, stnSet):
     if not stnSet:
         return stnSet
     bm, mps = cmdenv.blackMarket, cmdenv.maxPadSize
+    mls = cmdenv.maxLs
     for place in stnSet:
         if not isinstance(place, Station):
             continue
@@ -390,6 +405,8 @@ def filterStationSet(src, cmdenv, stnSet):
         if bm and place.blackMarket != 'Y':
             stnSet.remove(place)
             continue
+        if mls and place.lsFromStar > mls:
+            stnSet.remove(place)
     if not stnSet:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
