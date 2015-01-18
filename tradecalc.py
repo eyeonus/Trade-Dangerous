@@ -624,13 +624,14 @@ class TradeCalc(object):
 
         tdb = self.tdb
         tdenv = self.tdenv
-        avoidItems = getattr(tdenv, 'avoidItems', [])
-        avoidPlaces = getattr(tdenv, 'avoidPlaces', [])
+        avoidItems = getattr(tdenv, 'avoidItems', []) or []
+        avoidPlaces = getattr(tdenv, 'avoidPlaces', []) or []
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
-        reqBlackMarket = getattr(tdenv, 'blackMarket', False)
-        credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
+        reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
+        maxAge = getattr(tdenv, 'maxAge') or 0
+        credits = tdenv.credits - (getattr(tdenv, 'insurance', 0) or 0)
 
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
@@ -723,6 +724,7 @@ class TradeCalc(object):
                     maxLyPer=maxLyPer,
                     avoidPlaces=avoidPlaces,
                     maxPadSize=tdenv.padSize,
+                    maxLsFromStar=tdenv.maxLs,
                     ):
                 dstStation = dest.station
                 if dstStation is srcStation:
@@ -733,6 +735,11 @@ class TradeCalc(object):
 
                 if reqBlackMarket and dstStation.blackMarket != 'Y':
                     continue
+
+                if maxAge:
+                    stnDataAge = dstStation.dataAge
+                    if stnDataAge is None or stnDataAge > maxAge:
+                        continue
 
                 if tdenv.debug >= 1:
                     tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",

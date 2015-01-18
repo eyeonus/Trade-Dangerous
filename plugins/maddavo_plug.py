@@ -25,7 +25,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'stncsv':       "Also download Station.csv from the site.",
         'skipdl':       "Skip doing any downloads.",
         'force':        "Process prices even if timestamps suggest "
-                        "there is no new data."
+                        "there is no new data.",
     }
 
 

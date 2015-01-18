@@ -30,6 +30,7 @@ import prices
 import re
 import sqlite3
 import sys
+import tradedb
 
 ######################################################################
 # Regular expression patterns. Here be draegons.
@@ -158,7 +159,7 @@ class DuplicateKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
         super().__init__(fromFile, lineNo,
-                "Second occurance of {keytype} \"{keyval}\", "
+                "Second occurrance of {keytype} \"{keyval}\", "
                 "previous entry at line {prev}.".format(
                     keytype=keyType,
                     keyval=keyValue,
@@ -263,6 +264,15 @@ def parseSupply(pricesFile, lineNo, category, reading):
 def getSystemByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
+            SELECT system_id, UPPER(system.name)
+              FROM System
+        """)
+    return { name: ID for (ID, name) in cur }
+
+
+def getStationByNameIndex(cur):
+    """ Build station index in STAR/Station notation """
+    cur.execute("""
             SELECT station_id,
                     UPPER(system.name) || '/' || UPPER(station.name)
               FROM System
@@ -296,8 +306,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     stationID, categoryID = None, None
 
     cur = db.cursor()
+    ignoreUnknown = tdenv.ignoreUnknown
+    quiet = tdenv.quiet
 
     systemByName = getSystemByNameIndex(cur)
+    stationByName = getStationByNameIndex(cur)
     categoriesByName = getCategoriesByNameIndex(cur)
 
     itemByName = getItemByNameIndex(cur)
@@ -320,9 +333,9 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     def ignoreOrWarn(error):
         nonlocal warnings
-        if not tdenv.ignoreUnknown:
+        if not ignoreUnknown:
             raise error
-        if not tdenv.quiet:
+        if not quiet:
             error.category = "WARNING"
             print(error)
         warnings += 1
@@ -343,7 +356,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         # Make sure it's valid.
         try:
-            stationID = systemByName[facility]
+            stationID = stationByName[facility]
         except KeyError:
             stationID = -1
 
@@ -370,7 +383,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 pass
             facility = systemName + '/' + stationName
             try:
-                stationID = systemByName[facility]
+                stationID = stationByName[facility]
                 tdenv.DEBUG1("Renamed: {}/{} -> {}", 
                         systemNameIn, stationNameIn,
                         facility
@@ -378,7 +391,29 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             except KeyError:
                 stationID = -1
 
-        if stationID < 0 :
+        if stationID < 0 and ignoreUnknown:
+            try:
+                systemID = systemByName[systemName]
+            except KeyError:
+                pass
+            else:
+                name = tradedb.TradeDB.titleFixup(stationName)
+                inscur = db.cursor()
+                inscur.execute("""
+                    INSERT INTO Station (
+                        system_id, name, ls_from_star, blackmarket, max_pad_size
+                    ) VALUES (
+                        ?, ?, 0, '?', '?'
+                    )
+                """, [systemID, name])
+                stationID = inscur.lastrowid
+                stationByName[facility] = stationID
+                db.commit()
+                tdenv.NOTE("Added local station placeholder for {} (#{})",
+                        facility, stationID
+                )
+
+        if stationID < 0:
             stationID = DELETED
             ignoreOrWarn(
                     UnknownStationError(priceFile, lineNo, facility)

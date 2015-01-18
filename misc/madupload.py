@@ -7,30 +7,16 @@ import sys
 
 try:
     import requests
-except ImportError:
-    if platform.system() == "Windows":
-        prompt = "C:\ThisDir\>"
-    else:
-        prompt = "$"
-    raise Exception("""Missing 'requests' module:
-
-----------------------------------------------------------------
-You don't appear to have the Python module "requests" installed.
-
-It can be installed with Python's package installer, e.g:
-  {prompt} pip install requests
-or
-  {prompt} pip3 install requests
-
-For additional help, see:
-  Bitbucket Wiki    http://kfs.org/td/wiki
-  Facebook Group    http://kfs.org/td/group
-  ED Forum Thread   http://kfs.org/td/thread
-
-----------------------------------------------------------------
-""".format(
-            prompt=prompt
-))
+except ImportError as e:
+    import pip
+    print("ERROR: Unable to load the Python 'requests' package.")
+    approval = input(
+        "Do you want me to try and install it with the package manager (y/n)? "
+    )
+    if approval.lower() != 'y':
+        raise e
+    pip.main(["install", "--upgrade", "requests"])
+    import requests
 
 
 ############################################################################
