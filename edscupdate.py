@@ -49,7 +49,7 @@ date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
 startSys = tdb.lookupPlace(sys.argv[1])
 ox, oy, oz = startSys.posX, startSys.posY, startSys.posZ
 
-if len(sys.argv) > 1:
+if len(sys.argv) > 2:
     date = sys.argv[2]
     if not date.startswith("201"):
         print("ERROR: Invalid date {}".format(date))
