@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[wip]
+. (kfsone) Added '--prune-score' and '--prune-hops' to run; these let
+        you discard routes that are under-performing early on which
+        can make calculating longer runs more efficient.
+
 v6.7.0 Jan 17 2015
 . (kfsone) ".prices" import automatically creates local placeholders
         for unknown stations when using "-i", e.g:

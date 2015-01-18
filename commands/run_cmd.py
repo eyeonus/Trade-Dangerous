@@ -156,6 +156,19 @@ switches = [
             default=False,
             dest='x52pro',
         ),
+    ParseArgument('--prune-score',
+            help='From the 3rd hop on, only consider routes which have ' \
+                'at least this percentage of the current best route''s score.',
+            dest='pruneScores',
+            type=float,
+            default=0,
+        ),
+    ParseArgument('--prune-hops',
+            help='Changes which hop --prune-score takes effect from.',
+            default=3,
+            type=int,
+            dest='pruneHops',
+        ),
 ]
 
 ######################################################################
@@ -584,6 +597,13 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.mfd:
         cmdenv.mfd.display("Loading Trades")
 
+    if cmdenv.pruneScores and cmdenv.pruneHops:
+        if cmdenv.pruneScores > 100:
+            raise CommandLineError("--prune-score value percentage exceed 100.")
+        if cmdenv.pruneHops < 3:
+            raise CommandLineError("--prune-hops must 3 or more.")
+    else:
+        cmdenv.pruneScores = cmdenv.pruneHops = 0
 
 ######################################################################
 
@@ -668,17 +688,28 @@ def run(results, cmdenv, tdb):
     results.summary = ResultRow()
     results.summary.exception = ""
 
-    for hopNo in range(numHops):
-        if not cmdenv.quiet and not cmdenv.debug:
-            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)), end='\r')
-        elif cmdenv.debug:
-            cmdenv.DEBUG0("Hop {}...", hopNo+1)
+    pruneMod = cmdenv.pruneScores / 100
 
+    for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
             restrictTo = set(stopStations)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
+
+        if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+            routes.sort()
+            bestScore, worstScore = routes[0].score, routes[-1].score
+            threshold = bestScore * pruneMod
+            oldLen = len(routes)
+            while routes[-1].score < threshold:
+                routes.pop()
+            cmdenv.NOTE("Pruned {} routes".format(oldLen - len(routes)))
+
+        if not cmdenv.quiet and not cmdenv.debug:
+            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)), end='\r')
+        elif cmdenv.debug:
+            cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
         newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
         if not newRoutes and hopNo > 0:
