@@ -233,12 +233,13 @@ class Station(object):
             'ID', 'system', 'dbname',
             'lsFromStar', 'blackMarket', 'maxPadSize',
             'tradingWith', 'itemCount',
+            'dataAge',
     )
 
     def __init__(
             self, ID, system, dbname,
             lsFromStar, blackMarket, maxPadSize,
-            itemCount,
+            itemCount, dataAge,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = lsFromStar
@@ -246,6 +247,7 @@ class Station(object):
         self.maxPadSize = maxPadSize
         self.itemCount = itemCount
         self.tradingWith = None       # dict[tradingPartnerStation] -> [ available trades ]
+        self.dataAge = dataAge
         system.stations.append(self)
 
 
@@ -316,7 +318,8 @@ class Station(object):
                     "ID={}, system='{}', dbname='{}', "
                     "lsFromStar={}, "
                     "blackMarket='{}', "
-                    "maxPadSize='{}'"
+                    "maxPadSize='{}', "
+                    "dataAge={}"
                     ")".format(
                 self.ID,
                 re.escape(self.system.dbname),
@@ -324,6 +327,7 @@ class Station(object):
                 self.lsFromStar,
                 self.blackMarket,
                 self.maxPadSize,
+                self.dataAge,
         ))
 
 
@@ -967,10 +971,11 @@ class TradeDB(object):
         stmt = """
                 SELECT  station_id, system_id, name,
                         ls_from_star, blackmarket, max_pad_size,
-                        (SELECT COUNT(*)
-                            FROM StationItem
-                            WHERE station_id = Station.station_id) AS itemCount
+                        COUNT(StationItem.station_id) AS itemCount,
+                        JULIANDAY('now') - JULIANDAY(MAX(StationItem.modified))
                   FROM  Station
+                        LEFT OUTER JOIN StationItem USING (station_id)
+                 GROUP  BY 1
             """
         self.cur.execute(stmt)
         stationByID = {}
@@ -979,12 +984,12 @@ class TradeDB(object):
         for (
             ID, systemID, name,
             lsFromStar, blackMarket, maxPadSize,
-            itemCount
+            itemCount, dataAge
         ) in self.cur:
             station = Station(
                     ID, systemByID[systemID], name,
                     lsFromStar, blackMarket, maxPadSize,
-                    itemCount
+                    itemCount, dataAge
             )
             if itemCount > 0:
                 self.tradingStationCount += 1

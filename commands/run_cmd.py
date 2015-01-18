@@ -169,6 +169,11 @@ switches = [
             type=int,
             dest='pruneHops',
         ),
+    ParseArgument('--progress', '-P',
+            help='Show hop progress',
+            default=False,
+            action='store_true',
+        ),
 ]
 
 ######################################################################
@@ -370,36 +375,52 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
         ))
 
 
-def checkStationSuitability(cmdenv, station, src):
+def checkStationSuitability(cmdenv, station, src=None):
     if not station.itemCount:
-        raise NoDataError(
-                "No price data in local database "
-                "for {} station: {}".format(
-                    src, station.name(),
-        ))
+        if src:
+            raise NoDataError(
+                    "No price data in local database "
+                    "for {} station: {}".format(
+                        src, station.name(),
+            ))
+        return False
     mps = cmdenv.maxPadSize
     if mps and not station.checkPadSize(mps):
-        raise CommandLineError(
-                "{} station {} does not meet pad-size "
-                "requirement.".format(
-                    src, station.name(),
-        ))
-    if src != "--from":
-        bm = cmdenv.blackMarket
-        if bm and station.blackMarket != 'Y':
+        if src:
+            raise CommandLineError(
+                    "{} station {} does not meet pad-size "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+        raise False
+    bm = cmdenv.blackMarket
+    if bm and station.blackMarket != 'Y':
+        if src and src != "--from":
             raise CommandLineError(
                     "{} station {} does not meet black-market "
                     "requirement.".format(
                         src, station.name(),
             ))
-        mls = cmdenv.maxLs
-        if mls and station.lsFromStar > mls:
+        return False
+    mls = cmdenv.maxLs
+    if mls and station.lsFromStar > mls:
+        if src and src != "--from":
             raise CommandLineError(
-                    "{} station {} does not meet max-ls requirement "
+                    "{} station {} does not meet max-ls "
                     "requirement.".format(
                         src, station.name(),
             ))
-
+        return False
+    maxAge = cmdenv.maxAge
+    if maxAge and station.dataAge > maxAge:
+        if src and src != "--from":
+            raise CommandLineError(
+                    "{} station {} does not meet --max-age "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+        return False
+    return True
 
 def filterStationSet(src, cmdenv, stnSet):
     if not stnSet:
@@ -409,17 +430,9 @@ def filterStationSet(src, cmdenv, stnSet):
     for place in stnSet:
         if not isinstance(place, Station):
             continue
-        if place.itemCount == 0:
+        if not checkStationSuitability(cmdenv, place):
             stnSet.remove(place)
             continue
-        if mps and not place.checkPadSize(mps):
-            stnSet.remove(place)
-            continue
-        if bm and place.blackMarket != 'Y':
-            stnSet.remove(place)
-            continue
-        if mls and place.lsFromStar > mls:
-            stnSet.remove(place)
     if not stnSet:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
@@ -476,7 +489,7 @@ def validateRunArguments(tdb, cmdenv):
         cmdenv.origins = [
             station
             for station in tdb.stationByID.values()
-            if station.itemCount > 0
+            if checkStationSuitability(cmdenv, station)
         ]
         if cmdenv.startJumps:
             raise CommandLineError("--start-jumps (-s) only works with --from")
@@ -704,10 +717,10 @@ def run(results, cmdenv, tdb):
             oldLen = len(routes)
             while routes[-1].score < threshold:
                 routes.pop()
-            cmdenv.NOTE("Pruned {} routes".format(oldLen - len(routes)))
+            cmdenv.NOTE("Pruned {} routes", oldLen - len(routes))
 
-        if not cmdenv.quiet and not cmdenv.debug:
-            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)), end='\r')
+        if cmdenv.progress:
+            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)))
         elif cmdenv.debug:
             cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
@@ -742,8 +755,6 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
-    if not cmdenv.quiet:
-        print("{:40}".format(" "), end='\r')
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")

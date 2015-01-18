@@ -6,6 +6,11 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 . (kfsone) Added '--prune-score' and '--prune-hops' to run; these let
         you discard routes that are under-performing early on which
         can make calculating longer runs more efficient.
+. (kfsone) Added "--progress" to "run" to show the current hop,
+. (kfsone) "run" and TradeCalc are much smarter about which hops
+        they will consider when using --max-age, --blackmarket, etc.
+        (big perf win)
+
 
 v6.7.0 Jan 17 2015
 . (kfsone) ".prices" import automatically creates local placeholders
