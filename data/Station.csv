@@ -1607,7 +1607,7 @@ unq:name@System.system_id,unq:name,ls_from_star,blackmarket,max_pad_size
 'HIP 43670','Emshwiller Station',32735,'?','M'
 'HIP 43670','Holden Dock',32789,'?','M'
 'HIP 43670','Hoyle Orbital',32915,'?','L'
-'HIP 43670','Menezes City',553,'?','M'
+'HIP 43670','Menezes City',553,'N','M'
 'HIP 43670','Oramus Terminal',32914,'?','L'
 'HIP 43670','Rochon Port',32914,'?','M'
 'HIP 43670','Shaara Gateway',374,'Y','L'
