@@ -22,8 +22,9 @@ cmd="${TRADEPY} run -vv \
     --jumps=${JUMPS} \
     --cr=${CR} \
     --from=\"${origin}\" \
-    --prune-score=${PRUNESCORE:-5} \
-    --prune-hops=${PRUNEHOPS:-4} \
+    --prune-score=${PRUNE_SCORE:-5} \
+    --prune-hops=${PRUNE_HOPS:-4} \
+    --progress \
     $@"
 echo \$ $cmd
 eval "$cmd"
