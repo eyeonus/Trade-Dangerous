@@ -1046,7 +1046,7 @@ class TradeDB(object):
                 lsFromStar=lsFromStar,
                 blackMarket=blackMarket,
                 maxPadSize=maxPadSize,
-                itemCount=0,
+                itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
         db.commit()
