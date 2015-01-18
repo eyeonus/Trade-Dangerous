@@ -2,6 +2,32 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[wip]
+. (kfsone) Added '--prune-score' and '--prune-hops' to run; these let
+        you discard routes that are under-performing early on which
+        can make calculating longer runs more efficient.
+. (kfsone) Added "--progress" to "run" to show the current hop,
+. (kfsone) "run" and TradeCalc are much smarter about which hops
+        they will consider when using --max-age, --blackmarket, etc.
+        (big perf win)
+
+
+v6.7.0 Jan 17 2015
+. (kfsone) ".prices" import automatically creates local placeholders
+        for unknown stations when using "-i", e.g:
+            trade.py buildcache -f -i
+            trade.py import --plug=maddavo  (this plugin sets -i for you)
+. (kfsone) Added a "--ls-max" option to "run" for filtering stations
+. (kfsone) +140 Systems
+. (tKE)  "buy" sub-command now supports ship names (find a ship vendor)
+. (kfsone) Partial code/documentation cleanup
+. (kfsone) Added a "getRoute" function to TradeDB()
+        import tradedb
+        tdb = tradedb.TradeDB()
+        lave = tdb.lookupPlace("Lave")
+        barn = tdb.lookupPlace("Barnard's Star")
+        tdb.getRoute(lave, barn, maxJumpLy=12)
+
 v6.6.1 Jan 10 2015
 . (kfsone) Added "--blackmarket" option to "run" command, restrictions
     to stations which have a black market.

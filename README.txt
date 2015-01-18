@@ -171,7 +171,7 @@ For additional help on a specific command, such as 'update' use
     Reads prices from a file and loads them into the cache
 
   trade.py buy ...
-    Finds places to buy a given item
+    Finds places to buy a given item/ship
 
   trade.py sell ...
     Finds places to sell a given item
@@ -202,101 +202,6 @@ RUN sub-command:
 
   This command provides the primary trade run calculator functionality (it provides
   the functionality of the older TradeDangerous versions prior to 3.1)
-
-   Route options:
-     --from <station or system>
-       Lets you specify the starting station
-       e.g.
-         --from @Asellus/Beagle2
-         --fr beagle2
-         --fr asellusprim
-
-     --to <station or system>
-       Lets you specify the final destination. If you specify a station, it
-       will finish at that exact station. If you specify a system, it will
-       try all the stations in the target system.
-       e.g.
-         --to Beagle2
-         --to lhs64
-
-     --start-jumps N
-     -s N
-       Considers stations from systems upto this many jumps from your
-       specified start location.
-         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
-
-     --end-jumps N
-     -e N
-       Considers stations from systems upto this many jumps from your
-       specified destination (--to).
-         --to lave -e 3      (find runs that end within 3 jumps of lave)
-
-     --via <station or system>
-       Lets you specify a station that must be between the second and final hop.
-       Requires that hops be at least 2.
-       e.g.
-         --via Enterprise
-         --via Chango
-
-     --max-days-old N.NN
-     -MD N.NN
-       Filters out price data that exceeds a specified age in days
-       e.g.
-         --max-days-old 7     (data less than a week old)
-         -MD=2                (data less than 2 days old)
-
-     --pad-size SML?
-     --pad SML?
-     -p
-       Limit results to stations that match one of the pad sizes
-       specified.
-         --pad ML?            (med, lrg or unknown only)
-         -o ML?                 ""    ""      ""    ""
-         --pad ?              (unknown only),
-         --pad L              (large only, ignores unknown)
-
-     --black-market
-     -bm
-       Only consider stations that have a black market.
-
-     --ls-penalty N.NN
-     --lsp N.NN
-       DEFAULT: 0.5
-       Reduces the score of routes by this percentage for every 1000ls
-       you have to travel to stations, which helps prioritize routes
-       with a shorter supercruise time.
-       e.g.
-         --ls-penalty 2.5
-         --lsp=0              (disables this feature)
-
-     --unique
-     --uni
-       Only show routes which do not visit any station twice
-
-     --hops N
-       DEFAULT: 2
-       Maximum number of hops (number of cargo pickups)
-       e.g.
-         --hops 8
-
-     --jumps-per N
-     --jum N
-       DEFAULT: 2
-       Limit the number of systems jumped to between each station
-       e.g.
-         -jumps-per 5
-
-     --avoid ITEM/SYSTEM/STATION
-     --avoid AVOID,AVOID,...,AVOID
-     --av ITEM/SYSTEM/STATION
-     --av AVOID,AVOID,...,AVOID
-       Excludes the item/system/station matching the name from the database
-       e.g.
-         --avoid Gold
-         --avoid Aulin
-         --avoid Enterprise
-         --avoid prise
-         --av gold,aulin,enterprise,anderson
 
    Ship/Trade options:
      --capacity N
@@ -342,6 +247,129 @@ RUN sub-command:
        e.g.
          --margin 0      (no margin)
          --margin 0.01   (1% margin)
+
+   Route options:
+     --from <station or system>
+       Lets you specify the starting station
+       e.g.
+         --from @Asellus/Beagle2
+         --fr beagle2
+         --fr asellusprim
+
+     --to <station or system>
+       Lets you specify the final destination. If you specify a station, it
+       will finish at that exact station. If you specify a system, it will
+       try all the stations in the target system.
+       e.g.
+         --to Beagle2
+         --to lhs64
+
+     --start-jumps N
+     -s N
+       Considers stations from systems upto this many jumps from your
+       specified start location.
+         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
+
+     --end-jumps N
+     -e N
+       Considers stations from systems upto this many jumps from your
+       specified destination (--to).
+         --to lave -e 3      (find runs that end within 3 jumps of lave)
+
+     --via <station or system>
+       Lets you specify a station that must be between the second and final hop.
+       Requires that hops be at least 2.
+       e.g.
+         --via Enterprise
+         --via Chango
+
+     --hops N
+       DEFAULT: 2
+       Maximum number of hops (number of cargo pickups)
+       e.g.
+         --hops 8
+
+     --jumps-per N
+     --jum N
+       DEFAULT: 2
+       Limit the number of systems jumped to between each station
+       e.g.
+         -jumps-per 5
+
+
+   Filter options:
+     --max-days-old N.NN
+     -MD N.NN
+       Filters out price data that exceeds a specified age in days
+       e.g.
+         --max-days-old 7     (data less than a week old)
+         -MD=2                (data less than 2 days old)
+
+     --pad-size SML?
+     --pad SML?
+     -p
+       Limit results to stations that match one of the pad sizes
+       specified.
+         --pad ML?            (med, lrg or unknown only)
+         -o ML?                 ""    ""      ""    ""
+         --pad ?              (unknown only),
+         --pad L              (large only, ignores unknown)
+
+     --black-market
+     -bm
+       Only consider stations that have a black market.
+
+     --ls-penalty N.NN
+     --lsp N.NN
+       DEFAULT: 0.5
+       Reduces the score of routes by this percentage for every 1000ls
+       you have to travel to stations, which helps prioritize routes
+       with a shorter supercruise time.
+       e.g.
+         --ls-penalty 2.5
+         --lsp=0              (disables this feature)
+
+     --ls-max N
+       DEFAULT: 0
+       Filter stations by their distance-to-star. Stations for which
+       distance-to-star is known that have a distance above this will
+       not be considered for trading.
+       e.g.
+         --ls-max 10000
+         --ls-m 32000
+
+     --prune-score N.NN
+       DEFAULT: 0
+       After a number of hops (controlled by --prune-hops), eliminate
+       candidate routes which have under-performed the leading candidate.
+       NOTE: This can speed up long run calculations, but it can also
+       cause you to miss gold-mines that are a just a few hops away...
+       e.g.
+         --prune-score 12.5   (prune routes scoring less than 10% of the leader)
+
+     --prune-hops N
+       DEFAULT: 3
+       Being applying "--prune-score" from this hop onward. Set 0 to disable.
+       NOTE: This can speed up long run calculations, but it can also
+       cause you to miss gold-mines that are a just a few hops away...
+       e.g.
+         --prune-hop 4 --prune-score 22.5
+
+     --avoid ITEM/SYSTEM/STATION
+     --avoid AVOID,AVOID,...,AVOID
+     --av ITEM/SYSTEM/STATION
+     --av AVOID,AVOID,...,AVOID
+       Excludes the item/system/station matching the name from the database
+       e.g.
+         --avoid Gold
+         --avoid Aulin
+         --avoid Enterprise
+         --avoid prise
+         --av gold,aulin,enterprise,anderson
+
+     --unique
+     --uni
+       Only show routes which do not visit any station twice
 
    Other options:
      --routes N   DEFAULT: 1
@@ -473,6 +501,12 @@ IMPORT sub-command:
     -i
       Any systems, stations, categories or items that aren't recognized
       by this version of TD will be reported but import will continue.
+
+      Unrecognized stations in the ".prices" file, or an import, will
+      have a placeholder station entry automatically created for them.
+
+      Note: When the cache is rebuilt, these stations will be lost, so
+      you may need to add the "-i" flag to the buildcache command.
 
 
 RARES sub-command:
@@ -667,8 +701,9 @@ LOCAL sub-command:
 
 BUY sub-command:
 
-  Looks for stations selling the specified item: that means they have a non-zero
-  asking price and a stock level other than "n/a".
+  Looks for stations selling the specified item or ship.
+  
+  For items, that means they have a non-zero asking price and a stock level other than "n/a".
 
   trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
 
@@ -695,7 +730,7 @@ BUY sub-command:
       Limit results to stations that match one of the pad sizes
       specified.
         --pad ML?            (med, lrg or unknown only)
-        -o ML?                 ""    ""      ""    ""
+        -p ML?                 ""    ""      ""    ""
         --pad ?              (unknown only),
         --pad L              (large only, ignores unknown)
 

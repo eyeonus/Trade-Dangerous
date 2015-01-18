@@ -91,7 +91,7 @@ switches = [
             metavar='N',
             type=int,
         ),
-    ParseArgument('--max-days-old', '-MD',
+    ParseArgument('--age', '--max-days-old', '-MD',
             help='Maximum age (in days) of trade data to use.',
             metavar='DAYS',
             type=float,
@@ -112,6 +112,13 @@ switches = [
             default=0.6,
             type=float,
             dest='lsPenalty'
+        ),
+    ParseArgument('--ls-max',
+            help='Only consider stations upto this many ls from their star.',
+            metavar='LS',
+            dest='maxLs',
+            type=int,
+            default=0,
         ),
     ParseArgument('--unique',
             help='Only visit each station once.',
@@ -148,6 +155,24 @@ switches = [
             action='store_true',
             default=False,
             dest='x52pro',
+        ),
+    ParseArgument('--prune-score',
+            help='From the 3rd hop on, only consider routes which have ' \
+                'at least this percentage of the current best route''s score.',
+            dest='pruneScores',
+            type=float,
+            default=0,
+        ),
+    ParseArgument('--prune-hops',
+            help='Changes which hop --prune-score takes effect from.',
+            default=3,
+            type=int,
+            dest='pruneHops',
+        ),
+    ParseArgument('--progress', '-P',
+            help='Show hop progress',
+            default=False,
+            action='store_true',
         ),
 ]
 
@@ -350,44 +375,62 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
         ))
 
 
-def checkStationSuitability(cmdenv, station, src):
+def checkStationSuitability(cmdenv, station, src=None):
     if not station.itemCount:
-        raise NoDataError(
-                "No price data in local database "
-                "for {} station: {}".format(
-                    src, station.name(),
-        ))
+        if src:
+            raise NoDataError(
+                    "No price data in local database "
+                    "for {} station: {}".format(
+                        src, station.name(),
+            ))
+        return False
     mps = cmdenv.maxPadSize
     if mps and not station.checkPadSize(mps):
-        raise CommandLineError(
-                "{} station {} does not meet pad-size "
-                "requirement.".format(
-                    src, station.name(),
-        ))
-    if src != "--from":
-        bm = cmdenv.blackMarket
-        if bm and station.blackMarket != 'Y':
+        if src:
+            raise CommandLineError(
+                    "{} station {} does not meet pad-size "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+        raise False
+    bm = cmdenv.blackMarket
+    if bm and station.blackMarket != 'Y':
+        if src and src != "--from":
             raise CommandLineError(
                     "{} station {} does not meet black-market "
                     "requirement.".format(
                         src, station.name(),
             ))
-
+        return False
+    mls = cmdenv.maxLs
+    if mls and station.lsFromStar > mls:
+        if src and src != "--from":
+            raise CommandLineError(
+                    "{} station {} does not meet max-ls "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+        return False
+    maxAge = cmdenv.maxAge
+    if maxAge and station.dataAge > maxAge:
+        if src and src != "--from":
+            raise CommandLineError(
+                    "{} station {} does not meet --max-age "
+                    "requirement.".format(
+                        src, station.name(),
+            ))
+        return False
+    return True
 
 def filterStationSet(src, cmdenv, stnSet):
     if not stnSet:
         return stnSet
     bm, mps = cmdenv.blackMarket, cmdenv.maxPadSize
+    mls = cmdenv.maxLs
     for place in stnSet:
         if not isinstance(place, Station):
             continue
-        if place.itemCount == 0:
-            stnSet.remove(place)
-            continue
-        if mps and not place.checkPadSize(mps):
-            stnSet.remove(place)
-            continue
-        if bm and place.blackMarket != 'Y':
+        if not checkStationSuitability(cmdenv, place):
             stnSet.remove(place)
             continue
     if not stnSet:
@@ -446,7 +489,7 @@ def validateRunArguments(tdb, cmdenv):
         cmdenv.origins = [
             station
             for station in tdb.stationByID.values()
-            if station.itemCount > 0
+            if checkStationSuitability(cmdenv, station)
         ]
         if cmdenv.startJumps:
             raise CommandLineError("--start-jumps (-s) only works with --from")
@@ -567,6 +610,13 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.mfd:
         cmdenv.mfd.display("Loading Trades")
 
+    if cmdenv.pruneScores and cmdenv.pruneHops:
+        if cmdenv.pruneScores > 100:
+            raise CommandLineError("--prune-score value percentage exceed 100.")
+        if cmdenv.pruneHops < 3:
+            raise CommandLineError("--prune-hops must 3 or more.")
+    else:
+        cmdenv.pruneScores = cmdenv.pruneHops = 0
 
 ######################################################################
 
@@ -651,17 +701,28 @@ def run(results, cmdenv, tdb):
     results.summary = ResultRow()
     results.summary.exception = ""
 
-    for hopNo in range(numHops):
-        if not cmdenv.quiet and not cmdenv.debug:
-            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)), end='\r')
-        elif cmdenv.debug:
-            cmdenv.DEBUG0("Hop {}...", hopNo+1)
+    pruneMod = cmdenv.pruneScores / 100
 
+    for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
             restrictTo = set(stopStations)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
+
+        if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+            routes.sort()
+            bestScore, worstScore = routes[0].score, routes[-1].score
+            threshold = bestScore * pruneMod
+            oldLen = len(routes)
+            while routes[-1].score < threshold:
+                routes.pop()
+            cmdenv.NOTE("Pruned {} routes", oldLen - len(routes))
+
+        if cmdenv.progress:
+            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)))
+        elif cmdenv.debug:
+            cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
         newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
         if not newRoutes and hopNo > 0:
@@ -694,8 +755,6 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
-    if not cmdenv.quiet:
-        print("{:40}".format(" "), end='\r')
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
