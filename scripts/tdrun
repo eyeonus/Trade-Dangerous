@@ -16,12 +16,15 @@ then
 fi
 
 cmd="${TRADEPY} run -vv \
-    --ly ${MAXLY} \
-    --empty ${EMPTYLY} \
-    --cap ${CAP} \
-    --jumps ${JUMPS} \
-    --cr ${CR} \
-    --from \"${origin}\" \
+    --ly=${MAXLY} \
+    --empty=${EMPTYLY} \
+    --cap=${CAP} \
+    --jumps=${JUMPS} \
+    --cr=${CR} \
+    --from=\"${origin}\" \
+    --prune-score=${PRUNE_SCORE:-5} \
+    --prune-hops=${PRUNE_HOPS:-4} \
+    --progress \
     $@"
 echo \$ $cmd
 eval "$cmd"
