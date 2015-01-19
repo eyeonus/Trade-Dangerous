@@ -17,6 +17,7 @@ systems = {
 }
 
 stations = {
+    "171 G. AQUARII/ELCANO OOCK":           "Elcano Dock",
     "21 DRACO/ROBERTS PORT":                DELETED,
     "37 XI BOOTIS/SCHIRRA PLANT":           "Schirba Plant",
     "51 AQUILAE/COKEHUB":                   "Coke Hub",
@@ -46,11 +47,11 @@ stations = {
     "GCRV 4654/HERZEFELD LANDING":          "Herzfeld Landing",
     "GROOMBRIDGE 1618/FRANKUN RING":        "Franklin Ring",
     "HDS 1879/HEDIN ORBITAL":               DELETED,
+    "HIP 110483/VALIGURSKY ORBITAE":        "Valigursky Orbital",
     "HIP 4907/EDISON PLATFORM":             DELETED,
     "HR 5451/MACDONALO HUB":                "MacDonald Hub",
     "HR 5451/MACOONALD HUB":                "MacDonald Hub",
     "HR 5451/MACOONALO HUB":                "MacDonald Hub",
-    "HIP 110483/VALIGURSKY ORBITAE":        "Valigursky Orbital",
     "JAWOLA/SUTCLIFFEPLATFORM":             "Sutcliffe Platform",
     "KANOS/LEE STATION":                    DELETED,
     "LEESTI/GEORGELUCAS":                   "George Lucas",
@@ -79,6 +80,9 @@ stations = {
     "ORERVE/WATSON SATION":                 "Watson Station",
     "PANGLUYA/BRADBURYWORKS":               "Bradbury Works",
     "PERENDI/SHEPHERD INSTALLATION":        DELETED,
+    "PRIVA/DUGAN OOCK":                     "Dugan Dock",
+    "PRIVA/OUGAN DOCK":                     "Dugan Dock",
+    "PRIVA/OUGAN OOCK":                     "Dugan Dock",
     "RAHU/LEBEDEV BEACON":                  DELETED,
     "RHO CANCRI/HAMILTON R,SERVE":          "Hamilton Reserve",
     "RHO CANCRI/HAMILTON R�SERVE":        "Hamilton Reserve",
