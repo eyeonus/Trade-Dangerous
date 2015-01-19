@@ -79,8 +79,14 @@ class StarSubmission(object):
         self.name = star.upper()
         self.refs = refs or []
         if distances:
-            for name, dist in distances:
-                self.add_distance(name, dist)
+            if isinstance(distances, list):
+                for name, dist in distances:
+                    self.add_distance(name, dist)
+            elif isinstance(distances, dict):
+                for name, dist in distances.items():
+                    self.add_distance(name, dist)
+            else:
+                raise SubmissionError("Invalid distances parameter")
         if commander:
             self.commander = commander
 
