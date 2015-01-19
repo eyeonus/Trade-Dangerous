@@ -127,8 +127,6 @@ class StarSubmission(object):
             headers=headers,
             data=jsonData
         )
-        print("done")
-
         resp = req.text
         if not resp.startswith('{'):
             raise SubmissionError("Server Side Error: " + resp)
