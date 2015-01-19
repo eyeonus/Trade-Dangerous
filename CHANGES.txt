@@ -3,6 +3,9 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 [wip]
+. (kfsone) '--ls-max' will now also unknown (0) distances,
+. (kfsone) Added '--max-routes' for setting an absolute max on how many
+        of the top routes we use after the first hop,
 . (kfsone) Added 'submit-distances' tool for submitting EDStarCoordinator
         star data.
 . (kfsone) Added '--prune-score' and '--prune-hops' to run; these let
@@ -12,7 +15,6 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 . (kfsone) "run" and TradeCalc are much smarter about which hops
         they will consider when using --max-age, --blackmarket, etc.
         (big perf win)
-
 
 v6.7.0 Jan 17 2015
 . (kfsone) ".prices" import automatically creates local placeholders

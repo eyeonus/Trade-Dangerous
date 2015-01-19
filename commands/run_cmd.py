@@ -145,6 +145,15 @@ switches = [
             metavar='N',
             type=int,
         ),
+    ParseArgument('--max-routes',
+            help='At the end of each hop, limit the number of routes '
+                    'that continue to the next round to the top N '
+                    'highest scoring',
+            default=0,
+            metavar='N',
+            type=int,
+            dest='maxRoutes',
+        ),
     ParseArgument('--checklist',
             help='Provide a checklist flow for the route.',
             action='store_true',
@@ -403,7 +412,7 @@ def checkStationSuitability(cmdenv, station, src=None):
             ))
         return False
     mls = cmdenv.maxLs
-    if mls and station.lsFromStar > mls:
+    if mls and (station.lsFromStar <= 0 or station.lsFromStar > mls):
         if src and src != "--from":
             raise CommandLineError(
                     "{} station {} does not meet max-ls "
@@ -415,7 +424,7 @@ def checkStationSuitability(cmdenv, station, src=None):
     if maxAge and station.dataAge > maxAge:
         if src and src != "--from":
             raise CommandLineError(
-                    "{} station {} does not meet --max-age "
+                    "{} station {} does not meet --age "
                     "requirement.".format(
                         src, station.name(),
             ))
@@ -425,8 +434,6 @@ def checkStationSuitability(cmdenv, station, src=None):
 def filterStationSet(src, cmdenv, stnSet):
     if not stnSet:
         return stnSet
-    bm, mps = cmdenv.blackMarket, cmdenv.maxPadSize
-    mls = cmdenv.maxLs
     for place in stnSet:
         if not isinstance(place, Station):
             continue
@@ -613,8 +620,8 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.pruneScores and cmdenv.pruneHops:
         if cmdenv.pruneScores > 100:
             raise CommandLineError("--prune-score value percentage exceed 100.")
-        if cmdenv.pruneHops < 3:
-            raise CommandLineError("--prune-hops must 3 or more.")
+        if cmdenv.pruneHops < 2:
+            raise CommandLineError("--prune-hops must 2 or more.")
     else:
         cmdenv.pruneScores = cmdenv.pruneHops = 0
 
@@ -710,6 +717,9 @@ def run(results, cmdenv, tdb):
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
+        if cmdenv.maxRoutes and hopNo >= 1:
+            routes = routes[:cmdenv.maxRoutes]
+
         if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
             routes.sort()
             bestScore, worstScore = routes[0].score, routes[-1].score
@@ -717,10 +727,10 @@ def run(results, cmdenv, tdb):
             oldLen = len(routes)
             while routes[-1].score < threshold:
                 routes.pop()
-            cmdenv.NOTE("Pruned {} routes", oldLen - len(routes))
+            cmdenv.NOTE("Pruned {} origins", oldLen - len(routes))
 
         if cmdenv.progress:
-            print("* Hop {:3n}: {:.>10n} routes".format(hopNo+1, len(routes)))
+            print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
         elif cmdenv.debug:
             cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
