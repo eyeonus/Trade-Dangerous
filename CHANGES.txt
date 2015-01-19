@@ -3,6 +3,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 [wip]
+. (kfsone) Added 'submit-distances' tool for submitting EDStarCoordinator
+        star data.
 . (kfsone) Added '--prune-score' and '--prune-hops' to run; these let
         you discard routes that are under-performing early on which
         can make calculating longer runs more efficient.
