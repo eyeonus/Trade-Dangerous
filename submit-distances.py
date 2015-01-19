@@ -42,7 +42,7 @@ except ImportError as e:
 
 url = "http://edstarcoordinator.com/api.asmx/SubmitDistances"
 
-defaultStars = [
+standardStars = [
     "SOL",
     "ASELLUS AUSTRALIS",
     "46 GAMMA HYDRAE",
@@ -50,7 +50,7 @@ defaultStars = [
     "RHO PUPPIS",
 ]
 
-extraStars = [
+outlierStars = [
     "1 AURIGAE",
     "103 AQUARII",
     "2MASS J21371591+5726591",
@@ -98,13 +98,35 @@ class UsageError(Exception):
 def get_system(tdb):
     args = sys.argv[1:]
     if not args or args[0].startswith('-'):
-        raise UsageError(
-            "Usage: {} \"system name\"\n"
-            "Collects distances for a given system and submits them to "
-            "the EDStarCoordinator project.\n"
-            "To submit distances for a existing system, prefix the name "
-            "with an @ sign, e.g. @SOL"
-            .format(sys.argv[0])
+        raise UsageError("""Usage: {} \"new system\"
+
+This tool prompts you with the names of several systems and asks you
+to find the distance from "new system" to those systems.
+
+When the tool prompts you with a system's name, it will also copy it
+into your clipboard. Alt-Tab into the game, go to the GALAXY MAP and
+the NAVIGATION tab, and paste (SHIFT+INS or CTRL-V) the name. Hit
+enter and the map will pan to the system and tell you how far away
+it is.
+
+(Hint: Double-click the right end of the search box, then press
+SHIFT+HOME to select the current text and backspace to delete it).
+
+You will first be prompted for 'Standard Systems' which is a list of
+5 fairly well known systems.
+
+To skip a system: just hit enter.
+
+After that you'll be prompted with a list of outlier stars. Again you
+can just press enter to skip them or q to skip to the next section.
+
+Finally you will be given a chance to choose stars not already listed.
+Any stars you enter here will be saved in 'data/extra-stars.txt' and
+added to the 'outlier stars' in future runs.
+
+Finally you'll be asked to review the data you've entered and, if it
+looks good, it will be submitted to EDSC.
+"""
         )
 
     systemName = ' '.join(sys.argv[1:]).upper()
@@ -126,7 +148,7 @@ def get_system(tdb):
             raise UsageError(
                 "ERROR: System '{}' already exists.\n"
                 "Prefix the name with an '@' sign if you want to force "
-                "submitting distances for an existing system."
+                "submitting distances for an existing system, e.g. @SOL."
             )
 
     return systemName, system
@@ -151,17 +173,17 @@ def get_cmdr(tdb):
     )
 
 
-def get_extra_stars():
-    extras = set(extraStars)
+def get_outliers():
+    outliers = set(outlierStars)
     try:
         with open("data/extra-stars.txt", "rU") as input:
             for line in input:
                 line = line.strip()
                 if line:
-                    extras.add(line.upper())
+                    outliers.add(line.upper())
     except FileNotFoundError:
         pass
-    return random.sample(list(extras), len(extras))
+    return random.sample(list(outliers), len(outliers))
 
 
 def add_extra_star(name):
@@ -216,7 +238,7 @@ def main():
     system, tdbSys = get_system(tdb)
     cmdr = get_cmdr(tdb)
 
-    extraStars = get_extra_stars()
+    outliers = get_outliers()
 
     print("Add EDSC Star Distances for \"{}\"".format(system))
     print()
@@ -238,20 +260,21 @@ def main():
     tkroot.withdraw()
 
     print()
-    print("~~~ Default Stars: (q to stop listing default stars)")
-    distances, term = get_distances(tkroot, list(), defaultStars)
+    print("~~~ Standard Stars: (q to stop listing standard stars)")
+    distances, term = get_distances(tkroot, list(), standardStars)
 
     print()
-    print("~~~ Additional Stars: (q to stop listing additional stars)")
-    distances, term = get_distances(tkroot, distances, extraStars)
+    print("~~~ Outliers: (q to stop listing outliers)")
+    distances, term = get_distances(tkroot, distances, outliers)
 
     print()
     print("~~~ Choose Your Own: (leave blank to stop)")
     while True:
-        star = input("Enter star name: ").upper()
+        star = input("Enter star name: ")
         star = star.strip()
-        if not star:
+        if not star or star == 'q':
             break
+        star = star.upper()
         for ref in distances:
             if ref['name'] == star:
                 print("Duplicate")
@@ -260,14 +283,16 @@ def main():
         extras, term = get_distances(tkroot, list(), [star])
         if term != 'q' and len(extras) > 0:
             distances.extend(extras)
-            add_extra_star(extras[0]['name'])
+            if not star in outliers:
+                add_extra_star(star)
 
     if not distances:
         print("No distances, no submission.")
         return
 
     print()
-    print("P0:", system)
+    print("System:", system)
+    print("Distances:")
     for ref in distances:
         print("  {}: {}ly".format(
             ref['name'], ref['dist']
@@ -302,3 +327,4 @@ if __name__ == "__main__":
         main()
     except UsageError as e:
         print(str(e))
+
