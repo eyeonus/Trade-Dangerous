@@ -50,6 +50,7 @@ stations = {
     "HR 5451/MACDONALO HUB":                "MacDonald Hub",
     "HR 5451/MACOONALD HUB":                "MacDonald Hub",
     "HR 5451/MACOONALO HUB":                "MacDonald Hub",
+    "HIP 110483/VALIGURSKY ORBITAE":        "Valigursky Orbital",
     "JAWOLA/SUTCLIFFEPLATFORM":             "Sutcliffe Platform",
     "KANOS/LEE STATION":                    DELETED,
     "LEESTI/GEORGELUCAS":                   "George Lucas",
