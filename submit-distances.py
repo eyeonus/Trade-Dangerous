@@ -148,6 +148,7 @@ looks good, it will be submitted to EDSC.
                 "ERROR: System '{}' already exists.\n"
                 "Prefix the name with an '@' sign if you want to force "
                 "submitting distances for an existing system, e.g. @SOL."
+                .format(systemName)
             )
 
     return systemName, system
@@ -288,6 +289,8 @@ CHOOSE YOUR OWN: (leave blank to stop)
   Specify additional stars, the names will be saved
   to data/extra-stars.txt so they appear in the
   outliers section in future.
+  To avoid saving a particular star to this file,
+  prefix the name with a '*' (e.g. *SOL).
 ===================================================
 """)
     while True:
@@ -295,6 +298,11 @@ CHOOSE YOUR OWN: (leave blank to stop)
         star = star.strip()
         if not star or star == 'q':
             break
+        if star.startswith('*'):
+            skipSave = True
+            star = star[1:].strip()
+        else:
+            skipSave = False
         star = star.upper()
         for ref in distances:
             if ref['name'] == star:
@@ -304,7 +312,7 @@ CHOOSE YOUR OWN: (leave blank to stop)
         extras, term = get_distances(tkroot, list(), [star])
         if term != 'q' and len(extras) > 0:
             distances.extend(extras)
-            if not star in outliers:
+            if not skipSave and star not in outliers:
                 add_extra_star(star)
 
     if not distances:
