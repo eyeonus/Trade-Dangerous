@@ -256,19 +256,41 @@ def main():
         "this star."
     )
 
+    print("The more distances you submit per star, the better.")
+    print()
+
     tkroot = Tk()
     tkroot.withdraw()
 
     print()
-    print("~~~ Standard Stars: (q to stop listing standard stars)")
+    print("""
+===================================================
+STANDARD STARS: (q to stop listing standard stars)
+
+  These are stars with well-known positions.
+===================================================
+""")
     distances, term = get_distances(tkroot, list(), standardStars)
 
-    print()
-    print("~~~ Outliers: (q to stop listing outliers)")
+    print("""
+===================================================
+OUTLIERS: (q to stop listing outliers)
+
+  Assorted outlier stars from around the galaxy
+  mixed with any stars from data/extra-stars.txt.
+===================================================
+""")
     distances, term = get_distances(tkroot, distances, outliers)
 
-    print()
-    print("~~~ Choose Your Own: (leave blank to stop)")
+    print("""
+===================================================
+CHOOSE YOUR OWN: (leave blank to stop)
+
+  Specify additional stars, the names will be saved
+  to data/extra-stars.txt so they appear in the
+  outliers section in future.
+===================================================
+""")
     while True:
         star = input("Enter star name: ")
         star = star.strip()
