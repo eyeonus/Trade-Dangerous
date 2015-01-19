@@ -30,7 +30,7 @@ or "q" to stop recording.
 
 import tradedb
 import math
-import misc.edstarquery
+import misc.edsc
 import re
 import sys
 
@@ -57,7 +57,7 @@ if len(sys.argv) > 2:
 
 print("start date: {}".format(date), file=sys.stderr)
 
-edsq = misc.edstarquery.EDStarQuery(
+edsq = misc.edsc.StarQuery(
     test=False,
     confidence=2,
     date=date,

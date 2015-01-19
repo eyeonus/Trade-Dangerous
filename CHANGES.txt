@@ -15,6 +15,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 . (kfsone) "run" and TradeCalc are much smarter about which hops
         they will consider when using --max-age, --blackmarket, etc.
         (big perf win)
+. (kfsone) Renamed "misc/edstarquery.py" to "misc/edsc.py"
+        - Added misc.edsc.StarSubmission
+        - Renamed misc.edsc.EDStarQuery to misc.edsc.StarQuery
+        - Changed "submit-distances" to use "StarSubmission"
 
 v6.7.0 Jan 17 2015
 . (kfsone) ".prices" import automatically creates local placeholders

@@ -25,6 +25,7 @@ import re
 import sys
 import tradedb
 
+from misc.edsc import StarSubmission
 from tkinter import Tk
 
 try:
@@ -39,8 +40,6 @@ except ImportError as e:
         raise e
     pip.main(["install", "--upgrade", "requests"])
     import requests
-
-url = "http://edstarcoordinator.com/api.asmx/SubmitDistances"
 
 standardStars = [
     "SOL",
@@ -328,20 +327,20 @@ CHOOSE YOUR OWN: (leave blank to stop)
 
     print("Submitting")
 
-    data = {
-            'test': False,
-            'ver': 2,
-            'commander': cmdr,
-            'p0': { 'name': system },
-            'refs': distances,
-    }
-    headers = {
-            'Content-Type': 'application/json; charset=utf-8'
-    }
+    sub = StarSubmission(
+        star=system,
+        commander=cmdr,
+        refs=distances,
+    )
+    resp = sub.submit()
 
-    req = requests.post(url, headers=headers, data=json.dumps({'data':data}))
-
-    print("Result: " + req.text)
+    status = resp['status']['input'][0]['status']
+    if status['statusnum'] == 0:
+        print(status['msg'])
+    else:
+        print("ERROR: {} ({})".format(
+            status['msg'], status['statusnum'],
+        ))
 
 
 if __name__ == "__main__":
