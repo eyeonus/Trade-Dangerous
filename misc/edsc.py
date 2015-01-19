@@ -66,7 +66,11 @@ class SubmissionError(Exception):
 class StarSubmission(object):
     url = "http://edstarcoordinator.com/api.asmx/SubmitDistances"
 
-    def __init__(self, star, test=False, commander=None, refs=None):
+    def __init__(
+            self, star,
+            test=False, commander=None,
+            refs=None, distances=None,
+            ):
         assert isinstance(star, str)
         assert isinstance(test, bool)
         if refs:
@@ -74,6 +78,9 @@ class StarSubmission(object):
         self.test = test
         self.name = star.upper()
         self.refs = refs or []
+        if distances:
+            for name, dist in distances:
+                self.add_distance(name, dist)
         if commander:
             self.commander = commander
 
