@@ -58,7 +58,7 @@ outlierStars = [
     "8 LEONIS",
     "AUCOFS UZ-E C28-11",
     "AUCOFS WL-J D10-28",
-    "BETLEGEUSE",
+    "BETELGEUSE",
     "BLOO DRYE QA-C B33-5",
     "BLU EUQ TJ-Q C5-6",
     "CHRAICHOOE TU-M D8-0",
