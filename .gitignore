@@ -9,6 +9,7 @@ data/TradeDangerous.db
 data/TradeDangerous.db-journal
 data/TradeDangerous.prices
 data/*.stamp
+data/extra-stars.txt
 *.prices
 *.suo
 *.pyperf

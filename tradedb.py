@@ -1417,8 +1417,10 @@ class TradeDB(object):
                     continue
                 if (maxPadSize and not station.checkPadSize(maxPadSize)):
                     continue
-                if (maxLsFromStar and station.lsFromStar > maxLsFromStar):
-                    continue
+                if maxLsFromStar:
+                    stnLs = station.lsFromStar
+                    if stnLs <= 0 or stnLs > maxLsFromStar:
+                        continue
                 destStations.append(
                             Destination(node.system,
                                     station,

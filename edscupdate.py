@@ -30,7 +30,7 @@ or "q" to stop recording.
 
 import tradedb
 import math
-import misc.edstarquery
+import misc.edsc
 import re
 import sys
 
@@ -57,7 +57,7 @@ if len(sys.argv) > 2:
 
 print("start date: {}".format(date), file=sys.stderr)
 
-edsq = misc.edstarquery.EDStarQuery(
+edsq = misc.edsc.StarQuery(
     test=False,
     confidence=2,
     date=date,
@@ -70,15 +70,13 @@ ignore = [
     'CRU7CIS SECTOR EQ-Y B2',
     'CRUCIS SECTOR FM-V B2-O',
     'CRUCIS SECTOR MD-S B4-6',
+    'CRUCIS SECTO GB-X B1-0',
     'ED TUCANAE',
     'HYADES SECTOR WF-M B8-3',
     'PISCIUM SECTOR BM-L AB-1', # should be A8-1
     'SCORPII SECTOR KB-X A1-01', # should be SCORPII SECTOR KB-X A1-0
     'WISE 0410+ 1502', # should be WISE 0410+1502
     'ZAGARAS',
-]
-problems = [
-    'CRUCIS SECTOR MD-S B4-6',
 ]
 
 if edsq.status['statusnum'] != 0:
