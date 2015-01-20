@@ -383,10 +383,6 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         tdenv.DEBUG0("NEW STATION: {}", facility)
 
-        if checkForOcrDerp(tdenv, systemName, stationName):
-            stationID = DELETED
-            return
-
         # Make sure it's valid.
         try:
             stationID = stationByName[facility]
@@ -394,6 +390,9 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             stationID = -1
 
         if stationID < 0:
+            if checkForOcrDerp(tdenv, systemName, stationName):
+                stationID = DELETED
+                return
             corrected = True
             try:
                 correctName = corrections.systems[systemName]
