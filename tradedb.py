@@ -1877,3 +1877,24 @@ class TradeDB(object):
 
         return text
 
+######################################################################
+# Assorted helpers
+
+def describeAge(ageInSeconds):
+    """
+    Turns an age (in seconds) into a text representation.
+    """
+    hours = int(ageInSeconds / 3600)
+    if hours < 1:
+        return "<1 hr"
+    if hours == 1:
+        return "1 hr"
+    if hours < 48:
+        return str(hours) + " hrs"
+    days = int(hours / 24)
+    if days < 90:
+        return str(days) + " days"
+
+    months = int(months / 31)
+    return str(months) + " mths"
+

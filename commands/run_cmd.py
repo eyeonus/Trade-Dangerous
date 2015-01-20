@@ -3,7 +3,7 @@ from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
-from tradedb import System, Station
+from tradedb import System, Station, describeAge
 
 ######################################################################
 # Parser config
@@ -238,7 +238,13 @@ class Checklist(object):
 
             self.note("Buy at {}".format(cur.name()))
             for (trade, qty) in sortedTradeOptions:
-                self.doStep('Buy {:n} x'.format(qty), trade.name(), '@ {}cr'.format(trade.costCr))
+                self.doStep(
+                        'Buy {:n} x'.format(qty),
+                        trade.name(),
+                        '@ {}cr / {} old'.format(
+                            trade.costCr,
+                            describeAge(trade.srcAge),
+                ))
             if cmdenv.detail:
                 self.doStep('Refuel')
             print()
@@ -254,9 +260,13 @@ class Checklist(object):
 
             self.note("Sell at {}".format(nxt.name()))
             for (trade, qty) in sortedTradeOptions:
-                self.doStep('Sell {:n} x'.format(qty),
-                            trade.name(), '@ {:n}cr'.format(
-                                trade.costCr + trade.gainCr))
+                self.doStep(
+                        'Sell {:n} x'.format(qty),
+                        trade.name(),
+                        '@ {:n}cr / {} old'.format(
+                            trade.costCr + trade.gainCr,
+                            describeAge(trade.dstAge),
+                ))
             print()
 
             gainCr += hop[1]
@@ -607,7 +617,8 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.unique:
         # if there's only one start and stop...
         if len(origins) == 1 and len(destns) == 1:
-            raise CommandLineError("Can't have same from/to with --unique")
+            if origins[0] == destns[0]:
+                raise CommandLineError("Can't have same from/to with --unique")
         if viaSet:
             if len(origins) == 1 and origins[0] in viaSet:
                 raise("Can't have --from station in --via list with --unique")
