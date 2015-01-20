@@ -99,9 +99,9 @@ def run(results, cmdenv, tdb):
 
     if cmdenv.stations:
         stationIDs = ",".join([
-                ",".join(str(stn.ID) for stn in sys.stations)
-                for sys in route
-                if sys.stations
+                ",".join(str(stn.ID) for stn in hop[0].stations)
+                for hop in route
+                if hop[0].stations
         ])
         stmt = """
                 SELECT  si.station_id,
