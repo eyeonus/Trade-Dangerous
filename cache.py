@@ -297,6 +297,35 @@ def getItemByNameIndex(cur):
     return { name: itemID for (itemID, name) in cur }
 
 
+ocrDerp = re.compile(r'''(
+    LAN[O0]ING |
+    [O0][O0]CK |
+    [O0]INEILL |
+    AQUIRE[O0] |
+    [O0](UTT|ALT)[O0]N |
+    8RA[DO0]LEY |
+    BRA[O0]LEY |
+    LLOY[O0] |
+    [O0]RBDAL |
+    DRB[O0]DAL |
+    [D0]RBITAL |
+    REE[O0] |
+    \BDOCK\b |
+    \BTERMINAL\b |
+    \bKIOO\b
+)\b''', flags=re.X)
+
+
+def checkForOcrDerp(tdenv, systemName, stationName):
+    if ocrDerp.search(stationName):
+        tdenv.NOTE(
+            "Ignoring '{}/{}' because it looks like OCR derp."
+            .format(systemName, stationName)
+        )
+        return True
+    return False
+
+
 def processPrices(tdenv, priceFile, db, defaultZero):
     """
         Yields SQL for populating the database with prices
@@ -353,6 +382,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         facility = systemName + '/' + stationName
 
         tdenv.DEBUG0("NEW STATION: {}", facility)
+
+        if checkForOcrDerp(tdenv, systemName, stationName):
+            stationID = DELETED
+            return
 
         # Make sure it's valid.
         try:

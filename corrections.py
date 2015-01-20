@@ -106,6 +106,8 @@ stations = {
     "ZETA AQUILAE/JULIAN GATEWAY":          DELETED,
     "ZETA AQUILAE/OEFELIEN":                "Oefelein Plant",
     "ZETA TRIANGULI AUSTRALIS/GUEST CITY2": "Guest City",
+    "MISISTURE/GELFANO DOCK":               DELETED,
+    "MANNODAVA/ALIPORT":                    DELETED,
 
 #ADD_STATIONS_HERE
 }
