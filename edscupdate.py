@@ -65,6 +65,7 @@ edsq = misc.edsc.StarQuery(
 data = edsq.fetch()
 
 ignore = [
+    'AN SEXSTANS',
     'ALRAI SECTOR EL-Y C3-1',
     'ALRAI SECTOR OI-T B3-6 A', # No 'A' at the end
     'CORE SYS SECTOR HH-V B2-7',
