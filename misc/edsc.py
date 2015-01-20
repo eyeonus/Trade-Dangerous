@@ -44,7 +44,7 @@ class StarQuery(object):
 
     def fetch(self):
         params = json.dumps(self.params).encode('utf-8')
-        request = Request(EDStarQuery.url, params, {
+        request = Request(StarQuery.url, params, {
                     'Content-Type': 'application/json;charset=utf-8',
                     'Content-Length': len(params)
                 })
