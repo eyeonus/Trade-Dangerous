@@ -312,11 +312,13 @@ ocrDerp = re.compile(r'''(
     REE[O0] |
     \BDOCK\b |
     \BTERMINAL\b |
-    \bKIOO\b |
+    \bKI[O0] |
     \b[O3]E\b |
     \bANDRA[O3]E\b |
     \bAN[O3]RADE\b |
-    \bAN[O3]RA[O3]E\b
+    \bAN[O3]RA[O3]E\b |
+    VVELL\b |
+    [O0]IRAC\b
 )\b''', flags=re.X)
 
 
