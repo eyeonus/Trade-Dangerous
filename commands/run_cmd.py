@@ -617,7 +617,8 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.unique:
         # if there's only one start and stop...
         if len(origins) == 1 and len(destns) == 1:
-            raise CommandLineError("Can't have same from/to with --unique")
+            if origins[0] == destns[0]:
+                raise CommandLineError("Can't have same from/to with --unique")
         if viaSet:
             if len(origins) == 1 and origins[0] in viaSet:
                 raise("Can't have --from station in --via list with --unique")
