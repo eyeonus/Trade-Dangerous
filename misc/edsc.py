@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
+from collections import defaultdict
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -138,6 +139,50 @@ class StarSubmission(object):
             raise SubmissionError("Invalid server response: " + resp)
 
 
+def annotate_submission_response(r):
+    if not isinstance(r, dict) or 'status' not in r:
+        print("Unknown EDSC response: {}".format(r))
+        return
+    status = r['status']
+    result = status['input'][0]['status']
+    if result['statusnum'] != 0:
+        print("*** {} (#{})".format(result['msg'], result['statusnum']))
+    systems = defaultdict(list)
+    for sysEnt in status['system']:
+        sysName = sysEnt['system'].upper()
+        systems[sysName] += [
+            "{} (#{})".format(
+                sysEnt['status']['msg'],
+                sysEnt['status']['statusnum'],
+            )
+        ]
+    for triEnt in status['trilat']:
+        sysName = triEnt['system'].upper()
+        triStatus = triEnt['status']
+        triStatusNum = triStatus['statusnum']
+        if triStatusNum == 401:
+            coord = triEnt['coord']
+            msg = "Position [{},{},{}]".format(
+                coord['x'], coord['y'], coord['z']
+            )
+        else:
+            msg = "{} (#{})".format(triStatus['msg'], triStatusNum)
+        if not msg in systems[sysName]:
+            systems[sysName].append(msg)
+    for sys, vals in systems.items():
+        print("{}: {}.".format(sys, '. '.join(vals)))
+    for distEnt in status['dist']:
+        lhsName = distEnt['system1'].upper()
+        rhsName = distEnt['system2'].upper()
+        print("{}->{}: {} (#{}). Dist={}".format(
+            lhsName, rhsName,
+            distEnt['status']['msg'],
+            distEnt['status']['statusnum'],
+            distEnt['dist'],
+
+        ))
+
+
 if __name__ == "__main__":
     edsq = StarQuery(test=False, confidence=0)
     data = edsq.fetch()
@@ -153,4 +198,3 @@ if __name__ == "__main__":
 
     for sysinfo in systems:
         print(sysinfo['id'], sysinfo['name'], sysinfo['coord'], sysinfo['createdate'])
-

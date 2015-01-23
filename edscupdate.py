@@ -31,10 +31,34 @@ or "q" to stop recording.
 import tradedb
 import math
 import misc.edsc
+import os
 import re
 import sys
 
 from tkinter import Tk
+
+class UsageError(Exception):
+    pass
+
+
+def get_cmdr(tdb):
+    try:
+        return os.environ['CMDR']
+    except KeyError:
+        pass
+
+    if 'SHLVL' not in os.environ and platform.system() == 'Windows':
+        how = 'set CMDR="yourname"'
+    else:
+        how = 'export CMDR="yourname"'
+
+    raise UsageError(
+        "No 'CMDR' variable set.\n"
+        "You can set an environment variable by typing:\n"
+        "  "+how+"\n"
+        "at the command/shell prompt."
+    )
+
 
 r = Tk()
 r.withdraw()
@@ -45,6 +69,8 @@ if len(sys.argv) < 2 or len(sys.argv) > 3:
 
 tdb = tradedb.TradeDB()
 date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
+
+cmdr = get_cmdr(tdb)
 
 startSys = tdb.lookupPlace(sys.argv[1])
 ox, oy, oz = startSys.posX, startSys.posY, startSys.posZ
@@ -65,9 +91,11 @@ edsq = misc.edsc.StarQuery(
 data = edsq.fetch()
 
 ignore = [
+    'ADAM NAPAT',
     'AN SEXSTANS',
     'ALRAI SECTOR EL-Y C3-1',
     'ALRAI SECTOR OI-T B3-6 A', # No 'A' at the end
+    'COL 285 SECTOR ZJ-Y B140-1',
     'CORE SYS SECTOR HH-V B2-7',
     'CRU7CIS SECTOR EQ-Y B2',
     'CRUCIS SECTO GB-X B1-0',
@@ -87,6 +115,7 @@ ignore = [
     'ROSS 41 A',
     'SCORPII SECTOR KB-X A1-01', # should be SCORPII SECTOR KB-X A1-0
     'WISE 0410+ 1502', # should be WISE 0410+1502
+    'WISE 2200-3628',
     'WOLF 851 A',
     'ZAGARAS',
 ]
@@ -129,6 +158,9 @@ systems = [
 ]
 print("{} changes".format(len(systems)))
 
+if len(systems) > 0:
+    print("At the prompt enter y, n or q. Default is n")
+
 with open("new.systems.csv", "w") as output:
     try:
         for sysinfo in systems:
@@ -162,16 +194,27 @@ with open("new.systems.csv", "w") as output:
                                 name, x, y, z,
                                 mname, mx, my, mz
                     ), file=sys.stderr)
+                distance = float("{:.2f}".format(dist(x, y, z)))
                 paste(name.lower())
                 prompt = "'{}'".format(name)
-                prompt += " ({:.2f}ly)".format(dist(x, y, z))
+                prompt += " ({:.2f}ly)".format(distance)
 
-                ok = input(prompt+": y, n or q (default 'n')? ".format(name))
+                ok = input(prompt+"? ".format(name))
                 if ok.lower() == 'q':
                     break
                 if ok.lower() == 'y':
                     print("'{}',{},{},{},'Release 1.00-EDStar','{}'".format(
                         name, x, y, z, created,
                     ), file=output)
+                    print("Submitting distance")
+                    sub = misc.edsc.StarSubmission(
+                        star=name.upper(),
+                        commander=cmdr,
+                        distances={startSys.name(): distance},
+                    )
+                    r = sub.submit()
+                    misc.edsc.annotate_submission_response(r)
+                    print()
     except KeyboardInterrupt:
         print("^C")
+

@@ -25,7 +25,7 @@ import re
 import sys
 import tradedb
 
-from misc.edsc import StarSubmission
+from misc.edsc import StarSubmission, annotate_submission_response
 from tkinter import Tk
 
 try:
@@ -354,13 +354,16 @@ CHOOSE YOUR OWN: (leave blank to stop)
     )
     resp = sub.submit()
 
-    status = resp['status']['input'][0]['status']
-    if status['statusnum'] == 0:
-        print(status['msg'])
-    else:
-        print("ERROR: {} ({})".format(
-            status['msg'], status['statusnum'],
-        ))
+    try:
+        annotate_submission_response(resp)
+    except:
+        status = resp['status']['input'][0]['status']
+        if status['statusnum'] == 0:
+            print(status['msg'])
+        else:
+            print("ERROR: {} ({})".format(
+                status['msg'], status['statusnum'],
+            ))
 
 
 if __name__ == "__main__":
