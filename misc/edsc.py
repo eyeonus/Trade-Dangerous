@@ -162,15 +162,13 @@ def annotate_submission_response(r):
         triStatusNum = triStatus['statusnum']
         if triStatusNum == 401:
             coord = triEnt['coord']
-            systems[sysName] += [
-                "[{},{},{}]".format(
-                    coord['x'], coord['y'], coord['z']
-                )
-            ]
+            msg = "Position [{},{},{}]".format(
+                coord['x'], coord['y'], coord['z']
+            )
         else:
-            systems[sysName] += [
-                "{} (#{})".format(triStatus['msg'], triStatusNum)
-            ]
+            msg = "{} (#{})".format(triStatus['msg'], triStatusNum)
+        if not msg in systems[sysName]:
+            systems[sysName].append(msg)
     for sys, vals in systems.items():
         print("{}: {}.".format(sys, '. '.join(vals)))
     for distEnt in status['dist']:
