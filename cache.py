@@ -319,7 +319,7 @@ ocrDerp = re.compile(r'''(
     \bAN[O3]RA[O3]E\b |
     VVELL\b |
     [O0]IRAC\b
-)\b''', flags=re.X)
+)''', flags=re.X)
 
 
 def checkForOcrDerp(tdenv, systemName, stationName):
