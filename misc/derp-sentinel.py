@@ -10,8 +10,9 @@ for sys in tdb.systemByID.values():
         names.add(stn.name().upper())
 
 mutators = {
-        'D': [ 'O', '0' ],
-        'W': [ 'VV' ],
+        'D': [ 'O', '0', ],
+        'W': [ 'VV', ],
+        'R': [ 'IT' ],
 }
 
 def mutate(text, pos):
@@ -19,11 +20,11 @@ def mutate(text, pos):
         char = text[i]
         if char not in mutators:
             continue
-        yield from mutate(text, i+1)
+        bef, aft = text[:i], text[i+1:]
         for mutant in mutators[char]:
-            t2 = text[:i] + mutant + text[i+1:]
-            yield from mutate(t2, i+1)
+            t2 = bef + mutant + aft
             yield t2
+            yield from mutate(str(t2), i+len(mutant))
 
 for name in names:
     for mutant in mutate(name, 0):
