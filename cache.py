@@ -328,11 +328,18 @@ ocrDerp = re.compile(r'''(
     [O0]EPOT |
     \bMERE[O0] |
     \b[O0]ENN?IS |
-    BRAN[o0] |
+    \bBRAN[o0] |
     W[O0]{3} |
     GO(D[O0]|[O0]D|[O0][O])ARD |
     GO[DO0]{2}AR[O0] |
-    ORBRAL\b
+    ORBRAL\b |
+    \bJOR[O0]A |
+    \bST[O0]ART |
+    \bQUIMPY |
+    \bVAR[O0]E |
+    EN[^T]?ERPRISE |
+    EN..ERPRISE |
+    \bMUR[O0]O
 )''', flags=re.X)
 
 
