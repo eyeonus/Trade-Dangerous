@@ -136,7 +136,7 @@ stations = {
     "MISISTURE/GELFANO OOCK":               "Gelfand Dock",
     "MOKOSH/LUBEN ORBITAL":                 "Lubin Orbital",
     "NLTT 49528/OCONNORLANQNG":             "O'Connor Landing",
-    "NLTT 49528/O‹CONNOR LANDING":          "O'Connor Landing",
+    "NLTT 49528/O‹CONNOR LANDING":        "O'Connor Landing",
     "OCSHODHIS/LLOYD OOCK":                 "Lloyd Dock",
     "ONGKAMPAN/PATTERSON STATION:274":      "Patterson Station",
     "OPALA/ZAMK PLATFORM":                  "Zamka Platform",
