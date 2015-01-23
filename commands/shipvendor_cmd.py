@@ -9,7 +9,6 @@ from tradedb import TradeDB
 # Original by Dirk Wilhelm
 
 import csvexport
-import difflib
 import re
 import sys
 
