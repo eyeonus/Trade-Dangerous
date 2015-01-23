@@ -94,6 +94,7 @@ stations = {
     "MINJANGO/OENNING PLATFORM":            "Denning Platform",
     "MISISTURE/GELFANO DOCK":               DELETED,
     "MOKOSH/LUBEN ORBITAL":                 "Lubin Orbital",
+    "NLTT 49528/OCONNORLANQNG":             "O'Connor Landing",
     "NLTT 49528/O‹CONNOR LANDING":        "O'Connor Landing",
     "ONGKAMPAN/PATTERSON STATION:           274": "Patterson Station",
     "OPALA/ZAMK PLATFORM":                  "Zamka Platform",
