@@ -339,7 +339,8 @@ ocrDerp = re.compile(r'''(
     \bVAR[O0]E |
     EN[^T]?ERPRISE |
     EN..ERPRISE |
-    \bMUR[O0]O
+    \bMUR[O0]O |
+    \bBAR[O0]E
 )''', flags=re.X)
 
 
