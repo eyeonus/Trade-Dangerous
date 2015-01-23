@@ -312,13 +312,27 @@ ocrDerp = re.compile(r'''(
     REE[O0] |
     \BDOCK\b |
     \BTERMINAL\b |
-    \bKI[O0] |
+    \bKID?[O0] |
     \b[O3]E\b |
     \bANDRA[O3]E\b |
     \bAN[O3]RADE\b |
     \bAN[O3]RA[O3]E\b |
     VVELL\b |
-    [O0]IRAC\b
+    [O0]IRAC\b |
+    \bVV |
+    \b[O0]ER?\b |
+    \b[O0]RAKE |
+    HAR[O0]T\b |
+    \b[O0]ARK |
+    \b[O0]DAM |
+    [O0]EPOT |
+    \bMERE[O0] |
+    \b[O0]ENN?IS |
+    BRAN[o0] |
+    W[O0]{3} |
+    GO(D[O0]|[O0]D|[O0][O])ARD |
+    GO[DO0]{2}AR[O0] |
+    ORBRAL\b
 )''', flags=re.X)
 
 
@@ -389,6 +403,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         tdenv.DEBUG0("NEW STATION: {}", facility)
 
+        if checkForOcrDerp(tdenv, systemName, stationName):
+            stationID = DELETED
+            return
+
         # Make sure it's valid.
         try:
             stationID = stationByName[facility]
@@ -396,9 +414,6 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             stationID = -1
 
         if stationID < 0:
-            if checkForOcrDerp(tdenv, systemName, stationName):
-                stationID = DELETED
-                return
             corrected = True
             try:
                 correctName = corrections.systems[systemName]
