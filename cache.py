@@ -342,7 +342,9 @@ ocrDerp = re.compile(r'''(
     \bMUR[O0]O |
     \bBAR[O0]E |
     \bBALLAR[O0] |
-    \b[O0]REYER\b
+    \b[O0]REYER\b |
+    \bEDWAR[O0] |
+    \bE[O0]WAR[DO0]
 )''', flags=re.X)
 
 
@@ -389,6 +391,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     items, buys, sells = [], [], []
 
     warnings = 0
+    localAdd = 0
 
     def ignoreOrWarn(error):
         nonlocal warnings
@@ -402,7 +405,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     def changeStation(matches):
         nonlocal categoryID, facility, stationID
-        nonlocal processedStations, processedItems
+        nonlocal processedStations, processedItems, localAdd
 
         ### Change current station
         categoryID = None
@@ -475,6 +478,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 tdenv.NOTE("Added local station placeholder for {} (#{})",
                         facility, stationID
                 )
+                localAdd += 1
 
         if stationID < 0:
             stationID = DELETED
@@ -674,6 +678,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     numSys = len(processedSystems)
     numStn = len(processedStations)
+
+    if localAdd > 0:
+        tdenv.NOTE("Placeholder statiosn are added to the local DB only (not the .CSV).")
+        tdenv.NOTE("Use 'trade.py export --table Station' if you /need/ to persist them.")
 
     return warnings, items, buys, sells, numSys, numStn
 
