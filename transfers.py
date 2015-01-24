@@ -114,10 +114,12 @@ def download(
             fh.write(line.encode())
             fetched += len(line)
 
-        # Use the 'while True' approach so that we always print the
-        # download status including, especially, the 100% report.
-        while True:
-            if not cmdenv.quiet:
+        if cmdenv.quiet:
+            fh.write(f.read())
+        else:
+            # Use the 'while True' approach so that we always print the
+            # download status including, especially, the 100% report.
+            while True:
                 duration = time.time() - started
                 if bytes and duration >= 1:
                     # estimated bytes per second
@@ -137,14 +139,14 @@ def download(
                                 len=maxBytesLen
                 ), end='\r')
 
-            if fetched >= bytes:
-                if not cmdenv.quiet:
-                    print()
-                break
+                if fetched >= bytes:
+                    if not cmdenv.quiet:
+                        print()
+                    break
 
-            chunk = f.read(chunkSize)
-            fetched += len(chunk)
-            fh.write(chunk)
+                chunk = f.read(chunkSize)
+                fetched += len(chunk)
+                fh.write(chunk)
 
     # Swap the file into place
     if backup:
