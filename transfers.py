@@ -5,6 +5,7 @@ from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import math
 import time
 import urllib.error
 
@@ -30,7 +31,7 @@ def makeUnit(value):
     return None
     
 
-def rateVal(bytes, started):
+def rateVal(bytes, duration):
     """
     Determine the rate at which data has been transferred.
 
@@ -41,10 +42,9 @@ def rateVal(bytes, started):
         The time.time() when the transfer started.
     """
 
-    now = time.time()
-    if bytes == 0 or now <= started:
+    if bytes == 0 or duration <= 0:
         return "..."
-    units = (makeUnit(bytes / (now - started))+"/s") or "FAST!"
+    units = (makeUnit(bytes / (duration))+"/s") or "FAST!"
     return units
 
 
@@ -101,8 +101,7 @@ def download(
     fetched = 0
     started = time.time()
 
-    # Fetch four memory pages at a time
-    chunkSize = 4096 * 4
+    chunkSize = 4096 * 16
 
     tmpPath = Path(localFile + ".dl")
     actPath = Path(localFile)
@@ -119,6 +118,13 @@ def download(
         # download status including, especially, the 100% report.
         while True:
             if not cmdenv.quiet:
+                duration = time.time() - started
+                if bytes and duration >= 1:
+                    # estimated bytes per second
+                    rate = math.ceil(bytes / duration)
+                    # but how much can we download in 1/10s
+                    burstSize = rate / 10
+                    chunkSize += math.ceil((burstSize - chunkSize) * 0.7)
                 print("{}: "
                         "{:>{len}n}/{:>{len}n} bytes "
                         "| {:>10s} "
@@ -126,7 +132,7 @@ def download(
                         .format(
                                 localFile,
                                 fetched, bytes,
-                                rateVal(fetched, started),
+                                rateVal(fetched, duration),
                                 (fetched * 100 / bytes),
                                 len=maxBytesLen
                 ), end='\r')
