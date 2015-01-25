@@ -63,26 +63,13 @@ standardStars = [
 
 outlierStars = [
     "1 AURIGAE",
-    "2MASS J21371591+5726591",
     "64 LEONIS",
-    "AUCOFS UZ-E C28-11",
     "BETELGEUSE",
-    "BLU EUQ TJ-Q C5-6",
-    "DROJO DX-F C14",
-    "ELEPHANT'S TRUNK SECTOR LS-T B3-0",
-    "GM CEPHEI",
     "HIP 24766",
     "HR 1327",
-    "HYPIAE BRUE EM-L D8-0",
-    "IORASP SP-G D10-0",
-    "NGC 3199 SECTOR MC-V C2-5",
     "PEPPER",
-    "PHIPOEA DC-B C1-4278",
+    "BOB",
     "SADR",
-    "SMOJAI HA-H B39-0",
-    "SYNUEFAI XI-B D1",
-    "VV CEPHEI",
-    "VY CANIS MAJORIS",
 ]
 
 
