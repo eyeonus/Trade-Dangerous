@@ -690,7 +690,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     numStn = len(processedStations)
 
     if localAdd > 0:
-        tdenv.NOTE("Placeholder statiosn are added to the local DB only (not the .CSV).")
+        tdenv.NOTE("Placeholder stations are added to the local DB only (not the .CSV).")
         tdenv.NOTE("Use 'trade.py export --table Station' if you /need/ to persist them.")
 
     return warnings, items, buys, sells, numSys, numStn
