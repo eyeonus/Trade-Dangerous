@@ -344,7 +344,8 @@ ocrDerp = re.compile(r'''(
     \bBALLAR[O0] |
     \b[O0]REYER\b |
     \bEDWAR[O0] |
-    \bE[O0]WAR[DO0]
+    \bE[O0]WAR[DO0] |
+    III
 )''', flags=re.X)
 
 
