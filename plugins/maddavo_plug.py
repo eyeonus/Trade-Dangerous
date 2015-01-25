@@ -180,7 +180,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
                 cacheNeedsRebuild = True
             # Download 
-            if lastRunDays < 1.9:
+            if lastRunDays < 3/24:
+                priceFile = "prices-3h.asp"
+            elif lastRunDays < 1.9:
                 priceFile = "prices-2d.asp"
             else:
                 if lastRunDays < 99:
