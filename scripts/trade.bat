@@ -56,6 +56,6 @@ if "%lightyears%"=="" set lightyears=%DEFAULT_LIGHTYEARS%
 if "%hops%"=="" set hops=%DEFAULT_HOPS%
 if "%jumps%"=="" set jumps=%DEFAULT_JUMPS%
 if "%age%"=="" set age=%DEFAULT_AGE%
-..\trade.py run --cap=%capacity% --ly=%lightyears% -vvv --cr=%credits% --fr=%location% -MD=%age% --hops %hops% --jum %jumps%
+..\trade.py run --cap=%capacity% --ly=%lightyears% -vvv --cr=%credits% --fr="%location%" -MD=%age% --hops %hops% --jum %jumps%
 pause
 goto menu
