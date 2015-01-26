@@ -1895,6 +1895,6 @@ def describeAge(ageInSeconds):
     if days < 90:
         return str(days) + " days"
 
-    months = int(months / 31)
+    months = int(days / 31)
     return str(months) + " mths"
 
