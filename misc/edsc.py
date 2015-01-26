@@ -264,8 +264,8 @@ class StarSubmissionResult(object):
 
         if self.errors:
             text += "+Problems:\n"
-            errors = sorted(self.errors, key=lambda e: e.rhs)
-            errors.sort(key=lambda e: e.lhs)
+            errors = sorted(self.errors, key=lambda e: e.rhs or "")
+            errors.sort(key=lambda e: e.lhs or "")
             errors.sort(key=lambda e: e.code)
             for err in errors:
                 text += "|- {:.<30s} #{} {}".format(
