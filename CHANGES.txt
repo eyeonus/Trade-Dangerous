@@ -2,6 +2,21 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.8.1 Jan 25 2015
+. (kfsone) Additional rules to prevent data pollution (ocr derp protection),
+. (kfsone) Support for maddavo's "3 hour" prices file,
+. (kfsone) Changed how downloads work to massively improve download speeds,
+. (kfsone) Improvements to the EDSC tools,
+. (kfsone) "First time" banner explaining the maddavo import plugin,
+. (kfsone) Fixed "shipvendor" command doing a poor job of finding stations,
+. (kfsone) "submit-distances" will now prompt you to correct distances that
+        EDSC reports as needing confirmation,
+. (kfsone) Fixed a crash when data was > 1 month old,
+. (kfsone) (API) Added a helper for clipboarding data,
+. (kfsone) (API) Added misc.edsc.StarSubmissionResult,
+. (kfsone) (API) Cleaned up various pieces of code documentation,
++ Data: Systems, Stations, Ships, lots of corrections/deletions too,
+
 v6.8.0 Jan 19 2015
 . (Dirk Wilhelm/kfsone) Added 'shipvendor' command,
 . (kfsone) Issue #135 show data age in checklist / on mfd

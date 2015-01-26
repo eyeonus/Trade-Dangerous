@@ -30,12 +30,12 @@ or "q" to stop recording.
 
 import tradedb
 import math
+import misc.clipboard
 import misc.edsc
 import os
 import re
 import sys
 
-from tkinter import Tk
 
 class UsageError(Exception):
     pass
@@ -60,8 +60,10 @@ def get_cmdr(tdb):
     )
 
 
-r = Tk()
-r.withdraw()
+if 'DEBUG' in os.environ or 'TEST' in os.environ:
+    testMode = True
+else:
+    testMode = False
 
 if len(sys.argv) < 2 or len(sys.argv) > 3:
     print("Usage: {} <origin system> [date]".format(sys.argv[0]))
@@ -84,7 +86,7 @@ if len(sys.argv) > 2:
 print("start date: {}".format(date), file=sys.stderr)
 
 edsq = misc.edsc.StarQuery(
-    test=False,
+    test=testMode,
     confidence=2,
     date=date,
     )
@@ -92,11 +94,12 @@ data = edsq.fetch()
 
 ignore = [
     'ADAM NAPAT',
-    'AN SEXSTANS',
     'ALRAI SECTOR EL-Y C3-1',
     'ALRAI SECTOR OI-T B3-6 A', # No 'A' at the end
+    'AN SEXSTANS',
     'COL 285 SECTOR ZJ-Y B140-1',
     'CORE SYS SECTOR HH-V B2-7',
+    'CORE SYS SECTOR WO-R A 4-3',
     'CRU7CIS SECTOR EQ-Y B2',
     'CRUCIS SECTO GB-X B1-0',
     'CRUCIS SECTOR FM-V B2-O',
@@ -128,14 +131,12 @@ if edsq.status['statusnum'] != 0:
 
 date = data['date']
 systems = data['systems']
-
-def paste(text):
-    r.clipboard_clear()
-    r.clipboard_append(text.lower())
+clip = misc.clipboard.SystemNameClip()
 
 
 def dist(x, y, z):
     return math.sqrt((ox-x)**2 + (oy-y)**2 + (oz-z)**2)
+
 
 def ischange(sysinfo):
     name = sysinfo['name'] = sysinfo['name'].upper()
@@ -153,6 +154,7 @@ def ischange(sysinfo):
     sysinfo['place'] = place
     return True
 
+
 systems = [
     sysinfo for sysinfo in systems if ischange(sysinfo)
 ]
@@ -160,8 +162,13 @@ print("{} changes".format(len(systems)))
 
 if len(systems) > 0:
     print("At the prompt enter y, n or q. Default is n")
+    print(
+        "To correct a typo'd name that has the correct distance, "
+        "use =correct name"
+    )
+    print()
 
-with open("new.systems.csv", "w") as output:
+with open("new.systems.csv", "a") as output:
     try:
         for sysinfo in systems:
             name = sysinfo['name']
@@ -195,26 +202,37 @@ with open("new.systems.csv", "w") as output:
                                 mname, mx, my, mz
                     ), file=sys.stderr)
                 distance = float("{:.2f}".format(dist(x, y, z)))
-                paste(name.lower())
+                clip.copy_text(name.lower())
                 prompt = "'{}'".format(name)
                 prompt += " ({:.2f}ly)".format(distance)
 
                 ok = input(prompt+"? ".format(name))
                 if ok.lower() == 'q':
                     break
+                if ok.startswith('='):
+                    name = ok[1:].strip().upper()
+                    ok = 'y'
+                    with open("data/extra-stars.txt", "w") as fh:
+                        print(name, file=fh)
+                        print("Added to data/extra-stars.txt")
                 if ok.lower() == 'y':
                     print("'{}',{},{},{},'Release 1.00-EDStar','{}'".format(
                         name, x, y, z, created,
                     ), file=output)
-                    print("Submitting distance")
                     sub = misc.edsc.StarSubmission(
                         star=name.upper(),
                         commander=cmdr,
                         distances={startSys.name(): distance},
+                        test=testMode,
                     )
                     r = sub.submit()
-                    misc.edsc.annotate_submission_response(r)
-                    print()
+                    result = misc.edsc.StarSubmissionResult(
+                        star=name.upper(),
+                        response=r,
+                    )
+
+                    print(str(result))
+
     except KeyboardInterrupt:
         print("^C")
 
