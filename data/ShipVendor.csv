@@ -248,6 +248,8 @@ unq:!name@System.system_id,unq:name@Station.station_id,unq:name@Ship.ship_id
 'KANOS','Geston Ring','Python'
 'KANOS','Geston Ring','Sidewinder'
 'KANOS','Geston Ring','Viper'
+'KAPPA FORNACIS','Harvestport','Cobra'
+'KAPPA FORNACIS','Harvestport','Eagle'
 'KRUGER 60','Kepler Gateway','Cobra'
 'KRUGER 60','Kepler Gateway','Dropship'
 'KRUGER 60','Kepler Gateway','Eagle'
