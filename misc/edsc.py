@@ -224,7 +224,8 @@ class StarSubmissionResult(object):
             if code == 401:
                 try:
                     system = self.systems[sysName]
-                    assert system[1] is None
+                    if system[1] is not None:
+                        continue
                 except KeyError:
                     system = (code, None)
                 assert system[1] is None
