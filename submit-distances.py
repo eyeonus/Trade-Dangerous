@@ -255,22 +255,10 @@ def submit_distances(system, cmdr, distances):
     )
     resp = sub.submit()
 
-    try:
-        result = StarSubmissionResult(star=system, response=resp)
-        print(str(result))
-    except Exception as e:
-        print("Error parsing submission: {}".format(str(e)))
-        status = resp['status']['input'][0]['status']
-        if status['statusnum'] == 0:
-            print(status['msg'])
-            print()
-        else:
-            print("ERROR: {} ({})".format(
-                status['msg'], status['statusnum'],
-            ))
-    else:
-        if result.valid and result.recheck:
-            return list(result.recheck.keys())
+    result = StarSubmissionResult(star=system, response=resp)
+    print(str(result))
+    if result.valid and result.recheck:
+        return list(result.recheck.keys())
     return None
 
 
