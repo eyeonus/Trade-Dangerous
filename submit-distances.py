@@ -63,39 +63,13 @@ standardStars = [
 
 outlierStars = [
     "1 AURIGAE",
-    "103 AQUARII",
-    "2MASS J21371591+5726591",
-    "52 PI AQUILAE",
     "64 LEONIS",
-    "8 LEONIS",
-    "AUCOFS UZ-E C28-11",
-    "AUCOFS WL-J D10-28",
     "BETELGEUSE",
-    "BLOO DRYE QA-C B33-5",
-    "BLU EUQ TJ-Q C5-6",
-    "CHRAICHOOE TU-M D8-0",
-    "DROJO DX-F C14",
-    "DRYEAE AEC HM-C D13-0",
-    "ELEPHANT'S TRUNK SECTOR LS-T B3-0",
-    "EZ ORIONIS",
-    "GM CEPHEI",
-    "HD 133948",
     "HIP 24766",
-    "HIP 96375",
     "HR 1327",
-    "HR 2028",
-    "HYPIAE BRUE EM-L D8-0",
-    "IC 1396 SECTOR YJ-Z D10",
-    "IORASP SP-G D10-0",
-    "KY CYGNI",
-    "NGC 3199 SECTOR MC-V C2-5",
-    "NORTH AMERICA SECTOR IR-W D1-81",
-    "PHIPOEA DC-B C1-4278",
+    "PEPPER",
+    "BOB",
     "SADR",
-    "SMOJAI HA-H B39-0",
-    "SYNUEFAI XI-B D1",
-    "VV CEPHEI",
-    "VY CANIS MAJORIS",
 ]
 
 
@@ -137,7 +111,7 @@ added to the 'outlier stars' in future runs.
 
 Finally you'll be asked to review the data you've entered and, if it
 looks good, it will be submitted to EDSC.
-"""
+""".format(sys.argv[0])
         )
 
     systemName = ' '.join(sys.argv[1:]).upper()
@@ -198,14 +172,6 @@ def get_outliers():
     return random.sample(list(outliers), len(outliers))
 
 
-def add_extra_star(name):
-    try:
-        with open("data/extra-stars.txt", "a") as output:
-            print(name, file=output)
-    except FileNotFoundError:
-        pass
-
-
 def paste_for_ed(tkroot, text):
     tkroot.clipboard_clear()
     tkroot.clipboard_append(text.lower())
@@ -213,6 +179,12 @@ def paste_for_ed(tkroot, text):
 
 def get_distances(tkroot, distances, stars):
     for star in stars:
+        # Check it's not already in the list
+        star = star.upper()
+        for d in distances:
+            if d['name'] == star:
+                continue
+
         paste_for_ed(tkroot, star)
 
         dist = input("Distance to {}: ".format(star))
@@ -240,6 +212,19 @@ def check_system(tdb, tdbSys, name):
     print("KNOWN SYSTEM: {:.2f}ly".format(
         math.sqrt(tdbSys.distToSq(system))
     ))
+
+
+def add_extra_stars(extraStars):
+    try:
+        with open("data/extra-stars.txt", "a") as output:
+            print(
+                "Adding stars to data/extra-stars.txt: {}".format(
+                    ', '.join(extraStars)
+            ))
+            for star in extraStars:
+                print(star, file=output)
+    except FileNotFoundError:
+        pass
 
 
 ############################################################################
@@ -305,27 +290,35 @@ CHOOSE YOUR OWN: (leave blank to stop)
   prefix the name with a '*' (e.g. *SOL).
 ===================================================
 """)
+    newOutliers = []
     while True:
         star = input("Enter star name: ")
         star = star.strip()
         if not star or star == 'q':
             break
-        if star.startswith('*'):
+        # Remove surrounding quotes
+        skipSave = False
+        while star.startswith('*'):
             skipSave = True
             star = star[1:].strip()
-        else:
-            skipSave = False
+        star = re.sub(r'^("|\')+\s*(.*)\s*\1+', r'\2', star)
+        if star.find('"') >= 0:
+            print("Invalid star name")
+            continue
+        while star.startswith('*'):
+            skipSave = True
+            star = star[1:].strip()
         star = star.upper()
         for ref in distances:
             if ref['name'] == star:
-                print("Duplicate")
+                print("'{}' is already listed.")
                 continue
         check_system(tdb, tdbSys, star)
         extras, term = get_distances(tkroot, list(), [star])
         if term != 'q' and len(extras) > 0:
             distances.extend(extras)
             if not skipSave and star not in outliers:
-                add_extra_star(star)
+                newOutliers.append(star)
 
     if not distances:
         print("No distances, no submission.")
@@ -345,6 +338,7 @@ CHOOSE YOUR OWN: (leave blank to stop)
         print("Abandoning")
         return
 
+    print()
     print("Submitting")
 
     sub = StarSubmission(
@@ -360,10 +354,13 @@ CHOOSE YOUR OWN: (leave blank to stop)
         status = resp['status']['input'][0]['status']
         if status['statusnum'] == 0:
             print(status['msg'])
+            print()
         else:
             print("ERROR: {} ({})".format(
                 status['msg'], status['statusnum'],
             ))
+
+    add_extra_stars(newOutliers)
 
 
 if __name__ == "__main__":

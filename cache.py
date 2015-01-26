@@ -99,6 +99,67 @@ $
             re.IGNORECASE + re.VERBOSE)
 
 
+ocrDerp = re.compile(r'''(
+    LAN[O0]ING |
+    [O0][O0]CK |
+    [O0]INEILL |
+    AQUIRE[O0] |
+    [O0](UTT|ALT)[O0]N |
+    8RA[DO0]LEY |
+    BRA[O0]LEY |
+    LLOY[O0] |
+    [O0]RBDAL |
+    DRB[O0]DAL |
+    [D0]RBITAL |
+    REE[O0] |
+    \BDOCK\b |
+    \BTERMINAL\b |
+    \bKID?[O0] |
+    \b[O3]E\b |
+    \bANDRA[O3]E\b |
+    \bAN[O3]RADE\b |
+    \bAN[O3]RA[O3]E\b |
+    VVELL\b |
+    [O0]IRAC\b |
+    \bVV |
+    \b[O0]ER?\b |
+    \b[O0]RAKE |
+    HAR[O0]T\b |
+    \b[O0]ARK |
+    \b[O0]DAM |
+    [O0]EPOT |
+    \bMERE[O0] |
+    \b[O0]ENN?IS |
+    \bBRAN[o0] |
+    W[O0]{3} |
+    GO(D[O0]|[O0]D|[O0][O])ARD |
+    GO[DO0]{2}AR[O0] |
+    ORBRAL\b |
+    \bJOR[O0]A |
+    \bST[O0]ART |
+    \bQUIMPY |
+    \bVAR[O0]E |
+    EN[^T]?ERPRISE |
+    EN..ERPRISE |
+    \bMUR[O0]O |
+    \bBAR[O0]E |
+    \bBALLAR[O0] |
+    \b[O0]REYER\b |
+    \bEDWAR[O0] |
+    \bE[O0]WAR[DO0] |
+    III |
+    STARON\b |
+    \BHANG[EA]R$ |
+    ^\S+HUB$ |
+    \bLEBEOEV |
+    \B(BASE|ENTE[RP]P[RP]ISE|TERMINA(L|II)|P(L|II)ANT|RELAY|ORITAL|PLATFORM|COLONY|VISION|REFINERY)$ |
+    \bBRIOGER |
+    \bJUOSON |
+    LANOER |
+    G[O0][O0]([RW]|VV)[O0I]N
+)''', flags=re.X)
+
+
 ######################################################################
 # Exception classes
 
@@ -297,53 +358,6 @@ def getItemByNameIndex(cur):
     return { name: itemID for (itemID, name) in cur }
 
 
-ocrDerp = re.compile(r'''(
-    LAN[O0]ING |
-    [O0][O0]CK |
-    [O0]INEILL |
-    AQUIRE[O0] |
-    [O0](UTT|ALT)[O0]N |
-    8RA[DO0]LEY |
-    BRA[O0]LEY |
-    LLOY[O0] |
-    [O0]RBDAL |
-    DRB[O0]DAL |
-    [D0]RBITAL |
-    REE[O0] |
-    \BDOCK\b |
-    \BTERMINAL\b |
-    \bKID?[O0] |
-    \b[O3]E\b |
-    \bANDRA[O3]E\b |
-    \bAN[O3]RADE\b |
-    \bAN[O3]RA[O3]E\b |
-    VVELL\b |
-    [O0]IRAC\b |
-    \bVV |
-    \b[O0]ER?\b |
-    \b[O0]RAKE |
-    HAR[O0]T\b |
-    \b[O0]ARK |
-    \b[O0]DAM |
-    [O0]EPOT |
-    \bMERE[O0] |
-    \b[O0]ENN?IS |
-    \bBRAN[o0] |
-    W[O0]{3} |
-    GO(D[O0]|[O0]D|[O0][O])ARD |
-    GO[DO0]{2}AR[O0] |
-    ORBRAL\b |
-    \bJOR[O0]A |
-    \bST[O0]ART |
-    \bQUIMPY |
-    \bVAR[O0]E |
-    EN[^T]?ERPRISE |
-    EN..ERPRISE |
-    \bMUR[O0]O |
-    \bBAR[O0]E
-)''', flags=re.X)
-
-
 def checkForOcrDerp(tdenv, systemName, stationName):
     if ocrDerp.search(stationName):
         tdenv.NOTE(
@@ -387,6 +401,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     items, buys, sells = [], [], []
 
     warnings = 0
+    localAdd = 0
 
     def ignoreOrWarn(error):
         nonlocal warnings
@@ -400,7 +415,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     def changeStation(matches):
         nonlocal categoryID, facility, stationID
-        nonlocal processedStations, processedItems
+        nonlocal processedStations, processedItems, localAdd
 
         ### Change current station
         categoryID = None
@@ -473,6 +488,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 tdenv.NOTE("Added local station placeholder for {} (#{})",
                         facility, stationID
                 )
+                localAdd += 1
 
         if stationID < 0:
             stationID = DELETED
@@ -672,6 +688,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     numSys = len(processedSystems)
     numStn = len(processedStations)
+
+    if localAdd > 0:
+        tdenv.NOTE("Placeholder stations are added to the local DB only (not the .CSV).")
+        tdenv.NOTE("Use 'trade.py export --table Station' if you /need/ to persist them.")
 
     return warnings, items, buys, sells, numSys, numStn
 

@@ -13,6 +13,8 @@ mutators = {
         'D': [ 'O', '0', ],
         'W': [ 'VV', ],
         'R': [ 'IT' ],
+        'L': [ 'II' ],
+        '&': [ '6' ],
 }
 
 def mutate(text, pos):
