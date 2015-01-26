@@ -2,7 +2,51 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-[work in progress]
+v6.8.1 Jan 25 2015
+. (kfsone) Additional rules to prevent data pollution (ocr derp protection),
+. (kfsone) Support for maddavo's "3 hour" prices file,
+. (kfsone) Changed how downloads work to massively improve download speeds,
+. (kfsone) Improvements to the EDSC tools,
+. (kfsone) "First time" banner explaining the maddavo import plugin,
+. (kfsone) Fixed "shipvendor" command doing a poor job of finding stations,
+. (kfsone) "submit-distances" will now prompt you to correct distances that
+        EDSC reports as needing confirmation,
+. (kfsone) Fixed a crash when data was > 1 month old,
+. (kfsone) (API) Added a helper for clipboarding data,
+. (kfsone) (API) Added misc.edsc.StarSubmissionResult,
+. (kfsone) (API) Cleaned up various pieces of code documentation,
++ Data: Systems, Stations, Ships, lots of corrections/deletions too,
+
+v6.8.0 Jan 19 2015
+. (Dirk Wilhelm/kfsone) Added 'shipvendor' command,
+. (kfsone) Issue #135 show data age in checklist / on mfd
+. (kfsone) Issue #140 explain what/why 'requests' is required,
+. (kfsone) Issue #142 "--stations" with "nav" command caused error,
+. (kfsone) Added code to fight OCR Oerp,
+. (kfsone) '--ls-max' will now also unknown (0) distances,
+. (kfsone) Added '--max-routes' for setting an absolute max on how many
+        of the top routes we use after the first hop,
+. (kfsone) Added 'submit-distances' tool for submitting EDStarCoordinator
+        star data.
+. (kfsone) Added '--prune-score' and '--prune-hops' to run; these let
+        you discard routes that are under-performing early on which
+        can make calculating longer runs more efficient.
+. (kfsone) Added "--progress" to "run" to show the current hop,
+. (kfsone) "run" and TradeCalc are much smarter about which hops
+        they will consider when using --max-age, --blackmarket, etc.
+        (big perf win)
+. (kfsone) Renamed "misc/edstarquery.py" to "misc/edsc.py"
+        - Added misc.edsc.StarSubmission
+        - Renamed misc.edsc.EDStarQuery to misc.edsc.StarQuery
+        - Changed "submit-distances" to use "StarSubmission"
+
+v6.7.0 Jan 17 2015
+. (kfsone) ".prices" import automatically creates local placeholders
+        for unknown stations when using "-i", e.g:
+            trade.py buildcache -f -i
+            trade.py import --plug=maddavo  (this plugin sets -i for you)
+. (kfsone) Added a "--ls-max" option to "run" for filtering stations
+. (kfsone) +140 Systems
 . (tKE)  "buy" sub-command now supports ship names (find a ship vendor)
 . (kfsone) Partial code/documentation cleanup
 . (kfsone) Added a "getRoute" function to TradeDB()

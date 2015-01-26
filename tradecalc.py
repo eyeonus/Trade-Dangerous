@@ -40,7 +40,7 @@ Classes:
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from collections import defaultdict
 from collections import namedtuple
-from tradedb import System, Station, Trade, TradeDB
+from tradedb import System, Station, Trade, TradeDB, describeAge
 from tradeexcept import TradeException
 
 import locale
@@ -154,9 +154,10 @@ class Route(object):
         return "%s -> %s" % (self.route[0].name(), self.route[-1].name())
 
 
+
     def detail(self, detail=0):
         """
-            Return a string describing this route to a given level of detail.
+        Return a string describing this route to a given level of detail.
         """
 
         credits = self.startCr
@@ -231,20 +232,6 @@ class Route(object):
             def decorateStation(station):
                 return station.name()
 
-        def makeAge(value):
-            value = int(value / 3600)
-            if value < 1:
-                return "<1hr"
-            if value == 1:
-                return "1hr"
-            if value < 48:
-                return str(value) + "hrs"
-            value = int(value / 24)
-            if value < 90:
-                return str(value) + "days"
-            value = int(value / 31)
-            return str(value) + "mths"
-
 
         for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
@@ -256,10 +243,10 @@ class Route(object):
                 # Are they within 30 minutes of each other?
                 if abs(trade.srcAge - trade.dstAge) <= (30*60):
                     age = max(trade.srcAge, trade.dstAge)
-                    age = makeAge(age)
+                    age = describeAge(age)
                 else:
-                    srcAge = makeAge(trade.srcAge)
-                    dstAge = makeAge(trade.dstAge)
+                    srcAge = describeAge(trade.srcAge)
+                    dstAge = describeAge(trade.dstAge)
                     age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
                         qty=qty, item=trade.name(),
@@ -624,13 +611,14 @@ class TradeCalc(object):
 
         tdb = self.tdb
         tdenv = self.tdenv
-        avoidItems = getattr(tdenv, 'avoidItems', [])
-        avoidPlaces = getattr(tdenv, 'avoidPlaces', [])
+        avoidItems = getattr(tdenv, 'avoidItems', []) or []
+        avoidPlaces = getattr(tdenv, 'avoidPlaces', []) or []
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
-        reqBlackMarket = getattr(tdenv, 'blackMarket', False)
-        credits = tdenv.credits - getattr(tdenv, 'insurance', 0)
+        reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
+        maxAge = getattr(tdenv, 'maxAge') or 0
+        credits = tdenv.credits - (getattr(tdenv, 'insurance', 0) or 0)
 
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
@@ -723,6 +711,7 @@ class TradeCalc(object):
                     maxLyPer=maxLyPer,
                     avoidPlaces=avoidPlaces,
                     maxPadSize=tdenv.padSize,
+                    maxLsFromStar=tdenv.maxLs,
                     ):
                 dstStation = dest.station
                 if dstStation is srcStation:
@@ -733,6 +722,11 @@ class TradeCalc(object):
 
                 if reqBlackMarket and dstStation.blackMarket != 'Y':
                     continue
+
+                if maxAge:
+                    stnDataAge = dstStation.dataAge
+                    if stnDataAge is None or stnDataAge > maxAge:
+                        continue
 
                 if tdenv.debug >= 1:
                     tdenv.DEBUG1("destSys {}, destStn {}, jumps {}, distLy {}",

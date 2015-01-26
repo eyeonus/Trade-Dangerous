@@ -233,12 +233,13 @@ class Station(object):
             'ID', 'system', 'dbname',
             'lsFromStar', 'blackMarket', 'maxPadSize',
             'tradingWith', 'itemCount',
+            'dataAge',
     )
 
     def __init__(
             self, ID, system, dbname,
             lsFromStar, blackMarket, maxPadSize,
-            itemCount,
+            itemCount, dataAge,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = lsFromStar
@@ -246,6 +247,7 @@ class Station(object):
         self.maxPadSize = maxPadSize
         self.itemCount = itemCount
         self.tradingWith = None       # dict[tradingPartnerStation] -> [ available trades ]
+        self.dataAge = dataAge
         system.stations.append(self)
 
 
@@ -316,7 +318,8 @@ class Station(object):
                     "ID={}, system='{}', dbname='{}', "
                     "lsFromStar={}, "
                     "blackMarket='{}', "
-                    "maxPadSize='{}'"
+                    "maxPadSize='{}', "
+                    "dataAge={}"
                     ")".format(
                 self.ID,
                 re.escape(self.system.dbname),
@@ -324,6 +327,7 @@ class Station(object):
                 self.lsFromStar,
                 self.blackMarket,
                 self.maxPadSize,
+                self.dataAge,
         ))
 
 
@@ -967,10 +971,11 @@ class TradeDB(object):
         stmt = """
                 SELECT  station_id, system_id, name,
                         ls_from_star, blackmarket, max_pad_size,
-                        (SELECT COUNT(*)
-                            FROM StationItem
-                            WHERE station_id = Station.station_id) AS itemCount
+                        COUNT(StationItem.station_id) AS itemCount,
+                        JULIANDAY('now') - JULIANDAY(MAX(StationItem.modified))
                   FROM  Station
+                        LEFT OUTER JOIN StationItem USING (station_id)
+                 GROUP  BY 1
             """
         self.cur.execute(stmt)
         stationByID = {}
@@ -979,12 +984,12 @@ class TradeDB(object):
         for (
             ID, systemID, name,
             lsFromStar, blackMarket, maxPadSize,
-            itemCount
+            itemCount, dataAge
         ) in self.cur:
             station = Station(
                     ID, systemByID[systemID], name,
                     lsFromStar, blackMarket, maxPadSize,
-                    itemCount
+                    itemCount, dataAge
             )
             if itemCount > 0:
                 self.tradingStationCount += 1
@@ -1041,7 +1046,7 @@ class TradeDB(object):
                 lsFromStar=lsFromStar,
                 blackMarket=blackMarket,
                 maxPadSize=maxPadSize,
-                itemCount=0,
+                itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
         db.commit()
@@ -1321,7 +1326,9 @@ class TradeDB(object):
             maxLyPer=None,
             avoidPlaces=None,
             trading=False,
-            maxPadSize=None):
+            maxPadSize=None,
+            maxLsFromStar=0,
+            ):
         """
             Gets a list of the Station destinations that can be reached
             from this Station within the specified constraints.
@@ -1410,6 +1417,10 @@ class TradeDB(object):
                     continue
                 if (maxPadSize and not station.checkPadSize(maxPadSize)):
                     continue
+                if maxLsFromStar:
+                    stnLs = station.lsFromStar
+                    if stnLs <= 0 or stnLs > maxLsFromStar:
+                        continue
                 destStations.append(
                             Destination(node.system,
                                     station,
@@ -1841,4 +1852,49 @@ class TradeDB(object):
         ).translate(
                 TradeDB.trimTrans
         )
+
+
+    @staticmethod
+    def titleFixup(text):
+        """
+        Correct case in a word assuming the presence of titles/surnames,
+        including 'McDonald', 'MacNair', 'McKilroy', and cases that
+        python's title screws up such as "Smith's".
+        """
+
+        text = text.title()
+        text = re.sub(
+                r"\b(Mc)([a-z])",
+                lambda match: match.group(1) + match.group(2).upper(),
+                text
+        )
+        text = re.sub(
+                r"\b(Mac)([bcdfgjklmnpqrstvwxyz])([a-z]{4,})",
+                lambda m: m.group(1) + m.group(2).upper() + m.group(3),
+                text
+        )
+        text = re.sub(r"'S\b", "'s", text)
+
+        return text
+
+######################################################################
+# Assorted helpers
+
+def describeAge(ageInSeconds):
+    """
+    Turns an age (in seconds) into a text representation.
+    """
+    hours = int(ageInSeconds / 3600)
+    if hours < 1:
+        return "<1 hr"
+    if hours == 1:
+        return "1 hr"
+    if hours < 48:
+        return str(hours) + " hrs"
+    days = int(hours / 24)
+    if days < 90:
+        return str(days) + " days"
+
+    months = int(days / 31)
+    return str(months) + " mths"
 

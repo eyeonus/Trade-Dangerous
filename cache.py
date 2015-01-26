@@ -30,6 +30,7 @@ import prices
 import re
 import sqlite3
 import sys
+import tradedb
 
 ######################################################################
 # Regular expression patterns. Here be draegons.
@@ -98,6 +99,69 @@ $
             re.IGNORECASE + re.VERBOSE)
 
 
+ocrDerp = re.compile(r'''(
+    LAN[O0]ING |
+    [O0][O0]CK |
+    [O0]INEILL |
+    AQUIRE[O0] |
+    [O0](UTT|ALT)[O0]N |
+    8RA[DO0]LEY |
+    BRA[O0]LEY |
+    LLOY[O0] |
+    [O0]RBDAL |
+    DRB[O0]DAL |
+    [D0]RBITAL |
+    REE[O0] |
+    \BDOCK\b |
+    \BTERMINAL\b |
+    \bKID?[O0] |
+    \b[O3]E\b |
+    \bANDRA[O3]E\b |
+    \bAN[O3]RADE\b |
+    \bAN[O3]RA[O3]E\b |
+    VVELL\b |
+    [O0]IRAC\b |
+    \bVV |
+    \b[O0]ER?\b |
+    \b[O0]RAKE |
+    HAR[O0]T\b |
+    \b[O0]ARK |
+    \b[O0]DAM |
+    [O0]EPOT |
+    \bMERE[O0] |
+    \b[O0]ENN?IS |
+    \bBRAN[o0] |
+    W[O0]{3} |
+    GO(D[O0]|[O0]D|[O0][O])ARD |
+    GO[DO0]{2}AR[O0] |
+    ORBRAL\b |
+    \bJOR[O0]A |
+    \bST[O0]ART |
+    \bQUIMPY |
+    \bVAR[O0]E |
+    EN[^T]?ERPRISE |
+    EN..ERPRISE |
+    \bMUR[O0]O |
+    \bBAR[O0]E |
+    \bBALLAR[O0] |
+    \b[O0]REYER\b |
+    \bEDWAR[O0] |
+    \bE[O0]WAR[DO0] |
+    III |
+    STARON\b |
+    \BHANG[EA]R$ |
+    ^\S+HUB$ |
+    \bLEBEOEV |
+    \B(BASE|ENTE[RP]P[RP]ISE|TERMINA(L|II)|P(L|II)ANT|RELAY|ORITAL|PLATFORM|COLONY|VISION|REFINERY)$ |
+    \bBRIOGER |
+    \bJUOSON |
+    LANOER |
+    G[O0][O0]([RW]|VV)[O0I]N |
+    \bSPE([O0][DO0]|[DO0][O0])ING\b |
+    \bARCHIMEOES\b
+)''', flags=re.X)
+
+
 ######################################################################
 # Exception classes
 
@@ -158,7 +222,7 @@ class DuplicateKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
         super().__init__(fromFile, lineNo,
-                "Second occurance of {keytype} \"{keyval}\", "
+                "Second occurrance of {keytype} \"{keyval}\", "
                 "previous entry at line {prev}.".format(
                     keytype=keyType,
                     keyval=keyValue,
@@ -263,6 +327,15 @@ def parseSupply(pricesFile, lineNo, category, reading):
 def getSystemByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
+            SELECT system_id, UPPER(system.name)
+              FROM System
+        """)
+    return { name: ID for (ID, name) in cur }
+
+
+def getStationByNameIndex(cur):
+    """ Build station index in STAR/Station notation """
+    cur.execute("""
             SELECT station_id,
                     UPPER(system.name) || '/' || UPPER(station.name)
               FROM System
@@ -287,6 +360,16 @@ def getItemByNameIndex(cur):
     return { name: itemID for (itemID, name) in cur }
 
 
+def checkForOcrDerp(tdenv, systemName, stationName):
+    if ocrDerp.search(stationName):
+        tdenv.NOTE(
+            "Ignoring '{}/{}' because it looks like OCR derp."
+            .format(systemName, stationName)
+        )
+        return True
+    return False
+
+
 def processPrices(tdenv, priceFile, db, defaultZero):
     """
         Yields SQL for populating the database with prices
@@ -296,8 +379,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     stationID, categoryID = None, None
 
     cur = db.cursor()
+    ignoreUnknown = tdenv.ignoreUnknown
+    quiet = tdenv.quiet
 
     systemByName = getSystemByNameIndex(cur)
+    stationByName = getStationByNameIndex(cur)
     categoriesByName = getCategoriesByNameIndex(cur)
 
     itemByName = getItemByNameIndex(cur)
@@ -317,12 +403,13 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     items, buys, sells = [], [], []
 
     warnings = 0
+    localAdd = 0
 
     def ignoreOrWarn(error):
         nonlocal warnings
-        if not tdenv.ignoreUnknown:
+        if not ignoreUnknown:
             raise error
-        if not tdenv.quiet:
+        if not quiet:
             error.category = "WARNING"
             print(error)
         warnings += 1
@@ -330,7 +417,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     def changeStation(matches):
         nonlocal categoryID, facility, stationID
-        nonlocal processedStations, processedItems
+        nonlocal processedStations, processedItems, localAdd
 
         ### Change current station
         categoryID = None
@@ -343,11 +430,14 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         # Make sure it's valid.
         try:
-            stationID = systemByName[facility]
+            stationID = stationByName[facility]
         except KeyError:
             stationID = -1
 
         if stationID < 0:
+            if checkForOcrDerp(tdenv, systemName, stationName):
+                stationID = DELETED
+                return
             corrected = True
             try:
                 correctName = corrections.systems[systemName]
@@ -370,7 +460,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 pass
             facility = systemName + '/' + stationName
             try:
-                stationID = systemByName[facility]
+                stationID = stationByName[facility]
                 tdenv.DEBUG1("Renamed: {}/{} -> {}", 
                         systemNameIn, stationNameIn,
                         facility
@@ -378,7 +468,30 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             except KeyError:
                 stationID = -1
 
-        if stationID < 0 :
+        if stationID < 0 and ignoreUnknown:
+            try:
+                systemID = systemByName[systemName]
+            except KeyError:
+                pass
+            else:
+                name = tradedb.TradeDB.titleFixup(stationName)
+                inscur = db.cursor()
+                inscur.execute("""
+                    INSERT INTO Station (
+                        system_id, name, ls_from_star, blackmarket, max_pad_size
+                    ) VALUES (
+                        ?, ?, 0, '?', '?'
+                    )
+                """, [systemID, name])
+                stationID = inscur.lastrowid
+                stationByName[facility] = stationID
+                db.commit()
+                tdenv.NOTE("Added local station placeholder for {} (#{})",
+                        facility, stationID
+                )
+                localAdd += 1
+
+        if stationID < 0:
             stationID = DELETED
             ignoreOrWarn(
                     UnknownStationError(priceFile, lineNo, facility)
@@ -576,6 +689,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     numSys = len(processedSystems)
     numStn = len(processedStations)
+
+    if localAdd > 0:
+        tdenv.NOTE("Placeholder stations are added to the local DB only (not the .CSV).")
+        tdenv.NOTE("Use 'trade.py export --table Station' if you /need/ to persist them.")
 
     return warnings, items, buys, sells, numSys, numStn
 

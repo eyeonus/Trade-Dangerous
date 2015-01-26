@@ -88,29 +88,6 @@ switches = [
 ######################################################################
 # Helpers
 
-def titleFixup(text):
-    """
-    Correct case in a word assuming the presence of titles/surnames,
-    including 'McDonald', 'MacNair', 'McKilroy', and cases that
-    python's title screws up such as "Smith's".
-    """
-
-    text = text.title()
-    text = re.sub(
-            r"\b(Mc)([a-z])",
-            lambda match: match.group(1) + match.group(2).upper(),
-            text
-    )
-    text = re.sub(
-            r"\b(Mac)([bcdfgjklmnpqrstvwxyz])([a-z]{4,})",
-            lambda m: m.group(1) + m.group(2).upper() + m.group(3),
-            text
-    )
-    text = re.sub(r"'S\b", "'s", text)
-
-    return text
-
-
 def makeConfirmationCode(base, candidates):
     """
     Makes a four-digit hex checksum of a station list.
@@ -232,7 +209,7 @@ def checkSystemAndStation(tdb, cmdenv):
     if not sysName:
         raise CommandLineError("No system name specified")
 
-    cmdenv.system, cmdenv.station = sysName, titleFixup(stnName)
+    cmdenv.system, cmdenv.station = sysName, TradeDB.titleFixup(stnName)
 
     # If we're adding a station, we need to check that the system
     # exists and that it doesn't contain a close-match for this
