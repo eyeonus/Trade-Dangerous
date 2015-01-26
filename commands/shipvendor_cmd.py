@@ -20,7 +20,7 @@ name='shipvendor'
 epilog=None
 arguments = [
     ParseArgument(
-        'station',
+        'origin',
         help='Specify the full name of the station (SYS NAME/STN NAME is also supported).',
         metavar='STATIONNAME',
         type=str,
@@ -119,10 +119,11 @@ def checkShipPresent(tdb, ship, station):
 
 def run(results, cmdenv, tdb):
 
-    try:
-        station = tdb.lookupStation(cmdenv.station)
-    except LookupError:
-        raise CommandLineError("Unrecognized Station: {}".format(cmdenv.station))
+    station = cmdenv.startStation
+    if not isinstance(station, Station):
+        raise CommandLineError("{} is a system, not a station".format(
+            station.name()
+        ))
 
     try:
         ship = tdb.lookupShip(cmdenv.ship)
