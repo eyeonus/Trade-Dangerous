@@ -8,9 +8,14 @@ import cache
 import math
 import plugins
 import re
-import tkinter
-import tkinter.filedialog as tkfd
 import transfers
+
+try:
+    import tkinter
+    import tkinter.filedialog as tkfd
+    hasTkInter = True
+except ImportError:
+    hasTkInter = False
 
 ######################################################################
 # Parser config
@@ -106,7 +111,7 @@ def run(results, cmdenv, tdb):
 
     # If the filename specified was "-" or None, then go ahead
     # and present the user with an open file dialog.
-    if not cmdenv.filename:
+    if not cmdenv.filename and hasTkInter:
         tk = tkinter.Tk()
         tk.withdraw()
         filetypes = (
