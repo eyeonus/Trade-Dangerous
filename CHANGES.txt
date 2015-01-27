@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.8.2 Jan 27 2015
+. (kfsone) Issue #148 Don't blow up horribly when tkinter is missing,
+. (kfsone) Issue #149 "nav" with --via was broken,
+. (kfsone) Typo correction in the maddavo splash (thanks, Stefan),
+
 v6.8.1 Jan 25 2015
 . (kfsone) Additional rules to prevent data pollution (ocr derp protection),
 . (kfsone) Support for maddavo's "3 hour" prices file,
