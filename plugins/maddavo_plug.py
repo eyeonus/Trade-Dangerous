@@ -133,7 +133,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "  trade.py exp --tab Station.csv\n"
                     "\n"
                     "PLEASE BE AWARE: Using a 3rd party source for your .csv "
-                    ".iles may cause conflicts when updating the "
+                    "files may cause conflicts when updating the "
                     "TradeDangerous code.\n"
                     "\n"
                     "See the group (http://kfs.org/td/group), thread "
