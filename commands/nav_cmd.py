@@ -68,9 +68,9 @@ def run(results, cmdenv, tdb):
     hops = [ [ srcSystem, None ] ]
     if cmdenv.viaPlaces:
         for hop in cmdenv.viaPlaces:
-            hops[0][1] = hop
-            hops.insert(0, [hop, None])
-    hops[0][1] = dstSystem
+            hops[-1][1] = hop
+            hops.append([hop, None])
+    hops[-1][1] = dstSystem
 
     avoiding = [
         avoid for avoid in cmdenv.avoidPlaces
