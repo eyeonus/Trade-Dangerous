@@ -158,7 +158,15 @@ ocrDerp = re.compile(r'''(
     LANOER |
     G[O0][O0]([RW]|VV)[O0I]N |
     \bSPE([O0][DO0]|[DO0][O0])ING\b |
-    \bARCHIMEOES\b
+    \bARCHIMEOES\b |
+    \bH[O0D]L[O0]ING |
+    \bM[O0D]HMAN[O0] |
+    \b[O0]ANA\b |
+    \bALEKSAN[O0]R[O0D]V\b |
+    \bCH[0D]MSKY\b |
+    \b[O0]IESEL\b |
+    [O0]{3} |
+    SCHMI[O0]T
 )''', flags=re.X)
 
 

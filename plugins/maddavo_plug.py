@@ -1,15 +1,25 @@
 import cache
+import os
 import pathlib
+import platform
 import plugins
 import re
 import time
-import tkinter
-import tkinter.messagebox as mbox
 import tradedb
 import tradeenv
 import transfers
 
 from plugins import PluginException
+
+
+hasTkInter = False
+if not 'NOTK' in os.environ and platform.system() != 'Darwin':  # focus bug
+    try:
+        import tkinter
+        import tkinter.messagebox as mbox
+        hasTkInter = True
+    except ImportError:
+        pass
 
 
 class ImportPlugin(plugins.ImportPluginBase):
@@ -97,6 +107,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                     self.prevImportDate
                 ))
 
+    def splash(self, title, text):
+        if hasTkInter:
+            tk = tkinter.Tk()
+            tk.withdraw()
+            mbox.showinfo(title, text)
+        else:
+            print("=== {} ===\n".format(title))
+            print(text)
+            input("Press return to continue: ")
+
+
     def checkForFirstTimeUse(self):
         iniFilePath = self.tdb.dataPath / "maddavo.ini"
         if not iniFilePath.is_file():
@@ -106,9 +127,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "firstUse={}".format(time.time()),
                     file=fh
                 )
-                tk = tkinter.Tk()
-                tk.withdraw()
-                mbox.showinfo(
+            self.splash(
                     "Maddavo Plugin",
                     "This plugin fetches price data from Maddavo's site, "
                     "a 3rd party crowd-source data project.\n"
