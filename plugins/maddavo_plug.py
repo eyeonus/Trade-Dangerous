@@ -13,7 +13,6 @@ from plugins import PluginException
 
 
 hasTkInter = False
-print(platform.system())
 if not 'NOTK' in os.environ and platform.system() != 'Darwin':  # focus bug
     try:
         import tkinter
