@@ -166,7 +166,11 @@ ocrDerp = re.compile(r'''(
     \bCH[0D]MSKY\b |
     \b[O0]IESEL\b |
     [O0]{3} |
-    SCHMI[O0]T
+    SCHMI[O0]T |
+    \bSAUN[O0]ER |
+    [O0]IV[E3] |
+    VIRIDN$ |
+
 )''', flags=re.X)
 
 
