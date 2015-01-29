@@ -241,7 +241,7 @@ class Station(object):
             itemCount, dataAge,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
-        self.lsFromStar = lsFromStar
+        self.lsFromStar = int(lsFromStar)
         self.blackMarket = blackMarket
         self.maxPadSize = maxPadSize
         self.itemCount = itemCount

@@ -16,8 +16,6 @@
 #  TODO: Split prices into per-system or per-station files so that
 #  we can tell how old data for a specific system is.
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 from collections import namedtuple
 from pathlib import Path
 from tradeexcept import TradeException
@@ -68,12 +66,12 @@ timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
 # <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
 qtyLevelFrag = r"""
-    unk                 # You can just write 'unknown'
-|   \?                  # alias for unknown
-|   n/a                 # alias for 0L0
-|   -                   # alias for 0L0
-|   \d+[\?LMH]          # Or <number><level> where level is L(ow), M(ed) or H(igh)
-|   0                   # alias for n/a
+    unk             # You can just write 'unknown'
+|   \?              # alias for unknown
+|   n/a             # alias for 0L0
+|   -               # alias for 0L0
+|   \d+[\?LMH]      # Or <number><level> where level is L(ow), M(ed) or H(igh)
+|   0               # alias for n/a
 |   bug
 """
 newItemPriceRe = re.compile(r"""
@@ -152,7 +150,18 @@ ocrDerp = re.compile(r'''(
     \BHANG[EA]R$ |
     ^\S+HUB$ |
     \bLEBEOEV |
-    \B(BASE|ENTE[RP]P[RP]ISE|TERMINA(L|II)|P(L|II)ANT|RELAY|ORITAL|PLATFORM|COLONY|VISION|REFINERY)$ |
+    \B(
+        BASE |
+        ENTE[RP]P[RP]ISE |
+        TERMINA(L|II) |
+        P(L|II)ANT |
+        RELAY |
+        ORBITAL |
+        PLATFORM |
+        COLONY |
+        VISION |
+        REFINERY
+    )$ |
     \bBRIOGER |
     \bJUOSON |
     LANOER |
@@ -261,7 +270,8 @@ class DeprecatedKeyError(BuildCacheBaseException):
     """
     def __init__(self, fromFile, lineNo, keyType, keyValue, newValue):
         super().__init__(fromFile, lineNo,
-                "{} '{}' is deprecated and should be replaced with '{}'.".format(
+                "{} '{}' is deprecated "
+                "and should be replaced with '{}'.".format(
                     keyType, keyValue, newValue
         ))
 
@@ -490,7 +500,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 inscur = db.cursor()
                 inscur.execute("""
                     INSERT INTO Station (
-                        system_id, name, ls_from_star, blackmarket, max_pad_size
+                        system_id, name,
+                        ls_from_star,
+                        blackmarket,
+                        max_pad_size
                     ) VALUES (
                         ?, ?, 0, '?', '?'
                     )
@@ -650,7 +663,8 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         # replace whitespace with single spaces
         if text.find("  "):
-            text = ' '.join(text.split())      # http://stackoverflow.com/questions/2077897
+            # http://stackoverflow.com/questions/2077897
+            text = ' '.join(text.split())
 
         ########################################
         ### "@ STAR/Station" lines.
@@ -703,8 +717,14 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     numStn = len(processedStations)
 
     if localAdd > 0:
-        tdenv.NOTE("Placeholder stations are added to the local DB only (not the .CSV).")
-        tdenv.NOTE("Use 'trade.py export --table Station' if you /need/ to persist them.")
+        tdenv.NOTE(
+            "Placeholder stations are added to the local DB only "
+            "(not the .CSV)."
+        )
+        tdenv.NOTE(
+            "Use 'trade.py export --table Station' "
+            "if you /need/ to persist them."
+        )
 
     return warnings, items, buys, sells, numSys, numStn
 
@@ -800,7 +820,10 @@ def deprecationCheckItem(importPath, lineNo, line):
 
 
 def processImportFile(tdenv, db, importPath, tableName):
-    tdenv.DEBUG0("Processing import file '{}' for table '{}'", str(importPath), tableName)
+    tdenv.DEBUG0(
+        "Processing import file '{}' for table '{}'",
+        str(importPath), tableName
+    )
 
     fkeySelectStr = ("("
             "SELECT {newValue}"
@@ -812,7 +835,9 @@ def processImportFile(tdenv, db, importPath, tableName):
     ignorePfx = "!"
 
     with importPath.open('rU', encoding='utf-8') as importFile:
-        csvin = csv.reader(importFile, delimiter=',', quotechar="'", doublequote=True)
+        csvin = csv.reader(
+            importFile, delimiter=',', quotechar="'", doublequote=True
+        )
         # first line must be the column names
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
@@ -848,8 +873,16 @@ def processImportFile(tdenv, db, importPath, tableName):
                 for joinRow in joinHelper:
                     helperNames = joinRow.split('@')
                     helperJoin = helperNames[1].split('.')
-                    joinTable.append( "INNER JOIN {} USING({})".format(helperJoin[0], helperJoin[1]) )
-                    joinStmt.append( "{}.{} = ?".format(helperJoin[0], helperNames[0]) )
+                    joinTable.append(
+                        "INNER JOIN {} USING({})".format(
+                            helperJoin[0], helperJoin[1]
+                        )
+                    )
+                    joinStmt.append(
+                        "{}.{} = ?".format(
+                            helperJoin[0], helperNames[0]
+                        )
+                    )
                 joinHelper = []
                 joinStmt.append("{}.{} = ?".format(splitJoin[0], colName))
                 bindColumns.append(splitJoin[1])
@@ -871,9 +904,11 @@ def processImportFile(tdenv, db, importPath, tableName):
         tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
 
         # Check if there is a deprecation check for this table.
-        deprecationFn = getattr(sys.modules[__name__],
-                                "deprecationCheck"+tableName,
-                                None)
+        deprecationFn = getattr(
+            sys.modules[__name__],
+            "deprecationCheck"+tableName,
+            None
+        )
 
         # import the data
         importCount = 0
@@ -952,22 +987,22 @@ def processImportFile(tdenv, db, importPath, tableName):
 
 def buildCache(tdb, tdenv):
     """
-        Rebuilds the SQlite database from source files.
+    Rebuilds the SQlite database from source files.
 
-        TD's data is either "stable" - information that rarely changes like Ship
-        details, star systems etc - and "volatile" - pricing information, etc.
+    TD's data is either "stable" - information that rarely changes like Ship
+    details, star systems etc - and "volatile" - pricing information, etc.
 
-        The stable data starts out in data/TradeDangerous.sql while other data
-        is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
+    The stable data starts out in data/TradeDangerous.sql while other data
+    is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
 
-        We load both sets of data into an SQLite database, after which we can
-        avoid the text-processing overhead by simply checking if the text files
-        are newer than the database.
+    We load both sets of data into an SQLite database, after which we can
+    avoid the text-processing overhead by simply checking if the text files
+    are newer than the database.
     """
 
     tdenv.NOTE(
-            "Rebuilding cache file: this may take a moment.",
-            file=sys.stderr
+        "Rebuilding cache file: this may take a moment.",
+        file=sys.stderr
     )
 
     dbPath = tdb.dbPath
@@ -994,9 +1029,15 @@ def buildCache(tdb, tdenv):
         try:
             processImportFile(tdenv, tempDB, Path(importName), importTable)
         except FileNotFoundError:
-            tdenv.DEBUG0("WARNING: processImportFile found no {} file", importName)
+            tdenv.DEBUG0(
+                "WARNING: processImportFile found no {} file", importName
+            )
         except StopIteration:
-            tdenv.NOTE("{} exists but is empty. Remove it or add the column definition line.", importName)
+            tdenv.NOTE(
+                "{} exists but is empty. "
+                "Remove it or add the column definition line.",
+                importName
+            )
 
     # Parse the prices file
     if pricesPath.exists():
