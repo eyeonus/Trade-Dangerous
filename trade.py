@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-#---------------------------------------------------------------------
+# --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
 #  I guarantee there is at least one bug neither of us knew about.
-#---------------------------------------------------------------------
+# --------------------------------------------------------------------
 # TradeDangerous :: Command Line App :: Main Module
 #
 # TradeDangerous is a powerful set of tools for traders in Frontier
@@ -29,7 +29,11 @@
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
 
 from commands import *
 from plugins import PluginException
@@ -50,23 +54,24 @@ def main(argv):
         tsc = tdb.tradingStationCount
         if tsc == 0:
             raise exceptions.NoDataError(
-                    "There is no trading data for ANY station in "
-                    "the local database. Please enter or import "
-                    "price data."
+                "There is no trading data for ANY station in "
+                "the local database. Please enter or import "
+                "price data."
             )
         if tsc == 1:
             raise exceptions.NoDataError(
-                    "The local database only contains trading data "
-                    "for one station. Please enter or import data "
-                    "for additional stations."
+                "The local database only contains trading data "
+                "for one station. Please enter or import data "
+                "for additional stations."
             )
         if tsc < 8:
             cmdenv.NOTE(
-                    "The local database only contains trading data "
-                    "for {} stations. Please enter or import data "
-                    "for additional stations.".format(
-                        tsc
-            ))
+                "The local database only contains trading data "
+                "for {} stations. Please enter or import data "
+                "for additional stations.".format(
+                    tsc
+                )
+            )
 
     results = cmdenv.run(tdb)
     if results:
@@ -105,4 +110,3 @@ if __name__ == "__main__":
         if 'EXCEPTIONS' in os.environ:
             raise e
         sys.exit(1)
-
