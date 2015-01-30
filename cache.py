@@ -169,7 +169,7 @@ ocrDerp = re.compile(r'''(
     SCHMI[O0]T |
     \bSAUN[O0]ER |
     [O0]IV[E3] |
-    VIRIDN$ |
+    VIRIDN$
 
 )''', flags=re.X)
 
