@@ -323,10 +323,6 @@ class Ship(namedtuple('Ship', [
         dbname      -- The name as present in the database
         cost        -- How many credits to buy
         stations    -- List of Stations ship is sold at.
-
-    Methods
-        name()
-            Returns the display name for the ship.
     """
 
     def name(self):
@@ -375,11 +371,6 @@ class Item(object):
         category -- Reference to the category.
         fullname -- Combined category/dbname for lookups.
         altname  -- The internal name used by the game.
-
-    Methods:
-        name()
-            Returns the display name for this Item.
-
     """
     __slots__ = ('ID', 'dbname', 'category', 'fullname', 'altname')
 
@@ -457,86 +448,6 @@ class TradeDB(object):
             Path() of the .prices file
         importTables
             List of the .csv files
-
-    Methods:
-        load([maxSystemLinkLy])
-            Reloads all data. CAUTION: Orphans pre-existing objects.
-            You can specify a maximum "link-ly" distance.
-
-        close()
-            Release lock on the database
-
-        lookupCategory(name)
-        lookupItem(name)
-        lookupSystem(name)
-        lookupStation(name)
-        lookupShip(name)
-            Look up an object name. Supports partial matches and also
-            provides ambiguity detection.
-
-        lookupPlace(name)
-            Finds a system or station that best matches a given
-            name with partial and ambiguity support, as well as
-            supporting "NAME", "@SYS", "/STN", "SYS/STN" and
-            "@SYS/STN" syntaxes.
-
-        getDB()
-            Returns an sqlite3 db object for accessing the database.
-
-        query(stmt, [binds])
-            Executes an SQL query against the database and returns a cursor.
-
-        reloadCache()
-            Check/reload data files.
-
-        systems()
-            Returns an iterator for all System objects.
-
-        addLocalSystem(name, x, y, z)
-            Adds a System to the local cache and memory copy.
-
-        genSystemsInRange(...)
-            Iterator across all System objects within a given radius
-            of the center system.
-
-        getRoute(...)
-            Finds a shortest path between two systems.
-
-        stations()
-            Returns an iterator for all Station objects.
-
-        addLocalStation(...)
-            Adds a Station to the local cache and memory copy.
-
-        updateLocalStation(...)
-            Changes one or more properties of a cache/memory Station.
-
-        getDestinations(...)
-            Finds stations that can be reached from a given origin.
-
-        ships()
-            Returns an iterator for all Ship objects.
-
-        categories()
-            Returns an iterator for all Category objects.
-
-        items()
-            Returns an iterator for all Item objects.
-
-        getAverageSelling():
-            Loads the average selling price for all items
-            (across all known data)
-
-        getAverageBuying():
-            Loads the average buying price for all items
-            (across all known data)
-
-        loadStationTrades(...):
-            Load all profitable trades out of a given station, regardless
-            of distance between stations (EXPENSIVE).
-
-        loadDirectTrades(...)
-            Loads profitable trades between two stations.
 
     Static methods:
         calculateDitance2(lx, ly, lz, rx, ry, rz)
