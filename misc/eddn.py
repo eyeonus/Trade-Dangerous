@@ -142,10 +142,14 @@ class Listener(object):
         Start a connection
         """
         # tear up the new connection first
+        if self.subscriber:
+            self.subscriber.close()
+            del self.subscriber
         self.subscriber = newsub = self.zmqContext.socket(zmq.SUB)
         newsub.setsockopt(zmq.SUBSCRIBE, b"")
         newsub.connect(self.uri)
         self.lastRecv = time.time()
+        self.lastJsData = None
 
 
     def disconnect(self):
@@ -196,6 +200,8 @@ class Listener(object):
         built-in auto-reconnection if there is nothing from the
         firehose for a period of time.
 
+        As json data is decoded, it is stored in self.lastJsData.
+
         Parameters:
             onerror
                 None or a function/lambda that takes an error
@@ -233,6 +239,7 @@ class Listener(object):
             # we reach the burst limit or we get EAGAIN.
             bursts = 0
             for _ in range(self.burstLimit):
+                self.lastJsData = None
                 try:
                     zdata = sub.recv(flags=zmq.NOBLOCK, copy=False)
                     stats['recvs'] += 1
@@ -258,6 +265,8 @@ class Listener(object):
                     if onerror:
                         onerror("json.loads: %s: %s"%(type(e), e))
                     continue
+
+                self.lastJsData = jsdata
 
                 try:
                     schema = data["$schemaRef"]
