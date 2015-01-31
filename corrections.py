@@ -92,6 +92,7 @@ stations = {
     "LP 51-17/ARCHAMBAULT HORIZONS":        DELETED,
     "LP 811-17/STJEPAN SELJAN PORT":        DELETED,
     "LP 862-184/MAYR HANGAR":               "Mayr Hanger",
+    "LTT 1349/NORIFRA PORT":                DELETED,
     "LTT 14437/BRIOGER BASE":               DELETED,
     "LTT 15449/REILLI DOCK":                "Reilly Dock",
     "LTT 16218/CHARGAFFPORT":               "Chargaff Port",
