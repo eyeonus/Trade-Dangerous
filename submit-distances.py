@@ -62,14 +62,11 @@ standardStars = [
 ]
 
 outlierStars = [
-    "1 AURIGAE",
-    "64 LEONIS",
-    "BETELGEUSE",
-    "HIP 24766",
     "HR 1327",
     "PEPPER",
     "BOB",
-    "SADR",
+    "LFT 179",
+    "LHS 259",
 ]
 
 
