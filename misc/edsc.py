@@ -362,10 +362,10 @@ class StarSubmission(object):
             raise SubmissionError("Invalid server response: " + resp)
         try:
             data = respData['d']
-            return data
         except KeyError:
             raise SubmissionError("Server Error: " + resp)
 
+        return data
 
 if __name__ == "__main__":
     edsq = StarQuery(test=False, confidence=0)
