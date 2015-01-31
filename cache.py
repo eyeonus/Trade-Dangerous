@@ -180,7 +180,8 @@ ocrDerp = re.compile(r'''(
     \bHORI\.ONS |
     C[O0D]+LNY$ |
     \bR[O0]ZH[O0]E[S5]TVENSKY |
-    \bRDZH[DO0]ESTVENSKY
+    \bRDZH[DO0]ESTVENSKY |
+    ''
 )''', flags=re.X)
 
 
