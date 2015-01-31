@@ -1,5 +1,7 @@
 import cache
+import os
 import pathlib
+import platform
 import plugins
 import re
 import time
@@ -8,6 +10,16 @@ import tradeenv
 import transfers
 
 from plugins import PluginException
+
+
+hasTkInter = False
+if not 'NOTK' in os.environ and platform.system() != 'Darwin':  # focus bug
+    try:
+        import tkinter
+        import tkinter.messagebox as mbox
+        hasTkInter = True
+    except ImportError:
+        pass
 
 
 class ImportPlugin(plugins.ImportPluginBase):
@@ -95,6 +107,60 @@ class ImportPlugin(plugins.ImportPluginBase):
                     self.prevImportDate
                 ))
 
+    def splash(self, title, text):
+        if hasTkInter:
+            tk = tkinter.Tk()
+            tk.withdraw()
+            mbox.showinfo(title, text)
+        else:
+            print("=== {} ===\n".format(title))
+            print(text)
+            input("Press return to continue: ")
+
+
+    def checkForFirstTimeUse(self):
+        iniFilePath = self.tdb.dataPath / "maddavo.ini"
+        if not iniFilePath.is_file():
+            with iniFilePath.open("w") as fh:
+                print(
+                    "[default]\n"
+                    "firstUse={}".format(time.time()),
+                    file=fh
+                )
+            self.splash(
+                    "Maddavo Plugin",
+                    "This plugin fetches price data from Maddavo's site, "
+                    "a 3rd party crowd-source data project.\n"
+                    "\n"
+                    "  http://davek.com.au/td/\n"
+                    "\n"
+                    "To use this provider you may need to download some "
+                    "additional files such as the Station.csv or System.csv "
+                    "files from this provider's site.\n"
+                    "\n"
+                    "When importing prices from this provider, TD will "
+                    "automatically add temporary, 'placeholder' entries for "
+                    "stations in the .prices file that are not in your local "
+                    "'Station.csv' file.\n"
+                    "\n"
+                    "You can silence these warnings with '-q', or you can "
+                    "refresh your Station.csv file by adding the "
+                    "'--opt=stncsv' flag periodically, or you can export the "
+                    "placeholders to your .csv file with the command:\n"
+                    "  trade.py export --table Station.csv\n"
+                    "or for short:\n"
+                    "  trade.py exp --tab Station.csv\n"
+                    "\n"
+                    "PLEASE BE AWARE: Using a 3rd party source for your .csv "
+                    "files may cause conflicts when updating the "
+                    "TradeDangerous code.\n"
+                    "\n"
+                    "See the group (http://kfs.org/td/group), thread "
+                    "(http://kfs.org/td/thread) or wiki "
+                    "(http://kfs.org/td/wiki) for more help."
+                )
+
+
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
@@ -103,6 +169,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         # to record the start time before we download. What we
         # care about is when we downloaded relative to when the
         # files were previously generated.
+
+        self.checkForFirstTimeUse()
 
         startTime = time.time()
 
@@ -131,7 +199,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
                 cacheNeedsRebuild = True
             # Download 
-            if lastRunDays < 1.9:
+            if lastRunDays < 3/24:
+                priceFile = "prices-3h.asp"
+            elif lastRunDays < 1.9:
                 priceFile = "prices-2d.asp"
             else:
                 if lastRunDays < 99:

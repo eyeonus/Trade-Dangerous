@@ -25,8 +25,8 @@ import re
 import sys
 import tradedb
 
-from misc.edsc import StarSubmission
-from tkinter import Tk
+from misc.edsc import StarSubmission, StarSubmissionResult, SubmissionError
+from misc.clipboard import SystemNameClip
 
 try:
     import requests
@@ -62,40 +62,11 @@ standardStars = [
 ]
 
 outlierStars = [
-    "1 AURIGAE",
-    "103 AQUARII",
-    "2MASS J21371591+5726591",
-    "52 PI AQUILAE",
-    "64 LEONIS",
-    "8 LEONIS",
-    "AUCOFS UZ-E C28-11",
-    "AUCOFS WL-J D10-28",
-    "BETELGEUSE",
-    "BLOO DRYE QA-C B33-5",
-    "BLU EUQ TJ-Q C5-6",
-    "CHRAICHOOE TU-M D8-0",
-    "DROJO DX-F C14",
-    "DRYEAE AEC HM-C D13-0",
-    "ELEPHANT'S TRUNK SECTOR LS-T B3-0",
-    "EZ ORIONIS",
-    "GM CEPHEI",
-    "HD 133948",
-    "HIP 24766",
-    "HIP 96375",
     "HR 1327",
-    "HR 2028",
-    "HYPIAE BRUE EM-L D8-0",
-    "IC 1396 SECTOR YJ-Z D10",
-    "IORASP SP-G D10-0",
-    "KY CYGNI",
-    "NGC 3199 SECTOR MC-V C2-5",
-    "NORTH AMERICA SECTOR IR-W D1-81",
-    "PHIPOEA DC-B C1-4278",
-    "SADR",
-    "SMOJAI HA-H B39-0",
-    "SYNUEFAI XI-B D1",
-    "VV CEPHEI",
-    "VY CANIS MAJORIS",
+    "PEPPER",
+    "BOB",
+    "LFT 179",
+    "LHS 259",
 ]
 
 
@@ -137,7 +108,7 @@ added to the 'outlier stars' in future runs.
 
 Finally you'll be asked to review the data you've entered and, if it
 looks good, it will be submitted to EDSC.
-"""
+""".format(sys.argv[0])
         )
 
     systemName = ' '.join(sys.argv[1:]).upper()
@@ -198,22 +169,15 @@ def get_outliers():
     return random.sample(list(outliers), len(outliers))
 
 
-def add_extra_star(name):
-    try:
-        with open("data/extra-stars.txt", "a") as output:
-            print(name, file=output)
-    except FileNotFoundError:
-        pass
-
-
-def paste_for_ed(tkroot, text):
-    tkroot.clipboard_clear()
-    tkroot.clipboard_append(text.lower())
-
-
-def get_distances(tkroot, distances, stars):
+def get_distances(clip, distances, stars):
     for star in stars:
-        paste_for_ed(tkroot, star)
+        # Check it's not already in the list
+        star = star.upper()
+        for d in distances:
+            if d['name'] == star:
+                continue
+
+        clip.copy_text(star)
 
         dist = input("Distance to {}: ".format(star))
         if dist == 'q':
@@ -240,6 +204,66 @@ def check_system(tdb, tdbSys, name):
     print("KNOWN SYSTEM: {:.2f}ly".format(
         math.sqrt(tdbSys.distToSq(system))
     ))
+
+
+def add_extra_stars(extraStars):
+    if not extraStars:
+        return
+    try:
+        with open("data/extra-stars.txt", "a") as output:
+            print(
+                "Adding stars to data/extra-stars.txt: {}".format(
+                    ', '.join(extraStars)
+            ))
+            for star in extraStars:
+                print(star, file=output)
+    except FileNotFoundError:
+        pass
+
+
+def submit_distances(system, cmdr, distances):
+    print()
+    print("System:", system)
+    print("Distances:")
+    for ref in distances:
+        print("  {}: {}ly".format(
+            ref['name'], ref['dist']
+        ))
+    print()
+
+    ok = input("Does this look correct (y/n)? ")
+    if ok != 'y':
+        print("Stopped")
+        return
+
+    if 'DEBUG' in os.environ or 'TEST' in os.environ:
+        testMode = True
+    else:
+        testMode = False
+
+    print()
+    print("Submitting ({})".format("TEST" if testMode else "Live"))
+
+    sub = StarSubmission(
+        star=system,
+        commander=cmdr,
+        refs=distances,
+        test=testMode,
+    )
+    resp = sub.submit()
+
+    result = StarSubmissionResult(star=system, response=resp)
+    print(str(result))
+    if result.valid and result.recheck:
+        return list(result.recheck.keys())
+    return None
+
+
+def do_rechecks(clip, system, rechecks):
+    print("\aSome systems need their distances rechecked:")
+
+    distances, term = get_distances(clip, list(), rechecks)
+    return distances
 
 
 ############################################################################
@@ -271,8 +295,7 @@ def main():
     print("The more distances you submit per star, the better.")
     print()
 
-    tkroot = Tk()
-    tkroot.withdraw()
+    clip = SystemNameClip()
 
     print()
     print("""
@@ -282,7 +305,7 @@ STANDARD STARS: (q to stop listing standard stars)
   These are stars with well-known positions.
 ===================================================
 """)
-    distances, term = get_distances(tkroot, list(), standardStars)
+    distances, term = get_distances(clip, list(), standardStars)
 
     print("""
 ===================================================
@@ -292,7 +315,7 @@ OUTLIERS: (q to stop listing outliers)
   mixed with any stars from data/extra-stars.txt.
 ===================================================
 """)
-    distances, term = get_distances(tkroot, distances, outliers)
+    distances, term = get_distances(clip, distances, outliers)
 
     print("""
 ===================================================
@@ -305,67 +328,55 @@ CHOOSE YOUR OWN: (leave blank to stop)
   prefix the name with a '*' (e.g. *SOL).
 ===================================================
 """)
+    newOutliers = []
     while True:
         star = input("Enter star name: ")
         star = star.strip()
         if not star or star == 'q':
             break
-        if star.startswith('*'):
+        # Remove surrounding quotes
+        skipSave = False
+        while star.startswith('*'):
             skipSave = True
             star = star[1:].strip()
-        else:
-            skipSave = False
+        star = re.sub(r'^("|\')+\s*(.*)\s*\1+', r'\2', star)
+        if star.find('"') >= 0:
+            print("Invalid star name")
+            continue
+        while star.startswith('*'):
+            skipSave = True
+            star = star[1:].strip()
         star = star.upper()
         for ref in distances:
             if ref['name'] == star:
-                print("Duplicate")
+                print("'{}' is already listed.")
                 continue
         check_system(tdb, tdbSys, star)
-        extras, term = get_distances(tkroot, list(), [star])
+        extras, term = get_distances(clip, list(), [star])
         if term != 'q' and len(extras) > 0:
             distances.extend(extras)
             if not skipSave and star not in outliers:
-                add_extra_star(star)
+                newOutliers.append(star)
 
     if not distances:
         print("No distances, no submission.")
         return
 
-    print()
-    print("System:", system)
-    print("Distances:")
-    for ref in distances:
-        print("  {}: {}ly".format(
-            ref['name'], ref['dist']
-        ))
-    print()
+    while distances:
+        rechecks = submit_distances(system, cmdr, distances)
+        if not rechecks:
+            break
 
-    ok = input("Does this look correct (y/n)? ")
-    if ok != 'y':
-        print("Abandoning")
-        return
+        distances = do_rechecks(clip, system, rechecks)
 
-    print("Submitting")
-
-    sub = StarSubmission(
-        star=system,
-        commander=cmdr,
-        refs=distances,
-    )
-    resp = sub.submit()
-
-    status = resp['status']['input'][0]['status']
-    if status['statusnum'] == 0:
-        print(status['msg'])
-    else:
-        print("ERROR: {} ({})".format(
-            status['msg'], status['statusnum'],
-        ))
+    add_extra_stars(newOutliers)
 
 
 if __name__ == "__main__":
     try:
         main()
+    except SubmissionError as e:
+        print(str(e))
     except UsageError as e:
         print(str(e))
 
