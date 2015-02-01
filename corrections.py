@@ -113,6 +113,7 @@ stations = {
     "NARASIMHA/MENOEL SURVEY":              DELETED,
     "NLTT 49528/OCONNORLANQNG":             "O'Connor Landing",
     "NLTT 49528/O‹CONNOR LANDING":        "O'Connor Landing",
+    "OLWAIN/J. G. BALLARD TERMINAL":        DELETED,
     "ONGKAMPAN/PATTERSON STATION:           274": "Patterson Station",
     "OPALA/ZAMK PLATFORM":                  "Zamka Platform",
     "ORERVE/WATSON SATION":                 "Watson Station",
