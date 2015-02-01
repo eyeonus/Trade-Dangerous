@@ -111,7 +111,7 @@ looks good, it will be submitted to EDSC.
 """.format(sys.argv[0])
         )
 
-    systemName = ' '.join(sys.argv[1:]).upper()
+    systemName = args[0]
     if systemName.startswith('@'):
         allowUpdate = True
         systemName = systemName[1:]
@@ -134,7 +134,7 @@ looks good, it will be submitted to EDSC.
                 .format(systemName)
             )
 
-    return systemName, system
+    return systemName, system, args[1:]
 
 
 def get_cmdr(tdb):
@@ -170,7 +170,9 @@ def get_outliers():
 
 
 def get_distances(clip, distances, stars):
+    starNo = 0
     for star in stars:
+        starNo += 1
         # Check it's not already in the list
         star = star.upper()
         for d in distances:
@@ -179,7 +181,11 @@ def get_distances(clip, distances, stars):
 
         clip.copy_text(star)
 
-        dist = input("Distance to {}: ".format(star))
+        if len(stars) > 1:
+            prefix = "{:>2}/{:2}: ".format(starNo, len(stars))
+        else:
+            prefix = ""
+        dist = input(prefix + "Distance to {}: ".format(star))
         if dist == 'q':
             return distances, 'q'
 
@@ -201,7 +207,7 @@ def check_system(tdb, tdbSys, name):
     except (tradedb.AmbiguityError, LookupError, KeyError):
         return
 
-    print("KNOWN SYSTEM: {:.2f}ly".format(
+    print("KNOWN SYSTEM: {:.2f} ly".format(
         math.sqrt(tdbSys.distToSq(system))
     ))
 
@@ -226,7 +232,7 @@ def submit_distances(system, cmdr, distances):
     print("System:", system)
     print("Distances:")
     for ref in distances:
-        print("  {}: {}ly".format(
+        print("  {}: {:.02f} ly".format(
             ref['name'], ref['dist']
         ))
     print()
@@ -266,13 +272,34 @@ def do_rechecks(clip, system, rechecks):
     return distances
 
 
+def send_and_check_distances(clip, system, cmdr, distances):
+    if not distances:
+        print("No distances, no submission.")
+        return False
+
+    while distances:
+        rechecks = submit_distances(system, cmdr, distances)
+        if not rechecks:
+            break
+
+        distances = do_rechecks(clip, system, rechecks)
+
+    return True
+
+
 ############################################################################
 
 def main():
     tdb = tradedb.TradeDB()
 
-    system, tdbSys = get_system(tdb)
+    system, tdbSys, destinations = get_system(tdb)
     cmdr = get_cmdr(tdb)
+
+    if destinations:
+        clip = SystemNameClip()
+        distances, _ = get_distances(clip, list(), destinations)
+        send_and_check_distances(clip, system, cmdr, distances)
+        return
 
     outliers = get_outliers()
 
@@ -358,19 +385,8 @@ CHOOSE YOUR OWN: (leave blank to stop)
             if not skipSave and star not in outliers:
                 newOutliers.append(star)
 
-    if not distances:
-        print("No distances, no submission.")
-        return
-
-    while distances:
-        rechecks = submit_distances(system, cmdr, distances)
-        if not rechecks:
-            break
-
-        distances = do_rechecks(clip, system, rechecks)
-
-    add_extra_stars(newOutliers)
-
+    if send_and_check_distances(clip, system, cmdr, distances):
+        add_extra_stars(newOutliers)
 
 if __name__ == "__main__":
     try:
