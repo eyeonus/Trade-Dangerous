@@ -43,6 +43,7 @@ from tradeexcept import TradeException
 
 import locale
 import math
+import os
 import time
 
 locale.setlocale(locale.LC_ALL, '')
@@ -332,6 +333,8 @@ class TradeCalc(object):
         self.tdb = tdb
         self.tdenv = tdenv
         self.defaultFit = fit or self.fastFit
+        if "BRUTE_FIT" in os.environ:
+            self.defaultFit = self.bruteForceFit
 
         db = self.tdb.getDB()
 
@@ -471,11 +474,12 @@ class TradeCalc(object):
             # seemed significantly slower than this approach.
             for item in items[offset:]:
                 itemCostCr = item.costCr
+                stock = item.stock
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
 
                 # Adjust for age for "M"/"H" items with low units.
-                if item.stock < maxQty and item.stock > 0:  # -1 = unknown
-                    maxQty = min(maxQty, item.stock)
+                if stock < maxQty and stock >= 0:  # -1 = unknown
+                    maxQty = min(maxQty, stock)
 
                 if maxQty <= 0:
                     offset += 1
@@ -505,21 +509,23 @@ class TradeCalc(object):
                 offset += 1
 
         bestLoad = emptyLoad
-        for result in _fitCombos(0, credits, capacity):
+        for newResult in _fitCombos(0, credits, capacity):
             if bestLoad:
-                # Compare our new candidate against the previous best.
-                resGain, bestGain = result.gainCr, bestLoad.gainCr
-                if bestGain < resGain:
+                bestGain, newGain = bestLoad.gainCr, newResult.gainCr
+                # Ignore a result that doesn't match the previous best gain
+                if newGain < bestGain:
                     continue
-                if bestGain == resGain:
-                    resUnits, bestUnits = result.units, bestLoad.units
-                    # Prefer the option which requires least units
-                    if bestUnits < resUnits:
+                if newGain == bestGain:
+                    bestUnits, newUnits = bestLoad.units, newResult.units
+                    # Ignore entries that require more units for the same
+                    # amount of gain as the previous best.
+                    if newUnits > bestUnits:
                         continue
-                    if bestUnits == resUnits:
-                        if bestLoad.costCr >= result.costCr:
+                    if newUnits == bestUnits:
+                        # They use the same units, choose the least expensive
+                        if newResult.costCr > bestLoad.costCr:
                             continue
-            bestLoad = result
+            bestLoad = newResult
 
         return bestLoad
 

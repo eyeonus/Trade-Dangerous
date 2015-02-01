@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.8.4 Feb 01 2015
+. (kfsone) Fixed tradecalculator not selecting most profitable trade sometimes
+. (kfsone) Set 'BRUTE_FIT' in the environment to force use of the brute-force
+        trade calculator (for diagnostic purposes). e.g.
+           BRUTE_FIT=1 trade.py run ...
+
 v6.8.3 Jan 31 2015
 . (kfsone) Code and data cleanup, added stations
 . (kfsone) Added misc/eddn.py API for developers wanting to access EDDN,
