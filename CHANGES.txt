@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.8.3 Jan 31 2015
+. (kfsone) Code and data cleanup, added stations
+. (kfsone) Added misc/eddn.py API for developers wanting to access EDDN,
+
 v6.8.2 Jan 27 2015
 . (kfsone) Issue #148 Don't blow up horribly when tkinter is missing,
 . (kfsone) Issue #149 "nav" with --via was broken,
