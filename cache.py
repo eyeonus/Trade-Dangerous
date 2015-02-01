@@ -181,7 +181,11 @@ ocrDerp = re.compile(r'''(
     C[O0D]+LNY$ |
     \bR[O0]ZH[O0]E[S5]TVENSKY |
     \bRDZH[DO0]ESTVENSKY |
-    ''
+    '' |
+    ^[^A-Z0-9] |
+    \s{2,} |
+    \S\s\S\s |
+    ^OEN
 )''', flags=re.X)
 
 
