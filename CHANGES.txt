@@ -2,6 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[wip]
+. (kfsone) "station" command now lists 5 sell and 5 buy items,
+. (kfsone) "station" does a better job of parsing existing station names,
+. (kfsone) Removed "--system" from "station" command, use
+       trade.py station -a "SYSTEM/Station"
+       syntax instead.
+
 v6.8.4 Feb 01 2015
 . (kfsone) Fixed tradecalculator not selecting most profitable trade sometimes
 . (kfsone) Set 'BRUTE_FIT' in the environment to force use of the brute-force

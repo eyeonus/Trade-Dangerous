@@ -26,13 +26,6 @@ arguments = [
     ),
 ]
 switches = [
-    ParseArgument(
-        '--system',
-        help='Specify the full name of the system the station is in if not specified in the "station" argument.',
-        type=str,
-        nargs='+',
-        default=[],
-    ),
     MutuallyExclusiveGroup(
         ParseArgument(
             '--update', '-u',
@@ -170,12 +163,21 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
 
 
 def checkSystemAndStation(tdb, cmdenv):
-    # The user can supply "--system Foo Bar --station Baz" or
-    # "--station Foo Bar / Baz". This means that the values
-    # can be arrays. We need to make strings out of the arrays,
-    # and then sanitize them for the '@SYS/STN' format, and
-    # build a separate system and station name out of that.
+    # In add mode, the user has to be more specific.
     stnName = ' '.join(cmdenv.station).strip()
+
+    if not cmdenv.add:
+        try:
+            station = tdb.lookupPlace(stnName)
+        except LookupError:
+            raise CommandLineError("Unrecognized Station: sysName".format(
+                sysName,
+                cmdenv.station,
+            ))
+        cmdenv.system = station.system.name()
+        cmdenv.station = station.dbname
+
+        return station.system, station
 
     # Clean up the station name and potentially lift the system
     # name out of it.
@@ -195,52 +197,22 @@ def checkSystemAndStation(tdb, cmdenv):
                 envStnName
         ))
 
-    if cmdenv.system:
-        envSysName = ' '.join(cmdenv.system).upper()
-        if sysName and envSysName != sysName:
-            raise CommandLineError(
-                    "Mismatch between \"--system {}\" and "
-                    "system name in station specifier "
-                    "(\"{}\")".format(
-                        envSysName, sysName,
-            ))
-        sysName = envSysName
-
     if not sysName:
         raise CommandLineError("No system name specified")
 
     cmdenv.system, cmdenv.station = sysName, TradeDB.titleFixup(stnName)
-
-    # If we're adding a station, we need to check that the system
-    # exists and that it doesn't contain a close-match for this
-    # system name already.
-    if cmdenv.add:
-        try:
-            system = tdb.lookupSystem(sysName)
-        except LookupError:
-            raise CommandLineError(
-                    "Unknown SYSTEM name: \"{}\"".format(
-                        sysName
-            ))
-
-        # check the station does not exist
-        checkStationDoesNotExist(tdb, cmdenv, system, stnName)
-
-        return system, None
-
-    # We want an existing station, try looking it up by combining
-    # the station and system names for precision.
     try:
-        station = tdb.lookupPlace("{}/{}".format(sysName, stnName))
+        system = tdb.lookupSystem(sysName)
     except LookupError:
-        raise CommandLineError("Unrecognized Station: {}/{}".format(
-                sysName,
-                cmdenv.station,
+        raise CommandLineError(
+                "Unknown SYSTEM name: \"{}\"".format(
+                    sysName
         ))
-    cmdenv.system = station.system.name()
-    cmdenv.station = station.dbname
 
-    return station.system, station
+    # check the station does not exist
+    checkStationDoesNotExist(tdb, cmdenv, system, stnName)
+
+    return system, None
 
 
 def addStation(tdb, cmdenv, system, stationName):
@@ -333,7 +305,7 @@ def run(results, cmdenv, tdb):
     selling.sort(
             key=lambda item: item.price - item.avgTrade,
     )
-    results.summary.selling = selling[:3]
+    results.summary.selling = selling[:5]
 
     buying = [
             ItemTrade(ID, price, avgSell)
@@ -347,7 +319,7 @@ def run(results, cmdenv, tdb):
     buying.sort(
             key=lambda item: item.avgTrade - item.price,
     )
-    results.summary.buying = buying[:3]
+    results.summary.buying = buying[:5]
 
     return results
 
@@ -423,7 +395,7 @@ def render(results, cmdenv, tdb):
     print("""Station Data:
 System....: {sysname} (#{sysid} @ {sysx},{sysy},{sysz})
 Station...: {stnname} (#{stnid})
-In System.: {siblings}
+Neighbors.: {siblings}
 Stn/Ls....: {lsdist}
 B/Market..: {bm}
 Pad Size..: {pad}
