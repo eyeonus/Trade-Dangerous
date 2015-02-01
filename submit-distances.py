@@ -111,7 +111,7 @@ looks good, it will be submitted to EDSC.
 """.format(sys.argv[0])
         )
 
-    systemName = args[0]
+    systemName = ' '.join(args[0].split()).upper()
     if systemName.startswith('@'):
         allowUpdate = True
         systemName = systemName[1:]
