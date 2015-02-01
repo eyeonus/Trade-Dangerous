@@ -107,7 +107,7 @@ ocrDerp = re.compile(r'''(
     DRB[O0]DAL |
     [D0]RBITAL |
     REE[O0] |
-    \BDOCK\b |
+    \BDOCK$ |
     \BTERMINAL\b |
     \bKID?[O0] |
     \b[O3]E\b |
@@ -129,7 +129,7 @@ ocrDerp = re.compile(r'''(
     W[O0]{3} |
     GO(D[O0]|[O0]D|[O0][O])ARD |
     GO[DO0]{2}AR[O0] |
-    ORBRAL\b |
+    ORB[RH]AL\b |
     \bJOR[O0]A |
     \bST[O0]ART |
     \bQUIMPY |
@@ -159,6 +159,7 @@ ocrDerp = re.compile(r'''(
         VISION |
         REFINERY
     )$ |
+    ORBIDAL |
     \bBRIOGER |
     \bJUOSON |
     LANOER |
@@ -176,8 +177,15 @@ ocrDerp = re.compile(r'''(
     \bSAUN[O0]ER |
     [O0]IV[E3] |
     VIRIDN$ |
-    \bHORI\.ONS
-
+    \bHORI\.ONS |
+    C[O0D]+LNY$ |
+    \bR[O0]ZH[O0]E[S5]TVENSKY |
+    \bRDZH[DO0]ESTVENSKY |
+    '' |
+    ^[^A-Z0-9] |
+    \s{2,} |
+    \S\s\S\s |
+    ^OEN
 )''', flags=re.X)
 
 

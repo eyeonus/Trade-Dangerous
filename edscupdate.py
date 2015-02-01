@@ -93,34 +93,6 @@ edsq = misc.edsc.StarQuery(
 data = edsq.fetch()
 
 ignore = [
-    'ADAM NAPAT',
-    'ALRAI SECTOR EL-Y C3-1',
-    'ALRAI SECTOR OI-T B3-6 A', # No 'A' at the end
-    'AN SEXSTANS',
-    'COL 285 SECTOR ZJ-Y B140-1',
-    'CORE SYS SECTOR HH-V B2-7',
-    'CORE SYS SECTOR WO-R A 4-3',
-    'CRU7CIS SECTOR EQ-Y B2',
-    'CRUCIS SECTO GB-X B1-0',
-    'CRUCIS SECTOR FM-V B2-O',
-    'CRUCIS SECTOR MD-S B4-6',
-    'CRUCIS SECTOR YE-A D142',
-    'DQ TUCANE',
-    'ED TUCANAE',
-    'HYADES SECTOR WF-M B8-3',
-    'HYADES SECTOR ZA-K B9-0',
-    'ICZ EW-V B2-E',
-    'ICZ FW-V B2-6',
-    'LP 452-10 A',
-    'LT 9028',
-    'PHE ZHUA',
-    'PISCIUM SECTOR BM-L AB-1', # should be A8-1
-    'ROSS 41 A',
-    'SCORPII SECTOR KB-X A1-01', # should be SCORPII SECTOR KB-X A1-0
-    'WISE 0410+ 1502', # should be WISE 0410+1502
-    'WISE 2200-3628',
-    'WOLF 851 A',
-    'ZAGARAS',
 ]
 
 if edsq.status['statusnum'] != 0:
@@ -212,7 +184,7 @@ with open("new.systems.csv", "a") as output:
                 if ok.startswith('='):
                     name = ok[1:].strip().upper()
                     ok = 'y'
-                    with open("data/extra-stars.txt", "w") as fh:
+                    with open("data/extra-stars.txt", "a") as fh:
                         print(name, file=fh)
                         print("Added to data/extra-stars.txt")
                 if ok.lower() == 'y':
