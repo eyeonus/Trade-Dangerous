@@ -141,6 +141,8 @@ stations = {
     "TUAREG/KOPFF OOCK":                    "Kopff Dock",
     "TURMO/VANCOUVERSINHERHANCE":           DELETED,
     "TYR/GLASHOW":                          "Glashow Dock",
+    "USZAA/GUEST INSTAL'ION":               DELETED,
+    "USZAA/GUEST INSTALQTION":              DELETED,
     "V774 HERCULIS/MENDEL MINES'":          "Mendel Mines",
     "V774 HERCULIS/MENOEL MINES":           "Mendel Mines",
     "V989 CASSIOPEIAE/LOW WORKS":           DELETED,
