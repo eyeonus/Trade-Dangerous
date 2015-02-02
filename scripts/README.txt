@@ -215,7 +215,7 @@ file to make sure there is actually some data to work with.
 Main Menu:
 
 The main menu will appear as such:
-(U)pdate, (Q)uick Update, (I)mport, (P)references or (R)un
+(U)pdate, (Q)uick Update, (I)mport, (P)references, (R)un, Run (T)o:
 Each option is detailed below.
 
   Update:
@@ -246,6 +246,9 @@ Each option is detailed below.
   have not been set, you will be asked for them and they will be stored
   for the rest of the batch file session. They can be changed again
   in the preferences option from the main menu.
+
+  Run To:
+  Same as above, but you can specify an end point
 
 </BATCH-FILE>
 
