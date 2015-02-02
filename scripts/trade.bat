@@ -45,6 +45,7 @@ echo Import Complete
 pause
 goto menu
 :run
+set end=
 set /P credits=Credits: 
 set /P location=Start Location: 
 if /I "%menu%"=="T" set /P end=End Location: 
