@@ -62,6 +62,8 @@ stations = {
     "FUTHORC/ACQUIREO TASTE ORBITAL":       DELETED,
     "G 165-13/NAODODOUR PLATFORM":          DELETED,
     "GCRV 4654/HERZEFELD LANDING":          "Herzfeld Landing",
+    "GD 219/MCKEF RING":                    DELETED,
+    "GD 219/MCKFE RING":                    DELETED,
     "GROOMBRIDGE 1618/FRANKUN RING":        "Franklin Ring",
     "HATMEHING/HEVEI.IUS TERMINAL":         DELETED,
     "HATMEHING/HEVEIIUS TERMINAL":          DELETED,

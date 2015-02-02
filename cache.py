@@ -185,7 +185,8 @@ ocrDerp = re.compile(r'''(
     ^[^A-Z0-9] |
     \s{2,} |
     \S\s\S\s |
-    ^OEN
+    ^OEN |
+    ^MCK(EF|FE)\b
 )''', flags=re.X)
 
 
