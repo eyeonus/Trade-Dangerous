@@ -19,7 +19,7 @@ if 'NOTK' not in os.environ:
 
             def __init__(self):
                 self.tkroot = Tk()
-            self.tkroot.withdraw()
+                self.tkroot.withdraw()
 
             def copy_text(self, text):
                 """ Copies the specified text into the clipboard. """
@@ -32,4 +32,11 @@ if 'NOTK' not in os.environ:
                 "installed to work. It is either not installed or broken.\n"
                 "Set the environment variable 'NOTK' to disable this warning."
         )
+
+        class SystemNameClip(object):
+            """
+            Dummy implementation when tkinter is not available.
+            """
+            def copy_text(self, text):
+                pass
 
