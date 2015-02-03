@@ -140,7 +140,7 @@ if len(systems) > 0:
     )
     print()
 
-with open("new.systems.csv", "a") as output:
+with open("tmp/new.systems.csv", "a") as output:
     try:
         for sysinfo in systems:
             name = sysinfo['name']
