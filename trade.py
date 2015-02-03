@@ -47,7 +47,7 @@ import tradedb
 
 def main(argv):
     cmdIndex = commands.CommandIndex()
-    cmdenv = cmdIndex.parse(sys.argv)
+    cmdenv = cmdIndex.parse(argv)
 
     tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
     if cmdenv.usesTradeData:
