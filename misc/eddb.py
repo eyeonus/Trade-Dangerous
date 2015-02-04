@@ -113,7 +113,7 @@ def fetch_stations(systems, outFile=None):
         'http://eddb.io/archive/v2/stations_lite.json',
         outFile=outFile,
     )
-    mask = "'{}','{}','{}','{}','{}'"
+    mask = "'{}','{}',{},'{}','{}'"
 
     # EDDB black market is null (unknown), 0 (No) or 1 (Yes)
     marketConvert = {None:'?', 0:'N', 1:'Y'}
