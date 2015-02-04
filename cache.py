@@ -814,6 +814,7 @@ def processImportFile(tdenv, db, importPath, tableName):
             ")"
     )
     uniquePfx = "unq:"
+    uniqueLen = len(uniquePfx)
     ignorePfx = "!"
 
     with importPath.open('rU', encoding='utf-8') as importFile:
@@ -831,50 +832,45 @@ def processImportFile(tdenv, db, importPath, tableName):
         joinHelper  = []
         uniqueIndexes = []
         for (cIndex, cName) in enumerate(columnDefs):
-            splitNames = cName.split('@')
+            colName, _, srcKey = cName.partition('@')
             # is this a unique index?
-            colName = splitNames[0]
             if colName.startswith(uniquePfx):
-                uniqueIndexes += [ cIndex ]
-                colName = colName[len(uniquePfx):]
-            if colName.startswith(ignorePfx):
-                # this column is only used to resolve an FK
-                colName = colName[len(ignorePfx):]
-                joinHelper.append( "{}@{}".format(colName, splitNames[1]) )
-                continue
-
-            if len(splitNames) == 1:
+                uniqueIndexes.append(cIndex)
+                colName = colName[uniqueLen:]
+            if not srcKey:
                 # no foreign key, straight insert
                 bindColumns.append(colName)
                 bindValues.append('?')
-            else:
-                # foreign key, we need to make a select
-                splitJoin = splitNames[1].split('.')
-                joinTable = [ splitJoin[0] ]
-                joinStmt  = []
-                for joinRow in joinHelper:
-                    helperNames = joinRow.split('@')
-                    helperJoin = helperNames[1].split('.')
-                    joinTable.append(
-                        "INNER JOIN {} USING({})".format(
-                            helperJoin[0], helperJoin[1]
-                        )
-                    )
-                    joinStmt.append(
-                        "{}.{} = ?".format(
-                            helperJoin[0], helperNames[0]
-                        )
-                    )
-                joinHelper = []
-                joinStmt.append("{}.{} = ?".format(splitJoin[0], colName))
-                bindColumns.append(splitJoin[1])
-                bindValues.append(
-                    fkeySelectStr.format(
-                        newValue=splitNames[1],
-                        table=" ".join(joinTable),
-                        stmt=" AND ".join(joinStmt),
-                    )
+                continue
+
+            queryTab, _, queryCol = srcKey.partition('.')
+            if colName.startswith(ignorePfx):
+                # this column is only used to resolve an FK
+                assert srcKey
+                colName = colName[len(ignorePfx):]
+                joinHelper.append((colName, queryTab, queryCol))
+                continue
+
+            # foreign key, we need to make a select
+            joinTable = [ queryTab ]
+            joinStmt  = []
+            for nextCol, nextTab, nextJoin in joinHelper:
+                joinTable.append(
+                    "INNER JOIN {} USING({})".format(nextTab, nextJoin)
                 )
+                joinStmt.append(
+                    "{}.{} = ?".format(nextTab, nextCol)
+                )
+            joinHelper = []
+            joinStmt.append("{}.{} = ?".format(queryTab, colName))
+            bindColumns.append(queryCol)
+            bindValues.append(
+                fkeySelectStr.format(
+                    newValue=srcKey,
+                    table=" ".join(joinTable),
+                    stmt=" AND ".join(joinStmt),
+                )
+            )
         # now we can make the sql statement
         sql_stmt = """
             INSERT INTO {table} ({columns}) VALUES({values})
@@ -920,10 +916,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                         for col in uniqueIndexes
                     ]
                     key = ":!:".join(keyValues)
-                    try:
-                        prevLineNo = uniqueIndex[key]
-                    except KeyError:
-                        prevLineNo = 0
+                    prevLineNo = uniqueIndex.get(key, 0)
                     if prevLineNo:
                         # Make a human-readable key
                         key = "/".join(keyValues)
