@@ -372,7 +372,8 @@ class StarSubmission(object):
         return data
 
 if __name__ == "__main__":
-    edsq = StarQuery(test=False, confidence=0)
+    print("Requesting recent, non-test, cr >= 2 stars")
+    edsq = StarQuery(test=False, confidence=2)
     data = edsq.fetch()
 
     if edsq.status['statusnum'] != 0:
@@ -385,4 +386,11 @@ if __name__ == "__main__":
     systems = data['systems']
 
     for sysinfo in systems:
-        print(sysinfo['id'], sysinfo['name'], sysinfo['coord'], sysinfo['createdate'])
+        print("{:<30s} {:11f} {:11f} {:11f} {}".format(
+            sysinfo['name'].upper(),
+            sysinfo['coord'][0],
+            sysinfo['coord'][1],
+            sysinfo['coord'][2],
+            sysinfo['createdate'],
+        ))
+
