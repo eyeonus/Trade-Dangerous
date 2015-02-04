@@ -5,9 +5,24 @@ from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import json
 import math
 import time
 import urllib.error
+
+
+try:
+    import requests
+except ImportError as e:
+    import pip
+    print("ERROR: Unable to load the Python 'requests' package.")
+    approval = input(
+        "Do you want me to try and install it with the package manager (y/n)? "
+    )
+    if approval.lower() != 'y':
+        raise e
+    pip.main(["install", "--upgrade", "requests"])
+    import requests
 
 
 ######################################################################
@@ -160,4 +175,42 @@ def download(
     tmpPath.rename(actPath)
 
     return f.getheaders()
+
+
+def retrieve_json_data(url):
+    """
+    Fetch JSON data from a URL and return the resulting dictionary.
+
+    Displays a progress bar as it downloads.
+    """
+
+    req = requests.get(url, stream=True)
+
+    # credit for the progress indicator: 
+    # http://stackoverflow.com/a/15645088/257645
+    totalLength = req.headers.get('content-length')
+    if totalLength is None:
+        compression = req.headers.get('content-encoding')
+        compression = (compression + "'ed") if compression else "uncompressed"
+        print("Downloading {}: {}...".format(compression, url))
+        jsData = req.content
+    else:
+        totalLength = int(totalLength)
+        lastDone = None
+        for data in req.iter_content():
+            jsData += data
+            bytesRead = len(jsData)
+            done = int(50 * bytesRead / total_length)
+            if done != lastDone:
+                sys.stdout.write("\r[{:<50s}] {}/{} ".format(
+                    '=' * done,
+                    makeUnit(bytesRead),
+                    makeUnit(totalLength),
+                ))
+                sys.stdout.flush()
+                lastDone = done
+        if lastDone:
+            print("\n")
+
+    return json.loads(jsData.decode())
 
