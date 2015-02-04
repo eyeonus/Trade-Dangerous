@@ -1,6 +1,10 @@
 #! /usr/bin/env python3
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from __future__ import absolute_import
+from __future__ import with_statement
+from __future__ import print_function
+from __future__ import division
+from __future__ import unicode_literals
 
 from collections import defaultdict, namedtuple
 from urllib.parse import urlencode
