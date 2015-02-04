@@ -8,6 +8,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 . (kfsone) Removed "--system" from "station" command, use
        trade.py station -a "SYSTEM/Station"
        syntax instead.
+. (OpenSS) Added "Run To" option to trade.bat,
+. (chmarr) Fixed trade.py using the wrong argument list (#herp),
+. (kfsone) titleFixup will handle 'von', 'de' and 'du' correctly,
++ Station/Rare Data (RavenDT)
 
 v6.8.4 Feb 01 2015
 . (kfsone) Fixed tradecalculator not selecting most profitable trade sometimes

@@ -46,8 +46,8 @@ switches = [
     ParseArgument(
         '--ls-from-star',
         help='Number of light seconds between station and star.',
-        type=float,
-        default=0.0,
+        type=int,
+        default=0,
         dest='lsFromStar',
     ),
     ParseArgument(

@@ -99,6 +99,7 @@ ocrDerp = re.compile(r'''(
     [O0][O0]CK |
     [O0]INEILL |
     AQUIRE[O0] |
+    [EF]NT[EF]RPRISF |
     [O0](UTT|ALT)[O0]N |
     8RA[DO0]LEY |
     BRA[O0]LEY |
@@ -188,7 +189,10 @@ ocrDerp = re.compile(r'''(
     ^OEN |
     ^MCK(EF|FE)\b |
     \bCHAN\s+DLER |
-    \b[O0]UMONT
+    \b[O0]UMONT |
+    \bUN[0O]ER |
+    \bSDMM |
+    \bREA[O0]D
 )''', flags=re.X)
 
 

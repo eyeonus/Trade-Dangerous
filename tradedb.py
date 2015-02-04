@@ -1847,7 +1847,12 @@ class TradeDB(object):
             lambda m: m.group(1) + m.group(2).upper() + m.group(3),
             text
         )
+        text = re.sub("\b(von|van|de|du|of)\b",
+            lambda m: m.group(1).lower,
+            text
+        )
         text = re.sub(r"'S\b", "'s", text)
+        text = text[0].upper() + text[1:]
 
         return text
 
