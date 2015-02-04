@@ -22,6 +22,10 @@ if not 'NOTK' in os.environ and platform.system() != 'Darwin':  # focus bug
         pass
 
 
+class DecodingError(PluginException):
+    pass
+
+
 class ImportPlugin(plugins.ImportPluginBase):
     """
     Plugin that downloads data from maddavo's site.
@@ -39,7 +43,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         'force':        "Process prices even if timestamps suggest "
                         "there is no new data.",
     }
-
 
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
@@ -249,15 +252,25 @@ class ImportPlugin(plugins.ImportPluginBase):
         lastStn = None
         updatedStations = set()
         tdenv.DEBUG0("Reading prices data")
-        with open("import.prices", "rU", encoding="utf-8") as fh:
+        with open(self.filename, "rUb") as fh:
             # skip the shebang.
-            firstLine = fh.readline()
+            firstLine = fh.readline().decode("utf-8")
             self.checkShebang(firstLine, False)
             importDate = self.importDate
 
-            for line in fh:
+            lineNo = 0
+            while True:
+                lineNo += 1
+                line = next(fh)
+                try:
+                    line = line.decode("utf-8")
+                except UnicodeDecodeError as e:
+                    raise DecodingError(
+                        "{} line {}: Invalid (non-utf8) character sequence: {}\nLine: {}".format(
+                        self.filename, lineNo, str(e), line,
+                    ))
                 if line.startswith('@'):
-                    lastStn = line[2:-1]
+                    lastStn = line[2:line.find('#')].strip()
                     continue
                 if not line.startswith(' ') or len(line) < minLen:
                     continue
