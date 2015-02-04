@@ -122,7 +122,8 @@ ocrDerp = re.compile(r'''(
     \bVV |
     \b[O0]ER?\b |
     \b[O0]RAKE |
-    HAR[O0]T\b |
+    HAR[O0](T\b|W[I1L]CK) |
+    ACQU[I1L]R[E3][O0] |
     \b[O0]ARK |
     \b[O0]DAM |
     [O0]EPOT |
@@ -204,7 +205,20 @@ ocrDerp = re.compile(r'''(
     SETTLEMNT |
     MARKFT |
     HANGFR |
-    CL(EVF|FVE|FVF)
+    CL(EVF|FVE|FVF) |
+    \bCRY$ |
+    G[E3][D0]RG[E3]LUCA[S5] |
+    PLAT[E3]F[D0]RM |
+    OCONNOR |
+    ` |
+    -- |
+    \bREILLI\b |
+    RINF\b |
+    \bOL[E3]ARY |
+    ‹ |
+    \bSATION\b |
+    ,\w |
+    \bINGLY\b
 )''', flags=re.X)
 
 
