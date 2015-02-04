@@ -99,6 +99,8 @@ ocrDerp = re.compile(r'''(
     [O0][O0]CK |
     [O0]INEILL |
     AQUIRE[O0] |
+    FNT[EF]RPRIS[EF] |
+    [EF]NTFRPRIS[EF] |
     [EF]NT[EF]RPRISF |
     [O0](UTT|ALT)[O0]N |
     8RA[DO0]LEY |
@@ -192,7 +194,17 @@ ocrDerp = re.compile(r'''(
     \b[O0]UMONT |
     \bUN[0O]ER |
     \bSDMM |
-    \bREA[O0]D
+    \bREA([O0]D|D[O0]) |
+    \bRD[DO0][DO0]EN |
+    \bR[O0]([O0]D|D[O0])EN |
+    (?<!BR)[O0]ECK |
+    SETTL(FMENT|EMFNT|FMFNT) |
+    SETTLMENT |
+    SETTLE\sMENT |
+    SETTLEMNT |
+    MARKFT |
+    HANGFR |
+    CL(EVF|FVE|FVF)
 )''', flags=re.X)
 
 
