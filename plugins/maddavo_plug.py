@@ -254,20 +254,32 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.DEBUG0("Reading prices data")
         with open(self.filename, "rUb") as fh:
             # skip the shebang.
-            firstLine = fh.readline().decode("utf-8")
+            firstLine = fh.readline().decode(encoding="utf-8")
             self.checkShebang(firstLine, False)
             importDate = self.importDate
 
             lineNo = 0
             while True:
                 lineNo += 1
-                line = next(fh)
                 try:
-                    line = line.decode("utf-8")
+                    line = next(fh)
+                except StopIteration:
+                    break
+                try:
+                    line = line.decode(encoding="utf-8")
                 except UnicodeDecodeError as e:
+                    try:
+                        line = line.decode(encoding="latin1").encode("utf-8").decode()
+                    except UnicodeDecodeError:
+                        raise DecodingError(
+                            "{} line {}: "
+                            "Invalid (unrecognized, non-utf8) character sequence: {}\n{}".format(
+                                self.filename, lineNo, str(e), line,
+                        )) from None
                     raise DecodingError(
-                        "{} line {}: Invalid (non-utf8) character sequence: {}\nLine: {}".format(
-                        self.filename, lineNo, str(e), line,
+                        "{} line {}: "
+                        "Invalid (latin1, non-utf8) character sequence:\n{}".format(
+                            self.filename, lineNo, line,
                     ))
                 if line.startswith('@'):
                     lastStn = line[2:line.find('#')].strip()
