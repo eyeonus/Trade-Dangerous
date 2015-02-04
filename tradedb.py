@@ -566,6 +566,10 @@ class TradeDB(object):
         cur.execute(*args)
         return cur
 
+    def queryColumn(self, *args):
+        """ perform an SQL query and return a single column. """
+        return self.query(args).fetchone()[0]
+
     def reloadCache(self):
         """
         Checks if the .sql, .prices or *.csv files are newer than the cache.
