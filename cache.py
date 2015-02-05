@@ -218,7 +218,9 @@ ocrDerp = re.compile(r'''(
     ‹ |
     \bSATION\b |
     ,\w |
-    \bINGLY\b
+    \bINGLY\b |
+    \bAU\sL[DO0]\b
+
 )''', flags=re.X)
 
 
@@ -477,11 +479,13 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             raise error
     elif not quiet:
         def ignoreOrWarn(error):
+            nonlocal warnings
             error.category = "WARNING"
             print(error)
             warnings += 1
     else:
         def ignoreOrWarn(error):
+            nonlocal warnings
             warnings += 1
 
     DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
