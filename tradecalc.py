@@ -562,10 +562,13 @@ class TradeCalc(object):
         fitFunction = fitFunction or self.defaultFit
         return fitFunction(items, credits, capacity, maxUnits)
 
-    def getTrades(self, srcStation, srcSelling, dstStation):
-        try:
-            dstBuying = self.stationsBuying[dstStation.ID]
-        except KeyError:
+    def getTrades(self, srcStation, dstStation, srcSelling=None):
+        if not srcSelling:
+            srcSelling = self.stationsSelling.get(srcStation.ID, None)
+        if not srcSelling:
+            return None
+        dstBuying = self.stationsBuying.get(dstStation.ID, None)
+        if not dstBuying:
             srcStation.tradingWith[dstStation] = None
             return None
 
@@ -588,6 +591,10 @@ class TradeCalc(object):
                         ))
                     break   # from srcSelling
 
+        # SORT BY profit DESC, cost
+        # So two if two items have the same profit, the cheapest
+        # will be listed first.
+        trading.sort(key=lambda trade: trade.costCr)
         trading.sort(key=lambda trade: trade.gainCr, reverse=True)
         srcStation.tradingWith[dstStation] = trading
 
@@ -645,11 +652,9 @@ class TradeCalc(object):
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
-            try:
-                srcSelling = self.stationsSelling[srcStation.ID]
-            except KeyError:
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing sold - next.")
+            srcSelling = self.stationsSelling.get(srcStation.ID, None)
+            if not srcSelling:
+                tdenv.DEBUG1("Nothing sold - next.")
                 continue
 
             restricting = set(restrictStations)
@@ -664,7 +669,7 @@ class TradeCalc(object):
                     trading = srcTradingWith[dstStation]
                 except (TypeError, KeyError):
                     trading = self.getTrades(
-                        srcStation, srcSelling, dstStation
+                        srcStation, dstStation, srcSelling
                     )
                 if not trading:
                     return
