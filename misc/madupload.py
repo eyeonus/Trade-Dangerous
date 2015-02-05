@@ -34,10 +34,20 @@ or if you like, I can try and install it for you now
 
 
 upload_url = 'http://www.davek.com.au/td/uploaddata.asp'
-upfile = "updated.prices"
-if len(sys.argv) > 1:
-    upfile = sys.argv[1]
+if len(sys.argv) != 2:
+    raise SystemExit(
+        "Usage: {} <filename>\n"
+        "Uploads 'filename' to Maddavo's site, where filename should be "
+        "a .prices or Station.csv file.\n"
+        "\n"
+        "NOTE to OCR USERS:\n"
+        "Please upload the .prices file from your OCR DIRECTLY before "
+        "importing it into TD, not after... We look fo rward to receiving "
+        "y0uh fxcitirg nevv oata :).\n" . format(
+            sys.argv[0]
+    ))
 
+upfile = sys.argv[1]
 
 ############################################################################
 
@@ -45,8 +55,6 @@ if len(sys.argv) > 1:
 if not pathlib.Path(upfile).is_file():
     raise SystemExit("ERROR: File not found: {}".format(upfile))
 
-files = {
-}
 r = requests.post(
         upload_url,
         files={

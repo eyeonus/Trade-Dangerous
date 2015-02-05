@@ -4,6 +4,7 @@ from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
 from tradedb import System, Station, describeAge
+from tradecalc import TradeCalc, Route
 
 ######################################################################
 # Parser config
@@ -687,8 +688,6 @@ def run(results, cmdenv, tdb):
         raise NoDataError("Database does not contain any profitable trades.")
 
     validateRunArguments(tdb, cmdenv)
-
-    from tradecalc import TradeCalc, Route
 
     origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
     avoidPlaces = cmdenv.avoidPlaces

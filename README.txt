@@ -385,6 +385,41 @@ RUN sub-command:
        OMFG Output the current step of the checklist on your X52 Pro MFD.
        Is that some sweetness or what?
 
+TRADE sub-command:
+
+  Lists trades between two stations. Specify "-v" or "-vv" for more data.
+
+  trade.py trade [-v | -vv] <from station> <to station>
+
+  e.g.
+
+    trade.py trade "sol/daedalus" "groom/frank"
+    Item                  Profit       Cost
+    ---------------------------------------
+    Superconductors        1,331      6,162
+    Indium                 1,202      5,394
+    Beryllium              1,021      8,051
+    Gold                   1,004      9,276
+    Silver                   838      4,631
+    ...
+
+    trade.py trade "sol/daedalus" "groom/frank" -v
+    Item                  Profit       Cost      Stock     Demand   SrcAge   DstAge
+    -------------------------------------------------------------------------------
+    Superconductors        1,331      6,162  1,229,497    621,964     1.17     2.37
+    Indium                 1,202      5,394  1,397,354    683,398     1.17     2.37
+    Beryllium              1,021      8,051     68,181    529,673     1.17     2.37
+    ...
+
+    trade.py trade "sol/daedalus" "groom/frank" -v -vv
+    Item                  Profit       Cost    AvgCost     Buying     AvgBuy      Stock     Demand   SrcAge   DstAge
+    ----------------------------------------------------------------------------------------------------------------
+    Superconductors        1,331      6,162       6461       7493       6813  1,229,497    621,964     1.17     2.37
+    Indium                 1,202      5,394       5640       6596       5961  1,397,354    683,398     1.17     2.37
+    Beryllium              1,021      8,051       7998       9072       8404     68,181    529,673     1.17     2.37
+    Gold                   1,004      9,276       9212      10280       9600     82,951    938,765     1.17     2.37
+
+
 UPDATE sub-command:
 
   For maintenance on your local prices database. The default is to walk
