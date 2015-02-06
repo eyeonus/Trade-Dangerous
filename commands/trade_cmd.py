@@ -44,7 +44,7 @@ def run(results, cmdenv, tdb):
 
     results.summary = ResultRow()
     results.summary.fromStation = lhs
-    results.summary.toStation = lhs
+    results.summary.toStation = rhs
 
     lhs.tradingWith = dict()
     trades = calc.getTrades(lhs, rhs)
