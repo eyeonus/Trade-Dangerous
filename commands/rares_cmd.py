@@ -104,17 +104,13 @@ def run(results, cmdenv, tdb):
     start = cmdenv.nearSystem
     # Hoist the padSize parameter for convenience
     padSize = cmdenv.padSize
+    # How far we're want to cast our net.
+    maxLy = float(cmdenv.maxLyPer or 0.)
 
     # Start to build up the results data.
     results.summary = ResultRow()
     results.summary.near = start
-    results.summary.ly = cmdenv.maxLyPer
-
-    # The last step in calculating the distance between two
-    # points is to perform a square root. However, we can avoid
-    # the cost of doing this by squaring the distance we need
-    # to check and only 'rooting values that are <= to it.
-    maxLySq = cmdenv.maxLyPer ** 2
+    results.summary.ly = maxLy
 
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
@@ -122,15 +118,14 @@ def run(results, cmdenv, tdb):
             if not rare.station.checkPadSize(padSize):
                 continue
         # Find the un-sqrt'd distance to the system.
-        distSq = start.distToSq(rare.station.system)
-        if maxLySq > 0: # do we have a limit on distance?
-            if distSq > maxLySq:
-                continue
+        dist = start.distanceTo(rare.station.system)
+        if maxLy > 0. and dist > maxLy:
+            continue
 
         # Create a row for this item
         row = ResultRow()
         row.rare = rare
-        row.dist = math.sqrt(distSq)
+        row.dist = dist
         results.rows.append(row)
 
     # Was anything matched?

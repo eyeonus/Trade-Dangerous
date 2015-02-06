@@ -208,7 +208,7 @@ def check_system(tdb, tdbSys, name):
         return
 
     print("KNOWN SYSTEM: {:.2f} ly".format(
-        math.sqrt(tdbSys.distToSq(system))
+        tdbSys.distanceTo(system)
     ))
 
 

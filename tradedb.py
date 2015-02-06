@@ -153,27 +153,18 @@ class System(object):
         """
         Returns the square of the distance between two systems.
 
-        Optimization Note:
-
-        This function returns the SQUARE of the distance.
-
-        For any given pair of numbers (n, m), if n > m then n^2 > m^2
-        and if n < m then n^2 < m^2 and if n == m n^2 == m^2.
-
-        The final step in a distance calculation is a sqrt() function,
-        which is expensive.
-
-        So when you only need distances for comparative purposes, such
-        as comparing a set of points against a given distance, it is
-        much more efficient to square the comparitor and test it
-        against the un-rooted distances.
+        It is slightly cheaper to calculate the square of the
+        distance between two points, so when you are primarily
+        doing distance checks you can use this less expensive
+        distance query and only perform a sqrt (** 0.5) on the
+        distances that fall within your constraint.
 
         Args:
             other:
                 The other System to measure the distance between.
 
         Returns:
-            Distance in light years (squared).
+            Distance in light years to the power of 2 (i.e. squared).
 
         Example:
             # Calculate which of [systems] is within 12 ly
@@ -183,12 +174,6 @@ class System(object):
             for sys in systems:
                 if sys.distToSq(target) <= maxLySq:
                     inRange.append(sys)
-
-            # Print the distance between two systems
-            print("{} -> {}: {}ly".format(
-                    lhs.name(), rhs.name(),
-                    math.sqrt(lhs.distToSq(rhs)),
-            ))
         """
 
         dx2 = (self.posX - other.posX) ** 2
@@ -196,6 +181,32 @@ class System(object):
         dz2 = (self.posZ - other.posZ) ** 2
 
         return (dx2 + dy2 + dz2)
+
+    def distanceTo(self, other):
+        """
+        Returns the distance (in ly) between two systems.
+
+        NOTE: If you are primarily testing/comparing
+        distances, consider using "distToSq" for the test.
+
+        Returns:
+            Distance in light years.
+
+        Example:
+            print("{} -> {}: {} ly".format(
+                lhs.name(), rhs.name(),
+                lhs.distanceTo(rhs),
+            ))
+        """
+
+        dx2 = (self.posX - other.posX) ** 2
+        dy2 = (self.posY - other.posY) ** 2
+        dz2 = (self.posZ - other.posZ) ** 2
+
+        distSq = (dx2 + dy2 + dz2)
+
+        return distSq ** 0.5
+
 
     def name(self):
         return self.dbname
@@ -450,8 +461,11 @@ class TradeDB(object):
             List of the .csv files
 
     Static methods:
-        calculateDitance2(lx, ly, lz, rx, ry, rz)
-            Returns the square of the distance between two points.
+        calculateDistance2(lx, ly, lz, rx, ry, rz)
+            Returns the square of the distance in ly between two points.
+
+        calculateDistance(lx, ly, lz, rx, ry, rz)
+            Returns the distance in ly between two points.
 
         listSearch(...)
             Performs partial and ambiguity matching of a word from a list
@@ -540,12 +554,24 @@ class TradeDB(object):
     @staticmethod
     def calculateDistance2(lx, ly, lz, rx, ry, rz):
         """
-        Returns the square of the distance between two points
+        Returns the distance in ly between two points.
         """
         dX = (lx - rx)
         dY = (ly - ry)
         dZ = (lz - rz)
-        return (dX ** 2) + (dY ** 2) + (dZ ** 2)
+        distSq = (dX ** 2) + (dY ** 2) + (dZ ** 2)
+        return distSq
+
+    @staticmethod
+    def calculateDistance(lx, ly, lz, rx, ry, rz):
+        """
+        Returns the distance in ly between two points.
+        """
+        dX = (lx - rx)
+        dY = (ly - ry)
+        dZ = (lz - rz)
+        distSq = (dX ** 2) + (dY ** 2) + (dZ ** 2)
+        return distSq ** 0.5
 
     ############################################################
     # Access to the underlying database.
@@ -756,7 +782,7 @@ class TradeDB(object):
                 candidate:
                     System that was found,
                 distLy:
-                    The distance in lightyears betwen system and candidate.
+                    The distance in lightyears between system and candidate.
         """
 
         if isinstance(system, Station):
@@ -778,7 +804,7 @@ class TradeDB(object):
                 if cand is not system:
                     cachedSystems.append((
                         cand,
-                        math.sqrt(distSq)
+                        distSq ** 0.5,
                     ))
 
             cachedSystems.sort(key=lambda ent: ent[1])
@@ -882,10 +908,9 @@ class TradeDB(object):
                 except KeyError:
                     pass
                 distances[nSys] = (curSys, newDist)
-                weight = math.sqrt(curSys.distToSq(nSys))
+                weight = curSys.distanceTo(nSys)
                 nID = nSys.ID
-                # + 1 adds a penalty per jump
-                heapq.heappush(openSet, (newDist + weight + 1, newDist, nID))
+                heapq.heappush(openSet, (newDist + weight, newDist, nID))
                 if nID == destID:
                     distTo = newDist
 

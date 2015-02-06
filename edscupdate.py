@@ -107,7 +107,7 @@ clip = misc.clipboard.SystemNameClip()
 
 
 def dist(x, y, z):
-    return math.sqrt((ox-x)**2 + (oy-y)**2 + (oz-z)**2)
+    return ((ox-x)**2 + (oy-y)**2 + (oz-z)**2) ** 0.5
 
 
 def ischange(sysinfo):

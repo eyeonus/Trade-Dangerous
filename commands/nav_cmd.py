@@ -116,10 +116,10 @@ def run(results, cmdenv, tdb):
             ages[ID] = age
 
     for (jumpSys, dist) in route:
-        jumpLy = math.sqrt(lastSys.distToSq(jumpSys))
+        jumpLy = lastSys.distanceTo(jumpSys)
         totalLy += jumpLy
         if cmdenv.detail:
-            dirLy = math.sqrt(jumpSys.distToSq(dstSystem))
+            dirLy = jumpSys.distanceTo(dstSystem)
         row = ResultRow(
                 action='Via',
                 system=jumpSys,
