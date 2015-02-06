@@ -101,6 +101,18 @@ class TradeLoad(namedtuple('TradeLoad', [
     def __bool__(self):
         return self.units > 0
 
+    def __lt__(self, rhs):
+        if self.gainCr < rhs.gainCr:
+            return True
+        if rhs.gainCr < self.gainCr:
+            return False
+        if self.units < rhs.units:
+            return True
+        if rhs.units < self.units:
+            return False
+        return self.costCr < rhs.costCr
+
+
 emptyLoad = TradeLoad([], 0, 0, 0)
 
 
@@ -460,9 +472,8 @@ class TradeCalc(object):
             #  for itemNo in range(offset, len(items)):
             #      item = items[itemNo]
             # seemed significantly slower than this approach.
-            for (iNo, item) in enumerate(items):
-                if iNo < offset:
-                    continue
+            for iNo in range(offset, len(items)):
+                item = items[iNo]
                 itemCostCr = item.costCr
                 stock = item.stock
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
@@ -472,47 +483,40 @@ class TradeCalc(object):
                 if maxQty <= 0:
                     continue
 
-                bestGainCr = -1
                 itemGainCr = item.gainCr
-                for qty in range(maxQty, int(maxQty * 0.5), -1):
-                    loadItems = [(item, qty)]
-                    loadCostCr = qty * itemCostCr
-                    loadGainCr = qty * itemGainCr
-                    if loadGainCr >= bestGainCr:
-                        yield TradeLoad(loadItems, loadCostCr, loadGainCr, qty)
-                    crLeft, capLeft = cr - loadCostCr, cap - qty
-                    if crLeft > 0 and capLeft > 0:
-                        # Solve for the remaining credits and capacity with what
-                        # is left in items after the item we just checked.
-                        for subLoad in _fitCombos(iNo + 1, crLeft, capLeft):
-                            slGain = loadGainCr + subLoad.gainCr
-                            if slGain >= bestGainCr:
-                                yield TradeLoad(
-                                    subLoad.items + loadItems,
-                                    slGain,
-                                    subLoad.costCr + loadCostCr,
-                                    subLoad.units + maxQty
-                                )
-                                bestGainCr = subLoad.gainCr
+                if maxQty >= cap:
+                    yield TradeLoad(
+                        [(item, cap)],
+                        itemGainCr * cap, itemCostCr * cap,
+                        cap
+                    )
+                    return
+
+                bestGainCr = -1
+                loadItems = [(item, maxQty)]
+                loadCostCr = maxQty * itemCostCr
+                loadGainCr = maxQty * itemGainCr
+                crLeft, capLeft = cr - loadCostCr, cap - maxQty
+                if crLeft > 0 and capLeft > 0:
+                    # Solve for the remaining credits and capacity with what
+                    # is left in items after the item we just checked.
+                    for subLoad in _fitCombos(iNo + 1, crLeft, capLeft):
+                        slGain = loadGainCr + subLoad.gainCr
+                        if slGain >= bestGainCr:
+                            yield TradeLoad(
+                                subLoad.items + loadItems,
+                                slGain,
+                                subLoad.costCr + loadCostCr,
+                                subLoad.units + maxQty,
+                            )
+                            bestGainCr = subLoad.gainCr
+                if bestGainCr < 0 and loadGainCr >= bestGainCr:
+                    yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
 
         bestLoad = emptyLoad
-        for newResult in _fitCombos(0, credits, capacity):
-            if bestLoad:
-                bestGain, newGain = bestLoad.gainCr, newResult.gainCr
-                # Ignore a result that doesn't match the previous best gain
-                if newGain < bestGain:
-                    continue
-                if newGain == bestGain:
-                    bestUnits, newUnits = bestLoad.units, newResult.units
-                    # Ignore entries that require more units for the same
-                    # amount of gain as the previous best.
-                    if newUnits > bestUnits:
-                        continue
-                    if newUnits == bestUnits:
-                        # They use the same units, choose the least expensive
-                        if newResult.costCr > bestLoad.costCr:
-                            continue
-            bestLoad = newResult
+        for newLoad in _fitCombos(0, credits, capacity):
+            if bestLoad < newLoad:
+                bestLoad = newLoad
 
         return bestLoad
 
