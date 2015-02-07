@@ -487,6 +487,7 @@ class TradeCalc(object):
             #  for itemNo in range(offset, len(items)):
             #      item = items[itemNo]
             # seemed significantly slower than this approach.
+            bestGainCr = -1
             for iNo in range(offset, len(items)):
                 item = items[iNo]
                 itemCostCr = item.costCr
@@ -500,14 +501,16 @@ class TradeCalc(object):
 
                 itemGainCr = item.gainCr
                 if maxQty >= cap:
-                    yield TradeLoad(
-                        [(item, cap)],
-                        itemGainCr * cap, itemCostCr * cap,
-                        cap
-                    )
-                    return
+                    gain = itemGainCr * cap
+                    if gain > 0 and gain >= bestGainCr:
+                        yield TradeLoad(
+                            [(item, cap)],
+                            gain, itemCostCr * cap,
+                            cap
+                        )
+                        bestGainCr = gain
+                    continue
 
-                bestGainCr = -1
                 loadItems = [(item, maxQty)]
                 loadCostCr = maxQty * itemCostCr
                 loadGainCr = maxQty * itemGainCr
@@ -524,9 +527,10 @@ class TradeCalc(object):
                                 subLoad.costCr + loadCostCr,
                                 subLoad.units + maxQty,
                             )
-                            bestGainCr = subLoad.gainCr
-                if bestGainCr < 0 and loadGainCr >= bestGainCr:
+                            bestGainCr = slGain
+                if loadGainCr > 0 and >= bestGainCr:
                     yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
+                    bestGainCr = loadGainCr
 
         bestLoad = emptyLoad
         for newLoad in _fitCombos(0, credits, capacity):
