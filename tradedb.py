@@ -149,6 +149,10 @@ class System(object):
         self.stations = []
         self._rangeCache = None
 
+    @property
+    def system(self):
+        return self
+
     def distToSq(self, other):
         """
         Returns the square of the distance between two systems.
