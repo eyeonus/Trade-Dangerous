@@ -57,8 +57,8 @@ standardStars = [
     "SOL",
     "ASELLUS AUSTRALIS",
     "46 GAMMA HYDRAE",
-    "TEJAT POSTERIOR",
     "RHO PUPPIS",
+    "HIP 34707",
 ]
 
 outlierStars = [
