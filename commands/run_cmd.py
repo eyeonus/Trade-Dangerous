@@ -39,11 +39,23 @@ switches = [
             dest='starting',
             metavar='STATION',
         ),
-    ParseArgument('--to',
-            help='Final system/station.',
-            dest='ending',
-            metavar='PLACE',
+    MutuallyExclusiveGroup(
+        ParseArgument('--to',
+                help='Final system/station.',
+                dest='ending',
+                metavar='PLACE',
+                default=None,
         ),
+        ParseArgument('--towards',
+                help=(
+                    'Choose a route that continually reduces the '
+                    'distance towards this system.'
+                ),
+                dest='goalSystem',
+                metavar='SYSTEM',
+                default=None,
+        ),
+    ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
             action='append',
@@ -532,6 +544,11 @@ def validateRunArguments(tdb, cmdenv):
     else:
         if cmdenv.endJumps:
             raise CommandLineError("--end-jumps (-e) only works with --to")
+        if cmdenv.goalSystem:
+            if not cmdenv.origPlace:
+                raise CommandLineError("--towards requires --from")
+            dest = tdb.lookupPlace(cmdenv.goalSystem)
+            cmdenv.goalSystem = dest.system
 
     origins, destns = cmdenv.origins or [], cmdenv.destinations or []
 
@@ -692,6 +709,7 @@ def run(results, cmdenv, tdb):
     origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
     avoidPlaces = cmdenv.avoidPlaces
     stopStations = cmdenv.destinations
+    goalSystem = cmdenv.goalSystem
 
     startCr = cmdenv.credits - cmdenv.insurance
 
@@ -775,6 +793,10 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
+        if goalSystem:
+            if any(route.route[-1].system is goalSystem for route in routes):
+                cmdenv.NOTE("Goal system reached!")
+                break
 
     if not routes:
         raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
@@ -803,8 +825,8 @@ def render(results, cmdenv, tdb):
 
     routes = results.data
 
-    for i in range(0, min(len(routes), cmdenv.routes)):
-        print(routes[i].detail(detail=cmdenv.detail))
+    for i in range(min(len(routes), cmdenv.routes)):      
+        print(routes[i].detail(cmdenv))
 
     # User wants to be guided through the route.
     if cmdenv.checklist:

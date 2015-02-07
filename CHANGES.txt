@@ -2,7 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-[wip] Feb 05 2015
+v6.9.0 Feb 06 2015
+. (kfsone) Added "--towards" option to "run" command:
+       --towards GOALSYSTEM will restrict the route to destinations which
+       move the player towards GOALSYSTEM.
 . (kfsone) Added "distanceTo" function to "System" which returns the
        distance in ly to a second system,
 . (kfsone) Minor performance gain in distance calculations,

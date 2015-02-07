@@ -163,10 +163,12 @@ class Route(object):
     def str(self):
         return "%s -> %s" % (self.route[0].name(), self.route[-1].name())
 
-    def detail(self, detail=0):
+    def detail(self, tdenv):
         """
         Return a string describing this route to a given level of detail.
         """
+
+        detail, goalSystem = tdenv.detail, tdenv.goalSystem
 
         credits = self.startCr
         gainCr = 0
@@ -250,6 +252,16 @@ class Route(object):
             def decorateStation(station):
                 return station.name()
 
+        if detail and goalSystem:
+            def goalDistance(station):
+                return " [Distance to {}: {:.2f} ly]\n".format(
+                    goalSystem.name(),
+                    station.system.distanceTo(goalSystem),
+                )
+        else:
+            def goalDistance(station):
+                return ""
+
         for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
             purchases = ""
@@ -274,6 +286,7 @@ class Route(object):
                     age=age,
                 )
                 hopTonnes += qty
+            text += goalDistance(route[i])
             text += hopFmt.format(
                 station=decorateStation(route[i]),
                 purchases=purchases
@@ -298,6 +311,8 @@ class Route(object):
 
             gainCr += hopGainCr
 
+        if route[-1].system is not goalSystem:
+            text += goalDistance(route[-1])
         text += footer or ""
         text += endFmt.format(
             station=decorateStation(route[-1]),
@@ -637,6 +652,8 @@ class TradeCalc(object):
         else:
             lsPenalty = 0
 
+        goalSystem = tdenv.goalSystem
+
         restrictStations = set()
         if restrictTo:
             for place in restrictTo:
@@ -667,7 +684,13 @@ class TradeCalc(object):
             except KeyError:
                 pass
 
-            def considerStation(dstStation, dest):
+            if goalSystem:
+                origSystem = route.route[0].system
+                srcSystem = srcStation.system
+                srcGoalDist = srcSystem.distanceTo(goalSystem)
+                srcOrigDist = srcSystem.distanceTo(origSystem)
+
+            def considerStation(dstStation, dest, multiplier):
                 # Do we have something to trade?
                 try:
                     trading = srcTradingWith[dstStation]
@@ -694,7 +717,9 @@ class TradeCalc(object):
                     # http://goo.gl/Otj2XP
                     penalty = ((cruiseKls ** 2) - cruiseKls) / 3
                     penalty *= lsPenalty
-                    score *= (1 - penalty)
+                    multiplier *= (1 - penalty)
+
+                score *= multiplier
 
                 dstID = dstStation.ID
                 try:
@@ -750,11 +775,31 @@ class TradeCalc(object):
                         dest.distLy
                     )
 
+                multiplier = 1.0
                 if restrictStations:
                     if dstStation not in restricting:
                         continue
+                elif goalSystem:
+                    # Bias in favor of getting closer
+                    dstSys = dstStation.system
+                    if dstSys == srcSystem:
+                        if tdenv.unique:
+                            continue
+                    else:
+                        dstGoalDist = dstSys.distanceTo(goalSystem)
+                        if dstGoalDist >= srcGoalDist:
+                            continue
+                        dstOrigDist = dstSys.distanceTo(origSystem)
+                        if dstOrigDist < srcOrigDist:
+                            # Did this put us back towards the orig?
+                            # It may be valid to do so but it's not "profitable".
+                            multiplier *= 0.6
+                        else:
+                            # The closer dst is, the smaller the divider
+                            # will be, so the larger the remainder.
+                            multiplier *= 1 + (srcGoalDist / dstGoalDist)
 
-                considerStation(dstStation, dest)
+                considerStation(dstStation, dest, multiplier)
 
                 if restrictStations:
                     restricting.remove(dstStation)

@@ -264,6 +264,14 @@ RUN sub-command:
          --to Beagle2
          --to lhs64
 
+     --towards <goal system>
+       Builds a route that tries to shorten the distance from your origin
+       and goal. Destinations that would increase the distance are ignored.
+       Tries to avoid routes that go backwards or detour. If you want to
+       avoid multiple visits in the same system, use --unique.
+       e.g.
+         --from iBootis --to LiuBese
+
      --start-jumps N
      -s N
        Considers stations from systems upto this many jumps from your
