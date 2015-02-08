@@ -381,7 +381,7 @@ class TradeCalc(object):
         def load_items(tableName, index):
             lastStnID, stnAppend = 0, None
             count = 0
-            tdenv.DEBUG1("TradeCalc loading {} values")
+            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
             cur = db.execute("""
                     SELECT  station_id, item_id, price, units, level,
                             strftime('%s', modified),
