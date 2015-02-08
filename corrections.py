@@ -36,6 +36,8 @@ stations = {
     "DT VIRGINIS/CHUN STATION":             "Chun Vision",
     "EGOVAE/ENOATE MARKET":                 "Endate Market",
     "EKONIR/MOREYVISION":                   "Morey Vision",
+    "ERAVATE/ERAVATE":                      DELETED,
+    "GABIETYE/GABIETYE":                    DELETED,
     "GCRV 4654/HERZEFELD LANDING":          "Herzfeld Landing",
     "HDS 1879/HEDIN ORBITAL":               DELETED,
     "HIP 4907/EDISON PLATFORM":             DELETED,
