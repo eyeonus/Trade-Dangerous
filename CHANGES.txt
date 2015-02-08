@@ -2,6 +2,14 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.9.1. Feb 08 2015
+. (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and
+       "--opt=usefull" options to the maddavo pluggin.
+. (kfsone) Fixed a division by zero bug in the --towards option,
+. (kfsone) Fixed --towards showing a different destination when it
+       was able to reach the goal system with a low-scoring trade,
++ Systems, Stations: (kfsone) Curated EDSC and Maddavo
+
 v6.9.0 Feb 06 2015
 . (kfsone) Added "--towards" option to "run" command:
        --towards GOALSYSTEM will restrict the route to destinations which
