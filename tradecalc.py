@@ -785,7 +785,7 @@ class TradeCalc(object):
                     if dstSys == srcSystem:
                         if tdenv.unique:
                             continue
-                    else:
+                    elif dstSys != goalSystem:
                         dstGoalDist = dstSys.distanceTo(goalSystem)
                         if dstGoalDist >= srcGoalDist:
                             continue
