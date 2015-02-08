@@ -794,12 +794,19 @@ def run(results, cmdenv, tdb):
             break
         routes = newRoutes
         if goalSystem:
-            if any(route.route[-1].system is goalSystem for route in routes):
+            routes.sort(
+                key=lambda route:
+                    0 if route.route[-1].system is goalSystem else 1
+            )
+            if routes[0].route[-1].system is goalSystem:
                 cmdenv.NOTE("Goal system reached!")
                 break
 
     if not routes:
-        raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
+        raise NoDataError(
+            "No profitable trades matched your critera, "
+            "or price data along the route is missing."
+        )
 
     if viaSet:
         routes, caution = filterByVia(routes, viaSet, viaStartPos)

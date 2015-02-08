@@ -782,10 +782,12 @@ class TradeCalc(object):
                 elif goalSystem:
                     # Bias in favor of getting closer
                     dstSys = dstStation.system
-                    if dstSys == srcSystem:
+                    if dstSys is srcSystem:
                         if tdenv.unique:
                             continue
-                    elif dstSys != goalSystem:
+                    elif dstSys is goalSystem:
+                        multiplier = 99999999999
+                    else:
                         dstGoalDist = dstSys.distanceTo(goalSystem)
                         if dstGoalDist >= srcGoalDist:
                             continue
