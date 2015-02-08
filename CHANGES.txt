@@ -10,6 +10,7 @@ v6.9.2 [wip]
 . (kfsone) Feature #161 Allow nav to require fuel stops
        "--refuel-jumps" (--ref for short) lets you specify the maximum
        number of consecutive non-station systems to allow on the route
+. (dl4ner) Added maddavo options to README
 
 v6.9.1. Feb 08 2015
 . (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and
