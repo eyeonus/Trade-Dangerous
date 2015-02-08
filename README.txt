@@ -540,6 +540,19 @@ IMPORT sub-command:
     --maddavo
       Like 'url' but specifies the URL for maddavo's .prices file
 
+      This has also additional options:
+      --option=<option> where option is one of the following:
+        buildcache:   Forces a rebuild of the cache before processing 
+                      of the .prices file.
+        syscsv:       Also download System.csv from the site.
+        stncsv:       Also download Station.csv from the site.
+        skipdl:       Skip doing any downloads.
+        force:        Process prices even if timestamps suggest 
+                      there is no new data.
+        use3h:        Force download of the 3-hours .prices file
+        use2d:        Force download of the 2-days .prices file
+        usefull:      Force download of the full .prices file
+
     --ignore-unknown
     -i
       Any systems, stations, categories or items that aren't recognized
