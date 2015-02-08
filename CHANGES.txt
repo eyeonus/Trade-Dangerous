@@ -6,6 +6,7 @@ v6.9.2 [wip]
 . (kfsone) Feature #158 Find rares based on distance from multiple systems
        "--away <ly>" and "--from <system1> --from <system2> ..."
 . (kfsone) "run" -vv output now shows buy and sell price, use -vvv for totals
+. (kfsone) Issue #165 "--to" for system without stations gave wrong result,
 
 v6.9.1. Feb 08 2015
 . (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and

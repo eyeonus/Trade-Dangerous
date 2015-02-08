@@ -306,7 +306,11 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
     """
 
     if not jumps:
-        return origins
+        return set(
+            origin
+            for origin in origins
+            if isinstance(origin, Station) or origin.stations
+        )
 
     origSys = set()
     for place in origins:
