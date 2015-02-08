@@ -218,9 +218,16 @@ ocrDerp = re.compile(r'''(
     ‹ |
     \bSATION\b |
     ,\w |
-    \bINGLY\b |
+    \bI?NGLY\b |
     \bAU\sL[DO0]\b
-
+    \b[\'\.-]\w |
+    \bDREBBFL\b
+    \bLEVIE |
+    \bRN\b |
+    \bH\sUNZIKER |
+    \bL[O0D]FTH\sUS |
+    \bHORNUCH\b |
+    \bKLU\sDZE
 )''', flags=re.X)
 
 
