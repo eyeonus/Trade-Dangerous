@@ -195,10 +195,13 @@ class Route(object):
                 text += self.summary() + "\n"
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = (
-                "     {qty:>4} x {item:<{longestName}}"
-                " {eacost:>10n}cr each, {ttlcost:>10n}cr total,"
-                "data from {age}\n"
+                "     {qty:>4} x {item:<{longestName}} "
+                "{eacost:>8n}cr vs {easell:>8n}cr, "
+                "{age}"
             )
+            if detail > 2:
+                hopStepFmt += ", total: {ttlcost:>10n}cr"
+            hopStepFmt += "\n"
             jumpsFmt = ("  Jump {jumps}\n")
             dockFmt = (
                 "  Unload at {station} => Gain {gain:n}cr "
@@ -281,6 +284,7 @@ class Route(object):
                 purchases += hopStepFmt.format(
                     qty=qty, item=trade.name(),
                     eacost=trade.costCr,
+                    easell=trade.costCr + trade.gainCr,
                     ttlcost=trade.costCr*qty,
                     longestName=longestNameLen,
                     age=age,
@@ -481,13 +485,12 @@ class TradeCalc(object):
                 to determine which is actually most profitable.
             """
 
-            # Note: both
-            #  for (itemNo, item) in enumerate(items[offset:]):
-            # and
-            #  for itemNo in range(offset, len(items)):
-            #      item = items[itemNo]
-            # seemed significantly slower than this approach.
             bestGainCr = -1
+            bestItem = None
+            bestQty = 0
+            bestCostCr = 0
+            bestSub = None
+
             for iNo in range(offset, len(items)):
                 item = items[iNo]
                 itemCostCr = item.costCr
@@ -500,44 +503,63 @@ class TradeCalc(object):
                     continue
 
                 itemGainCr = item.gainCr
-                if maxQty >= cap:
-                    gain = itemGainCr * cap
-                    if gain > 0 and gain >= bestGainCr:
-                        yield TradeLoad(
-                            [(item, cap)],
-                            gain, itemCostCr * cap,
-                            cap
-                        )
+                if maxQty == cap:
+                    # full load
+                    gain = itemGainCr * maxQty
+                    cost = itemCostCr * maxQty
+                    if gain > bestGainCr:
+                        # list is sorted by gain DESC, cost ASC
                         bestGainCr = gain
+                        bestItem = item
+                        bestQty = maxQty
+                        bestCostCr = cost
+                        bestSub = None
+                        # Since the items are listed in gain order
+                        # and then cost-ascending, if we ran out of
+                        # cargo capacity rather than credits, then
+                        # we don't need to check any further.
+                        if maxQty * itemCostCr <= cr:
+                            break
                     continue
 
-                loadItems = [(item, maxQty)]
                 loadCostCr = maxQty * itemCostCr
                 loadGainCr = maxQty * itemGainCr
+                if loadGainCr > bestGainCr:
+                    bestGainCr = loadGainCr
+                    bestItem = item
+                    bestQty = maxQty
+                    bestCostCr = loadCostCr
+                    bestSub = None
+
                 crLeft, capLeft = cr - loadCostCr, cap - maxQty
                 if crLeft > 0 and capLeft > 0:
                     # Solve for the remaining credits and capacity with what
                     # is left in items after the item we just checked.
-                    for subLoad in _fitCombos(iNo + 1, crLeft, capLeft):
-                        slGain = loadGainCr + subLoad.gainCr
-                        if slGain >= bestGainCr:
-                            yield TradeLoad(
-                                subLoad.items + loadItems,
-                                slGain,
-                                subLoad.costCr + loadCostCr,
-                                subLoad.units + maxQty,
-                            )
-                            bestGainCr = slGain
-                if loadGainCr > 0 and loadGainCr >= bestGainCr:
-                    yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
-                    bestGainCr = loadGainCr
+                    subLoad = _fitCombos(iNo+1, crLeft, capLeft)
+                    if subLoad is emptyLoad:
+                        continue
+                    ttlGain = loadGainCr + subLoad.gainCr
+                    ttlCost = loadCostCr + subLoad.costCr
+                    if ttlGain < bestGainCr:
+                        continue
+                    if ttlGain == bestGainCr and ttlCost >= bestCostCr:
+                        continue
+                    bestGainCr = ttlGain
+                    bestItem = item
+                    bestQty = maxQty
+                    bestCostCr = ttlCost
+                    bestSub = subLoad
 
-        bestLoad = emptyLoad
-        for newLoad in _fitCombos(0, credits, capacity):
-            if bestLoad < newLoad:
-                bestLoad = newLoad
+            if not bestItem:
+                return emptyLoad
 
-        return bestLoad
+            bestLoad = [(bestItem, bestQty)]
+            if bestSub:
+                bestLoad.extend(bestSub.items)
+                bestQty += bestSub.units
+            return TradeLoad(bestLoad, bestGainCr, bestGainCr, bestQty)
+
+        return _fitCombos(0, credits, capacity)
 
     def getBestTrade(self, src, dst, credits=None, fitFunction=None):
         """
