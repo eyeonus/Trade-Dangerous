@@ -535,12 +535,14 @@ def validateRunArguments(tdb, cmdenv):
             cmdenv.destinations = [ cmdenv.destPlace ]
         elif isinstance(cmdenv.destPlace, System):
             cmdenv.destinations = [ cmdenv.destPlace ]
+        print("destinations: {}".format(cmdenv.destinations))
         cmdenv.destinations = expandForJumps(
                 tdb, cmdenv,
                 [ cmdenv.destPlace ],
                 cmdenv.endJumps,
                 "--to"
         )
+        print("expanded destinations: {}".format(cmdenv.destinations))
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps

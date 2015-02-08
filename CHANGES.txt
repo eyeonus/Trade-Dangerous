@@ -7,6 +7,9 @@ v6.9.2 [wip]
        "--away <ly>" and "--from <system1> --from <system2> ..."
 . (kfsone) "run" -vv output now shows buy and sell price, use -vvv for totals
 . (kfsone) Issue #165 "--to" for system without stations gave wrong result,
+. (kfsone) Feature #161 Allow nav to require fuel stops
+       "--refuel-jumps" (--ref for short) lets you specify the maximum
+       number of consecutive non-station systems to allow on the route
 
 v6.9.1. Feb 08 2015
 . (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and

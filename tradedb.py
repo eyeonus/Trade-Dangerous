@@ -826,7 +826,7 @@ class TradeDB(object):
             # No need to be conditional inside the loop
             yield from cachedSystems
 
-    def getRoute(self, origin, dest, maxJumpLy, avoiding=[]):
+    def getRoute(self, origin, dest, maxJumpLy, avoiding=[], stationInterval=0):
         """
         Find a shortest route between two systems with an additional
         constraint that each system be a maximum of maxJumpLy from
@@ -839,6 +839,10 @@ class TradeDB(object):
                 System (or station) to terminate at,
             maxJumpLy:
                 Maximum light years between systems,
+            avoiding:
+                List of systems being avoided
+            stationInterval:
+                If non-zero, require a station at least this many jumps,
 
         Returns:
             None
@@ -875,7 +879,7 @@ class TradeDB(object):
         # Each element is a tuple of the 'priority' (the combination of
         # the total distance to the node and the distance left from the
         # node to the destination.
-        openSet = [(0, 0, origin.ID)]
+        openSet = [(0, 0, origin.ID, 0)]
         # Track predecessor nodes for everwhere we visit
         distances = {origin: (None, 0)}
         destID = dest.ID
@@ -889,8 +893,10 @@ class TradeDB(object):
                 if isinstance(avoid, System):
                     distances[avoid] = (None, -1)
 
+        systemsInRange = self.genSystemsInRange
+
         while openSet:
-            weight, curDist, curSysID = heapq.heappop(openSet)
+            weight, curDist, curSysID, stnDist = heapq.heappop(openSet)
             # If we reached 'goal' we've found the shortest path.
             if curSysID == destID:
                 break
@@ -903,18 +909,30 @@ class TradeDB(object):
             if curDist > distances[curSys][1]:
                 continue
 
-            for (nSys, nDist) in self.genSystemsInRange(curSys, maxJumpLy):
+            if stationInterval:
+                if curSys.stations:
+                    stnDist = 0
+                else:
+                    stnDist += 1
+
+            distFn = curSys.distanceTo
+            heappush = heapq.heappush
+
+            for (nSys, nDist) in systemsInRange(curSys, maxJumpLy):
                 newDist = curDist + nDist
                 try:
                     (prevSys, prevDist) = distances[nSys]
                     if prevDist <= newDist:
-                        continue
+                        if prevDist < newDist or prevSys.stations:
+                            continue
                 except KeyError:
                     pass
+                if stationInterval and stnDist >= stationInterval and not curSys.stations:
+                    continue
                 distances[nSys] = (curSys, newDist)
-                weight = curSys.distanceTo(nSys)
+                weight = distFn(nSys)
                 nID = nSys.ID
-                heapq.heappush(openSet, (newDist + weight, newDist, nID))
+                heappush(openSet, (newDist + weight, newDist, nID, stnDist))
                 if nID == destID:
                     distTo = newDist
 

@@ -657,6 +657,13 @@ NAV sub-command:
     --stations
       Lists stations at each stop
 
+    --refuel-jumps N
+    --ref N
+      Specify the maximum consecutive systems which do not have stations
+      you can pass through. For example "--ref 1" would require every
+      jump on the route have a station. "--ref 2" would require that
+      you not make more than one stationless jump after another.
+
     from
       Name of the starting system or a station in the system,
 
