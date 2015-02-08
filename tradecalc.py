@@ -528,7 +528,7 @@ class TradeCalc(object):
                                 subLoad.units + maxQty,
                             )
                             bestGainCr = slGain
-                if loadGainCr > 0 and >= bestGainCr:
+                if loadGainCr > 0 and loadGainCr >= bestGainCr:
                     yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
                     bestGainCr = loadGainCr
 
