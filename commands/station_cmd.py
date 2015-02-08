@@ -170,9 +170,8 @@ def checkSystemAndStation(tdb, cmdenv):
         try:
             station = tdb.lookupPlace(stnName)
         except LookupError:
-            raise CommandLineError("Unrecognized Station: sysName".format(
-                sysName,
-                cmdenv.station,
+            raise CommandLineError("Unrecognized Station: {}".format(
+                cmdenv.station
             ))
         cmdenv.system = station.system.name()
         cmdenv.station = station.dbname
