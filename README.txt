@@ -577,6 +577,22 @@ RARES sub-command:
        e.g.
          --limit 10
 
+     --reverse
+     -r
+       Reverse the order, can be used with "--ly" and "--limit" to find
+       the furthest-away rares
+
+    --away N.NN
+    --from SYSTEM1 --from SYSTEM2 ... --from SYSTEMN
+      Limits results to systems that are at least a given distance away
+      from additional systems.
+      e.g.
+        trade.py rare --ly 160 sol -r --away 140 --from lave
+          Shows systems starting at 160ly or less from sol,
+          but that are also 140ly or more from lave.
+        trade.py rare --ly 160 sol -r --away 140 --from lave --from xihe
+          As above but also compares for <= 140ly from xihe
+
     --pad-size SML?
     --pad SML?
     -p
@@ -590,11 +606,6 @@ RARES sub-command:
      --price-sort
      -P
        Sort by price rather than proximity
-
-     --reverse
-     -r
-       Reverse the order, can be used with "--ly" and "--limit" to find
-       the furthest-away rares
 
      --quiet
      -q
