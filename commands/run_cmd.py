@@ -461,12 +461,12 @@ def checkStationSuitability(cmdenv, station, src=None):
 def filterStationSet(src, cmdenv, stnSet):
     if not stnSet:
         return stnSet
-    for place in stnSet:
-        if not isinstance(place, Station):
-            continue
-        if not checkStationSuitability(cmdenv, place):
-            stnSet.remove(place)
-            continue
+    unsuited = set(
+        place for place in stnSet
+        if isinstance(place, Station) and \
+            not checkStationSuitability(cmdenv, place)
+    )
+    stnSet -= unsuited
     if not stnSet:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
