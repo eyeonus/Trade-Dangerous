@@ -798,6 +798,10 @@ BUY sub-command:
       Sets the range of --near (requires --near)
       --near chango --ly 10
 
+    --lt NNN
+    --gt NNN
+      Specify min (gt) and max (lt) prices for items
+
     --pad-size SML?
     --pad SML?
     -p
@@ -840,6 +844,10 @@ SELL sub-command:
     --ly-per N.N
       Sets the range of --near (requires --near)
       --near chango --ly 10
+
+    --lt NNN
+    --gt NNN
+      Specify min (gt) and max (lt) prices for items
 
     --pad-size SML?
     --pad SML?

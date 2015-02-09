@@ -11,6 +11,7 @@ v6.9.2 [wip]
        "--refuel-jumps" (--ref for short) lets you specify the maximum
        number of consecutive non-station systems to allow on the route
 . (dl4ner) Added maddavo options to README
+. (kfsone) Feature #153 min/max values for sell/buy (--gt and --lt)
 
 v6.9.1. Feb 08 2015
 . (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and
