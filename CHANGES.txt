@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.9.2 [wip]
+v6.9.2 Feb 08 2015
 . (kfsone) Feature #158 Find rares based on distance from multiple systems
        "--away <ly>" and "--from <system1> --from <system2> ..."
 . (kfsone) "run" -vv output now shows buy and sell price, use -vvv for totals
