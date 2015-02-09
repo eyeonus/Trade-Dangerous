@@ -31,9 +31,6 @@ stations = {
     "BD+65 1846/SHARGIN BEACON":            DELETED,
     "BOLG/MOXONS MOJO":                     "Moxon's Mojo",
     "CEMIESS/TITUS STATION":                "Titius Station",
-    "COCIJO/HARRY MOORE 6 CO":              DELETED,
-    "COSI/JU LIAN CITY":                    "Julian City",
-    "CPD-28 332/WI N N E GATEWAY":          DELETED,
     "DAJOAR/MACQUORN TERMINAL":             DELETED,
     "DORIS/ISHERWOOD DOCK":                 DELETED,
     "DT VIRGINIS/CHUN STATION":             "Chun Vision",
@@ -69,6 +66,9 @@ stations = {
 #ADD_STATIONS_HERE
     "ADLIVUN/ABL SURVEY":                   "Abe Survey",
     "ALPHA FORNACIS/BENNET PORT":           "Bennett Port",
+    "COCIJO/HARRY MOORE 6 CO":              DELETED,
+    "COSI/JU LIAN CITY":                    "Julian City",
+    "CPD-28 332/WI N N E GATEWAY":          DELETED,
     "DITAE/DITAE":                          DELETED,
 }
 
