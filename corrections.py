@@ -16,6 +16,8 @@ systems = {
 
 #ADD_SYSTEMS_HERE
 }
+
+stations = {
     "AKHENATEN/WANG PLATFORM":              DELETED,
     "ALBICEVCI/DUBROVOLSKI SURVEY":         "Dobrovolski Survey",
     "AMAIT/LOPEZ DE VILLALOBOS":            "Lopez De Villalobos Prospect",
