@@ -101,6 +101,18 @@ class TradeLoad(namedtuple('TradeLoad', [
     def __bool__(self):
         return self.units > 0
 
+    def __lt__(self, rhs):
+        if self.gainCr < rhs.gainCr:
+            return True
+        if rhs.gainCr < self.gainCr:
+            return False
+        if self.units < rhs.units:
+            return True
+        if rhs.units < self.units:
+            return False
+        return self.costCr < rhs.costCr
+
+
 emptyLoad = TradeLoad([], 0, 0, 0)
 
 
@@ -151,10 +163,12 @@ class Route(object):
     def str(self):
         return "%s -> %s" % (self.route[0].name(), self.route[-1].name())
 
-    def detail(self, detail=0):
+    def detail(self, tdenv):
         """
         Return a string describing this route to a given level of detail.
         """
+
+        detail, goalSystem = tdenv.detail, tdenv.goalSystem
 
         credits = self.startCr
         gainCr = 0
@@ -181,10 +195,13 @@ class Route(object):
                 text += self.summary() + "\n"
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = (
-                "     {qty:>4} x {item:<{longestName}}"
-                " {eacost:>10n}cr each, {ttlcost:>10n}cr total,"
-                "data from {age}\n"
+                "     {qty:>4} x {item:<{longestName}} "
+                "{eacost:>8n}cr vs {easell:>8n}cr, "
+                "{age}"
             )
+            if detail > 2:
+                hopStepFmt += ", total: {ttlcost:>10n}cr"
+            hopStepFmt += "\n"
             jumpsFmt = ("  Jump {jumps}\n")
             dockFmt = (
                 "  Unload at {station} => Gain {gain:n}cr "
@@ -238,6 +255,16 @@ class Route(object):
             def decorateStation(station):
                 return station.name()
 
+        if detail and goalSystem:
+            def goalDistance(station):
+                return " [Distance to {}: {:.2f} ly]\n".format(
+                    goalSystem.name(),
+                    station.system.distanceTo(goalSystem),
+                )
+        else:
+            def goalDistance(station):
+                return ""
+
         for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
             purchases = ""
@@ -257,11 +284,13 @@ class Route(object):
                 purchases += hopStepFmt.format(
                     qty=qty, item=trade.name(),
                     eacost=trade.costCr,
+                    easell=trade.costCr + trade.gainCr,
                     ttlcost=trade.costCr*qty,
                     longestName=longestNameLen,
                     age=age,
                 )
                 hopTonnes += qty
+            text += goalDistance(route[i])
             text += hopFmt.format(
                 station=decorateStation(route[i]),
                 purchases=purchases
@@ -286,6 +315,8 @@ class Route(object):
 
             gainCr += hopGainCr
 
+        if route[-1].system is not goalSystem:
+            text += goalDistance(route[-1])
         text += footer or ""
         text += endFmt.format(
             station=decorateStation(route[-1]),
@@ -338,61 +369,48 @@ class TradeCalc(object):
 
         db = self.tdb.getDB()
 
-        selling = self.stationsSelling = defaultdict(list)
-        buying = self.stationsBuying = defaultdict(list)
-        stnByID = self.tdb.stationByID
-
-        lastStnID, stn = 0, None
-        sellCount, buyCount = 0, 0
         avoidItemIDs = set([item.ID for item in tdenv.avoidItems])
-        tdenv.DEBUG1("TradeCalc loading StationSelling values")
-        cur = db.execute("""
-                SELECT  station_id, item_id, price, units, level,
-                        strftime('%s', modified),
-                        modified
-                  FROM  StationSelling
-        """)
-        now = int(time.time())
-        for stnID, itmID, cr, units, lev, timestamp, modified in cur:
-            if itmID not in avoidItemIDs:
-                if stnID != lastStnID:
-                    stn = selling[stnID]
-                    lastStnID = stnID
-                try:
-                    ageS = now - int(timestamp)
-                except TypeError:
-                    raise BadTimestampError(
-                        "StationSelling", self.tdb,
-                        stnID, itmID, modified
-                    )
-                stn.append([itmID, cr, units, lev, ageS])
-                sellCount += 1
-        tdenv.DEBUG0("Loaded {} selling values".format(sellCount))
 
-        lastStnID, stn = 0, None
-        tdenv.DEBUG1("TradeCalc loading StationBuying values")
-        cur = db.execute("""
-            SELECT  station_id, item_id, price, units, level,
-                    strftime('%s', modified),
-                    modified
-              FROM  StationBuying
-        """)
-        now = int(time.time())
-        for stnID, itmID, cr, units, lev, timestamp, modified in cur:
-            if itmID not in avoidItemIDs:
-                if stnID != lastStnID:
-                    stn = buying[stnID]
-                    lastStnID = stnID
-                try:
-                    ageS = now - int(timestamp)
-                except TypeError:
-                    raise BadTimestampError(
-                        "StationBuying", self.tdb,
-                        stnID, itmID, modified
-                    )
-                stn.append([itmID, cr, units, lev, ageS])
-                buyCount += 1
-        tdenv.DEBUG0("Loaded {} buying values".format(buyCount))
+        if tdenv.maxAge:
+            loadWhere = "WHERE JULIANDAY(modified) >= JULIANDAY('NOW') - {:f}".format(
+                    tdenv.maxAge
+            )
+        else:
+            loadWhere = ""
+
+        def load_items(tableName, index):
+            lastStnID, stnAppend = 0, None
+            count = 0
+            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
+            cur = db.execute("""
+                    SELECT  station_id, item_id, price, units, level,
+                            strftime('%s', modified),
+                            modified
+                      FROM  {}
+                      {where}
+            """.format(tableName, where=loadWhere))
+            now = int(time.time())
+            for stnID, itmID, cr, units, lev, timestamp, modified in cur:
+                if itmID not in avoidItemIDs:
+                    if stnID != lastStnID:
+                        stnAppend = index[stnID].append
+                        lastStnID = stnID
+                    try:
+                        ageS = now - int(timestamp)
+                    except TypeError:
+                        raise BadTimestampError(
+                            TableName, self.tdb,
+                            stnID, itmID, modified
+                        )
+                    stnAppend((itmID, cr, units, lev, ageS))
+                    count += 1
+            tdenv.DEBUG0("Loaded {} selling values".format(count))
+
+        self.stationsSelling = defaultdict(list)
+        load_items("StationSelling", self.stationsSelling)
+
+        self.stationsBuying = defaultdict(list)
+        load_items("StationBuying", self.stationsBuying)
 
     def bruteForceFit(self, items, credits, capacity, maxUnits):
         """
@@ -400,52 +418,53 @@ class TradeCalc(object):
         This is provided to make it easy to validate the results of future
         variants or optimizations of the fit algorithm.
         """
-        def _fitCombos(offset, cr, cap):
-            if offset >= len(items):
+        def _fitCombos(offset, cr, cap, level=1):
+            if cr <= 0 or cap <= 0:
                 return emptyLoad
-            # yield items below us too
-            bestLoad = _fitCombos(offset + 1, cr, cap)
-            item = items[offset]
-            itemCost = item.costCr
-            maxQty = min(maxUnits, cap, cr // itemCost)
+            while True:
+                if offset >= len(items):
+                    return emptyLoad
+                item = items[offset]
+                offset += 1
 
-            # Adjust for age for "M"/"H" items with low units.
-            if item.stock < maxQty and item.stock > 0:  # -1 = unknown
-                maxQty = min(maxQty, item.stock)
+                itemCost = item.costCr
+                maxQty = min(maxUnits, cap, cr // itemCost)
 
-            if maxQty > 0:
-                itemGain = item.gainCr
-                for qty in range(maxQty):
-                    load = TradeLoad(
-                        [(item, maxQty)],
-                        itemGain * maxQty,
-                        itemCost * maxQty,
-                        maxQty
-                    )
-                    subLoad = _fitCombos(
-                        offset + 1, cr - load.costCr, cap - load.units
-                    )
-                    combGain = load.gainCr + subLoad.gainCr
-                    if combGain < bestLoad.gainCr:
+                if item.stock < maxQty and item.stock > 0:  # -1 = unknown
+                    maxQty = min(maxQty, item.stock)
+
+                if maxQty > 0:
+                    break
+
+            # find items that don't include us
+            bestLoad = _fitCombos(offset, cr, cap, level + 1)
+            itemGain = item.gainCr
+
+            for qty in range(1, maxQty + 1):
+                loadGain, loadCost = itemGain * qty, itemCost * qty
+                load = TradeLoad([(item, qty)], loadGain, loadCost, qty)
+                subLoad = _fitCombos(
+                    offset, cr - loadCost, cap - qty, level+1
+                )
+                combGain = loadGain + subLoad.gainCr
+                if combGain < bestLoad.gainCr:
+                    continue
+                combCost = loadCost + subLoad.costCr
+                combUnits = qty + subLoad.units
+                if combGain == bestLoad.gainCr:
+                    if combUnits > bestLoad.units:
                         continue
-                    combCost = load.costCr + subLoad.costCr
-                    combWeight = load.units + subLoad.units
-                    if combGain == bestLoad.gainCr:
-                        if combWeight > bestLoad.units:
+                    if combUnits == bestLoad.units:
+                        if combCost >= bestLoad.costCr:
                             continue
-                        if combWeight == bestLoad.units:
-                            if combCost >= bestLoad.costCr:
-                                continue
-                    bestLoad = TradeLoad(
-                        load.items + subLoad.items,
-                        load.gainCr + subLoad.gainCr,
-                        load.costCr + subLoad.costCr,
-                        load.units + subLoad.units
-                    )
+                bestLoad = TradeLoad(
+                    load.items + subLoad.items,
+                    combGain, combCost, combUnits
+                )
+
             return bestLoad
 
-        bestLoad = _fitCombos(0, credits, capacity)
-        return bestLoad
+        return _fitCombos(0, credits, capacity)
 
     def fastFit(self, items, credits, capacity, maxUnits):
         """
@@ -457,7 +476,7 @@ class TradeCalc(object):
             """
                 Starting from offset, consider a scenario where we
                 would purchase the maximum number of each item
-                given the cr/cap limitations. Then, assuming that
+                given the cr+cap limitations. Then, assuming that
                 load, solve for the remaining cr+cap from the next
                 value of offset.
 
@@ -466,68 +485,81 @@ class TradeCalc(object):
                 to determine which is actually most profitable.
             """
 
-            # Note: both
-            #  for (itemNo, item) in enumerate(items[offset:]):
-            # and
-            #  for itemNo in range(offset, len(items)):
-            #      item = items[itemNo]
-            # seemed significantly slower than this approach.
-            for item in items[offset:]:
+            bestGainCr = -1
+            bestItem = None
+            bestQty = 0
+            bestCostCr = 0
+            bestSub = None
+
+            for iNo in range(offset, len(items)):
+                item = items[iNo]
                 itemCostCr = item.costCr
                 stock = item.stock
                 maxQty = min(maxUnits, cap, cr // itemCostCr)
-
-                # Adjust for age for "M"/"H" items with low units.
                 if stock < maxQty and stock >= 0:  # -1 = unknown
                     maxQty = min(maxQty, stock)
 
                 if maxQty <= 0:
-                    offset += 1
                     continue
 
-                loadItems = [(item, maxQty)]
+                itemGainCr = item.gainCr
+                if maxQty == cap:
+                    # full load
+                    gain = itemGainCr * maxQty
+                    cost = itemCostCr * maxQty
+                    if gain > bestGainCr:
+                        # list is sorted by gain DESC, cost ASC
+                        bestGainCr = gain
+                        bestItem = item
+                        bestQty = maxQty
+                        bestCostCr = cost
+                        bestSub = None
+                        # Since the items are listed in gain order
+                        # and then cost-ascending, if we ran out of
+                        # cargo capacity rather than credits, then
+                        # we don't need to check any further.
+                        if maxQty * itemCostCr <= cr:
+                            break
+                    continue
+
                 loadCostCr = maxQty * itemCostCr
-                loadGainCr = maxQty * item.gainCr
-                bestGainCr = -1
+                loadGainCr = maxQty * itemGainCr
+                if loadGainCr > bestGainCr:
+                    bestGainCr = loadGainCr
+                    bestItem = item
+                    bestQty = maxQty
+                    bestCostCr = loadCostCr
+                    bestSub = None
+
                 crLeft, capLeft = cr - loadCostCr, cap - maxQty
                 if crLeft > 0 and capLeft > 0:
                     # Solve for the remaining credits and capacity with what
                     # is left in items after the item we just checked.
-                    for subLoad in _fitCombos(offset + 1, crLeft, capLeft):
-                        slGain = subLoad.gainCr
-                        if slGain >= bestGainCr and slGain > 0:
-                            yield TradeLoad(
-                                subLoad.items + loadItems,
-                                slGain + loadGainCr,
-                                subLoad.costCr + loadCostCr,
-                                subLoad.units + maxQty
-                            )
-                            bestGainCr = subLoad.gainCr
-                # If there were no good additions, yield what we have.
-                if bestGainCr < 0:
-                    yield TradeLoad(loadItems, loadGainCr, loadCostCr, maxQty)
-                offset += 1
-
-        bestLoad = emptyLoad
-        for newResult in _fitCombos(0, credits, capacity):
-            if bestLoad:
-                bestGain, newGain = bestLoad.gainCr, newResult.gainCr
-                # Ignore a result that doesn't match the previous best gain
-                if newGain < bestGain:
-                    continue
-                if newGain == bestGain:
-                    bestUnits, newUnits = bestLoad.units, newResult.units
-                    # Ignore entries that require more units for the same
-                    # amount of gain as the previous best.
-                    if newUnits > bestUnits:
+                    subLoad = _fitCombos(iNo+1, crLeft, capLeft)
+                    if subLoad is emptyLoad:
                         continue
-                    if newUnits == bestUnits:
-                        # They use the same units, choose the least expensive
-                        if newResult.costCr > bestLoad.costCr:
-                            continue
-            bestLoad = newResult
+                    ttlGain = loadGainCr + subLoad.gainCr
+                    ttlCost = loadCostCr + subLoad.costCr
+                    if ttlGain < bestGainCr:
+                        continue
+                    if ttlGain == bestGainCr and ttlCost >= bestCostCr:
+                        continue
+                    bestGainCr = ttlGain
+                    bestItem = item
+                    bestQty = maxQty
+                    bestCostCr = ttlCost
+                    bestSub = subLoad
 
-        return bestLoad
+            if not bestItem:
+                return emptyLoad
+
+            bestLoad = [(bestItem, bestQty)]
+            if bestSub:
+                bestLoad.extend(bestSub.items)
+                bestQty += bestSub.units
+            return TradeLoad(bestLoad, bestGainCr, bestGainCr, bestQty)
+
+        return _fitCombos(0, credits, capacity)
 
     def getBestTrade(self, src, dst, credits=None, fitFunction=None):
         """
@@ -564,50 +596,24 @@ class TradeCalc(object):
                 "%s does not trade with %s" % (src.name(), dst.name())
             )
 
-        if tdenv.maxAge:
-            # convert from days to seconds
-            cutoffSeconds = tdenv.maxAge * (24 * 60 * 60)
+        if max(items, key=lambda itm: itm.costCr).costCr > credits:
             items = [
-                item for item in items
-                if max(item.srcAge, item.dstAge) < cutoffSeconds
+                item for item in items if item.costCr <= credits
             ]
-
-        # Remove any items we can't afford.
-        if items:
-            if max(items, key=lambda item: item.costCr).costCr > credits:
-                items = [
-                    item for item in items
-                    if item.costCr <= credits
-                ]
-
-        # Make sure there's still something to trade.
-        if not items:
-            return emptyLoad
-
-        # Short-circuit:
-        # Items are sorted from highest to lowest gain, so if we can afford
-        # to fill up with the first item, that's guaranteed win.
-        # NOTE: The payoff for this comes from higher-end searches
-        # that would normally be more expensive,
-        # at the cost of a slight hitch in lower-end searches.
-        firstItem = items[0]
-        if maxUnits >= capacity and firstItem.costCr * capacity <= credits:
-            if firstItem.stock < 0 or firstItem.stock >= maxUnits:
-                return TradeLoad(
-                    [(items[0], capacity)],
-                    capacity * firstItem.gainCr,
-                    capacity * firstItem.costCr,
-                    capacity
-                )
+            if not items:
+                return emptyLoad
 
         # Go ahead and find the best combination out of what's left.
         fitFunction = fitFunction or self.defaultFit
         return fitFunction(items, credits, capacity, maxUnits)
 
-    def getTrades(self, srcStation, srcSelling, dstStation):
-        try:
-            dstBuying = self.stationsBuying[dstStation.ID]
-        except KeyError:
+    def getTrades(self, srcStation, dstStation, srcSelling=None):
+        if not srcSelling:
+            srcSelling = self.stationsSelling.get(srcStation.ID, None)
+        if not srcSelling:
+            return None
+        dstBuying = self.stationsBuying.get(dstStation.ID, None)
+        if not dstBuying:
             srcStation.tradingWith[dstStation] = None
             return None
 
@@ -630,6 +636,10 @@ class TradeCalc(object):
                         ))
                     break   # from srcSelling
 
+        # SORT BY profit DESC, cost
+        # So two if two items have the same profit, the cheapest
+        # will be listed first.
+        trading.sort(key=lambda trade: trade.costCr)
         trading.sort(key=lambda trade: trade.gainCr, reverse=True)
         srcStation.tradingWith[dstStation] = trading
 
@@ -668,6 +678,8 @@ class TradeCalc(object):
         else:
             lsPenalty = 0
 
+        goalSystem = tdenv.goalSystem
+
         restrictStations = set()
         if restrictTo:
             for place in restrictTo:
@@ -687,11 +699,9 @@ class TradeCalc(object):
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
-            try:
-                srcSelling = self.stationsSelling[srcStation.ID]
-            except KeyError:
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing sold - next.")
+            srcSelling = self.stationsSelling.get(srcStation.ID, None)
+            if not srcSelling:
+                tdenv.DEBUG1("Nothing sold - next.")
                 continue
 
             restricting = set(restrictStations)
@@ -700,13 +710,19 @@ class TradeCalc(object):
             except KeyError:
                 pass
 
-            def considerStation(dstStation, dest):
+            if goalSystem:
+                origSystem = route.route[0].system
+                srcSystem = srcStation.system
+                srcGoalDist = srcSystem.distanceTo(goalSystem)
+                srcOrigDist = srcSystem.distanceTo(origSystem)
+
+            def considerStation(dstStation, dest, multiplier):
                 # Do we have something to trade?
                 try:
                     trading = srcTradingWith[dstStation]
                 except (TypeError, KeyError):
                     trading = self.getTrades(
-                        srcStation, srcSelling, dstStation
+                        srcStation, dstStation, srcSelling
                     )
                 if not trading:
                     return
@@ -727,7 +743,9 @@ class TradeCalc(object):
                     # http://goo.gl/Otj2XP
                     penalty = ((cruiseKls ** 2) - cruiseKls) / 3
                     penalty *= lsPenalty
-                    score *= (1 - penalty)
+                    multiplier *= (1 - penalty)
+
+                score *= multiplier
 
                 dstID = dstStation.ID
                 try:
@@ -783,11 +801,33 @@ class TradeCalc(object):
                         dest.distLy
                     )
 
+                multiplier = 1.0
                 if restrictStations:
                     if dstStation not in restricting:
                         continue
+                elif goalSystem:
+                    # Bias in favor of getting closer
+                    dstSys = dstStation.system
+                    if dstSys is srcSystem:
+                        if tdenv.unique:
+                            continue
+                    elif dstSys is goalSystem:
+                        multiplier = 99999999999
+                    else:
+                        dstGoalDist = dstSys.distanceTo(goalSystem)
+                        if dstGoalDist >= srcGoalDist:
+                            continue
+                        dstOrigDist = dstSys.distanceTo(origSystem)
+                        if dstOrigDist < srcOrigDist:
+                            # Did this put us back towards the orig?
+                            # It may be valid to do so but it's not "profitable".
+                            multiplier *= 0.6
+                        else:
+                            # The closer dst is, the smaller the divider
+                            # will be, so the larger the remainder.
+                            multiplier *= 1 + (srcGoalDist / dstGoalDist)
 
-                considerStation(dstStation, dest)
+                considerStation(dstStation, dest, multiplier)
 
                 if restrictStations:
                     restricting.remove(dstStation)

@@ -46,8 +46,8 @@ switches = [
     ParseArgument(
         '--ls-from-star',
         help='Number of light seconds between station and star.',
-        type=float,
-        default=0.0,
+        type=int,
+        default=0,
         dest='lsFromStar',
     ),
     ParseArgument(
@@ -170,9 +170,8 @@ def checkSystemAndStation(tdb, cmdenv):
         try:
             station = tdb.lookupPlace(stnName)
         except LookupError:
-            raise CommandLineError("Unrecognized Station: sysName".format(
-                sysName,
-                cmdenv.station,
+            raise CommandLineError("Unrecognized Station: {}".format(
+                cmdenv.station
             ))
         cmdenv.system = station.system.name()
         cmdenv.station = station.dbname

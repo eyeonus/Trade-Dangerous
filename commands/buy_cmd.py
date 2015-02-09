@@ -56,6 +56,18 @@ switches = [
             dest='sortByStock',
         ),
     ),
+    ParseArgument('--gt',
+            help='Limit to prices above Ncr',
+            metavar='N',
+            dest='gt',
+            type=int,
+    ),
+    ParseArgument('--lt',
+            help='Limit to prices below Ncr',
+            metavar='N',
+            dest='lt',
+            type=int,
+    ),
 ]
 
 ######################################################################
@@ -63,6 +75,11 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
+
+    if cmdenv.lt and cmdenv.gt:
+        if cmdenv.lt <= cmdenv.gt:
+            raise CommandLineError("--gt must be lower than --lt")
+
     try:
         item = tdb.lookupItem(cmdenv.item)
         cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
@@ -111,36 +128,21 @@ def run(results, cmdenv, tdb):
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
 
+    if cmdenv.lt:
+        constraints.append("(price < ?)")
+        bindValues.append(cmdenv.lt)
+    if cmdenv.gt:
+        constraints.append("(price > ?)")
+        bindValues.append(cmdenv.gt)
+
     nearSystem = cmdenv.nearSystem
     if nearSystem:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
-
-        cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
-        systemRanges = {
-            system: dist
-            for system, dist in tdb.genSystemsInRange(
-                    nearSystem,
-                    maxLy,
-                    includeSelf=True,
-            )
-        }
-        # We need to ensure we use less than 999 bind values in total.
-        # If we don't filter in the query, we'll filter by stations in
-        # systemRanges when building our result rows
-        if len(systemRanges) > 999-len(bindValues):
-            cmdenv.DEBUG0("Too many matching systems ({}) for SQL filter. "
-                          "Hard way it is.".format(len(systemRanges)))
-        else:
-            tables += (
-                    " INNER JOIN Station AS stn"
-                    " ON (stn.station_id = ss.station_id)"
-            )
-            constraints.append("(stn.system_id IN ({}))".format(
-                ",".join(['?'] * len(systemRanges))
-            ))
-            bindValues += list(system.ID for system in systemRanges.keys())
+        distanceFn = nearSystem.distanceTo
+    else:
+        distanceFn = None
 
     whereClause = ' AND '.join(constraints)
     stmt = """
@@ -164,11 +166,11 @@ def run(results, cmdenv, tdb):
             continue
         row = ResultRow()
         row.station = station
-        if nearSystem:
-            # check the system was in our range query
-            if row.station.system not in systemRanges:
+        if distanceFn:
+            distance = distanceFn(row.station.system)
+            if distance > maxLy:
                 continue
-            row.dist = systemRanges[row.station.system]
+            row.dist = distance
         row.price = priceCr
         row.stock = stock
         row.age = age
