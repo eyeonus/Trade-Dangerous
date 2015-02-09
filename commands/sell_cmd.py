@@ -43,6 +43,18 @@ switches = [
             default=False,
             dest='sortByPrice',
     ),
+    ParseArgument('--gt',
+            help='Limit to prices above Ncr',
+            metavar='N',
+            dest='gt',
+            type=int,
+    ),
+    ParseArgument('--lt',
+            help='Limit to prices below Ncr',
+            metavar='N',
+            dest='lt',
+            type=int,
+    ),
 ]
 
 ######################################################################
@@ -50,6 +62,10 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from commands.commandenv import ResultRow
+
+    if cmdenv.lt and cmdenv.gt:
+        if cmdenv.lt <= cmdenv.gt:
+            raise CommandLineError("--gt must be lower than --lt")
 
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
@@ -80,29 +96,21 @@ def run(results, cmdenv, tdb):
         constraints.append("(units = -1 or units >= ?)")
         bindValues.append(cmdenv.quantity)
 
+    if cmdenv.lt:
+        constraints.append("(price < ?)")
+        bindValues.append(cmdenv.lt)
+    if cmdenv.gt:
+        constraints.append("(price > ?)")
+        bindValues.append(cmdenv.gt)
+
     nearSystem = cmdenv.nearSystem
     if nearSystem:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
-
-        cmdenv.DEBUG0("Searching within {}ly of {}", maxLy, nearSystem.name())
-        systemRanges = {
-            system: dist
-            for system, dist in tdb.genSystemsInRange(
-                    nearSystem,
-                    maxLy,
-                    includeSelf=True,
-            )
-        }
-        tables += (
-                " INNER JOIN Station AS stn"
-                " ON (stn.station_id = sb.station_id)"
-        )
-        constraints.append("(stn.system_id IN ({}))".format(
-            ",".join(['?'] * len(systemRanges))
-        ))
-        bindValues += list(system.ID for system in systemRanges.keys())
+        distanceFn = nearSystem.distanceTo
+    else:
+        distanceFn = None
 
     whereClause = ' AND '.join(constraints)
     stmt = """
@@ -125,8 +133,11 @@ def run(results, cmdenv, tdb):
             continue
         row = ResultRow()
         row.station = station
-        if nearSystem:
-           row.dist = systemRanges[row.station.system]
+        if distanceFn:
+            distance = distanceFn(row.station.system)
+            if distance > maxLy:
+                continue
+            row.dist = distance
         row.price = priceCr
         row.demand = demand
         row.age = age
