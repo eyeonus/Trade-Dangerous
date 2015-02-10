@@ -70,6 +70,8 @@ stations = {
     "COSI/JU LIAN CITY":                    "Julian City",
     "CPD-28 332/WI N N E GATEWAY":          DELETED,
     "DITAE/DITAE":                          DELETED,
+    "ZETA AQUILAE/MOHMAND HOLOINGS":        "Mohmand Holdings",
+    "ZETA AQUILAE/MOHMANO HOLDINGS":        "Mohmand Holdings",
 }
 
 categories = {
