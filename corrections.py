@@ -57,6 +57,8 @@ stations = {
     "LTT 1349/NORIFRA PORT":                DELETED,
     "OLWAIN/J. G. BALLARD TERMINAL":        DELETED,
     "RAHU/LEBEDEV BEACON":                  DELETED,
+    "ROSMERTA/DHN ORBITAL":                 DELETED,
+    "ROSMERTA/RHN ORBITAL":                 DELETED,
     "TANMARK/CASSI E-L-PEIA":               DELETED,
     "THUNDERBIRD/QUIMPY PORT":              DELETED,
     "VEQUESS/AGNEWS FOLLY":                 "Agnews' Folly",
