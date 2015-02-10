@@ -219,8 +219,8 @@ ocrDerp = re.compile(r'''(
     \bSATION\b |
     ,\w |
     \bI?NGLY\b |
-    \bAU\sL[DO0]\b
-    \b[\'\.-]\w |
+    \bAU\sL[DO0]\b |
+    (^|\s)['.-] |
     \bDREBBFL\b
     \bLEVIE |
     \bRN\b |
@@ -228,7 +228,9 @@ ocrDerp = re.compile(r'''(
     \bL[O0D]FTH\sUS |
     \bHORNUCH\b |
     \bKLU\sDZE |
-    ^[DR]HN\b
+    ^[DR]HN\b |
+    SU\sI?RVEY\b |
+    [A-RT-Z]PORT$
 )''', flags=re.X)
 
 
