@@ -48,7 +48,7 @@ switches = [
             dest='padSize',
     ),
     ParseArgument('--price-sort', '-P',
-            help='(When using --near) Sort by price not distance',
+            help='(When using --near) Sort by price not distance.',
             action='store_true',
             default=False,
             dest='sortByPrice',
@@ -57,6 +57,20 @@ switches = [
             help='Reverse the list.',
             action='store_true',
             default=False,
+    ),
+    ParseArgument('--away',
+            help='Require "--from" systems to be at least this far ' \
+                    'from primary system',
+            metavar='LY',
+            default=0,
+            type=float,
+    ),
+    ParseArgument('--from',
+            help='Additional systems to range check candidates against, ' \
+                    'requires --away.',
+            metavar='SYSTEMNAME',
+            action='append',
+            dest='awayFrom',
     ),
 ]
 
@@ -104,33 +118,48 @@ def run(results, cmdenv, tdb):
     start = cmdenv.nearSystem
     # Hoist the padSize parameter for convenience
     padSize = cmdenv.padSize
+    # How far we're want to cast our net.
+    maxLy = float(cmdenv.maxLyPer or 0.)
+
+    awaySystems = set()
+    if cmdenv.away or cmdenv.awayFrom:
+        if not cmdenv.away or not cmdenv.awayFrom:
+            raise CommandLineError(
+                "Invalid --away/--from usage. See --help"
+            )
+        minAwayDist = cmdenv.away
+        for sysName in cmdenv.awayFrom:
+            system = tdb.lookupPlace(sysName).system
+            awaySystems.add(system)
 
     # Start to build up the results data.
     results.summary = ResultRow()
     results.summary.near = start
-    results.summary.ly = cmdenv.maxLyPer
+    results.summary.ly = maxLy
+    results.summary.awaySystems = awaySystems
 
-    # The last step in calculating the distance between two
-    # points is to perform a square root. However, we can avoid
-    # the cost of doing this by squaring the distance we need
-    # to check and only 'rooting values that are <= to it.
-    maxLySq = cmdenv.maxLyPer ** 2
+    distCheckFn = start.distanceTo
 
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
         if padSize:     # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
                 continue
+        rareSys = rare.station.system
         # Find the un-sqrt'd distance to the system.
-        distSq = start.distToSq(rare.station.system)
-        if maxLySq > 0: # do we have a limit on distance?
-            if distSq > maxLySq:
+        dist = distCheckFn(rareSys)
+        if maxLy > 0. and dist > maxLy:
+            continue
+
+        if awaySystems:
+            awayCheck = rareSys.distanceTo
+            if any(awayCheck(away) < minAwayDist for away in awaySystems):
                 continue
 
         # Create a row for this item
         row = ResultRow()
         row.rare = rare
-        row.dist = math.sqrt(distSq)
+        row.dist = dist
         results.rows.append(row)
 
     # Was anything matched?

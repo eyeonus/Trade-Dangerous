@@ -39,11 +39,23 @@ switches = [
             dest='starting',
             metavar='STATION',
         ),
-    ParseArgument('--to',
-            help='Final system/station.',
-            dest='ending',
-            metavar='PLACE',
+    MutuallyExclusiveGroup(
+        ParseArgument('--to',
+                help='Final system/station.',
+                dest='ending',
+                metavar='PLACE',
+                default=None,
         ),
+        ParseArgument('--towards',
+                help=(
+                    'Choose a route that continually reduces the '
+                    'distance towards this system.'
+                ),
+                dest='goalSystem',
+                metavar='SYSTEM',
+                default=None,
+        ),
+    ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
             action='append',
@@ -294,7 +306,11 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
     """
 
     if not jumps:
-        return origins
+        return set(
+            origin
+            for origin in origins
+            if isinstance(origin, Station) or origin.stations
+        )
 
     origSys = set()
     for place in origins:
@@ -442,21 +458,21 @@ def checkStationSuitability(cmdenv, station, src=None):
         return False
     return True
 
-def filterStationSet(src, cmdenv, stnSet):
-    if not stnSet:
-        return stnSet
-    for place in stnSet:
-        if not isinstance(place, Station):
-            continue
-        if not checkStationSuitability(cmdenv, place):
-            stnSet.remove(place)
-            continue
-    if not stnSet:
+
+def filterStationSet(src, cmdenv, stnList):
+    if not stnList:
+        return stnList
+    filtered = [
+        place for place in stnList
+        if not (isinstance(place, Station) and \
+            not checkStationSuitability(cmdenv, place))
+    ]
+    if not stnList:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
                     src
         ))
-    return stnSet
+    return stnList
 
 
 def validateRunArguments(tdb, cmdenv):
@@ -532,6 +548,11 @@ def validateRunArguments(tdb, cmdenv):
     else:
         if cmdenv.endJumps:
             raise CommandLineError("--end-jumps (-e) only works with --to")
+        if cmdenv.goalSystem:
+            if not cmdenv.origPlace:
+                raise CommandLineError("--towards requires --from")
+            dest = tdb.lookupPlace(cmdenv.goalSystem)
+            cmdenv.goalSystem = dest.system
 
     origins, destns = cmdenv.origins or [], cmdenv.destinations or []
 
@@ -692,6 +713,7 @@ def run(results, cmdenv, tdb):
     origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
     avoidPlaces = cmdenv.avoidPlaces
     stopStations = cmdenv.destinations
+    goalSystem = cmdenv.goalSystem
 
     startCr = cmdenv.credits - cmdenv.insurance
 
@@ -775,9 +797,20 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
+        if goalSystem:
+            routes.sort(
+                key=lambda route:
+                    0 if route.route[-1].system is goalSystem else 1
+            )
+            if routes[0].route[-1].system is goalSystem:
+                cmdenv.NOTE("Goal system reached!")
+                break
 
     if not routes:
-        raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
+        raise NoDataError(
+            "No profitable trades matched your critera, "
+            "or price data along the route is missing."
+        )
 
     if viaSet:
         routes, caution = filterByVia(routes, viaSet, viaStartPos)
@@ -803,8 +836,8 @@ def render(results, cmdenv, tdb):
 
     routes = results.data
 
-    for i in range(0, min(len(routes), cmdenv.routes)):
-        print(routes[i].detail(detail=cmdenv.detail))
+    for i in range(min(len(routes), cmdenv.routes)):      
+        print(routes[i].detail(cmdenv))
 
     # User wants to be guided through the route.
     if cmdenv.checklist:

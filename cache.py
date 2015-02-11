@@ -218,9 +218,25 @@ ocrDerp = re.compile(r'''(
     ‹ |
     \bSATION\b |
     ,\w |
-    \bINGLY\b |
-    \bAU\sL[DO0]\b
-
+    \bI?NGLY\b |
+    \bAU\sL[DO0]\b |
+    (^|\s)['.-] |
+    \bDREBBFL\b
+    \bLEVIE |
+    \bRN\b |
+    \bH\sUNZIKER |
+    \bL[O0D]FTH\sUS |
+    \bHORNUCH\b |
+    \bKLU\sDZE |
+    ^[DR]HN\b |
+    SU\sI?RVEY\b |
+    [A-RT-Z]PORT$ |
+    H[DO0]L[O0]ING |
+    H[D0]LDING |
+    M[DO0]HMAN[O0] |
+    \bABL\b |
+    \bBENNET\b |
+    \bHU8\b
 )''', flags=re.X)
 
 
@@ -574,7 +590,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 return
             raise MultipleStationEntriesError(
                         priceFile, lineNo, facility,
-                        processedStations[stationID]
+                        processedStations[newID]
                     )
 
         stationID = newID

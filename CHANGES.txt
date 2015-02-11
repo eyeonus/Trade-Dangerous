@@ -2,6 +2,36 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[wip]
+. (kfsone) Fixed 'set changed size' error in run command
+
+v6.9.2 Feb 08 2015
+. (kfsone) Feature #158 Find rares based on distance from multiple systems
+       "--away <ly>" and "--from <system1> --from <system2> ..."
+. (kfsone) "run" -vv output now shows buy and sell price, use -vvv for totals
+. (kfsone) Issue #165 "--to" for system without stations gave wrong result,
+. (kfsone) Feature #161 Allow nav to require fuel stops
+       "--refuel-jumps" (--ref for short) lets you specify the maximum
+       number of consecutive non-station systems to allow on the route
+. (dl4ner) Added maddavo options to README
+. (kfsone) Feature #153 min/max values for sell/buy (--gt and --lt)
+
+v6.9.1. Feb 08 2015
+. (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and
+       "--opt=usefull" options to the maddavo pluggin.
+. (kfsone) Fixed a division by zero bug in the --towards option,
+. (kfsone) Fixed --towards showing a different destination when it
+       was able to reach the goal system with a low-scoring trade,
++ Systems, Stations: (kfsone) Curated EDSC and Maddavo
+
+v6.9.0 Feb 06 2015
+. (kfsone) Added "--towards" option to "run" command:
+       --towards GOALSYSTEM will restrict the route to destinations which
+       move the player towards GOALSYSTEM.
+. (kfsone) Added "distanceTo" function to "System" which returns the
+       distance in ly to a second system,
+. (kfsone) Minor performance gain in distance calculations,
+
 v6.8.5 Feb 04 2015
 . (kfsone) Added "trade" command to list station-to-station trades,
 . (kfsone) "station" command now lists 5 sell and 5 buy items,

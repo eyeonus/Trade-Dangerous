@@ -18,8 +18,10 @@ systems = {
 }
 
 stations = {
+    "ADLIVUN/ABL SURVEY":                   DELETED,
     "AKHENATEN/WANG PLATFORM":              DELETED,
     "ALBICEVCI/DUBROVOLSKI SURVEY":         "Dobrovolski Survey",
+    "ALPHA FORNACIS/BENNET PORT":           DELETED,
     "AMAIT/LOPEZ DE VILLALOBOS":            "Lopez De Villalobos Prospect",
     "AMARAK/WERNER VON SIEMENS VISON":      "Werner Von Siemens Vision",
     "ANAPOS/HERSCHEL PLATFORM":             "Herschel Plant",
@@ -31,11 +33,17 @@ stations = {
     "BD+65 1846/SHARGIN BEACON":            DELETED,
     "BOLG/MOXONS MOJO":                     "Moxon's Mojo",
     "CEMIESS/TITUS STATION":                "Titius Station",
+    "COCIJO/HARRY MOORE 6 CO":              DELETED,
+    "COSI/JU LIAN CITY":                    DELETED,
+    "CPD-28 332/WI N N E GATEWAY":          DELETED,
     "DAJOAR/MACQUORN TERMINAL":             DELETED,
+    "DITAE/DITAE":                          DELETED,
     "DORIS/ISHERWOOD DOCK":                 DELETED,
     "DT VIRGINIS/CHUN STATION":             "Chun Vision",
     "EGOVAE/ENOATE MARKET":                 "Endate Market",
     "EKONIR/MOREYVISION":                   "Morey Vision",
+    "ERAVATE/ERAVATE":                      DELETED,
+    "GABIETYE/GABIETYE":                    DELETED,
     "GCRV 4654/HERZEFELD LANDING":          "Herzfeld Landing",
     "HDS 1879/HEDIN ORBITAL":               DELETED,
     "HIP 4907/EDISON PLATFORM":             DELETED,
@@ -55,10 +63,14 @@ stations = {
     "LTT 1349/NORIFRA PORT":                DELETED,
     "OLWAIN/J. G. BALLARD TERMINAL":        DELETED,
     "RAHU/LEBEDEV BEACON":                  DELETED,
+    "ROSMERTA/DHN ORBITAL":                 DELETED,
+    "ROSMERTA/RHN ORBITAL":                 DELETED,
     "TANMARK/CASSI E-L-PEIA":               DELETED,
     "THUNDERBIRD/QUIMPY PORT":              DELETED,
     "VEQUESS/AGNEWS FOLLY":                 "Agnews' Folly",
     "ZETA AQUILAE/JULIAN GATEWAY":          DELETED,
+    "ZETA AQUILAE/MOHMAND HOLOINGS":        DELETED,
+    "ZETA AQUILAE/MOHMANO HOLDINGS":        DELETED,
     "ZETA TRIANGULI AUSTRALIS/GUEST CITY2": "Guest City",
 
 #ADD_STATIONS_HERE

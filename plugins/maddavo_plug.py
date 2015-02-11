@@ -42,6 +42,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         'skipdl':       "Skip doing any downloads.",
         'force':        "Process prices even if timestamps suggest "
                         "there is no new data.",
+        'use3h':        "Force download of the 3-hours .prices file",
+        'use2d':        "Force download of the 2-days .prices file",
+        'usefull':      "Force download of the full .prices file",
     }
 
     def __init__(self, tdb, tdenv):
@@ -184,6 +187,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         skipDownload = self.getOption("skipdl")
         forceParse = self.getOption("force") or skipDownload
 
+        use3h = 1 if self.getOption("use3h") else 0
+        use2d = 1 if self.getOption("use2d") else 0
+        usefull = 1 if self.getOption("usefull") else 0
+        if use3h + use2d + usefull > 1:
+            raise PluginError(
+                "Only one of use3h/use2d/usefull can be used at once."
+            )
+        if (use3h or use2d or usefull) and skipDownload:
+            raise PluginError(
+                "use3h/use2d/usefull has no effect with --opt=skipdl"
+            )
+        if use3h:
+            lastRunDays = 0.01
+        elif use2d:
+            lastRunDays = 1.0
+        elif usefull:
+            lastRunDays = 3.0
+
         if not skipDownload:
             if self.getOption("syscsv"):
                 transfers.download(
@@ -207,18 +228,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             elif lastRunDays < 1.9:
                 priceFile = "prices-2d.asp"
             else:
-                if lastRunDays < 99:
-                    tdenv.NOTE(
-                            "Last download was ~{:.2f} days "
-                            "ago, downloading full file",
-                                lastRunDays
-                    )
-                else:
-                    tdenv.NOTE(
-                            "Stale/missing local copy, "
-                            "downloading full .prices file."
-                    )
-
                 priceFile = "prices.asp"
             transfers.download(
                     tdenv,
