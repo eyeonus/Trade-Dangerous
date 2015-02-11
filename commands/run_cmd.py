@@ -458,21 +458,21 @@ def checkStationSuitability(cmdenv, station, src=None):
         return False
     return True
 
-def filterStationSet(src, cmdenv, stnSet):
-    if not stnSet:
-        return stnSet
-    unsuited = set(
-        place for place in stnSet
-        if isinstance(place, Station) and \
-            not checkStationSuitability(cmdenv, place)
-    )
-    stnSet -= unsuited
-    if not stnSet:
+
+def filterStationSet(src, cmdenv, stnList):
+    if not stnList:
+        return stnList
+    filtered = [
+        place for place in stnList
+        if not (isinstance(place, Station) and \
+            not checkStationSuitability(cmdenv, place))
+    ]
+    if not stnList:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
                     src
         ))
-    return stnSet
+    return stnList
 
 
 def validateRunArguments(tdb, cmdenv):
