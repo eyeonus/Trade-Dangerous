@@ -233,7 +233,9 @@ ocrDerp = re.compile(r'''(
     [A-RT-Z]PORT$ |
     H[DO0]L[O0]ING |
     H[D0]LDING |
-    M[DO0]HMAN[O0]
+    M[DO0]HMAN[O0] |
+    \bABL\b |
+    \bBENNET\b
 )''', flags=re.X)
 
 

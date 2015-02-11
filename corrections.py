@@ -18,8 +18,10 @@ systems = {
 }
 
 stations = {
+    "ADLIVUN/ABL SURVEY":                   DELETED,
     "AKHENATEN/WANG PLATFORM":              DELETED,
     "ALBICEVCI/DUBROVOLSKI SURVEY":         "Dobrovolski Survey",
+    "ALPHA FORNACIS/BENNET PORT":           DELETED,
     "AMAIT/LOPEZ DE VILLALOBOS":            "Lopez De Villalobos Prospect",
     "AMARAK/WERNER VON SIEMENS VISON":      "Werner Von Siemens Vision",
     "ANAPOS/HERSCHEL PLATFORM":             "Herschel Plant",
@@ -31,7 +33,11 @@ stations = {
     "BD+65 1846/SHARGIN BEACON":            DELETED,
     "BOLG/MOXONS MOJO":                     "Moxon's Mojo",
     "CEMIESS/TITUS STATION":                "Titius Station",
+    "COCIJO/HARRY MOORE 6 CO":              DELETED,
+    "COSI/JU LIAN CITY":                    DELETED,
+    "CPD-28 332/WI N N E GATEWAY":          DELETED,
     "DAJOAR/MACQUORN TERMINAL":             DELETED,
+    "DITAE/DITAE":                          DELETED,
     "DORIS/ISHERWOOD DOCK":                 DELETED,
     "DT VIRGINIS/CHUN STATION":             "Chun Vision",
     "EGOVAE/ENOATE MARKET":                 "Endate Market",
@@ -63,17 +69,11 @@ stations = {
     "THUNDERBIRD/QUIMPY PORT":              DELETED,
     "VEQUESS/AGNEWS FOLLY":                 "Agnews' Folly",
     "ZETA AQUILAE/JULIAN GATEWAY":          DELETED,
+    "ZETA AQUILAE/MOHMAND HOLOINGS":        DELETED,
+    "ZETA AQUILAE/MOHMANO HOLDINGS":        DELETED,
     "ZETA TRIANGULI AUSTRALIS/GUEST CITY2": "Guest City",
 
 #ADD_STATIONS_HERE
-    "ADLIVUN/ABL SURVEY":                   "Abe Survey",
-    "ALPHA FORNACIS/BENNET PORT":           "Bennett Port",
-    "COCIJO/HARRY MOORE 6 CO":              DELETED,
-    "COSI/JU LIAN CITY":                    "Julian City",
-    "CPD-28 332/WI N N E GATEWAY":          DELETED,
-    "DITAE/DITAE":                          DELETED,
-    "ZETA AQUILAE/MOHMAND HOLOINGS":        "Mohmand Holdings",
-    "ZETA AQUILAE/MOHMANO HOLDINGS":        "Mohmand Holdings",
 }
 
 categories = {
