@@ -235,7 +235,8 @@ ocrDerp = re.compile(r'''(
     H[D0]LDING |
     M[DO0]HMAN[O0] |
     \bABL\b |
-    \bBENNET\b
+    \bBENNET\b |
+    \bHU8\b
 )''', flags=re.X)
 
 
