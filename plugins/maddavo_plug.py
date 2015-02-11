@@ -202,7 +202,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             lastRunDays = 0.01
         elif use2d:
             lastRunDays = 1.0
-        else:
+        elif usefull:
             lastRunDays = 3.0
 
         if not skipDownload:
