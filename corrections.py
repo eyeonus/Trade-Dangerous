@@ -66,6 +66,14 @@ stations = {
     "ZETA TRIANGULI AUSTRALIS/GUEST CITY2": "Guest City",
 
 #ADD_STATIONS_HERE
+    "ADLIVUN/ABL SURVEY":                   "Abe Survey",
+    "ALPHA FORNACIS/BENNET PORT":           "Bennett Port",
+    "COCIJO/HARRY MOORE 6 CO":              DELETED,
+    "COSI/JU LIAN CITY":                    "Julian City",
+    "CPD-28 332/WI N N E GATEWAY":          DELETED,
+    "DITAE/DITAE":                          DELETED,
+    "ZETA AQUILAE/MOHMAND HOLOINGS":        "Mohmand Holdings",
+    "ZETA AQUILAE/MOHMANO HOLDINGS":        "Mohmand Holdings",
 }
 
 categories = {
