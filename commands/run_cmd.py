@@ -387,10 +387,13 @@ def checkForEmptyStationList(category, focusPlace, stationList, jumps):
         ))
     if isinstance(focusPlace, System):
         raise NoDataError(
-                "Local database has no price data for "
-                "stations in {} ({})".format(
+                "Local database either has no price data for "
+                "stations in {} ({}) or could not find any that "
+                "met your requirements (e.g. pad-size). "
+                "Check \"trade.py local -vv --ly 0 {}\"".format(
                     focusPlace.name(),
                     category,
+                    focusPlace.name(),
         ))
     raise NoDataError(
             "Local database has no price data for {} ({})".format(
@@ -505,12 +508,16 @@ def validateRunArguments(tdb, cmdenv):
 
     if cmdenv.origPlace:
         if isinstance(cmdenv.origPlace, System):
-            cmdenv.origins = list(cmdenv.origPlace.stations)
-            if not cmdenv.origins:
+            if not cmdenv.origPlace.stations:
                 raise CommandLineError(
                         "No stations at --from system, {}"
                             .format(cmdenv.origPlace.name())
                         )
+            cmdenv.origins = [
+                station
+                for station in cmdenv.origPlace.stations
+                if checkStationSuitability(cmdenv, station)
+            ]
         else:
             checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
