@@ -3,7 +3,7 @@ from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
-from tradedb import System, Station, describeAge
+from tradedb import TradeDB, System, Station, describeAge
 from tradecalc import TradeCalc, Route
 
 ######################################################################
@@ -306,11 +306,14 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
     """
 
     if not jumps:
-        return set(
-            origin
-            for origin in origins
-            if isinstance(origin, Station) or origin.stations
-        )
+        stations = [
+            origin for origin in origins
+            if isinstance(origin, Station)
+        ]
+        for origin in origins:
+            if isinstance(origin, System):
+                stations.extend(origin.stations)
+        return set(stations)
 
     origSys = set()
     for place in origins:
@@ -420,13 +423,16 @@ def checkStationSuitability(cmdenv, station, src=None):
                         src, station.name(),
             ))
         return False
-    mps = cmdenv.maxPadSize
+    mps = cmdenv.padSize
     if mps and not station.checkPadSize(mps):
         if src:
             raise CommandLineError(
-                    "{} station {} does not meet pad-size "
-                    "requirement.".format(
+                    "{} station {} does not meet pad-size requirement.\n"
+                    "You specified: {}, Current data for station: {} ({})\n"
+                    "You can use \"trade.py station\" to correct this.".format(
                         src, station.name(),
+                        mps, station.maxPadSize,
+                        TradeDB.padSizesExt[station.maxPadSize],
             ))
         raise False
     bm = cmdenv.blackMarket
