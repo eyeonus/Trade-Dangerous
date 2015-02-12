@@ -4,6 +4,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 [wip]
 . (kfsone) Fixed 'set changed size' error in run command
+. (kfsone) Improvements to the TradeCalc api for accessing station trades
 
 v6.9.2 Feb 08 2015
 . (kfsone) Feature #158 Find rares based on distance from multiple systems
