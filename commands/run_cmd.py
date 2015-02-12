@@ -434,7 +434,7 @@ def checkStationSuitability(cmdenv, station, src=None):
                         mps, station.maxPadSize,
                         TradeDB.padSizesExt[station.maxPadSize],
             ))
-        raise False
+        return False
     bm = cmdenv.blackMarket
     if bm and station.blackMarket != 'Y':
         if src and src != "--from":
