@@ -360,14 +360,14 @@ class TradeCalc(object):
     Container for accessing trade calculations with common properties.
     """
 
-    def __init__(self, tdb, tdenv, fit=None, items=None):
+    def __init__(self, tdb, tdenv=None, fit=None, items=None):
         """
         Constructs the TradeCalc object and loads sell/buy data.
 
         Parameters:
             tdb
                 The TradeDB() object to use to access data,
-            tdenv
+            tdenv [optional]
                 TradeEnv() that controls behavior,
             fit [optional]
                 Lets you specify a fitting function,
@@ -380,15 +380,20 @@ class TradeCalc(object):
             tdenv.maxAge
                 Maximum age in days of data that gets loaded
         """
+        if not tdenv:
+            tdenv = tdb.tdenv
         self.tdb = tdb
         self.tdenv = tdenv
         self.defaultFit = fit or self.fastFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
 
-        db = self.tdb.getDB()
+        db = tdb.getDB()
 
-        avoidItemIDs = set([item.ID for item in tdenv.avoidItems])
+        avoidItemIDs = set(
+            item.ID
+            for item in (tdenv.avoidItems or [])
+        )
 
         if tdenv.maxAge:
             ageClause = "AND JULIANDAY(modified) >= JULIANDAY('NOW') - {:f}".format(
@@ -642,6 +647,10 @@ class TradeCalc(object):
         return fitFunction(items, credits, capacity, maxUnits)
 
     def getTrades(self, srcStation, dstStation, srcSelling=None):
+        """
+        Caches and returns the most profitable trading options from
+        one station to another (uni-directional).
+        """
         if not srcSelling:
             srcSelling = self.stationsSelling.get(srcStation.ID, None)
         if not srcSelling:
@@ -649,6 +658,29 @@ class TradeCalc(object):
         dstBuying = self.stationsBuying.get(dstStation.ID, None)
         if not dstBuying:
             srcStation.tradingWith[dstStation] = None
+            return None
+
+        trading = self.getProfitables(srcSelling, dstBuying)
+
+        # SORT BY profit DESC, cost
+        # So two if two items have the same profit, the cheapest
+        # will be listed first.
+        trading.sort(key=lambda trade: trade.costCr)
+        trading.sort(key=lambda trade: trade.gainCr, reverse=True)
+
+        try:
+            srcStation.tradingWith[dstStation] = trading
+        except TypeError:
+            srcStation.tradingWith = { dstStation: trading }
+
+        return trading
+
+    def getProfitables(self, srcSelling, dstBuying):
+        """
+        Calculates and returns the most items in srcSelling that are
+        bought for profit in dstBuying.
+        """
+        if not srcSelling or not dstBuying:
             return None
 
         itemIdx = self.tdb.itemByID
@@ -669,13 +701,6 @@ class TradeCalc(object):
                             sell[4], buy[4],
                         ))
                     break   # from srcSelling
-
-        # SORT BY profit DESC, cost
-        # So two if two items have the same profit, the cheapest
-        # will be listed first.
-        trading.sort(key=lambda trade: trade.costCr)
-        trading.sort(key=lambda trade: trade.gainCr, reverse=True)
-        srcStation.tradingWith[dstStation] = trading
 
         return trading
 
