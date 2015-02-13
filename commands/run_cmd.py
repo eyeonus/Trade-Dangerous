@@ -3,7 +3,7 @@ from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
-from tradedb import System, Station, describeAge
+from tradedb import TradeDB, System, Station, describeAge
 from tradecalc import TradeCalc, Route
 
 ######################################################################
@@ -306,11 +306,14 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
     """
 
     if not jumps:
-        return set(
-            origin
-            for origin in origins
-            if isinstance(origin, Station) or origin.stations
-        )
+        stations = [
+            origin for origin in origins
+            if isinstance(origin, Station)
+        ]
+        for origin in origins:
+            if isinstance(origin, System):
+                stations.extend(origin.stations)
+        return set(stations)
 
     origSys = set()
     for place in origins:
@@ -384,10 +387,13 @@ def checkForEmptyStationList(category, focusPlace, stationList, jumps):
         ))
     if isinstance(focusPlace, System):
         raise NoDataError(
-                "Local database has no price data for "
-                "stations in {} ({})".format(
+                "Local database either has no price data for "
+                "stations in {} ({}) or could not find any that "
+                "met your requirements (e.g. pad-size). "
+                "Check \"trade.py local -vv --ly 0 {}\"".format(
                     focusPlace.name(),
                     category,
+                    focusPlace.name(),
         ))
     raise NoDataError(
             "Local database has no price data for {} ({})".format(
@@ -420,15 +426,18 @@ def checkStationSuitability(cmdenv, station, src=None):
                         src, station.name(),
             ))
         return False
-    mps = cmdenv.maxPadSize
+    mps = cmdenv.padSize
     if mps and not station.checkPadSize(mps):
         if src:
             raise CommandLineError(
-                    "{} station {} does not meet pad-size "
-                    "requirement.".format(
+                    "{} station {} does not meet pad-size requirement.\n"
+                    "You specified: {}, Current data for station: {} ({})\n"
+                    "You can use \"trade.py station\" to correct this.".format(
                         src, station.name(),
+                        mps, station.maxPadSize,
+                        TradeDB.padSizesExt[station.maxPadSize],
             ))
-        raise False
+        return False
     bm = cmdenv.blackMarket
     if bm and station.blackMarket != 'Y':
         if src and src != "--from":
@@ -499,12 +508,16 @@ def validateRunArguments(tdb, cmdenv):
 
     if cmdenv.origPlace:
         if isinstance(cmdenv.origPlace, System):
-            cmdenv.origins = list(cmdenv.origPlace.stations)
-            if not cmdenv.origins:
+            if not cmdenv.origPlace.stations:
                 raise CommandLineError(
                         "No stations at --from system, {}"
                             .format(cmdenv.origPlace.name())
                         )
+            cmdenv.origins = [
+                station
+                for station in cmdenv.origPlace.stations
+                if checkStationSuitability(cmdenv, station)
+            ]
         else:
             checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]

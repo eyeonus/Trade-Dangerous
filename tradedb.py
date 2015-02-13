@@ -923,8 +923,7 @@ class TradeDB(object):
                 try:
                     (prevSys, prevDist) = distances[nSys]
                     if prevDist <= newDist:
-                        if prevDist < newDist or prevSys.stations:
-                            continue
+                        continue
                 except KeyError:
                     pass
                 if stationInterval and stnDist >= stationInterval and not curSys.stations:
