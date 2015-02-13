@@ -85,9 +85,11 @@ if len(sys.argv) > 2:
 
 print("start date: {}".format(date), file=sys.stderr)
 
+confidence = os.environ.get("CONF", 2)
+
 edsq = misc.edsc.StarQuery(
     test=testMode,
-    confidence=2,
+    confidence=confidence,
     date=date,
     )
 data = edsq.fetch()
@@ -140,9 +142,12 @@ if len(systems) > 0:
     )
     print()
 
+total = len(systems)
+current = 0
 with open("tmp/new.systems.csv", "a") as output:
     try:
         for sysinfo in systems:
+            current += 1
             name = sysinfo['name']
             x, y, z = sysinfo['coord']
             place = sysinfo['place']
@@ -175,10 +180,12 @@ with open("tmp/new.systems.csv", "a") as output:
                     ), file=sys.stderr)
                 distance = float("{:.2f}".format(dist(x, y, z)))
                 clip.copy_text(name.lower())
-                prompt = "'{}'".format(name)
-                prompt += " ({:.2f}ly)".format(distance)
-
-                ok = input(prompt+"? ".format(name))
+                prompt = "{}/{}: '{}': {:.2f}ly? ".format(
+                    current, total,
+                    name,
+                    distance,
+                )
+                ok = input(prompt)
                 if ok.lower() == 'q':
                     break
                 if ok.startswith('='):
