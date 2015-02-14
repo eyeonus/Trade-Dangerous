@@ -138,7 +138,7 @@ def run(results, cmdenv, tdb):
             row.ls = "{:n}".format(ls)
         else:
             row.ls = "?"
-        row.dist2 = dist2
+        row.dist = dist2 ** 0.5
         results.rows.append(row)
 
     return results
@@ -164,7 +164,8 @@ def render(results, cmdenv, tdb):
 
     if cmdenv.nearSystem:
         rowFmt.addColumn('DistLy', '>', 6, '.2f',
-                key=lambda row: math.sqrt(row.dist2))
+                key=lambda row: row.dist
+        )
     
     rowFmt.append(
             ColumnFormat("Age/days", '>', '8', '.2f',

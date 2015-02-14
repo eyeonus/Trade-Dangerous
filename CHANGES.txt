@@ -2,11 +2,68 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[wip]
+. (kfsone) Fixed 'set changed size' error in run command
+. (kfsone) Improvements to the TradeCalc api for accessing station trades
+. (kfsone) Added "--gain-per-ton" (--gpt) to run command
++ 130 new systems from EDSC
+
+v6.9.2 Feb 08 2015
+. (kfsone) Feature #158 Find rares based on distance from multiple systems
+       "--away <ly>" and "--from <system1> --from <system2> ..."
+. (kfsone) "run" -vv output now shows buy and sell price, use -vvv for totals
+. (kfsone) Issue #165 "--to" for system without stations gave wrong result,
+. (kfsone) Feature #161 Allow nav to require fuel stops
+       "--refuel-jumps" (--ref for short) lets you specify the maximum
+       number of consecutive non-station systems to allow on the route
+. (dl4ner) Added maddavo options to README
+. (kfsone) Feature #153 min/max values for sell/buy (--gt and --lt)
+
+v6.9.1. Feb 08 2015
+. (kfsone) Issue #163: Added "--opt=use3h", "--opt=use2d" and
+       "--opt=usefull" options to the maddavo pluggin.
+. (kfsone) Fixed a division by zero bug in the --towards option,
+. (kfsone) Fixed --towards showing a different destination when it
+       was able to reach the goal system with a low-scoring trade,
++ Systems, Stations: (kfsone) Curated EDSC and Maddavo
+
+v6.9.0 Feb 06 2015
+. (kfsone) Added "--towards" option to "run" command:
+       --towards GOALSYSTEM will restrict the route to destinations which
+       move the player towards GOALSYSTEM.
+. (kfsone) Added "distanceTo" function to "System" which returns the
+       distance in ly to a second system,
+. (kfsone) Minor performance gain in distance calculations,
+
+v6.8.5 Feb 04 2015
+. (kfsone) Added "trade" command to list station-to-station trades,
+. (kfsone) "station" command now lists 5 sell and 5 buy items,
+. (kfsone) "station" does a better job of parsing existing station names,
+. (kfsone) Removed "--system" from "station" command, use
+       trade.py station -a "SYSTEM/Station"
+       syntax instead.
+. (OpenSS) Added "Run To" option to trade.bat,
+. (kfsone) Speed improvements to .csv and .prices loading,
+. (kfsone) maddavo plugin tries to explain encoding errors,
+. (chmarr) Fixed trade.py using the wrong argument list (#herp),
+. (kfsone) titleFixup will handle 'von', 'de' and 'du' correctly,
++ Station/Rare Data (RavenDT)
+
+v6.8.4 Feb 01 2015
+. (kfsone) Fixed tradecalculator not selecting most profitable trade sometimes
+. (kfsone) Set 'BRUTE_FIT' in the environment to force use of the brute-force
+        trade calculator (for diagnostic purposes). e.g.
+           BRUTE_FIT=1 trade.py run ...
+
+v6.8.3 Jan 31 2015
+. (kfsone) Code and data cleanup, added stations
+. (kfsone) Added misc/eddn.py API for developers wanting to access EDDN,
+
 v6.8.2 Jan 27 2015
 . (kfsone) Issue #148 Don't blow up horribly when tkinter is missing,
 . (kfsone) Issue #149 "nav" with --via was broken,
 . (kfsone) Typo correction in the maddavo splash (thanks, Stefan),
-+ Stations: Stefan Morrell, Dave Ryalls, Jason Zions
++ Stations: Tromador, Dave Ryalls, Jason Zions, MacNetron
 
 v6.8.1 Jan 25 2015
 . (kfsone) Additional rules to prevent data pollution (ocr derp protection),

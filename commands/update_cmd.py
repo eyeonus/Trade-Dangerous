@@ -145,8 +145,12 @@ def saveTemporaryFile(tmpPath):
 
 
 def saveCopyOfChanges(cmdenv, dbFilename, stationID):
+    if "APPEND_PRICES" in os.environ:
+        mode = "a"
+    else:
+        mode = "w"
     dumpPath = pathlib.Path("updated.prices")
-    with dumpPath.open("w") as dumpFile:
+    with dumpPath.open(mode) as dumpFile:
         # Remember the filename so we know we need to delete it.
         prices.dumpPrices(dbFilename,
                 prices.Element.full | prices.Element.blanks,

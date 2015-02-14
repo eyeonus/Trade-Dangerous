@@ -36,7 +36,7 @@ class TradeEnv(object):
             self.__dict__.update(kwargs)
 
 
-    def __getattr__(self, key, default=None):
+    def __getattr__(self, key):
         """ Return the default for attributes we don't have """
         if key.startswith("DEBUG"):
             # Self-assembling DEBUGN functions
@@ -71,6 +71,5 @@ class TradeEnv(object):
             setattr(self, key, noteFn)
             return noteFn
 
-        return default
-
+        return None
 

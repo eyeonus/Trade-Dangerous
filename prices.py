@@ -229,5 +229,6 @@ def dumpPrices(
     file.write(output)
 
 if __name__ == "__main__":
-    from tradedb import TradeDB
-    dumpPrices(TradeDB.defaultDB, elementMask=Element.full)
+    import tradedb
+    tdb = tradedb.TradeDB(load=False)
+    dumpPrices(tdb.dbPath, elementMask=Element.full)

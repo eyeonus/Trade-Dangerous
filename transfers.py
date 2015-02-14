@@ -5,9 +5,24 @@ from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import json
 import math
+import misc.progress as pbar
 import time
 import urllib.error
+
+try:
+    import requests
+except ImportError as e:
+    import pip
+    print("ERROR: Unable to load the Python 'requests' package.")
+    approval = input(
+        "Do you want me to try and install it with the package manager (y/n)? "
+    )
+    if approval.lower() != 'y':
+        raise e
+    pip.main(["install", "--upgrade", "requests"])
+    import requests
 
 
 ######################################################################
@@ -96,8 +111,8 @@ def download(
     cmdenv.DEBUG0(str(f.info()))
 
     # Figure out how much data we have
-    bytes = int(f.getheader('Content-Length'))
-    maxBytesLen = len("{:>n}".format(bytes))
+    contentLength = int(f.getheader('Content-Length'))
+    maxBytesLen = len("{:>n}".format(contentLength))
     fetched = 0
     started = time.time()
 
@@ -121,9 +136,9 @@ def download(
             # download status including, especially, the 100% report.
             while True:
                 duration = time.time() - started
-                if bytes and duration >= 1:
-                    # estimated bytes per second
-                    rate = math.ceil(bytes / duration)
+                if contentLength and duration >= 1:
+                    # estimated contentLength per second
+                    rate = math.ceil(contentLength / duration)
                     # but how much can we download in 1/10s
                     burstSize = rate / 10
                     chunkSize += math.ceil((burstSize - chunkSize) * 0.7)
@@ -133,13 +148,13 @@ def download(
                         "| {:>5.2f}% "
                         .format(
                                 localFile,
-                                fetched, bytes,
+                                fetched, contentLength,
                                 rateVal(fetched, duration),
-                                (fetched * 100 / bytes),
+                                (fetched * 100 / contentLength),
                                 len=maxBytesLen
                 ), end='\r')
 
-                if fetched >= bytes:
+                if fetched >= contentLength:
                     if not cmdenv.quiet:
                         print()
                     break
@@ -160,4 +175,37 @@ def download(
     tmpPath.rename(actPath)
 
     return f.getheaders()
+
+
+def retrieve_json_data(url):
+    """
+    Fetch JSON data from a URL and return the resulting dictionary.
+
+    Displays a progress bar as it downloads.
+    """
+
+    req = requests.get(url, stream=True)
+
+    # credit for the progress indicator: 
+    # http://stackoverflow.com/a/15645088/257645
+    totalLength = req.headers.get('content-length')
+    if totalLength is None:
+        compression = req.headers.get('content-encoding')
+        compression = (compression + "'ed") if compression else "uncompressed"
+        print("Downloading {}: {}...".format(compression, url))
+        jsData = req.content
+    else:
+        totalLength = int(totalLength)
+        progBar = pbar.Progress(totalLength, 25)
+        jsData = bytes()
+        for data in req.iter_content():
+            jsData += data
+            progBar.increment(len(data), postfix=lambda: \
+                " {}/{} ".format(
+                    makeUnit(progBar.value),
+                    makeUnit(totalLength),
+            ))
+        progBar.clear()
+
+    return json.loads(jsData.decode())
 

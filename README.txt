@@ -264,6 +264,14 @@ RUN sub-command:
          --to Beagle2
          --to lhs64
 
+     --towards <goal system>
+       Builds a route that tries to shorten the distance from your origin
+       and goal. Destinations that would increase the distance are ignored.
+       Tries to avoid routes that go backwards or detour. If you want to
+       avoid multiple visits in the same system, use --unique.
+       e.g.
+         --from iBootis --to LiuBese
+
      --start-jumps N
      -s N
        Considers stations from systems upto this many jumps from your
@@ -385,6 +393,41 @@ RUN sub-command:
        OMFG Output the current step of the checklist on your X52 Pro MFD.
        Is that some sweetness or what?
 
+TRADE sub-command:
+
+  Lists trades between two stations. Specify "-v" or "-vv" for more data.
+
+  trade.py trade [-v | -vv] <from station> <to station>
+
+  e.g.
+
+    trade.py trade "sol/daedalus" "groom/frank"
+    Item                  Profit       Cost
+    ---------------------------------------
+    Superconductors        1,331      6,162
+    Indium                 1,202      5,394
+    Beryllium              1,021      8,051
+    Gold                   1,004      9,276
+    Silver                   838      4,631
+    ...
+
+    trade.py trade "sol/daedalus" "groom/frank" -v
+    Item                  Profit       Cost      Stock     Demand   SrcAge   DstAge
+    -------------------------------------------------------------------------------
+    Superconductors        1,331      6,162  1,229,497    621,964     1.17     2.37
+    Indium                 1,202      5,394  1,397,354    683,398     1.17     2.37
+    Beryllium              1,021      8,051     68,181    529,673     1.17     2.37
+    ...
+
+    trade.py trade "sol/daedalus" "groom/frank" -v -vv
+    Item                  Profit       Cost    AvgCost     Buying     AvgBuy      Stock     Demand   SrcAge   DstAge
+    ----------------------------------------------------------------------------------------------------------------
+    Superconductors        1,331      6,162       6461       7493       6813  1,229,497    621,964     1.17     2.37
+    Indium                 1,202      5,394       5640       6596       5961  1,397,354    683,398     1.17     2.37
+    Beryllium              1,021      8,051       7998       9072       8404     68,181    529,673     1.17     2.37
+    Gold                   1,004      9,276       9212      10280       9600     82,951    938,765     1.17     2.37
+
+
 UPDATE sub-command:
 
   For maintenance on your local prices database. The default is to walk
@@ -497,6 +540,19 @@ IMPORT sub-command:
     --maddavo
       Like 'url' but specifies the URL for maddavo's .prices file
 
+      This has also additional options:
+      --option=<option> where option is one of the following:
+        buildcache:   Forces a rebuild of the cache before processing 
+                      of the .prices file.
+        syscsv:       Also download System.csv from the site.
+        stncsv:       Also download Station.csv from the site.
+        skipdl:       Skip doing any downloads.
+        force:        Process prices even if timestamps suggest 
+                      there is no new data.
+        use3h:        Force download of the 3-hours .prices file
+        use2d:        Force download of the 2-days .prices file
+        usefull:      Force download of the full .prices file
+
     --ignore-unknown
     -i
       Any systems, stations, categories or items that aren't recognized
@@ -534,6 +590,22 @@ RARES sub-command:
        e.g.
          --limit 10
 
+     --reverse
+     -r
+       Reverse the order, can be used with "--ly" and "--limit" to find
+       the furthest-away rares
+
+    --away N.NN
+    --from SYSTEM1 --from SYSTEM2 ... --from SYSTEMN
+      Limits results to systems that are at least a given distance away
+      from additional systems.
+      e.g.
+        trade.py rare --ly 160 sol -r --away 140 --from lave
+          Shows systems starting at 160ly or less from sol,
+          but that are also 140ly or more from lave.
+        trade.py rare --ly 160 sol -r --away 140 --from lave --from xihe
+          As above but also compares for <= 140ly from xihe
+
     --pad-size SML?
     --pad SML?
     -p
@@ -547,11 +619,6 @@ RARES sub-command:
      --price-sort
      -P
        Sort by price rather than proximity
-
-     --reverse
-     -r
-       Reverse the order, can be used with "--ly" and "--limit" to find
-       the furthest-away rares
 
      --quiet
      -q
@@ -602,6 +669,13 @@ NAV sub-command:
 
     --stations
       Lists stations at each stop
+
+    --refuel-jumps N
+    --ref N
+      Specify the maximum consecutive systems which do not have stations
+      you can pass through. For example "--ref 1" would require every
+      jump on the route have a station. "--ref 2" would require that
+      you not make more than one stationless jump after another.
 
     from
       Name of the starting system or a station in the system,
@@ -724,6 +798,10 @@ BUY sub-command:
       Sets the range of --near (requires --near)
       --near chango --ly 10
 
+    --lt NNN
+    --gt NNN
+      Specify min (gt) and max (lt) prices for items
+
     --pad-size SML?
     --pad SML?
     -p
@@ -766,6 +844,10 @@ SELL sub-command:
     --ly-per N.N
       Sets the range of --near (requires --near)
       --near chango --ly 10
+
+    --lt NNN
+    --gt NNN
+      Specify min (gt) and max (lt) prices for items
 
     --pad-size SML?
     --pad SML?
