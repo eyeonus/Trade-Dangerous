@@ -44,6 +44,7 @@ from tradeexcept import TradeException
 import locale
 import math
 import os
+import misc.progress as pbar
 import time
 
 locale.setlocale(locale.LC_ALL, '')
@@ -745,7 +746,10 @@ class TradeCalc(object):
                     restrictStations.update(place.stations)
         restrictStations = set(restrictStations)
 
+        prog = pbar.Progress(len(routes), 25)
         for route in routes:
+            if tdenv.progress:
+                prog.increment(1)
             tdenv.DEBUG1("Route = {}", route.str())
 
             srcStation = route.route[-1]
@@ -889,6 +893,8 @@ class TradeCalc(object):
                     restricting.remove(dstStation)
                     if not restricting:
                         break
+
+        prog.clear()
 
         result = []
         for (dst, route, trade, jumps, ly, score) in bestToDest.values():
