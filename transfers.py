@@ -7,9 +7,9 @@ from urllib.request import Request, urlopen
 
 import json
 import math
+import misc.progress as pbar
 import time
 import urllib.error
-
 
 try:
     import requests
@@ -111,8 +111,8 @@ def download(
     cmdenv.DEBUG0(str(f.info()))
 
     # Figure out how much data we have
-    bytes = int(f.getheader('Content-Length'))
-    maxBytesLen = len("{:>n}".format(bytes))
+    contentLength = int(f.getheader('Content-Length'))
+    maxBytesLen = len("{:>n}".format(contentLength))
     fetched = 0
     started = time.time()
 
@@ -136,9 +136,9 @@ def download(
             # download status including, especially, the 100% report.
             while True:
                 duration = time.time() - started
-                if bytes and duration >= 1:
-                    # estimated bytes per second
-                    rate = math.ceil(bytes / duration)
+                if contentLength and duration >= 1:
+                    # estimated contentLength per second
+                    rate = math.ceil(contentLength / duration)
                     # but how much can we download in 1/10s
                     burstSize = rate / 10
                     chunkSize += math.ceil((burstSize - chunkSize) * 0.7)
@@ -148,13 +148,13 @@ def download(
                         "| {:>5.2f}% "
                         .format(
                                 localFile,
-                                fetched, bytes,
+                                fetched, contentLength,
                                 rateVal(fetched, duration),
-                                (fetched * 100 / bytes),
+                                (fetched * 100 / contentLength),
                                 len=maxBytesLen
                 ), end='\r')
 
-                if fetched >= bytes:
+                if fetched >= contentLength:
                     if not cmdenv.quiet:
                         print()
                     break
@@ -196,21 +196,16 @@ def retrieve_json_data(url):
         jsData = req.content
     else:
         totalLength = int(totalLength)
-        lastDone = None
+        progBar = pbar.Progress(totalLength, 25)
+        jsData = bytes()
         for data in req.iter_content():
             jsData += data
-            bytesRead = len(jsData)
-            done = int(50 * bytesRead / total_length)
-            if done != lastDone:
-                sys.stdout.write("\r[{:<50s}] {}/{} ".format(
-                    '=' * done,
-                    makeUnit(bytesRead),
+            progBar.increment(len(data), postfix=lambda: \
+                " {}/{} ".format(
+                    makeUnit(progBar.value),
                     makeUnit(totalLength),
-                ))
-                sys.stdout.flush()
-                lastDone = done
-        if lastDone:
-            print("\n")
+            ))
+        progBar.clear()
 
     return json.loads(jsData.decode())
 
