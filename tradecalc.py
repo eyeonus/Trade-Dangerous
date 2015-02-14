@@ -604,9 +604,6 @@ class TradeCalc(object):
         """
         Find the most profitable trade between stations src and dst.
 
-        If avoidItems is populated, the items in it will not be considered
-        for trading.
-
         'fitFunction' lets you override the default fitting function.
         """
 
@@ -685,13 +682,14 @@ class TradeCalc(object):
 
         itemIdx = self.tdb.itemByID
         trading = []
+        minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         for buy in dstBuying:
             buyItemID = buy[0]
             for sell in srcSelling:
                 sellItemID = sell[0]
                 if sellItemID == buyItemID:
                     buyCr, sellCr = buy[1], sell[1]
-                    if sellCr < buyCr:
+                    if sellCr + minGainCr <= buyCr:
                         trading.append(Trade(
                             itemIdx[buyItemID],
                             buyItemID,
