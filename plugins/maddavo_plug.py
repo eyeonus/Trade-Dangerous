@@ -13,7 +13,7 @@ from plugins import PluginException
 
 
 hasTkInter = False
-if not 'NOTK' in os.environ and platform.system() != 'Darwin':  # focus bug
+if 'NOTK' not in os.environ and platform.system() != 'Darwin':  # focus bug
     try:
         import tkinter
         import tkinter.messagebox as mbox
@@ -46,6 +46,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'use2d':        "Force download of the 2-days .prices file",
         'usefull':      "Force download of the full .prices file",
     }
+
 
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
@@ -93,25 +94,28 @@ class ImportPlugin(plugins.ImportPluginBase):
             print(startTime, file=fh)
 
 
-    def checkShebang(self, line, checkAge):
+    def check_shebang(self, line, checkAge):
         m = re.match(
-                r'^#!\s*trade.py\s*import\s*.*\s*--timestamp\s*"([^"]+)"',
-                line
+            r'^#!\s*trade.py\s*import\s*.*\s*--timestamp\s*"([^"]+)"',
+            line
         )
         if not m:
-            raise PluginException("Data is not Maddavo's prices list: " + line)
+            raise PluginException(
+                "Data is not Maddavo's prices list format: " + line
+            )
         self.importDate = m.group(1)
         if checkAge and not self.getOption("force"):
             if self.importDate <= self.prevImportDate:
                 raise SystemExit(
-                        "Local data is already current [{}].".format(
-                            self.importDate
-                ))
+                    "Local data is already current [{}]."
+                    .format(self.importDate)
+                )
             if self.tdenv.detail:
                 print("New timestamp: {}, Old timestamp: {}".format(
                     self.importDate,
                     self.prevImportDate
                 ))
+
 
     def splash(self, title, text):
         if hasTkInter:
@@ -124,7 +128,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             input("Press return to continue: ")
 
 
-    def checkForFirstTimeUse(self):
+    def check_first_time_use(self):
         iniFilePath = self.tdb.dataPath / "maddavo.ini"
         if not iniFilePath.is_file():
             with iniFilePath.open("w") as fh:
@@ -134,38 +138,37 @@ class ImportPlugin(plugins.ImportPluginBase):
                     file=fh
                 )
             self.splash(
-                    "Maddavo Plugin",
-                    "This plugin fetches price data from Maddavo's site, "
-                    "a 3rd party crowd-source data project.\n"
-                    "\n"
-                    "  http://davek.com.au/td/\n"
-                    "\n"
-                    "To use this provider you may need to download some "
-                    "additional files such as the Station.csv or System.csv "
-                    "files from this provider's site.\n"
-                    "\n"
-                    "When importing prices from this provider, TD will "
-                    "automatically add temporary, 'placeholder' entries for "
-                    "stations in the .prices file that are not in your local "
-                    "'Station.csv' file.\n"
-                    "\n"
-                    "You can silence these warnings with '-q', or you can "
-                    "refresh your Station.csv file by adding the "
-                    "'--opt=stncsv' flag periodically, or you can export the "
-                    "placeholders to your .csv file with the command:\n"
-                    "  trade.py export --table Station.csv\n"
-                    "or for short:\n"
-                    "  trade.py exp --tab Station.csv\n"
-                    "\n"
-                    "PLEASE BE AWARE: Using a 3rd party source for your .csv "
-                    "files may cause conflicts when updating the "
-                    "TradeDangerous code.\n"
-                    "\n"
-                    "See the group (http://kfs.org/td/group), thread "
-                    "(http://kfs.org/td/thread) or wiki "
-                    "(http://kfs.org/td/wiki) for more help."
-                )
-
+                "Maddavo Plugin",
+                "This plugin fetches price data from Maddavo's site, "
+                "a 3rd party crowd-source data project.\n"
+                "\n"
+                "  http://davek.com.au/td/\n"
+                "\n"
+                "To use this provider you may need to download some "
+                "additional files such as the Station.csv or System.csv "
+                "files from this provider's site.\n"
+                "\n"
+                "When importing prices from this provider, TD will "
+                "automatically add temporary, 'placeholder' entries for "
+                "stations in the .prices file that are not in your local "
+                "'Station.csv' file.\n"
+                "\n"
+                "You can silence these warnings with '-q', or you can "
+                "refresh your Station.csv file by adding the "
+                "'--opt=stncsv' flag periodically, or you can export the "
+                "placeholders to your .csv file with the command:\n"
+                "  trade.py export --table Station.csv\n"
+                "or for short:\n"
+                "  trade.py exp --tab Station.csv\n"
+                "\n"
+                "PLEASE BE AWARE: Using a 3rd party source for your .csv "
+                "files may cause conflicts when updating the "
+                "TradeDangerous code.\n"
+                "\n"
+                "See the group (http://kfs.org/td/group), thread "
+                "(http://kfs.org/td/thread) or wiki "
+                "(http://kfs.org/td/wiki) for more help."
+            )
 
 
     def run(self):
@@ -176,7 +179,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # care about is when we downloaded relative to when the
         # files were previously generated.
 
-        self.checkForFirstTimeUse()
+        self.check_first_time_use()
 
         startTime = time.time()
 
@@ -186,6 +189,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         cacheNeedsRebuild = self.getOption("buildcache")
         skipDownload = self.getOption("skipdl")
         forceParse = self.getOption("force") or skipDownload
+
+        self.import_systems()
+        self.import_stations()
 
         use3h = 1 if self.getOption("use3h") else 0
         use2d = 1 if self.getOption("use2d") else 0
@@ -222,18 +228,18 @@ class ImportPlugin(plugins.ImportPluginBase):
                     backup=True,
                 )
                 cacheNeedsRebuild = True
-            # Download 
-            if lastRunDays < 3/24:
+            # Download
+            if lastRunDays < 3 / 24:
                 priceFile = "prices-3h.asp"
             elif lastRunDays < 1.9:
                 priceFile = "prices-2d.asp"
             else:
                 priceFile = "prices.asp"
             transfers.download(
-                    tdenv,
-                    "http://www.davek.com.au/td/"+priceFile,
-                    self.filename,
-                    shebang=lambda line: self.checkShebang(line, True),
+                tdenv,
+                "http://www.davek.com.au/td/" + priceFile,
+                self.filename,
+                shebang=lambda line: self.check_shebang(line, True),
             )
 
         if tdenv.download:
@@ -248,7 +254,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb.close()
         tdb.reloadCache()
         tdb.load(
-                maxSystemLinkLy=tdenv.maxSystemLinkLy,
+            maxSystemLinkLy=tdenv.maxSystemLinkLy,
         )
         tdb.close()
 
@@ -264,7 +270,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(self.filename, "rUb") as fh:
             # skip the shebang.
             firstLine = fh.readline().decode(encoding="utf-8")
-            self.checkShebang(firstLine, False)
+            self.check_shebang(firstLine, False)
             importDate = self.importDate
 
             lineNo = 0
@@ -278,18 +284,24 @@ class ImportPlugin(plugins.ImportPluginBase):
                     line = line.decode(encoding="utf-8")
                 except UnicodeDecodeError as e:
                     try:
-                        line = line.decode(encoding="latin1").encode("utf-8").decode()
+                        line = line.decode(encoding="latin1")
+                        line = line.encode("utf-8")
+                        line = line.decode()
                     except UnicodeDecodeError:
                         raise DecodingError(
                             "{} line {}: "
-                            "Invalid (unrecognized, non-utf8) character sequence: {}\n{}".format(
+                            "Invalid (unrecognized, non-utf8) character "
+                            "sequence: {}\n{}".format(
                                 self.filename, lineNo, str(e), line,
-                        )) from None
+                            )
+                        ) from None
                     raise DecodingError(
                         "{} line {}: "
-                        "Invalid (latin1, non-utf8) character sequence:\n{}".format(
+                        "Invalid (latin1, non-utf8) character "
+                        "sequence:\n{}".format(
                             self.filename, lineNo, line,
-                    ))
+                        )
+                    )
                 if line.startswith('@'):
                     lastStn = line[2:line.find('#')].strip()
                     continue
@@ -309,10 +321,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if date > importDate:
                             raise PluginException(
                                 "Station {} has suspicious date: {} "
-                                "(newer than the import?)".format(
-                                    lastStn,
-                                    date
-                            ))
+                                "(newer than the import?)"
+                                .format(lastStn, date)
+                            )
 
         if numNewLines == 0:
             tdenv.NOTE("No new price entries found.")
@@ -337,16 +348,17 @@ class ImportPlugin(plugins.ImportPluginBase):
             if not tdenv.quiet and numStationsUpdated:
                 if len(updatedStations) > 12 and tdenv.detail < 2:
                     updatedStations = list(updatedStations)[:10] + ["..."]
-                tdenv.NOTE("{} {} updated:\n{}",
+                tdenv.NOTE(
+                    "{} {} updated:\n{}",
                     numStationsUpdated,
                     "stations" if numStationsUpdated > 1 else "station",
                     ', '.join(updatedStations)
                 )
 
             cache.importDataFromFile(
-                    tdb,
-                    tdenv,
-                    pathlib.Path(self.filename),
+                tdb,
+                tdenv,
+                pathlib.Path(self.filename),
             )
 
         self.save_timestamp(importDate, startTime)
