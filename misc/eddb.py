@@ -67,7 +67,7 @@ class JsonQuery(object):
         Yields:
             dict(...)
         """
-        self.jsonData = transfers.retrieve_json_data(self.url)
+        self.jsonData = transfers.get_json_data(self.url)
         for ent in self.jsonData:
             ent['name']  = ent['name'].translate(self.escapeTrans)
             yield ent

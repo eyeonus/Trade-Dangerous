@@ -177,7 +177,7 @@ def download(
     return f.getheaders()
 
 
-def retrieve_json_data(url):
+def get_json_data(url):
     """
     Fetch JSON data from a URL and return the resulting dictionary.
 
