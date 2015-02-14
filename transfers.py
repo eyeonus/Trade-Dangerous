@@ -37,11 +37,11 @@ def makeUnit(value):
     Convert a value in bytes into a Kb, Mb, Gb etc.
     """
 
-    units = [ '', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+    units = [ 'B ', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB' ]
     unitSize = int(value)
     for unit in units:
         if unitSize <= 640:
-            return "{:5.2f}{}B".format(unitSize, unit)
+            return "{:>5.01f}{}".format(unitSize, unit)
         unitSize /= 1024
     return None
     
@@ -200,10 +200,12 @@ def retrieve_json_data(url):
         jsData = bytes()
         for data in req.iter_content():
             jsData += data
-            progBar.increment(len(data), postfix=lambda: \
-                " {}/{} ".format(
-                    makeUnit(progBar.value),
-                    makeUnit(totalLength),
+            progBar.increment(
+                len(data),
+                postfix=lambda value, goal: \
+                " {}/{}".format(
+                    makeUnit(value),
+                    makeUnit(goal),
             ))
         progBar.clear()
 
