@@ -718,7 +718,6 @@ class TradeCalc(object):
 
         tdb = self.tdb
         tdenv = self.tdenv
-        avoidItems = getattr(tdenv, 'avoidItems', []) or []
         avoidPlaces = getattr(tdenv, 'avoidPlaces', []) or []
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
