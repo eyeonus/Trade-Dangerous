@@ -3,7 +3,8 @@ from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from formatting import RowFormat, ColumnFormat
-from tradedb import System, Station, describeAge
+from tradedb import TradeDB, System, Station, describeAge
+from tradecalc import TradeCalc, Route
 
 ######################################################################
 # Parser config
@@ -38,11 +39,23 @@ switches = [
             dest='starting',
             metavar='STATION',
         ),
-    ParseArgument('--to',
-            help='Final system/station.',
-            dest='ending',
-            metavar='PLACE',
+    MutuallyExclusiveGroup(
+        ParseArgument('--to',
+                help='Final system/station.',
+                dest='ending',
+                metavar='PLACE',
+                default=None,
         ),
+        ParseArgument('--towards',
+                help=(
+                    'Choose a route that continually reduces the '
+                    'distance towards this system.'
+                ),
+                dest='goalSystem',
+                metavar='SYSTEM',
+                default=None,
+        ),
+    ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
             action='append',
@@ -119,6 +132,12 @@ switches = [
             dest='maxLs',
             type=int,
             default=0,
+        ),
+    ParseArgument('--gain-per-ton', '--gpt',
+            help='Specify the minimum gain per ton of cargo',
+            dest='minGainPerTon',
+            type=int,
+            default=1
         ),
     ParseArgument('--unique',
             help='Only visit each station once.',
@@ -293,7 +312,14 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
     """
 
     if not jumps:
-        return origins
+        stations = [
+            origin for origin in origins
+            if isinstance(origin, Station)
+        ]
+        for origin in origins:
+            if isinstance(origin, System):
+                stations.extend(origin.stations)
+        return set(stations)
 
     origSys = set()
     for place in origins:
@@ -367,10 +393,13 @@ def checkForEmptyStationList(category, focusPlace, stationList, jumps):
         ))
     if isinstance(focusPlace, System):
         raise NoDataError(
-                "Local database has no price data for "
-                "stations in {} ({})".format(
+                "Local database either has no price data for "
+                "stations in {} ({}) or could not find any that "
+                "met your requirements (e.g. pad-size). "
+                "Check \"trade.py local -vv --ly 0 {}\"".format(
                     focusPlace.name(),
                     category,
+                    focusPlace.name(),
         ))
     raise NoDataError(
             "Local database has no price data for {} ({})".format(
@@ -403,15 +432,18 @@ def checkStationSuitability(cmdenv, station, src=None):
                         src, station.name(),
             ))
         return False
-    mps = cmdenv.maxPadSize
+    mps = cmdenv.padSize
     if mps and not station.checkPadSize(mps):
         if src:
             raise CommandLineError(
-                    "{} station {} does not meet pad-size "
-                    "requirement.".format(
+                    "{} station {} does not meet pad-size requirement.\n"
+                    "You specified: {}, Current data for station: {} ({})\n"
+                    "You can use \"trade.py station\" to correct this.".format(
                         src, station.name(),
+                        mps, station.maxPadSize,
+                        TradeDB.padSizesExt[station.maxPadSize],
             ))
-        raise False
+        return False
     bm = cmdenv.blackMarket
     if bm and station.blackMarket != 'Y':
         if src and src != "--from":
@@ -441,21 +473,21 @@ def checkStationSuitability(cmdenv, station, src=None):
         return False
     return True
 
-def filterStationSet(src, cmdenv, stnSet):
-    if not stnSet:
-        return stnSet
-    for place in stnSet:
-        if not isinstance(place, Station):
-            continue
-        if not checkStationSuitability(cmdenv, place):
-            stnSet.remove(place)
-            continue
-    if not stnSet:
+
+def filterStationSet(src, cmdenv, stnList):
+    if not stnList:
+        return stnList
+    filtered = [
+        place for place in stnList
+        if not (isinstance(place, Station) and \
+            not checkStationSuitability(cmdenv, place))
+    ]
+    if not stnList:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
                     src
         ))
-    return stnSet
+    return stnList
 
 
 def validateRunArguments(tdb, cmdenv):
@@ -482,12 +514,16 @@ def validateRunArguments(tdb, cmdenv):
 
     if cmdenv.origPlace:
         if isinstance(cmdenv.origPlace, System):
-            cmdenv.origins = list(cmdenv.origPlace.stations)
-            if not cmdenv.origins:
+            if not cmdenv.origPlace.stations:
                 raise CommandLineError(
                         "No stations at --from system, {}"
                             .format(cmdenv.origPlace.name())
                         )
+            cmdenv.origins = [
+                station
+                for station in cmdenv.origPlace.stations
+                if checkStationSuitability(cmdenv, station)
+            ]
         else:
             checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
@@ -531,6 +567,11 @@ def validateRunArguments(tdb, cmdenv):
     else:
         if cmdenv.endJumps:
             raise CommandLineError("--end-jumps (-e) only works with --to")
+        if cmdenv.goalSystem:
+            if not cmdenv.origPlace:
+                raise CommandLineError("--towards requires --from")
+            dest = tdb.lookupPlace(cmdenv.goalSystem)
+            cmdenv.goalSystem = dest.system
 
     origins, destns = cmdenv.origins or [], cmdenv.destinations or []
 
@@ -688,11 +729,10 @@ def run(results, cmdenv, tdb):
 
     validateRunArguments(tdb, cmdenv)
 
-    from tradecalc import TradeCalc, Route
-
     origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
     avoidPlaces = cmdenv.avoidPlaces
     stopStations = cmdenv.destinations
+    goalSystem = cmdenv.goalSystem
 
     startCr = cmdenv.credits - cmdenv.insurance
 
@@ -776,9 +816,20 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
+        if goalSystem:
+            routes.sort(
+                key=lambda route:
+                    0 if route.route[-1].system is goalSystem else 1
+            )
+            if routes[0].route[-1].system is goalSystem:
+                cmdenv.NOTE("Goal system reached!")
+                break
 
     if not routes:
-        raise NoDataError("No profitable trades matched your critera, or price data along the route is missing.")
+        raise NoDataError(
+            "No profitable trades matched your critera, "
+            "or price data along the route is missing."
+        )
 
     if viaSet:
         routes, caution = filterByVia(routes, viaSet, viaStartPos)
@@ -804,8 +855,8 @@ def render(results, cmdenv, tdb):
 
     routes = results.data
 
-    for i in range(0, min(len(routes), cmdenv.routes)):
-        print(routes[i].detail(detail=cmdenv.detail))
+    for i in range(min(len(routes), cmdenv.routes)):      
+        print(routes[i].detail(cmdenv))
 
     # User wants to be guided through the route.
     if cmdenv.checklist:

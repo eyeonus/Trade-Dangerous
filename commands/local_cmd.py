@@ -57,36 +57,22 @@ def run(results, cmdenv, tdb):
     distances = { srcSystem: 0.0 }
 
     # Calculate the bounding dimensions
-    srcX, srcY, srcZ = srcSystem.posX, srcSystem.posY, srcSystem.posZ
-    lySq = ly * ly
-
-    for destSys in tdb.systems():
-        distSq = (
-                    (destSys.posX - srcX) ** 2 +
-                    (destSys.posY - srcY) ** 2 +
-                    (destSys.posZ - srcZ) ** 2
-                )
-        if distSq <= lySq and destSys is not srcSystem:
-            distances[destSys] = math.sqrt(distSq)
+    for destSys, dist in tdb.genSystemsInRange(srcSystem, ly):
+        distances[destSys] = dist
 
     showStations = cmdenv.detail
     if showStations:
-        stationIDs = ",".join([
-                ",".join(str(stn.ID) for stn in sys.stations)
-                for sys in distances.keys()
-                if sys.stations
-        ])
         stmt = """
                 SELECT  si.station_id,
                         JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
                   FROM  StationItem AS si
-                 WHERE  si.station_id IN ({})
                  GROUP  BY 1
-                """.format(stationIDs)
+                """
         cmdenv.DEBUG0("Fetching ages: {}", stmt)
-        ages = {}
-        for ID, age in tdb.query(stmt):
-            ages[ID] = age
+        ages = {
+            ID: age
+            for ID, age in tdb.query(stmt)
+        }
 
     padSize = cmdenv.padSize
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
