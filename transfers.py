@@ -5,6 +5,7 @@ from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import csv
 import json
 import math
 import misc.progress as pbar
@@ -211,3 +212,39 @@ def get_json_data(url):
 
     return json.loads(jsData.decode())
 
+
+class CSVStream(object):
+    """
+    Provides an iterator that fetches CSV data from a given URL
+    and presents it as an iterable of (columns, values).
+
+    Example:
+        stream = transfers.CSVStream("http://blah.com/foo.csv")
+        for cols, vals in stream:
+            print("{} = {}".format(cols[0], vals[0]))
+    """
+
+    def __init__(self, url):
+        self.url = url
+        self.req = requests.get(self.url, stream=True)
+        self.lines = self.req.iter_lines()
+        self.columns = self.next_line().split(',')
+
+    def next_line(self):
+        """ Fetch the next line as a text string """
+        line = next(self.lines).decode()
+        return line
+
+    def __iter__(self):
+        """
+        Iterate across data received as csv values.
+        Yields [column headings], [column values]
+        """
+        csvin = csv.reader(
+            iter(self.next_line, 'END'),
+            delimiter=',', quotechar="'", doublequote=True
+        )
+        columns = self.columns
+        for values in csvin:
+            if values and len(values) == len(columns):
+                yield columns, values
