@@ -296,13 +296,18 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         startTime = time.time()
 
+        tdenv.ignoreUnknown = True
+
         prevImportDate, lastRunDays = self.load_timestamp()
         self.prevImportDate = prevImportDate
 
         skipDownload = self.getOption("skipdl")
         forceParse = self.getOption("force") or skipDownload
 
+        # Ensure the cache is built and reloaded.
+        tdb.reloadCache()
         tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
+
         self.import_systems()
         self.import_stations()
 
@@ -346,8 +351,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if tdenv.download:
             return False
-
-        tdenv.ignoreUnknown = True
 
         # Scan the file for the latest data.
         firstDate = None
