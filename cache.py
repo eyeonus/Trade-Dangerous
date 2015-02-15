@@ -230,7 +230,7 @@ ocrDerp = re.compile(r'''(
     \bKLU\sDZE |
     ^[DR]HN\b |
     SU\sI?RVEY\b |
-    [A-RT-Z]PORT$ |
+    [^AESIOUS]PORT$ |
     H[DO0]L[O0]ING |
     H[D0]LDING |
     M[DO0]HMAN[O0] |
