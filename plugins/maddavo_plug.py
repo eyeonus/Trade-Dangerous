@@ -53,6 +53,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         'use3h':        "Force download of the 3-hours .prices file",
         'use2d':        "Force download of the 2-days .prices file",
         'usefull':      "Force download of the full .prices file",
+        'syscsv':       "DEPRECATED - see --opt=systems",
+        'stncsv':       "DEPRECATED - see --opt=stations",
     }
 
 
@@ -266,6 +268,24 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
+
+        if self.getOption("syscsv") or self.getOption("stncsv"):
+            raise PluginException(
+                "\a--opt=syscsv and --opt=stncsv have been REPLACED.\n"
+                "\n"
+                "The behavior of the Maddavo plugin has changed drastically "
+                "in version 6.10.0.\n"
+                "\n"
+                "The old options, syscsv and stncsv, would download the "
+                "corresponding file from Maddavo's and REPLACE your local "
+                "file with his data.\n"
+                "\n"
+                "The new options, --opt=systems and --opt=stations, will "
+                "read his files and MERGE his data into your local db.\n"
+                "\n"
+                "An additional option, --opt=exportcsv, was also added "
+                "to export the resulting, merged data, to your .csv files."
+            )
 
         # It takes a while to download these files, so we want
         # to record the start time before we download. What we
