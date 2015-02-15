@@ -692,7 +692,7 @@ class TradeDB(object):
             "System", key, self.systems(), key=lambda system: system.dbname
         )
 
-    def addLocalSystem(self, name, x, y, z):
+    def addLocalSystem(self, name, x, y, z, added="Local", modified='now'):
         """
         Add a system to the local cache and memory copy.
         """
@@ -701,26 +701,64 @@ class TradeDB(object):
         cur = db.cursor()
         cur.execute("""
                 INSERT INTO System (
-                    name, pos_x, pos_y, pos_z, added_id
+                    name, pos_x, pos_y, pos_z, added_id, modified
                 ) VALUES (
                     ?, ?, ?, ?,
-                    (SELECT added_id
-                       FROM Added
-                      WHERE name = ?)
+                    (SELECT added_id FROM Added WHERE name = ?),
+                    DATETIME(?)
                 )
         """, [
-            name, x, y, z, 'Local',
+            name, x, y, z, added, modified,
         ])
         ID = cur.lastrowid
         system = System(ID, name.upper(), x, y, z)
         self.systemByID[ID] = system
         self.systemByName[system.dbname] = system
         db.commit()
-        if not self.tdenv.quiet:
-            print("- Added new system #{}: {} [{},{},{}]".format(
-                ID, name, x, y, z
-            ))
+        self.tdenv.NOTE(
+            "Added new system #{}: {} [{},{},{}]",
+            ID, name, x, y, z
+        )
         return system
+
+    def updateLocalSystem(
+            self, system,
+            name, x, y, z, added="Local", modified='now',
+            force=False,
+            ):
+        """
+        Updates an entry for a local system.
+        """
+        oldname = system.dbname
+        dbname = name.upper()
+        if not force:
+            if oldname == dbname and \
+                    system.posX == x and \
+                    system.posY == y and \
+                    system.posZ == z:
+                return False
+        del self.systemByName[oldname]
+        db = self.getDB()
+        db.execute("""
+            UPDATE System
+               SET name=?,
+                   x=?, y=?, z=?,
+                   added=(SELECT added_id FROM Added WHERE name = ?),
+                   modified=DATETIME(?)
+        """, [
+            dbname, x, y, z, added, modified
+        ])
+        db.commit()
+        self.tdenv.NOTE(
+            "{} (#{}) updated in {}: {}, {}, {}, {}, {}, {}",
+            oldname, system.ID, self.dbPath,
+            dbname,
+            x, y, z,
+            added, modified,
+        )
+        self.systemByName[dbname] = system
+
+        return True
 
     def __buildStellarGrid(self):
         """
