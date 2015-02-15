@@ -1,9 +1,6 @@
 #! /usr/bin/env python
 
 """
-Usage:
-    edscupdate.py "<current system name>" ["<date>"]
-
 This tool looks for changes in the EDSC service since the most
 recent "modified" date in the System table or the date supplied
 on the command line.
@@ -46,24 +43,62 @@ class UsageError(Exception):
     pass
 
 
-def get_cmdr(tdb):
-    """ Look up the commander name """
-    try:
-        return os.environ['CMDR']
-    except KeyError:
-        pass
-
-    if 'SHLVL' not in os.environ and platform.system() == 'Windows':
-        how = 'set CMDR="yourname"'
-    else:
-        how = 'export CMDR="yourname"'
-
-    raise UsageError(
-        "No 'CMDR' variable set.\n"
-        "You can set an environment variable by typing:\n"
-        "  "+how+"\n"
-        "at the command/shell prompt."
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+            description='Review and validate incoming EDSC star data. '
+                        'Confirmed distances are submitted back to EDSC to '
+                        'increase confidence ratings.',
+            epilog='Confirmed systems are written to tmp/new.systems.csv.',
     )
+    parser.add_argument(
+            'refsystem',
+            help='*Exact* name of the system you are *currently* in, '
+                 'used as a reference system for distance validations.',
+            type=str,
+            default=None,
+    )
+    parser.add_argument(
+            '--cmdr',
+            required=False,
+            help='Specify your commander name.',
+            type=str,
+            default=os.environ.get('CMDR', None),
+    )
+    parser.add_argument(
+            '--confidence',
+            required=False,
+            help='Specify minimum confidence level.',
+            type=int,
+            default=2,
+    )
+    parser.add_argument(
+            '--test',
+            required=False,
+            help='Use the EDSC test database.',
+            action='store_true',
+            default=False,
+    )
+    parser.add_argument(
+            '--date',
+            required=False,
+            help='Use specified date (YYYY-MM-DD HH:MM:SS format) for '
+                 'start of update search. '
+                 'Default is to use the last System modified date.',
+            type=str,
+            default=None,
+    )
+
+    argv = parser.parse_args(sys.argv[1:])
+    if not argv.cmdr:
+        raise UsageError("No --cmdr specified / no CMDR environment variable")
+    dateRe = re.compile(r'^20\d\d-(0\d|1[012])-([012]\d|3[01]) ([01]\d|2[0123]):[0-5]\d:[0-5]\d$')
+    if argv.date and not dateRe.match(argv.date):
+        raise UsageError(
+                "Invalid date: '{}', expecting YYYY-MM-DD HH:MM:SS format."
+                .format(argv.date)
+        )
+
+    return argv
 
 
 def is_change(tdb, sysinfo):
@@ -128,36 +163,28 @@ def get_distance(tdb, startSys, x, y, z):
 
 
 def main():
-    if 'DEBUG' in os.environ or 'TEST' in os.environ:
-        testMode = True
-    else:
-        testMode = False
-
-    if len(sys.argv) < 2 or len(sys.argv) > 3:
-        print("Usage: {} <origin system> [date]".format(sys.argv[0]))
-        sys.exit(1)
+    argv = parse_arguments()
 
     tdb = tradedb.TradeDB()
-    date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
+    if not argv.date:
+        argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
 
-    cmdr = get_cmdr(tdb)
+    try:
+        startSys = tdb.lookupSystem(argv.refsystem)
+    except (LookupError, tradedb.AmbiguityError):
+        raise UsageError(
+            "Unrecognized system '{}'. Reference System must be an existing "
+            "system that TD already knows about.\n"
+            "Did you forget to put double-quotes around the refsystem name?"
+            .format(argv.refsystem)
+        )
 
-    startSys = tdb.lookupPlace(sys.argv[1])
-
-    if len(sys.argv) > 2:
-        date = sys.argv[2]
-        if not date.startswith("201"):
-            print("ERROR: Invalid date {}".format(date))
-            sys.exit(2)
-
-    print("start date: {}".format(date), file=sys.stderr)
-
-    confidence = os.environ.get("CONF", 2)
+    print("start date: {}".format(argv.date))
 
     edsq = misc.edsc.StarQuery(
-        test=testMode,
-        confidence=confidence,
-        date=date,
+        test=argv.test,
+        confidence=argv.confidence,
+        date=argv.date,
         )
     data = edsq.fetch()
 
@@ -190,7 +217,7 @@ def main():
 
     total = len(systems)
     current = 0
-    with open("tmp/new.systems.csv", "a") as output:
+    with open("tmp/new.systems.csv", "w") as output:
         for sysinfo in systems:
             current += 1
             name = sysinfo['name']
@@ -225,11 +252,12 @@ def main():
             print("'{}',{},{},{},'Release 1.00-EDStar','{}'".format(
                 name, x, y, z, created,
             ), file=output)
+
             sub = misc.edsc.StarSubmission(
                 star=name.upper(),
-                commander=cmdr,
+                commander=argv.cmdr,
                 distances={startSys.name(): distance},
-                test=testMode,
+                test=argv.test,
             )
             r = sub.submit()
             result = misc.edsc.StarSubmissionResult(
@@ -245,4 +273,8 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         print("^C")
+    except UsageError as e:
+        print("ERROR: {}\nSee {} --help for usage help.".format(
+            str(e), sys.argv[0]
+        ))
 
