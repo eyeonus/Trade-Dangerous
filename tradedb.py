@@ -1089,7 +1089,6 @@ class TradeDB(object):
                     changes = True
 
         if not changes:
-            self.tdenv.NOTE("No changes")
             return False
 
         db = self.getDB()
