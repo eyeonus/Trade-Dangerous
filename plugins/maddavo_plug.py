@@ -1,4 +1,5 @@
 import cache
+import csvexport
 import os
 import pathlib
 import platform
@@ -11,7 +12,7 @@ import transfers
 
 from plugins import PluginException
 
-
+# Check for TKInter support
 hasTkInter = False
 if 'NOTK' not in os.environ and platform.system() != 'Darwin':  # focus bug
     try:
@@ -20,6 +21,13 @@ if 'NOTK' not in os.environ and platform.system() != 'Darwin':  # focus bug
         hasTkInter = True
     except ImportError:
         pass
+
+
+# Constants
+
+BASE_URL = "http://www.davek.com.au/td/"
+SYSTEMS_URL = BASE_URL + "System.csv"
+STATIONS_URL = BASE_URL + "station.asp"
 
 
 class DecodingError(PluginException):
@@ -35,10 +43,10 @@ class ImportPlugin(plugins.ImportPluginBase):
     dateRe = re.compile(r"(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)")
 
     pluginOptions = {
-        'buildcache':   "Forces a rebuild of the cache before processing "
-                        "of the .prices file.",
-        'syscsv':       "Also download System.csv from the site.",
-        'stncsv':       "Also download Station.csv from the site.",
+        'systems':      "Merge maddavo's System data into local db,",
+        'stations':     "Merge maddavo's Station data into local db,",
+        'exportcsv':    "Regenerate System and Station .csv files after "
+                        "merging System/Station data.",
         'skipdl':       "Skip doing any downloads.",
         'force':        "Process prices even if timestamps suggest "
                         "there is no new data.",
@@ -54,6 +62,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.filename = self.defaultImportFile
         stampFilePath = pathlib.Path(ImportPlugin.stampFile)
         self.stampPath = tdb.dataPath / stampFilePath
+        self.newSystems = 0
+        self.newStations = 0
 
 
     def load_timestamp(self):
@@ -142,7 +152,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "This plugin fetches price data from Maddavo's site, "
                 "a 3rd party crowd-source data project.\n"
                 "\n"
-                "  http://davek.com.au/td/\n"
+                "  {}\n"
                 "\n"
                 "To use this provider you may need to download some "
                 "additional files such as the Station.csv or System.csv "
@@ -154,21 +164,104 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "'Station.csv' file.\n"
                 "\n"
                 "You can silence these warnings with '-q', or you can "
-                "refresh your Station.csv file by adding the "
-                "'--opt=stncsv' flag periodically, or you can export the "
-                "placeholders to your .csv file with the command:\n"
-                "  trade.py export --table Station.csv\n"
-                "or for short:\n"
-                "  trade.py exp --tab Station.csv\n"
-                "\n"
-                "PLEASE BE AWARE: Using a 3rd party source for your .csv "
-                "files may cause conflicts when updating the "
-                "TradeDangerous code.\n"
+                "import Station data from maddavo's by adding the "
+                "'--opt=stations' flag periodically. If you get errors "
+                "about missing Systems, you can also import Systems "
+                "from his site using --opt=systems.\n"
                 "\n"
                 "See the group (http://kfs.org/td/group), thread "
                 "(http://kfs.org/td/thread) or wiki "
                 "(http://kfs.org/td/wiki) for more help."
+                .format(BASE_URL)
             )
+
+    def import_systems(self):
+        """
+        Fetch and import data from Systems.csv
+        """
+        if not self.getOption("systems"):
+            return
+
+        tdb, tdenv = self.tdb, self.tdenv
+        NOTE = tdenv.NOTE
+        systems = tdb.systemByName
+
+        NOTE("Importing Systems")
+        stream = transfers.CSVStream(SYSTEMS_URL)
+        for _, values in stream:
+            name = values[0].upper()
+            x, y, z = float(values[1]), float(values[2]), float(values[3])
+            added, modified = values[4], values[5]
+            system = systems.get(name, None)
+            if not system:
+                tdb.addLocalSystem(name, x, y, z, added, modified)
+                self.newSystems += 1
+            elif system.posX != x or system.posY != y or system.posZ != z:
+                print("{} position change: {}v{}, {}v{}, {}v{}".format(
+                    name, system.posX, x, system.posY, y, system.posZ, z
+                ))
+                tdb.updateLocalSystem(system, name, x, y, z, added, modified)
+                self.newSystems += 1
+
+
+    def import_stations(self):
+        """
+        Fetch and import data from Stations.csv
+        """
+        if not self.getOption("stations"):
+            return
+
+        tdb, tdenv = self.tdb, self.tdenv
+        NOTE = tdenv.NOTE
+        systems = tdb.systemByName
+
+        NOTE("Importing Stations")
+        stream = transfers.CSVStream(STATIONS_URL)
+        for _, values in stream:
+            sysName, stnName = values[0].upper(), values[1]
+            system = systems.get(sysName, None)
+            if not system:
+                NOTE(
+                    "Unrecognized system for station {}/{}",
+                    sysName, stnName
+                )
+                continue
+            station = system.getStation(stnName)
+            lsFromStar = int(values[2])
+            blackMarket = values[3]
+            maxPadSize = values[4]
+            if station:
+                if tdb.updateLocalStation(
+                        station,
+                        name=stnName,
+                        lsFromStar=lsFromStar,
+                        blackMarket=blackMarket,
+                        maxPadSize=maxPadSize,
+                        ):
+                    self.newStations += 1
+            else:
+                tdb.addLocalStation(
+                    system=system,
+                    name=stnName,
+                    lsFromStar=lsFromStar,
+                    blackMarket=blackMarket,
+                    maxPadSize=maxPadSize,
+                )
+                self.newStations += 1
+
+
+    def refresh_csv(self):
+        if not self.getOption("exportcsv"):
+            return
+
+        _, path = csvexport.exportTableToFile(
+            self.tdb, self.tdenv, "System"
+        )
+        self.tdenv.NOTE("{} updated.", path)
+        _, path = csvexport.exportTableToFile(
+            self.tdb, self.tdenv, "Station"
+        )
+        self.tdenv.NOTE("{} updated.", path)
 
 
     def run(self):
@@ -186,12 +279,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         prevImportDate, lastRunDays = self.load_timestamp()
         self.prevImportDate = prevImportDate
 
-        cacheNeedsRebuild = self.getOption("buildcache")
         skipDownload = self.getOption("skipdl")
         forceParse = self.getOption("force") or skipDownload
 
+        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
         self.import_systems()
         self.import_stations()
+
+        # Let the system decide if it needs to reload-cache
+        tdb.close()
+
+        self.refresh_csv()
 
         use3h = 1 if self.getOption("use3h") else 0
         use2d = 1 if self.getOption("use2d") else 0
@@ -212,22 +310,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             lastRunDays = 3.0
 
         if not skipDownload:
-            if self.getOption("syscsv"):
-                transfers.download(
-                    tdenv,
-                    "http://www.davek.com.au/td/System.csv",
-                    "data/System.csv",
-                    backup=True,
-                )
-                cacheNeedsRebuild = True
-            if self.getOption("stncsv"):
-                transfers.download(
-                    tdenv,
-                    "http://www.davek.com.au/td/station.asp",
-                    "data/Station.csv",
-                    backup=True,
-                )
-                cacheNeedsRebuild = True
             # Download
             if lastRunDays < 3 / 24:
                 priceFile = "prices-3h.asp"
@@ -237,26 +319,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 priceFile = "prices.asp"
             transfers.download(
                 tdenv,
-                "http://www.davek.com.au/td/" + priceFile,
+                BASE_URL + priceFile,
                 self.filename,
                 shebang=lambda line: self.check_shebang(line, True),
             )
 
         if tdenv.download:
-            if cacheNeedsRebuild:
-                tdenv.NOTE("Did not rebuild cache")
             return False
 
         tdenv.ignoreUnknown = True
-
-        # Let the system decide if it needs to reload-cache
-        tdenv.DEBUG0("Checking the cache")
-        tdb.close()
-        tdb.reloadCache()
-        tdb.load(
-            maxSystemLinkLy=tdenv.maxSystemLinkLy,
-        )
-        tdb.close()
 
         # Scan the file for the latest data.
         firstDate = None
