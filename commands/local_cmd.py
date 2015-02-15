@@ -132,9 +132,17 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Age/days", '>', 7,
                         key=lambda row: row.age)
         ).append(
-                ColumnFormat("BMkt", '>', '4',
+                ColumnFormat("Mkt", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.market])
+        ).append(
+                ColumnFormat("BMk", '>', '3',
                     key=lambda row: \
                         TradeDB.marketStates[row.station.blackMarket])
+        ).append(
+                ColumnFormat("SYd", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.shipyard])
         ).append(
                 ColumnFormat("Pad", '>', '3',
                     key=lambda row: \
