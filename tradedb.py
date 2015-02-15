@@ -211,6 +211,20 @@ class System(object):
 
         return distSq ** 0.5
 
+    def getStation(self, stationName):
+        """
+        Quick case-insensitive lookup of a station name within the
+        stations in this system.
+
+        Returns:
+            Station() object if a match is found,
+            otherwise None.
+        """
+        upperName = stationName.upper()
+        for station in self.stations:
+            if station.dbname.upper() == upperName:
+                return station
+        return None
 
     def name(self):
         return self.dbname
