@@ -1107,6 +1107,7 @@ class TradeDB(object):
 
     def updateLocalStation(
             self, station,
+            name=None,
             lsFromStar=None,
             blackMarket=None,
             maxPadSize=None,
@@ -1117,12 +1118,22 @@ class TradeDB(object):
         """
         changes = False
 
+        if name is not None:
+            if name != station.dbname or force:
+                station.dbname = name
+                changes = True
+        else:
+            name = station.dbname
+
         if lsFromStar is not None:
             assert lsFromStar >= 0
             if lsFromStar != station.lsFromStar:
                 if lsFromStar > 0 or force:
                     station.lsFromStar = lsFromStar
                     changes = True
+        else:
+            lsFromStar = station.lsFromStar
+
 
         if blackMarket is not None:
             blackMarket = blackMarket.upper()
@@ -1131,6 +1142,8 @@ class TradeDB(object):
                 if blackMarket != '?' or force:
                     station.blackMarket = blackMarket
                     changes = True
+        else:
+            blackMarket = station.blackMarket
 
         if maxPadSize is not None:
             maxPadSize = maxPadSize.upper()
@@ -1139,6 +1152,8 @@ class TradeDB(object):
                 if maxPadSize != '?' or force:
                     station.maxPadSize = maxPadSize
                     changes = True
+        else:
+            maxPadSize = station.maxPadSize
 
         if not changes:
             return False
