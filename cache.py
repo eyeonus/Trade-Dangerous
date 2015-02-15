@@ -576,7 +576,6 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             """, [systemID, name])
             newID = inscur.lastrowid
             stationByName[facility] = newID
-            db.commit()
             tdenv.NOTE("Added local station placeholder for {} (#{})",
                     facility, newID
             )
