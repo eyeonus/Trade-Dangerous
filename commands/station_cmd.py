@@ -249,6 +249,7 @@ def removeStation(tdb, cmdenv, station):
 
 def checkResultAndExportStations(tdb, cmdenv, result):
     if not result:
+        cmdenv.NOTE("No changes.")
         return None
     if cmdenv.noExport:
         cmdenv.DEBUG0("no-export set, not exporting stations")

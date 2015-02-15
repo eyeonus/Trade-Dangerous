@@ -5,11 +5,12 @@ from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import csv
 import json
 import math
+import misc.progress as pbar
 import time
 import urllib.error
-
 
 try:
     import requests
@@ -37,11 +38,11 @@ def makeUnit(value):
     Convert a value in bytes into a Kb, Mb, Gb etc.
     """
 
-    units = [ '', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+    units = [ 'B ', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB' ]
     unitSize = int(value)
     for unit in units:
         if unitSize <= 640:
-            return "{:5.2f}{}B".format(unitSize, unit)
+            return "{:>5.01f}{}".format(unitSize, unit)
         unitSize /= 1024
     return None
     
@@ -111,8 +112,8 @@ def download(
     cmdenv.DEBUG0(str(f.info()))
 
     # Figure out how much data we have
-    bytes = int(f.getheader('Content-Length'))
-    maxBytesLen = len("{:>n}".format(bytes))
+    contentLength = int(f.getheader('Content-Length'))
+    maxBytesLen = len("{:>n}".format(contentLength))
     fetched = 0
     started = time.time()
 
@@ -136,9 +137,9 @@ def download(
             # download status including, especially, the 100% report.
             while True:
                 duration = time.time() - started
-                if bytes and duration >= 1:
-                    # estimated bytes per second
-                    rate = math.ceil(bytes / duration)
+                if contentLength and duration >= 1:
+                    # estimated contentLength per second
+                    rate = math.ceil(contentLength / duration)
                     # but how much can we download in 1/10s
                     burstSize = rate / 10
                     chunkSize += math.ceil((burstSize - chunkSize) * 0.7)
@@ -148,13 +149,13 @@ def download(
                         "| {:>5.2f}% "
                         .format(
                                 localFile,
-                                fetched, bytes,
+                                fetched, contentLength,
                                 rateVal(fetched, duration),
-                                (fetched * 100 / bytes),
+                                (fetched * 100 / contentLength),
                                 len=maxBytesLen
                 ), end='\r')
 
-                if fetched >= bytes:
+                if fetched >= contentLength:
                     if not cmdenv.quiet:
                         print()
                     break
@@ -177,7 +178,7 @@ def download(
     return f.getheaders()
 
 
-def retrieve_json_data(url):
+def get_json_data(url):
     """
     Fetch JSON data from a URL and return the resulting dictionary.
 
@@ -196,21 +197,54 @@ def retrieve_json_data(url):
         jsData = req.content
     else:
         totalLength = int(totalLength)
-        lastDone = None
+        progBar = pbar.Progress(totalLength, 25)
+        jsData = bytes()
         for data in req.iter_content():
             jsData += data
-            bytesRead = len(jsData)
-            done = int(50 * bytesRead / total_length)
-            if done != lastDone:
-                sys.stdout.write("\r[{:<50s}] {}/{} ".format(
-                    '=' * done,
-                    makeUnit(bytesRead),
-                    makeUnit(totalLength),
-                ))
-                sys.stdout.flush()
-                lastDone = done
-        if lastDone:
-            print("\n")
+            progBar.increment(
+                len(data),
+                postfix=lambda value, goal: \
+                " {}/{}".format(
+                    makeUnit(value),
+                    makeUnit(goal),
+            ))
+        progBar.clear()
 
     return json.loads(jsData.decode())
 
+
+class CSVStream(object):
+    """
+    Provides an iterator that fetches CSV data from a given URL
+    and presents it as an iterable of (columns, values).
+
+    Example:
+        stream = transfers.CSVStream("http://blah.com/foo.csv")
+        for cols, vals in stream:
+            print("{} = {}".format(cols[0], vals[0]))
+    """
+
+    def __init__(self, url):
+        self.url = url
+        self.req = requests.get(self.url, stream=True)
+        self.lines = self.req.iter_lines()
+        self.columns = self.next_line().split(',')
+
+    def next_line(self):
+        """ Fetch the next line as a text string """
+        line = next(self.lines).decode()
+        return line
+
+    def __iter__(self):
+        """
+        Iterate across data received as csv values.
+        Yields [column headings], [column values]
+        """
+        csvin = csv.reader(
+            iter(self.next_line, 'END'),
+            delimiter=',', quotechar="'", doublequote=True
+        )
+        columns = self.columns
+        for values in csvin:
+            if values and len(values) == len(columns):
+                yield columns, values

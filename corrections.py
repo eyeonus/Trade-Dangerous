@@ -74,6 +74,7 @@ stations = {
     "ZETA TRIANGULI AUSTRALIS/GUEST CITY2": "Guest City",
 
 #ADD_STATIONS_HERE
+    "FK5 2550/WU INDT GATEWAY":             DELETED,
 }
 
 categories = {

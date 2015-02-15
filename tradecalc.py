@@ -44,6 +44,7 @@ from tradeexcept import TradeException
 import locale
 import math
 import os
+import misc.progress as pbar
 import time
 
 locale.setlocale(locale.LC_ALL, '')
@@ -604,9 +605,6 @@ class TradeCalc(object):
         """
         Find the most profitable trade between stations src and dst.
 
-        If avoidItems is populated, the items in it will not be considered
-        for trading.
-
         'fitFunction' lets you override the default fitting function.
         """
 
@@ -685,13 +683,14 @@ class TradeCalc(object):
 
         itemIdx = self.tdb.itemByID
         trading = []
+        minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         for buy in dstBuying:
             buyItemID = buy[0]
             for sell in srcSelling:
                 sellItemID = sell[0]
                 if sellItemID == buyItemID:
                     buyCr, sellCr = buy[1], sell[1]
-                    if sellCr < buyCr:
+                    if sellCr + minGainCr <= buyCr:
                         trading.append(Trade(
                             itemIdx[buyItemID],
                             buyItemID,
@@ -718,7 +717,6 @@ class TradeCalc(object):
 
         tdb = self.tdb
         tdenv = self.tdenv
-        avoidItems = getattr(tdenv, 'avoidItems', []) or []
         avoidPlaces = getattr(tdenv, 'avoidPlaces', []) or []
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
@@ -748,7 +746,10 @@ class TradeCalc(object):
                     restrictStations.update(place.stations)
         restrictStations = set(restrictStations)
 
+        prog = pbar.Progress(len(routes), 25)
         for route in routes:
+            if tdenv.progress:
+                prog.increment(1)
             tdenv.DEBUG1("Route = {}", route.str())
 
             srcStation = route.route[-1]
@@ -892,6 +893,8 @@ class TradeCalc(object):
                     restricting.remove(dstStation)
                     if not restricting:
                         break
+
+        prog.clear()
 
         result = []
         for (dst, route, trade, jumps, ly, score) in bestToDest.values():
