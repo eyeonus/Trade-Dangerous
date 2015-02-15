@@ -75,6 +75,12 @@ stations = {
 
 #ADD_STATIONS_HERE
     "FK5 2550/WU INDT GATEWAY":             DELETED,
+    "BRANI/Armstrong Station":              DELETED,
+    "BRANI/Brahe Hub":                      DELETED,
+    "BRANI/Dirac Enterprise":               DELETED,
+    "BRANI/Naddoddur Terminal":             DELETED,
+    "BRANI/Ride Ring":                      DELETED,
+    "BRANI/Wallace Dock":                   DELETED,
 }
 
 categories = {
