@@ -240,7 +240,9 @@ ocrDerp = re.compile(r'''(
     \bPIT[VY]$ |
     \bTFR |
     IVII |
-    \BINAI$
+    \BINAI$ |
+    SET[IT]''LEMEN |
+    I'L | R'I | (^|\s)'L | [^Ss]'(?=\s|$)
 )''', flags=re.X)
 
 
@@ -1117,3 +1119,28 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     # If everything worked, we may need to re-build the prices file.
     if path != tdb.pricesPath:
         regeneratePricesFile(tdb, tdenv)
+
+
+def test_derp(tdb=None, tdenv=None):
+    """
+    Test whether the station names in a trade database are free of derp.
+
+    Examples:
+        import tradedb
+        tdb = tradedb.TradeDB()
+        test_derp(tdb)
+
+        python -i cache.py
+        >>> test_derp()
+    """
+    tdb = tdb or tradedb.TradeDB()
+    tdenv = tdenv or tdb.tdenv
+    matches = 0
+    for stn in tdb.stationByID.values():
+        m = checkForOcrDerp(tdenv, stn.system.dbname, stn.dbname)
+        if m:
+            print("Match", m.groups(1))
+            matches += 1
+    if not matches:
+        print("Current data is free of known derp")
+

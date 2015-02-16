@@ -100,6 +100,9 @@ stations = {
     "PANDAMONIUM/RILDRICH PLTERS RING":     DELETED,
     "WOLF 1481/VE .LAZQU IEZ GATEWAY":      DELETED,
     "BALMUNG/RU IPPE .LT STATION":          DELETED,
+    "GELONG/ROERIIIG":                      "Roe Ring",
+    "VOLOWAHKU/WATI' MINE":                 DELETED,
+    "10 KAPPA PEGASI/BONOAR HUB":           "Bondar Hub",
 }
 
 categories = {
