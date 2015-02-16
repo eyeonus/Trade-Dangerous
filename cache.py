@@ -188,7 +188,6 @@ ocrDerp = re.compile(r'''(
     '' |
     ^[^A-Z0-9] |
     \s{2,} |
-    \S\s\S\s |
     ^OEN |
     ^MCK(EF|FE)\b |
     \bCHAN\s+DLER |
@@ -220,7 +219,8 @@ ocrDerp = re.compile(r'''(
     ,\w |
     \bI?NGLY\b |
     \bAU\sL[DO0]\b |
-    (^|\s)['.-] |
+    (^|\s)['.] |
+    ^- | -$ |
     \bDREBBFL\b
     \bLEVIE |
     \bRN\b |
@@ -235,7 +235,12 @@ ocrDerp = re.compile(r'''(
     M[DO0]HMAN[O0] |
     \bABL\b |
     \bBENNET\b |
-    \bHU8\b
+    \bHU8\b |
+    \bCITV$ |
+    \bPIT[VY]$ |
+    \bTFR |
+    IVII |
+    \BINAI$
 )''', flags=re.X)
 
 
@@ -436,13 +441,14 @@ def getItemByNameIndex(cur):
 
 
 def checkForOcrDerp(tdenv, systemName, stationName):
-    if ocrDerp.search(stationName):
+    match = ocrDerp.search(stationName)
+    if match:
         tdenv.NOTE(
             "Ignoring '{}/{}' because it looks like OCR derp."
             .format(systemName, stationName)
         )
-        return True
-    return False
+        return match
+    return None
 
 
 def processPrices(tdenv, priceFile, db, defaultZero):
