@@ -439,7 +439,7 @@ class TradeCalc(object):
                     ageS = now - int(timestamp)
                 except TypeError:
                     raise BadTimestampError(
-                        TableName, self.tdb,
+                        tableName, self.tdb,
                         stnID, itmID, modified
                     )
                 stnAppend((itmID, cr, units, lev, ageS))
