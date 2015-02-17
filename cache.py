@@ -236,13 +236,16 @@ ocrDerp = re.compile(r'''(
     \bABL\b |
     \bBENNET\b |
     \bHU8\b |
-    \bCITV$ |
-    \bPIT[VY]$ |
+    \sCITV$ |
+    \sPIT[VY]$ |
     \bTFR |
     IVII |
     \BINAI$ |
     SET[IT]''LEMEN |
-    I'L | R'I | (^|\s)'L | [^Ss]'(?=\s|$)
+    I'L | R'I | (^|\s)'L | [^Ss]'(?=\s|$) |
+    I \s (?! [Ss][Oo][Ll][Aa]) |
+    \bA7\S |
+    \sH\sI?UB$
 )''', flags=re.X)
 
 
