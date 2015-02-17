@@ -243,7 +243,7 @@ ocrDerp = re.compile(r'''(
     \BINAI$ |
     SET[IT]''LEMEN |
     I'L | R'I | (^|\s)'L | [^Ss]'(?=\s|$) |
-    I \s (?! [Ss][Oo][Ll][Aa]) |
+    ^I \s (?! [Ss][Oo][Ll][Aa]) |
     \bA7\S |
     \sH\sI?UB$
 )''', flags=re.X)
