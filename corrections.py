@@ -103,6 +103,9 @@ stations = {
     "GELONG/ROERIIIG":                      "Roe Ring",
     "VOLOWAHKU/WATI' MINE":                 DELETED,
     "10 KAPPA PEGASI/BONOAR HUB":           "Bondar Hub",
+    "GLIESE 868/ALVARADO RING":             DELETED,
+    "GLIESE 868/FEYNMAN TERMINAL":          DELETED,
+    "TOXANDJI/TSU NENAGA ORBITAL":          DELETED,
 }
 
 categories = {

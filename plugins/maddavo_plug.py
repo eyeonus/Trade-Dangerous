@@ -1,4 +1,5 @@
 import cache
+import corrections
 import csvexport
 import os
 import pathlib
@@ -216,16 +217,30 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         NOTE = tdenv.NOTE
         systems = tdb.systemByName
+        sysAdjust = corrections.systems.get
+        stnAdjust = corrections.stations.get
+        DELETED = corrections.DELETED
 
         NOTE("Importing Stations")
         stream = transfers.CSVStream(STATIONS_URL)
         for _, values in stream:
             sysName, stnName = values[0].upper(), values[1]
+            sysName = sysAdjust(sysName, sysName)
+            if sysName == DELETED:
+                tdenv.DEBUG0("Ignoring deleted system {}", values[0])
+                continue
             system = systems.get(sysName, None)
             if not system:
                 NOTE(
                     "Unrecognized system for station {}/{}",
                     sysName, stnName
+                )
+                continue
+            stnName = stnAdjust('/'.join([sysName, stnName.upper()]), stnName)
+            if stnName == DELETED:
+                tdenv.DEBUG0(
+                    "Ignoring deleted station {}/{}",
+                    values[0], values[1]
                 )
                 continue
             station = system.getStation(stnName)
