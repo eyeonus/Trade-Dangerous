@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+[wip]
+. (kfsone) Allow a cache rebuild at the start of a mad import
+
 v6.10.0 Feb 14 2015
 . (kfsone) Major changes to the 'maddavo' plugin:
     - The plugin now supports "merging" of Systems and Stations from

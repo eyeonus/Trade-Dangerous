@@ -19,6 +19,12 @@ import sys
 import time
 import transfers
 
+BASE_URL = "http://eddb.io/archive/v2/"
+SYSTEMS_JSON = BASE_URL + "systems.json"
+STATIONS_JSON = BASE_URL + "stations.json"
+STATIONS_LITE_JSON = BASE_URL + "stations_lite.json"
+
+
 class JsonQuery(object):
     """
     Crappy wrapper around a json query.
@@ -76,10 +82,7 @@ class JsonQuery(object):
 def fetch_systems(outFile=None):
     """ Load the Systems json data. Returns dict(id: name) """
 
-    query = JsonQuery(
-        url='http://eddb.io/archive/v2/systems.json',
-        outFile=outFile,
-    )
+    query = JsonQuery(url=SYSTEMS_JSON, outFile=outFile)
     mask = "'{}',{},{},{},'EDDB','"+query.timestamp+"'"
 
     print(
@@ -106,13 +109,11 @@ def fetch_systems(outFile=None):
 
     return systems
 
+
 def fetch_stations(systems, outFile=None):
     """ Fetch Stations json - requires a dict(id: name) of systems. """
 
-    query = JsonQuery(
-        'http://eddb.io/archive/v2/stations_lite.json',
-        outFile=outFile,
-    )
+    query = JsonQuery(STATIONS_LITE_JSON, outFile=outFile)
     mask = "'{}','{}',{},'{}','{}'"
 
     # EDDB black market is null (unknown), 0 (No) or 1 (Yes)
