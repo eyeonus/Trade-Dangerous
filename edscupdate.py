@@ -29,6 +29,7 @@ import math
 import misc.clipboard
 import misc.edsc
 import os
+import random
 import re
 import sys
 import tradedb
@@ -70,6 +71,12 @@ def parse_arguments():
             help='Specify minimum confidence level.',
             type=int,
             default=2,
+    )
+    parser.add_argument(
+            '--random',
+            action='store_true',
+            required=False,
+            help='Show systems in random order.',
     )
     parser.add_argument(
             '--test',
@@ -162,6 +169,32 @@ def get_distance(tdb, startSys, x, y, z):
     return float("{:.2f}".format(distance))
 
 
+def submit_distance(argv, name, distance):
+    p0 = name.upper()
+    ref = argv.startSys.name().upper()
+    print("Sending: {}->{}: {}ly by {}".format(
+        p0, ref, distance, argv.cmdr
+    ))
+    sub = misc.edsc.StarSubmission(
+        star=p0,
+        distances={ref: distance},
+        commander=argv.cmdr,
+        test=argv.test,
+    )
+    r = sub.submit()
+    result = misc.edsc.StarSubmissionResult(
+        star=name.upper(),
+        response=r,
+    )
+    print(str(result))
+
+
+def add_to_extras(argv, name):
+    with open("data/extra-stars.txt", "a") as fh:
+        print(name.upper(), file=fh)
+        print("Added {} to data/extra-stars.txt".format(name))
+
+
 def main():
     argv = parse_arguments()
 
@@ -170,7 +203,7 @@ def main():
         argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
 
     try:
-        startSys = tdb.lookupSystem(argv.refsystem)
+        argv.startSys = tdb.lookupSystem(argv.refsystem)
     except (LookupError, tradedb.AmbiguityError):
         raise UsageError(
             "Unrecognized system '{}'. Reference System must be an existing "
@@ -208,11 +241,19 @@ def main():
     if len(systems) <= 0:
         return
 
-    print("At the prompt enter y, n or q. Default is n")
-    print(
-        "To correct a typo'd name that has the correct distance, "
-        "use =correct name"
-    )
+    if argv.random:
+        random.shuffle(systems)
+
+    print("""At the prompt enter:
+  y
+      to accept the name/value and confirm with EDSC,
+  n
+      to skip the name/value (no confirmation),
+  =name   (e.g. =SOL)
+      to accept the distance but correct spelling,
+  ~dist   (e.g. ~104.49)
+      to submit a distance correction,
+""")
     print()
 
     total = len(systems)
@@ -230,7 +271,7 @@ def main():
 
             created = sysinfo['createdate']
 
-            distance = get_distance(tdb, startSys, x, y, z)
+            distance = get_distance(tdb, argv.startSys, x, y, z)
             clip.copy_text(name.lower())
             prompt = "{}/{}: '{}': {:.2f}ly? ".format(
                 current, total,
@@ -240,12 +281,15 @@ def main():
             ok = input(prompt)
             if ok.lower() == 'q':
                 break
+            if ok.startswith('~'):
+                correction = float(ok[1:])
+                submit_distance(argv, name, correction)
+                add_to_extras(argv, name)
+                continue
             if ok.startswith('='):
                 name = ok[1:].strip().upper()
+                add_to_extras(argv, name)
                 ok = 'y'
-                with open("data/extra-stars.txt", "a") as fh:
-                    print(name, file=fh)
-                    print("Added to data/extra-stars.txt")
             if ok.lower() != 'y':
                 continue
 
@@ -253,19 +297,7 @@ def main():
                 name, x, y, z, created,
             ), file=output)
 
-            sub = misc.edsc.StarSubmission(
-                star=name.upper(),
-                commander=argv.cmdr,
-                distances={startSys.name(): distance},
-                test=argv.test,
-            )
-            r = sub.submit()
-            result = misc.edsc.StarSubmissionResult(
-                star=name.upper(),
-                response=r,
-            )
-
-            print(str(result))
+            submit_distance(argv, name, distance)
 
 
 if __name__ == "__main__":
