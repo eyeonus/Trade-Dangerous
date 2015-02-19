@@ -542,10 +542,10 @@ IMPORT sub-command:
 
       This has also additional options:
       --option=<option> where option is one of the following:
-        buildcache:   Forces a rebuild of the cache before processing 
-                      of the .prices file.
-        syscsv:       Also download System.csv from the site.
-        stncsv:       Also download Station.csv from the site.
+        systems:      Merge maddavo's System data into local db,
+        station:      Merge maddavo's Station data into local db,
+        exportcsv:    Regenerate System and Station .csv files after
+                      merging System/Station data.
         skipdl:       Skip doing any downloads.
         force:        Process prices even if timestamps suggest 
                       there is no new data.

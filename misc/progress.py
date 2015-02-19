@@ -47,8 +47,11 @@ class Progress(object):
         if progress == self.progress:
             return False
 
-        postfix = postfix() if callable(postfix) else postfix
-        text = self.mask.format("="*progress) + postfix + " "
+        if callable(postfix):
+            postfixText = postfix(self.value, self.maxValue)
+        else:
+            postfixText = postfix
+        text = self.mask.format("="*progress) + postfixText + " "
         sys.stdout.write(text)
         sys.stdout.flush()
 
