@@ -105,7 +105,7 @@ _td_import()
 		# argument required
 		;;
 	--option|-O)
-		opts="buildcache syscsv stncsv skipdl force"
+		opts="systems stations exportcsv skipdl force use3h use2d usefull"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)

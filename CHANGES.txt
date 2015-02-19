@@ -3,9 +3,23 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 [wip]
+. (kfsone) Allow a cache rebuild at the start of a mad import
+
+v6.10.0 Feb 14 2015
+. (kfsone) Major changes to the 'maddavo' plugin:
+    - The plugin now supports "merging" of Systems and Stations from
+      maddavo's site into your local db. It does not, by default, write
+      these to the ".csv" files.
+    - Removed "--opt=syscsv" and "--opt=stncsv",
+    - Added "--opt=systems" and "--opt=stations" and "--exportcsv",
+    - Assorted cleanup
+Also:
+. (kfsone) "run" with "--progress" is less silent,
 . (kfsone) Fixed 'set changed size' error in run command
 . (kfsone) Improvements to the TradeCalc api for accessing station trades
 . (kfsone) Added "--gain-per-ton" (--gpt) to run command
+. (kfsone) Added "CSVStream" class to transfers.py
+. (kfsone) Added "Progress" progress-bar class to misc/progress.py
 + 130 new systems from EDSC
 
 v6.9.2 Feb 08 2015

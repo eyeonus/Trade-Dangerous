@@ -42,10 +42,8 @@ if len(sys.argv) != 2:
         "\n"
         "NOTE to OCR USERS:\n"
         "Please upload the .prices file from your OCR DIRECTLY before "
-        "importing it into TD, not after... We look fo rward to receiving "
-        "y0uh fxcitirg nevv oata :).\n" . format(
-            sys.argv[0]
-    ))
+        "importing it into TD, not after.".format(sys.argv[0])
+    )
 
 upfile = sys.argv[1]
 

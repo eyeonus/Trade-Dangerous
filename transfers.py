@@ -5,6 +5,7 @@ from tradeexcept import TradeException
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+import csv
 import json
 import math
 import misc.progress as pbar
@@ -37,11 +38,11 @@ def makeUnit(value):
     Convert a value in bytes into a Kb, Mb, Gb etc.
     """
 
-    units = [ '', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+    units = [ 'B ', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB' ]
     unitSize = int(value)
     for unit in units:
         if unitSize <= 640:
-            return "{:5.2f}{}B".format(unitSize, unit)
+            return "{:>5.01f}{}".format(unitSize, unit)
         unitSize /= 1024
     return None
     
@@ -177,7 +178,7 @@ def download(
     return f.getheaders()
 
 
-def retrieve_json_data(url):
+def get_json_data(url):
     """
     Fetch JSON data from a URL and return the resulting dictionary.
 
@@ -200,12 +201,50 @@ def retrieve_json_data(url):
         jsData = bytes()
         for data in req.iter_content():
             jsData += data
-            progBar.increment(len(data), postfix=lambda: \
-                " {}/{} ".format(
-                    makeUnit(progBar.value),
-                    makeUnit(totalLength),
+            progBar.increment(
+                len(data),
+                postfix=lambda value, goal: \
+                " {}/{}".format(
+                    makeUnit(value),
+                    makeUnit(goal),
             ))
         progBar.clear()
 
     return json.loads(jsData.decode())
 
+
+class CSVStream(object):
+    """
+    Provides an iterator that fetches CSV data from a given URL
+    and presents it as an iterable of (columns, values).
+
+    Example:
+        stream = transfers.CSVStream("http://blah.com/foo.csv")
+        for cols, vals in stream:
+            print("{} = {}".format(cols[0], vals[0]))
+    """
+
+    def __init__(self, url):
+        self.url = url
+        self.req = requests.get(self.url, stream=True)
+        self.lines = self.req.iter_lines()
+        self.columns = self.next_line().split(',')
+
+    def next_line(self):
+        """ Fetch the next line as a text string """
+        line = next(self.lines).decode()
+        return line
+
+    def __iter__(self):
+        """
+        Iterate across data received as csv values.
+        Yields [column headings], [column values]
+        """
+        csvin = csv.reader(
+            iter(self.next_line, 'END'),
+            delimiter=',', quotechar="'", doublequote=True
+        )
+        columns = self.columns
+        for values in csvin:
+            if values and len(values) == len(columns):
+                yield columns, values
