@@ -372,7 +372,6 @@ class StarSubmission(object):
             data['data']['commander'] = self.commander
 
         jsonData = json.dumps(data, indent=None, separators=(',', ':'))
-        print(jsonData)
 
         req = requests.post(
             self.url,
