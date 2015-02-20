@@ -3,7 +3,15 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 [wip]
+. (kfsone) Lots of improvements to edscupdate.py;
+   - added --random, checks 10 random new systems,
+   - added --conf N for changing the confidence rating,
+   - added --detail (-v) and --debug (-w),
+   - added --summary
+   - added --test (use the EDSC test database),
+   - added explanatory "splash" text (--no-splash or -NS to skip),
 . (kfsone) Allow a cache rebuild at the start of a mad import
++ (kfsone, maddavo) Lots of Systems and Stations
 
 v6.10.0 Feb 14 2015
 . (kfsone) Major changes to the 'maddavo' plugin:
