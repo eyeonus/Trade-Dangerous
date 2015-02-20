@@ -245,14 +245,16 @@ def main():
         random.shuffle(systems)
 
     print("""At the prompt enter:
+  q
+      to indicate you've suffered enough,
   y
       to accept the name/value and confirm with EDSC,
-  n
+  n       (or anything else)
       to skip the name/value (no confirmation),
   =name   (e.g. =SOL)
       to accept the distance but correct spelling,
   ~dist   (e.g. ~104.49)
-      to submit a distance correction,
+      to submit a distance correction for the system,
 """)
     print()
 
