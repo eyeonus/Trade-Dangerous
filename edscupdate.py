@@ -38,6 +38,7 @@ import tradeenv
 
 # Systems we know are bad.
 ignore = [
+    "COL 285 SECTOR EC-R B18-5",
     "DITIBTI (FIXED)",
     "HYADES",
     "HAREMID",
@@ -286,7 +287,7 @@ def main():
         return
 
     if argv.random:
-        random.sample(systems, 10)
+        systems = random.sample(systems, 10)
 
     if argv.splash:
         print(
