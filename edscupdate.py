@@ -94,6 +94,14 @@ def parse_arguments():
             type=str,
             default=None,
     )
+    parser.add_argument(
+            '--no-splash', '-NS',
+            required=False,
+            action='store_false',
+            help="Don't display the 'splash' text on startup.",
+            dest='splash',
+            default=True,
+    )
 
     argv = parser.parse_args(sys.argv[1:])
     if not argv.cmdr:
@@ -229,7 +237,6 @@ def main():
 
     date = data['date']
     systems = data['systems']
-    clip = misc.clipboard.SystemNameClip()
 
     print("{} results".format(len(systems)))
     # Filter out systems we already know that match the EDSC data.
@@ -244,18 +251,46 @@ def main():
     if argv.random:
         random.shuffle(systems)
 
+    if argv.splash:
+        print(
+            "\n"
+            "===============================================================\n"
+            "\n"
+            " The tool will now take you through the stars returned by EDSC\n"
+            " that are new or different from your local System.csv.\n"
+            "\n"
+            " You will be prompted with the name and predicted distance from\n"
+            " your current system so you can check for mistakes.\n"
+            "\n"
+            " The name will be copied into your clipboard so you can alt-tab\n"
+            " into the game and paste the name into the Galaxy Map's SEARCH\n"
+            " box (under NAVIGATION). Let the map zoom to the system.\n"
+            "\n"
+            " Check the name and distance, then use the appropriate action.\n"
+            "\n"
+            " (Use the -NS option to skip this text in future)\n"
+            "\n"
+            "===============================================================\n"
+            "\n"
+        )
+
+        input("Hit enter to continue: ")
+
     print("""At the prompt enter:
+  q
+      to indicate you've suffered enough,
   y
       to accept the name/value and confirm with EDSC,
-  n
+  n       (or anything else)
       to skip the name/value (no confirmation),
   =name   (e.g. =SOL)
       to accept the distance but correct spelling,
   ~dist   (e.g. ~104.49)
-      to submit a distance correction,
+      to submit a distance correction for the system,
 """)
     print()
 
+    clip = misc.clipboard.SystemNameClip()
     total = len(systems)
     current = 0
     with open("tmp/new.systems.csv", "w") as output:

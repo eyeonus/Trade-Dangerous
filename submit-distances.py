@@ -62,13 +62,18 @@ standardStars = [
 ]
 
 outlierStars = [
-    "HR 1327",
-    "PEPPER",
-    "BOB",
-    "LFT 179",
-    "LHS 259",
+    "HIP 63835",
+    "HIP 49605",
+    "HIP 56379",
+    "HIP 55064",
+    "ALPHA MUSCAE",
+    "BETA MUSCAE",
+    "GAMMA MUSCAE",
+    "HIP 63835",
+    "M CENTAURI",
+    "Q CENTAURI",
+    "N CEN",
 ]
-
 
 ############################################################################
 
@@ -134,7 +139,23 @@ looks good, it will be submitted to EDSC.
                 .format(systemName)
             )
 
-    return systemName, system, args[1:]
+    argv = args[1:]
+    if argv:
+        if len(argv) == 1 and argv[0].startswith("--pick"):
+            _, _, num = argv[0].partition("=")
+            try:
+                num = int(num)
+            except TypeError:
+                raise UseageError("Expecting --pick=<number>")
+            destinations = random.sample([
+                sysName for sysName in tdb.systemByName.keys()
+            ], num)
+        else:
+            destinations = argv
+    else:
+        destinations = None
+
+    return systemName, system, destinations
 
 
 def get_cmdr(tdb):
@@ -162,7 +183,7 @@ def get_outliers():
         with open("data/extra-stars.txt", "rU") as input:
             for line in input:
                 line = line.strip()
-                if line:
+                if line and not line.startswith('#'):
                     outliers.add(line.upper())
     except FileNotFoundError:
         pass
@@ -246,6 +267,20 @@ def submit_distances(system, cmdr, distances):
         testMode = True
     else:
         testMode = False
+
+    if os.environ.get("ASSERT"):
+        print()
+        for ref in distances:
+            print("Submitting ({}->{} {})".format(
+                ref['name'], system, ref['dist'],
+            ))
+            sub = StarSubmission(
+                star=ref['name'],
+                commander=cmdr,
+                refs=[{'name': system, 'dist': ref['dist']}],
+                test=testMode,
+            )
+            sub.submit()
 
     print()
     print("Submitting ({})".format("TEST" if testMode else "Live"))
