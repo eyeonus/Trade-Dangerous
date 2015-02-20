@@ -83,7 +83,7 @@ def parse_arguments():
             '--random',
             action='store_true',
             required=False,
-            help='Show systems in random order.',
+            help='Show systems in random order, maximum of 10.',
     )
     parser.add_argument(
             '--test',
@@ -286,7 +286,7 @@ def main():
         return
 
     if argv.random:
-        random.shuffle(systems)
+        random.sample(systems, 10)
 
     if argv.splash:
         print(
