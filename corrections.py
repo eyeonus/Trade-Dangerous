@@ -13,6 +13,7 @@ systems = {
     "PANTAA CEZISA": "GEORGE PANTAZIS",
     "TAVYTERE": "ALRAI SECTOR ON-T B3-2",
     "BODB DJEDI": "BODEDI",
+    "HIP 101110": "NEW YEMBO",
 
 #ADD_SYSTEMS_HERE
 }
@@ -88,6 +89,8 @@ stations = {
     "GLIESE 868/ALVARADO RING":             DELETED,
     "GLIESE 868/FEYNMAN TERMINAL":          DELETED,
     "TOXANDJI/TSU NENAGA ORBITAL":          DELETED,
+    "AMAHU/ALEDNDRIA GATEWAY":              DELETED,
+    "LTT 7548/ALEDNDRIA RING":              DELETED,
 }
 
 categories = {

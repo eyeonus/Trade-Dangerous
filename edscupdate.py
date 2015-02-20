@@ -42,6 +42,7 @@ ignore = [
     "DITIBTI (FIXED)",
     "HYADES",
     "HAREMID",
+    "HYADES SECTOR VO-Q V5-1",
 ]
 
 
