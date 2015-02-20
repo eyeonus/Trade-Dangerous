@@ -62,13 +62,18 @@ standardStars = [
 ]
 
 outlierStars = [
-    "HR 1327",
-    "PEPPER",
-    "BOB",
-    "LFT 179",
-    "LHS 259",
+    "HIP 63835",
+    "HIP 49605",
+    "HIP 56379",
+    "HIP 55064",
+    "ALPHA MUSCAE",
+    "BETA MUSCAE",
+    "GAMMA MUSCAE",
+    "HIP 63835",
+    "M CENTAURI",
+    "Q CENTAURI",
+    "N CEN",
 ]
-
 
 ############################################################################
 
@@ -162,7 +167,7 @@ def get_outliers():
         with open("data/extra-stars.txt", "rU") as input:
             for line in input:
                 line = line.strip()
-                if line:
+                if line and not line.startswith('#'):
                     outliers.add(line.upper())
     except FileNotFoundError:
         pass
