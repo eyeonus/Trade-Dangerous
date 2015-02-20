@@ -139,7 +139,23 @@ looks good, it will be submitted to EDSC.
                 .format(systemName)
             )
 
-    return systemName, system, args[1:]
+    argv = args[1:]
+    if argv:
+        if len(argv) == 1 and argv[0].startswith("--pick"):
+            _, _, num = argv[0].partition("=")
+            try:
+                num = int(num)
+            except TypeError:
+                raise UseageError("Expecting --pick=<number>")
+            destinations = random.sample([
+                sysName for sysName in tdb.systemByName.keys()
+            ], num)
+        else:
+            destinations = argv
+    else:
+        destinations = None
+
+    return systemName, system, destinations
 
 
 def get_cmdr(tdb):
@@ -251,6 +267,20 @@ def submit_distances(system, cmdr, distances):
         testMode = True
     else:
         testMode = False
+
+    if os.environ.get("ASSERT"):
+        print()
+        for ref in distances:
+            print("Submitting ({}->{} {})".format(
+                ref['name'], system, ref['dist'],
+            ))
+            sub = StarSubmission(
+                star=ref['name'],
+                commander=cmdr,
+                refs=[{'name': system, 'dist': ref['dist']}],
+                test=testMode,
+            )
+            sub.submit()
 
     print()
     print("Submitting ({})".format("TEST" if testMode else "Live"))
