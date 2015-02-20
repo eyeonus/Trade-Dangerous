@@ -37,7 +37,11 @@ import tradeenv
 
 
 # Systems we know are bad.
-ignore = []
+ignore = [
+    "DITIBTI (FIXED)",
+    "HYADES",
+    "HAREMID",
+]
 
 
 class UsageError(Exception):
