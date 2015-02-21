@@ -362,7 +362,7 @@ def main():
     print()
     print("""
 ===================================================
-STANDARD STARS: (q to stop listing standard stars)
+STANDARD STARS: (q to skip to the next section)
 
   These are stars with well-known positions.
 ===================================================
@@ -371,7 +371,7 @@ STANDARD STARS: (q to stop listing standard stars)
 
     print("""
 ===================================================
-OUTLIERS: (q to stop listing outliers)
+OUTLIERS: (q to skip to the next section)
 
   Assorted outlier stars from around the galaxy
   mixed with any stars from data/extra-stars.txt.
@@ -381,7 +381,7 @@ OUTLIERS: (q to stop listing outliers)
 
     print("""
 ===================================================
-CHOOSE YOUR OWN: (leave blank to stop)
+CHOOSE YOUR OWN: (q to stop)
 
   Specify additional stars, the names will be saved
   to data/extra-stars.txt so they appear in the
