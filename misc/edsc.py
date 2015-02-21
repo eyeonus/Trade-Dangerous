@@ -27,10 +27,18 @@ except ImportError as e:
     import requests
 
 
-class StarQuery(object):
-    url = 'http://edstarcoordinator.com/api.asmx/GetSystems'
+class EDSCQueryBase(object):
+    """
+    Base class for creating an EDSC Query class, do not use directly.
 
-    def __init__(self, detail=2, test=False, known=1, confidence=0, **kwargs):
+    Derived class must declare "apiCall" which is appended to baseURL
+    to form the query URL.
+    """
+
+    baseURL = "http://edstarcoordinator.com/api.asmx/"
+
+    def __init__(self, detail=2, test=False, known=0, confidence=0, **kwargs):
+        self.url = self.baseURL + self.apiCall
         self.params = {
             'data': {
                 'ver': 2,
@@ -50,7 +58,7 @@ class StarQuery(object):
 
     def fetch(self):
         params = json.dumps(self.params).encode('utf-8')
-        request = Request(StarQuery.url, params, {
+        request = Request(self.url, params, {
                     'Content-Type': 'application/json;charset=utf-8',
                     'Content-Length': len(params)
                 })
@@ -63,6 +71,20 @@ class StarQuery(object):
         self.status = data['status']['input'][inputNo]['status']
 
         return data
+
+
+class StarQuery(EDSCQueryBase):
+    """
+    Query EDSC Systems.
+    """
+    apiCall = "GetSystems"
+
+
+class DistanceQuery(EDSCQueryBase):
+    """
+    Request distances from EDSC.
+    """
+    apiCall = "GetDistances"
 
 
 class SubmissionError(Exception):
@@ -347,7 +369,7 @@ class StarSubmission(object):
             },
         }
         if self.commander:
-            data['commander'] = self.commander
+            data['data']['commander'] = self.commander
 
         jsonData = json.dumps(data, indent=None, separators=(',', ':'))
 
@@ -372,8 +394,8 @@ class StarSubmission(object):
         return data
 
 if __name__ == "__main__":
-    print("Requesting recent, non-test, cr >= 2 stars")
-    edsq = StarQuery(test=False, confidence=2)
+    print("Requesting recent, non-test, coords-known, cr >= 2 stars")
+    edsq = StarQuery(test=False, confidence=2, known=1)
     data = edsq.fetch()
 
     if edsq.status['statusnum'] != 0:

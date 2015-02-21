@@ -194,7 +194,7 @@ class CommandIndex(object):
                     action=HelpAction, nargs=0,
                 )
         stdArgs.add_argument('--debug', '-w',
-                    help='Enable diagnostic output.',
+                    help='Enable/raise level of diagnostic output.',
                     default=0, required=False, action='count',
                 )
         stdArgs.add_argument('--detail', '-v',

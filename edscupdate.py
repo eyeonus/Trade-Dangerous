@@ -33,10 +33,17 @@ import random
 import re
 import sys
 import tradedb
+import tradeenv
 
 
 # Systems we know are bad.
-ignore = []
+ignore = [
+    "COL 285 SECTOR EC-R B18-5",
+    "DITIBTI (FIXED)",
+    "HYADES",
+    "HAREMID",
+    "HYADES SECTOR VO-Q V5-1",
+]
 
 
 class UsageError(Exception):
@@ -52,11 +59,13 @@ def parse_arguments():
             epilog='Confirmed systems are written to tmp/new.systems.csv.',
     )
     parser.add_argument(
-            'refsystem',
+            'refSystem',
             help='*Exact* name of the system you are *currently* in, '
                  'used as a reference system for distance validations.',
             type=str,
+            metavar='"REFERENCE SYSTEM"',
             default=None,
+            nargs='?',
     )
     parser.add_argument(
             '--cmdr',
@@ -76,7 +85,7 @@ def parse_arguments():
             '--random',
             action='store_true',
             required=False,
-            help='Show systems in random order.',
+            help='Show systems in random order, maximum of 10.',
     )
     parser.add_argument(
             '--test',
@@ -102,11 +111,38 @@ def parse_arguments():
             dest='splash',
             default=True,
     )
+    parser.add_argument(
+            '--summary',
+            required=False,
+            help='Check for and report on new systems but do no work.',
+            action='store_true',
+    )
+    parser.add_argument(
+            '--detail', '-v',
+            help='Increase level  of detail in output.',
+            default=0,
+            required=False,
+            action='count',
+    )
+    parser.add_argument(
+            '--debug', '-w',
+            help='Enable/raise level of diagnostic output.',
+            default=0,
+            required=False,
+            action='count',
+    )
 
     argv = parser.parse_args(sys.argv[1:])
-    if not argv.cmdr:
-        raise UsageError("No --cmdr specified / no CMDR environment variable")
     dateRe = re.compile(r'^20\d\d-(0\d|1[012])-([012]\d|3[01]) ([01]\d|2[0123]):[0-5]\d:[0-5]\d$')
+    if not argv.summary:
+        if not argv.cmdr:
+            raise UsageError("No --cmdr specified / no CMDR environment variable")
+        if not argv.refSystem:
+            raise UsageError(
+                "Must specify a reference system name (when not using "
+                "--summary). Be sure to put the name in double quotes, "
+                "e.g. \"SOL\" or \"I BOOTIS\".\n"
+            )
     if argv.date and not dateRe.match(argv.date):
         raise UsageError(
                 "Invalid date: '{}', expecting YYYY-MM-DD HH:MM:SS format."
@@ -206,19 +242,22 @@ def add_to_extras(argv, name):
 def main():
     argv = parse_arguments()
 
-    tdb = tradedb.TradeDB()
+    tdenv = tradeenv.TradeEnv(properties=argv)
+    tdb = tradedb.TradeDB(tdenv)
     if not argv.date:
         argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
 
-    try:
-        argv.startSys = tdb.lookupSystem(argv.refsystem)
-    except (LookupError, tradedb.AmbiguityError):
-        raise UsageError(
-            "Unrecognized system '{}'. Reference System must be an existing "
-            "system that TD already knows about.\n"
-            "Did you forget to put double-quotes around the refsystem name?"
-            .format(argv.refsystem)
-        )
+    if not argv.summary:
+        try:
+            argv.startSys = tdb.lookupSystem(argv.refSystem)
+        except (LookupError, tradedb.AmbiguityError):
+            raise UsageError(
+                "Unrecognized system '{}'. Reference System must be an "
+                "*exact* name for a system that TD already knows.\n"
+                "Did you forget to put double-quotes around the reference "
+                "system name?"
+                .format(argv.refSystem)
+            )
 
     print("start date: {}".format(argv.date))
 
@@ -245,11 +284,11 @@ def main():
     ]
     print("{} deltas".format(len(systems)))
 
-    if len(systems) <= 0:
+    if argv.summary or len(systems) <= 0:
         return
 
     if argv.random:
-        random.shuffle(systems)
+        systems = random.sample(systems, 10)
 
     if argv.splash:
         print(
