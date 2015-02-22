@@ -55,7 +55,7 @@ class EDSCQueryBase(object):
 
     baseURL = "http://edstarcoordinator.com/api.asmx/"
 
-    def __init__(self, detail=2, test=False, known=0, confidence=0, **kwargs):
+    def __init__(self, detail=2, test=False, known=1, confidence=0, **kwargs):
         self.url = self.baseURL + self.apiCall
         self.params = {
             'data': {
