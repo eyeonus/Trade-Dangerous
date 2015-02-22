@@ -249,7 +249,8 @@ ocrDerp = re.compile(r'''(
     \bALEDNDRIA\b |
     \sH\sU\sB$ |
     \bC[O0]LCNY\b |
-    \bOOCTE\b
+    \bOOCTE\b |
+    \bBULGAFIIN\b
 )''', flags=re.X)
 
 
