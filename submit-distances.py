@@ -327,6 +327,25 @@ def send_and_check_distances(clip, system, cmdr, distances):
     return True
 
 
+def get_standard_stars():
+    testStars = set()
+    if 'TEST' in os.environ:
+        try:
+            with open("data/test-stars.txt", "rU") as fh:
+                for line in fh:
+                    text = line.strip()
+                    if text.startswith(';'):
+                        continue
+                    if text.startswith('#'):
+                        continue
+                testStars.add(text)
+        except FileNotFoundError:
+            pass
+    if testStars:
+        return list(testStars)
+    return standardStars
+
+
 ############################################################################
 
 def main():
@@ -372,6 +391,7 @@ STANDARD STARS: (q to skip to the next section)
   These are stars with well-known positions.
 ===================================================
 """)
+    standardStars = get_standard_stars()
     distances, term = get_distances(clip, list(), standardStars)
 
     print("""
