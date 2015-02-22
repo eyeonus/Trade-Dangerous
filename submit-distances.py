@@ -62,17 +62,14 @@ standardStars = [
 ]
 
 outlierStars = [
-    "HIP 63835",
-    "HIP 49605",
-    "HIP 56379",
-    "HIP 55064",
-    "ALPHA MUSCAE",
-    "BETA MUSCAE",
+    "COL 285 SECTOR QE-M B22-6",
+    "DITIBI",
     "GAMMA MUSCAE",
-    "HIP 63835",
-    "M CENTAURI",
-    "Q CENTAURI",
-    "N CEN",
+    "HIP 80454",
+    "HYADES SECTOR NJ-O B7-4",
+    "M CARINAE",
+    "PUPPIS SECTOR ZZ-Y B4",
+    "WREGOE YL-W B56-5",
 ]
 
 ############################################################################
