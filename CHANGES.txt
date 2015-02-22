@@ -2,7 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-[wip]
+v6.11.0 Feb 21 2015
+. (kfsone) Added "market" command for viewing station buy/sell list
+   e.g. trade.py market ramoncity --buy --sell -vv
 . (kfsone) Lots of improvements to edscupdate.py;
    - added --random, checks 10 random new systems,
    - added --conf N for changing the confidence rating,
