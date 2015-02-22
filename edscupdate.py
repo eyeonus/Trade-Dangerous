@@ -35,6 +35,8 @@ import sys
 import tradedb
 import tradeenv
 
+DEFAULT_DATE = "2015-02-01 00:00:00"
+
 
 # Systems we know are bad.
 ignore = [
@@ -143,7 +145,9 @@ def parse_arguments():
                 "--summary). Be sure to put the name in double quotes, "
                 "e.g. \"SOL\" or \"I BOOTIS\".\n"
             )
-    if argv.date and not dateRe.match(argv.date):
+    if not argv.date:
+        argv.date = DEFAULT_DATE
+    if not dateRe.match(argv.date):
         raise UsageError(
                 "Invalid date: '{}', expecting YYYY-MM-DD HH:MM:SS format."
                 .format(argv.date)
@@ -241,11 +245,8 @@ def add_to_extras(argv, name):
 
 def main():
     argv = parse_arguments()
-
     tdenv = tradeenv.TradeEnv(properties=argv)
     tdb = tradedb.TradeDB(tdenv)
-    if not argv.date:
-        argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
 
     if not argv.summary:
         try:
