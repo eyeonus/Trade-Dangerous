@@ -91,6 +91,7 @@ stations = {
     "TOXANDJI/TSU NENAGA ORBITAL":          DELETED,
     "AMAHU/ALEDNDRIA GATEWAY":              DELETED,
     "LTT 7548/ALEDNDRIA RING":              DELETED,
+    "DJINAJERI/MESSERSCHMID LANDING":       DELETED,
 }
 
 categories = {
