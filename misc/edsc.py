@@ -27,6 +27,24 @@ except ImportError as e:
     import requests
 
 
+def edsc_log(apiCall, params, jsonData=None, error=None):
+    """
+    Logs an EDSC query and it's response to tmp/edsc.log
+    """
+    try:
+        with open("tmp/edsc.log", "a") as fh:
+            print('-'*70, file=fh)
+            print("API:", apiCall, file=fh)
+            print("REQ:", str(params), file=fh)
+            if jsonData:
+                print("REP:", json.dumps(jsonData, indent=1), file=fh)
+            if error:
+                print("ERR:", error)
+            print(file=fh)
+    except FileNotFoundError:
+        pass
+
+
 class EDSCQueryBase(object):
     """
     Base class for creating an EDSC Query class, do not use directly.
@@ -69,6 +87,8 @@ class EDSCQueryBase(object):
         data = json.loads(self.jsData.decode())['d']
         inputNo = 0
         self.status = data['status']['input'][inputNo]['status']
+
+        edsc_log(self.apiCall, self.params, data)
 
         return data
 
@@ -315,7 +335,8 @@ class StarSubmissionResult(object):
 
 
 class StarSubmission(object):
-    url = "http://edstarcoordinator.com/api.asmx/SubmitDistances"
+    baseURL = "http://edstarcoordinator.com/api.asmx/"
+    apiCall = "SubmitDistances"
 
     def __init__(
             self, star,
@@ -373,25 +394,29 @@ class StarSubmission(object):
 
         jsonData = json.dumps(data, indent=None, separators=(',', ':'))
 
+        url = self.baseURL + self.apiCall
         req = requests.post(
-            self.url,
+            url,
             headers=headers,
             data=jsonData
         )
         resp = req.text
         if not resp.startswith('{'):
+            edsc_log(self.apiCall, data, error=resp)
             raise SubmissionError("Server Side Error: " + resp)
 
         try:
             respData = json.loads(resp)
         except Exception:
+            edsc_log(self.apiCall, data, error=resp)
             raise SubmissionError("Invalid server response: " + resp)
+        edsc_log(self.apiCall, data, respData)
         try:
-            data = respData['d']
+            innerData = respData['d']
         except KeyError:
             raise SubmissionError("Server Error: " + resp)
 
-        return data
+        return innerData
 
 if __name__ == "__main__":
     print("Requesting recent, non-test, coords-known, cr >= 2 stars")
