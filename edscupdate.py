@@ -41,10 +41,15 @@ DEFAULT_DATE = "2015-02-01 00:00:00"
 # Systems we know are bad.
 ignore = [
     "COL 285 SECTOR EC-R B18-5",
-    "DITIBTI (FIXED)",
+    "DITIBI (FIXED)",
     "HYADES",
     "HAREMID",
     "HYADES SECTOR VO-Q V5-1",
+    "XI HUGAN",
+    "LP  634-18",
+    "SHU WEI SECTOR MN-S B4-4",
+    "SHU WEI SECTOR MN-S B4-9",
+    "THETA CARINE",
 ]
 
 

@@ -651,6 +651,51 @@ RARES sub-command:
     ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
 
+MARKET sub-command:
+
+  Lists items bought / sold at a given station; with --detail (-v) also
+  includes the average price for those items.
+
+  trade.py market <station> [--buy] [--sell] [--detail]
+
+    station
+      Name of the station to list, e.g. "paes/ramon" or "ramoncity",
+
+    --buy
+    -B
+      List items bought by the station (listed as 'SELL' in-game)
+
+    --sell
+    -S
+      List items sold by the station (listed as 'BUY' in-game)
+
+    --detail
+    -v
+      Once: includes average prices
+      Twice: include demand column and category headings
+
+    $ trade.py market --buy ramoncity
+    Item                    Buying
+    ------------------------------
+    Hydrogen Fuel               90
+    Clothing                   221
+    Domestic Appliances        417
+    Food Cartridges             35
+    ...
+
+    $ trade.py market --buy --sell ramoncity -v
+        Item                    Buying     Avg Age/Days Selling     Avg   Supply Age/Days
+    -------------------------------------------------------------------------------------
+    +CHEMICALS
+        Hydrogen Fuel               90     100     0.01      94     102  74,034H     0.01
+    +CONSUMER ITEMS
+        Clothing                   221     361     0.01     237     238   1,706M     0.01
+        Domestic Appliances        417     582     0.01     437     436   1,022M     0.01
+    +FOODS
+        Food Cartridges             35     125     0.01      45      50  32,019H     0.01
+
+    ...
+
 NAV sub-command:
 
   Provides details of routes without worrying about trade. By default, if

@@ -16,6 +16,7 @@ import commands.buy_cmd
 import commands.export_cmd
 import commands.import_cmd
 import commands.local_cmd
+import commands.market_cmd
 import commands.nav_cmd
 import commands.olddata_cmd
 import commands.rares_cmd

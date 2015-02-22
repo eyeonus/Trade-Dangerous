@@ -62,17 +62,14 @@ standardStars = [
 ]
 
 outlierStars = [
-    "HIP 63835",
-    "HIP 49605",
-    "HIP 56379",
-    "HIP 55064",
-    "ALPHA MUSCAE",
-    "BETA MUSCAE",
+    "COL 285 SECTOR QE-M B22-6",
+    "DITIBI",
     "GAMMA MUSCAE",
-    "HIP 63835",
-    "M CENTAURI",
-    "Q CENTAURI",
-    "N CEN",
+    "HIP 80454",
+    "HYADES SECTOR NJ-O B7-4",
+    "M CARINAE",
+    "PUPPIS SECTOR ZZ-Y B4",
+    "WREGOE YL-W B56-5",
 ]
 
 ############################################################################
@@ -330,6 +327,25 @@ def send_and_check_distances(clip, system, cmdr, distances):
     return True
 
 
+def get_standard_stars():
+    testStars = set()
+    if 'TEST' in os.environ:
+        try:
+            with open("data/test-stars.txt", "rU") as fh:
+                for line in fh:
+                    text = line.strip()
+                    if text.startswith(';'):
+                        continue
+                    if text.startswith('#'):
+                        continue
+                testStars.add(text)
+        except FileNotFoundError:
+            pass
+    if testStars:
+        return list(testStars)
+    return standardStars
+
+
 ############################################################################
 
 def main():
@@ -375,6 +391,7 @@ STANDARD STARS: (q to skip to the next section)
   These are stars with well-known positions.
 ===================================================
 """)
+    standardStars = get_standard_stars()
     distances, term = get_distances(clip, list(), standardStars)
 
     print("""
