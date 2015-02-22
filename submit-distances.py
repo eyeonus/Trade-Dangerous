@@ -254,8 +254,16 @@ def add_extra_stars(extraStars):
 
 
 def submit_distances(system, cmdr, distances):
+    if 'DEBUG' in os.environ or 'TEST' in os.environ:
+        testMode = True
+        mode = "TEST"
+    else:
+        testMode = False
+        mode = "Live"
+
     print()
     print("System:", system)
+    print("Database:", mode)
     print("Distances:")
     for ref in distances:
         print("  {}: {:.02f} ly".format(
@@ -268,17 +276,16 @@ def submit_distances(system, cmdr, distances):
         print("Stopped")
         return
 
-    if 'DEBUG' in os.environ or 'TEST' in os.environ:
-        testMode = True
-    else:
-        testMode = False
-
     if os.environ.get("ASSERT"):
         print()
         for ref in distances:
-            print("Submitting ({}->{} {})".format(
-                ref['name'], system, ref['dist'],
-            ))
+            print(
+                "Submitting {} {}->{} {}"
+                .format(
+                    mode,
+                    ref['name'], system, ref['dist'],
+                )
+            )
             sub = StarSubmission(
                 star=ref['name'],
                 commander=cmdr,
@@ -288,7 +295,7 @@ def submit_distances(system, cmdr, distances):
             sub.submit()
 
     print()
-    print("Submitting ({})".format("TEST" if testMode else "Live"))
+    print("Submitting {} {}".format(mode, system))
 
     sub = StarSubmission(
         star=system,
@@ -338,7 +345,8 @@ def get_standard_stars():
                         continue
                     if text.startswith('#'):
                         continue
-                testStars.add(text)
+                    if text:
+                        testStars.add(text)
         except FileNotFoundError:
             pass
     if testStars:
