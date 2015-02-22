@@ -338,7 +338,8 @@ def get_standard_stars():
                         continue
                     if text.startswith('#'):
                         continue
-                testStars.add(text)
+                    if text:
+                        testStars.add(text)
         except FileNotFoundError:
             pass
     if testStars:
