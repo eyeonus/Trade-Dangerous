@@ -147,6 +147,14 @@ looks good, it will be submitted to EDSC.
                 num = int(num)
             except TypeError:
                 raise UseageError("Expecting --pick=<number>")
+            if num <= 0:
+                raise UsageError("Expecting --pick to specify a number > 0")
+            numSystems = len(tdb.systemByName)
+            if numSystems < 1:
+                raise UsageError(
+                    "Your TD database doesn't contain any systems"
+                )
+            num = min(num, numSystems)
             destinations = random.sample([
                 sysName for sysName in tdb.systemByName.keys()
             ], num)

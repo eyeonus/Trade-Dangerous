@@ -288,7 +288,8 @@ def main():
         return
 
     if argv.random:
-        systems = random.sample(systems, 10)
+        num = min(len(systems), 10)
+        systems = random.sample(systems, num)
 
     if argv.splash:
         print(
