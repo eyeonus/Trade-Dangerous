@@ -28,9 +28,9 @@ if 'NOTK' not in os.environ:
 
             def copy_text(self, text):
                 """ Copies the specified text into the clipboard. """
-                text = text.strip()
-                text = self.strip(text, "(FIX)")
-                text = self.strip(text, "(FIXED)")
+                text = text.lower().strip()
+                text = self.strip(text, "(fix)")
+                text = self.strip(text, "(fixed)")
                 self.tkroot.clipboard_clear()
                 self.tkroot.clipboard_append(text.lower())
 
