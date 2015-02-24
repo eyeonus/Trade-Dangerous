@@ -77,16 +77,20 @@ def run(results, cmdenv, tdb):
                 ss.units,
                 ss.level,
                 JULIANDAY('now') - JULIANDAY(ss.modified)
-          FROM  StationItem si,
-                StationBuying AS sb,
-                StationSelling AS ss
-         WHERE  si.station_id = ? AND
-                sb.station_id = ? AND
-                ss.station_id = ? AND
-                sb.item_id = si.item_id AND
-                ss.item_id = si.item_id
+          FROM  StationItem si
+                    LEFT OUTER JOIN StationBuying AS sb
+                        ON (
+                            si.station_id = sb.station_id AND
+                            si.item_id = sb.item_id
+                        )
+                    LEFT OUTER JOIN StationSelling AS ss
+                        ON (
+                            si.station_id = ss.station_id AND
+                            si.item_id = ss.item_id
+                        )
+         WHERE  si.station_id = ?
     """, [
-        origin.ID, origin.ID, origin.ID
+        origin.ID,
     ])
 
     for row in cur:
@@ -145,31 +149,42 @@ def render(results, cmdenv, tdb):
     if showCategories:
         rowFmt.prefix = '    '
 
+    sellPred = lambda row: row.sellCr != 0 and row.demand != '-'
+    buyPred = lambda row: row.buyCr != 0 and row.demand != '-'
+
     rowFmt.addColumn('Item', '<', longestLen,
             key=lambda row: row.item.name())
     if cmdenv.buying:
         rowFmt.addColumn('Buying', '>', 7, 'n',
-            key=lambda row: row.buyCr)
+            key=lambda row: row.buyCr,
+            pred=buyPred)
         if cmdenv.detail:
             rowFmt.addColumn('Avg', '>', 7, 'n',
-            key=lambda row: row.avgBuy)
+            key=lambda row: row.avgBuy,
+            pred=buyPred)
         if cmdenv.detail > 1:
             rowFmt.addColumn('Demand', '>', dmdLen,
-                key=lambda row: row.demand)
+                key=lambda row: row.demand,
+                pred=buyPred)
         if cmdenv.detail:
             rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-            key=lambda row: row.buyAge)
+            key=lambda row: row.buyAge,
+            pred=buyPred)
     if cmdenv.selling:
         rowFmt.addColumn('Selling', '>', 7, 'n',
-            key=lambda row: row.sellCr)
+            key=lambda row: row.sellCr,
+            pred=sellPred)
         if cmdenv.detail:
             rowFmt.addColumn('Avg', '>', 7, 'n',
-            key=lambda row: row.avgSell)
+            key=lambda row: row.avgSell,
+            pred=sellPred)
         rowFmt.addColumn('Supply', '>', supLen,
-            key=lambda row: row.supply)
+            key=lambda row: row.supply,
+            pred=sellPred)
         if cmdenv.detail:
             rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-            key=lambda row: row.buyAge)
+            key=lambda row: row.buyAge,
+            pred=sellPred)
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()

@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.12.0 Feb 23 2015
+. (kfsone) Added "market", "shipyard" and "modified" values to Station table
+
 v6.11.0 Feb 21 2015
 . (kfsone) Added "market" command for viewing station buy/sell list
    e.g. trade.py market ramoncity --buy --sell -vv

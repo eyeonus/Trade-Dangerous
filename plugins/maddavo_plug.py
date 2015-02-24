@@ -247,13 +247,19 @@ class ImportPlugin(plugins.ImportPluginBase):
             lsFromStar = int(values[2])
             blackMarket = values[3]
             maxPadSize = values[4]
+            market = values[5] if len(values) > 4 else '?'
+            shipyard = values[6] if len(values) > 5 else '?'
+            modified = values[7] if len(values) > 6 else 'now'
             if station:
                 if tdb.updateLocalStation(
                         station,
                         name=stnName,
                         lsFromStar=lsFromStar,
+                        market=market,
                         blackMarket=blackMarket,
+                        shipyard=shipyard,
                         maxPadSize=maxPadSize,
+                        modified=modified,
                         ):
                     self.newStations += 1
             else:
@@ -261,8 +267,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                     system=system,
                     name=stnName,
                     lsFromStar=lsFromStar,
+                    market=market,
                     blackMarket=blackMarket,
+                    shipyard=shipyard,
                     maxPadSize=maxPadSize,
+                    modified=modified,
                 )
                 self.newStations += 1
 
