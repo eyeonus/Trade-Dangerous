@@ -585,9 +585,13 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                     system_id, name,
                     ls_from_star,
                     blackmarket,
-                    max_pad_size
+                    max_pad_size,
+                    market,
+                    shipyard,
+                    modified
                 ) VALUES (
-                    ?, ?, 0, '?', '?'
+                    ?, ?, 0, '?', '?', '?', '?',
+                    DATETIME('now'),
                 )
             """, [systemID, name])
             newID = inscur.lastrowid
