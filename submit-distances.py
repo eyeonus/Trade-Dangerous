@@ -152,8 +152,15 @@ looks good, it will be submitted to EDSC.
                     "Your TD database doesn't contain any systems"
                 )
             num = min(num, numSystems)
+            systems = tdb.systemByName
+            try:
+                gamma = tdb.lookupAdded("Gamma")
+            except KeyError:
+                gamma = 20
             destinations = random.sample([
-                sysName for sysName in tdb.systemByName.keys()
+                sysName for sysName, system in systems.items()
+                if system.addedID <= gamma and \
+                    not sysName in standardStars
             ], num)
         else:
             destinations = argv
@@ -188,8 +195,11 @@ def get_outliers():
         with open("data/extra-stars.txt", "rU") as input:
             for line in input:
                 line = line.strip()
-                if line and not line.startswith('#'):
-                    outliers.add(line.upper())
+                if not line:
+                    continue
+                if line.startswith('#') or line.startswith(';'):
+                    continue
+                outliers.add(line.upper())
     except FileNotFoundError:
         pass
     return random.sample(list(outliers), len(outliers))
@@ -354,6 +364,16 @@ def get_standard_stars():
     return standardStars
 
 
+def process_individual_destinations(tdb, system, cmdr, destinations):
+    clip = SystemNameClip()
+    if "IND" in os.environ:
+        for dest in destinations:
+            distances, _ = get_distances(clip, list(), [dest])
+            send_and_check_distances(clip, system, cmdr, distances)
+    else:
+        distances, _ = get_distances(clip, list(), destinations)
+        send_and_check_distances(clip, system, cmdr, distances)      
+
 ############################################################################
 
 def main():
@@ -363,9 +383,7 @@ def main():
     cmdr = get_cmdr(tdb)
 
     if destinations:
-        clip = SystemNameClip()
-        distances, _ = get_distances(clip, list(), destinations)
-        send_and_check_distances(clip, system, cmdr, distances)
+        process_individual_destinations(tdb, system, cmdr, destinations)
         return
 
     outliers = get_outliers()
