@@ -1199,7 +1199,7 @@ class TradeDB(object):
                    market=?,
                    blackmarket=?,
                    shipyard=?,
-                   max_pad_size=?
+                   max_pad_size=?,
                    modified=DATETIME(?),
              WHERE station_id = ?
         """, [
