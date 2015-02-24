@@ -15,6 +15,7 @@ Use:
 
 from __future__ import print_function
 
+import argparse
 import json
 import math
 import os
@@ -24,6 +25,7 @@ import random
 import re
 import sys
 import tradedb
+import tradeenv
 
 from misc.edsc import StarSubmission, StarSubmissionResult, SubmissionError
 from misc.clipboard import SystemNameClip
@@ -61,159 +63,153 @@ standardStars = [
     "HIP 34707",
 ]
 
-outlierStars = [
-    "COL 285 SECTOR QE-M B22-6",
-    "DITIBI",
-    "GAMMA MUSCAE",
-    "HIP 80454",
-    "HYADES SECTOR NJ-O B7-4",
-    "M CARINAE",
-    "PUPPIS SECTOR ZZ-Y B4",
-    "WREGOE YL-W B56-5",
-]
-
 ############################################################################
 
 
 class UsageError(Exception):
-    pass
+    def __init__(self, argv, error):
+       self.argv, self.error = argv, error
+    def __str__(self):
+        return error + "\n" + argv.format_usage()
 
 
-def get_system(tdb):
-    args = sys.argv[1:]
-    if not args or args[0].startswith('-'):
-        raise UsageError("""Usage: {} \"new system\"
+def parse_arguments():
+    parser = argparse.ArgumentParser(
+        description='Submit star distances to the EDSC project.',
+    )
+    parser.add_argument(
+        'origin',
+        help='System to submit distances for.',
+        type=str,
+    )
+    parser.add_argument(
+        '--pick',
+        help='Randomly select N existing systems',
+        required=False,
+        type=int,
+    )
+    parser.add_argument(
+        '--cmdr',
+        required=False,
+        help='Specify your commander name.',
+        type=str,
+        default=os.environ.get('CMDR', None)
+    )
+    parser.add_argument(
+        '--test',
+        help='Use the EDSC Test Database.',
+        required=False,
+        action='store_true',
+    )
+    parser.add_argument(
+        '--detail', '-v',
+        help='Output additional detail.',
+        action='count',
+        default=0,
+    )
+    parser.add_argument(
+        '--debug', '-w',
+        help='Enable debugging output,',
+        action='count',
+        default=0,
+    )
+    parser.add_argument(
+        '--no-update',
+        help='Disallow distances from an existing system.',
+        action='store_false',
+        default=True,
+        dest='allowUpdate',
+    )
+    parser.add_argument(
+        '--extra-file',
+        help='File to read/write extra stars to.',
+        type=str,
+        default='data/extra-stars.txt',
+        dest='extraFile',
+    )
+    parser.add_argument(
+        'destinations',
+        help='System or systems to measure distance to.',
+        default=[],
+        nargs='*',
+    )
 
-This tool prompts you with the names of several systems and asks you
-to find the distance from "new system" to those systems.
+    argv = parser.parse_args(sys.argv[1:])
+    argv.origin = argv.origin.upper()
+    if argv.origin.startswith('@'):
+        argv.origin = argv.origin[1:]
 
-When the tool prompts you with a system's name, it will also copy it
-into your clipboard. Alt-Tab into the game, go to the GALAXY MAP and
-the NAVIGATION tab, and paste (SHIFT+INS or CTRL-V) the name. Hit
-enter and the map will pan to the system and tell you how far away
-it is.
+    if not argv.cmdr:
+        raise UsageError(argv, "No commander name specified")
 
-(Hint: Double-click the right end of the search box, then press
-SHIFT+HOME to select the current text and backspace to delete it).
+    return argv
 
-You will first be prompted for 'Standard Systems' which is a list of
-5 fairly well known systems.
 
-To skip a system: just hit enter.
-
-After that you'll be prompted with a list of outlier stars. Again you
-can just press enter to skip them or q to skip to the next section.
-
-Finally you will be given a chance to choose stars not already listed.
-Any stars you enter here will be saved in 'data/extra-stars.txt' and
-added to the 'outlier stars' in future runs.
-
-Finally you'll be asked to review the data you've entered and, if it
-looks good, it will be submitted to EDSC.
-""".format(sys.argv[0])
-        )
-
-    systemName = ' '.join(args[0].split()).upper()
-    if systemName.startswith('@'):
-        allowUpdate = True
-        systemName = systemName[1:]
-    else:
-        allowUpdate = False
-
-    systemName = systemName.strip()
-
+def get_system(argv, tdb):
     try:
-        system = tdb.lookupSystem(systemName)
+        system = tdb.lookupSystem(argv.origin)
     except (KeyError, tradedb.AmbiguityError, LookupError):
         system = None
         pass
     else:
-        if not allowUpdate:
+        if not argv.allowUpdate:
             raise UsageError(
-                "ERROR: System '{}' already exists.\n"
-                "Prefix the name with an '@' sign if you want to force "
-                "submitting distances for an existing system, e.g. @SOL."
+                argv,
+                "System '{}' already exists.\n"
                 .format(systemName)
             )
+    if system and argv.detail:
+        print("EXISTING SYSTEM:", argv.origin)
 
-    argv = args[1:]
-    if argv:
-        if len(argv) == 1 and argv[0].startswith("--pick"):
-            _, _, num = argv[0].partition("=")
-            try:
-                num = int(num)
-            except TypeError:
-                raise UseageError("Expecting --pick=<number>")
-            if num <= 0:
-                raise UsageError("Expecting --pick to specify a number > 0")
-            numSystems = len(tdb.systemByName)
-            if numSystems < 1:
-                raise UsageError(
-                    "Your TD database doesn't contain any systems"
-                )
-            num = min(num, numSystems)
-            systems = tdb.systemByName
-            try:
-                gamma = tdb.lookupAdded("Gamma")
-            except KeyError:
-                gamma = 20
-            destinations = random.sample([
-                sysName for sysName, system in systems.items()
-                if system.addedID <= gamma and \
-                    not sysName in standardStars
-            ], num)
-        else:
-            destinations = argv
-    else:
-        destinations = None
-
-    return systemName, system, destinations
+    return argv.origin, system
 
 
-def get_cmdr(tdb):
+def pick_destinations(argv, tdb):
+    numSystems = len(tdb.systemByName)
+    if numSystems < 1:
+        raise UsageError(
+            argv,
+            "Can't --pick random systems: "
+            "Your TD database doesn't contain any systems."
+        )
+    num = min(argv.pick, numSystems)
+    systems = tdb.systemByName
     try:
-        return os.environ['CMDR']
+        gamma = tdb.lookupAdded("Gamma")
     except KeyError:
-        pass
+        gamma = 20
+    destinations = random.sample([
+        sysName for sysName, system in systems.items()
+        if system.addedID <= gamma and \
+            not sysName in standardStars
+    ], num)
 
-    if 'SHLVL' not in os.environ and platform.system() == 'Windows':
-        how = 'set CMDR="yourname"'
-    else:
-        how = 'export CMDR="yourname"'
-
-    raise UsageError(
-        "No 'CMDR' variable set.\n"
-        "You can set an environment variable by typing:\n"
-        "  "+how+"\n"
-        "at the command/shell prompt."
-    )
+    return destinations
 
 
-def get_outliers():
-    outliers = set(outlierStars)
+def get_outliers(argv):
+    outliers = set()
     try:
-        with open("data/extra-stars.txt", "rU") as input:
+        with open(argv.extraFile, "rU") as input:
             for line in input:
-                line = line.strip()
-                if not line:
-                    continue
-                if line.startswith('#') or line.startswith(';'):
-                    continue
-                outliers.add(line.upper())
+                name = line.partition('#')[0].strip().upper()
+                if name and name != argv.origin:
+                    outliers.add(name)
     except FileNotFoundError:
         pass
-    return random.sample(list(outliers), len(outliers))
+    outliers = list(outliers)
+    random.shuffle(outliers)
+    return outliers
 
 
-def get_distances(clip, distances, stars):
-    starNo = 0
+def get_distances(argv, clip, stars):
+    distances = []
     for star in stars:
-        starNo += 1
+        starNo = len(distances) + 1
         # Check it's not already in the list
         star = star.upper()
-        for d in distances:
-            if d['name'] == star:
-                continue
+        if star in distances:
+            continue
 
         clip.copy_text(star)
 
@@ -234,7 +230,7 @@ def get_distances(clip, distances, stars):
     return distances, 'end'
  
 
-def check_system(tdb, tdbSys, name):
+def check_system(argv, tdb, tdbSys, name):
     try:
         system = tdb.lookupSystem(name)
         if not tdbSys:
@@ -248,28 +244,25 @@ def check_system(tdb, tdbSys, name):
     ))
 
 
-def add_extra_stars(extraStars):
+def add_extra_stars(argv, extraStars):
     if not extraStars:
         return
+    if argv.detail:
+        print("Saving {} to {}".format(
+            str(extraStars), argv.extraFile,
+        ))
     try:
-        with open("data/extra-stars.txt", "a") as output:
-            print(
-                "Adding stars to data/extra-stars.txt: {}".format(
-                    ', '.join(extraStars)
-            ))
+        with open(argv.extraFile, "a") as output:
             for star in extraStars:
                 print(star, file=output)
     except FileNotFoundError:
         pass
 
 
-def submit_distances(system, cmdr, distances):
-    if 'DEBUG' in os.environ or 'TEST' in os.environ:
-        testMode = True
-        mode = "TEST"
-    else:
-        testMode = False
-        mode = "Live"
+def submit_distances(argv, tdb, distances):
+    system = argv.origin
+    cmdr = argv.cmdr
+    mode = "TEST" if argv.test else "Live"
 
     print()
     print("System:", system)
@@ -286,24 +279,6 @@ def submit_distances(system, cmdr, distances):
         print("Stopped")
         return
 
-    if os.environ.get("ASSERT"):
-        print()
-        for ref in distances:
-            print(
-                "Submitting {} {}->{} {}"
-                .format(
-                    mode,
-                    ref['name'], system, ref['dist'],
-                )
-            )
-            sub = StarSubmission(
-                star=ref['name'],
-                commander=cmdr,
-                refs=[{'name': system, 'dist': ref['dist']}],
-                test=testMode,
-            )
-            sub.submit()
-
     print()
     print("Submitting {} {}".format(mode, system))
 
@@ -311,35 +286,50 @@ def submit_distances(system, cmdr, distances):
         star=system,
         commander=cmdr,
         refs=distances,
-        test=testMode,
+        test=argv.test,
     )
     resp = sub.submit()
 
     result = StarSubmissionResult(star=system, response=resp)
     print(str(result))
-    if result.valid and result.recheck:
-        return list(result.recheck.keys())
+    if result.valid:
+        # Check for systems we can add
+        trilats = set()
+        for sysName in result.systems.keys():
+            code, coord = result.systems[sysName]
+            sysName = sysName.upper()
+            # Does it have a distance
+            if isinstance(coord, (list, tuple)):
+                x, y, z = coord
+                system = tdb.systemByName.get(sysName, None)
+                if system:
+                    tdb.updateLocalSystem(system, sysName, x, y, z)
+                else:
+                    tdb.addLocalSystem(sysName, x, y, z)
+        if result.recheck:
+            return list(result.recheck.keys())
     return None
 
 
-def do_rechecks(clip, system, rechecks):
+def do_rechecks(argv, clip, rechecks):
     print("\aSome systems need their distances rechecked:")
 
-    distances, term = get_distances(clip, list(), rechecks)
+    distances, term = get_distances(argv, clip, rechecks)
     return distances
 
 
-def send_and_check_distances(clip, system, cmdr, distances):
+def send_and_check_distances(argv, tdb, clip, distances):
     if not distances:
-        print("No distances, no submission.")
+        if argv.detail:
+            print("No distances, no submission.")
         return False
 
     while distances:
-        rechecks = submit_distances(system, cmdr, distances)
+        rechecks = submit_distances(argv, tdb, distances)
         if not rechecks:
             break
 
-        distances = do_rechecks(clip, system, rechecks)
+        distances = do_rechecks(argv, clip, rechecks)
 
     return True
 
@@ -364,29 +354,29 @@ def get_standard_stars():
     return standardStars
 
 
-def process_individual_destinations(tdb, system, cmdr, destinations):
+def process_destinations(argv, tdb):
     clip = SystemNameClip()
-    if "IND" in os.environ:
-        for dest in destinations:
-            distances, _ = get_distances(clip, list(), [dest])
-            send_and_check_distances(clip, system, cmdr, distances)
-    else:
-        distances, _ = get_distances(clip, list(), destinations)
-        send_and_check_distances(clip, system, cmdr, distances)      
+
+    distances, _ = get_distances(argv, clip, argv.destinations)
+    send_and_check_distances(argv, tdb, clip, distances)
+
 
 ############################################################################
 
 def main():
-    tdb = tradedb.TradeDB()
+    argv = parse_arguments()
 
-    system, tdbSys, destinations = get_system(tdb)
-    cmdr = get_cmdr(tdb)
+    tdenv = tradeenv.TradeEnv(properties=argv)
+    tdb = tradedb.TradeDB(tdenv)
 
-    if destinations:
-        process_individual_destinations(tdb, system, cmdr, destinations)
+    system, tdbSys = get_system(argv, tdb)
+
+    if argv.pick:
+        argv.destinations.extend(pick_destinations(argv, tdb))
+
+    if argv.destinations:
+        process_destinations(argv, tdb)
         return
-
-    outliers = get_outliers()
 
     print("Add EDSC Star Distances for \"{}\"".format(system))
     print()
@@ -404,7 +394,12 @@ def main():
         "this star."
     )
 
-    print("The more distances you submit per star, the better.")
+    print(
+        "5 distances are required for EDSC to make a first guess at a "
+        "star's location. You can submit more to increase the accuracy "
+        "but the only time you need to submit more than 10 is when you "
+        "are trying to submit corrections."
+    )
     print()
 
     clip = SystemNameClip()
@@ -418,72 +413,71 @@ STANDARD STARS: (q to skip to the next section)
 ===================================================
 """)
     standardStars = get_standard_stars()
-    distances, term = get_distances(clip, list(), standardStars)
+    distances, term = get_distances(argv, clip, standardStars)
     if distances:
-        send_and_check_distances(clip, system, cmdr, distances)
+        send_and_check_distances(argv, tdb, clip, distances)
 
-    print("""
+    outliers = get_outliers(argv)
+    if outliers:
+        print("""
 ===================================================
-OUTLIERS: (q to skip to the next section)
+EXTRA STARS: (q to skip to the next section)
 
-  Assorted outlier stars from around the galaxy
-  mixed with any stars from data/extra-stars.txt.
+  Stars from {}.
 ===================================================
-""")
-    distances, term = get_distances(clip, list(), outliers)
-    if distances:
-        send_and_check_distances(clip, system, cmdr, distances)
+""".format(argv.extraFile))
+        distances, term = get_distances(argv, clip, outliers)
+        if distances:
+            send_and_check_distances(argv, tdb, clip, distances)
 
     print("""
 ===================================================
 CHOOSE YOUR OWN: (q to stop)
 
-  Specify additional stars, the names will be saved
-  to data/extra-stars.txt so they appear in the
-  outliers section in future.
-  To avoid saving a particular star to this file,
-  prefix the name with a '*' (e.g. *SOL).
+  Specify additional stars.
+
+  Prefix names with a '+' to add them to
+  {}.
 ===================================================
-""")
+""".format(argv.extraFile))
     distances = []
     newOutliers = []
     while True:
         star = input("Enter star name: ")
-        star = star.strip()
-        if not star or star == 'q':
+        star = star.strip().upper()
+        if not star or star == 'Q':
             break
         # Remove surrounding quotes
-        skipSave = False
-        while star.startswith('*'):
-            skipSave = True
+        save = False
+        if star.startswith('+'):
+            save = True
             star = star[1:].strip()
+        star = re.sub(r'\s+', ' ', star)
+        star = re.sub(r"''+", "'", star)
         star = re.sub(r'^("|\')+\s*(.*)\s*\1+', r'\2', star)
         if star.find('"') >= 0:
             print("Invalid star name")
             continue
-        while star.startswith('*'):
-            skipSave = True
+        if star.startswith('+'):
+            save = True
             star = star[1:].strip()
-        star = star.upper()
         for ref in distances:
             if ref['name'] == star:
                 print("'{}' is already listed.")
                 continue
-        check_system(tdb, tdbSys, star)
-        extras, term = get_distances(clip, list(), [star])
+        check_system(argv, tdb, tdbSys, star)
+        extras, term = get_distances(argv, clip, [star])
         if term != 'q' and len(extras) > 0:
             distances.extend(extras)
-            if not skipSave and star not in outliers:
+            if save and star not in outliers and star not in newOutliers:
                 newOutliers.append(star)
 
-    if send_and_check_distances(clip, system, cmdr, distances):
-        add_extra_stars(newOutliers)
+    if send_and_check_distances(argv, tdb, clip, distances):
+        add_extra_stars(argv, newOutliers)
 
 if __name__ == "__main__":
     try:
         main()
-    except SubmissionError as e:
-        print(str(e))
-    except UsageError as e:
+    except (SubmissionError, UsageError) as e:
         print(str(e))
 
