@@ -146,19 +146,18 @@ def parse_arguments():
 
 
 def get_system(argv, tdb):
-    try:
-        system = tdb.lookupSystem(argv.origin)
-    except (KeyError, tradedb.AmbiguityError, LookupError):
-        system = None
-        pass
-    else:
-        if not argv.allowUpdate:
-            raise UsageError(
-                argv,
-                "System '{}' already exists.\n"
-                .format(systemName)
-            )
-    if system and argv.detail:
+    system = tdb.systemByName.get(argv.origin.upper(), None)
+    if not system:
+        return argv.origin, None
+
+    if not argv.allowUpdate:
+        raise UsageError(
+            argv,
+            "System '{}' already exists.\n"
+            .format(systemName)
+        )
+
+    if argv.detail:
         print("EXISTING SYSTEM:", argv.origin)
 
     return argv.origin, system
@@ -231,17 +230,14 @@ def get_distances(argv, clip, stars):
  
 
 def check_system(argv, tdb, tdbSys, name):
-    try:
-        system = tdb.lookupSystem(name)
-        if not tdbSys:
-            print("KNOWN SYSTEM")
-            return
-    except (tradedb.AmbiguityError, LookupError, KeyError):
+    system = tdb.systemByName.get(name.upper(), None)
+    if system and not tdbSys:
+        print("KNOWN SYSTEM")
         return
-
-    print("KNOWN SYSTEM: {:.2f} ly".format(
-        tdbSys.distanceTo(system)
-    ))
+    if system:
+        print("KNOWN SYSTEM: {:.2f} ly".format(
+            tdbSys.distanceTo(system)
+        ))
 
 
 def add_extra_stars(argv, extraStars):
