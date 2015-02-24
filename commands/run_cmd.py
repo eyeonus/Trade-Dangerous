@@ -139,6 +139,12 @@ switches = [
             type=int,
             default=1
         ),
+    ParseArgument('--max-gain-per-ton', '--mgpt',
+            help='Specify the minimum gain per ton of cargo',
+            dest='maxGainPerTon',
+            type=int,
+            default=10000
+        ),
     ParseArgument('--unique',
             help='Only visit each station once.',
             action='store_true',
