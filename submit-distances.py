@@ -419,6 +419,8 @@ STANDARD STARS: (q to skip to the next section)
 """)
     standardStars = get_standard_stars()
     distances, term = get_distances(clip, list(), standardStars)
+    if distances:
+        send_and_check_distances(clip, system, cmdr, distances)
 
     print("""
 ===================================================
@@ -428,7 +430,9 @@ OUTLIERS: (q to skip to the next section)
   mixed with any stars from data/extra-stars.txt.
 ===================================================
 """)
-    distances, term = get_distances(clip, distances, outliers)
+    distances, term = get_distances(clip, list(), outliers)
+    if distances:
+        send_and_check_distances(clip, system, cmdr, distances)
 
     print("""
 ===================================================
@@ -441,6 +445,7 @@ CHOOSE YOUR OWN: (q to stop)
   prefix the name with a '*' (e.g. *SOL).
 ===================================================
 """)
+    distances = []
     newOutliers = []
     while True:
         star = input("Enter star name: ")
