@@ -1098,12 +1098,12 @@ class TradeDB(object):
                 modified
             ) VALUES (
                 ?, ?,
-                ?, ?, ?,
+                ?, ?, ?, ?, ?,
                 DATETIME(?)
             )
         """, [
             name, system.ID,
-            lsFromStar, blackMarket.upper(), maxPadSize.upper(),
+            lsFromStar, market, blackMarket, shipyard, maxPadSize,
             modified,
         ])
         ID = cur.lastrowid
@@ -1200,7 +1200,7 @@ class TradeDB(object):
                    blackmarket=?,
                    shipyard=?,
                    max_pad_size=?,
-                   modified=DATETIME(?),
+                   modified=DATETIME(?)
              WHERE station_id = ?
         """, [
             station.dbname,
