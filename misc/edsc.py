@@ -161,6 +161,7 @@ class StarSubmissionResult(object):
     codeMap = {
         201:        "New Entry",
         202:        "System CR increased",
+        203:        "Coordinates calculated",
         301:        "Distance added",
         302:        "Distance CR increased",
         303:        "Added verification",
@@ -206,7 +207,7 @@ class StarSubmissionResult(object):
             sysName = ent['system'].upper()
             code = int(ent['status']['statusnum'])
             msg = ent['status']['msg']
-            if code in [201, 202]:
+            if code in [201, 202, 203]:
                 self.systems[sysName] = (code, None)
             else:
                 self.errors.append(Status(
