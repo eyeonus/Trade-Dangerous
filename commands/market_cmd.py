@@ -77,16 +77,20 @@ def run(results, cmdenv, tdb):
                 ss.units,
                 ss.level,
                 JULIANDAY('now') - JULIANDAY(ss.modified)
-          FROM  StationItem si,
-                StationBuying AS sb,
-                StationSelling AS ss
-         WHERE  si.station_id = ? AND
-                sb.station_id = ? AND
-                ss.station_id = ? AND
-                sb.item_id = si.item_id AND
-                ss.item_id = si.item_id
+          FROM  StationItem si
+                    LEFT OUTER JOIN StationBuying AS sb
+                        ON (
+                            si.station_id = sb.station_id AND
+                            si.item_id = sb.item_id
+                        )
+                    LEFT OUTER JOIN StationSelling AS ss
+                        ON (
+                            si.station_id = ss.station_id AND
+                            si.item_id = ss.item_id
+                        )
+         WHERE  si.station_id = ?
     """, [
-        origin.ID, origin.ID, origin.ID
+        origin.ID,
     ])
 
     for row in cur:
