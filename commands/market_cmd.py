@@ -149,31 +149,42 @@ def render(results, cmdenv, tdb):
     if showCategories:
         rowFmt.prefix = '    '
 
+    sellPred = lambda row: row.sellCr != 0 and row.demand != '-'
+    buyPred = lambda row: row.buyCr != 0 and row.demand != '-'
+
     rowFmt.addColumn('Item', '<', longestLen,
             key=lambda row: row.item.name())
     if cmdenv.buying:
         rowFmt.addColumn('Buying', '>', 7, 'n',
-            key=lambda row: row.buyCr)
+            key=lambda row: row.buyCr,
+            pred=buyPred)
         if cmdenv.detail:
             rowFmt.addColumn('Avg', '>', 7, 'n',
-            key=lambda row: row.avgBuy)
+            key=lambda row: row.avgBuy,
+            pred=buyPred)
         if cmdenv.detail > 1:
             rowFmt.addColumn('Demand', '>', dmdLen,
-                key=lambda row: row.demand)
+                key=lambda row: row.demand,
+                pred=buyPred)
         if cmdenv.detail:
             rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-            key=lambda row: row.buyAge)
+            key=lambda row: row.buyAge,
+            pred=buyPred)
     if cmdenv.selling:
         rowFmt.addColumn('Selling', '>', 7, 'n',
-            key=lambda row: row.sellCr)
+            key=lambda row: row.sellCr,
+            pred=sellPred)
         if cmdenv.detail:
             rowFmt.addColumn('Avg', '>', 7, 'n',
-            key=lambda row: row.avgSell)
+            key=lambda row: row.avgSell,
+            pred=sellPred)
         rowFmt.addColumn('Supply', '>', supLen,
-            key=lambda row: row.supply)
+            key=lambda row: row.supply,
+            pred=sellPred)
         if cmdenv.detail:
             rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-            key=lambda row: row.buyAge)
+            key=lambda row: row.buyAge,
+            pred=sellPred)
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
