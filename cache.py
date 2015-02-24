@@ -591,7 +591,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                     modified
                 ) VALUES (
                     ?, ?, 0, '?', '?', '?', '?',
-                    DATETIME('now'),
+                    DATETIME('now')
                 )
             """, [systemID, name])
             newID = inscur.lastrowid
