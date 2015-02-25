@@ -92,6 +92,8 @@ stations = {
     "AMAHU/ALEDNDRIA GATEWAY":              DELETED,
     "LTT 7548/ALEDNDRIA RING":              DELETED,
     "DJINAJERI/MESSERSCHMID LANDING":       DELETED,
+    "SAMBURITJA/PTEYN LANDING":             DELETED,
+    "SAMBURITJA/RPTEYN LANDING":            DELETED,
 }
 
 categories = {
