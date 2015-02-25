@@ -330,26 +330,6 @@ def send_and_check_distances(argv, tdb, clip, distances):
     return True
 
 
-def get_standard_stars():
-    testStars = set()
-    if 'TEST' in os.environ:
-        try:
-            with open("data/test-stars.txt", "rU") as fh:
-                for line in fh:
-                    text = line.strip()
-                    if text.startswith(';'):
-                        continue
-                    if text.startswith('#'):
-                        continue
-                    if text:
-                        testStars.add(text)
-        except FileNotFoundError:
-            pass
-    if testStars:
-        return list(testStars)
-    return standardStars
-
-
 def process_destinations(argv, tdb):
     clip = SystemNameClip()
 
@@ -409,7 +389,6 @@ STANDARD STARS: (q to skip to the next section)
   These are stars with well-known positions.
 ===================================================
 """)
-    standardStars = get_standard_stars()
     distances, term = get_distances(argv, clip, standardStars)
     if distances:
         send_and_check_distances(argv, tdb, clip, distances)
