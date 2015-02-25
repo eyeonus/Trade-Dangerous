@@ -131,7 +131,10 @@ class System(object):
     """
 
     __slots__ = (
-        'ID', 'dbname', 'posX', 'posY', 'posZ', 'stations', '_rangeCache'
+        'ID',
+        'dbname', 'posX', 'posY', 'posZ', 'stations',
+        'addedID',
+        '_rangeCache'
     )
 
     class RangeCache(object):
@@ -142,10 +145,11 @@ class System(object):
             self.systems = []
             self.probedLy = 0.
 
-    def __init__(self, ID, dbname, posX, posY, posZ):
+    def __init__(self, ID, dbname, posX, posY, posZ, addedID):
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
+        self.addedID = addedID or 0
         self.stations = []
         self._rangeCache = None
 
@@ -657,6 +661,31 @@ class TradeDB(object):
         cache.buildCache(self, self.tdenv)
 
     ############################################################
+    # Load "added" data.
+
+    def _loadAdded(self):
+        """
+        Loads the Added table as a simple dictionary
+        """
+        stmt = """
+            SELECT added_id, name
+              FROM Added
+        """
+        self.cur.execute(stmt)
+        addedByID = {}
+        for ID, name in self.cur:
+            addedByID[ID] = name
+        self.addedByID = addedByID
+        self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
+
+    def lookupAdded(self, name):
+        name = name.lower()
+        for ID, added in self.addedByID.items():
+            if added.lower() == name:
+                return ID
+        raise KeyError(name)
+
+    ############################################################
     # Star system data.
 
     def systems(self):
@@ -669,13 +698,15 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-                SELECT system_id, name, pos_x, pos_y, pos_z
+                SELECT system_id,
+                       name, pos_x, pos_y, pos_z,
+                       added_id
                   FROM System
             """
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
-        for (ID, name, posX, posY, posZ) in self.cur:
-            system = System(ID, name, posX, posY, posZ)
+        for (ID, name, posX, posY, posZ, addedID) in self.cur:
+            system = System(ID, name, posX, posY, posZ, addedID)
             systemByID[ID] = systemByName[name.upper()] = system
 
         self.systemByID, self.systemByName = systemByID, systemByName
@@ -713,7 +744,7 @@ class TradeDB(object):
             name, x, y, z, added, modified,
         ])
         ID = cur.lastrowid
-        system = System(ID, name.upper(), x, y, z)
+        system = System(ID, name.upper(), x, y, z, 0)
         self.systemByID[ID] = system
         self.systemByName[system.dbname] = system
         db.commit()
@@ -1897,7 +1928,7 @@ class TradeDB(object):
         self.conn = conn = self.getDB()
         self.cur = conn.cursor()
 
-        # Load raw tables.
+        self._loadAdded()
         self._loadSystems()
         self._loadStations()
         self._loadShips()
