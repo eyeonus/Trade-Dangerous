@@ -816,7 +816,7 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
-        if goalSystem:
+        if routes and goalSystem:
             routes.sort(
                 key=lambda route:
                     0 if route.route[-1].system is goalSystem else 1

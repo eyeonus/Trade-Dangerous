@@ -57,10 +57,10 @@ or if you like, I can try and install it for you now
 
 standardStars = [
     "SOL",
+    "NEW YEMBO",
+    "VESUVIT",
+    "HIP 79884",
     "ASELLUS AUSTRALIS",
-    "46 GAMMA HYDRAE",
-    "RHO PUPPIS",
-    "HIP 34707",
 ]
 
 ############################################################################
@@ -330,29 +330,10 @@ def send_and_check_distances(argv, tdb, clip, distances):
     return True
 
 
-def get_standard_stars():
-    testStars = set()
-    if 'TEST' in os.environ:
-        try:
-            with open("data/test-stars.txt", "rU") as fh:
-                for line in fh:
-                    text = line.strip()
-                    if text.startswith(';'):
-                        continue
-                    if text.startswith('#'):
-                        continue
-                    if text:
-                        testStars.add(text)
-        except FileNotFoundError:
-            pass
-    if testStars:
-        return list(testStars)
-    return standardStars
-
-
 def process_destinations(argv, tdb):
     clip = SystemNameClip()
 
+    print("Distances from {}:".format(argv.origin))
     distances, _ = get_distances(argv, clip, argv.destinations)
     send_and_check_distances(argv, tdb, clip, distances)
 
@@ -408,7 +389,6 @@ STANDARD STARS: (q to skip to the next section)
   These are stars with well-known positions.
 ===================================================
 """)
-    standardStars = get_standard_stars()
     distances, term = get_distances(argv, clip, standardStars)
     if distances:
         send_and_check_distances(argv, tdb, clip, distances)
