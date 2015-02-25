@@ -140,7 +140,7 @@ switches = [
             default=1
         ),
     ParseArgument('--max-gain-per-ton', '--mgpt',
-            help='Specify the minimum gain per ton of cargo',
+            help='Specify the maximum gain per ton of cargo',
             dest='maxGainPerTon',
             type=int,
             default=10000
