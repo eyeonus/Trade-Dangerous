@@ -57,10 +57,10 @@ or if you like, I can try and install it for you now
 
 standardStars = [
     "SOL",
+    "NEW YEMBO",
+    "VESUVIT",
+    "HIP 79884",
     "ASELLUS AUSTRALIS",
-    "46 GAMMA HYDRAE",
-    "RHO PUPPIS",
-    "HIP 34707",
 ]
 
 ############################################################################
@@ -353,6 +353,7 @@ def get_standard_stars():
 def process_destinations(argv, tdb):
     clip = SystemNameClip()
 
+    print("Distances from {}:".format(argv.origin))
     distances, _ = get_distances(argv, clip, argv.destinations)
     send_and_check_distances(argv, tdb, clip, distances)
 
