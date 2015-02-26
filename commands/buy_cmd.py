@@ -13,60 +13,73 @@ name='buy'
 epilog=None
 wantsTradeDB=True
 arguments = [
-    ParseArgument('item', help='Name of item to query.', type=str),
+    ParseArgument(
+        'name',
+        help='Items or Ships to look for.',
+        type=str
+    ),
 ]
 switches = [
-    ParseArgument('--quantity',
-            help='Require at least this quantity.',
-            default=0,
-            type=int,
+    ParseArgument(
+        '--quantity',
+        help='Require at least this quantity.',
+        default=0,
+        type=int,
     ),
-    ParseArgument('--near',
-            help='Find sellers within jump range of this system.',
-            type=str
+    ParseArgument(
+        '--near',
+        help='Find sellers within jump range of this system.',
+        type=str
     ),
-    ParseArgument('--ly',
-            help='[Requires --near] Systems within this range of --near.',
-            default=None,
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
+    ParseArgument(
+        '--ly',
+        help='[Requires --near] Systems within this range of --near.',
+        default=None,
+        dest='maxLyPer',
+        metavar='N.NN',
+        type=float,
     ),
-    ParseArgument('--limit',
-            help='Maximum number of results to list.',
-            default=None,
-            type=int,
+    ParseArgument(
+        '--limit',
+        help='Maximum number of results to list.',
+        default=None,
+        type=int,
     ),
-    ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-            metavar='PADSIZES',
-            dest='padSize',
+    ParseArgument(
+        '--pad-size', '-p',
+        help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+        metavar='PADSIZES',
+        dest='padSize',
     ),
     MutuallyExclusiveGroup(
-        ParseArgument('--price-sort', '-P',
-                help='(When using --near) Sort by price not distance',
-                action='store_true',
-                default=False,
-                dest='sortByPrice',
+        ParseArgument(
+            '--price-sort', '-P',
+            help='(When using --near) Sort by price not distance',
+            action='store_true',
+            default=False,
+            dest='sortByPrice',
         ),
-        ParseArgument('--stock-sort', '-S',
+        ParseArgument(
+            '--stock-sort', '-S',
             help='Sort by stock followed by price',
             action='store_true',
             default=False,
             dest='sortByStock',
         ),
     ),
-    ParseArgument('--gt',
-            help='Limit to prices above Ncr',
-            metavar='N',
-            dest='gt',
-            type=int,
+    ParseArgument(
+        '--gt',
+        help='Limit to prices above Ncr',
+        metavar='N',
+        dest='gt',
+        type=int,
     ),
-    ParseArgument('--lt',
-            help='Limit to prices below Ncr',
-            metavar='N',
-            dest='lt',
-            type=int,
+    ParseArgument(
+        '--lt',
+        help='Limit to prices below Ncr',
+        metavar='N',
+        dest='lt',
+        type=int,
     ),
 ]
 
@@ -81,10 +94,10 @@ def run(results, cmdenv, tdb):
             raise CommandLineError("--gt must be lower than --lt")
 
     try:
-        item = tdb.lookupItem(cmdenv.item)
+        item = tdb.lookupItem(cmdenv.name)
         cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
     except LookupError:
-        item = tdb.lookupShip(cmdenv.item)
+        item = tdb.lookupShip(cmdenv.name)
         cmdenv.DEBUG0("Looking up ship {} (#{})", item.name(), item.ID)
         cmdenv.ship = True
 
