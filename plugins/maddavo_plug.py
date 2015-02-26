@@ -344,11 +344,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         use2d = 1 if self.getOption("use2d") else 0
         usefull = 1 if self.getOption("usefull") else 0
         if use3h + use2d + usefull > 1:
-            raise PluginError(
+            raise PluginException(
                 "Only one of use3h/use2d/usefull can be used at once."
             )
         if (use3h or use2d or usefull) and skipDownload:
-            raise PluginError(
+            raise PluginException(
                 "use3h/use2d/usefull has no effect with --opt=skipdl"
             )
         if use3h:

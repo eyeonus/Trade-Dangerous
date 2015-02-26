@@ -353,6 +353,19 @@ def guidedUpdate(tdb, cmdenv):
     stationID = cmdenv.startStation.ID
     tmpPath = getTemporaryPath(cmdenv)
 
+    cur = tdb.query("""
+        SELECT  JULIANDAY('now') - JULIANDAY(MIN(modified)),
+                JULIANDAY('now') - JULIANDAY(MAX(modified))
+          FROM  StationItem
+         WHERE  station_id = ?
+    """, [stationID])
+    oldest, newest = cur.fetchone()
+    if oldest and newest:
+        cmdenv.NOTE(
+            "Current data {:.2f}-{:.2f} days old.",
+            oldest, newest,
+        )
+
     from commands.update_gui import render
     try:
         render(tdb, cmdenv, tmpPath)
