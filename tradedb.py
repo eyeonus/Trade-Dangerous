@@ -332,12 +332,15 @@ class Station(object):
                 return "Unk"
             else:
                 return '?'
-        if ls < 4000:
+        if ls < 1000:
             suffix = 'ls' if addSuffix else ''
             return '{:n}'.format(ls)+suffix
-        if ls < 100000:
+        if ls < 10000:
             suffix = 'ls' if addSuffix else ''
             return '{:.1f}K'.format(ls / 1000)+suffix
+        if ls < 100000:
+            suffix = 'ls' if addSuffix else ''
+            return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
     def str(self):
