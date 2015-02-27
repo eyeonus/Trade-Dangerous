@@ -162,13 +162,19 @@ class UpdateGUI(ScrollingCanvas):
         parent.wm_attributes("-topmost", sticky)
 
 
+    def selectWidget(self, widget, newValue=None):
+        if newValue is not None:
+            widget.val.set(newValue)
+        widget.focus_set()
+        widget.selection_range(0, tk.END)
+
+
     def focusOn(self, displayNo, pos):
         """ Set focus to a widget and select the text in it """
 
         row = self.itemDisplays[displayNo]
         widget = row[pos][0]
-        widget.focus_set()
-        widget.selection_range(0, tk.END)
+        self.selectWidget(widget)
 
 
     def setValue(self, row, pos, value):
@@ -230,8 +236,7 @@ class UpdateGUI(ScrollingCanvas):
                         cr, minCr,
             ))
             if not ok:
-                widget.val.set("")
-                widget.focus_set()
+                self.selectWidget(widget, "")
                 return False
             widget.configure(bg = '#ff8080')
 
@@ -248,8 +253,7 @@ class UpdateGUI(ScrollingCanvas):
                         cr, maxCr,
             ))
             if not ok:
-                widget.val.set("")
-                widget.focus_set()
+                self.selectWidget(widget, "")
                 return False
             widget.configure(bg = '#8080ff')
 
@@ -343,8 +347,7 @@ class UpdateGUI(ScrollingCanvas):
                         parent=widget,
                         )
                 if not ok:
-                    widget.val.set("")
-                    widget.focus_set()
+                    self.selectWidget(widget, "")
                     return False
 
             return True
@@ -373,6 +376,7 @@ class UpdateGUI(ScrollingCanvas):
                         "EXAMPLE: If the UI says '2341 LOW', type '2341L'.\n"
                     )
             widget.val.set("?")
+            self.selectWidget(widget)
             return False
 
         return True

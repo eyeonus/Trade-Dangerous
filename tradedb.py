@@ -332,12 +332,15 @@ class Station(object):
                 return "Unk"
             else:
                 return '?'
-        if ls < 4000:
+        if ls < 1000:
             suffix = 'ls' if addSuffix else ''
             return '{:n}'.format(ls)+suffix
-        if ls < 40000:
+        if ls < 10000:
             suffix = 'ls' if addSuffix else ''
-            return '{:.1f}K'.format(ls / 1000)+suffix
+            return '{:.2f}K'.format(ls / 1000)+suffix
+        if ls < 1000000:
+            suffix = 'ls' if addSuffix else ''
+            return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
     def str(self):
@@ -784,7 +787,8 @@ class TradeDB(object):
         db.commit()
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}, {}, {}, {}, {}, {}",
-            oldname, system.ID, self.dbPath,
+            oldname, system.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
             dbname,
             x, y, z,
             added, modified,
@@ -1150,9 +1154,10 @@ class TradeDB(object):
         self.stationByID[ID] = station
         db.commit()
         self.tdenv.NOTE(
-            "{} (#{}) added to {} db: "
+            "{} (#{}) added to {}: "
             "ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
-            station.name(), station.ID, self.dbPath,
+            station.name(), station.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
             modified,
         )
@@ -1172,52 +1177,56 @@ class TradeDB(object):
         """
         Alter the properties of a station in-memory and in the DB.
         """
-        changes = False
+        changes = []
+
+        def _changed(label, old, new):
+            changes.append(
+                "{}('{}'=>'{}')".format(label, old, new)
+            )
 
         if name is not None:
-            if name != station.dbname or force:
+            if force or name.upper() != station.dbname.upper():
+                _changed("name", station.dbname, name)
                 station.dbname = name
-                changes = True
 
         if lsFromStar is not None:
             assert lsFromStar >= 0
             if lsFromStar != station.lsFromStar:
                 if lsFromStar > 0 or force:
+                    _changed("ls", station.lsFromStar, lsFromStar)
                     station.lsFromStar = lsFromStar
-                    changes = True
-
 
         if market is not None:
             market = market.upper()
             assert market in TradeDB.marketStates
             if market != station.market:
                 if market != '?' or force:
+                    _changed("mkt", station.market, market)
                     station.market = market
-                    changes = True
 
         if blackMarket is not None:
             blackMarket = blackMarket.upper()
             assert blackMarket in TradeDB.marketStates
             if blackMarket != station.blackMarket:
                 if blackMarket != '?' or force:
+                    _changed("blkmkt", station.blackMarket, blackMarket)
                     station.blackMarket = blackMarket
-                    changes = True
 
         if shipyard is not None:
             shipyard = shipyard.upper()
             assert shipyard in TradeDB.marketStates
             if shipyard != station.shipyard:
                 if shipyard != '?' or force:
+                    _changed("shipyd", station.shipyard, shipyard)
                     station.shipyard = shipyard
-                    changes = True
 
         if maxPadSize is not None:
             maxPadSize = maxPadSize.upper()
             assert maxPadSize in TradeDB.padSizes
             if maxPadSize != station.maxPadSize:
                 if maxPadSize != '?' or force:
+                    _changed("pad", station.maxPadSize, maxPadSize)
                     station.maxPadSize = maxPadSize
-                    changes = True
 
         if not changes:
             return False
@@ -1246,15 +1255,10 @@ class TradeDB(object):
         db.commit()
 
         self.tdenv.NOTE(
-            "{} (#{}) updated in {}: "
-            "ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
-            station.name(), station.ID, self.dbPath,
-            station.lsFromStar,
-            station.market,
-            station.blackMarket,
-            station.shipyard,
-            station.maxPadSize,
-            modified,
+            "{} (#{}) updated in {}: {}",
+            station.name(), station.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
+            ", ".join(changes)
         )
 
         return True

@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from itertools import chain
 from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB, System, Station, describeAge
 from tradecalc import TradeCalc, Route
@@ -24,12 +25,6 @@ arguments = [
             help='Starting credits.',
             metavar='CR',
             type=int,
-        ),
-    ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
         ),
 ]
 
@@ -74,11 +69,22 @@ switches = [
             metavar='N',
         ),
     ParseArgument('--jumps-per',
-            help='Maximum number of jumps (system-to-system) per hop.',
-            default=2,
-            dest='maxJumpsPer',
-            metavar='N',
-            type=int,
+        help='Maximum number of jumps (system-to-system) per hop.',
+        default=2,
+        dest='maxJumpsPer',
+        metavar='N',
+        type=int,
+    ),
+    ParseArgument('--direct',
+        help="Assume destinations are reachable without worrying "
+             "about jumps.",
+        action='store_true',
+    ),
+    ParseArgument('--ly-per',
+            help='Maximum light years per jump.',
+            dest='maxLyPer',
+            metavar='N.NN',
+            type=float,
         ),
     ParseArgument('--empty-ly',
             help='Maximum light years ship can jump when empty.',
@@ -430,6 +436,14 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 
 def checkStationSuitability(cmdenv, station, src=None):
+    if station.market == 'N':
+        if src:
+            raise CommandLineError(
+                "{} station {} is flagged as having no market".format(
+                    src, station.name()
+                )
+            )
+        return False
     if not station.itemCount:
         if src:
             raise NoDataError(
@@ -484,9 +498,7 @@ def filterStationSet(src, cmdenv, stnList):
     if not stnList:
         return stnList
     filtered = [
-        place for place in stnList
-        if not (isinstance(place, Station) and \
-            not checkStationSuitability(cmdenv, place))
+        place for place in stnList if checkStationSuitability(cmdenv, place)
     ]
     if not stnList:
         raise CommandLineError(
@@ -512,14 +524,17 @@ def validateRunArguments(tdb, cmdenv):
 
     if cmdenv.hops < 1:
         raise CommandLineError("Minimum of 1 hop required")
-    if cmdenv.hops > 64:
+    if cmdenv.hops > 32:
         raise CommandLineError("Too many hops without more optimization")
 
     if cmdenv.maxJumpsPer < 0:
         raise CommandLineError("Negative jumps: you're already there?")
+    if cmdenv.direct:
+        cmdenv.hops = 1
 
     if cmdenv.origPlace:
         if isinstance(cmdenv.origPlace, System):
+            cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
             if not cmdenv.origPlace.stations:
                 raise CommandLineError(
                         "No stations at --from system, {}"
@@ -531,6 +546,7 @@ def validateRunArguments(tdb, cmdenv):
                 if checkStationSuitability(cmdenv, station)
             ]
         else:
+            cmdenv.DEBUG0("origPlace: Station: {}", cmdenv.origPlace.name())
             checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
             cmdenv.startStation = cmdenv.origPlace
@@ -545,6 +561,7 @@ def validateRunArguments(tdb, cmdenv):
                 cmdenv.origins, cmdenv.startJumps
         )
     else:
+        cmdenv.DEBUG0("using all suitable origins")
         cmdenv.origins = [
             station
             for station in tdb.stationByID.values()
@@ -556,13 +573,19 @@ def validateRunArguments(tdb, cmdenv):
     cmdenv.destinations = None
     if cmdenv.destPlace:
         if isinstance(cmdenv.destPlace, Station):
+            cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
             checkStationSuitability(cmdenv, cmdenv.destPlace, '--to')
             cmdenv.destinations = [ cmdenv.destPlace ]
-        elif isinstance(cmdenv.destPlace, System):
-            cmdenv.destinations = [ cmdenv.destPlace ]
+        else:
+            cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
+            cmdenv.destinations = [
+                station
+                for station in cmdenv.destPlace.stations
+                if checkStationSuitability(cmdenv, station)
+            ]
         cmdenv.destinations = expandForJumps(
                 tdb, cmdenv,
-                [ cmdenv.destPlace ],
+                cmdenv.destinations,
                 cmdenv.endJumps,
                 "--to"
         )
@@ -571,6 +594,7 @@ def validateRunArguments(tdb, cmdenv):
                 cmdenv.destinations, cmdenv.endJumps
         )
     else:
+        cmdenv.DEBUG0("Using all available destinations")
         if cmdenv.endJumps:
             raise CommandLineError("--end-jumps (-e) only works with --to")
         if cmdenv.goalSystem:
@@ -578,6 +602,11 @@ def validateRunArguments(tdb, cmdenv):
                 raise CommandLineError("--towards requires --from")
             dest = tdb.lookupPlace(cmdenv.goalSystem)
             cmdenv.goalSystem = dest.system
+        cmdenv.destinations = [
+            station
+            for station in tdb.stationByID.values()
+            if checkStationSuitability(cmdenv, station)
+        ]
 
     origins, destns = cmdenv.origins or [], cmdenv.destinations or []
 
@@ -634,7 +663,7 @@ def validateRunArguments(tdb, cmdenv):
 
     if cmdenv.capacity is None:
         raise CommandLineError("Missing '--capacity'")
-    if cmdenv.maxLyPer is None:
+    if cmdenv.maxLyPer is None and not cmdenv.direct:
         raise CommandLineError("Missing '--ly-per'")
     if cmdenv.capacity < 0:
         raise CommandLineError("Invalid (negative) cargo capacity")
@@ -739,6 +768,7 @@ def run(results, cmdenv, tdb):
     avoidPlaces = cmdenv.avoidPlaces
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
+    maxLs = cmdenv.maxLsFromStar
 
     startCr = cmdenv.credits - cmdenv.insurance
 
@@ -794,20 +824,28 @@ def run(results, cmdenv, tdb):
         newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
         if not newRoutes and hopNo > 0:
             if restrictTo:
-                restrictions = list(restrictTo)
-                restrictSystems = list(set([
-                    place if isinstance(place, System) else place.system
+                restrictTo = set(chain.from_iterable(
+                    [place] if isinstance(place, Station) else place.stations
                     for place in restrictTo
-                ]))
-                if len(restrictions) == 1:
-                    dests = restrictions[0].name()
-                elif len(restrictSystems) == 1:
-                    dests = restrictSystems[0].name()
+                ))
+                if not maxLs:
+                    lsCheck = lambda stn: True
                 else:
-                    dests = ", ".join([
-                            place.name() for place in restrictions[0:-1]
-                    ])
-                    dests += " or " + restrictions[-1].name()
+                    lsCheck = lambda stn: \
+                        stn.maxLsFromStar > 0 and \
+                        stn.maxLsFromStar < maxLs
+                restrictTo = set(
+                    stn for stn in restrictTo
+                    if stn not in avoidPlaces
+                        and stn.system not in avoidPlaces
+                        and stn.checkPadSize(maxPadSize)
+                        and lsCheck(stn)
+                )
+                dests = ", ".join([
+                    place.name() for place in restrictTo[0:-1]
+                ])
+                if len(restrictTo) > 1:
+                    dests += " or " + restrictTo[-1].name()
                 results.summary.exception += (
                         "SORRY: Could not find any routes that "
                         "delivered a profit to {} at hop #{}\n"
@@ -822,7 +860,7 @@ def run(results, cmdenv, tdb):
             )
             break
         routes = newRoutes
-        if goalSystem:
+        if routes and goalSystem:
             routes.sort(
                 key=lambda route:
                     0 if route.route[-1].system is goalSystem else 1

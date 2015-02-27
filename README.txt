@@ -213,7 +213,7 @@ RUN sub-command:
        How many credits to start with
        e.g.
          --credits 20000
-
+       
      --ly-per N.NN
      --ly N.NN
        Maximum distance your ship can jump between systems at full capacity.
@@ -272,18 +272,6 @@ RUN sub-command:
        e.g.
          --from iBootis --to LiuBese
 
-     --start-jumps N
-     -s N
-       Considers stations from systems upto this many jumps from your
-       specified start location.
-         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
-
-     --end-jumps N
-     -e N
-       Considers stations from systems upto this many jumps from your
-       specified destination (--to).
-         --to lave -e 3      (find runs that end within 3 jumps of lave)
-
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
        Requires that hops be at least 2.
@@ -303,6 +291,24 @@ RUN sub-command:
        Limit the number of systems jumped to between each station
        e.g.
          -jumps-per 5
+
+     --direct
+       Assumes a single hop and doesn't worry about travel between
+       source and destination.
+       e.g.
+         --from achenar --to lave --direct
+
+     --start-jumps N
+     -s N
+       Considers stations from systems upto this many jumps from your
+       specified start location.
+         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
+
+     --end-jumps N
+     -e N
+       Considers stations from systems upto this many jumps from your
+       specified destination (--to).
+         --to lave -e 3      (find runs that end within 3 jumps of lave)
 
 
    Filter options:
@@ -820,11 +826,15 @@ LOCAL sub-command:
 
 BUY sub-command:
 
-  Looks for stations selling the specified item or ship.
+  Finds stations that are selling / where you can buy, a named list of
+  items or ships.
   
-  For items, that means they have a non-zero asking price and a stock level other than "n/a".
-
-  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
+  trade.py buy 
+        [-q | -v] [--quantity Q] [--near N] [--ly-per N]
+        [-P | -S] [--limit]
+        [--one-stop | -1]
+        item [item item,item ...]
+        ship [ship ship,ship ...]
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -834,6 +844,11 @@ BUY sub-command:
     --near station
       Only considers stations within reach of the specified system.
       --near chango
+
+    --one-stop
+    -1
+      When multiple items or ships are listed, only lists stations
+      which have all of them.
 
     --limit N
       Limit how many results re shown
@@ -865,6 +880,12 @@ BUY sub-command:
     --stock-sort
     -S
       Sorts items by stock available first and then price
+
+  Example
+    trade.py buy --near achenar food
+    trade.py buy asp
+    trade.py buy --near achenar food,clothing,scrap --one-stop
+    trade.py buy --near achenar type6,type7 -1
 
 
 SELL sub-command:
