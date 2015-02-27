@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.12.1 Feb 25 2015
+v6.12.1 Feb 26 2015
 . (kfsone) "buy" command:
   - now accepts multiple arguments (e.g. explosives,clothing),
   - new "--one-stop" (-1) option only shows stations that carry the full list,

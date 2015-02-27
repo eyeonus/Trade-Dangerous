@@ -820,11 +820,15 @@ LOCAL sub-command:
 
 BUY sub-command:
 
-  Looks for stations selling the specified item or ship.
+  Finds stations that are selling / where you can buy, a named list of
+  items or ships.
   
-  For items, that means they have a non-zero asking price and a stock level other than "n/a".
-
-  trade.py buy [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P | -S] [--limit]
+  trade.py buy 
+        [-q | -v] [--quantity Q] [--near N] [--ly-per N]
+        [-P | -S] [--limit]
+        [--one-stop | -1]
+        item [item item,item ...]
+        ship [ship ship,ship ...]
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -834,6 +838,11 @@ BUY sub-command:
     --near station
       Only considers stations within reach of the specified system.
       --near chango
+
+    --one-stop
+    -1
+      When multiple items or ships are listed, only lists stations
+      which have all of them.
 
     --limit N
       Limit how many results re shown
@@ -865,6 +874,12 @@ BUY sub-command:
     --stock-sort
     -S
       Sorts items by stock available first and then price
+
+  Example
+    trade.py buy --near achenar food
+    trade.py buy asp
+    trade.py buy --near achenar food,clothing,scrap --one-stop
+    trade.py buy --near achenar type6,type7 -1
 
 
 SELL sub-command:
