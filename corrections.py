@@ -94,6 +94,7 @@ stations = {
     "DJINAJERI/MESSERSCHMID LANDING":       DELETED,
     "SAMBURITJA/PTEYN LANDING":             DELETED,
     "SAMBURITJA/RPTEYN LANDING":            DELETED,
+    "CHICK EK/WH IEELOCK GATEWAY":          DELETED,
 }
 
 categories = {
