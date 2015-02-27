@@ -338,7 +338,7 @@ class Station(object):
         if ls < 10000:
             suffix = 'ls' if addSuffix else ''
             return '{:.2f}K'.format(ls / 1000)+suffix
-        if ls < 100000:
+        if ls < 1000000:
             suffix = 'ls' if addSuffix else ''
             return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
