@@ -50,6 +50,7 @@ ignore = [
     "SHU WEI SECTOR MN-S B4-4",
     "SHU WEI SECTOR MN-S B4-9",
     "THETA CARINE",
+    "CORE SYS HH-M A7-3",
 ]
 
 
