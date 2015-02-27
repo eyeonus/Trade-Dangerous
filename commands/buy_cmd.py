@@ -253,11 +253,13 @@ def run(results, cmdenv, tdb):
         row.price = priceCr
         row.stock = stock
         row.age = age
-        stationRows = stations[stationID]
-        stationRows.append(row)
-        if oneStopMode and len(stationRows) < len(queries):
-            continue
-        results.rows.extend(stationRows)
+        if oneStopMode:
+            stationRows = stations[stationID]
+            stationRows.append(row)
+            if len(stationRows) >= len(queries):
+                results.rows.extend(stationRows)
+        else:
+            results.rows.append(row)
 
     if not results.rows:
         if oneStopMode and len(stations):
