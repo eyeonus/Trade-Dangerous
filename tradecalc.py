@@ -39,6 +39,7 @@ Classes:
 from collections import defaultdict
 from collections import namedtuple
 from tradedb import System, Station, Trade, TradeDB, describeAge
+from tradedb import Destination
 from tradeexcept import TradeException
 
 import locale
@@ -721,6 +722,8 @@ class TradeCalc(object):
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
+        maxPadSize = tdenv.padSize
+        maxLsFromStar = tdenv.maxLsFromStar or float('inf')
         reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
         maxAge = getattr(tdenv, 'maxAge') or 0
         credits = tdenv.credits - (getattr(tdenv, 'insurance', 0) or 0)
@@ -745,6 +748,40 @@ class TradeCalc(object):
                 elif isinstance(place, System) and place.stations:
                     restrictStations.update(place.stations)
         restrictStations = set(restrictStations)
+
+        # Are we doing direct routes?
+        if tdenv.direct:
+            if goalSystem and not restrictTo:
+                restrictTo = [ goalSystem ]
+                restrictStations = set(goalSystem.stations)
+            if avoidPlaces:
+                restrictStations = set(
+                    stn for stn in restrictStations
+                    if stn not in avoidPlaces and \
+                        stn.system not in avoidPlaces
+                )
+            def _get_destinations(srcStation):
+                srcSys = srcStation.system
+                srcDist = srcSys.distanceTo
+                for stn in restrictStations:
+                    stnSys = stn.system
+                    yield Destination(
+                        stnSys, stn,
+                        [srcSys, stnSys],
+                        srcDist(stnSys)
+                    )
+        else:
+            def _get_destinations(srcStation):
+                yield from tdb.getDestinations(
+                    srcStation,
+                    maxJumps=maxJumpsPer,
+                    maxLyPer=maxLyPer,
+                    avoidPlaces=avoidPlaces,
+                    maxPadSize=maxPadSize,
+                    maxLsFromStar=maxLsFromStar,
+                )
+         
+        station_iterator = _get_destinations
 
         prog = pbar.Progress(len(routes), 25)
         for route in routes:
@@ -829,14 +866,7 @@ class TradeCalc(object):
                     dstStation, route, trade, dest.via, dest.distLy, score
                 ]
 
-            for dest in tdb.getDestinations(
-                    srcStation,
-                    maxJumps=maxJumpsPer,
-                    maxLyPer=maxLyPer,
-                    avoidPlaces=avoidPlaces,
-                    maxPadSize=tdenv.padSize,
-                    maxLsFromStar=tdenv.maxLs,
-                    ):
+            for dest in station_iterator(srcStation):
                 dstStation = dest.station
                 if dstStation is srcStation:
                     continue
@@ -851,15 +881,6 @@ class TradeCalc(object):
                     stnDataAge = dstStation.dataAge
                     if stnDataAge is None or stnDataAge > maxAge:
                         continue
-
-                if tdenv.debug >= 1:
-                    tdenv.DEBUG1(
-                        "destSys {}, destStn {}, jumps {}, distLy {}",
-                        dstStation.system.dbname,
-                        dstStation.dbname,
-                        "->".join([jump.str() for jump in dest.via]),
-                        dest.distLy
-                    )
 
                 multiplier = 1.0
                 if restrictStations:
@@ -886,6 +907,15 @@ class TradeCalc(object):
                             # The closer dst is, the smaller the divider
                             # will be, so the larger the remainder.
                             multiplier *= 1 + (srcGoalDist / dstGoalDist)
+
+                if tdenv.debug >= 1:
+                    tdenv.DEBUG1(
+                        "destSys {}, destStn {}, jumps {}, distLy {}",
+                        dstStation.system.dbname,
+                        dstStation.dbname,
+                        "->".join([jump.str() for jump in dest.via]),
+                        dest.distLy
+                    )
 
                 considerStation(dstStation, dest, multiplier)
 

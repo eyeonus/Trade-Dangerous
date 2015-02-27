@@ -245,7 +245,13 @@ ocrDerp = re.compile(r'''(
     I'L | R'I | (^|\s)'L | [^Ss]'(?=\s|$) |
     ^I \s (?! [Ss][Oo][Ll][Aa]) |
     \bA7\S |
-    \sH\sI?UB$
+    \sH\sI?UB$ |
+    \bALEDNDRIA\b |
+    \sH\sU\sB$ |
+    \bC[O0]LCNY\b |
+    \bOOCTE\b |
+    \bBULGAFIIN\b |
+    \bWH\sIEEL
 )''', flags=re.X)
 
 
@@ -580,9 +586,13 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                     system_id, name,
                     ls_from_star,
                     blackmarket,
-                    max_pad_size
+                    max_pad_size,
+                    market,
+                    shipyard,
+                    modified
                 ) VALUES (
-                    ?, ?, 0, '?', '?'
+                    ?, ?, 0, '?', '?', '?', '?',
+                    DATETIME('now')
                 )
             """, [systemID, name])
             newID = inscur.lastrowid

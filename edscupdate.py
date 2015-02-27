@@ -33,10 +33,25 @@ import random
 import re
 import sys
 import tradedb
+import tradeenv
+
+DEFAULT_DATE = "2015-02-11 00:00:00"
 
 
 # Systems we know are bad.
-ignore = []
+ignore = [
+    "COL 285 SECTOR EC-R B18-5",
+    "DITIBI (FIXED)",
+    "HYADES",
+    "HAREMID",
+    "HYADES SECTOR VO-Q V5-1",
+    "XI HUGAN",
+    "LP  634-18",
+    "SHU WEI SECTOR MN-S B4-4",
+    "SHU WEI SECTOR MN-S B4-9",
+    "THETA CARINE",
+    "CORE SYS HH-M A7-3",
+]
 
 
 class UsageError(Exception):
@@ -52,11 +67,13 @@ def parse_arguments():
             epilog='Confirmed systems are written to tmp/new.systems.csv.',
     )
     parser.add_argument(
-            'refsystem',
+            'refSystem',
             help='*Exact* name of the system you are *currently* in, '
                  'used as a reference system for distance validations.',
             type=str,
+            metavar='"REFERENCE SYSTEM"',
             default=None,
+            nargs='?',
     )
     parser.add_argument(
             '--cmdr',
@@ -76,7 +93,7 @@ def parse_arguments():
             '--random',
             action='store_true',
             required=False,
-            help='Show systems in random order.',
+            help='Show systems in random order, maximum of 10.',
     )
     parser.add_argument(
             '--test',
@@ -94,12 +111,49 @@ def parse_arguments():
             type=str,
             default=None,
     )
+    parser.add_argument(
+            '--no-splash', '-NS',
+            required=False,
+            action='store_false',
+            help="Don't display the 'splash' text on startup.",
+            dest='splash',
+            default=True,
+    )
+    parser.add_argument(
+            '--summary',
+            required=False,
+            help='Check for and report on new systems but do no work.',
+            action='store_true',
+    )
+    parser.add_argument(
+            '--detail', '-v',
+            help='Increase level  of detail in output.',
+            default=0,
+            required=False,
+            action='count',
+    )
+    parser.add_argument(
+            '--debug', '-w',
+            help='Enable/raise level of diagnostic output.',
+            default=0,
+            required=False,
+            action='count',
+    )
 
     argv = parser.parse_args(sys.argv[1:])
-    if not argv.cmdr:
-        raise UsageError("No --cmdr specified / no CMDR environment variable")
     dateRe = re.compile(r'^20\d\d-(0\d|1[012])-([012]\d|3[01]) ([01]\d|2[0123]):[0-5]\d:[0-5]\d$')
-    if argv.date and not dateRe.match(argv.date):
+    if not argv.summary:
+        if not argv.cmdr:
+            raise UsageError("No --cmdr specified / no CMDR environment variable")
+        if not argv.refSystem:
+            raise UsageError(
+                "Must specify a reference system name (when not using "
+                "--summary). Be sure to put the name in double quotes, "
+                "e.g. \"SOL\" or \"I BOOTIS\".\n"
+            )
+    if not argv.date:
+        argv.date = DEFAULT_DATE
+    if not dateRe.match(argv.date):
         raise UsageError(
                 "Invalid date: '{}', expecting YYYY-MM-DD HH:MM:SS format."
                 .format(argv.date)
@@ -197,20 +251,20 @@ def add_to_extras(argv, name):
 
 def main():
     argv = parse_arguments()
+    tdenv = tradeenv.TradeEnv(properties=argv)
+    tdb = tradedb.TradeDB(tdenv)
 
-    tdb = tradedb.TradeDB()
-    if not argv.date:
-        argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
-
-    try:
-        argv.startSys = tdb.lookupSystem(argv.refsystem)
-    except (LookupError, tradedb.AmbiguityError):
-        raise UsageError(
-            "Unrecognized system '{}'. Reference System must be an existing "
-            "system that TD already knows about.\n"
-            "Did you forget to put double-quotes around the refsystem name?"
-            .format(argv.refsystem)
-        )
+    if not argv.summary:
+        try:
+            argv.startSys = tdb.lookupSystem(argv.refSystem)
+        except (LookupError, tradedb.AmbiguityError):
+            raise UsageError(
+                "Unrecognized system '{}'. Reference System must be an "
+                "*exact* name for a system that TD already knows.\n"
+                "Did you forget to put double-quotes around the reference "
+                "system name?"
+                .format(argv.refSystem)
+            )
 
     print("start date: {}".format(argv.date))
 
@@ -229,7 +283,6 @@ def main():
 
     date = data['date']
     systems = data['systems']
-    clip = misc.clipboard.SystemNameClip()
 
     print("{} results".format(len(systems)))
     # Filter out systems we already know that match the EDSC data.
@@ -238,24 +291,53 @@ def main():
     ]
     print("{} deltas".format(len(systems)))
 
-    if len(systems) <= 0:
+    if argv.summary or len(systems) <= 0:
         return
 
     if argv.random:
-        random.shuffle(systems)
+        num = min(len(systems), 10)
+        systems = random.sample(systems, num)
+
+    if argv.splash:
+        print(
+            "\n"
+            "===============================================================\n"
+            "\n"
+            " The tool will now take you through the stars returned by EDSC\n"
+            " that are new or different from your local System.csv.\n"
+            "\n"
+            " You will be prompted with the name and predicted distance from\n"
+            " your current system so you can check for mistakes.\n"
+            "\n"
+            " The name will be copied into your clipboard so you can alt-tab\n"
+            " into the game and paste the name into the Galaxy Map's SEARCH\n"
+            " box (under NAVIGATION). Let the map zoom to the system.\n"
+            "\n"
+            " Check the name and distance, then use the appropriate action.\n"
+            "\n"
+            " (Use the -NS option to skip this text in future)\n"
+            "\n"
+            "===============================================================\n"
+            "\n"
+        )
+
+        input("Hit enter to continue: ")
 
     print("""At the prompt enter:
+  q
+      to indicate you've suffered enough,
   y
       to accept the name/value and confirm with EDSC,
-  n
+  n       (or anything else)
       to skip the name/value (no confirmation),
   =name   (e.g. =SOL)
       to accept the distance but correct spelling,
   ~dist   (e.g. ~104.49)
-      to submit a distance correction,
+      to submit a distance correction for the system,
 """)
     print()
 
+    clip = misc.clipboard.SystemNameClip()
     total = len(systems)
     current = 0
     with open("tmp/new.systems.csv", "w") as output:

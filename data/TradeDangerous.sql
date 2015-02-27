@@ -68,6 +68,11 @@ CREATE TABLE Station
        CHECK (blackmarket IN ('?', 'Y', 'N')),
    max_pad_size TEXT(1) NOT NULL DEFAULT '?'
        CHECK (max_pad_size IN ('?', 'S', 'M', 'L')),
+   market TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (market IN ('?', 'Y', 'N')),
+   shipyard TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (shipyard IN ('?', 'Y', 'N')),
+   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    UNIQUE (system_id, name),
 

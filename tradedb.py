@@ -131,7 +131,10 @@ class System(object):
     """
 
     __slots__ = (
-        'ID', 'dbname', 'posX', 'posY', 'posZ', 'stations', '_rangeCache'
+        'ID',
+        'dbname', 'posX', 'posY', 'posZ', 'stations',
+        'addedID',
+        '_rangeCache'
     )
 
     class RangeCache(object):
@@ -142,10 +145,11 @@ class System(object):
             self.systems = []
             self.probedLy = 0.
 
-    def __init__(self, ID, dbname, posX, posY, posZ):
+    def __init__(self, ID, dbname, posX, posY, posZ, addedID):
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
+        self.addedID = addedID or 0
         self.stations = []
         self._rangeCache = None
 
@@ -259,19 +263,21 @@ class Station(object):
     """
     __slots__ = (
         'ID', 'system', 'dbname',
-        'lsFromStar', 'blackMarket', 'maxPadSize',
+        'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
         'tradingWith', 'itemCount',
         'dataAge',
     )
 
     def __init__(
             self, ID, system, dbname,
-            lsFromStar, blackMarket, maxPadSize,
+            lsFromStar, market, blackMarket, shipyard, maxPadSize,
             itemCount, dataAge,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = int(lsFromStar)
+        self.market = market
         self.blackMarket = blackMarket
+        self.shipyard = shipyard
         self.maxPadSize = maxPadSize
         self.itemCount = itemCount
         # dict[tradingPartnerStation] -> [ available trades ]
@@ -326,12 +332,15 @@ class Station(object):
                 return "Unk"
             else:
                 return '?'
-        if ls < 4000:
+        if ls < 1000:
             suffix = 'ls' if addSuffix else ''
             return '{:n}'.format(ls)+suffix
-        if ls < 40000:
+        if ls < 10000:
             suffix = 'ls' if addSuffix else ''
-            return '{:.1f}K'.format(ls / 1000)+suffix
+            return '{:.2f}K'.format(ls / 1000)+suffix
+        if ls < 1000000:
+            suffix = 'ls' if addSuffix else ''
+            return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
     def str(self):
@@ -655,6 +664,31 @@ class TradeDB(object):
         cache.buildCache(self, self.tdenv)
 
     ############################################################
+    # Load "added" data.
+
+    def _loadAdded(self):
+        """
+        Loads the Added table as a simple dictionary
+        """
+        stmt = """
+            SELECT added_id, name
+              FROM Added
+        """
+        self.cur.execute(stmt)
+        addedByID = {}
+        for ID, name in self.cur:
+            addedByID[ID] = name
+        self.addedByID = addedByID
+        self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
+
+    def lookupAdded(self, name):
+        name = name.lower()
+        for ID, added in self.addedByID.items():
+            if added.lower() == name:
+                return ID
+        raise KeyError(name)
+
+    ############################################################
     # Star system data.
 
     def systems(self):
@@ -667,13 +701,15 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-                SELECT system_id, name, pos_x, pos_y, pos_z
+                SELECT system_id,
+                       name, pos_x, pos_y, pos_z,
+                       added_id
                   FROM System
             """
         self.cur.execute(stmt)
         systemByID, systemByName = {}, {}
-        for (ID, name, posX, posY, posZ) in self.cur:
-            system = System(ID, name, posX, posY, posZ)
+        for (ID, name, posX, posY, posZ, addedID) in self.cur:
+            system = System(ID, name, posX, posY, posZ, addedID)
             systemByID[ID] = systemByName[name.upper()] = system
 
         self.systemByID, self.systemByName = systemByID, systemByName
@@ -711,7 +747,7 @@ class TradeDB(object):
             name, x, y, z, added, modified,
         ])
         ID = cur.lastrowid
-        system = System(ID, name.upper(), x, y, z)
+        system = System(ID, name.upper(), x, y, z, 0)
         self.systemByID[ID] = system
         self.systemByName[system.dbname] = system
         db.commit()
@@ -751,7 +787,8 @@ class TradeDB(object):
         db.commit()
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}, {}, {}, {}, {}, {}",
-            oldname, system.ID, self.dbPath,
+            oldname, system.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
             dbname,
             x, y, z,
             added, modified,
@@ -1018,7 +1055,11 @@ class TradeDB(object):
         """
         stmt = """
             SELECT  station_id, system_id, name,
-                    ls_from_star, blackmarket, max_pad_size,
+                    ls_from_star,
+                    market,
+                    blackmarket,
+                    shipyard,
+                    max_pad_size,
                     COUNT(StationItem.station_id) AS itemCount,
                     JULIANDAY('now') - JULIANDAY(MAX(StationItem.modified))
               FROM  Station
@@ -1031,12 +1072,12 @@ class TradeDB(object):
         self.tradingStationCount = 0
         for (
             ID, systemID, name,
-            lsFromStar, blackMarket, maxPadSize,
+            lsFromStar, market, blackMarket, shipyard, maxPadSize,
             itemCount, dataAge
         ) in self.cur:
             station = Station(
                 ID, systemByID[systemID], name,
-                lsFromStar, blackMarket, maxPadSize,
+                lsFromStar, market, blackMarket, shipyard, maxPadSize,
                 itemCount, dataAge
             )
             if itemCount > 0:
@@ -1051,26 +1092,36 @@ class TradeDB(object):
             self,
             system,
             name,
-            lsFromStar,
-            blackMarket,
-            maxPadSize,
+            lsFromStar=0,
+            market='?',
+            blackMarket='?',
+            shipyard='?',
+            maxPadSize='?',
+            modified='now',
             ):
         """
         Add a station to the local cache and memory copy.
         """
 
+        market = market.upper()
         blackMarket = blackMarket.upper()
+        shipyard = shipyard.upper()
         maxPadSize = maxPadSize.upper()
+        assert market in "?YN"
         assert blackMarket in "?YN"
+        assert shipyard in "?YN"
         assert maxPadSize in "?SML"
 
         self.tdenv.DEBUG0(
-            "Adding {}/{} ls={}, bm={}, pad={}",
+            "Adding {}/{} ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
             system.name(),
             name,
             lsFromStar,
+            market,
             blackMarket,
-            maxPadSize
+            shipyard,
+            maxPadSize,
+            modified,
         )
 
         db = self.getDB()
@@ -1078,30 +1129,37 @@ class TradeDB(object):
         cur.execute("""
             INSERT INTO Station (
                 name, system_id,
-                ls_from_star, blackmarket, max_pad_size
+                ls_from_star, market, blackmarket, shipyard, max_pad_size,
+                modified
             ) VALUES (
                 ?, ?,
-                ?, ?, ?
+                ?, ?, ?, ?, ?,
+                DATETIME(?)
             )
         """, [
             name, system.ID,
-            lsFromStar, blackMarket.upper(), maxPadSize.upper(),
+            lsFromStar, market, blackMarket, shipyard, maxPadSize,
+            modified,
         ])
         ID = cur.lastrowid
         station = Station(
             ID, system, name,
             lsFromStar=lsFromStar,
+            market=market,
             blackMarket=blackMarket,
+            shipyard=shipyard,
             maxPadSize=maxPadSize,
             itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
         db.commit()
         self.tdenv.NOTE(
-            "{} (#{}) added to {} db: "
-            "ls={}, bm={}, pad={}",
-            station.name(), station.ID, self.dbPath,
-            lsFromStar, blackMarket, maxPadSize,
+            "{} (#{}) added to {}: "
+            "ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
+            station.name(), station.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
+            lsFromStar, market, blackMarket, shipyard, maxPadSize,
+            modified,
         )
         return station
 
@@ -1109,51 +1167,66 @@ class TradeDB(object):
             self, station,
             name=None,
             lsFromStar=None,
+            market=None,
             blackMarket=None,
+            shipyard=None,
             maxPadSize=None,
+            modified='now',
             force=False,
             ):
         """
         Alter the properties of a station in-memory and in the DB.
         """
-        changes = False
+        changes = []
+
+        def _changed(label, old, new):
+            changes.append(
+                "{}('{}'=>'{}')".format(label, old, new)
+            )
 
         if name is not None:
-            if name != station.dbname or force:
+            if force or name.upper() != station.dbname.upper():
+                _changed("name", station.dbname, name)
                 station.dbname = name
-                changes = True
-        else:
-            name = station.dbname
 
         if lsFromStar is not None:
             assert lsFromStar >= 0
             if lsFromStar != station.lsFromStar:
                 if lsFromStar > 0 or force:
+                    _changed("ls", station.lsFromStar, lsFromStar)
                     station.lsFromStar = lsFromStar
-                    changes = True
-        else:
-            lsFromStar = station.lsFromStar
 
+        if market is not None:
+            market = market.upper()
+            assert market in TradeDB.marketStates
+            if market != station.market:
+                if market != '?' or force:
+                    _changed("mkt", station.market, market)
+                    station.market = market
 
         if blackMarket is not None:
             blackMarket = blackMarket.upper()
             assert blackMarket in TradeDB.marketStates
             if blackMarket != station.blackMarket:
                 if blackMarket != '?' or force:
+                    _changed("blkmkt", station.blackMarket, blackMarket)
                     station.blackMarket = blackMarket
-                    changes = True
-        else:
-            blackMarket = station.blackMarket
+
+        if shipyard is not None:
+            shipyard = shipyard.upper()
+            assert shipyard in TradeDB.marketStates
+            if shipyard != station.shipyard:
+                if shipyard != '?' or force:
+                    _changed("shipyd", station.shipyard, shipyard)
+                    station.shipyard = shipyard
 
         if maxPadSize is not None:
             maxPadSize = maxPadSize.upper()
             assert maxPadSize in TradeDB.padSizes
             if maxPadSize != station.maxPadSize:
                 if maxPadSize != '?' or force:
+                    _changed("pad", station.maxPadSize, maxPadSize)
                     station.maxPadSize = maxPadSize
-                    changes = True
-        else:
-            maxPadSize = station.maxPadSize
 
         if not changes:
             return False
@@ -1161,24 +1234,31 @@ class TradeDB(object):
         db = self.getDB()
         db.execute("""
             UPDATE Station
-               SET ls_from_star=?,
+               SET name=?,
+                   ls_from_star=?,
+                   market=?,
                    blackmarket=?,
-                   max_pad_size=?
+                   shipyard=?,
+                   max_pad_size=?,
+                   modified=DATETIME(?)
              WHERE station_id = ?
         """, [
+            station.dbname,
             station.lsFromStar,
+            station.market,
             station.blackMarket,
+            station.shipyard,
             station.maxPadSize,
+            modified,
             station.ID
         ])
         db.commit()
 
         self.tdenv.NOTE(
-            "{} (#{}) updated in {}: ls={}, bm={}, pad={}",
-            station.name(), station.ID, self.dbPath,
-            station.lsFromStar,
-            station.blackMarket,
-            station.maxPadSize,
+            "{} (#{}) updated in {}: {}",
+            station.name(), station.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
+            ", ".join(changes)
         )
 
         return True
@@ -1852,7 +1932,7 @@ class TradeDB(object):
         self.conn = conn = self.getDB()
         self.cur = conn.cursor()
 
-        # Load raw tables.
+        self._loadAdded()
         self._loadSystems()
         self._loadStations()
         self._loadShips()

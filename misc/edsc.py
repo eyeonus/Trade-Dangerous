@@ -27,10 +27,36 @@ except ImportError as e:
     import requests
 
 
-class StarQuery(object):
-    url = 'http://edstarcoordinator.com/api.asmx/GetSystems'
+def edsc_log(apiCall, params, jsonData=None, error=None):
+    """
+    Logs an EDSC query and it's response to tmp/edsc.log
+    """
+    try:
+        with open("tmp/edsc.log", "a") as fh:
+            print('-'*70, file=fh)
+            print("API:", apiCall, file=fh)
+            print("REQ:", str(params), file=fh)
+            if jsonData:
+                print("REP:", json.dumps(jsonData, indent=1), file=fh)
+            if error:
+                print("ERR:", error)
+            print(file=fh)
+    except FileNotFoundError:
+        pass
+
+
+class EDSCQueryBase(object):
+    """
+    Base class for creating an EDSC Query class, do not use directly.
+
+    Derived class must declare "apiCall" which is appended to baseURL
+    to form the query URL.
+    """
+
+    baseURL = "http://edstarcoordinator.com/api.asmx/"
 
     def __init__(self, detail=2, test=False, known=1, confidence=0, **kwargs):
+        self.url = self.baseURL + self.apiCall
         self.params = {
             'data': {
                 'ver': 2,
@@ -50,7 +76,7 @@ class StarQuery(object):
 
     def fetch(self):
         params = json.dumps(self.params).encode('utf-8')
-        request = Request(StarQuery.url, params, {
+        request = Request(self.url, params, {
                     'Content-Type': 'application/json;charset=utf-8',
                     'Content-Length': len(params)
                 })
@@ -62,7 +88,23 @@ class StarQuery(object):
         inputNo = 0
         self.status = data['status']['input'][inputNo]['status']
 
+        edsc_log(self.apiCall, self.params, data)
+
         return data
+
+
+class StarQuery(EDSCQueryBase):
+    """
+    Query EDSC Systems.
+    """
+    apiCall = "GetSystems"
+
+
+class DistanceQuery(EDSCQueryBase):
+    """
+    Request distances from EDSC.
+    """
+    apiCall = "GetDistances"
 
 
 class SubmissionError(Exception):
@@ -119,6 +161,7 @@ class StarSubmissionResult(object):
     codeMap = {
         201:        "New Entry",
         202:        "System CR increased",
+        203:        "Coordinates calculated",
         301:        "Distance added",
         302:        "Distance CR increased",
         303:        "Added verification",
@@ -164,7 +207,7 @@ class StarSubmissionResult(object):
             sysName = ent['system'].upper()
             code = int(ent['status']['statusnum'])
             msg = ent['status']['msg']
-            if code in [201, 202]:
+            if code in [201, 202, 203]:
                 self.systems[sysName] = (code, None)
             else:
                 self.errors.append(Status(
@@ -293,7 +336,8 @@ class StarSubmissionResult(object):
 
 
 class StarSubmission(object):
-    url = "http://edstarcoordinator.com/api.asmx/SubmitDistances"
+    baseURL = "http://edstarcoordinator.com/api.asmx/"
+    apiCall = "SubmitDistances"
 
     def __init__(
             self, star,
@@ -347,33 +391,37 @@ class StarSubmission(object):
             },
         }
         if self.commander:
-            data['commander'] = self.commander
+            data['data']['commander'] = self.commander
 
         jsonData = json.dumps(data, indent=None, separators=(',', ':'))
 
+        url = self.baseURL + self.apiCall
         req = requests.post(
-            self.url,
+            url,
             headers=headers,
             data=jsonData
         )
         resp = req.text
         if not resp.startswith('{'):
+            edsc_log(self.apiCall, data, error=resp)
             raise SubmissionError("Server Side Error: " + resp)
 
         try:
             respData = json.loads(resp)
         except Exception:
+            edsc_log(self.apiCall, data, error=resp)
             raise SubmissionError("Invalid server response: " + resp)
+        edsc_log(self.apiCall, data, respData)
         try:
-            data = respData['d']
+            innerData = respData['d']
         except KeyError:
             raise SubmissionError("Server Error: " + resp)
 
-        return data
+        return innerData
 
 if __name__ == "__main__":
-    print("Requesting recent, non-test, cr >= 2 stars")
-    edsq = StarQuery(test=False, confidence=2)
+    print("Requesting recent, non-test, coords-known, cr >= 2 stars")
+    edsq = StarQuery(test=False, confidence=2, known=1)
     data = edsq.fetch()
 
     if edsq.status['statusnum'] != 0:
