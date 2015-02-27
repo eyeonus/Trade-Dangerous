@@ -2,6 +2,18 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.12.1 Feb 25 2015
+. (kfsone) "buy" command:
+  - now accepts multiple arguments (e.g. explosives,clothing),
+  - new "--one-stop" (-1) option only shows stations that carry the full list,
+  - mixing ships and items is not allowed,
+   e.g.
+     trade.py buy food clothing fish
+     trade.py buy --near achenar fish,food,grain --one-stop
+     trade.py buy --near achenar --ly 100 type6,type7 --one-stop
+     trade.py buy --near achenar --ly 100 type6,type7 -1
+. (kfsone) "submit-distances" now has proper argument parsing, see --help
+
 v6.12.0 Feb 23 2015
 . (kfsone) Added "market", "shipyard" and "modified" values to Station table
 . (kfsone) "submit-distances" now has proper argument parsing, see --help

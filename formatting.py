@@ -164,6 +164,8 @@ class RowFormat(object):
     def format(self, rowData):
         return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
 
+def max_len(iterable, key=lambda item: item):
+    return max(len(key(item)) for item in iterable)
 
 if __name__ == '__main__':
     rowFmt = RowFormat(). \
