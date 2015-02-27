@@ -213,7 +213,7 @@ RUN sub-command:
        How many credits to start with
        e.g.
          --credits 20000
-
+       
      --ly-per N.NN
      --ly N.NN
        Maximum distance your ship can jump between systems at full capacity.
@@ -272,18 +272,6 @@ RUN sub-command:
        e.g.
          --from iBootis --to LiuBese
 
-     --start-jumps N
-     -s N
-       Considers stations from systems upto this many jumps from your
-       specified start location.
-         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
-
-     --end-jumps N
-     -e N
-       Considers stations from systems upto this many jumps from your
-       specified destination (--to).
-         --to lave -e 3      (find runs that end within 3 jumps of lave)
-
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
        Requires that hops be at least 2.
@@ -303,6 +291,24 @@ RUN sub-command:
        Limit the number of systems jumped to between each station
        e.g.
          -jumps-per 5
+
+     --direct
+       Assumes a single hop and doesn't worry about travel between
+       source and destination.
+       e.g.
+         --from achenar --to lave --direct
+
+     --start-jumps N
+     -s N
+       Considers stations from systems upto this many jumps from your
+       specified start location.
+         --from beagle2 --ly-per 7.56 --empty 10.56 -s 2
+
+     --end-jumps N
+     -e N
+       Considers stations from systems upto this many jumps from your
+       specified destination (--to).
+         --to lave -e 3      (find runs that end within 3 jumps of lave)
 
 
    Filter options:

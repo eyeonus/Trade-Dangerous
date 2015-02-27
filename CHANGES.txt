@@ -2,6 +2,15 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.12.2 Feb 26 2015
+. (kfsone) "run" command:
+  - added "--direct" option:
+    - only allows 1 hop,
+    - --jumps and --ly-per are ignored entirely,
+    - ignores route/distance between stations,
+   e.g.
+     trade.py run --from achenar --to lave --cap 50 --cr 100000 --direct
+
 v6.12.1 Feb 26 2015
 . (kfsone) "buy" command:
   - now accepts multiple arguments (e.g. explosives,clothing),
