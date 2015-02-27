@@ -264,7 +264,7 @@ def run(results, cmdenv, tdb):
             raise NoDataError("No one-stop stations found")
         raise NoDataError("No available items found")
 
-    if oneStopMode and singleMode:
+    if oneStopMode and not singleMode:
         results.rows.sort(key=lambda result: result.item.name())
     results.rows.sort(key=lambda result: result.station.name())
     if cmdenv.sortByStock:
