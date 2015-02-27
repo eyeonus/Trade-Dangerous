@@ -492,7 +492,8 @@ def filterStationSet(src, cmdenv, stnList):
     if not stnList:
         return stnList
     filtered = [
-        place for place in stnList if checkStationSuitability(cmdenv, place)
+        place for place in stnList
+        if isinstance(place, System) or checkStationSuitability(cmdenv, place)
     ]
     if not stnList:
         raise CommandLineError(
