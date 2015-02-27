@@ -2,8 +2,42 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-[wip]
+v6.12.2 Feb 26 2015
+. (kfsone) "run" command:
+  - added "--direct" option:
+    - only allows 1 hop,
+    - --jumps and --ly-per are ignored entirely,
+    - ignores route/distance between stations,
+   e.g.
+     trade.py run --from achenar --to lave --cap 50 --cr 100000 --direct
+
+v6.12.1 Feb 26 2015
+. (kfsone) "buy" command:
+  - now accepts multiple arguments (e.g. explosives,clothing),
+  - new "--one-stop" (-1) option only shows stations that carry the full list,
+  - mixing ships and items is not allowed,
+   e.g.
+     trade.py buy food clothing fish
+     trade.py buy --near achenar fish,food,grain --one-stop
+     trade.py buy --near achenar --ly 100 type6,type7 --one-stop
+     trade.py buy --near achenar --ly 100 type6,type7 -1
+
+v6.12.0 Feb 23 2015
+. (kfsone) Added "market", "shipyard" and "modified" values to Station table
+. (kfsone) "submit-distances" now has proper argument parsing, see --help
+
+v6.11.0 Feb 21 2015
+. (kfsone) Added "market" command for viewing station buy/sell list
+   e.g. trade.py market ramoncity --buy --sell -vv
+. (kfsone) Lots of improvements to edscupdate.py;
+   - added --random, checks 10 random new systems,
+   - added --conf N for changing the confidence rating,
+   - added --detail (-v) and --debug (-w),
+   - added --summary
+   - added --test (use the EDSC test database),
+   - added explanatory "splash" text (--no-splash or -NS to skip),
 . (kfsone) Allow a cache rebuild at the start of a mad import
++ (kfsone, maddavo) Lots of Systems and Stations
 
 v6.10.0 Feb 14 2015
 . (kfsone) Major changes to the 'maddavo' plugin:

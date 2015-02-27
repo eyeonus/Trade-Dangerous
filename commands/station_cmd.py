@@ -58,6 +58,20 @@ switches = [
         dest='blackMarket',
     ),
     ParseArgument(
+        '--market',
+        help='Does the station have a commodities market (Y or N), ? for unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+        default='?',
+        dest='market',
+    ),
+    ParseArgument(
+        '--shipyard',
+        help='Does the station have a shipyard (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+        default='?',
+        dest='shipyard',
+    ),
+    ParseArgument(
         '--pad-size',
         help='Maximum supported pad size (S, M, or L) or ? if unknown.',
         choices=['S', 's', 'M', 'm', 'L', 'l', '?'],
@@ -223,7 +237,9 @@ def addStation(tdb, cmdenv, system, stationName):
             system=system,
             name=stationName,
             lsFromStar=cmdenv.lsFromStar,
+            market=cmdenv.market,
             blackMarket=cmdenv.blackMarket,
+            shipyard=cmdenv.shipyard,
             maxPadSize=cmdenv.padSize,
     )
 
@@ -232,7 +248,9 @@ def updateStation(tdb, cmdenv, station):
     return tdb.updateLocalStation(
             station=station,
             lsFromStar=cmdenv.lsFromStar,
+            market=cmdenv.market,
             blackMarket=cmdenv.blackMarket,
+            shipyard=cmdenv.shipyard,
             maxPadSize=cmdenv.padSize,
     )
 
@@ -389,9 +407,15 @@ def render(results, cmdenv, tdb):
     ls = station.distFromStar()
     if cmdenv.detail and ls == '?':
         ls = '0 [unknown]'
+    mkt = TradeDB.marketStates[station.market]
+    if cmdenv.detail and mkt == '?':
+        mkt += ' [unknown]'
     bm = TradeDB.marketStates[station.blackMarket]
     if cmdenv.detail and bm == '?':
         bm += ' [unknown]'
+    shipyard = TradeDB.marketStates[station.shipyard]
+    if cmdenv.detail and shipyard == '?':
+        shipyard += ' [unknown]'
     pad = TradeDB.padSizes[station.maxPadSize]
     if cmdenv.detail and pad == '?':
         pad += ' [unknown]'
@@ -401,7 +425,9 @@ System....: {sysname} (#{sysid} @ {sysx},{sysy},{sysz})
 Station...: {stnname} (#{stnid})
 Neighbors.: {siblings}
 Stn/Ls....: {lsdist}
+Market....: {mkt}
 B/Market..: {bm}
+Shipyard..: {yard}
 Pad Size..: {pad}
 Prices....: {icount}
 Price Age.: {prage}
@@ -416,7 +442,9 @@ Best Sale.: {bestsell}
             sysz=system.posZ,
             stnid=station.ID,
             lsdist=ls,
+            mkt=mkt,
             bm=bm,
+            yard=shipyard,
             pad=pad,
             icount=station.itemCount,
             prage=pricesAge,

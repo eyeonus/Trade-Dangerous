@@ -6,8 +6,6 @@
 emptySystems = True
 # Set to True to allow export of stations that don't have prices
 emptyStations = True
-# Positions should be xferred as whole multiples of this
-posMultiplier = 32
 
 import sqlite3
 import json
@@ -36,7 +34,6 @@ def collectItemData(db):
 def collectSystems(
             db,
             itemIdx,
-            posMult=None,
             withEmptySystems=False,
             withStations=True,
             withEmptyStations=False,
@@ -70,10 +67,6 @@ def collectSystems(
                         USING (system_id)
             GROUP  BY 1
             """):
-        if posMult:
-            posX = int(posX * posMult)
-            posY = int(posY * posMult)
-            posZ = int(posZ * posMult)
         systemData = {
                  'pos': [ posX, posY, posZ ],
         }
@@ -163,12 +156,10 @@ def collectPriceData(db, itemIdx, stnID):
 itemData, itemIdx = collectItemData(conn)
 sysData = collectSystems(
         conn, itemIdx,
-        posMult=posMultiplier,
         withEmptySystems=emptySystems, withEmptyStations=emptyStations
 )
 jsonData = {
     'src': 'td/json-exp',
-    'posMult': posMultiplier,
     'time': int(time.time()),
     'items': itemData,
     'emptySys': emptySystems,

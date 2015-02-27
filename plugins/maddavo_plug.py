@@ -247,13 +247,19 @@ class ImportPlugin(plugins.ImportPluginBase):
             lsFromStar = int(values[2])
             blackMarket = values[3]
             maxPadSize = values[4]
+            market = values[5] if len(values) > 4 else '?'
+            shipyard = values[6] if len(values) > 5 else '?'
+            modified = values[7] if len(values) > 6 else 'now'
             if station:
                 if tdb.updateLocalStation(
                         station,
                         name=stnName,
                         lsFromStar=lsFromStar,
+                        market=market,
                         blackMarket=blackMarket,
+                        shipyard=shipyard,
                         maxPadSize=maxPadSize,
+                        modified=modified,
                         ):
                     self.newStations += 1
             else:
@@ -261,8 +267,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                     system=system,
                     name=stnName,
                     lsFromStar=lsFromStar,
+                    market=market,
                     blackMarket=blackMarket,
+                    shipyard=shipyard,
                     maxPadSize=maxPadSize,
+                    modified=modified,
                 )
                 self.newStations += 1
 
@@ -335,11 +344,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         use2d = 1 if self.getOption("use2d") else 0
         usefull = 1 if self.getOption("usefull") else 0
         if use3h + use2d + usefull > 1:
-            raise PluginError(
+            raise PluginException(
                 "Only one of use3h/use2d/usefull can be used at once."
             )
         if (use3h or use2d or usefull) and skipDownload:
-            raise PluginError(
+            raise PluginException(
                 "use3h/use2d/usefull has no effect with --opt=skipdl"
             )
         if use3h:
