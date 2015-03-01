@@ -132,9 +132,9 @@ def render(results, cmdenv, tdb):
             ),
             key=lambda row: row.distFromStar()
         )
-        maxLsLen = max(maxLsLen, 6)
+        maxLsLen = max(maxLsLen, 5)
         stnRowFmt = RowFormat(prefix='  /  ').append(
-                ColumnFormat("Station", '<', maxStnLen,
+                ColumnFormat("Station", '<', maxStnLen + 1,
                     key=lambda row: row.station.str())
         ).append(
                 ColumnFormat("StnLs", '>', maxLsLen,
