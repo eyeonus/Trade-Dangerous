@@ -7,6 +7,8 @@ from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB, System, Station, describeAge
 from tradecalc import TradeCalc, Route
 
+import math
+
 ######################################################################
 # Parser config
 
@@ -29,19 +31,19 @@ arguments = [
 ]
 
 switches = [
-    ParseArgument('--from',
+    ParseArgument('--from', '-f',
             help='Starting system/station.',
             dest='starting',
             metavar='STATION',
         ),
     MutuallyExclusiveGroup(
-        ParseArgument('--to',
+        ParseArgument('--to', '-t',
                 help='Final system/station.',
                 dest='ending',
                 metavar='PLACE',
                 default=None,
         ),
-        ParseArgument('--towards',
+        ParseArgument('--towards', '-T',
                 help=(
                     'Choose a route that continually reduces the '
                     'distance towards this system.'
@@ -228,9 +230,20 @@ class Checklist(object):
     def doStep(self, action, detail=None, extra=None):
         self.stepNo += 1
         try:
-            self.mfd.display("#{} {}".format(self.stepNo, action), detail or "", extra or "")
-        except AttributeError: pass
-        input("   {:<3}: {}: ".format(self.stepNo, " ".join([item for item in [action, detail, extra] if item])))
+            self.mfd.display(
+                "#{} {}".format(self.stepNo, action),
+                detail or "",
+                extra or ""
+            )
+        except AttributeError:
+            pass
+        input(
+            "   {:<3}: {}: "
+            .format(
+                self.stepNo,
+                " ".join(item for item in [action, detail, extra] if item)
+            )
+        )
 
 
     def note(self, str, addBreak=True):
@@ -255,7 +268,11 @@ class Checklist(object):
         for idx in range(lastHopIdx):
             hopNo = idx + 1
             cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
-            sortedTradeOptions = sorted(hop[0], key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr, reverse=True)
+            sortedTradeOptions = sorted(
+                hop[0],
+                key=lambda tradeOption: \
+                    tradeOption[1] * tradeOption[0].gainCr, reverse=True
+            )
 
             # Tell them what they need to buy.
             if cmdenv.detail:
@@ -275,7 +292,12 @@ class Checklist(object):
             print()
 
             # If there is a next hop, describe how to get there.
-            self.note("Fly {}".format(" -> ".join([ jump.name() for jump in jumps[idx] ])))
+            self.note(
+                "Fly {}"
+                .format(
+                    " -> ".join(jump.name() for jump in jumps[idx])
+                )
+            )
             if idx < len(hops) and jumps[idx]:
                 for jump in jumps[idx][1:]:
                     self.doStep('Jump to', jump.name())
@@ -430,6 +452,20 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 
 def checkStationSuitability(cmdenv, station, src=None):
+    if station in cmdenv.avoidPlaces:
+        if src and src != "--from":
+            raise CommandLineError(
+                "{} station {} is marked to avoid"
+                .format(src, station.name())
+            )
+        return False
+    if station.system in cmdenv.avoidPlaces:
+        if src and src != "--from":
+            raise CommandLineError(
+                "{} station {} is in system listed in --avoid"
+                .format(src, station.name())
+            )
+        return False
     if station.market == 'N':
         if src:
             raise CommandLineError(
@@ -503,30 +539,7 @@ def filterStationSet(src, cmdenv, stnList):
     return stnList
 
 
-def validateRunArguments(tdb, cmdenv):
-    """
-        Process arguments to the 'run' option.
-    """
-
-    if cmdenv.credits < 0:
-        raise CommandLineError("Invalid (negative) value for initial credits")
-    # I'm going to allow 0 credits as a future way of saying "just fly"
-
-    if cmdenv.routes < 1:
-        raise CommandLineError("Maximum routes has to be 1 or higher")
-    if cmdenv.routes > 1 and cmdenv.checklist:
-        raise CommandLineError("Checklist can only be applied to a single route.")
-
-    if cmdenv.hops < 1:
-        raise CommandLineError("Minimum of 1 hop required")
-    if cmdenv.hops > 32:
-        raise CommandLineError("Too many hops without more optimization")
-
-    if cmdenv.maxJumpsPer < 0:
-        raise CommandLineError("Negative jumps: you're already there?")
-    if cmdenv.direct:
-        cmdenv.hops = 1
-
+def checkOrigins(tdb, cmdenv):
     if cmdenv.origPlace:
         if isinstance(cmdenv.origPlace, System):
             cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
@@ -565,6 +578,15 @@ def validateRunArguments(tdb, cmdenv):
         if cmdenv.startJumps:
             raise CommandLineError("--start-jumps (-s) only works with --from")
 
+    if isinstance(cmdenv.origPlace, System) and not cmdenv.startJumps:
+        cmdenv.origins = filterStationSet('--from', cmdenv, cmdenv.origins)
+
+    cmdenv.origSystems = set(
+        stn.system for stn in cmdenv.origins
+    )
+
+
+def checkDestinations(tdb, cmdenv):
     cmdenv.destinations = None
     if cmdenv.destPlace:
         if isinstance(cmdenv.destPlace, Station):
@@ -597,64 +619,54 @@ def validateRunArguments(tdb, cmdenv):
                 raise CommandLineError("--towards requires --from")
             dest = tdb.lookupPlace(cmdenv.goalSystem)
             cmdenv.goalSystem = dest.system
+
+        if cmdenv.origPlace and cmdenv.maxJumpsPer == 0:
+            stations = chain.from_iterable(
+                system.stations for system in cmdenv.origSystems
+            )
+        else:
+            stationSrc = tdb.stationByID.values()
+
         cmdenv.destinations = [
             station
-            for station in tdb.stationByID.values()
+            for station in stationSrc
             if checkStationSuitability(cmdenv, station)
         ]
 
-    origins, destns = cmdenv.origins or [], cmdenv.destinations or []
+    if isinstance(cmdenv.destPlace, System) and not cmdenv.endJumps:
+        cmdenv.destinations = filterStationSet(
+            '--to',
+            cmdenv,
+            cmdenv.destinations
+        )
 
-    if cmdenv.hops == 1 and len(origins) == 1 and len(destns) == 1:
-        if origins == destns:
-            raise CommandLineError("Same to/from; more than one hop required.")
+    cmdenv.destSystems = set(
+        stn.system for stn in cmdenv.destinations
+    )
 
-    viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
-    cmdenv.DEBUG0("Via: {}", viaSet)
-    viaSystems = set()
-    for place in viaSet:
-        if isinstance(place, Station):
-            if not place.itemCount:
-                raise NoDataError(
-                            "No price data available for via station {}.".format(
-                                place.name()
-                        ))
-            viaSystems.add(place.system)
-        else:
-            viaSystems.add(place)
+def validateRunArguments(tdb, cmdenv):
+    """
+        Process arguments to the 'run' option.
+    """
 
-    checkAnchorNotInVia(cmdenv.hops, "--from", cmdenv.origPlace, viaSet)
-    checkAnchorNotInVia(cmdenv.hops, "--to", cmdenv.destPlace, viaSet)
+    if cmdenv.credits < 0:
+        raise CommandLineError("Invalid (negative) value for initial credits")
+    # I'm going to allow 0 credits as a future way of saying "just fly"
 
-    avoids = cmdenv.avoidPlaces or []
-    for via in viaSet:
-        if isinstance(via, Station):
-            conflict = (via in avoids or via.system in avoids)
-        else:
-            conflict = (via in avoids)
-        if conflict:
-            raise CommandLineError(
-                    "Via {} conflicts with avoid list".format(
-                        via
-            ))
+    if cmdenv.routes < 1:
+        raise CommandLineError("Maximum routes has to be 1 or higher")
+    if cmdenv.routes > 1 and cmdenv.checklist:
+        raise CommandLineError("Checklist can only be applied to a single route.")
 
-    # How many of the hops do not have pre-determined stations. For example,
-    # when the user uses "--from", they pre-determine the starting station.
-    fixedRoutePoints = 0
-    if cmdenv.origPlace:
-        fixedRoutePoints += 1
-    if cmdenv.destPlace:
-        fixedRoutePoints += 1
-    totalRoutePoints = cmdenv.hops + 1
-    adhocRoutePoints = totalRoutePoints - fixedRoutePoints
-    if len(viaSystems) > adhocRoutePoints:
-        raise CommandLineError(
-                "Route is not long enough for the list of '--via' "
-                "destinations you gave. Reduce the vias or try again "
-                "with '--hops {}' or greater.\n".format(
-                    len(viaSet) + fixedRoutePoints - 1
-                ))
-    cmdenv.adhocHops = adhocRoutePoints - 1
+    if cmdenv.hops < 1:
+        raise CommandLineError("Minimum of 1 hop required")
+    if cmdenv.hops > 32:
+        raise CommandLineError("Too many hops without more optimization")
+
+    if cmdenv.maxJumpsPer < 0:
+        raise CommandLineError("Negative jumps: you're already there?")
+    if cmdenv.direct:
+        cmdenv.hops = 1
 
     if cmdenv.capacity is None:
         raise CommandLineError("Missing '--capacity'")
@@ -676,15 +688,67 @@ def validateRunArguments(tdb, cmdenv):
     if cmdenv.insurance and cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
         raise CommandLineError("Insurance leaves no margin for trade")
 
-    # Filter from, via and to stations based on additional user criteria:
-    if not isinstance(cmdenv.origPlace, Station) and not cmdenv.startJumps:
-        cmdenv.origins = filterStationSet('--from', cmdenv, cmdenv.origins)
-    if not isinstance(cmdenv.destPlace, Station) and not cmdenv.endJumps:
-        cmdenv.destinations = filterStationSet('--to', cmdenv, cmdenv.destinations)
+    checkOrigins(tdb, cmdenv)
+
+    checkDestinations(tdb, cmdenv)
+
+    # If they're going --from and --to single systems, and they have
+    # specified zero jumps then it's futile to try anything.
+    if cmdenv.jumps == 0:
+        if len(cmdenv.origSystems) == 1 and len(cmdenv.destSystems) == 1:
+            raise CommandLineError(
+                "Could not find any connections that didn't require at least "
+                "one jump and --jumps 0 specified."
+            )
+
+    origins, destns = cmdenv.origins or [], cmdenv.destinations or []
+
+    if cmdenv.hops == 1 and len(origins) == 1 and len(destns) == 1:
+        if origins == destns:
+            raise CommandLineError("Same to/from; more than one hop required.")
+
+    avoidSet = set(cmdenv.avoidPlaces or [])
+    viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
+    cmdenv.DEBUG0("Via: {}", viaSet)
+    viaSystems = set()
+    for place in viaSet:
+        if place in avoidSet or place.system in avoidSet:
+            raise CommandLineError(
+                '"--via {}" conflicts with --avoid'
+                .format(place.name())
+            )
+        if isinstance(place, Station):
+            viaSystems.add(place.system)
+        else:
+            viaSystems.add(place)
+
     cmdenv.viaSet = filterStationSet('--via', cmdenv, cmdenv.viaSet)
 
+    checkAnchorNotInVia(cmdenv.hops, "--from", cmdenv.origPlace, viaSet)
+    checkAnchorNotInVia(cmdenv.hops, "--to", cmdenv.destPlace, viaSet)
+
+    # How many of the hops do not have pre-determined stations. For example,
+    # when the user uses "--from", they pre-determine the starting station.
+    fixedRoutePoints = 0
+    if cmdenv.origPlace:
+        fixedRoutePoints += 1
+    if cmdenv.destPlace:
+        fixedRoutePoints += 1
+    totalRoutePoints = cmdenv.hops + 1
+    adhocRoutePoints = totalRoutePoints - fixedRoutePoints
+    if len(viaSystems) > adhocRoutePoints:
+        raise CommandLineError(
+                "Route is not long enough for the list of '--via' "
+                "destinations you gave. Reduce the vias or try again "
+                "with '--hops {}' or greater.\n".format(
+                    len(viaSet) + fixedRoutePoints - 1
+                ))
+    cmdenv.adhocHops = adhocRoutePoints - 1
+
     if cmdenv.unique and cmdenv.hops >= len(tdb.stationByID):
-        raise CommandLineError("Requested unique trip with more hops than there are stations...")
+        raise CommandLineError(
+            "Requested unique trip with more hops than there are stations..."
+        )
     if cmdenv.unique:
         # if there's only one start and stop...
         if len(origins) == 1 and len(destns) == 1:
@@ -747,6 +811,91 @@ def filterByVia(routes, viaSet, viaStartPos):
             )
     )
 
+def checkReachability(tdb, cmdenv):
+    srcSys, dstSys = cmdenv.origSystems, cmdenv.destSystems
+    if len(srcSys) == 1 and len(dstSys) == 1:
+        srcSys, dstSys = next(iter(srcSys)), next(iter(dstSys))
+        if srcSys != dstSys:
+            maxLyPer = cmdenv.maxLyPer
+            avoiding = [
+                avoid for avoid in cmdenv.avoidPlaces
+                if isinstance(avoid, System)
+            ]
+            route = tdb.getRoute(
+                srcSys, dstSys, maxLyPer, avoiding,
+            )
+            if not route:
+                raise CommandLineError(
+                    "No route between {} and {} with a {}ly/jump limit."
+                    .format(
+                        srcSys.name(), dstSys.name(),
+                        maxLyPer,
+                    )
+                )
+
+            # Were there just not enough hops?
+            jumpLimit = cmdenv.maxJumpsPer * cmdenv.hops
+            if jumpLimit < len(route):
+                routeJumps = len(route) - 1
+                hopsRequired = math.ceil(routeJumps / cmdenv.maxJumpsPer)
+                jumpsRequired = math.ceil(routeJumps / cmdenv.hops)
+                raise CommandLineError(
+                    "Shortest route between {src} and {dst} at {jumply} "
+                    "ly per jump requires at least {minjumps} jumps. "
+                    "Your current settings (--hops {hops} --jumps {jumps}) "
+                    "allows a maximum of {jumplimit}.\n"
+                    "\n"
+                    "You may need --hops={althops} or --jumps={altjumps}.\n"
+                    "\n"
+                    "See also:\n"
+                    " --towards (aka -T),"
+                    " --start-jumps (-s),"
+                    " --end-jumps (-e),"
+                    " --direct.\n"
+                    .format(
+                        src=srcSys.name(),
+                        dst=dstSys.name(),
+                        jumply=cmdenv.maxLyPer,
+                        minjumps=routeJumps,
+                        hops=cmdenv.hops,
+                        jumps=cmdenv.maxJumpsPer,
+                        jumplimit=jumpLimit,
+                        althops=hopsRequired,
+                        altjumps=jumpsRequired,
+                    )
+                )
+
+
+def routeFailedRestrictions(
+        tdb, cmdenv, restrictTo, maxLs, hopNo
+        ):
+    """
+    Generate exception text indicating we couldn't complete a
+    route given the restrictions supplied. If the user has
+    specified detail, check if there is a route at all.
+    """
+
+    places = list(
+        set(
+            chain.from_iterable(
+                [place] if isinstance(place, Station) else place.stations
+                for place in restrictTo
+            )
+        )
+    )
+    places.sort(key=lambda stn: stn.dbname)
+
+    dests = ", ".join(place.name() for place in places)
+
+    return (
+        "SORRY: Could not find any routes that delivered a profit to "
+        "{} at hop #{}\n"
+        "You may need to add more hops to your route or adjust your "
+        "filters/restrictions.\n"
+        .format(
+            dests, hopNo + 1
+        )
+    )
 
 ######################################################################
 # Perform query and populate result set
@@ -817,43 +966,21 @@ def run(results, cmdenv, tdb):
             cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
         newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
-        if not newRoutes and hopNo > 0:
-            if restrictTo:
-                restrictTo = set(chain.from_iterable(
-                    [place] if isinstance(place, Station) else place.stations
-                    for place in restrictTo
-                ))
-                if not maxLs:
-                    lsCheck = lambda stn: True
-                else:
-                    lsCheck = lambda stn: \
-                        stn.maxLsFromStar > 0 and \
-                        stn.maxLsFromStar < maxLs
-                restrictTo = set(
-                    stn for stn in restrictTo
-                    if stn not in avoidPlaces
-                        and stn.system not in avoidPlaces
-                        and stn.checkPadSize(maxPadSize)
-                        and lsCheck(stn)
-                )
-                dests = ", ".join([
-                    place.name() for place in restrictTo[0:-1]
-                ])
-                if len(restrictTo) > 1:
-                    dests += " or " + restrictTo[-1].name()
+        if not newRoutes:
+            checkReachability(tdb, cmdenv)
+            if hopNo > 0:
+                if restrictTo:
+                    results.summary.exception += routeFailedRestrictions(
+                        tdb, cmdenv, restrictTo, maxLs, hopNo
+                    )
+                    break
                 results.summary.exception += (
-                        "SORRY: Could not find any routes that "
-                        "delivered a profit to {} at hop #{}\n"
-                        "You may need to add more hops to your route.\n"
-                        .format(
-                            dests, hopNo + 1
-                        )
+                    "SORRY: Could not find profitable destinations "
+                    "beyond hop #{:n}\n"
+                    .format(hopNo + 1)
                 )
                 break
-            results.summary.exception += (
-                "SORRY: Could not find routes beyond hop #%d\n" % (hopNo + 1)
-            )
-            break
+
         routes = newRoutes
         if routes and goalSystem:
             routes.sort(
