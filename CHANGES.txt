@@ -7,6 +7,8 @@ v6.12.3 Mar 01 2015
 . (kfsone) Improved feedback when requesting an unreachable journey,
    e.g. --from selianciens --to eravate --ly 9.23 --hops 2 --jumps 2
    (the journey requires at least 9 jumps but the options only allow 4),
+. (kfsone) Fixed #185 --from and --to giving a "set" error,
+. (kfsone) Fixed #188 Allow multiple ships per "shipvendor",
 
 v6.12.2 Feb 26 2015
 . (kfsone) "run" command:
