@@ -9,6 +9,7 @@ v6.12.3 Mar 01 2015
    (the journey requires at least 9 jumps but the options only allow 4),
 . (kfsone) Fixed #185 --from and --to giving a "set" error,
 . (kfsone) Fixed #188 Allow multiple ships per "shipvendor",
+. (kfsone) Fixed #190 "station -r" wasn't updated the .csv file,
 
 v6.12.2 Feb 26 2015
 . (kfsone) "run" command:
