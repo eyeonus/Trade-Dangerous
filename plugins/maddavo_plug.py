@@ -54,8 +54,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         'use3h':        "Force download of the 3-hours .prices file",
         'use2d':        "Force download of the 2-days .prices file",
         'usefull':      "Force download of the full .prices file",
-        'syscsv':       "DEPRECATED - see --opt=systems",
-        'stncsv':       "DEPRECATED - see --opt=stations",
     }
 
 
@@ -65,8 +63,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.filename = self.defaultImportFile
         stampFilePath = pathlib.Path(ImportPlugin.stampFile)
         self.stampPath = tdb.dataPath / stampFilePath
-        self.newSystems = 0
-        self.newStations = 0
+        self.modSystems = 0
+        self.modStations = 0
 
 
     def load_timestamp(self):
@@ -193,18 +191,38 @@ class ImportPlugin(plugins.ImportPluginBase):
         stream = transfers.CSVStream(SYSTEMS_URL)
         for _, values in stream:
             name = values[0].upper()
-            x, y, z = float(values[1]), float(values[2]), float(values[3])
-            added, modified = values[4], values[5]
             system = systems.get(name, None)
+
+            added = values[4]
+            if added == "DELETED":
+                if system:
+                    tdb.removeLocalSystem(
+                        system
+                    )
+                self.modSystems += 1
+                continue
+
+            x, y, z = float(values[1]), float(values[2]), float(values[3])
+            modified = values[5]
             if not system:
-                tdb.addLocalSystem(name, x, y, z, added, modified)
-                self.newSystems += 1
+                tdb.addLocalSystem(
+                    name, x, y, z, added, modified,
+                    commit=False,
+                )
+                self.modSystems += 1
             elif system.posX != x or system.posY != y or system.posZ != z:
                 print("{} position change: {}v{}, {}v{}, {}v{}".format(
                     name, system.posX, x, system.posY, y, system.posZ, z
                 ))
-                tdb.updateLocalSystem(system, name, x, y, z, added, modified)
-                self.newSystems += 1
+                tdb.updateLocalSystem(
+                    system, name, x, y, z, added, modified,
+                    commit=False,
+                )
+                self.modSystems += 1
+
+        if self.modSystems:
+            tdenv.DEBUG0("commit")
+            tdb.getDB().commit()
 
 
     def import_stations(self):
@@ -245,6 +263,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 continue
             station = system.getStation(stnName)
             lsFromStar = int(values[2])
+            if lsFromStar < 0:
+                if station:
+                    tdb.removeLocalStation(station, commit=False)
+                    self.modStations += 1
+                continue
             blackMarket = values[3]
             maxPadSize = values[4]
             market = values[5] if len(values) > 4 else '?'
@@ -260,8 +283,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         shipyard=shipyard,
                         maxPadSize=maxPadSize,
                         modified=modified,
+                        commit=False,
                         ):
-                    self.newStations += 1
+                    self.modStations += 1
             else:
                 tdb.addLocalStation(
                     system=system,
@@ -272,8 +296,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     shipyard=shipyard,
                     maxPadSize=maxPadSize,
                     modified=modified,
+                    commit=False,
                 )
-                self.newStations += 1
+                self.modStations += 1
+
+        if self.modStations:
+            tdenv.DEBUG0("commit")
+            tdb.getDB().commit()
 
 
     def refresh_csv(self):
@@ -292,24 +321,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
-        if self.getOption("syscsv") or self.getOption("stncsv"):
-            raise PluginException(
-                "\a--opt=syscsv and --opt=stncsv have been REPLACED.\n"
-                "\n"
-                "The behavior of the Maddavo plugin has changed drastically "
-                "in version 6.10.0.\n"
-                "\n"
-                "The old options, syscsv and stncsv, would download the "
-                "corresponding file from Maddavo's and REPLACE your local "
-                "file with his data.\n"
-                "\n"
-                "The new options, --opt=systems and --opt=stations, will "
-                "read his files and MERGE his data into your local db.\n"
-                "\n"
-                "An additional option, --opt=exportcsv, was also added "
-                "to export the resulting, merged data, to your .csv files."
-            )
 
         # It takes a while to download these files, so we want
         # to record the start time before we download. What we

@@ -226,14 +226,16 @@ class CSVStream(object):
 
     def __init__(self, url):
         self.url = url
-        self.req = requests.get(self.url, stream=True)
-        self.lines = self.req.iter_lines()
+        if not url.startswith("file:///"):
+            self.req = requests.get(self.url, stream=True)
+            self.lines = self.req.iter_lines()
+        else:
+            self.lines = open(url[8:], "rUb")
         self.columns = self.next_line().split(',')
 
     def next_line(self):
         """ Fetch the next line as a text string """
-        line = next(self.lines).decode()
-        return line
+        return next(self.lines).decode()
 
     def __iter__(self):
         """

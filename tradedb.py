@@ -728,7 +728,14 @@ class TradeDB(object):
             "System", key, self.systems(), key=lambda system: system.dbname
         )
 
-    def addLocalSystem(self, name, x, y, z, added="Local", modified='now'):
+    def addLocalSystem(
+            self,
+            name,
+            x, y, z,
+            added="Local",
+            modified='now',
+            commit=True,
+            ):
         """
         Add a system to the local cache and memory copy.
         """
@@ -750,7 +757,8 @@ class TradeDB(object):
         system = System(ID, name.upper(), x, y, z, 0)
         self.systemByID[ID] = system
         self.systemByName[system.dbname] = system
-        db.commit()
+        if commit:
+            db.commit()
         self.tdenv.NOTE(
             "Added new system #{}: {} [{},{},{}]",
             ID, name, x, y, z
@@ -761,6 +769,7 @@ class TradeDB(object):
             self, system,
             name, x, y, z, added="Local", modified='now',
             force=False,
+            commit=True,
             ):
         """
         Updates an entry for a local system.
@@ -784,7 +793,8 @@ class TradeDB(object):
         """, [
             dbname, x, y, z, added, modified
         ])
-        db.commit()
+        if commit:
+            db.commit()
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}, {}, {}, {}, {}, {}",
             oldname, system.ID,
@@ -796,6 +806,33 @@ class TradeDB(object):
         self.systemByName[dbname] = system
 
         return True
+
+    def removeLocalSystem(
+            self, system,
+            commit=True,
+        ):
+        """ Removes a system and it's stations from the local DB. """
+        for stn in self.stations:
+            self.removeLocalStation(stn, commit=False)
+        db = self.getDB()
+        db.execute("""
+            DELETE FROM System WHERE system_id = ?
+        """, [
+            system.ID
+        ])
+        if commit:
+            db.commit()
+        del self.systemByName[system.dbname]
+        del self.systemByID[system.ID]
+
+        self.tdenv.NOTE(
+            "{} (#{}) deleted from {}",
+            system.name(), system.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
+        )
+
+        system.dbname = "DELETED " + system.dbname
+        del system
 
     def __buildStellarGrid(self):
         """
@@ -1098,6 +1135,7 @@ class TradeDB(object):
             shipyard='?',
             maxPadSize='?',
             modified='now',
+            commit=True,
             ):
         """
         Add a station to the local cache and memory copy.
@@ -1152,7 +1190,8 @@ class TradeDB(object):
             itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
-        db.commit()
+        if commit:
+            db.commit()
         self.tdenv.NOTE(
             "{} (#{}) added to {}: "
             "ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
@@ -1162,6 +1201,7 @@ class TradeDB(object):
             modified,
         )
         return station
+
 
     def updateLocalStation(
             self, station,
@@ -1173,6 +1213,7 @@ class TradeDB(object):
             maxPadSize=None,
             modified='now',
             force=False,
+            commit=True,
             ):
         """
         Alter the properties of a station in-memory and in the DB.
@@ -1252,7 +1293,8 @@ class TradeDB(object):
             modified,
             station.ID
         ])
-        db.commit()
+        if commit:
+            db.commit()
 
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}",
@@ -1262,6 +1304,42 @@ class TradeDB(object):
         )
 
         return True
+
+
+    def removeLocalStation(self, station, commit=True):
+        """
+        Removes a station from the local database and memory image.
+
+        Becareful of any references to the station you may still have
+        after this.
+        """
+
+        # Remove reference from my system
+        system = station.system
+        system.stations.remove(station)
+
+        # Remove the ID lookup
+        del self.stationByID[station.ID]
+
+        # Delete database entry
+        db = self.getDB()
+        db.execute("""
+            DELETE FROM Station
+             WHERE system_id = ? AND station_id = ?
+        """, [system.ID, station.ID]
+        )
+        if commit:
+            db.commit()
+
+        self.tdenv.NOTE(
+            "{} (#{}) deleted from {}",
+            station.name(), station.ID,
+            self.dbPath if self.tdenv.detail > 1 else "local db",
+        )
+
+        station.dbname = "DELETED "+station.dbname
+        del station
+
 
     def lookupPlace(self, name):
         """
