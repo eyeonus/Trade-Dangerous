@@ -96,6 +96,13 @@ def parse_arguments():
             help='Show systems in random order, maximum of 10.',
     )
     parser.add_argument(
+            '--add-to-local-db', '-A',
+            action='store_true',
+            required=False,
+            help='Add accepted systems to the local database.',
+            dest='add',
+    )
+    parser.add_argument(
             '--test',
             required=False,
             help='Use the EDSC test database.',
@@ -374,6 +381,15 @@ def main():
                 ok = 'y'
             if ok.lower() != 'y':
                 continue
+
+            if argv.add:
+                tdb.addLocalSystem(
+                    name,
+                    x, y, z,
+                    added='Release 1.00-EDStar',
+                    modified=created,
+                    commit=True
+                )
 
             print("'{}',{},{},{},'Release 1.00-EDStar','{}'".format(
                 name, x, y, z, created,
