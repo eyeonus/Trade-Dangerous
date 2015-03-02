@@ -723,7 +723,7 @@ class TradeCalc(object):
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
         maxPadSize = tdenv.padSize
-        maxLsFromStar = tdenv.maxLsFromStar or float('inf')
+        maxLsFromStar = tdenv.maxLs or float('inf')
         reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
         maxAge = getattr(tdenv, 'maxAge') or 0
         credits = tdenv.credits - (getattr(tdenv, 'insurance', 0) or 0)
