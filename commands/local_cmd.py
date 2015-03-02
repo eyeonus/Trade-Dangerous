@@ -1,11 +1,11 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import ResultRow
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
-from formatting import RowFormat, ColumnFormat
+from formatting import RowFormat, ColumnFormat, max_len
+from itertools import chain
 from tradedb import TradeDB
 from tradeexcept import TradeException
 
-import itertools
 import math
 
 ######################################################################
@@ -108,12 +108,10 @@ def render(results, cmdenv, tdb):
                 ))
 
     # Compare system names so we can tell 
-    longestNamed = max(results.rows,
-                    key=lambda row: len(row.system.name()))
-    longestNameLen = max(len(longestNamed.system.name()), 16)
+    maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
 
     sysRowFmt = RowFormat().append(
-                ColumnFormat("System", '<', longestNameLen,
+                ColumnFormat("System", '<', maxSysLen,
                         key=lambda row: row.system.name())
             ).append(
                 ColumnFormat("Dist", '>', '7', '.2f',
@@ -122,11 +120,24 @@ def render(results, cmdenv, tdb):
 
     showStations = cmdenv.detail
     if showStations:
+        maxStnLen = max_len(
+            chain.from_iterable(
+                row.system.stations for row in results.rows
+            ),
+            key=lambda row: row.dbname
+        )
+        maxLsLen = max_len(
+            chain.from_iterable(
+                row.system.stations for row in results.rows
+            ),
+            key=lambda row: row.distFromStar()
+        )
+        maxLsLen = max(maxLsLen, 5)
         stnRowFmt = RowFormat(prefix='  /  ').append(
-                ColumnFormat("Station", '<', 32,
+                ColumnFormat("Station", '<', maxStnLen + 1,
                     key=lambda row: row.station.str())
         ).append(
-                ColumnFormat("StnLs", '>', '10',
+                ColumnFormat("StnLs", '>', maxLsLen,
                     key=lambda row: row.station.distFromStar())
         ).append(
                 ColumnFormat("Age/days", '>', 7,
