@@ -325,7 +325,7 @@ RUN sub-command:
        Limit results to stations that match one of the pad sizes
        specified.
          --pad ML?            (med, lrg or unknown only)
-         -o ML?                 ""    ""      ""    ""
+         -p ML?                 ""    ""      ""    ""
          --pad ?              (unknown only),
          --pad L              (large only, ignores unknown)
 
