@@ -347,7 +347,7 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
         for origin in origins:
             if isinstance(origin, System):
                 stations.extend(origin.stations)
-        return set(stations)
+        return list(set(stations))
 
     origSys = set()
     for place in origins:
@@ -405,7 +405,7 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
                 [sys.name() for sys in origins]
         )
 
-    return set(origins)
+    return list(set(origins))
 
 
 def checkForEmptyStationList(category, focusPlace, stationList, jumps):
@@ -581,9 +581,9 @@ def checkOrigins(tdb, cmdenv):
     if isinstance(cmdenv.origPlace, System) and not cmdenv.startJumps:
         cmdenv.origins = filterStationSet('--from', cmdenv, cmdenv.origins)
 
-    cmdenv.origSystems = set(
+    cmdenv.origSystems = list(set(
         stn.system for stn in cmdenv.origins
-    )
+    ))
 
 
 def checkDestinations(tdb, cmdenv):
@@ -640,9 +640,9 @@ def checkDestinations(tdb, cmdenv):
             cmdenv.destinations
         )
 
-    cmdenv.destSystems = set(
+    cmdenv.destSystems = list(set(
         stn.system for stn in cmdenv.destinations
-    )
+    ))
 
 def validateRunArguments(tdb, cmdenv):
     """
@@ -757,7 +757,7 @@ def validateRunArguments(tdb, cmdenv):
         if viaSet:
             if len(origins) == 1 and origins[0] in viaSet:
                 raise("Can't have --from station in --via list with --unique")
-            if len(destns) == 1 and destns[1] in viaSet:
+            if len(destns) == 1 and destns[0] in viaSet:
                 raise("Can't have --to station in --via list with --unique")
 
     if cmdenv.mfd:
@@ -814,7 +814,7 @@ def filterByVia(routes, viaSet, viaStartPos):
 def checkReachability(tdb, cmdenv):
     srcSys, dstSys = cmdenv.origSystems, cmdenv.destSystems
     if len(srcSys) == 1 and len(dstSys) == 1:
-        srcSys, dstSys = next(iter(srcSys)), next(iter(dstSys))
+        srcSys, dstSys = srcSys[0], dstSys[0]
         if srcSys != dstSys:
             maxLyPer = cmdenv.maxLyPer
             avoiding = [
