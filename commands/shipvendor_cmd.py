@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.commandenv import ResultRow
 from commands.exceptions import CommandLineError
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from itertools import chain
 from tradedb import AmbiguityError
 from tradedb import System, Station
 from tradedb import TradeDB
@@ -21,15 +22,15 @@ epilog=None
 arguments = [
     ParseArgument(
         'origin',
-        help='Specify the full name of the station (SYS NAME/STN NAME is also supported).',
+        help='Specify the full name of the station '
+            '(SYS NAME/STN NAME is also supported).',
         metavar='STATIONNAME',
         type=str,
     ),
     ParseArgument(
         'ship',
-        help='Ship name',
-        metavar='SHIPTYPE',
-        type=str,
+        help='Comma or space separated list of ship names.',
+        nargs='+',
     ),
 ]
 switches = [
@@ -85,18 +86,15 @@ def removeShipVendor(tdb, cmdenv, station, ship):
     return ship
 
 
-def checkResultAndExportShipVendors(tdb, cmdenv, result):
-    if not result:
-        return None
+def maybeExportToCSV(tdb, cmdenv):
     if cmdenv.noExport:
         cmdenv.DEBUG0("no-export set, not exporting stations")
-        return None
+        return
 
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "ShipVendor")
     cmdenv.NOTE("{} updated.", csvPath)
-    return None
 
-def checkShipPresent(tdb, ship, station):
+def checkShipPresent(tdb, station, ship):
     # Ask the database how many rows it sees claiming
     # this ship is sold at that station. The value will
     # be zero if we don't have an entry, otherwise it
@@ -125,32 +123,51 @@ def run(results, cmdenv, tdb):
             station.name()
         ))
 
-    try:
-        ship = tdb.lookupShip(cmdenv.ship)
-    except LookupError:
-        raise CommandLineError("Unrecognized Ship: {}".format(cmdenv.station))
-
-    # Lets see if that ship sails from the specified port.
-    shipPresent = checkShipPresent(tdb, ship, station)
-
     if cmdenv.add:
-        if shipPresent:
-            raise CommandLineError(
-                    "{} is already listed at {}"
-                    .format(ship.name(), station.name())
-            )
-        result = addShipVendor(tdb, cmdenv, station, ship)
-        return checkResultAndExportShipVendors(tdb, cmdenv, result)   
+        action = addShipVendor
     elif cmdenv.remove:
-        if not shipPresent:
-            raise CommandLineError(
-                    "{} is not listed at {}"
-                    .format(ship.name(), station.name())
-            )
-        result = removeShipVendor(tdb, cmdenv, station, ship)
-        return checkResultAndExportShipVendors(tdb, cmdenv, result)
+        action = removeShipVendor
     else:
+        ###TODO:
+        ### if not cmdenv.ship:
+        ###  List ships at this station.
         raise CommandLineError(
             "You must specify --add or --remove"
         )
 
+    ships = {}
+    shipNames = chain.from_iterable(
+        name.split(",") for name in cmdenv.ship
+    )
+    for shipName in shipNames:
+        try:
+            ship = tdb.lookupShip(shipName)
+        except LookupError:
+            raise CommandLineError("Unrecognized Ship: {}".format(shipName))
+
+        # Lets see if that ship sails from the specified port.
+        shipPresent = checkShipPresent(tdb, station, ship)
+        if cmdenv.add:
+            if shipPresent:
+                raise CommandLineError(
+                        "{} is already listed at {}"
+                        .format(ship.name(), station.name())
+                )
+            ships[ship.ID] = ship
+        else:
+            if not shipPresent:
+                raise CommandLineError(
+                        "{} is not listed at {}"
+                        .format(ship.name(), station.name())
+                )
+            ships[ship.ID] = ship
+
+    # We've checked that everything should be good.
+    dataToExport = False
+    for ship in ships.values():
+        if action(tdb, cmdenv,station, ship):
+            dataToExport = True
+
+    maybeExportToCSV(tdb, cmdenv)
+
+    return None

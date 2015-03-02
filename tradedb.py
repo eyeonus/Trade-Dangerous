@@ -778,7 +778,7 @@ class TradeDB(object):
         db.execute("""
             UPDATE System
                SET name=?,
-                   x=?, y=?, z=?,
+                   pos_x=?, pos_y=?, pos_z=?,
                    added=(SELECT added_id FROM Added WHERE name = ?),
                    modified=DATETIME(?)
         """, [
