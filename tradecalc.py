@@ -80,6 +80,9 @@ class BadTimestampError(TradeException):
         )
 
 
+class NoHopsError(TradeException):
+    pass
+
 ######################################################################
 # Stuff that passes for classes (but isn't)
 
@@ -805,6 +808,7 @@ class TradeCalc(object):
                 )
 
         prog = pbar.Progress(len(routes), 25)
+        connections = 0
         getSelling = self.stationsSelling.get
         for route in routes:
             if tdenv.progress:
@@ -899,6 +903,8 @@ class TradeCalc(object):
                 if reqBlackMarket and dstStation.blackMarket != 'Y':
                     continue
 
+                connections += 1
+
                 if maxAge:
                     stnDataAge = dstStation.dataAge
                     if stnDataAge is None or stnDataAge > maxAge:
@@ -947,6 +953,11 @@ class TradeCalc(object):
                         break
 
         prog.clear()
+
+        if connections == 0:
+            raise NoHopsError(
+                "No destinations could be reached within the constraints."
+            )
 
         result = []
         for (dst, route, trade, jumps, ly, score) in bestToDest.values():
