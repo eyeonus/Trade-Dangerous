@@ -549,9 +549,11 @@ IMPORT sub-command:
       This has also additional options:
       --option=<option> where option is one of the following:
         systems:      Merge maddavo's System data into local db,
-        station:      Merge maddavo's Station data into local db,
+        stations:     Merge maddavo's Station data into local db,
+        shipvendors:  Merge maddavo's ShipVendor data into local db,
         exportcsv:    Regenerate System and Station .csv files after
                       merging System/Station data.
+        csvonly:      Stop after importing CSV files, no prices,
         skipdl:       Skip doing any downloads.
         force:        Process prices even if timestamps suggest 
                       there is no new data.

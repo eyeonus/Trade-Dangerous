@@ -3,8 +3,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.12.4 Mar 02 2015
-. (kfsone) Added 175 Systems 
-. (kfsone) Fixed #193 "run" was ignoring --ls-max
+. (kfsone) Added 175 Systems,
+. (kfsone) Fixed #193 "run" was ignoring --ls-max,
+. (kfsone) Added "--opt=shipvendors" to the maddavo plugin,
+. (kfsone) Added "--opt=csvonly" to maddavo plugin (stop after csv imports),
 + DRy411S : ShipVendors
 
 v6.12.3 Mar 01 2015
@@ -523,7 +525,7 @@ v6.0.3 Nov 21 2014
 . (kfsone) Fixed "local" command not showing stations when using "--detail",
 . (kfsone) Renamed "buildcache.py" to "cache.py"
 
-BETA 3: 
+BETA 3:
 CAUTION: So many systems changed with the Beta 3 update that old prices files
 won't stand a chance of containing many valid systems. You may want to obtain
 a fresh file from one of the online sources, e.g.
@@ -754,7 +756,7 @@ v3.7 Sep 15/2014
     removes them.
   emdn-tap now tries harder to honor commit intervals.
 API Changes:
-  makeSubParser now takes an epilog  
+  makeSubParser now takes an epilog
 
 v3.6 Sep 12/2014
   Added DB support for tracking item stock/demand levels,
