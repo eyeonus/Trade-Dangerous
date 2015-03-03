@@ -2,11 +2,15 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.12.5 Mar 03 2015
+. (kfsone) Added "--opt=shipvendors" to the maddavo plugin,
+. (kfsone) Added "--opt=csvonly" to maddavo plugin (stop after csv imports),
+. (kfsone) Changed "market" command, "-B" and "-S" are now optional. Default
+    behavior is equivalent to --buy --sell
+
 v6.12.4 Mar 02 2015
 . (kfsone) Added 175 Systems,
 . (kfsone) Fixed #193 "run" was ignoring --ls-max,
-. (kfsone) Added "--opt=shipvendors" to the maddavo plugin,
-. (kfsone) Added "--opt=csvonly" to maddavo plugin (stop after csv imports),
 + DRy411S : ShipVendors
 
 v6.12.3 Mar 01 2015

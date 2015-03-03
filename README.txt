@@ -664,18 +664,18 @@ MARKET sub-command:
   Lists items bought / sold at a given station; with --detail (-v) also
   includes the average price for those items.
 
-  trade.py market <station> [--buy] [--sell] [--detail]
+  trade.py market <station> [--buy | --sell] [--detail]
 
     station
       Name of the station to list, e.g. "paes/ramon" or "ramoncity",
 
     --buy
     -B
-      List items bought by the station (listed as 'SELL' in-game)
+      List only items bought by the station (listed as 'SELL' in-game)
 
     --sell
     -S
-      List items sold by the station (listed as 'BUY' in-game)
+      List only items sold by the station (listed as 'BUY' in-game)
 
     --detail
     -v
