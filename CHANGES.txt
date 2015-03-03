@@ -18,8 +18,11 @@ v6.12.5 Mar 03 2015
     a market or have trade data available
   - Added "--blackmarket" option: only list stations with a black market,
   - Added "--shipyard" option: only list stations with a ship yard,
-. (kfsone) Changed "market" command, "-B" and "-S" are now optional. Default
-    behavior is equivalent to --buy --sell
+. (kfsone) "run" sub-command:
+  - check from stations for whether they have anything that can be bought,
+  - better feedback on some edge-cases where a route cannot be found,
+  - fixed some problems with --via,
+  - better feedback when using --jumps=0 or --ly=0,
 
 v6.12.4 Mar 02 2015
 . (kfsone) Added 175 Systems,
