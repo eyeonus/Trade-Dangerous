@@ -213,7 +213,7 @@ RUN sub-command:
        How many credits to start with
        e.g.
          --credits 20000
-       
+
      --ly-per N.NN
      --ly N.NN
        Maximum distance your ship can jump between systems at full capacity.
@@ -556,7 +556,7 @@ IMPORT sub-command:
                       merging System/Station data.
         csvonly:      Stop after importing CSV files, no prices,
         skipdl:       Skip doing any downloads.
-        force:        Process prices even if timestamps suggest 
+        force:        Process prices even if timestamps suggest
                       there is no new data.
         use3h:        Force download of the 3-hours .prices file
         use2d:        Force download of the 2-days .prices file
@@ -779,12 +779,23 @@ LOCAL sub-command:
     --pad-size SML?
     --pad SML?
     -p
-      Limit results to stations that match one of the pad sizes
-      specified.
+      Limit stations to those that match one of the pad sizes specified.
         --pad ML?            (med, lrg or unknown only)
-        -o ML?                 ""    ""      ""    ""
+        -p ML?                 ""    ""      ""    ""
         --pad ?              (unknown only),
         --pad L              (large only, ignores unknown)
+
+    --stations
+      Limit results to systems which have stations
+
+    --trading
+      Limit stations to those which which have markets or trade data.
+
+    --shipyard
+      Limit stations to those known to have a shipyard.
+
+    --blackmarket
+      Limit stations to those known to have a black market.
 
     -v
       Show stations + their distance from star
@@ -826,13 +837,29 @@ LOCAL sub-command:
     Adding detail ('-vv' or '-v -v' or '--detail --detail') would add
     a count of the number of items we have prices for at each station.
 
+    > trade.py local LAVE --trading --ly 4 -vv
+    System    Dist
+      /  Station            StnLs Age/days Mkt BMk Shp Pad Itms
+    -----------------------------------------------------------
+    LAVE      0.00
+      /  Castellan Station  2.34K     2.57 Yes  No  No Med   37
+      /  Lave Station         299     7.79 Yes Yes Yes Lrg   33
+      /  Warinus              863     7.76 Yes Yes  No Med   38
+    DISO      3.59
+      /  Shifnalport          284     0.57 Yes Yes Yes Lrg   34
+    LEESTI    3.91
+      /  George Lucas         255     0.58 Yes Yes Yes Lrg   52
+      /  Kolmogorov Hub     2.96K     1.61 Yes Yes  No Med   53
+
+    > trade.py local SOL --blackmarket --ly 6 -vv
+
 
 BUY sub-command:
 
   Finds stations that are selling / where you can buy, a named list of
   items or ships.
-  
-  trade.py buy 
+
+  trade.py buy
         [-q | -v] [--quantity Q] [--near N] [--ly-per N]
         [-P | -S] [--limit]
         [--one-stop | -1]

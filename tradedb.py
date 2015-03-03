@@ -343,6 +343,15 @@ class Station(object):
             return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
+    def isTrading(self):
+        """
+        True if the station is thought to be trading.
+
+        A station is considered 'trading' if it has an item count > 0 or
+        if it's "market" column is flagged 'Y'.
+        """
+        return (self.itemCount > 0 or self.market == 'Y')
+
     def str(self):
         return self.dbname
 

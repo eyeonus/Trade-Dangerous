@@ -36,6 +36,23 @@ switches = [
             metavar='PADSIZES',
             dest='padSize',
     ),
+    ParseArgument('--stations',
+            help='Limit to systems which have stations.',
+            action='store_true',
+    ),
+    ParseArgument('--trading',
+            help='Limit stations to ones with price data or flagged as having '
+                 'a market.',
+            action='store_true',
+    ),
+    ParseArgument('--blackmarket',
+            help='Limit stations to those known to have a black market.',
+            action='store_true',
+    ),
+    ParseArgument('--shipyard',
+            help='Limit stations to those known to have a ship yard.',
+            action='store_true',
+    ),
 ]
 
 ######################################################################
@@ -74,16 +91,29 @@ def run(results, cmdenv, tdb):
             for ID, age in tdb.query(stmt)
         }
 
+    wantStations = cmdenv.stations
     padSize = cmdenv.padSize
+    wantTrading = cmdenv.trading
+    wantShipYard = cmdenv.shipyard
+    wantBlackMarket = cmdenv.wantBlackMarket
+
+    def station_filter(system):
+        for station in system.stations:
+            if wantTrading and not station.isTrading:
+                continue
+            if station.blackMarket != 'Y' and wantBlackMarket:
+                continue
+            if station.shipyard != 'Y' and wantShipYard:
+                continue
+            if padSize and not station.checkPadSize(padSize):
+                continue
+            yield station
+
+    stations = []
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
-        row = ResultRow()
-        row.system = system
-        row.dist = dist
-        row.stations = []
-        if showStations:
-            for (station) in system.stations:
-                if padSize and not station.checkPadSize(padSize):
-                    continue
+        if showStations or wantStations:
+            stations = []
+            for (station) in station_filter(system):
                 try:
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
@@ -92,7 +122,14 @@ def run(results, cmdenv, tdb):
                         station=station,
                         age=age,
                 )
-                row.stations.append(rr)
+                stations.append(rr)
+            if not stations and wantStations:
+                continue
+
+        row = ResultRow()
+        row.system = system
+        row.dist = dist
+        row.stations = stations
         results.rows.append(row)
 
     return results
