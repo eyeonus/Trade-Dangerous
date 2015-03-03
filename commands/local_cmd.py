@@ -109,7 +109,6 @@ def run(results, cmdenv, tdb):
                 continue
             yield station
 
-    stations = []
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         if showStations or wantStations:
             stations = []
@@ -129,7 +128,7 @@ def run(results, cmdenv, tdb):
         row = ResultRow()
         row.system = system
         row.dist = dist
-        row.stations = stations
+        row.stations = stations if showStations else []
         results.rows.append(row)
 
     return results
