@@ -782,7 +782,7 @@ class TradeCalc(object):
                     if stn not in avoidPlaces and \
                         stn.system not in avoidPlaces
                 )
-            def _get_destinations(srcStation):
+            def station_iterator(srcStation):
                 srcSys = srcStation.system
                 srcDist = srcSys.distanceTo
                 for stn in restrictStations:
@@ -793,8 +793,9 @@ class TradeCalc(object):
                         srcDist(stnSys)
                     )
         else:
-            def _get_destinations(srcStation):
-                yield from tdb.getDestinations(
+            getDestinations = tdb.getDestinations
+            def station_iterator(srcStation):
+                yield from getDestinations(
                     srcStation,
                     maxJumps=maxJumpsPer,
                     maxLyPer=maxLyPer,
@@ -803,9 +804,8 @@ class TradeCalc(object):
                     maxLsFromStar=maxLsFromStar,
                 )
 
-        station_iterator = _get_destinations
-
         prog = pbar.Progress(len(routes), 25)
+        getSelling = self.stationsSelling.get
         for route in routes:
             if tdenv.progress:
                 prog.increment(1)
@@ -813,12 +813,12 @@ class TradeCalc(object):
 
             srcStation = route.lastStation
             srcTradingWith = srcStation.tradingWith
-            if srcStation.tradingWith is None:
+            if srcTradingWith is None:
                 srcTradingWith = srcStation.tradingWith = dict()
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
-            srcSelling = self.stationsSelling.get(srcStation.ID, None)
+            srcSelling = getSelling(srcStation.ID, None)
             if not srcSelling:
                 tdenv.DEBUG1("Nothing sold - next.")
                 continue
