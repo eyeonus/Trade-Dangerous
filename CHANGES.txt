@@ -3,8 +3,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.13.0 Mar 03 2015
+. (kfsone) Added "modified" column to ShipVendor table,
 . (kfsone) "maddavo" import plugin:
   - Added "--opt=shipvendors" which imports his ShipVendor.csv,
+    - Entries with a 'modified' of "DELETED" will be
   - Added "--opt=csvonly" to stop after importing any csv files (no prices),
   - Added "--opt=csvs" to import all the csvs
     (equivalent to typing --opt=systems --opt=stations --opt=shipvendor)
