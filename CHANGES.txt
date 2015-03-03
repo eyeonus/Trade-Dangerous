@@ -5,6 +5,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v6.12.5 Mar 03 2015
 . (kfsone) Added "--opt=shipvendors" to the maddavo plugin,
 . (kfsone) Added "--opt=csvonly" to maddavo plugin (stop after csv imports),
+. (kfsone) Added "--opt=csvs" to maddavo plugin (import all the .csvs),
+    equivalent to "--opt=systems --opt=stations --opt=shipvendor"
 . (kfsone) Changed "market" command, "-B" and "-S" are now optional. Default
     behavior is equivalent to --buy --sell
 

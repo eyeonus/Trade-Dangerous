@@ -10,7 +10,7 @@ rem --== Set default values above to prevent being asked each run ==--
 set /P update=Update database from maddavo? (Y\N): 
 if /I not "%update%"=="Y" goto menu
 :update
-..\trade.py import --plug=maddavo --option=stations --option=systems --opt=usefull -v
+..\trade.py import --plug=maddavo --opt=stations --opt=usefull -v
 ..\trade.py import --plug=maddavo --opt=use2d -v
 ..\trade.py import --plug=maddavo --opt=use3h -v
 echo Update Complete

@@ -551,6 +551,7 @@ IMPORT sub-command:
         systems:      Merge maddavo's System data into local db,
         stations:     Merge maddavo's Station data into local db,
         shipvendors:  Merge maddavo's ShipVendor data into local db,
+        csvs:         Merge all of the above
         exportcsv:    Regenerate System and Station .csv files after
                       merging System/Station data.
         csvonly:      Stop after importing CSV files, no prices,
