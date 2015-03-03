@@ -51,6 +51,7 @@ ignore = [
     "SHU WEI SECTOR MN-S B4-9",
     "THETA CARINE",
     "CORE SYS HH-M A7-3",
+    "OI-T B3-9",
 ]
 
 
@@ -94,6 +95,13 @@ def parse_arguments():
             action='store_true',
             required=False,
             help='Show systems in random order, maximum of 10.',
+    )
+    parser.add_argument(
+            '--add-to-local-db', '-A',
+            action='store_true',
+            required=False,
+            help='Add accepted systems to the local database.',
+            dest='add',
     )
     parser.add_argument(
             '--test',
@@ -374,6 +382,15 @@ def main():
                 ok = 'y'
             if ok.lower() != 'y':
                 continue
+
+            if argv.add:
+                tdb.addLocalSystem(
+                    name,
+                    x, y, z,
+                    added='Release 1.00-EDStar',
+                    modified=created,
+                    commit=True
+                )
 
             print("'{}',{},{},{},'Release 1.00-EDStar','{}'".format(
                 name, x, y, z, created,

@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.12.4 Mar 02 2015
+. (kfsone) Added 175 Systems 
+. (kfsone) Fixed #193 "run" was ignoring --ls-max
++ DRy411S : ShipVendors
+
 v6.12.3 Mar 01 2015
 . (kfsone) Improved how we handle some edge cases with --from and --to,
 . (kfsone) Improved feedback when requesting an unreachable journey,

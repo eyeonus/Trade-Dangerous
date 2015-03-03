@@ -912,7 +912,7 @@ def run(results, cmdenv, tdb):
     avoidPlaces = cmdenv.avoidPlaces
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
-    maxLs = cmdenv.maxLsFromStar
+    maxLs = cmdenv.maxLs
 
     startCr = cmdenv.credits - cmdenv.insurance
 
