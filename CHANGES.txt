@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.12.5 Mar 03 2015
+v6.13.0 Mar 03 2015
 . (kfsone) "maddavo" import plugin:
   - Added "--opt=shipvendors" which imports his ShipVendor.csv,
   - Added "--opt=csvonly" to stop after importing any csv files (no prices),
