@@ -1684,16 +1684,12 @@ class TradeDB(object):
                     stnLs = station.lsFromStar
                     if stnLs <= 0 or stnLs > maxLsFromStar:
                         continue
-                destStations.append(
-                    Destination(
+                yield Destination(
                         node.system,
                         station,
                         node.via,
                         node.distLy
-                    )
                 )
-
-        return destStations
 
     ############################################################
     # Ship data.
