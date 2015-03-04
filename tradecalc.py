@@ -710,7 +710,7 @@ class TradeCalc(object):
         itemIdx = self.tdb.itemByID
         trading = []
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
-        maxGainCr = max(1000, self.tdenv.maxGainPerTon or 10000)
+        maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
         for buy in dstBuying:
             buyItemID = buy[0]
             for sell in srcSelling:
