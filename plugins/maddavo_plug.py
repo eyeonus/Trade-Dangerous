@@ -44,9 +44,11 @@ class ImportPlugin(plugins.ImportPluginBase):
     dateRe = re.compile(r"(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)")
 
     pluginOptions = {
-        'systems':      "Merge maddavo's System data into local db.",
-        'stations':     "Merge maddavo's Station data into local db.",
-        'shipvendors':  "Merge maddavo's ShipVendor data into local db.",
+        'csvs':         "Merge System, Station and ShipVendor data into "
+                        "the local db.",
+        'systems':      "Merge System data into local db.",
+        'stations':     "Merge Station data into local db.",
+        'shipvendors':  "Merge ShipVendor data into local db.",
         'exportcsv':    "Regenerate System and Station .csv files after "
                         "merging System/Station data.",
         'csvonly':      "Stop after csv work, don't import prices",
@@ -446,6 +448,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         skipDownload = self.getOption("skipdl")
         forceParse = self.getOption("force") or skipDownload
+        if self.getOption("csvs"):
+            self.options["systems"] = True
+            self.options["stations"] = True
+            self.options["shipvendors"] = True
 
         # Ensure the cache is built and reloaded.
         tdb.reloadCache()
