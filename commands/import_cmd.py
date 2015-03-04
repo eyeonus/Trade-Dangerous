@@ -26,7 +26,12 @@ help=(
     "is removed, but other stations are not affected."
 )
 name='import'
-epilog=None
+epilog=(
+    "This sub-command provides a plugin infrastructure, and comes "
+    "with a module to import data from Maddavo's Market Share "
+    "(http://www.davek.com.au/td/).\n"
+    "See \"import --plug=maddavo --opt=help\" for more help."
+)
 wantsTradeDB=False
 arguments = [
 ]

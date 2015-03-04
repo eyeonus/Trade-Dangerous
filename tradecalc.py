@@ -80,6 +80,9 @@ class BadTimestampError(TradeException):
         )
 
 
+class NoHopsError(TradeException):
+    pass
+
 ######################################################################
 # Stuff that passes for classes (but isn't)
 
@@ -134,12 +137,33 @@ class Route(object):
     __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score')
 
     def __init__(self, stations, hops, startCr, gainCr, jumps, score):
+        assert stations
         self.route = stations
         self.hops = hops
         self.startCr = startCr
         self.gainCr = gainCr
         self.jumps = jumps
         self.score = score
+
+    @property
+    def firstStation(self):
+        """ Returns the first station in the route. """
+        return self.route[0]
+
+    @property
+    def firstSystem(self):
+        """ Returns the first system in the route. """
+        return self.route[0].system
+
+    @property
+    def lastStation(self):
+        """ Returns the last station in the route. """
+        return self.route[-1]
+
+    @property
+    def lastSystem(self):
+        """ Returns the last system in the route. """
+        return self.route[-1].system
 
     def plus(self, dst, hop, jumps, score):
         """
@@ -163,7 +187,7 @@ class Route(object):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
 
     def str(self):
-        return "%s -> %s" % (self.route[0].name(), self.route[-1].name())
+        return "%s -> %s" % (self.firstStation.name(), self.lastStation.name())
 
     def detail(self, tdenv):
         """
@@ -172,7 +196,7 @@ class Route(object):
 
         detail, goalSystem = tdenv.detail, tdenv.goalSystem
 
-        credits = self.startCr
+        credits = self.startCr + (tdenv.insurance or 0)
         gainCr = 0
         route = self.route
 
@@ -317,11 +341,12 @@ class Route(object):
 
             gainCr += hopGainCr
 
-        if route[-1].system is not goalSystem:
-            text += goalDistance(route[-1])
+        lastStation = self.lastStation
+        if lastStation.system is not goalSystem:
+            text += goalDistance(lastStation)
         text += footer or ""
         text += endFmt.format(
-            station=decorateStation(route[-1]),
+            station=decorateStation(lastStation),
             gain=gainCr,
             credits=credits + gainCr
         )
@@ -761,7 +786,7 @@ class TradeCalc(object):
                     if stn not in avoidPlaces and \
                         stn.system not in avoidPlaces
                 )
-            def _get_destinations(srcStation):
+            def station_iterator(srcStation):
                 srcSys = srcStation.system
                 srcDist = srcSys.distanceTo
                 for stn in restrictStations:
@@ -772,8 +797,9 @@ class TradeCalc(object):
                         srcDist(stnSys)
                     )
         else:
-            def _get_destinations(srcStation):
-                yield from tdb.getDestinations(
+            getDestinations = tdb.getDestinations
+            def station_iterator(srcStation):
+                yield from getDestinations(
                     srcStation,
                     maxJumps=maxJumpsPer,
                     maxLyPer=maxLyPer,
@@ -781,23 +807,23 @@ class TradeCalc(object):
                     maxPadSize=maxPadSize,
                     maxLsFromStar=maxLsFromStar,
                 )
-         
-        station_iterator = _get_destinations
 
         prog = pbar.Progress(len(routes), 25)
+        connections = 0
+        getSelling = self.stationsSelling.get
         for route in routes:
             if tdenv.progress:
                 prog.increment(1)
             tdenv.DEBUG1("Route = {}", route.str())
 
-            srcStation = route.route[-1]
+            srcStation = route.lastStation
             srcTradingWith = srcStation.tradingWith
-            if srcStation.tradingWith is None:
+            if srcTradingWith is None:
                 srcTradingWith = srcStation.tradingWith = dict()
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
-            srcSelling = self.stationsSelling.get(srcStation.ID, None)
+            srcSelling = getSelling(srcStation.ID, None)
             if not srcSelling:
                 tdenv.DEBUG1("Nothing sold - next.")
                 continue
@@ -809,7 +835,7 @@ class TradeCalc(object):
                 pass
 
             if goalSystem:
-                origSystem = route.route[0].system
+                origSystem = route.firstSystem
                 srcSystem = srcStation.system
                 srcGoalDist = srcSystem.distanceTo(goalSystem)
                 srcOrigDist = srcSystem.distanceTo(origSystem)
@@ -878,6 +904,8 @@ class TradeCalc(object):
                 if reqBlackMarket and dstStation.blackMarket != 'Y':
                     continue
 
+                connections += 1
+
                 if maxAge:
                     stnDataAge = dstStation.dataAge
                     if stnDataAge is None or stnDataAge > maxAge:
@@ -926,6 +954,11 @@ class TradeCalc(object):
                         break
 
         prog.clear()
+
+        if connections == 0:
+            raise NoHopsError(
+                "No destinations could be reached within the constraints."
+            )
 
         result = []
         for (dst, route, trade, jumps, ly, score) in bestToDest.values():

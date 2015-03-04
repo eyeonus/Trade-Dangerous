@@ -21,16 +21,18 @@ arguments = [
     ),
 ]
 switches = [
-    ParseArgument(
-        '--buying', '-B',
-        help='Show items station is buying',
-        action='store_true',
+    MutuallyExclusiveGroup(
+        ParseArgument(
+            '--buying', '-B',
+            help='Show items station is buying',
+            action='store_true',
+        ),
+        ParseArgument(
+            '--selling', '-S',
+            help='Show items station is selling',
+            action='store_true',
+        ),
     ),
-    ParseArgument(
-        '--selling', '-S',
-        help='Show items station is selling',
-        action='store_true',
-    )
 ]
 
 ######################################################################
@@ -54,11 +56,6 @@ def run(results, cmdenv, tdb):
         )
 
     buying, selling = cmdenv.buying, cmdenv.selling
-    if not buying and not selling:
-        raise CommandLineError(
-            "Please specify one or both of --buying (-B) "
-            "or --selling (-S)."
-        )
 
     results.summary = ResultRow()
     results.summary.origin = origin
@@ -105,7 +102,7 @@ def run(results, cmdenv, tdb):
         row.buyLevel = level
         row.demand = render_units(units, level)
         row.buyAge = float(next(it) or 0)
-        if buying:
+        if not selling:
             hasBuy = (row.buyCr or units or level)
         else:
             hasBuy = False
@@ -116,7 +113,7 @@ def run(results, cmdenv, tdb):
         row.sellLevel = level
         row.supply = render_units(units, level)
         row.sellAge = float(next(it) or 0)
-        if selling:
+        if not buying:
             hasSell = (row.sellCr or units or level)
         else:
             hasSell = False
@@ -154,7 +151,7 @@ def render(results, cmdenv, tdb):
 
     rowFmt.addColumn('Item', '<', longestLen,
             key=lambda row: row.item.name())
-    if cmdenv.buying:
+    if not cmdenv.selling:
         rowFmt.addColumn('Buying', '>', 7, 'n',
             key=lambda row: row.buyCr,
             pred=buyPred)
@@ -170,7 +167,7 @@ def render(results, cmdenv, tdb):
             rowFmt.addColumn('Age/Days', '>', 7, '.2f',
             key=lambda row: row.buyAge,
             pred=buyPred)
-    if cmdenv.selling:
+    if not cmdenv.buying:
         rowFmt.addColumn('Selling', '>', 7, 'n',
             key=lambda row: row.sellCr,
             pred=sellPred)

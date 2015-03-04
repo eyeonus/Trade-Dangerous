@@ -98,6 +98,7 @@ CREATE TABLE ShipVendor
  (
    ship_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
+   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    PRIMARY KEY (ship_id, station_id),
 

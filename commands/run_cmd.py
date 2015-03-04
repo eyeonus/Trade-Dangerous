@@ -1,11 +1,10 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
 from itertools import chain
 from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB, System, Station, describeAge
-from tradecalc import TradeCalc, Route
+from tradecalc import TradeCalc, Route, NoHopsError
 
 import math
 
@@ -96,13 +95,15 @@ switches = [
             default=None,
         ),
     ParseArgument('--start-jumps', '-s',
-            help='Consider stations within this many jumps of the origin (requires --from).',
+            help='Consider stations within this many jumps of the origin '
+                 '(requires --from).',
             dest='startJumps',
             default=0,
             type=int,
         ),
     ParseArgument('--end-jumps', '-e',
-            help='Consider stations within this many jumps of the destination (requires --to).',
+            help='Consider stations within this many jumps of the destination '
+                 '(requires --to).',
             dest='endJumps',
             default=0,
             type=int,
@@ -402,7 +403,7 @@ def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
     for sys in origSys:
         for stn in sys.stations:
             if stn.itemCount and stn not in avoidPlaces:
-                origins.append(stn) 
+                origins.append(stn)
 
     if cmdenv.debug:
         cmdenv.DEBUG0(
@@ -451,22 +452,22 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
         return
     if isinstance(place, Station) and place in viaSet:
         raise CommandLineError(
-                "{} used in {} and --via with only 2 hops".format(
-                    place.name(),
-                    anchorName,
+            "{} used in {} and --via with only 2 hops".format(
+                place.name(),
+                anchorName,
         ))
 
 
-def checkStationSuitability(cmdenv, station, src=None):
-    if station in cmdenv.avoidPlaces:
-        if src and src != "--from":
+def checkStationSuitability(cmdenv, calc, station, src=None):
+    if station in cmdenv.avoidPlaces and src != "--from":
+        if src:
             raise CommandLineError(
                 "{} station {} is marked to avoid"
                 .format(src, station.name())
             )
         return False
-    if station.system in cmdenv.avoidPlaces:
-        if src and src != "--from":
+    if station.system in cmdenv.avoidPlaces and src != "--from":
+        if src:
             raise CommandLineError(
                 "{} station {} is in system listed in --avoid"
                 .format(src, station.name())
@@ -483,59 +484,74 @@ def checkStationSuitability(cmdenv, station, src=None):
     if not station.itemCount:
         if src:
             raise NoDataError(
-                    "No price data in local database "
-                    "for {} station: {}".format(
-                        src, station.name(),
+                "No price data in local database "
+                "for {} station: {}".format(
+                    src, station.name(),
             ))
+        return False
+    if src != "--to" and station.ID not in calc.stationsSelling:
+        if src:
+            raise NoDataError(
+                "No buying prices at {}."
+                .format(station.name())
+            )
+        return False
+    if src != "--from" and station.ID not in calc.stationsBuying:
+        if src:
+            raise NoDataError(
+                "No selling prices at {}."
+                .format(station.name())
+            )
         return False
     mps = cmdenv.padSize
     if mps and not station.checkPadSize(mps):
         if src:
             raise CommandLineError(
-                    "{} station {} does not meet pad-size requirement.\n"
-                    "You specified: {}, Current data for station: {} ({})\n"
-                    "You can use \"trade.py station\" to correct this.".format(
-                        src, station.name(),
-                        mps, station.maxPadSize,
-                        TradeDB.padSizesExt[station.maxPadSize],
+                "{} station {} does not meet pad-size requirement.\n"
+                "You specified: {}, Current data for station: {} ({})\n"
+                "You can use \"trade.py station\" to correct this.".format(
+                    src, station.name(),
+                    mps, station.maxPadSize,
+                    TradeDB.padSizesExt[station.maxPadSize],
             ))
         return False
     bm = cmdenv.blackMarket
     if bm and station.blackMarket != 'Y':
         if src and src != "--from":
             raise CommandLineError(
-                    "{} station {} does not meet black-market "
-                    "requirement.".format(
-                        src, station.name(),
+                "{} station {} does not meet black-market "
+                "requirement.".format(
+                    src, station.name(),
             ))
         return False
     mls = cmdenv.maxLs
     if mls and (station.lsFromStar <= 0 or station.lsFromStar > mls):
         if src and src != "--from":
             raise CommandLineError(
-                    "{} station {} does not meet max-ls "
-                    "requirement.".format(
-                        src, station.name(),
+                "{} station {} does not meet max-ls "
+                "requirement.".format(
+                    src, station.name(),
             ))
         return False
     maxAge = cmdenv.maxAge
     if maxAge and station.dataAge > maxAge:
         if src and src != "--from":
             raise CommandLineError(
-                    "{} station {} does not meet --age "
-                    "requirement.".format(
-                        src, station.name(),
+                "{} station {} does not meet --age "
+                "requirement.".format(
+                    src, station.name(),
             ))
         return False
     return True
 
 
-def filterStationSet(src, cmdenv, stnList):
+def filterStationSet(src, cmdenv, calc, stnList):
     if not stnList:
         return stnList
     filtered = [
         place for place in stnList
-        if isinstance(place, System) or checkStationSuitability(cmdenv, place)
+        if isinstance(place, System) or \
+            checkStationSuitability(cmdenv, calc, place, src)
     ]
     if not stnList:
         raise CommandLineError(
@@ -545,7 +561,7 @@ def filterStationSet(src, cmdenv, stnList):
     return stnList
 
 
-def checkOrigins(tdb, cmdenv):
+def checkOrigins(tdb, cmdenv, calc):
     if cmdenv.origPlace:
         if isinstance(cmdenv.origPlace, System):
             cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
@@ -557,11 +573,11 @@ def checkOrigins(tdb, cmdenv):
             cmdenv.origins = [
                 station
                 for station in cmdenv.origPlace.stations
-                if checkStationSuitability(cmdenv, station)
+                if checkStationSuitability(cmdenv, calc, station)
             ]
         else:
             cmdenv.DEBUG0("origPlace: Station: {}", cmdenv.origPlace.name())
-            checkStationSuitability(cmdenv, cmdenv.origPlace, '--from')
+            checkStationSuitability(cmdenv, calc, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
             cmdenv.startStation = cmdenv.origPlace
         cmdenv.origins = expandForJumps(
@@ -579,32 +595,34 @@ def checkOrigins(tdb, cmdenv):
         cmdenv.origins = [
             station
             for station in tdb.stationByID.values()
-            if checkStationSuitability(cmdenv, station)
+            if checkStationSuitability(cmdenv, calc, station)
         ]
         if cmdenv.startJumps:
             raise CommandLineError("--start-jumps (-s) only works with --from")
 
     if isinstance(cmdenv.origPlace, System) and not cmdenv.startJumps:
-        cmdenv.origins = filterStationSet('--from', cmdenv, cmdenv.origins)
+        cmdenv.origins = filterStationSet(
+            '--from', cmdenv, calc, cmdenv.origins
+        )
 
     cmdenv.origSystems = list(set(
         stn.system for stn in cmdenv.origins
     ))
 
 
-def checkDestinations(tdb, cmdenv):
+def checkDestinations(tdb, cmdenv, calc):
     cmdenv.destinations = None
     if cmdenv.destPlace:
         if isinstance(cmdenv.destPlace, Station):
             cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
-            checkStationSuitability(cmdenv, cmdenv.destPlace, '--to')
+            checkStationSuitability(cmdenv, calc, cmdenv.destPlace, '--to')
             cmdenv.destinations = [ cmdenv.destPlace ]
         else:
             cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
             cmdenv.destinations = [
                 station
                 for station in cmdenv.destPlace.stations
-                if checkStationSuitability(cmdenv, station)
+                if checkStationSuitability(cmdenv, calc, station)
             ]
         cmdenv.destinations = expandForJumps(
                 tdb, cmdenv,
@@ -627,7 +645,7 @@ def checkDestinations(tdb, cmdenv):
             cmdenv.goalSystem = dest.system
 
         if cmdenv.origPlace and cmdenv.maxJumpsPer == 0:
-            stations = chain.from_iterable(
+            stationSrc = chain.from_iterable(
                 system.stations for system in cmdenv.origSystems
             )
         else:
@@ -636,21 +654,19 @@ def checkDestinations(tdb, cmdenv):
         cmdenv.destinations = [
             station
             for station in stationSrc
-            if checkStationSuitability(cmdenv, station)
+            if checkStationSuitability(cmdenv, calc, station)
         ]
 
     if isinstance(cmdenv.destPlace, System) and not cmdenv.endJumps:
         cmdenv.destinations = filterStationSet(
-            '--to',
-            cmdenv,
-            cmdenv.destinations
+            '--to', cmdenv, calc, cmdenv.destinations
         )
 
     cmdenv.destSystems = list(set(
         stn.system for stn in cmdenv.destinations
     ))
 
-def validateRunArguments(tdb, cmdenv):
+def validateRunArguments(tdb, cmdenv, calc):
     """
         Process arguments to the 'run' option.
     """
@@ -660,9 +676,13 @@ def validateRunArguments(tdb, cmdenv):
     # I'm going to allow 0 credits as a future way of saying "just fly"
 
     if cmdenv.routes < 1:
-        raise CommandLineError("Maximum routes has to be 1 or higher")
+        raise CommandLineError(
+            "Maximum routes has to be 1 or higher."
+        )
     if cmdenv.routes > 1 and cmdenv.checklist:
-        raise CommandLineError("Checklist can only be applied to a single route.")
+        raise CommandLineError(
+            "Checklist can only be applied to a single route."
+        )
 
     if cmdenv.hops < 1:
         raise CommandLineError("Minimum of 1 hop required")
@@ -680,9 +700,11 @@ def validateRunArguments(tdb, cmdenv):
         raise CommandLineError("Missing '--ly-per'")
     if cmdenv.capacity < 0:
         raise CommandLineError("Invalid (negative) cargo capacity")
-    if cmdenv.capacity > 1000:
-        raise CommandLineError("Capacity > 1000 not supported (you specified {})".format(
-                                cmdenv.capacity))
+    if cmdenv.capacity > 1200:
+        raise CommandLineError(
+            "Capacity > 1200 not supported (you specified {})"
+            .format( cmdenv.capacity)
+        )
 
     if cmdenv.limit and cmdenv.limit > cmdenv.capacity:
         raise CommandLineError("'limit' must be <= capacity")
@@ -690,22 +712,23 @@ def validateRunArguments(tdb, cmdenv):
         raise CommandLineError("'limit' can't be negative, silly")
     cmdenv.maxUnits = cmdenv.limit if cmdenv.limit else cmdenv.capacity
 
-    arbitraryInsuranceBuffer = 42
-    if cmdenv.insurance and cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
-        raise CommandLineError("Insurance leaves no margin for trade")
+    if cmdenv.insurance:
+        arbitraryInsuranceBuffer = 42
+        if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
+            raise CommandLineError("Insurance leaves no margin for trade")
 
-    checkOrigins(tdb, cmdenv)
-
-    checkDestinations(tdb, cmdenv)
+    checkOrigins(tdb, cmdenv, calc)
+    checkDestinations(tdb, cmdenv, calc)
 
     # If they're going --from and --to single systems, and they have
     # specified zero jumps then it's futile to try anything.
-    if cmdenv.jumps == 0:
+    if cmdenv.maxJumpsPer == 0 and not cmdenv.direct:
         if len(cmdenv.origSystems) == 1 and len(cmdenv.destSystems) == 1:
-            raise CommandLineError(
-                "Could not find any connections that didn't require at least "
-                "one jump and --jumps 0 specified."
-            )
+            if cmdenv.origSystems[0] != cmdenv.destSystems[0]:
+                raise CommandLineError(
+                    "Could not find any connections that didn't require at "
+                    "least one jump and --jumps 0 specified."
+                )
 
     origins, destns = cmdenv.origins or [], cmdenv.destinations or []
 
@@ -716,6 +739,10 @@ def validateRunArguments(tdb, cmdenv):
     avoidSet = set(cmdenv.avoidPlaces or [])
     viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
     cmdenv.DEBUG0("Via: {}", viaSet)
+    cmdenv.viaSet = filterStationSet('--via', cmdenv, calc, cmdenv.viaSet)
+    checkAnchorNotInVia(cmdenv.hops, "--from", cmdenv.origPlace, viaSet)
+    checkAnchorNotInVia(cmdenv.hops, "--to", cmdenv.destPlace, viaSet)
+
     viaSystems = set()
     for place in viaSet:
         if place in avoidSet or place.system in avoidSet:
@@ -728,10 +755,27 @@ def validateRunArguments(tdb, cmdenv):
         else:
             viaSystems.add(place)
 
-    cmdenv.viaSet = filterStationSet('--via', cmdenv, cmdenv.viaSet)
-
-    checkAnchorNotInVia(cmdenv.hops, "--from", cmdenv.origPlace, viaSet)
-    checkAnchorNotInVia(cmdenv.hops, "--to", cmdenv.destPlace, viaSet)
+    if cmdenv.maxJumpsPer == 0 and viaSet and not cmdenv.direct:
+        for via in viaSet:
+            if via.system not in cmdenv.origSystems:
+                raise CommandLineError(
+                    "--via {} unreachable with --jumps 0"
+                    .format(via.name())
+                )
+        cmdenv.origins = [
+            origin for origin in cmdenv.origins
+            if origin.system in viaSystems
+        ]
+        cmdenv.origSystems = [
+            origin.system for origin in cmdenv.origins
+        ]
+        cmdenv.destinations = [
+            dest for dest in cmdenv.destinations
+            if destination.system in viaSystems
+        ]
+        cmdenv.destSystems = [
+            dest.system for dest in cmdenv.destinations
+        ]
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
@@ -818,6 +862,8 @@ def filterByVia(routes, viaSet, viaStartPos):
     )
 
 def checkReachability(tdb, cmdenv):
+    if cmdenv.direct:
+        return
     srcSys, dstSys = cmdenv.origSystems, cmdenv.destSystems
     if len(srcSys) == 1 and len(dstSys) == 1:
         srcSys, dstSys = srcSys[0], dstSys[0]
@@ -912,7 +958,10 @@ def run(results, cmdenv, tdb):
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
 
-    validateRunArguments(tdb, cmdenv)
+    # Instantiate the calculator object
+    calc = TradeCalc(tdb, cmdenv)
+
+    validateRunArguments(tdb, cmdenv, calc)
 
     origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
     avoidPlaces = cmdenv.avoidPlaces
@@ -920,24 +969,23 @@ def run(results, cmdenv, tdb):
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
 
-    startCr = cmdenv.credits - cmdenv.insurance
-
     # seed the route table with starting places
-    maxPadSize = cmdenv.padSize.upper() if cmdenv.padSize else None
+    startCr = cmdenv.credits - cmdenv.insurance
     routes = [
-        Route(stations=[src], hops=[], jumps=[], startCr=startCr, gainCr=0, score=0)
-            for src in cmdenv.origins
-            if (src not in avoidPlaces) and \
-               (src.system not in avoidPlaces) and \
-               (src.checkPadSize(maxPadSize))
+        Route(
+            stations=[src],
+            hops=[],
+            jumps=[],
+            startCr=startCr,
+            gainCr=0,
+            score=0
+        )
+        for src in cmdenv.origins
     ]
+
     numHops = cmdenv.hops
     lastHop = numHops - 1
     viaStartPos = 1 if origPlace else 0
-    cmdenv.maxJumps = None
-
-    # Instantiate the calculator object
-    calc = TradeCalc(tdb, cmdenv)
 
     cmdenv.DEBUG1("numHops {}, vias {}, adhocHops {}",
                 numHops, len(viaSet), cmdenv.adhocHops)
@@ -971,7 +1019,21 @@ def run(results, cmdenv, tdb):
         elif cmdenv.debug:
             cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
-        newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
+        try:
+            newRoutes = calc.getBestHops(routes, restrictTo=restrictTo)
+        except NoHopsError:
+            if hopNo == 0 and len(cmdenv.origSystems) == 1:
+                raise NoDataError(
+                    "Couldn't find any trading links within {} x {}ly jumps of {}."
+                    .format(
+                        cmdenv.maxJumpsPer,
+                        cmdenv.maxLyPer,
+                        cmdenv.origSystems[0].name(),
+                    )
+                )
+            raise NoDataError(
+                "No routes had reachable trading links at hop #{}".format(hopNo + 1)
+            )
         if not newRoutes:
             checkReachability(tdb, cmdenv)
             if hopNo > 0:
@@ -986,14 +1048,39 @@ def run(results, cmdenv, tdb):
                     .format(hopNo + 1)
                 )
                 break
+            if hopNo == 0:
+                if cmdenv.origPlace and len(routes) == 1:
+                    errText = (
+                        "No profitable buyers found for the goods at {}.\n"
+                        "\n"
+                        "You may want to try:\n"
+                        "  {} local \"{}\" --ly {} -vv --stations --trading"
+                        .format(
+                            routes[0].lastStation.name(),
+                            sys.argv[0], cmdenv.origPlace.system.name(),
+                            cmdenv.maxJumpsPer * cmdenv.maxLyPer,
+                        )
+                    )
+                    if isinstance(cmdenv.origPlace, Station):
+                        errText += (
+                            "\n"
+                            "or:\n"
+                            "  {} market \"{}\" --sell -vv"
+                            .format(
+                                sys.argv[0], cmdenv.origPlace.name(),
+                            )
+                        )
+                    raise NoDataError(errText)
 
         routes = newRoutes
         if routes and goalSystem:
+            # Promote the winning route to the top of the list
+            # while leaving the remainder of the list intact
             routes.sort(
                 key=lambda route:
-                    0 if route.route[-1].system is goalSystem else 1
+                    0 if route.lastSystem is goalSystem else 1
             )
-            if routes[0].route[-1].system is goalSystem:
+            if routes[0].lastSystem is goalSystem:
                 cmdenv.NOTE("Goal system reached!")
                 break
 
@@ -1027,7 +1114,7 @@ def render(results, cmdenv, tdb):
 
     routes = results.data
 
-    for i in range(min(len(routes), cmdenv.routes)):      
+    for i in range(min(len(routes), cmdenv.routes)):
         print(routes[i].detail(cmdenv))
 
     # User wants to be guided through the route.
