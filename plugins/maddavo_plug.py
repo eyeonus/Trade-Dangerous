@@ -285,7 +285,20 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         generator = self.csv_station_rows(STATIONS_URL, "Stations")
         for system, stnName, station, values in generator:
-            lsFromStar = int(values[2])
+            try:
+                lsFromStar = float(values[2])
+            except ValueError:
+                tdenv.WARN(
+                    "Invalid, non-numeric, lsFromStar value ('{}') for {}/{}",
+                    values[2], system.name(), stnName
+                )
+                continue
+            if int(lsFromStar) != lsFromStar:
+                tdenv.NOTE(
+                    "Discarding floating-point part of {} for {}/{}",
+                    lsFromStar, system.name(), stnName
+                )
+                lsFromStar = int(lsFromStar)
             modified = values[7] if len(values) > 6 else 'now'
             if lsFromStar < 0 or modified.startswith("DEL"):
                 if station:
