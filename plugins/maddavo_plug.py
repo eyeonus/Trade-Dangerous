@@ -441,47 +441,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         )
         self.tdenv.NOTE("{} updated.", path)
 
+    def download_prices(self, lastRunDays):
+        """ Figure out which file to download and fetch it. """
 
-    def run(self):
-        tdb, tdenv = self.tdb, self.tdenv
-
-        # It takes a while to download these files, so we want
-        # to record the start time before we download. What we
-        # care about is when we downloaded relative to when the
-        # files were previously generated.
-
-        self.check_first_time_use()
-
-        startTime = time.time()
-
-        tdenv.ignoreUnknown = True
-
-        prevImportDate, lastRunDays = self.load_timestamp()
-        self.prevImportDate = prevImportDate
-
-        skipDownload = self.getOption("skipdl")
-        forceParse = self.getOption("force") or skipDownload
-        if self.getOption("csvs"):
-            self.options["systems"] = True
-            self.options["stations"] = True
-            self.options["shipvendors"] = True
-
-        # Ensure the cache is built and reloaded.
-        tdb.reloadCache()
-        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
-        self.import_systems()
-        self.import_stations()
-        self.import_shipvendors()
-
-        # Let the system decide if it needs to reload-cache
-        tdb.close()
-
-        self.refresh_csv()
-
-        if self.getOption("csvonly"):
-            return False
-
+        # Argument checking
         use3h = 1 if self.getOption("use3h") else 0
         use2d = 1 if self.getOption("use2d") else 0
         usefull = 1 if self.getOption("usefull") else 0
@@ -489,10 +452,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             raise PluginException(
                 "Only one of use3h/use2d/usefull can be used at once."
             )
-        if (use3h or use2d or usefull) and skipDownload:
-            raise PluginException(
-                "use3h/use2d/usefull has no effect with --opt=skipdl"
-            )
+        if self.getOption("skipdl"):
+            if (use3h or use2d or usefull):
+                raise PluginException(
+                    "use3h/use2d/usefull has no effect with --opt=skipdl"
+                )
+            return
+
+        # Overrides
         if use3h:
             lastRunDays = 0.01
         elif use2d:
@@ -500,23 +467,35 @@ class ImportPlugin(plugins.ImportPluginBase):
         elif usefull:
             lastRunDays = 3.0
 
-        if not skipDownload:
-            # Download
-            if lastRunDays < 3 / 24:
-                priceFile = "prices-3h.asp"
-            elif lastRunDays < 1.9:
-                priceFile = "prices-2d.asp"
-            else:
-                priceFile = "prices.asp"
-            transfers.download(
-                tdenv,
-                BASE_URL + priceFile,
-                self.filename,
-                shebang=lambda line: self.check_shebang(line, True),
-            )
+        # Use age/options to determine which file
+        if lastRunDays < 3 / 24:
+            priceFile = "prices-3h.asp"
+        elif lastRunDays < 1.9:
+            priceFile = "prices-2d.asp"
+        else:
+            priceFile = "prices.asp"
 
+        # Fetch!
+        transfers.download(
+            self.tdenv,
+            BASE_URL + priceFile,
+            self.filename,
+            shebang=lambda line: self.check_shebang(line, True),
+        )
+
+    def import_prices(self):
+        """ Download and import data price data """
+
+        tdb, tdenv = self.tdb, self.tdenv
+
+        startTime = time.time()
+
+        prevImportDate, lastRunDays = self.load_timestamp()
+        self.prevImportDate = prevImportDate
+
+        self.download_prices(lastRunDays)
         if tdenv.download:
-            return False
+            return
 
         # Scan the file for the latest data.
         firstDate = None
@@ -588,6 +567,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if numNewLines == 0:
             tdenv.NOTE("No new price entries found.")
 
+        forceParse = self.getOption("force") or self.getOption("skipdl")
         if numNewLines > 0 or forceParse:
             if tdenv.detail:
                 print(
@@ -622,6 +602,41 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
 
         self.save_timestamp(importDate, startTime)
+
+    def run(self):
+        tdb, tdenv = self.tdb, self.tdenv
+
+        # It takes a while to download these files, so we want
+        # to record the start time before we download. What we
+        # care about is when we downloaded relative to when the
+        # files were previously generated.
+
+        self.check_first_time_use()
+
+        tdenv.ignoreUnknown = True
+
+        if self.getOption("csvs"):
+            self.options["systems"] = True
+            self.options["stations"] = True
+            self.options["shipvendors"] = True
+
+        # Ensure the cache is built and reloaded.
+        tdb.reloadCache()
+        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
+
+        self.import_systems()
+        self.import_stations()
+        self.import_shipvendors()
+
+        # Let the system decide if it needs to reload-cache
+        tdb.close()
+
+        self.refresh_csv()
+
+        if not self.getOption("csvonly"):
+            self.import_prices()
+
+        tdenv.NOTE("Import completed.")
 
         # We did all the work
         return False
