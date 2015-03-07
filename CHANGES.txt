@@ -2,6 +2,16 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.13.1 Mar 06 2015
+. (kfsone) "shipvendor" command:
+  - Default action is now to list ships at given station, e.g.
+    trade.py shipvendor galileo
+  - Added "--name-sort" (--name) to sort list by ship name,
+. (kfsone) Fixed some problems with maddavo's import,
+. (kfsone) Added "WARNING" level events (use -qq to disable),
+. (kfsone) Fixed #195 "local" ValueError when no stations listed,
++ Dry411S: ShipVendors
+
 v6.13.0 Mar 03 2015
 . (kfsone) Added "modified" column to ShipVendor table,
 . (kfsone) "maddavo" import plugin:

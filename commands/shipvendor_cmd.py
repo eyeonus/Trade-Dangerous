@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.commandenv import ResultRow
 from commands.exceptions import CommandLineError
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from formatting import RowFormat, ColumnFormat, max_len
 from itertools import chain
 from tradedb import AmbiguityError
 from tradedb import System, Station
@@ -16,7 +17,7 @@ import sys
 ######################################################################
 # Parser config
 
-help='Add (or update) a ship vendor entry'
+help='List, add or update available ships to a station'
 name='shipvendor'
 epilog=None
 arguments = [
@@ -30,7 +31,7 @@ arguments = [
     ParseArgument(
         'ship',
         help='Comma or space separated list of ship names.',
-        nargs='+',
+        nargs='*',
     ),
 ]
 switches = [
@@ -44,6 +45,12 @@ switches = [
             '--add', '-a',
             help='Indicates you want to add a new station.',
             action='store_true',
+        ),
+        ParseArgument(
+            '--name-sort',
+            help='Sort listed ships by name.',
+            action='store_true',
+            dest='nameSort',
         ),
     ),
     ParseArgument(
@@ -73,7 +80,7 @@ def addShipVendor(tdb, cmdenv, station, ship):
     cmdenv.NOTE("{} added to {} in local {} database.",
             ship.name(), station.name(), tdb.dbPath)
     return ship
-    
+
 
 def removeShipVendor(tdb, cmdenv, station, ship):
     db = tdb.getDB()
@@ -94,6 +101,7 @@ def maybeExportToCSV(tdb, cmdenv):
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "ShipVendor")
     cmdenv.NOTE("{} updated.", csvPath)
 
+
 def checkShipPresent(tdb, station, ship):
     # Ask the database how many rows it sees claiming
     # this ship is sold at that station. The value will
@@ -112,27 +120,59 @@ def checkShipPresent(tdb, station, ship):
     return (count > 0)
 
 
+def listShipsPresent(tdb, cmdenv, station, results):
+    """ Populate results with a list of ships present at the given station """
+    cur = tdb.query("""
+        SELECT ship_id
+          FROM ShipVendor
+         WHERE station_id = ?
+    """, [station.ID]
+    )
+
+    results.summary = ResultRow()
+    results.summary.station = station
+    ships = tdb.shipByID
+    addShip = results.rows.append
+
+    for (ship_id,) in cur:
+        ship = ships.get(ship_id, None)
+        if ship:
+            addShip(ResultRow(ship=ship))
+
+    if cmdenv.nameSort:
+        results.rows.sort(key=lambda row: row.ship.name())
+    else:
+        results.rows.sort(key=lambda row: row.ship.cost, reverse=True)
+
+    return results
+
+
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-
     station = cmdenv.startStation
     if not isinstance(station, Station):
-        raise CommandLineError("{} is a system, not a station".format(
-            station.name()
-        ))
+        raise CommandLineError(
+            "{} is a system, not a station"
+            .format(station.name())
+        )
+    if station.shipyard == 'N' and not cmdenv.remove:
+        raise CommandLineError(
+            "{} is flagged as having no shipyard."
+            .format(station.name())
+        )
 
     if cmdenv.add:
         action = addShipVendor
     elif cmdenv.remove:
         action = removeShipVendor
     else:
-        ###TODO:
-        ### if not cmdenv.ship:
-        ###  List ships at this station.
+        return listShipsPresent(tdb, cmdenv, station, results)
+
+    if not cmdenv.ship:
         raise CommandLineError(
-            "You must specify --add or --remove"
+            "No ship names specified."
         )
 
     ships = {}
@@ -171,3 +211,30 @@ def run(results, cmdenv, tdb):
     maybeExportToCSV(tdb, cmdenv)
 
     return None
+
+######################################################################
+# Transform result set into output
+
+def render(results, cmdenv, tdb):
+    if not results or not results.rows:
+        raise CommandLineError(
+            "No ships available at {}"
+            .format(results.summary.station.name())
+        )
+
+    maxShipLen = max_len(results.rows, key=lambda row: row.ship.name())
+
+    rowFmt = RowFormat().append(
+        ColumnFormat("Ship", '<', maxShipLen,
+            key=lambda row: row.ship.name())
+    ).append(
+        ColumnFormat("Cost", '>', 12, 'n',
+            key=lambda row: row.ship.cost)
+    )
+
+    if not cmdenv.quiet:
+        heading, underline = rowFmt.heading()
+        print(heading, underline, sep='\n')
+
+    for row in results.rows:
+        print(rowFmt.format(row))
