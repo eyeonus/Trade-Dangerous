@@ -70,6 +70,7 @@ def run(results, cmdenv, tdb):
     results.summary = ResultRow()
     results.summary.near = srcSystem
     results.summary.ly = ly
+    results.summary.stations = 0
 
     distances = { srcSystem: 0.0 }
 
@@ -130,6 +131,7 @@ def run(results, cmdenv, tdb):
         row.dist = dist
         row.stations = stations if showStations else []
         results.rows.append(row)
+        results.summary.stations += len(row.stations)
 
     return results
 
