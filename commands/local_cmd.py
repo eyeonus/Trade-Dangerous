@@ -138,21 +138,21 @@ def run(results, cmdenv, tdb):
 
 def render(results, cmdenv, tdb):
     if not results or not results.rows:
-        raise TradeException("No systems found within {}ly of {}.".format(
-                    results.summary.ly,
-                    results.summary.near.name(),
-                ))
+        raise TradeException(
+            "No systems found within {}ly of {}."
+            .format(results.summary.ly, results.summary.near.name())
+        )
 
     # Compare system names so we can tell 
     maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
 
     sysRowFmt = RowFormat().append(
-                ColumnFormat("System", '<', maxSysLen,
-                        key=lambda row: row.system.name())
-            ).append(
-                ColumnFormat("Dist", '>', '7', '.2f',
-                        key=lambda row: row.dist)
-            )
+        ColumnFormat("System", '<', maxSysLen,
+                key=lambda row: row.system.name())
+    ).append(
+        ColumnFormat("Dist", '>', '7', '.2f',
+                key=lambda row: row.dist)
+    )
 
     showStations = cmdenv.detail
     if showStations:
@@ -202,10 +202,10 @@ def render(results, cmdenv, tdb):
             )
 
     cmdenv.DEBUG0(
-            "Systems within {ly:<5.2f}ly of {sys}.\n",
-                    sys=results.summary.near.name(),
-                    ly=results.summary.ly,
-        )
+        "Systems within {ly:<5.2f}ly of {sys}.\n",
+        sys=results.summary.near.name(),
+        ly=results.summary.ly,
+    )
 
     if not cmdenv.quiet:
         heading, underline = sysRowFmt.heading()
