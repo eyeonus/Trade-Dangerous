@@ -55,8 +55,9 @@ unq:name@Category.category_id,unq:name,ui_order
 'Minerals','Gallite',4
 'Minerals','Indite',5
 'Minerals','Lepidolite',6
-'Minerals','Rutile',7
-'Minerals','Uraninite',8
+'Minerals','Painite',7
+'Minerals','Rutile',8
+'Minerals','Uraninite',9
 'Slavery','Imperial Slaves',1
 'Slavery','Slaves',2
 'Technology','Advanced Catalysers',1

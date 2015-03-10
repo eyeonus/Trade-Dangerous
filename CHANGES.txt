@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.13.2 Mar 10 2015
+. (Tromador) Added "Painite" to Item.csv
+
 v6.13.1 Mar 06 2015
 . (kfsone) "shipvendor" command:
   - Default action is now to list ships at given station, e.g.
