@@ -95,6 +95,7 @@ stations = {
     "SAMBURITJA/PTEYN LANDING":             DELETED,
     "SAMBURITJA/RPTEYN LANDING":            DELETED,
     "CHICK EK/WH IEELOCK GATEWAY":          DELETED,
+    "LHS 3006/WCM Transfer Orbital":        "Leonard Nimoy Station",
 }
 
 categories = {
