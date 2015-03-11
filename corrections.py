@@ -14,6 +14,7 @@ systems = {
     "TAVYTERE": "ALRAI SECTOR ON-T B3-2",
     "BODB DJEDI": "BODEDI",
     "HIP 101110": "NEW YEMBO",
+    "ICV HR-V B2-0": "ICZ HR-V B2-0",
 
 #ADD_SYSTEMS_HERE
 }

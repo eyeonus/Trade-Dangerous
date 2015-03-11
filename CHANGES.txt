@@ -7,6 +7,7 @@ v6.13.2 Mar 10 2015
 . (kfsone) import plugin now allows you to separate --opt values with ,
    e.g. trade.py import --plug=maddavo --opt=csvs,csvonly
    will import mad's csv files without importing his prices
+. (kfsone) 112 new systems
 
 v6.13.1 Mar 06 2015
 . (kfsone) "shipvendor" command:

@@ -53,6 +53,8 @@ ignore = [
     "CORE SYS HH-M A7-3",
     "OI-T B3-9",
     "IDZ DL-X B1-1",
+    "PHE ZHUA",
+    "LP 937-98",
 ]
 
 
