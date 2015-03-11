@@ -2,6 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.13.2 Mar 10 2015
+. (Tromador) Added "Painite" to Item.csv
+. (kfsone) import plugin now allows you to separate --opt values with ,
+   e.g. trade.py import --plug=maddavo --opt=csvs,csvonly
+   will import mad's csv files without importing his prices
+. (kfsone) 112 new systems
+
 v6.13.1 Mar 06 2015
 . (kfsone) "shipvendor" command:
   - Default action is now to list ships at given station, e.g.
@@ -20,6 +27,9 @@ v6.13.0 Mar 03 2015
   - Added "--opt=csvonly" to stop after importing any csv files (no prices),
   - Added "--opt=csvs" to import all the csvs
     (equivalent to typing --opt=systems --opt=stations --opt=shipvendor)
+  e.g.
+    trade.py import --plug=maddavo --opt=csvs --opt=csvonly
+    trade.py import --plug=maddavo --opt=stations
 . (kfsone) "market" sub-command:
   - Default behavior is equivalent to "--buy --sell",
   - You now only need to specify --buy (-B) or --sell (-S) to list ONLY

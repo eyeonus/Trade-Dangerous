@@ -93,6 +93,9 @@ class PluginBase(object):
         for opt in sorted(options.keys()):
             text += "--opt={:<12}  ".format(opt)
             text += tw.fill(options[opt].strip()) + "\n"
+        text += "\n"
+        text += "You can also chain options together, e.g.:\n"
+        text += "  --opt=systems,stations,csvonly\n"
 
         return text
 
