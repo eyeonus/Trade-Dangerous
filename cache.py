@@ -141,6 +141,7 @@ ocrDerp = re.compile(r'''(
     \bVAR[O0]E |
     EN[^T]?ERPRISE |
     EN..ERPRISE |
+    [E38]NT[E38]F[I1']?PR[I1'][S5][E38] |
     \bMUR[O0]O |
     \bBAR[O0]E |
     \bBALLAR[O0] |
@@ -164,8 +165,8 @@ ocrDerp = re.compile(r'''(
         VISION |
         REFINERY
     )$ |
-    ORBIDAL |
-    ORDITAL |
+    [O0]RB[I1]DAL |
+    [O0]R[DL][I1]TAL |
     \bBRIOGER |
     \bJUOSON |
     LANOER |
@@ -200,10 +201,11 @@ ocrDerp = re.compile(r'''(
     \bRD[DO0][DO0]EN |
     \bR[O0]([O0]D|D[O0])EN |
     (?<!BR)[O0]ECK |
-    SETTL(FMENT|EMFNT|FMFNT) |
-    SETTLMENT |
-    SETTLE\sMENT |
-    SETTLEMNT |
+    SE?TTL(FMENT|EMFNT|FMFNT) |
+    SE?TTLMENT |
+    STTL[E38]?M[E38]?NT |
+    S\s?[E38]\s?T\s?T\s?L\s?[E38](\sM|M\s)[E38]\s?N\s?T$ |
+    S[E38]TT[38]?L[E38]MNT |
     MARKFT |
     HANGFR |
     CL(EVF|FVE|FVF) |
@@ -257,10 +259,14 @@ ocrDerp = re.compile(r'''(
     \bBR8NNAN\b |
     \b(ID)?ING$ |
     GATEVVAY$ |
-    HU\sIB$ |
+    [HI\s]U\sI?B$ |
     CLAI\sI?M$ |
     \bUITY$ |
-    \bDING$
+    \bDING$ |
+    BTOP$ |
+    B'I'OP$ |
+    TRANQUNUTY$ |
+    C[O0]LUNY$
 )''', flags=re.X)
 
 
