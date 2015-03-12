@@ -798,7 +798,7 @@ class TradeDB(object):
             UPDATE System
                SET name=?,
                    pos_x=?, pos_y=?, pos_z=?,
-                   added=(SELECT added_id FROM Added WHERE name = ?),
+                   added_id=(SELECT added_id FROM Added WHERE name = ?),
                    modified=DATETIME(?)
         """, [
             dbname, x, y, z, added, modified
