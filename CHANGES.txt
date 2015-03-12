@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.13.3 Mar 11 2015
+. (kfsone) Fixed "--blackmarket" and "--trading" in local,
+
 v6.13.2 Mar 10 2015
 . (Tromador) Added "Painite" to Item.csv
 . (kfsone) import plugin now allows you to separate --opt values with ,
