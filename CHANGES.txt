@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v6.13.3 Mar 11 2015
 . (kfsone) Fixed "--blackmarket" and "--trading" in local,
 . (Dry411s) Resolves #200 New ships for 1.2,
+. (kfsone) +103 Systems
 
 v6.13.2 Mar 10 2015
 . (Tromador) Added "Painite" to Item.csv
