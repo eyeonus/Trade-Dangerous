@@ -343,6 +343,7 @@ class Station(object):
             return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
+    @property
     def isTrading(self):
         """
         True if the station is thought to be trading.
