@@ -95,6 +95,7 @@ $
 
 
 ocrDerp = re.compile(r'''(
+    ^.$ |
     LAN[O0]ING |
     [O0][O0]CK |
     [O0]INEILL |
@@ -164,6 +165,7 @@ ocrDerp = re.compile(r'''(
         REFINERY
     )$ |
     ORBIDAL |
+    ORDITAL |
     \bBRIOGER |
     \bJUOSON |
     LANOER |
@@ -229,7 +231,7 @@ ocrDerp = re.compile(r'''(
     \bHORNUCH\b |
     \bKLU\sDZE |
     ^[DR]HN\b |
-    SU\sI?RVEY\b |
+    SU\sI?RVEY$ |
     H[DO0]L[O0]ING |
     H[D0]LDING |
     M[DO0]HMAN[O0] |
@@ -251,7 +253,14 @@ ocrDerp = re.compile(r'''(
     \bC[O0]LCNY\b |
     \bOOCTE\b |
     \bBULGAFIIN\b |
-    \bWH\sIEEL
+    \bWH\sIEEL |
+    \bBR8NNAN\b |
+    \b(ID)?ING$ |
+    GATEVVAY$ |
+    HU\sIB$ |
+    CLAI\sI?M$ |
+    \bUITY$ |
+    \bDING$
 )''', flags=re.X)
 
 
@@ -452,7 +461,7 @@ def getItemByNameIndex(cur):
 
 
 def checkForOcrDerp(tdenv, systemName, stationName):
-    match = ocrDerp.search(stationName)
+    match = ocrDerp.search(stationName.upper())
     if match:
         tdenv.NOTE(
             "Ignoring '{}/{}' because it looks like OCR derp."
