@@ -216,7 +216,7 @@ ocrDerp = re.compile(r'''(
     ` |
     -- |
     \bREILLI\b |
-    RINF\b |
+    \bRIN[FC]\b |
     \bOL[E3]ARY |
     ‹ |
     \bSATION\b |
@@ -266,7 +266,17 @@ ocrDerp = re.compile(r'''(
     BTOP$ |
     B'I'OP$ |
     TRANQUNUTY$ |
-    C[O0]LUNY$
+    C[O0]LUNY$ |
+    \bMAGN\sI?US\b |
+    \s-[A-Z] |
+    ^NAKAM(\sIU|U\sIR) |
+    ^THOM\sI?PSON |
+    ^STEPH\sI?ENSON |
+    \bCQRK\b |
+    ^AN\sI?DREW |
+    ^WATSO\sIN |
+    ^QSSW |
+    ^RTZEN
 )''', flags=re.X)
 
 
