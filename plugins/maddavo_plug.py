@@ -254,7 +254,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdb, tdenv = self.tdb, self.tdenv
         sysAdjust = corrections.systems.get
-        stnAdjust = corrections.systems.get
+        stnAdjust = corrections.stations.get
         DELETED = corrections.DELETED
 
         for sysName, system, values in self.csv_system_rows(url, tableName):
