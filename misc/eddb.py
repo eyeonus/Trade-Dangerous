@@ -1,160 +1,89 @@
 #! /usr/bin/env python
 
 """
-Preliminary, hacky script to retrieve Systems and Stations
-from EDDB.
+Provides a simple API for streaming data from EDDB in essentially raw format.
+
+Example:
+    import misc.eddb
+    for sysdata in misc.eddb.SystemsQuery():
+        print(sysdata)
 
 Original author: oliver@kfs.org
 """
 
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-
 import json
-import pathlib
 import sys
-import time
 import transfers
 
 BASE_URL = "http://eddb.io/archive/v2/"
+COMMODITIES_JSON = BASE_URL + "commodities.json"
 SYSTEMS_JSON = BASE_URL + "systems.json"
-STATIONS_JSON = BASE_URL + "stations.json"
+STATIONS_EXT_JSON = BASE_URL + "stations.json"
 STATIONS_LITE_JSON = BASE_URL + "stations_lite.json"
 
 
-class JsonQuery(object):
+class EDDBQuery(object):
     """
-    Crappy wrapper around a json query.
+    Base class for querying an EDDB data set and converting the
+    JSON results into an iterable stream.
+
+    Example:
+        for entity in EDDBQuery():
+            print(entity)
     """
 
-    def __init__(
-            self,
-            url,
-            outFile=None,
-            timestamp=None,
-            escapeTrans=None,
-            ):
-        """
-            url
-                The JSON resource to be retrieved,
-            outfile [optional]
-                Where to write translations
-            timestamp [optional]
-                Override the default "timestamp" value
-            escapeTrans [optional]
-                Override the default escape translation ("'" -> "''")
+    url = None      # Define in derived classes
 
-            If outfile is specified and is a string or a Path, it will
-            be opened in write mode and presented in ".out". If it is
-            not None, it is stored in ".out". If it is "None", then
-            the value of sys.stdout is stored in ".out".
-        """
-        self.url = url
-        self.escapeTrans = escapeTrans or str.maketrans({"'": "''"})
-        self.timestamp = timestamp or time.strftime('%Y-%m-%d %H:%M:%S')
-
-        if outFile is None:
-            self.out = sys.stdout
-        elif isinstance(outFile, str):
-            self.out = open(outFile, "w")
-        elif isinstance(outFile, pathlib.Path):
-            self.out = outFile.open("w")
-        else:
-            self.out = outFile
-
-    def fetch_data(self):
-        """
-        Downloads the data and yields each entry of the resulting
-        array of dictionaries.
-
-        Yields:
-            dict(...)
-        """
+    def __init__(self):
+        assert self.url
         self.jsonData = transfers.get_json_data(self.url)
-        for ent in self.jsonData:
-            ent['name']  = ent['name'].translate(self.escapeTrans)
-            yield ent
 
+    def __iter__(self):
+        return iter(self.jsonData)
 
-def fetch_systems(outFile=None):
-    """ Load the Systems json data. Returns dict(id: name) """
+class CommoditiesQuery(EDDBQuery):
+    """
+    Streams Commodities data from EDDB.
 
-    query = JsonQuery(url=SYSTEMS_JSON, outFile=outFile)
-    mask = "'{}',{},{},{},'EDDB','"+query.timestamp+"'"
+    Example:
+        for comm in CommoditiesQuery():
+            print(comm['name'])
+    """
+    url = COMMODITIES_JSON
 
-    print(
-        "unq:name,"
-        "pos_x,"
-        "pos_y,"
-        "pos_z,"
-        "name@Added.added_id,"
-        "modified",
-        file=query.out
-    )
-    systems = {}
-    for ent in query.fetch_data():
-        # each sysent is a dictionary
-        sysName = ent['name'].upper()
-        x, y, z = ent['x'], ent['y'], ent['z']
+class SystemsQuery(EDDBQuery):
+    """
+    Streams System data from EDDB.
 
-        print(mask.format(sysName, x, y, z), file=query.out)
+    Example:
+        for system in SystemsQuery():
+            print(system['name'])
+    """
+    url = SYSTEMS_JSON
 
-        systems[int(ent['id'])] = sysName
+class StationsQuery(EDDBQuery):
+    """
+    Streams Station data from EDDB without trade data.
 
-    if outFile:
-        print('Generated "{}"'.format(outFile))
-
-    return systems
-
-
-def fetch_stations(systems, outFile=None):
-    """ Fetch Stations json - requires a dict(id: name) of systems. """
-
-    query = JsonQuery(STATIONS_LITE_JSON, outFile=outFile)
-    mask = "'{}','{}',{},'{}','{}'"
+    Example:
+        for station in StationsQuery():
+            print(station['name'])
+    """
+    url = STATIONS_LITE_JSON
 
     # EDDB black market is null (unknown), 0 (No) or 1 (Yes)
-    marketConvert = {None:'?', 0:'N', 1:'Y'}
+    marketConversion = {None:'?', 0:'N', 1:'Y'}
 
     # EDDB pad size is null (unknown), 10 (small), 20 (medium) or 30 (large)
-    padConvert = {None:'?', 10:'S', 20:'M', 30:'L'}
+    padConversion = {None:'?', 10:'S', 20:'M', 30:'L'}
 
-    print(
-        "unq:name@System.system_id,"
-        "unq:name,"
-        "ls_from_star,"
-        "blackmarket,"
-        "max_pad_size",
-        file=query.out
-    )
-    for ent in query.fetch_data():
-        # each sysent is a dictionary
-        sysID = int(ent['system_id'])
-        sysName = systems[sysID]
-        stnName = ent['name']
-        distToStar = ent['distance_to_star']
-        blackMarket = ent['has_blackmarket']
-        mlps = ent['max_landing_pad_size']
+class StationsExtQuery(StationsQuery):
+    """
+    Streams extended Station data from EDDB with trade data.
 
-        lsFromStar = int(distToStar) if distToStar else 0
-        blackMarket = marketConvert[blackMarket]
-        pad = padConvert[mlps]
+    Example:
+        for station in StationsExtQuery():
+            print(station['name'])
+    """
+    url = STATIONS_EXT_JSON
 
-        print(mask.format(sysName, stnName, lsFromStar, blackMarket, pad), file=query.out)
-
-    if outFile:
-        print('Generated "{}"'.format(outFile))
-
-
-def fetch_data(systemsFile=None, stationFile=None):
-    """ Fetch systems and station data. """
-
-    systems = fetch_systems(systemsFile or 'tmp/Systems.eddb.csv')
-    fetch_stations(systems, stationFile or 'tmp/Stations.eddb.csv')
-
-
-if __name__ == "__main__":
-    fetch_data()
