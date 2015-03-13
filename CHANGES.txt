@@ -9,6 +9,7 @@ v6.13.3 Mar 11 2015
 . (kfsone) OCR Derp fixes
 . (kfsone) Station cleanup
 . (Dry411s) Resolves #203 New ShipPrices per 1.2.03,
+. (orphu) ShipVendor updates
 
 v6.13.2 Mar 10 2015
 . (Tromador) Added "Painite" to Item.csv
