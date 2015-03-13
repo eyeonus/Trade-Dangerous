@@ -200,7 +200,7 @@ ocrDerp = re.compile(r'''(
     \bREA([O0]D|D[O0]) |
     \bRD[DO0][DO0]EN |
     \bR[O0]([O0]D|D[O0])EN |
-    (?<!BR)[O0]ECK |
+    (?<!BR)[O0]ECK$ |
     SE?TTL(FMENT|EMFNT|FMFNT) |
     SE?TTLMENT |
     STTL[E38]?M[E38]?NT |
@@ -276,7 +276,9 @@ ocrDerp = re.compile(r'''(
     ^AN\sI?DREW |
     ^WATSO\sIN |
     ^QSSW |
-    ^RTZEN
+    ^RTZEN |
+    \bI?NAL$ |
+    \b''I\b
 )''', flags=re.X)
 
 
