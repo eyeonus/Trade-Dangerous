@@ -319,6 +319,14 @@ RUN sub-command:
          --max-days-old 7     (data less than a week old)
          -MD=2                (data less than 2 days old)
 
+     --max-gain-per-ton N
+     --mgpt N
+       DEFAULT: 10,000
+       Sets an upper threshold on the maximum profit/ton that TD will
+       believe. This is a way to avoid bad data.
+       e.g.
+         --mgpt 2000
+
      --pad-size SML?
      --pad SML?
      -p
