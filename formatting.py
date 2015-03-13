@@ -1,4 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+import itertools
 
 class ColumnFormat(object):
     """
@@ -165,6 +166,11 @@ class RowFormat(object):
         return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
 
 def max_len(iterable, key=lambda item: item):
+    iterable, readahead = itertools.tee(iter(iterable))
+    try:
+        next(readahead)
+    except StopIteration:
+        return 0
     return max(len(key(item)) for item in iterable)
 
 if __name__ == '__main__':

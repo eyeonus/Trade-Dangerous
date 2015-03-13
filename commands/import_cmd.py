@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from itertools import chain
 from pathlib import Path
 
 import cache
@@ -26,7 +27,12 @@ help=(
     "is removed, but other stations are not affected."
 )
 name='import'
-epilog=None
+epilog=(
+    "This sub-command provides a plugin infrastructure, and comes "
+    "with a module to import data from Maddavo's Market Share "
+    "(http://www.davek.com.au/td/).\n"
+    "See \"import --plug=maddavo --opt=help\" for more help."
+)
 wantsTradeDB=False
 arguments = [
 ]
@@ -82,6 +88,10 @@ switches = [
 def run(results, cmdenv, tdb):
     # If we're using a plugin, initialize that first.
     if cmdenv.plug:
+        if cmdenv.pluginOptions:
+            cmdenv.pluginOptions = chain.from_iterable(
+                opt.split(',') for opt in cmdenv.pluginOptions
+            )
         try:
             pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
         except plugins.PluginException as e:

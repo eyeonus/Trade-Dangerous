@@ -363,6 +363,18 @@ class StarSubmission(object):
         if commander:
             self.commander = commander
 
+    def __repr__(self):
+        return (
+            "StarSubmission("
+                "test={}, star=\"{}\", commander=\"{}\", refs={}"
+            ")".format(
+                self.test,
+                self.name,
+                self.commander,
+                self.refs,
+            )
+        )
+
 
     def add_distance(self, name, dist):
         assert isinstance(name, str)
@@ -403,15 +415,15 @@ class StarSubmission(object):
         )
         resp = req.text
         if not resp.startswith('{'):
-            edsc_log(self.apiCall, data, error=resp)
+            edsc_log(self.apiCall, repr(self), error=resp)
             raise SubmissionError("Server Side Error: " + resp)
 
         try:
             respData = json.loads(resp)
         except Exception:
-            edsc_log(self.apiCall, data, error=resp)
+            edsc_log(self.apiCall, repr(self), error=resp)
             raise SubmissionError("Invalid server response: " + resp)
-        edsc_log(self.apiCall, data, respData)
+        edsc_log(self.apiCall, repr(self), respData)
         try:
             innerData = respData['d']
         except KeyError:
