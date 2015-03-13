@@ -570,6 +570,11 @@ IMPORT sub-command:
         use2d:        Force download of the 2-days .prices file
         usefull:      Force download of the full .prices file
 
+     Options can be comma separated, the following are equivalent:
+       --option systems --option stations --option shipvendors --option csvonly
+       --opt=csvs --opt=csvonly
+       -O csvs,csvonly
+
     --ignore-unknown
     -i
       Any systems, stations, categories or items that aren't recognized
@@ -580,92 +585,6 @@ IMPORT sub-command:
 
       Note: When the cache is rebuilt, these stations will be lost, so
       you may need to add the "-i" flag to the buildcache command.
-
-
-RARES sub-command:
-
-  This command looks for known rare items within the space around
-  a specified system.
-
-  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
-
-     <system>
-       System to center search on
-       e.g.
-         Lave
-         @Sol
-
-     --ly N.NN
-       DEFAULT: 42
-       Maximum distance to search from center system.
-       e.g.
-         --ly 0     (unlimited)
-         --ly 21.2
-
-     --limit N
-       Maximum number of results to show
-       e.g.
-         --limit 10
-
-     --reverse
-     -r
-       Reverse the order, can be used with "--ly" and "--limit" to find
-       the furthest-away rares
-
-    --away N.NN
-    --from SYSTEM1 --from SYSTEM2 ... --from SYSTEMN
-      Limits results to systems that are at least a given distance away
-      from additional systems.
-      e.g.
-        trade.py rare --ly 160 sol -r --away 140 --from lave
-          Shows systems starting at 160ly or less from sol,
-          but that are also 140ly or more from lave.
-        trade.py rare --ly 160 sol -r --away 140 --from lave --from xihe
-          As above but also compares for <= 140ly from xihe
-
-    --pad-size SML?
-    --pad SML?
-    -p
-      Limit results to stations that match one of the pad sizes
-      specified.
-        --pad ML?            (med, lrg or unknown only)
-        -o ML?                 ""    ""      ""    ""
-        --pad ?              (unknown only),
-        --pad L              (large only, ignores unknown)
-
-     --price-sort
-     -P
-       Sort by price rather than proximity
-
-     --quiet
-     -q
-       Don't include the header lines
-
-
-  Examples:
-
-    $ trade.py rare sol --ly 10
-    Station                       Rare                    Cost DistLy  Alloc
-    ------------------------------------------------------------------------
-    ALPHA CENTAURI/Hutton Orbital Centauri Mega Gin      3,319   4.38      7
-
-    $ trade.py rare @neto --ly 50 --price --limit 5
-    Station                   Rare                             Cost DistLy  Alloc
-    -----------------------------------------------------------------------------
-    XIHE/Zhen Dock            Xihe Biomorphic Companions      4,482  48.10      7
-    VEGA/Taylor City          Vega Slimweed                   2,398  33.44      0
-    LFT 1421/Ehrlich Orbital  Void Extract Coffee             2,357  26.45      0
-    ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
-    V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
-
-    Finding where to take a rare from Bast:
-    $ trade.py rare bast --ly 180 -r --limit 4
-    Station                      Rare                        Cost DistLy  Alloc      StnLs Pad
-    ------------------------------------------------------------------------------------------
-    DELTA PHOENICIS/Trading Post Delta Phoenicis Palms        412 179.42     17      3,743 Lrg
-    DEURINGAS/Shukor Hub         Deuringas Truffles         1,892 174.22      0          ? Lrg
-    HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
-    ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
 
 MARKET sub-command:
@@ -805,6 +724,18 @@ LOCAL sub-command:
     --blackmarket
       Limit stations to those known to have a black market.
 
+    --outfitting
+      Limit stations to those known to have outfitting.
+
+    --rearm
+      Limit stations to those known to rearm.
+
+    --refuel
+      Limit stations to those known to refuel.
+
+    --repair
+      Limit stations to those known to repair.
+
     -v
       Show stations + their distance from star
 
@@ -861,6 +792,53 @@ LOCAL sub-command:
 
     > trade.py local SOL --blackmarket --ly 6 -vv
 
+
+STATION sub-command:
+
+  This command can be used to add a new station:
+
+    > trade.py station --add "i bootis/nowhere port"
+    > trade.py station -a "i bootis/nowhere port" --ls 123 --pad m
+
+  Or it can be used to delete a station:
+
+    > trade.py station --remove "i bootis/nowhere port"
+    > trade.py station -rm "i bootis/nowhere port"
+
+  Or it can be used to update the ls-from-star, pad-size, or blackmarket
+  flags of an existing station:
+
+    > trade.py station --update "i bootis/nowhere port" --pad=L --ls-from-star=123 --black-market=N
+    > trade.py station -u "i bootis/nowhere port" --pad L --ls 123 --bm=N
+
+  If can also be used to show some basic data about a given station:
+
+    > trade.py station -v i bootis/chango
+    Station Data:
+    System....: I BOOTIS (#10438 @ -22.375,34.84375,4.0)
+    Station...: Chango Dock (#1288)
+    Also here.: Maher Stellar Research
+    Stn/Ls....: 1,095
+    B/Market..: Yes
+    Pad Size..: Lrg
+    Prices....: 33
+    Price Age.: 6.77 days
+    Best Buy..: (Buy from this station)
+        Tea*                           @   1,217cr (Avg Sell   1,570cr)
+        Coffee*                        @   1,047cr (Avg Sell   1,369cr)
+        Fish*                          @     296cr (Avg Sell     482cr)
+    Best Sale.: (Sell to this station)
+        Marine Equipment*              @   4,543cr (Avg Buy   3,937cr)
+        Crop Harvesters*               @   2,568cr (Avg Buy   1,997cr)
+        Domestic Appliances*           @     714cr (Avg Buy     445cr)
+
+
+    This shows that 'Tea' is a star buy at this station: it is being
+    sold by the station for 1217cr but the average selling price is
+    1570credits.
+
+    A star trade (indicated by '*') is at least 10% better than the
+    average trading price for that commodity.
 
 BUY sub-command:
 
@@ -1016,52 +994,91 @@ EXPORT sub-command:
     Export Table 'System' to 'data/System.csv'
 
 
-STATION sub-command:
+RARES sub-command:
 
-  This command can be used to add a new station:
+  This command looks for known rare items within the space around
+  a specified system.
 
-    > trade.py station --add "i bootis/nowhere port"
-    > trade.py station -a "i bootis/nowhere port" --ls 123 --pad m
+  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
 
-  Or it can be used to delete a station:
+     <system>
+       System to center search on
+       e.g.
+         Lave
+         @Sol
 
-    > trade.py station --remove "i bootis/nowhere port"
-    > trade.py station -rm "i bootis/nowhere port"
+     --ly N.NN
+       DEFAULT: 42
+       Maximum distance to search from center system.
+       e.g.
+         --ly 0     (unlimited)
+         --ly 21.2
 
-  Or it can be used to update the ls-from-star, pad-size, or blackmarket
-  flags of an existing station:
+     --limit N
+       Maximum number of results to show
+       e.g.
+         --limit 10
 
-    > trade.py station --update "i bootis/nowhere port" --pad=L --ls-from-star=123 --black-market=N
-    > trade.py station -u "i bootis/nowhere port" --pad L --ls 123 --bm=N
+     --reverse
+     -r
+       Reverse the order, can be used with "--ly" and "--limit" to find
+       the furthest-away rares
 
-  If can also be used to show some basic data about a given station:
+    --away N.NN
+    --from SYSTEM1 --from SYSTEM2 ... --from SYSTEMN
+      Limits results to systems that are at least a given distance away
+      from additional systems.
+      e.g.
+        trade.py rare --ly 160 sol -r --away 140 --from lave
+          Shows systems starting at 160ly or less from sol,
+          but that are also 140ly or more from lave.
+        trade.py rare --ly 160 sol -r --away 140 --from lave --from xihe
+          As above but also compares for <= 140ly from xihe
 
-    > trade.py station -v i bootis/chango
-    Station Data:
-    System....: I BOOTIS (#10438 @ -22.375,34.84375,4.0)
-    Station...: Chango Dock (#1288)
-    In System.: Maher Stellar Research
-    Stn/Ls....: 1,095
-    B/Market..: Yes
-    Pad Size..: Lrg
-    Prices....: 33
-    Price Age.: 6.77 days
-    Best Buy..: (Buy from this station)
-        Tea*                           @   1,217cr (Avg Sell   1,570cr)
-        Coffee*                        @   1,047cr (Avg Sell   1,369cr)
-        Fish*                          @     296cr (Avg Sell     482cr)
-    Best Sale.: (Sell to this station)
-        Marine Equipment*              @   4,543cr (Avg Buy   3,937cr)
-        Crop Harvesters*               @   2,568cr (Avg Buy   1,997cr)
-        Domestic Appliances*           @     714cr (Avg Buy     445cr)
+    --pad-size SML?
+    --pad SML?
+    -p
+      Limit results to stations that match one of the pad sizes
+      specified.
+        --pad ML?            (med, lrg or unknown only)
+        -o ML?                 ""    ""      ""    ""
+        --pad ?              (unknown only),
+        --pad L              (large only, ignores unknown)
+
+     --price-sort
+     -P
+       Sort by price rather than proximity
+
+     --quiet
+     -q
+       Don't include the header lines
 
 
-    This shows that 'Tea' is a star buy at this station: it is being
-    sold by the station for 1217cr but the average selling price is
-    1570credits.
+  Examples:
 
-    A star trade (indicated by '*') is at least 10% better than the
-    average trading price for that commodity.
+    $ trade.py rare sol --ly 10
+    Station                       Rare                    Cost DistLy  Alloc
+    ------------------------------------------------------------------------
+    ALPHA CENTAURI/Hutton Orbital Centauri Mega Gin      3,319   4.38      7
+
+    $ trade.py rare @neto --ly 50 --price --limit 5
+    Station                   Rare                             Cost DistLy  Alloc
+    -----------------------------------------------------------------------------
+    XIHE/Zhen Dock            Xihe Biomorphic Companions      4,482  48.10      7
+    VEGA/Taylor City          Vega Slimweed                   2,398  33.44      0
+    LFT 1421/Ehrlich Orbital  Void Extract Coffee             2,357  26.45      0
+    ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
+    V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
+
+    Finding where to take a rare from Bast:
+    $ trade.py rare bast --ly 180 -r --limit 4
+    Station                      Rare                        Cost DistLy  Alloc      StnLs Pad
+    ------------------------------------------------------------------------------------------
+    DELTA PHOENICIS/Trading Post Delta Phoenicis Palms        412 179.42     17      3,743 Lrg
+    DEURINGAS/Shukor Hub         Deuringas Truffles         1,892 174.22      0          ? Lrg
+    HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
+    ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
+
 
 
 ==============================================================================

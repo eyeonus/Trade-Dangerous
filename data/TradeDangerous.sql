@@ -73,6 +73,14 @@ CREATE TABLE Station
    shipyard TEXT(1) NOT NULL DEFAULT '?'
        CHECK (shipyard IN ('?', 'Y', 'N')),
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+   outfitting TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (outfitting IN ('?', 'Y', 'N')),
+   rearm      TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (rearm      IN ('?', 'Y', 'N')),
+   refuel     TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (refuel     IN ('?', 'Y', 'N')),
+   repair     TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (repair     IN ('?', 'Y', 'N')),
 
    UNIQUE (system_id, name),
 

@@ -239,7 +239,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     lsFromStar, system.name(), stnName
                 )
                 lsFromStar = int(lsFromStar)
-            modified = values[7] if len(values) > 6 else 'now'
+            modified = values[7] if len(values) > 7 else 'now'
             if lsFromStar < 0 or modified.startswith("DEL"):
                 if station:
                     tdb.removeLocalStation(station, commit=False)
@@ -247,8 +247,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 continue
             blackMarket = values[3]
             maxPadSize = values[4]
-            market = values[5] if len(values) > 4 else '?'
-            shipyard = values[6] if len(values) > 5 else '?'
+            market = values[5] if len(values) > 5 else '?'
+            shipyard = values[6] if len(values) > 6 else '?'
+            outfitting = values[8] if len(values) > 8 else '?'
+            rearm = values[9] if len(values) > 9 else '?'
+            refuel = values[10] if len(values) > 10 else '?'
+            repair = values[11] if len(values) > 11 else '?'
             if station:
                 if tdb.updateLocalStation(
                         station,
@@ -258,6 +262,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                         blackMarket=blackMarket,
                         shipyard=shipyard,
                         maxPadSize=maxPadSize,
+                        outfitting=outfitting,
+                        rearm=rearm,
+                        refuel=refuel,
+                        repair=repair,
                         modified=modified,
                         commit=False,
                         ):
@@ -271,6 +279,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     blackMarket=blackMarket,
                     shipyard=shipyard,
                     maxPadSize=maxPadSize,
+                    outfitting=outfitting,
+                    rearm=rearm,
+                    refuel=refuel,
+                    repair=repair,
                     modified=modified,
                     commit=False,
                 )

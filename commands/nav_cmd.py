@@ -201,6 +201,7 @@ def render(results, cmdenv, tdb):
                         key=lambda row: row.age)
         ).append(
                 ColumnFormat('Mkt', '>', '3',
+                    key=lambda row: \
                         TradeDB.marketStates[row.station.market])
         ).append(
                 ColumnFormat("BMk", '>', '3',
@@ -210,6 +211,22 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Shp", '>', '3',
                     key=lambda row: \
                         TradeDB.marketStates[row.station.shipyard])
+        ).append(
+                ColumnFormat("Out", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.outfitting])
+        ).append(
+                ColumnFormat("Arm", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.rearm])
+        ).append(
+                ColumnFormat("Ref", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.refuel])
+        ).append(
+                ColumnFormat("Rep", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.repair])
         ).append(
                 ColumnFormat("Pad", '>', '3',
                     key=lambda row: \

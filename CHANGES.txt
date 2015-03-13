@@ -2,6 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.14.0 Mar 13 2015
+. (kfsone) Station data:
+  - Added "outfitting", "rearm", "refuel" and "repair" fields,
+  - Added options to "local" and "station" commands,
+  - Added output to "local", "station" and "nav" commands,
+  - Added support to maddavo import,
+
 v6.13.4 Mar 13 2015
 . (WombatFromHell) "run" command:
   - Added "--max-gain-per-ton" (--mgpt) option
