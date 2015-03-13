@@ -2,6 +2,74 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.13.3 Mar 11 2015
+. (kfsone) Fixed "--blackmarket" and "--trading" in local,
+. (Dry411s) Resolves #200 New ships for 1.2,
+. (kfsone) +103 Systems
+. (kfsone) OCR Derp fixes
+. (kfsone) Station cleanup
+
+v6.13.2 Mar 10 2015
+. (Tromador) Added "Painite" to Item.csv
+. (kfsone) import plugin now allows you to separate --opt values with ,
+   e.g. trade.py import --plug=maddavo --opt=csvs,csvonly
+   will import mad's csv files without importing his prices
+. (kfsone) 112 new systems
+
+v6.13.1 Mar 06 2015
+. (kfsone) "shipvendor" command:
+  - Default action is now to list ships at given station, e.g.
+    trade.py shipvendor galileo
+  - Added "--name-sort" (--name) to sort list by ship name,
+. (kfsone) Fixed some problems with maddavo's import,
+. (kfsone) Added "WARNING" level events (use -qq to disable),
+. (kfsone) Fixed #195 "local" ValueError when no stations listed,
++ Dry411S: ShipVendors
+
+v6.13.0 Mar 03 2015
+. (kfsone) Added "modified" column to ShipVendor table,
+. (kfsone) "maddavo" import plugin:
+  - Added "--opt=shipvendors" which imports his ShipVendor.csv,
+    - Entries with a 'modified' of "DELETED" will be
+  - Added "--opt=csvonly" to stop after importing any csv files (no prices),
+  - Added "--opt=csvs" to import all the csvs
+    (equivalent to typing --opt=systems --opt=stations --opt=shipvendor)
+  e.g.
+    trade.py import --plug=maddavo --opt=csvs --opt=csvonly
+    trade.py import --plug=maddavo --opt=stations
+. (kfsone) "market" sub-command:
+  - Default behavior is equivalent to "--buy --sell",
+  - You now only need to specify --buy (-B) or --sell (-S) to list ONLY
+    those columns, so "trade.py market SOL -vv" now shows both sets of data.
+. (kfsone) "local" sub-command:
+  - Added "--stations" option: only list systems with stations,
+  - Added "--trading" option: only list stations that are flagged as having
+    a market or have trade data available
+  - Added "--blackmarket" option: only list stations with a black market,
+  - Added "--shipyard" option: only list stations with a ship yard,
+. (kfsone) "run" sub-command:
+  - check from stations for whether they have anything that can be bought,
+  - better feedback on some edge-cases where a route cannot be found,
+  - fixed some problems with --via,
+  - better feedback when using --jumps=0 or --ly=0,
+
+v6.12.4 Mar 02 2015
+. (kfsone) Added 175 Systems,
+. (kfsone) Fixed #193 "run" was ignoring --ls-max,
++ DRy411S : ShipVendors
+
+v6.12.3 Mar 01 2015
+. (kfsone) Improved how we handle some edge cases with --from and --to,
+. (kfsone) Improved feedback when requesting an unreachable journey,
+   e.g. --from selianciens --to eravate --ly 9.23 --hops 2 --jumps 2
+   (the journey requires at least 9 jumps but the options only allow 4),
+. (kfsone) Fixed #185 --from and --to giving a "set" error,
+. (kfsone) Fixed #188 Allow multiple ships per "shipvendor",
+. (kfsone) Fixed #190 "station -r" wasn't updated the .csv file,
+. (kfsone) Cleaned up the output of "local" command when showing stations,
+. (kfsone) Fixed #191 'set' does not support indexing
++ DRy411S : ShipVendors
+
 v6.12.2 Feb 26 2015
 . (kfsone) "run" command:
   - added "--direct" option:
@@ -506,7 +574,7 @@ v6.0.3 Nov 21 2014
 . (kfsone) Fixed "local" command not showing stations when using "--detail",
 . (kfsone) Renamed "buildcache.py" to "cache.py"
 
-BETA 3: 
+BETA 3:
 CAUTION: So many systems changed with the Beta 3 update that old prices files
 won't stand a chance of containing many valid systems. You may want to obtain
 a fresh file from one of the online sources, e.g.
@@ -737,7 +805,7 @@ v3.7 Sep 15/2014
     removes them.
   emdn-tap now tries harder to honor commit intervals.
 API Changes:
-  makeSubParser now takes an epilog  
+  makeSubParser now takes an epilog
 
 v3.6 Sep 12/2014
   Added DB support for tracking item stock/demand levels,

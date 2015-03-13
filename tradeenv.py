@@ -71,5 +71,16 @@ class TradeEnv(object):
             setattr(self, key, noteFn)
             return noteFn
 
+        if key == "WARN":
+            def _WARN_ENABLED(outText, *args, file=None, **kwargs):
+                print("WARNING:", outText.format(*args, **kwargs), file=file)
+
+            def _WARN_DISABLED(*args, **kwargs):
+                pass
+
+            noteFn = _WARN_DISABLED if self.quiet > 1 else _WARN_ENABLED
+            setattr(self, key, noteFn)
+            return noteFn
+
         return None
 

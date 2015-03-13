@@ -95,6 +95,7 @@ $
 
 
 ocrDerp = re.compile(r'''(
+    ^.$ |
     LAN[O0]ING |
     [O0][O0]CK |
     [O0]INEILL |
@@ -140,6 +141,7 @@ ocrDerp = re.compile(r'''(
     \bVAR[O0]E |
     EN[^T]?ERPRISE |
     EN..ERPRISE |
+    [E38]NT[E38]F[I1']?PR[I1'][S5][E38] |
     \bMUR[O0]O |
     \bBAR[O0]E |
     \bBALLAR[O0] |
@@ -163,7 +165,8 @@ ocrDerp = re.compile(r'''(
         VISION |
         REFINERY
     )$ |
-    ORBIDAL |
+    [O0]RB[I1]DAL |
+    [O0]R[DL][I1]TAL |
     \bBRIOGER |
     \bJUOSON |
     LANOER |
@@ -198,10 +201,11 @@ ocrDerp = re.compile(r'''(
     \bRD[DO0][DO0]EN |
     \bR[O0]([O0]D|D[O0])EN |
     (?<!BR)[O0]ECK |
-    SETTL(FMENT|EMFNT|FMFNT) |
-    SETTLMENT |
-    SETTLE\sMENT |
-    SETTLEMNT |
+    SE?TTL(FMENT|EMFNT|FMFNT) |
+    SE?TTLMENT |
+    STTL[E38]?M[E38]?NT |
+    S\s?[E38]\s?T\s?T\s?L\s?[E38](\sM|M\s)[E38]\s?N\s?T$ |
+    S[E38]TT[38]?L[E38]MNT |
     MARKFT |
     HANGFR |
     CL(EVF|FVE|FVF) |
@@ -212,7 +216,7 @@ ocrDerp = re.compile(r'''(
     ` |
     -- |
     \bREILLI\b |
-    RINF\b |
+    \bRIN[FC]\b |
     \bOL[E3]ARY |
     ‹ |
     \bSATION\b |
@@ -229,7 +233,7 @@ ocrDerp = re.compile(r'''(
     \bHORNUCH\b |
     \bKLU\sDZE |
     ^[DR]HN\b |
-    SU\sI?RVEY\b |
+    SU\sI?RVEY$ |
     H[DO0]L[O0]ING |
     H[D0]LDING |
     M[DO0]HMAN[O0] |
@@ -251,7 +255,28 @@ ocrDerp = re.compile(r'''(
     \bC[O0]LCNY\b |
     \bOOCTE\b |
     \bBULGAFIIN\b |
-    \bWH\sIEEL
+    \bWH\sIEEL |
+    \bBR8NNAN\b |
+    \b(ID)?ING$ |
+    GATEVVAY$ |
+    [HI\s]U\sI?B$ |
+    CLAI\sI?M$ |
+    \bUITY$ |
+    \bDING$ |
+    BTOP$ |
+    B'I'OP$ |
+    TRANQUNUTY$ |
+    C[O0]LUNY$ |
+    \bMAGN\sI?US\b |
+    \s-[A-Z] |
+    ^NAKAM(\sIU|U\sIR) |
+    ^THOM\sI?PSON |
+    ^STEPH\sI?ENSON |
+    \bCQRK\b |
+    ^AN\sI?DREW |
+    ^WATSO\sIN |
+    ^QSSW |
+    ^RTZEN
 )''', flags=re.X)
 
 
@@ -452,7 +477,7 @@ def getItemByNameIndex(cur):
 
 
 def checkForOcrDerp(tdenv, systemName, stationName):
-    match = ocrDerp.search(stationName)
+    match = ocrDerp.search(stationName.upper())
     if match:
         tdenv.NOTE(
             "Ignoring '{}/{}' because it looks like OCR derp."

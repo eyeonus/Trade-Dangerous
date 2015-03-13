@@ -2,6 +2,8 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.commandenv import ResultRow
 from commands.exceptions import CommandLineError
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from formatting import RowFormat, ColumnFormat, max_len
+from itertools import chain
 from tradedb import AmbiguityError
 from tradedb import System, Station
 from tradedb import TradeDB
@@ -15,21 +17,21 @@ import sys
 ######################################################################
 # Parser config
 
-help='Add (or update) a ship vendor entry'
+help='List, add or update available ships to a station'
 name='shipvendor'
 epilog=None
 arguments = [
     ParseArgument(
         'origin',
-        help='Specify the full name of the station (SYS NAME/STN NAME is also supported).',
+        help='Specify the full name of the station '
+            '(SYS NAME/STN NAME is also supported).',
         metavar='STATIONNAME',
         type=str,
     ),
     ParseArgument(
         'ship',
-        help='Ship name',
-        metavar='SHIPTYPE',
-        type=str,
+        help='Comma or space separated list of ship names.',
+        nargs='*',
     ),
 ]
 switches = [
@@ -43,6 +45,12 @@ switches = [
             '--add', '-a',
             help='Indicates you want to add a new station.',
             action='store_true',
+        ),
+        ParseArgument(
+            '--name-sort',
+            help='Sort listed ships by name.',
+            action='store_true',
+            dest='nameSort',
         ),
     ),
     ParseArgument(
@@ -72,7 +80,7 @@ def addShipVendor(tdb, cmdenv, station, ship):
     cmdenv.NOTE("{} added to {} in local {} database.",
             ship.name(), station.name(), tdb.dbPath)
     return ship
-    
+
 
 def removeShipVendor(tdb, cmdenv, station, ship):
     db = tdb.getDB()
@@ -85,18 +93,16 @@ def removeShipVendor(tdb, cmdenv, station, ship):
     return ship
 
 
-def checkResultAndExportShipVendors(tdb, cmdenv, result):
-    if not result:
-        return None
+def maybeExportToCSV(tdb, cmdenv):
     if cmdenv.noExport:
         cmdenv.DEBUG0("no-export set, not exporting stations")
-        return None
+        return
 
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "ShipVendor")
     cmdenv.NOTE("{} updated.", csvPath)
-    return None
 
-def checkShipPresent(tdb, ship, station):
+
+def checkShipPresent(tdb, station, ship):
     # Ask the database how many rows it sees claiming
     # this ship is sold at that station. The value will
     # be zero if we don't have an entry, otherwise it
@@ -114,43 +120,121 @@ def checkShipPresent(tdb, ship, station):
     return (count > 0)
 
 
+def listShipsPresent(tdb, cmdenv, station, results):
+    """ Populate results with a list of ships present at the given station """
+    cur = tdb.query("""
+        SELECT ship_id
+          FROM ShipVendor
+         WHERE station_id = ?
+    """, [station.ID]
+    )
+
+    results.summary = ResultRow()
+    results.summary.station = station
+    ships = tdb.shipByID
+    addShip = results.rows.append
+
+    for (ship_id,) in cur:
+        ship = ships.get(ship_id, None)
+        if ship:
+            addShip(ResultRow(ship=ship))
+
+    if cmdenv.nameSort:
+        results.rows.sort(key=lambda row: row.ship.name())
+    else:
+        results.rows.sort(key=lambda row: row.ship.cost, reverse=True)
+
+    return results
+
+
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-
     station = cmdenv.startStation
     if not isinstance(station, Station):
-        raise CommandLineError("{} is a system, not a station".format(
-            station.name()
-        ))
-
-    try:
-        ship = tdb.lookupShip(cmdenv.ship)
-    except LookupError:
-        raise CommandLineError("Unrecognized Ship: {}".format(cmdenv.station))
-
-    # Lets see if that ship sails from the specified port.
-    shipPresent = checkShipPresent(tdb, ship, station)
-
-    if cmdenv.add:
-        if shipPresent:
-            raise CommandLineError(
-                    "{} is already listed at {}"
-                    .format(ship.name(), station.name())
-            )
-        result = addShipVendor(tdb, cmdenv, station, ship)
-        return checkResultAndExportShipVendors(tdb, cmdenv, result)   
-    elif cmdenv.remove:
-        if not shipPresent:
-            raise CommandLineError(
-                    "{} is not listed at {}"
-                    .format(ship.name(), station.name())
-            )
-        result = removeShipVendor(tdb, cmdenv, station, ship)
-        return checkResultAndExportShipVendors(tdb, cmdenv, result)
-    else:
         raise CommandLineError(
-            "You must specify --add or --remove"
+            "{} is a system, not a station"
+            .format(station.name())
+        )
+    if station.shipyard == 'N' and not cmdenv.remove:
+        raise CommandLineError(
+            "{} is flagged as having no shipyard."
+            .format(station.name())
         )
 
+    if cmdenv.add:
+        action = addShipVendor
+    elif cmdenv.remove:
+        action = removeShipVendor
+    else:
+        return listShipsPresent(tdb, cmdenv, station, results)
+
+    if not cmdenv.ship:
+        raise CommandLineError(
+            "No ship names specified."
+        )
+
+    ships = {}
+    shipNames = chain.from_iterable(
+        name.split(",") for name in cmdenv.ship
+    )
+    for shipName in shipNames:
+        try:
+            ship = tdb.lookupShip(shipName)
+        except LookupError:
+            raise CommandLineError("Unrecognized Ship: {}".format(shipName))
+
+        # Lets see if that ship sails from the specified port.
+        shipPresent = checkShipPresent(tdb, station, ship)
+        if cmdenv.add:
+            if shipPresent:
+                raise CommandLineError(
+                        "{} is already listed at {}"
+                        .format(ship.name(), station.name())
+                )
+            ships[ship.ID] = ship
+        else:
+            if not shipPresent:
+                raise CommandLineError(
+                        "{} is not listed at {}"
+                        .format(ship.name(), station.name())
+                )
+            ships[ship.ID] = ship
+
+    # We've checked that everything should be good.
+    dataToExport = False
+    for ship in ships.values():
+        if action(tdb, cmdenv,station, ship):
+            dataToExport = True
+
+    maybeExportToCSV(tdb, cmdenv)
+
+    return None
+
+######################################################################
+# Transform result set into output
+
+def render(results, cmdenv, tdb):
+    if not results or not results.rows:
+        raise CommandLineError(
+            "No ships available at {}"
+            .format(results.summary.station.name())
+        )
+
+    maxShipLen = max_len(results.rows, key=lambda row: row.ship.name())
+
+    rowFmt = RowFormat().append(
+        ColumnFormat("Ship", '<', maxShipLen,
+            key=lambda row: row.ship.name())
+    ).append(
+        ColumnFormat("Cost", '>', 12, 'n',
+            key=lambda row: row.ship.cost)
+    )
+
+    if not cmdenv.quiet:
+        heading, underline = rowFmt.heading()
+        print(heading, underline, sep='\n')
+
+    for row in results.rows:
+        print(rowFmt.format(row))

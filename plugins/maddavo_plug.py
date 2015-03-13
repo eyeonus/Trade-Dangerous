@@ -29,7 +29,7 @@ if 'NOTK' not in os.environ and platform.system() != 'Darwin':  # focus bug
 BASE_URL = "http://www.davek.com.au/td/"
 SYSTEMS_URL = BASE_URL + "System.csv"
 STATIONS_URL = BASE_URL + "station.asp"
-
+SHIPVENDOR_URL = BASE_URL + "shipvendor.asp"
 
 class DecodingError(PluginException):
     pass
@@ -44,18 +44,20 @@ class ImportPlugin(plugins.ImportPluginBase):
     dateRe = re.compile(r"(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)")
 
     pluginOptions = {
-        'systems':      "Merge maddavo's System data into local db,",
-        'stations':     "Merge maddavo's Station data into local db,",
+        'csvs':         "Merge System, Station and ShipVendor data into "
+                        "the local db.",
+        'systems':      "Merge System data into local db.",
+        'stations':     "Merge Station data into local db.",
+        'shipvendors':  "Merge ShipVendor data into local db.",
         'exportcsv':    "Regenerate System and Station .csv files after "
                         "merging System/Station data.",
+        'csvonly':      "Stop after csv work, don't import prices",
         'skipdl':       "Skip doing any downloads.",
         'force':        "Process prices even if timestamps suggest "
                         "there is no new data.",
-        'use3h':        "Force download of the 3-hours .prices file",
-        'use2d':        "Force download of the 2-days .prices file",
-        'usefull':      "Force download of the full .prices file",
-        'syscsv':       "DEPRECATED - see --opt=systems",
-        'stncsv':       "DEPRECATED - see --opt=stations",
+        'use3h':        "Force download of the 3-hours .prices file.",
+        'use2d':        "Force download of the 2-days .prices file.",
+        'usefull':      "Force download of the full .prices file.",
     }
 
 
@@ -65,8 +67,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.filename = self.defaultImportFile
         stampFilePath = pathlib.Path(ImportPlugin.stampFile)
         self.stampPath = tdb.dataPath / stampFilePath
-        self.newSystems = 0
-        self.newStations = 0
+        self.modSystems = 0
+        self.modStations = 0
 
 
     def load_timestamp(self):
@@ -178,78 +180,135 @@ class ImportPlugin(plugins.ImportPluginBase):
                 .format(BASE_URL)
             )
 
+
+    def csv_system_rows(self, url, tableName):
+        """
+        Fetch rows from a CSV resource that start with a system, applying corrections.
+        """
+        if not self.getOption(tableName.lower()):
+            return
+
+        tdb, tdenv = self.tdb, self.tdenv
+        sysLookup = tdb.systemByName.get
+        sysAdjust = corrections.systems.get
+        DELETED = corrections.DELETED
+
+        tdenv.NOTE("Importing {}", tableName)
+        stream = transfers.CSVStream(url)
+        for _, values in stream:
+            srcName = values[0].upper()
+            sysName = sysAdjust(srcName, srcName)
+            if sysName == DELETED:
+                tdenv.DEBUG0("Ignoring deleted system {}", srcName)
+                continue
+            system = sysLookup(sysName, None)
+            yield sysName, system, values
+
+
     def import_systems(self):
         """
         Fetch and import data from Systems.csv
         """
-        if not self.getOption("systems"):
-            return
 
         tdb, tdenv = self.tdb, self.tdenv
-        NOTE = tdenv.NOTE
-        systems = tdb.systemByName
 
-        NOTE("Importing Systems")
-        stream = transfers.CSVStream(SYSTEMS_URL)
-        for _, values in stream:
-            name = values[0].upper()
+        generator = self.csv_system_rows(SYSTEMS_URL, "Systems")
+        for sysName, system, values in generator:
+            added = values[4]
+            modified = values[5]
+            if added.startswith("DEL") or modified.startswith("DEL"):
+                if system:
+                    tdb.removeLocalSystem(
+                        system
+                    )
+                self.modSystems += 1
+                continue
+
             x, y, z = float(values[1]), float(values[2]), float(values[3])
-            added, modified = values[4], values[5]
-            system = systems.get(name, None)
             if not system:
-                tdb.addLocalSystem(name, x, y, z, added, modified)
-                self.newSystems += 1
+                tdb.addLocalSystem(
+                    sysName, x, y, z, added, modified,
+                    commit=False,
+                )
+                self.modSystems += 1
             elif system.posX != x or system.posY != y or system.posZ != z:
                 print("{} position change: {}v{}, {}v{}, {}v{}".format(
-                    name, system.posX, x, system.posY, y, system.posZ, z
+                    sysName, system.posX, x, system.posY, y, system.posZ, z
                 ))
-                tdb.updateLocalSystem(system, name, x, y, z, added, modified)
-                self.newSystems += 1
+                tdb.updateLocalSystem(
+                    system, sysName, x, y, z, added, modified,
+                    commit=False,
+                )
+                self.modSystems += 1
+
+        if self.modSystems:
+            tdenv.DEBUG0("commit")
+            tdb.getDB().commit()
 
 
-    def import_stations(self):
+    def csv_station_rows(self, url, tableName):
         """
-        Fetch and import data from Stations.csv
+        Fetch rows from a CSV resource that start with a system and a station,
+        applying corrections.
         """
-        if not self.getOption("stations"):
-            return
 
         tdb, tdenv = self.tdb, self.tdenv
-        NOTE = tdenv.NOTE
-        systems = tdb.systemByName
         sysAdjust = corrections.systems.get
         stnAdjust = corrections.stations.get
         DELETED = corrections.DELETED
 
-        NOTE("Importing Stations")
-        stream = transfers.CSVStream(STATIONS_URL)
-        for _, values in stream:
-            sysName, stnName = values[0].upper(), values[1]
-            sysName = sysAdjust(sysName, sysName)
-            if sysName == DELETED:
-                tdenv.DEBUG0("Ignoring deleted system {}", values[0])
-                continue
-            system = systems.get(sysName, None)
+        for sysName, system, values in self.csv_system_rows(url, tableName):
             if not system:
-                NOTE(
+                tdenv.NOTE(
                     "Unrecognized system for station {}/{}",
-                    sysName, stnName
+                    sysName, stnName,
                 )
                 continue
+            stnName = values[1]
             stnName = stnAdjust('/'.join([sysName, stnName.upper()]), stnName)
             if stnName == DELETED:
                 tdenv.DEBUG0(
                     "Ignoring deleted station {}/{}",
-                    values[0], values[1]
+                    values[0], values[1],
                 )
                 continue
             station = system.getStation(stnName)
-            lsFromStar = int(values[2])
+            yield system, stnName, station, values
+
+
+    def import_stations(self):
+        """
+        Fetch and import data from Stations.csv.
+        """
+
+        tdb, tdenv = self.tdb, self.tdenv
+
+        generator = self.csv_station_rows(STATIONS_URL, "Stations")
+        for system, stnName, station, values in generator:
+            try:
+                lsFromStar = float(values[2])
+            except ValueError:
+                tdenv.WARN(
+                    "Invalid, non-numeric, lsFromStar value ('{}') for {}/{}",
+                    values[2], system.name(), stnName
+                )
+                continue
+            if int(lsFromStar) != lsFromStar:
+                tdenv.NOTE(
+                    "Discarding floating-point part of {} for {}/{}",
+                    lsFromStar, system.name(), stnName
+                )
+                lsFromStar = int(lsFromStar)
+            modified = values[7] if len(values) > 6 else 'now'
+            if lsFromStar < 0 or modified.startswith("DEL"):
+                if station:
+                    tdb.removeLocalStation(station, commit=False)
+                    self.modStations += 1
+                continue
             blackMarket = values[3]
             maxPadSize = values[4]
             market = values[5] if len(values) > 4 else '?'
             shipyard = values[6] if len(values) > 5 else '?'
-            modified = values[7] if len(values) > 6 else 'now'
             if station:
                 if tdb.updateLocalStation(
                         station,
@@ -260,8 +319,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         shipyard=shipyard,
                         maxPadSize=maxPadSize,
                         modified=modified,
+                        commit=False,
                         ):
-                    self.newStations += 1
+                    self.modStations += 1
             else:
                 tdb.addLocalStation(
                     system=system,
@@ -272,8 +332,96 @@ class ImportPlugin(plugins.ImportPluginBase):
                     shipyard=shipyard,
                     maxPadSize=maxPadSize,
                     modified=modified,
+                    commit=False,
                 )
-                self.newStations += 1
+                self.modStations += 1
+
+        if self.modStations:
+            tdenv.DEBUG0("commit")
+            tdb.getDB().commit()
+
+
+    def import_shipvendors(self):
+        """
+        Fetch dave's ShipVendor.csv and import it.
+        """
+
+        tdb, tdenv = self.tdb, self.tdenv
+        db = tdb.getDB()
+        ships = { ship.dbname.upper(): ship for ship in tdb.shipByID.values() }
+        lastFail = None
+
+        # Index ship locations.
+        stmt = """
+            SELECT  ship_id, station_id
+              FROM  ShipVendor
+        """
+        shipLocs = set(
+            (shipID, stnID) for shipID, stnID in db.execute(stmt)
+        )
+        newShips = {}
+        delShips = set()
+
+        generator = self.csv_station_rows(SHIPVENDOR_URL, "ShipVendors")
+        for system, stnName, station, values in generator:
+            if not station:
+                if not tdenv.quiet:
+                    name = "{}/{}".format(system.name(), stnName)
+                    if name != lastFail:
+                        tdenv.NOTE(
+                            "Ignoring unrecognized station: {}/{}",
+                            system.name(), stnName,
+                        )
+                        lastFail = name
+                continue
+            shipName = values[2]
+            modified = values[3] if len(values) > 3 else 'now'
+            isDelete = modified.startswith("DEL")
+            ship = ships.get(shipName.upper(), None)
+            if not ship:
+                if not isDelete:
+                    tdenv.NOTE(
+                        "Ignoring unrecognized ship {} at {}",
+                        shipName, station.name()
+                    )
+                continue
+            locKey = (ship.ID, station.ID)
+            if locKey in shipLocs:
+                if isDelete and not locKey in delShips:
+                    try:
+                        newShips.remove(locKey)
+                    except KeyError:
+                        pass
+                    delShips.add(locKey)
+                    tdenv.NOTE(
+                        "Removing {} from {}",
+                        ship.name(), station.name()
+                    )
+                continue
+            if locKey in newShips:
+                continue
+            try:
+                delShips.remove(locKey)
+            except KeyError:
+                pass
+            tdenv.NOTE(
+                "Adding {} at {}", ship.name(), station.name(),
+            )
+            newShips[locKey] = (ship.ID, station.ID, modified)
+        if newShips:
+            stmt = """
+                REPLACE INTO ShipVendor
+                (ship_id, station_id, modified)
+                VALUES
+                (?, ?, DATETIME(?))
+            """
+            db.executemany(stmt, newShips.values())
+        if delShips:
+            db.executemany("""
+                DELETE FROM ShipVendor WHERE ship_id = ? and station_id = ?
+            """, delShips)
+        if newShips or delShips:
+            db.commit()
 
 
     def refresh_csv(self):
@@ -288,58 +436,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdb, self.tdenv, "Station"
         )
         self.tdenv.NOTE("{} updated.", path)
+        _, path = csvexport.exportTableToFile(
+            self.tdb, self.tdenv, "ShipVendor"
+        )
+        self.tdenv.NOTE("{} updated.", path)
 
+    def download_prices(self, lastRunDays):
+        """ Figure out which file to download and fetch it. """
 
-    def run(self):
-        tdb, tdenv = self.tdb, self.tdenv
-
-        if self.getOption("syscsv") or self.getOption("stncsv"):
-            raise PluginException(
-                "\a--opt=syscsv and --opt=stncsv have been REPLACED.\n"
-                "\n"
-                "The behavior of the Maddavo plugin has changed drastically "
-                "in version 6.10.0.\n"
-                "\n"
-                "The old options, syscsv and stncsv, would download the "
-                "corresponding file from Maddavo's and REPLACE your local "
-                "file with his data.\n"
-                "\n"
-                "The new options, --opt=systems and --opt=stations, will "
-                "read his files and MERGE his data into your local db.\n"
-                "\n"
-                "An additional option, --opt=exportcsv, was also added "
-                "to export the resulting, merged data, to your .csv files."
-            )
-
-        # It takes a while to download these files, so we want
-        # to record the start time before we download. What we
-        # care about is when we downloaded relative to when the
-        # files were previously generated.
-
-        self.check_first_time_use()
-
-        startTime = time.time()
-
-        tdenv.ignoreUnknown = True
-
-        prevImportDate, lastRunDays = self.load_timestamp()
-        self.prevImportDate = prevImportDate
-
-        skipDownload = self.getOption("skipdl")
-        forceParse = self.getOption("force") or skipDownload
-
-        # Ensure the cache is built and reloaded.
-        tdb.reloadCache()
-        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
-        self.import_systems()
-        self.import_stations()
-
-        # Let the system decide if it needs to reload-cache
-        tdb.close()
-
-        self.refresh_csv()
-
+        # Argument checking
         use3h = 1 if self.getOption("use3h") else 0
         use2d = 1 if self.getOption("use2d") else 0
         usefull = 1 if self.getOption("usefull") else 0
@@ -347,10 +452,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             raise PluginException(
                 "Only one of use3h/use2d/usefull can be used at once."
             )
-        if (use3h or use2d or usefull) and skipDownload:
-            raise PluginException(
-                "use3h/use2d/usefull has no effect with --opt=skipdl"
-            )
+        if self.getOption("skipdl"):
+            if (use3h or use2d or usefull):
+                raise PluginException(
+                    "use3h/use2d/usefull has no effect with --opt=skipdl"
+                )
+            return
+
+        # Overrides
         if use3h:
             lastRunDays = 0.01
         elif use2d:
@@ -358,23 +467,35 @@ class ImportPlugin(plugins.ImportPluginBase):
         elif usefull:
             lastRunDays = 3.0
 
-        if not skipDownload:
-            # Download
-            if lastRunDays < 3 / 24:
-                priceFile = "prices-3h.asp"
-            elif lastRunDays < 1.9:
-                priceFile = "prices-2d.asp"
-            else:
-                priceFile = "prices.asp"
-            transfers.download(
-                tdenv,
-                BASE_URL + priceFile,
-                self.filename,
-                shebang=lambda line: self.check_shebang(line, True),
-            )
+        # Use age/options to determine which file
+        if lastRunDays < 3 / 24:
+            priceFile = "prices-3h.asp"
+        elif lastRunDays < 1.9:
+            priceFile = "prices-2d.asp"
+        else:
+            priceFile = "prices.asp"
 
+        # Fetch!
+        transfers.download(
+            self.tdenv,
+            BASE_URL + priceFile,
+            self.filename,
+            shebang=lambda line: self.check_shebang(line, True),
+        )
+
+    def import_prices(self):
+        """ Download and import data price data """
+
+        tdb, tdenv = self.tdb, self.tdenv
+
+        startTime = time.time()
+
+        prevImportDate, lastRunDays = self.load_timestamp()
+        self.prevImportDate = prevImportDate
+
+        self.download_prices(lastRunDays)
         if tdenv.download:
-            return False
+            return
 
         # Scan the file for the latest data.
         firstDate = None
@@ -446,6 +567,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if numNewLines == 0:
             tdenv.NOTE("No new price entries found.")
 
+        forceParse = self.getOption("force") or self.getOption("skipdl")
         if numNewLines > 0 or forceParse:
             if tdenv.detail:
                 print(
@@ -480,6 +602,41 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
 
         self.save_timestamp(importDate, startTime)
+
+    def run(self):
+        tdb, tdenv = self.tdb, self.tdenv
+
+        # It takes a while to download these files, so we want
+        # to record the start time before we download. What we
+        # care about is when we downloaded relative to when the
+        # files were previously generated.
+
+        self.check_first_time_use()
+
+        tdenv.ignoreUnknown = True
+
+        if self.getOption("csvs"):
+            self.options["systems"] = True
+            self.options["stations"] = True
+            self.options["shipvendors"] = True
+
+        # Ensure the cache is built and reloaded.
+        tdb.reloadCache()
+        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
+
+        self.import_systems()
+        self.import_stations()
+        self.import_shipvendors()
+
+        # Let the system decide if it needs to reload-cache
+        tdb.close()
+
+        self.refresh_csv()
+
+        if not self.getOption("csvonly"):
+            self.import_prices()
+
+        tdenv.NOTE("Import completed.")
 
         # We did all the work
         return False

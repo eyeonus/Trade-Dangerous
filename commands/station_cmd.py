@@ -263,6 +263,7 @@ def removeStation(tdb, cmdenv, station):
     db.commit()
     cmdenv.NOTE("{} (#{}) removed from {} database.",
             station.name(), station.ID, tdb.dbPath)
+    return True
 
 
 def checkResultAndExportStations(tdb, cmdenv, result):
