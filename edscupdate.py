@@ -40,6 +40,15 @@ DEFAULT_DATE = "2015-02-11 00:00:00"
 
 # Systems we know are bad.
 ignore = [
+    "22 LYNCIS",
+    "ALANI",
+    "BODB DJEDI",
+    "DJALI",
+    "HIP 101110",
+    "NJUNG",
+    "PANTAA CEZISA",
+    "TAVYTERE",
+    "DITIBI",
     "COL 285 SECTOR EC-R B18-5",
     "DITIBI (FIXED)",
     "HYADES",
@@ -52,6 +61,9 @@ ignore = [
     "THETA CARINE",
     "CORE SYS HH-M A7-3",
     "OI-T B3-9",
+    "IDZ DL-X B1-1",
+    "PHE ZHUA",
+    "LP 937-98",
 ]
 
 
@@ -188,12 +200,11 @@ def is_change(tdb, sysinfo):
     return True
 
 
-def has_position_changed(sysinfo):
-    place = sysinfo['place']
+def has_position_changed(place, name, x, y, z):
     if not place:
         return False
 
-    print("! @{} [{},{},{}] vs @{} [{},{},{}]".format(
+    print("! @{} [{},{},{}] changed to @{} [{},{},{}]".format(
         name, x, y, z,
         place.dbname, place.posX, place.posY, place.posZ
     ))
@@ -354,15 +365,17 @@ def main():
             name = sysinfo['name']
             x, y, z = sysinfo['coord']
 
-            if has_position_changed(sysinfo):
-                continue
-
             check_database(tdb, name, x, y, z)
+
+            change = has_position_changed(sysinfo['place'], name, x, y, z)
+            if change:
+                oldDist = argv.startSys.distanceTo(sysinfo['place'])
+                print("Old Distance: {:.2f}ly".format(oldDist))
 
             created = sysinfo['createdate']
 
             distance = get_distance(tdb, argv.startSys, x, y, z)
-            clip.copy_text(name.lower())
+            clip.copy_text(name)
             prompt = "{}/{}: '{}': {:.2f}ly? ".format(
                 current, total,
                 name,

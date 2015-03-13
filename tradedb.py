@@ -343,6 +343,7 @@ class Station(object):
             return '{:n}K'.format(int(ls / 1000))+suffix
         return '{:.2f}ly'.format(ls / (365*24*60*60))
 
+    @property
     def isTrading(self):
         """
         True if the station is thought to be trading.
@@ -797,7 +798,7 @@ class TradeDB(object):
             UPDATE System
                SET name=?,
                    pos_x=?, pos_y=?, pos_z=?,
-                   added=(SELECT added_id FROM Added WHERE name = ?),
+                   added_id=(SELECT added_id FROM Added WHERE name = ?),
                    modified=DATETIME(?)
         """, [
             dbname, x, y, z, added, modified

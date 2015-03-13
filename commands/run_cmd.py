@@ -340,79 +340,77 @@ class Checklist(object):
             sleep(1.5)
 
 
-def expandForJumps(tdb, cmdenv, origins, jumps, srcName):
+def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
     """
     Find all the stations you could reach if you made a given
     number of jumps away from the origin list.
     """
 
-    if not jumps:
-        stations = [
-            origin for origin in origins
-            if isinstance(origin, Station)
-        ]
-        for origin in origins:
-            if isinstance(origin, System):
-                stations.extend(origin.stations)
-        return list(set(stations))
-
-    origSys = set()
-    for place in origins:
-        if isinstance(place, Station):
-            origSys.add(place.system)
-        elif isinstance(place, System):
-            origSys.add(place)
+    assert jumps
 
     maxLyPer = cmdenv.emptyLyPer or cmdenv.maxLyPer
     avoidPlaces = cmdenv.avoidPlaces
-    if cmdenv.debug:
-        cmdenv.DEBUG0(
-                "extending {} list {} by {} jumps at {}ly per jump",
-                    srcName,
-                    [sys.dbname for sys in origSys],
-                    jumps,
-                    maxLyPer,
-        )
+    cmdenv.DEBUG0(
+            "expanding {} reach from {} by {} jumps at {}ly per jump",
+                srcName,
+                origin.name(),
+                jumps,
+                maxLyPer,
+    )
 
-    nextJump = set(origSys)
+    if srcName == "--to":
+        tradingList = calc.stationsSelling
+    elif srcName == "--from":
+        tradingList = calc.stationsBuying
+    else:
+        raise Exception("Unknown src")
+
+    stations = set()
+    origins, avoid = set([origin]), set(place for place in avoidPlaces)
+
     for jump in range(jumps):
-        if not nextJump:
+        if not origins:
             break
-        thisJump, nextJump = nextJump, set()
-        if cmdenv.debug:
-            cmdenv.DEBUG1(
-                    "Ring {}: {}",
-                    jump,
-                    [sys.dbname for sys in thisJump]
-            )
+        cmdenv.DEBUG1(
+            "Ring {}: {}",
+            jump,
+            [sys.dbname for sys in origins]
+        )
+        thisJump, origins = origins, set()
         for sys in thisJump:
+            avoid.add(sys)
+            for stn in sys.stations or []:
+                if stn.ID not in tradingList:
+                    cmdenv.DEBUG2(
+                        "X {}/{} not in trading list",
+                        stn.system.dbname, stn.dbname,
+                    )
+                    continue
+                if not checkStationSuitability(cmdenv, calc, stn):
+                    cmdenv.DEBUG2(
+                        "X {}/{} was not suitable",
+                        stn.system.dbname, stn.dbname,
+                    )
+                    continue
+                cmdenv.DEBUG2(
+                    "- {}/{} meets requirements",
+                    stn.system.dbname, stn.dbname,
+                )
+                stations.add(stn)
             for dest, dist in tdb.genSystemsInRange(sys, maxLyPer):
-                if dest not in origSys and dest not in avoidPlaces:
-                    origSys.add(dest)
-                    nextJump.add(dest)
+                if dest not in avoid:
+                    origins.add(dest)
 
-    if cmdenv.debug:
-        cmdenv.DEBUG0(
-                "Expanded {} systems: {}",
-                srcName,
-                [sys.dbname for sys in origSys]
-        )
+    cmdenv.DEBUG0(
+            "Expanded {} stations: {}",
+            srcName,
+            [stn.name() for stn in stations]
+    )
 
-    # Filter down to stations with trade data
-    origins = []
-    for sys in origSys:
-        for stn in sys.stations:
-            if stn.itemCount and stn not in avoidPlaces:
-                origins.append(stn)
+    stations = list(stations)
+    stations.sort(key=lambda stn: stn.ID)
 
-    if cmdenv.debug:
-        cmdenv.DEBUG0(
-                "expanded {} stations: {}",
-                srcName,
-                [sys.name() for sys in origins]
-        )
-
-    return list(set(origins))
+    return stations
 
 
 def checkForEmptyStationList(category, focusPlace, stationList, jumps):
@@ -459,6 +457,18 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 
 def checkStationSuitability(cmdenv, calc, station, src=None):
+    cmdenv.DEBUG2(
+        "checking {} (ls={}, bm={}, pad={}, mkt={}, shp={}) "
+        "for {} suitability",
+        station.name(),
+        station.lsFromStar,
+        station.blackMarket,
+        station.maxPadSize,
+        station.market,
+        station.shipyard,
+        src or "any",
+    )
+
     if station in cmdenv.avoidPlaces and src != "--from":
         if src:
             raise CommandLineError(
@@ -548,6 +558,11 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
 def filterStationSet(src, cmdenv, calc, stnList):
     if not stnList:
         return stnList
+    cmdenv.DEBUG0(
+        "filtering {} station list: {}",
+        src,
+        ",".join(station.name() for station in stnList),
+        )
     filtered = [
         place for place in stnList
         if isinstance(place, System) or \
@@ -563,7 +578,14 @@ def filterStationSet(src, cmdenv, calc, stnList):
 
 def checkOrigins(tdb, cmdenv, calc):
     if cmdenv.origPlace:
-        if isinstance(cmdenv.origPlace, System):
+        if cmdenv.startJumps and cmdenv.startJumps > 0:
+            cmdenv.origins = expandForJumps(
+                    tdb, cmdenv, calc,
+                    cmdenv.origPlace.system,
+                    cmdenv.startJumps,
+                    "--from"
+            )
+        elif isinstance(cmdenv.origPlace, System):
             cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
             if not cmdenv.origPlace.stations:
                 raise CommandLineError(
@@ -580,12 +602,6 @@ def checkOrigins(tdb, cmdenv, calc):
             checkStationSuitability(cmdenv, calc, cmdenv.origPlace, '--from')
             cmdenv.origins = [ cmdenv.origPlace ]
             cmdenv.startStation = cmdenv.origPlace
-        cmdenv.origins = expandForJumps(
-                tdb, cmdenv,
-                cmdenv.origins,
-                cmdenv.startJumps,
-                "--from"
-        )
         checkForEmptyStationList(
                 "--from", cmdenv.origPlace,
                 cmdenv.origins, cmdenv.startJumps
@@ -613,7 +629,14 @@ def checkOrigins(tdb, cmdenv, calc):
 def checkDestinations(tdb, cmdenv, calc):
     cmdenv.destinations = None
     if cmdenv.destPlace:
-        if isinstance(cmdenv.destPlace, Station):
+        if cmdenv.endJumps and cmdenv.endJumps > 0:
+            cmdenv.destinations = expandForJumps(
+                    tdb, cmdenv, calc,
+                    cmdenv.destPlace.system,
+                    cmdenv.endJumps,
+                    "--to"
+            )
+        elif isinstance(cmdenv.destPlace, Station):
             cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
             checkStationSuitability(cmdenv, calc, cmdenv.destPlace, '--to')
             cmdenv.destinations = [ cmdenv.destPlace ]
@@ -624,12 +647,6 @@ def checkDestinations(tdb, cmdenv, calc):
                 for station in cmdenv.destPlace.stations
                 if checkStationSuitability(cmdenv, calc, station)
             ]
-        cmdenv.destinations = expandForJumps(
-                tdb, cmdenv,
-                cmdenv.destinations,
-                cmdenv.endJumps,
-                "--to"
-        )
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps
@@ -1034,6 +1051,7 @@ def run(results, cmdenv, tdb):
             raise NoDataError(
                 "No routes had reachable trading links at hop #{}".format(hopNo + 1)
             )
+
         if not newRoutes:
             checkReachability(tdb, cmdenv)
             if hopNo > 0:

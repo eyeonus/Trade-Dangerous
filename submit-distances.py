@@ -84,7 +84,7 @@ def parse_arguments():
     )
     parser.add_argument(
         '--pick',
-        help='Randomly select N existing systems',
+        help='Randomly select N existing systems from gamma or ealier',
         required=False,
         type=int,
     )

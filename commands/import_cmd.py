@@ -2,6 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 
 from commands.exceptions import *
 from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from itertools import chain
 from pathlib import Path
 
 import cache
@@ -87,6 +88,10 @@ switches = [
 def run(results, cmdenv, tdb):
     # If we're using a plugin, initialize that first.
     if cmdenv.plug:
+        if cmdenv.pluginOptions:
+            cmdenv.pluginOptions = chain.from_iterable(
+                opt.split(',') for opt in cmdenv.pluginOptions
+            )
         try:
             pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
         except plugins.PluginException as e:

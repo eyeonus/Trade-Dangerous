@@ -96,10 +96,10 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     wantTrading = cmdenv.trading
     wantShipYard = cmdenv.shipyard
-    wantBlackMarket = cmdenv.wantBlackMarket
+    wantBlackMarket = cmdenv.blackmarket
 
-    def station_filter(system):
-        for station in system.stations:
+    def station_filter(stations):
+        for station in stations:
             if wantTrading and not station.isTrading:
                 continue
             if station.blackMarket != 'Y' and wantBlackMarket:
@@ -113,16 +113,17 @@ def run(results, cmdenv, tdb):
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         if showStations or wantStations:
             stations = []
-            for (station) in station_filter(system):
+            for (station) in station_filter(system.stations):
                 try:
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
                     age = "-"
-                rr = ResultRow(
+                stations.append(
+                    ResultRow(
                         station=station,
                         age=age,
+                    )
                 )
-                stations.append(rr)
             if not stations and wantStations:
                 continue
 
@@ -159,16 +160,12 @@ def render(results, cmdenv, tdb):
     showStations = cmdenv.detail
     if showStations:
         maxStnLen = max_len(
-            chain.from_iterable(
-                row.system.stations for row in results.rows
-            ),
-            key=lambda row: row.dbname
+            chain.from_iterable(row.stations for row in results.rows),
+            key=lambda row: row.station.dbname
         )
         maxLsLen = max_len(
-            chain.from_iterable(
-                row.system.stations for row in results.rows
-            ),
-            key=lambda row: row.distFromStar()
+            chain.from_iterable(row.stations for row in results.rows),
+            key=lambda row: row.station.distFromStar()
         )
         maxLsLen = max(maxLsLen, 5)
         stnRowFmt = RowFormat(prefix='  /  ').append(

@@ -4,8 +4,9 @@ unq:name,cost
 'Asp',6661153
 'Clipper',22295860
 'Cobra',379718
-'Dropship',37814205
+'Dropship',19814205
 'Eagle',44800
+'Fer-de-Lance',51567040
 'Hauler',52720
 'Orca',48539887
 'Python',56978179
@@ -14,3 +15,4 @@ unq:name,cost
 'Type 7',17472252
 'Type 9',76555842
 'Viper',142931
+'Vulture',4925615
