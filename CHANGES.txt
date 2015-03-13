@@ -2,6 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.14.1 Mar 13 2015
+. (kfsone) Minor fixes
+. (kfsone) Derp defense,
+. (kfsone) Added misc.importeddbstats
+. (kfsone) Imported Station attributes from eddb,
+. (kfsone) Cleaned out some cruft,
+
 v6.14.0 Mar 13 2015
 . (kfsone) Station data:
   - Added "outfitting", "rearm", "refuel" and "repair" fields,
