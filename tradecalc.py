@@ -260,23 +260,24 @@ class Route(object):
 
         if detail > 1:
             def decorateStation(station):
-                ls = station.lsFromStar
-                bm = station.blackMarket
-                pad = station.maxPadSize
-                if not ls:
-                    if bm == '?' and pad == '?':
-                        return station.name() + ' (no details)'
-                    return '{} ({}/bm, {}/pad)'.format(
-                        station.name(),
-                        TradeDB.marketStatesExt[bm],
-                        TradeDB.padSizesExt[pad],
-                    )
-                return '{} ({}/star, {}/bm, {}/pad)'.format(
+                details = []
+                if station.lsFromStar:
+                    details.append(station.distFromStar(True))
+                if station.blackMarket != '?':
+                    details.append('BMk:'+station.blackMarket)
+                if station.maxPadSize != '?':
+                    details.append('Pad:'+station.maxPadSize)
+                if station.shipyard != '?':
+                    details.append('Shp:'+station.shipyard)
+                if station.outfitting != '?':
+                    details.append('Out:'+station.outfitting)
+                if station.refuel != '?':
+                    details.append('Ref:'+station.refuel)
+                details = "{} ({})".format(
                     station.name(),
-                    station.distFromStar(True),
-                    TradeDB.marketStatesExt[bm],
-                    TradeDB.padSizesExt[pad],
+                    ", ".join(details or "no details")
                 )
+                return details
         else:
             def decorateStation(station):
                 return station.name()
@@ -346,7 +347,7 @@ class Route(object):
             text += goalDistance(lastStation)
         text += footer or ""
         text += endFmt.format(
-            station=decorateStation(lastStation),
+            station=lastStation.name(),
             gain=gainCr,
             credits=credits + gainCr
         )
