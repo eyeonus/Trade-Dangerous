@@ -832,7 +832,7 @@ def validateRunArguments(tdb, cmdenv, calc):
 
     if cmdenv.pruneScores and cmdenv.pruneHops:
         if cmdenv.pruneScores > 100:
-            raise CommandLineError("--prune-score value percentage exceed 100.")
+            raise CommandLineError("--prune-score value percentile exceed 100.")
         if cmdenv.pruneHops < 2:
             raise CommandLineError("--prune-hops must 2 or more.")
     else:
@@ -1024,12 +1024,9 @@ def run(results, cmdenv, tdb):
 
         if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
             routes.sort()
-            bestScore, worstScore = routes[0].score, routes[-1].score
-            threshold = bestScore * pruneMod
-            oldLen = len(routes)
-            while routes[-1].score < threshold:
-                routes.pop()
-            cmdenv.NOTE("Pruned {} origins", oldLen - len(routes))
+            crop = int(len(routes) * pruneMod)
+            routes = routes[:-crop]
+            cmdenv.NOTE("Pruned {} origins", crop)
 
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
