@@ -179,9 +179,11 @@ class Route(object):
         )
 
     def __lt__(self, rhs):
-        if rhs.score < self.score:  # reversed
-            return True
-        return rhs.score == self.score and len(rhs.jumps) < len(self.jumps)
+        # One route is less than the other if it has a higher score,
+        # or the scores are even and the number of jumps are shorter.
+        if self.score == rhs.score:
+            return len(self.jumps) < len(rhs.jumps)
+        return self.score > rhs.score
 
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
