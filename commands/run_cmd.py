@@ -1019,14 +1019,15 @@ def run(results, cmdenv, tdb):
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
-        if cmdenv.maxRoutes and hopNo >= 1:
-            routes = routes[:cmdenv.maxRoutes]
-
-        if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+        if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
             routes.sort()
-            crop = int(len(routes) * pruneMod)
-            routes = routes[:-crop]
-            cmdenv.NOTE("Pruned {} origins", crop)
+            if cmdenv.maxRoutes:
+                routes = routes[:cmdenv.maxRoutes]
+
+            if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+                crop = int(len(routes) * pruneMod)
+                routes = routes[:-crop]
+                cmdenv.NOTE("Pruned {} origins", crop)
 
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
