@@ -720,7 +720,6 @@ class TradeCalc(object):
                     restrictStations.add(place)
                 elif isinstance(place, System) and place.stations:
                     restrictStations.update(place.stations)
-        restrictStations = set(restrictStations)
 
         # Are we doing direct routes?
         if tdenv.direct:
@@ -772,26 +771,74 @@ class TradeCalc(object):
                 tdenv.DEBUG1("Nothing sold - next.")
                 continue
 
-            restricting = set(restrictStations)
-            try:
-                restricting.remove(srcStation)
-            except KeyError:
-                pass
-
             if goalSystem:
                 origSystem = route.firstSystem
                 srcSystem = srcStation.system
                 srcGoalDist = srcSystem.distanceTo(goalSystem)
                 srcOrigDist = srcSystem.distanceTo(origSystem)
+                goalDistTo = goalSystem.distanceTo
+                origDistTo = origSystem.distanceTo
 
-            def considerStation(dstStation, dest, multiplier):
+            for dest in station_iterator(srcStation):
+                dstStation = dest.station
+                if dstStation is srcStation:
+                    continue
+
+                if unique and dstStation in route.route:
+                    continue
+
+                if reqBlackMarket and dstStation.blackMarket != 'Y':
+                    continue
+
+                connections += 1
+
+                if maxAge:
+                    stnDataAge = dstStation.dataAge
+                    if stnDataAge is None or stnDataAge > maxAge:
+                        continue
+
+                multiplier = 1.0
+                if restrictStations:
+                    if dstStation not in restrictStations:
+                        continue
+                elif goalSystem:
+                    # Bias in favor of getting closer
+                    dstSys = dstStation.system
+                    if dstSys is srcSystem:
+                        if tdenv.unique:
+                            continue
+                    elif dstSys is goalSystem:
+                        multiplier = 99999999999
+                    else:
+                        dstGoalDist = goalDistTo(dstSys)
+                        if dstGoalDist >= srcGoalDist:
+                            continue
+                        dstOrigDist = origDistTo(dstSys)
+                        if dstOrigDist < srcOrigDist:
+                            # Did this put us back towards the orig?
+                            # It may be valid to do so but it's not "profitable".
+                            multiplier *= 0.6
+                        else:
+                            # The closer dst is, the smaller the divider
+                            # will be, so the larger the remainder.
+                            multiplier *= 1 + (srcGoalDist / dstGoalDist)
+
+                if tdenv.debug >= 1:
+                    tdenv.DEBUG1(
+                        "destSys {}, destStn {}, jumps {}, distLy {}",
+                        dstStation.system.dbname,
+                        dstStation.dbname,
+                        "->".join([jump.str() for jump in dest.via]),
+                        dest.distLy
+                    )
+
                 items = self.getTrades(srcStation, dstStation, srcSelling)
                 if not items:
-                    return
+                    continue
                 if max(items, key=lambda i: i.costCr).costCr > credits:
                     items = [i for i in trade if i.costCr <= credits]
                     if not items:
-                        return
+                        continue
                 trade = fitFunction(items, startCr, capacity, maxUnits)
 
                 # Calculate total K-lightseconds supercruise time.
@@ -814,83 +861,25 @@ class TradeCalc(object):
                 try:
                     # See if there is already a candidate for this destination
                     btd = bestToDest[dstID]
+                except KeyError:
+                    # No existing candidate, we win by default
+                    pass
+                else:
                     bestRoute = btd[1]
                     bestScore = btd[5]
                     # Check if it is a better option than we just produced
                     bestTradeScore = bestRoute.score + bestScore
                     newTradeScore = route.score + score
                     if bestTradeScore > newTradeScore:
-                        return
+                        continue
                     if bestTradeScore == newTradeScore:
                         bestLy = btd[4]
                         if bestLy <= dest.distLy:
-                            return
-                except KeyError:
-                    # No existing candidate, we win by default
-                    pass
+                            continue
+
                 bestToDest[dstID] = [
                     dstStation, route, trade, dest.via, dest.distLy, score
                 ]
-
-            for dest in station_iterator(srcStation):
-                dstStation = dest.station
-                if dstStation is srcStation:
-                    continue
-
-                if unique and dstStation in route.route:
-                    continue
-
-                if reqBlackMarket and dstStation.blackMarket != 'Y':
-                    continue
-
-                connections += 1
-
-                if maxAge:
-                    stnDataAge = dstStation.dataAge
-                    if stnDataAge is None or stnDataAge > maxAge:
-                        continue
-
-                multiplier = 1.0
-                if restrictStations:
-                    if dstStation not in restricting:
-                        continue
-                elif goalSystem:
-                    # Bias in favor of getting closer
-                    dstSys = dstStation.system
-                    if dstSys is srcSystem:
-                        if tdenv.unique:
-                            continue
-                    elif dstSys is goalSystem:
-                        multiplier = 99999999999
-                    else:
-                        dstGoalDist = dstSys.distanceTo(goalSystem)
-                        if dstGoalDist >= srcGoalDist:
-                            continue
-                        dstOrigDist = dstSys.distanceTo(origSystem)
-                        if dstOrigDist < srcOrigDist:
-                            # Did this put us back towards the orig?
-                            # It may be valid to do so but it's not "profitable".
-                            multiplier *= 0.6
-                        else:
-                            # The closer dst is, the smaller the divider
-                            # will be, so the larger the remainder.
-                            multiplier *= 1 + (srcGoalDist / dstGoalDist)
-
-                if tdenv.debug >= 1:
-                    tdenv.DEBUG1(
-                        "destSys {}, destStn {}, jumps {}, distLy {}",
-                        dstStation.system.dbname,
-                        dstStation.dbname,
-                        "->".join([jump.str() for jump in dest.via]),
-                        dest.distLy
-                    )
-
-                considerStation(dstStation, dest, multiplier)
-
-                if restrictStations:
-                    restricting.remove(dstStation)
-                    if not restricting:
-                        break
 
         prog.clear()
 

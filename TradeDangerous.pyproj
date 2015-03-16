@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>buildcache -f -i</CommandLineArguments>
+    <CommandLineArguments>run -vv --ly=20.75 --empty=27.76 --cap=124 --jumps=4 --cr=5810815 --from="vaucansonplat" --prune-score=20 --prune-hops=4 --progress --gpt 1400 --hops=5 --age=20 --jumps=5 --ls-p=2.5</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />

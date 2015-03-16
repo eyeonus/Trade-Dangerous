@@ -906,8 +906,10 @@ class TradeDB(object):
                         if distSq > lySq:
                             continue
                         distSq += (candidate.posZ - sysZ) ** 2
-                        if distSq <= lySq:
-                            yield candidate, distSq
+                        if distSq > lySq:
+                            continue
+                        if candidate is not system:
+                            yield candidate, distSq ** 0.5
 
     def genSystemsInRange(self, system, ly, includeSelf=False):
         """
@@ -931,12 +933,6 @@ class TradeDB(object):
                     The distance in lightyears between system and candidate.
         """
 
-        if isinstance(system, Station):
-            system = system.system
-        elif not isinstance(system, System):
-            place = self.lookupPlace(system)
-            system = place.system if isinstance(system, Station) else place
-
         cache = system._rangeCache
         if not cache:
             cache = system._rangeCache = System.RangeCache()
@@ -945,14 +941,9 @@ class TradeDB(object):
         probedLy = cache.probedLy
         if ly > probedLy:
             # Consult the database for stars we haven't seen.
-            cachedSystems = cache.systems = []
-            for cand, distSq in self.genStellarGrid(system, ly):
-                if cand is not system:
-                    cachedSystems.append((
-                        cand,
-                        distSq ** 0.5,
-                    ))
-
+            cachedSystems = cache.systems = list(
+                self.genStellarGrid(system, ly)
+            )
             cachedSystems.sort(key=lambda ent: ent[1])
             cache.probedLy = probedLy = ly
 
