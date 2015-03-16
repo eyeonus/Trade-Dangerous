@@ -2,6 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.14.2 Mar 15 2015
+. (kfsone) Minor tweaks
+. (kfsone) Removed the "tradingWith" cache because its hit rate was so low
+           it was actually decreasing performance
+. (kfsone) Tweaked how --prune and --max-routes interact
+. (kfsone) Little performance boost
+
 v6.14.1 Mar 13 2015
 . (kfsone) Minor fixes
 . (kfsone) Derp defense,

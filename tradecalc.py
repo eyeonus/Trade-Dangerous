@@ -15,9 +15,6 @@ looks a little odd.
 
 Significant Functions:
 
-    TradeCalc.getBestTrade
-        Figures out the best trade between two stations
-
     Tradecalc.getBestHops
         Finds the best "next hop"s given a set of routes.
 
@@ -631,88 +628,22 @@ class TradeCalc(object):
 
         return _fitCombos(0, credits, capacity)
 
-    def getBestTrade(self, src, dst, credits=None, fitFunction=None):
-        """
-        Find the most profitable trade between stations src and dst.
-
-        'fitFunction' lets you override the default fitting function.
-        """
-
-        tdenv = self.tdenv
-        if credits is None:
-            credits = getattr(tdenv, 'credits', 0) or 0
-            credits -= (getattr(tdenv, 'insurance', 0) or 0)
-        capacity = tdenv.capacity
-        tdenv.DEBUG0(
-            "{}/{} -> {}/{} with {:n}cr",
-            src.system.dbname, src.dbname,
-            dst.system.dbname, dst.dbname,
-            credits
-        )
-
-        if not capacity:
-            raise ValueError("zero capacity")
-        maxUnits = getattr(tdenv, 'limit') or capacity
-
-        try:
-            items = src.tradingWith[dst]
-        except KeyError:
-            items = None
-        if not items:
-            raise ValueError(
-                "%s does not trade with %s" % (src.name(), dst.name())
-            )
-
-        if max(items, key=lambda itm: itm.costCr).costCr > credits:
-            items = [
-                item for item in items if item.costCr <= credits
-            ]
-            if not items:
-                return emptyLoad
-
-        # Go ahead and find the best combination out of what's left.
-        fitFunction = fitFunction or self.defaultFit
-        return fitFunction(items, credits, capacity, maxUnits)
 
     def getTrades(self, srcStation, dstStation, srcSelling=None):
         """
-        Caches and returns the most profitable trading options from
+        Returns the most profitable trading options from
         one station to another (uni-directional).
         """
         if not srcSelling:
             srcSelling = self.stationsSelling.get(srcStation.ID, None)
-        if not srcSelling:
-            return None
+            if not srcSelling:
+                return None
         dstBuying = self.stationsBuying.get(dstStation.ID, None)
         if not dstBuying:
-            srcStation.tradingWith[dstStation] = None
             return None
 
-        trading = self.getProfitables(srcSelling, dstBuying)
-
-        # SORT BY profit DESC, cost
-        # So two if two items have the same profit, the cheapest
-        # will be listed first.
-        trading.sort(key=lambda trade: trade.costCr)
-        trading.sort(key=lambda trade: trade.gainCr, reverse=True)
-
-        try:
-            srcStation.tradingWith[dstStation] = trading
-        except TypeError:
-            srcStation.tradingWith = { dstStation: trading }
-
-        return trading
-
-    def getProfitables(self, srcSelling, dstBuying):
-        """
-        Calculates and returns the most items in srcSelling that are
-        bought for profit in dstBuying.
-        """
-        if not srcSelling or not dstBuying:
-            return None
-
-        itemIdx = self.tdb.itemByID
         trading = []
+        itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
         for buy in dstBuying:
@@ -721,18 +652,27 @@ class TradeCalc(object):
                 sellItemID = sell[0]
                 if sellItemID == buyItemID:
                     buyCr, sellCr = buy[1], sell[1]
-                    if sellCr + minGainCr <= buyCr and sellCr + maxGainCr >= buyCr:
-                        trading.append(Trade(
-                            itemIdx[buyItemID],
-                            buyItemID,
-                            sellCr, buyCr - sellCr,
-                            sell[2], sell[3],
-                            buy[2], buy[3],
-                            sell[4], buy[4],
-                        ))
+                    if sellCr + minGainCr > buyCr:
+                        continue
+                    if sellCr + maxGainCr < buyCr:
+                        continue
+                    trading.append(Trade(
+                        itemIdx[buyItemID],
+                        buyItemID,
+                        sellCr, buyCr - sellCr,
+                        sell[2], sell[3],
+                        buy[2], buy[3],
+                        sell[4], buy[4],
+                    ))
                     break   # from srcSelling
 
+        # SORT BY profit DESC, cost
+        # So if two items have the same profit, the cheapest will come first.
+        trading.sort(key=lambda trade: trade.costCr)
+        trading.sort(key=lambda trade: trade.gainCr, reverse=True)
+
         return trading
+
 
     def getBestHops(self, routes, restrictTo=None):
         """
@@ -757,6 +697,9 @@ class TradeCalc(object):
         reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
         maxAge = getattr(tdenv, 'maxAge') or 0
         credits = tdenv.credits - (getattr(tdenv, 'insurance', 0) or 0)
+        fitFunction = self.defaultFit
+        capacity = tdenv.capacity
+        maxUnits = getattr(tdenv, 'limit') or capacity
 
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
@@ -821,9 +764,6 @@ class TradeCalc(object):
             tdenv.DEBUG1("Route = {}", route.str())
 
             srcStation = route.lastStation
-            srcTradingWith = srcStation.tradingWith
-            if srcTradingWith is None:
-                srcTradingWith = srcStation.tradingWith = dict()
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
 
@@ -845,19 +785,14 @@ class TradeCalc(object):
                 srcOrigDist = srcSystem.distanceTo(origSystem)
 
             def considerStation(dstStation, dest, multiplier):
-                # Do we have something to trade?
-                try:
-                    trading = srcTradingWith[dstStation]
-                except (TypeError, KeyError):
-                    trading = self.getTrades(
-                        srcStation, dstStation, srcSelling
-                    )
-                if not trading:
+                items = self.getTrades(srcStation, dstStation, srcSelling)
+                if not items:
                     return
-
-                trade = self.getBestTrade(srcStation, dstStation, startCr)
-                if not trade:
-                    return
+                if max(items, key=lambda i: i.costCr).costCr > credits:
+                    items = [i for i in trade if i.costCr <= credits]
+                    if not items:
+                        return
+                trade = fitFunction(items, startCr, capacity, maxUnits)
 
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
