@@ -46,6 +46,7 @@ import locale
 import math
 import os
 import misc.progress as pbar
+import sys
 import time
 
 locale.setlocale(locale.LC_ALL, '')
