@@ -218,7 +218,6 @@ ocrDerp = re.compile(r'''(
     \bREILLI\b |
     \bRIN[FC]\b |
     \bOL[E3]ARY |
-    ‹ |
     \bSATION\b |
     ,\w |
     \bI?NGLY\b |
