@@ -275,7 +275,7 @@ class Route(object):
                     details.append('Ref:'+station.refuel)
                 details = "{} ({})".format(
                     station.name(),
-                    ", ".join(details or "no details")
+                    ", ".join(details or ["no details"])
                 )
                 return details
         else:
