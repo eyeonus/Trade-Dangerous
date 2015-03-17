@@ -1100,6 +1100,7 @@ def run(results, cmdenv, tdb):
             )
             if routes[0].lastSystem is goalSystem:
                 cmdenv.NOTE("Goal system reached!")
+                routes = routes[:1]
                 break
 
     if not routes:

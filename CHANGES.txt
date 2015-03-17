@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.14.3 Mar 16 2015
+. (kfsone) "--towards" should be much better behaved
+
 v6.14.2 Mar 15 2015
 . (kfsone) Minor tweaks
 . (kfsone) Removed the "tradingWith" cache because its hit rate was so low

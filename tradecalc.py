@@ -774,10 +774,12 @@ class TradeCalc(object):
             if goalSystem:
                 origSystem = route.firstSystem
                 srcSystem = srcStation.system
-                srcGoalDist = srcSystem.distanceTo(goalSystem)
-                srcOrigDist = srcSystem.distanceTo(origSystem)
+                srcDistTo = srcSystem.distanceTo
                 goalDistTo = goalSystem.distanceTo
                 origDistTo = origSystem.distanceTo
+                srcGoalDist = srcDistTo(goalSystem)
+                srcOrigDist = srcDistTo(origSystem)
+                origGoalDist = origDistTo(goalSystem)
 
             for dest in station_iterator(srcStation):
                 dstStation = dest.station
@@ -801,25 +803,16 @@ class TradeCalc(object):
                 if restrictStations:
                     if dstStation not in restrictStations:
                         continue
-                elif goalSystem:
+                if goalSystem:
                     # Bias in favor of getting closer
                     dstSys = dstStation.system
                     if dstSys is srcSystem:
                         if tdenv.unique:
                             continue
-                    elif dstSys is goalSystem:
-                        multiplier = 99999999999
-                    else:
+                    elif dstSys is not goalSystem:
                         # Ignore jumps longer than remaining distance to goal.
                         if dest.distLy >= srcGoalDist:
                             continue
-                        # Discount jumps that increase distance to goal
-                        dstGoalDist = goalDistTo(dstSys)
-                        if dstGoalDist >= srcGoalDist:
-                            continue
-                        # The closer dst is, the smaller the divider
-                        # will be, so the larger the remainder.
-                        multiplier /= min(dstGoalDist, 1)
 
                 if tdenv.debug >= 1:
                     tdenv.DEBUG1(
@@ -841,7 +834,19 @@ class TradeCalc(object):
 
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
-                score = trade.gainCr
+                if goalSystem and dstSys is not goalSystem:
+                    dstGoalDist = goalDistTo(dstSys)
+                    # Biggest reward for shortening distance to goal
+                    score = 5000 * origGoalDist / dstGoalDist
+                    # bias towards bigger reductions
+                    score += 50 * srcGoalDist / dstGoalDist
+                    # discourage moving back towards origin
+                    if dstSys is not origSystem:
+                        score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                    # Gain per unit pays a small part
+                    score += (trade.gainCr / trade.units) / 25
+                else:
+                    score = trade.gainCr
                 if lsPenalty:
                     # Only want 1dp
                     cruiseKls = int(dstStation.lsFromStar / 100) / 10
