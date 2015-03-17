@@ -2,6 +2,42 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.14.2 Mar 15 2015
+. (kfsone) Minor tweaks
+. (kfsone) Removed the "tradingWith" cache because its hit rate was so low
+           it was actually decreasing performance
+. (kfsone) Tweaked how --prune and --max-routes interact
+. (kfsone) Little performance boost
+
+v6.14.1 Mar 13 2015
+. (kfsone) Minor fixes
+. (kfsone) Derp defense,
+. (kfsone) Added misc.importeddbstats
+. (kfsone) Imported Station attributes from eddb,
+. (kfsone) Cleaned out some cruft,
+
+v6.14.0 Mar 13 2015
+. (kfsone) Station data:
+  - Added "outfitting", "rearm", "refuel" and "repair" fields,
+  - Added options to "local" and "station" commands,
+  - Added output to "local", "station" and "nav" commands,
+  - Added support to maddavo import,
+
+v6.13.4 Mar 13 2015
+. (WombatFromHell) "run" command:
+  - Added "--max-gain-per-ton" (--mgpt) option
+    Default: 10000cr
+    Controls the maximum profit/ton that TD will believe
+
+v6.13.3 Mar 11 2015
+. (kfsone) Fixed "--blackmarket" and "--trading" in local,
+. (Dry411s) Resolves #200 New ships for 1.2,
+. (kfsone) +103 Systems
+. (kfsone) OCR Derp fixes
+. (kfsone) Station cleanup
+. (Dry411s) Resolves #203 New ShipPrices per 1.2.03,
+. (orphu) ShipVendor updates
+
 v6.13.2 Mar 10 2015
 . (Tromador) Added "Painite" to Item.csv
 . (kfsone) import plugin now allows you to separate --opt values with ,

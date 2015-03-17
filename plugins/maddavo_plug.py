@@ -13,17 +13,6 @@ import transfers
 
 from plugins import PluginException
 
-# Check for TKInter support
-hasTkInter = False
-if 'NOTK' not in os.environ and platform.system() != 'Darwin':  # focus bug
-    try:
-        import tkinter
-        import tkinter.messagebox as mbox
-        hasTkInter = True
-    except ImportError:
-        pass
-
-
 # Constants
 
 BASE_URL = "http://www.davek.com.au/td/"
@@ -132,55 +121,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ))
 
 
-    def splash(self, title, text):
-        if hasTkInter:
-            tk = tkinter.Tk()
-            tk.withdraw()
-            mbox.showinfo(title, text)
-        else:
-            print("=== {} ===\n".format(title))
-            print(text)
-            input("Press return to continue: ")
-
-
-    def check_first_time_use(self):
-        iniFilePath = self.tdb.dataPath / "maddavo.ini"
-        if not iniFilePath.is_file():
-            with iniFilePath.open("w") as fh:
-                print(
-                    "[default]\n"
-                    "firstUse={}".format(time.time()),
-                    file=fh
-                )
-            self.splash(
-                "Maddavo Plugin",
-                "This plugin fetches price data from Maddavo's site, "
-                "a 3rd party crowd-source data project.\n"
-                "\n"
-                "  {}\n"
-                "\n"
-                "To use this provider you may need to download some "
-                "additional files such as the Station.csv or System.csv "
-                "files from this provider's site.\n"
-                "\n"
-                "When importing prices from this provider, TD will "
-                "automatically add temporary, 'placeholder' entries for "
-                "stations in the .prices file that are not in your local "
-                "'Station.csv' file.\n"
-                "\n"
-                "You can silence these warnings with '-q', or you can "
-                "import Station data from maddavo's by adding the "
-                "'--opt=stations' flag periodically. If you get errors "
-                "about missing Systems, you can also import Systems "
-                "from his site using --opt=systems.\n"
-                "\n"
-                "See the group (http://kfs.org/td/group), thread "
-                "(http://kfs.org/td/thread) or wiki "
-                "(http://kfs.org/td/wiki) for more help."
-                .format(BASE_URL)
-            )
-
-
     def csv_system_rows(self, url, tableName):
         """
         Fetch rows from a CSV resource that start with a system, applying corrections.
@@ -254,7 +194,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdb, tdenv = self.tdb, self.tdenv
         sysAdjust = corrections.systems.get
-        stnAdjust = corrections.systems.get
+        stnAdjust = corrections.stations.get
         DELETED = corrections.DELETED
 
         for sysName, system, values in self.csv_system_rows(url, tableName):
@@ -299,7 +239,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     lsFromStar, system.name(), stnName
                 )
                 lsFromStar = int(lsFromStar)
-            modified = values[7] if len(values) > 6 else 'now'
+            modified = values[7] if len(values) > 7 else 'now'
             if lsFromStar < 0 or modified.startswith("DEL"):
                 if station:
                     tdb.removeLocalStation(station, commit=False)
@@ -307,8 +247,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 continue
             blackMarket = values[3]
             maxPadSize = values[4]
-            market = values[5] if len(values) > 4 else '?'
-            shipyard = values[6] if len(values) > 5 else '?'
+            market = values[5] if len(values) > 5 else '?'
+            shipyard = values[6] if len(values) > 6 else '?'
+            outfitting = values[8] if len(values) > 8 else '?'
+            rearm = values[9] if len(values) > 9 else '?'
+            refuel = values[10] if len(values) > 10 else '?'
+            repair = values[11] if len(values) > 11 else '?'
             if station:
                 if tdb.updateLocalStation(
                         station,
@@ -318,6 +262,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                         blackMarket=blackMarket,
                         shipyard=shipyard,
                         maxPadSize=maxPadSize,
+                        outfitting=outfitting,
+                        rearm=rearm,
+                        refuel=refuel,
+                        repair=repair,
                         modified=modified,
                         commit=False,
                         ):
@@ -331,6 +279,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     blackMarket=blackMarket,
                     shipyard=shipyard,
                     maxPadSize=maxPadSize,
+                    outfitting=outfitting,
+                    rearm=rearm,
+                    refuel=refuel,
+                    repair=repair,
                     modified=modified,
                     commit=False,
                 )
@@ -488,6 +440,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdb, tdenv = self.tdb, self.tdenv
 
+        # It takes a while to download these files, so we want
+        # to record the start time before we download. What we
+        # care about is when we downloaded relative to when the
+        # files were previously generated.
         startTime = time.time()
 
         prevImportDate, lastRunDays = self.load_timestamp()
@@ -605,13 +561,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
-        # It takes a while to download these files, so we want
-        # to record the start time before we download. What we
-        # care about is when we downloaded relative to when the
-        # files were previously generated.
-
-        self.check_first_time_use()
 
         tdenv.ignoreUnknown = True
 

@@ -47,36 +47,49 @@ switches = [
         '--ls-from-star',
         help='Number of light seconds between station and star.',
         type=int,
-        default=0,
         dest='lsFromStar',
     ),
     ParseArgument(
         '--black-market', '--bm',
         help='Does the station have a black market (Y or N) or ? if unknown.',
         choices=['Y', 'y', 'N', 'n', '?'],
-        default='?',
         dest='blackMarket',
     ),
     ParseArgument(
         '--market',
         help='Does the station have a commodities market (Y or N), ? for unknown.',
         choices=['Y', 'y', 'N', 'n', '?'],
-        default='?',
-        dest='market',
     ),
     ParseArgument(
         '--shipyard',
         help='Does the station have a shipyard (Y or N) or ? if unknown.',
         choices=['Y', 'y', 'N', 'n', '?'],
-        default='?',
-        dest='shipyard',
     ),
     ParseArgument(
         '--pad-size',
         help='Maximum supported pad size (S, M, or L) or ? if unknown.',
         choices=['S', 's', 'M', 'm', 'L', 'l', '?'],
-        default='?',
         dest='padSize',
+    ),
+    ParseArgument(
+        '--outfitting',
+        help='Does the station provide outfitting (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--rearm', '--arm',
+        help='Does the station provide rearming (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--refuel',
+        help='Does the station provide refueling (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--repair',
+        help='Does the station provide repairs (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
     ),
     ParseArgument(
         '--confirm',
@@ -236,11 +249,16 @@ def addStation(tdb, cmdenv, system, stationName):
     return tdb.addLocalStation(
             system=system,
             name=stationName,
-            lsFromStar=cmdenv.lsFromStar,
-            market=cmdenv.market,
-            blackMarket=cmdenv.blackMarket,
-            shipyard=cmdenv.shipyard,
-            maxPadSize=cmdenv.padSize,
+            lsFromStar=cmdenv.lsFromStar or 0,
+            market=cmdenv.market or '?',
+            blackMarket=cmdenv.blackMarket or '?',
+            shipyard=cmdenv.shipyard or '?',
+            outfitting=cmdenv.outfitting or '?',
+            rearm=cmdenv.rearm or '?',
+            refuel=cmdenv.refuel or '?',
+            repair=cmdenv.repair or '?',
+            maxPadSize=cmdenv.padSize or '?',
+            commit=True,
     )
 
 
@@ -251,7 +269,13 @@ def updateStation(tdb, cmdenv, station):
             market=cmdenv.market,
             blackMarket=cmdenv.blackMarket,
             shipyard=cmdenv.shipyard,
+            outfitting=cmdenv.outfitting,
+            rearm=cmdenv.rearm,
+            refuel=cmdenv.refuel,
+            repair=cmdenv.repair,
             maxPadSize=cmdenv.padSize,
+            force=True,
+            commit=True,
     )
 
 
@@ -283,7 +307,7 @@ def checkResultAndExportStations(tdb, cmdenv, result):
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    if cmdenv.lsFromStar < 0:
+    if cmdenv.lsFromStar and cmdenv.lsFromStar < 0:
         raise CommandLineError("Invalid (negative) --ls option")
 
     system, station = checkSystemAndStation(tdb, cmdenv)
@@ -349,6 +373,49 @@ def run(results, cmdenv, tdb):
 def render(results, cmdenv, tdb):
     system, station = results.summary.system, results.summary.station
 
+    if cmdenv.detail:
+        sysDetail = "(#{} @ {},{},{})".format(
+            system.ID, system.posX, system.posY, system.posZ
+        )
+    else:
+        sysDetail = "(#{})".format(system.ID)
+
+    print("Station Data:")
+    print("System....:", system.name(), sysDetail)
+    print("Station...:", station.dbname, "(#{})".format(station.ID))
+
+    if cmdenv.detail:
+        siblings = ", ".join(
+            stn.dbname
+            for stn in system.stations
+            if stn is not station
+        )
+        if siblings:
+            print("Also Here.:", siblings)
+
+    ls = station.distFromStar()
+    if cmdenv.detail and ls == '?':
+        ls = '0 [unknown]'
+    print("Stn/Ls....:", ls)
+
+    def _detail(value, source):
+        detail = source[value]
+        if cmdenv.detail and detail == '?':
+            detail += ' [unknown]'
+        return detail
+    print("Pad Size..:", _detail(station.maxPadSize, TradeDB.padSizes))
+    print("Market....:", _detail(station.market, TradeDB.marketStates))
+    print("B/Market..:", _detail(station.blackMarket, TradeDB.marketStates))
+    print("Shipyard..:", _detail(station.shipyard, TradeDB.marketStates))
+    print("Outfitting:", _detail(station.outfitting, TradeDB.marketStates))
+    print("Rearm.....:", _detail(station.rearm, TradeDB.marketStates))
+    print("Refuel....:", _detail(station.refuel, TradeDB.marketStates))
+    print("Repair....:", _detail(station.repair, TradeDB.marketStates))
+    print("Prices....:", station.itemCount or 'None')
+
+    if station.itemCount == 0:
+        return
+
     newest, oldest = tdb.query("""
             SELECT JULIANDAY('NOW') - JULIANDAY(MIN(si.modified)),
                    JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
@@ -363,6 +430,8 @@ def render(results, cmdenv, tdb):
             pricesAge = "{:.2f}-{:.2f} days".format(newest, oldest)
     else:
         pricesAge = "[n/a]"
+
+    print("Price Age.:", pricesAge)
 
     def makeBest(rows, explanation, alt, starFn):
         if not rows:
@@ -386,71 +455,13 @@ def render(results, cmdenv, tdb):
         return bestText
 
 
-    bestBuy = makeBest(
+    print("Best Buy..:", makeBest(
             results.summary.selling, "Buy from this station", "Sell",
             starFn=lambda price, avgCr: \
                 price <= (avgCr * 0.9),
-    )
-    bestSell = makeBest(
+    ))
+    print("Best Sale.:", makeBest(
             results.summary.buying, "Sell to this station", "Buy",
             starFn=lambda price, avgCr: \
                 price >= (avgCr * 1.1),
-    )
-
-    siblings = ", ".join(
-        stn.dbname
-        for stn in system.stations
-        if stn is not station
-    )
-    if not siblings:
-        siblings = "[Only known station]"
-
-    ls = station.distFromStar()
-    if cmdenv.detail and ls == '?':
-        ls = '0 [unknown]'
-    mkt = TradeDB.marketStates[station.market]
-    if cmdenv.detail and mkt == '?':
-        mkt += ' [unknown]'
-    bm = TradeDB.marketStates[station.blackMarket]
-    if cmdenv.detail and bm == '?':
-        bm += ' [unknown]'
-    shipyard = TradeDB.marketStates[station.shipyard]
-    if cmdenv.detail and shipyard == '?':
-        shipyard += ' [unknown]'
-    pad = TradeDB.padSizes[station.maxPadSize]
-    if cmdenv.detail and pad == '?':
-        pad += ' [unknown]'
-
-    print("""Station Data:
-System....: {sysname} (#{sysid} @ {sysx},{sysy},{sysz})
-Station...: {stnname} (#{stnid})
-Neighbors.: {siblings}
-Stn/Ls....: {lsdist}
-Market....: {mkt}
-B/Market..: {bm}
-Shipyard..: {yard}
-Pad Size..: {pad}
-Prices....: {icount}
-Price Age.: {prage}
-Best Buy..: {bestbuy}
-Best Sale.: {bestsell}
-""".format(
-            sysname=system.name(),
-            stnname=station.dbname,
-            sysid=system.ID,
-            sysx=system.posX,
-            sysy=system.posY,
-            sysz=system.posZ,
-            stnid=station.ID,
-            lsdist=ls,
-            mkt=mkt,
-            bm=bm,
-            yard=shipyard,
-            pad=pad,
-            icount=station.itemCount,
-            prage=pricesAge,
-            bestbuy=bestBuy,
-            bestsell=bestSell,
-            siblings=siblings,
-            )
-)
+    ))

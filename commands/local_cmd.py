@@ -53,6 +53,22 @@ switches = [
             help='Limit stations to those known to have a ship yard.',
             action='store_true',
     ),
+    ParseArgument('--outfitting',
+            help='Limit stations to those known to have outfitting.',
+            action='store_true',
+    ),
+    ParseArgument('--rearm',
+            help='Limit stations to those known to have rearming.',
+            action='store_true',
+    ),
+    ParseArgument('--refuel',
+            help='Limit stations to those known to have refueling.',
+            action='store_true',
+    ),
+    ParseArgument('--repair',
+            help='Limit stations to those known to have repairs.',
+            action='store_true',
+    ),
 ]
 
 ######################################################################
@@ -96,33 +112,46 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     wantTrading = cmdenv.trading
     wantShipYard = cmdenv.shipyard
-    wantBlackMarket = cmdenv.wantBlackMarket
+    wantBlackMarket = cmdenv.blackmarket
+    wantOutfitting = cmdenv.outfitting
+    wantRearm = cmdenv.rearm
+    wantRefuel = cmdenv.refuel
+    wantRepair = cmdenv.repair
 
-    def station_filter(system):
-        for station in system.stations:
+    def station_filter(stations):
+        for station in stations:
             if wantTrading and not station.isTrading:
                 continue
-            if station.blackMarket != 'Y' and wantBlackMarket:
+            if wantBlackMarket and station.blackMarket != 'Y':
                 continue
-            if station.shipyard != 'Y' and wantShipYard:
+            if wantShipYard and station.shipyard != 'Y':
                 continue
             if padSize and not station.checkPadSize(padSize):
+                continue
+            if wantOutfitting and station.outfitting != 'Y':
+                continue
+            if wantRearm and station.rearm != 'Y':
+                continue
+            if wantRefuel and station.refuel != 'Y':
+                continue
+            if wantRepair and station.repair != 'Y':
                 continue
             yield station
 
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         if showStations or wantStations:
             stations = []
-            for (station) in station_filter(system):
+            for (station) in station_filter(system.stations):
                 try:
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
                     age = "-"
-                rr = ResultRow(
+                stations.append(
+                    ResultRow(
                         station=station,
                         age=age,
+                    )
                 )
-                stations.append(rr)
             if not stations and wantStations:
                 continue
 
@@ -159,16 +188,12 @@ def render(results, cmdenv, tdb):
     showStations = cmdenv.detail
     if showStations:
         maxStnLen = max_len(
-            chain.from_iterable(
-                row.system.stations for row in results.rows
-            ),
-            key=lambda row: row.dbname
+            chain.from_iterable(row.stations for row in results.rows),
+            key=lambda row: row.station.dbname
         )
         maxLsLen = max_len(
-            chain.from_iterable(
-                row.system.stations for row in results.rows
-            ),
-            key=lambda row: row.distFromStar()
+            chain.from_iterable(row.stations for row in results.rows),
+            key=lambda row: row.station.distFromStar()
         )
         maxLsLen = max(maxLsLen, 5)
         stnRowFmt = RowFormat(prefix='  /  ').append(
@@ -192,6 +217,22 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Shp", '>', '3',
                     key=lambda row: \
                         TradeDB.marketStates[row.station.shipyard])
+        ).append(
+                ColumnFormat("Out", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.outfitting])
+        ).append(
+                ColumnFormat("Arm", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.rearm])
+        ).append(
+                ColumnFormat("Ref", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.refuel])
+        ).append(
+                ColumnFormat("Rep", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.repair])
         ).append(
                 ColumnFormat("Pad", '>', '3',
                     key=lambda row: \
