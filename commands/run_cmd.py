@@ -1016,8 +1016,10 @@ def run(results, cmdenv, tdb):
         restrictTo = None
         if hopNo == lastHop and stopStations:
             restrictTo = set(stopStations)
+            manualRestriction = bool(cmdenv.destPlace)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
+            manualRestriction = True
 
         if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
             routes.sort()
@@ -1053,7 +1055,7 @@ def run(results, cmdenv, tdb):
         if not newRoutes:
             checkReachability(tdb, cmdenv)
             if hopNo > 0:
-                if restrictTo:
+                if restrictTo and manualRestriction:
                     results.summary.exception += routeFailedRestrictions(
                         tdb, cmdenv, restrictTo, maxLs, hopNo
                     )
