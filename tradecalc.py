@@ -810,18 +810,16 @@ class TradeCalc(object):
                     elif dstSys is goalSystem:
                         multiplier = 99999999999
                     else:
+                        # Ignore jumps longer than remaining distance to goal.
+                        if dest.distLy >= srcGoalDist:
+                            continue
+                        # Discount jumps that increase distance to goal
                         dstGoalDist = goalDistTo(dstSys)
                         if dstGoalDist >= srcGoalDist:
                             continue
-                        dstOrigDist = origDistTo(dstSys)
-                        if dstOrigDist < srcOrigDist:
-                            # Did this put us back towards the orig?
-                            # It may be valid to do so but it's not "profitable".
-                            multiplier *= 0.6
-                        else:
-                            # The closer dst is, the smaller the divider
-                            # will be, so the larger the remainder.
-                            multiplier *= 1 + (srcGoalDist / dstGoalDist)
+                        # The closer dst is, the smaller the divider
+                        # will be, so the larger the remainder.
+                        multiplier /= min(dstGoalDist, 1)
 
                 if tdenv.debug >= 1:
                     tdenv.DEBUG1(
