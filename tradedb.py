@@ -264,6 +264,7 @@ class Station(object):
     __slots__ = (
         'ID', 'system', 'dbname',
         'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
+        'outfitting', 'rearm', 'refuel', 'repair',
         'tradingWith', 'itemCount',
         'dataAge',
     )
@@ -271,6 +272,7 @@ class Station(object):
     def __init__(
             self, ID, system, dbname,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
+            outfitting, rearm, refuel, repair,
             itemCount, dataAge,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
@@ -279,6 +281,10 @@ class Station(object):
         self.blackMarket = blackMarket
         self.shipyard = shipyard
         self.maxPadSize = maxPadSize
+        self.outfitting = outfitting
+        self.rearm = rearm
+        self.refuel = refuel
+        self.repair = repair
         self.itemCount = itemCount
         # dict[tradingPartnerStation] -> [ available trades ]
         self.tradingWith = None
@@ -900,8 +906,10 @@ class TradeDB(object):
                         if distSq > lySq:
                             continue
                         distSq += (candidate.posZ - sysZ) ** 2
-                        if distSq <= lySq:
-                            yield candidate, distSq
+                        if distSq > lySq:
+                            continue
+                        if candidate is not system:
+                            yield candidate, distSq ** 0.5
 
     def genSystemsInRange(self, system, ly, includeSelf=False):
         """
@@ -925,12 +933,6 @@ class TradeDB(object):
                     The distance in lightyears between system and candidate.
         """
 
-        if isinstance(system, Station):
-            system = system.system
-        elif not isinstance(system, System):
-            place = self.lookupPlace(system)
-            system = place.system if isinstance(system, Station) else place
-
         cache = system._rangeCache
         if not cache:
             cache = system._rangeCache = System.RangeCache()
@@ -939,14 +941,9 @@ class TradeDB(object):
         probedLy = cache.probedLy
         if ly > probedLy:
             # Consult the database for stars we haven't seen.
-            cachedSystems = cache.systems = []
-            for cand, distSq in self.genStellarGrid(system, ly):
-                if cand is not system:
-                    cachedSystems.append((
-                        cand,
-                        distSq ** 0.5,
-                    ))
-
+            cachedSystems = cache.systems = list(
+                self.genStellarGrid(system, ly)
+            )
             cachedSystems.sort(key=lambda ent: ent[1])
             cache.probedLy = probedLy = ly
 
@@ -1102,11 +1099,8 @@ class TradeDB(object):
         """
         stmt = """
             SELECT  station_id, system_id, name,
-                    ls_from_star,
-                    market,
-                    blackmarket,
-                    shipyard,
-                    max_pad_size,
+                    ls_from_star, market, blackmarket, shipyard,
+                    max_pad_size, outfitting, rearm, refuel, repair,
                     COUNT(StationItem.station_id) AS itemCount,
                     JULIANDAY('now') - JULIANDAY(MAX(StationItem.modified))
               FROM  Station
@@ -1119,12 +1113,14 @@ class TradeDB(object):
         self.tradingStationCount = 0
         for (
             ID, systemID, name,
-            lsFromStar, market, blackMarket, shipyard, maxPadSize,
+            lsFromStar, market, blackMarket, shipyard,
+            maxPadSize, outfitting, rearm, refuel, repair,
             itemCount, dataAge
         ) in self.cur:
             station = Station(
                 ID, systemByID[systemID], name,
-                lsFromStar, market, blackMarket, shipyard, maxPadSize,
+                lsFromStar, market, blackMarket, shipyard,
+                maxPadSize, outfitting, rearm, refuel, repair,
                 itemCount, dataAge
             )
             if itemCount > 0:
@@ -1139,11 +1135,15 @@ class TradeDB(object):
             self,
             system,
             name,
-            lsFromStar=0,
-            market='?',
-            blackMarket='?',
-            shipyard='?',
-            maxPadSize='?',
+            lsFromStar,
+            market,
+            blackMarket,
+            shipyard,
+            maxPadSize,
+            outfitting,
+            rearm,
+            refuel,
+            repair,
             modified='now',
             commit=True,
             ):
@@ -1155,22 +1155,18 @@ class TradeDB(object):
         blackMarket = blackMarket.upper()
         shipyard = shipyard.upper()
         maxPadSize = maxPadSize.upper()
+        outfitting = outfitting.upper()
+        rearm = rearm.upper()
+        refuel = refuel.upper()
+        repair = repair.upper()
         assert market in "?YN"
         assert blackMarket in "?YN"
         assert shipyard in "?YN"
         assert maxPadSize in "?SML"
-
-        self.tdenv.DEBUG0(
-            "Adding {}/{} ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
-            system.name(),
-            name,
-            lsFromStar,
-            market,
-            blackMarket,
-            shipyard,
-            maxPadSize,
-            modified,
-        )
+        assert outfitting in "?YN"
+        assert rearm in "?YN"
+        assert refuel in "?YN"
+        assert repair in "?YN"
 
         db = self.getDB()
         cur = db.cursor()
@@ -1178,15 +1174,18 @@ class TradeDB(object):
             INSERT INTO Station (
                 name, system_id,
                 ls_from_star, market, blackmarket, shipyard, max_pad_size,
+                outfitting, rearm, refuel, repair,
                 modified
             ) VALUES (
                 ?, ?,
                 ?, ?, ?, ?, ?,
+                ?, ?, ?, ?,
                 DATETIME(?)
             )
         """, [
             name, system.ID,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
+            outfitting, rearm, refuel, repair,
             modified,
         ])
         ID = cur.lastrowid
@@ -1197,6 +1196,10 @@ class TradeDB(object):
             blackMarket=blackMarket,
             shipyard=shipyard,
             maxPadSize=maxPadSize,
+            outfitting=outfitting,
+            rearm=rearm,
+            refuel=refuel,
+            repair=repair,
             itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
@@ -1204,10 +1207,13 @@ class TradeDB(object):
             db.commit()
         self.tdenv.NOTE(
             "{} (#{}) added to {}: "
-            "ls={}, mkt={}, bm={}, yard={}, pad={}, mod={}",
+            "ls={}, mkt={}, bm={}, yard={}, pad={}, "
+            "out={}, arm={}, ref={}, rep={}, "
+            "mod={}",
             station.name(), station.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
+            outfitting, rearm, refuel, repair,
             modified,
         )
         return station
@@ -1221,6 +1227,10 @@ class TradeDB(object):
             blackMarket=None,
             shipyard=None,
             maxPadSize=None,
+            outfitting=None,
+            rearm=None,
+            refuel=None,
+            repair=None,
             modified='now',
             force=False,
             commit=True,
@@ -1247,37 +1257,23 @@ class TradeDB(object):
                     _changed("ls", station.lsFromStar, lsFromStar)
                     station.lsFromStar = lsFromStar
 
-        if market is not None:
-            market = market.upper()
-            assert market in TradeDB.marketStates
-            if market != station.market:
-                if market != '?' or force:
-                    _changed("mkt", station.market, market)
-                    station.market = market
+        def _check_setting(label, name, newValue, allowed):
+            if newValue is not None:
+                newValue = newValue.upper()
+                assert newValue in allowed
+                oldValue = getattr(station, name, '?')
+                if newValue != oldValue and (force or newValue != '?'):
+                    _changed(label, oldValue, newValue)
+                    setattr(station, name, newValue)
 
-        if blackMarket is not None:
-            blackMarket = blackMarket.upper()
-            assert blackMarket in TradeDB.marketStates
-            if blackMarket != station.blackMarket:
-                if blackMarket != '?' or force:
-                    _changed("blkmkt", station.blackMarket, blackMarket)
-                    station.blackMarket = blackMarket
-
-        if shipyard is not None:
-            shipyard = shipyard.upper()
-            assert shipyard in TradeDB.marketStates
-            if shipyard != station.shipyard:
-                if shipyard != '?' or force:
-                    _changed("shipyd", station.shipyard, shipyard)
-                    station.shipyard = shipyard
-
-        if maxPadSize is not None:
-            maxPadSize = maxPadSize.upper()
-            assert maxPadSize in TradeDB.padSizes
-            if maxPadSize != station.maxPadSize:
-                if maxPadSize != '?' or force:
-                    _changed("pad", station.maxPadSize, maxPadSize)
-                    station.maxPadSize = maxPadSize
+        _check_setting("pad", "maxPadSize", maxPadSize, TradeDB.padSizes)
+        _check_setting("mkt", "market", market, TradeDB.marketStates)
+        _check_setting("blk", "blackMarket", blackMarket, TradeDB.marketStates)
+        _check_setting("shp", "shipyard", shipyard, TradeDB.marketStates)
+        _check_setting("out", "outfitting", outfitting, TradeDB.marketStates)
+        _check_setting("arm", "rearm", rearm, TradeDB.marketStates)
+        _check_setting("ref", "refuel", refuel, TradeDB.marketStates)
+        _check_setting("rep", "repair", repair, TradeDB.marketStates)
 
         if not changes:
             return False
@@ -1291,6 +1287,10 @@ class TradeDB(object):
                    blackmarket=?,
                    shipyard=?,
                    max_pad_size=?,
+                   outfitting=?,
+                   rearm=?,
+                   refuel=?,
+                   repair=?,
                    modified=DATETIME(?)
              WHERE station_id = ?
         """, [
@@ -1300,6 +1300,10 @@ class TradeDB(object):
             station.blackMarket,
             station.shipyard,
             station.maxPadSize,
+            station.outfitting,
+            station.rearm,
+            station.refuel,
+            station.repair,
             modified,
             station.ID
         ])

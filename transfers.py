@@ -12,18 +12,46 @@ import misc.progress as pbar
 import time
 import urllib.error
 
-try:
-    import requests
-except ImportError as e:
-    import pip
-    print("ERROR: Unable to load the Python 'requests' package.")
-    approval = input(
-        "Do you want me to try and install it with the package manager (y/n)? "
-    )
-    if approval.lower() != 'y':
-        raise e
+def import_requests():
+    try:
+        import requests
+    except ImportError as e:
+        print("ERROR: Unable to load the Python 'requests' package.")
+        approval = input(
+            "Do you want me to try and install it with 'pip', the "
+            "Python package manager (y/n)? "
+        )
+        if approval.lower() != 'y':
+            raise e
+    else:
+        return requests
+
+    try:
+        import pip
+    except ImportError as e:
+        raise TradeException(
+            "Python 3.4.2 includes a package manager called 'pip', "
+            "except it doesn't appear to be installed on your system:\n" +
+            str(e)
+        ) from None
+
     pip.main(["install", "--upgrade", "requests"])
-    import requests
+
+    try:
+        import requests
+    except ImportError as e:
+        raise TradeException(
+            "The requests module did not install correctly, or you have "
+            "multiple, conflicting instances of Python installed and it "
+            "got very confused just now.\n"
+            "\n"
+            "You may want to try:\n"
+            "  python3 -m pip install --upgrade pip setuptools\n"
+            "  python3 -m pip install --upgrade requests\n"
+            + str(e)
+        ) from None
+
+    return requests
 
 
 ######################################################################
@@ -185,6 +213,7 @@ def get_json_data(url):
     Displays a progress bar as it downloads.
     """
 
+    requests = import_requests()
     req = requests.get(url, stream=True)
 
     # credit for the progress indicator: 
@@ -227,6 +256,7 @@ class CSVStream(object):
     def __init__(self, url):
         self.url = url
         if not url.startswith("file:///"):
+            requests = import_requests()
             self.req = requests.get(self.url, stream=True)
             self.lines = self.req.iter_lines()
         else:

@@ -64,6 +64,7 @@ ignore = [
     "IDZ DL-X B1-1",
     "PHE ZHUA",
     "LP 937-98",
+    "WREGOE QC-X B45-2",
 ]
 
 

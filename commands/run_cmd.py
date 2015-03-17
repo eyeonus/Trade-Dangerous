@@ -148,6 +148,12 @@ switches = [
             type=int,
             default=1
         ),
+    ParseArgument('--max-gain-per-ton', '--mgpt',
+            help='Specify the maximum gain per ton of cargo',
+            dest='maxGainPerTon',
+            type=int,
+            default=10000
+        ),
     ParseArgument('--unique',
             help='Only visit each station once.',
             action='store_true',
@@ -826,7 +832,7 @@ def validateRunArguments(tdb, cmdenv, calc):
 
     if cmdenv.pruneScores and cmdenv.pruneHops:
         if cmdenv.pruneScores > 100:
-            raise CommandLineError("--prune-score value percentage exceed 100.")
+            raise CommandLineError("--prune-score value percentile exceed 100.")
         if cmdenv.pruneHops < 2:
             raise CommandLineError("--prune-hops must 2 or more.")
     else:
@@ -1013,17 +1019,15 @@ def run(results, cmdenv, tdb):
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
 
-        if cmdenv.maxRoutes and hopNo >= 1:
-            routes = routes[:cmdenv.maxRoutes]
-
-        if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+        if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
             routes.sort()
-            bestScore, worstScore = routes[0].score, routes[-1].score
-            threshold = bestScore * pruneMod
-            oldLen = len(routes)
-            while routes[-1].score < threshold:
-                routes.pop()
-            cmdenv.NOTE("Pruned {} origins", oldLen - len(routes))
+            if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+                crop = int(len(routes) * pruneMod)
+                routes = routes[:-crop]
+                cmdenv.NOTE("Pruned {} origins", crop)
+
+            if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
+                routes = routes[:cmdenv.maxRoutes]
 
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
