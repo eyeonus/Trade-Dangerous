@@ -120,7 +120,7 @@ switches = [
             dest='maxAge',
         ),
     ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            help='Limit the padsize to this ship size (S,M,L or ? for unknown).',
             metavar='PADSIZES',
             dest='padSize',
         ),
@@ -515,7 +515,7 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
         return False
     mps = cmdenv.padSize
     if mps and not station.checkPadSize(mps):
-        if src:
+        if src and src != "--from":
             raise CommandLineError(
                 "{} station {} does not meet pad-size requirement.\n"
                 "You specified: {}, Current data for station: {} ({})\n"
