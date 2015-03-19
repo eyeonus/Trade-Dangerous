@@ -120,7 +120,7 @@ switches = [
             dest='maxAge',
         ),
     ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            help='Limit the padsize to this ship size (S,M,L or ? for unknown).',
             metavar='PADSIZES',
             dest='padSize',
         ),
