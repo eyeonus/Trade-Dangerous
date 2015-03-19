@@ -515,7 +515,7 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
         return False
     mps = cmdenv.padSize
     if mps and not station.checkPadSize(mps):
-        if src and src != "--from":
+        if src:
             raise CommandLineError(
                 "{} station {} does not meet pad-size requirement.\n"
                 "You specified: {}, Current data for station: {} ({})\n"
