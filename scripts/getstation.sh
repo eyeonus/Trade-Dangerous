@@ -304,7 +304,7 @@ output_station_field()
 	i=${#outField[@]}
 	outField[$i]="$1"
 	outText[$i]="$text"
-	if [[ ${#outField[$i]} -gt max ]]
+	if [[ ${#outField[$i]} -gt ${max} ]]
 	then
 		max=${#outField[$i]}
 	fi
@@ -333,7 +333,7 @@ output_station()
 	for (( i=0; i<${outCount}; i++ ));
 	do
 		printf '   %s' "${outField[$i]}"
-		printf '%*.*s' 0 $((max - ${#outField[$i]})) "$pad"
+		printf '%*.*s' 0 $((${max} - ${#outField[$i]})) "$pad"
 		printf ': %s\n' "${outText[$i]}"
      done
 
