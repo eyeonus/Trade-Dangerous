@@ -347,7 +347,7 @@ then
 	lastLogName=$(basename "${lastLogFile}")
 	echo " Log: .../${lastLogName}"
 
-	logLine=$(grep "FindBestIsland:" "${lastLogFile}" | head -1)
+	logLine=$(grep "FindBestIsland:" "${lastLogFile}" | tail -1)
 	if [[ ! -z "${logLine}" ]]
 	then
 		echo "Line: ${logLine}"
