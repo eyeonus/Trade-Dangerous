@@ -15,6 +15,8 @@ systems = {
     "BODB DJEDI": "BODEDI",
     "HIP 101110": "NEW YEMBO",
     "ICV HR-V B2-0": "ICZ HR-V B2-0",
+    "FLECHS": "ICZ IR-W C1-13",
+    "PANDAMONIUM": "PANDEMONIUM",
 
 #ADD_SYSTEMS_HERE
 }
@@ -97,6 +99,7 @@ stations = {
     "SAMBURITJA/RPTEYN LANDING":            DELETED,
     "CHICK EK/WH IEELOCK GATEWAY":          DELETED,
     "LHS 3006/WCM TRANSFER ORBITAL":        "Leonard Nimoy Station",
+    "LALANDE 4141/4A5O4O":                  "4A5O4D",
 }
 
 categories = {

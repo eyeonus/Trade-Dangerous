@@ -15,7 +15,7 @@ import json
 import sys
 import transfers
 
-BASE_URL = "http://eddb.io/archive/v2/"
+BASE_URL = "http://eddb.io/archive/v3/"
 COMMODITIES_JSON = BASE_URL + "commodities.json"
 SYSTEMS_JSON = BASE_URL + "systems.json"
 STATIONS_EXT_JSON = BASE_URL + "stations.json"
@@ -70,12 +70,6 @@ class StationsQuery(EDDBQuery):
             print(station['name'])
     """
     url = STATIONS_LITE_JSON
-
-    # EDDB black market is null (unknown), 0 (No) or 1 (Yes)
-    marketConversion = {None:'?', 0:'N', 1:'Y'}
-
-    # EDDB pad size is null (unknown), 10 (small), 20 (medium) or 30 (large)
-    padConversion = {None:'?', 10:'S', 20:'M', 30:'L'}
 
 class StationsExtQuery(StationsQuery):
     """

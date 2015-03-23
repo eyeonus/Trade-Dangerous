@@ -120,7 +120,7 @@ switches = [
             dest='maxAge',
         ),
     ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            help='Limit the padsize to this ship size (S,M,L or ? for unknown).',
             metavar='PADSIZES',
             dest='padSize',
         ),
@@ -904,8 +904,8 @@ def checkReachability(tdb, cmdenv):
 
             # Were there just not enough hops?
             jumpLimit = cmdenv.maxJumpsPer * cmdenv.hops
-            if jumpLimit < len(route):
-                routeJumps = len(route) - 1
+            routeJumps = len(route) - 1
+            if jumpLimit < routeJumps:
                 hopsRequired = math.ceil(routeJumps / cmdenv.maxJumpsPer)
                 jumpsRequired = math.ceil(routeJumps / cmdenv.hops)
                 raise CommandLineError(

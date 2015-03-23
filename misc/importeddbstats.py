@@ -27,14 +27,14 @@ def matching_stations():
 updateStation = tdb.updateLocalStation
 
 bool_trans = { None: '?', 0: 'N', 1: 'Y' }
-pad_trans = { None: '?', 10: 'S', 20: 'M', 30: 'L' }
 
 updates = 0
 for tdStn, eddbStn in matching_stations():
+    mps = eddbStn['max_landing_pad_size'] or '?'
     if updateStation(
             station=tdStn,
             lsFromStar=eddbStn['distance_to_star'],
-            maxPadSize=pad_trans[eddbStn['max_landing_pad_size']],
+            maxPadSize=mps,
             market=bool_trans[eddbStn['has_commodities']],
             blackMarket=bool_trans[eddbStn['has_blackmarket']],
             shipyard=bool_trans[eddbStn['has_shipyard']],
