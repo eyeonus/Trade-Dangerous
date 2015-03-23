@@ -770,6 +770,19 @@ class TradeCalc(object):
             if not srcSelling:
                 tdenv.DEBUG1("Nothing sold - next.")
                 continue
+            affordable = True
+            for values in srcSelling:
+                if values[1] > startCr:
+                    affordable = False
+                    break
+            if not affordable:
+                srcSelling = [
+                    values for values in srcSelling
+                    if values[1] <= startCr
+                ]
+                if not srcSelling:
+                    tdenv.DEBUG1("Nothing affordable - next.")
+                    continue
 
             if goalSystem:
                 origSystem = route.firstSystem
@@ -835,10 +848,6 @@ class TradeCalc(object):
                 items = self.getTrades(srcStation, dstStation, srcSelling)
                 if not items:
                     continue
-                if max(items, key=lambda i: i.costCr).costCr > credits:
-                    items = [i for i in items if i.costCr <= credits]
-                    if not items:
-                        continue
                 trade = fitFunction(items, startCr, capacity, maxUnits)
 
                 # Calculate total K-lightseconds supercruise time.
