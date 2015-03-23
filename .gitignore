@@ -11,6 +11,7 @@ data/TradeDangerous.prices
 data/*.stamp
 data/*.ini
 data/extra-stars.txt
+data/*.txt
 *.prices
 *.suo
 *.pyperf

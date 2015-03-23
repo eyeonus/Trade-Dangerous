@@ -836,7 +836,7 @@ class TradeCalc(object):
                 if not items:
                     continue
                 if max(items, key=lambda i: i.costCr).costCr > credits:
-                    items = [i for i in trade if i.costCr <= credits]
+                    items = [i for i in items if i.costCr <= credits]
                     if not items:
                         continue
                 trade = fitFunction(items, startCr, capacity, maxUnits)
