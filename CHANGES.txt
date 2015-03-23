@@ -2,9 +2,21 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.14.5 Mar 23 2015
+. (kfsone) Solved the missing 6.14.3 commits
+
+v6.14.4 Mar 22 2015
+. (gazelle) Bernd's "getsation.sh" script (see scripts/README.txt)
+. (kfsone) Fixed #209 Exception when you couldn't afford something,
+. (kfsone) Fixed #210 Exception when --from not reached,
+. (kfsone) Added "Salvage" Category,
+. (kfsone) Added "AI Relics" and "Antiquities" Items,
+ - You will want to "trade.py buildcache -f -i"
+
 v6.14.3 Mar 17 2015
 . (kfsone) Windows improvements to misc/madupload.py,
 . (kfsone) EDDB v3 support,
+. (kfsone) "--towards" should be much better behaved
 
 v6.14.2 Mar 15 2015
 . (kfsone) Minor tweaks

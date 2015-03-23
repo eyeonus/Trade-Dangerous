@@ -904,8 +904,8 @@ def checkReachability(tdb, cmdenv):
 
             # Were there just not enough hops?
             jumpLimit = cmdenv.maxJumpsPer * cmdenv.hops
-            if jumpLimit < len(route):
-                routeJumps = len(route) - 1
+            routeJumps = len(route) - 1
+            if jumpLimit < routeJumps:
                 hopsRequired = math.ceil(routeJumps / cmdenv.maxJumpsPer)
                 jumpsRequired = math.ceil(routeJumps / cmdenv.hops)
                 raise CommandLineError(
@@ -1016,8 +1016,10 @@ def run(results, cmdenv, tdb):
         restrictTo = None
         if hopNo == lastHop and stopStations:
             restrictTo = set(stopStations)
+            manualRestriction = bool(cmdenv.destPlace)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
+            manualRestriction = True
 
         if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
             routes.sort()
@@ -1053,7 +1055,7 @@ def run(results, cmdenv, tdb):
         if not newRoutes:
             checkReachability(tdb, cmdenv)
             if hopNo > 0:
-                if restrictTo:
+                if restrictTo and manualRestriction:
                     results.summary.exception += routeFailedRestrictions(
                         tdb, cmdenv, restrictTo, maxLs, hopNo
                     )
@@ -1098,6 +1100,7 @@ def run(results, cmdenv, tdb):
             )
             if routes[0].lastSystem is goalSystem:
                 cmdenv.NOTE("Goal system reached!")
+                routes = routes[:1]
                 break
 
     if not routes:

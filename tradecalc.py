@@ -770,14 +770,29 @@ class TradeCalc(object):
             if not srcSelling:
                 tdenv.DEBUG1("Nothing sold - next.")
                 continue
+            affordable = True
+            for values in srcSelling:
+                if values[1] > startCr:
+                    affordable = False
+                    break
+            if not affordable:
+                srcSelling = [
+                    values for values in srcSelling
+                    if values[1] <= startCr
+                ]
+                if not srcSelling:
+                    tdenv.DEBUG1("Nothing affordable - next.")
+                    continue
 
             if goalSystem:
                 origSystem = route.firstSystem
                 srcSystem = srcStation.system
-                srcGoalDist = srcSystem.distanceTo(goalSystem)
-                srcOrigDist = srcSystem.distanceTo(origSystem)
+                srcDistTo = srcSystem.distanceTo
                 goalDistTo = goalSystem.distanceTo
                 origDistTo = origSystem.distanceTo
+                srcGoalDist = srcDistTo(goalSystem)
+                srcOrigDist = srcDistTo(origSystem)
+                origGoalDist = origDistTo(goalSystem)
 
             for dest in station_iterator(srcStation):
                 dstStation = dest.station
@@ -801,27 +816,16 @@ class TradeCalc(object):
                 if restrictStations:
                     if dstStation not in restrictStations:
                         continue
-                elif goalSystem:
+                if goalSystem:
                     # Bias in favor of getting closer
                     dstSys = dstStation.system
                     if dstSys is srcSystem:
                         if tdenv.unique:
                             continue
-                    elif dstSys is goalSystem:
-                        multiplier = 99999999999
-                    else:
-                        dstGoalDist = goalDistTo(dstSys)
-                        if dstGoalDist >= srcGoalDist:
+                    elif dstSys is not goalSystem:
+                        # Ignore jumps longer than remaining distance to goal.
+                        if dest.distLy >= srcGoalDist:
                             continue
-                        dstOrigDist = origDistTo(dstSys)
-                        if dstOrigDist < srcOrigDist:
-                            # Did this put us back towards the orig?
-                            # It may be valid to do so but it's not "profitable".
-                            multiplier *= 0.6
-                        else:
-                            # The closer dst is, the smaller the divider
-                            # will be, so the larger the remainder.
-                            multiplier *= 1 + (srcGoalDist / dstGoalDist)
 
                 if tdenv.debug >= 1:
                     tdenv.DEBUG1(
@@ -835,15 +839,23 @@ class TradeCalc(object):
                 items = self.getTrades(srcStation, dstStation, srcSelling)
                 if not items:
                     continue
-                if max(items, key=lambda i: i.costCr).costCr > credits:
-                    items = [i for i in items if i.costCr <= credits]
-                    if not items:
-                        continue
                 trade = fitFunction(items, startCr, capacity, maxUnits)
 
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
-                score = trade.gainCr
+                if goalSystem and dstSys is not goalSystem:
+                    dstGoalDist = goalDistTo(dstSys)
+                    # Biggest reward for shortening distance to goal
+                    score = 5000 * origGoalDist / dstGoalDist
+                    # bias towards bigger reductions
+                    score += 50 * srcGoalDist / dstGoalDist
+                    # discourage moving back towards origin
+                    if dstSys is not origSystem:
+                        score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                    # Gain per unit pays a small part
+                    score += (trade.gainCr / trade.units) / 25
+                else:
+                    score = trade.gainCr
                 if lsPenalty:
                     # Only want 1dp
                     cruiseKls = int(dstStation.lsFromStar / 100) / 10
