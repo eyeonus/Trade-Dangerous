@@ -6,6 +6,8 @@ v6.14.4 Mar 22 2015
 . (gazelle) Bernd's "getsation.sh" script (see scripts/README.txt)
 . (kfsone) Fixed #209 Exception when you couldn't afford something,
 . (kfsone) Fixed #210 Exception when --from not reached,
+. (kfsone) Added "Salvage" Category,
+. (kfsone) Added "AI Relics" and "Antiquities" Items,
 
 v6.14.3 Mar 17 2015
 . (kfsone) Windows improvements to misc/madupload.py,
