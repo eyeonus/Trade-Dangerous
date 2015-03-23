@@ -904,8 +904,8 @@ def checkReachability(tdb, cmdenv):
 
             # Were there just not enough hops?
             jumpLimit = cmdenv.maxJumpsPer * cmdenv.hops
-            if jumpLimit < len(route):
-                routeJumps = len(route) - 1
+            routeJumps = len(route) - 1
+            if jumpLimit < routeJumps:
                 hopsRequired = math.ceil(routeJumps / cmdenv.maxJumpsPer)
                 jumpsRequired = math.ceil(routeJumps / cmdenv.hops)
                 raise CommandLineError(
