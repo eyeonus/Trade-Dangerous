@@ -125,7 +125,7 @@ def check_price_bounds(
             mask.format(
                 numPrices,
                 item.dbname,
-                prices[0] if prices[0] < lowCutoff or error == 'DUMB' else '-',
+                prices[0],
                 lowCutoff,
                 low, 
                 mid,
@@ -133,7 +133,7 @@ def check_price_bounds(
                 midavg,
                 high,
                 highCutoff,
-                prices[-1] if prices[-1] > highCutoff else '-',
+                prices[-1],
                 '{:<4s} {:>4n}'.format(error, count),
             ),
             colorama.Fore.RESET,
