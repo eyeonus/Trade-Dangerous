@@ -44,14 +44,14 @@ def check_price_bounds(
         deletion = (
             "DELETE FROM {} "
             "WHERE item_id = {} "
-            "AND price {} {}".format(
+            "AND price > 0 AND price {} {}".format(
                 table, item.ID, compare, value
         ))
         deletions.append((deletion, "{}".format(item.dbname)))
         count = 0
         for (stnID,) in tdb.query("""
                     SELECT station_id FROM {}
-                     WHERE item_id = {} AND price {} {}
+                     WHERE item_id = {} AND price > 0 AND price {} {}
                 """.format(
                     table, item.ID, compare, value,
                 )):
@@ -125,7 +125,7 @@ def check_price_bounds(
             mask.format(
                 numPrices,
                 item.dbname,
-                prices[0] if prices[0] < lowCutoff else '-',
+                prices[0] if prices[0] < min(lowCutoff, cutoff) else '-',
                 lowCutoff,
                 low, 
                 mid,
