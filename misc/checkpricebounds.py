@@ -125,7 +125,7 @@ def check_price_bounds(
             mask.format(
                 numPrices,
                 item.dbname,
-                prices[0] if prices[0] < min(lowCutoff, cutoff) else '-',
+                prices[0] if prices[0] < lowCutoff or error == 'DUMB' else '-',
                 lowCutoff,
                 low, 
                 mid,
