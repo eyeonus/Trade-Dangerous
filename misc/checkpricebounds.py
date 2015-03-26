@@ -71,6 +71,7 @@ def check_price_bounds(
             SELECT price
               FROM {}
              WHERE item_id = ?
+               AND price > 0
         """.format(table), [item.ID])
         prices = [ row[0] for row in cur ]
         if not prices:
