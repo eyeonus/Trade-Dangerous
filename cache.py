@@ -821,7 +821,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
 
     tdenv.NOTE(
             "Import complete: "
-                "{:n} items ({:n} buyers, {:n} sellers) "
+                "{:n} items ({:n} buy, {:n} sell) "
                 "for {:n} stations "
                 "in {:n} systems",
                     len(items),
