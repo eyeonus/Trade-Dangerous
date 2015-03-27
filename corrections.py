@@ -100,6 +100,7 @@ stations = {
     "CHICK EK/WH IEELOCK GATEWAY":          DELETED,
     "LHS 3006/WCM TRANSFER ORBITAL":        "Leonard Nimoy Station",
     "LALANDE 4141/4A5O4O":                  "4A5O4D",
+    "NEW YEMBO/UNDER CONSTRUCTION":         DELETED,
 }
 
 categories = {
