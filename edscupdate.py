@@ -65,6 +65,20 @@ ignore = [
     "PHE ZHUA",
     "LP 937-98",
     "WREGOE QC-X B45-2",
+    "ALRAI SECTOR JW-B A6-1",
+    "BEI DOU SECTOR JV-C B2-2",
+    "BLANCO 1 SECTOR EG-Y D8",
+    "HERCULIS SECTOR ZE-A B86",
+    "LFT 16653",
+    "LP 649-73",
+    "OMAGATE",
+    "PISCIUM SECTOR YU-Y C171",
+    "PLAA EURK AX-A B0",
+    "PRAEA EUQ GR-O B13-0",
+    "PRAEA EUQ GV-W C",
+    "PRAEA EUQ SX-U S2-18",
+    "SYNUEFAI FL-V D3-7",
+    "SYNUEFAI NM-",
 ]
 
 

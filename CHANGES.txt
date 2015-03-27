@@ -4,6 +4,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 v6.14.6 Mar 25 2015
 . (kfsone) Item names in .price files are now case insensitive (Ai Relics)
++ Over 100 systems
 
 v6.14.5 Mar 23 2015
 . (kfsone) Solved the missing 6.14.3 commits
