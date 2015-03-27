@@ -121,20 +121,25 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ))
 
 
+    def csv_stream_rows(self, url, tableName):
+        """
+        Iterate rows from a CSV resource for a given table.
+        """
+        if self.getOption(tableName.lower()):
+            self.tdenv.NOTE("Importing {}", tableName)
+            yield from transfers.CSVStream(url)
+
+
     def csv_system_rows(self, url, tableName):
         """
-        Fetch rows from a CSV resource that start with a system, applying corrections.
+        Iterate systems from a CSV resource.
         """
-        if not self.getOption(tableName.lower()):
-            return
-
         tdb, tdenv = self.tdb, self.tdenv
         sysLookup = tdb.systemByName.get
         sysAdjust = corrections.systems.get
         DELETED = corrections.DELETED
 
-        tdenv.NOTE("Importing {}", tableName)
-        stream = transfers.CSVStream(url)
+        stream = self.csv_stream_rows(url, tableName)
         for _, values in stream:
             srcName = values[0].upper()
             sysName = sysAdjust(srcName, srcName)
@@ -182,7 +187,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.modSystems += 1
 
         if self.modSystems:
-            tdenv.DEBUG0("commit")
             tdb.getDB().commit()
 
 
@@ -197,7 +201,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         stnAdjust = corrections.stations.get
         DELETED = corrections.DELETED
 
-        for sysName, system, values in self.csv_system_rows(url, tableName):
+        stream = self.csv_system_rows(url, tableName)
+        for sysName, system, values in stream:
             if not system:
                 tdenv.NOTE(
                     "Unrecognized system for station {}/{}",
