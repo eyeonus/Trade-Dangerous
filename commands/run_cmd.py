@@ -788,7 +788,7 @@ def validateRunArguments(tdb, cmdenv, calc):
         ]
         cmdenv.destinations = [
             dest for dest in cmdenv.destinations
-            if destination.system in viaSystems
+            if dest.system in viaSystems
         ]
         cmdenv.destSystems = [
             dest.system for dest in cmdenv.destinations
