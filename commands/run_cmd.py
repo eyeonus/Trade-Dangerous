@@ -1031,6 +1031,29 @@ def run(results, cmdenv, tdb):
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
                 routes = routes[:cmdenv.maxRoutes]
 
+        if cmdenv.destPlace:
+            remainingDistance = (numHops - hopNo) * cmdenv.maxJumpsPer * cmdenv.maxLyPer
+            remainingDistanceSq = remainingDistance * remainingDistance
+
+            def canReachStopStation(r):
+                stopSystems = {stopStation.system
+                               for stopStation in stopStations}
+                reachableSystems = [stopSystem.name()
+                                    for stopSystem in stopSystems
+                                    if r.lastSystem.distToSq(stopSystem) <= remainingDistanceSq]
+                if len(reachableSystems):
+                    cmdenv.DEBUG1("Route {} can still reach: {}", r.str(), ', '.join(reachableSystems))
+                    return True
+                else:
+                    cmdenv.DEBUG1("Route {} too far from all end stations", r.str())
+                    return False
+
+            preCrop = len(routes)
+            routes[:] = [x for x in routes if canReachStopStation(x)]
+            pruned = preCrop - len(routes)
+            if pruned:
+                cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
+
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
         elif cmdenv.debug:
