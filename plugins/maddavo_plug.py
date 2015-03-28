@@ -16,6 +16,7 @@ from plugins import PluginException
 # Constants
 
 BASE_URL = "http://www.davek.com.au/td/"
+CORRECTIONS_URL = BASE_URL + "correctionsfile.asp"
 SYSTEMS_URL = BASE_URL + "System.csv"
 STATIONS_URL = BASE_URL + "station.asp"
 SHIPVENDOR_URL = BASE_URL + "shipvendor.asp"
@@ -33,8 +34,9 @@ class ImportPlugin(plugins.ImportPluginBase):
     dateRe = re.compile(r"(\d\d\d\d-\d\d-\d\d)[ T](\d\d:\d\d:\d\d)")
 
     pluginOptions = {
-        'csvs':         "Merge System, Station and ShipVendor data into "
-                        "the local db.",
+        'csvs':         "Merge Corrections, System, Station and ShipVendor "
+                        "data into the local db.",
+        'corrections':  "Merge Corrections data into local db.",
         'systems':      "Merge System data into local db.",
         'stations':     "Merge Station data into local db.",
         'shipvendors':  "Merge ShipVendor data into local db.",
@@ -127,7 +129,106 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         if self.getOption(tableName.lower()):
             self.tdenv.NOTE("Importing {}", tableName)
-            yield from transfers.CSVStream(url)
+            for _, values in transfers.CSVStream(url, tdenv=self.tdenv):
+                yield values
+
+
+    def import_corrections(self):
+        """
+        Fetch and import deletions/renames from Corrections.csv
+        """
+    
+        tdb, tdenv = self.tdb, self.tdenv
+        sysLookup = tdb.systemByName.get
+        db = tdb.getDB()
+        deletes, updates = 0, 0
+
+        # Build a name lookup table from a given ID index.
+        def make_index(table):
+            return { i.dbname: i for i in table.values() }
+
+        # For each ID table that we accept corrections for, build
+        # a name-based lookup index.
+        basicTypes = {
+            'Category': ('category_id', make_index(tdb.categoryByID)),
+            'Item': ('item_id', make_index(tdb.itemByID)),
+            'Rare': ('rare_id', make_index(tdb.rareItemByID)),
+            'Ship': ('ship_id', make_index(tdb.shipByID)),
+            'System': ('system_id', make_index(tdb.systemByID)),
+            'Station': ('station_id', {
+                stn.name().upper(): stn for stn in tdb.stationByID.values()
+            }),
+        }
+
+        FIXING, DELETING, DISCARDING = 'FIXING', 'DELETING', 'DISCARDING'
+
+        stream = self.csv_stream_rows(CORRECTIONS_URL, "Corrections")
+        for src, oldName, newName in stream:
+            action = FIXING if (newName != 'DELETED') else DELETING
+
+            try:
+                (idColumn, index) = basicTypes[src]
+            except KeyError:
+                tdenv.NOTE("Unsupported correction type {} ignored", src)
+                continue
+
+            item = index.get(oldName, None)
+            if not item:
+                tdenv.DEBUG1(
+                    "Correction for {} not needed, skipping.", oldName
+                )
+                continue
+
+            if src == 'Station':
+                if action is FIXING:
+                    newItemName = "/".join(
+                        [item.system.dbname, newName]
+                    ).upper()
+            else:
+                if action is FIXING:
+                    newItemName = newName
+
+            if action is FIXING:
+                newItem = index.get(newItemName, None)
+                if newItem and newItem is not item:
+                    tdenv.DEBUG1(
+                        "{} exists so {} can be deleted.",
+                        newItemName, oldName,
+                    )
+                    action = DISCARDING
+
+            if action is FIXING:
+                tdenv.DEBUG0("{} {} {} -> {}", action, src, oldName, newName)
+                stmt = "UPDATE {} SET name = ? WHERE {} = ?".format(
+                    src, idColumn
+                )
+                binds = [newName, item.ID]
+                updates += 1
+            else:
+                tdenv.DEBUG0("{} {} {}", action, src, oldName)
+                stmt = "DELETE FROM {} WHERE {} = ?".format(src, idColumn)
+                binds = [item.ID]
+                deletes += 1
+
+            if tdenv.debug:
+                tdenv.DEBUG1("{} [{}]", stmt, binds)
+            db.execute(stmt, binds)
+
+        if updates == 0 and deletes == 0:
+            tdenv.DEBUG0("No corrections applied.")
+            return
+
+        tdenv.NOTE("{} updates, {} deletions", updates, deletes)
+        db.commit()
+        db.execute("VACUUM")
+        if not self.getOption("exportcsv"):
+            tdenv.WARN(
+                "Corrections imported without --opt=exportcsv. "
+                "You may want to manually export data later on."
+            )
+
+        # We need to reload stuff.
+        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
 
 
     def csv_system_rows(self, url, tableName):
@@ -140,7 +241,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         DELETED = corrections.DELETED
 
         stream = self.csv_stream_rows(url, tableName)
-        for _, values in stream:
+        for values in stream:
             srcName = values[0].upper()
             sysName = sysAdjust(srcName, srcName)
             if sysName == DELETED:
@@ -157,8 +258,8 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdb, tdenv = self.tdb, self.tdenv
 
-        generator = self.csv_system_rows(SYSTEMS_URL, "Systems")
-        for sysName, system, values in generator:
+        stream = self.csv_system_rows(SYSTEMS_URL, "Systems")
+        for sysName, system, values in stream:
             added = values[4]
             modified = values[5]
             if added.startswith("DEL") or modified.startswith("DEL"):
@@ -228,8 +329,8 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdb, tdenv = self.tdb, self.tdenv
 
-        generator = self.csv_station_rows(STATIONS_URL, "Stations")
-        for system, stnName, station, values in generator:
+        stream = self.csv_station_rows(STATIONS_URL, "Stations")
+        for system, stnName, station, values in stream:
             try:
                 lsFromStar = float(values[2])
             except ValueError:
@@ -319,8 +420,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         newShips = {}
         delShips = set()
 
-        generator = self.csv_station_rows(SHIPVENDOR_URL, "ShipVendors")
-        for system, stnName, station, values in generator:
+        stream = self.csv_station_rows(SHIPVENDOR_URL, "ShipVendors")
+        for system, stnName, station, values in stream:
             if not station:
                 if not tdenv.quiet:
                     name = "{}/{}".format(system.name(), stnName)
@@ -385,18 +486,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not self.getOption("exportcsv"):
             return
 
-        _, path = csvexport.exportTableToFile(
-            self.tdb, self.tdenv, "System"
-        )
-        self.tdenv.NOTE("{} updated.", path)
-        _, path = csvexport.exportTableToFile(
-            self.tdb, self.tdenv, "Station"
-        )
-        self.tdenv.NOTE("{} updated.", path)
-        _, path = csvexport.exportTableToFile(
-            self.tdb, self.tdenv, "ShipVendor"
-        )
-        self.tdenv.NOTE("{} updated.", path)
+        for table in [
+            "Category", "Item",
+            "System", "Station",
+            "Ship", "ShipVendor",
+            "RareItem"
+        ]:
+            _, path = csvexport.exportTableToFile(
+                self.tdb, self.tdenv, table
+            )
+            self.tdenv.NOTE("{} re-exported.", path)
 
     def download_prices(self, lastRunDays):
         """ Figure out which file to download and fetch it. """
@@ -570,14 +669,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.ignoreUnknown = True
 
         if self.getOption("csvs"):
+            self.options["corrections"] = True
             self.options["systems"] = True
             self.options["stations"] = True
             self.options["shipvendors"] = True
+            self.options["exportcsv"] = True
 
         # Ensure the cache is built and reloaded.
         tdb.reloadCache()
         tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
 
+        self.import_corrections()
         self.import_systems()
         self.import_stations()
         self.import_shipvendors()
