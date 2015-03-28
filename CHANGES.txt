@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 v6.15.0 Mar 27 2015
+. (kfsone) Refresh .prices file after removing a station that had items
 . (kfsone) Maddavo Plugin
    - Added support for "corrections"
      "--opt=corrections" and "--opt=csvs" will read Maddavo's correction data
