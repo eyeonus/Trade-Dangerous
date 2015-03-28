@@ -21,8 +21,16 @@ if 'NOTK' not in os.environ:
                 self.tkroot = Tk()
                 self.tkroot.withdraw()
 
+            def strip(self, text, trailing):
+                if text.endswith(trailing):
+                    text = text[:-len(trailing)].strip()
+                return text
+
             def copy_text(self, text):
                 """ Copies the specified text into the clipboard. """
+                text = text.lower().strip()
+                text = self.strip(text, "(fix)")
+                text = self.strip(text, "(fixed)")
                 self.tkroot.clipboard_clear()
                 self.tkroot.clipboard_append(text.lower())
 

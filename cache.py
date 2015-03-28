@@ -95,10 +95,14 @@ $
 
 
 ocrDerp = re.compile(r'''(
+    ^.$ |
     LAN[O0]ING |
     [O0][O0]CK |
     [O0]INEILL |
     AQUIRE[O0] |
+    FNT[EF]RPRIS[EF] |
+    [EF]NTFRPRIS[EF] |
+    [EF]NT[EF]RPRISF |
     [O0](UTT|ALT)[O0]N |
     8RA[DO0]LEY |
     BRA[O0]LEY |
@@ -119,7 +123,8 @@ ocrDerp = re.compile(r'''(
     \bVV |
     \b[O0]ER?\b |
     \b[O0]RAKE |
-    HAR[O0]T\b |
+    HAR[O0](T\b|W[I1L]CK) |
+    ACQU[I1L]R[E3][O0] |
     \b[O0]ARK |
     \b[O0]DAM |
     [O0]EPOT |
@@ -136,6 +141,7 @@ ocrDerp = re.compile(r'''(
     \bVAR[O0]E |
     EN[^T]?ERPRISE |
     EN..ERPRISE |
+    [E38]NT[E38]F[I1']?PR[I1'][S5][E38] |
     \bMUR[O0]O |
     \bBAR[O0]E |
     \bBALLAR[O0] |
@@ -159,7 +165,8 @@ ocrDerp = re.compile(r'''(
         VISION |
         REFINERY
     )$ |
-    ORBIDAL |
+    [O0]RB[I1]DAL |
+    [O0]R[DL][I1]TAL |
     \bBRIOGER |
     \bJUOSON |
     LANOER |
@@ -181,7 +188,96 @@ ocrDerp = re.compile(r'''(
     C[O0D]+LNY$ |
     \bR[O0]ZH[O0]E[S5]TVENSKY |
     \bRDZH[DO0]ESTVENSKY |
-    ''
+    '' |
+    ^[^A-Z0-9] |
+    \s{2,} |
+    ^OEN |
+    ^MCK(EF|FE)\b |
+    \bCHAN\s+DLER |
+    \b[O0]UMONT |
+    \bUN[0O]ER |
+    \bSDMM |
+    \bREA([O0]D|D[O0]) |
+    \bRD[DO0][DO0]EN |
+    \bR[O0]([O0]D|D[O0])EN |
+    (?<!BR)[O0]ECK$ |
+    SE?TTL(FMENT|EMFNT|FMFNT) |
+    SE?TTLMENT |
+    STTL[E38]?M[E38]?NT |
+    S\s?[E38]\s?T\s?T\s?L\s?[E38](\sM|M\s)[E38]\s?N\s?T$ |
+    S[E38]TT[38]?L[E38]MNT |
+    MARKFT |
+    HANGFR |
+    CL(EVF|FVE|FVF) |
+    \bCRY$ |
+    G[E3][D0]RG[E3]LUCA[S5] |
+    PLAT[E3]F[D0]RM |
+    OCONNOR |
+    ` |
+    -- |
+    \bREILLI\b |
+    \bRIN[FC]\b |
+    \bOL[E3]ARY |
+    \bSATION\b |
+    ,\w |
+    \bI?NGLY\b |
+    \bAU\sL[DO0]\b |
+    (^|\s)['.] |
+    ^- | -$ |
+    \bDREBBFL\b
+    \bLEVIE |
+    \bRN\b |
+    \bH\sUNZIKER |
+    \bL[O0D]FTH\sUS |
+    \bHORNUCH\b |
+    \bKLU\sDZE |
+    ^[DR]HN\b |
+    SU\sI?RVEY$ |
+    H[DO0]L[O0]ING |
+    H[D0]LDING |
+    M[DO0]HMAN[O0] |
+    \bABL\b |
+    \bBENNET\b |
+    \bHU8\b |
+    \sCITV$ |
+    \sPIT[VY]$ |
+    \bTFR |
+    IVII |
+    \BINAI$ |
+    SET[IT]''LEMEN |
+    I'L | R'I | (^|\s)'L | [^Ss]'(?=\s|$) |
+    ^I \s (?! [Ss][Oo][Ll][Aa]) |
+    \bA7\S |
+    \sH\sI?UB$ |
+    \bALEDNDRIA\b |
+    \sH\sU\sB$ |
+    \bC[O0]LCNY\b |
+    \bOOCTE\b |
+    \bBULGAFIIN\b |
+    \bWH\sIEEL |
+    \bBR8NNAN\b |
+    \b(ID)?ING$ |
+    GATEVVAY$ |
+    [HI\s]U\sI?B$ |
+    CLAI\sI?M$ |
+    \bUITY$ |
+    \bDING$ |
+    BTOP$ |
+    B'I'OP$ |
+    TRANQUNUTY$ |
+    C[O0]LUNY$ |
+    \bMAGN\sI?US\b |
+    \s-[A-Z] |
+    ^NAKAM(\sIU|U\sIR) |
+    ^THOM\sI?PSON |
+    ^STEPH\sI?ENSON |
+    \bCQRK\b |
+    ^AN\sI?DREW |
+    ^WATSO\sIN |
+    ^QSSW |
+    ^RTZEN |
+    \bI?NAL$ |
+    \b''I\b
 )''', flags=re.X)
 
 
@@ -209,6 +305,15 @@ class BuildCacheBaseException(TradeException):
                 self.category,
                 self.error,
         )
+
+
+class UnknownSystemError(BuildCacheBaseException):
+    """
+    Raised when the file contains an unknown star name.
+    """
+    def __init__(self, fromFile, lineNo, key):
+        error = 'Unrecognized SYSTEM: "{}"'.format(key)
+        super().__init__(fromFile, lineNo, error)
 
 
 class UnknownStationError(BuildCacheBaseException):
@@ -368,18 +473,19 @@ def getItemByNameIndex(cur):
     """
         Generate item name index.
     """
-    cur.execute("SELECT item_id, name FROM item")
+    cur.execute("SELECT item_id, UPPER(name) FROM item")
     return { name: itemID for (itemID, name) in cur }
 
 
 def checkForOcrDerp(tdenv, systemName, stationName):
-    if ocrDerp.search(stationName):
+    match = ocrDerp.search(stationName.upper())
+    if match:
         tdenv.NOTE(
             "Ignoring '{}/{}' because it looks like OCR derp."
             .format(systemName, stationName)
         )
-        return True
-    return False
+        return match
+    return None
 
 
 def processPrices(tdenv, priceFile, db, defaultZero):
@@ -396,6 +502,17 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
     systemByName = getSystemByNameIndex(cur)
     stationByName = getStationByNameIndex(cur)
+    stationByName.update(
+        (sys, ID)
+        for sys, ID in corrections.stations.items()
+        if isinstance(ID, int)
+    )
+    sysCorrections = corrections.systems
+    stnCorrections = {
+        stn: alt
+        for stn, alt in corrections.stations.items()
+        if isinstance(alt, str)
+    }
 
     itemByName = getItemByNameIndex(cur)
 
@@ -415,15 +532,22 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     warnings = 0
     localAdd = 0
 
-    def ignoreOrWarn(error):
-        nonlocal warnings
-        if not ignoreUnknown:
+    if not ignoreUnknown:
+        def ignoreOrWarn(error):
             raise error
-        if not quiet:
+    elif not quiet:
+        def ignoreOrWarn(error):
+            nonlocal warnings
             error.category = "WARNING"
             print(error)
-        warnings += 1
+            warnings += 1
+    else:
+        def ignoreOrWarn(error):
+            nonlocal warnings
+            warnings += 1
 
+    DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
+    DEBUG0("Processing prices file: {}", priceFile)
 
     def changeStation(matches):
         nonlocal facility, stationID
@@ -433,94 +557,88 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
         corrected = False
-        facility = systemName + '/' + stationName
-
-        tdenv.DEBUG0("NEW STATION: {}", facility)
+        facility = "/".join((systemName, stationName))
 
         # Make sure it's valid.
-        try:
-            stationID = stationByName[facility]
-        except KeyError:
-            stationID = -1
-
-        if stationID < 0:
+        stationID = DELETED
+        newID = stationByName.get(facility, -1)
+        DEBUG0("Selected station: {}, ID={}", facility, newID)
+        if newID is DELETED:
+            DEBUG1("DELETED Station: {}", facility)
+            return
+        if newID < 0:
             if checkForOcrDerp(tdenv, systemName, stationName):
-                stationID = DELETED
                 return
             corrected = True
-            try:
-                correctName = corrections.systems[systemName]
-                if correctName == DELETED:
-                    tdenv.DEBUG1("DELETED: {}", systemName)
-                    stationID = DELETED
-                    return
-                systemName = correctName.upper()
-            except KeyError:
-                pass
-            try:
-                key = systemName + '/' + stationName
-                correctName = corrections.stations[key]
-                if correctName == DELETED:
-                    tdenv.DEBUG1("DELETED: {}", key)
-                    stationID = DELETED
-                    return
-                stationName = correctName.upper()
-            except KeyError:
-                pass
-            facility = systemName + '/' + stationName
-            try:
-                stationID = stationByName[facility]
-                tdenv.DEBUG1("Renamed: {}/{} -> {}", 
-                        systemNameIn, stationNameIn,
-                        facility
-                )
-            except KeyError:
-                stationID = -1
+            altName = sysCorrections.get(systemName, None)
+            if altName is DELETED:
+                DEBUG1("DELETED System: {}", facility)
+                return
+            if altName:
+                DEBUG1("SYSTEM '{}' renamed '{}'", systemName, altName)
+                systemName, facility = altName, "/".join((altName, stationName))
 
-        if stationID < 0 and ignoreUnknown:
-            try:
-                systemID = systemByName[systemName]
-            except KeyError:
-                pass
-            else:
-                name = tradedb.TradeDB.titleFixup(stationName)
-                inscur = db.cursor()
-                inscur.execute("""
-                    INSERT INTO Station (
-                        system_id, name,
-                        ls_from_star,
-                        blackmarket,
-                        max_pad_size
-                    ) VALUES (
-                        ?, ?, 0, '?', '?'
-                    )
-                """, [systemID, name])
-                stationID = inscur.lastrowid
-                stationByName[facility] = stationID
-                db.commit()
-                tdenv.NOTE("Added local station placeholder for {} (#{})",
-                        facility, stationID
+            systemID = systemByName.get(systemName, -1)
+            if systemID < 0:
+                ignoreOrWarn(
+                    UnknownSystemError(priceFile, lineNo, facility)
                 )
-                localAdd += 1
+                return
 
-        if stationID < 0:
-            stationID = DELETED
-            ignoreOrWarn(
-                    UnknownStationError(priceFile, lineNo, facility)
+            altStation = stnCorrections.get(facility, None)
+            if altStation is DELETED:
+                DEBUG1("DELETED Station: {}", facility)
+                return
+            if altStation:
+                DEBUG1("Station '{}' renamed '{}'", facility, altStation)
+                stationName = altStation.upper()
+                facility = "/".join((systemName, stationName))
+
+            newID = stationByName.get(facility, -1)
+            if newID is DELETED:
+                DEBUG1("Renamed station DELETED: {}", facility)
+                return
+
+        if newID < 0:
+            if not ignoreUnknown:
+                ignoreOrWarn(
+                        UnknownStationError(priceFile, lineNo, facility)
+                )
+                return
+            name = tradedb.TradeDB.titleFixup(stationName)
+            inscur = db.cursor()
+            inscur.execute("""
+                INSERT INTO Station (
+                    system_id, name,
+                    ls_from_star,
+                    blackmarket,
+                    max_pad_size,
+                    market,
+                    shipyard,
+                    modified
+                ) VALUES (
+                    ?, ?, 0, '?', '?', '?', '?',
+                    DATETIME('now')
+                )
+            """, [systemID, name])
+            newID = inscur.lastrowid
+            stationByName[facility] = newID
+            tdenv.NOTE("Added local station placeholder for {} (#{})",
+                    facility, newID
             )
-            return
+            localAdd += 1
 
         # Check for duplicates
-        if stationID in processedStations:
+        if newID in processedStations:
             if corrected:
                 # This is probably the old entry.
-                stationID = DELETED
                 return
             raise MultipleStationEntriesError(
                         priceFile, lineNo, facility,
-                        processedStations[stationID]
+                        processedStations[newID]
                     )
 
+        stationID = newID
         processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
@@ -531,30 +649,29 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 [stationID]
         )
 
+    addItem, addBuy, addSell = items.append, buys.append, sells.append
+    getItemID = itemByName.get
+
     def processItemLine(matches):
-        nonlocal processedItems
-        nonlocal items, buys, sells
         itemName, modified = matches.group('item', 'time')
+        itemName = itemName.upper()
 
         # Look up the item ID.
-        try:
-            itemID = itemByName[itemName]
-        except KeyError:
-            itemID = -1
+        itemID = getItemID(itemName, -1)
         if itemID < 0:
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
-                tdenv.DEBUG1("DELETED {}", oldName)
+                DEBUG1("DELETED {}", oldName)
                 return
-            try:
-                itemID = itemByName[itemName]
-                tdenv.DEBUG1("Renamed {} -> {}", oldName, itemName)
-            except KeyError:
+            itemName = itemName.upper()
+            itemID = getItemID(itemName, -1)
+            if itemID < 0:
                 ignoreOrWarn(
                     UnknownItemError(priceFile, lineNo, itemName)
                 )
                 return
+            DEBUG1("Renamed {} -> {}", oldName, itemName)
 
         # Check for duplicate items within the station.
         if itemID in processedItems:
@@ -567,7 +684,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         sellTo, buyFrom = matches.group('sell', 'buy')
         sellTo, buyFrom = int(sellTo), int(buyFrom)
         demandString, stockString = matches.group('demand', 'stock')
-        if demandString and stockString:
+        if demandString:
             if demandString == "?":
                 demandUnits, demandLevel = -1, -1
             elif demandString == "-":
@@ -576,14 +693,15 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 demandUnits, demandLevel = parseSupply(
                         priceFile, lineNo, 'demand', demandString
                 )
-            if stockString == "?":
-                stockUnits, stockLevel = -1, -1
-            elif stockString == "-":
-                stockUnits, stockLevel = 0, 0
-            else:
-                stockUnits, stockLevel = parseSupply(
-                        priceFile, lineNo, 'stock',  stockString
-                )
+            if stockString:
+                if stockString == "?":
+                    stockUnits, stockLevel = -1, -1
+                elif stockString == "-":
+                    stockUnits, stockLevel = 0, 0
+                else:
+                    stockUnits, stockLevel = parseSupply(
+                            priceFile, lineNo, 'stock',  stockString
+                    )
         else:
             demandUnits, demandLevel = defaultUnits, defaultLevel
             stockUnits, stockLevel = defaultUnits, defaultLevel
@@ -593,29 +711,24 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processedItems[itemID] = lineNo
 
-        items.append([ stationID, itemID, modified ])
+        addItem((stationID, itemID, modified))
         if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
-            buys.append([
-                        stationID, itemID,
-                        sellTo, demandUnits, demandLevel,
-                        modified
-                    ])
+            addBuy((
+                stationID, itemID,
+                sellTo, demandUnits, demandLevel,
+                modified
+            ))
         if buyFrom > 0 and stockUnits != 0 and stockLevel != 0:
-            sells.append([
-                        stationID, itemID,
-                        buyFrom, stockUnits, stockLevel,
-                        modified
-                    ])
+            addSell((
+                stationID, itemID,
+                buyFrom, stockUnits, stockLevel,
+                modified
+            ))
 
     for line in priceFile:
         lineNo += 1
-        commentPos = line.find("#")
-        if commentPos >= 0:
-            if commentPos == 0:
-                continue
-            line = line[:commentPos]
-        text = line.strip()
-
+        text, _, comment = line.partition('#')
+        text = text.strip()
         if not text:
             continue
 
@@ -646,6 +759,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         ########################################
         ### "+ Category" lines 
         if text.startswith('+'):
+            # we now ignore these.
             continue
 
         ########################################
@@ -707,7 +821,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
 
     tdenv.NOTE(
             "Import complete: "
-                "{:n} items ({:n} buyers, {:n} sellers) "
+                "{:n} items ({:n} buy, {:n} sell) "
                 "for {:n} stations "
                 "in {:n} systems",
                     len(items),
@@ -777,6 +891,7 @@ def processImportFile(tdenv, db, importPath, tableName):
             ")"
     )
     uniquePfx = "unq:"
+    uniqueLen = len(uniquePfx)
     ignorePfx = "!"
 
     with importPath.open('rU', encoding='utf-8') as importFile:
@@ -794,50 +909,45 @@ def processImportFile(tdenv, db, importPath, tableName):
         joinHelper  = []
         uniqueIndexes = []
         for (cIndex, cName) in enumerate(columnDefs):
-            splitNames = cName.split('@')
+            colName, _, srcKey = cName.partition('@')
             # is this a unique index?
-            colName = splitNames[0]
             if colName.startswith(uniquePfx):
-                uniqueIndexes += [ cIndex ]
-                colName = colName[len(uniquePfx):]
-            if colName.startswith(ignorePfx):
-                # this column is only used to resolve an FK
-                colName = colName[len(ignorePfx):]
-                joinHelper.append( "{}@{}".format(colName, splitNames[1]) )
-                continue
-
-            if len(splitNames) == 1:
+                uniqueIndexes.append(cIndex)
+                colName = colName[uniqueLen:]
+            if not srcKey:
                 # no foreign key, straight insert
                 bindColumns.append(colName)
                 bindValues.append('?')
-            else:
-                # foreign key, we need to make a select
-                splitJoin = splitNames[1].split('.')
-                joinTable = [ splitJoin[0] ]
-                joinStmt  = []
-                for joinRow in joinHelper:
-                    helperNames = joinRow.split('@')
-                    helperJoin = helperNames[1].split('.')
-                    joinTable.append(
-                        "INNER JOIN {} USING({})".format(
-                            helperJoin[0], helperJoin[1]
-                        )
-                    )
-                    joinStmt.append(
-                        "{}.{} = ?".format(
-                            helperJoin[0], helperNames[0]
-                        )
-                    )
-                joinHelper = []
-                joinStmt.append("{}.{} = ?".format(splitJoin[0], colName))
-                bindColumns.append(splitJoin[1])
-                bindValues.append(
-                    fkeySelectStr.format(
-                        newValue=splitNames[1],
-                        table=" ".join(joinTable),
-                        stmt=" AND ".join(joinStmt),
-                    )
+                continue
+
+            queryTab, _, queryCol = srcKey.partition('.')
+            if colName.startswith(ignorePfx):
+                # this column is only used to resolve an FK
+                assert srcKey
+                colName = colName[len(ignorePfx):]
+                joinHelper.append((colName, queryTab, queryCol))
+                continue
+
+            # foreign key, we need to make a select
+            joinTable = [ queryTab ]
+            joinStmt  = []
+            for nextCol, nextTab, nextJoin in joinHelper:
+                joinTable.append(
+                    "INNER JOIN {} USING({})".format(nextTab, nextJoin)
                 )
+                joinStmt.append(
+                    "{}.{} = ?".format(nextTab, nextCol)
+                )
+            joinHelper = []
+            joinStmt.append("{}.{} = ?".format(queryTab, colName))
+            bindColumns.append(queryCol)
+            bindValues.append(
+                fkeySelectStr.format(
+                    newValue=srcKey,
+                    table=" ".join(joinTable),
+                    stmt=" AND ".join(joinStmt),
+                )
+            )
         # now we can make the sql statement
         sql_stmt = """
             INSERT INTO {table} ({columns}) VALUES({values})
@@ -883,10 +993,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                         for col in uniqueIndexes
                     ]
                     key = ":!:".join(keyValues)
-                    try:
-                        prevLineNo = uniqueIndex[key]
-                    except KeyError:
-                        prevLineNo = 0
+                    prevLineNo = uniqueIndex.get(key, 0)
                     if prevLineNo:
                         # Make a human-readable key
                         key = "/".join(keyValues)
@@ -1050,3 +1157,28 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     # If everything worked, we may need to re-build the prices file.
     if path != tdb.pricesPath:
         regeneratePricesFile(tdb, tdenv)
+
+
+def test_derp(tdb=None, tdenv=None):
+    """
+    Test whether the station names in a trade database are free of derp.
+
+    Examples:
+        import tradedb
+        tdb = tradedb.TradeDB()
+        test_derp(tdb)
+
+        python -i cache.py
+        >>> test_derp()
+    """
+    tdb = tdb or tradedb.TradeDB()
+    tdenv = tdenv or tdb.tdenv
+    matches = 0
+    for stn in tdb.stationByID.values():
+        m = checkForOcrDerp(tdenv, stn.system.dbname, stn.dbname)
+        if m:
+            print("Match", m.groups(1))
+            matches += 1
+    if not matches:
+        print("Current data is free of known derp")
+

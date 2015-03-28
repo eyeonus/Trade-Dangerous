@@ -37,6 +37,11 @@ switches = [
             help='Include station details.',
             action='store_true',
         ),
+    ParseArgument('--refuel-jumps',
+            help='Require a station after this many jumps',
+            type=int,
+            dest='stationInterval',
+        ),
 ]
 
 ######################################################################
@@ -78,8 +83,14 @@ def run(results, cmdenv, tdb):
     ]
 
     route = [ ]
+    stationInterval = cmdenv.stationInterval
     for hop in hops:
-        hopRoute = tdb.getRoute(hop[0], hop[1], maxLyPer, avoiding)
+        hopRoute = tdb.getRoute(
+                hop[0], hop[1],
+                maxLyPer,
+                avoiding,
+                stationInterval=stationInterval,
+                )
         if not hopRoute:
             raise NoRouteError(
                     "No route found between {} and {} "
@@ -116,10 +127,10 @@ def run(results, cmdenv, tdb):
             ages[ID] = age
 
     for (jumpSys, dist) in route:
-        jumpLy = math.sqrt(lastSys.distToSq(jumpSys))
+        jumpLy = lastSys.distanceTo(jumpSys)
         totalLy += jumpLy
         if cmdenv.detail:
-            dirLy = math.sqrt(jumpSys.distToSq(dstSystem))
+            dirLy = jumpSys.distanceTo(dstSystem)
         row = ResultRow(
                 action='Via',
                 system=jumpSys,
@@ -189,9 +200,33 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Age/days", '>', 7,
                         key=lambda row: row.age)
         ).append(
-                ColumnFormat("BMkt", '>', '4',
+                ColumnFormat('Mkt', '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.market])
+        ).append(
+                ColumnFormat("BMk", '>', '3',
                     key=lambda row: \
                         TradeDB.marketStates[row.station.blackMarket])
+        ).append(
+                ColumnFormat("Shp", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.shipyard])
+        ).append(
+                ColumnFormat("Out", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.outfitting])
+        ).append(
+                ColumnFormat("Arm", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.rearm])
+        ).append(
+                ColumnFormat("Ref", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.refuel])
+        ).append(
+                ColumnFormat("Rep", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.repair])
         ).append(
                 ColumnFormat("Pad", '>', '3',
                     key=lambda row: \

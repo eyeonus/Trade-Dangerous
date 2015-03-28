@@ -68,6 +68,19 @@ CREATE TABLE Station
        CHECK (blackmarket IN ('?', 'Y', 'N')),
    max_pad_size TEXT(1) NOT NULL DEFAULT '?'
        CHECK (max_pad_size IN ('?', 'S', 'M', 'L')),
+   market TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (market IN ('?', 'Y', 'N')),
+   shipyard TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (shipyard IN ('?', 'Y', 'N')),
+   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+   outfitting TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (outfitting IN ('?', 'Y', 'N')),
+   rearm      TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (rearm      IN ('?', 'Y', 'N')),
+   refuel     TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (refuel     IN ('?', 'Y', 'N')),
+   repair     TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (repair     IN ('?', 'Y', 'N')),
 
    UNIQUE (system_id, name),
 
@@ -93,6 +106,7 @@ CREATE TABLE ShipVendor
  (
    ship_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
+   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    PRIMARY KEY (ship_id, station_id),
 

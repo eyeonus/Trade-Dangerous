@@ -10,17 +10,20 @@ rem --== Set default values above to prevent being asked each run ==--
 set /P update=Update database from maddavo? (Y\N): 
 if /I not "%update%"=="Y" goto menu
 :update
-..\trade.py import --plug=maddavo --option=stncsv --option=syscsv -v
+..\trade.py import --plug=maddavo --opt=stations --opt=usefull -v
+..\trade.py import --plug=maddavo --opt=use2d -v
+..\trade.py import --plug=maddavo --opt=use3h -v
 echo Update Complete
 pause
 :menu
 cls
-set /P menu=(U)pdate, (Q)uick Update, (I)mport, (P)references or (R)un: 
+set /P menu=(U)pdate, (Q)uick Update, (I)mport, (P)references, (R)un, Run (T)o:
 if /I "%menu%"=="U" goto update
 if /I "%menu%"=="Q" goto quickupdate
 if /I "%menu%"=="I" goto import
 if /I "%menu%"=="P" goto preferences
 if /I "%menu%"=="R" goto run
+if /I "%menu%"=="T" goto run
 echo Invalid Selection
 pause
 goto menu
@@ -44,8 +47,10 @@ echo Import Complete
 pause
 goto menu
 :run
+set end=
 set /P credits=Credits: 
 set /P location=Start Location: 
+if /I "%menu%"=="T" set /P end=End Location: 
 if "%DEFAULT_CAPACITY%"=="" if "%capacity%"=="" set /P capacity=Capacity in Tons: 
 if "%DEFAULT_LIGHTYEARS%"=="" if "%lightyears%"=="" set /P lightyears=Range in Light Years: 
 if "%DEFAULT_HOPS%"=="" if "%hops%"=="" set /P hops=Number of station visits: 
@@ -56,6 +61,6 @@ if "%lightyears%"=="" set lightyears=%DEFAULT_LIGHTYEARS%
 if "%hops%"=="" set hops=%DEFAULT_HOPS%
 if "%jumps%"=="" set jumps=%DEFAULT_JUMPS%
 if "%age%"=="" set age=%DEFAULT_AGE%
-..\trade.py run --cap=%capacity% --ly=%lightyears% -vvv --cr=%credits% --fr="%location%" -MD=%age% --hops %hops% --jum %jumps%
+..\trade.py run --cap=%capacity% --ly=%lightyears% -vvv --cr=%credits% --fr="%location%" -MD=%age% --to="%end%" --hops %hops% --jum %jumps%
 pause
 goto menu

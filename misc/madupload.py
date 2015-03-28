@@ -34,28 +34,36 @@ or if you like, I can try and install it for you now
 
 
 upload_url = 'http://www.davek.com.au/td/uploaddata.asp'
-upfile = "updated.prices"
-if len(sys.argv) > 1:
-    upfile = sys.argv[1]
+if len(sys.argv) != 2:
+    raise SystemExit(
+        "Usage: {} <filename>\n"
+        "Uploads 'filename' to Maddavo's site, where filename should be "
+        "a .prices, Station.csv or ShipVendor.csv file.\n"
+        "\n"
+        "NOTE to OCR USERS:\n"
+        "Please upload the .prices file from your OCR DIRECTLY before "
+        "importing it into TD, not after.".format(sys.argv[0])
+    )
 
+upfile = sys.argv[1]
+uppath = pathlib.Path(upfile)
 
 ############################################################################
 
+if not uppath.exists():
+    raise SystemExit("ERROR: {}: File not found".format(upfile))
+if not uppath.is_file():
+    raise SystemExit("ERROR: {}: Not a file".format(upfile))
 
-if not pathlib.Path(upfile).is_file():
-    raise SystemExit("ERROR: File not found: {}".format(upfile))
-
-files = {
-}
 r = requests.post(
         upload_url,
         files={
             'Filename': (
-                upfile,
-                open(upfile, 'rb'),
+                uppath.name,
+                uppath.open("rb"),
                 'text/plain',
                 {
-                    "Expires": '300',
+                    "Expires": '90',
                 }
             ),
         }
@@ -70,5 +78,7 @@ resultCode = m.group(1)
 if resultCode.startswith("SUCCESS"):
     raise SystemExit("Upload complete")
 
-print("Upload failed: {}".format(resultCode))
-
+print("Error response from Maddavo's site: {}".format(resultCode))
+with open("tmp/maderror.txt", "w") as out:
+    print(r.text, file=out)
+    print("See tmp/maderror.txt for full response.")

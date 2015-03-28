@@ -57,6 +57,14 @@ $ tdupd <station>
   Brings up the "update UI" for the specified station
    e.g  tdupd iboo/beag
 
+$ getstation.sh
+  This will try to find your current position (which should be at
+  a station) if you have set the FDEVLOGDIR variable and enabled
+  the VerboseLogging in "AppConfig.xml".
+  If it finds one, you will be presented with some data and asked
+  for more information. Just answer the questions and the station
+  will be added to the Database. If there is a shipyard you will
+  also be asked to select the ships.
 
 
 <WINDOWS USERS>:
@@ -131,6 +139,13 @@ command history across sessions.
 Your shell is now also configured to treat the scripts in the
 "scripts" folder of TD as commands so you can invoke them by
 name.
+
+If you want to use the "getstation.sh" script there is one
+more variable to be set in ".bashrc":
+
+  ### CHANGE THIS TO YOUR EliteDangerous log path
+  ### (Just don't include the trailing slash
+  export FDEVLOGDIR="/c/Program Files (x86)/Frontier/EDLaunch/Products/FORC-FDEV-D-1002/Logs"
 
 OK - Now you can go back and read about the scripts :)
 
@@ -215,7 +230,7 @@ file to make sure there is actually some data to work with.
 Main Menu:
 
 The main menu will appear as such:
-(U)pdate, (Q)uick Update, (I)mport, (P)references or (R)un
+(U)pdate, (Q)uick Update, (I)mport, (P)references, (R)un, Run (T)o:
 Each option is detailed below.
 
   Update:
@@ -246,6 +261,9 @@ Each option is detailed below.
   have not been set, you will be asked for them and they will be stored
   for the rest of the batch file session. They can be changed again
   in the preferences option from the main menu.
+
+  Run To:
+  Same as above, but you can specify an end point
 
 </BATCH-FILE>
 

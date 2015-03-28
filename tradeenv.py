@@ -36,7 +36,7 @@ class TradeEnv(object):
             self.__dict__.update(kwargs)
 
 
-    def __getattr__(self, key, default=None):
+    def __getattr__(self, key):
         """ Return the default for attributes we don't have """
         if key.startswith("DEBUG"):
             # Self-assembling DEBUGN functions
@@ -71,6 +71,16 @@ class TradeEnv(object):
             setattr(self, key, noteFn)
             return noteFn
 
-        return default
+        if key == "WARN":
+            def _WARN_ENABLED(outText, *args, file=None, **kwargs):
+                print("WARNING:", outText.format(*args, **kwargs), file=file)
 
+            def _WARN_DISABLED(*args, **kwargs):
+                pass
+
+            noteFn = _WARN_DISABLED if self.quiet > 1 else _WARN_ENABLED
+            setattr(self, key, noteFn)
+            return noteFn
+
+        return None
 

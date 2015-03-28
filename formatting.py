@@ -1,4 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+import itertools
 
 class ColumnFormat(object):
     """
@@ -33,6 +34,8 @@ class ColumnFormat(object):
                 Postfix to the column
             key
                 Retrieve the printable name of the item
+            pred
+                Predicate: Return False to leave this column blank
 
         e.g.
             cols = [
@@ -53,7 +56,17 @@ class ColumnFormat(object):
             John   [23.00]
 
     """
-    def __init__(self, name, align, width, qualifier=None, pre=None, post=None, key=lambda item: item):
+    def __init__(
+            self,
+            name,
+            align,
+            width,
+            qualifier=None,
+            pre=None,
+            post=None,
+            key=lambda item: item,
+            pred=lambda item: True,
+            ):
         self.name = name
         self.align = align
         self.width = max(int(width), len(name))
@@ -61,6 +74,7 @@ class ColumnFormat(object):
         self.key = key
         self.pre = pre or ''
         self.post = post or ''
+        self.pred = pred
 
 
     def str(self):
@@ -72,10 +86,17 @@ class ColumnFormat(object):
 
 
     def format(self, value):
-        return '{pre}{value:{align}{width}{qual}}{post}'.format(
-                value=self.key(value),
+        if self.pred(value):
+            return '{pre}{value:{align}{width}{qual}}{post}'.format(
+                    value=self.key(value),
+                    align=self.align, width=self.width,
+                    qual=self.qualifier,
+                    pre=self.pre, post=self.post,
+                )
+        else:
+            return '{pre}{value:{align}{width}}{post}'.format(
+                value="",
                 align=self.align, width=self.width,
-                qual=self.qualifier,
                 pre=self.pre, post=self.post,
             )
 
@@ -144,6 +165,13 @@ class RowFormat(object):
     def format(self, rowData):
         return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
 
+def max_len(iterable, key=lambda item: item):
+    iterable, readahead = itertools.tee(iter(iterable))
+    try:
+        next(readahead)
+    except StopIteration:
+        return 0
+    return max(len(key(item)) for item in iterable)
 
 if __name__ == '__main__':
     rowFmt = RowFormat(). \

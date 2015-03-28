@@ -6,6 +6,7 @@ from tradedb import AmbiguityError
 from tradedb import System, Station
 from tradedb import TradeDB
 
+import cache
 import csvexport
 import difflib
 import re
@@ -26,13 +27,6 @@ arguments = [
     ),
 ]
 switches = [
-    ParseArgument(
-        '--system',
-        help='Specify the full name of the system the station is in if not specified in the "station" argument.',
-        type=str,
-        nargs='+',
-        default=[],
-    ),
     MutuallyExclusiveGroup(
         ParseArgument(
             '--update', '-u',
@@ -53,23 +47,50 @@ switches = [
     ParseArgument(
         '--ls-from-star',
         help='Number of light seconds between station and star.',
-        type=float,
-        default=0.0,
+        type=int,
         dest='lsFromStar',
     ),
     ParseArgument(
         '--black-market', '--bm',
         help='Does the station have a black market (Y or N) or ? if unknown.',
         choices=['Y', 'y', 'N', 'n', '?'],
-        default='?',
         dest='blackMarket',
+    ),
+    ParseArgument(
+        '--market',
+        help='Does the station have a commodities market (Y or N), ? for unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--shipyard',
+        help='Does the station have a shipyard (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
     ),
     ParseArgument(
         '--pad-size',
         help='Maximum supported pad size (S, M, or L) or ? if unknown.',
         choices=['S', 's', 'M', 'm', 'L', 'l', '?'],
-        default='?',
         dest='padSize',
+    ),
+    ParseArgument(
+        '--outfitting',
+        help='Does the station provide outfitting (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--rearm', '--arm',
+        help='Does the station provide rearming (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--refuel',
+        help='Does the station provide refueling (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--repair',
+        help='Does the station provide repairs (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
     ),
     ParseArgument(
         '--confirm',
@@ -170,12 +191,24 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
 
 
 def checkSystemAndStation(tdb, cmdenv):
-    # The user can supply "--system Foo Bar --station Baz" or
-    # "--station Foo Bar / Baz". This means that the values
-    # can be arrays. We need to make strings out of the arrays,
-    # and then sanitize them for the '@SYS/STN' format, and
-    # build a separate system and station name out of that.
+    # In add mode, the user has to be more specific.
     stnName = ' '.join(cmdenv.station).strip()
+
+    if not cmdenv.add:
+        try:
+            station = tdb.lookupPlace(stnName)
+        except LookupError:
+            raise CommandLineError("Unrecognized Station: {}".format(
+                cmdenv.station
+            ))
+        if not isinstance(station, Station):
+            raise CommandLineError(
+                "Expecting a STATION, got {}".format(stnName)
+            )
+        cmdenv.system = station.system.name()
+        cmdenv.station = station.dbname
+
+        return station.system, station
 
     # Clean up the station name and potentially lift the system
     # name out of it.
@@ -195,61 +228,38 @@ def checkSystemAndStation(tdb, cmdenv):
                 envStnName
         ))
 
-    if cmdenv.system:
-        envSysName = ' '.join(cmdenv.system).upper()
-        if sysName and envSysName != sysName:
-            raise CommandLineError(
-                    "Mismatch between \"--system {}\" and "
-                    "system name in station specifier "
-                    "(\"{}\")".format(
-                        envSysName, sysName,
-            ))
-        sysName = envSysName
-
     if not sysName:
         raise CommandLineError("No system name specified")
 
     cmdenv.system, cmdenv.station = sysName, TradeDB.titleFixup(stnName)
-
-    # If we're adding a station, we need to check that the system
-    # exists and that it doesn't contain a close-match for this
-    # system name already.
-    if cmdenv.add:
-        try:
-            system = tdb.lookupSystem(sysName)
-        except LookupError:
-            raise CommandLineError(
-                    "Unknown SYSTEM name: \"{}\"".format(
-                        sysName
-            ))
-
-        # check the station does not exist
-        checkStationDoesNotExist(tdb, cmdenv, system, stnName)
-
-        return system, None
-
-    # We want an existing station, try looking it up by combining
-    # the station and system names for precision.
     try:
-        station = tdb.lookupPlace("{}/{}".format(sysName, stnName))
+        system = tdb.lookupSystem(sysName)
     except LookupError:
-        raise CommandLineError("Unrecognized Station: {}/{}".format(
-                sysName,
-                cmdenv.station,
+        raise CommandLineError(
+                "Unknown SYSTEM name: \"{}\"".format(
+                    sysName
         ))
-    cmdenv.system = station.system.name()
-    cmdenv.station = station.dbname
 
-    return station.system, station
+    # check the station does not exist
+    checkStationDoesNotExist(tdb, cmdenv, system, stnName)
+
+    return system, None
 
 
 def addStation(tdb, cmdenv, system, stationName):
     return tdb.addLocalStation(
             system=system,
             name=stationName,
-            lsFromStar=cmdenv.lsFromStar,
-            blackMarket=cmdenv.blackMarket,
-            maxPadSize=cmdenv.padSize,
+            lsFromStar=cmdenv.lsFromStar or 0,
+            market=cmdenv.market or '?',
+            blackMarket=cmdenv.blackMarket or '?',
+            shipyard=cmdenv.shipyard or '?',
+            outfitting=cmdenv.outfitting or '?',
+            rearm=cmdenv.rearm or '?',
+            refuel=cmdenv.refuel or '?',
+            repair=cmdenv.repair or '?',
+            maxPadSize=cmdenv.padSize or '?',
+            commit=True,
     )
 
 
@@ -257,8 +267,16 @@ def updateStation(tdb, cmdenv, station):
     return tdb.updateLocalStation(
             station=station,
             lsFromStar=cmdenv.lsFromStar,
+            market=cmdenv.market,
             blackMarket=cmdenv.blackMarket,
+            shipyard=cmdenv.shipyard,
+            outfitting=cmdenv.outfitting,
+            rearm=cmdenv.rearm,
+            refuel=cmdenv.refuel,
+            repair=cmdenv.repair,
             maxPadSize=cmdenv.padSize,
+            force=True,
+            commit=True,
     )
 
 
@@ -270,10 +288,13 @@ def removeStation(tdb, cmdenv, station):
     db.commit()
     cmdenv.NOTE("{} (#{}) removed from {} database.",
             station.name(), station.ID, tdb.dbPath)
+    cmdenv.stationItemCount = station.itemCount
+    return True
 
 
 def checkResultAndExportStations(tdb, cmdenv, result):
     if not result:
+        cmdenv.NOTE("No changes.")
         return None
     if cmdenv.noExport:
         cmdenv.DEBUG0("no-export set, not exporting stations")
@@ -281,6 +302,12 @@ def checkResultAndExportStations(tdb, cmdenv, result):
 
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "Station")
     cmdenv.NOTE("{} updated.", csvPath)
+
+    if cmdenv.remove:
+        if cmdenv.stationItemCount:
+            cmdenv.NOTE("Station had items, regenerating .prices file")
+            cache.regeneratePricesFile(tdb, cmdenv)
+
     return None
 
 
@@ -288,7 +315,7 @@ def checkResultAndExportStations(tdb, cmdenv, result):
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    if cmdenv.lsFromStar < 0:
+    if cmdenv.lsFromStar and cmdenv.lsFromStar < 0:
         raise CommandLineError("Invalid (negative) --ls option")
 
     system, station = checkSystemAndStation(tdb, cmdenv)
@@ -333,7 +360,7 @@ def run(results, cmdenv, tdb):
     selling.sort(
             key=lambda item: item.price - item.avgTrade,
     )
-    results.summary.selling = selling[:3]
+    results.summary.selling = selling[:5]
 
     buying = [
             ItemTrade(ID, price, avgSell)
@@ -347,12 +374,55 @@ def run(results, cmdenv, tdb):
     buying.sort(
             key=lambda item: item.avgTrade - item.price,
     )
-    results.summary.buying = buying[:3]
+    results.summary.buying = buying[:5]
 
     return results
 
 def render(results, cmdenv, tdb):
     system, station = results.summary.system, results.summary.station
+
+    if cmdenv.detail:
+        sysDetail = "(#{} @ {},{},{})".format(
+            system.ID, system.posX, system.posY, system.posZ
+        )
+    else:
+        sysDetail = "(#{})".format(system.ID)
+
+    print("Station Data:")
+    print("System....:", system.name(), sysDetail)
+    print("Station...:", station.dbname, "(#{})".format(station.ID))
+
+    if cmdenv.detail:
+        siblings = ", ".join(
+            stn.dbname
+            for stn in system.stations
+            if stn is not station
+        )
+        if siblings:
+            print("Also Here.:", siblings)
+
+    ls = station.distFromStar()
+    if cmdenv.detail and ls == '?':
+        ls = '0 [unknown]'
+    print("Stn/Ls....:", ls)
+
+    def _detail(value, source):
+        detail = source[value]
+        if cmdenv.detail and detail == '?':
+            detail += ' [unknown]'
+        return detail
+    print("Pad Size..:", _detail(station.maxPadSize, TradeDB.padSizes))
+    print("Market....:", _detail(station.market, TradeDB.marketStates))
+    print("B/Market..:", _detail(station.blackMarket, TradeDB.marketStates))
+    print("Shipyard..:", _detail(station.shipyard, TradeDB.marketStates))
+    print("Outfitting:", _detail(station.outfitting, TradeDB.marketStates))
+    print("Rearm.....:", _detail(station.rearm, TradeDB.marketStates))
+    print("Refuel....:", _detail(station.refuel, TradeDB.marketStates))
+    print("Repair....:", _detail(station.repair, TradeDB.marketStates))
+    print("Prices....:", station.itemCount or 'None')
+
+    if station.itemCount == 0:
+        return
 
     newest, oldest = tdb.query("""
             SELECT JULIANDAY('NOW') - JULIANDAY(MIN(si.modified)),
@@ -368,6 +438,8 @@ def render(results, cmdenv, tdb):
             pricesAge = "{:.2f}-{:.2f} days".format(newest, oldest)
     else:
         pricesAge = "[n/a]"
+
+    print("Price Age.:", pricesAge)
 
     def makeBest(rows, explanation, alt, starFn):
         if not rows:
@@ -391,61 +463,13 @@ def render(results, cmdenv, tdb):
         return bestText
 
 
-    bestBuy = makeBest(
+    print("Best Buy..:", makeBest(
             results.summary.selling, "Buy from this station", "Sell",
             starFn=lambda price, avgCr: \
                 price <= (avgCr * 0.9),
-    )
-    bestSell = makeBest(
+    ))
+    print("Best Sale.:", makeBest(
             results.summary.buying, "Sell to this station", "Buy",
             starFn=lambda price, avgCr: \
                 price >= (avgCr * 1.1),
-    )
-
-    siblings = ", ".join(
-        stn.dbname
-        for stn in system.stations
-        if stn is not station
-    )
-    if not siblings:
-        siblings = "[Only known station]"
-
-    ls = station.distFromStar()
-    if cmdenv.detail and ls == '?':
-        ls = '0 [unknown]'
-    bm = TradeDB.marketStates[station.blackMarket]
-    if cmdenv.detail and bm == '?':
-        bm += ' [unknown]'
-    pad = TradeDB.padSizes[station.maxPadSize]
-    if cmdenv.detail and pad == '?':
-        pad += ' [unknown]'
-
-    print("""Station Data:
-System....: {sysname} (#{sysid} @ {sysx},{sysy},{sysz})
-Station...: {stnname} (#{stnid})
-In System.: {siblings}
-Stn/Ls....: {lsdist}
-B/Market..: {bm}
-Pad Size..: {pad}
-Prices....: {icount}
-Price Age.: {prage}
-Best Buy..: {bestbuy}
-Best Sale.: {bestsell}
-""".format(
-            sysname=system.name(),
-            stnname=station.dbname,
-            sysid=system.ID,
-            sysx=system.posX,
-            sysy=system.posY,
-            sysz=system.posZ,
-            stnid=station.ID,
-            lsdist=ls,
-            bm=bm,
-            pad=pad,
-            icount=station.itemCount,
-            prage=pricesAge,
-            bestbuy=bestBuy,
-            bestsell=bestSell,
-            siblings=siblings,
-            )
-)
+    ))
