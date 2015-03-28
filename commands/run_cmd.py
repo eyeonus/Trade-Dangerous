@@ -51,6 +51,11 @@ switches = [
                 metavar='SYSTEM',
                 default=None,
         ),
+        ParseArgument('--loop',
+                help='Return to the starting station.',
+                action='store_true',
+                default=False,
+        ),
     ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
@@ -734,6 +739,9 @@ def validateRunArguments(tdb, cmdenv, calc):
         if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
             raise CommandLineError("Insurance leaves no margin for trade")
 
+    if cmdenv.loop and cmdenv.unique:
+        raise CommandLineError("Cannot use --unique and --loop together")
+
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
 
@@ -1012,6 +1020,7 @@ def run(results, cmdenv, tdb):
 
     pruneMod = cmdenv.pruneScores / 100
 
+    loopRoutes = []
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -1031,13 +1040,16 @@ def run(results, cmdenv, tdb):
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
                 routes = routes[:cmdenv.maxRoutes]
 
-        if cmdenv.destPlace:
+        if cmdenv.destPlace or cmdenv.loop:
             remainingDistance = (numHops - hopNo) * cmdenv.maxJumpsPer * cmdenv.maxLyPer
             remainingDistanceSq = remainingDistance * remainingDistance
 
             def canReachStopStation(r):
-                stopSystems = {stopStation.system
-                               for stopStation in stopStations}
+                if cmdenv.loop:
+                    stopSystems = {r.firstSystem}
+                else:
+                    stopSystems = {stopStation.system
+                                   for stopStation in stopStations}
                 reachableSystems = [stopSystem.name()
                                     for stopSystem in stopSystems
                                     if r.lastSystem.distToSq(stopSystem) <= remainingDistanceSq]
@@ -1125,6 +1137,18 @@ def run(results, cmdenv, tdb):
                 cmdenv.NOTE("Goal system reached!")
                 routes = routes[:1]
                 break
+
+        if cmdenv.loop:
+            for route in routes:
+                if route.lastStation == route.firstStation:
+                    loopRoutes.append(route)
+
+    if cmdenv.loop:
+        routes = loopRoutes
+
+        # normalise the scores for fairness...
+        for route in routes:
+            route.score /= len(route.hops)
 
     if not routes:
         raise NoDataError(
