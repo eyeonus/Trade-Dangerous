@@ -79,6 +79,11 @@ ignore = [
     "PRAEA EUQ SX-U S2-18",
     "SYNUEFAI FL-V D3-7",
     "SYNUEFAI NM-",
+    "COL 285 SECTOR BG-Y B16-1",
+    "SYNUEFE NA-O D13-16",
+    "HIP 623536",
+    "SYNUEFUE D2-26",
+    "WREGOE AZ-D B45-4",
 ]
 
 

@@ -154,12 +154,13 @@ def check_price_bounds(
                 print("@ {}".format(station.name()), file=fh)
                 for item in items:
                     itemID = item[0]
-                    print("      {:<30} {:>7} {:>7} {:>9} {:>9} {}"
+                    print("      {:<30} {:>7} {:>7} {:>9} {:>9} {}  # was {} {}"
                         .format(
                             tdb.itemByID[itemID].name(),
                             0, 0,
                             '-', '-',
                             now,
+                            item[1], item[2],
                         ), file=fh
                     )
         if doDeletions:
