@@ -2,6 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+
 v6.15.0 Mar 27 2015
 . (kfsone) Refresh .prices file after removing a station that had items
 . (kfsone) Maddavo Plugin
@@ -14,6 +15,7 @@ v6.15.0 Mar 27 2015
      in the database, be patient,
    - "--opt=csvs" now also enables "exportcsvs"
    - "--opt=exportcsvs" not exports 
++ Over 100 additional Systems
 API:
 . (kfsone) transfers.CSVStream will give a line-by-line report of utf-8
      decode errors but continue streaming.
