@@ -1021,6 +1021,8 @@ def run(results, cmdenv, tdb):
 
     pruneMod = cmdenv.pruneScores / 100
     distancePruning = (cmdenv.destPlace or cmdenv.loop)
+    if distancePruning and not cmdenv.loop:
+        stopSystems = {stop.system for stop in stopStations}
 
     loopRoutes = []
     for hopNo in range(numHops):
@@ -1044,28 +1046,15 @@ def run(results, cmdenv, tdb):
 
         if distancePruning:
             remainingDistance = (numHops - hopNo) * maxHopDistLy
-            remainingDistanceSq = remainingDistance * remainingDistance
-
-            def canReachStopStation(r):
+            def routeStillHasAChance(r):
+                distanceFn = r.lastSystem.distanceTo
                 if cmdenv.loop:
-                    stopSystems = {r.firstSystem}
+                    return distanceFn(r.firstSystem) <= remainingDistance
                 else:
-                    stopSystems = {stopStation.system
-                                   for stopStation in stopStations}
-                reachableSystems = [stopSystem
-                                    for stopSystem in stopSystems
-                                    if r.lastSystem.distToSq(stopSystem) <= remainingDistanceSq]
-                if len(reachableSystems):
-                    if cmdenv.debug:
-                        reachableSystems = [s.name() for s in reachableSystems]
-                        cmdenv.DEBUG1("Route {} can still reach: {}", r.str(), ', '.join(reachableSystems))
-                    return True
-                else:
-                    cmdenv.DEBUG1("Route {} too far from all end stations", r.str())
-                    return False
+                    return any(stop for stop in stopSystems if distanceFn(stop) <= remainingDistance)
 
             preCrop = len(routes)
-            routes[:] = [x for x in routes if canReachStopStation(x)]
+            routes[:] = [x for x in routes if routeStillHasAChance(x)]
             pruned = preCrop - len(routes)
             if pruned:
                 cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
