@@ -183,6 +183,9 @@ def render(results, cmdenv, tdb):
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
 
+    if cmdenv.near:
+        results.rows.sort(key=lambda row: row.dist)
+
     for row in results.rows:
         print(rowFmt.format(row))
 
