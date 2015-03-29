@@ -993,6 +993,7 @@ def run(results, cmdenv, tdb):
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
+    maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
 
     # seed the route table with starting places
     startCr = cmdenv.credits - cmdenv.insurance
@@ -1019,6 +1020,7 @@ def run(results, cmdenv, tdb):
     results.summary.exception = ""
 
     pruneMod = cmdenv.pruneScores / 100
+    distancePruning = (cmdenv.destPlace or cmdenv.loop)
 
     loopRoutes = []
     for hopNo in range(numHops):
@@ -1040,8 +1042,8 @@ def run(results, cmdenv, tdb):
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
                 routes = routes[:cmdenv.maxRoutes]
 
-        if cmdenv.destPlace or cmdenv.loop:
-            remainingDistance = (numHops - hopNo) * cmdenv.maxJumpsPer * cmdenv.maxLyPer
+        if distancePruning:
+            remainingDistance = (numHops - hopNo) * maxHopDistLy
             remainingDistanceSq = remainingDistance * remainingDistance
 
             def canReachStopStation(r):
@@ -1050,7 +1052,7 @@ def run(results, cmdenv, tdb):
                 else:
                     stopSystems = {stopStation.system
                                    for stopStation in stopStations}
-                reachableSystems = [stopSystem.name()
+                reachableSystems = [stopSystem
                                     for stopSystem in stopSystems
                                     if r.lastSystem.distToSq(stopSystem) <= remainingDistanceSq]
                 if len(reachableSystems):
