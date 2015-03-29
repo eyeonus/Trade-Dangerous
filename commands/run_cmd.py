@@ -1056,7 +1056,9 @@ def run(results, cmdenv, tdb):
                                     for stopSystem in stopSystems
                                     if r.lastSystem.distToSq(stopSystem) <= remainingDistanceSq]
                 if len(reachableSystems):
-                    cmdenv.DEBUG1("Route {} can still reach: {}", r.str(), ', '.join(reachableSystems))
+                    if cmdenv.debug:
+                        reachableSystems = [s.name() for s in reachableSystems]
+                        cmdenv.DEBUG1("Route {} can still reach: {}", r.str(), ', '.join(reachableSystems))
                     return True
                 else:
                     cmdenv.DEBUG1("Route {} too far from all end stations", r.str())
