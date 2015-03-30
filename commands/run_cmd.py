@@ -739,8 +739,11 @@ def validateRunArguments(tdb, cmdenv, calc):
         if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
             raise CommandLineError("Insurance leaves no margin for trade")
 
-    if cmdenv.loop and cmdenv.unique:
-        raise CommandLineError("Cannot use --unique and --loop together")
+    if cmdenv.loop:
+        if cmdenv.unique:
+            raise CommandLineError("Cannot use --unique and --loop together")
+        if cmdenv.direct:
+            raise CommandLineError("Cannot use --direct and --loop together")
 
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
@@ -1020,7 +1023,7 @@ def run(results, cmdenv, tdb):
     results.summary.exception = ""
 
     pruneMod = cmdenv.pruneScores / 100
-    distancePruning = (cmdenv.destPlace or cmdenv.loop)
+    distancePruning = (cmdenv.destPlace and not cmdenv.direct) or (cmdenv.loop)
     if distancePruning and not cmdenv.loop:
         stopSystems = {stop.system for stop in stopStations}
 
