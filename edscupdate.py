@@ -35,7 +35,7 @@ import sys
 import tradedb
 import tradeenv
 
-DEFAULT_DATE = "2015-02-11 00:00:00"
+DEFAULT_DATE = "2015-03-01 00:00:00"
 
 
 # Systems we know are bad.
@@ -84,6 +84,9 @@ ignore = [
     "HIP 623536",
     "SYNUEFUE D2-26",
     "WREGOE AZ-D B45-4",
+    "MINIMAR",
+    "MV URSAE MAJORIS",
+    "PLAA EURK BU-Q B5-0",
 ]
 
 
