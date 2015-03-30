@@ -5,6 +5,7 @@ from tradeexcept import TradeException
 
 import itertools
 import math
+import sys
 
 ######################################################################
 # Parser config
@@ -31,6 +32,15 @@ switches = [
             dest='maxLyPer',
             metavar='N.NN',
             type=float,
+    ),
+    ParseArgument('--route',
+            help='Sort to shortest path',
+            action='store_true',
+    ),
+    ParseArgument('--min-age',
+            help='List data older than this number of days.',
+            type=float,
+            dest='minAge',
     ),
 ]
 
@@ -61,6 +71,12 @@ def run(results, cmdenv, tdb):
     joins = []
     wheres = []
     havings = []
+
+    if cmdenv.minAge:
+        wheres.append(
+            "(JULIANDAY('NOW') - JULIANDAY(si.modified) >= {})"
+            .format(cmdenv.minAge)
+        )
 
     nearSys = cmdenv.nearSystem
     if nearSys:
@@ -141,6 +157,34 @@ def run(results, cmdenv, tdb):
         row.dist = dist2 ** 0.5
         results.rows.append(row)
 
+    if cmdenv.near:
+        results.rows.sort(key=lambda row: row.dist)
+
+    if cmdenv.route and len(results.rows) > 1:
+        def walk(startNode, dist):
+            rows = results.rows
+            startNode = rows[startNode]
+            openList = set(rows)
+            path = [startNode]
+            openList.remove(startNode)
+            while len(path) < len(rows):
+                lastNode = path[-1]
+                distFn = lastNode.station.system.distanceTo
+                nearest = min(openList, key=lambda row: distFn(row.station.system))
+                openList.remove(nearest)
+                path.append(nearest)
+                dist += distFn(nearest.station.system)
+            return (path, dist)
+        if cmdenv.near:
+            bestPath = walk(0, results.rows[0].dist)
+        else:
+            bestPath = (results.rows, float("inf"))
+            for i in range(len(results.rows)):
+                path = walk(i, 0)
+                if path[1] < bestPath[1]:
+                    bestPath = path
+        results.rows[:] = bestPath[0]
+
     return results
 
 ######################################################################
@@ -182,9 +226,6 @@ def render(results, cmdenv, tdb):
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
-    if cmdenv.near:
-        results.rows.sort(key=lambda row: row.dist)
 
     for row in results.rows:
         print(rowFmt.format(row))
