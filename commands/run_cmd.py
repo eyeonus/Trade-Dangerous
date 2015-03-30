@@ -51,6 +51,11 @@ switches = [
                 metavar='SYSTEM',
                 default=None,
         ),
+        ParseArgument('--loop',
+                help='Return to the starting station.',
+                action='store_true',
+                default=False,
+        ),
     ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
@@ -734,6 +739,9 @@ def validateRunArguments(tdb, cmdenv, calc):
         if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
             raise CommandLineError("Insurance leaves no margin for trade")
 
+    if cmdenv.loop and cmdenv.unique:
+        raise CommandLineError("Cannot use --unique and --loop together")
+
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
 
@@ -788,7 +796,7 @@ def validateRunArguments(tdb, cmdenv, calc):
         ]
         cmdenv.destinations = [
             dest for dest in cmdenv.destinations
-            if destination.system in viaSystems
+            if dest.system in viaSystems
         ]
         cmdenv.destSystems = [
             dest.system for dest in cmdenv.destinations
@@ -985,6 +993,7 @@ def run(results, cmdenv, tdb):
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
+    maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
 
     # seed the route table with starting places
     startCr = cmdenv.credits - cmdenv.insurance
@@ -1011,7 +1020,9 @@ def run(results, cmdenv, tdb):
     results.summary.exception = ""
 
     pruneMod = cmdenv.pruneScores / 100
+    distancePruning = (cmdenv.destPlace or cmdenv.loop)
 
+    loopRoutes = []
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -1030,6 +1041,34 @@ def run(results, cmdenv, tdb):
 
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
                 routes = routes[:cmdenv.maxRoutes]
+
+        if distancePruning:
+            remainingDistance = (numHops - hopNo) * maxHopDistLy
+            remainingDistanceSq = remainingDistance * remainingDistance
+
+            def canReachStopStation(r):
+                if cmdenv.loop:
+                    stopSystems = {r.firstSystem}
+                else:
+                    stopSystems = {stopStation.system
+                                   for stopStation in stopStations}
+                reachableSystems = [stopSystem
+                                    for stopSystem in stopSystems
+                                    if r.lastSystem.distToSq(stopSystem) <= remainingDistanceSq]
+                if len(reachableSystems):
+                    if cmdenv.debug:
+                        reachableSystems = [s.name() for s in reachableSystems]
+                        cmdenv.DEBUG1("Route {} can still reach: {}", r.str(), ', '.join(reachableSystems))
+                    return True
+                else:
+                    cmdenv.DEBUG1("Route {} too far from all end stations", r.str())
+                    return False
+
+            preCrop = len(routes)
+            routes[:] = [x for x in routes if canReachStopStation(x)]
+            pruned = preCrop - len(routes)
+            if pruned:
+                cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
 
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
@@ -1102,6 +1141,18 @@ def run(results, cmdenv, tdb):
                 cmdenv.NOTE("Goal system reached!")
                 routes = routes[:1]
                 break
+
+        if cmdenv.loop:
+            for route in routes:
+                if route.lastStation == route.firstStation:
+                    loopRoutes.append(route)
+
+    if cmdenv.loop:
+        routes = loopRoutes
+
+        # normalise the scores for fairness...
+        for route in routes:
+            route.score /= len(route.hops)
 
     if not routes:
         raise NoDataError(

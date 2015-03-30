@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.16.0 Mar 29 2015
+. (tKe) "run" command
+   - "--loop" option
+     Looks for routes which loop back to the origin station,
+   - Optimizations,
+   - Minor bug fix in destination culling,
 
 v6.15.0 Mar 27 2015
 . (kfsone) Refresh .prices file after removing a station that had items
