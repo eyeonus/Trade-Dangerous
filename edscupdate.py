@@ -35,11 +35,36 @@ import sys
 import tradedb
 import tradeenv
 
-DEFAULT_DATE = "2015-02-11 00:00:00"
+DEFAULT_DATE = "2015-03-01 00:00:00"
 
 
 # Systems we know are bad.
 ignore = [
+    "ADAM NAPAT",
+    "ALRAI SECTOR IR-W C1-29",
+    "ALRAI SECTOR OI-T B3-6 A",
+    "AN SEXSTANS",
+    "ARIETIS SECTOR WO-R 84-4",
+    "COL 285 SECTOR GI-P B20-4 A",
+    "COL 285 SECTOR GU-T 818-2",
+    "COL 285 SECTOR GU-T 818-5",
+    "COL 285 SECTOR HU-T 818-1",
+    "COL 285 SECTOR ZJ-Y B140-1",
+    "CORE SYS SECTOR DL-Y D117",
+    "CORE SYS SECTOR HH-V B2-7",
+    "CRU7CIS SECTOR EQ-Y B2",
+    "CRUCIS SECTO GB-X B1-0",
+    "CRUCIS SECTOR FM-V B2-0",
+    "CRUCIS SECTOR YE-A D142",
+    "CRUSCIC SECTOR EL-Y C19",
+    "CRUSIS SECTOR MD-S B4-3",
+    "CRUSIS SECTOR ND-S B4-1",
+    "DQ TUCANE",
+    "ED TUCANAE",
+    "FLECHS",
+    "GD 139",
+    "HYADES SECTOR WF-M B8-3",
+
     "22 LYNCIS",
     "ALANI",
     "BODB DJEDI",
@@ -84,6 +109,9 @@ ignore = [
     "HIP 623536",
     "SYNUEFUE D2-26",
     "WREGOE AZ-D B45-4",
+    "MINIMAR",
+    "MV URSAE MAJORIS",
+    "PLAA EURK BU-Q B5-0",
 ]
 
 
