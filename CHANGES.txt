@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.16.1 Apr 01 2015 (In some parts of the world)
+. (kfsone) "old" sub-command
+   - Added a "--route" option: which probably doesn't do what you think,
+   - Added a "--min-age" option: because old is the new new!
+
 v6.16.0 Mar 29 2015
 . (tKe) "run" command
    - "--loop" option
