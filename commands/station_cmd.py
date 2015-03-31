@@ -6,6 +6,7 @@ from tradedb import AmbiguityError
 from tradedb import System, Station
 from tradedb import TradeDB
 
+import cache
 import csvexport
 import difflib
 import re
@@ -287,6 +288,7 @@ def removeStation(tdb, cmdenv, station):
     db.commit()
     cmdenv.NOTE("{} (#{}) removed from {} database.",
             station.name(), station.ID, tdb.dbPath)
+    cmdenv.stationItemCount = station.itemCount
     return True
 
 
@@ -300,6 +302,12 @@ def checkResultAndExportStations(tdb, cmdenv, result):
 
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "Station")
     cmdenv.NOTE("{} updated.", csvPath)
+
+    if cmdenv.remove:
+        if cmdenv.stationItemCount:
+            cmdenv.NOTE("Station had items, regenerating .prices file")
+            cache.regeneratePricesFile(tdb, cmdenv)
+
     return None
 
 

@@ -253,8 +253,9 @@ class CSVStream(object):
             print("{} = {}".format(cols[0], vals[0]))
     """
 
-    def __init__(self, url):
+    def __init__(self, url, tdenv=None):
         self.url = url
+        self.tdenv = tdenv
         if not url.startswith("file:///"):
             requests = import_requests()
             self.req = requests.get(self.url, stream=True)
@@ -265,14 +266,24 @@ class CSVStream(object):
 
     def next_line(self):
         """ Fetch the next line as a text string """
-        return next(self.lines).decode()
+        while True:
+            line = next(self.lines)
+            try:
+                return line.decode()
+            except UnicodeDecodeError as e:
+                if not self.tdenv:
+                    raise e
+                self.tdenv.WARN(
+                    "{}: line:{}: {}\n{}",
+                    self.url, self.csvin.line_num, line, e
+                )
 
     def __iter__(self):
         """
         Iterate across data received as csv values.
         Yields [column headings], [column values]
         """
-        csvin = csv.reader(
+        self.csvin = csvin = csv.reader(
             iter(self.next_line, 'END'),
             delimiter=',', quotechar="'", doublequote=True
         )

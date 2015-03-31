@@ -2,8 +2,38 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.16.1 Apr 01 2015 (In some parts of the world)
+. (kfsone) "old" sub-command
+   - Added a "--route" option: which probably doesn't do what you think,
+   - Added a "--min-age" option: because old is the new new!
+
+v6.16.0 Mar 29 2015
+. (tKe) "run" command
+   - "--loop" option
+     Looks for routes which loop back to the origin station,
+   - Optimizations,
+   - Minor bug fix in destination culling,
+
+v6.15.0 Mar 27 2015
+. (kfsone) Refresh .prices file after removing a station that had items
+. (kfsone) Maddavo Plugin
+   - Added support for "corrections"
+     "--opt=corrections" and "--opt=csvs" will read Maddavo's correction data
+     correction data is read first and is applied to existing data,
+   - Support for Category, Item, System, Station, Ship, ShipVendor and
+     RareItem name changes and deletions,
+   - System, Item and Station deletions can be very slow if there are prices
+     in the database, be patient,
+   - "--opt=csvs" now also enables "exportcsvs"
+   - "--opt=exportcsvs" not exports 
++ Over 100 additional Systems
+API:
+. (kfsone) transfers.CSVStream will give a line-by-line report of utf-8
+     decode errors but continue streaming.
+
 v6.14.6 Mar 25 2015
 . (kfsone) Item names in .price files are now case insensitive (Ai Relics)
++ Over 100 systems
 
 v6.14.5 Mar 23 2015
 . (kfsone) Solved the missing 6.14.3 commits

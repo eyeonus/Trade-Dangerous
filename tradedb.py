@@ -292,7 +292,7 @@ class Station(object):
         system.stations.append(self)
 
     def name(self):
-        return '%s/%s' % (self.system.name(), self.dbname)
+        return '%s/%s' % (self.system.dbname, self.dbname)
 
     def checkPadSize(self, maxPadSize):
         """
@@ -360,7 +360,7 @@ class Station(object):
         return (self.itemCount > 0 or self.market == 'Y')
 
     def str(self):
-        return self.dbname
+        return '%s/%s' % (self.system.dbname, self.dbname)
 
 
 ######################################################################
