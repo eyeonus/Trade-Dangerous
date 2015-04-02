@@ -1037,16 +1037,6 @@ def run(results, cmdenv, tdb):
             restrictTo = viaSet
             manualRestriction = True
 
-        if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
-            routes.sort()
-            if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
-                crop = int(len(routes) * pruneMod)
-                routes = routes[:-crop]
-                cmdenv.NOTE("Pruned {} origins", crop)
-
-            if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
-                routes = routes[:cmdenv.maxRoutes]
-
         if distancePruning:
             remainingDistance = (numHops - hopNo) * maxHopDistLy
             def routeStillHasAChance(r):
@@ -1061,6 +1051,16 @@ def run(results, cmdenv, tdb):
             pruned = preCrop - len(routes)
             if pruned:
                 cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
+
+        if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
+            routes.sort()
+            if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
+                crop = int(len(routes) * pruneMod)
+                routes = routes[:-crop]
+                cmdenv.NOTE("Pruned {} origins", crop)
+
+            if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
+                routes = routes[:cmdenv.maxRoutes]
 
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
