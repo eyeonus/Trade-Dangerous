@@ -643,12 +643,6 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         processedStations[stationID] = lineNo
         processedItems = {}
 
-        # Clear old entries for this station.
-        db.execute(
-            "DELETE FROM StationItem WHERE station_id = ?",
-                [stationID]
-        )
-
     addItem, addBuy, addSell = items.append, buys.append, sells.append
     getItemID = itemByName.get
 
@@ -798,21 +792,27 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
                 tdenv, pricesFh, db, defaultZero
         )
  
+    db.executemany("""
+                DELETE FROM StationItem
+                 WHERE station_id = ?
+                   AND item_id = ?
+                   AND modified < IFNULL(?, CURRENT_TIMESTAMP)
+            """, items)
     if items:
         db.executemany("""
-                    INSERT INTO StationItem
+                    INSERT OR IGNORE INTO StationItem
                         (station_id, item_id, modified)
                     VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, items)
     if sells:
         db.executemany("""
-                    INSERT INTO StationSelling
+                    INSERT OR IGNORE INTO StationSelling
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, sells)
     if buys:
         db.executemany("""
-                    INSERT INTO StationBuying
+                    INSERT OR IGNORE INTO StationBuying
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, buys)
