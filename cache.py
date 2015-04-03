@@ -473,7 +473,7 @@ def getItemByNameIndex(cur):
     """
         Generate item name index.
     """
-    cur.execute("SELECT item_id, name FROM item")
+    cur.execute("SELECT item_id, UPPER(name) FROM item")
     return { name: itemID for (itemID, name) in cur }
 
 
@@ -650,29 +650,28 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         )
 
     addItem, addBuy, addSell = items.append, buys.append, sells.append
+    getItemID = itemByName.get
 
     def processItemLine(matches):
         itemName, modified = matches.group('item', 'time')
+        itemName = itemName.upper()
 
         # Look up the item ID.
-        try:
-            itemID = itemByName[itemName]
-        except KeyError:
-            itemID = -1
+        itemID = getItemID(itemName, -1)
         if itemID < 0:
             oldName = itemName
             itemName = corrections.correctItem(itemName)
             if itemName == DELETED:
                 DEBUG1("DELETED {}", oldName)
                 return
-            try:
-                itemID = itemByName[itemName]
-                DEBUG1("Renamed {} -> {}", oldName, itemName)
-            except KeyError:
+            itemName = itemName.upper()
+            itemID = getItemID(itemName, -1)
+            if itemID < 0:
                 ignoreOrWarn(
                     UnknownItemError(priceFile, lineNo, itemName)
                 )
                 return
+            DEBUG1("Renamed {} -> {}", oldName, itemName)
 
         # Check for duplicate items within the station.
         if itemID in processedItems:
@@ -822,7 +821,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
 
     tdenv.NOTE(
             "Import complete: "
-                "{:n} items ({:n} buyers, {:n} sellers) "
+                "{:n} items ({:n} buy, {:n} sell) "
                 "for {:n} stations "
                 "in {:n} systems",
                     len(items),

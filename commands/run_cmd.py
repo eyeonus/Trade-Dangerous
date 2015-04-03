@@ -51,6 +51,11 @@ switches = [
                 metavar='SYSTEM',
                 default=None,
         ),
+        ParseArgument('--loop',
+                help='Return to the starting station.',
+                action='store_true',
+                default=False,
+        ),
     ),
     ParseArgument('--via',
             help='Require specified systems/stations to be en-route.',
@@ -120,7 +125,7 @@ switches = [
             dest='maxAge',
         ),
     ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+            help='Limit the padsize to this ship size (S,M,L or ? for unknown).',
             metavar='PADSIZES',
             dest='padSize',
         ),
@@ -734,6 +739,12 @@ def validateRunArguments(tdb, cmdenv, calc):
         if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
             raise CommandLineError("Insurance leaves no margin for trade")
 
+    if cmdenv.loop:
+        if cmdenv.unique:
+            raise CommandLineError("Cannot use --unique and --loop together")
+        if cmdenv.direct:
+            raise CommandLineError("Cannot use --direct and --loop together")
+
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
 
@@ -788,7 +799,7 @@ def validateRunArguments(tdb, cmdenv, calc):
         ]
         cmdenv.destinations = [
             dest for dest in cmdenv.destinations
-            if destination.system in viaSystems
+            if dest.system in viaSystems
         ]
         cmdenv.destSystems = [
             dest.system for dest in cmdenv.destinations
@@ -904,8 +915,8 @@ def checkReachability(tdb, cmdenv):
 
             # Were there just not enough hops?
             jumpLimit = cmdenv.maxJumpsPer * cmdenv.hops
-            if jumpLimit < len(route):
-                routeJumps = len(route) - 1
+            routeJumps = len(route) - 1
+            if jumpLimit < routeJumps:
                 hopsRequired = math.ceil(routeJumps / cmdenv.maxJumpsPer)
                 jumpsRequired = math.ceil(routeJumps / cmdenv.hops)
                 raise CommandLineError(
@@ -985,6 +996,7 @@ def run(results, cmdenv, tdb):
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
+    maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
 
     # seed the route table with starting places
     startCr = cmdenv.credits - cmdenv.insurance
@@ -1011,13 +1023,19 @@ def run(results, cmdenv, tdb):
     results.summary.exception = ""
 
     pruneMod = cmdenv.pruneScores / 100
+    distancePruning = (cmdenv.destPlace and not cmdenv.direct) or (cmdenv.loop)
+    if distancePruning and not cmdenv.loop:
+        stopSystems = {stop.system for stop in stopStations}
 
+    loopRoutes = []
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
             restrictTo = set(stopStations)
+            manualRestriction = bool(cmdenv.destPlace)
         elif len(viaSet) > cmdenv.adhocHops:
             restrictTo = viaSet
+            manualRestriction = True
 
         if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
             routes.sort()
@@ -1028,6 +1046,21 @@ def run(results, cmdenv, tdb):
 
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
                 routes = routes[:cmdenv.maxRoutes]
+
+        if distancePruning:
+            remainingDistance = (numHops - hopNo) * maxHopDistLy
+            def routeStillHasAChance(r):
+                distanceFn = r.lastSystem.distanceTo
+                if cmdenv.loop:
+                    return distanceFn(r.firstSystem) <= remainingDistance
+                else:
+                    return any(stop for stop in stopSystems if distanceFn(stop) <= remainingDistance)
+
+            preCrop = len(routes)
+            routes[:] = [x for x in routes if routeStillHasAChance(x)]
+            pruned = preCrop - len(routes)
+            if pruned:
+                cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
 
         if cmdenv.progress:
             print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
@@ -1053,7 +1086,7 @@ def run(results, cmdenv, tdb):
         if not newRoutes:
             checkReachability(tdb, cmdenv)
             if hopNo > 0:
-                if restrictTo:
+                if restrictTo and manualRestriction:
                     results.summary.exception += routeFailedRestrictions(
                         tdb, cmdenv, restrictTo, maxLs, hopNo
                     )
@@ -1098,7 +1131,20 @@ def run(results, cmdenv, tdb):
             )
             if routes[0].lastSystem is goalSystem:
                 cmdenv.NOTE("Goal system reached!")
+                routes = routes[:1]
                 break
+
+        if cmdenv.loop:
+            for route in routes:
+                if route.lastStation == route.firstStation:
+                    loopRoutes.append(route)
+
+    if cmdenv.loop:
+        routes = loopRoutes
+
+        # normalise the scores for fairness...
+        for route in routes:
+            route.score /= len(route.hops)
 
     if not routes:
         raise NoDataError(

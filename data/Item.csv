@@ -58,6 +58,8 @@ unq:name@Category.category_id,unq:name,ui_order
 'Minerals','Painite',7
 'Minerals','Rutile',8
 'Minerals','Uraninite',9
+'Salvage','AI Relics',1
+'Salvage','Antiquities',2
 'Slavery','Imperial Slaves',1
 'Slavery','Slaves',2
 'Technology','Advanced Catalysers',1
