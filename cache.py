@@ -791,44 +791,77 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
         warnings, items, buys, sells, numSys, numStn = processPrices(
                 tdenv, pricesFh, db, defaultZero
         )
- 
+
+    class Counter:
+        def __init__(self, tbl, skipFirstCount=False):
+            self.tbl = tbl
+            if not skipFirstCount:
+                self.count
+        @property
+        def count(self):
+            self.lastCount = db.execute("""SELECT count(*) FROM {}""".format(self.tbl)).fetchone()[0]
+            tdenv.DEBUG0("Count for {} at {}", self.tbl, self.lastCount)
+            return self.lastCount
+        @property
+        def delta(self):
+            count = self.lastCount
+            return self.count - count
+
+    itemCounter = Counter("StationItem")
     db.executemany("""
                 DELETE FROM StationItem
                  WHERE station_id = ?
                    AND item_id = ?
                    AND modified < IFNULL(?, CURRENT_TIMESTAMP)
             """, items)
+    deletedItems = 0 - itemCounter.delta
+
+    insertedItems = insertedSells = insertedBuys = 0
     if items:
         db.executemany("""
                     INSERT OR IGNORE INTO StationItem
                         (station_id, item_id, modified)
                     VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, items)
+        insertedItems = itemCounter.delta
     if sells:
+        sellCounter = Counter("StationSelling")
         db.executemany("""
                     INSERT OR IGNORE INTO StationSelling
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, sells)
+        insertedSells = sellCounter.delta
     if buys:
+        buyCounter = Counter("StationBuying")
         db.executemany("""
                     INSERT OR IGNORE INTO StationBuying
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, buys)
+        insertedBuys = buyCounter.delta
 
     db.commit()
 
+    changes = " and ".join("{} {}".format(v, k) for k, v in {
+        "new": insertedItems - deletedItems,
+        "updated": deletedItems
+    }.items() if v) or "0"
+
     tdenv.NOTE(
             "Import complete: "
-                "{:n} items ({:n} buy, {:n} sell) "
+                "{:s} items ({:n} buy, {:n} sell) "
                 "for {:n} stations "
                 "in {:n} systems",
-                    len(items),
-                    len(buys), len(sells),
+                    changes,
+                    insertedBuys, insertedSells,
                     numStn,
                     numSys,
     )
+
+    ignoredItems = len(items) - insertedItems
+    if ignoredItems:
+        tdenv.NOTE("Ignored {} items with old data", ignoredItems)
 
 
 ######################################################################
