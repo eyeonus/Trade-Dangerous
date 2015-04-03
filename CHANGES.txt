@@ -2,6 +2,18 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.17.0 Apr 03 2015
+. (kfsone)
+   - (tKe) "import" behavior:
+      This change makes it so that "import" will not overwrite existing
+      data with older values.
+   - (kfsone/tKe) #211 "local" command was a mess
+    - Don't double up system names on station lines,
+    - Trail station names with dots to make those lines more distinct,
+   - (tKe) Fixed a bug that caused routes to be pruned when they shouldn't
+   - (tKe) #145 Support for unit suffixes for credits, e.g.
+      1k = 1000, 1.5m = 1,500,000, 1.2b = 1,200,000,000
+
 v6.16.1 Apr 01 2015 (In some parts of the world)
 . (kfsone) "old" sub-command
    - Added a "--route" option: which probably doesn't do what you think,
