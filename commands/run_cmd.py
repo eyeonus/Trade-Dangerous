@@ -1052,7 +1052,7 @@ def run(results, cmdenv, tdb):
             if pruned:
                 cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
 
-        if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
+        if hopNo >= 1 and (cmdenv.maxRoutes or pruneMod):
             routes.sort()
             if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
                 crop = int(len(routes) * pruneMod)
