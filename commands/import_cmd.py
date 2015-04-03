@@ -76,6 +76,11 @@ switches = [
             "Provides a way to pass additional arguments to plugins."
         ),
     ),
+    ParseArgument('--reset',
+        help='Clear the database before importing.',
+        action='store_true',
+        default=False,
+    ),
 ]
 
 ######################################################################
@@ -155,7 +160,7 @@ def run(results, cmdenv, tdb):
             cache.regeneratePricesFile()
             return None
 
-    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh)
+    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
 
     return None
     

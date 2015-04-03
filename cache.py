@@ -643,12 +643,6 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         processedStations[stationID] = lineNo
         processedItems = {}
 
-        # Clear old entries for this station.
-        db.execute(
-            "DELETE FROM StationItem WHERE station_id = ?",
-                [stationID]
-        )
-
     addItem, addBuy, addSell = items.append, buys.append, sells.append
     getItemID = itemByName.get
 
@@ -797,38 +791,77 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
         warnings, items, buys, sells, numSys, numStn = processPrices(
                 tdenv, pricesFh, db, defaultZero
         )
- 
+
+    class Counter:
+        def __init__(self, tbl, skipFirstCount=False):
+            self.tbl = tbl
+            if not skipFirstCount:
+                self.count
+        @property
+        def count(self):
+            self.lastCount = db.execute("""SELECT count(*) FROM {}""".format(self.tbl)).fetchone()[0]
+            tdenv.DEBUG0("Count for {} at {}", self.tbl, self.lastCount)
+            return self.lastCount
+        @property
+        def delta(self):
+            count = self.lastCount
+            return self.count - count
+
+    itemCounter = Counter("StationItem")
+    db.executemany("""
+                DELETE FROM StationItem
+                 WHERE station_id = ?
+                   AND item_id = ?
+                   AND modified < IFNULL(?, CURRENT_TIMESTAMP)
+            """, items)
+    deletedItems = 0 - itemCounter.delta
+
+    insertedItems = insertedSells = insertedBuys = 0
     if items:
         db.executemany("""
-                    INSERT INTO StationItem
+                    INSERT OR IGNORE INTO StationItem
                         (station_id, item_id, modified)
                     VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, items)
+        insertedItems = itemCounter.delta
     if sells:
+        sellCounter = Counter("StationSelling")
         db.executemany("""
-                    INSERT INTO StationSelling
+                    INSERT OR IGNORE INTO StationSelling
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, sells)
+        insertedSells = sellCounter.delta
     if buys:
+        buyCounter = Counter("StationBuying")
         db.executemany("""
-                    INSERT INTO StationBuying
+                    INSERT OR IGNORE INTO StationBuying
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, buys)
+        insertedBuys = buyCounter.delta
 
     db.commit()
 
+    changes = " and ".join("{} {}".format(v, k) for k, v in {
+        "new": insertedItems - deletedItems,
+        "updated": deletedItems
+    }.items() if v) or "0"
+
     tdenv.NOTE(
             "Import complete: "
-                "{:n} items ({:n} buy, {:n} sell) "
+                "{:s} items ({:n} buy, {:n} sell) "
                 "for {:n} stations "
                 "in {:n} systems",
-                    len(items),
-                    len(buys), len(sells),
+                    changes,
+                    insertedBuys, insertedSells,
                     numStn,
                     numSys,
     )
+
+    ignoredItems = len(items) - insertedItems
+    if ignoredItems:
+        tdenv.NOTE("Ignored {} items with old data", ignoredItems)
 
 
 ######################################################################
@@ -1145,7 +1178,9 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
 
     if reset:
         tdenv.DEBUG0("Resetting price data")
-        tdb.getDB().execute("DELETE FROM StationItem")
+        with tdb.getDB() as db:
+            db.execute("DELETE FROM StationItem")
+            db.commit()
 
     tdenv.DEBUG0("Importing data from {}".format(str(path)))
     processPricesFile(tdenv,
