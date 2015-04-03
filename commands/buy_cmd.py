@@ -84,14 +84,14 @@ switches = [
         help='Limit to prices above Ncr',
         metavar='N',
         dest='gt',
-        type=int,
+        type="credits",
     ),
     ParseArgument(
         '--lt',
         help='Limit to prices below Ncr',
         metavar='N',
         dest='lt',
-        type=int,
+        type="credits",
     ),
 ]
 

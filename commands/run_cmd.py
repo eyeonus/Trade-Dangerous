@@ -25,7 +25,7 @@ arguments = [
     ParseArgument('--credits',
             help='Starting credits.',
             metavar='CR',
-            type=int,
+            type="credits",
         ),
 ]
 
@@ -150,13 +150,13 @@ switches = [
     ParseArgument('--gain-per-ton', '--gpt',
             help='Specify the minimum gain per ton of cargo',
             dest='minGainPerTon',
-            type=int,
+            type="credits",
             default=1
         ),
     ParseArgument('--max-gain-per-ton', '--mgpt',
             help='Specify the maximum gain per ton of cargo',
             dest='maxGainPerTon',
-            type=int,
+            type="credits",
             default=10000
         ),
     ParseArgument('--unique',
@@ -176,7 +176,7 @@ switches = [
             help='Reserve at least this many credits to cover insurance.',
             default=0,
             metavar='CR',
-            type=int,
+            type="credits",
         ),
     ParseArgument('--routes',
             help='Maximum number of routes to show. DEFAULT: 1',
