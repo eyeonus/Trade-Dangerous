@@ -237,8 +237,8 @@ def is_change(tdb, sysinfo):
         return False
     if name in ignore:
         return False
-    x, y, z = sysinfo['coord']
     try:
+        x, y, z = sysinfo['coord']
         place = tdb.systemByName[name]
         if place.posX == x and place.posY == y and place.posZ == z:
             return False
