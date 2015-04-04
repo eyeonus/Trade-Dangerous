@@ -344,6 +344,11 @@ RUN sub-command:
          --mgpt 2000
          --mgpt 2k
 
+     --stock N
+       Only consider sales where the station has this many units in stock,
+       e.g.
+         --stock 1000
+
      --pad-size SML?
      --pad SML?
      -p

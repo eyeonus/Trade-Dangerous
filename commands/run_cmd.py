@@ -222,6 +222,11 @@ switches = [
             default=False,
             action='store_true',
         ),
+    ParseArgument('--stock',
+            help='Only considers item which have at least this much stock.',
+            default=None,
+            type=int,
+        ),
 ]
 
 ######################################################################

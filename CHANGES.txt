@@ -2,6 +2,13 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.17.2 Apr 04 2015
+. (kfsone) "buy" command
+  - Show ship costs when listing multiple ships,
+. (kfsone) "run" command
+  - Added "--stock" option to set minimum stock level required,
+  - Added extra detail to "--progress" output,
+
 v6.17.1 Apr 04 2015
 . (kfsone) Various minor tweaks
 . (kfsone) Improvements to presentation of edscupdate

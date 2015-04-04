@@ -418,6 +418,8 @@ class TradeCalc(object):
                 Iterable of [Item] that prevents items being loaded
             tdenv.maxAge
                 Maximum age in days of data that gets loaded
+            tdenv.stock
+                Require at least this much stock to load an item
         """
         if not tdenv:
             tdenv = tdb.tdenv
@@ -426,6 +428,7 @@ class TradeCalc(object):
         self.defaultFit = fit or self.fastFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
+        minStock = self.tdenv.stock or 1
 
         db = tdb.getDB()
 
@@ -451,23 +454,25 @@ class TradeCalc(object):
             raise TradeException("No items to load.")
         loadItemIDs = ",".join(str(ID) for ID in loadItemIDs)
 
-        def load_items(tableName, index):
+        def load_items(tableName, index, andWhere=""):
             lastStnID, stnAppend = 0, None
             count = 0
-            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
-            cur = db.execute("""
+            stmt = """
                     SELECT  station_id, item_id, price, units, level,
                             strftime('%s', modified),
                             modified
                       FROM  {}
-                     WHERE  item_id IN ({ids})
+                     WHERE  item_id IN ({ids}) {andWhere}
                       {ageClause}
             """.format(
                 tableName,
                 ageClause=ageClause,
                 ids=loadItemIDs,
-                )
+                andWhere=andWhere,
             )
+            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
+            tdenv.DEBUG2(stmt)
+            cur = db.execute(stmt)
             now = int(time.time())
             for stnID, itmID, cr, units, lev, timestamp, modified in cur:
                 if stnID != lastStnID:
@@ -485,7 +490,10 @@ class TradeCalc(object):
             tdenv.DEBUG0("Loaded {} selling values".format(count))
 
         self.stationsSelling = defaultdict(list)
-        load_items("StationSelling", self.stationsSelling)
+        load_items(
+            "StationSelling", self.stationsSelling,
+            andWhere="AND (units >= {})".format(minStock)
+        )
 
         self.stationsBuying = defaultdict(list)
         load_items("StationBuying", self.stationsBuying)

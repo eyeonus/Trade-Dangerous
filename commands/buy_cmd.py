@@ -139,12 +139,12 @@ def sql_query(cmdenv, tdb, queries, mode):
     # Constraints
     idList = ','.join(str(ID) for ID in queries.keys())
     if mode is SHIP_MODE:
-        tables = "ShipVendor AS ss"
+        tables = "ShipVendor AS ss INNER JOIN Ship AS sh USING (ship_id)"
         constraints = ["(ship_id IN ({}))".format(idList)]
         columns = [
             'ss.ship_id',
             'ss.station_id',
-            '0',
+            'sh.cost',
             '1',
             "0",
             ]
@@ -304,9 +304,10 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn(results.summary.mode, '<', maxItmLen,
                 key=lambda row: row.item.name()
         )
-    if mode is not SHIP_MODE:
+    if mode is not SHIP_MODE or not singleMode:
         stnRowFmt.addColumn('Cost', '>', 10, 'n',
                 key=lambda row: row.price)
+    if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Stock', '>', 10,
                 key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
 
