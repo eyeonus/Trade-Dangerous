@@ -8,6 +8,7 @@ v6.17.2 Apr 04 2015
 . (kfsone) "run" command
   - Added "--stock" option to set minimum stock level required,
   - Added extra detail to "--progress" output,
+. (gazelle) Bash completition improvements
 
 v6.17.1 Apr 04 2015
 . (kfsone) Various minor tweaks
