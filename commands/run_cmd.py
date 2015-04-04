@@ -977,6 +977,24 @@ def routeFailedRestrictions(
         )
     )
 
+
+def extraRouteProgress(routes):
+    bestGain = max(routes, key=lambda route: route.gainCr).gainCr
+    worstGain = min(routes, key=lambda route: route.gainCr).gainCr
+    if bestGain != worstGain:
+        gainText = "{:n}-{:n}cr gain".format(worstGain, bestGain)
+    else:
+        gainText = "{:n}cr gain".format(bestGain)
+
+    bestGPT = int(max(routes, key=lambda route: route.gpt).gpt)
+    worstGPT = int(min(routes, key=lambda route: route.gpt).gpt)
+    if bestGPT != worstGPT:
+        gptText = "{:n}-{:n}cr/ton".format(worstGPT, bestGPT)
+    else:
+        gptText = "{:n}cr/ton".format(bestGPT)
+
+    return ".. {}, {}".format(gainText, gptText)
+
 ######################################################################
 # Perform query and populate result set
 
@@ -1063,7 +1081,13 @@ def run(results, cmdenv, tdb):
                 routes = routes[:cmdenv.maxRoutes]
 
         if cmdenv.progress:
-            print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
+            extra = ""
+            if hopNo > 0 and cmdenv.detail > 1:
+                extra = extraRouteProgress(routes)
+            print(
+                "* Hop {:3n}: {:.>10n} origins {}"
+                .format(hopNo+1, len(routes), extra)
+            )
         elif cmdenv.debug:
             cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
@@ -1184,5 +1208,3 @@ def render(results, cmdenv, tdb):
         assert cmdenv.routes == 1
         cl = Checklist(tdb, cmdenv)
         cl.run(routes[0], cmdenv.credits)
-
-
