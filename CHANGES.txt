@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.17.1 Apr 04 2015
+. (kfsone) Various minor tweaks
+. (kfsone) Improvements to presentation of edscupdate
+. (kfsone) Added another 30 or so systems
+. (kfsone) edscupdate now ignores any systems that start with "PLAA EURIK"
+
 v6.17.0 Apr 03 2015
 .(tKe) "import" behavior:
    This change makes it so that "import" will not overwrite existing

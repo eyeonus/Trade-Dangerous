@@ -112,6 +112,10 @@ ignore = [
     "MINIMAR",
     "MV URSAE MAJORIS",
     "PLAA EURK BU-Q B5-0",
+
+    "COL 285 SECTOR LP-S B-19-1",
+    "COL 285 SECTOR LP-S B-19-2",
+    "CORE SYS SECTOR CB-0 A6-5",
 ]
 
 
@@ -233,7 +237,7 @@ def parse_arguments():
 def is_change(tdb, sysinfo):
     """ Check if a system's EDSC data is different than TDs """
     name = sysinfo['name'] = sysinfo['name'].upper()
-    if name.startswith("argetl"):
+    if name.startswith("PLAA EURIK"):
         return False
     if name in ignore:
         return False
@@ -411,7 +415,29 @@ def main():
         for sysinfo in systems:
             current += 1
             name = sysinfo['name']
+            created = sysinfo['createdate']
             x, y, z = sysinfo['coord']
+
+            print(
+                "\n"
+                "-----------------------------------------------\n"
+                "{syidlab:.<12}: {syid}\n"
+                "{conflab:.<12}: {conf}\n"
+                "{crealab:.<12}: {crcm} {crts}\n"
+                "{updtlab:.<12}: {upcm} {upts}\n"
+                .format(
+                    syidlab="ID",
+                    conflab="Confidence",
+                    crealab="Created",
+                    updtlab="Updated",
+                    syid=sysinfo['id'],
+                    conf=sysinfo['cr'],
+                    crcm=sysinfo['commandercreate'],
+                    crts=created,
+                    upcm=sysinfo.get('commanderupdate', '[never]'),
+                    upts=sysinfo.get('updatedate', ''),
+                )
+            )
 
             check_database(tdb, name, x, y, z)
 
@@ -419,8 +445,6 @@ def main():
             if change:
                 oldDist = argv.startSys.distanceTo(sysinfo['place'])
                 print("Old Distance: {:.2f}ly".format(oldDist))
-
-            created = sysinfo['createdate']
 
             distance = get_distance(tdb, argv.startSys, x, y, z)
             clip.copy_text(name)
