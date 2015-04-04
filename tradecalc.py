@@ -115,6 +115,10 @@ class TradeLoad(namedtuple('TradeLoad', [
             return False
         return self.costCr < rhs.costCr
 
+    @property
+    def gpt(self):
+        return self.gainCr / self.units if self.units else 0
+
 
 emptyLoad = TradeLoad([], 0, 0, 0)
 
@@ -163,6 +167,13 @@ class Route(object):
         """ Returns the last system in the route. """
         return self.route[-1].system
 
+    @property
+    def gpt(self):
+        hops = self.hops
+        if hops:
+            return sum(hop.gpt for hop in hops) / len(hops)
+        return 0
+    
     def plus(self, dst, hop, jumps, score):
         """
         Returns a new route describing the sum of this route plus a new hop.
