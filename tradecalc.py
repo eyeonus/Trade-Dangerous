@@ -248,7 +248,7 @@ class Route(object):
             else:
                 hopFmt = "\n" + hopFmt
                 jumpsFmt = None
-                dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton) => {credits:n}cr\n"
+                dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton)\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
                 "Finish at {station} "
