@@ -239,14 +239,19 @@ class Route(object):
             if detail > 2:
                 hopStepFmt += ", total: {ttlcost:>10n}cr"
             hopStepFmt += "\n"
-            jumpsFmt = ("  Jump {jumps}\n")
-            dockFmt = (
-                "  Unload at {station} => Gain {gain:n}cr "
-                "({tongain:n}cr/ton) => {credits:n}cr\n"
-            )
+            if not tdenv.summary:
+                jumpsFmt = ("  Jump {jumps}\n")
+                dockFmt = (
+                    "  Unload at {station} => Gain {gain:n}cr "
+                    "({tongain:n}cr/ton) => {credits:n}cr\n"
+                )
+            else:
+                hopFmt = "\n" + hopFmt
+                jumpsFmt = None
+                dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton) => {credits:n}cr\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
-                "  Finish at {station} "
+                "Finish at {station} "
                 "gaining {gain:n}cr "
                 "=> est {credits:n}cr total\n"
             )
@@ -358,7 +363,7 @@ class Route(object):
             text += goalDistance(lastStation)
         text += footer or ""
         text += endFmt.format(
-            station=lastStation.name(),
+            station=decorateStation(lastStation),
             gain=gainCr,
             credits=credits + gainCr
         )

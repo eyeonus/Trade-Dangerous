@@ -227,6 +227,10 @@ switches = [
             default=None,
             type=int,
         ),
+    ParseArgument('--summary',
+            help='Summary layout of route instructions.',
+            action='store_true',
+        ),
 ]
 
 ######################################################################
