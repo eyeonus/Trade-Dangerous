@@ -1071,6 +1071,11 @@ def run(results, cmdenv, tdb):
 
             preCrop = len(routes)
             routes[:] = [x for x in routes if routeStillHasAChance(x)]
+            if not routes:
+                raise NoDataError(
+                    "No routes are in-range of any end stations at the end of hop {}"
+                    .format(hopNo)
+                )
             pruned = preCrop - len(routes)
             if pruned:
                 cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
