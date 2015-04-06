@@ -416,6 +416,10 @@ RUN sub-command:
        Only show routes which do not visit any station twice
 
    Other options:
+     --summary
+       Uses a slightly different format for showing trade routes,
+       especially useful for longer routes in conjunction with -vvv
+
      --routes N   DEFAULT: 1
        Shows the top N routes;
 

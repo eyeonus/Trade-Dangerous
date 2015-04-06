@@ -150,9 +150,6 @@ def run(results, cmdenv, tdb):
         row.dist = dist2 ** 0.5
         results.rows.append(row)
 
-    if cmdenv.near:
-        results.rows.sort(key=lambda row: row.dist)
-
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
             rows = results.rows
