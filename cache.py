@@ -1107,7 +1107,7 @@ def buildCache(tdb, tdenv):
 
     # Create an in-memory database to populate with our data.
     tempPath = dbPath.with_suffix(".new")
-    backupPath = dbPath.with_suffix(".prev")
+    backupPath = dbPath.with_suffix(".old")
 
     if tempPath.exists():
         tempPath.unlink()
