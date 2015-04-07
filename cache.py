@@ -705,19 +705,22 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processedItems[itemID] = lineNo
 
-        addItem((stationID, itemID, modified))
+        active = False
         if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
             addBuy((
                 stationID, itemID,
                 sellTo, demandUnits, demandLevel,
                 modified
             ))
+            active = True
         if buyFrom > 0 and stockUnits != 0 and stockLevel != 0:
             addSell((
                 stationID, itemID,
                 buyFrom, stockUnits, stockLevel,
                 modified
             ))
+            active = True
+        addItem(((stationID, itemID, modified), active))
 
     for line in priceFile:
         lineNo += 1
@@ -812,8 +815,15 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
                 DELETE FROM StationItem
                  WHERE station_id = ?
                    AND item_id = ?
+    """, [values[:2] for values, active in items if not active])
+    removedItems = 0 - itemCounter.delta
+
+    db.executemany("""
+                DELETE FROM StationItem
+                 WHERE station_id = ?
+                   AND item_id = ?
                    AND modified < IFNULL(?, CURRENT_TIMESTAMP)
-            """, items)
+            """, [values for values, active in items if active])
     deletedItems = 0 - itemCounter.delta
 
     insertedItems = insertedSells = insertedBuys = 0
@@ -822,7 +832,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
                     INSERT OR IGNORE INTO StationItem
                         (station_id, item_id, modified)
                     VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                """, items)
+                """, [values for values, active in items if active])
         insertedItems = itemCounter.delta
     if sells:
         sellCounter = Counter("StationSelling")
@@ -845,7 +855,8 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
 
     changes = " and ".join("{} {}".format(v, k) for k, v in {
         "new": insertedItems - deletedItems,
-        "updated": deletedItems
+        "updated": deletedItems,
+        "removed": removedItems,
     }.items() if v) or "0"
 
     tdenv.NOTE(
