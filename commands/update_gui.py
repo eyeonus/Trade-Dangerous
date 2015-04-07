@@ -689,19 +689,18 @@ class UpdateGUI(ScrollingCanvas):
             stock  = rowvals[3]
 
             if not paying and not asking:
-                continue
+                demand, stock = "-", "-"
+            else:
+                if paying and not demand:
+                    demand = "?"
 
-            if paying and not demand:
-                demand = "?"
-
-            if asking == 0:
-                stock = "-"
-            elif not stock:
-                stock = "?"
-
-            if re.match('^\d+$', stock):
-                if int(stock) != 0:
-                    stock += '?'
+                if asking == 0:
+                    stock = "-"
+                elif not stock:
+                    stock = "?"
+                elif re.match('^\d+$', stock):
+                    if int(stock) != 0:
+                        stock += '?'
 
             txt += ("     {item:<30s} "
                     "{paying:>10} "
