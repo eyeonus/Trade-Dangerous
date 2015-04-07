@@ -103,7 +103,7 @@ _td_import()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--plug)
+	--plug|-P)
 		opts="maddavo"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
