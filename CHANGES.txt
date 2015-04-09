@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.17.5 Apr 08 2015
+. (kfsone) Fixed problem with 'import' not updating dates
+
 v6.17.4 Apr 06 2015
 . (kfsone) Fixed issue preventing removal of items in the update UI
 . (kfsone) Added "-P" alias for "--plug" option of "import" command
