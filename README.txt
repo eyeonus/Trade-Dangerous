@@ -210,9 +210,13 @@ RUN sub-command:
 
      --credits N
      --cr N
-       How many credits to start with
+       How many credits to start with, where N can be an exact number or
+       can use a suffix such as 20k for 20,000, 2.5m for 2.5 million or
+       1.25b for 1.25 billion
        e.g.
          --credits 20000
+         --credits 20k
+         --credits 15.2m
 
      --ly-per N.NN
      --ly N.NN
@@ -240,6 +244,7 @@ RUN sub-command:
        e.g.
          --insurance 1000
          --ins 5000
+         --ins 1.2m
 
      --margin N.NN   DEFAULT: 0.01
        At the end of each hop, reduce the profit by this much (0.02 = 2%),
@@ -319,13 +324,30 @@ RUN sub-command:
          --max-days-old 7     (data less than a week old)
          -MD=2                (data less than 2 days old)
 
-     --max-gain-per-ton N
-     --mgpt N
+     --gain-per-ton credits
+     --gpt credits
+       Only consider trades which generate at least this much profit
+       per ton of cargo traded. Be aware that this can prevent TD from
+       finding highly profitable routes that would require you to take
+       a drop in profit to reach, so you may want to consider using this
+       in conjunction with --start-jumps or --end-jumps.
+       e.g.
+         --gpt 1200
+         --gpt 1.5k
+
+     --max-gain-per-ton credits
+     --mgpt credits
        DEFAULT: 10,000
        Sets an upper threshold on the maximum profit/ton that TD will
        believe. This is a way to avoid bad data.
        e.g.
          --mgpt 2000
+         --mgpt 2k
+
+     --stock N
+       Only consider sales where the station has this many units in stock,
+       e.g.
+         --stock 1000
 
      --pad-size SML?
      --pad SML?
@@ -394,6 +416,10 @@ RUN sub-command:
        Only show routes which do not visit any station twice
 
    Other options:
+     --summary
+       Uses a slightly different format for showing trade routes,
+       especially useful for longer routes in conjunction with -vvv
+
      --routes N   DEFAULT: 1
        Shows the top N routes;
 
@@ -874,9 +900,12 @@ BUY sub-command:
       Sets the range of --near (requires --near)
       --near chango --ly 10
 
-    --lt NNN
-    --gt NNN
-      Specify min (gt) and max (lt) prices for items
+    --lt credits
+    --gt credits
+      Specify min (gt) and max (lt) credit cost for items
+      e.g.
+        --gt 100
+        --lt 1.2k
 
     --pad-size SML?
     --pad SML?
@@ -927,9 +956,12 @@ SELL sub-command:
       Sets the range of --near (requires --near)
       --near chango --ly 10
 
-    --lt NNN
-    --gt NNN
-      Specify min (gt) and max (lt) prices for items
+    --lt credits
+    --gt credits
+      Specify min (gt) and max (lt) credit prices for items
+      e.g.
+        --gt 100
+        --lt 1.2k
 
     --pad-size SML?
     --pad SML?

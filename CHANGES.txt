@@ -2,6 +2,42 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.17.5 Apr 08 2015
+. (kfsone) Fixed problem with 'import' not updating dates
+
+v6.17.4 Apr 06 2015
+. (kfsone) Fixed issue preventing removal of items in the update UI
+. (kfsone) Added "-P" alias for "--plug" option of "import" command
+
+v6.17.3 Apr 05 2015
+. (kfsone) Fixed a problem when distance pruning removed everything
+. (kfsone) Added "--summary" to "run" for a cleaner summary route (use with -vvv)
+
+v6.17.2 Apr 04 2015
+. (kfsone) "buy" command
+  - Show ship costs when listing multiple ships,
+. (kfsone) "run" command
+  - Added "--stock" option to set minimum stock level required,
+  - Added extra detail to "--progress" output,
+. (gazelle) Bash completition improvements
+
+v6.17.1 Apr 04 2015
+. (kfsone) Various minor tweaks
+. (kfsone) Improvements to presentation of edscupdate
+. (kfsone) Added another 30 or so systems
+. (kfsone) edscupdate now ignores any systems that start with "PLAA EURIK"
+
+v6.17.0 Apr 03 2015
+.(tKe) "import" behavior:
+   This change makes it so that "import" will not overwrite existing
+   data with older values unless the "--reset" option is used.
+. (kfsone/tKe) #211 "local" command was a mess
+  - Don't double up system names on station lines,
+  - Trail station names with dots to make those lines more distinct,
+. (tKe) Fixed a bug that caused routes to be pruned when they shouldn't
+. (tKe) #145 Support for unit suffixes for credits, e.g.
+    1k = 1000, 1.5m = 1,500,000, 1.2b = 1,200,000,000
+
 v6.16.1 Apr 01 2015 (In some parts of the world)
 . (kfsone) "old" sub-command
    - Added a "--route" option: which probably doesn't do what you think,
@@ -39,7 +75,7 @@ v6.14.5 Mar 23 2015
 . (kfsone) Solved the missing 6.14.3 commits
 
 v6.14.4 Mar 22 2015
-. (gazelle) Bernd's "getsation.sh" script (see scripts/README.txt)
+. (gazelle) Bernd's "getstation.sh" script (see scripts/README.txt)
 . (kfsone) Fixed #209 Exception when you couldn't afford something,
 . (kfsone) Fixed #210 Exception when --from not reached,
 . (kfsone) Added "Salvage" Category,

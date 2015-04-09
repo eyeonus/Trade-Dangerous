@@ -115,6 +115,10 @@ class TradeLoad(namedtuple('TradeLoad', [
             return False
         return self.costCr < rhs.costCr
 
+    @property
+    def gpt(self):
+        return self.gainCr / self.units if self.units else 0
+
 
 emptyLoad = TradeLoad([], 0, 0, 0)
 
@@ -163,6 +167,13 @@ class Route(object):
         """ Returns the last system in the route. """
         return self.route[-1].system
 
+    @property
+    def gpt(self):
+        hops = self.hops
+        if hops:
+            return sum(hop.gpt for hop in hops) / len(hops)
+        return 0
+    
     def plus(self, dst, hop, jumps, score):
         """
         Returns a new route describing the sum of this route plus a new hop.
@@ -228,14 +239,19 @@ class Route(object):
             if detail > 2:
                 hopStepFmt += ", total: {ttlcost:>10n}cr"
             hopStepFmt += "\n"
-            jumpsFmt = ("  Jump {jumps}\n")
-            dockFmt = (
-                "  Unload at {station} => Gain {gain:n}cr "
-                "({tongain:n}cr/ton) => {credits:n}cr\n"
-            )
+            if not tdenv.summary:
+                jumpsFmt = ("  Jump {jumps}\n")
+                dockFmt = (
+                    "  Unload at {station} => Gain {gain:n}cr "
+                    "({tongain:n}cr/ton) => {credits:n}cr\n"
+                )
+            else:
+                hopFmt = "\n" + hopFmt
+                jumpsFmt = None
+                dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton)\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
-                "  Finish at {station} "
+                "Finish at {station} "
                 "gaining {gain:n}cr "
                 "=> est {credits:n}cr total\n"
             )
@@ -347,7 +363,7 @@ class Route(object):
             text += goalDistance(lastStation)
         text += footer or ""
         text += endFmt.format(
-            station=lastStation.name(),
+            station=decorateStation(lastStation),
             gain=gainCr,
             credits=credits + gainCr
         )
@@ -407,6 +423,8 @@ class TradeCalc(object):
                 Iterable of [Item] that prevents items being loaded
             tdenv.maxAge
                 Maximum age in days of data that gets loaded
+            tdenv.stock
+                Require at least this much stock to load an item
         """
         if not tdenv:
             tdenv = tdb.tdenv
@@ -415,6 +433,7 @@ class TradeCalc(object):
         self.defaultFit = fit or self.fastFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
+        minStock = self.tdenv.stock or 1
 
         db = tdb.getDB()
 
@@ -440,23 +459,25 @@ class TradeCalc(object):
             raise TradeException("No items to load.")
         loadItemIDs = ",".join(str(ID) for ID in loadItemIDs)
 
-        def load_items(tableName, index):
+        def load_items(tableName, index, andWhere=""):
             lastStnID, stnAppend = 0, None
             count = 0
-            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
-            cur = db.execute("""
+            stmt = """
                     SELECT  station_id, item_id, price, units, level,
                             strftime('%s', modified),
                             modified
                       FROM  {}
-                     WHERE  item_id IN ({ids})
+                     WHERE  item_id IN ({ids}) {andWhere}
                       {ageClause}
             """.format(
                 tableName,
                 ageClause=ageClause,
                 ids=loadItemIDs,
-                )
+                andWhere=andWhere,
             )
+            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
+            tdenv.DEBUG2(stmt)
+            cur = db.execute(stmt)
             now = int(time.time())
             for stnID, itmID, cr, units, lev, timestamp, modified in cur:
                 if stnID != lastStnID:
@@ -474,7 +495,10 @@ class TradeCalc(object):
             tdenv.DEBUG0("Loaded {} selling values".format(count))
 
         self.stationsSelling = defaultdict(list)
-        load_items("StationSelling", self.stationsSelling)
+        load_items(
+            "StationSelling", self.stationsSelling,
+            andWhere="AND (units >= {})".format(minStock)
+        )
 
         self.stationsBuying = defaultdict(list)
         load_items("StationBuying", self.stationsBuying)

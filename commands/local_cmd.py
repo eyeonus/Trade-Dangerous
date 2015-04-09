@@ -197,8 +197,8 @@ def render(results, cmdenv, tdb):
         )
         maxLsLen = max(maxLsLen, 5)
         stnRowFmt = RowFormat(prefix='  /  ').append(
-                ColumnFormat("Station", '<', maxStnLen + 1,
-                    key=lambda row: row.station.str())
+                ColumnFormat("Station", '.<', maxStnLen + 2,
+                    key=lambda row: row.station.dbname)
         ).append(
                 ColumnFormat("StnLs", '>', maxLsLen,
                     key=lambda row: row.station.distFromStar())

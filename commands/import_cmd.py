@@ -22,9 +22,9 @@ except ImportError:
 # Parser config
 
 help=(
-    "Imports price data from a '.prices' format file. "
-    "Previous data for the stations included in the file "
-    "is removed, but other stations are not affected."
+    "TD data import system. On its own, this command lets you "
+    "merge station prices from a '.prices' file (entries in the "
+    "file that are older than your local data are not loaded)."
 )
 name='import'
 epilog=(
@@ -43,7 +43,7 @@ switches = [
             type=str,
             default=None,
         ),
-        ParseArgument('--plug',
+        ParseArgument('--plug', '-P',
                 help="Use the specified import plugin.",
                 type=str,
                 default=None,
@@ -75,6 +75,11 @@ switches = [
         help=(
             "Provides a way to pass additional arguments to plugins."
         ),
+    ),
+    ParseArgument('--reset',
+        help='Clear the database before importing.',
+        action='store_true',
+        default=False,
     ),
 ]
 
@@ -155,7 +160,6 @@ def run(results, cmdenv, tdb):
             cache.regeneratePricesFile()
             return None
 
-    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh)
+    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
 
     return None
-    

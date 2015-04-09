@@ -525,9 +525,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     processedStations = {}
     processedSystems = set()
     processedItems = {}
+    stationItemDates = {}
     itemPrefix = ""
     DELETED = corrections.DELETED
-    items, buys, sells = [], [], []
+    items, zeros, buys, sells = [], [], [], []
 
     warnings = 0
     localAdd = 0
@@ -552,8 +553,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     def changeStation(matches):
         nonlocal facility, stationID
         nonlocal processedStations, processedItems, localAdd
+        nonlocal stationItemDates
 
         ### Change current station
+        stationItemDates = {}
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
         corrected = False
@@ -627,29 +630,28 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                     facility, newID
             )
             localAdd += 1
-
-        # Check for duplicates
-        if newID in processedStations:
-            if corrected:
-                # This is probably the old entry.
-                return
-            raise MultipleStationEntriesError(
-                        priceFile, lineNo, facility,
-                        processedStations[newID]
-                    )
+        elif newID in processedStations:
+            # Check for duplicates
+            if not corrected:
+                raise MultipleStationEntriesError(
+                    priceFile, lineNo, facility,
+                    processedStations[newID]
+                )
 
         stationID = newID
         processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
+        
+        cur = db.execute("""
+            SELECT item_id, modified
+              FROM StationItem
+             WHERE station_id = ?
+        """, [stationID])
+        stationItemDates = { ID: modified for ID, modified in cur }
 
-        # Clear old entries for this station.
-        db.execute(
-            "DELETE FROM StationItem WHERE station_id = ?",
-                [stationID]
-        )
-
-    addItem, addBuy, addSell = items.append, buys.append, sells.append
+    addItem, addZero = items.append, zeros.append
+    addBuy, addSell = buys.append, sells.append
     getItemID = itemByName.get
 
     def processItemLine(matches):
@@ -672,6 +674,15 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 )
                 return
             DEBUG1("Renamed {} -> {}", oldName, itemName)
+
+        if modified and modified != 'now':
+            lastModified = stationItemDates.get(itemID, None)
+            if lastModified and modified <= lastModified:
+                DEBUG1("Ignoring {} @ {}: {} <= {}".format(
+                    itemName, facility,
+                    modified, lastModified,
+                ))
+                return
 
         # Check for duplicate items within the station.
         if itemID in processedItems:
@@ -711,19 +722,22 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processedItems[itemID] = lineNo
 
-        addItem((stationID, itemID, modified))
-        if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
-            addBuy((
-                stationID, itemID,
-                sellTo, demandUnits, demandLevel,
-                modified
-            ))
-        if buyFrom > 0 and stockUnits != 0 and stockLevel != 0:
-            addSell((
-                stationID, itemID,
-                buyFrom, stockUnits, stockLevel,
-                modified
-            ))
+        if sellTo == 0 and buyFrom == 0:
+            addZero((stationID, itemID))
+        else:
+            addItem((stationID, itemID, modified))
+            if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
+                addBuy((
+                    stationID, itemID,
+                    sellTo, demandUnits, demandLevel,
+                    modified
+                ))
+            if buyFrom > 0 and stockUnits != 0 and stockLevel != 0:
+                addSell((
+                    stationID, itemID,
+                    buyFrom, stockUnits, stockLevel,
+                    modified
+                ))
 
     for line in priceFile:
         lineNo += 1
@@ -785,7 +799,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             "if you /need/ to persist them."
         )
 
-    return warnings, items, buys, sells, numSys, numStn
+    return warnings, items, zeros, buys, sells, numSys, numStn
 
 
 ######################################################################
@@ -794,41 +808,87 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
     with pricesFh or pricesPath.open('rU') as pricesFh:
-        warnings, items, buys, sells, numSys, numStn = processPrices(
+        warnings, items, zeros, buys, sells, numSys, numStn = processPrices(
                 tdenv, pricesFh, db, defaultZero
         )
- 
+
+    class Counter:
+        def __init__(self, tbl, skipFirstCount=False):
+            self.tbl = tbl
+            if not skipFirstCount:
+                self.count
+        @property
+        def count(self):
+            self.lastCount = db.execute("""SELECT count(*) FROM {}""".format(self.tbl)).fetchone()[0]
+            tdenv.DEBUG0("Count for {} at {}", self.tbl, self.lastCount)
+            return self.lastCount
+        @property
+        def delta(self):
+            count = self.lastCount
+            return self.count - count
+
+    itemCounter = Counter("StationItem")
+    db.executemany("""
+                DELETE FROM StationItem
+                 WHERE station_id = ?
+                   AND item_id = ?
+    """, zeros)
+    removedItems = 0 - itemCounter.delta
+
+    db.executemany("""
+                DELETE FROM StationItem
+                 WHERE station_id = ?
+                   AND item_id = ?
+            """, [item[:2] for item in items])
+    deletedItems = 0 - itemCounter.delta
+
+    insertedItems = insertedSells = insertedBuys = 0
     if items:
         db.executemany("""
-                    INSERT INTO StationItem
+                    INSERT OR IGNORE INTO StationItem
                         (station_id, item_id, modified)
                     VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, items)
+        insertedItems = itemCounter.delta
     if sells:
+        sellCounter = Counter("StationSelling")
         db.executemany("""
-                    INSERT INTO StationSelling
+                    INSERT OR IGNORE INTO StationSelling
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, sells)
+        insertedSells = sellCounter.delta
     if buys:
+        buyCounter = Counter("StationBuying")
         db.executemany("""
-                    INSERT INTO StationBuying
+                    INSERT OR IGNORE INTO StationBuying
                         (station_id, item_id, price, units, level, modified)
                     VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
                 """, buys)
+        insertedBuys = buyCounter.delta
 
     db.commit()
 
+    changes = " and ".join("{} {}".format(v, k) for k, v in {
+        "new": insertedItems - deletedItems,
+        "updated": deletedItems,
+        "removed": removedItems,
+    }.items() if v) or "0"
+
     tdenv.NOTE(
             "Import complete: "
-                "{:n} items ({:n} buy, {:n} sell) "
+                "{:s} items ({:n} buy, {:n} sell) "
                 "for {:n} stations "
                 "in {:n} systems",
-                    len(items),
-                    len(buys), len(sells),
+                    changes,
+                    insertedBuys, insertedSells,
                     numStn,
                     numSys,
     )
+
+    ignoredItems = len(items) - insertedItems
+    if ignoredItems:
+        tdenv.NOTE("Ignored {} items with old data", ignoredItems)
 
 
 ######################################################################
@@ -1063,7 +1123,7 @@ def buildCache(tdb, tdenv):
 
     # Create an in-memory database to populate with our data.
     tempPath = dbPath.with_suffix(".new")
-    backupPath = dbPath.with_suffix(".prev")
+    backupPath = dbPath.with_suffix(".old")
 
     if tempPath.exists():
         tempPath.unlink()
@@ -1145,7 +1205,9 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
 
     if reset:
         tdenv.DEBUG0("Resetting price data")
-        tdb.getDB().execute("DELETE FROM StationItem")
+        with tdb.getDB() as db:
+            db.execute("DELETE FROM StationItem")
+            db.commit()
 
     tdenv.DEBUG0("Importing data from {}".format(str(path)))
     processPricesFile(tdenv,
