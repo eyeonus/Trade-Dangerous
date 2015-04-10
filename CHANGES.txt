@@ -2,6 +2,8 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Apr 09 2015: ~200 new systems
+
 v6.17.5 Apr 08 2015
 . (kfsone) Fixed problem with 'import' not updating dates
 
