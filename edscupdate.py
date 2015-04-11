@@ -35,7 +35,7 @@ import sys
 import tradedb
 import tradeenv
 
-DEFAULT_DATE = "2015-03-01 00:00:00"
+DEFAULT_DATE = "2015-04-01 00:00:00"
 
 
 # Systems we know are bad.
