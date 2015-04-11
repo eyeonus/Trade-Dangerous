@@ -68,23 +68,25 @@ switches = [
                     'e.g. "dom.App" or "domap" matches "Dom. Appliances".',
             action='append',
         ),
-    ParseArgument('--hops',
-            help='Number of hops (station-to-station) to run.',
-            default=2,
-            type=int,
-            metavar='N',
+    MutuallyExclusiveGroup(
+        ParseArgument('--direct',
+            help="Assume destinations are reachable without worrying "
+                "about jumps.",
+            action='store_true',
         ),
+        ParseArgument('--hops',
+                help='Number of hops (station-to-station) to run.',
+                default=2,
+                type=int,
+                metavar='N',
+            ),
+    ),
     ParseArgument('--jumps-per',
         help='Maximum number of jumps (system-to-system) per hop.',
         default=2,
         dest='maxJumpsPer',
         metavar='N',
         type=int,
-    ),
-    ParseArgument('--direct',
-        help="Assume destinations are reachable without worrying "
-             "about jumps.",
-        action='store_true',
     ),
     ParseArgument('--ly-per',
             help='Maximum light years per jump.',
@@ -724,6 +726,7 @@ def validateRunArguments(tdb, cmdenv, calc):
         raise CommandLineError("Negative jumps: you're already there?")
     if cmdenv.direct:
         cmdenv.hops = 1
+        cmdenv.maxJumpsPer = cmdenv.maxLyPer = 10000
 
     if cmdenv.capacity is None:
         raise CommandLineError("Missing '--capacity'")
@@ -731,9 +734,9 @@ def validateRunArguments(tdb, cmdenv, calc):
         raise CommandLineError("Missing '--ly-per'")
     if cmdenv.capacity < 0:
         raise CommandLineError("Invalid (negative) cargo capacity")
-    if cmdenv.capacity > 1200:
+    if cmdenv.capacity > 1500:
         raise CommandLineError(
-            "Capacity > 1200 not supported (you specified {})"
+            "Capacity > 1500 not supported (you specified {})"
             .format( cmdenv.capacity)
         )
 
@@ -1023,7 +1026,6 @@ def run(results, cmdenv, tdb):
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
-    maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
 
     # seed the route table with starting places
     startCr = cmdenv.credits - cmdenv.insurance
@@ -1051,8 +1053,10 @@ def run(results, cmdenv, tdb):
 
     pruneMod = cmdenv.pruneScores / 100
     distancePruning = (cmdenv.destPlace and not cmdenv.direct) or (cmdenv.loop)
-    if distancePruning and not cmdenv.loop:
-        stopSystems = {stop.system for stop in stopStations}
+    if distancePruning:
+        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
+        if not cmdenv.loop:
+            stopSystems = {stop.system for stop in stopStations}
 
     loopRoutes = []
     for hopNo in range(numHops):
