@@ -854,8 +854,8 @@ def validateRunArguments(tdb, cmdenv, calc):
         cmdenv.mfd.display("Loading Trades")
 
     if cmdenv.pruneScores and cmdenv.pruneHops:
-        if cmdenv.pruneScores > 100:
-            raise CommandLineError("--prune-score value percentile exceed 100.")
+        if cmdenv.pruneScores > 99:
+            raise CommandLineError("--prune-score value percentile exceed 99.")
         if cmdenv.pruneHops < 2:
             raise CommandLineError("--prune-hops must 2 or more.")
     else:
