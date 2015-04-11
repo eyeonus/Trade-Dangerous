@@ -424,16 +424,14 @@ class Item(object):
         dbname   -- Name as it appears in-game and in the DB.
         category -- Reference to the category.
         fullname -- Combined category/dbname for lookups.
-        altname  -- The internal name used by the game.
     """
-    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'altname')
+    __slots__ = ('ID', 'dbname', 'category', 'fullname')
 
-    def __init__(self, ID, dbname, category, fullname, altname=None):
+    def __init__(self, ID, dbname, category, fullname):
         self.ID = ID
         self.dbname = dbname
         self.category = category
         self.fullname = fullname
-        self.altname = altname
 
     def name(self):
         return self.dbname
@@ -548,7 +546,6 @@ class TradeDB(object):
         ['UpgradeVendor.csv', 'UpgradeVendor'],
         ['Category.csv', 'Category'],
         ['Item.csv', 'Item'],
-        ['AltItemNames.csv', 'AltItemNames'],
         ['RareItem.csv', 'RareItem'],
     ]
 
@@ -1783,37 +1780,18 @@ class TradeDB(object):
             category = self.categoryByID[categoryID]
             item = Item(
                 ID, name, category,
-                '{}/{}'.format(category.dbname, name),
-                None
+                '{}/{}'.format(category.dbname, name)
             )
             itemByID[ID] = item
             itemByName[name] = item
             category.items.append(item)
 
-        # Some items have different actual names than display names.
-        # Load the aliases.
-        stmt = """
-            SELECT alt_name, item_id
-              FROM AltItemNames
-        """
-        aliases = 0
-        for (altName, itemID) in self.cur.execute(stmt):
-            assert altName not in itemByName
-            aliases += 1
-            item = itemByID[itemID]
-            item.altname = altName
-            itemByName[altName] = item
-            self.tdenv.DEBUG1(
-                "'{}' alias for #{} '{}'",
-                altName, itemID, item.fullname
-            )
-
         self.itemByID = itemByID
         self.itemByName = itemByName
 
         self.tdenv.DEBUG1(
-            "Loaded {:n} Items, {:n} AltItemNames",
-            len(self.itemByID), aliases
+            "Loaded {:n} Items",
+            len(self.itemByID)
         )
 
     def lookupItem(self, name):

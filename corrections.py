@@ -107,6 +107,10 @@ stations = {
     "TELIU YUAN/Buchli Station":            DELETED,
     "WUNJO/Baudin Hanger":                  "Baudin Hangar",
     "WYRD/Vonarburg Co-Operative":          "Vonarburg Co-operative",
+    "APALA/Foda Port":                      DELETED,
+    "BD+47 2112/Olivas Settlement":         DELETED,
+    "BPM 89444/Al-Haytham Port":            "al-Haytham Port",
+    "HR 5243/Paulo Da Gama Station":        "Paulo da Gama Station",
 }
 
 categories = {

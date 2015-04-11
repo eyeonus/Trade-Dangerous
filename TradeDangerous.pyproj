@@ -64,7 +64,6 @@
   <ItemGroup>
     <Content Include="CHANGES.txt" />
     <Content Include="data\Added.csv" />
-    <Content Include="data\AltItemNames.csv" />
     <Content Include="data\Category.csv" />
     <Content Include="data\Item.csv" />
     <Content Include="data\Ship.csv" />
