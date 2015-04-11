@@ -116,6 +116,11 @@ ignore = [
     "COL 285 SECTOR LP-S B-19-1",
     "COL 285 SECTOR LP-S B-19-2",
     "CORE SYS SECTOR CB-0 A6-5",
+    "ARIETIS SECTOR JD-F A12-3",
+    "ICZ-KI-S B4-3",
+    "HIP 8153",
+    "HYADES SECTOR MS-X B4-4",
+    "UCAC3 70-2386",
 ]
 
 
