@@ -28,12 +28,12 @@ import sqlite3
 # Default values
 
 # for some tables the first two columns will be reversed
-reverseList = [ 'AltItemNames',
-                'Item',
-                'ShipVendor',
-                'Station',
-                'StationBuying',
-                'UpgradeVendor',
+reverseList = [
+    'Item',
+    'ShipVendor',
+    'Station',
+    'StationBuying',
+    'UpgradeVendor',
 ]
 
 ######################################################################

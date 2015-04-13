@@ -35,7 +35,7 @@ import sys
 import tradedb
 import tradeenv
 
-DEFAULT_DATE = "2015-03-01 00:00:00"
+DEFAULT_DATE = "2015-04-01 00:00:00"
 
 
 # Systems we know are bad.
@@ -116,6 +116,11 @@ ignore = [
     "COL 285 SECTOR LP-S B-19-1",
     "COL 285 SECTOR LP-S B-19-2",
     "CORE SYS SECTOR CB-0 A6-5",
+    "ARIETIS SECTOR JD-F A12-3",
+    "ICZ-KI-S B4-3",
+    "HIP 8153",
+    "HYADES SECTOR MS-X B4-4",
+    "UCAC3 70-2386",
 ]
 
 

@@ -188,20 +188,6 @@ CREATE TABLE Item
  );
 
 
--- Some items have two versions of their name.
-CREATE TABLE AltItemNames
- (
-   alt_name VARCHAR(40) NOT NULL COLLATE nocase,
-   item_id INTEGER NOT NULL,
-
-   PRIMARY KEY (alt_name, item_id),
-
-   FOREIGN KEY (item_id) REFERENCES Item(item_id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE
- )
-;
-
 /*
  * The table formerly known as "Price" is now broken
  * up into 3 tables: StationItem keeps track of what

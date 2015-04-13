@@ -1007,7 +1007,6 @@ EXPORT sub-command:
     > trade.py export --path misc
     Using database './data/TradeDangerous.db'
     Export Table 'Added' to 'misc/Added.csv'
-    Export Table 'AltItemNames' to 'misc/AltItemNames.csv'
     Export Table 'Category' to 'misc/Category.csv'
     Export Table 'Item' to 'misc/Item.csv'
     Export Table 'Ship' to 'misc/Ship.csv'
