@@ -179,6 +179,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdenv.NOTE("Unsupported correction type {} ignored", src)
                 continue
 
+            correctionTable = tables.get(src, None)
+            if correctionTable:
+                if action is DELETING:
+                    correction = corrections.DELETED
+                else:
+                    correction = newName
+                correctionTable[oldName.upper()] = correction
+
             item = index.get(oldName, None)
             if not item:
                 tdenv.DEBUG1(
@@ -203,8 +211,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         newItemName, oldName,
                     )
                     action = DISCARDING
-
-            correctionTable = tables.get(src, None)
+                    if correctionTable:
+                        correctionTable[oldName.upper()] = corrections.DELETED
 
             if action is FIXING:
                 tdenv.DEBUG0("{} {} {} -> {}", action, src, oldName, newName)
@@ -213,15 +221,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
                 binds = [newName, item.ID]
                 updates += 1
-                if correctionTable:
-                    correctionTable[oldName.upper()] = newName
             else:
                 tdenv.DEBUG0("{} {} {}", action, src, oldName)
                 stmt = "DELETE FROM {} WHERE {} = ?".format(src, idColumn)
                 binds = [item.ID]
                 deletes += 1
-                if correctionTable:
-                    correctionTable[oldName.upper()] = corrections.DELETED
 
             if tdenv.debug:
                 tdenv.DEBUG1("{} [{}]", stmt, binds)
