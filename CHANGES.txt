@@ -9,6 +9,7 @@ v6.18.1 Apr 13 2015
         when loading stations if the item count > 0
 . (kfsone) "maddavo" plugin: add Mad's corrections to our own for the
         duration of the import so we don't immediately re-add bad data.
++ (kfsone) ~200 new systems
 
 v6.18.0 Apr 11 2015
 . (kfsone) #215 removed "AltItemName" table
