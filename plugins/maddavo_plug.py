@@ -160,6 +160,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             }),
         }
 
+        tables = {
+            'System':   corrections.systems,
+            'Station':  corrections.stations,
+            'Category': corrections.categories,
+            'Item':     corrections.items,
+        }
+
         FIXING, DELETING, DISCARDING = 'FIXING', 'DELETING', 'DISCARDING'
 
         stream = self.csv_stream_rows(CORRECTIONS_URL, "Corrections")
@@ -197,6 +204,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     )
                     action = DISCARDING
 
+            correctionTable = tables.get(src, None)
+
             if action is FIXING:
                 tdenv.DEBUG0("{} {} {} -> {}", action, src, oldName, newName)
                 stmt = "UPDATE {} SET name = ? WHERE {} = ?".format(
@@ -204,11 +213,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
                 binds = [newName, item.ID]
                 updates += 1
+                if correctionTable:
+                    correctionTable[oldName.upper()] = newName
             else:
                 tdenv.DEBUG0("{} {} {}", action, src, oldName)
                 stmt = "DELETE FROM {} WHERE {} = ?".format(src, idColumn)
                 binds = [item.ID]
                 deletes += 1
+                if correctionTable:
+                    correctionTable[oldName.upper()] = corrections.DELETED
 
             if tdenv.debug:
                 tdenv.DEBUG1("{} [{}]", stmt, binds)
