@@ -867,6 +867,15 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
                 """, buys)
         insertedBuys = buyCounter.delta
 
+    tdenv.DEBUG0("Marking populated stations as having a market")
+    db.execute(
+        "UPDATE Station SET market = 'Y'"
+        " WHERE EXISTS"
+            " (SELECT station_id FROM StationItem"
+              " WHERE StationItem.station_id = Station.station_id"
+             ")"
+    )
+
     db.commit()
 
     changes = " and ".join("{} {}".format(v, k) for k, v in {
