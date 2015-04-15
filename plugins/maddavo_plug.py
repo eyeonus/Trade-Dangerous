@@ -160,6 +160,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             }),
         }
 
+        tables = {
+            'System':   corrections.systems,
+            'Station':  corrections.stations,
+            'Category': corrections.categories,
+            'Item':     corrections.items,
+        }
+
         FIXING, DELETING, DISCARDING = 'FIXING', 'DELETING', 'DISCARDING'
 
         stream = self.csv_stream_rows(CORRECTIONS_URL, "Corrections")
@@ -171,6 +178,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             except KeyError:
                 tdenv.NOTE("Unsupported correction type {} ignored", src)
                 continue
+
+            correctionTable = tables.get(src, None)
+            if correctionTable:
+                if action is DELETING:
+                    correction = corrections.DELETED
+                else:
+                    correction = newName
+                correctionTable[oldName.upper()] = correction
 
             item = index.get(oldName, None)
             if not item:
@@ -196,6 +211,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         newItemName, oldName,
                     )
                     action = DISCARDING
+                    if correctionTable:
+                        correctionTable[oldName.upper()] = corrections.DELETED
 
             if action is FIXING:
                 tdenv.DEBUG0("{} {} {} -> {}", action, src, oldName, newName)

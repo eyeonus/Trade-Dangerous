@@ -277,7 +277,7 @@ class Station(object):
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = int(lsFromStar)
-        self.market = market
+        self.market = market if itemCount == 0 else 'Y'
         self.blackMarket = blackMarket
         self.shipyard = shipyard
         self.maxPadSize = maxPadSize
