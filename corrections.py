@@ -106,11 +106,8 @@ stations = {
     "SALARHUL/LAVOISIER OUTPOST":           DELETED,
     "TELIU YUAN/BUCHLI STATION":            DELETED,
     "WUNJO/BAUDIN HANGER":                  "Baudin Hangar",
-    "WYRD/VONARBURG CO-OPERATIVE":          "Vonarburg Co-operative",
     "APALA/FODA PORT":                      DELETED,
     "BD+47 2112/OLIVAS SETTLEMENT":         DELETED,
-    "BPM 89444/AL-HAYTHAM PORT":            "al-Haytham Port",
-    "HR 5243/PAULO DA GAMA STATION":        "Paulo da Gama Station",
 }
 
 categories = {
