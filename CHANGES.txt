@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.18.2 Apr 18 2015
+. (kfsone) Added "--loop-int" (-li) option to "run"
+        trade.py run ... --loop-int 2
+        will require a minimum of 2 hops before visiting the same station
+
 v6.18.1 Apr 13 2015
 . (kfsone) import: forcibly set market flag to 'Y' in the database for
         stations that have items listed,

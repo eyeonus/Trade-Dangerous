@@ -166,6 +166,16 @@ switches = [
             action='store_true',
             default=False,
         ),
+    ParseArgument('--loop-interval', '-li',
+            help=(
+                'Require this many hops between visits to the same station. '
+                'A value of 1 would be the default behavior, so a value of '
+                '2 is the minimum allowed.'
+            ),
+            type=int,
+            default=None,
+            dest='loopInt',
+        ),
     ParseArgument('--margin',
             help='Reduce gains made on each hop to provide a margin of error '
                     'for market fluctuations (e.g: 0.25 reduces gains by 1/4). '
@@ -756,6 +766,15 @@ def validateRunArguments(tdb, cmdenv, calc):
             raise CommandLineError("Cannot use --unique and --loop together")
         if cmdenv.direct:
             raise CommandLineError("Cannot use --direct and --loop together")
+
+    if cmdenv.loopInt:
+        if cmdenv.loopInt < 2:
+            raise CommandLineError(
+                "--loop-int must be 2 or higher to have any effect. "
+            )
+        if cmdenv.loopInt > cmdenv.hops and not cmdenv.unique:
+            cmdenv.NOTE("--loop-int > hops implies --unique")
+            cmdenv.unique = True
 
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)

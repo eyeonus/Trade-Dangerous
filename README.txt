@@ -277,6 +277,13 @@ RUN sub-command:
        e.g.
          --from iBootis --to LiuBese
 
+     --loop
+       Look for routes which loop back on themselves within the given number
+       of hops, but it may also find shorter routes.
+       e.g.
+         --from iBootis --loop
+         --loop --hops 4   (looks for 2, 3 and 4 hop loops)
+
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
        Requires that hops be at least 2.
