@@ -1229,11 +1229,10 @@ def run(results, cmdenv, tdb):
         for route in routes:
             route.score /= len(route.hops)
     elif cmdenv.shorten:
-        cmdenv.DEBUG0("Picking from {} shortened routes".format(
-            len(pickedRoutes)
-        ))
+        cmdenv.DEBUG0("Picking from {} shortened routes", len(pickedRoutes))
         routes = pickedRoutes
         for route in routes:
+            cmdenv.DEBUG0("{} hops / {} gpt", len(route.hops), route.gpt)
             route.score = route.gpt
 
     if not routes:
