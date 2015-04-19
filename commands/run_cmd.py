@@ -1091,6 +1091,22 @@ def run(results, cmdenv, tdb):
         if not cmdenv.loop:
             stopSystems = {stop.system for stop in stopStations}
 
+    if cmdenv.loop:
+        routePickPred = lambda route: \
+            route.lastStation is route.firstStation
+    elif cmdenv.shorten:
+        if not cmdenv.destPlace:
+            routePickPred = lambda route: \
+                route.lastStation is route.firstStation
+        elif isinstance(cmdenv.destPlace, System):
+            routePickPred = lambda route: \
+                route.lastSystem is cmdenv.destPlace
+        else:
+            routePickPred = lambda route: \
+                route.lastStation is cmdenv.destPlace
+    else:
+        routePickPred = None
+
     pickedRoutes = []
     for hopNo in range(numHops):
         restrictTo = None
@@ -1213,16 +1229,10 @@ def run(results, cmdenv, tdb):
                 routes = routes[:1]
                 break
 
-        if cmdenv.loop:
-            for route in routes:
-                if route.lastStation == route.firstStation:
-                    pickedRoutes.append(route)
-        elif cmdenv.shorten:
-            dest = cmdenv.destPlace
-            for route in routes:
-                lastStn = route.lastStation
-                if lastStn is dest or lastStn.system is dest:
-                    pickedRoutes.append(route)
+        if routePickPred:
+            pickedRoutes.extend(
+                route for route in routes if routePickPred(route)
+            )
 
     if cmdenv.loop:
         routes = pickedRoutes
