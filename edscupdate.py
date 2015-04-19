@@ -121,6 +121,7 @@ ignore = [
     "HIP 8153",
     "HYADES SECTOR MS-X B4-4",
     "UCAC3 70-2386",
+    "HYADES KX-T C3-24",
 ]
 
 

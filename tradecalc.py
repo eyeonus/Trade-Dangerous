@@ -728,6 +728,7 @@ class TradeCalc(object):
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
         unique = tdenv.unique
+        loopInt = getattr(tdenv, 'loopInt', 0) or None
 
         # Penalty is expressed as percentage, reduce it to a multiplier
         if tdenv.lsPenalty:
@@ -736,6 +737,7 @@ class TradeCalc(object):
             lsPenalty = 0
 
         goalSystem = tdenv.goalSystem
+        uniquePath = None
 
         restrictStations = set()
         if restrictTo:
@@ -818,12 +820,17 @@ class TradeCalc(object):
                 srcOrigDist = srcDistTo(origSystem)
                 origGoalDist = origDistTo(goalSystem)
 
+            if unique:
+                uniquePath = route.route
+            elif loopInt:
+                uniquePath = route.route[-loopInt:-1]
+
             for dest in station_iterator(srcStation):
                 dstStation = dest.station
                 if dstStation is srcStation:
                     continue
 
-                if unique and dstStation in route.route:
+                if uniquePath and dstStation in uniquePath:
                     continue
 
                 if reqBlackMarket and dstStation.blackMarket != 'Y':
