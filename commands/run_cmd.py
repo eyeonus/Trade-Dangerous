@@ -1112,6 +1112,8 @@ def run(results, cmdenv, tdb):
             preCrop = len(routes)
             routes[:] = [x for x in routes if routeStillHasAChance(x)]
             if not routes:
+                if pickedRoutes:
+                    break
                 raise NoDataError(
                     "No routes are in-range of any end stations at the end of hop {}"
                     .format(hopNo)
@@ -1158,6 +1160,8 @@ def run(results, cmdenv, tdb):
             )
 
         if not newRoutes:
+            if pickedRoutes:
+                break
             checkReachability(tdb, cmdenv)
             if hopNo > 0:
                 if restrictTo and manualRestriction:
