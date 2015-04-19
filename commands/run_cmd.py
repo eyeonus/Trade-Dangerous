@@ -243,6 +243,10 @@ switches = [
             help='Summary layout of route instructions.',
             action='store_true',
         ),
+    ParseArgument('--shorten',
+            help='(Requires --to) Find the shortest route with the best gpt.',
+            action='store_true',
+        ),
 ]
 
 ######################################################################
@@ -776,6 +780,15 @@ def validateRunArguments(tdb, cmdenv, calc):
             cmdenv.NOTE("--loop-int > hops implies --unique")
             cmdenv.unique = True
 
+    if cmdenv.shorten and not cmdenv.ending:
+        raise CommandLineError(
+            "--shorten only works with --to."
+        )
+        if cmdenv.loop:
+            raise CommandLineError(
+                "Cannot use --shorten and --loop together"
+            )
+
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
 
@@ -1077,7 +1090,7 @@ def run(results, cmdenv, tdb):
         if not cmdenv.loop:
             stopSystems = {stop.system for stop in stopStations}
 
-    loopRoutes = []
+    pickedRoutes = []
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -1198,14 +1211,22 @@ def run(results, cmdenv, tdb):
         if cmdenv.loop:
             for route in routes:
                 if route.lastStation == route.firstStation:
-                    loopRoutes.append(route)
+                    pickedRoutes.append(route)
+        elif cmdenv.shorten:
+            dest = cmdenv.destPlace
+            for route in routes:
+                if route.lastStation is dest or route.lastSystem is dest:
+                        pickedRoutes.append(route)
 
     if cmdenv.loop:
-        routes = loopRoutes
-
+        routes = pickedRoutes
         # normalise the scores for fairness...
         for route in routes:
             route.score /= len(route.hops)
+    elif cmdenv.shorten:
+        routes = pickedRoutes
+        for route in routes:
+            route.score = route.gpt
 
     if not routes:
         raise NoDataError(
