@@ -780,13 +780,14 @@ def validateRunArguments(tdb, cmdenv, calc):
             cmdenv.NOTE("--loop-int > hops implies --unique")
             cmdenv.unique = True
 
-    if cmdenv.shorten and not cmdenv.ending:
-        raise CommandLineError(
-            "--shorten only works with --to."
-        )
+    if cmdenv.shorten:
         if cmdenv.loop:
             raise CommandLineError(
                 "Cannot use --shorten and --loop together"
+            )
+        if not cmdenv.ending:
+            raise CommandLineError(
+                "--shorten only works with --to."
             )
 
     checkOrigins(tdb, cmdenv, calc)
