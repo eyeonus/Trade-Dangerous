@@ -2,6 +2,20 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.18.3 Apr 19 2015
+. (kfsone) Added "--shorten" (requires --to)
+        Will show routes with less hops if they produces a better gpt
+. (kfsone) "import" maddavo plugin:
+        - Added sanity checking of timestamps during System.csv import
+          (there was a new system in mad's data with an apostrophe in the
+           modified timestamp)
++ (kfsone) ~310 new systems
+
+v6.18.2 Apr 18 2015
+. (kfsone) Added "--loop-int" (-li) option to "run"
+        trade.py run ... --loop-int 2
+        will require a minimum of 2 hops before visiting the same station
+
 v6.18.1 Apr 13 2015
 . (kfsone) import: forcibly set market flag to 'Y' in the database for
         stations that have items listed,
