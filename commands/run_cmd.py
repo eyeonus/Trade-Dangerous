@@ -1219,8 +1219,9 @@ def run(results, cmdenv, tdb):
         elif cmdenv.shorten:
             dest = cmdenv.destPlace
             for route in routes:
-                if route.lastStation is dest or route.lastSystem is dest:
-                        pickedRoutes.append(route)
+                lastStn = route.lastStation
+                if lastStn is dest or lastStn.system is dest:
+                    pickedRoutes.append(route)
 
     if cmdenv.loop:
         routes = pickedRoutes
@@ -1228,6 +1229,9 @@ def run(results, cmdenv, tdb):
         for route in routes:
             route.score /= len(route.hops)
     elif cmdenv.shorten:
+        cmdenv.DEBUG0("Picking from {} shortened routes".format(
+            len(pickedRoutes)
+        ))
         routes = pickedRoutes
         for route in routes:
             route.score = route.gpt
