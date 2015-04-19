@@ -1234,17 +1234,16 @@ def run(results, cmdenv, tdb):
                 route for route in routes if routePickPred(route)
             )
 
-    if cmdenv.loop:
+    if cmdenv.loop or cmdenv.shorten:
+        cmdenv.DEBUG0("Using {} picked routes", len(pickedRoutes))
         routes = pickedRoutes
         # normalise the scores for fairness...
         for route in routes:
+            cmdenv.DEBUG0(
+                "{} hops, {} score, {} gpt",
+                len(route.hops), route.score, route.gpt
+            )
             route.score /= len(route.hops)
-    elif cmdenv.shorten:
-        cmdenv.DEBUG0("Picking from {} shortened routes", len(pickedRoutes))
-        routes = pickedRoutes
-        for route in routes:
-            cmdenv.DEBUG0("{} hops / {} gpt", len(route.hops), route.gpt)
-            route.score = route.gpt
 
     if not routes:
         raise NoDataError(
