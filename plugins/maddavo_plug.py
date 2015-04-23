@@ -274,6 +274,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
 
         tdb, tdenv = self.tdb, self.tdenv
+        dateTimeRe = re.compile(r'\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})')
 
         stream = self.csv_system_rows(SYSTEMS_URL, "Systems")
         for sysName, system, values in stream:
@@ -286,6 +287,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     )
                 self.modSystems += 1
                 continue
+
+            # Clean up the modified stamp
+            m = dateTimeRe.match(modified)
+            if not m:
+                tdenv.WARN("{} has invalid 'modified': {}", sysName, modified)
+                continue
+            modified = m.group(1)
 
             x, y, z = float(values[1]), float(values[2]), float(values[3])
             if not system:
