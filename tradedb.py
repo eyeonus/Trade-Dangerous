@@ -803,8 +803,10 @@ class TradeDB(object):
                    pos_x=?, pos_y=?, pos_z=?,
                    added_id=(SELECT added_id FROM Added WHERE name = ?),
                    modified=DATETIME(?)
+             WHERE system_id = ?
         """, [
-            dbname, x, y, z, added, modified
+            dbname, x, y, z, added, modified,
+            system.ID,
         ])
         if commit:
             db.commit()

@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.18.4 Apr 24 2015
+. (kfsone) Fix for updateLocalSystem that would change ALL systems at once
+
 v6.18.3 Apr 19 2015
 . (kfsone) Added "--shorten" (requires --to)
         Will show routes with less hops if they produces a better gpt
