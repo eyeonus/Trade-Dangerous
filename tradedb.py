@@ -2112,7 +2112,7 @@ class TradeDB(object):
             text
         )
         text = re.sub(r"'S\b", "'s", text)
-        text = ''.join(text[0].upper(), text[1:])
+        text = ''.join((text[0].upper(), text[1:]))
 
         return text
 
