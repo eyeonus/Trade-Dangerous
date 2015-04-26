@@ -574,10 +574,10 @@ class TradeDB(object):
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         pricePath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         self.pricesPath = dataPath / pricePath
-        self.importTables = (
+        self.importTables = [
             (str(dataPath / Path(fn)), tn)
             for fn, tn in TradeDB.defaultTables
-        )
+        ]
         self.importPaths = {tn: tp for tp, tn in self.importTables}
 
         self.dbFilename = str(self.dbPath)
