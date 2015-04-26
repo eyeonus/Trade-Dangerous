@@ -217,7 +217,7 @@ class Route(object):
         def genSubValues():
             for hop in hops:
                 for (tr, qty) in hop[0]:
-                    yield tr.name()
+                    yield len(tr.name())
         longestNameLen = max(genSubValues())
 
         text = self.str()
