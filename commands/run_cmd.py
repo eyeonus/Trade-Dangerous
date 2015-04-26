@@ -1003,7 +1003,7 @@ def routeFailedRestrictions(
     places = list(
         set(
             chain.from_iterable(
-                (place,) if isinstance(place, Station) else place.stations
+                [place] if isinstance(place, Station) else place.stations
                 for place in restrictTo
             )
         )
@@ -1064,9 +1064,9 @@ def run(results, cmdenv, tdb):
     startCr = cmdenv.credits - cmdenv.insurance
     routes = [
         Route(
-            stations=(src,),
-            hops=(),
-            jumps=(),
+            stations=[src],
+            hops=[],
+            jumps=[],
             startCr=startCr,
             gainCr=0,
             score=0
