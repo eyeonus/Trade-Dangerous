@@ -93,9 +93,9 @@ class AmbiguityError(TradeException):
                 key(c) for c in anyMatch[:10]
             ] + ["..."])
         else:
-            opportunities = ", ".join([
+            opportunities = ", ".join(
                 key(c) for c in anyMatch[0:-1]
-            ])
+            )
             opportunities += " or " + key(anyMatch[-1])
         return '{} "{}" could match {}'.format(
             self.lookupType, str(self.searchKey),
@@ -366,9 +366,9 @@ class Station(object):
 ######################################################################
 
 
-class Ship(namedtuple('Ship', [
+class Ship(namedtuple('Ship', (
         'ID', 'dbname', 'cost', 'stations'
-        ])):
+        ))):
     """
     Ship description.
 
@@ -386,9 +386,9 @@ class Ship(namedtuple('Ship', [
 ######################################################################
 
 
-class Category(namedtuple('Category', [
+class Category(namedtuple('Category', (
         'ID', 'dbname', 'items'
-        ])):
+        ))):
     """
     Item Category
 
@@ -440,9 +440,9 @@ class Item(object):
 ######################################################################
 
 
-class RareItem(namedtuple('RareItem', [
+class RareItem(namedtuple('RareItem', (
         'ID', 'station', 'dbname', 'costCr', 'maxAlloc',
-        ])):
+        ))):
     """
     Describes a RareItem from the database.
 
@@ -461,13 +461,13 @@ class RareItem(namedtuple('RareItem', [
 ######################################################################
 
 
-class Trade(namedtuple('Trade', [
+class Trade(namedtuple('Trade', (
         'item', 'itemID',
         'costCr', 'gainCr',
         'stock', 'stockLevel',
         'demand', 'demandLevel',
         'srcAge', 'dstAge'
-        ])):
+        ))):
     """
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
@@ -536,18 +536,18 @@ class TradeDB(object):
     defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencies!
-    defaultTables = [
-        ['Added.csv', 'Added'],
-        ['System.csv', 'System'],
-        ['Station.csv', 'Station'],
-        ['Ship.csv', 'Ship'],
-        ['ShipVendor.csv', 'ShipVendor'],
-        ['Upgrade.csv', 'Upgrade'],
-        ['UpgradeVendor.csv', 'UpgradeVendor'],
-        ['Category.csv', 'Category'],
-        ['Item.csv', 'Item'],
-        ['RareItem.csv', 'RareItem'],
-    ]
+    defaultTables = (
+        ('Added.csv', 'Added'),
+        ('System.csv', 'System'),
+        ('Station.csv', 'Station'),
+        ('Ship.csv', 'Ship'),
+        ('ShipVendor.csv', 'ShipVendor'),
+        ('Upgrade.csv', 'Upgrade'),
+        ('UpgradeVendor.csv', 'UpgradeVendor'),
+        ('Category.csv', 'Category'),
+        ('Item.csv', 'Item'),
+        ('RareItem.csv', 'RareItem'),
+    )
 
     # Translation matrixes for attributes -> common presentation
     marketStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
@@ -574,10 +574,10 @@ class TradeDB(object):
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         pricePath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         self.pricesPath = dataPath / pricePath
-        self.importTables = [
+        self.importTables = (
             (str(dataPath / Path(fn)), tn)
             for fn, tn in TradeDB.defaultTables
-        ]
+        )
         self.importPaths = {tn: tp for tp, tn in self.importTables}
 
         self.dbFilename = str(self.dbPath)
@@ -803,8 +803,10 @@ class TradeDB(object):
                    pos_x=?, pos_y=?, pos_z=?,
                    added_id=(SELECT added_id FROM Added WHERE name = ?),
                    modified=DATETIME(?)
+             WHERE system_id = ?
         """, [
-            dbname, x, y, z, added, modified
+            dbname, x, y, z, added, modified,
+            system.ID,
         ])
         if commit:
             db.commit()
@@ -935,19 +937,18 @@ class TradeDB(object):
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
 
-        probedLy = cache.probedLy
-        if ly > probedLy:
+        if ly > cache.probedLy:
             # Consult the database for stars we haven't seen.
             cachedSystems = cache.systems = list(
                 self.genStellarGrid(system, ly)
             )
             cachedSystems.sort(key=lambda ent: ent[1])
-            cache.probedLy = probedLy = ly
+            cache.probedLy = ly
 
         if includeSelf:
             yield system, 0.
 
-        if probedLy > ly:
+        if cache.probedLy > ly:
             # Cache may contain values outside our view
             for sys, dist in cachedSystems:
                 if dist <= ly:
@@ -1002,7 +1003,7 @@ class TradeDB(object):
             dest = dest.system
 
         if origin == dest:
-            return [(origin, 0), (dest, 0)]
+            return ((origin, 0), (dest, 0))
 
         # openSet is the list of nodes we want to visit, which will be
         # used as a priority queue (heapq).
@@ -1048,7 +1049,7 @@ class TradeDB(object):
             distFn = curSys.distanceTo
             heappush = heapq.heappush
 
-            for (nSys, nDist) in systemsInRange(curSys, maxJumpLy):
+            for nSys, nDist in systemsInRange(curSys, maxJumpLy):
                 newDist = curDist + nDist
                 try:
                     (prevSys, prevDist) = distances[nSys]
@@ -1056,8 +1057,9 @@ class TradeDB(object):
                         continue
                 except KeyError:
                     pass
-                if stationInterval and stnDist >= stationInterval and not curSys.stations:
-                    continue
+                if stationInterval and stnDist >= stationInterval:
+                    if not curSys.stations:
+                        continue
                 distances[nSys] = (curSys, newDist)
                 weight = distFn(nSys)
                 nID = nSys.ID
@@ -1586,7 +1588,6 @@ class TradeDB(object):
             maxJumps=None,
             maxLyPer=None,
             avoidPlaces=None,
-            trading=False,
             maxPadSize=None,
             maxLsFromStar=0,
             ):
@@ -1596,17 +1597,11 @@ class TradeDB(object):
         Limits to stations we are trading with if trading is True.
         """
 
-        if trading:
-            assert isinstance(origin, Station)
-            if not origin.tradingWith:
-                return []
-            tradingWith = origin.tradingWith
-
         if maxJumps is None:
             maxJumps = sys.maxsize
         maxLyPer = maxLyPer or self.maxSystemLinkLy
         if avoidPlaces is None:
-            avoidPlaces = []
+            avoidPlaces = ()
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -1671,27 +1666,30 @@ class TradeDB(object):
 
         # We have a system-to-system path list, now we
         # need stations to terminate at.
-        for node in pathList.values():
-            # negative values are avoidances
-            if node.distLy < 0.0:
-                continue
-            for station in node.system.stations:
-                if (trading and station not in tradingWith):
-                    continue
-                if station in avoidPlaces:
-                    continue
-                if (maxPadSize and not station.checkPadSize(maxPadSize)):
-                    continue
-                if maxLsFromStar:
-                    stnLs = station.lsFromStar
-                    if stnLs <= 0 or stnLs > maxLsFromStar:
-                        continue
-                yield Destination(
-                        node.system,
-                        station,
-                        node.via,
-                        node.distLy
-                )
+        def path_iter_fn():
+            for node in pathList.values():
+                if node.distLy >= 0.0:
+                    for station in node.system.stations:
+                        yield node, station
+
+        path_iter = iter(path_iter_fn())
+        if avoidPlaces:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station not in avoidPlaces
+            )
+        if maxPadSize:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.checkPadSize(maxPadSize)
+            )
+        if maxLsFromStar:
+            path_iter = iter(
+                (node, stn) for (node, stn) in path_iter
+                if stn.lsFromStar > 0 and stn.lsFromStar <= maxLsFromStar
+            )
+        for node, stn in path_iter:
+            yield Destination(node.system, stn, node.via, node.distLy)
 
     ############################################################
     # Ship data.
@@ -1776,7 +1774,7 @@ class TradeDB(object):
               FROM Item
         """
         itemByID, itemByName = {}, {}
-        for (ID, name, categoryID) in self.cur.execute(stmt):
+        for ID, name, categoryID in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
             item = Item(
                 ID, name, category,
@@ -2114,7 +2112,7 @@ class TradeDB(object):
             text
         )
         text = re.sub(r"'S\b", "'s", text)
-        text = text[0].upper() + text[1:]
+        text = ''.join(text[0].upper(), text[1:])
 
         return text
 

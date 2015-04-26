@@ -84,9 +84,9 @@ class NoHopsError(TradeException):
 ######################################################################
 # Stuff that passes for classes (but isn't)
 
-class TradeLoad(namedtuple('TradeLoad', [
+class TradeLoad(namedtuple('TradeLoad', (
         'items', 'gainCr', 'costCr', 'units'
-        ])):
+        ))):
     """
     Describes the manifest of items to be exchanged in a
     trade.
@@ -120,7 +120,7 @@ class TradeLoad(namedtuple('TradeLoad', [
         return self.gainCr / self.units if self.units else 0
 
 
-emptyLoad = TradeLoad([], 0, 0, 0)
+emptyLoad = TradeLoad((), 0, 0, 0)
 
 
 ######################################################################
@@ -169,21 +169,20 @@ class Route(object):
 
     @property
     def gpt(self):
-        hops = self.hops
-        if hops:
-            return sum(hop.gpt for hop in hops) / len(hops)
+        if self.hops:
+            return sum(hop.gpt for hop in self.hops) / len(self.hops)
         return 0
-    
+
     def plus(self, dst, hop, jumps, score):
         """
         Returns a new route describing the sum of this route plus a new hop.
         """
         return Route(
-            self.route + [dst],
-            self.hops + [hop],
+            self.route + (dst,),
+            self.hops + (hop,),
             self.startCr,
             self.gainCr + hop[1],
-            self.jumps + [jumps],
+            self.jumps + (jumps,),
             self.score + score,
         )
 
@@ -211,17 +210,15 @@ class Route(object):
         gainCr = 0
         route = self.route
 
-        hops = [
-            hop for hop in self.hops[0:len(self.hops)]
-        ]
+        hops = self.hops
 
         # TODO: Write as a comprehension, just can't wrap my head
         # around it this morning.
-        def genSubValues(key):
+        def genSubValues():
             for hop in hops:
                 for (tr, qty) in hop[0]:
-                    yield key(tr)
-        longestNameLen = max(genSubValues(key=lambda tr: len(tr.name())))
+                    yield tr.name()
+        longestNameLen = max(genSubValues())
 
         text = self.str()
         if detail >= 1:
@@ -339,7 +336,7 @@ class Route(object):
                 purchases=purchases
             )
             if jumpsFmt and self.jumps[i]:
-                jumps = ' -> '.join([jump.name() for jump in self.jumps[i]])
+                jumps = ' -> '.join(jump.name() for jump in self.jumps[i])
                 text += jumpsFmt.format(
                     jumps=jumps,
                     gain=hopGainCr,
@@ -376,12 +373,12 @@ class Route(object):
         """
 
         credits, hops, jumps = self.startCr, self.hops, self.jumps
-        ttlGainCr = sum([hop[1] for hop in hops])
-        numJumps = sum([
+        ttlGainCr = sum(hop[1] for hop in hops)
+        numJumps = sum(
             len(hopJumps)-1
             for hopJumps in jumps
             if hopJumps     # don't include in-system hops
-        ])
+        )
         return (
             "Start CR: {start:10n}\n"
             "Hops    : {hops:10n}\n"
@@ -439,7 +436,7 @@ class TradeCalc(object):
 
         avoidItemIDs = set(
             item.ID
-            for item in (tdenv.avoidItems or [])
+            for item in (tdenv.avoidItems or ())
         )
 
         if tdenv.maxAge:
@@ -533,7 +530,7 @@ class TradeCalc(object):
 
             for qty in range(1, maxQty + 1):
                 loadGain, loadCost = itemGain * qty, itemCost * qty
-                load = TradeLoad([(item, qty)], loadGain, loadCost, qty)
+                load = TradeLoad(((item, qty),), loadGain, loadCost, qty)
                 subLoad = _fitCombos(
                     offset, cr - loadCost, cap - qty, level+1
                 )
@@ -644,9 +641,9 @@ class TradeCalc(object):
             if not bestItem:
                 return emptyLoad
 
-            bestLoad = [(bestItem, bestQty)]
+            bestLoad = ((bestItem, bestQty),)
             if bestSub:
-                bestLoad.extend(bestSub.items)
+                bestLoad = bestLoad + bestSub.items
                 bestQty += bestSub.units
             return TradeLoad(bestLoad, bestGainCr, bestGainCr, bestQty)
 
@@ -712,7 +709,7 @@ class TradeCalc(object):
 
         tdb = self.tdb
         tdenv = self.tdenv
-        avoidPlaces = getattr(tdenv, 'avoidPlaces', []) or []
+        avoidPlaces = getattr(tdenv, 'avoidPlaces', None) or ()
         assert not restrictTo or isinstance(restrictTo, set)
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
@@ -750,7 +747,7 @@ class TradeCalc(object):
         # Are we doing direct routes?
         if tdenv.direct:
             if goalSystem and not restrictTo:
-                restrictTo = [ goalSystem ]
+                restrictTo = (goalSystem,)
                 restrictStations = set(goalSystem.stations)
             if avoidPlaces:
                 restrictStations = set(
@@ -765,7 +762,7 @@ class TradeCalc(object):
                     stnSys = stn.system
                     yield Destination(
                         stnSys, stn,
-                        [srcSys, stnSys],
+                        (srcSys, stnSys),
                         srcDist(stnSys)
                     )
         else:
@@ -825,53 +822,63 @@ class TradeCalc(object):
             elif loopInt:
                 uniquePath = route.route[-loopInt:-1]
 
-            for dest in station_iterator(srcStation):
+            stations = (
+                dest for dest in station_iterator(srcStation)
+                if dest.station != srcStation
+            )
+            if reqBlackMarket:
+                stations = (d for d in stations if d.station.blackMarket == 'Y')
+            if uniquePath:
+                stations = (d for d in stations if d.station not in uniquePath)
+            if restrictStations:
+                stations = (
+                    d for d in stations
+                    if d.station in restrictStations
+                )
+            if maxAge:
+                def age_check():
+                    for d in stations:
+                        age = d.station.dataAge
+                        if age and age <= maxAge:
+                            yield d
+                stations = iter(age_check())
+            if goalSystem:
+                def goal_check():
+                    unique = bool(tdenv.unique)
+                    for d in stations:
+                        if unique and d.system is srcSystem:
+                            continue
+                        if d.system is not goalSystem:
+                            # Ignore jumps longer than remaining distance
+                            # to the goal system.
+                            if d.distLy >= srcGoalDist:
+                                continue
+                        yield d
+                stations = iter(goal_check())
+
+            if tdenv.debug >= 1:
+                def annotate():
+                    for dest in stations:
+                        tdenv.DEBUG1(
+                            "destSys {}, destStn {}, jumps {}, distLy {}",
+                            dest.system.dbname,
+                            dest.station.dbname,
+                            "->".join(jump.str() for jump in dest.via),
+                            dest.distLy
+                        )
+                        yield dest
+                stations = iter(annotate())
+
+            for dest in stations:
                 dstStation = dest.station
-                if dstStation is srcStation:
-                    continue
-
-                if uniquePath and dstStation in uniquePath:
-                    continue
-
-                if reqBlackMarket and dstStation.blackMarket != 'Y':
-                    continue
 
                 connections += 1
-
-                if maxAge:
-                    stnDataAge = dstStation.dataAge
-                    if stnDataAge is None or stnDataAge > maxAge:
-                        continue
-
-                multiplier = 1.0
-                if restrictStations:
-                    if dstStation not in restrictStations:
-                        continue
-                if goalSystem:
-                    # Bias in favor of getting closer
-                    dstSys = dstStation.system
-                    if dstSys is srcSystem:
-                        if tdenv.unique:
-                            continue
-                    elif dstSys is not goalSystem:
-                        # Ignore jumps longer than remaining distance to goal.
-                        if dest.distLy >= srcGoalDist:
-                            continue
-
-                if tdenv.debug >= 1:
-                    tdenv.DEBUG1(
-                        "destSys {}, destStn {}, jumps {}, distLy {}",
-                        dstStation.system.dbname,
-                        dstStation.dbname,
-                        "->".join([jump.str() for jump in dest.via]),
-                        dest.distLy
-                    )
-
                 items = self.getTrades(srcStation, dstStation, srcSelling)
                 if not items:
                     continue
                 trade = fitFunction(items, startCr, capacity, maxUnits)
 
+                multiplier = 1.0
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
                 if goalSystem and dstSys is not goalSystem:
@@ -920,9 +927,9 @@ class TradeCalc(object):
                         if bestLy <= dest.distLy:
                             continue
 
-                bestToDest[dstID] = [
+                bestToDest[dstID] = (
                     dstStation, route, trade, dest.via, dest.distLy, score
-                ]
+                )
 
         prog.clear()
 
