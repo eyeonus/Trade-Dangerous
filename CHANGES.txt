@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.18.5 Apr 26 2015
+. (kfsone) Fixed #224 run -vv and above was raising an exception
+. (kfsone) Fixed #223 "unrecognized system" errors
+. (gazelle) Lots of data fixes
+. (snakeman via maddavo) Lots of station fixes
+
 v6.18.4 Apr 24 2015
 . (kfsone) Fix for updateLocalSystem that would change ALL systems at once
 
