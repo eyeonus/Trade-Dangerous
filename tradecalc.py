@@ -836,25 +836,21 @@ class TradeCalc(object):
                     if d.station in restrictStations
                 )
             if maxAge:
-                def age_check():
-                    for d in stations:
-                        age = d.station.dataAge
-                        if age and age <= maxAge:
-                            yield d
-                stations = iter(age_check())
+                inf = float("inf")
+                stations = (
+                    d for d in stations
+                    if (d.station.dataAge or inf) <= maxAge
+                )
             if goalSystem:
-                def goal_check():
-                    unique = bool(tdenv.unique)
-                    for d in stations:
-                        if unique and d.system is srcSystem:
-                            continue
-                        if d.system is not goalSystem:
-                            # Ignore jumps longer than remaining distance
-                            # to the goal system.
-                            if d.distLy >= srcGoalDist:
-                                continue
-                        yield d
-                stations = iter(goal_check())
+                unique = bool(tdenv.unique)
+                if bool(tdenv.unique):
+                    stations = (
+                        d for d in stations if d.system is not SrcSystem
+                    )
+                stations = (
+                    d for d in stations
+                    if d.system is goalSystem or d.distLy < srcGoalDist
+                )
 
             if tdenv.debug >= 1:
                 def annotate():
@@ -881,6 +877,7 @@ class TradeCalc(object):
                 multiplier = 1.0
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
+                dstSys = dest.system
                 if goalSystem and dstSys is not goalSystem:
                     dstGoalDist = goalDistTo(dstSys)
                     # Biggest reward for shortening distance to goal
