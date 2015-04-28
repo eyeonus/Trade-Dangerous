@@ -667,25 +667,24 @@ class TradeCalc(object):
         itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
-        for buy in dstBuying:
-            buyItemID = buy[0]
-            for sell in srcSelling:
-                sellItemID = sell[0]
-                if sellItemID == buyItemID:
-                    buyCr, sellCr = buy[1], sell[1]
-                    if sellCr + minGainCr > buyCr:
-                        continue
-                    if sellCr + maxGainCr < buyCr:
-                        continue
-                    trading.append(Trade(
-                        itemIdx[buyItemID],
-                        buyItemID,
-                        sellCr, buyCr - sellCr,
-                        sell[2], sell[3],
-                        buy[2], buy[3],
-                        sell[4], buy[4],
-                    ))
-                    break   # from srcSelling
+        buyIndex = {buy[0]: buy for buy in dstBuying}
+        getBuy = buyIndex.get
+        for sell in srcSelling: # should be the smaller list
+            itmID = sell[0]
+            buy = getBuy(itmID, None)
+            if buy:
+                buyCr, sellCr = buy[1], sell[1]
+                if sellCr + minGainCr > buyCr:
+                    continue
+                if sellCr + maxGainCr < buyCr:
+                    continue
+                trading.append(Trade(
+                    itemIdx[itmID], itmID,
+                    sellCr, buyCr - sellCr,
+                    sell[2], sell[3],
+                    buy[2], buy[3],
+                    sell[4], buy[4],
+                ))
 
         # SORT BY profit DESC, cost
         # So if two items have the same profit, the cheapest will come first.
