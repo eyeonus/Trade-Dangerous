@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.18.6 Apr 27 2015
+. (kfsone) Fixed #225 'Generator already running'
+. (kfsone) Performance improvement: Reduced the cost of "getTrades"
+
 v6.18.5 Apr 26 2015
 . (kfsone) Fixed #224 run -vv and above was raising an exception
 . (kfsone) Fixed #223 "unrecognized system" errors

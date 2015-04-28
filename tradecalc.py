@@ -667,25 +667,24 @@ class TradeCalc(object):
         itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
-        for buy in dstBuying:
-            buyItemID = buy[0]
-            for sell in srcSelling:
-                sellItemID = sell[0]
-                if sellItemID == buyItemID:
-                    buyCr, sellCr = buy[1], sell[1]
-                    if sellCr + minGainCr > buyCr:
-                        continue
-                    if sellCr + maxGainCr < buyCr:
-                        continue
-                    trading.append(Trade(
-                        itemIdx[buyItemID],
-                        buyItemID,
-                        sellCr, buyCr - sellCr,
-                        sell[2], sell[3],
-                        buy[2], buy[3],
-                        sell[4], buy[4],
-                    ))
-                    break   # from srcSelling
+        buyIndex = {buy[0]: buy for buy in dstBuying}
+        getBuy = buyIndex.get
+        for sell in srcSelling: # should be the smaller list
+            itmID = sell[0]
+            buy = getBuy(itmID, None)
+            if buy:
+                buyCr, sellCr = buy[1], sell[1]
+                if sellCr + minGainCr > buyCr:
+                    continue
+                if sellCr + maxGainCr < buyCr:
+                    continue
+                trading.append(Trade(
+                    itemIdx[itmID], itmID,
+                    sellCr, buyCr - sellCr,
+                    sell[2], sell[3],
+                    buy[2], buy[3],
+                    sell[4], buy[4],
+                ))
 
         # SORT BY profit DESC, cost
         # So if two items have the same profit, the cheapest will come first.
@@ -836,25 +835,21 @@ class TradeCalc(object):
                     if d.station in restrictStations
                 )
             if maxAge:
-                def age_check():
-                    for d in stations:
-                        age = d.station.dataAge
-                        if age and age <= maxAge:
-                            yield d
-                stations = iter(age_check())
+                inf = float("inf")
+                stations = (
+                    d for d in stations
+                    if (d.station.dataAge or inf) <= maxAge
+                )
             if goalSystem:
-                def goal_check():
-                    unique = bool(tdenv.unique)
-                    for d in stations:
-                        if unique and d.system is srcSystem:
-                            continue
-                        if d.system is not goalSystem:
-                            # Ignore jumps longer than remaining distance
-                            # to the goal system.
-                            if d.distLy >= srcGoalDist:
-                                continue
-                        yield d
-                stations = iter(goal_check())
+                unique = bool(tdenv.unique)
+                if bool(tdenv.unique):
+                    stations = (
+                        d for d in stations if d.system is not SrcSystem
+                    )
+                stations = (
+                    d for d in stations
+                    if d.system is goalSystem or d.distLy < srcGoalDist
+                )
 
             if tdenv.debug >= 1:
                 def annotate():
@@ -881,6 +876,7 @@ class TradeCalc(object):
                 multiplier = 1.0
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
+                dstSys = dest.system
                 if goalSystem and dstSys is not goalSystem:
                     dstGoalDist = goalDistTo(dstSys)
                     # Biggest reward for shortening distance to goal
