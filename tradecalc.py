@@ -669,8 +669,7 @@ class TradeCalc(object):
         itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
-        buyIndex = {buy[0]: buy for buy in dstBuying}
-        getBuy = buyIndex.get
+        getBuy = {buy[0]: buy for buy in dstBuying}.get
         addTrade = trading.append
         for sell in srcSelling: # should be the smaller list
             buy = getBuy(sell[0], None)
