@@ -188,7 +188,7 @@ def sql_query(cmdenv, tdb, queries, mode):
     )
     cmdenv.DEBUG0('SQL: {}', stmt)
     return tdb.query(stmt, bindValues)
-    
+
 
 ######################################################################
 # Perform query and populate result set

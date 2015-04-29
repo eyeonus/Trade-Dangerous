@@ -179,7 +179,7 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn("JumpLy", '>', '7', '.2f',
             key=lambda row: row.jumpLy)
     if cmdenv.detail:
-        rowFmt.addColumn("Stations", '>', 2, 
+        rowFmt.addColumn("Stations", '>', 2,
             key=lambda row: len(row.system.stations))
     if cmdenv.detail:
         rowFmt.addColumn("DistLy", '>', '7', '.2f',

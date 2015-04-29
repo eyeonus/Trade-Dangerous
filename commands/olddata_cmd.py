@@ -189,7 +189,7 @@ def render(results, cmdenv, tdb):
     if not results or not results.rows:
         raise TradeException("No data found")
 
-    # Compare system names so we can tell 
+    # Compare system names so we can tell
     longestNamed = max(results.rows,
                     key=lambda row: len(row.station.name()))
     longestNameLen = len(longestNamed.station.name())
@@ -204,7 +204,7 @@ def render(results, cmdenv, tdb):
             rowFmt.addColumn('DistLy', '>', 6, '.2f',
                     key=lambda row: row.dist
             )
-    
+
         rowFmt.append(
                 ColumnFormat("Age/days", '>', '8', '.2f',
                         key=lambda row: row.age)

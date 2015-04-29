@@ -26,7 +26,7 @@ arguments = [
     ParseArgument('starting', help='Name of the station to update.', type=str)
 ]
 switches = [
-    ParseArgument('--timestamps', '-T', 
+    ParseArgument('--timestamps', '-T',
             help='[Text editing] Includes timestamps in the update.',
             action='store_true',
             default=False,
@@ -42,7 +42,7 @@ switches = [
             dest='useDemand',
             default=False,
     ),
-    ParseArgument('--force-na', '-0', 
+    ParseArgument('--force-na', '-0',
             help="Forces 'unk' supply to become 'n/a' by default",
             action='store_true',
             default=False,
@@ -96,19 +96,19 @@ switches = [
                     default=None,
                     type=str,
             ),
-            ParseArgument('--sublime', 
+            ParseArgument('--sublime',
                     help='Like --editor but uses Sublime Text (2 or 3).',
                     action='store_const', const='sublime', dest='editing',
             ),
-            ParseArgument('--notepad', 
+            ParseArgument('--notepad',
                     help='Like --editor but uses Notepad.',
                     action='store_const', const='notepad', dest='editing',
             ),
-            ParseArgument('--npp',     
+            ParseArgument('--npp',
                     help='Like --editor but uses Notepad++.',
                     action='store_const', const='npp', dest='editing',
             ),
-            ParseArgument('--vim',     
+            ParseArgument('--vim',
                     help='Like --editor but uses vim.',
                     action='store_const', const='vim', dest='editing',
             ),
@@ -196,10 +196,10 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
             pass
 
     raise CommandLineError(
-            "ERROR: Unable to locate {} editor.\n"
-            "Either specify the path to your editor with --editor "
-            "or set the {} environment variable to point to it."
-                .format(editorName, envVar)
+        "ERROR: Unable to locate {} editor.\n"
+        "Either specify the path to your editor with --editor "
+        "or set the {} environment variable to point to it."
+            .format(editorName, envVar)
     )
 
 
@@ -220,7 +220,7 @@ def editUpdate(tdb, cmdenv, stationID):
     if cmdenv.editing == 'sublime':
         cmdenv.DEBUG0("Sublime mode")
         editor = editor or \
-                getEditorPaths(cmdenv, 
+                getEditorPaths(cmdenv,
                         "sublime", "SUBLIME_EDITOR",
                         ["Sublime Text 3", "Sublime Text 2"],
                         "sublime_text.exe",
@@ -244,7 +244,7 @@ def editUpdate(tdb, cmdenv, stationID):
         if not editor:
             # Hack... Hackity hack, hack, hack.
             # This has a disadvantage in that: we don't check for just "vim" (no .exe) under Windows
-            vimDirs = [ 
+            vimDirs = [
                     "Git\\share\\vim\\vim{}".format(vimVer)
                     for vimVer in range(70,75)
             ]
@@ -384,7 +384,7 @@ def guidedUpdate(tdb, cmdenv):
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
                 "prices.last"
         ))
-    
+
         if tmpPath:
             saveTemporaryFile(tmpPath)
         if "EXCEPTIONS" in os.environ:

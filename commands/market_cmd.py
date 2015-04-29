@@ -46,7 +46,7 @@ def render_units(units, level):
         return '?'
     levelNames = { -1: '?', 1: 'L', 2: 'M', 3: 'H' }
     return "{:n}{}".format(units, levelNames[level])
-    
+
 
 def run(results, cmdenv, tdb):
     origin = cmdenv.startStation

@@ -47,15 +47,15 @@ def dumpPrices(
 
     systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM System") }
     stations = {
-            ID: [ name, systems[sysID] ]
-                for (ID, name, sysID)
-                in cur.execute("SELECT station_id, name, system_id FROM Station")
+        ID: [ name, systems[sysID] ]
+        for (ID, name, sysID)
+        in cur.execute("SELECT station_id, name, system_id FROM Station")
     }
     categories = { ID: name for (ID, name) in cur.execute("SELECT category_id, name FROM Category") }
     items = {
-            ID: [ name, catID, categories[catID] ]
-                for (ID, name, catID)
-                in cur.execute("SELECT item_id, name, category_id FROM Item")
+        ID: [ name, catID, categories[catID] ]
+        for (ID, name, catID)
+        in cur.execute("SELECT item_id, name, category_id FROM Item")
     }
 
     # find longest item name
@@ -68,7 +68,7 @@ def dumpPrices(
             SELECT  COUNT(*)
               FROM  StationItem
              WHERE station_id = {}
-            """.format(stationID))
+        """.format(stationID))
         if not cur.fetchone()[0]:
             getBlanks = True
 
@@ -106,10 +106,10 @@ def dumpPrices(
     """
 
     sql = stmt.format(
-            stationWhere=stationWhere,
-            defDemand=defaultDemandVal,
-            itemJoin=itemJoin,
-            )
+        stationWhere=stationWhere,
+        defDemand=defaultDemandVal,
+        itemJoin=itemJoin,
+    )
     if debug:
         print(sql)
     cur.execute(sql)
@@ -147,16 +147,16 @@ def dumpPrices(
     levelWidth = 9
 
     outFmt = (
-                "      {{:<{width}}}"
-                " {{:>{crwidth}}}"
-                " {{:>{crwidth}}}"
-                "  {{:>{lvlwidth}}}"
-                " {{:>{lvlwidth}}}".format(
-                    width=longestNameLen,
-                    crwidth=maxCrWidth,
-                    lvlwidth=levelWidth,
-                )
-            )
+        "      {{:<{width}}}"
+        " {{:>{crwidth}}}"
+        " {{:>{crwidth}}}"
+        "  {{:>{lvlwidth}}}"
+        " {{:>{lvlwidth}}}".format(
+            width=longestNameLen,
+            crwidth=maxCrWidth,
+            lvlwidth=levelWidth,
+        )
+    )
     if withTimes:
         outFmt += "  {}"
     outFmt += "\n"

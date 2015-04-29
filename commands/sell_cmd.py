@@ -116,14 +116,14 @@ def run(results, cmdenv, tdb):
 
     whereClause = ' AND '.join(constraints)
     stmt = """
-               SELECT DISTINCT {columns}
-                 FROM {tables}
-                WHERE {where}
-           """.format(
-                    columns=','.join(columns),
-                    tables=tables,
-                    where=whereClause
-                    )
+       SELECT DISTINCT {columns}
+         FROM {tables}
+        WHERE {where}
+    """.format(
+        columns=','.join(columns),
+        tables=tables,
+        where=whereClause
+    )
     cmdenv.DEBUG0('SQL: {}', stmt)
     cur = tdb.query(stmt, bindValues)
 

@@ -174,7 +174,7 @@ def render(results, cmdenv, tdb):
             .format(results.summary.ly, results.summary.near.name())
         )
 
-    # Compare system names so we can tell 
+    # Compare system names so we can tell
     maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
 
     sysRowFmt = RowFormat().append(

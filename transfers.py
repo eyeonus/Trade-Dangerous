@@ -73,7 +73,7 @@ def makeUnit(value):
             return "{:>5.01f}{}".format(unitSize, unit)
         unitSize /= 1024
     return None
-    
+
 
 def rateVal(bytes, duration):
     """
@@ -216,7 +216,7 @@ def get_json_data(url):
     requests = import_requests()
     req = requests.get(url, stream=True)
 
-    # credit for the progress indicator: 
+    # credit for the progress indicator:
     # http://stackoverflow.com/a/15645088/257645
     totalLength = req.headers.get('content-length')
     if totalLength is None:
