@@ -346,7 +346,8 @@ def editUpdate(tdb, cmdenv, stationID):
         # Save a copy
         if absoluteFilename and tmpPath:
             saveTemporaryFile(tmpPath)
-
+        if "EXCEPTIONS" in os.environ:
+            raise e
 
 def guidedUpdate(tdb, cmdenv):
     dbFilename = tdb.dbFilename
@@ -386,7 +387,8 @@ def guidedUpdate(tdb, cmdenv):
     
         if tmpPath:
             saveTemporaryFile(tmpPath)
-
+        if "EXCEPTIONS" in os.environ:
+            raise e
 
 ######################################################################
 # Perform query and populate result set
