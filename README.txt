@@ -559,21 +559,33 @@ UPDATE sub-command:
   aka:
     trade.py update --sub -T0 aulin
 
+IMPORT sub-command and plugins:
 
-IMPORT sub-command:
+ Import:
 
-  Provides a way to import prices data from a file or a web site. You can use this
-  to import data for a few stations or an entire .prices file from a friend.
+  Provides mechanisms for loading data, epsecially price data, into the database.
 
-  For instance, if you 'update'd a station and there was an error importing it,
-  the data is usually saved as "prices.last". You can open this file and correct
-  the error and then import it, rather than having to re-enter all of the data.
+  By default, "import mode", all existing data for each listed station is removed
+  and then the data from the import file is loaded instead. Most importantly: any
+  items *not* listed in the import file will be considered as no-longer available
+  at the station (see "--merge" for alternative behavior).
 
-  NOTE: Items not listed for a station in an import are considered unavailable at
-  that station. If you have an entry for Beagle2/Food and you import a file that
-  does not include Beagle2/Food, Beagle2/Food will be removed from your db.
+  For instance, if you "updated"d a station and there was an error importing it,
+  your data is saved as "prices.last". Edit this file, correct the errors and
+  then "import" it, rather than having to re-enter all of the data.
 
-  trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
+ Plugins:
+
+  TD also supports the concept of an "import plugin". These are user-contributed
+  extensions to TD that will fetch data from a 3rd party, such as Maddavo's
+  Market Share, and populate the local database with that information.
+  (see http://www.davek.com.au/td/)
+
+  Plugins are specified with the "-P" option and can have their own options,
+  not listed here, with the "-O" option. See "-O=help" for a list of the options
+  provided by a particular plugin.
+
+  trade.py import [-q | -v] [filename | url | -P <plugin> -O <options>] [--ignore-unknown]
 
     filename
       Specifies the name of the file to load
@@ -585,41 +597,83 @@ IMPORT sub-command:
       e.g.
         http://kfs.org/td/prices
 
-    --maddavo
-      Like 'url' but specifies the URL for maddavo's .prices file
+    ".prices" import mode options:
+      --ignore-unknown
+      -i
+        Any systems, stations, categories or items that aren't recognized
+        by this version of TD will be reported but import will continue.
 
-      This has also additional options:
-      --option=<option> where option is one of the following:
-        systems:      Merge maddavo's System data into local db,
-        stations:     Merge maddavo's Station data into local db,
-        shipvendors:  Merge maddavo's ShipVendor data into local db,
-        csvs:         Merge all of the above
-        exportcsv:    Regenerate System and Station .csv files after
-                      merging System/Station data.
-        csvonly:      Stop after importing CSV files, no prices,
-        skipdl:       Skip doing any downloads.
-        force:        Process prices even if timestamps suggest
-                      there is no new data.
-        use3h:        Force download of the 3-hours .prices file
-        use2d:        Force download of the 2-days .prices file
-        usefull:      Force download of the full .prices file
+        Unrecognized stations in the ".prices" file, or an import, will
+        have a placeholder station entry automatically created for them.
 
-     Options can be comma separated, the following are equivalent:
-       --option systems --option stations --option shipvendors --option csvonly
-       --opt=csvs --opt=csvonly
-       -O csvs,csvonly
+        Note: When the cache is rebuilt, these stations will be lost, so
+        you may need to add the "-i" flag to the buildcache command.
 
-    --ignore-unknown
-    -i
-      Any systems, stations, categories or items that aren't recognized
-      by this version of TD will be reported but import will continue.
+      --merge-import
+      --merge
+      -M
+        Existing data is only overwritten by entries from the .prices file
+        that have a newer timestamp and data is only removed if there is
+        an explicit entry in the file with 0 demand/supply prices.
 
-      Unrecognized stations in the ".prices" file, or an import, will
-      have a placeholder station entry automatically created for them.
+      --reset-all
+        CAUTION: DANGER ELITE ROBINSON
+        Deletes all existing prices from the database.
 
-      Note: When the cache is rebuilt, these stations will be lost, so
-      you may need to add the "-i" flag to the buildcache command.
+    --plug <plugin>
+    -P <plugin>
+      Specifies a plugin to use instead of the default .prices importer,
+      By default "TD" comes with a plugin that supports Maddavo's Market Share
+      (http://www.davek.com.au/td/)
+      e.g.
+        -P maddavo
 
+    --option <option>
+    --option <option1>,<option2>,...<optionN>
+    -O <option>,...
+      Passes options to a plugin.
+      e.g.
+        -O left,right
+        -O help
+
+MADDAVO's "import" plugin:
+
+  Maddavo's Market Share is a 3rd party Elite Dangerous crowd sourcing
+  project that gathers system, station, item and other data. This is
+  the recommended way for TradeDangerous users to get their data.
+
+  The "maddavo" plugin provides a simple way to fetch and import updates
+  from Maddavo's site.
+
+  To take maximum advantage of Maddavo's services, you should consider
+  using "-O csvs" periodically.
+
+  Basic usage:
+
+    trade.py import -P maddavo
+      This will check for and import new data from Maddavo's site. If
+      you have newer data of your own, it will not be overwritten.
+
+    trade.py import -P maddavo -O csvs
+      Starts by checking for new Systems, Stations, ShipVendors, etc,
+      listed in the ".csv" files Maddavo makes available.
+      Then imports prices.
+
+  Options (-O):
+    csvs:         Merges all supported .CSVs (Systems, Stations,
+                  ShipVendors, RareItems) and implies "exportcsv".
+    systems:      Merge maddavo's System data into local db,
+    stations:     Merge maddavo's Station data into local db,
+    shipvendors:  Merge maddavo's ShipVendor data into local db,
+    exportcsv:    Regenerate System and Station .csv files after
+                  merging System/Station data.
+    csvonly:      Stop after importing CSV files, no prices,
+    skipdl:       Skip doing any downloads.
+    force:        Process prices even if timestamps suggest
+                  there is no new data.
+    use3h:        Force download of the 3-hours .prices file
+    use2d:        Force download of the 2-days .prices file
+    usefull:      Force download of the full .prices file
 
 MARKET sub-command:
 

@@ -500,6 +500,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     cur = db.cursor()
     ignoreUnknown = tdenv.ignoreUnknown
     quiet = tdenv.quiet
+    merging = tdenv.mergeImport
 
     systemByName = getSystemByNameIndex(cur)
     stationByName = getStationByNameIndex(cur)
@@ -672,7 +673,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             DEBUG1("Renamed {} -> {}", oldName, itemName)
 
         lastModified = stationItemDates.get(itemID, None)
-        if lastModified:
+        if lastModified and merging:
             if modified and modified != 'now' and modified <= lastModified:
                 DEBUG1("Ignoring {} @ {}: {} <= {}".format(
                     itemName, facility,
@@ -809,6 +810,11 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
             tdenv, pricesFh, db, defaultZero
         )
 
+    if not tdenv.mergeImport:
+        db.executemany("""
+            DELETE FROM StationItem
+             WHERE station_id = ?
+        """, stations)
     if zeros:
         db.executemany("""
             DELETE FROM StationItem

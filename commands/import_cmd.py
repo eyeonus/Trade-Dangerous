@@ -76,10 +76,24 @@ switches = [
             "Provides a way to pass additional arguments to plugins."
         ),
     ),
-    ParseArgument('--reset',
-        help='Clear the database before importing.',
-        action='store_true',
-        default=False,
+    MutuallyExclusiveGroup(
+        ParseArgument('--reset-all',
+            help='Clear the database before importing.',
+            action='store_true',
+            default=False,
+        ),
+        ParseArgument('--merge-import', '-M',
+            help=(
+                'Merge the import file with the existing local database: '
+                'only loads values that have an explicit entry with a '
+                'newer timestamp than the existing data. Local values '
+                'are only removed if there is an explicit entry with a '
+                '0/0 demand/supply price.'
+            ),
+            action='store_true',
+            default=False,
+            dest='mergeImport',
+        ),
     ),
 ]
 
