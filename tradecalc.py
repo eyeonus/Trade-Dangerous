@@ -831,7 +831,6 @@ class TradeCalc(object):
                     if (d.station.dataAge or inf) <= maxAge
                 )
             if goalSystem:
-                unique = bool(tdenv.unique)
                 if bool(tdenv.unique):
                     stations = (
                         d for d in stations if d.system is not SrcSystem
