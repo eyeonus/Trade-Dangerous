@@ -584,44 +584,41 @@ class TradeCalc(object):
             bestCostCr = 0
             bestSub = None
 
+            qtyCeil = min(maxUnits, cap)
+
             for iNo in range(offset, len(items)):
                 item = items[iNo]
                 itemCostCr = item.costCr
-                supply = item.supply
-                maxQty = min(maxUnits, cap, cr // itemCostCr)
-                if supply < maxQty and supply >= 0:  # -1 = unknown
-                    maxQty = min(maxQty, supply)
+                maxQty = min(qtyCeil, cr // itemCostCr)
 
                 if maxQty <= 0:
                     continue
+
+                supply = item.supply
+                if supply > 0:
+                    supply = min(maxQty, supply)
 
                 itemGainCr = item.gainCr
                 if maxQty == cap:
                     # full load
                     gain = itemGainCr * maxQty
-                    cost = itemCostCr * maxQty
                     if gain > bestGainCr:
+                        cost = itemCostCr * maxQty
                         # list is sorted by gain DESC, cost ASC
                         bestGainCr = gain
                         bestItem = item
                         bestQty = maxQty
                         bestCostCr = cost
                         bestSub = None
-                        # Since the items are listed in gain order
-                        # and then cost-ascending, if we ran out of
-                        # cargo capacity rather than credits, then
-                        # we don't need to check any further.
-                        if maxQty * itemCostCr <= cr:
-                            break
-                    continue
+                    break
 
                 loadCostCr = maxQty * itemCostCr
                 loadGainCr = maxQty * itemGainCr
                 if loadGainCr > bestGainCr:
                     bestGainCr = loadGainCr
+                    bestCostCr = loadCostCr
                     bestItem = item
                     bestQty = maxQty
-                    bestCostCr = loadCostCr
                     bestSub = None
 
                 crLeft, capLeft = cr - loadCostCr, cap - maxQty
@@ -632,9 +629,9 @@ class TradeCalc(object):
                     if subLoad is emptyLoad:
                         continue
                     ttlGain = loadGainCr + subLoad.gainCr
-                    ttlCost = loadCostCr + subLoad.costCr
                     if ttlGain < bestGainCr:
                         continue
+                    ttlCost = loadCostCr + subLoad.costCr
                     if ttlGain == bestGainCr and ttlCost >= bestCostCr:
                         continue
                     bestGainCr = ttlGain
