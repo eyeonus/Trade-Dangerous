@@ -154,4 +154,3 @@ def correctItem(oldName):
         return items[oldName.upper()]
     except KeyError:
         return oldName
-

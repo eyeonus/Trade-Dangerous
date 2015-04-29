@@ -423,4 +423,3 @@ def run(results, cmdenv, tdb):
         editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
 
     return None
-

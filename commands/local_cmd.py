@@ -261,4 +261,3 @@ def render(results, cmdenv, tdb):
         print(sysRowFmt.format(row))
         for stnRow in row.stations:
             print(stnRowFmt.format(stnRow))
-

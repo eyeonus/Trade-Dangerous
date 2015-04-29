@@ -223,4 +223,3 @@ class CommandEnv(TradeEnv):
                             padSize
                 ))
         self.padSize = padSize
-

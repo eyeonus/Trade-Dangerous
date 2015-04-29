@@ -720,4 +720,3 @@ def render(tdb, tdenv, tmpPath):
     gui.getResults()
     with tmpPath.open("w") as fh:
         print(gui.results, file=fh)
-

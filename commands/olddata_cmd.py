@@ -223,4 +223,3 @@ def render(results, cmdenv, tdb):
 
     for row in results.rows:
         print(rowFmt.format(row))
-

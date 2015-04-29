@@ -251,4 +251,3 @@ def render(results, cmdenv, tdb):
             print(stnRowFmt.format(stnRow))
 
     return results
-

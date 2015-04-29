@@ -70,4 +70,3 @@ def run(results, cmdenv, tdb):
     buildCache(tdb, cmdenv)
 
     return None
-
