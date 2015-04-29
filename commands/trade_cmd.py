@@ -80,13 +80,13 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.costCr)
     if cmdenv.detail > 1:
         rowFmt.addColumn('AvgCost', '>', 10,
-                key=lambda row: tdb.avgSelling[row.itemID]
+                key=lambda row: tdb.avgSelling[row.item.ID]
                 )
         rowFmt.addColumn('Buying', '>', 10,
                 key=lambda row: row.costCr + row.gainCr
                 )
         rowFmt.addColumn('AvgBuy', '>', 10,
-                key=lambda row: tdb.avgBuying[row.itemID]
+                key=lambda row: tdb.avgBuying[row.item.ID]
                 )
 
     if cmdenv.detail:

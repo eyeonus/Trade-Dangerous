@@ -674,24 +674,21 @@ class TradeCalc(object):
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
         buyIndex = {buy[0]: buy for buy in dstBuying}
         getBuy = buyIndex.get
+        addTrade = trading.append
         for sell in srcSelling: # should be the smaller list
-            itmID = sell[0]
-            buy = getBuy(itmID, None)
+            buy = getBuy(sell[0], None)
             if buy:
-                buyCr, sellCr = buy[1], sell[1]
-                if sellCr + minGainCr > buyCr:
-                    continue
-                if sellCr + maxGainCr < buyCr:
-                    continue
-                trading.append(Trade(
-                    itemIdx[itmID], itmID,
-                    sellCr, buyCr - sellCr,
-                    sell[2], sell[3],
-                    buy[2], buy[3],
-                    sell[4], buy[4],
-                ))
+                gainCr = buy[1] - sell[1]
+                if gainCr >= minGainCr and gainCr <= maxGainCr:
+                    addTrade(Trade(
+                        itemIdx[sell[0]],
+                        sell[1], gainCr,
+                        sell[2], sell[3],
+                        buy[2], buy[3],
+                        sell[4], buy[4],
+                    ))
 
-        # SORT BY profit DESC, cost
+        # SORT BY profit DESC, cost ASC
         # So if two items have the same profit, the cheapest will come first.
         trading.sort(key=lambda trade: trade.costCr)
         trading.sort(key=lambda trade: trade.gainCr, reverse=True)
@@ -794,22 +791,13 @@ class TradeCalc(object):
             routeJumps = len(route.jumps)
 
             srcSelling = getSelling(srcStation.ID, None)
+            srcSelling = tuple(
+                values for values in srcSelling
+                if values[1] <= startCr
+            )
             if not srcSelling:
-                tdenv.DEBUG1("Nothing sold - next.")
+                tdenv.DEBUG1("Nothing sold/affordable - next.")
                 continue
-            affordable = True
-            for values in srcSelling:
-                if values[1] > startCr:
-                    affordable = False
-                    break
-            if not affordable:
-                srcSelling = [
-                    values for values in srcSelling
-                    if values[1] <= startCr
-                ]
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing affordable - next.")
-                    continue
 
             if goalSystem:
                 origSystem = route.firstSystem

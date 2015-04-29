@@ -462,7 +462,7 @@ class RareItem(namedtuple('RareItem', (
 
 
 class Trade(namedtuple('Trade', (
-        'item', 'itemID',
+        'item',
         'costCr', 'gainCr',
         'supply', 'supplyLevel',
         'demand', 'demandLevel',
@@ -1923,7 +1923,7 @@ class TradeDB(object):
                 tradingWith = srcStn.tradingWith[dstStn] = []
                 self.tradingCount += 1
             tradingWith.append(Trade(
-                items[itemID], itemID,
+                items[itemID],
                 srcPriceCr, profit,
                 supply, supplyLevel,
                 demand, demandLevel,
@@ -1964,7 +1964,7 @@ class TradeDB(object):
             srcAge, dstAge
         ) in self.cur:
             trading.append(Trade(
-                items[itemID], itemID,
+                items[itemID],
                 srcPriceCr, profit,
                 supply, supplyLevel,
                 demand, demandLevel,
