@@ -183,12 +183,11 @@ class System(object):
                 if sys.distToSq(target) <= maxLySq:
                     inRange.append(sys)
         """
-
-        dx2 = (self.posX - other.posX) ** 2
-        dy2 = (self.posY - other.posY) ** 2
-        dz2 = (self.posZ - other.posZ) ** 2
-
-        return (dx2 + dy2 + dz2)
+        return (
+            (self.posX - other.posX) ** 2 +
+            (self.posY - other.posY) ** 2 +
+            (self.posZ - other.posZ) ** 2
+        )
 
     def distanceTo(self, other):
         """
@@ -206,14 +205,11 @@ class System(object):
                 lhs.distanceTo(rhs),
             ))
         """
-
-        dx2 = (self.posX - other.posX) ** 2
-        dy2 = (self.posY - other.posY) ** 2
-        dz2 = (self.posZ - other.posZ) ** 2
-
-        distSq = (dx2 + dy2 + dz2)
-
-        return distSq ** 0.5
+        return (
+            (self.posX - other.posX) ** 2 +
+            (self.posY - other.posY) ** 2 +
+            (self.posZ - other.posZ) ** 2
+        ) ** 0.5  # fast sqrt
 
     def getStation(self, stationName):
         """
