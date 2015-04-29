@@ -651,7 +651,6 @@ class TradeCalc(object):
 
         return _fitCombos(0, credits, capacity)
 
-
     def getTrades(self, srcStation, dstStation, srcSelling=None):
         """
         Returns the most profitable trading options from
