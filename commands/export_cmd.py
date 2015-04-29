@@ -95,10 +95,7 @@ def run(results, cmdenv, tdb):
         bindValues = []
         tableStmt = ''
         if not cmdenv.allTables:
-            ignoreList += [ "StationItem",
-                            "StationBuying",
-                            "StationSelling",
-            ]
+            ignoreList.append("StationItem")
 
     tableCursor = conn.cursor()
     for row in tableCursor.execute("""

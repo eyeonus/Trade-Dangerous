@@ -187,127 +187,49 @@ CREATE TABLE Item
     ON DELETE CASCADE
  );
 
-
-/*
- * The table formerly known as "Price" is now broken
- * up into 3 tables: StationItem keeps track of what
- * items we think a station carries for presentation
- * purposes.
- *
- * StationBuying is the items that a station is willing
- * to pay for, but only carries entries that have a
- * non-zero price, demand and demand-level.
- *
- * StationCarrying is the items that a station has in
- * stock for players to buy, but only carries entries
- * that have a non-zero price, stock and stock-level.
- */
-
 CREATE TABLE StationItem
  (
   station_id INTEGER NOT NULL,
   item_id INTEGER NOT NULL,
+  demand_price INT NOT NULL,
+  demand_units INT NOT NULL,
+  demand_level INT NOT NULL,
+  supply_price INT NOT NULL,
+  supply_units INT NOT NULL,
+  supply_level INT NOT NULL,
   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
   PRIMARY KEY (station_id, item_id),
-
-  FOREIGN KEY (item_id) REFERENCES Item(item_id)
-   ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (station_id) REFERENCES Station(station_id)
-   ON UPDATE CASCADE ON DELETE CASCADE
- )
-;
-
-/*
- * The most common query is going to be:
- * onSale = stock(station_id)
- * profitable = [
- *  item for item in onSale
- *    if someonePayingMoreFor(seller.item_id, seller.price)
- * ]
- * So we want selling indexed by station,item
- * and we want buying indexed by item,station
-*/
-CREATE TABLE StationSelling
- (
-  station_id INTEGER NOT NULL,
-  item_id INTEGER NOT NULL,
-  price INTEGER CHECK (price > 0),
-  units INTEGER CHECK (units == -1 OR units > 0),
-  level INTEGER CHECK (level == -1 OR level > 0),
-  modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  PRIMARY KEY (station_id, item_id),
+    ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (item_id) REFERENCES Item(item_id)
-   ON UPDATE CASCADE ON DELETE CASCADE,
-  FOREIGN KEY (station_id) REFERENCES Station(station_id)
-   ON UPDATE CASCADE ON DELETE CASCADE,
-  FOREIGN KEY (station_id, item_id) REFERENCES StationItem (station_id, item_id)
-   ON UPDATE CASCADE ON DELETE CASCADE
- )
-;
-CREATE INDEX idx_selling_price ON StationSelling (item_id, price);
+    ON UPDATE CASCADE ON DELETE CASCADE
+);
+CREATE INDEX si_mod_stn_itm ON StationItem(modified, station_id, item_id);
+CREATE INDEX si_itm_dmdpr ON StationItem(item_id, demand_price) WHERE demand_price > 0;
+CREATE INDEX si_itm_suppr ON StationItem(item_id, supply_price) WHERE supply_price > 0;
 
-CREATE TABLE StationBuying
- (
-  item_id INTEGER NOT NULL,
-  station_id INTEGER NOT NULL,
-  price INTEGER CHECK (price > 0),
-  units INTEGER CHECK (units == -1 OR units > 0),
-  level INTEGER CHECK (level == -1 or level > 0),
-  modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  PRIMARY KEY (item_id, station_id),
-  FOREIGN KEY (item_id) REFERENCES Item(item_id)
-   ON UPDATE CASCADE ON DELETE CASCADE,
-  FOREIGN KEY (station_id) REFERENCES Station(station_id)
-   ON UPDATE CASCADE ON DELETE CASCADE,
-  FOREIGN KEY (station_id, item_id) REFERENCES StationItem (station_id, item_id)
-   ON UPDATE CASCADE ON DELETE CASCADE
- )
-;
-/* We're often going to be asking "using (item_id) where buying.price > selling.cost" */
-CREATE INDEX idx_buying_price ON StationBuying (item_id, price);
-
-CREATE VIEW vPrice AS
-    SELECT  si.station_id AS station_id,
-            si.item_id AS item_id,
-            IFNULL(sb.price, 0) AS sell_to,
-            IFNULL(ss.price, 0) AS buy_from,
-            si.modified AS modified,
-            IFNULL(sb.units, 0) AS demand,
-            IFNULL(sb.level, 0) AS demand_level,
-            IFNULL(ss.units, 0) AS stock,
-            IFNULL(ss.level, 0) AS stock_level
-      FROM  StationItem AS si
-            LEFT OUTER JOIN StationBuying AS sb
-                USING (item_id, station_id)
-            LEFT OUTER JOIN StationSelling AS ss
-                USING (station_id, item_id)
+CREATE VIEW StationBuying AS
+SELECT  station_id,
+        item_id,
+        demand_price AS price,
+        demand_units AS units,
+        demand_level AS level,
+        modified
+  FROM  StationItem
+ WHERE  demand_price > 0
 ;
 
-
-CREATE VIEW vProfits AS
-  SELECT  ss.item_id          AS item_id
-       ,  ss.station_id       AS src_station_id
-       ,  sb.station_id       AS dst_station_id
-       ,  ss.price            AS cost
-       ,  sb.price - ss.price AS gain
-       ,  ss.units            AS stock_units
-       ,  ss.level            AS stock_level
-       ,  sb.units            AS demand_units
-       ,  sb.level            AS demand_level
-       ,  strftime('%s', 'now') -
-            strftime('%s', ss.modified)
-            AS src_age
-       ,  strftime('%s', 'now') -
-            strftime('%s', sb.modified)
-            AS dst_age
-    FROM  StationSelling AS ss
-          INNER JOIN StationBuying AS sb
-              ON (ss.item_id = sb.item_id
-                  AND ss.station_id != sb.station_id)
-   WHERE  ss.price < sb.price
+CREATE VIEW StationSelling AS
+SELECT  station_id,
+        item_id,
+        supply_price AS price,
+        supply_units AS units,
+        supply_level AS level,
+        modified
+  FROM  StationItem
+ WHERE  supply_price > 0
 ;
-
 
 COMMIT;
 

@@ -90,8 +90,8 @@ def render(results, cmdenv, tdb):
                 )
 
     if cmdenv.detail:
-        rowFmt.addColumn('Stock', '>', 10,
-                key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
+        rowFmt.addColumn('Supply', '>', 10,
+                key=lambda row: '{:n}'.format(row.supply) if row.supply >= 0 else '?')
         rowFmt.addColumn('Demand', '>', 10,
                 key=lambda row: '{:n}'.format(row.demand) if row.demand >= 0 else '?')
         rowFmt.addColumn('SrcAge', '>', 8, '.2f',

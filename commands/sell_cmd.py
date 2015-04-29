@@ -75,22 +75,24 @@ def run(results, cmdenv, tdb):
 
     if cmdenv.detail:
         avgPrice = tdb.query("""
-                SELECT CAST(AVG(sb.price) AS INT)
-                  FROM StationSelling AS sb
-                 WHERE sb.item_id = ?
+            SELECT CAST(AVG(si.supply_price) AS INT)
+              FROM StationItem AS si
+             WHERE si.item_id = ? AND si.supply_price > 0
         """, [item.ID]).fetchone()[0]
         results.summary.avg = avgPrice
 
     # Constraints
-    tables = "StationBuying AS sb"
-    constraints = [ "(item_id = {})".format(item.ID) ]
-    columns = [
-            'sb.station_id',
-            'sb.price',
-            'sb.units',
-            "JULIANDAY('NOW') - JULIANDAY(sb.modified)",
+    tables = "StationItem AS si"
+    constraints = [
+        "(item_id = {} AND demand_price > 0)".format(item.ID),
     ]
-    bindValues = [ ]
+    columns = [
+        'si.station_id',
+        'si.demand_price',
+        'si.demand_units',
+        "JULIANDAY('NOW') - JULIANDAY(si.modified)",
+    ]
+    bindValues = []
 
     if cmdenv.quantity:
         constraints.append("(units = -1 or units >= ?)")

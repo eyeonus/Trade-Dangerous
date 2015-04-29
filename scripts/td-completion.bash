@@ -67,7 +67,7 @@ _td_buy()
 		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly --limit --pad-size --one-stop --price-sort --stock-sort --gt --lt ${common_opts}"
+		opts="--quantity --near --ly --limit --pad-size --one-stop --price-sort --supply-sort --gt --lt ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -231,7 +231,7 @@ _td_run()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--capacity|--credits|--ly-per|--from|-f|--to|-t|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--end-jumps|-e|--limit|--age|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes|--towards|-T|--ls-max|--gain-per-ton|--gpt|--max-gain-per-ton|--mgpt|--max-routes|--prune-score|--prune-hops|--stock|--loop-interval|-li)
+	--capacity|--credits|--ly-per|--from|-f|--to|-t|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--end-jumps|-e|--limit|--age|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes|--towards|-T|--ls-max|--gain-per-ton|--gpt|--max-gain-per-ton|--mgpt|--max-routes|--prune-score|--prune-hops|--supply|--loop-interval|-li)
 		# argument required
 		;;
 	--pad-size|-p)
@@ -240,7 +240,7 @@ _td_run()
 		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --stock --summary --loop-interval --shorten ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac

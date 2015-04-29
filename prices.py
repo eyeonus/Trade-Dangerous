@@ -87,28 +87,22 @@ def dumpPrices(
     now = cur.fetchone()[0]
 
     stmt = """
-        SELECT  stn.station_id, itm.item_id
-                , IFNULL(sb.price, 0)
-                , IFNULL(ss.price, 0)
+        SELECT  si.station_id, si.item_id
+                , IFNULL(si.demand_price, 0)
+                , IFNULL(si.supply_price, 0)
+                , IFNULL(si.demand_units, {defDemand})
+                , IFNULL(si.demand_level, {defDemand})
+                , IFNULL(si.supply_units, {defDemand})
+                , IFNULL(si.supply_level, {defDemand})
                 , si.modified
-                , IFNULL(sb.units, {defDemand})
-                , IFNULL(sb.level, {defDemand})
-                , IFNULL(ss.units, {defDemand})
-                , IFNULL(ss.level, {defDemand})
           FROM  Station stn,
                 Category AS cat
                 INNER JOIN Item AS itm USING (category_id)
                 {itemJoin} JOIN StationItem AS si
                     ON (si.station_id = stn.station_id
                         AND si.item_id = itm.item_id)
-                LEFT OUTER JOIN StationBuying AS sb
-                    ON (si.station_id = sb.station_id
-                        AND si.item_id = sb.item_id)
-                LEFT OUTER JOIN StationSelling AS ss
-                    ON (si.station_id = ss.station_id
-                        AND si.item_id = ss.item_id)
                 {stationWhere}
-         ORDER  BY stn.station_id, cat.name, itm.ui_order
+         ORDER  BY si.station_id, cat.name, itm.ui_order
     """
 
     sql = stmt.format(
@@ -130,23 +124,23 @@ def dumpPrices(
         stationSet = "ALL Systems/Stations"
 
     file.write(
-            "# TradeDangerous prices for {}\n"
-            "\n"
-            "# REMOVE ITEMS THAT DON'T APPEAR IN THE UI\n"
-            "# ORDER IS REMEMBERED: Move items around within categories "
-                "to match the game UI\n"
-            "\n"
-            "# File syntax:\n"
-            "# <item name> <sell> <buy> [<demand> <stock> [<timestamp>]]\n"
-            "#   Use '?' for demand/stock when you don't know/care,\n"
-            "#   Use '-' for demand/stock to indicate unavailable,\n"
-            "#   Otherwise use a number followed by L, M or H, e.g.\n"
-            "#     1L, 23M or 30000H\n"
-            "# If you omit the timestamp, the current time will be used when "
-                "the file is loaded.\n"
-            "\n".format(
-                stationSet
-            ))
+        "# TradeDangerous prices for {}\n"
+        "\n"
+        "# REMOVE ITEMS THAT DON'T APPEAR IN THE UI\n"
+        "# ORDER IS REMEMBERED: Move items around within categories "
+            "to match the game UI\n"
+        "\n"
+        "# File syntax:\n"
+        "# <item name> <sell> <buy> [<demand> <supply> [<timestamp>]]\n"
+        "#   Use '?' for demand/supply when you don't know/care,\n"
+        "#   Use '-' for demand/supply to indicate unavailable,\n"
+        "#   Otherwise use a number followed by L, M or H, e.g.\n"
+        "#     1L, 23M or 30000H\n"
+        "# If you omit the timestamp, the current time will be used when "
+            "the file is loaded.\n"
+        "\n".format(
+            stationSet
+    ))
 
     levelDesc = "?0LMH"
     maxCrWidth = 7
@@ -167,11 +161,11 @@ def dumpPrices(
         outFmt += "  {}"
     outFmt += "\n"
     output = outFmt.format(
-                "Item Name",
-                "SellCr", "BuyCr",
-                "Demand", "Stock",
-                "Timestamp",
-            )
+        "Item Name",
+        "SellCr", "BuyCr",
+        "Demand", "Supply",
+        "Timestamp",
+    )
     file.write('#' + output[1:])
 
     naIQL = "-"
@@ -179,7 +173,7 @@ def dumpPrices(
     defIQL = "?" if not defaultZero else "-"
 
     output = ""
-    for (stnID, itemID, fromStn, toStn, modified, demand, demandLevel, stock, stockLevel) in cur:
+    for (stnID, itemID, fromStn, toStn, demand, demandLevel, supply, supplyLevel, modified) in cur:
         modified = modified or now
         station, system = stations[stnID]
         item, catID, category = items[itemID]
@@ -201,14 +195,14 @@ def dumpPrices(
             # because it can be sold here but the demand is just
             # not useful as data.
             demandStr = defIQL if fromStn <= 0 else unkIQL
-            if stockLevel == 0:
-                stockStr = naIQL
-            elif stockLevel < 0 and stock <= 0:
-                stockStr = defIQL
+            if supplyLevel == 0:
+                supplyStr = naIQL
+            elif supplyLevel < 0 and supply <= 0:
+                supplyStr = defIQL
             else:
-                units = "?" if stock < 0 else str(stock)
-                level = levelDesc[stockLevel + 1]
-                stockStr = units + level
+                units = "?" if supply < 0 else str(supply)
+                level = levelDesc[supplyLevel + 1]
+                supplyStr = units + level
         else:
             if fromStn == 0 or demandLevel == 0:
                 demandStr = naIQL
@@ -218,11 +212,11 @@ def dumpPrices(
                 units = "?" if demand < 0 else str(demand)
                 level = levelDesc[demandLevel + 1]
                 demandStr = units + level
-            stockStr = naIQL
+            supplyStr = naIQL
         output += outFmt.format(
                     item,
                     fromStn, toStn,
-                    demandStr, stockStr,
+                    demandStr, supplyStr,
                     modified
                 )
 

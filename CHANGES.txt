@@ -2,6 +2,30 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v6.19.0 Apr 28 2015
+CACHE BUILD REQUIRED (trade.py buildcache -fi)
+. (kfsone) "import" command (non-plugin behavior)
+    - Restored the default behavior over forcefully overwriting existing data
+      with values from the .prices file and deleting items that aren't listed
+      in the import.
+    - Added "--merge-import" option: only imports entries that are newer than
+      existing local data and only removes entries when there is an explicit
+      entry for it with 0 prices.
+    - Changed "--reset" to "--reset-all" because it's a scary command,
+. (kfsone) Various commands:
+    - Consistency:
+      "demand" refers to what a station will buy,
+      "supply" refers to what a station is selling,
+    - Changed several command options from "--stock" to "--supply",
+. (kfsone) "market" command:
+    - Only show the age of items once,
+. (kfsone) Performance:
+    - Re-unified the StationBuying/StationSelling tables into StationItem,
+    - Added StationBuying and StationSelling views,
+    - Minor refactor of getTrades to reduce the pathalogical near O(n^2)
+      behavior it used to match buyers to sellers,
+
+
 v6.18.6 Apr 27 2015
 . (kfsone) Fixed #225 'Generator already running'
 . (kfsone) Performance improvement: Reduced the cost of "getTrades"

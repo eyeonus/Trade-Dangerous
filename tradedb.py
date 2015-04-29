@@ -464,7 +464,7 @@ class RareItem(namedtuple('RareItem', (
 class Trade(namedtuple('Trade', (
         'item', 'itemID',
         'costCr', 'gainCr',
-        'stock', 'stockLevel',
+        'supply', 'supplyLevel',
         'demand', 'demandLevel',
         'srcAge', 'dstAge'
         ))):
@@ -1100,8 +1100,8 @@ class TradeDB(object):
             SELECT  station_id, system_id, name,
                     ls_from_star, market, blackmarket, shipyard,
                     max_pad_size, outfitting, rearm, refuel, repair,
-                    COUNT(StationItem.station_id) AS itemCount,
-                    JULIANDAY('now') - JULIANDAY(MAX(StationItem.modified))
+                    COUNT(StationItem.item_id) AS itemCount,
+                    JULIANDAY('now') - JULIANDAY(AVG(StationItem.modified))
               FROM  Station
                     LEFT OUTER JOIN StationItem USING (station_id)
              GROUP  BY 1
@@ -1810,10 +1810,11 @@ class TradeDB(object):
             self.avgSelling = {
                 ID: int(cr)
                 for ID, cr in self.getDB().execute("""
-                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
-                      FROM  Item
-                            LEFT OUTER JOIN StationSelling
-                                USING (item_id)
+                    SELECT  i.item_id, IFNULL(AVG(supply_price), 0)
+                      FROM  Item AS i
+                            LEFT OUTER JOIN StationItem AS si ON (
+                                i.item_id = si.item_id AND si.supply_price > 0
+                            )
                      GROUP  BY 1
                 """)
             }
@@ -1827,10 +1828,12 @@ class TradeDB(object):
             self.avgBuying = {
                 ID: int(cr)
                 for ID, cr in self.getDB().execute("""
-                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
-                      FROM  Item
-                            LEFT OUTER JOIN StationBuying
-                                USING (item_id)
+                    SELECT  i.item_id, IFNULL(AVG(demand_price), 0)
+                      FROM  Item AS i
+                            LEFT OUTER JOIN StationItem AS si ON (
+                                i.item_id = si.item_id AND si.demand_price > 0
+                            )
+                     WHERE  demand_price > 0
                      GROUP  BY 1
                 """)
             }
@@ -1905,7 +1908,7 @@ class TradeDB(object):
             itemID,
             srcStnID, dstStnID,
             srcPriceCr, profit,
-            stock, stockLevel,
+            supply, supplyLevel,
             demand, demandLevel,
             srcAge, dstAge
         ) in self.cur:
@@ -1922,7 +1925,7 @@ class TradeDB(object):
             tradingWith.append(Trade(
                 items[itemID], itemID,
                 srcPriceCr, profit,
-                stock, stockLevel,
+                supply, supplyLevel,
                 demand, demandLevel,
                 srcAge, dstAge
             ))
@@ -1941,7 +1944,7 @@ class TradeDB(object):
         stmt = """
             SELECT  item_id,
                     cost, gain,
-                    stock_units, stock_level,
+                    supply_units, supply_level,
                     demand_units, demand_level,
                     src_age, dst_age,
               FROM  vProfits
@@ -1956,14 +1959,14 @@ class TradeDB(object):
         for (
             itemID,
             srcPriceCr, profit,
-            stock, stockLevel,
+            supply, supplyLevel,
             demand, demandLevel,
             srcAge, dstAge
         ) in self.cur:
             trading.append(Trade(
                 items[itemID], itemID,
                 srcPriceCr, profit,
-                stock, stockLevel,
+                supply, supplyLevel,
                 demand, demandLevel,
                 srcAge, dstAge
                 ))

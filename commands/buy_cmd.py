@@ -72,11 +72,11 @@ switches = [
             dest='sortByPrice',
         ),
         ParseArgument(
-            '--stock-sort', '-S',
-            help='Sort by stock followed by price',
+            '--units-sort', '-S',
+            help='Sort by available units followed by price',
             action='store_true',
             default=False,
-            dest='sortByStock',
+            dest='sortByUnits',
         ),
     ),
     ParseArgument(
@@ -139,26 +139,29 @@ def sql_query(cmdenv, tdb, queries, mode):
     # Constraints
     idList = ','.join(str(ID) for ID in queries.keys())
     if mode is SHIP_MODE:
-        tables = "ShipVendor AS ss INNER JOIN Ship AS sh USING (ship_id)"
+        tables = "ShipVendor AS s INNER JOIN Ship AS sh USING (ship_id)"
         constraints = ["(ship_id IN ({}))".format(idList)]
         columns = [
-            'ss.ship_id',
-            'ss.station_id',
+            's.ship_id',
+            's.station_id',
             'sh.cost',
             '1',
             "0",
             ]
         bindValues = []
     else:
-        tables = "StationSelling AS ss"
-        constraints = ["(item_id IN ({}))".format(idList)]
+        tables = "StationItem AS s"
         columns = [
-            'ss.item_id',
-            'ss.station_id',
-            'ss.price',
-            'ss.units',
-            "JULIANDAY('NOW') - JULIANDAY(ss.modified)",
-            ]
+            's.item_id',
+            's.station_id',
+            's.supply_price',
+            's.supply_units',
+            "JULIANDAY('NOW') - JULIANDAY(s.modified)",
+        ]
+        constraints = [
+            "(s.item_id IN ({}))".format(idList),
+            "(s.supply_price > 0)",
+        ]
         bindValues = []
 
     # Additional constraints in ITEM_MODE
@@ -215,9 +218,9 @@ def run(results, cmdenv, tdb):
             results.summary.avg = first.cost
         else:
             avgPrice = tdb.query("""
-                    SELECT CAST(AVG(ss.price) AS INT)
-                      FROM StationSelling AS ss
-                     WHERE ss.item_id = ?
+                    SELECT CAST(AVG(si.supply_price) AS INT)
+                      FROM StationItem AS si
+                     WHERE si.item_id = ? AND si.supply_price > 0
             """, [first.ID]).fetchone()[0]
             results.summary.avg = avgPrice
 
@@ -238,7 +241,7 @@ def run(results, cmdenv, tdb):
     stationByID = tdb.stationByID
 
     cur = sql_query(cmdenv, tdb, queries, mode)
-    for (ID, stationID, priceCr, stock, age) in cur:
+    for (ID, stationID, price, units, age) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
@@ -250,8 +253,8 @@ def run(results, cmdenv, tdb):
                 continue
             row.dist = distance
         row.item = queries[ID]
-        row.price = priceCr
-        row.stock = stock
+        row.price = price
+        row.units = units
         row.age = age
         if oneStopMode:
             stationRows = stations[stationID]
@@ -269,14 +272,14 @@ def run(results, cmdenv, tdb):
     if oneStopMode and not singleMode:
         results.rows.sort(key=lambda result: result.item.name())
     results.rows.sort(key=lambda result: result.station.name())
-    if cmdenv.sortByStock:
-        results.summary.sort = "Stock"
+    if cmdenv.sortByUnits:
+        results.summary.sort = "units"
         results.rows.sort(key=lambda result: result.price)
-        results.rows.sort(key=lambda result: result.stock, reverse=True)
+        results.rows.sort(key=lambda result: result.units, reverse=True)
     else:
         if not oneStopMode:
             results.summary.sort = "Price"
-            results.rows.sort(key=lambda result: result.stock, reverse=True)
+            results.rows.sort(key=lambda result: result.units, reverse=True)
             results.rows.sort(key=lambda result: result.price)
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Ly"
@@ -308,8 +311,8 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn('Cost', '>', 10, 'n',
                 key=lambda row: row.price)
     if mode is not SHIP_MODE:
-        stnRowFmt.addColumn('Stock', '>', 10,
-                key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
+        stnRowFmt.addColumn('Units', '>', 10,
+                key=lambda row: '{:n}'.format(row.units) if row.units >= 0 else '?')
 
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',

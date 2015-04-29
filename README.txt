@@ -351,10 +351,10 @@ RUN sub-command:
          --mgpt 2000
          --mgpt 2k
 
-     --stock N
-       Only consider sales where the station has this many units in stock,
+     --supply N
+       Only consider sales where the station has this many units in supply,
        e.g.
-         --stock 1000
+         --supply 1000
 
      --pad-size SML?
      --pad SML?
@@ -460,7 +460,7 @@ TRADE sub-command:
     ...
 
     trade.py trade "sol/daedalus" "groom/frank" -v
-    Item                  Profit       Cost      Stock     Demand   SrcAge   DstAge
+    Item                  Profit       Cost     Supply     Demand   SrcAge   DstAge
     -------------------------------------------------------------------------------
     Superconductors        1,331      6,162  1,229,497    621,964     1.17     2.37
     Indium                 1,202      5,394  1,397,354    683,398     1.17     2.37
@@ -468,7 +468,7 @@ TRADE sub-command:
     ...
 
     trade.py trade "sol/daedalus" "groom/frank" -v -vv
-    Item                  Profit       Cost    AvgCost     Buying     AvgBuy      Stock     Demand   SrcAge   DstAge
+    Item                  Profit       Cost    AvgCost     Buying     AvgBuy     Supply     Demand   SrcAge   DstAge
     ----------------------------------------------------------------------------------------------------------------
     Superconductors        1,331      6,162       6461       7493       6813  1,229,497    621,964     1.17     2.37
     Indium                 1,202      5,394       5640       6596       5961  1,397,354    683,398     1.17     2.37
@@ -527,7 +527,7 @@ UPDATE sub-command:
 
     --force-na
     -0
-      Changes the default demand/stock to be "n/a".
+      Changes the default demand/supply to be "n/a".
       CAUTION: "n/a" indicates that the item is either not bought
       or not sold at this station, and TD will ignore it accordingly.
 
@@ -887,7 +887,7 @@ BUY sub-command:
         ship [ship ship,ship ...]
 
     --quantity Q
-      Requires that the stock level be unknown or at least this value,
+      Requires that the supply to be unknown or at least this value,
       --quantity 23
 
     --near system
@@ -930,9 +930,9 @@ BUY sub-command:
       Keeps items sorted by price when using --near
       (otherwise items are listed by distance and then price)
 
-    --stock-sort
+    --supply-sort
     -S
-      Sorts items by stock available first and then price
+      Sorts items by supply available first and then price
 
   Example
     trade.py buy --near achenar food
@@ -948,7 +948,7 @@ SELL sub-command:
   trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
 
     --quantity Q
-      Requires that the stock level be unknown or at least this value,
+      Requires that the demand level be unknown or at least this value,
       --quantity 23
 
     --near system
@@ -1020,12 +1020,8 @@ EXPORT sub-command:
     Export Table 'Ship' to 'misc/Ship.csv'
     Export Table 'ShipVendor' to 'misc/ShipVendor.csv'
     Export Table 'Station' to 'misc/Station.csv'
-    Ignore Table 'StationBuying'
     Ignore Table 'StationItem'
-    Ignore Table 'StationSelling'
     Export Table 'System' to 'misc/System.csv'
-    Export Table 'Upgrade' to 'misc/Upgrade.csv'
-    Export Table 'UpgradeVendor' to 'misc/UpgradeVendor.csv'
 
     > trade.py export -T System,Station
     Using database './data/TradeDangerous.db'
@@ -1192,19 +1188,19 @@ These fields are:
   <sale price> (how much the station pays)
   <buying price> (how much the station charges)
   <demand> ('?' means "we don't care")
-  <stock>  ('-' means "not available")
+  <supply> ('-' means "not available")
 
 So you can see the only item this station is selling is Consumer Tech, which
 the station wants 1111 credits for. The demand wasn't recorded (we generally
 aren't interested in demand levels since E:D doesn't seem to use them) and
 the items wasn't available for purchase *from* the station.
 
-TD will use the 'stock' values to limit how many units it can buy. For
+TD will use the 'supply' values to limit how many units it can buy. For
 example, if you have money to buy 30 units from a station but the .prices
 data says only 10 are available, TD only tell you to buy 10 units and it
 will fill the rest of your hold up with other stuff.
 
-Demand and Stock both take a "supply level" value which is either "?", "-"
+Demand and Supply both take a "stock level" value which is either "?", "-"
 or the number of units followed by the level: L for Low, M for Medium,
 H for High or ? for "don't care".
 
@@ -1214,11 +1210,6 @@ H for High or ? for "don't care".
    23M
    3402H
    444?
-
-Best Practice:
-
- - Leave demand as ?, neither E:D or TD use it,
- - Stock quantities over 10k are usuall irrelevant, leave them as ?,
 
 For more details of the .prices format, see the wiki page:
 https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data

@@ -31,7 +31,7 @@ epilog=(
     "This sub-command provides a plugin infrastructure, and comes "
     "with a module to import data from Maddavo's Market Share "
     "(http://www.davek.com.au/td/).\n"
-    "See \"import --plug=maddavo --opt=help\" for more help."
+    "See \"import -P maddavo -O help\" for more help."
 )
 wantsTradeDB=False
 arguments = [
