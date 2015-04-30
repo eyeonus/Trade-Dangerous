@@ -1658,8 +1658,6 @@ class TradeDB(object):
                     # list so that it serves as the via list for all next-hops.
                     openList.append(destNode)
 
-        destStations = []
-
         # We have a system-to-system path list, now we
         # need stations to terminate at.
         def path_iter_fn():
