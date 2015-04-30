@@ -10,13 +10,13 @@ REQUIRES PYTHON 3.4 OR HIGHER.
 ==============================================================================
 
 TradeDangerous is set of powerful trading tools for Elite Dangerous, organized
-around one of the most powerful trade run optimizers available.
+around one of the most powerful trade run optimizers (TRO) available.
 
 The TRO is a heavy hitter that can calculate complex routes with multiple-
 stops while taking into account the profits you make along the route.
 
-The price data in TradeDangerous is either manually entered (by your) or
-crowd sources (e.g. http://www.davek.com.au/td).
+The price data in TradeDangerous is either manually entered (by you) or
+crowd sourced (e.g. http://www.davek.com.au/td).
 
 
 == What can it do for me?
@@ -31,9 +31,9 @@ We ask:
 or in abbreviated form:
     trade.py run --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
 
-And TD will give us a 2-leg trade run that'll may more than double our money:
+And TD will give us a 2-leg trade run that may more than double our money:
 
-    1: MOKOSH/Bethe Station -> GRANTHAIMI/Parmitano Colony:
+    1:  MOKOSH/Bethe Station -> GRANTHAIMI/Parmitano Colony:
     2:  MOKOSH/Bethe Station: 8 x Mineral Extractors,
     3:  V774 HERCULIS/Mendel Mines: 4 x Gallite, 4 x Rutile,
     4:  GRANTHAIMI/Parmitano Colony +6,340cr
@@ -49,7 +49,7 @@ Line 4 tells us the last hop of our run and how much we gain when we sell our
 remaining cargo here.
 
 
-... but how do I get there?
+… but how do I get there?
 
 There's a command for that
 
@@ -70,14 +70,14 @@ But we could also just ask TD to give us more detail with our trade run ("-v"):
     5:  Jump V774 HERCULIS -> LTT 15449 -> GRANTHAIMI
     6:  Finish GRANTHAIMI/Parmitano Colony + 6,340cr => 11,340cr
 
-Lines 2 and 4 now include the expected buying prices so you don't get herped
+Lines 2 and 4 now include the expected buying prices so you don't get shafted
 by out of date price data.
 
 Lines 3 and 5 tell us our jump routes between legs.
 
 (For even more detail "-v -v" or "-vv" or "-vvv")
 
-At this point, you probably have lots of questions.
+At this point, you probably have a lot of questions.
 
 
 == TradeDangerous: Setup
@@ -85,7 +85,7 @@ At this point, you probably have lots of questions.
 
 At the moment, the primary interface to TradeDangerous' goodness is through
 a command line tool, "trade.py". I've built TD in a modular, open source way
-so that other programmers can use it to power their own tools, hopefully
+so that other programmers can use it to power their own tools; hopefully
 tools with web or graphical interfaces.
 
 For instructions on how to get setup with TD see the wiki:
@@ -97,7 +97,7 @@ and click the "Setup Guide" link.
 ==============================================================================
 
 TD functionality is broken up into "sub-commands". For instance, when we
-refer to the "update" command, we mean "trade.py update ...".
+refer to the "update" command, we mean "trade.py update …".
 
 If you run 'trade.py' without any commands or options, it will give you
 a list of the sub-commands available. You can find out more details
@@ -111,7 +111,7 @@ specified.
 Optional arguments are denoted by a keyword that starts with one or
 two dashes ('--from', '-S'). The difference between long and short
 versions? Readability. You can also 'stack' short versions, for
-example "update -F -G -A" can be written as "-FGA".
+example "update -F -G -A" can be written as "update -FGA".
 
 There are "switches" which turn a feature on or off, such as
 '--detail' which makes the command more verbose or '--quiet' which
@@ -158,32 +158,32 @@ Sub Commands:
 
 For additional help on a specific command, such as 'update' use
 
-  trade.py run ...
+  trade.py run …
     Calculates a trade run
 
-  trade.py update ...
+  trade.py update …
     Provides a way to enter/update price data for a station
 
-  trade.py nav ...
+  trade.py nav …
     Calculates a route between two systems
 
-  trade.py import ...
+  trade.py import …
     Reads prices from a file and loads them into the cache
 
-  trade.py buy ...
+  trade.py buy …
     Finds places to buy a given item/ship
 
-  trade.py sell ...
+  trade.py sell …
     Finds places to sell a given item
 
-  trade.py local ...
-    Lists systems (and optionally, stations) in the vacinity
+  trade.py local …
+    Lists systems (and optionally, stations) in the vicinity
     of a given system
 
-  trade.py rares ...
-    Helps to find rares.
+  trade.py rares …
+    Helps to find rare items.
 
-  trade.py olddata ...
+  trade.py olddata …
     Lists old data
 
 Advanced Commands:
@@ -191,10 +191,10 @@ Advanced Commands:
   trade.py buildcache
     Rebuilds the cache (data/TradeDangerous.db)
 
-  trade.py export ...
+  trade.py export …
     Exports data from the db to .csv files
 
-  trade.py station ...
+  trade.py station …
     Query, add, update or remove stations
 
 
@@ -233,7 +233,7 @@ RUN sub-command:
 
      --limit N   DEFAULT: 0
        If set, limits the maximum number of units of any cargo
-       item you will buy on any trade hop, incase you want to
+       item you will buy on any trade hop, in case you want to
        hedge your bets or be a good economy citizen.
        e.g.
          --capacity 16 --limit 8
@@ -269,6 +269,11 @@ RUN sub-command:
          --to Beagle2
          --to lhs64
 
+		 --shorten" (requires --to)
+        Will show routes with fewer hops than the maximum if they produce a better gpt
+				e.g.
+				--to Beagle2 --hops 4 --shorten
+				
      --towards <goal system>
        Builds a route that tries to shorten the distance from your origin
        and goal. Destinations that would increase the distance are ignored.
@@ -283,7 +288,13 @@ RUN sub-command:
        e.g.
          --from iBootis --loop
          --loop --hops 4   (looks for 2, 3 and 4 hop loops)
-
+		 
+		 --loop-int N
+		 -li N
+       Will require a minimum of N hops before visiting the same station.
+			 e.g.
+				--from iBootis --loop-int 3
+				
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
        Requires that hops be at least 2.
@@ -321,8 +332,7 @@ RUN sub-command:
        Considers stations from systems upto this many jumps from your
        specified destination (--to).
          --to lave -e 3      (find runs that end within 3 jumps of lave)
-
-
+     
    Filter options:
      --max-days-old N.NN
      -MD N.NN
@@ -361,9 +371,9 @@ RUN sub-command:
      -p
        Limit results to stations that match one of the pad sizes
        specified.
-         --pad ML?            (med, lrg or unknown only)
-         -p ML?                 ""    ""      ""    ""
-         --pad ?              (unknown only),
+         --pad ML?            (medium, large, or unknown only)
+         -p ML?               (medium, large, or unknown only)
+         --pad ?              (unknown only)
          --pad L              (large only, ignores unknown)
 
      --black-market
@@ -394,7 +404,7 @@ RUN sub-command:
        After a number of hops (controlled by --prune-hops), eliminate
        a percentage of the routes from the lowest up by score.
        NOTE: This can speed up long run calculations, but it can also
-       cause you to miss gold-mines that are a just a few hops away...
+       cause you to miss gold-mines that are a just a few hops away…
        e.g.
          --prune-score 12.5   Removes the bottom 1/8th of (12.5%) of routes
          --prune-score 50     Only keep the upper 50% of routes
@@ -403,14 +413,14 @@ RUN sub-command:
        DEFAULT: 3
        Being applying "--prune-score" from this hop onward. Set 0 to disable.
        NOTE: This can speed up long run calculations, but it can also
-       cause you to miss gold-mines that are a just a few hops away...
+       cause you to miss gold-mines that are a just a few hops away…
        e.g.
          --prune-hop 4 --prune-score 22.5
 
      --avoid ITEM/SYSTEM/STATION
-     --avoid AVOID,AVOID,...,AVOID
+     --avoid AVOID,AVOID,…,AVOID
      --av ITEM/SYSTEM/STATION
-     --av AVOID,AVOID,...,AVOID
+     --av AVOID,AVOID,…,AVOID
        Excludes the item/system/station matching the name from the database
        e.g.
          --avoid Gold
@@ -457,7 +467,7 @@ TRADE sub-command:
     Beryllium              1,021      8,051
     Gold                   1,004      9,276
     Silver                   838      4,631
-    ...
+    …
 
     trade.py trade "sol/daedalus" "groom/frank" -v
     Item                  Profit       Cost      Stock     Demand   SrcAge   DstAge
@@ -465,7 +475,7 @@ TRADE sub-command:
     Superconductors        1,331      6,162  1,229,497    621,964     1.17     2.37
     Indium                 1,202      5,394  1,397,354    683,398     1.17     2.37
     Beryllium              1,021      8,051     68,181    529,673     1.17     2.37
-    ...
+    …
 
     trade.py trade "sol/daedalus" "groom/frank" -v -vv
     Item                  Profit       Cost    AvgCost     Buying     AvgBuy      Stock     Demand   SrcAge   DstAge
@@ -565,7 +575,7 @@ IMPORT sub-command:
   Provides a way to import prices data from a file or a web site. You can use this
   to import data for a few stations or an entire .prices file from a friend.
 
-  For instance, if you 'update'd a station and there was an error importing it,
+  For instance, if you updated a station and there was an error importing it,
   the data is usually saved as "prices.last". You can open this file and correct
   the error and then import it, rather than having to re-enter all of the data.
 
@@ -581,7 +591,7 @@ IMPORT sub-command:
         import.prices
 
     url
-      Specifies web adress to retrieve the data from
+      Specifies web address to retrieve the data from
       e.g.
         http://kfs.org/td/prices
 
@@ -651,7 +661,7 @@ MARKET sub-command:
     Clothing                   221
     Domestic Appliances        417
     Food Cartridges             35
-    ...
+    …
 
     $ trade.py market --buy --sell ramoncity -v
         Item                    Buying     Avg Age/Days Selling     Avg   Supply Age/Days
@@ -664,12 +674,12 @@ MARKET sub-command:
     +FOODS
         Food Cartridges             35     125     0.01      45      50  32,019H     0.01
 
-    ...
+    …
 
 NAV sub-command:
 
   Provides details of routes without worrying about trade. By default, if
-  given a ship, it uses the max dry range of the ship. Use --full if you
+  given a ship, it uses the maximum dry range of the ship. Use --full if you
   want to restrict to routes with a full cargo hold.
 
   trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
@@ -717,7 +727,7 @@ NAV sub-command:
       /  Barry Terminal                           21        -    ?   ?   54
       /  Binet Port                               14        -   No   ?   54
       /  Bose Station                             53        -    ?   ?   53
-      ...
+      …
     Arrive V774 HERCULIS    4.90        2   11.13    0.00
       /  Lazutkin Colony                         704        -    ?   ?    0
       /  Mendel Mines                            473        -    ?   ?   61
@@ -728,7 +738,7 @@ NAV sub-command:
 LOCAL sub-command:
 
   Provides details of local stations without worrying about trade. By default, if
-  given a ship, it uses the max dry range of the ship. Use --full if you
+  given a ship, it uses the maximum dry range of the ship. Use --full if you
   want to restrict to systems with a full cargo hold.
 
   trade.py local [-q | -v] [--ly N.NN] system
@@ -741,9 +751,9 @@ LOCAL sub-command:
     --pad SML?
     -p
       Limit stations to those that match one of the pad sizes specified.
-        --pad ML?            (med, lrg or unknown only)
-        -p ML?                 ""    ""      ""    ""
-        --pad ?              (unknown only),
+        --pad ML?            (medium, large, or unknown only)
+        -p ML?               (medium, large, or unknown only)
+        --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
     --stations
@@ -845,17 +855,17 @@ STATION sub-command:
     > trade.py station --update "i bootis/nowhere port" --pad=L --ls-from-star=123 --black-market=N
     > trade.py station -u "i bootis/nowhere port" --pad L --ls 123 --bm=N
 
-  If can also be used to show some basic data about a given station:
+  It can also be used to show some basic data about a given station:
 
     > trade.py station -v i bootis/chango
     Station Data:
-    System....: I BOOTIS (#10438 @ -22.375,34.84375,4.0)
-    Station...: Chango Dock (#1288)
+    System….: I BOOTIS (#10438 @ -22.375,34.84375,4.0)
+    Station…: Chango Dock (#1288)
     Also here.: Maher Stellar Research
-    Stn/Ls....: 1,095
+    Stn/Ls….: 1,095
     B/Market..: Yes
     Pad Size..: Lrg
-    Prices....: 33
+    Prices….: 33
     Price Age.: 6.77 days
     Best Buy..: (Buy from this station)
         Tea*                           @   1,217cr (Avg Sell   1,570cr)
@@ -869,7 +879,7 @@ STATION sub-command:
 
     This shows that 'Tea' is a star buy at this station: it is being
     sold by the station for 1217cr but the average selling price is
-    1570credits.
+    1570 credits.
 
     A star trade (indicated by '*') is at least 10% better than the
     average trading price for that commodity.
@@ -883,8 +893,8 @@ BUY sub-command:
         [-q | -v] [--quantity Q] [--near N] [--ly-per N]
         [-P | -S] [--limit]
         [--one-stop | -1]
-        item [item item,item ...]
-        ship [ship ship,ship ...]
+        item [item item,item …]
+        ship [ship ship,ship …]
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -920,9 +930,9 @@ BUY sub-command:
     -p
       Limit results to stations that match one of the pad sizes
       specified.
-        --pad ML?            (med, lrg or unknown only)
-        -p ML?                 ""    ""      ""    ""
-        --pad ?              (unknown only),
+        --pad ML?            (medium, large, or unknown only)
+        -p ML?               (medium, large, or unknown only)
+        --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
     --prices-sort
@@ -976,9 +986,9 @@ SELL sub-command:
     -p
       Limit results to stations that match one of the pad sizes
       specified.
-        --pad ML?            (med, lrg or unknown only)
-        -o ML?                 ""    ""      ""    ""
-        --pad ?              (unknown only),
+        --pad ML?            (medium, large, or unknown only)
+        -o ML?               (medium, large, or unknown only)
+        --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
     --prices-sort
@@ -996,13 +1006,13 @@ EXPORT sub-command:
            they will be lost. Use the 'buildcache' command first to rebuild
            the database.
 
-  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,...] | --all-tables ] [--delete-empty]
+  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,…] | --all-tables ] [--delete-empty]
 
     --path PATH
       Specify the save location of the CSV files. Defaults to './data'
 
-    --tables TABLE[,TABLE,...]
-    -T TABLE[,TABLE,...]
+    --tables TABLE[,TABLE,…]
+    -T TABLE[,TABLE,…]
       Specify a comma separated list of tablenames to export.
 
     --all-tables
@@ -1064,7 +1074,7 @@ RARES sub-command:
        the furthest-away rares
 
     --away N.NN
-    --from SYSTEM1 --from SYSTEM2 ... --from SYSTEMN
+    --from SYSTEM1 --from SYSTEM2 … --from SYSTEMN
       Limits results to systems that are at least a given distance away
       from additional systems.
       e.g.
@@ -1079,9 +1089,9 @@ RARES sub-command:
     -p
       Limit results to stations that match one of the pad sizes
       specified.
-        --pad ML?            (med, lrg or unknown only)
-        -o ML?                 ""    ""      ""    ""
-        --pad ?              (unknown only),
+        --pad ML?            (medium, large, or unknown only)
+        -o ML?               (medium, large, or unknown only)
+        --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
      --price-sort
@@ -1149,7 +1159,7 @@ Set the 'paying' and 'asking' values to 0
 
 - To move around
 
- . Use tab/shift-tab to cycle thru cells,
+ . Use tab/shift-tab to cycle through cells,
  . Use up/down arrows to move between rows,
  . Press ENTER to move to the first column of the next line,
 
@@ -1218,7 +1228,7 @@ H for High or ? for "don't care".
 Best Practice:
 
  - Leave demand as ?, neither E:D or TD use it,
- - Stock quantities over 10k are usuall irrelevant, leave them as ?,
+ - Stock quantities over 10k are usually irrelevant; you may leave them as ?,
 
 For more details of the .prices format, see the wiki page:
 https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data
@@ -1231,7 +1241,7 @@ See "trade.py update -h" for more help with the update command.
 
 
 ==============================================================================
-== That's nice, but I'm a programmer and I want to ...
+== That's nice, but I'm a programmer and I want to …
 ==============================================================================
 
 TradeDangerous is organized into modules, the key of which are:
@@ -1305,4 +1315,3 @@ loading" by functions like TradeCalc.getBestHops().
 When TradeDB and TradeCalc do not currently provide built-in queries for
 the information you need, you can revert to the SQL Database with the
 TradeDB.query() and TradeDB.fetch_all() commands.
-
