@@ -5,7 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v6.19.0 Apr 28 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
 . (kfsone) "import" command (non-plugin behavior)
-    - Restored the default behavior over forcefully overwriting existing data
+    - Restored the default behavior of forcefully overwriting existing data
       with values from the .prices file and deleting items that aren't listed
       in the import.
     - Added "--merge-import" option: only imports entries that are newer than
