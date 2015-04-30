@@ -42,6 +42,12 @@ switches = [
         type=int,
         dest='stationInterval',
     ),
+    ParseArgument(
+        '--pad-size', '-p',
+        help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
+        metavar='PADSIZES',
+        dest='padSize',
+    ),
 ]
 
 ######################################################################
@@ -107,6 +113,7 @@ def run(results, cmdenv, tdb):
             )
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
+    maxPadSize = cmdenv.padSize
 
     for (jumpSys, dist) in route:
         jumpLy = lastSys.distanceTo(jumpSys)
@@ -123,9 +130,8 @@ def run(results, cmdenv, tdb):
         row.stations = []
         if cmdenv.stations:
             for (station) in jumpSys.stations:
-                try:
-                    age = "{:7.2f}".format(ages[station.ID])
-                except:
+                if maxPadSize and not station.checkPadSize(maxPadSize):
+                    continue
                 if station.itemCount:
                     age = "{:7.2f}".format(station.dataAge / 86400)
                 else:
