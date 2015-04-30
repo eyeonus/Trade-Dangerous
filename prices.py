@@ -87,7 +87,7 @@ def dumpPrices(
     now = cur.fetchone()[0]
 
     stmt = """
-        SELECT  si.station_id, si.item_id
+        SELECT  stn.station_id, itm.item_id
                 , IFNULL(si.demand_price, 0)
                 , IFNULL(si.supply_price, 0)
                 , IFNULL(si.demand_units, {defDemand})
@@ -102,7 +102,7 @@ def dumpPrices(
                     ON (si.station_id = stn.station_id
                         AND si.item_id = itm.item_id)
                 {stationWhere}
-         ORDER  BY si.station_id, cat.name, itm.ui_order
+         ORDER  BY stn.station_id, cat.name, itm.ui_order
     """
 
     sql = stmt.format(
