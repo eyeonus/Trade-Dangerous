@@ -253,8 +253,6 @@ class Station(object):
     Describes a station (trading or otherwise) in a system.
 
     For obtaining trade information for a given station see one of:
-        TradeDB.loadStationTrades  (very slow and expensive)
-        TradeDB.loadDirectTrades   (can be expensive)
         TradeCalc.getTrades        (fast and cheap)
     """
     __slots__ = (
@@ -1866,111 +1864,6 @@ class TradeDB(object):
 
     ############################################################
     # Price data.
-
-    def loadStationTrades(self, fromStationIDs):
-        """
-        Loads all profitable trades that could be made from the
-        specified list of stations.
-        Does not take reachability into account.
-        """
-
-        if not fromStationIDs:
-            return
-
-        assert isinstance(fromStationIDs, list)
-        assert isinstance(fromStationIDs[0], int)
-
-        self.tdenv.DEBUG1("Loading trades for {}", fromStationIDs)
-
-        stmt = """
-            SELECT  *
-              FROM  vProfits
-             WHERE  src_station_id IN ({})
-             ORDER  BY src_station_id, dst_station_id, gain DESC
-            """.format(','.join(str(ID) for ID in fromStationIDs))
-        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
-        self.cur.execute(stmt)
-        stations, items = self.stationByID, self.itemByID
-
-        prevSrcStnID, prevDstStnID = None, None
-        srcStn, dstStn = None, None
-        tradingWith = None
-        if self.tradingCount is None:
-            self.tradingCount = 0
-
-        for (
-            itemID,
-            srcStnID, dstStnID,
-            srcPriceCr, profit,
-            supply, supplyLevel,
-            demand, demandLevel,
-            srcAge, dstAge
-        ) in self.cur:
-            if srcStnID != prevSrcStnID:
-                srcStn = stations[srcStnID]
-                prevSrcStnID = srcStnID
-                prevDstStnID = None
-                assert srcStn.tradingWith is None
-                srcStn.tradingWith = {}
-            if dstStnID != prevDstStnID:
-                dstStn, prevDstStnID = stations[dstStnID], dstStnID
-                tradingWith = srcStn.tradingWith[dstStn] = []
-                self.tradingCount += 1
-            tradingWith.append(Trade(
-                items[itemID],
-                srcPriceCr, profit,
-                supply, supplyLevel,
-                demand, demandLevel,
-                srcAge, dstAge
-            ))
-
-    def loadDirectTrades(self, fromStation, toStation):
-        """
-        Loads the profitable trades between two stations. Does not take
-        reachability into account.
-        """
-
-        self.tdenv.DEBUG1(
-            "Loading trades for {}->{}",
-            fromStation.name(), toStation.name()
-        )
-
-        stmt = """
-            SELECT  item_id,
-                    cost, gain,
-                    supply_units, supply_level,
-                    demand_units, demand_level,
-                    src_age, dst_age,
-              FROM  vProfits
-             WHERE  src_station_id = ? and dst_station_id = ?
-             ORDER  gain DESC
-        """
-        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
-        self.cur.execute(stmt, [fromStation.ID, toStation.ID])
-
-        trading = []
-        items = self.itemByID
-        for (
-            itemID,
-            srcPriceCr, profit,
-            supply, supplyLevel,
-            demand, demandLevel,
-            srcAge, dstAge
-        ) in self.cur:
-            trading.append(Trade(
-                items[itemID],
-                srcPriceCr, profit,
-                supply, supplyLevel,
-                demand, demandLevel,
-                srcAge, dstAge
-                ))
-
-        if fromStation.tradingWith is None:
-            fromStation.tradingWith = {}
-        if trading:
-            fromStation.tradingWith[toStation] = trading
-        else:
-            del fromStation.tradingWith[toStation]
 
     def close(self):
         self.cur = None
