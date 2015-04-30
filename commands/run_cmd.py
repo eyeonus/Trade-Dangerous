@@ -1105,13 +1105,6 @@ def run(results, cmdenv, tdb):
     results.summary = ResultRow()
     results.summary.exception = ""
 
-    pruneMod = cmdenv.pruneScores / 100
-    distancePruning = (cmdenv.destPlace and not cmdenv.direct) or (cmdenv.loop)
-    if distancePruning:
-        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
-        if not cmdenv.loop:
-            stopSystems = {stop.system for stop in stopStations}
-
     if cmdenv.loop:
         routePickPred = lambda route: \
             route.lastStation is route.firstStation
@@ -1130,16 +1123,24 @@ def run(results, cmdenv, tdb):
 
     pickedRoutes = []
 
+    pruneMod = cmdenv.pruneScores / 100
+
     if cmdenv.loop:
-        def routeStillHasAChance(rt, hopNo):
-            return (rt.lastSystem.distanceTo(rt.firstSystem) / maxHopDistLy) <= hopNo
-    else:
-        def routeStillHasAChance(rt, hopNo):
-            remainingDistance = (numHops - hopNo) * maxHopDistLy
-            return any(
+        distancePruning = lambda rt, distLeft: \
+            rt.lastSystem.distanceTo(rt.firstSystem) <= distLeft
+    elif cmdenv.destPlace and not cmdenv.direct:
+        distancePruning = lambda rt, distLeft: \
+            any(
                 stop for stop in stopSystems
-                if rt.lastSystem.distanceTo(stop) <= remainingDistance
+                if rt.lastSystem.distanceTo(stop) <= distLeft
             )
+    else:
+        distancePruning = False
+
+    if distancePruning:
+        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
+        if not cmdenv.loop:
+            stopSystems = {stop.system for stop in stopStations}
 
     for hopNo in range(numHops):
         restrictTo = None
@@ -1152,7 +1153,8 @@ def run(results, cmdenv, tdb):
 
         if distancePruning:
             preCrop = len(routes)
-            routes = [rt for rt in routes if routeStillHasAChance(rt, hopNo)]
+            distLeft = maxHopDistLy * (numHops - hopNo)
+            routes = [rt for rt in routes if distancePruning(rt, distLeft)]
             if not routes:
                 if pickedRoutes:
                     break
