@@ -18,14 +18,14 @@ help='Find places to buy a given item within range of a given station.'
 name='buy'
 epilog=None
 wantsTradeDB=True
-arguments = [
+arguments = (
     ParseArgument(
         'name',
         help='Items or Ships to look for.',
         nargs='+',
     ),
-]
-switches = [
+)
+switches = (
     ParseArgument(
         '--quantity',
         help='Require at least this quantity.',
@@ -93,7 +93,7 @@ switches = [
         dest='lt',
         type="credits",
     ),
-]
+)
 
 def get_lookup_list(cmdenv, tdb):
     # Credit: http://stackoverflow.com/a/952952/257645
