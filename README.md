@@ -1,34 +1,32 @@
-==============================================================================
+
+----------
 TradeDangerous
 Copyright (C) Oliver "kfsone" Smith, July 2014
 REQUIRES PYTHON 3.4 OR HIGHER.
-==============================================================================
+
+----------
 
 [For recent changes see CHANGES.txt]
 
-== What is Trade Dangerous?
-==============================================================================
+#What is Trade Dangerous?
 
-TradeDangerous is set of powerful trading tools for Elite Dangerous, organized
-around one of the most powerful trade run optimizers (TRO) available.
+TradeDangerous is set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers (TRO) available.
 
-The TRO is a heavy hitter that can calculate complex routes with multiple-
-stops while taking into account the profits you make along the route.
+The TRO is a heavy hitter that can calculate complex routes with multiple-stops while taking into account the profits you make along the route.
 
-The price data in TradeDangerous is either manually entered (by you) or
-crowd sourced (e.g. http://www.davek.com.au/td).
+The price data in TradeDangerous is either manually entered (by you) or crowd sourced (e.g. [http://www.davek.com.au/td](http://www.davek.com.au/td)).
 
 
-== What can it do for me?
-==============================================================================
+#What can it do for me?
 
-I'm at Mokosh/Bethe Station with 5000cr, room for 8 cargo units and a
-ship that can go 8.56ly per jump.
+I'm at Mokosh/Bethe Station with 5000cr, room for 8 cargo units and a ship that can go 8.56ly per jump.
 
 We ask:
 
+
     trade.py run --from Mokosh/Bethe --credits 5000 --capacity 8 --ly-per 8.56
 or in abbreviated form:
+
     trade.py run --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
 
 And TD will give us a 2-leg trade run that may more than double our money:
@@ -49,7 +47,7 @@ Line 4 tells us the last hop of our run and how much we gain when we sell our
 remaining cargo here.
 
 
-… but how do I get there?
+**but how do I get there?**
 
 There's a command for that
 
@@ -80,57 +78,36 @@ Lines 3 and 5 tell us our jump routes between legs.
 At this point, you probably have a lot of questions.
 
 
-== TradeDangerous: Setup
-==============================================================================
-
-At the moment, the primary interface to TradeDangerous' goodness is through
-a command line tool, "trade.py". I've built TD in a modular, open source way
-so that other programmers can use it to power their own tools; hopefully
+#TradeDangerous: Setup
+At the moment, the primary interface to TradeDangerous' goodness is through a command line tool, "trade.py". I've built TD in a modular, open source way so that other programmers can use it to power their own tools; hopefully
 tools with web or graphical interfaces.
 
-For instructions on how to get setup with TD see the wiki:
-  http://bitbucket.org/kfsone/tradedangerous/wiki/
-and click the "Setup Guide" link.
+For instructions on how to get setup with TD see the wiki at: [http://bitbucket.org/kfsone/tradedangerous/wiki/](http://bitbucket.org/kfsone/tradedangerous/wiki/) and click the "Setup Guide" link.
 
 
-== Command Line Options
-==============================================================================
+#Command Line Options
+TD functionality is broken up into "sub-commands". For instance, when we refer to the `update` command, we mean `trade.py update …`.
 
-TD functionality is broken up into "sub-commands". For instance, when we
-refer to the "update" command, we mean "trade.py update …".
-
-If you run 'trade.py' without any commands or options, it will give you
-a list of the sub-commands available. You can find out more details
-about a specific command, such as 'local', by typing:
+If you run `trade.py` without any commands or options, it will give you a list of the sub-commands available. You can find out more details about a specific command, such as 'local', by typing:
 
     trade.py local --help
 
-Each command has a number of optional/required arguments that can be
-specified.
+Each command has a number of optional/required arguments that can be specified.
 
-Optional arguments are denoted by a keyword that starts with one or
-two dashes ('--from', '-S'). The difference between long and short
-versions? Readability. You can also 'stack' short versions, for
-example "update -F -G -A" can be written as "update -FGA".
+Optional arguments are denoted by a keyword that starts with one or two dashes (`--from`, `-S`). The difference between long and short versions? Readability. You can also 'stack' short versions, for example `update -F -G -A` can be written as `update -FGA`
 
-There are "switches" which turn a feature on or off, such as
-'--detail' which makes the command more verbose or '--quiet' which
-makes it less noisy.
+There are "switches" which turn a feature on or off, such as `--detail` which makes the command more verbose or --quiet` which makes it less noisy.
 
-Others are "parameters" which take a value, for example '--from Sol'
-would state the starting location for a command. You can write these
-as '--param value' or '--param=value'. You can often get away with
-just the first couple of letters, e.g. "--cr" for "--credits".
+Other options are "parameters" which take a value, for example `--from Sol` would state the starting location for a command. You can write these as `--param value` or `--param=value`. You can often get away with just the first couple of letters, e.g. `--cr` for `--credits`.
 
-In the list below, you'll see "--detail" and "-v" listed together.
-This indicates that "-v" is the short-form for "--detail".
+In the list below, you'll see `--detail` and `-v` listed together. This indicates that `-v` is the short-form for `--detail`.
 
-Basic Usage:
+##Basic Usage:
 
     trade.py command arguments
 
 
-Common Options:
+###Common Options:
   These can be used with ALL TD commands
 
      --detail
@@ -154,56 +131,53 @@ Common Options:
        Short version is stackable, e.g. "-w -w -w" or "-www"
 
 
-Sub Commands:
+###Sub Commands:
 
 For additional help on a specific command, such as 'update' use
 
-  trade.py run …
+    trade.py run …
     Calculates a trade run
 
-  trade.py update …
+    trade.py update …
     Provides a way to enter/update price data for a station
 
-  trade.py nav …
+    trade.py nav …
     Calculates a route between two systems
 
-  trade.py import …
+    trade.py import …
     Reads prices from a file and loads them into the cache
 
-  trade.py buy …
+    trade.py buy …
     Finds places to buy a given item/ship
 
-  trade.py sell …
+    trade.py sell …
     Finds places to sell a given item
 
-  trade.py local …
-    Lists systems (and optionally, stations) in the vicinity
-    of a given system
+    trade.py local …
+    Lists systems (and optionally, stations) in the vicinity of a given system
 
-  trade.py rares …
+    trade.py rares …
     Helps to find rare items.
 
-  trade.py olddata …
+    trade.py olddata …
     Lists old data
 
-Advanced Commands:
+###Advanced Commands:
 
-  trade.py buildcache
+    trade.py buildcache
     Rebuilds the cache (data/TradeDangerous.db)
 
-  trade.py export …
+    trade.py export …
     Exports data from the db to .csv files
 
-  trade.py station …
+    trade.py station …
     Query, add, update or remove stations
 
+##RUN sub-command:
 
-RUN sub-command:
+  This command provides the primary trade run calculator functionality (it provides   the functionality of the older TradeDangerous versions prior to 3.1)
 
-  This command provides the primary trade run calculator functionality (it provides
-  the functionality of the older TradeDangerous versions prior to 3.1)
-
-   Ship/Trade options:
+###Ship/Trade options:
      --capacity N
      --cap N
        Maximum items you can carry on each hop.
@@ -253,7 +227,7 @@ RUN sub-command:
          --margin 0      (no margin)
          --margin 0.01   (1% margin)
 
-   Route options:
+###Route options:
      --from <station or system>
        Lets you specify the starting station
        e.g.
@@ -269,10 +243,10 @@ RUN sub-command:
          --to Beagle2
          --to lhs64
 
-		 --shorten" (requires --to)
-        Will show routes with fewer hops than the maximum if they produce a better gpt
-				e.g.
-				--to Beagle2 --hops 4 --shorten
+	 --shorten" (requires --to)
+       Will show routes with fewer hops than the maximum if they produce a better gpt
+	   e.g.
+	     --to Beagle2 --hops 4 --shorten
 				
      --towards <goal system>
        Builds a route that tries to shorten the distance from your origin
@@ -289,11 +263,11 @@ RUN sub-command:
          --from iBootis --loop
          --loop --hops 4   (looks for 2, 3 and 4 hop loops)
 		 
-		 --loop-int N
-		 -li N
+	 --loop-int N
+	 -li N
        Will require a minimum of N hops before visiting the same station.
-			 e.g.
-				--from iBootis --loop-int 3
+	   e.g.
+	     --from iBootis --loop-int 3
 				
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
@@ -333,7 +307,7 @@ RUN sub-command:
        specified destination (--to).
          --to lave -e 3      (find runs that end within 3 jumps of lave)
      
-   Filter options:
+###Filter options:
      --max-days-old N.NN
      -MD N.NN
        Filters out price data that exceeds a specified age in days
@@ -433,7 +407,7 @@ RUN sub-command:
      --uni
        Only show routes which do not visit any station twice
 
-   Other options:
+###Other options:
      --summary
        Uses a slightly different format for showing trade routes,
        especially useful for longer routes in conjunction with -vvv
@@ -451,11 +425,11 @@ RUN sub-command:
        OMFG Output the current step of the checklist on your X52 Pro MFD.
        Is that some sweetness or what?
 
-TRADE sub-command:
+##TRADE sub-command:
 
-  Lists trades between two stations. Specify "-v" or "-vv" for more data.
+Lists trades between two stations. Specify `-v`, `-vv`, or `-vvv` for more data.
 
-  trade.py trade [-v | -vv] <from station> <to station>
+    trade.py trade [-v | -vv | -vvv] <from station> <to station>
 
   e.g.
 
@@ -486,17 +460,15 @@ TRADE sub-command:
     Gold                   1,004      9,276       9212      10280       9600     82,951    938,765     1.17     2.37
 
 
-UPDATE sub-command:
+##UPDATE sub-command:
 
-  For maintenance on your local prices database. The default is to walk
-  you through a list of all the prices known for the station. You can either
-  hit enter or type the correction.
+For maintenance of your local prices database. The default is to walk you through a list of all the prices known for the station. You can either   hit enter or type the correction.
 
-  Alternatively, if you specify one of the editing switches, it will put
-  the prices for a given station into a text file and let you edit it
-  with your favorite editor.
+Alternatively, if you specify one of the editing switches, it will put the prices for a given station into a text file and let you edit it with your favorite editor.
 
-  trade.py update
+    trade.py update
+
+Options:
 
     --gui
     -G
@@ -561,29 +533,28 @@ UPDATE sub-command:
       Mostly applies to Linux, Mac and Cygwin/Git installs.
 
   Examples:
+
     trade.py update "aulin enterprise" --notepad
     trade.py update chango --subl --supply
     trade.py update anderson --editor "C:\Program Files\Microsoft Office\WordPad.exe"
     trade.py update wcm --timestamps
     trade.py update --sup --time --zero aulin
+
   aka:
+
     trade.py update --sub -T0 aulin
 
 
-IMPORT sub-command:
+##IMPORT sub-command:
 
-  Provides a way to import prices data from a file or a web site. You can use this
-  to import data for a few stations or an entire .prices file from a friend.
+Provides a way to import prices data from a file or a web site. You can use this to import data for a few stations or an entire .prices file from a friend. For instance, if you updated a station and there was an error importing it, the data is usually saved as "prices.last". You can open this file and correct the error and then import it, rather than having to re-enter all of the data.
 
-  For instance, if you updated a station and there was an error importing it,
-  the data is usually saved as "prices.last". You can open this file and correct
-  the error and then import it, rather than having to re-enter all of the data.
+**NOTE:** Items not listed for a station in an import are considered unavailable at that station. If you have an entry for Beagle2/Food and you import a file that does not include Beagle2/Food, Beagle2/Food will be removed from your db.
 
-  NOTE: Items not listed for a station in an import are considered unavailable at
-  that station. If you have an entry for Beagle2/Food and you import a file that
-  does not include Beagle2/Food, Beagle2/Food will be removed from your db.
+  
+    trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
 
-  trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
+Options:
 
     filename
       Specifies the name of the file to load
@@ -631,12 +602,14 @@ IMPORT sub-command:
       you may need to add the "-i" flag to the buildcache command.
 
 
-MARKET sub-command:
+##MARKET sub-command:
 
-  Lists items bought / sold at a given station; with --detail (-v) also
-  includes the average price for those items.
+Lists items bought / sold at a given station; with --detail (-v) also includes the average price for those items.
 
-  trade.py market <station> [--buy | --sell] [--detail]
+
+    trade.py market <station> [--buy | --sell] [--detail]
+
+Options:
 
     station
       Name of the station to list, e.g. "paes/ramon" or "ramoncity",
@@ -654,7 +627,7 @@ MARKET sub-command:
       Once: includes average prices
       Twice: include demand column and category headings
 
-    $ trade.py market --buy ramoncity
+    trade.py market --buy ramoncity
     Item                    Buying
     ------------------------------
     Hydrogen Fuel               90
@@ -663,7 +636,7 @@ MARKET sub-command:
     Food Cartridges             35
     …
 
-    $ trade.py market --buy --sell ramoncity -v
+    trade.py market --buy --sell ramoncity -v
         Item                    Buying     Avg Age/Days Selling     Avg   Supply Age/Days
     -------------------------------------------------------------------------------------
     +CHEMICALS
@@ -676,13 +649,13 @@ MARKET sub-command:
 
     …
 
-NAV sub-command:
+##NAV sub-command:
 
-  Provides details of routes without worrying about trade. By default, if
-  given a ship, it uses the maximum dry range of the ship. Use --full if you
-  want to restrict to routes with a full cargo hold.
+Provides details of routes without worrying about trade. By default, if given a ship, it uses the maximum dry range of the ship. Use `--full` if you want to restrict to routes with a full cargo hold.
 
-  trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
+    trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
+
+Options:
 
     --ly-per N.NN
       Constrains jumps to a maximum ly distance
@@ -709,7 +682,8 @@ NAV sub-command:
       Name of the destination system or a station in the system,
 
   Examples:
-    > trade.py nav mok/be v7/me --ly 8.56
+
+    trade.py nav mok/be v7/me --ly 8.56
     System         JumpLy
     ---------------------
     MOKOSH           0.00
@@ -735,13 +709,13 @@ NAV sub-command:
     ('DirLy' is the direct distance left to the destination)
 
 
-LOCAL sub-command:
+##LOCAL sub-command:
 
-  Provides details of local stations without worrying about trade. By default, if
-  given a ship, it uses the maximum dry range of the ship. Use --full if you
-  want to restrict to systems with a full cargo hold.
+Provides details of local stations without worrying about trade. By default, if given a ship, it uses the maximum dry range of the ship. Use `--full` if you want to restrict to systems with a full cargo hold.
 
-  trade.py local [-q | -v] [--ly N.NN] system
+    trade.py local [-q | -v] [--ly N.NN] system
+
+Options:
 
     --ly N.NN
       Constrains local systems to a maximum ly distance
@@ -790,7 +764,8 @@ LOCAL sub-command:
       Name of the system or a station in the system,
 
   Examples:
-    > trade.py local mokosh --ly 6
+
+    trade.py local mokosh --ly 6
     System        Dist
     ------------------
     MOKOSH        0.00
@@ -808,19 +783,15 @@ LOCAL sub-command:
       /  Parmitano Colony                          ?     5.88    ?   ?
     LHS 3333            5.54
 
-       Mokosh/Bethe Station is 2500ls from its star, the data is 8 days old,
-       there is no black market, and the largest pad size is Medium
+Mokosh/Bethe Station is 2500ls from its star, the data is 8 days old, there is no black market, and the largest pad size is Medium. 
 
-       Lubin Orbital's distance is not known, the data is less than a day old,
-       it has a black market, and it has Large pads.
+Lubin Orbital's distance is not known, the data is less than a day old, it has a black market, and it has Large pads.
 
-       Parmitano Colony distance unknown, data nearly 6 days old, the
-       black market status is unknown as is the pad size.
+Parmitano Colony distance unknown, data nearly 6 days old, the black market status is unknown as is the pad size.
 
-    Adding detail ('-vv' or '-v -v' or '--detail --detail') would add
-    a count of the number of items we have prices for at each station.
+Adding detail ('-vv' or '-v -v' or '--detail --detail') would add a count of the number of items we have prices for at each station.
 
-    > trade.py local LAVE --trading --ly 4 -vv
+    trade.py local LAVE --trading --ly 4 -vv
     System    Dist
       /  Station            StnLs Age/days Mkt BMk Shp Pad Itms
     -----------------------------------------------------------
@@ -834,30 +805,26 @@ LOCAL sub-command:
       /  George Lucas         255     0.58 Yes Yes Yes Lrg   52
       /  Kolmogorov Hub     2.96K     1.61 Yes Yes  No Med   53
 
-    > trade.py local SOL --blackmarket --ly 6 -vv
+##STATION sub-command:
 
+This command can be used to add a new station:
 
-STATION sub-command:
+    trade.py station --add "i bootis/nowhere port"
+    trade.py station -a "i bootis/nowhere port" --ls 123 --pad m
 
-  This command can be used to add a new station:
+Or it can be used to delete a station:
 
-    > trade.py station --add "i bootis/nowhere port"
-    > trade.py station -a "i bootis/nowhere port" --ls 123 --pad m
+    trade.py station --remove "i bootis/nowhere port"
+    trade.py station -rm "i bootis/nowhere port"
 
-  Or it can be used to delete a station:
+Or it can be used to update the ls-from-star, pad-size, or blackmarket flags of an existing station:
 
-    > trade.py station --remove "i bootis/nowhere port"
-    > trade.py station -rm "i bootis/nowhere port"
+    trade.py station --update "i bootis/nowhere port" --pad=L --ls-from-star=123 --black-market=N
+    trade.py station -u "i bootis/nowhere port" --pad L --ls 123 --bm=N
 
-  Or it can be used to update the ls-from-star, pad-size, or blackmarket
-  flags of an existing station:
+It can also be used to show some basic data about a given station:
 
-    > trade.py station --update "i bootis/nowhere port" --pad=L --ls-from-star=123 --black-market=N
-    > trade.py station -u "i bootis/nowhere port" --pad L --ls 123 --bm=N
-
-  It can also be used to show some basic data about a given station:
-
-    > trade.py station -v i bootis/chango
+    trade.py station -v i bootis/chango
     Station Data:
     System….: I BOOTIS (#10438 @ -22.375,34.84375,4.0)
     Station…: Chango Dock (#1288)
@@ -877,24 +844,20 @@ STATION sub-command:
         Domestic Appliances*           @     714cr (Avg Buy     445cr)
 
 
-    This shows that 'Tea' is a star buy at this station: it is being
-    sold by the station for 1217cr but the average selling price is
-    1570 credits.
+This shows that 'Tea' is a star buy at this station: it is being sold by the station for 1217cr but the average selling price is 1570 credits. A star trade (indicated by '*') is at least 10% better than the average trading price for that commodity.
 
-    A star trade (indicated by '*') is at least 10% better than the
-    average trading price for that commodity.
+##BUY sub-command:
 
-BUY sub-command:
+Finds stations that are selling / where you can buy, a named list of items or ships.
 
-  Finds stations that are selling / where you can buy, a named list of
-  items or ships.
-
-  trade.py buy
+    trade.py buy
         [-q | -v] [--quantity Q] [--near N] [--ly-per N]
         [-P | -S] [--limit]
         [--one-stop | -1]
         item [item item,item …]
         ship [ship ship,ship …]
+
+Options:
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -937,25 +900,28 @@ BUY sub-command:
 
     --prices-sort
     -P
-      Keeps items sorted by price when using --near
-      (otherwise items are listed by distance and then price)
+      Keeps items sorted by price when using --near 
+     (otherwise items are listed by distance and then price)
 
     --stock-sort
     -S
       Sorts items by stock available first and then price
 
-  Example
+  Example:
+
     trade.py buy --near achenar food
     trade.py buy asp
     trade.py buy --near achenar food,clothing,scrap --one-stop
     trade.py buy --near achenar type6,type7 -1
 
 
-SELL sub-command:
+##SELL sub-command:
 
-  Looks for stations buying the specified item.
+Looks for stations buying the specified item.
 
-  trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
+    trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
+
+Options:
 
     --quantity Q
       Requires that the stock level be unknown or at least this value,
@@ -997,16 +963,15 @@ SELL sub-command:
       (otherwise items are listed by distance and then price)
 
 
-EXPORT sub-command:
+##EXPORT sub-command:
 
-  This command generates the CSV data files of the current database. It
-  defaults to export all (except the price) tables and overwrites the files
-  in the data directory.
-  CAUTION: If you have changed any CSV file and didn't rebuild the database,
-           they will be lost. Use the 'buildcache' command first to rebuild
-           the database.
+This command generates the CSV data files of the current database. It defaults to export all (except the price) tables and overwrites the files in the data directory.
 
-  trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,…] | --all-tables ] [--delete-empty]
+**CAUTION:** If you have changed any CSV file and didn't rebuild the database, they will be lost. Use the `buildcache` command first to rebuild the database.
+
+    trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,…] | --all-tables ] [--delete-empty]
+
+Options:
 
     --path PATH
       Specify the save location of the CSV files. Defaults to './data'
@@ -1022,7 +987,8 @@ EXPORT sub-command:
       Delete CSV files without content.
 
   Examples:
-    > trade.py export --path misc
+
+    trade.py export --path misc
     Using database './data/TradeDangerous.db'
     Export Table 'Added' to 'misc/Added.csv'
     Export Table 'Category' to 'misc/Category.csv'
@@ -1037,18 +1003,19 @@ EXPORT sub-command:
     Export Table 'Upgrade' to 'misc/Upgrade.csv'
     Export Table 'UpgradeVendor' to 'misc/UpgradeVendor.csv'
 
-    > trade.py export -T System,Station
+    trade.py export -T System,Station
     Using database './data/TradeDangerous.db'
     Export Table 'Station' to 'data/Station.csv'
     Export Table 'System' to 'data/System.csv'
 
 
-RARES sub-command:
+##RARES sub-command:
 
-  This command looks for known rare items within the space around
-  a specified system.
+This command looks for known rare items within the space around a specified system.
 
-  trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
+    trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
+
+Options:
 
      <system>
        System to center search on
@@ -1105,12 +1072,12 @@ RARES sub-command:
 
   Examples:
 
-    $ trade.py rare sol --ly 10
+    trade.py rare sol --ly 10
     Station                       Rare                    Cost DistLy  Alloc
     ------------------------------------------------------------------------
     ALPHA CENTAURI/Hutton Orbital Centauri Mega Gin      3,319   4.38      7
 
-    $ trade.py rare @neto --ly 50 --price --limit 5
+    trade.py rare @neto --ly 50 --price --limit 5
     Station                   Rare                             Cost DistLy  Alloc
     -----------------------------------------------------------------------------
     XIHE/Zhen Dock            Xihe Biomorphic Companions      4,482  48.10      7
@@ -1119,8 +1086,9 @@ RARES sub-command:
     ALTAIR/Solo Orbiter       Altairian Skin                    489  39.78     18
     V1090 HERCULIS/Kaku Plant Herculis Body Rub                 160  37.33     20
 
-    Finding where to take a rare from Bast:
-    $ trade.py rare bast --ly 180 -r --limit 4
+ Finding where to take a rare from Bast:
+
+    trade.py rare bast --ly 180 -r --limit 4
     Station                      Rare                        Cost DistLy  Alloc      StnLs Pad
     ------------------------------------------------------------------------------------------
     DELTA PHOENICIS/Trading Post Delta Phoenicis Palms        412 179.42     17      3,743 Lrg
@@ -1130,58 +1098,40 @@ RARES sub-command:
 
 
 
-==============================================================================
-== ADDING OR CHANGING PRICE DATA
-==============================================================================
-
-*** Experimental GUI in 6.0 ***
-*******************************
-
-
-As of v6.0 I've added an experimental GUI for updating prices. I'm still
-working out some of the issues, in particular you currently have to manually
-size and scroll the window.
+#Adding or Changing Price Data
+##Experimental GUI in 6.0 
+As of v6.0 I've added an experimental GUI for updating prices. I'm still working out some of the issues, in particular you currently have to manually size and scroll the window.
 
 To use it, simply type:
 
-  trade.py update Aulin
+    trade.py update Aulin
 
-or whichever station you need to update. While it is in experimental status,
-you'll be asked to provide an extra switch.
+or whichever station you need to update. While it is in experimental status, you'll be asked to provide an extra switch.
 
-- To save your changes:
+To **save** your changes, click the window's close button, *don't* alt-f4 or command-q.
 
-Click the window's close button, don't alt-f4 or command-q.
+To **remove** an item, set the 'paying' and 'asking' values to 0
 
-- To remove an item:
+To **navigate**
 
-Set the 'paying' and 'asking' values to 0
+ * Use tab/shift-tab to cycle through cells
+ * Use up/down arrows to move between rows
+ * Press ENTER to move to the first column of the next line
 
-- To move around
-
- . Use tab/shift-tab to cycle through cells,
- . Use up/down arrows to move between rows,
- . Press ENTER to move to the first column of the next line,
-
-- To add items to a station:
-
-Use the "-A" switch and leave the items you don't want empty.
+To **add** items to a station, use the "-A" switch and leave the items you don't want empty.
 
 
-*** Other ways of editing Price Data ***
-****************************************
+##Other ways of editing Price Data
 
+TradeDangerous uses a human-readable text format for price information. This is designed to closely resemble what we see in the market screens in-game.
 
-TradeDangerous uses a human-readable text format for price information. This
-is designed to closely resemble what we see in the market screens in-game.
+To edit the data for a single station, use the `update` sub-command, e.g.
 
-To edit the data for a single station, use the "update" sub-command, e.g.
-
-  trade.py update --notepad beagle2
+    trade.py update --notepad beagle2
 
 This will open notepad with the data for Aulin, which will look something like:
 
-  @ I BOOTIS/Beagle 2 Landing
+    @ I BOOTIS/Beagle 2 Landing
      + Chemicals
         Explosives                 50      0        ?      -
         Hydrogen Fuels             19      0        ?      -
@@ -1192,126 +1142,98 @@ This will open notepad with the data for Aulin, which will look something like:
         Consumer Tech            1112   1111        ?    30L
 
 "@" lines specify a system/station.
+
 "+" lines specify a category.
-The remaining lines are items.
 
-  Explosives    50    0    ?    -
+The remaining lines are items, such as
 
-These fields are:
-  <item name>
-  <sale price> (how much the station pays)
-  <buying price> (how much the station charges)
-  <demand> ('?' means "we don't care")
-  <stock>  ('-' means "not available")
+    Explosives    50    0    ?    -
 
-So you can see the only item this station is selling is Consumer Tech, which
-the station wants 1111 credits for. The demand wasn't recorded (we generally
-aren't interested in demand levels since E:D doesn't seem to use them) and
+
+The fields used to populate items are:
+
+ * `<item name>`
+ * `<sale price>` (how much the station pays)
+ * `<buying price>` (how much the station charges)
+ * `<demand>` ('?' means "we don't care")
+ * `<stock>`  ('-' means "not available")
+
+So you can see the only item this station is selling is Consumer Tech, which the station wants 1111 credits for. The demand wasn't recorded (we generally aren't interested in demand levels since E:D doesn't seem to use them) and
 the items wasn't available for purchase *from* the station.
 
-TD will use the 'stock' values to limit how many units it can buy. For
-example, if you have money to buy 30 units from a station but the .prices
-data says only 10 are available, TD only tell you to buy 10 units and it
-will fill the rest of your hold up with other stuff.
+TD will use the 'stock' values to limit how many units it can buy. For example, if you have money to buy 30 units from a station but the `.prices` data says only 10 are available, TD only tell you to buy 10 units and it will fill the rest of your hold up with other stuff.
 
-Demand and Stock both take a "supply level" value which is either "?", "-"
-or the number of units followed by the level: L for Low, M for Medium,
-H for High or ? for "don't care".
+Demand and Stock both take a "supply level" value which is either "?", "-" or the number of units followed by the level: L for Low, M for Medium, H for High or ? for "don't care".
 
-   ?
-   -
-   1L
-   23M
-   3402H
-   444?
+    ?
+    -
+    1L
+    23M
+    3402H
+    444?
 
 Best Practice:
 
- - Leave demand as ?, neither E:D or TD use it,
- - Stock quantities over 10k are usually irrelevant; you may leave them as ?,
+ * Leave demand as ?, neither E:D or TD use it
+ * Stock quantities over 10k are usually irrelevant; you may leave them as ?,
 
-For more details of the .prices format, see the wiki page:
-https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data
+For more details of the .prices format, see the wiki page: [https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data](https://bitbucket.org/kfsone/tradedangerous/wiki/Price%20Data)
 
-NOTE: The order items are listed within their category is saved between edits,
-so if you switch "Explosives" and "Hydrogen Fuels" and then save it, they
-will show that way when you edit this station again.
+NOTE: The order items are listed within their category is saved between edits, so if you switch "Explosives" and "Hydrogen Fuels" and then save it, they will show that way when you edit this station again.
 
-See "trade.py update -h" for more help with the update command.
+See `trade.py update -h` for more help with the update command.
 
-
-==============================================================================
-== That's nice, but I'm a programmer and I want to …
-==============================================================================
+#That's nice, but I'm a programmer and I want to …
 
 TradeDangerous is organized into modules, the key of which are:
 
-  trade.tradedb.TradeDB
-    Presents the main database API; it loads stations, systems, ships, items
-    and provides query APIs for these.
-
-  trade.tradeenv.TradeEnv
-    Container for a bag of "properties" used across TD, such as debug level.
-
-  trade.tradecalc.TradeCalc
-    The best profit calculator
-
-  trade.tradeexcept.TradeExcept
-    Exception definitions
-
-  trade.mfd
-  trade.mfd.saitek
-    Multi-function display wrappers
-
-  trade.commands.commandenv.CommandEnv
-    Arg-parsing variant of TradeEnv
-
-  trade.commands.parsing
-    Helpers for creating argument lists for sub-commands
-
-  trade.commands.exceptions
-    Exceptions for sub-commands
-
-  trade.formatting:
-    Helper classes for presenting result sets
-
+ * trade.tradedb.TradeDB
+   * Presents the main database API; it loads stations, systems, ships, items and provides query APIs for these.
+ * trade.tradeenv.TradeEnv
+   * Container for a bag of "properties" used across TD, such as debug level.
+ * trade.tradecalc.TradeCalc
+   * The best profit calculator
+ * trade.tradeexcept.TradeExcept
+   * Exception definitions
+ * trade.mfd & trade.mfd.saitek
+   * Multi-function display wrappers
+ * trade.commands.commandenv.CommandEnv
+   * Arg-parsing variant of TradeEnv
+ * trade.commands.parsing
+   * Helpers for creating argument lists for sub-commands
+ * trade.commands.exceptions
+   * Exceptions for sub-commands
+ * trade.formatting:
+   * Helper classes for presenting result sets
 
 Minimalist usage example:
 
-  import trade
-  tdb = trade.TradeDB()
+    import trade
+    tdb = trade.TradeDB()
 
-This creates a TradeDB instance using all-default parameters. It will take
-a while to complete because it loads the /entire/ database.
+This creates a TradeDB instance using all-default parameters. It will take a while to complete because it loads the /entire/ database.
 
-You can override the environment by passing a "TradeEnv", which itself can
-be initialized with an argparse namespace or by passing default overrides:
+You can override the environment by passing a "TradeEnv", which itself can be initialized with an argparse namespace or by passing default overrides:
 
-  import tradeenv
-  # Defaulted:
-  tdenv = TradeEnv()
-  # Use with argparse to use command-line switches for defaults
-  tdenv = TradeEnv(my_parser.parse())
-  # Override defaults directly
-  tdenv = TradeEnv(debug=1, detail=2)
+    import tradeenv
+    # Defaulted:
+    tdenv = TradeEnv()
+    # Use with argparse to use command-line switches for defaults
+    tdenv = TradeEnv(my_parser.parse())
+    # Override defaults directly
+    tdenv = TradeEnv(debug=1, detail=2)
 
-  import tradedb
-  tdb = tradedb.TradeDB(tdenv)
+    import tradedb
+    tdb = tradedb.TradeDB(tdenv)
 
-Construction of a wholly-default TradeDB can take a while because it loads
-a lot of data that you often probably won't need. You can speed it up by
-disabling the bulk of this with:
+Construction of a wholly-default TradeDB can take a while because it loads a lot of data that you often probably won't need. You can speed it up by disabling the bulk of this with:
 
-  tdb = TradeDB(tdenv, loadTrades=False)
+    tdb = TradeDB(tdenv, loadTrades=False)
 
 If you subsequently need this data, call
 
-  tdb.loadTrades()
+    tdb.loadTrades()
 
-As of TD 6.0 you should need to load this data less and less. A lot of
-work went into refactoring the SQLite DB and introducing more "lazy
-loading" by functions like TradeCalc.getBestHops().
+As of TD 6.0 you should need to load this data less and less. A lot of work went into refactoring the SQLite DB and introducing more "lazy loading" by functions like `TradeCalc.getBestHops()`.
 
-When TradeDB and TradeCalc do not currently provide built-in queries for
-the information you need, you can revert to the SQL Database with the
-TradeDB.query() and TradeDB.fetch_all() commands.
+When TradeDB and TradeCalc do not currently provide built-in queries for the information you need, you can revert to the SQL Database with the `TradeDB.query()` and `TradeDB.fetch_all()` commands.
