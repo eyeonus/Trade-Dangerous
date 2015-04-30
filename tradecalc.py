@@ -168,9 +168,18 @@ class Route(object):
         return self.route[-1].system
 
     @property
+    def avggpt(self):
+        if self.hops:
+            return sum(hop.gpt for hop in self.hops) // len(self.hops)
+        return 0
+
+    @property
     def gpt(self):
         if self.hops:
-            return sum(hop.gpt for hop in self.hops) / len(self.hops)
+            return (
+                sum(hop.gainCr for hop in self.hops) //
+                sum(hop.units for hop in self.hops)
+            )
         return 0
 
     def plus(self, dst, hop, jumps, score):
