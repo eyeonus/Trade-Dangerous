@@ -1129,6 +1129,18 @@ def run(results, cmdenv, tdb):
         routePickPred = None
 
     pickedRoutes = []
+
+    if cmdenv.loop:
+        def routeStillHasAChance(rt, hopNo):
+            return (rt.lastSystem.distanceTo(rt.firstSystem) / maxHopDistLy) <= hopNo
+    else:
+        def routeStillHasAChance(rt, hopNo):
+            remainingDistance = (numHops - hopNo) * maxHopDistLy
+            return any(
+                stop for stop in stopSystems
+                if rt.lastSystem.distanceTo(stop) <= remainingDistance
+            )
+
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -1139,16 +1151,8 @@ def run(results, cmdenv, tdb):
             manualRestriction = True
 
         if distancePruning:
-            remainingDistance = (numHops - hopNo) * maxHopDistLy
-            def routeStillHasAChance(r):
-                distanceFn = r.lastSystem.distanceTo
-                if cmdenv.loop:
-                    return distanceFn(r.firstSystem) <= remainingDistance
-                else:
-                    return any(stop for stop in stopSystems if distanceFn(stop) <= remainingDistance)
-
             preCrop = len(routes)
-            routes[:] = [x for x in routes if routeStillHasAChance(x)]
+            routes = [rt for rt in routes if routeStillHasAChance(rt, hopNo)]
             if not routes:
                 if pickedRoutes:
                     break
