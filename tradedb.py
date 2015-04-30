@@ -1007,9 +1007,6 @@ class TradeDB(object):
         openSet = [(0, 0, origin.ID, 0)]
         # Track predecessor nodes for everwhere we visit
         distances = {origin: (None, 0)}
-        destID = dest.ID
-        sysByID = self.systemByID
-        distTo = float("inf")
 
         if avoiding:
             if dest in avoiding:
@@ -1019,9 +1016,17 @@ class TradeDB(object):
                     distances[avoid] = (None, -1)
 
         systemsInRange = self.genSystemsInRange
+        heappop  = heapq.heappop
+        heappush = heapq.heappush
+        distTo = float("inf")
+        defaultDist = (None, distTo)
+        getDist  = distances.get
+
+        destID = dest.ID
+        sysByID = self.systemByID
 
         while openSet:
-            weight, curDist, curSysID, stnDist = heapq.heappop(openSet)
+            weight, curDist, curSysID, stnDist = heappop(openSet)
             # If we reached 'goal' we've found the shortest path.
             if curSysID == destID:
                 break
@@ -1041,19 +1046,13 @@ class TradeDB(object):
                     stnDist += 1
 
             distFn = curSys.distanceTo
-            heappush = heapq.heappush
-
             for nSys, nDist in systemsInRange(curSys, maxJumpLy):
-                newDist = curDist + nDist
-                try:
-                    (prevSys, prevDist) = distances[nSys]
-                    if prevDist <= newDist:
-                        continue
-                except KeyError:
-                    pass
                 if stationInterval and stnDist >= stationInterval:
-                    if not curSys.stations:
+                    if not nSys.stations:
                         continue
+                newDist = curDist + nDist
+                if getDist(nSys, defaultDist)[1] <= newDist:
+                    continue
                 distances[nSys] = (curSys, newDist)
                 weight = distFn(nSys)
                 nID = nSys.ID
@@ -1067,7 +1066,7 @@ class TradeDB(object):
         path = []
 
         while True:
-            (prevSys, dist) = distances[dest]
+            (prevSys, dist) = getDist(dest)
             path.append((dest, dist))
             if dest == origin:
                 break
