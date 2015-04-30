@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.19.0 Apr 28 2015
+v6.19.0 May 01 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
 . (kfsone) "import" command (non-plugin behavior)
     - Restored the default behavior of forcefully overwriting existing data
@@ -19,11 +19,15 @@ CACHE BUILD REQUIRED (trade.py buildcache -fi)
     - Changed several command options from "--stock" to "--supply",
 . (kfsone) "market" command:
     - Only show the age of items once,
+. (kfsone) "nav" command:
+    - Fixed --refuel-jumps
+    - Added --pad-size to limit which stations will be listed/refuelled at,
 . (kfsone) Performance:
     - Re-unified the StationBuying/StationSelling tables into StationItem,
     - Added StationBuying and StationSelling views,
     - Minor refactor of getTrades to reduce the pathalogical near O(n^2)
       behavior it used to match buyers to sellers,
+    - Improved performance of nav command slightly,
 
 
 v6.18.6 Apr 27 2015

@@ -746,6 +746,15 @@ NAV sub-command:
       jump on the route have a station. "--ref 2" would require that
       you not make more than one stationless jump after another.
 
+    --pad-size ?SML
+    -p ?SML
+      Specify pad size required for a station to be listed or considered
+      for refuelling stops. Specify one or all pad sizes you are want,
+      DEFAULT: ?SML
+      e.g.
+        --pad-size=ML
+        -p ?SL           (unknown, small or large)
+
     from
       Name of the starting system or a station in the system,
 

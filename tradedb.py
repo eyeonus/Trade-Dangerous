@@ -968,6 +968,8 @@ class TradeDB(object):
                 List of systems being avoided
             stationInterval:
                 If non-zero, require a station at least this many jumps,
+            tdenv.padSize:
+                Controls the pad size of stations for refuelling
 
         Returns:
             None
@@ -1025,6 +1027,15 @@ class TradeDB(object):
         destID = dest.ID
         sysByID = self.systemByID
 
+        maxPadSize = self.tdenv.padSize
+        if not maxPadSize:
+            checkStations = lambda system: bool(system.stations())
+        else:
+            checkStations = lambda system: any(
+                stn for stn in system.stations
+                if stn.checkPadSize(maxPadSize)
+            )
+
         while openSet:
             weight, curDist, curSysID, stnDist = heappop(openSet)
             # If we reached 'goal' we've found the shortest path.
@@ -1039,17 +1050,19 @@ class TradeDB(object):
             if curDist > distances[curSys][1]:
                 continue
 
+            system_iter = iter(systemsInRange(curSys, maxJumpLy))
             if stationInterval:
-                if curSys.stations:
+                if checkStations(curSys):
                     stnDist = 0
                 else:
                     stnDist += 1
+                    if stnDist >= stationInterval:
+                        system_iter = iter(
+                            v for v in system_iter if checkStations(v[0])
+                        )
 
             distFn = curSys.distanceTo
-            for nSys, nDist in systemsInRange(curSys, maxJumpLy):
-                if stationInterval and stnDist >= stationInterval:
-                    if not nSys.stations:
-                        continue
+            for nSys, nDist in system_iter:
                 newDist = curDist + nDist
                 if getDist(nSys, defaultDist)[1] <= newDist:
                     continue
