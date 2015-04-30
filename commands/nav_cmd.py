@@ -17,31 +17,31 @@ arguments = [
 ]
 switches = [
     ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
-        ),
+        help='Maximum light years per jump.',
+        dest='maxLyPer',
+        metavar='N.NN',
+        type=float,
+    ),
     ParseArgument('--avoid',
-            help='Exclude a system from the route. If you specify a station, '
-                 'the system that station is in will be avoided instead.',
-            action='append',
-            default=[],
-        ),
+        help='Exclude a system from the route. If you specify a station, '
+             'the system that station is in will be avoided instead.',
+        action='append',
+        default=[],
+    ),
     ParseArgument('--via',
-            help='Require specified systems/stations to be en-route (in order).',
-            action='append',
-            metavar='PLACE[,PLACE,...]',
-        ),
+        help='Require specified systems/stations to be en-route (in order).',
+        action='append',
+        metavar='PLACE[,PLACE,...]',
+    ),
     ParseArgument('--stations', '-S',
-            help='Include station details.',
-            action='store_true',
-        ),
+        help='Include station details.',
+        action='store_true',
+    ),
     ParseArgument('--refuel-jumps',
-            help='Require a station after this many jumps',
-            type=int,
-            dest='stationInterval',
-        ),
+        help='Require a station after this many jumps',
+        type=int,
+        dest='stationInterval',
+    ),
 ]
 
 ######################################################################
@@ -108,24 +108,6 @@ def run(results, cmdenv, tdb):
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
 
-    if cmdenv.stations:
-        stationIDs = ",".join([
-                ",".join(str(stn.ID) for stn in hop[0].stations)
-                for hop in route
-                if hop[0].stations
-        ])
-        stmt = """
-                SELECT  si.station_id,
-                        JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
-                  FROM  StationItem AS si
-                 WHERE  si.station_id IN ({})
-                 GROUP  BY 1
-                """.format(stationIDs)
-        cmdenv.DEBUG0("Fetching ages: {}", stmt)
-        ages = {}
-        for ID, age in tdb.query(stmt):
-            ages[ID] = age
-
     for (jumpSys, dist) in route:
         jumpLy = lastSys.distanceTo(jumpSys)
         totalLy += jumpLy
@@ -144,6 +126,9 @@ def run(results, cmdenv, tdb):
                 try:
                     age = "{:7.2f}".format(ages[station.ID])
                 except:
+                if station.itemCount:
+                    age = "{:7.2f}".format(station.dataAge / 86400)
+                else:
                     age = "-"
                 rr = ResultRow(
                         station=station,
