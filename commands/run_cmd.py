@@ -278,7 +278,7 @@ class Checklist(object):
             "   {:<3}: {}: "
             .format(
                 self.stepNo,
-                " ".join(item for item in [action, detail, extra] if item)
+                " ".join(item for item in (action, detail, extra) if item)
             )
         )
 
@@ -370,7 +370,7 @@ class Checklist(object):
             sleep(1.5)
 
 
-def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
+def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
     """
     Find all the stations you could reach if you made a given
     number of jumps away from the origin list.
@@ -396,7 +396,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
         raise Exception("Unknown src")
 
     stations = set()
-    origins, avoid = set([origin]), set(place for place in avoidPlaces)
+    origins, avoid = set((origin,)), set(place for place in avoidPlaces)
 
     for jump in range(jumps):
         if not origins:
@@ -409,7 +409,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
         thisJump, origins = origins, set()
         for sys in thisJump:
             avoid.add(sys)
-            for stn in sys.stations or []:
+            for stn in sys.stations or ():
                 if stn.ID not in tradingList:
                     cmdenv.DEBUG2(
                         "X {}/{} not in trading list",
@@ -436,6 +436,25 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
             srcName,
             [stn.name() for stn in stations]
     )
+
+    if not stations:
+        if not cmdenv.emptyLyPer:
+            extra = (
+                "\nIf you are willing to make unladen jumps for the sake "
+                "of a better route, consider using --empty."
+            )
+        else:
+            extra = ""
+        raise CommandLineError(
+            "No {} stations with suitable trade data could be found "
+            "within {} {}ly jump{} of {} that meet all of your critera.{}"
+            .format(
+                purpose, maxLyPer,
+                jumps, "s" if jumps > 1 else "",
+                origin.name(),
+                extra,
+            )
+        )
 
     stations = list(stations)
     stations.sort(key=lambda stn: stn.ID)
@@ -593,11 +612,11 @@ def filterStationSet(src, cmdenv, calc, stnList):
         src,
         ",".join(station.name() for station in stnList),
         )
-    filtered = [
+    filtered = tuple(
         place for place in stnList
         if isinstance(place, System) or \
             checkStationSuitability(cmdenv, calc, place, src)
-    ]
+    )
     if not stnList:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
@@ -613,8 +632,9 @@ def checkOrigins(tdb, cmdenv, calc):
                     tdb, cmdenv, calc,
                     cmdenv.origPlace.system,
                     cmdenv.startJumps,
-                    "--from"
+                    "--from", "starting",
             )
+            cmdenv.origPlace = None
         elif isinstance(cmdenv.origPlace, System):
             cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
             if not cmdenv.origPlace.stations:
@@ -622,36 +642,36 @@ def checkOrigins(tdb, cmdenv, calc):
                         "No stations at --from system, {}"
                             .format(cmdenv.origPlace.name())
                         )
-            cmdenv.origins = [
+            cmdenv.origins = tuple(
                 station
                 for station in cmdenv.origPlace.stations
                 if checkStationSuitability(cmdenv, calc, station)
-            ]
+            )
         else:
             cmdenv.DEBUG0("origPlace: Station: {}", cmdenv.origPlace.name())
             checkStationSuitability(cmdenv, calc, cmdenv.origPlace, '--from')
-            cmdenv.origins = [ cmdenv.origPlace ]
+            cmdenv.origins = (cmdenv.origPlace,)
             cmdenv.startStation = cmdenv.origPlace
         checkForEmptyStationList(
                 "--from", cmdenv.origPlace,
                 cmdenv.origins, cmdenv.startJumps
         )
     else:
+        if cmdenv.startJumps:
+            raise CommandLineError("--start-jumps (-s) only works with --from")
         cmdenv.DEBUG0("using all suitable origins")
-        cmdenv.origins = [
+        cmdenv.origins = tuple(
             station
             for station in tdb.stationByID.values()
             if checkStationSuitability(cmdenv, calc, station)
-        ]
-        if cmdenv.startJumps:
-            raise CommandLineError("--start-jumps (-s) only works with --from")
+        )
 
-    if isinstance(cmdenv.origPlace, System) and not cmdenv.startJumps:
+    if not cmdenv.startJumps and isinstance(cmdenv.origPlace, System):
         cmdenv.origins = filterStationSet(
             '--from', cmdenv, calc, cmdenv.origins
         )
 
-    cmdenv.origSystems = list(set(
+    cmdenv.origSystems = tuple(set(
         stn.system for stn in cmdenv.origins
     ))
 
@@ -664,27 +684,28 @@ def checkDestinations(tdb, cmdenv, calc):
                     tdb, cmdenv, calc,
                     cmdenv.destPlace.system,
                     cmdenv.endJumps,
-                    "--to"
+                    "--to", "destination",
             )
+            cmdenv.destPlace = None
         elif isinstance(cmdenv.destPlace, Station):
             cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
             checkStationSuitability(cmdenv, calc, cmdenv.destPlace, '--to')
-            cmdenv.destinations = [ cmdenv.destPlace ]
+            cmdenv.destinations = (cmdenv.destPlace,)
         else:
             cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
-            cmdenv.destinations = [
+            cmdenv.destinations = tuple(
                 station
                 for station in cmdenv.destPlace.stations
                 if checkStationSuitability(cmdenv, calc, station)
-            ]
+            )
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps
         )
     else:
-        cmdenv.DEBUG0("Using all available destinations")
         if cmdenv.endJumps:
             raise CommandLineError("--end-jumps (-e) only works with --to")
+        cmdenv.DEBUG0("Using all available destinations")
         if cmdenv.goalSystem:
             if not cmdenv.origPlace:
                 raise CommandLineError("--towards requires --from")
@@ -698,18 +719,18 @@ def checkDestinations(tdb, cmdenv, calc):
         else:
             stationSrc = tdb.stationByID.values()
 
-        cmdenv.destinations = [
+        cmdenv.destinations = tuple(
             station
             for station in stationSrc
             if checkStationSuitability(cmdenv, calc, station)
-        ]
+        )
 
-    if isinstance(cmdenv.destPlace, System) and not cmdenv.endJumps:
+    if not cmdenv.endJumps and isinstance(cmdenv.destPlace, System):
         cmdenv.destinations = filterStationSet(
             '--to', cmdenv, calc, cmdenv.destinations
         )
 
-    cmdenv.destSystems = list(set(
+    cmdenv.destSystems = tuple(set(
         stn.system for stn in cmdenv.destinations
     ))
 
@@ -803,13 +824,13 @@ def validateRunArguments(tdb, cmdenv, calc):
                     "least one jump and --jumps 0 specified."
                 )
 
-    origins, destns = cmdenv.origins or [], cmdenv.destinations or []
+    origins, destns = cmdenv.origins or (), cmdenv.destinations or ()
 
     if cmdenv.hops == 1 and len(origins) == 1 and len(destns) == 1:
         if origins == destns:
             raise CommandLineError("Same to/from; more than one hop required.")
 
-    avoidSet = set(cmdenv.avoidPlaces or [])
+    avoidSet = set(cmdenv.avoidPlaces or ())
     viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
     cmdenv.DEBUG0("Via: {}", viaSet)
     cmdenv.viaSet = filterStationSet('--via', cmdenv, calc, cmdenv.viaSet)
@@ -835,20 +856,20 @@ def validateRunArguments(tdb, cmdenv, calc):
                     "--via {} unreachable with --jumps 0"
                     .format(via.name())
                 )
-        cmdenv.origins = [
+        cmdenv.origins = tuple(
             origin for origin in cmdenv.origins
             if origin.system in viaSystems
-        ]
-        cmdenv.origSystems = [
+        )
+        cmdenv.origSystems = tuple(
             origin.system for origin in cmdenv.origins
-        ]
-        cmdenv.destinations = [
+        )
+        cmdenv.destinations = tuple(
             dest for dest in cmdenv.destinations
             if dest.system in viaSystems
-        ]
-        cmdenv.destSystems = [
+        )
+        cmdenv.destSystems = tuple(
             dest.system for dest in cmdenv.destinations
-        ]
+        )
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
@@ -875,7 +896,7 @@ def validateRunArguments(tdb, cmdenv, calc):
     if cmdenv.unique:
         # if there's only one start and stop...
         if len(origins) == 1 and len(destns) == 1:
-            if origins[0] == destns[0]:
+            if origins[0] is destns[0]:
                 raise CommandLineError("Can't have same from/to with --unique")
         if viaSet:
             if len(origins) == 1 and origins[0] in viaSet:
@@ -899,7 +920,7 @@ def validateRunArguments(tdb, cmdenv, calc):
 
 def filterByVia(routes, viaSet, viaStartPos):
     if not routes:
-        return []
+        return ()
 
     matchedRoutes = []
     partialRoutes = {}
@@ -942,10 +963,10 @@ def checkReachability(tdb, cmdenv):
         srcSys, dstSys = srcSys[0], dstSys[0]
         if srcSys != dstSys:
             maxLyPer = cmdenv.maxLyPer
-            avoiding = [
+            avoiding = tuple(
                 avoid for avoid in cmdenv.avoidPlaces
                 if isinstance(avoid, System)
-            ]
+            )
             route = tdb.getRoute(
                 srcSys, dstSys, maxLyPer, avoiding,
             )
@@ -1108,6 +1129,18 @@ def run(results, cmdenv, tdb):
         routePickPred = None
 
     pickedRoutes = []
+
+    if cmdenv.loop:
+        def routeStillHasAChance(rt, hopNo):
+            return (rt.lastSystem.distanceTo(rt.firstSystem) / maxHopDistLy) <= hopNo
+    else:
+        def routeStillHasAChance(rt, hopNo):
+            remainingDistance = (numHops - hopNo) * maxHopDistLy
+            return any(
+                stop for stop in stopSystems
+                if rt.lastSystem.distanceTo(stop) <= remainingDistance
+            )
+
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -1118,16 +1151,8 @@ def run(results, cmdenv, tdb):
             manualRestriction = True
 
         if distancePruning:
-            remainingDistance = (numHops - hopNo) * maxHopDistLy
-            def routeStillHasAChance(r):
-                distanceFn = r.lastSystem.distanceTo
-                if cmdenv.loop:
-                    return distanceFn(r.firstSystem) <= remainingDistance
-                else:
-                    return any(stop for stop in stopSystems if distanceFn(stop) <= remainingDistance)
-
             preCrop = len(routes)
-            routes[:] = [x for x in routes if routeStillHasAChance(x)]
+            routes = [rt for rt in routes if routeStillHasAChance(rt, hopNo)]
             if not routes:
                 if pickedRoutes:
                     break

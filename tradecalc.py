@@ -168,9 +168,18 @@ class Route(object):
         return self.route[-1].system
 
     @property
+    def avggpt(self):
+        if self.hops:
+            return sum(hop.gpt for hop in self.hops) // len(self.hops)
+        return 0
+
+    @property
     def gpt(self):
         if self.hops:
-            return sum(hop.gpt for hop in self.hops) / len(self.hops)
+            return (
+                sum(hop.gainCr for hop in self.hops) //
+                sum(hop.units for hop in self.hops)
+            )
         return 0
 
     def plus(self, dst, hop, jumps, score):
@@ -249,7 +258,7 @@ class Route(object):
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
                 "Finish at {station} "
-                "gaining {gain:n}cr "
+                "gaining {gain:n}cr ({tongain:n}cr/ton) "
                 "=> est {credits:n}cr total\n"
             )
         elif detail:
@@ -260,7 +269,7 @@ class Route(object):
             dockFmt = "  Dock at {station}\n"
             endFmt = (
                 "  Finish {station} "
-                "+ {gain:n}cr "
+                "+ {gain:n}cr ({tongain:n}cr/ton)"
                 "=> {credits:n}cr\n"
             )
         else:
@@ -269,7 +278,7 @@ class Route(object):
             jumpsFmt = None
             footer = None
             dockFmt = None
-            endFmt = "  {station} +{gain:n}cr"
+            endFmt = "  {station} +{gain:n}cr ({tongain:n}/ton)"
 
         if detail > 1:
             def decorateStation(station):
@@ -362,7 +371,8 @@ class Route(object):
         text += endFmt.format(
             station=decorateStation(lastStation),
             gain=gainCr,
-            credits=credits + gainCr
+            credits=credits + gainCr,
+            tongain=self.gpt
         )
 
         return text

@@ -392,11 +392,12 @@ RUN sub-command:
      --prune-score N.NN
        DEFAULT: 0
        After a number of hops (controlled by --prune-hops), eliminate
-       candidate routes which have under-performed the leading candidate.
+       a percentage of the routes from the lowest up by score.
        NOTE: This can speed up long run calculations, but it can also
        cause you to miss gold-mines that are a just a few hops away...
        e.g.
-         --prune-score 12.5   (prune routes scoring less than 10% of the leader)
+         --prune-score 12.5   Removes the bottom 1/8th of (12.5%) of routes
+         --prune-score 50     Only keep the upper 50% of routes
 
      --prune-hops N
        DEFAULT: 3
