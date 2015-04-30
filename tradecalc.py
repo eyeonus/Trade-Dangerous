@@ -839,17 +839,16 @@ class TradeCalc(object):
                 )
 
             if tdenv.debug >= 1:
-                def annotate():
-                    for dest in stations:
-                        tdenv.DEBUG1(
-                            "destSys {}, destStn {}, jumps {}, distLy {}",
-                            dest.system.dbname,
-                            dest.station.dbname,
-                            "->".join(jump.str() for jump in dest.via),
-                            dest.distLy
-                        )
-                        yield dest
-                stations = iter(annotate())
+                def annotate(dest):
+                    tdenv.DEBUG1(
+                        "destSys {}, destStn {}, jumps {}, distLy {}",
+                        dest.system.dbname,
+                        dest.station.dbname,
+                        "->".join(jump.str() for jump in dest.via),
+                        dest.distLy
+                    )
+                    return True
+                stations = (d for d in stations if annotate(d))
 
             for dest in stations:
                 dstStation = dest.station
