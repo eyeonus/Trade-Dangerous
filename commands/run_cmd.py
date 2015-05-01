@@ -707,8 +707,6 @@ def checkDestinations(tdb, cmdenv, calc):
             raise CommandLineError("--end-jumps (-e) only works with --to")
         cmdenv.DEBUG0("Using all available destinations")
         if cmdenv.goalSystem:
-            if not cmdenv.origPlace:
-                raise CommandLineError("--towards requires --from")
             dest = tdb.lookupPlace(cmdenv.goalSystem)
             cmdenv.goalSystem = dest.system
 
@@ -810,6 +808,9 @@ def validateRunArguments(tdb, cmdenv, calc):
             raise CommandLineError(
                 "--shorten only works with --to."
             )
+
+    if cmdenv.goalSystem and not cmdenv.origPlace:
+        raise CommandLineError("--towards requires --from")
 
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
