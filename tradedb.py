@@ -150,7 +150,7 @@ class System(object):
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
         self.addedID = addedID or 0
-        self.stations = []
+        self.stations = ()
         self._rangeCache = None
 
     @property
@@ -280,10 +280,9 @@ class Station(object):
         self.refuel = refuel
         self.repair = repair
         self.itemCount = itemCount
-        # dict[tradingPartnerStation] -> [ available trades ]
         self.tradingWith = None
         self.dataAge = dataAge
-        system.stations.append(self)
+        system.stations = system.stations + (self,)
 
     def name(self):
         return '%s/%s' % (self.system.dbname, self.dbname)
