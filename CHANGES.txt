@@ -4,6 +4,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 v6.19.0 May 01 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
+"requests" packages is now required if you want to use "maddavO"s plugin
 . (kfsone) "import" command (non-plugin behavior)
     - Restored the default behavior of forcefully overwriting existing data
       with values from the .prices file and deleting items that aren't listed
@@ -28,6 +29,10 @@ CACHE BUILD REQUIRED (trade.py buildcache -fi)
     - Minor refactor of getTrades to reduce the pathalogical near O(n^2)
       behavior it used to match buyers to sellers,
     - Improved performance of nav command slightly,
+    - "import" plugin now uses the "requests" module, which means that
+      it will automatically download/use compressed .prices files when
+      they are made available. E.g. maddavo's .prices files now require
+      upto 5x less bandwidth.
 
 
 v6.18.6 Apr 27 2015
