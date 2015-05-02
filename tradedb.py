@@ -466,7 +466,7 @@ class Item(object):
 
 
 class RareItem(namedtuple('RareItem', (
-        'ID', 'station', 'dbname', 'costCr', 'maxAlloc',
+        'ID', 'station', 'dbname', 'costCr', 'maxAlloc', 'illegal',
         ))):
     """
     Describes a RareItem from the database.
@@ -475,8 +475,9 @@ class RareItem(namedtuple('RareItem', (
         ID       -- Database ID,
         station  -- Which Station this is bought from,
         dbname   -- The name are presented in the database,
-        costCr   -- Buying price
+        costCr   -- Buying price.
         maxAlloc -- How many the player can carry at a time,
+        illegal  -- If the item may be considered illegal,
     """
 
     def name(self):
@@ -1889,16 +1890,17 @@ class TradeDB(object):
                     station_id,
                     name,
                     cost,
-                    max_allocation
+                    max_allocation,
+                    illegal
               FROM  RareItem
         """
         self.cur.execute(stmt)
 
         rareItemByID, rareItemByName = {}, {}
         stationByID = self.stationByID
-        for (ID, stnID, name, cost, maxAlloc) in self.cur:
+        for (ID, stnID, name, cost, maxAlloc, illegal) in self.cur:
             station = stationByID[stnID]
-            rare = RareItem(ID, station, name, cost, maxAlloc)
+            rare = RareItem(ID, station, name, cost, maxAlloc, illegal)
             rareItemByID[ID] = rareItemByName[name] = rare
         self.rareItemByID = rareItemByID
         self.rareItemByName = rareItemByName

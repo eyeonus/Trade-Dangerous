@@ -215,16 +215,14 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.dist)
     rowFmt.addColumn('Alloc', '>', 6, 'n',
             key=lambda row: row.rare.maxAlloc)
+    rowFmt.addColumn('B/mkt', '>', 4,
+            key=lambda row: TradeDB.marketStates[row.rare.illegal])
     rowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.rare.station.distFromStar())
     rowFmt.addColumn('B/mkt', '>', 4,
-            key=lambda row: \
-                    TradeDB.marketStates[row.rare.station.blackMarket]
-    )
+            key=lambda row: TradeDB.marketStates[row.rare.station.blackMarket])
     rowFmt.addColumn("Pad", '>', '3',
-            key=lambda row: \
-                    TradeDB.padSizes[row.rare.station.maxPadSize]
-    )
+            key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
 
     # Print a heading summary if the user didn't use '-q'
     if not cmdenv.quiet:
