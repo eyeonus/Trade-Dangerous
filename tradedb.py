@@ -1852,6 +1852,7 @@ class TradeDB(object):
                             LEFT OUTER JOIN StationItem AS si ON (
                                 i.item_id = si.item_id AND si.supply_price > 0
                             )
+                     WHERE  supply_price > 0
                      GROUP  BY 1
                 """)
             }
