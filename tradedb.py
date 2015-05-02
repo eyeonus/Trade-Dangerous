@@ -801,6 +801,8 @@ class TradeDB(object):
             "Added new system #{}: {} [{},{},{}]",
             ID, name, x, y, z
         )
+        # Invalidate the grid
+        self.stellarGrid = None
         return system
 
     def updateLocalSystem(
