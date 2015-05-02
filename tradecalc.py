@@ -831,7 +831,7 @@ class TradeCalc(object):
             if goalSystem:
                 if bool(tdenv.unique):
                     stations = (
-                        d for d in stations if d.system is not SrcSystem
+                        d for d in stations if d.system is not srcSystem
                     )
                 stations = (
                     d for d in stations
