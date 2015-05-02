@@ -155,6 +155,8 @@ CREATE TABLE RareItem
    name VARCHAR(40) COLLATE nocase,
    cost INTEGER,
    max_allocation INTEGER,
+   illegal TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (illegal IN ('?', 'Y', 'N')),
 
    UNIQUE (name),
 
