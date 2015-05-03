@@ -1,4 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from commands.exceptions import PadSizeError
 
 ######################################################################
 # Parsing Helpers
@@ -39,20 +40,11 @@ class PadSizeArgument(int):
     """
     class PadSizeParser(str):
         def __new__(cls, val, **kwargs):
-            invalid = None
             if not isinstance(val, str):
-                invalid = val
-            else:
-                for v in val:
-                    if "SML?".find(v.upper()) < 0:
-                        invalid = v
-                        break
-            if invalid:
-                raise CommandLineError(
-                    "Unrecognized --pad-size option '{}'. Use any "
-                    "combination of one or more of S, M, L or ?."
-                    .format(invalid)
-                )
+                raise PadSizeError(val)
+            for v in val:
+                if "SML?".find(v.upper()) < 0:
+                    raise PadSizeError(v)
             return super().__new__(cls, val, **kwargs)
 
     def __init__(self):
