@@ -32,8 +32,46 @@ class CreditParser(int):
                 val = int(float(val[:-1]) * CreditParser.suffixes[val[-1]])
         return super().__new__(cls, val, **kwargs)
 
+
+class PadSizeArgument(int):
+    """
+    argparse helper for --pad-size
+    """
+    class PadSizeParser(str):
+        def __new__(cls, val, **kwargs):
+            invalid = None
+            if not isinstance(val, str):
+                invalid = val
+            else:
+                for v in val:
+                    if "SML?".find(v.upper()) < 0:
+                        invalid = v
+                        break
+            if invalid:
+                raise CommandLineError(
+                    "Unrecognized --pad-size option '{}'. Use any "
+                    "combination of one or more of S, M, L or ?."
+                    .format(invalid)
+                )
+            return super().__new__(cls, val, **kwargs)
+
+    def __init__(self):
+        self.args = ('--pad-size', '-p',)
+        self.kwargs = {
+            'help': (
+                'Limit to stations with one of the specified pad sizes, '
+                'e.g. --pad SML? matches any pad, --pad M matches only '
+                'medium pads.'
+            ),
+            'dest': 'padSize',
+            'metavar': 'PADSIZES',
+            'type': 'padsize',
+        }
+
+
 __tdParserHelpers = {
     'credits': CreditParser,
+    'padsize': PadSizeArgument.PadSizeParser,
 }
 
 def registerParserHelpers(into):
