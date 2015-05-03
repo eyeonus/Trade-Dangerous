@@ -15,7 +15,10 @@ class MutuallyExclusiveGroup(object):
     def __init__(self, *args):
         self.arguments = list(args)
 
-# Derived classes
+
+######################################################################
+# Derived Parsers
+
 
 class CreditParser(int):
     """
