@@ -46,22 +46,6 @@ class HelpAction(argparse.Action):
                 parser.format_help()
         )
 
-class CreditParser(int):
-    """
-        argparse type helper for handling suffixes for thousand, million and "billion"
-    """
-
-    suffixes = dict(zip("kmb", map(lambda x: 10**x, (3, 6, 9))))  # damn american billion. What's wrong with milliard?
-
-    def __new__(cls, val, **kwargs):
-        if isinstance(val, str):
-            if val[-1] in CreditParser.suffixes:
-                val = int(float(val[:-1]) * CreditParser.suffixes[val[-1]])
-        return super(CreditParser, cls).__new__(cls, val, **kwargs)
-
-    @classmethod
-    def register(cls, target):
-        target.register('type', 'credits', CreditParser)
 
 def addArguments(group, options, required, topGroup=None):
     """
@@ -73,7 +57,7 @@ def addArguments(group, options, required, topGroup=None):
     for option in options:
         if isinstance(option, parsing.MutuallyExclusiveGroup):
             exGrp = (topGroup or group).add_mutually_exclusive_group()
-            CreditParser.register(exGrp)
+            parsing.registerParserHelpers(exGrp)
             addArguments(exGrp, option.arguments, required, topGroup=group)
         else:
             assert not required in option.kwargs
@@ -187,7 +171,7 @@ class CommandIndex(object):
                         )
                 )
         parser.set_defaults(_editing=False)
-        CreditParser.register(parser)
+        parsing.registerParserHelpers(parser)
 
         subParsers = parser.add_subparsers(title='Command Options')
         subParser = subParsers.add_parser(cmdModule.name,
@@ -195,7 +179,7 @@ class CommandIndex(object):
                                     add_help=False,
                                     epilog=cmdModule.epilog,
                                     )
-        CreditParser.register(subParser)
+        parsing.registerParserHelpers(subParser)
 
         arguments = cmdModule.arguments
         if arguments:
