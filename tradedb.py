@@ -1139,12 +1139,8 @@ class TradeDB(object):
         stmt = """
             SELECT  station_id, system_id, name,
                     ls_from_star, market, blackmarket, shipyard,
-                    max_pad_size, outfitting, rearm, refuel, repair,
-                    COUNT(StationItem.item_id) AS itemCount,
-                    JULIANDAY('now') - JULIANDAY(AVG(StationItem.modified))
+                    max_pad_size, outfitting, rearm, refuel, repair
               FROM  Station
-                    LEFT OUTER JOIN StationItem USING (station_id)
-             GROUP  BY 1
         """
         self.cur.execute(stmt)
         stationByID = {}
@@ -1154,19 +1150,32 @@ class TradeDB(object):
             ID, systemID, name,
             lsFromStar, market, blackMarket, shipyard,
             maxPadSize, outfitting, rearm, refuel, repair,
-            itemCount, dataAge
         ) in self.cur:
             station = Station(
                 ID, systemByID[systemID], name,
                 lsFromStar, market, blackMarket, shipyard,
                 maxPadSize, outfitting, rearm, refuel, repair,
-                itemCount, dataAge
+                0, 0
             )
-            if itemCount > 0:
-                self.tradingStationCount += 1
             stationByID[ID] = station
 
+        tradingCount = 0
+        stmt = """
+            SELECT  station_id,
+                    COUNT(*) AS item_count,
+                    AVG(JULIANDAY('now') - JULIANDAY(modified))
+              FROM  StationItem
+             GROUP  BY 1
+             HAVING item_count > 0
+        """
+        for ID, itemCount, dataAge in self.cur.execute(stmt):
+            station = stationByID[ID]
+            station.itemCount = itemCount
+            station.dataAge = dataAge
+            tradingCount += 1
+
         self.stationByID = stationByID
+        self.tradingStationCount = tradingCount
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
         self.stellarGrid = None
 
