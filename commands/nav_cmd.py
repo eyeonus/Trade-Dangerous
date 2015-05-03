@@ -133,7 +133,7 @@ def run(results, cmdenv, tdb):
                 if maxPadSize and not station.checkPadSize(maxPadSize):
                     continue
                 if station.itemCount:
-                    age = "{:7.2f}".format(station.dataAge / 86400)
+                    age = "{:7.2f}".format(station.dataAge)
                 else:
                     age = "-"
                 rr = ResultRow(
