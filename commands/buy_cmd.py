@@ -51,12 +51,7 @@ switches = (
         default=None,
         type=int,
     ),
-    ParseArgument(
-        '--pad-size', '-p',
-        help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-        metavar='PADSIZES',
-        dest='padSize',
-    ),
+    PadSizeArgument(),
     MutuallyExclusiveGroup(
         ParseArgument(
             '--one-stop', '-1',
@@ -177,11 +172,7 @@ def sql_query(cmdenv, tdb, queries, mode):
             bindValues.append(cmdenv.gt)
 
     whereClause = ' AND '.join(constraints)
-    stmt = """
-               SELECT DISTINCT {columns}
-                 FROM {tables}
-                WHERE {where}
-   """.format(
+    stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
         columns=','.join(columns),
         tables=tables,
         where=whereClause
@@ -218,9 +209,9 @@ def run(results, cmdenv, tdb):
             results.summary.avg = first.cost
         else:
             avgPrice = tdb.query("""
-                    SELECT CAST(AVG(si.supply_price) AS INT)
-                      FROM StationItem AS si
-                     WHERE si.item_id = ? AND si.supply_price > 0
+                SELECT CAST(AVG(si.supply_price) AS INT)
+                  FROM StationItem AS si
+                 WHERE si.item_id = ? AND si.supply_price > 0
             """, [first.ID]).fetchone()[0]
             results.summary.avg = avgPrice
 

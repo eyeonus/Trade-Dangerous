@@ -42,12 +42,7 @@ switches = [
         type=int,
         dest='stationInterval',
     ),
-    ParseArgument(
-        '--pad-size', '-p',
-        help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-        metavar='PADSIZES',
-        dest='padSize',
-    ),
+    PadSizeArgument(),
 ]
 
 ######################################################################
