@@ -23,8 +23,8 @@ I'm at Mokosh/Bethe Station with 5000cr, room for 8 cargo units and a ship that 
 
 We ask:
 
-
     trade.py run --from Mokosh/Bethe --credits 5000 --capacity 8 --ly-per 8.56
+
 or in abbreviated form:
 
     trade.py run --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
@@ -79,8 +79,7 @@ At this point, you probably have a lot of questions.
 
 
 #TradeDangerous: Setup
-At the moment, the primary interface to TradeDangerous' goodness is through a command line tool, "trade.py". I've built TD in a modular, open source way so that other programmers can use it to power their own tools; hopefully
-tools with web or graphical interfaces.
+At the moment, the primary interface to TradeDangerous' goodness is through a command line tool, "trade.py". I've built TD in a modular, open source way so that other programmers can use it to power their own tools; hopefully tools with web or graphical interfaces.
 
 For instructions on how to get setup with TD see the wiki at: [http://bitbucket.org/kfsone/tradedangerous/wiki/](http://bitbucket.org/kfsone/tradedangerous/wiki/) and click the "Setup Guide" link.
 
@@ -336,7 +335,7 @@ For additional help on a specific command, such as 'update' use
          --mgpt 2k
 
      --supply N
-       Only consider sales where the station has this many units in stock,
+       Only consider sales where the station has this many units in supply,
        e.g.
          --supply 1000
 
@@ -431,8 +430,7 @@ Lists trades between two stations. Specify `-v`, `-vv`, or `-vvv` for more data.
 
     trade.py trade [-v | -vv | -vvv] <from station> <to station>
 
-  e.g.
-
+###Examples:
     trade.py trade "sol/daedalus" "groom/frank"
     Item                  Profit       Cost
     ---------------------------------------
@@ -444,7 +442,7 @@ Lists trades between two stations. Specify `-v`, `-vv`, or `-vvv` for more data.
     …
 
     trade.py trade "sol/daedalus" "groom/frank" -v
-    Item                  Profit       Cost      Stock     Demand   SrcAge   DstAge
+    Item                  Profit       Cost     Supply     Demand   SrcAge   DstAge
     -------------------------------------------------------------------------------
     Superconductors        1,331      6,162  1,229,497    621,964     1.17     2.37
     Indium                 1,202      5,394  1,397,354    683,398     1.17     2.37
@@ -452,7 +450,7 @@ Lists trades between two stations. Specify `-v`, `-vv`, or `-vvv` for more data.
     …
 
     trade.py trade "sol/daedalus" "groom/frank" -v -vv
-    Item                  Profit       Cost    AvgCost     Buying     AvgBuy      Stock     Demand   SrcAge   DstAge
+    Item                  Profit       Cost    AvgCost     Buying     AvgBuy     Supply     Demand   SrcAge   DstAge
     ----------------------------------------------------------------------------------------------------------------
     Superconductors        1,331      6,162       6461       7493       6813  1,229,497    621,964     1.17     2.37
     Indium                 1,202      5,394       5640       6596       5961  1,397,354    683,398     1.17     2.37
@@ -468,7 +466,7 @@ Alternatively, if you specify one of the editing switches, it will put the price
 
     trade.py update
 
-Options:
+###Options:
 
     --gui
     -G
@@ -509,7 +507,7 @@ Options:
 
     --force-na
     -0
-      Changes the default demand/stock to be "n/a".
+      Changes the default demand/supply to be "n/a".
       CAUTION: "n/a" indicates that the item is either not bought
       or not sold at this station, and TD will ignore it accordingly.
 
@@ -532,7 +530,7 @@ Options:
       Like "--editor" but tries to use the VI iMproved editor.
       Mostly applies to Linux, Mac and Cygwin/Git installs.
 
-  Examples:
+###Examples:
 
     trade.py update "aulin enterprise" --notepad
     trade.py update chango --subl --supply
@@ -545,61 +543,7 @@ Options:
     trade.py update --sub -T0 aulin
 
 
-##IMPORT sub-command:
-
-Provides a way to import prices data from a file or a web site. You can use this to import data for a few stations or an entire .prices file from a friend. For instance, if you updated a station and there was an error importing it, the data is usually saved as "prices.last". You can open this file and correct the error and then import it, rather than having to re-enter all of the data.
-
-**NOTE:** Items not listed for a station in an import are considered unavailable at that station. If you have an entry for Beagle2/Food and you import a file that does not include Beagle2/Food, Beagle2/Food will be removed from your db.
-
-  
-    trade.py import [-q | -v] [filename | url | --maddavo] [--ignore-unknown]
-
-Options:
-
-    filename
-      Specifies the name of the file to load
-      e.g.
-        import.prices
-
-    url
-      Specifies web address to retrieve the data from
-      e.g.
-        http://kfs.org/td/prices
-
-    --maddavo
-      Like 'url' but specifies the URL for maddavo's .prices file
-
-      This has also additional options:
-      --option=<option> where option is one of the following:
-        systems:      Merge maddavo's System data into local db,
-        stations:     Merge maddavo's Station data into local db,
-        shipvendors:  Merge maddavo's ShipVendor data into local db,
-        csvs:         Merge all of the above
-        exportcsv:    Regenerate System and Station .csv files after
-                      merging System/Station data.
-        csvonly:      Stop after importing CSV files, no prices,
-        skipdl:       Skip doing any downloads.
-        force:        Process prices even if timestamps suggest
-                      there is no new data.
-        use3h:        Force download of the 3-hours .prices file
-        use2d:        Force download of the 2-days .prices file
-        usefull:      Force download of the full .prices file
-
-     Options can be comma separated, the following are equivalent:
-       --option systems --option stations --option shipvendors --option csvonly
-       --opt=csvs --opt=csvonly
-       -O csvs,csvonly
-
-    --ignore-unknown
-    -i
-      Any systems, stations, categories or items that aren't recognized
-      by this version of TD will be reported but import will continue.
-
-      Unrecognized stations in the ".prices" file, or an import, will
-      have a placeholder station entry automatically created for them.
-
-      Note: When the cache is rebuilt, these stations will be lost, so
-      you may need to add the "-i" flag to the buildcache command.
+##IMPORT sub-command and plugins:
 
 Provides mechanisms for loading data, epsecially price data, into the local database, using either "import" or "merge" modes.
 
@@ -621,9 +565,11 @@ TD also supports the concept of an "import plugin". These are user-contributed e
 
 Plugins are specified with the "-P" option and can have their own options, not listed here, with the "-O" option. See "-O=help" for a list of the options provided by a particular plugin.
 
-    trade.py import [-q | -v] [filename | url | -P <plugin> -O <options>] [--ignore-unknown]
+###Options:
 
-Options:
+    trade.py import
+        [-q | -v] [--ignore-unknown] [--reset-all]
+        [filename | url | -P <plugin> -O <options>]
 
     filename
       Specifies the name of the file to load
@@ -635,29 +581,30 @@ Options:
       e.g.
         http://kfs.org/td/prices
 
-    ".prices" import mode options:
-      --ignore-unknown
-      -i
-        Any systems, stations, categories or items that aren't recognized
-        by this version of TD will be reported but import will continue.
+####".prices" import mode options:
+    --ignore-unknown
+    -i
+      Any systems, stations, categories or items that aren't recognized
+      by this version of TD will be reported but import will continue.
 
-        Unrecognized stations in the ".prices" file, or an import, will
-        have a placeholder station entry automatically created for them.
+      Unrecognized stations in the ".prices" file, or an import, will
+      have a placeholder station entry automatically created for them.
 
-        Note: When the cache is rebuilt, these stations will be lost, so
-        you may need to add the "-i" flag to the buildcache command.
+      Note: When the cache is rebuilt, these stations will be lost, so
+      you may need to add the "-i" flag to the buildcache command.
 
-      --merge-import
-      --merge
-      -M
-        Existing data is only overwritten by entries from the .prices file
-        that have a newer timestamp and data is only removed if there is
-        an explicit entry in the file with 0 demand/supply prices.
+    --merge-import
+    --merge
+    -M
+      Existing data is only overwritten by entries from the .prices file
+      that have a newer timestamp and data is only removed if there is
+      an explicit entry in the file with 0 demand/supply prices.
 
-      --reset-all
-        CAUTION: DANGER ELITE ROBINSON
-        Deletes all existing prices from the database.
+    --reset-all
+      CAUTION: DANGER ELITE ROBINSON
+      Deletes all existing prices from the database.
 
+####Plugin options:
     --plug <plugin>
     -P <plugin>
       Specifies a plugin to use instead of the default .prices importer,
@@ -717,7 +664,7 @@ Lists items bought / sold at a given station; with --detail (-v) also includes t
 
     trade.py market <station> [--buy | --sell] [--detail]
 
-Options:
+###Options:
 
     station
       Name of the station to list, e.g. "paes/ramon" or "ramoncity",
@@ -735,6 +682,7 @@ Options:
       Once: includes average prices
       Twice: include demand column and category headings
 
+###Examples:
     trade.py market --buy ramoncity
     Item                    Buying
     ------------------------------
@@ -763,7 +711,7 @@ Provides details of routes without worrying about trade. By default, if given a 
 
     trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
 
-Options:
+###Options:
 
     --ly-per N.NN
       Constrains jumps to a maximum ly distance
@@ -783,13 +731,22 @@ Options:
       jump on the route have a station. "--ref 2" would require that
       you not make more than one stationless jump after another.
 
+    --pad-size ?SML
+    -p ?SML
+      Specify pad size required for a station to be listed or considered
+      for refuelling stops. Specify one or all pad sizes you are want,
+      DEFAULT: ?SML
+      e.g.
+        --pad-size=ML
+        -p ?SL           (unknown, small or large)
+
     from
       Name of the starting system or a station in the system,
 
     to
       Name of the destination system or a station in the system,
 
-  Examples:
+###Examples:
 
     trade.py nav mok/be v7/me --ly 8.56
     System         JumpLy
@@ -823,7 +780,7 @@ Provides details of local stations without worrying about trade. By default, if 
 
     trade.py local [-q | -v] [--ly N.NN] system
 
-Options:
+###Options:
 
     --ly N.NN
       Constrains local systems to a maximum ly distance
@@ -872,7 +829,7 @@ Options:
     system
       Name of the system or a station in the system,
 
-  Examples:
+###Examples:
 
     trade.py local mokosh --ly 6
     System        Dist
@@ -952,7 +909,6 @@ It can also be used to show some basic data about a given station:
         Crop Harvesters*               @   2,568cr (Avg Buy   1,997cr)
         Domestic Appliances*           @     714cr (Avg Buy     445cr)
 
-
 This shows that 'Tea' is a star buy at this station: it is being sold by the station for 1217cr but the average selling price is 1570 credits. A star trade (indicated by '*') is at least 10% better than the average trading price for that commodity.
 
 ##BUY sub-command:
@@ -960,17 +916,22 @@ This shows that 'Tea' is a star buy at this station: it is being sold by the sta
 Finds stations that are selling / where you can buy, a named list of items or ships.
 
     trade.py buy
-        [-q | -v] [--quantity Q] [--near N] [--ly-per N]
-        [-P | -S] [--limit]
+        [-q | -v] [--quantity Q] [-P | -S] [--limit]
+        [--near N] [--ly-per N] [--avoid PLACES]
+        [--pad-size PSML?] [--black-market | --bm]
         [--one-stop | -1]
         item [item item,item …]
         ship [ship ship,ship …]
 
-Options:
+###Options:
 
     --quantity Q
-      Requires that the stock level be unknown or at least this value,
+      Requires that the supply to be unknown or at least this value,
       --quantity 23
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
 
     --near system
     --near station
@@ -986,21 +947,9 @@ Options:
       e.g.
         --avoid sol --avoid ross154 --avoid abrahamlincoln,marshigh
 
-    --one-stop
-    -1
-      When multiple items or ships are listed, only lists stations
-      which have all of them.
-
-    --limit N
-      Limit how many results re shown
-      --limit 5
-
-    --lt credits
-    --gt credits
-      Specify min (gt) and max (lt) credit cost for items
-      e.g.
-        --gt 100
-        --lt 1.2k
+    --black-market
+    --bm
+      Only consider stations known to have a black market.
 
     --pad-size SML?
     --pad SML?
@@ -1012,6 +961,18 @@ Options:
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
+    --one-stop
+    -1
+      When multiple items or ships are listed, only lists stations
+      which have all of them.
+
+    --lt credits
+    --gt credits
+      Specify min (gt) and max (lt) credit cost for items
+      e.g.
+        --gt 100
+        --lt 1.2k
+
     --prices-sort
     -P
       Keeps items sorted by price when using --near 
@@ -1019,9 +980,9 @@ Options:
 
     --supply-sort
     -S
-      Sorts items by units available first and then price
+      Sorts items by supply available first and then price
 
-  Example:
+###Example:
 
     trade.py buy --near achenar food
     trade.py buy asp
@@ -1033,13 +994,21 @@ Options:
 
 Looks for stations buying the specified item.
 
-    trade.py sell [-q | -v] [--quantity Q] [--near N] [--ly-per N] item [-P] [--limit]
+    trade.py sell
+        [-q | -v] [--quantity Q] [-P] [--limit]
+        [--near N] [--ly-per N] [--avoid PLACES]
+        [--pad-size PSML?] [--black-market | --bm]
+        item
 
-Options:
+###Options:
 
     --quantity Q
-      Requires that the stock level be unknown or at least this value,
+      Requires that the demand level be unknown or at least this value,
       --quantity 23
+
+    --limit N
+      Limit how many results re shown
+      --limit 5
 
     --near system
     --near station
@@ -1055,16 +1024,9 @@ Options:
       e.g.
         --avoid sol --avoid ross154 --avoid abrahamlincoln,marshigh
 
-    --limit N
-      Limit how many results re shown
-      --limit 5
-
-    --lt credits
-    --gt credits
-      Specify min (gt) and max (lt) credit prices for items
-      e.g.
-        --gt 100
-        --lt 1.2k
+    --black-market
+    --bm
+      Only consider stations known to have a black market.
 
     --pad-size SML?
     --pad SML?
@@ -1075,6 +1037,13 @@ Options:
         -o ML?               (medium, large, or unknown only)
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
+
+    --lt credits
+    --gt credits
+      Specify min (gt) and max (lt) credit prices for items
+      e.g.
+        --gt 100
+        --lt 1.2k
 
     --prices-sort
     -P
@@ -1090,7 +1059,7 @@ This command generates the CSV data files of the current database. It defaults t
 
     trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,…] | --all-tables ] [--delete-empty]
 
-Options:
+###Options:
 
     --path PATH
       Specify the save location of the CSV files. Defaults to './data'
@@ -1105,7 +1074,7 @@ Options:
     --delete-empty
       Delete CSV files without content.
 
-  Examples:
+###Examples:
 
     trade.py export --path misc
     Using database './data/TradeDangerous.db'
@@ -1134,7 +1103,7 @@ This command looks for known rare items within the space around a specified syst
 
     trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
 
-Options:
+###Options:
 
      <system>
        System to center search on
@@ -1180,6 +1149,10 @@ Options:
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
+     --legal
+     --illegal
+       Only list items known to be either legal or illegal.
+
      --price-sort
      -P
        Sort by price rather than proximity
@@ -1189,7 +1162,7 @@ Options:
        Don't include the header lines
 
 
-  Examples:
+###Examples:
 
     trade.py rare sol --ly 10
     Station                       Rare                    Cost DistLy  Alloc
@@ -1214,7 +1187,6 @@ Options:
     DEURINGAS/Shukor Hub         Deuringas Truffles         1,892 174.22      0          ? Lrg
     HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
     ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
-
 
 
 #Adding or Changing Price Data

@@ -80,7 +80,7 @@
     <Content Include="data\Station.csv" />
     <Content Include="data\System.csv" />
     <Content Include="data\TradeDangerous.sql" />
-    <Content Include="README.txt" />
+    <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="commands" />

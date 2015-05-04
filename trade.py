@@ -23,7 +23,7 @@
 # your affordable range.
 #
 # END USERS: If you are a user looking to find out how to use TD,
-# please consult the file "README.txt".
+# please consult the file "README.md".
 #
 # DEVELOPERS: If you are a programmer who wants TD to do something
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
