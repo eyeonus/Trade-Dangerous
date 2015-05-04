@@ -1861,7 +1861,8 @@ class TradeDB(object):
         Query the database for average selling prices of all items.
         """
         if not self.avgSelling:
-            self.avgSelling = {
+            self.avgSelling = {itemID: 0 for itemID in self.itemByID.keys()}
+            self.avgSelling.update({
                 ID: int(cr)
                 for ID, cr in self.getDB().execute("""
                     SELECT  i.item_id, IFNULL(AVG(supply_price), 0)
@@ -1872,7 +1873,7 @@ class TradeDB(object):
                      WHERE  supply_price > 0
                      GROUP  BY 1
                 """)
-            }
+            })
         return self.avgSelling
 
     def getAverageBuying(self):
@@ -1880,7 +1881,8 @@ class TradeDB(object):
         Query the database for average buying prices of all items.
         """
         if not self.avgBuying:
-            self.avgBuying = {
+            self.avgBuying = {itemID: 0 for itemID in self.itemByID.keys()}
+            self.avgBuying.update({
                 ID: int(cr)
                 for ID, cr in self.getDB().execute("""
                     SELECT  i.item_id, IFNULL(AVG(demand_price), 0)
@@ -1891,7 +1893,7 @@ class TradeDB(object):
                      WHERE  demand_price > 0
                      GROUP  BY 1
                 """)
-            }
+            })
         return self.avgBuying
 
     ############################################################
