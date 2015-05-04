@@ -164,9 +164,11 @@ def download(
                 shebang = None
             if not tdenv.quiet:
                 now = time.time()
+                deltaT = max(now - lastTime, 0.001)
+                lastTime = now
                 if len(histogram) >= 15:
                     histogram.popleft()
-                histogram.append(len(data) / (now - lastTime))
+                histogram.append(len(data) / deltaT)
                 progBar.increment(
                     len(data),
                     postfix=lambda value, goal: \
