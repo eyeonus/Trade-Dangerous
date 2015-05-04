@@ -94,10 +94,10 @@ def run(results, cmdenv, tdb):
         bindValues.append(cmdenv.quantity)
 
     if cmdenv.lt:
-        constraints.append("(price < ?)")
+        constraints.append("(demand_price < ?)")
         bindValues.append(cmdenv.lt)
     if cmdenv.gt:
-        constraints.append("(price > ?)")
+        constraints.append("(demand_price > ?)")
         bindValues.append(cmdenv.gt)
 
     nearSystem = cmdenv.nearSystem

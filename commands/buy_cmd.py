@@ -165,10 +165,10 @@ def sql_query(cmdenv, tdb, queries, mode):
             constraints.append("(units = -1 or units >= ?)")
             bindValues.append(cmdenv.quantity)
         if cmdenv.lt:
-            constraints.append("(price < ?)")
+            constraints.append("(supply_price < ?)")
             bindValues.append(cmdenv.lt)
         if cmdenv.gt:
-            constraints.append("(price > ?)")
+            constraints.append("(supply_price > ?)")
             bindValues.append(cmdenv.gt)
 
     whereClause = ' AND '.join(constraints)
