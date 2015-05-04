@@ -79,24 +79,24 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.costCr)
     if cmdenv.detail > 1:
         rowFmt.addColumn('AvgCost', '>', 10,
-                key=lambda row: tdb.avgSelling[row.item.ID]
-                )
+            key=lambda row: tdb.avgSelling.get(row.item.ID, 0)
+        )
         rowFmt.addColumn('Buying', '>', 10,
-                key=lambda row: row.costCr + row.gainCr
-                )
+            key=lambda row: row.costCr + row.gainCr
+        )
         rowFmt.addColumn('AvgBuy', '>', 10,
-                key=lambda row: tdb.avgBuying[row.item.ID]
-                )
+            key=lambda row: tdb.avgBuying.get(row.item.ID, 0)
+        )
 
     if cmdenv.detail:
         rowFmt.addColumn('Supply', '>', 10,
-                key=lambda row: '{:n}'.format(row.supply) if row.supply >= 0 else '?')
+            key=lambda row: '{:n}'.format(row.supply) if row.supply >= 0 else '?')
         rowFmt.addColumn('Demand', '>', 10,
-                key=lambda row: '{:n}'.format(row.demand) if row.demand >= 0 else '?')
+            key=lambda row: '{:n}'.format(row.demand) if row.demand >= 0 else '?')
         rowFmt.addColumn('SrcAge', '>', 8, '.2f',
-                key=lambda row: (row.srcAge / 86400))
+            key=lambda row: (row.srcAge / 86400))
         rowFmt.addColumn('DstAge', '>', 8, '.2f',
-                key=lambda row: (row.dstAge / 86400))
+            key=lambda row: (row.dstAge / 86400))
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()

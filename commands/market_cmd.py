@@ -79,7 +79,7 @@ def run(results, cmdenv, tdb):
         row = ResultRow()
         row.item = item
         row.buyCr = int(next(it) or 0)
-        row.avgBuy = tdb.avgBuying[item.ID]
+        row.avgBuy = tdb.avgBuying.get(item.ID, 0)
         units, level = int(next(it) or 0), int(next(it) or 0)
         row.buyUnits = units
         row.buyLevel = level
@@ -89,7 +89,7 @@ def run(results, cmdenv, tdb):
         else:
             hasBuy = False
         row.sellCr = int(next(it) or 0)
-        row.avgSell = tdb.avgSelling[item.ID]
+        row.avgSell = tdb.avgSelling.get(item.ID, 0)
         units, level = int(next(it) or 0), int(next(it) or 0)
         row.sellUnits = units
         row.sellLevel = level

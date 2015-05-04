@@ -347,7 +347,7 @@ def run(results, cmdenv, tdb):
         def __init__(self, ID, price, avgAgainst):
             self.ID, self.item = ID, tdb.itemByID[ID]
             self.price = int(price)
-            self.avgTrade = avgAgainst[ID]
+            self.avgTrade = avgAgainst.get(ID, 0)
 
     # Look up all selling and buying by the station
     selling, buying = [], []
@@ -358,9 +358,9 @@ def run(results, cmdenv, tdb):
                 AND (demand_price > 10 or supply_price > 10)
     """, [station.ID])
     for ID, demand_price, supply_price in cur:
-        if demand_price > 10 and avgSell[ID] > 10:
+        if demand_price > 10 and avgSell.get(ID, 0) > 10:
             buying.append(ItemTrade(ID, demand_price, avgSell))
-        if supply_price > 10 and avgBuy[ID] > 10:
+        if supply_price > 10 and avgBuy.get(ID, 0) > 10:
             selling.append(ItemTrade(ID, supply_price, avgBuy))
     selling.sort(
             key=lambda item: item.price - item.avgTrade,
