@@ -86,7 +86,6 @@ def run(results, cmdenv, tdb):
         'si.station_id',
         'si.demand_price',
         'si.demand_units',
-        "JULIANDAY('NOW') - JULIANDAY(si.modified)",
     ]
     bindValues = []
 
@@ -111,11 +110,7 @@ def run(results, cmdenv, tdb):
         distanceFn = None
 
     whereClause = ' AND '.join(constraints)
-    stmt = """
-       SELECT DISTINCT {columns}
-         FROM {tables}
-        WHERE {where}
-    """.format(
+    stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
         columns=','.join(columns),
         tables=tables,
         where=whereClause
@@ -125,7 +120,7 @@ def run(results, cmdenv, tdb):
 
     stationByID = tdb.stationByID
     padSize = cmdenv.padSize
-    for (stationID, priceCr, demand, age) in cur:
+    for (stationID, priceCr, demand) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
@@ -138,7 +133,7 @@ def run(results, cmdenv, tdb):
             row.dist = distance
         row.price = priceCr
         row.demand = demand
-        row.age = age
+        row.age = station.itemDataAgeStr
         results.rows.append(row)
 
     if not results.rows:

@@ -50,6 +50,8 @@ switches = [
         type=int,
         dest='lsFromStar',
     ),
+    # Note: these are not the usual arguments, they're asking the
+    # user to assign rather than select values.
     ParseArgument(
         '--black-market', '--bm',
         help='Does the station have a black market (Y or N) or ? if unknown.',
