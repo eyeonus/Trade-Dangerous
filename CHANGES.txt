@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-v6.19.0 May 01 2015
+v7.0.0 May 03 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
 "requests" packages is now required if you want to use "maddavO"s plugin
 . (kfsone) "import" command (non-plugin behavior)
