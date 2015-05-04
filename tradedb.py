@@ -384,6 +384,13 @@ class Station(object):
         """
         return (self.itemCount > 0 or self.market == 'Y')
 
+    @property
+    def itemDataAgeStr(self):
+        """ Returns the age in days of item data if present, else "-". """
+        if self.itemCount and self.age:
+            return "{:7.2f}".format(self.age)
+        return "-"
+
     def str(self):
         return '%s/%s' % (self.system.dbname, self.dbname)
 

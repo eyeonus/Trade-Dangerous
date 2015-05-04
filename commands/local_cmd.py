@@ -91,19 +91,6 @@ def run(results, cmdenv, tdb):
         distances[destSys] = dist
 
     showStations = cmdenv.detail
-    if showStations:
-        stmt = """
-                SELECT  si.station_id,
-                        JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
-                  FROM  StationItem AS si
-                 GROUP  BY 1
-                """
-        cmdenv.DEBUG0("Fetching ages: {}", stmt)
-        ages = {
-            ID: age
-            for ID, age in tdb.query(stmt)
-        }
-
     wantStations = cmdenv.stations
     padSize = cmdenv.padSize
     wantTrading = cmdenv.trading
@@ -138,14 +125,10 @@ def run(results, cmdenv, tdb):
         if showStations or wantStations:
             stations = []
             for (station) in station_filter(system.stations):
-                try:
-                    age = "{:7.2f}".format(ages[station.ID])
-                except:
-                    age = "-"
                 stations.append(
                     ResultRow(
                         station=station,
-                        age=age,
+                        age=station.itemDataAgeStr,
                     )
                 )
             if not stations and wantStations:

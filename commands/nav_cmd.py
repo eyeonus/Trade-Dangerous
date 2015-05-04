@@ -116,24 +116,20 @@ def run(results, cmdenv, tdb):
         if cmdenv.detail:
             dirLy = jumpSys.distanceTo(dstSystem)
         row = ResultRow(
-                action='Via',
-                system=jumpSys,
-                jumpLy=jumpLy,
-                totalLy=totalLy,
-                dirLy=dirLy,
-                )
+            action='Via',
+            system=jumpSys,
+            jumpLy=jumpLy,
+            totalLy=totalLy,
+            dirLy=dirLy,
+            )
         row.stations = []
         if cmdenv.stations:
             for (station) in jumpSys.stations:
                 if maxPadSize and not station.checkPadSize(maxPadSize):
                     continue
-                if station.itemCount:
-                    age = "{:7.2f}".format(station.dataAge)
-                else:
-                    age = "-"
                 rr = ResultRow(
-                        station=station,
-                        age=age,
+                    station=station,
+                    age=station.itemDataAgeStr,
                 )
                 row.stations.append(rr)
         results.rows.append(row)
