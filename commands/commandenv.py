@@ -1,6 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands import *
-from commands.exceptions import CommandLineError
+from commands.exceptions import CommandLineError, PadSizeError
 from tradedb import AmbiguityError, System, Station
 from tradeenv import TradeEnv
 
@@ -217,10 +217,5 @@ class CommandEnv(TradeEnv):
         self.padSize = padSize = padSize.upper()
         for value in padSize:
             if not value in 'SML?':
-                raise CommandLineError(
-                        "Invalid --pad-size '{}'; "
-                        "use one or more of S, M, L or ?".format(
-                            padSize
-                ))
+                raise PadSizeError(padSize)
         self.padSize = padSize
-

@@ -61,7 +61,7 @@ itemPriceFrag = r"""
 # 'now'
 timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
-# <name> <sell> <buy> [ <demand> <stock> [ <time> | now ] ]
+# <name> <sell> <buy> [ <demand> <supply> [ <time> | now ] ]
 qtyLevelFrag = r"""
     unk             # You can just write 'unknown'
 |   \?              # alias for unknown
@@ -79,8 +79,8 @@ newItemPriceRe = re.compile(r"""
         # demand units and level
         (?P<demand> {qtylvl_f})
     \s+
-        # stock units and level
-        (?P<stock> {qtylvl_f})
+        # supply units and level
+        (?P<supply> {qtylvl_f})
         # time is optional
         (?:
         \s+
@@ -494,11 +494,13 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         by reading the file handle for price lines.
     """
 
-    stationID = None
+    DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
+    DEBUG0("Processing prices file: {}", priceFile)
 
     cur = db.cursor()
     ignoreUnknown = tdenv.ignoreUnknown
     quiet = tdenv.quiet
+    merging = tdenv.mergeImport
 
     systemByName = getSystemByNameIndex(cur)
     stationByName = getStationByNameIndex(cur)
@@ -519,8 +521,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     defaultUnits = -1 if not defaultZero else 0
     defaultLevel = -1 if not defaultZero else 0
 
-    lineNo = 0
-
+    stationID = None
     facility = None
     processedStations = {}
     processedSystems = set()
@@ -530,9 +531,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     DELETED = corrections.DELETED
     items, zeros, buys, sells = [], [], [], []
 
-    warnings = 0
-    localAdd = 0
-
+    lineNo, warnings, localAdd = 0, 0, 0
     if not ignoreUnknown:
         def ignoreOrWarn(error):
             raise error
@@ -546,9 +545,6 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         def ignoreOrWarn(error):
             nonlocal warnings
             warnings += 1
-
-    DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
-    DEBUG0("Processing prices file: {}", priceFile)
 
     def changeStation(matches):
         nonlocal facility, stationID
@@ -642,19 +638,20 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
-        
+
         cur = db.execute("""
             SELECT item_id, modified
               FROM StationItem
              WHERE station_id = ?
         """, [stationID])
-        stationItemDates = { ID: modified for ID, modified in cur }
+        stationItemDates = {ID: modified for ID, modified in cur}
 
     addItem, addZero = items.append, zeros.append
-    addBuy, addSell = buys.append, sells.append
     getItemID = itemByName.get
+    newItems, updtItems, ignItems = 0, 0, 0
 
     def processItemLine(matches):
+        nonlocal newItems, updtItems, ignItems
         itemName, modified = matches.group('item', 'time')
         itemName = itemName.upper()
 
@@ -675,15 +672,17 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 return
             DEBUG1("Renamed {} -> {}", oldName, itemName)
 
-        if modified and modified != 'now':
-            lastModified = stationItemDates.get(itemID, None)
-            if lastModified and modified <= lastModified:
+        lastModified = stationItemDates.get(itemID, None)
+        if lastModified and merging:
+            if modified and modified != 'now' and modified <= lastModified:
                 DEBUG1("Ignoring {} @ {}: {} <= {}".format(
                     itemName, facility,
                     modified, lastModified,
                 ))
+                if modified < lastModified:
+                    ignItems += 1
                 return
-
+    
         # Check for duplicate items within the station.
         if itemID in processedItems:
             raise MultipleItemEntriesError(
@@ -692,52 +691,52 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                         processedItems[itemID]
                     )
 
-        sellTo, buyFrom = matches.group('sell', 'buy')
-        sellTo, buyFrom = int(sellTo), int(buyFrom)
-        demandString, stockString = matches.group('demand', 'stock')
-        if demandString:
-            if demandString == "?":
-                demandUnits, demandLevel = -1, -1
-            elif demandString == "-":
-                demandUnits, demandLevel = 0, 0
-            else:
-                demandUnits, demandLevel = parseSupply(
-                        priceFile, lineNo, 'demand', demandString
-                )
-            if stockString:
-                if stockString == "?":
-                    stockUnits, stockLevel = -1, -1
-                elif stockString == "-":
-                    stockUnits, stockLevel = 0, 0
-                else:
-                    stockUnits, stockLevel = parseSupply(
-                            priceFile, lineNo, 'stock',  stockString
-                    )
-        else:
-            demandUnits, demandLevel = defaultUnits, defaultLevel
-            stockUnits, stockLevel = defaultUnits, defaultLevel
+        demandCr, supplyCr = matches.group('sell', 'buy')
+        demandCr, supplyCr = int(demandCr), int(supplyCr)
+        demandString, supplyString = matches.group('demand', 'supply')
 
-        if modified == 'now':
-            modified = None         # Use CURRENT_FILESTAMP
+        if demandCr == 0 and supplyCr == 0:
+            if lastModified:
+                addZero((stationID, itemID))
+        else:
+            if lastModified:
+                updtItems += 1
+            else:
+                newItems += 1
+            if demandString:
+                if demandString == "?":
+                    demandUnits, demandLevel = -1, -1
+                elif demandString == "-":
+                    demandUnits, demandLevel = 0, 0
+                else:
+                    demandUnits, demandLevel = parseSupply(
+                        priceFile, lineNo, 'demand', demandString
+                    )
+            else:
+                demandUnits, demandLevel = defaultUnits, defaultLevel
+
+            if demandString and supplyString:
+                    if supplyString == "?":
+                        supplyUnits, supplyLevel = -1, -1
+                    elif supplyString == "-":
+                        supplyUnits, supplyLevel = 0, 0
+                    else:
+                        supplyUnits, supplyLevel = parseSupply(
+                            priceFile, lineNo, 'supply',  supplyString
+                        )
+            else:
+                supplyUnits, supplyLevel = defaultUnits, defaultLevel
+
+            if modified == 'now':
+                modified = None         # Use CURRENT_FILESTAMP
+
+            addItem((
+                stationID, itemID, modified,
+                demandCr, demandUnits, demandLevel,
+                supplyCr, supplyUnits, supplyLevel,
+            ))
 
         processedItems[itemID] = lineNo
-
-        if sellTo == 0 and buyFrom == 0:
-            addZero((stationID, itemID))
-        else:
-            addItem((stationID, itemID, modified))
-            if sellTo > 0 and demandUnits != 0 and demandLevel != 0:
-                addBuy((
-                    stationID, itemID,
-                    sellTo, demandUnits, demandLevel,
-                    modified
-                ))
-            if buyFrom > 0 and stockUnits != 0 and stockLevel != 0:
-                addSell((
-                    stationID, itemID,
-                    buyFrom, stockUnits, stockLevel,
-                    modified
-                ))
 
     for line in priceFile:
         lineNo += 1
@@ -771,7 +770,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             continue
 
         ########################################
-        ### "+ Category" lines 
+        ### "+ Category" lines
         if text.startswith('+'):
             # we now ignore these.
             continue
@@ -785,21 +784,18 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 
         processItemLine(matches)
 
-
     numSys = len(processedSystems)
-    numStn = len(processedStations)
 
     if localAdd > 0:
         tdenv.NOTE(
             "Placeholder stations are added to the local DB only "
-            "(not the .CSV)."
-        )
-        tdenv.NOTE(
+            "(not the .CSV).\n"
             "Use 'trade.py export --table Station' "
             "if you /need/ to persist them."
         )
 
-    return warnings, items, zeros, buys, sells, numSys, numStn
+    stations = tuple((ID,) for ID in processedStations.keys())
+    return warnings, stations, items, zeros, newItems, updtItems, ignItems, numSys
 
 
 ######################################################################
@@ -808,64 +804,36 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
     with pricesFh or pricesPath.open('rU') as pricesFh:
-        warnings, items, zeros, buys, sells, numSys, numStn = processPrices(
-                tdenv, pricesFh, db, defaultZero
+        warnings, stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
+            tdenv, pricesFh, db, defaultZero
         )
 
-    class Counter:
-        def __init__(self, tbl, skipFirstCount=False):
-            self.tbl = tbl
-            if not skipFirstCount:
-                self.count
-        @property
-        def count(self):
-            self.lastCount = db.execute("""SELECT count(*) FROM {}""".format(self.tbl)).fetchone()[0]
-            tdenv.DEBUG0("Count for {} at {}", self.tbl, self.lastCount)
-            return self.lastCount
-        @property
-        def delta(self):
-            count = self.lastCount
-            return self.count - count
+    if not tdenv.mergeImport:
+        db.executemany("""
+            DELETE FROM StationItem
+             WHERE station_id = ?
+        """, stations)
+    if zeros:
+        db.executemany("""
+            DELETE FROM StationItem
+             WHERE station_id = ?
+               AND item_id = ?
+        """, zeros)
+    removedItems = len(zeros)
 
-    itemCounter = Counter("StationItem")
-    db.executemany("""
-                DELETE FROM StationItem
-                 WHERE station_id = ?
-                   AND item_id = ?
-    """, zeros)
-    removedItems = 0 - itemCounter.delta
-
-    db.executemany("""
-                DELETE FROM StationItem
-                 WHERE station_id = ?
-                   AND item_id = ?
-            """, [item[:2] for item in items])
-    deletedItems = 0 - itemCounter.delta
-
-    insertedItems = insertedSells = insertedBuys = 0
     if items:
         db.executemany("""
-                    INSERT OR IGNORE INTO StationItem
-                        (station_id, item_id, modified)
-                    VALUES (?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                """, items)
-        insertedItems = itemCounter.delta
-    if sells:
-        sellCounter = Counter("StationSelling")
-        db.executemany("""
-                    INSERT OR IGNORE INTO StationSelling
-                        (station_id, item_id, price, units, level, modified)
-                    VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                """, sells)
-        insertedSells = sellCounter.delta
-    if buys:
-        buyCounter = Counter("StationBuying")
-        db.executemany("""
-                    INSERT OR IGNORE INTO StationBuying
-                        (station_id, item_id, price, units, level, modified)
-                    VALUES (?, ?, ?, ?, ?, IFNULL(?, CURRENT_TIMESTAMP))
-                """, buys)
-        insertedBuys = buyCounter.delta
+            INSERT OR REPLACE INTO StationItem (
+                station_id, item_id, modified,
+                demand_price, demand_units, demand_level,
+                supply_price, supply_units, supply_level
+            ) VALUES (
+                ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
+                ?, ?, ?,
+                ?, ?, ?
+            )
+        """, items)
+    updatedItems = len(items)
 
     tdenv.DEBUG0("Marking populated stations as having a market")
     db.execute(
@@ -879,25 +847,23 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     db.commit()
 
     changes = " and ".join("{} {}".format(v, k) for k, v in {
-        "new": insertedItems - deletedItems,
-        "updated": deletedItems,
+        "new": newItems,
+        "updated": updtItems,
         "removed": removedItems,
     }.items() if v) or "0"
 
     tdenv.NOTE(
-            "Import complete: "
-                "{:s} items ({:n} buy, {:n} sell) "
-                "for {:n} stations "
-                "in {:n} systems",
-                    changes,
-                    insertedBuys, insertedSells,
-                    numStn,
-                    numSys,
+        "Import complete: "
+            "{:s} items "
+            "over {:n} stations "
+            "in {:n} systems",
+                changes,
+                len(stations),
+                numSys,
     )
 
-    ignoredItems = len(items) - insertedItems
-    if ignoredItems:
-        tdenv.NOTE("Ignored {} items with old data", ignoredItems)
+    if ignItems:
+        tdenv.NOTE("Ignored {} items with old data", ignItems)
 
 
 ######################################################################
@@ -1122,7 +1088,7 @@ def buildCache(tdb, tdenv):
     """
 
     tdenv.NOTE(
-        "Rebuilding cache file: this may take a moment.",
+        "Rebuilding cache file: this may take a few moments.",
         file=sys.stderr
     )
 
@@ -1252,4 +1218,3 @@ def test_derp(tdb=None, tdenv=None):
             matches += 1
     if not matches:
         print("Current data is free of known derp")
-

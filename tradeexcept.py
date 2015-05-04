@@ -8,4 +8,3 @@ class TradeException(Exception):
         most user friendly way possible.
     """
     pass
-

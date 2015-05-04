@@ -30,10 +30,10 @@ updateUiHelp = (
 "\n"
 "'Demand' is disabled unless you use '--use-demand'.\n"
 "\n"
-"'Stock' should be:\n"
+"'Supply' should be:\n"
 "  '-' or '0' if no units are available,\n"
-"  empty or '?' if STOCK is over 10,000,\n"
-"  or the STOCK number followed by L, M or H.\n"
+"  empty or '?' if the level is unknown,\n"
+"  or the amount of supply followed by L, M or H.\n"
 "E.g.\n"
 "  1L, 50M, 3000H.\n"
 "\n"
@@ -284,8 +284,8 @@ class UpdateGUI(ScrollingCanvas):
                 return False
 
             # is it lower than the value?
-            payStats = self.payStats[item.ID]
-            if not self.checkValueAgainstStats(widget, payStats):
+            demandStats = self.demandStats[item.ID]
+            if not self.checkValueAgainstStats(widget, demandStats):
                 return False
 
         if pos <= 1:
@@ -314,8 +314,8 @@ class UpdateGUI(ScrollingCanvas):
                         )
                 return False
 
-            askStats = self.askStats[item.ID]
-            if not self.checkValueAgainstStats(widget, askStats):
+            supplyStats = self.supplyStats[item.ID]
+            if not self.checkValueAgainstStats(widget, supplyStats):
                 return False
 
             # https://forums.frontier.co.uk/showthread.php?t=34986&p=1162429&viewfull=1#post1162429
@@ -363,15 +363,12 @@ class UpdateGUI(ScrollingCanvas):
             if re.match(r'^(-|\?|\d+[LlMmHh\?])$', value):
                 return True
             mbox.showerror(
-                        "Invalid stock value",
+                        "Invalid supply value",
                         "If the item is in-supply, this field should "
                         "be the number of units followed by one of 'L', "
                         "'M' or 'H'.\n"
                         "\n"
                         "If the item is out-of-supply, use '-' or '0'.\n"
-                        "\n"
-                        "TIP: Leave the value as '?' if there are more "
-                        "than 10,000 units available.\n"
                         "\n"
                         "EXAMPLE: If the UI says '2341 LOW', type '2341L'.\n"
                     )
@@ -416,7 +413,7 @@ class UpdateGUI(ScrollingCanvas):
             the first cell on the next line, or if
             we are at the bottom of the list, beep.
         """
-        
+
         widget = event.widget
         if not self.validate(widget):
             return "break"
@@ -515,13 +512,13 @@ class UpdateGUI(ScrollingCanvas):
         addHeading("Paying")
         addHeading("Asking")
         addHeading("Demand")
-        addHeading("Stock")
+        addHeading("Supply")
         addHeading("AvgPay")
         addHeading("AvgAsk")
         self.endRow()
 
 
-    def addItemRow(self, ID, catID, itemName, paying, asking, demand, stock):
+    def addItemRow(self, ID, catID, itemName, paying, asking, demand, supply):
         row = []
 
         displayNo = len(self.itemDisplays)
@@ -529,16 +526,16 @@ class UpdateGUI(ScrollingCanvas):
         self.items[itemName] = item
         self.itemList.append(item)
 
-        payStats = self.payStats[item.ID]
-        askStats = self.askStats[item.ID]
+        demandStats = self.demandStats[item.ID]
+        supplyStats = self.supplyStats[item.ID]
 
         self.addLabel(item.name.upper())
         self.addInput(item, paying, row)
         self.addInput(item, asking, row)
         self.addInput(item, demand, row)
-        self.addInput(item, stock, row)
-        self.addLabel(payStats[1])
-        self.addLabel(askStats[1])
+        self.addInput(item, supply, row)
+        self.addLabel(demandStats[1])
+        self.addLabel(supplyStats[1])
 
         self.itemDisplays.append(row)
 
@@ -560,40 +557,45 @@ class UpdateGUI(ScrollingCanvas):
 
         # Do we have entries for this station?
         cur.execute("""
-                    SELECT  COUNT(*)
-                      FROM  StationItem
-                     WHERE  station_id = ?
-                """, [station.ID]
-            )
+            SELECT  COUNT(*)
+              FROM  StationItem
+             WHERE  station_id = ?
+        """, [station.ID])
         self.newStation = False if int(cur.fetchone()[0]) else True
 
         cur.execute("""
-                SELECT  item.item_id,
-                        IFNULL(MIN(price), 0),
-                        IFNULL(AVG(price), 0),
-                        IFNULL(MAX(price), 0)
-                  FROM  Item
-                        LEFT OUTER JOIN StationBuying AS sb
-                            ON (item.item_id = sb.item_id)
-                 GROUP  BY 1
+            SELECT  item.item_id,
+                    IFNULL(MIN(demand_price), 0),
+                    IFNULL(AVG(demand_price), 0),
+                    IFNULL(MAX(demand_price), 0)
+              FROM  Item
+                    LEFT OUTER JOIN StationItem AS si
+                        ON (
+                            item.item_id = si.item_id
+                            AND si.demand_price > 0
+                        )
+             GROUP  BY 1
         """)
-        self.payStats = {
-                ID: [ minCr, int(avgCr), maxCr ]
-                for ID, minCr, avgCr, maxCr in cur
+        self.demandStats = {
+            ID: [ minCr, int(avgCr), maxCr ]
+            for ID, minCr, avgCr, maxCr in cur
         }
         cur.execute("""
-                SELECT  item.item_id,
-                        IFNULL(MIN(price), 0),
-                        IFNULL(AVG(price), 0),
-                        IFNULL(MAX(price), 0)
-                  FROM  Item
-                        LEFT OUTER JOIN StationSelling AS ss
-                            ON (item.item_id = ss.item_id)
-                 GROUP  BY 1
+            SELECT  item.item_id,
+                    IFNULL(MIN(supply_price), 0),
+                    IFNULL(AVG(supply_price), 0),
+                    IFNULL(MAX(supply_price), 0)
+              FROM  Item
+                    LEFT OUTER JOIN StationItem AS si
+                        ON (
+                            item.item_id = si.item_id
+                            AND si.supply_price > 0
+                        )
+             GROUP  BY 1
         """)
-        self.askStats = {
-                ID: [ minCr, int(avgCr), maxCr ]
-                for ID, minCr, avgCr, maxCr in cur
+        self.supplyStats = {
+            ID: [ minCr, int(avgCr), maxCr ]
+            for ID, minCr, avgCr, maxCr in cur
         }
 
         if self.newStation and not tdenv.all:
@@ -611,31 +613,26 @@ class UpdateGUI(ScrollingCanvas):
         fetchAll = (self.newStation or tdenv.all)
         siJoin = "LEFT OUTER" if fetchAll else "INNER"
         stmt = """
-                SELECT  item.category_id AS catID,
-                        item.item_id AS ID,
-                        item.name AS name,
-                        IFNULL(sb.price, '') AS paying,
-                        IFNULL(ss.price, '') AS asking,
-                        IFNULL(sb.units, 0) AS demandUnits,
-                        IFNULL(sb.level, 0) AS demandLevel,
-                        IFNULL(ss.units, 0) AS stockUnits,
-                        IFNULL(ss.level, 0) AS stockLevel
-                  FROM  (
-                            Category AS cat
-                                INNER JOIN Item item
-                                    USING (category_id)
-                        ) {siJoin} JOIN
-                            StationItem si
-                                ON (si.item_id = item.item_id
-                                    AND si.station_id = ?)
-                            LEFT OUTER JOIN StationBuying sb
-                                USING (station_id, item_id)
-                            LEFT OUTER JOIN StationSelling ss
-                                USING (station_id, item_id)
-                 ORDER  BY cat.name, item.ui_order
-                """.format(
-                            siJoin=siJoin
-                    )
+            SELECT  item.category_id AS catID,
+                    item.item_id AS ID,
+                    item.name AS name,
+                    IFNULL(si.demand_price, '') AS paying,
+                    IFNULL(si.supply_price, '') AS asking,
+                    IFNULL(si.demand_units, 0) AS demandUnits,
+                    IFNULL(si.demand_level, 0) AS demandLevel,
+                    IFNULL(si.supply_units, 0) AS supplyUnits,
+                    IFNULL(si.supply_level, 0) AS supplyLevel
+              FROM  (
+                        Category AS cat
+                            INNER JOIN Item item
+                                USING (category_id)
+                    ) {siJoin} JOIN
+                        StationItem si ON (
+                            si.item_id = item.item_id AND si.station_id = ?
+                        )
+             ORDER  BY cat.name, item.ui_order
+        """.format(siJoin=siJoin)
+        tdenv.DEBUG1("sql: {}; bind: {}", stmt, station.ID)
         cur.execute(stmt, [station.ID])
 
         def describeSupply(units, level):
@@ -656,8 +653,8 @@ class UpdateGUI(ScrollingCanvas):
             itemName = row["name"]
             paying, asking = row["paying"], row["asking"]
             demand = describeSupply(row["demandUnits"], row["demandLevel"])
-            stock = describeSupply(row["stockUnits"], row["stockLevel"])
-            self.addItemRow(row["ID"], cat, itemName, paying, asking, demand, stock)
+            supply = describeSupply(row["supplyUnits"], row["supplyLevel"])
+            self.addItemRow(row["ID"], cat, itemName, paying, asking, demand, supply)
 
 
         for row in self.itemDisplays:
@@ -686,32 +683,32 @@ class UpdateGUI(ScrollingCanvas):
             paying = int(rowvals[0] or 0)
             asking = int(rowvals[1] or 0)
             demand = rowvals[2]
-            stock  = rowvals[3]
+            supply = rowvals[3]
 
             if not paying and not asking:
-                demand, stock = "-", "-"
+                demand, supply = "-", "-"
             else:
                 if paying and not demand:
                     demand = "?"
 
                 if asking == 0:
-                    stock = "-"
-                elif not stock:
-                    stock = "?"
-                elif re.match('^\d+$', stock):
-                    if int(stock) != 0:
-                        stock += '?'
+                    supply = "-"
+                elif not supply:
+                    supply = "?"
+                elif re.match('^\d+$', supply):
+                    if int(supply) != 0:
+                        supply += '?'
 
             txt += ("     {item:<30s} "
                     "{paying:>10} "
                     "{asking:>10} "
                     "{demand:>10} "
-                    "{stock:>10}\n".format(
+                    "{supply:>10}\n".format(
                         item=itemName,
                         paying=paying,
                         asking=asking,
                         demand=demand,
-                        stock=stock
+                        supply=supply
                         ))
         self.results = txt
 
@@ -723,4 +720,3 @@ def render(tdb, tdenv, tmpPath):
     gui.getResults()
     with tmpPath.open("w") as fh:
         print(gui.results, file=fh)
-

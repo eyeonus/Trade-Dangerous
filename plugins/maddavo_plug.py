@@ -692,6 +692,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
 
         tdenv.ignoreUnknown = True
+        tdenv.mergeImport = True
 
         if self.getOption("csvs"):
             self.options["corrections"] = True

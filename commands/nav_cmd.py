@@ -1,5 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 import math
 from tradedb import System, Station, TradeDB
 from tradeexcept import TradeException
@@ -17,31 +17,27 @@ arguments = [
 ]
 switches = [
     ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
-        ),
-    ParseArgument('--avoid',
-            help='Exclude a system from the route. If you specify a station, '
-                 'the system that station is in will be avoided instead.',
-            action='append',
-            default=[],
-        ),
+        help='Maximum light years per jump.',
+        dest='maxLyPer',
+        metavar='N.NN',
+        type=float,
+    ),
+    AvoidPlacesArgument(),
     ParseArgument('--via',
-            help='Require specified systems/stations to be en-route (in order).',
-            action='append',
-            metavar='PLACE[,PLACE,...]',
-        ),
+        help='Require specified systems/stations to be en-route (in order).',
+        action='append',
+        metavar='PLACE[,PLACE,...]',
+    ),
     ParseArgument('--stations', '-S',
-            help='Include station details.',
-            action='store_true',
-        ),
+        help='Include station details.',
+        action='store_true',
+    ),
     ParseArgument('--refuel-jumps',
-            help='Require a station after this many jumps',
-            type=int,
-            dest='stationInterval',
-        ),
+        help='Require a station after this many jumps',
+        type=int,
+        dest='stationInterval',
+    ),
+    PadSizeArgument(),
 ]
 
 ######################################################################
@@ -107,24 +103,7 @@ def run(results, cmdenv, tdb):
             )
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
-
-    if cmdenv.stations:
-        stationIDs = ",".join([
-                ",".join(str(stn.ID) for stn in hop[0].stations)
-                for hop in route
-                if hop[0].stations
-        ])
-        stmt = """
-                SELECT  si.station_id,
-                        JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
-                  FROM  StationItem AS si
-                 WHERE  si.station_id IN ({})
-                 GROUP  BY 1
-                """.format(stationIDs)
-        cmdenv.DEBUG0("Fetching ages: {}", stmt)
-        ages = {}
-        for ID, age in tdb.query(stmt):
-            ages[ID] = age
+    maxPadSize = cmdenv.padSize
 
     for (jumpSys, dist) in route:
         jumpLy = lastSys.distanceTo(jumpSys)
@@ -132,22 +111,20 @@ def run(results, cmdenv, tdb):
         if cmdenv.detail:
             dirLy = jumpSys.distanceTo(dstSystem)
         row = ResultRow(
-                action='Via',
-                system=jumpSys,
-                jumpLy=jumpLy,
-                totalLy=totalLy,
-                dirLy=dirLy,
-                )
+            action='Via',
+            system=jumpSys,
+            jumpLy=jumpLy,
+            totalLy=totalLy,
+            dirLy=dirLy,
+            )
         row.stations = []
         if cmdenv.stations:
             for (station) in jumpSys.stations:
-                try:
-                    age = "{:7.2f}".format(ages[station.ID])
-                except:
-                    age = "-"
+                if maxPadSize and not station.checkPadSize(maxPadSize):
+                    continue
                 rr = ResultRow(
-                        station=station,
-                        age=age,
+                    station=station,
+                    age=station.itemDataAgeStr,
                 )
                 row.stations.append(rr)
         results.rows.append(row)
@@ -179,7 +156,7 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn("JumpLy", '>', '7', '.2f',
             key=lambda row: row.jumpLy)
     if cmdenv.detail:
-        rowFmt.addColumn("Stations", '>', 2, 
+        rowFmt.addColumn("Stations", '>', 2,
             key=lambda row: len(row.system.stations))
     if cmdenv.detail:
         rowFmt.addColumn("DistLy", '>', '7', '.2f',
@@ -251,4 +228,3 @@ def render(results, cmdenv, tdb):
             print(stnRowFmt.format(stnRow))
 
     return results
-

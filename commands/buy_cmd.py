@@ -2,9 +2,9 @@ from __future__ import absolute_import, with_statement, print_function, division
 from collections import defaultdict
 from commands.commandenv import ResultRow
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from formatting import RowFormat, ColumnFormat, max_len
-from tradedb import TradeDB, AmbiguityError
+from tradedb import TradeDB, AmbiguityError, System, Station
 
 import math
 
@@ -18,14 +18,14 @@ help='Find places to buy a given item within range of a given station.'
 name='buy'
 epilog=None
 wantsTradeDB=True
-arguments = [
+arguments = (
     ParseArgument(
         'name',
         help='Items or Ships to look for.',
         nargs='+',
     ),
-]
-switches = [
+)
+switches = (
     ParseArgument(
         '--quantity',
         help='Require at least this quantity.',
@@ -51,12 +51,9 @@ switches = [
         default=None,
         type=int,
     ),
-    ParseArgument(
-        '--pad-size', '-p',
-        help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-        metavar='PADSIZES',
-        dest='padSize',
-    ),
+    AvoidPlacesArgument(),
+    PadSizeArgument(),
+    BlackMarketSwitch(),
     MutuallyExclusiveGroup(
         ParseArgument(
             '--one-stop', '-1',
@@ -72,11 +69,11 @@ switches = [
             dest='sortByPrice',
         ),
         ParseArgument(
-            '--stock-sort', '-S',
-            help='Sort by stock followed by price',
+            '--units-sort', '-S',
+            help='Sort by available units followed by price',
             action='store_true',
             default=False,
-            dest='sortByStock',
+            dest='sortByUnits',
         ),
     ),
     ParseArgument(
@@ -93,7 +90,7 @@ switches = [
         dest='lt',
         type="credits",
     ),
-]
+)
 
 def get_lookup_list(cmdenv, tdb):
     # Credit: http://stackoverflow.com/a/952952/257645
@@ -139,26 +136,27 @@ def sql_query(cmdenv, tdb, queries, mode):
     # Constraints
     idList = ','.join(str(ID) for ID in queries.keys())
     if mode is SHIP_MODE:
-        tables = "ShipVendor AS ss INNER JOIN Ship AS sh USING (ship_id)"
+        tables = "ShipVendor AS s INNER JOIN Ship AS sh USING (ship_id)"
         constraints = ["(ship_id IN ({}))".format(idList)]
         columns = [
-            'ss.ship_id',
-            'ss.station_id',
+            's.ship_id',
+            's.station_id',
             'sh.cost',
             '1',
-            "0",
             ]
         bindValues = []
     else:
-        tables = "StationSelling AS ss"
-        constraints = ["(item_id IN ({}))".format(idList)]
+        tables = "StationItem AS s"
         columns = [
-            'ss.item_id',
-            'ss.station_id',
-            'ss.price',
-            'ss.units',
-            "JULIANDAY('NOW') - JULIANDAY(ss.modified)",
-            ]
+            's.item_id',
+            's.station_id',
+            's.supply_price',
+            's.supply_units',
+        ]
+        constraints = [
+            "(s.item_id IN ({}))".format(idList),
+            "(s.supply_price > 0)",
+        ]
         bindValues = []
 
     # Additional constraints in ITEM_MODE
@@ -167,25 +165,21 @@ def sql_query(cmdenv, tdb, queries, mode):
             constraints.append("(units = -1 or units >= ?)")
             bindValues.append(cmdenv.quantity)
         if cmdenv.lt:
-            constraints.append("(price < ?)")
+            constraints.append("(supply_price < ?)")
             bindValues.append(cmdenv.lt)
         if cmdenv.gt:
-            constraints.append("(price > ?)")
+            constraints.append("(supply_price > ?)")
             bindValues.append(cmdenv.gt)
 
     whereClause = ' AND '.join(constraints)
-    stmt = """
-               SELECT DISTINCT {columns}
-                 FROM {tables}
-                WHERE {where}
-   """.format(
+    stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
         columns=','.join(columns),
         tables=tables,
         where=whereClause
     )
     cmdenv.DEBUG0('SQL: {}', stmt)
     return tdb.query(stmt, bindValues)
-    
+
 
 ######################################################################
 # Perform query and populate result set
@@ -199,11 +193,16 @@ def run(results, cmdenv, tdb):
     queries, mode = get_lookup_list(cmdenv, tdb)
     cmdenv.DEBUG0("{} query: {}", mode, queries.values())
 
+    avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
+    avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
+
     # Summarize
     results.summary = ResultRow()
     results.summary.mode = mode
     results.summary.queries = queries
     results.summary.oneStop = cmdenv.oneStop
+    results.summary.avoidSystems = avoidSystems
+    results.summary.avoidStations = avoidStations
 
     # In single mode with detail enabled, add average reports.
     # Thus if you're looking up "algae" or the "asp", it'll
@@ -215,11 +214,11 @@ def run(results, cmdenv, tdb):
             results.summary.avg = first.cost
         else:
             avgPrice = tdb.query("""
-                    SELECT CAST(AVG(ss.price) AS INT)
-                      FROM StationSelling AS ss
-                     WHERE ss.item_id = ?
+                SELECT AVG(si.supply_price)
+                  FROM StationItem AS si
+                 WHERE si.item_id = ? AND si.supply_price > 0
             """, [first.ID]).fetchone()[0]
-            results.summary.avg = avgPrice
+            results.summary.avg = int(avgPrice)
 
     # System-based search
     nearSystem = cmdenv.nearSystem
@@ -233,15 +232,23 @@ def run(results, cmdenv, tdb):
 
     oneStopMode = cmdenv.oneStop
     padSize = cmdenv.padSize
+    wantBlackMarket = cmdenv.blackMarket
 
     stations = defaultdict(list)
     stationByID = tdb.stationByID
 
     cur = sql_query(cmdenv, tdb, queries, mode)
-    for (ID, stationID, priceCr, stock, age) in cur:
+    for (ID, stationID, price, units) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
+        if wantBlackMarket and station.blackMarket != 'Y':
+            continue
+        if station in avoidStations:
+            continue
+        if station.system in avoidSystems:
+            continue
+
         row = ResultRow()
         row.station = station
         if distanceFn:
@@ -250,9 +257,9 @@ def run(results, cmdenv, tdb):
                 continue
             row.dist = distance
         row.item = queries[ID]
-        row.price = priceCr
-        row.stock = stock
-        row.age = age
+        row.price = price
+        row.units = units
+        row.age = station.itemDataAgeStr
         if oneStopMode:
             stationRows = stations[stationID]
             stationRows.append(row)
@@ -269,14 +276,14 @@ def run(results, cmdenv, tdb):
     if oneStopMode and not singleMode:
         results.rows.sort(key=lambda result: result.item.name())
     results.rows.sort(key=lambda result: result.station.name())
-    if cmdenv.sortByStock:
-        results.summary.sort = "Stock"
+    if cmdenv.sortByUnits:
+        results.summary.sort = "units"
         results.rows.sort(key=lambda result: result.price)
-        results.rows.sort(key=lambda result: result.stock, reverse=True)
+        results.rows.sort(key=lambda result: result.units, reverse=True)
     else:
         if not oneStopMode:
             results.summary.sort = "Price"
-            results.rows.sort(key=lambda result: result.stock, reverse=True)
+            results.rows.sort(key=lambda result: result.units, reverse=True)
             results.rows.sort(key=lambda result: result.price)
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Ly"
@@ -308,15 +315,15 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn('Cost', '>', 10, 'n',
                 key=lambda row: row.price)
     if mode is not SHIP_MODE:
-        stnRowFmt.addColumn('Stock', '>', 10,
-                key=lambda row: '{:n}'.format(row.stock) if row.stock >= 0 else '?')
+        stnRowFmt.addColumn('Units', '>', 10,
+                key=lambda row: '{:n}'.format(row.units) if row.units >= 0 else '?')
 
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
     if mode is not SHIP_MODE:
-        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+        stnRowFmt.addColumn('Age/days', '>', 7,
                 key=lambda row: row.age)
     stnRowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.station.distFromStar())

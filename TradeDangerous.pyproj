@@ -13,7 +13,7 @@
     <LaunchProvider>Standard Python launcher</LaunchProvider>
     <InterpreterId />
     <InterpreterVersion />
-    <CommandLineArguments>run -vv --progress --empty=82 --cap=212 --jumps=4 --cr=2153796 --from="lft78/coye" --hops 5 --to jamesonmem --ls-m=8000 --sto=10000 --pad L --ly 12 --prune-hop=3 --prune-sc=40</CommandLineArguments>
+    <CommandLineArguments>run -vv --progress --empty=82 --cap=212 --jumps=4 --cr=2153796 --from="lft78/coye" --hops 6 --to jamesonmem --ls-m=8000 --sup=10000 --pad L --ly 12 --prune-hop=3 --prune-sc=40</CommandLineArguments>
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
@@ -49,6 +49,17 @@
     <Compile Include="mfd\saitek\x52pro.py" />
     <Compile Include="mfd\saitek\__init__.py" />
     <Compile Include="mfd\__init__.py" />
+    <Compile Include="misc\checkpricebounds.py" />
+    <Compile Include="misc\clipboard.py" />
+    <Compile Include="misc\derp-sentinel.py" />
+    <Compile Include="misc\diff-system-csvs.py" />
+    <Compile Include="misc\eddb.py" />
+    <Compile Include="misc\eddn.py" />
+    <Compile Include="misc\edsc.py" />
+    <Compile Include="misc\importeddbstats.py" />
+    <Compile Include="misc\madupload.py" />
+    <Compile Include="misc\prices-json-exp.py" />
+    <Compile Include="misc\progress.py" />
     <Compile Include="plugins\maddavo_plug.py" />
     <Compile Include="plugins\__init__.py" />
     <Compile Include="prices.py" />
@@ -69,13 +80,14 @@
     <Content Include="data\Station.csv" />
     <Content Include="data\System.csv" />
     <Content Include="data\TradeDangerous.sql" />
-    <Content Include="README.txt" />
+    <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="commands" />
     <Folder Include="data" />
     <Folder Include="mfd" />
     <Folder Include="mfd\saitek" />
+    <Folder Include="misc\" />
     <Folder Include="plugins\" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />

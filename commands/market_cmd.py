@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import ResultRow
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB
 
@@ -46,7 +46,7 @@ def render_units(units, level):
         return '?'
     levelNames = { -1: '?', 1: 'L', 2: 'M', 3: 'H' }
     return "{:n}{}".format(units, levelNames[level])
-    
+
 
 def run(results, cmdenv, tdb):
     origin = cmdenv.startStation
@@ -65,30 +65,13 @@ def run(results, cmdenv, tdb):
     tdb.getAverageSelling()
     tdb.getAverageBuying()
     cur = tdb.query("""
-        SELECT  si.item_id,
-                sb.price,
-                sb.units,
-                sb.level,
-                JULIANDAY('now') - JULIANDAY(sb.modified),
-                ss.price,
-                ss.units,
-                ss.level,
-                JULIANDAY('now') - JULIANDAY(ss.modified)
-          FROM  StationItem si
-                    LEFT OUTER JOIN StationBuying AS sb
-                        ON (
-                            si.station_id = sb.station_id AND
-                            si.item_id = sb.item_id
-                        )
-                    LEFT OUTER JOIN StationSelling AS ss
-                        ON (
-                            si.station_id = ss.station_id AND
-                            si.item_id = ss.item_id
-                        )
-         WHERE  si.station_id = ?
-    """, [
-        origin.ID,
-    ])
+        SELECT  item_id,
+                demand_price, demand_units, demand_level,
+                supply_price, supply_units, supply_level,
+                JULIANDAY('now') - JULIANDAY(modified)
+          FROM  StationItem
+         WHERE  station_id = ?
+    """, [origin.ID])
 
     for row in cur:
         it = iter(row)
@@ -101,7 +84,6 @@ def run(results, cmdenv, tdb):
         row.buyUnits = units
         row.buyLevel = level
         row.demand = render_units(units, level)
-        row.buyAge = float(next(it) or 0)
         if not selling:
             hasBuy = (row.buyCr or units or level)
         else:
@@ -112,14 +94,15 @@ def run(results, cmdenv, tdb):
         row.sellUnits = units
         row.sellLevel = level
         row.supply = render_units(units, level)
-        row.sellAge = float(next(it) or 0)
         if not buying:
             hasSell = (row.sellCr or units or level)
         else:
             hasSell = False
+        row.age = float(next(it) or 0)
+
         if hasBuy or hasSell:
             results.rows.append(row)
- 
+
     if not results.rows:
         raise CommandLineError("No items found")
 
@@ -163,10 +146,6 @@ def render(results, cmdenv, tdb):
             rowFmt.addColumn('Demand', '>', dmdLen,
                 key=lambda row: row.demand,
                 pred=buyPred)
-        if cmdenv.detail:
-            rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-            key=lambda row: row.buyAge,
-            pred=buyPred)
     if not cmdenv.buying:
         rowFmt.addColumn('Selling', '>', 7, 'n',
             key=lambda row: row.sellCr,
@@ -178,10 +157,10 @@ def render(results, cmdenv, tdb):
         rowFmt.addColumn('Supply', '>', supLen,
             key=lambda row: row.supply,
             pred=sellPred)
-        if cmdenv.detail:
-            rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-            key=lambda row: row.buyAge,
-            pred=sellPred)
+    if cmdenv.detail:
+        rowFmt.addColumn('Age/Days', '>', 7, '.2f',
+        key=lambda row: row.age,
+        pred=buyPred)
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()

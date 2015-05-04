@@ -39,6 +39,7 @@ from tradedb import System, Station, Trade, TradeDB, describeAge
 from tradedb import Destination
 from tradeexcept import TradeException
 
+import datetime
 import locale
 import math
 import os
@@ -55,12 +56,10 @@ locale.setlocale(locale.LC_ALL, '')
 class BadTimestampError(TradeException):
     def __init__(
             self,
-            tableName,
             tdb,
             stationID, itemID,
             modified
             ):
-        self.tableName = tableName
         self.station = tdb.stationByID[stationID]
         self.item = tdb.itemByID[itemID]
         self.modified = modified
@@ -68,10 +67,9 @@ class BadTimestampError(TradeException):
     def __str__(self):
         return (
             "Error loading price data from the local db:\n"
-            "{} has a {} entry for \"{}\" with an invalid "
+            "{} has a StationItem entry for \"{}\" with an invalid "
             "modified timestamp: '{}'.".format(
                 self.station.name(),
-                self.tableName,
                 self.item.name(),
                 str(self.modified),
             )
@@ -430,8 +428,8 @@ class TradeCalc(object):
                 Iterable of [Item] that prevents items being loaded
             tdenv.maxAge
                 Maximum age in days of data that gets loaded
-            tdenv.stock
-                Require at least this much stock to load an item
+            tdenv.supply
+                Require at least this much supply to load an item
         """
         if not tdenv:
             tdenv = tdb.tdenv
@@ -440,75 +438,72 @@ class TradeCalc(object):
         self.defaultFit = fit or self.fastFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
-        minStock = self.tdenv.stock or 1
+        minSupply = self.tdenv.supply or 1
 
         db = tdb.getDB()
 
-        avoidItemIDs = set(
-            item.ID
-            for item in (tdenv.avoidItems or ())
-        )
-
+        wheres, binds = [], []
         if tdenv.maxAge:
-            ageClause = "AND JULIANDAY(modified) >= JULIANDAY('NOW') - {:f}".format(
-                    tdenv.maxAge
-            )
-        else:
-            ageClause = ""
+            maxDays = datetime.timedelta(days=tdenv.maxAge)
+            cutoff = datetime.datetime.now() - maxDays
+            wheres.append("(modified >= ?)")
+            binds.append(str(cutoff.replace(microsecond=0)))
 
-        loadItems = items or tdb.itemByID.values()
-        loadItemIDs = set()
-        for item in loadItems:
-            ID = item if isinstance(item, int) else item.ID
-            if ID not in avoidItemIDs:
-                loadItemIDs.add(str(ID))
-        if not loadItemIDs:
-            raise TradeException("No items to load.")
-        loadItemIDs = ",".join(str(ID) for ID in loadItemIDs)
+        if tdenv.avoidItems or items:
+            avoidItemIDs = set(item.ID for item in tdenv.avoidItems)
+            loadItems = items or tdb.itemByID.values()
+            loadItemIDs = set()
+            for item in loadItems:
+                ID = item if isinstance(item, int) else item.ID
+                if ID not in avoidItemIDs:
+                    loadItemIDs.add(str(ID))
+            if not loadItemIDs:
+                raise TradeException("No items to load.")
+            loadItemIDs = ",".join(str(ID) for ID in loadItemIDs)
+            weheres.append("(item_id IN ({}))]".format(loadItemIDs))
 
-        def load_items(tableName, index, andWhere=""):
-            lastStnID, stnAppend = 0, None
-            count = 0
-            stmt = """
-                    SELECT  station_id, item_id, price, units, level,
-                            strftime('%s', modified),
-                            modified
-                      FROM  {}
-                     WHERE  item_id IN ({ids}) {andWhere}
-                      {ageClause}
-            """.format(
-                tableName,
-                ageClause=ageClause,
-                ids=loadItemIDs,
-                andWhere=andWhere,
-            )
-            tdenv.DEBUG1("TradeCalc loading {} values", tableName)
-            tdenv.DEBUG2(stmt)
-            cur = db.execute(stmt)
-            now = int(time.time())
-            for stnID, itmID, cr, units, lev, timestamp, modified in cur:
-                if stnID != lastStnID:
-                    stnAppend = index[stnID].append
-                    lastStnID = stnID
-                try:
-                    ageS = now - int(timestamp)
-                except TypeError:
-                    raise BadTimestampError(
-                        tableName, self.tdb,
-                        stnID, itmID, modified
-                    )
-                stnAppend((itmID, cr, units, lev, ageS))
-                count += 1
-            tdenv.DEBUG0("Loaded {} selling values".format(count))
+        demand = self.stationsBuying = defaultdict(list)
+        supply = self.stationsSelling = defaultdict(list)
 
-        self.stationsSelling = defaultdict(list)
-        load_items(
-            "StationSelling", self.stationsSelling,
-            andWhere="AND (units >= {})".format(minStock)
-        )
+        whereClause = " AND ".join(wheres) or "1"
 
-        self.stationsBuying = defaultdict(list)
-        load_items("StationBuying", self.stationsBuying)
+        lastStnID, stnAppend = 0, None
+        dmdCount, supCount = 0, 0
+        stmt = """
+                SELECT  station_id, item_id,
+                        strftime('%s', modified), modified,
+                        demand_price, demand_units, demand_level,
+                        supply_price, supply_units, supply_level
+                  FROM  StationItem
+                 WHERE  {where}
+        """.format(where=whereClause)
+        tdenv.DEBUG1("TradeCalc loading StationItem values")
+        tdenv.DEBUG2("sql: {}, binds: {}", stmt, binds)
+        cur = db.execute(stmt, binds)
+        now = int(time.time())
+        for (stnID, itmID,
+                timestamp, modified,
+                dmdCr, dmdUnits, dmdLevel,
+                supCr, supUnits, supLevel) in cur:
+            if stnID != lastStnID:
+                dmdAppend = demand[stnID].append
+                supAppend = supply[stnID].append
+                lastStnID = stnID
+            try:
+                ageS = now - int(timestamp)
+            except TypeError:
+                raise BadTimestampError(
+                    self.tdb,
+                    stnID, itmID, modified
+                )
+            if dmdCr > 0:
+                dmdAppend((itmID, dmdCr, dmdUnits, dmdLevel, ageS))
+                dmdCount += 1
+            if supCr and (abs(supUnits >= minSupply)):
+                supAppend((itmID, supCr, supUnits, supLevel, ageS))
+                supCount += 1
+
+        tdenv.DEBUG0("Loaded {} buys, {} sells".format(dmdCount, supCount))
 
     def bruteForceFit(self, items, credits, capacity, maxUnits):
         """
@@ -528,8 +523,8 @@ class TradeCalc(object):
                 itemCost = item.costCr
                 maxQty = min(maxUnits, cap, cr // itemCost)
 
-                if item.stock < maxQty and item.stock > 0:  # -1 = unknown
-                    maxQty = min(maxQty, item.stock)
+                if item.supply < maxQty and item.supply > 0:  # -1 = unknown
+                    maxQty = min(maxQty, item.supply)
 
                 if maxQty > 0:
                     break
@@ -589,44 +584,41 @@ class TradeCalc(object):
             bestCostCr = 0
             bestSub = None
 
+            qtyCeil = min(maxUnits, cap)
+
             for iNo in range(offset, len(items)):
                 item = items[iNo]
                 itemCostCr = item.costCr
-                stock = item.stock
-                maxQty = min(maxUnits, cap, cr // itemCostCr)
-                if stock < maxQty and stock >= 0:  # -1 = unknown
-                    maxQty = min(maxQty, stock)
+                maxQty = min(qtyCeil, cr // itemCostCr)
 
                 if maxQty <= 0:
                     continue
+
+                supply = item.supply
+                if supply > 0:
+                    supply = min(maxQty, supply)
 
                 itemGainCr = item.gainCr
                 if maxQty == cap:
                     # full load
                     gain = itemGainCr * maxQty
-                    cost = itemCostCr * maxQty
                     if gain > bestGainCr:
+                        cost = itemCostCr * maxQty
                         # list is sorted by gain DESC, cost ASC
                         bestGainCr = gain
                         bestItem = item
                         bestQty = maxQty
                         bestCostCr = cost
                         bestSub = None
-                        # Since the items are listed in gain order
-                        # and then cost-ascending, if we ran out of
-                        # cargo capacity rather than credits, then
-                        # we don't need to check any further.
-                        if maxQty * itemCostCr <= cr:
-                            break
-                    continue
+                    break
 
                 loadCostCr = maxQty * itemCostCr
                 loadGainCr = maxQty * itemGainCr
                 if loadGainCr > bestGainCr:
                     bestGainCr = loadGainCr
+                    bestCostCr = loadCostCr
                     bestItem = item
                     bestQty = maxQty
-                    bestCostCr = loadCostCr
                     bestSub = None
 
                 crLeft, capLeft = cr - loadCostCr, cap - maxQty
@@ -637,9 +629,9 @@ class TradeCalc(object):
                     if subLoad is emptyLoad:
                         continue
                     ttlGain = loadGainCr + subLoad.gainCr
-                    ttlCost = loadCostCr + subLoad.costCr
                     if ttlGain < bestGainCr:
                         continue
+                    ttlCost = loadCostCr + subLoad.costCr
                     if ttlGain == bestGainCr and ttlCost >= bestCostCr:
                         continue
                     bestGainCr = ttlGain
@@ -659,7 +651,6 @@ class TradeCalc(object):
 
         return _fitCombos(0, credits, capacity)
 
-
     def getTrades(self, srcStation, dstStation, srcSelling=None):
         """
         Returns the most profitable trading options from
@@ -677,26 +668,22 @@ class TradeCalc(object):
         itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
-        buyIndex = {buy[0]: buy for buy in dstBuying}
-        getBuy = buyIndex.get
+        getBuy = {buy[0]: buy for buy in dstBuying}.get
+        addTrade = trading.append
         for sell in srcSelling: # should be the smaller list
-            itmID = sell[0]
-            buy = getBuy(itmID, None)
+            buy = getBuy(sell[0], None)
             if buy:
-                buyCr, sellCr = buy[1], sell[1]
-                if sellCr + minGainCr > buyCr:
-                    continue
-                if sellCr + maxGainCr < buyCr:
-                    continue
-                trading.append(Trade(
-                    itemIdx[itmID], itmID,
-                    sellCr, buyCr - sellCr,
-                    sell[2], sell[3],
-                    buy[2], buy[3],
-                    sell[4], buy[4],
-                ))
+                gainCr = buy[1] - sell[1]
+                if gainCr >= minGainCr and gainCr <= maxGainCr:
+                    addTrade(Trade(
+                        itemIdx[sell[0]],
+                        sell[1], gainCr,
+                        sell[2], sell[3],
+                        buy[2], buy[3],
+                        sell[4], buy[4],
+                    ))
 
-        # SORT BY profit DESC, cost
+        # SORT BY profit DESC, cost ASC
         # So if two items have the same profit, the cheapest will come first.
         trading.sort(key=lambda trade: trade.costCr)
         trading.sort(key=lambda trade: trade.gainCr, reverse=True)
@@ -799,22 +786,13 @@ class TradeCalc(object):
             routeJumps = len(route.jumps)
 
             srcSelling = getSelling(srcStation.ID, None)
+            srcSelling = tuple(
+                values for values in srcSelling
+                if values[1] <= startCr
+            )
             if not srcSelling:
-                tdenv.DEBUG1("Nothing sold - next.")
+                tdenv.DEBUG1("Nothing sold/affordable - next.")
                 continue
-            affordable = True
-            for values in srcSelling:
-                if values[1] > startCr:
-                    affordable = False
-                    break
-            if not affordable:
-                srcSelling = [
-                    values for values in srcSelling
-                    if values[1] <= startCr
-                ]
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing affordable - next.")
-                    continue
 
             if goalSystem:
                 origSystem = route.firstSystem
@@ -851,7 +829,6 @@ class TradeCalc(object):
                     if (d.station.dataAge or inf) <= maxAge
                 )
             if goalSystem:
-                unique = bool(tdenv.unique)
                 if bool(tdenv.unique):
                     stations = (
                         d for d in stations if d.system is not srcSystem
@@ -862,17 +839,16 @@ class TradeCalc(object):
                 )
 
             if tdenv.debug >= 1:
-                def annotate():
-                    for dest in stations:
-                        tdenv.DEBUG1(
-                            "destSys {}, destStn {}, jumps {}, distLy {}",
-                            dest.system.dbname,
-                            dest.station.dbname,
-                            "->".join(jump.str() for jump in dest.via),
-                            dest.distLy
-                        )
-                        yield dest
-                stations = iter(annotate())
+                def annotate(dest):
+                    tdenv.DEBUG1(
+                        "destSys {}, destStn {}, jumps {}, distLy {}",
+                        dest.system.dbname,
+                        dest.station.dbname,
+                        "->".join(jump.str() for jump in dest.via),
+                        dest.distLy
+                    )
+                    return True
+                stations = (d for d in stations if annotate(d))
 
             for dest in stations:
                 dstStation = dest.station

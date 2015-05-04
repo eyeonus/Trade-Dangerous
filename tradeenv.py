@@ -83,4 +83,3 @@ class TradeEnv(object):
             return noteFn
 
         return None
-

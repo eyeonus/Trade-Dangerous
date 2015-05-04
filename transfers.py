@@ -1,16 +1,14 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
+from collections import deque
 from pathlib import Path
 from tradeexcept import TradeException
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
 
 import csv
 import json
 import math
 import misc.progress as pbar
 import time
-import urllib.error
 
 def import_requests():
     try:
@@ -73,36 +71,20 @@ def makeUnit(value):
             return "{:>5.01f}{}".format(unitSize, unit)
         unitSize /= 1024
     return None
-    
-
-def rateVal(bytes, duration):
-    """
-    Determine the rate at which data has been transferred.
-
-    bytes:
-        The number of bytes transferred.
-
-    started:
-        The time.time() when the transfer started.
-    """
-
-    if bytes == 0 or duration <= 0:
-        return "..."
-    units = (makeUnit(bytes / (duration))+"/s") or "FAST!"
-    return units
 
 
 def download(
-            cmdenv, url, localFile,
+            tdenv, url, localFile,
             headers=None,
             backup=False,
             shebang=None,
+            chunkSize=4096,
         ):
     """
     Fetch data from a URL and save the output
     to a local file. Returns the response headers.
 
-    cmdenv:
+    tdenv:
         TradeEnv we're working under
 
     url:
@@ -118,79 +100,68 @@ def download(
         function to call on the first line
     """
 
-    if headers:
-        req = Request(url, headers=headers)
-    else:
-        req = Request(url)
+    requests = import_requests()
+    tdenv.NOTE("Requesting {}".format(url))
+    req = requests.get(url, headers=headers or None, stream=True)
+    req.raise_for_status()
 
-    if not cmdenv.quiet:
-        print("Connecting to server: {}".format(url))
-    try:
-        f = urlopen(req)
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            raise HTTP404("{}: {}".format(e, url))
+    encoding = req.headers.get('content-encoding', 'uncompress')
+    length = req.headers.get('content-length', None)
+
+    if length is None:
+        raise Exception("Remote server replied with invalid content-length.")
+    length = int(length)
+    if length <= 0:
         raise TradeException(
-                "HTTP Error: "+url+": "+str(e)
+            "Remote server gave an empty response. Please try again later."
         )
-    except urllib.error.URLError as e:
-        raise TradeException(
-                "Unable to connect ("+url+")\n"+str(e)
-        )
-    cmdenv.DEBUG0(str(f.info()))
+
+    if tdenv.detail > 1:
+        tdenv.NOTE("Downloading {} {}ed data", makeUnit(length), encoding)
+    tdenv.DEBUG0(req.headers)
 
     # Figure out how much data we have
-    contentLength = int(f.getheader('Content-Length'))
-    maxBytesLen = len("{:>n}".format(contentLength))
-    fetched = 0
-    started = time.time()
+    if not tdenv.quiet:
+        progBar = pbar.Progress(length, 20)
 
-    chunkSize = 4096 * 16
-
-    tmpPath = Path(localFile + ".dl")
     actPath = Path(localFile)
+    tmpPath = Path("tmp/{}.dl".format(actPath.name))
 
+    histogram = deque()
+
+    fetched = 0
+    lastTime = started = time.time()
     with tmpPath.open("wb") as fh:
-        if shebang:
-            line = f.readline().decode()
-            shebang(line)
-            shebang = None
-            fh.write(line.encode())
-            fetched += len(line)
-
-        if cmdenv.quiet:
-            fh.write(f.read())
-        else:
-            # Use the 'while True' approach so that we always print the
-            # download status including, especially, the 100% report.
-            while True:
-                duration = time.time() - started
-                if contentLength and duration >= 1:
-                    # estimated contentLength per second
-                    rate = math.ceil(contentLength / duration)
-                    # but how much can we download in 1/10s
-                    burstSize = rate / 10
-                    chunkSize += math.ceil((burstSize - chunkSize) * 0.7)
-                print("{}: "
-                        "{:>{len}n}/{:>{len}n} bytes "
-                        "| {:>10s} "
-                        "| {:>5.2f}% "
-                        .format(
-                                localFile,
-                                fetched, contentLength,
-                                rateVal(fetched, duration),
-                                (fetched * 100 / contentLength),
-                                len=maxBytesLen
-                ), end='\r')
-
-                if fetched >= contentLength:
-                    if not cmdenv.quiet:
-                        print()
-                    break
-
-                chunk = f.read(chunkSize)
-                fetched += len(chunk)
-                fh.write(chunk)
+        for data in req.iter_content(chunk_size=chunkSize):
+            fh.write(data)
+            fetched += len(data)
+            if shebang:
+                bangLine = data.decode().partition("\n")[0]
+                tdenv.DEBUG0("Checking shebang of {}", bangLine)
+                shebang(bangLine)
+                shebang = None
+            if not tdenv.quiet:
+                now = time.time()
+                if len(histogram) >= 15:
+                    histogram.popleft()
+                histogram.append(len(data) / (now - lastTime))
+                progBar.increment(
+                    len(data),
+                    postfix=lambda value, goal: \
+                        " {:>7s} [{:>7s}/s] {:>3.0f}%".format(
+                            makeUnit(value),
+                            makeUnit(sum(histogram) / len(histogram)),
+                            (fetched * 100. / length),
+                        )
+                )
+        tdenv.DEBUG0("End of data")
+    if not tdenv.quiet:
+        progBar.clear()
+        tdenv.NOTE(
+            "Downloaded {} of {}ed data {}/s",
+            makeUnit(fetched), encoding,
+            makeUnit(fetched / (time.time() - started))
+        )
 
     # Swap the file into place
     if backup:
@@ -203,7 +174,8 @@ def download(
         actPath.unlink()
     tmpPath.rename(actPath)
 
-    return f.getheaders()
+    req.close()
+    return req.headers
 
 
 def get_json_data(url):
@@ -216,8 +188,6 @@ def get_json_data(url):
     requests = import_requests()
     req = requests.get(url, stream=True)
 
-    # credit for the progress indicator: 
-    # http://stackoverflow.com/a/15645088/257645
     totalLength = req.headers.get('content-length')
     if totalLength is None:
         compression = req.headers.get('content-encoding')

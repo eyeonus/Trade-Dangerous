@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from itertools import chain
 from pathlib import Path
 
@@ -31,7 +31,7 @@ epilog=(
     "This sub-command provides a plugin infrastructure, and comes "
     "with a module to import data from Maddavo's Market Share "
     "(http://www.davek.com.au/td/).\n"
-    "See \"import --plug=maddavo --opt=help\" for more help."
+    "See \"import -P maddavo -O help\" for more help."
 )
 wantsTradeDB=False
 arguments = [
@@ -76,16 +76,29 @@ switches = [
             "Provides a way to pass additional arguments to plugins."
         ),
     ),
-    ParseArgument('--reset',
-        help='Clear the database before importing.',
-        action='store_true',
-        default=False,
+    MutuallyExclusiveGroup(
+        ParseArgument('--reset-all',
+            help='Clear the database before importing.',
+            action='store_true',
+            default=False,
+        ),
+        ParseArgument('--merge-import', '-M',
+            help=(
+                'Merge the import file with the existing local database: '
+                'only loads values that have an explicit entry with a '
+                'newer timestamp than the existing data. Local values '
+                'are only removed if there is an explicit entry with a '
+                '0/0 demand/supply price.'
+            ),
+            action='store_true',
+            default=False,
+            dest='mergeImport',
+        ),
     ),
 ]
 
 ######################################################################
 # Helpers
-
 
 ######################################################################
 # Perform query and populate result set

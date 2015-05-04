@@ -1,6 +1,6 @@
 from commands.commandenv import ResultRow
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from itertools import chain
 from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB, System, Station, describeAge
@@ -126,16 +126,8 @@ switches = [
             type=float,
             dest='maxAge',
         ),
-    ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unknown).',
-            metavar='PADSIZES',
-            dest='padSize',
-        ),
-    ParseArgument('--black-market', '-bm',
-            help='Require stations with a black market.',
-            action='store_true',
-            dest='blackMarket',
-        ),
+    PadSizeArgument(),
+    BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
             help="Penalty per 1kls stations are from their stars.",
             default=0.6,
@@ -234,8 +226,8 @@ switches = [
             default=False,
             action='store_true',
         ),
-    ParseArgument('--stock',
-            help='Only considers item which have at least this much stock.',
+    ParseArgument('--supply',
+            help='Only considers item which have at least this many units.',
             default=None,
             type=int,
         ),
@@ -592,8 +584,8 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
                     src, station.name(),
             ))
         return False
-    maxAge = cmdenv.maxAge
-    if maxAge and station.dataAge > maxAge:
+    maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
+    if maxAge and maxAge > stnAge:
         if src and src != "--from":
             raise CommandLineError(
                 "{} station {} does not meet --age "
@@ -1106,13 +1098,6 @@ def run(results, cmdenv, tdb):
     results.summary = ResultRow()
     results.summary.exception = ""
 
-    pruneMod = cmdenv.pruneScores / 100
-    distancePruning = (cmdenv.destPlace and not cmdenv.direct) or (cmdenv.loop)
-    if distancePruning:
-        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
-        if not cmdenv.loop:
-            stopSystems = {stop.system for stop in stopStations}
-
     if cmdenv.loop:
         routePickPred = lambda route: \
             route.lastStation is route.firstStation
@@ -1131,16 +1116,24 @@ def run(results, cmdenv, tdb):
 
     pickedRoutes = []
 
+    pruneMod = cmdenv.pruneScores / 100
+
     if cmdenv.loop:
-        def routeStillHasAChance(rt, hopNo):
-            return (rt.lastSystem.distanceTo(rt.firstSystem) / maxHopDistLy) <= hopNo
-    else:
-        def routeStillHasAChance(rt, hopNo):
-            remainingDistance = (numHops - hopNo) * maxHopDistLy
-            return any(
+        distancePruning = lambda rt, distLeft: \
+            rt.lastSystem.distanceTo(rt.firstSystem) <= distLeft
+    elif cmdenv.destPlace and not cmdenv.direct:
+        distancePruning = lambda rt, distLeft: \
+            any(
                 stop for stop in stopSystems
-                if rt.lastSystem.distanceTo(stop) <= remainingDistance
+                if rt.lastSystem.distanceTo(stop) <= distLeft
             )
+    else:
+        distancePruning = False
+
+    if distancePruning:
+        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
+        if not cmdenv.loop:
+            stopSystems = {stop.system for stop in stopStations}
 
     for hopNo in range(numHops):
         restrictTo = None
@@ -1153,7 +1146,8 @@ def run(results, cmdenv, tdb):
 
         if distancePruning:
             preCrop = len(routes)
-            routes = [rt for rt in routes if routeStillHasAChance(rt, hopNo)]
+            distLeft = maxHopDistLy * (numHops - hopNo)
+            routes = [rt for rt in routes if distancePruning(rt, distLeft)]
             if not routes:
                 if pickedRoutes:
                     break

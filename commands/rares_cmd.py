@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import ResultRow
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB
 
@@ -42,11 +42,7 @@ switches = [
             default=None,
             type=int,
     ),
-    ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-            metavar='PADSIZES',
-            dest='padSize',
-    ),
+    PadSizeArgument(),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance.',
             action='store_true',
@@ -64,6 +60,16 @@ switches = [
             metavar='LY',
             default=0,
             type=float,
+    ),
+    MutuallyExclusiveGroup(
+        ParseArgument('--legal',
+            help='List only items known to be legal.',
+            action='store_true',
+        ),
+        ParseArgument('--illegal',
+            help='List only items known to be illegal.',
+            action='store_true',
+        )
     ),
     ParseArgument('--from',
             help='Additional systems to range check candidates against, ' \
@@ -121,6 +127,13 @@ def run(results, cmdenv, tdb):
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.)
 
+    if cmdenv.illegal:
+        wantIllegality = 'Y'
+    elif cmdenv.legal:
+        wantIllegality = 'N'
+    else:
+        wantIllegality = 'YN?'
+
     awaySystems = set()
     if cmdenv.away or cmdenv.awayFrom:
         if not cmdenv.away or not cmdenv.awayFrom:
@@ -142,6 +155,8 @@ def run(results, cmdenv, tdb):
 
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
+        if not rare.illegal in wantIllegality:
+            continue
         if padSize:     # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
                 continue
@@ -215,16 +230,14 @@ def render(results, cmdenv, tdb):
             key=lambda row: row.dist)
     rowFmt.addColumn('Alloc', '>', 6, 'n',
             key=lambda row: row.rare.maxAlloc)
+    rowFmt.addColumn('B/mkt', '>', 4,
+            key=lambda row: TradeDB.marketStates[row.rare.illegal])
     rowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.rare.station.distFromStar())
     rowFmt.addColumn('B/mkt', '>', 4,
-            key=lambda row: \
-                    TradeDB.marketStates[row.rare.station.blackMarket]
-    )
+            key=lambda row: TradeDB.marketStates[row.rare.station.blackMarket])
     rowFmt.addColumn("Pad", '>', '3',
-            key=lambda row: \
-                    TradeDB.padSizes[row.rare.station.maxPadSize]
-    )
+            key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
 
     # Print a heading summary if the user didn't use '-q'
     if not cmdenv.quiet:

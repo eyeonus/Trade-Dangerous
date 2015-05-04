@@ -1,6 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import ResultRow
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from formatting import RowFormat, ColumnFormat, max_len
 from itertools import chain
 from tradedb import TradeDB
@@ -31,11 +31,7 @@ switches = [
             type=float,
             default=None,
     ),
-    ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-            metavar='PADSIZES',
-            dest='padSize',
-    ),
+    PadSizeArgument(),
     ParseArgument('--stations',
             help='Limit to systems which have stations.',
             action='store_true',
@@ -45,30 +41,12 @@ switches = [
                  'a market.',
             action='store_true',
     ),
-    ParseArgument('--blackmarket',
-            help='Limit stations to those known to have a black market.',
-            action='store_true',
-    ),
-    ParseArgument('--shipyard',
-            help='Limit stations to those known to have a ship yard.',
-            action='store_true',
-    ),
-    ParseArgument('--outfitting',
-            help='Limit stations to those known to have outfitting.',
-            action='store_true',
-    ),
-    ParseArgument('--rearm',
-            help='Limit stations to those known to have rearming.',
-            action='store_true',
-    ),
-    ParseArgument('--refuel',
-            help='Limit stations to those known to have refueling.',
-            action='store_true',
-    ),
-    ParseArgument('--repair',
-            help='Limit stations to those known to have repairs.',
-            action='store_true',
-    ),
+    BlackMarketSwitch(),
+    ShipyardSwitch(),
+    OutfittingSwitch(),
+    RearmSwitch(),
+    RefuelSwitch(),
+    RepairSwitch(),
 ]
 
 ######################################################################
@@ -95,24 +73,11 @@ def run(results, cmdenv, tdb):
         distances[destSys] = dist
 
     showStations = cmdenv.detail
-    if showStations:
-        stmt = """
-                SELECT  si.station_id,
-                        JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
-                  FROM  StationItem AS si
-                 GROUP  BY 1
-                """
-        cmdenv.DEBUG0("Fetching ages: {}", stmt)
-        ages = {
-            ID: age
-            for ID, age in tdb.query(stmt)
-        }
-
     wantStations = cmdenv.stations
     padSize = cmdenv.padSize
     wantTrading = cmdenv.trading
     wantShipYard = cmdenv.shipyard
-    wantBlackMarket = cmdenv.blackmarket
+    wantBlackMarket = cmdenv.blackMarket
     wantOutfitting = cmdenv.outfitting
     wantRearm = cmdenv.rearm
     wantRefuel = cmdenv.refuel
@@ -142,14 +107,10 @@ def run(results, cmdenv, tdb):
         if showStations or wantStations:
             stations = []
             for (station) in station_filter(system.stations):
-                try:
-                    age = "{:7.2f}".format(ages[station.ID])
-                except:
-                    age = "-"
                 stations.append(
                     ResultRow(
                         station=station,
-                        age=age,
+                        age=station.itemDataAgeStr,
                     )
                 )
             if not stations and wantStations:
@@ -174,7 +135,7 @@ def render(results, cmdenv, tdb):
             .format(results.summary.ly, results.summary.near.name())
         )
 
-    # Compare system names so we can tell 
+    # Compare system names so we can tell
     maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
 
     sysRowFmt = RowFormat().append(
@@ -261,4 +222,3 @@ def render(results, cmdenv, tdb):
         print(sysRowFmt.format(row))
         for stnRow in row.stations:
             print(stnRowFmt.format(stnRow))
-
