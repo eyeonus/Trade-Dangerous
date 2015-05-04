@@ -8,48 +8,70 @@ import csv
 import json
 import math
 import misc.progress as pbar
+import platform
 import time
 
+try:
+    import requests
+    __requests = requests
+except ImportError:
+    __requests = None
+
 def import_requests():
-    try:
-        import requests
-    except ImportError as e:
-        print("ERROR: Unable to load the Python 'requests' package.")
-        approval = input(
-            "Do you want me to try and install it with 'pip', the "
-            "Python package manager (y/n)? "
+    global __requests
+    global platform
+    if __requests:
+        return __requests
+
+    if platform.system() == 'Linux':
+        extra = (
+            "\nUbuntu users: You may be able to install 'pip' "
+            "with 'apt-get install python3-pip' and requets with "
+            "'pip3 install --upgrade requests'."
         )
-        if approval.lower() != 'y':
-            raise e
+    elif platform.system() == 'Windows':
+        extra = (
+            "\nThis often happens if you have bits of 32-bit and "
+            "64-bit Python installed.\n"
+            "Consider using control panel to uninstall Python, "
+            "delete the Python folder (usually C:\\Python34\\) "
+            "and re-install Python."
+        )
     else:
-        return requests
+        extra = ""
+
+    print(
+        "ERROR: Unable to load the Python 'requests' package." + extra + "\n"
+    )
+    approval = input(
+        "I can try and install the package automatically using 'pip'.\n"
+        "Try to install 'requests' now (y/n)? "
+    )
+    if approval.lower() != 'y':
+        raise TradeException("Missing package: 'requests'")
 
     try:
         import pip
     except ImportError as e:
+        import platform
         raise TradeException(
             "Python 3.4.2 includes a package manager called 'pip', "
-            "except it doesn't appear to be installed on your system:\n" +
-            str(e)
+            "except it doesn't appear to be installed on your system:\n"
+            "{}{}".format(str(e), extra)
         ) from None
 
     pip.main(["install", "--upgrade", "requests"])
 
     try:
         import requests
+        __requests = requests
     except ImportError as e:
         raise TradeException(
-            "The requests module did not install correctly, or you have "
-            "multiple, conflicting instances of Python installed and it "
-            "got very confused just now.\n"
-            "\n"
-            "You may want to try:\n"
-            "  python3 -m pip install --upgrade pip setuptools\n"
-            "  python3 -m pip install --upgrade requests\n"
-            + str(e)
+            "The requests module did not install correctly.{}"
+            .format(extra)
         ) from None
 
-    return requests
+    return __requests
 
 
 ######################################################################
