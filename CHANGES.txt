@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 v7.0.0 May 03 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
 "requests" packages is now required if you want to use "maddavO"s plugin
+. (Avi) README.txt has been replaced with README.md
 . (kfsone) "import" command (non-plugin behavior)
     - Restored the default behavior of forcefully overwriting existing data
       with values from the .prices file and deleting items that aren't listed
@@ -37,7 +38,8 @@ CACHE BUILD REQUIRED (trade.py buildcache -fi)
     - "import" plugin now uses the "requests" module, which means that
       it will automatically download/use compressed .prices files when
       they are made available. E.g. maddavo's .prices files now require
-      upto 5x less bandwidth.
+      upto 5x less bandwidth,
+    - Added code to allow experimental use of numpy,
 
 
 v6.18.6 Apr 27 2015
