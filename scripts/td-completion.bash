@@ -67,7 +67,7 @@ _td_buy()
 		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly --limit --pad-size --one-stop --price-sort --supply-sort --gt --lt ${common_opts}"
+		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -267,7 +267,7 @@ _td_sell()
 		;;
 	*)
 		_td_common && return 0
-		opts="--near --ly-per --limit --price-sort --pad-size --gt --lt ${common_opts}"
+		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac

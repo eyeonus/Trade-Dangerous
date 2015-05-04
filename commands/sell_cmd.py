@@ -28,6 +28,7 @@ switches = [
             type=float,
     ),
     PadSizeArgument(),
+    BlackMarketSwitch(),
     ParseArgument('--limit',
             help='Maximum number of results to list.',
             default=None,
@@ -120,9 +121,13 @@ def run(results, cmdenv, tdb):
 
     stationByID = tdb.stationByID
     padSize = cmdenv.padSize
+    wantBlackMarket = cmdenv.blackMarket
+
     for (stationID, priceCr, demand) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
+            continue
+        if wantBlackMarket and station.blackMarket != 'Y':
             continue
         row = ResultRow()
         row.station = station
@@ -174,7 +179,7 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
-    stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+    stnRowFmt.addColumn('Age/days', '>', 7,
             key=lambda row: row.age)
     stnRowFmt.addColumn('StnLs', '>', 10,
                 key=lambda row: row.station.distFromStar())

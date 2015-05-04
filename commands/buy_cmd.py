@@ -52,6 +52,7 @@ switches = (
         type=int,
     ),
     PadSizeArgument(),
+    BlackMarketSwitch(),
     MutuallyExclusiveGroup(
         ParseArgument(
             '--one-stop', '-1',
@@ -227,6 +228,7 @@ def run(results, cmdenv, tdb):
 
     oneStopMode = cmdenv.oneStop
     padSize = cmdenv.padSize
+    wantBlackMarket = cmdenv.blackMarket
 
     stations = defaultdict(list)
     stationByID = tdb.stationByID
@@ -235,6 +237,8 @@ def run(results, cmdenv, tdb):
     for (ID, stationID, price, units, age) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
+            continue
+        if wantBlackMarket and station.blackMarket != 'Y':
             continue
         row = ResultRow()
         row.station = station
@@ -310,7 +314,7 @@ def render(results, cmdenv, tdb):
                 key=lambda row: row.dist)
 
     if mode is not SHIP_MODE:
-        stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+        stnRowFmt.addColumn('Age/days', '>', 7,
                 key=lambda row: row.age)
     stnRowFmt.addColumn("StnLs", '>', 10,
             key=lambda row: row.station.distFromStar())

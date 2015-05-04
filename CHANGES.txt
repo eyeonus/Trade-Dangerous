@@ -13,19 +13,20 @@ CACHE BUILD REQUIRED (trade.py buildcache -fi)
       existing local data and only removes entries when there is an explicit
       entry for it with 0 prices.
     - Changed "--reset" to "--reset-all" because it's a scary command,
-. (kfsone) Various commands:
-    - Consistency:
-      "demand" refers to what a station will buy,
-      "supply" refers to what a station is selling,
+. (kfsone) Consistency of various commands:
+    - "demand" refers to what a station will buy,
+    - "supply" refers to what a station is selling,
     - Changed several command options from "--stock" to "--supply",
     - "--black-market" is now consistently spelled with a hyphen
-      (or just --black for short),
+       (or just --black for short),
     - "--bm" now has two hyphens in all uses (it was -bm in some cases),
 . (kfsone) "market" command:
     - Only show the age of items once,
 . (kfsone) "nav" command:
     - Fixed --refuel-jumps
     - Added --pad-size to limit which stations will be listed/refuelled at,
+. (kfsone) "buy" and "sell" commands:
+    - Added "--black-market" (--bm) option,
 . (kfsone) Performance:
     - Re-unified the StationBuying/StationSelling tables into StationItem,
     - Added StationBuying and StationSelling views,
