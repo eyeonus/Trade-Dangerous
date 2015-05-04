@@ -1088,7 +1088,7 @@ def buildCache(tdb, tdenv):
     """
 
     tdenv.NOTE(
-        "Rebuilding cache file: this may take a moment.",
+        "Rebuilding cache file: this may take a few moments.",
         file=sys.stderr
     )
 
