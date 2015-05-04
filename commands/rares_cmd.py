@@ -61,6 +61,16 @@ switches = [
             default=0,
             type=float,
     ),
+    MutuallyExclusiveGroup(
+        ParseArgument('--legal',
+            help='List only items known to be legal.',
+            action='store_true',
+        ),
+        ParseArgument('--illegal',
+            help='List only items known to be illegal.',
+            action='store_true',
+        )
+    ),
     ParseArgument('--from',
             help='Additional systems to range check candidates against, ' \
                     'requires --away.',
@@ -117,6 +127,13 @@ def run(results, cmdenv, tdb):
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.)
 
+    if cmdenv.illegal:
+        wantIllegality = 'Y'
+    elif cmdenv.legal:
+        wantIllegality = 'N'
+    else:
+        wantIllegality = 'YN?'
+
     awaySystems = set()
     if cmdenv.away or cmdenv.awayFrom:
         if not cmdenv.away or not cmdenv.awayFrom:
@@ -138,6 +155,8 @@ def run(results, cmdenv, tdb):
 
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
+        if not rare.illegal in wantIllegality:
+            continue
         if padSize:     # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
                 continue
