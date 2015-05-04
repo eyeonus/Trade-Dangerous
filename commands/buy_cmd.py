@@ -4,7 +4,7 @@ from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import *
 from formatting import RowFormat, ColumnFormat, max_len
-from tradedb import TradeDB, AmbiguityError
+from tradedb import TradeDB, AmbiguityError, System, Station
 
 import math
 
@@ -50,6 +50,14 @@ switches = (
         help='Maximum number of results to list.',
         default=None,
         type=int,
+    ),
+    ParseArgument(
+        '--avoid',
+        help=(
+            "Don't list results for specified systems/stations.\n"
+            "Names can be one-per --avoid or comma separated."
+        ),
+        action='append',
     ),
     PadSizeArgument(),
     BlackMarketSwitch(),
@@ -142,7 +150,6 @@ def sql_query(cmdenv, tdb, queries, mode):
             's.station_id',
             'sh.cost',
             '1',
-            "0",
             ]
         bindValues = []
     else:
@@ -152,7 +159,6 @@ def sql_query(cmdenv, tdb, queries, mode):
             's.station_id',
             's.supply_price',
             's.supply_units',
-            "JULIANDAY('NOW') - JULIANDAY(s.modified)",
         ]
         constraints = [
             "(s.item_id IN ({}))".format(idList),
@@ -194,11 +200,16 @@ def run(results, cmdenv, tdb):
     queries, mode = get_lookup_list(cmdenv, tdb)
     cmdenv.DEBUG0("{} query: {}", mode, queries.values())
 
+    avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
+    avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
+
     # Summarize
     results.summary = ResultRow()
     results.summary.mode = mode
     results.summary.queries = queries
     results.summary.oneStop = cmdenv.oneStop
+    results.summary.avoidSystems = avoidSystems
+    results.summary.avoidStations = avoidStations
 
     # In single mode with detail enabled, add average reports.
     # Thus if you're looking up "algae" or the "asp", it'll
@@ -210,11 +221,11 @@ def run(results, cmdenv, tdb):
             results.summary.avg = first.cost
         else:
             avgPrice = tdb.query("""
-                SELECT CAST(AVG(si.supply_price) AS INT)
+                SELECT AVG(si.supply_price)
                   FROM StationItem AS si
                  WHERE si.item_id = ? AND si.supply_price > 0
             """, [first.ID]).fetchone()[0]
-            results.summary.avg = avgPrice
+            results.summary.avg = int(avgPrice)
 
     # System-based search
     nearSystem = cmdenv.nearSystem
@@ -234,12 +245,17 @@ def run(results, cmdenv, tdb):
     stationByID = tdb.stationByID
 
     cur = sql_query(cmdenv, tdb, queries, mode)
-    for (ID, stationID, price, units, age) in cur:
+    for (ID, stationID, price, units) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
         if wantBlackMarket and station.blackMarket != 'Y':
             continue
+        if station in avoidStations:
+            continue
+        if station.system in avoidSystems:
+            continue
+
         row = ResultRow()
         row.station = station
         if distanceFn:
@@ -250,7 +266,7 @@ def run(results, cmdenv, tdb):
         row.item = queries[ID]
         row.price = price
         row.units = units
-        row.age = age
+        row.age = station.itemDataAgeStr
         if oneStopMode:
             stationRows = stations[stationID]
             stationRows.append(row)

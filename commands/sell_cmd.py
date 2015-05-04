@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.exceptions import *
 from commands.parsing import *
-from tradedb import TradeDB
+from tradedb import TradeDB, System, Station
 
 import math
 
@@ -26,6 +26,14 @@ switches = [
             dest='maxLyPer',
             metavar='N.NN',
             type=float,
+    ),
+    ParseArgument(
+        '--avoid',
+        help=(
+            "Don't list results for specified systems/stations.\n"
+            "Names can be one-per --avoid or comma separated."
+        ),
+        action='append',
     ),
     PadSizeArgument(),
     BlackMarketSwitch(),
@@ -67,16 +75,21 @@ def run(results, cmdenv, tdb):
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
+    avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
+    avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
+
     results.summary = ResultRow()
     results.summary.item = item
+    results.summary.avoidSystems = avoidSystems
+    results.summary.avoidStations = avoidStations
 
     if cmdenv.detail:
         avgPrice = tdb.query("""
-            SELECT CAST(AVG(si.supply_price) AS INT)
+            SELECT AVG(si.demand_price)
               FROM StationItem AS si
-             WHERE si.item_id = ? AND si.supply_price > 0
+             WHERE si.item_id = ? AND si.demand_price > 0
         """, [item.ID]).fetchone()[0]
-        results.summary.avg = avgPrice
+        results.summary.avg = int(avgPrice)
 
     # Constraints
     tables = "StationItem AS si"
@@ -129,6 +142,11 @@ def run(results, cmdenv, tdb):
             continue
         if wantBlackMarket and station.blackMarket != 'Y':
             continue
+        if station in avoidStations:
+            continue
+        if station.system in avoidSystems:
+            continue
+
         row = ResultRow()
         row.station = station
         if distanceFn:

@@ -979,6 +979,15 @@ BUY sub-command:
       Only considers stations within reach of the specified system.
       --near chango
 
+    --ly N.N
+      Sets the range of --near (requires --near)
+      --near chango --ly 10
+
+    --avoid <system|station>[,<system|station>,...]
+      Don't show entries for the specified systems/stations
+      e.g.
+        --avoid sol --avoid ross154 --avoid abrahamlincoln,marshigh
+
     --one-stop
     -1
       When multiple items or ships are listed, only lists stations
@@ -987,10 +996,6 @@ BUY sub-command:
     --limit N
       Limit how many results re shown
       --limit 5
-
-    --ly-per N.N
-      Sets the range of --near (requires --near)
-      --near chango --ly 10
 
     --lt credits
     --gt credits
@@ -1040,13 +1045,18 @@ SELL sub-command:
       Only considers stations within reach of the specified system.
       --near chango
 
+    --ly N.N
+      Sets the range of --near (requires --near)
+      --near chango --ly 10
+
+    --avoid <system|station>[,<system|station>,...]
+      Don't show entries for the specified systems/stations
+      e.g.
+        --avoid sol --avoid ross154 --avoid abrahamlincoln,marshigh
+
     --limit N
       Limit how many results re shown
       --limit 5
-
-    --ly-per N.N
-      Sets the range of --near (requires --near)
-      --near chango --ly 10
 
     --lt credits
     --gt credits

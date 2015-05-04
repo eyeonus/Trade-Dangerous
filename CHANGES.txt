@@ -27,6 +27,7 @@ CACHE BUILD REQUIRED (trade.py buildcache -fi)
     - Added --pad-size to limit which stations will be listed/refuelled at,
 . (kfsone) "buy" and "sell" commands:
     - Added "--black-market" (--bm) option,
+    - Added "--avoid" option (accepts station and/or system names)
 . (kfsone) Performance:
     - Re-unified the StationBuying/StationSelling tables into StationItem,
     - Added StationBuying and StationSelling views,
