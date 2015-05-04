@@ -22,12 +22,7 @@ switches = [
         metavar='N.NN',
         type=float,
     ),
-    ParseArgument('--avoid',
-        help='Exclude a system from the route. If you specify a station, '
-             'the system that station is in will be avoided instead.',
-        action='append',
-        default=[],
-    ),
+    AvoidPlacesArgument(),
     ParseArgument('--via',
         help='Require specified systems/stations to be en-route (in order).',
         action='append',

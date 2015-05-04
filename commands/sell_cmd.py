@@ -27,14 +27,7 @@ switches = [
             metavar='N.NN',
             type=float,
     ),
-    ParseArgument(
-        '--avoid',
-        help=(
-            "Don't list results for specified systems/stations.\n"
-            "Names can be one-per --avoid or comma separated."
-        ),
-        action='append',
-    ),
+    AvoidPlacesArgument(),
     PadSizeArgument(),
     BlackMarketSwitch(),
     ParseArgument('--limit',

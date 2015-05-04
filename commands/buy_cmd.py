@@ -51,14 +51,7 @@ switches = (
         default=None,
         type=int,
     ),
-    ParseArgument(
-        '--avoid',
-        help=(
-            "Don't list results for specified systems/stations.\n"
-            "Names can be one-per --avoid or comma separated."
-        ),
-        action='append',
-    ),
+    AvoidPlacesArgument(),
     PadSizeArgument(),
     BlackMarketSwitch(),
     MutuallyExclusiveGroup(

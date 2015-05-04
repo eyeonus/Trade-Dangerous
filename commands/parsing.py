@@ -61,6 +61,19 @@ class PadSizeArgument(int):
         }
 
 
+class AvoidPlacesArgument(ParseArgument):
+    def __init__(self):
+        self.args = ['--avoid']
+        self.kwargs = {
+            'action': 'append',
+            'help': (
+                "Don't list results for the specified systems or stations.\n"
+                "Names can be one-per '--avoid' or comma separated, e.g. "
+                "'--avoid a,b,c' or '--avoid a,b --avoid c'"
+            ),
+        }
+        
+
 class SwitchArgument(ParseArgument):
     def __init__(self, help=None):
         if isinstance(self.switches, (tuple, list)):
