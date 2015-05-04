@@ -46,7 +46,6 @@ def run(results, cmdenv, tdb):
     results.summary.fromStation = lhs
     results.summary.toStation = rhs
 
-    lhs.tradingWith = dict()
     trades = calc.getTrades(lhs, rhs)
     if not trades:
         raise CommandLineError("No profitable trades {} -> {}".format(
