@@ -61,6 +61,52 @@ class PadSizeArgument(int):
         }
 
 
+class SwitchArgument(ParseArgument):
+    def __init__(self, help=None):
+        if isinstance(self.switches, (tuple, list)):
+            self.args = self.switches
+        else:
+            self.args = (self.switches,)
+        help = help or self.help
+        self.kwargs = {'action':'store_true', 'dest':self.dest, 'help':help}
+
+
+class BlackMarketSwitch(SwitchArgument):
+    switches = ['--black-market', '--bm']
+    dest = 'blackMarket'
+    help = 'Require stations known to have a black market.'
+
+
+class ShipyardSwitch(SwitchArgument):
+    switches = ['--shipyard']
+    dest = 'shipyard'
+    help = 'Require stations known to have a Shipyard.'
+
+
+class OutfittingSwitch(SwitchArgument):
+    switches = ['--outfitting']
+    dest = 'outfitting'
+    help = 'Require stations known to have Outfitting.'
+
+
+class RearmSwitch(SwitchArgument):
+    switches = ['--rearm']
+    dest = 'rearm'
+    help = 'Require stations known to sell munitions.'
+
+
+class RefuelSwitch(SwitchArgument):
+    switches = ['--refuel']
+    dest = 'refuel'
+    help = 'Require stations known to sell fuel.'
+
+
+class RepairSwitch(SwitchArgument):
+    switches = ['--repair']
+    dest = 'repair'
+    help = 'Require stations known to offer repairs.'
+
+
 __tdParserHelpers = {
     'credits': CreditParser,
     'padsize': PadSizeArgument.PadSizeParser,
