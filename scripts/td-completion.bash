@@ -140,7 +140,7 @@ _td_local()
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly --pad-size --stations --trading --blackmarket --shipyard --outfitting --rearm --refuel --repair ${common_opts}"
+		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -172,6 +172,10 @@ _td_nav()
 	case ${prev} in
 	--ly-per|--avoid|--via|--refuel-jumps)
 		# argument required
+		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0

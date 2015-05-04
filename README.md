@@ -351,7 +351,7 @@ For additional help on a specific command, such as 'update' use
          --pad L              (large only, ignores unknown)
 
      --black-market
-     -bm
+     --bm
        Only consider stations that have a black market.
 
      --ls-penalty N.NN
@@ -847,7 +847,8 @@ Options:
     --shipyard
       Limit stations to those known to have a shipyard.
 
-    --blackmarket
+    --black-market
+    --bm
       Limit stations to those known to have a black market.
 
     --outfitting

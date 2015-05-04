@@ -18,6 +18,9 @@ CACHE BUILD REQUIRED (trade.py buildcache -fi)
       "demand" refers to what a station will buy,
       "supply" refers to what a station is selling,
     - Changed several command options from "--stock" to "--supply",
+    - "--black-market" is now consistently spelled with a hyphen
+      (or just --black for short),
+    - "--bm" now has two hyphens in all uses (it was -bm in some cases),
 . (kfsone) "market" command:
     - Only show the age of items once,
 . (kfsone) "nav" command:

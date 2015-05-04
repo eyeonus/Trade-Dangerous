@@ -41,30 +41,12 @@ switches = [
                  'a market.',
             action='store_true',
     ),
-    ParseArgument('--blackmarket',
-            help='Limit stations to those known to have a black market.',
-            action='store_true',
-    ),
-    ParseArgument('--shipyard',
-            help='Limit stations to those known to have a ship yard.',
-            action='store_true',
-    ),
-    ParseArgument('--outfitting',
-            help='Limit stations to those known to have outfitting.',
-            action='store_true',
-    ),
-    ParseArgument('--rearm',
-            help='Limit stations to those known to have rearming.',
-            action='store_true',
-    ),
-    ParseArgument('--refuel',
-            help='Limit stations to those known to have refueling.',
-            action='store_true',
-    ),
-    ParseArgument('--repair',
-            help='Limit stations to those known to have repairs.',
-            action='store_true',
-    ),
+    BlackMarketSwitch(),
+    ShipyardSwitch(),
+    OutfittingSwitch(),
+    RearmSwitch(),
+    RefuelSwitch(),
+    RepairSwitch(),
 ]
 
 ######################################################################
@@ -95,7 +77,7 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     wantTrading = cmdenv.trading
     wantShipYard = cmdenv.shipyard
-    wantBlackMarket = cmdenv.blackmarket
+    wantBlackMarket = cmdenv.blackMarket
     wantOutfitting = cmdenv.outfitting
     wantRearm = cmdenv.rearm
     wantRefuel = cmdenv.refuel

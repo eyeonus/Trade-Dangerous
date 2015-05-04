@@ -377,7 +377,7 @@ RUN sub-command:
          --pad L              (large only, ignores unknown)
 
      --black-market
-     -bm
+     --bm
        Only consider stations that have a black market.
 
      --ls-penalty N.NN
@@ -838,7 +838,8 @@ LOCAL sub-command:
     --shipyard
       Limit stations to those known to have a shipyard.
 
-    --blackmarket
+    --black-market
+    --bm
       Limit stations to those known to have a black market.
 
     --outfitting
@@ -907,7 +908,7 @@ LOCAL sub-command:
       /  George Lucas         255     0.58 Yes Yes Yes Lrg   52
       /  Kolmogorov Hub     2.96K     1.61 Yes Yes  No Med   53
 
-    > trade.py local SOL --blackmarket --ly 6 -vv
+    > trade.py local SOL --black-market --ly 6 -vv
 
 
 STATION sub-command:
