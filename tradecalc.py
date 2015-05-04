@@ -460,7 +460,7 @@ class TradeCalc(object):
             if not loadItemIDs:
                 raise TradeException("No items to load.")
             loadItemIDs = ",".join(str(ID) for ID in loadItemIDs)
-            weheres.append("(item_id IN ({}))]".format(loadItemIDs))
+            wheres.append("(item_id IN ({}))".format(loadItemIDs))
 
         demand = self.stationsBuying = defaultdict(list)
         supply = self.stationsSelling = defaultdict(list)
