@@ -291,15 +291,14 @@ class Station(object):
         'ID', 'system', 'dbname',
         'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
         'outfitting', 'rearm', 'refuel', 'repair',
-        'tradingWith', 'itemCount',
-        'dataAge',
+        'itemCount', 'dataAge',
     )
 
     def __init__(
             self, ID, system, dbname,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
             outfitting, rearm, refuel, repair,
-            itemCount, dataAge,
+            itemCount=0, dataAge=None,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = int(lsFromStar)
@@ -312,7 +311,6 @@ class Station(object):
         self.refuel = refuel
         self.repair = repair
         self.itemCount = itemCount
-        self.tradingWith = None
         self.dataAge = dataAge
         system.stations = system.stations + (self,)
 
@@ -1162,7 +1160,7 @@ class TradeDB(object):
                 ID, systemByID[systemID], name,
                 lsFromStar, market, blackMarket, shipyard,
                 maxPadSize, outfitting, rearm, refuel, repair,
-                0, 0
+                0, None,
             )
             stationByID[ID] = station
 
