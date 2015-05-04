@@ -58,22 +58,24 @@ import heapq
 import itertools
 import locale
 import math
+import os
 import re
 import sqlite3
 import sys
 
+haveNumpy = False
 try:
-    import numpy
-    import numpy.linalg
-    haveNumpy = True
-except ImportError:
+    if os.environ['NUMPY']:
+        import numpy
+        import numpy.linalg
+        haveNumpy = True
+except (KeyError, ImportError):
     class numpy(object):
         array = False
         float32 = False
         ascontiguousarray = False
         class linalg(object):
             norm = False
-    haveNumpy = False
 
 locale.setlocale(locale.LC_ALL, '')
 
