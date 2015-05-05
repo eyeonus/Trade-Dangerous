@@ -70,6 +70,8 @@ try:
         import numpy.linalg
         haveNumpy = True
 except (KeyError, ImportError):
+    pass
+if not haveNumpy:
     class numpy(object):
         array = False
         float32 = False
