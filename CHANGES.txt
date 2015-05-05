@@ -4,6 +4,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 v7.0.1 May 04 2015
 . (kfsone) Minor fixes from forums
++ Extra data and Rares
 
 v7.0.0 May 03 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
