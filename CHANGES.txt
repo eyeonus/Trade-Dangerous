@@ -4,6 +4,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 v7.0.1 May 04 2015
 . (kfsone) Minor fixes from forums
+. (kfsone) Fixed issue causing some users to get a numpy import error
 + Extra data and Rares
 
 v7.0.0 May 03 2015
