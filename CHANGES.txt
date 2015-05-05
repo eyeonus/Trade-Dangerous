@@ -8,7 +8,7 @@ v7.0.1 May 04 2015
 
 v7.0.0 May 03 2015
 CACHE BUILD REQUIRED (trade.py buildcache -fi)
-"requests" packages is now required if you want to use "maddavO"s plugin
+"requests" packages is now required if you want to use maddavo's plugin
 . (Avi) README.txt has been replaced with README.md
 . (kfsone) "import" command (non-plugin behavior)
     - Restored the default behavior of forcefully overwriting existing data
