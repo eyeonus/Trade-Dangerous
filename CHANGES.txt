@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.0.2 May 05 2015
+. (kfsone) Added "--demand" option to "run", filters based on demand.
+      CAUTION: Items with "?" demand will be ignored when using --demand.
+      If you want to enter demand values in the update tool, you will
+      need to use the "--use-demand" (-D) option of "update".
+
 v7.0.1 May 04 2015
 . (kfsone) Minor fixes from forums
 . (kfsone) Fixed issue causing some users to get a numpy import error

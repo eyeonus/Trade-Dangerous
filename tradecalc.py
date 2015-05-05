@@ -430,6 +430,8 @@ class TradeCalc(object):
                 Maximum age in days of data that gets loaded
             tdenv.supply
                 Require at least this much supply to load an item
+            tdenv.demand
+                Require at least this much demand to load an item
         """
         if not tdenv:
             tdenv = tdb.tdenv
@@ -438,7 +440,8 @@ class TradeCalc(object):
         self.defaultFit = fit or self.fastFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
-        minSupply = self.tdenv.supply or 1
+        minSupply = self.tdenv.supply or 0
+        minDemand = self.tdenv.demand or 0
 
         db = tdb.getDB()
 
@@ -496,12 +499,14 @@ class TradeCalc(object):
                     self.tdb,
                     stnID, itmID, modified
                 )
-            if dmdCr > 0:
-                dmdAppend((itmID, dmdCr, dmdUnits, dmdLevel, ageS))
-                dmdCount += 1
-            if supCr and (abs(supUnits >= minSupply)):
-                supAppend((itmID, supCr, supUnits, supLevel, ageS))
-                supCount += 1
+            if dmdCr > 0 and dmdUnits:
+                if not minDemand or dmdUnits >= minDemand:
+                    dmdAppend((itmID, dmdCr, dmdUnits, dmdLevel, ageS))
+                    dmdCount += 1
+            if supCr > 0 and supUnits:
+                if not minSupply or supUnits >= minSupply:
+                    supAppend((itmID, supCr, supUnits, supLevel, ageS))
+                    supCount += 1
 
         tdenv.DEBUG0("Loaded {} buys, {} sells".format(dmdCount, supCount))
 

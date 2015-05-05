@@ -335,9 +335,18 @@ For additional help on a specific command, such as 'update' use
          --mgpt 2k
 
      --supply N
-       Only consider sales where the station has this many units in supply,
+       Only consider purchases where the station has this many units of
+       the item in supply,
        e.g.
          --supply 1000
+
+     --demand N
+       Only consider sales at stations which have this much demand for
+       the given item,
+       NOTE: The demand column is rarely populate, so using this option
+       will hide the majority of available trade data from the optimizer.
+       e.g.
+         --demand 5000  (only show places users have entered a demand >= 5000)
 
      --pad-size SML?
      --pad SML?
@@ -494,6 +503,10 @@ Alternatively, if you specify one of the editing switches, it will put the price
     --all
     -A
       Shows all items including those not currently available at the station.
+
+    --use-demand
+    -D
+      Enables editing of the "demand" column.
 
     --editor <executable name or path>
       e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
