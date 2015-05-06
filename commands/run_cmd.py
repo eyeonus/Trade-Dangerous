@@ -590,7 +590,7 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
             ))
         return False
     maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
-    if maxAge and maxAge > stnAge:
+    if maxAge and stnAge > maxAge:
         if src and src != "--from":
             raise CommandLineError(
                 "{} station {} does not meet --age "
