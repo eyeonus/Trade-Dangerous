@@ -10,6 +10,7 @@ v7.0.2 May 05 2015
 . (kfsone) Fixed #231 Exception when using --quantity in buy/sell
 . (kfsone) --supply is now an alias for --quantity in "buy"
 . (kfsone) --demand is now an alias for --quantity in "sell"
+. (kfsone) Fixed #232 'supply' values ignored by "run"
 
 v7.0.1 May 04 2015
 . (kfsone) Minor fixes from forums

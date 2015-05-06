@@ -601,7 +601,7 @@ class TradeCalc(object):
 
                 supply = item.supply
                 if supply > 0:
-                    supply = min(maxQty, supply)
+                    maxQty = min(maxQty, supply)
 
                 itemGainCr = item.gainCr
                 if maxQty == cap:
