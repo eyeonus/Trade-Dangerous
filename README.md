@@ -335,9 +335,18 @@ For additional help on a specific command, such as 'update' use
          --mgpt 2k
 
      --supply N
-       Only consider sales where the station has this many units in supply,
+       Only consider purchases where the station has this many units of
+       the item in supply,
        e.g.
          --supply 1000
+
+     --demand N
+       Only consider sales at stations which have this much demand for
+       the given item,
+       NOTE: The demand column is rarely populate, so using this option
+       will hide the majority of available trade data from the optimizer.
+       e.g.
+         --demand 5000  (only show places users have entered a demand >= 5000)
 
      --pad-size SML?
      --pad SML?
@@ -494,6 +503,10 @@ Alternatively, if you specify one of the editing switches, it will put the price
     --all
     -A
       Shows all items including those not currently available at the station.
+
+    --use-demand
+    -D
+      Enables editing of the "demand" column.
 
     --editor <executable name or path>
       e.g. --editor "C:\Program Files\WibbleEdit\WibbleEdit.exe"
@@ -916,7 +929,7 @@ This shows that 'Tea' is a star buy at this station: it is being sold by the sta
 Finds stations that are selling / where you can buy, a named list of items or ships.
 
     trade.py buy
-        [-q | -v] [--quantity Q] [-P | -S] [--limit]
+        [-q | -v] [--supply N] [-P | -S] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
         [--one-stop | -1]
@@ -925,9 +938,11 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 
 ###Options:
 
-    --quantity Q
-      Requires that the supply to be unknown or at least this value,
-      --quantity 23
+    --supply N
+    --quantity N
+      Show stations known to have >= Q units of supply.
+      --supply 23
+      --quant 23
 
     --limit N
       Limit how many results re shown
@@ -995,16 +1010,18 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 Looks for stations buying the specified item.
 
     trade.py sell
-        [-q | -v] [--quantity Q] [-P] [--limit]
+        [-q | -v] [--demand N] [-P] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
         item
 
 ###Options:
 
-    --quantity Q
+    --demand N
+    --quantity N
       Requires that the demand level be unknown or at least this value,
-      --quantity 23
+      --demand 23
+      --quant 23
 
     --limit N
       Limit how many results re shown
