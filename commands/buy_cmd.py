@@ -27,8 +27,8 @@ arguments = (
 )
 switches = (
     ParseArgument(
-        '--quantity',
-        help='Require at least this quantity.',
+        '--supply', '--quantity',
+        help='Limit to stations known to have at least this much supply.',
         default=0,
         type=int,
     ),
@@ -161,9 +161,9 @@ def sql_query(cmdenv, tdb, queries, mode):
 
     # Additional constraints in ITEM_MODE
     if mode is ITEM_MODE:
-        if cmdenv.quantity:
-            constraints.append("(units = -1 or units >= ?)")
-            bindValues.append(cmdenv.quantity)
+        if cmdenv.supply:
+            constraints.append("(supply_units >= ?)")
+            bindValues.append(cmdenv.supply)
         if cmdenv.lt:
             constraints.append("(supply_price < ?)")
             bindValues.append(cmdenv.lt)

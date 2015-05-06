@@ -16,6 +16,12 @@ arguments = [
     ParseArgument('item', help='Name of item you want to sell.', type=str),
 ]
 switches = [
+    ParseArgument(
+        '--demand', '--quantity',
+        help='Limit to stations known to have at least this much demand.',
+        default=0,
+        type=int,
+    ),
     ParseArgument('--near',
             help='Find buyers within jump range of this system.',
             type=str
@@ -96,9 +102,9 @@ def run(results, cmdenv, tdb):
     ]
     bindValues = []
 
-    if cmdenv.quantity:
-        constraints.append("(units = -1 or units >= ?)")
-        bindValues.append(cmdenv.quantity)
+    if cmdenv.demand:
+        constraints.append("(demand_units >= ?)")
+        bindValues.append(cmdenv.demand)
 
     if cmdenv.lt:
         constraints.append("(demand_price < ?)")

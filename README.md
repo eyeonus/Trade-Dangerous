@@ -929,7 +929,7 @@ This shows that 'Tea' is a star buy at this station: it is being sold by the sta
 Finds stations that are selling / where you can buy, a named list of items or ships.
 
     trade.py buy
-        [-q | -v] [--quantity Q] [-P | -S] [--limit]
+        [-q | -v] [--supply N] [-P | -S] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
         [--one-stop | -1]
@@ -938,9 +938,11 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 
 ###Options:
 
-    --quantity Q
-      Requires that the supply to be unknown or at least this value,
-      --quantity 23
+    --supply N
+    --quantity N
+      Show stations known to have >= Q units of supply.
+      --supply 23
+      --quant 23
 
     --limit N
       Limit how many results re shown
@@ -1008,16 +1010,18 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 Looks for stations buying the specified item.
 
     trade.py sell
-        [-q | -v] [--quantity Q] [-P] [--limit]
+        [-q | -v] [--demand N] [-P] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
         item
 
 ###Options:
 
-    --quantity Q
+    --demand N
+    --quantity N
       Requires that the demand level be unknown or at least this value,
-      --quantity 23
+      --demand 23
+      --quant 23
 
     --limit N
       Limit how many results re shown
