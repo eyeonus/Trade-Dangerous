@@ -828,11 +828,8 @@ class TradeCalc(object):
                     if d.station in restrictStations
                 )
             if maxAge:
-                inf = float("inf")
-                stations = (
-                    d for d in stations
-                    if (d.station.dataAge or inf) <= maxAge
-                )
+                stations = (d for d in stations if d.station.dataAge)
+                stations = (d for d in stations if d.station.dataAge <= maxAge)
             if goalSystem:
                 if bool(tdenv.unique):
                     stations = (
