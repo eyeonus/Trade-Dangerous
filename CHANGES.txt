@@ -2,6 +2,8 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May 9th 2015 (gazelle) Corrected unicode system names (argetlamh etc)
+
 v7.0.2 May 05 2015
 . (kfsone) Added "--demand" option to "run", filters based on demand.
       CAUTION: Items with "?" demand will be ignored when using --demand.
