@@ -19,63 +19,130 @@ The price data in TradeDangerous is either manually entered (by you) or crowd so
 
 #What can it do for me?
 
-I'm at Mokosh/Bethe Station with 5000cr, room for 8 cargo units and a ship that can go 8.56ly per jump.
+You're in a ship with 8 cargo spaces that can make 8.56 ly per jump; you're willing to make upto 2 jumps between stations, and we want to see how much money we can make if in 2 trade stops (hops).
 
-We ask:
+    trade.py run --credits 5000 --capacity 8 --ly-per 8.56 --jumps 2 --hops 2
 
-    trade.py run --from Mokosh/Bethe --credits 5000 --capacity 8 --ly-per 8.56
+If we ran this, TD would search the galaxy for trade runs. But it could take us days to reach some of them. So lets say we're currently at Kummer City in the Andere system.
 
-or in abbreviated form:
+    trade.py run --from "andere/kummer city" 
+        --credits 5000 --capacity 8 --ly-per 8.56 --jumps 2 --hops 2
 
-    trade.py run --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
+(The above represents a single line)
 
-And TD will give us a 2-leg trade run that may more than double our money:
+That's a lot to type. TD is designed to support laziness when it comes to typing, so it allows for all kinds of short-cuts.
 
-    1:  MOKOSH/Bethe Station -> GRANTHAIMI/Parmitano Colony:
-    2:  MOKOSH/Bethe Station: 8 x Mineral Extractors,
-    3:  V774 HERCULIS/Mendel Mines: 4 x Gallite, 4 x Rutile,
-    4:  GRANTHAIMI/Parmitano Colony +6,340cr
+    trade.py ru
+        --fr and/kumm     find a station matching 'kumm' in a
+                          system matching 'and'
+        --cr 5k           'k', 'm' and 'b' are recognized suffixes
+        --cap 8           8 units of cargo
+        --ly 8.56         maximum distance *per jump*
+        --ju 2            maximum 2 jumps
 
-Line 1 tells us the start and end stations for this route.
+The default for hops is 2, so I didn't have to include it.
 
-Line 2 tells us what to pick up at our first station.
+You can also use "=" to connect an option with its values:
 
-Line 3 tells us the first hop of our run. When we get here, we sell all the
-cargo we are carrying and pick up a new load.
+    trade.py ru --fr=and/kumm --cr=5k --cap=8 --ly=8.56 --ju=2
 
-Line 4 tells us the last hop of our run and how much we gain when we sell our
-remaining cargo here.
+With the data at the time I write this, this produces:
 
+    ANDERE/Kummer City -> ANDERE/Malzberg Vision
+      ANDERE/Kummer City: 6 x Titanium, 2 x Polymers,
+      G 224-46/Lorrah Dock: 7 x Coltan, 1 x Lepidolite,
+      ANDERE/Malzberg Vision +8,032cr (502/ton)
 
-**but how do I get there?**
+This tells us our overall route (line #1), what load to pick up from the first station, what to sell it for and pick up at the second stop and where to finish and unload for our final profit.
 
-There's a command for that
+Note that it could have just told us to pick up 6 Titanium (the max we could afford) or 8 Copper (the highest profit we could fill up with), Instead, TD crunched hard numbers and maximized the earnings of every cargo space AND credit.
 
-    trade.py nav mok/beth herc/mendel --ly 8.56
-    System         JumpLy
-    ---------------------
-    MOKOSH           0.00
-    LTT 15449        6.23
-    V774 HERCULIS    4.90
+##TIP: Last stop
 
-But we could also just ask TD to give us more detail with our trade run ("-v"):
+Consider the last hop of a route as "best dumping ground". It is the only step TD doesn't think about "what next", so it's possible to arrive at a station that doesn't have much (or anything) worth buying. To avoid this, it's worth asking TD for 1 or 2 additional hops.
 
-    trade.py run -v --fr Mok/Beth --cr 5000 --cap 8 --ly 8.56
-    1: MOKOSH/Bethe Station -> GRANTHAIMI/Parmitano Colony:
-    2:  Load from MOKOSH/Bethe Station: 8 x Mineral Extractors (@491cr),
-    3:  Jump MOKOSH -> LTT 15449 -> V774 HERCULIS
-    4:  Load from V774 HERCULIS/Mendel Mines: 4 x Gallite (@1663cr), 4 x Rutile (@223cr),
-    5:  Jump V774 HERCULIS -> LTT 15449 -> GRANTHAIMI
-    6:  Finish GRANTHAIMI/Parmitano Colony + 6,340cr => 11,340cr
+    trade.py ru --fr=and/kumm --cr=6.2k --cap=8 --ly=8.56 --ju=2 --hops 5
+    ANDERE/Kummer City -> G 224-46/Lorrah Dock
+      ANDERE/Kummer City: 7 x Titanium, 1 x Copper,
+      G 224-46/Lorrah Dock: 8 x Coltan,
+      ANDERE/Maury Terminal: 2 x Indium, 4 x Titanium, 1 x Copper, 1 x Aluminium,
+      G 224-46/Lorrah Dock: 8 x Bertrandite,
+      ANDERE/Maury Terminal: 4 x Indium, 4 x Titanium,
+      G 224-46/Lorrah Dock +26,540cr (663/ton)
 
-Lines 2 and 4 now include the expected buying prices so you don't get shafted
-by out of date price data.
+Malzberg was a great place to sell, but not such a great waypoint.
 
-Lines 3 and 5 tell us our jump routes between legs.
+##TIP: Earn as you go
 
-(For even more detail "-v -v" or "-vv" or "-vvv")
+TD takes into account the money you make along a trip (see --margin), in the 5 hop route we see the cargo loads changing as TD sees you becoming able to afford more expensive-but-profitable wares. This is another reason it can pay to ask for more hops than you intend to make.
 
-At this point, you probably have a lot of questions.
+##How do I get there?
+
+While one of TD's sub-commands, "nav", can help with that:
+
+    trade.py nav and/kumm --via g224-46 andere --ly=8.56
+    System     JumpLy
+    -----------------
+    ANDERE       0.00
+    LTT 14542    6.16
+    G 224-46     3.71
+    LTT 14542    3.71
+    ANDERE       6.16
+
+We can also just ask TD to give us more detail with our trade run using the "--show-jumps" option or it's short-cut "-J":
+
+    ANDERE/Kummer City -> ANDERE/Malzberg Vision
+      ANDERE/Kummer City: 6 x Titanium, 2 x Polymers,
+      Jump ANDERE -> LTT 14542 -> G 224-46
+      G 224-46/Lorrah Dock: 7 x Coltan, 1 x Lepidolite,
+      Jump G 224-46 -> LTT 14542 -> ANDERE
+      ANDERE/Malzberg Vision +8,032cr (502/ton)
+
+##Getting more (or less) detail
+
+All TD commands can be asked more or less detail using either "--detail" (short-cut -v) or "--quiet" (short-cut -q). These are incremental, so "-vvv" or "-v v v" ask for 3 levels of increase, "-qq" asks for 2 levels of quiet.
+
+    trade.py run --fr And/Kum --cr 5k --cap 8 --ly 8.56 -J -vv
+    ANDERE/Kummer City -> ANDERE/Malzberg Vision (score: 8035.649800)
+      Load from ANDERE/Kummer City (1.18Kls, BMk:N, Pad:L, Shp:Y, Out:Y, Ref:Y):
+            6 x Titanium        803cr vs    1,306cr, 20 days vs 53 days
+            2 x Polymers         76cr vs      280cr, 20 days vs 53 days
+      Jump ANDERE, 6.16ly -> LTT 14542, 3.71ly -> G 224-46
+      Unload at G 224-46/Lorrah Dock (729ls, BMk:N, Pad:M) => Gain 3,426cr (428.25cr/ton) => 8,426cr
+      Load from G 224-46/Lorrah Dock (729ls, BMk:N, Pad:M):
+            7 x Coltan        1,132cr vs    1,735cr, 53 days vs 8 days
+            1 x Lepidolite      428cr vs      813cr, 53 days vs 8 days
+      Jump G 224-46, 3.71ly -> LTT 14542, 6.16ly -> ANDERE
+      Unload at ANDERE/Malzberg Vision (493ls, BMk:N, Pad:L, Shp:Y, Out:Y, Ref:Y) => Gain 4,606cr (575.75cr/ton) => 13,032cr
+      ----------------------------------------------------------------------------
+    Finish at ANDERE/Malzberg Vision (493ls, BMk:N, Pad:L, Shp:Y, Out:Y, Ref:Y) gaining 8,032cr (502cr/ton) => est 13,032cr total
+
+There's a lot going on here:
+    . Fine detail about stations (distance from star, has black market, etc),
+    . "score" tells us how TD ranked this based on factors such as total gain, supercruise distances, number of jumps, etc,
+    . Expected purchase/sale costs and rough data age (some crowd-sourced data can appear to be very old if it hasn't changed),
+    . How much we expect to gain each hop and the cr/ton we make, 
+
+Most users tend to use the in-game route planner and prefer the cleaner "--summary" presentation:
+
+    trade.py run --fr And/Kum --cr 5k --cap 8 --ly 8.56 -vv --summary
+    ANDERE/Kummer City -> ANDERE/Malzberg Vision (score: 8035.649800)
+
+      Load from ANDERE/Kummer City (1.18Kls, BMk:N, Pad:L, Shp:Y, Out:Y, Ref:Y):
+            6 x Titanium        803cr vs    1,306cr, 20 days vs 53 days
+            2 x Polymers         76cr vs      280cr, 20 days vs 53 days
+        Expect to gain 3,426cr (428.25cr/ton)
+
+      Load from G 224-46/Lorrah Dock (729ls, BMk:N, Pad:M):
+            7 x Coltan        1,132cr vs    1,735cr, 53 days vs 8 days
+            1 x Lepidolite      428cr vs      813cr, 53 days vs 8 days
+        Expect to gain 4,606cr (575.75cr/ton)
+      ----------------------------------------------------------------------------
+    Finish at ANDERE/Malzberg Vision (493ls, BMk:N, Pad:L, Shp:Y, Out:Y, Ref:Y) gaining 8,032cr (502cr/ton) => est 13,032cr total
+
+##It's been a long time...
+
+So you installed TD and you got crazy and you asked it to calculate 150 hops for you, and there was silence. If you specify the "--progress" option it'll tell you what's going on.
 
 
 #TradeDangerous: Setup
@@ -135,31 +202,40 @@ In the list below, you'll see `--detail` and `-v` listed together. This indicate
 For additional help on a specific command, such as 'update' use
 
     trade.py run …
-    Calculates a trade run
+      Calculates a trade run
 
     trade.py update …
-    Provides a way to enter/update price data for a station
+      Provides a way to enter/update price data for a station
 
     trade.py nav …
-    Calculates a route between two systems
+      Calculates a route between two systems
 
     trade.py import …
-    Reads prices from a file and loads them into the cache
+      Reads prices from a file and loads them into the cache
 
     trade.py buy …
-    Finds places to buy a given item/ship
+      Finds places to buy a given item/ship
 
     trade.py sell …
-    Finds places to sell a given item
+      Finds places to sell a given item
+
+    trade.py trade …
+      Reports on trades from one station to another
+
+    trade.py market
+      Summarizes the market at a specific station
+
+    trade.py station
+      View, add, update or delete station data
 
     trade.py local …
-    Lists systems (and optionally, stations) in the vicinity of a given system
+      Lists systems (and optionally, stations) in the vicinity of a given system
 
     trade.py rares …
-    Helps to find rare items.
+      Helps to find rare items.
 
     trade.py olddata …
-    Lists old data
+      Lists old data
 
 ###Advanced Commands:
 
@@ -174,7 +250,7 @@ For additional help on a specific command, such as 'update' use
 
 ##RUN sub-command:
 
-  This command provides the primary trade run calculator functionality (it provides   the functionality of the older TradeDangerous versions prior to 3.1)
+  This command provides the primary trade run calculator functionality (it provides the functionality of the older TradeDangerous versions prior to 3.1)
 
 ###Ship/Trade options:
      --capacity N
@@ -242,11 +318,11 @@ For additional help on a specific command, such as 'update' use
          --to Beagle2
          --to lhs64
 
-	 --shorten" (requires --to)
+     --shorten" (requires --to)
        Will show routes with fewer hops than the maximum if they produce a better gpt
-	   e.g.
-	     --to Beagle2 --hops 4 --shorten
-				
+       e.g.
+         --to Beagle2 --hops 4 --shorten
+
      --towards <goal system>
        Builds a route that tries to shorten the distance from your origin
        and goal. Destinations that would increase the distance are ignored.
@@ -261,13 +337,13 @@ For additional help on a specific command, such as 'update' use
        e.g.
          --from iBootis --loop
          --loop --hops 4   (looks for 2, 3 and 4 hop loops)
-		 
-	 --loop-int N
-	 -li N
+
+     --loop-int N
+     -li N
        Will require a minimum of N hops before visiting the same station.
-	   e.g.
-	     --from iBootis --loop-int 3
-				
+       e.g.
+         --from iBootis --loop-int 3
+
      --via <station or system>
        Lets you specify a station that must be between the second and final hop.
        Requires that hops be at least 2.
@@ -305,7 +381,7 @@ For additional help on a specific command, such as 'update' use
        Considers stations from systems upto this many jumps from your
        specified destination (--to).
          --to lave -e 3      (find runs that end within 3 jumps of lave)
-     
+
 ###Filter options:
      --max-days-old N.NN
      -MD N.NN
@@ -419,6 +495,14 @@ For additional help on a specific command, such as 'update' use
      --summary
        Uses a slightly different format for showing trade routes,
        especially useful for longer routes in conjunction with -vvv
+
+     --progress
+     -P
+       Show progress updates as TD calculates the route
+
+     --show-jumps
+     -J
+       Describe route between each hops
 
      --routes N   DEFAULT: 1
        Shows the top N routes;
@@ -862,7 +946,7 @@ Provides details of local stations without worrying about trade. By default, if 
       /  Parmitano Colony                          ?     5.88    ?   ?
     LHS 3333            5.54
 
-Mokosh/Bethe Station is 2500ls from its star, the data is 8 days old, there is no black market, and the largest pad size is Medium. 
+Mokosh/Bethe Station is 2500ls from its star, the data is 8 days old, there is no black market, and the largest pad size is Medium.
 
 Lubin Orbital's distance is not known, the data is less than a day old, it has a black market, and it has Large pads.
 
@@ -990,7 +1074,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 
     --prices-sort
     -P
-      Keeps items sorted by price when using --near 
+      Keeps items sorted by price when using --near
      (otherwise items are listed by distance and then price)
 
     --supply-sort
@@ -1207,7 +1291,7 @@ This command looks for known rare items within the space around a specified syst
 
 
 #Adding or Changing Price Data
-##Experimental GUI in 6.0 
+##Experimental GUI in 6.0
 As of v6.0 I've added an experimental GUI for updating prices. I'm still working out some of the issues, in particular you currently have to manually size and scroll the window.
 
 To use it, simply type:

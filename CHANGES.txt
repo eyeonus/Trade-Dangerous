@@ -2,7 +2,17 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-May 9th 2015 (gazelle) Corrected unicode system names (argetlamh etc)
+v7.0.3 May 09 2015
+. (kfsone) "run" command:
+    - Added "--show-jumps" (aka -J)
+    - Jumps are no-longer shown by default,
+    - Request #233 Jumps now include distance
+    - If start and end station of a hop are in the same system,
+      display "Supercruise to ..." instead of a jump
+    - When a hop involves multiple jumps using --show-jumps, it will
+      tell you the direct and total distances,
+. (kfsone) Revamped the intro of the README.md (http://kfs.org/td/source)
+. (gazelle) Corrected unicode system names (Argetlamh etc)
 
 v7.0.2 May 05 2015
 . (kfsone) Added "--demand" option to "run", filters based on demand.

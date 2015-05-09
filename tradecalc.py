@@ -44,6 +44,7 @@ import locale
 import math
 import os
 import misc.progress as pbar
+import re
 import sys
 import time
 
@@ -231,9 +232,16 @@ class Route(object):
         if detail >= 1:
             text += " (score: {:f})".format(self.score)
         text += "\n"
+        jumpsFmt = ("  Jump {jumps}\n")
+        cruiseFmt = ("  Supercruise to {stn}\n")
+        distFmt = None
         if detail > 1:
             if detail > 2:
                 text += self.summary() + "\n"
+                if tdenv.maxJumpsPer > 1:
+                    distFmt = (
+                        "  Direct: {dist:0.2f}ly, Trip: {trav:0.2f}ly\n"
+                    )
             hopFmt = "  Load from {station}:\n{purchases}"
             hopStepFmt = (
                 "     {qty:>4} x {item:<{longestName}} "
@@ -244,14 +252,16 @@ class Route(object):
                 hopStepFmt += ", total: {ttlcost:>10n}cr"
             hopStepFmt += "\n"
             if not tdenv.summary:
-                jumpsFmt = ("  Jump {jumps}\n")
                 dockFmt = (
                     "  Unload at {station} => Gain {gain:n}cr "
                     "({tongain:n}cr/ton) => {credits:n}cr\n"
                 )
             else:
+                jumpsFmt = re.sub("  ", "    ", jumpsFmt, re.M)
+                cruiseFmt = re.sub("  ", "    ", cruiseFmt, re.M)
+                if distFmt:
+                    distFmt = re.sub("  ", "    ", distFmt, re.M)
                 hopFmt = "\n" + hopFmt
-                jumpsFmt = None
                 dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton)\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
@@ -262,7 +272,6 @@ class Route(object):
         elif detail:
             hopFmt = "  Load from {station}:{purchases}\n"
             hopStepFmt = " {qty} x {item} (@{eacost}cr),"
-            jumpsFmt = "  Jump {jumps}\n"
             footer = None
             dockFmt = "  Dock at {station}\n"
             endFmt = (
@@ -273,10 +282,27 @@ class Route(object):
         else:
             hopFmt = "  {station}:{purchases}\n"
             hopStepFmt = " {qty} x {item},"
-            jumpsFmt = None
             footer = None
             dockFmt = None
             endFmt = "  {station} +{gain:n}cr ({tongain:n}/ton)"
+
+        def jumpList(jumps):
+            text, last = "", None
+            travelled = 0.
+            for jump in jumps:
+                if last:
+                    dist = last.distanceTo(jump)
+                    if dist:
+                        if tdenv.detail:
+                            text += ", {:.2f}ly -> ".format(dist)
+                        else:
+                            text += " -> "
+                    else:
+                        text += " >>> "
+                    travelled += dist
+                text += jump.name()
+                last = jump
+            return travelled, text
 
         if detail > 1:
             def decorateStation(station):
@@ -342,14 +368,29 @@ class Route(object):
                 station=decorateStation(route[i]),
                 purchases=purchases
             )
-            if jumpsFmt and self.jumps[i]:
-                jumps = ' -> '.join(jump.name() for jump in self.jumps[i])
-                text += jumpsFmt.format(
+            if tdenv.showJumps and jumpsFmt and self.jumps[i]:
+                startStn = route[i]
+                endStn = route[i+1]
+                if startStn.system is not endStn.system:
+                    fmt = jumpsFmt
+                    travelled, jumps = jumpList(self.jumps[i])
+                else:
+                    fmt = cruiseFmt
+                    travelled, jumps = 0., "{start} >>> {stop}".format(
+                        start=startStn.name(), stop=endStn.name()
+                    )
+                text += fmt.format(
                     jumps=jumps,
                     gain=hopGainCr,
                     tongain=hopGainCr / hopTonnes,
-                    credits=credits + gainCr + hopGainCr
+                    credits=credits + gainCr + hopGainCr,
+                    stn=route[i+1].dbname
                 )
+                if travelled and distFmt and len(self.jumps[i]) > 2:
+                    text += distFmt.format(
+                        dist=startStn.system.distanceTo(endStn.system),
+                        trav=travelled,
+                    )
             if dockFmt:
                 stn = route[i+1]
                 stnName = stn.name()
