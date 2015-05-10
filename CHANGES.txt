@@ -2,6 +2,8 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May 10 2015 (kfsone) #234 Change display of "adding ship" in maddavo plugin
+
 v7.0.3 May 09 2015
 . (kfsone) "run" command:
     - Added "--show-jumps" (aka -J)

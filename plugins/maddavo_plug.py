@@ -488,7 +488,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             except KeyError:
                 pass
             tdenv.NOTE(
-                "Adding {} at {}", ship.name(), station.name(),
+                "At {} adding {}", station.name(), ship.name(),
             )
             newShips[locKey] = (ship.ID, station.ID, modified)
         if newShips:
