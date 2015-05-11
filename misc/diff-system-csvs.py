@@ -38,7 +38,7 @@ def readFile(filename):
 
     names, locs = dict(), dict()
 
-    with path.open("r") as fh:
+    with path.open("rU", encoding="utf-8") as fh:
         csvin = csv.reader(fh, delimiter=',', quotechar='\'', doublequote=True)
         # skip headings
         next(csvin)

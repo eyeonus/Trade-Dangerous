@@ -2,7 +2,15 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-May 10 2015 (kfsone) #234 Change display of "adding ship" in maddavo plugin
+v7.1.0 May 11 2015
+. (kfsone) #236 Unicorn (erh, Unicode)
+    - Added code to trade.py to catch wild unicode errors, esp under windows:
+      Windows console is NOT utf-8 based, which means that when TD tries to
+      print a unicode character, an error occurs. I've added code to catch
+      this early (TradeEnv.uprint) and code to catch it late (trade.py),
+    - Changed various file openings to "utf-8",
+. (kfsone) #234 Change display of "adding ship" in maddavo plugin
+. (kfsone) Fix submit-distances/edscupdate generating duplicate extra-stars.
 
 v7.0.3 May 09 2015
 . (kfsone) "run" command:

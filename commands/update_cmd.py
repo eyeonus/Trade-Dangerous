@@ -150,7 +150,7 @@ def saveCopyOfChanges(cmdenv, dbFilename, stationID):
     else:
         mode = "w"
     dumpPath = pathlib.Path("updated.prices")
-    with dumpPath.open(mode) as dumpFile:
+    with dumpPath.open(mode, encoding='utf-8') as dumpFile:
         # Remember the filename so we know we need to delete it.
         prices.dumpPrices(dbFilename,
                 prices.Element.full | prices.Element.blanks,
@@ -276,7 +276,7 @@ def editUpdate(tdb, cmdenv, stationID):
         if cmdenv.timestamps: elementMask |= prices.Element.timestamp
         if cmdenv.all: elementMask |= prices.Element.blanks
         # Open the file and dump data to it.
-        with tmpPath.open("w") as tmpFile:
+        with tmpPath.open("w", encoding='utf-8') as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
             prices.dumpPrices(dbFilename, elementMask,

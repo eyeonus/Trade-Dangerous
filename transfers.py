@@ -263,7 +263,7 @@ class CSVStream(object):
         while True:
             line = next(self.lines)
             try:
-                return line.decode()
+                return line.decode(encoding="utf-8")
             except UnicodeDecodeError as e:
                 if not self.tdenv:
                     raise e

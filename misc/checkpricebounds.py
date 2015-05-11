@@ -144,7 +144,7 @@ def check_price_bounds(
         print()
         print("Generating", deletePrices)
         now = tdb.query("SELECT CURRENT_TIMESTAMP").fetchone()[0];
-        with open(deletePrices, "w") as fh:
+        with open(deletePrices, "w", encoding="utf-8") as fh:
             print("# Deletions based on {} prices".format(
                 table,
             ), file=fh)
@@ -166,7 +166,7 @@ def check_price_bounds(
         if doDeletions:
             db = tdb.getDB()
         print("Generating", deleteSql)
-        with open(deleteSql, "w") as fh:
+        with open(deleteSql, "w", encoding="utf-8") as fh:
             for deletion in deletions:
                 print(deletion[0], '; --', deletion[1], file=fh)
                 if doDeletions:

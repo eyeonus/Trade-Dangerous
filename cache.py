@@ -531,20 +531,12 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     DELETED = corrections.DELETED
     items, zeros, buys, sells = [], [], [], []
 
-    lineNo, warnings, localAdd = 0, 0, 0
+    lineNo, localAdd = 0, 0
     if not ignoreUnknown:
         def ignoreOrWarn(error):
             raise error
     elif not quiet:
-        def ignoreOrWarn(error):
-            nonlocal warnings
-            error.category = "WARNING"
-            print(error)
-            warnings += 1
-    else:
-        def ignoreOrWarn(error):
-            nonlocal warnings
-            warnings += 1
+        ignoreOrWarn = tdenv.WARN
 
     def changeStation(matches):
         nonlocal facility, stationID
@@ -795,7 +787,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         )
 
     stations = tuple((ID,) for ID in processedStations.keys())
-    return warnings, stations, items, zeros, newItems, updtItems, ignItems, numSys
+    return stations, items, zeros, newItems, updtItems, ignItems, numSys
 
 
 ######################################################################
@@ -803,8 +795,8 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
 
-    with pricesFh or pricesPath.open('rU') as pricesFh:
-        warnings, stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
+    with pricesFh or pricesPath.open('rU', encoding='utf-8') as pricesFh:
+        stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
             tdenv, pricesFh, db, defaultZero
         )
 
@@ -1107,7 +1099,7 @@ def buildCache(tdb, tdenv):
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
-    with sqlPath.open('rU') as sqlFile:
+    with sqlPath.open('rU', encoding='utf-8') as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
 
@@ -1154,7 +1146,7 @@ def buildCache(tdb, tdenv):
 def regeneratePricesFile(tdb, tdenv):
     tdenv.DEBUG0("Regenerating .prices file")
 
-    with tdb.pricesPath.open("w") as pricesFile:
+    with tdb.pricesPath.open("w", encoding='utf-8') as pricesFile:
         prices.dumpPrices(
                 tdb.dbFilename,
                 prices.Element.full,

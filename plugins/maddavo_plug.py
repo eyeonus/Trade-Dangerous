@@ -73,7 +73,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         lastRunDays = float("inf")
         if self.stampPath.is_file():
             try:
-                fh = self.stampPath.open('rU')
+                fh = self.stampPath.open('rU', encoding="utf-8")
                 line = fh.readline().split('\n')
                 if line and line[0]:
                     if ImportPlugin.dateRe.match(line[0]):
@@ -95,7 +95,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Save a date to the timestamp file.
         """
 
-        with self.stampPath.open('w') as fh:
+        with self.stampPath.open('w', encoding="utf-8") as fh:
             print(newestDate, file=fh)
             print(startTime, file=fh)
 
