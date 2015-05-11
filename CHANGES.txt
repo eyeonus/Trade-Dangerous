@@ -9,6 +9,7 @@ v7.1.0 May 11 2015
       print a unicode character, an error occurs. I've added code to catch
       this early (TradeEnv.uprint) and code to catch it late (trade.py),
     - Changed various file openings to "utf-8",
+. (gazelle) Changed display of "adding/removing ships" in shipvendor sub-command
 . (kfsone) #234 Change display of "adding ship" in maddavo plugin
 . (kfsone) Fix submit-distances/edscupdate generating duplicate extra-stars.
 
