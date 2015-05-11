@@ -77,8 +77,7 @@ def addShipVendor(tdb, cmdenv, station, ship):
                 ship.ID, station.ID
         ])
     db.commit()
-    cmdenv.NOTE("{} added to {} in local {} database.",
-            ship.name(), station.name(), tdb.dbPath)
+    cmdenv.NOTE("At {} adding {}", station.name(), ship.name())
     return ship
 
 
@@ -88,8 +87,7 @@ def removeShipVendor(tdb, cmdenv, station, ship):
             DELETE FROM ShipVendor WHERE ship_id = ? and station_id = ?
     """, [ship.ID,station.ID])
     db.commit()
-    cmdenv.NOTE("{} removed from {} in local {} database.",
-            ship.name(), station.name(), tdb.dbPath)
+    cmdenv.NOTE("At {} removing {}", station.name(), ship.name())
     return ship
 
 
@@ -175,6 +173,7 @@ def run(results, cmdenv, tdb):
             "No ship names specified."
         )
 
+    cmdenv.NOTE("Using local database ({})", tdb.dbPath)
     ships = {}
     shipNames = chain.from_iterable(
         name.split(",") for name in cmdenv.ship
@@ -189,18 +188,22 @@ def run(results, cmdenv, tdb):
         shipPresent = checkShipPresent(tdb, station, ship)
         if cmdenv.add:
             if shipPresent:
-                raise CommandLineError(
-                        "{} is already listed at {}"
-                        .format(ship.name(), station.name())
+                cmdenv.DEBUG0("{} is already listed at {}",
+                    ship.name(), station.name()
                 )
-            ships[ship.ID] = ship
+            else:
+                ships[ship.ID] = ship
         else:
             if not shipPresent:
-                raise CommandLineError(
-                        "{} is not listed at {}"
-                        .format(ship.name(), station.name())
+                cmdenv.DEBUG0("{} is not listed at {}",
+                    ship.name(), station.name()
                 )
-            ships[ship.ID] = ship
+            else:
+                ships[ship.ID] = ship
+
+    if len(ships) == 0:
+        cmdenv.NOTE("Nothing to do.")
+        return None
 
     # We've checked that everything should be good.
     dataToExport = False
