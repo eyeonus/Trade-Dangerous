@@ -17,6 +17,10 @@ systems = {
     "ICV HR-V B2-0": "ICZ HR-V B2-0",
     "FLECHS": "ICZ IR-W C1-13",
     "PANDAMONIUM": "PANDEMONIUM",
+    "ARGETLÁMH": "ARGETLAMH",
+    "LíFTHRUTI": "LIFTHRUTI",
+    "MANTóAC": "MANTOAC",
+    "NANTóAC": "NANTOAC",
 
 #ADD_SYSTEMS_HERE
 }

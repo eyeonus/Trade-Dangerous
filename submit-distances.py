@@ -189,7 +189,7 @@ def pick_destinations(argv, tdb):
 def get_outliers(argv):
     outliers = set()
     try:
-        with open(argv.extraFile, "rU") as input:
+        with open(argv.extraFile, "rU", encoding="utf-8") as input:
             for line in input:
                 name = line.partition('#')[0].strip().upper()
                 if name and name != argv.origin:
@@ -248,7 +248,7 @@ def add_extra_stars(argv, extraStars):
             str(extraStars), argv.extraFile,
         ))
     try:
-        with open(argv.extraFile, "a") as output:
+        with open(argv.extraFile, "a", encoding="utf-8") as output:
             for star in extraStars:
                 print(star, file=output)
     except FileNotFoundError:

@@ -320,8 +320,21 @@ def submit_distance(argv, name, distance):
     print(str(result))
 
 
+def get_extras():
+    extras = set()
+    try:
+        with open("data/extra-stars.txt", "rU", encoding="utf-8") as fh:
+            for line in fh:
+                name = line.partition('#')[0].strip().upper()
+                if name:
+                    extras.add(name)
+    except FileNotFoundError:
+        pass
+    return extras
+
+
 def add_to_extras(argv, name):
-    with open("data/extra-stars.txt", "a") as fh:
+    with open("data/extra-stars.txt", "a", encoding="utf-8") as fh:
         print(name.upper(), file=fh)
         print("Added {} to data/extra-stars.txt".format(name))
 
@@ -414,10 +427,12 @@ def main():
 """)
     print()
 
+    extras = get_extras()
+
     clip = misc.clipboard.SystemNameClip()
     total = len(systems)
     current = 0
-    with open("tmp/new.systems.csv", "w") as output:
+    with open("tmp/new.systems.csv", "w", encoding="utf-8") as output:
         for sysinfo in systems:
             current += 1
             name = sysinfo['name']
@@ -465,11 +480,13 @@ def main():
             if ok.startswith('~'):
                 correction = float(ok[1:])
                 submit_distance(argv, name, correction)
-                add_to_extras(argv, name)
+                if not name.upper() in extras:
+                    add_to_extras(argv, name)
                 continue
             if ok.startswith('='):
                 name = ok[1:].strip().upper()
-                add_to_extras(argv, name)
+                if not name in extras:
+                    add_to_extras(argv, name)
                 ok = 'y'
             if ok.lower() != 'y':
                 continue

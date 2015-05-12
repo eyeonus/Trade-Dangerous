@@ -32,7 +32,7 @@ def edsc_log(apiCall, params, jsonData=None, error=None):
     Logs an EDSC query and it's response to tmp/edsc.log
     """
     try:
-        with open("tmp/edsc.log", "a") as fh:
+        with open("tmp/edsc.log", "a", encoding="utf-8") as fh:
             print('-'*70, file=fh)
             print("API:", apiCall, file=fh)
             print("REQ:", str(params), file=fh)

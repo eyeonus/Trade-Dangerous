@@ -79,6 +79,6 @@ if resultCode.startswith("SUCCESS"):
     raise SystemExit("Upload complete")
 
 print("Error response from Maddavo's site: {}".format(resultCode))
-with open("tmp/maderror.txt", "w") as out:
+with open("tmp/maderror.txt", "w", encoding="utf-8") as out:
     print(r.text, file=out)
     print("See tmp/maderror.txt for full response.")

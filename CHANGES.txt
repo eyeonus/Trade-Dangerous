@@ -2,6 +2,29 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.1.0 May 11 2015
+. (kfsone) #236 Unicorn (erh, Unicode)
+    - Added code to trade.py to catch wild unicode errors, esp under windows:
+      Windows console is NOT utf-8 based, which means that when TD tries to
+      print a unicode character, an error occurs. I've added code to catch
+      this early (TradeEnv.uprint) and code to catch it late (trade.py),
+    - Changed various file openings to "utf-8",
+. (gazelle) Changed display of "adding/removing ships" in shipvendor sub-command
+. (kfsone) #234 Change display of "adding ship" in maddavo plugin
+. (kfsone) Fix submit-distances/edscupdate generating duplicate extra-stars.
+
+v7.0.3 May 09 2015
+. (kfsone) "run" command:
+    - Added "--show-jumps" (aka -J)
+    - Jumps are no-longer shown by default,
+    - Request #233 Jumps now include distance
+    - If start and end station of a hop are in the same system,
+      display "Supercruise to ..." instead of a jump
+    - When a hop involves multiple jumps using --show-jumps, it will
+      tell you the direct and total distances,
+. (kfsone) Revamped the intro of the README.md (http://kfs.org/td/source)
+. (gazelle) Corrected unicode system names (Argetlamh etc)
+
 v7.0.2 May 05 2015
 . (kfsone) Added "--demand" option to "run", filters based on demand.
       CAUTION: Items with "?" demand will be ignored when using --demand.

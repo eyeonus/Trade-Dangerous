@@ -718,5 +718,5 @@ def render(tdb, tdenv, tmpPath):
     gui = UpdateGUI(parent, tdb, tdenv)
     gui.mainloop()
     gui.getResults()
-    with tmpPath.open("w") as fh:
+    with tmpPath.open("w", encoding="utf-8") as fh:
         print(gui.results, file=fh)
