@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.1.1 May 25 2015
+. (kfsone) Added "--distance" option to "edscupdate" which shows the 10
+      closest candidates.
++ (kfsone) Over 500 new core systems
+
 v7.1.0 May 11 2015
 . (kfsone) #236 Unicorn (erh, Unicode)
     - Added code to trade.py to catch wild unicode errors, esp under windows:
