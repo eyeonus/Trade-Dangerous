@@ -160,12 +160,20 @@ def parse_arguments():
             type=int,
             default=2,
     )
-    parser.add_argument(
-            '--random',
-            action='store_true',
-            required=False,
-            help='Show systems in random order, maximum of 10.',
-    )
+    grp = parser.add_mutually_exclusive_group()
+    if grp:
+        grp.add_argument(
+                '--random',
+                action='store_true',
+                required=False,
+                help='Show systems in random order, maximum of 10.',
+        )
+        grp.add_argument(
+                '--distance',
+                action='store_true',
+                required=False,
+                help='Select upto 10 systems by proximity.',
+        )
     parser.add_argument(
             '--add-to-local-db', '-A',
             action='store_true',
@@ -384,9 +392,22 @@ def main():
     if argv.summary or len(systems) <= 0:
         return
 
+    systems = [
+        sysinfo for sysinfo in systems if 'coord' in sysinfo
+    ]
+
     if argv.random:
         num = min(len(systems), 10)
         systems = random.sample(systems, num)
+
+    startSys = argv.startSys
+    for sysinfo in systems:
+        x, y, z = sysinfo['coord']
+        sysinfo['distance'] = get_distance(tdb, startSys, x, y, z)
+
+    if argv.distance:
+        systems.sort(key=lambda sysinfo: sysinfo['distance'])
+        systems = systems[:10]
 
     if argv.splash:
         print(
@@ -464,10 +485,10 @@ def main():
 
             change = has_position_changed(sysinfo['place'], name, x, y, z)
             if change:
-                oldDist = argv.startSys.distanceTo(sysinfo['place'])
+                oldDist = startSys.distanceTo(sysinfo['place'])
                 print("Old Distance: {:.2f}ly".format(oldDist))
 
-            distance = get_distance(tdb, argv.startSys, x, y, z)
+            distance = sysinfo['distance']
             clip.copy_text(name)
             prompt = "{}/{}: '{}': {:.2f}ly? ".format(
                 current, total,
