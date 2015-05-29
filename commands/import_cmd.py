@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from itertools import chain
 from pathlib import Path
 
@@ -22,16 +22,16 @@ except ImportError:
 # Parser config
 
 help=(
-    "Imports price data from a '.prices' format file. "
-    "Previous data for the stations included in the file "
-    "is removed, but other stations are not affected."
+    "TD data import system. On its own, this command lets you "
+    "merge station prices from a '.prices' file (entries in the "
+    "file that are older than your local data are not loaded)."
 )
 name='import'
 epilog=(
     "This sub-command provides a plugin infrastructure, and comes "
     "with a module to import data from Maddavo's Market Share "
     "(http://www.davek.com.au/td/).\n"
-    "See \"import --plug=maddavo --opt=help\" for more help."
+    "See \"import -P maddavo -O help\" for more help."
 )
 wantsTradeDB=False
 arguments = [
@@ -43,7 +43,7 @@ switches = [
             type=str,
             default=None,
         ),
-        ParseArgument('--plug',
+        ParseArgument('--plug', '-P',
                 help="Use the specified import plugin.",
                 type=str,
                 default=None,
@@ -76,11 +76,29 @@ switches = [
             "Provides a way to pass additional arguments to plugins."
         ),
     ),
+    MutuallyExclusiveGroup(
+        ParseArgument('--reset-all',
+            help='Clear the database before importing.',
+            action='store_true',
+            default=False,
+        ),
+        ParseArgument('--merge-import', '-M',
+            help=(
+                'Merge the import file with the existing local database: '
+                'only loads values that have an explicit entry with a '
+                'newer timestamp than the existing data. Local values '
+                'are only removed if there is an explicit entry with a '
+                '0/0 demand/supply price.'
+            ),
+            action='store_true',
+            default=False,
+            dest='mergeImport',
+        ),
+    ),
 ]
 
 ######################################################################
 # Helpers
-
 
 ######################################################################
 # Perform query and populate result set
@@ -155,7 +173,6 @@ def run(results, cmdenv, tdb):
             cache.regeneratePricesFile()
             return None
 
-    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh)
+    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
 
     return None
-    

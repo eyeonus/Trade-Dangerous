@@ -17,6 +17,10 @@ systems = {
     "ICV HR-V B2-0": "ICZ HR-V B2-0",
     "FLECHS": "ICZ IR-W C1-13",
     "PANDAMONIUM": "PANDEMONIUM",
+    "ARGETLÁMH": "ARGETLAMH",
+    "LíFTHRUTI": "LIFTHRUTI",
+    "MANTóAC": "MANTOAC",
+    "NANTóAC": "NANTOAC",
 
 #ADD_SYSTEMS_HERE
 }
@@ -101,12 +105,13 @@ stations = {
     "LHS 3006/WCM TRANSFER ORBITAL":        "Leonard Nimoy Station",
     "LALANDE 4141/4A5O4O":                  "4A5O4D",
     "NEW YEMBO/UNDER CONSTRUCTION":         DELETED,
-    "GENDINI/Houtman Gateway":              DELETED,
-    "QUECHE/Rutherford Works":              DELETED,
-    "SALARHUL/Lavoisier Outpost":           DELETED,
-    "TELIU YUAN/Buchli Station":            DELETED,
-    "WUNJO/Baudin Hanger":                  "Baudin Hangar",
-    "WYRD/Vonarburg Co-Operative":          "Vonarburg Co-operative",
+    "GENDINI/HOUTMAN GATEWAY":              DELETED,
+    "QUECHE/RUTHERFORD WORKS":              DELETED,
+    "SALARHUL/LAVOISIER OUTPOST":           DELETED,
+    "TELIU YUAN/BUCHLI STATION":            DELETED,
+    "WUNJO/BAUDIN HANGER":                  "Baudin Hangar",
+    "APALA/FODA PORT":                      DELETED,
+    "BD+47 2112/OLIVAS SETTLEMENT":         DELETED,
 }
 
 categories = {
@@ -153,4 +158,3 @@ def correctItem(oldName):
         return items[oldName.upper()]
     except KeyError:
         return oldName
-

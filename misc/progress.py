@@ -69,4 +69,3 @@ class Progress(object):
             fin = "\r{:{width}}\r".format('', width=self.textLen)
             sys.stdout.write(fin)
             sys.stdout.flush()
-

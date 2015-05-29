@@ -1,6 +1,6 @@
 from commands.commandenv import ResultRow
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from itertools import chain
 from formatting import RowFormat, ColumnFormat
 from tradedb import TradeDB, System, Station, describeAge
@@ -25,55 +25,62 @@ arguments = [
     ParseArgument('--credits',
             help='Starting credits.',
             metavar='CR',
-            type=int,
+            type="credits",
         ),
 ]
 
 switches = [
     ParseArgument('--from', '-f',
-            help='Starting system/station.',
-            dest='starting',
-            metavar='STATION',
-        ),
+        help='Starting system/station.',
+        dest='starting',
+        metavar='STATION',
+    ),
     MutuallyExclusiveGroup(
         ParseArgument('--to', '-t',
-                help='Final system/station.',
-                dest='ending',
-                metavar='PLACE',
-                default=None,
+            help='Final system/station.',
+            dest='ending',
+            metavar='PLACE',
+            default=None,
         ),
         ParseArgument('--towards', '-T',
-                help=(
-                    'Choose a route that continually reduces the '
-                    'distance towards this system.'
-                ),
-                dest='goalSystem',
-                metavar='SYSTEM',
-                default=None,
+            help=(
+                'Choose a route that continually reduces the '
+                'distance towards this system.'
+            ),
+            dest='goalSystem',
+            metavar='SYSTEM',
+            default=None,
         ),
         ParseArgument('--loop',
-                help='Return to the starting station.',
-                action='store_true',
-                default=False,
+            help='Return to the starting station.',
+            action='store_true',
+            default=False,
         ),
     ),
     ParseArgument('--via',
-            help='Require specified systems/stations to be en-route.',
-            action='append',
-            metavar='PLACE[,PLACE,...]',
-        ),
+        help='Require specified systems/stations to be en-route.',
+        action='append',
+        metavar='PLACE[,PLACE,...]',
+    ),
     ParseArgument('--avoid',
-            help='Exclude an item, system or station from trading. '
-                    'Partial matches allowed, '
-                    'e.g. "dom.App" or "domap" matches "Dom. Appliances".',
-            action='append',
+        help='Exclude an item, system or station from trading. '
+                'Partial matches allowed, '
+                'e.g. "dom.App" or "domap" matches "Dom. Appliances".',
+        action='append',
+    ),
+    MutuallyExclusiveGroup(
+        ParseArgument('--direct',
+            help="Assume destinations are reachable without worrying "
+                "about jumps.",
+            action='store_true',
         ),
-    ParseArgument('--hops',
+        ParseArgument('--hops',
             help='Number of hops (station-to-station) to run.',
             default=2,
             type=int,
             metavar='N',
         ),
+    ),
     ParseArgument('--jumps-per',
         help='Maximum number of jumps (system-to-system) per hop.',
         default=2,
@@ -81,147 +88,167 @@ switches = [
         metavar='N',
         type=int,
     ),
-    ParseArgument('--direct',
-        help="Assume destinations are reachable without worrying "
-             "about jumps.",
+    ParseArgument('--ly-per',
+        help='Maximum light years per jump.',
+        dest='maxLyPer',
+        metavar='N.NN',
+        type=float,
+    ),
+    ParseArgument('--empty-ly',
+        help='Maximum light years ship can jump when empty.',
+        dest='emptyLyPer',
+        metavar='N.NN',
+        type=float,
+        default=None,
+    ),
+    ParseArgument('--start-jumps', '-s',
+        help='Consider stations within this many jumps of the origin '
+             '(requires --from).',
+        dest='startJumps',
+        default=0,
+        type=int,
+    ),
+    ParseArgument('--end-jumps', '-e',
+        help='Consider stations within this many jumps of the destination '
+             '(requires --to).',
+        dest='endJumps',
+        default=0,
+        type=int,
+    ),
+    ParseArgument('--show-jumps', '-J',
+        help='Show detail of jumps between hops.',
+        dest='showJumps',
         action='store_true',
     ),
-    ParseArgument('--ly-per',
-            help='Maximum light years per jump.',
-            dest='maxLyPer',
-            metavar='N.NN',
-            type=float,
-        ),
-    ParseArgument('--empty-ly',
-            help='Maximum light years ship can jump when empty.',
-            dest='emptyLyPer',
-            metavar='N.NN',
-            type=float,
-            default=None,
-        ),
-    ParseArgument('--start-jumps', '-s',
-            help='Consider stations within this many jumps of the origin '
-                 '(requires --from).',
-            dest='startJumps',
-            default=0,
-            type=int,
-        ),
-    ParseArgument('--end-jumps', '-e',
-            help='Consider stations within this many jumps of the destination '
-                 '(requires --to).',
-            dest='endJumps',
-            default=0,
-            type=int,
-        ),
     ParseArgument('--limit',
-            help='Maximum units of any one cargo item to buy (0: unlimited).',
-            metavar='N',
-            type=int,
-        ),
+        help='Maximum units of any one cargo item to buy (0: unlimited).',
+        metavar='N',
+        type=int,
+    ),
     ParseArgument('--age', '--max-days-old', '-MD',
-            help='Maximum age (in days) of trade data to use.',
-            metavar='DAYS',
-            type=float,
-            dest='maxAge',
-        ),
-    ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unknown).',
-            metavar='PADSIZES',
-            dest='padSize',
-        ),
-    ParseArgument('--black-market', '-bm',
-            help='Require stations with a black market.',
-            action='store_true',
-            dest='blackMarket',
-        ),
+        help='Maximum age (in days) of trade data to use.',
+        metavar='DAYS',
+        type=float,
+        dest='maxAge',
+    ),
+    PadSizeArgument(),
+    BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
-            help="Penalty per 1kls stations are from their stars.",
-            default=0.6,
-            type=float,
-            dest='lsPenalty'
-        ),
+        help="Penalty per 1kls stations are from their stars.",
+        default=0.6,
+        type=float,
+        dest='lsPenalty'
+    ),
     ParseArgument('--ls-max',
-            help='Only consider stations upto this many ls from their star.',
-            metavar='LS',
-            dest='maxLs',
-            type=int,
-            default=0,
-        ),
+        help='Only consider stations upto this many ls from their star.',
+        metavar='LS',
+        dest='maxLs',
+        type=int,
+        default=0,
+    ),
     ParseArgument('--gain-per-ton', '--gpt',
-            help='Specify the minimum gain per ton of cargo',
-            dest='minGainPerTon',
-            type=int,
-            default=1
-        ),
+        help='Specify the minimum gain per ton of cargo',
+        dest='minGainPerTon',
+        type="credits",
+        default=1
+    ),
     ParseArgument('--max-gain-per-ton', '--mgpt',
-            help='Specify the maximum gain per ton of cargo',
-            dest='maxGainPerTon',
-            type=int,
-            default=10000
-        ),
+        help='Specify the maximum gain per ton of cargo',
+        dest='maxGainPerTon',
+        type="credits",
+        default=10000
+    ),
     ParseArgument('--unique',
-            help='Only visit each station once.',
-            action='store_true',
-            default=False,
+        help='Only visit each station once.',
+        action='store_true',
+        default=False,
+    ),
+    ParseArgument('--loop-interval', '-li',
+        help=(
+            'Require this many hops between visits to the same station. '
+            'A value of 1 would be the default behavior, so a value of '
+            '2 is the minimum allowed.'
         ),
+        type=int,
+        default=None,
+        dest='loopInt',
+    ),
     ParseArgument('--margin',
-            help='Reduce gains made on each hop to provide a margin of error '
-                    'for market fluctuations (e.g: 0.25 reduces gains by 1/4). '
-                    '0<: N<: 0.25.',
-            default=0.00,
-            metavar='N.NN',
-            type=float,
-        ),
+        help='Reduce gains made on each hop to provide a margin of error '
+                'for market fluctuations (e.g: 0.25 reduces gains by 1/4). '
+                '0<: N<: 0.25.',
+        default=0.00,
+        metavar='N.NN',
+        type=float,
+    ),
     ParseArgument('--insurance',
-            help='Reserve at least this many credits to cover insurance.',
-            default=0,
-            metavar='CR',
-            type=int,
-        ),
+        help='Reserve at least this many credits to cover insurance.',
+        default=0,
+        metavar='CR',
+        type="credits",
+    ),
     ParseArgument('--routes',
-            help='Maximum number of routes to show. DEFAULT: 1',
-            default=1,
-            metavar='N',
-            type=int,
-        ),
+        help='Maximum number of routes to show. DEFAULT: 1',
+        default=1,
+        metavar='N',
+        type=int,
+    ),
     ParseArgument('--max-routes',
-            help='At the end of each hop, limit the number of routes '
-                    'that continue to the next round to the top N '
-                    'highest scoring',
-            default=0,
-            metavar='N',
-            type=int,
-            dest='maxRoutes',
-        ),
+        help='At the end of each hop, limit the number of routes '
+                'that continue to the next round to the top N '
+                'highest scoring',
+        default=0,
+        metavar='N',
+        type=int,
+        dest='maxRoutes',
+    ),
     ParseArgument('--checklist',
-            help='Provide a checklist flow for the route.',
-            action='store_true',
-            default=False,
-        ),
+        help='Provide a checklist flow for the route.',
+        action='store_true',
+        default=False,
+    ),
     ParseArgument('--x52-pro',
-            help='Enable experimental X52 Pro MFD output.',
-            action='store_true',
-            default=False,
-            dest='x52pro',
-        ),
+        help='Enable experimental X52 Pro MFD output.',
+        action='store_true',
+        default=False,
+        dest='x52pro',
+    ),
     ParseArgument('--prune-score',
-            help='From the 3rd hop on, only consider routes which have ' \
-                'at least this percentage of the current best route''s score.',
-            dest='pruneScores',
-            type=float,
-            default=0,
-        ),
+        help='From the 3rd hop on, only consider routes which have ' \
+            'at least this percentage of the current best route''s score.',
+        dest='pruneScores',
+        type=float,
+        default=0,
+    ),
     ParseArgument('--prune-hops',
-            help='Changes which hop --prune-score takes effect from.',
-            default=3,
-            type=int,
-            dest='pruneHops',
-        ),
+        help='Changes which hop --prune-score takes effect from.',
+        default=3,
+        type=int,
+        dest='pruneHops',
+    ),
     ParseArgument('--progress', '-P',
-            help='Show hop progress',
-            default=False,
-            action='store_true',
-        ),
+        help='Show hop progress',
+        default=False,
+        action='store_true',
+    ),
+    ParseArgument('--supply',
+        help='Only considers items which have at least this many units.',
+        default=None,
+        type=int,
+    ),
+    ParseArgument('--demand',
+        help='Only considers items which have at least this much demand.',
+        default=None,
+        type=int
+    ),
+    ParseArgument('--summary',
+        help='Summary layout of route instructions.',
+        action='store_true',
+    ),
+    ParseArgument('--shorten',
+        help='(Requires --to) Find the shortest route with the best gpt.',
+        action='store_true',
+    ),
 ]
 
 ######################################################################
@@ -253,7 +280,7 @@ class Checklist(object):
             "   {:<3}: {}: "
             .format(
                 self.stepNo,
-                " ".join(item for item in [action, detail, extra] if item)
+                " ".join(item for item in (action, detail, extra) if item)
             )
         )
 
@@ -345,7 +372,7 @@ class Checklist(object):
             sleep(1.5)
 
 
-def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
+def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
     """
     Find all the stations you could reach if you made a given
     number of jumps away from the origin list.
@@ -371,7 +398,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
         raise Exception("Unknown src")
 
     stations = set()
-    origins, avoid = set([origin]), set(place for place in avoidPlaces)
+    origins, avoid = set((origin,)), set(place for place in avoidPlaces)
 
     for jump in range(jumps):
         if not origins:
@@ -384,7 +411,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
         thisJump, origins = origins, set()
         for sys in thisJump:
             avoid.add(sys)
-            for stn in sys.stations or []:
+            for stn in sys.stations or ():
                 if stn.ID not in tradingList:
                     cmdenv.DEBUG2(
                         "X {}/{} not in trading list",
@@ -411,6 +438,25 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName):
             srcName,
             [stn.name() for stn in stations]
     )
+
+    if not stations:
+        if not cmdenv.emptyLyPer:
+            extra = (
+                "\nIf you are willing to make unladen jumps for the sake "
+                "of a better route, consider using --empty."
+            )
+        else:
+            extra = ""
+        raise CommandLineError(
+            "No {} stations with suitable trade data could be found "
+            "within {} {}ly jump{} of {} that meet all of your critera.{}"
+            .format(
+                purpose, maxLyPer,
+                jumps, "s" if jumps > 1 else "",
+                origin.name(),
+                extra,
+            )
+        )
 
     stations = list(stations)
     stations.sort(key=lambda stn: stn.ID)
@@ -548,8 +594,8 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
                     src, station.name(),
             ))
         return False
-    maxAge = cmdenv.maxAge
-    if maxAge and station.dataAge > maxAge:
+    maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
+    if maxAge and stnAge > maxAge:
         if src and src != "--from":
             raise CommandLineError(
                 "{} station {} does not meet --age "
@@ -568,11 +614,11 @@ def filterStationSet(src, cmdenv, calc, stnList):
         src,
         ",".join(station.name() for station in stnList),
         )
-    filtered = [
+    filtered = tuple(
         place for place in stnList
         if isinstance(place, System) or \
             checkStationSuitability(cmdenv, calc, place, src)
-    ]
+    )
     if not stnList:
         raise CommandLineError(
                 "No {} station met your criteria.".format(
@@ -588,8 +634,9 @@ def checkOrigins(tdb, cmdenv, calc):
                     tdb, cmdenv, calc,
                     cmdenv.origPlace.system,
                     cmdenv.startJumps,
-                    "--from"
+                    "--from", "starting",
             )
+            cmdenv.origPlace = None
         elif isinstance(cmdenv.origPlace, System):
             cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
             if not cmdenv.origPlace.stations:
@@ -597,36 +644,36 @@ def checkOrigins(tdb, cmdenv, calc):
                         "No stations at --from system, {}"
                             .format(cmdenv.origPlace.name())
                         )
-            cmdenv.origins = [
+            cmdenv.origins = tuple(
                 station
                 for station in cmdenv.origPlace.stations
                 if checkStationSuitability(cmdenv, calc, station)
-            ]
+            )
         else:
             cmdenv.DEBUG0("origPlace: Station: {}", cmdenv.origPlace.name())
             checkStationSuitability(cmdenv, calc, cmdenv.origPlace, '--from')
-            cmdenv.origins = [ cmdenv.origPlace ]
+            cmdenv.origins = (cmdenv.origPlace,)
             cmdenv.startStation = cmdenv.origPlace
         checkForEmptyStationList(
                 "--from", cmdenv.origPlace,
                 cmdenv.origins, cmdenv.startJumps
         )
     else:
+        if cmdenv.startJumps:
+            raise CommandLineError("--start-jumps (-s) only works with --from")
         cmdenv.DEBUG0("using all suitable origins")
-        cmdenv.origins = [
+        cmdenv.origins = tuple(
             station
             for station in tdb.stationByID.values()
             if checkStationSuitability(cmdenv, calc, station)
-        ]
-        if cmdenv.startJumps:
-            raise CommandLineError("--start-jumps (-s) only works with --from")
+        )
 
-    if isinstance(cmdenv.origPlace, System) and not cmdenv.startJumps:
+    if not cmdenv.startJumps and isinstance(cmdenv.origPlace, System):
         cmdenv.origins = filterStationSet(
             '--from', cmdenv, calc, cmdenv.origins
         )
 
-    cmdenv.origSystems = list(set(
+    cmdenv.origSystems = tuple(set(
         stn.system for stn in cmdenv.origins
     ))
 
@@ -639,30 +686,29 @@ def checkDestinations(tdb, cmdenv, calc):
                     tdb, cmdenv, calc,
                     cmdenv.destPlace.system,
                     cmdenv.endJumps,
-                    "--to"
+                    "--to", "destination",
             )
+            cmdenv.destPlace = None
         elif isinstance(cmdenv.destPlace, Station):
             cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
             checkStationSuitability(cmdenv, calc, cmdenv.destPlace, '--to')
-            cmdenv.destinations = [ cmdenv.destPlace ]
+            cmdenv.destinations = (cmdenv.destPlace,)
         else:
             cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
-            cmdenv.destinations = [
+            cmdenv.destinations = tuple(
                 station
                 for station in cmdenv.destPlace.stations
                 if checkStationSuitability(cmdenv, calc, station)
-            ]
+            )
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps
         )
     else:
-        cmdenv.DEBUG0("Using all available destinations")
         if cmdenv.endJumps:
             raise CommandLineError("--end-jumps (-e) only works with --to")
+        cmdenv.DEBUG0("Using all available destinations")
         if cmdenv.goalSystem:
-            if not cmdenv.origPlace:
-                raise CommandLineError("--towards requires --from")
             dest = tdb.lookupPlace(cmdenv.goalSystem)
             cmdenv.goalSystem = dest.system
 
@@ -673,18 +719,18 @@ def checkDestinations(tdb, cmdenv, calc):
         else:
             stationSrc = tdb.stationByID.values()
 
-        cmdenv.destinations = [
+        cmdenv.destinations = tuple(
             station
             for station in stationSrc
             if checkStationSuitability(cmdenv, calc, station)
-        ]
+        )
 
-    if isinstance(cmdenv.destPlace, System) and not cmdenv.endJumps:
+    if not cmdenv.endJumps and isinstance(cmdenv.destPlace, System):
         cmdenv.destinations = filterStationSet(
             '--to', cmdenv, calc, cmdenv.destinations
         )
 
-    cmdenv.destSystems = list(set(
+    cmdenv.destSystems = tuple(set(
         stn.system for stn in cmdenv.destinations
     ))
 
@@ -715,6 +761,7 @@ def validateRunArguments(tdb, cmdenv, calc):
         raise CommandLineError("Negative jumps: you're already there?")
     if cmdenv.direct:
         cmdenv.hops = 1
+        cmdenv.maxJumpsPer = cmdenv.maxLyPer = 10000
 
     if cmdenv.capacity is None:
         raise CommandLineError("Missing '--capacity'")
@@ -722,9 +769,9 @@ def validateRunArguments(tdb, cmdenv, calc):
         raise CommandLineError("Missing '--ly-per'")
     if cmdenv.capacity < 0:
         raise CommandLineError("Invalid (negative) cargo capacity")
-    if cmdenv.capacity > 1200:
+    if cmdenv.capacity > 1500:
         raise CommandLineError(
-            "Capacity > 1200 not supported (you specified {})"
+            "Capacity > 1500 not supported (you specified {})"
             .format( cmdenv.capacity)
         )
 
@@ -745,6 +792,28 @@ def validateRunArguments(tdb, cmdenv, calc):
         if cmdenv.direct:
             raise CommandLineError("Cannot use --direct and --loop together")
 
+    if cmdenv.loopInt:
+        if cmdenv.loopInt < 2:
+            raise CommandLineError(
+                "--loop-int must be 2 or higher to have any effect. "
+            )
+        if cmdenv.loopInt > cmdenv.hops and not cmdenv.unique:
+            cmdenv.NOTE("--loop-int > hops implies --unique")
+            cmdenv.unique = True
+
+    if cmdenv.shorten:
+        if cmdenv.loop:
+            raise CommandLineError(
+                "Cannot use --shorten and --loop together"
+            )
+        if not cmdenv.ending:
+            raise CommandLineError(
+                "--shorten only works with --to."
+            )
+
+    if cmdenv.goalSystem and not cmdenv.origPlace:
+        raise CommandLineError("--towards requires --from")
+
     checkOrigins(tdb, cmdenv, calc)
     checkDestinations(tdb, cmdenv, calc)
 
@@ -758,13 +827,13 @@ def validateRunArguments(tdb, cmdenv, calc):
                     "least one jump and --jumps 0 specified."
                 )
 
-    origins, destns = cmdenv.origins or [], cmdenv.destinations or []
+    origins, destns = cmdenv.origins or (), cmdenv.destinations or ()
 
     if cmdenv.hops == 1 and len(origins) == 1 and len(destns) == 1:
         if origins == destns:
             raise CommandLineError("Same to/from; more than one hop required.")
 
-    avoidSet = set(cmdenv.avoidPlaces or [])
+    avoidSet = set(cmdenv.avoidPlaces or ())
     viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
     cmdenv.DEBUG0("Via: {}", viaSet)
     cmdenv.viaSet = filterStationSet('--via', cmdenv, calc, cmdenv.viaSet)
@@ -790,20 +859,20 @@ def validateRunArguments(tdb, cmdenv, calc):
                     "--via {} unreachable with --jumps 0"
                     .format(via.name())
                 )
-        cmdenv.origins = [
+        cmdenv.origins = tuple(
             origin for origin in cmdenv.origins
             if origin.system in viaSystems
-        ]
-        cmdenv.origSystems = [
+        )
+        cmdenv.origSystems = tuple(
             origin.system for origin in cmdenv.origins
-        ]
-        cmdenv.destinations = [
+        )
+        cmdenv.destinations = tuple(
             dest for dest in cmdenv.destinations
             if dest.system in viaSystems
-        ]
-        cmdenv.destSystems = [
+        )
+        cmdenv.destSystems = tuple(
             dest.system for dest in cmdenv.destinations
-        ]
+        )
 
     # How many of the hops do not have pre-determined stations. For example,
     # when the user uses "--from", they pre-determine the starting station.
@@ -830,7 +899,7 @@ def validateRunArguments(tdb, cmdenv, calc):
     if cmdenv.unique:
         # if there's only one start and stop...
         if len(origins) == 1 and len(destns) == 1:
-            if origins[0] == destns[0]:
+            if origins[0] is destns[0]:
                 raise CommandLineError("Can't have same from/to with --unique")
         if viaSet:
             if len(origins) == 1 and origins[0] in viaSet:
@@ -842,8 +911,8 @@ def validateRunArguments(tdb, cmdenv, calc):
         cmdenv.mfd.display("Loading Trades")
 
     if cmdenv.pruneScores and cmdenv.pruneHops:
-        if cmdenv.pruneScores > 100:
-            raise CommandLineError("--prune-score value percentile exceed 100.")
+        if cmdenv.pruneScores > 99:
+            raise CommandLineError("--prune-score value percentile exceed 99.")
         if cmdenv.pruneHops < 2:
             raise CommandLineError("--prune-hops must 2 or more.")
     else:
@@ -854,7 +923,7 @@ def validateRunArguments(tdb, cmdenv, calc):
 
 def filterByVia(routes, viaSet, viaStartPos):
     if not routes:
-        return []
+        return ()
 
     matchedRoutes = []
     partialRoutes = {}
@@ -897,10 +966,10 @@ def checkReachability(tdb, cmdenv):
         srcSys, dstSys = srcSys[0], dstSys[0]
         if srcSys != dstSys:
             maxLyPer = cmdenv.maxLyPer
-            avoiding = [
+            avoiding = tuple(
                 avoid for avoid in cmdenv.avoidPlaces
                 if isinstance(avoid, System)
-            ]
+            )
             route = tdb.getRoute(
                 srcSys, dstSys, maxLyPer, avoiding,
             )
@@ -958,7 +1027,7 @@ def routeFailedRestrictions(
     places = list(
         set(
             chain.from_iterable(
-                [place] if isinstance(place, Station) else place.stations
+                (place,) if isinstance(place, Station) else place.stations
                 for place in restrictTo
             )
         )
@@ -976,6 +1045,24 @@ def routeFailedRestrictions(
             dests, hopNo + 1
         )
     )
+
+
+def extraRouteProgress(routes):
+    bestGain = max(routes, key=lambda route: route.gainCr).gainCr
+    worstGain = min(routes, key=lambda route: route.gainCr).gainCr
+    if bestGain != worstGain:
+        gainText = "{:n}-{:n}cr gain".format(worstGain, bestGain)
+    else:
+        gainText = "{:n}cr gain".format(bestGain)
+
+    bestGPT = int(max(routes, key=lambda route: route.gpt).gpt)
+    worstGPT = int(min(routes, key=lambda route: route.gpt).gpt)
+    if bestGPT != worstGPT:
+        gptText = "{:n}-{:n}cr/ton".format(worstGPT, bestGPT)
+    else:
+        gptText = "{:n}cr/ton".format(bestGPT)
+
+    return ".. {}, {}".format(gainText, gptText)
 
 ######################################################################
 # Perform query and populate result set
@@ -996,15 +1083,14 @@ def run(results, cmdenv, tdb):
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
-    maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
 
     # seed the route table with starting places
     startCr = cmdenv.credits - cmdenv.insurance
     routes = [
         Route(
-            stations=[src],
-            hops=[],
-            jumps=[],
+            stations=(src,),
+            hops=(),
+            jumps=(),
             startCr=startCr,
             gainCr=0,
             score=0
@@ -1022,12 +1108,43 @@ def run(results, cmdenv, tdb):
     results.summary = ResultRow()
     results.summary.exception = ""
 
-    pruneMod = cmdenv.pruneScores / 100
-    distancePruning = (cmdenv.destPlace and not cmdenv.direct) or (cmdenv.loop)
-    if distancePruning and not cmdenv.loop:
-        stopSystems = {stop.system for stop in stopStations}
+    if cmdenv.loop:
+        routePickPred = lambda route: \
+            route.lastStation is route.firstStation
+    elif cmdenv.shorten:
+        if not cmdenv.destPlace:
+            routePickPred = lambda route: \
+                route.lastStation is route.firstStation
+        elif isinstance(cmdenv.destPlace, System):
+            routePickPred = lambda route: \
+                route.lastSystem is cmdenv.destPlace
+        else:
+            routePickPred = lambda route: \
+                route.lastStation is cmdenv.destPlace
+    else:
+        routePickPred = None
 
-    loopRoutes = []
+    pickedRoutes = []
+
+    pruneMod = cmdenv.pruneScores / 100
+
+    if cmdenv.loop:
+        distancePruning = lambda rt, distLeft: \
+            rt.lastSystem.distanceTo(rt.firstSystem) <= distLeft
+    elif cmdenv.destPlace and not cmdenv.direct:
+        distancePruning = lambda rt, distLeft: \
+            any(
+                stop for stop in stopSystems
+                if rt.lastSystem.distanceTo(stop) <= distLeft
+            )
+    else:
+        distancePruning = False
+
+    if distancePruning:
+        maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
+        if not cmdenv.loop:
+            stopSystems = {stop.system for stop in stopStations}
+
     for hopNo in range(numHops):
         restrictTo = None
         if hopNo == lastHop and stopStations:
@@ -1037,7 +1154,22 @@ def run(results, cmdenv, tdb):
             restrictTo = viaSet
             manualRestriction = True
 
-        if hopNo >= 1 and cmdenv.maxRoutes or pruneMod:
+        if distancePruning:
+            preCrop = len(routes)
+            distLeft = maxHopDistLy * (numHops - hopNo)
+            routes = [rt for rt in routes if distancePruning(rt, distLeft)]
+            if not routes:
+                if pickedRoutes:
+                    break
+                raise NoDataError(
+                    "No routes are in-range of any end stations at the end of hop {}"
+                    .format(hopNo)
+                )
+            pruned = preCrop - len(routes)
+            if pruned:
+                cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
+
+        if hopNo >= 1 and (cmdenv.maxRoutes or pruneMod):
             routes.sort()
             if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
                 crop = int(len(routes) * pruneMod)
@@ -1047,23 +1179,14 @@ def run(results, cmdenv, tdb):
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
                 routes = routes[:cmdenv.maxRoutes]
 
-        if distancePruning:
-            remainingDistance = (numHops - hopNo) * maxHopDistLy
-            def routeStillHasAChance(r):
-                distanceFn = r.lastSystem.distanceTo
-                if cmdenv.loop:
-                    return distanceFn(r.firstSystem) <= remainingDistance
-                else:
-                    return any(stop for stop in stopSystems if distanceFn(stop) <= remainingDistance)
-
-            preCrop = len(routes)
-            routes[:] = [x for x in routes if routeStillHasAChance(x)]
-            pruned = preCrop - len(routes)
-            if pruned:
-                cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
-
         if cmdenv.progress:
-            print("* Hop {:3n}: {:.>10n} origins".format(hopNo+1, len(routes)))
+            extra = ""
+            if hopNo > 0 and cmdenv.detail > 1:
+                extra = extraRouteProgress(routes)
+            print(
+                "* Hop {:3n}: {:.>10n} origins {}"
+                .format(hopNo+1, len(routes), extra)
+            )
         elif cmdenv.debug:
             cmdenv.DEBUG0("Hop {}...", hopNo+1)
 
@@ -1084,6 +1207,8 @@ def run(results, cmdenv, tdb):
             )
 
         if not newRoutes:
+            if pickedRoutes:
+                break
             checkReachability(tdb, cmdenv)
             if hopNo > 0:
                 if restrictTo and manualRestriction:
@@ -1134,16 +1259,20 @@ def run(results, cmdenv, tdb):
                 routes = routes[:1]
                 break
 
-        if cmdenv.loop:
-            for route in routes:
-                if route.lastStation == route.firstStation:
-                    loopRoutes.append(route)
+        if routePickPred:
+            pickedRoutes.extend(
+                route for route in routes if routePickPred(route)
+            )
 
-    if cmdenv.loop:
-        routes = loopRoutes
-
+    if cmdenv.loop or cmdenv.shorten:
+        cmdenv.DEBUG0("Using {} picked routes", len(pickedRoutes))
+        routes = pickedRoutes
         # normalise the scores for fairness...
         for route in routes:
+            cmdenv.DEBUG0(
+                "{} hops, {} score, {} gpt",
+                len(route.hops), route.score, route.gpt
+            )
             route.score /= len(route.hops)
 
     if not routes:
@@ -1184,5 +1313,3 @@ def render(results, cmdenv, tdb):
         assert cmdenv.routes == 1
         cl = Checklist(tdb, cmdenv)
         cl.run(routes[0], cmdenv.credits)
-
-

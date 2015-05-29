@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 from csvexport import exportTableToFile
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from commands.exceptions import CommandLineError
 from pathlib import Path
 
@@ -95,10 +95,7 @@ def run(results, cmdenv, tdb):
         bindValues = []
         tableStmt = ''
         if not cmdenv.allTables:
-            ignoreList += [ "StationItem",
-                            "StationBuying",
-                            "StationSelling",
-            ]
+            ignoreList.append("StationItem")
 
     tableCursor = conn.cursor()
     for row in tableCursor.execute("""

@@ -1,5 +1,9 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
+import os
+import traceback
+import sys
+
 class TradeEnv(object):
     """
         Container for a TradeDangerous "environment", which is a
@@ -26,6 +30,33 @@ class TradeEnv(object):
         'quiet': 0,
         'dataDir': './data',
     }
+
+
+    encoding = sys.stdout.encoding
+    if str(sys.stdout.encoding).upper() != 'UTF-8':
+        def uprint(self, *args, **kwargs):
+            try:
+                print(*args, **kwargs)
+            except UnicodeEncodeError as e:
+                if not self.quiet:
+                    print(
+                        "CAUTION: Your terminal/console couldn't handle some "
+                        "text I tried to print."
+                    )
+                    if 'EXCEPTIONS' in os.environ:
+                        traceback.print_exc()
+                    else:
+                        print(str(e))
+                strs = [
+                    str(arg).
+                        encode(TradeEnv.encoding, errors='replace').
+                        decode(TradeEnv.encoding)
+                    for arg in args
+                ]
+                print(*strs, **kwargs)
+    else:
+        uprint = print
+
 
     def __init__(self, properties=None, **kwargs):
         properties = properties or dict()
@@ -58,7 +89,10 @@ class TradeEnv(object):
 
         if key == "NOTE":
             def __NOTE_ENABLED(outText, *args, file=None, **kwargs):
-                print("NOTE:", outText.format(*args, **kwargs), file=file)
+                self.uprint(
+                    "NOTE:", str(outText).format(*args, **kwargs),
+                    file=file,
+                )
 
             def __NOTE_DISABLED(*args, **kwargs):
                 pass
@@ -73,7 +107,10 @@ class TradeEnv(object):
 
         if key == "WARN":
             def _WARN_ENABLED(outText, *args, file=None, **kwargs):
-                print("WARNING:", outText.format(*args, **kwargs), file=file)
+                self.uprint(
+                    "WARNING:", str(outText).format(*args, **kwargs),
+                    file=file
+                )
 
             def _WARN_DISABLED(*args, **kwargs):
                 pass
@@ -83,4 +120,3 @@ class TradeEnv(object):
             return noteFn
 
         return None
-

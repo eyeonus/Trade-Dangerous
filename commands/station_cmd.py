@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.commandenv import ResultRow
 from commands.exceptions import CommandLineError
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from tradedb import AmbiguityError
 from tradedb import System, Station
 from tradedb import TradeDB
@@ -50,6 +50,8 @@ switches = [
         type=int,
         dest='lsFromStar',
     ),
+    # Note: these are not the usual arguments, they're asking the
+    # user to assign rather than select values.
     ParseArgument(
         '--black-market', '--bm',
         help='Does the station have a black market (Y or N) or ? if unknown.',
@@ -345,32 +347,25 @@ def run(results, cmdenv, tdb):
         def __init__(self, ID, price, avgAgainst):
             self.ID, self.item = ID, tdb.itemByID[ID]
             self.price = int(price)
-            self.avgTrade = avgAgainst[ID]
+            self.avgTrade = avgAgainst.get(ID, 0)
 
     # Look up all selling and buying by the station
-    selling = [
-            ItemTrade(ID, price, avgBuy)
-            for ID, price in tdb.query("""
-                    SELECT  item_id, price
-                      FROM  StationSelling
-                     WHERE  station_id = ?
-            """, [station.ID])
-            if price >= 10 and avgBuy[ID] >= 10
-    ]
+    selling, buying = [], []
+    cur = tdb.query("""
+        SELECT  item_id, demand_price, supply_price
+          FROM  StationItem
+         WHERE  station_id = ?
+                AND (demand_price > 10 or supply_price > 10)
+    """, [station.ID])
+    for ID, demand_price, supply_price in cur:
+        if demand_price > 10 and avgSell.get(ID, 0) > 10:
+            buying.append(ItemTrade(ID, demand_price, avgSell))
+        if supply_price > 10 and avgBuy.get(ID, 0) > 10:
+            selling.append(ItemTrade(ID, supply_price, avgBuy))
     selling.sort(
             key=lambda item: item.price - item.avgTrade,
     )
     results.summary.selling = selling[:5]
-
-    buying = [
-            ItemTrade(ID, price, avgSell)
-            for ID, price in tdb.query("""
-                    SELECT  item_id, price
-                      FROM  StationBuying
-                     WHERE  station_id = ?
-            """, [station.ID])
-            if price >= 10 and avgSell[ID] >= 10
-    ]
     buying.sort(
             key=lambda item: item.avgTrade - item.price,
     )
@@ -469,7 +464,7 @@ def render(results, cmdenv, tdb):
                 price <= (avgCr * 0.9),
     ))
     print("Best Sale.:", makeBest(
-            results.summary.buying, "Sell to this station", "Buy",
+            results.summary.buying, "Sell to this station", "Cost",
             starFn=lambda price, avgCr: \
                 price >= (avgCr * 1.1),
     ))

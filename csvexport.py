@@ -28,12 +28,11 @@ import sqlite3
 # Default values
 
 # for some tables the first two columns will be reversed
-reverseList = [ 'AltItemNames',
-                'Item',
-                'ShipVendor',
-                'Station',
-                'StationBuying',
-                'UpgradeVendor',
+reverseList = [
+    'Item',
+    'ShipVendor',
+    'Station',
+    'UpgradeVendor',
 ]
 
 ######################################################################
@@ -93,7 +92,12 @@ def buildFKeyStmt(conn, tableName, key):
             for row in newStmt:
                 keyStmt.append(row)
         else:
-            keyStmt.append( {'table': tableName, 'column': colName, 'joinTable': key['table'], 'joinColumn': key['to']} )
+            keyStmt.append({
+                'table': tableName,
+                'column': colName,
+                'joinTable': key['table'],
+                'joinColumn': key['to']
+            })
 
     return keyStmt
 

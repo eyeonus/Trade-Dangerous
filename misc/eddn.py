@@ -77,7 +77,7 @@ class MarketPrice(namedtuple('MarketPrice', [
         'buy',
         'sell',
         'demand',
-        'stock',
+        'supply',
         'timestamp',
         'uploader',
         'software',
@@ -289,7 +289,7 @@ class Listener(object):
                     buy = int(message["buyPrice"])
                     sell = int(message["sellPrice"])
                     demand = message["demand"]
-                    stock = message["stationStock"]
+                    supply = message["stationStock"]
                     timestamp = message["timestamp"]
                     uploader = header["uploaderID"]
                     software = header["softwareName"]
@@ -326,7 +326,7 @@ class Listener(object):
                 oldEntryList[0] = MarketPrice(
                     system, station, item,
                     buy, sell,
-                    demand, stock,
+                    demand, supply,
                     timestamp,
                     uploader, software, swVersion,
                 )

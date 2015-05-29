@@ -57,6 +57,7 @@ def addArguments(group, options, required, topGroup=None):
     for option in options:
         if isinstance(option, parsing.MutuallyExclusiveGroup):
             exGrp = (topGroup or group).add_mutually_exclusive_group()
+            parsing.registerParserHelpers(exGrp)
             addArguments(exGrp, option.arguments, required, topGroup=group)
         else:
             assert not required in option.kwargs
@@ -170,6 +171,7 @@ class CommandIndex(object):
                         )
                 )
         parser.set_defaults(_editing=False)
+        parsing.registerParserHelpers(parser)
 
         subParsers = parser.add_subparsers(title='Command Options')
         subParser = subParsers.add_parser(cmdModule.name,
@@ -177,6 +179,7 @@ class CommandIndex(object):
                                     add_help=False,
                                     epilog=cmdModule.epilog,
                                     )
+        parsing.registerParserHelpers(subParser)
 
         arguments = cmdModule.arguments
         if arguments:

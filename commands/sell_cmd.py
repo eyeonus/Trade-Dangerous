@@ -1,7 +1,7 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands.exceptions import *
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
-from tradedb import TradeDB
+from commands.parsing import *
+from tradedb import TradeDB, System, Station
 
 import math
 
@@ -16,6 +16,12 @@ arguments = [
     ParseArgument('item', help='Name of item you want to sell.', type=str),
 ]
 switches = [
+    ParseArgument(
+        '--demand', '--quantity',
+        help='Limit to stations known to have at least this much demand.',
+        default=0,
+        type=int,
+    ),
     ParseArgument('--near',
             help='Find buyers within jump range of this system.',
             type=str
@@ -27,11 +33,9 @@ switches = [
             metavar='N.NN',
             type=float,
     ),
-    ParseArgument('--pad-size', '-p',
-            help='Limit the padsize to this ship size (S,M,L or ? for unkown).',
-            metavar='PADSIZES',
-            dest='padSize',
-    ),
+    AvoidPlacesArgument(),
+    PadSizeArgument(),
+    BlackMarketSwitch(),
     ParseArgument('--limit',
             help='Maximum number of results to list.',
             default=None,
@@ -47,13 +51,13 @@ switches = [
             help='Limit to prices above Ncr',
             metavar='N',
             dest='gt',
-            type=int,
+            type="credits",
     ),
     ParseArgument('--lt',
             help='Limit to prices below Ncr',
             metavar='N',
             dest='lt',
-            type=int,
+            type="credits",
     ),
 ]
 
@@ -70,37 +74,43 @@ def run(results, cmdenv, tdb):
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
 
+    avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
+    avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
+
     results.summary = ResultRow()
     results.summary.item = item
+    results.summary.avoidSystems = avoidSystems
+    results.summary.avoidStations = avoidStations
 
     if cmdenv.detail:
         avgPrice = tdb.query("""
-                SELECT CAST(AVG(sb.price) AS INT)
-                  FROM StationSelling AS sb
-                 WHERE sb.item_id = ?
+            SELECT AVG(si.demand_price)
+              FROM StationItem AS si
+             WHERE si.item_id = ? AND si.demand_price > 0
         """, [item.ID]).fetchone()[0]
-        results.summary.avg = avgPrice
+        results.summary.avg = int(avgPrice)
 
     # Constraints
-    tables = "StationBuying AS sb"
-    constraints = [ "(item_id = {})".format(item.ID) ]
-    columns = [
-            'sb.station_id',
-            'sb.price',
-            'sb.units',
-            "JULIANDAY('NOW') - JULIANDAY(sb.modified)",
+    tables = "StationItem AS si"
+    constraints = [
+        "(item_id = {} AND demand_price > 0)".format(item.ID),
     ]
-    bindValues = [ ]
+    columns = [
+        'si.station_id',
+        'si.demand_price',
+        'si.demand_units',
+    ]
+    bindValues = []
 
-    if cmdenv.quantity:
-        constraints.append("(units = -1 or units >= ?)")
-        bindValues.append(cmdenv.quantity)
+    if cmdenv.demand:
+        constraints.append("(demand_units >= ?)")
+        bindValues.append(cmdenv.demand)
 
     if cmdenv.lt:
-        constraints.append("(price < ?)")
+        constraints.append("(demand_price < ?)")
         bindValues.append(cmdenv.lt)
     if cmdenv.gt:
-        constraints.append("(price > ?)")
+        constraints.append("(demand_price > ?)")
         bindValues.append(cmdenv.gt)
 
     nearSystem = cmdenv.nearSystem
@@ -113,24 +123,29 @@ def run(results, cmdenv, tdb):
         distanceFn = None
 
     whereClause = ' AND '.join(constraints)
-    stmt = """
-               SELECT DISTINCT {columns}
-                 FROM {tables}
-                WHERE {where}
-           """.format(
-                    columns=','.join(columns),
-                    tables=tables,
-                    where=whereClause
-                    )
+    stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
+        columns=','.join(columns),
+        tables=tables,
+        where=whereClause
+    )
     cmdenv.DEBUG0('SQL: {}', stmt)
     cur = tdb.query(stmt, bindValues)
 
     stationByID = tdb.stationByID
     padSize = cmdenv.padSize
-    for (stationID, priceCr, demand, age) in cur:
+    wantBlackMarket = cmdenv.blackMarket
+
+    for (stationID, priceCr, demand) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
+        if wantBlackMarket and station.blackMarket != 'Y':
+            continue
+        if station in avoidStations:
+            continue
+        if station.system in avoidSystems:
+            continue
+
         row = ResultRow()
         row.station = station
         if distanceFn:
@@ -140,7 +155,7 @@ def run(results, cmdenv, tdb):
             row.dist = distance
         row.price = priceCr
         row.demand = demand
-        row.age = age
+        row.age = station.itemDataAgeStr
         results.rows.append(row)
 
     if not results.rows:
@@ -181,7 +196,7 @@ def render(results, cmdenv, tdb):
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
 
-    stnRowFmt.addColumn('Age/days', '>', 7, '.2f',
+    stnRowFmt.addColumn('Age/days', '>', 7,
             key=lambda row: row.age)
     stnRowFmt.addColumn('StnLs', '>', 10,
                 key=lambda row: row.station.distFromStar())

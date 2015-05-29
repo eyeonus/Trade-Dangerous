@@ -35,7 +35,7 @@ import sys
 import tradedb
 import tradeenv
 
-DEFAULT_DATE = "2015-03-01 00:00:00"
+DEFAULT_DATE = "2015-04-01 00:00:00"
 
 
 # Systems we know are bad.
@@ -112,6 +112,16 @@ ignore = [
     "MINIMAR",
     "MV URSAE MAJORIS",
     "PLAA EURK BU-Q B5-0",
+
+    "COL 285 SECTOR LP-S B-19-1",
+    "COL 285 SECTOR LP-S B-19-2",
+    "CORE SYS SECTOR CB-0 A6-5",
+    "ARIETIS SECTOR JD-F A12-3",
+    "ICZ-KI-S B4-3",
+    "HIP 8153",
+    "HYADES SECTOR MS-X B4-4",
+    "UCAC3 70-2386",
+    "HYADES KX-T C3-24",
 ]
 
 
@@ -150,12 +160,20 @@ def parse_arguments():
             type=int,
             default=2,
     )
-    parser.add_argument(
-            '--random',
-            action='store_true',
-            required=False,
-            help='Show systems in random order, maximum of 10.',
-    )
+    grp = parser.add_mutually_exclusive_group()
+    if grp:
+        grp.add_argument(
+                '--random',
+                action='store_true',
+                required=False,
+                help='Show systems in random order, maximum of 10.',
+        )
+        grp.add_argument(
+                '--distance',
+                action='store_true',
+                required=False,
+                help='Select upto 10 systems by proximity.',
+        )
     parser.add_argument(
             '--add-to-local-db', '-A',
             action='store_true',
@@ -233,12 +251,12 @@ def parse_arguments():
 def is_change(tdb, sysinfo):
     """ Check if a system's EDSC data is different than TDs """
     name = sysinfo['name'] = sysinfo['name'].upper()
-    if name.startswith("argetl"):
+    if name.startswith("PLAA EURIK"):
         return False
     if name in ignore:
         return False
-    x, y, z = sysinfo['coord']
     try:
+        x, y, z = sysinfo['coord']
         place = tdb.systemByName[name]
         if place.posX == x and place.posY == y and place.posZ == z:
             return False
@@ -310,8 +328,21 @@ def submit_distance(argv, name, distance):
     print(str(result))
 
 
+def get_extras():
+    extras = set()
+    try:
+        with open("data/extra-stars.txt", "rU", encoding="utf-8") as fh:
+            for line in fh:
+                name = line.partition('#')[0].strip().upper()
+                if name:
+                    extras.add(name)
+    except FileNotFoundError:
+        pass
+    return extras
+
+
 def add_to_extras(argv, name):
-    with open("data/extra-stars.txt", "a") as fh:
+    with open("data/extra-stars.txt", "a", encoding="utf-8") as fh:
         print(name.upper(), file=fh)
         print("Added {} to data/extra-stars.txt".format(name))
 
@@ -361,9 +392,22 @@ def main():
     if argv.summary or len(systems) <= 0:
         return
 
+    systems = [
+        sysinfo for sysinfo in systems if 'coord' in sysinfo
+    ]
+
     if argv.random:
         num = min(len(systems), 10)
         systems = random.sample(systems, num)
+
+    startSys = argv.startSys
+    for sysinfo in systems:
+        x, y, z = sysinfo['coord']
+        sysinfo['distance'] = get_distance(tdb, startSys, x, y, z)
+
+    if argv.distance:
+        systems.sort(key=lambda sysinfo: sysinfo['distance'])
+        systems = systems[:10]
 
     if argv.splash:
         print(
@@ -404,25 +448,47 @@ def main():
 """)
     print()
 
+    extras = get_extras()
+
     clip = misc.clipboard.SystemNameClip()
     total = len(systems)
     current = 0
-    with open("tmp/new.systems.csv", "w") as output:
+    with open("tmp/new.systems.csv", "w", encoding="utf-8") as output:
         for sysinfo in systems:
             current += 1
             name = sysinfo['name']
+            created = sysinfo['createdate']
             x, y, z = sysinfo['coord']
+
+            print(
+                "\n"
+                "-----------------------------------------------\n"
+                "{syidlab:.<12}: {syid}\n"
+                "{conflab:.<12}: {conf}\n"
+                "{crealab:.<12}: {crcm} {crts}\n"
+                "{updtlab:.<12}: {upcm} {upts}\n"
+                .format(
+                    syidlab="ID",
+                    conflab="Confidence",
+                    crealab="Created",
+                    updtlab="Updated",
+                    syid=sysinfo['id'],
+                    conf=sysinfo['cr'],
+                    crcm=sysinfo['commandercreate'],
+                    crts=created,
+                    upcm=sysinfo.get('commanderupdate', '[never]'),
+                    upts=sysinfo.get('updatedate', ''),
+                )
+            )
 
             check_database(tdb, name, x, y, z)
 
             change = has_position_changed(sysinfo['place'], name, x, y, z)
             if change:
-                oldDist = argv.startSys.distanceTo(sysinfo['place'])
+                oldDist = startSys.distanceTo(sysinfo['place'])
                 print("Old Distance: {:.2f}ly".format(oldDist))
 
-            created = sysinfo['createdate']
-
-            distance = get_distance(tdb, argv.startSys, x, y, z)
+            distance = sysinfo['distance']
             clip.copy_text(name)
             prompt = "{}/{}: '{}': {:.2f}ly? ".format(
                 current, total,
@@ -435,11 +501,13 @@ def main():
             if ok.startswith('~'):
                 correction = float(ok[1:])
                 submit_distance(argv, name, correction)
-                add_to_extras(argv, name)
+                if not name.upper() in extras:
+                    add_to_extras(argv, name)
                 continue
             if ok.startswith('='):
                 name = ok[1:].strip().upper()
-                add_to_extras(argv, name)
+                if not name in extras:
+                    add_to_extras(argv, name)
                 ok = 'y'
             if ok.lower() != 'y':
                 continue

@@ -2,6 +2,8 @@
 # see http://kfs.org/td/source
 
 common_opts="--help --debug --detail --quiet --db --cwd --link-ly"
+pad_opts="? l l? m m? ml ml? s s? sl sm sm? sml sml?"
+ynq_opts="y n ?"
 
 _td_file_list()
 {
@@ -56,12 +58,16 @@ _td_buy()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--quantity|--near|--ly|--limit)
+	--quantity|--near|--ly|--limit|--gt|--lt)
 		# argument required
+		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly --limit --price-sort --stock-sort ${common_opts}"
+		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -97,7 +103,7 @@ _td_import()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--plug)
+	--plug|-P)
 		opts="maddavo"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
@@ -105,12 +111,12 @@ _td_import()
 		# argument required
 		;;
 	--option|-O)
-		opts="systems stations exportcsv skipdl force use3h use2d usefull"
+		opts="csvs corrections systems stations shipvendors exportcsv csvonly skipdl force use3h use2d usefull help"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--plug --url --download --ignore-unknown --option ${common_opts}"
+		opts="--plug --url --download --ignore-unknown --option --reset ${common_opts}"
 		_td_file_list -f "$cur"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
@@ -128,9 +134,29 @@ _td_local()
 	--ly)
 		# argument required
 		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly ${common_opts}"
+		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair ${common_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	esac
+	return 0
+}
+
+_td_market()
+{
+	local cur prev opts
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	case ${prev} in
+	*)
+		_td_common && return 0
+		opts="--buying --selling ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -144,12 +170,16 @@ _td_nav()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--ly-per|--avoid|--via)
+	--ly-per|--avoid|--via|--refuel-jumps)
 		# argument required
+		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly-per --avoid --via --stations ${common_opts}"
+		opts="--ly-per --avoid --via --stations --refuel-jumps ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -163,12 +193,12 @@ _td_olddata()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--limit|--near|--ly)
+	--limit|--near|--ly|--min-age)
 		# argument required
 		;;
 	*)
 		_td_common && return 0
-		opts="--limit --near --ly ${common_opts}"
+		opts="--limit --near --ly --route --min-age ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -182,12 +212,16 @@ _td_rares()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--ly|--limit)
+	--ly|--limit|--away|--from)
 		# argument required
+		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly --limit --price-sort --reverse ${common_opts}"
+		opts="--ly --limit --price-sort --reverse --pad-size --away --from ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -201,12 +235,16 @@ _td_run()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--capacity|--credits|--ly-per|--from|--to|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--end-jumps|-e|--limit|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes)
+	--capacity|--credits|--ly-per|--from|-f|--to|-t|--via|--avoid|--hops|--jumps-per|--empty-ly|--start-jumps|-s|--end-jumps|-e|--limit|--age|--max-days-old|-MD|--ls-penalty|--lsp|--margin|--insurance|--routes|--towards|-T|--ls-max|--gain-per-ton|--gpt|--max-gain-per-ton|--mgpt|--max-routes|--prune-score|--prune-hops|--supply|--loop-interval|-li)
 		# argument required
+		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -220,12 +258,32 @@ _td_sell()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--near|--ly-per|--limit)
+	--near|--ly-per|--limit|--gt|--lt)
 		# argument required
+		;;
+	--pad-size|-p)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--near --ly-per --limit --price-sort ${common_opts}"
+		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt ${common_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	esac
+	return 0
+}
+
+_td_shipvendor()
+{
+	local cur prev opts
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	case ${prev} in
+	*)
+		_td_common && return 0
+		opts="--remove --add --name-sort --no-export ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -239,12 +297,36 @@ _td_station()
 	prev="${COMP_WORDS[COMP_CWORD-1]}"
 
 	case ${prev} in
-	--system|--ls-from-star|--black-market|--pad-size|--confirm)
+	--ls-from-star|--confirm)
 		# argument required
+		;;
+	--black-market|--bm|--market|--shipyard|--outfitting|--rearm|--arm|--refuel|--repair)
+		opts="${ynq_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	--pad-size)
+		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)
 		_td_common && return 0
-		opts="--system --ls-from-star --black-market --pad-size --confirm --add --remove --update --no-export ${common_opts}"
+		opts="--ls-from-star --black-market --market --shipyard --pad-size --outfitting --rearm --refuel --repair --confirm --add --remove --update --no-export ${common_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	esac
+	return 0
+}
+
+_td_trade()
+{
+	local cur prev opts
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+	case ${prev} in
+	*)
+		_td_common && return 0
+		opts="${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -293,6 +375,9 @@ _td_main()
 	local)
 		_td_local
 		;;
+	market)
+		_td_market
+		;;
 	nav)
 		_td_nav
 		;;
@@ -308,14 +393,20 @@ _td_main()
 	sell)
 		_td_sell
 		;;
-    station)
-        _td_station
-        ;;
+	shipvendor)
+		_td_shipvendor
+		;;
+	station)
+		_td_station
+		;;
+	trade)
+		_td_trade
+		;;
 	update)
 		_td_update
 		;;
 	*)
-		opts="buildcache buy export import local nav olddata rares run sell station update"
+		opts="buildcache buy export import local market nav olddata rares run sell shipvendor station trade update"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 	esac
 	return 0

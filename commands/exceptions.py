@@ -48,3 +48,15 @@ project such as "maddavo's" (http://www.davek.com.au/td/).
 For more help, see the TradeDangerous Wiki:
     http://kfs.org/td/wiki
 """).format(sys.argv[0])
+
+
+class PadSizeError(CommandLineError):
+    """ Raised when an invalid pad-size option is given. """
+    def __init__(self, value):
+        super().__init__(
+            "Invalid --pad-size '{}: Use a combination of one or more "
+            "from 'S' for Small, 'M' for Medium, 'L' for Large or "
+            "'?' for unknown, e.g. 'SML?' matches any pad size while "
+            "'M?' matches medium or unknown or 'L' matches only large."
+            .format(value)
+        )

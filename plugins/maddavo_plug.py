@@ -73,7 +73,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         lastRunDays = float("inf")
         if self.stampPath.is_file():
             try:
-                fh = self.stampPath.open('rU')
+                fh = self.stampPath.open('rU', encoding="utf-8")
                 line = fh.readline().split('\n')
                 if line and line[0]:
                     if ImportPlugin.dateRe.match(line[0]):
@@ -95,7 +95,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Save a date to the timestamp file.
         """
 
-        with self.stampPath.open('w') as fh:
+        with self.stampPath.open('w', encoding="utf-8") as fh:
             print(newestDate, file=fh)
             print(startTime, file=fh)
 
@@ -160,6 +160,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             }),
         }
 
+        tables = {
+            'System':   corrections.systems,
+            'Station':  corrections.stations,
+            'Category': corrections.categories,
+            'Item':     corrections.items,
+        }
+
         FIXING, DELETING, DISCARDING = 'FIXING', 'DELETING', 'DISCARDING'
 
         stream = self.csv_stream_rows(CORRECTIONS_URL, "Corrections")
@@ -171,6 +178,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             except KeyError:
                 tdenv.NOTE("Unsupported correction type {} ignored", src)
                 continue
+
+            correctionTable = tables.get(src, None)
+            if correctionTable:
+                if action is DELETING:
+                    correction = corrections.DELETED
+                else:
+                    correction = newName
+                correctionTable[oldName.upper()] = correction
 
             item = index.get(oldName, None)
             if not item:
@@ -196,6 +211,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         newItemName, oldName,
                     )
                     action = DISCARDING
+                    if correctionTable:
+                        correctionTable[oldName.upper()] = corrections.DELETED
 
             if action is FIXING:
                 tdenv.DEBUG0("{} {} {} -> {}", action, src, oldName, newName)
@@ -257,6 +274,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
 
         tdb, tdenv = self.tdb, self.tdenv
+        dateTimeRe = re.compile(r'\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2})')
 
         stream = self.csv_system_rows(SYSTEMS_URL, "Systems")
         for sysName, system, values in stream:
@@ -269,6 +287,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     )
                 self.modSystems += 1
                 continue
+
+            # Clean up the modified stamp
+            m = dateTimeRe.match(modified)
+            if not m:
+                tdenv.WARN("{} has invalid 'modified': {}", sysName, modified)
+                continue
+            modified = m.group(1)
 
             x, y, z = float(values[1]), float(values[2]), float(values[3])
             if not system:
@@ -463,7 +488,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             except KeyError:
                 pass
             tdenv.NOTE(
-                "Adding {} at {}", ship.name(), station.name(),
+                "At {} adding {}", station.name(), ship.name(),
             )
             newShips[locKey] = (ship.ID, station.ID, modified)
         if newShips:
@@ -667,6 +692,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
 
         tdenv.ignoreUnknown = True
+        tdenv.mergeImport = True
 
         if self.getOption("csvs"):
             self.options["corrections"] = True

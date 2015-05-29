@@ -1,5 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.parsing import MutuallyExclusiveGroup, ParseArgument
+from commands.parsing import *
 from tradedb import TradeDB
 from tradeexcept import TradeException
 
@@ -56,11 +56,6 @@ def run(results, cmdenv, tdb):
 
     results.summary = ResultRow()
     results.limit = cmdenv.limit
-
-    if cmdenv.limit:
-        limitClause = "LIMIT {}".format(cmdenv.limit)
-    else:
-        limitClause = ""
 
     fields = [
         "si.station_id",
@@ -134,13 +129,11 @@ def run(results, cmdenv, tdb):
              GROUP  BY 1
              {having}
              ORDER  BY 2 DESC
-             {limit}
     """.format(
             fields=fieldStr,
             joins=joinStr,
             wheres=whereStr,
             having=haveStr,
-            limit=limitClause,
     )
 
     cmdenv.DEBUG1(stmt)
@@ -156,9 +149,6 @@ def run(results, cmdenv, tdb):
             row.ls = "?"
         row.dist = dist2 ** 0.5
         results.rows.append(row)
-
-    if cmdenv.near:
-        results.rows.sort(key=lambda row: row.dist)
 
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
@@ -185,6 +175,9 @@ def run(results, cmdenv, tdb):
                     bestPath = path
         results.rows[:] = bestPath[0]
 
+    if cmdenv.limit:
+        results.rows[:] = results.rows[:cmdenv.limit]
+
     return results
 
 ######################################################################
@@ -196,7 +189,7 @@ def render(results, cmdenv, tdb):
     if not results or not results.rows:
         raise TradeException("No data found")
 
-    # Compare system names so we can tell 
+    # Compare system names so we can tell
     longestNamed = max(results.rows,
                     key=lambda row: len(row.station.name()))
     longestNameLen = len(longestNamed.station.name())
@@ -206,22 +199,23 @@ def render(results, cmdenv, tdb):
                     key=lambda row: row.station.name())
     )
 
-    if cmdenv.nearSystem:
-        rowFmt.addColumn('DistLy', '>', 6, '.2f',
-                key=lambda row: row.dist
+    if cmdenv.quiet < 2:
+        if cmdenv.nearSystem:
+            rowFmt.addColumn('DistLy', '>', 6, '.2f',
+                    key=lambda row: row.dist
+            )
+
+        rowFmt.append(
+                ColumnFormat("Age/days", '>', '8', '.2f',
+                        key=lambda row: row.age)
+        ).append(
+                ColumnFormat("StnLs", '>', '10',
+                        key=lambda row: row.station.distFromStar())
+        ).append(
+                ColumnFormat("Pad", '>', '3',
+                        key=lambda row: \
+                            TradeDB.padSizes[row.station.maxPadSize])
         )
-    
-    rowFmt.append(
-            ColumnFormat("Age/days", '>', '8', '.2f',
-                    key=lambda row: row.age)
-    ).append(
-            ColumnFormat("StnLs", '>', '10',
-                    key=lambda row: row.station.distFromStar())
-    ).append(
-            ColumnFormat("Pad", '>', '3',
-                    key=lambda row: \
-                        TradeDB.padSizes[row.station.maxPadSize])
-    )
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
@@ -229,4 +223,3 @@ def render(results, cmdenv, tdb):
 
     for row in results.rows:
         print(rowFmt.format(row))
-

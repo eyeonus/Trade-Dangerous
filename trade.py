@@ -23,7 +23,7 @@
 # your affordable range.
 #
 # END USERS: If you are a user looking to find out how to use TD,
-# please consult the file "README.txt".
+# please consult the file "README.md".
 #
 # DEVELOPERS: If you are a programmer who wants TD to do something
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
@@ -39,6 +39,7 @@ from commands import *
 from plugins import PluginException
 
 import os
+import traceback
 import tradedb
 
 ######################################################################
@@ -95,18 +96,30 @@ if __name__ == "__main__":
     import tradeexcept
 
     try:
-        if "CPROF" in os.environ:
-            import cProfile
-            cProfile.run("main(sys.argv)")
-        else:
-            main(sys.argv)
-    except PluginException as e:
-        print("PLUGIN ERROR: {}".format(e))
-        if 'EXCEPTIONS' in os.environ:
-            raise e
-        sys.exit(1)
-    except tradeexcept.TradeException as e:
-        print("%s: %s" % (sys.argv[0], str(e)))
-        if 'EXCEPTIONS' in os.environ:
-            raise e
-        sys.exit(1)
+        try:
+            if "CPROF" in os.environ:
+                import cProfile
+                cProfile.run("main(sys.argv)")
+            else:
+                main(sys.argv)
+        except PluginException as e:
+            print("PLUGIN ERROR: {}".format(e))
+            if 'EXCEPTIONS' in os.environ:
+                raise e
+            sys.exit(1)
+        except tradeexcept.TradeException as e:
+            print("%s: %s" % (sys.argv[0], str(e)))
+            if 'EXCEPTIONS' in os.environ:
+                raise e
+            sys.exit(1)
+    except (UnicodeEncodeError, UnicodeDecodeError) as e:
+        print("-----------------------------------------------------------")
+        print("ERROR: Unexpected unicode error in the wild!")
+        print()
+        print(traceback.format_exc())
+        print(
+            "Please report this bug (http://kfs.org/td/issues). You may be "
+            "able to work around it by using the '-q' parameter. Windows "
+            "users may be able to use 'chcp.com 65001' to tell the console "
+            "you want to support UTF-8 characters."
+        )

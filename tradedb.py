@@ -58,9 +58,26 @@ import heapq
 import itertools
 import locale
 import math
+import os
 import re
 import sqlite3
 import sys
+
+haveNumpy = False
+try:
+    if os.environ['NUMPY']:
+        import numpy
+        import numpy.linalg
+        haveNumpy = True
+except (KeyError, ImportError):
+    pass
+if not haveNumpy:
+    class numpy(object):
+        array = False
+        float32 = False
+        ascontiguousarray = False
+        class linalg(object):
+            norm = False
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -93,9 +110,9 @@ class AmbiguityError(TradeException):
                 key(c) for c in anyMatch[:10]
             ] + ["..."])
         else:
-            opportunities = ", ".join([
+            opportunities = ", ".join(
                 key(c) for c in anyMatch[0:-1]
-            ])
+            )
             opportunities += " or " + key(anyMatch[-1])
         return '{} "{}" could match {}'.format(
             self.lookupType, str(self.searchKey),
@@ -132,7 +149,7 @@ class System(object):
 
     __slots__ = (
         'ID',
-        'dbname', 'posX', 'posY', 'posZ', 'stations',
+        'dbname', 'posX', 'posY', 'posZ', 'pos', 'stations',
         'addedID',
         '_rangeCache'
     )
@@ -145,12 +162,18 @@ class System(object):
             self.systems = []
             self.probedLy = 0.
 
-    def __init__(self, ID, dbname, posX, posY, posZ, addedID):
+    def __init__(
+            self, ID, dbname, posX, posY, posZ, addedID,
+            ary=numpy.array,
+            nptype=numpy.float32,
+            ):
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
+        if haveNumpy:
+            self.pos = ary([posX, posY, posZ], nptype)
         self.addedID = addedID or 0
-        self.stations = []
+        self.stations = ()
         self._rangeCache = None
 
     @property
@@ -183,12 +206,11 @@ class System(object):
                 if sys.distToSq(target) <= maxLySq:
                     inRange.append(sys)
         """
-
-        dx2 = (self.posX - other.posX) ** 2
-        dy2 = (self.posY - other.posY) ** 2
-        dz2 = (self.posZ - other.posZ) ** 2
-
-        return (dx2 + dy2 + dz2)
+        return (
+            (self.posX - other.posX) ** 2 +
+            (self.posY - other.posY) ** 2 +
+            (self.posZ - other.posZ) ** 2
+        )
 
     def distanceTo(self, other):
         """
@@ -206,14 +228,24 @@ class System(object):
                 lhs.distanceTo(rhs),
             ))
         """
+        return (
+            (self.posX - other.posX) ** 2 +
+            (self.posY - other.posY) ** 2 +
+            (self.posZ - other.posZ) ** 2
+        ) ** 0.5  # fast sqrt
 
-        dx2 = (self.posX - other.posX) ** 2
-        dy2 = (self.posY - other.posY) ** 2
-        dz2 = (self.posZ - other.posZ) ** 2
-
-        distSq = (dx2 + dy2 + dz2)
-
-        return distSq ** 0.5
+    if haveNumpy:
+        def all_distances(
+                self, iterable,
+                ary=numpy.ascontiguousarray, norm=numpy.linalg.norm,
+                ):
+            """
+            Takes a list of systems and returns their distances from this system.
+            """
+            return numpy.linalg.norm(
+                ary([s.pos for s in iterable]) - self.pos,
+                ord=2, axis=1.
+            )
 
     def getStation(self, stationName):
         """
@@ -257,27 +289,24 @@ class Station(object):
     Describes a station (trading or otherwise) in a system.
 
     For obtaining trade information for a given station see one of:
-        TradeDB.loadStationTrades  (very slow and expensive)
-        TradeDB.loadDirectTrades   (can be expensive)
         TradeCalc.getTrades        (fast and cheap)
     """
     __slots__ = (
         'ID', 'system', 'dbname',
         'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
         'outfitting', 'rearm', 'refuel', 'repair',
-        'tradingWith', 'itemCount',
-        'dataAge',
+        'itemCount', 'dataAge',
     )
 
     def __init__(
             self, ID, system, dbname,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
             outfitting, rearm, refuel, repair,
-            itemCount, dataAge,
+            itemCount=0, dataAge=None,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
         self.lsFromStar = int(lsFromStar)
-        self.market = market
+        self.market = market if itemCount == 0 else 'Y'
         self.blackMarket = blackMarket
         self.shipyard = shipyard
         self.maxPadSize = maxPadSize
@@ -286,10 +315,8 @@ class Station(object):
         self.refuel = refuel
         self.repair = repair
         self.itemCount = itemCount
-        # dict[tradingPartnerStation] -> [ available trades ]
-        self.tradingWith = None
         self.dataAge = dataAge
-        system.stations.append(self)
+        system.stations = system.stations + (self,)
 
     def name(self):
         return '%s/%s' % (self.system.dbname, self.dbname)
@@ -359,6 +386,13 @@ class Station(object):
         """
         return (self.itemCount > 0 or self.market == 'Y')
 
+    @property
+    def itemDataAgeStr(self):
+        """ Returns the age in days of item data if present, else "-". """
+        if self.itemCount and self.dataAge:
+            return "{:7.2f}".format(self.dataAge)
+        return "-"
+
     def str(self):
         return '%s/%s' % (self.system.dbname, self.dbname)
 
@@ -366,9 +400,9 @@ class Station(object):
 ######################################################################
 
 
-class Ship(namedtuple('Ship', [
+class Ship(namedtuple('Ship', (
         'ID', 'dbname', 'cost', 'stations'
-        ])):
+        ))):
     """
     Ship description.
 
@@ -386,9 +420,9 @@ class Ship(namedtuple('Ship', [
 ######################################################################
 
 
-class Category(namedtuple('Category', [
+class Category(namedtuple('Category', (
         'ID', 'dbname', 'items'
-        ])):
+        ))):
     """
     Item Category
 
@@ -424,16 +458,14 @@ class Item(object):
         dbname   -- Name as it appears in-game and in the DB.
         category -- Reference to the category.
         fullname -- Combined category/dbname for lookups.
-        altname  -- The internal name used by the game.
     """
-    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'altname')
+    __slots__ = ('ID', 'dbname', 'category', 'fullname')
 
-    def __init__(self, ID, dbname, category, fullname, altname=None):
+    def __init__(self, ID, dbname, category, fullname):
         self.ID = ID
         self.dbname = dbname
         self.category = category
         self.fullname = fullname
-        self.altname = altname
 
     def name(self):
         return self.dbname
@@ -442,9 +474,9 @@ class Item(object):
 ######################################################################
 
 
-class RareItem(namedtuple('RareItem', [
-        'ID', 'station', 'dbname', 'costCr', 'maxAlloc',
-        ])):
+class RareItem(namedtuple('RareItem', (
+        'ID', 'station', 'dbname', 'costCr', 'maxAlloc', 'illegal',
+        ))):
     """
     Describes a RareItem from the database.
 
@@ -452,8 +484,9 @@ class RareItem(namedtuple('RareItem', [
         ID       -- Database ID,
         station  -- Which Station this is bought from,
         dbname   -- The name are presented in the database,
-        costCr   -- Buying price
+        costCr   -- Buying price.
         maxAlloc -- How many the player can carry at a time,
+        illegal  -- If the item may be considered illegal,
     """
 
     def name(self):
@@ -463,13 +496,13 @@ class RareItem(namedtuple('RareItem', [
 ######################################################################
 
 
-class Trade(namedtuple('Trade', [
-        'item', 'itemID',
+class Trade(namedtuple('Trade', (
+        'item',
         'costCr', 'gainCr',
-        'stock', 'stockLevel',
+        'supply', 'supplyLevel',
         'demand', 'demandLevel',
         'srcAge', 'dstAge'
-        ])):
+        ))):
     """
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
@@ -538,19 +571,18 @@ class TradeDB(object):
     defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencies!
-    defaultTables = [
-        ['Added.csv', 'Added'],
-        ['System.csv', 'System'],
-        ['Station.csv', 'Station'],
-        ['Ship.csv', 'Ship'],
-        ['ShipVendor.csv', 'ShipVendor'],
-        ['Upgrade.csv', 'Upgrade'],
-        ['UpgradeVendor.csv', 'UpgradeVendor'],
-        ['Category.csv', 'Category'],
-        ['Item.csv', 'Item'],
-        ['AltItemNames.csv', 'AltItemNames'],
-        ['RareItem.csv', 'RareItem'],
-    ]
+    defaultTables = (
+        ('Added.csv', 'Added'),
+        ('System.csv', 'System'),
+        ('Station.csv', 'Station'),
+        ('Ship.csv', 'Ship'),
+        ('ShipVendor.csv', 'ShipVendor'),
+        ('Upgrade.csv', 'Upgrade'),
+        ('UpgradeVendor.csv', 'UpgradeVendor'),
+        ('Category.csv', 'Category'),
+        ('Item.csv', 'Item'),
+        ('RareItem.csv', 'RareItem'),
+    )
 
     # Translation matrixes for attributes -> common presentation
     marketStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
@@ -779,6 +811,8 @@ class TradeDB(object):
             "Added new system #{}: {} [{},{},{}]",
             ID, name, x, y, z
         )
+        # Invalidate the grid
+        self.stellarGrid = None
         return system
 
     def updateLocalSystem(
@@ -806,8 +840,10 @@ class TradeDB(object):
                    pos_x=?, pos_y=?, pos_z=?,
                    added_id=(SELECT added_id FROM Added WHERE name = ?),
                    modified=DATETIME(?)
+             WHERE system_id = ?
         """, [
-            dbname, x, y, z, added, modified
+            dbname, x, y, z, added, modified,
+            system.ID,
         ])
         if commit:
             db.commit()
@@ -938,19 +974,18 @@ class TradeDB(object):
             cache = system._rangeCache = System.RangeCache()
         cachedSystems = cache.systems
 
-        probedLy = cache.probedLy
-        if ly > probedLy:
+        if ly > cache.probedLy:
             # Consult the database for stars we haven't seen.
             cachedSystems = cache.systems = list(
                 self.genStellarGrid(system, ly)
             )
             cachedSystems.sort(key=lambda ent: ent[1])
-            cache.probedLy = probedLy = ly
+            cache.probedLy = ly
 
         if includeSelf:
             yield system, 0.
 
-        if probedLy > ly:
+        if cache.probedLy > ly:
             # Cache may contain values outside our view
             for sys, dist in cachedSystems:
                 if dist <= ly:
@@ -976,6 +1011,8 @@ class TradeDB(object):
                 List of systems being avoided
             stationInterval:
                 If non-zero, require a station at least this many jumps,
+            tdenv.padSize:
+                Controls the pad size of stations for refuelling
 
         Returns:
             None
@@ -1005,7 +1042,7 @@ class TradeDB(object):
             dest = dest.system
 
         if origin == dest:
-            return [(origin, 0), (dest, 0)]
+            return ((origin, 0), (dest, 0))
 
         # openSet is the list of nodes we want to visit, which will be
         # used as a priority queue (heapq).
@@ -1015,9 +1052,6 @@ class TradeDB(object):
         openSet = [(0, 0, origin.ID, 0)]
         # Track predecessor nodes for everwhere we visit
         distances = {origin: (None, 0)}
-        destID = dest.ID
-        sysByID = self.systemByID
-        distTo = float("inf")
 
         if avoiding:
             if dest in avoiding:
@@ -1027,9 +1061,26 @@ class TradeDB(object):
                     distances[avoid] = (None, -1)
 
         systemsInRange = self.genSystemsInRange
+        heappop  = heapq.heappop
+        heappush = heapq.heappush
+        distTo = float("inf")
+        defaultDist = (None, distTo)
+        getDist  = distances.get
+
+        destID = dest.ID
+        sysByID = self.systemByID
+
+        maxPadSize = self.tdenv.padSize
+        if not maxPadSize:
+            checkStations = lambda system: bool(system.stations())
+        else:
+            checkStations = lambda system: any(
+                stn for stn in system.stations
+                if stn.checkPadSize(maxPadSize)
+            )
 
         while openSet:
-            weight, curDist, curSysID, stnDist = heapq.heappop(openSet)
+            weight, curDist, curSysID, stnDist = heappop(openSet)
             # If we reached 'goal' we've found the shortest path.
             if curSysID == destID:
                 break
@@ -1042,24 +1093,21 @@ class TradeDB(object):
             if curDist > distances[curSys][1]:
                 continue
 
+            system_iter = iter(systemsInRange(curSys, maxJumpLy))
             if stationInterval:
-                if curSys.stations:
+                if checkStations(curSys):
                     stnDist = 0
                 else:
                     stnDist += 1
+                    if stnDist >= stationInterval:
+                        system_iter = iter(
+                            v for v in system_iter if checkStations(v[0])
+                        )
 
             distFn = curSys.distanceTo
-            heappush = heapq.heappush
-
-            for (nSys, nDist) in systemsInRange(curSys, maxJumpLy):
+            for nSys, nDist in system_iter:
                 newDist = curDist + nDist
-                try:
-                    (prevSys, prevDist) = distances[nSys]
-                    if prevDist <= newDist:
-                        continue
-                except KeyError:
-                    pass
-                if stationInterval and stnDist >= stationInterval and not curSys.stations:
+                if getDist(nSys, defaultDist)[1] <= newDist:
                     continue
                 distances[nSys] = (curSys, newDist)
                 weight = distFn(nSys)
@@ -1074,7 +1122,7 @@ class TradeDB(object):
         path = []
 
         while True:
-            (prevSys, dist) = distances[dest]
+            (prevSys, dist) = getDist(dest)
             path.append((dest, dist))
             if dest == origin:
                 break
@@ -1100,12 +1148,8 @@ class TradeDB(object):
         stmt = """
             SELECT  station_id, system_id, name,
                     ls_from_star, market, blackmarket, shipyard,
-                    max_pad_size, outfitting, rearm, refuel, repair,
-                    COUNT(StationItem.station_id) AS itemCount,
-                    JULIANDAY('now') - JULIANDAY(MAX(StationItem.modified))
+                    max_pad_size, outfitting, rearm, refuel, repair
               FROM  Station
-                    LEFT OUTER JOIN StationItem USING (station_id)
-             GROUP  BY 1
         """
         self.cur.execute(stmt)
         stationByID = {}
@@ -1115,19 +1159,32 @@ class TradeDB(object):
             ID, systemID, name,
             lsFromStar, market, blackMarket, shipyard,
             maxPadSize, outfitting, rearm, refuel, repair,
-            itemCount, dataAge
         ) in self.cur:
             station = Station(
                 ID, systemByID[systemID], name,
                 lsFromStar, market, blackMarket, shipyard,
                 maxPadSize, outfitting, rearm, refuel, repair,
-                itemCount, dataAge
+                0, None,
             )
-            if itemCount > 0:
-                self.tradingStationCount += 1
             stationByID[ID] = station
 
+        tradingCount = 0
+        stmt = """
+            SELECT  station_id,
+                    COUNT(*) AS item_count,
+                    AVG(JULIANDAY('now') - JULIANDAY(modified))
+              FROM  StationItem
+             GROUP  BY 1
+             HAVING item_count > 0
+        """
+        for ID, itemCount, dataAge in self.cur.execute(stmt):
+            station = stationByID[ID]
+            station.itemCount = itemCount
+            station.dataAge = dataAge
+            tradingCount += 1
+
         self.stationByID = stationByID
+        self.tradingStationCount = tradingCount
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
         self.stellarGrid = None
 
@@ -1589,7 +1646,6 @@ class TradeDB(object):
             maxJumps=None,
             maxLyPer=None,
             avoidPlaces=None,
-            trading=False,
             maxPadSize=None,
             maxLsFromStar=0,
             ):
@@ -1599,17 +1655,11 @@ class TradeDB(object):
         Limits to stations we are trading with if trading is True.
         """
 
-        if trading:
-            assert isinstance(origin, Station)
-            if not origin.tradingWith:
-                return []
-            tradingWith = origin.tradingWith
-
         if maxJumps is None:
             maxJumps = sys.maxsize
         maxLyPer = maxLyPer or self.maxSystemLinkLy
         if avoidPlaces is None:
-            avoidPlaces = []
+            avoidPlaces = ()
 
         # The open list is the list of nodes we should consider next for
         # potential destinations.
@@ -1670,31 +1720,32 @@ class TradeDB(object):
                     # list so that it serves as the via list for all next-hops.
                     openList.append(destNode)
 
-        destStations = []
-
         # We have a system-to-system path list, now we
         # need stations to terminate at.
-        for node in pathList.values():
-            # negative values are avoidances
-            if node.distLy < 0.0:
-                continue
-            for station in node.system.stations:
-                if (trading and station not in tradingWith):
-                    continue
-                if station in avoidPlaces:
-                    continue
-                if (maxPadSize and not station.checkPadSize(maxPadSize)):
-                    continue
-                if maxLsFromStar:
-                    stnLs = station.lsFromStar
-                    if stnLs <= 0 or stnLs > maxLsFromStar:
-                        continue
-                yield Destination(
-                        node.system,
-                        station,
-                        node.via,
-                        node.distLy
-                )
+        def path_iter_fn():
+            for node in pathList.values():
+                if node.distLy >= 0.0:
+                    for station in node.system.stations:
+                        yield node, station
+
+        path_iter = iter(path_iter_fn())
+        if avoidPlaces:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station not in avoidPlaces
+            )
+        if maxPadSize:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.checkPadSize(maxPadSize)
+            )
+        if maxLsFromStar:
+            path_iter = iter(
+                (node, stn) for (node, stn) in path_iter
+                if stn.lsFromStar > 0 and stn.lsFromStar <= maxLsFromStar
+            )
+        for node, stn in path_iter:
+            yield Destination(node.system, stn, node.via, node.distLy)
 
     ############################################################
     # Ship data.
@@ -1779,41 +1830,22 @@ class TradeDB(object):
               FROM Item
         """
         itemByID, itemByName = {}, {}
-        for (ID, name, categoryID) in self.cur.execute(stmt):
+        for ID, name, categoryID in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
             item = Item(
                 ID, name, category,
-                '{}/{}'.format(category.dbname, name),
-                None
+                '{}/{}'.format(category.dbname, name)
             )
             itemByID[ID] = item
             itemByName[name] = item
             category.items.append(item)
 
-        # Some items have different actual names than display names.
-        # Load the aliases.
-        stmt = """
-            SELECT alt_name, item_id
-              FROM AltItemNames
-        """
-        aliases = 0
-        for (altName, itemID) in self.cur.execute(stmt):
-            assert altName not in itemByName
-            aliases += 1
-            item = itemByID[itemID]
-            item.altname = altName
-            itemByName[altName] = item
-            self.tdenv.DEBUG1(
-                "'{}' alias for #{} '{}'",
-                altName, itemID, item.fullname
-            )
-
         self.itemByID = itemByID
         self.itemByName = itemByName
 
         self.tdenv.DEBUG1(
-            "Loaded {:n} Items, {:n} AltItemNames",
-            len(self.itemByID), aliases
+            "Loaded {:n} Items",
+            len(self.itemByID)
         )
 
     def lookupItem(self, name):
@@ -1831,16 +1863,19 @@ class TradeDB(object):
         Query the database for average selling prices of all items.
         """
         if not self.avgSelling:
-            self.avgSelling = {
+            self.avgSelling = {itemID: 0 for itemID in self.itemByID.keys()}
+            self.avgSelling.update({
                 ID: int(cr)
                 for ID, cr in self.getDB().execute("""
-                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
-                      FROM  Item
-                            LEFT OUTER JOIN StationSelling
-                                USING (item_id)
+                    SELECT  i.item_id, IFNULL(AVG(supply_price), 0)
+                      FROM  Item AS i
+                            LEFT OUTER JOIN StationItem AS si ON (
+                                i.item_id = si.item_id AND si.supply_price > 0
+                            )
+                     WHERE  supply_price > 0
                      GROUP  BY 1
                 """)
-            }
+            })
         return self.avgSelling
 
     def getAverageBuying(self):
@@ -1848,16 +1883,19 @@ class TradeDB(object):
         Query the database for average buying prices of all items.
         """
         if not self.avgBuying:
-            self.avgBuying = {
+            self.avgBuying = {itemID: 0 for itemID in self.itemByID.keys()}
+            self.avgBuying.update({
                 ID: int(cr)
                 for ID, cr in self.getDB().execute("""
-                    SELECT  Item.item_id, IFNULL(AVG(price), 0)
-                      FROM  Item
-                            LEFT OUTER JOIN StationBuying
-                                USING (item_id)
+                    SELECT  i.item_id, IFNULL(AVG(demand_price), 0)
+                      FROM  Item AS i
+                            LEFT OUTER JOIN StationItem AS si ON (
+                                i.item_id = si.item_id AND si.demand_price > 0
+                            )
+                     WHERE  demand_price > 0
                      GROUP  BY 1
                 """)
-            }
+            })
         return self.avgBuying
 
     ############################################################
@@ -1872,16 +1910,17 @@ class TradeDB(object):
                     station_id,
                     name,
                     cost,
-                    max_allocation
+                    max_allocation,
+                    illegal
               FROM  RareItem
         """
         self.cur.execute(stmt)
 
         rareItemByID, rareItemByName = {}, {}
         stationByID = self.stationByID
-        for (ID, stnID, name, cost, maxAlloc) in self.cur:
+        for (ID, stnID, name, cost, maxAlloc, illegal) in self.cur:
             station = stationByID[stnID]
-            rare = RareItem(ID, station, name, cost, maxAlloc)
+            rare = RareItem(ID, station, name, cost, maxAlloc, illegal)
             rareItemByID[ID] = rareItemByName[name] = rare
         self.rareItemByID = rareItemByID
         self.rareItemByName = rareItemByName
@@ -1893,111 +1932,6 @@ class TradeDB(object):
 
     ############################################################
     # Price data.
-
-    def loadStationTrades(self, fromStationIDs):
-        """
-        Loads all profitable trades that could be made from the
-        specified list of stations.
-        Does not take reachability into account.
-        """
-
-        if not fromStationIDs:
-            return
-
-        assert isinstance(fromStationIDs, list)
-        assert isinstance(fromStationIDs[0], int)
-
-        self.tdenv.DEBUG1("Loading trades for {}", fromStationIDs)
-
-        stmt = """
-            SELECT  *
-              FROM  vProfits
-             WHERE  src_station_id IN ({})
-             ORDER  BY src_station_id, dst_station_id, gain DESC
-            """.format(','.join(str(ID) for ID in fromStationIDs))
-        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
-        self.cur.execute(stmt)
-        stations, items = self.stationByID, self.itemByID
-
-        prevSrcStnID, prevDstStnID = None, None
-        srcStn, dstStn = None, None
-        tradingWith = None
-        if self.tradingCount is None:
-            self.tradingCount = 0
-
-        for (
-            itemID,
-            srcStnID, dstStnID,
-            srcPriceCr, profit,
-            stock, stockLevel,
-            demand, demandLevel,
-            srcAge, dstAge
-        ) in self.cur:
-            if srcStnID != prevSrcStnID:
-                srcStn = stations[srcStnID]
-                prevSrcStnID = srcStnID
-                prevDstStnID = None
-                assert srcStn.tradingWith is None
-                srcStn.tradingWith = {}
-            if dstStnID != prevDstStnID:
-                dstStn, prevDstStnID = stations[dstStnID], dstStnID
-                tradingWith = srcStn.tradingWith[dstStn] = []
-                self.tradingCount += 1
-            tradingWith.append(Trade(
-                items[itemID], itemID,
-                srcPriceCr, profit,
-                stock, stockLevel,
-                demand, demandLevel,
-                srcAge, dstAge
-            ))
-
-    def loadDirectTrades(self, fromStation, toStation):
-        """
-        Loads the profitable trades between two stations. Does not take
-        reachability into account.
-        """
-
-        self.tdenv.DEBUG1(
-            "Loading trades for {}->{}",
-            fromStation.name(), toStation.name()
-        )
-
-        stmt = """
-            SELECT  item_id,
-                    cost, gain,
-                    stock_units, stock_level,
-                    demand_units, demand_level,
-                    src_age, dst_age,
-              FROM  vProfits
-             WHERE  src_station_id = ? and dst_station_id = ?
-             ORDER  gain DESC
-        """
-        self.tdenv.DEBUG2("SQL:\n{}\n", stmt)
-        self.cur.execute(stmt, [fromStation.ID, toStation.ID])
-
-        trading = []
-        items = self.itemByID
-        for (
-            itemID,
-            srcPriceCr, profit,
-            stock, stockLevel,
-            demand, demandLevel,
-            srcAge, dstAge
-        ) in self.cur:
-            trading.append(Trade(
-                items[itemID], itemID,
-                srcPriceCr, profit,
-                stock, stockLevel,
-                demand, demandLevel,
-                srcAge, dstAge
-                ))
-
-        if fromStation.tradingWith is None:
-            fromStation.tradingWith = {}
-        if trading:
-            fromStation.tradingWith[toStation] = trading
-        else:
-            del fromStation.tradingWith[toStation]
 
     def close(self):
         self.cur = None
@@ -2136,7 +2070,7 @@ class TradeDB(object):
             text
         )
         text = re.sub(r"'S\b", "'s", text)
-        text = text[0].upper() + text[1:]
+        text = ''.join((text[0].upper(), text[1:]))
 
         return text
 

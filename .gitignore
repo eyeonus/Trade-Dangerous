@@ -1,11 +1,10 @@
 __pycache__
 import.txt
 tmp
-*2.py
-*.laccdb
 *.pyc
 
 data/TradeDangerous.db
+data/TradeDangerous.old
 data/TradeDangerous.db-journal
 data/TradeDangerous.prices
 data/*.stamp
@@ -16,9 +15,9 @@ data/*.txt
 *.suo
 *.pyperf
 misc/*.csv
-market/
 *.orig
 *.prev
+*.last
 
 wip/
 pycallgraph.png
