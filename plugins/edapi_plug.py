@@ -55,7 +55,8 @@ cat_ignore = [
 
 # TD has different names for these.
 cat_correct = {
-    'Narcotics': 'Legal Drugs'
+    'Narcotics': 'Legal Drugs',
+    'Slaves': 'Slavery',
 }
 
 # TD has different names for these.
