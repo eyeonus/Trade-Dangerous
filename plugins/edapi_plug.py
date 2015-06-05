@@ -31,7 +31,10 @@ ship_names = {
     'Anaconda': 'Anaconda',
     'Asp': 'Asp',
     'CobraMkIII': 'Cobra',
+    'DiamondBack': 'Diamondback Scout',
+    'DiamondBackXL': 'Diamondback Explorer',
     'Eagle': 'Eagle',
+    'Empire_Courier': 'Imperial Courier',
     'Empire_Fighter': 'Empire_Fighter',
     'Empire_Trader': 'Clipper',
     'Federation_Dropship': 'Dropship',
@@ -51,6 +54,7 @@ ship_names = {
 # Categories to ignore. Drones end up here. No idea what they are.
 cat_ignore = [
     'NonMarketable',
+    'Salvage',
 ]
 
 # TD has different names for these.
@@ -500,7 +504,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                     commodity['stock'] = str(int(commodity['stock']))+demand
 
                 # If demand is zero, zero out the sell price.
-                if commodity['demand'] == 0:
+                if (commodity['demand'] == 0 or
+                    commodity['demandBracket'] == 0
+                   ):
                     commodity['demand'] = '?'
                     commodity['sellPrice'] = 0
                 else:
