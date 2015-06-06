@@ -43,12 +43,13 @@ unq:name@Category.category_id,unq:name,ui_order
 'Metals','Gold',6
 'Metals','Indium',7
 'Metals','Lithium',8
-'Metals','Palladium',9
-'Metals','Platinum',10
-'Metals','Silver',11
-'Metals','Tantalum',12
-'Metals','Titanium',13
-'Metals','Uranium',14
+'Metals','Osmium',9
+'Metals','Palladium',10
+'Metals','Platinum',11
+'Metals','Silver',12
+'Metals','Tantalum',13
+'Metals','Titanium',14
+'Metals','Uranium',15
 'Minerals','Bauxite',1
 'Minerals','Bertrandite',2
 'Minerals','Coltan',3
@@ -60,6 +61,7 @@ unq:name@Category.category_id,unq:name,ui_order
 'Minerals','Uraninite',9
 'Salvage','AI Relics',1
 'Salvage','Antiquities',2
+'Salvage','SAP 8 Core Container',3
 'Slavery','Imperial Slaves',1
 'Slavery','Slaves',2
 'Technology','Advanced Catalysers',1

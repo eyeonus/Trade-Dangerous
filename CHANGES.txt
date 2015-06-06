@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.1.2 Jun 6 2015:
+. (Dry411s) Diamondback prices
+. (Orphu) Imperial courier price
+. (kfsone) Maddavo Data import/refresh
+
 v7.1.1 May 25 2015
 . (kfsone) Added "--distance" option to "edscupdate" which shows the 10
       closest candidates.
