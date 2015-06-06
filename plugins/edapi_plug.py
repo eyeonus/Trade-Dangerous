@@ -54,7 +54,6 @@ ship_names = {
 # Categories to ignore. Drones end up here. No idea what they are.
 cat_ignore = [
     'NonMarketable',
-    'Salvage',
 ]
 
 # TD has different names for these.
@@ -74,6 +73,7 @@ comm_correct = {
     'Heliostatic Furnaces': 'Microbial Furnaces',
     'Marine Supplies': 'Marine Equipment',
     'Non Lethal Weapons': 'Non-Lethal Weapons',
+    'S A P8 Core Container': 'SAP 8 Core Container',
     'Terrain Enrichment Systems': 'Land Enrichment Systems',
 }
 
