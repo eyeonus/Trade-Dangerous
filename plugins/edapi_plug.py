@@ -642,7 +642,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             print('Posting prices to EDDN...')
             con = EDDN(
                 api.profile['commander']['name'],
-                'EDAPI',
+                'EDAPI Trade Dangerous Plugin',
                 __version__
             )
             con._debug = False
