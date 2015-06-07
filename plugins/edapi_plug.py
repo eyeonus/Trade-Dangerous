@@ -5,17 +5,23 @@
 
 import cache
 import csvexport
+from datetime import datetime, timezone
 import getpass
+import hashlib
+import json
 import os
 import pathlib
 import plugins
 import pickle
+import random
 import requests
 from requests.utils import dict_from_cookiejar
 from requests.utils import cookiejar_from_dict
 import sys
-import time
 import textwrap
+
+__version_info__ = ('3', '2', '0')
+__version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
 # Deal with some differences in names between TD, ED and the API.
@@ -117,13 +123,6 @@ class EDAPI:
 
         # Read/create the cookie jar.
         if os.path.exists(self._cookiefile):
-            # Make an attempt at rate limiting requests to the API
-            # Please don't disable this.
-            delta = time.time()-os.path.getmtime(self._cookiefile)
-            if delta < 10:
-                sys.exit('You must wait at least 10 seconds between queries ' +
-                         'to the API. Try again in about {} seconds'.format
-                         (int(10-delta)))
             try:
                 with open(self._cookiefile, 'rb') as h:
                     self.opener.cookies = cookiejar_from_dict(pickle.load(h))
@@ -250,11 +249,104 @@ class EDAPI:
             response = self._getBasicURI('user/confirm', values=values)
 
 
+class EDDN:
+    _gateways = (
+        'http://eddn-gateway.elite-markets.net:8080/upload/',
+        # 'http://eddn-gateway.ed-td.space:8080/upload/',
+    )
+
+    _schemas = {
+        'production': 'http://schemas.elite-markets.net/eddn/commodity/2',
+        'test': 'http://schemas.elite-markets.net/eddn/commodity/2/test',
+    }
+
+    _debug = True
+
+    # As of 1.3, ED reports four levels.
+    _levels = (
+        'Low',
+        'Low',
+        'Med',
+        'High',
+    )
+
+    def __init__(
+        self,
+        uploaderID,
+        softwareName,
+        softwareVersion
+    ):
+        # Obfuscate uploaderID
+        self.uploaderID = hashlib.sha1(uploaderID.encode('utf-8')).hexdigest()
+        self.softwareName = softwareName
+        self.softwareVersion = softwareVersion
+
+    def publishCommodities(
+        self,
+        systemName,
+        stationName,
+        commodities,
+        timestamp=0
+    ):
+        message = {}
+
+        message['$schemaRef'] = self._schemas[('test' if self._debug else 'production')]  # NOQA
+
+        message['header'] = {
+            'uploaderID': self.uploaderID,
+            'softwareName': self.softwareName,
+            'softwareVersion': self.softwareVersion
+        }
+
+        if timestamp:
+            timestamp = datetime.fromtimestamp(timestamp).isoformat()
+        else:
+            timestamp = datetime.now(timezone.utc).astimezone().isoformat()
+
+        message['message'] = {
+            'systemName': systemName,
+            'stationName': stationName,
+            'timestamp': timestamp,
+            'commodities': commodities,
+        }
+
+        url = random.choice(self._gateways)
+
+        headers = {
+            'content-type': 'application/json; charset=utf8'
+        }
+
+        if self._debug:
+            print(
+                json.dumps(
+                    message,
+                    sort_keys=True,
+                    indent=4
+                )
+            )
+
+        r = requests.post(
+            url,
+            headers=headers,
+            data=json.dumps(
+                message,
+                ensure_ascii=False
+            ).encode('utf8'),
+            verify=True
+        )
+
+        r.raise_for_status()
+
+
 class ImportPlugin(plugins.ImportPluginBase):
     """
     Plugin that downloads market and ship vendor data from the Elite Dangerous
     mobile API.
     """
+
+    pluginOptions = {
+        'eddn': 'Post market prices to EDDN.',
+    }
 
     cookieFile = "edapi.cookies"
 
@@ -486,6 +578,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Create the import file.
         with open(self.filename, 'w', encoding="utf-8") as f:
             f.write("@ {}/{}\n".format(system, station))
+            eddn_market = []
             for commodity in api.profile['lastStarport']['commodities']:
                 if commodity['categoryname'] in cat_ignore:
                     continue
@@ -493,6 +586,20 @@ class ImportPlugin(plugins.ImportPluginBase):
                     commodity['categoryname'] = cat_correct[commodity['categoryname']]
                 if commodity['name'] in comm_correct:
                     commodity['name'] = comm_correct[commodity['name']]
+
+                # Populate EDDN
+                if self.getOption("eddn"):
+                    eddn_market.append(
+                        {
+                            "name": commodity['name'],
+                            "buyPrice": int(commodity['buyPrice']),
+                            "supply": int(commodity['stock']),
+                            "supplyLevel": EDDN._levels[int(commodity['stockBracket'])],
+                            "sellPrice": int(commodity['sellPrice']),
+                            "demand": int(commodity['demand']),
+                            "demandLevel": EDDN._levels[int(commodity['demandBracket'])]
+                        }
+                    )
 
                 f.write("\t+ {}\n".format(commodity['categoryname']))
 
@@ -529,6 +636,21 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv,
             pathlib.Path(self.filename),
         )
+
+        # Import EDDN
+        if self.getOption("eddn"):
+            print('Posting prices to EDDN...')
+            con = EDDN(
+                api.profile['commander']['name'],
+                'EDAPI',
+                __version__
+            )
+            con._debug = False
+            con.publishCommodities(
+                system,
+                station,
+                eddn_market
+            )
 
         # We did all the work
         return False
