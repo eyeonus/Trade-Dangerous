@@ -764,12 +764,13 @@ Frontier provides an API for their mobile app. This can be used to report accura
       station and import any market prices and shipyard information
       available. You will be prompted to enter any missing station information. 
 
-    trade.py import -P edapi -O eddn
+    trade.py imp -P edapi -O eddn
       This will do the same thing, but also post your market into to EDDN.
 
 ###Options (-O):
 
     eddn:  Post market prices to EDDN.
+
 
 ##MARKET sub-command:
 

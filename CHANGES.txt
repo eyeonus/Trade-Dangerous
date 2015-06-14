@@ -2,6 +2,14 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.2.0 Jun 14 2015:
+. (Orphu) Created an import plugin that uses Frontier's Mobile API,
+    - See README.md for more help,
+    - Use "trade.py import -P edapi" to get started,
+    - Able to optionally upload prices it pulls to EDDN:
+        trade.py imp -P edapi -O eddn
+. (maddavo) Fixed/merged lots of new systems,
+
 v7.1.2 Jun 6 2015:
 . (Dry411s) Diamondback prices
 . (Orphu) Imperial courier price
