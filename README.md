@@ -753,6 +753,23 @@ To take maximum advantage of Maddavo's services, you should consider using "-O c
     use2d:        Force download of the 2-days .prices file
     usefull:      Force download of the full .prices file
 
+##Elite Dangerous Mobile API import plugin:
+
+Frontier provides an API for their mobile app. This can be used to report accurate information about your currently docked station such as market prices, shipyard, and other station information. The "edapi" plugin provides a way to accurately import this information into your prices file and optionally report the market prices to EDDN. 
+
+###Basic usage:
+
+    trade.py import --plug edapi
+      This will query the API for information abotu your currently docked
+      station and import any market prices and shipyard information
+      available. You will be prompted to enter any missing station information. 
+
+    trade.py import -P edapi -O eddn
+      This will do the same thing, but also post your market into to EDDN.
+
+###Options (-O):
+
+    eddn:  Post market prices to EDDN.
 
 ##MARKET sub-command:
 
