@@ -11,6 +11,8 @@ data/*.stamp
 data/*.ini
 data/extra-stars.txt
 data/*.txt
+data/edapi.cookies
+
 *.prices
 *.suo
 *.pyperf
