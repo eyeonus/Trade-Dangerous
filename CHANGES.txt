@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.2.1 Jun 16 2015:
+. (maddavo) Lot of cleanup
+
 v7.2.0 Jun 14 2015:
 . (Orphu) Created an import plugin that uses Frontier's Mobile API,
     - See README.md for more help,
