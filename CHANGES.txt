@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jun 20 2015:
+. (kfsone) Lots of new systems (until EDSC broke),
+. (kfsone) Minor optimizations,
+. (kfsone) Tweaks to edscupdate,
+
 v7.2.1 Jun 16 2015:
 . (maddavo) Lot of cleanup
 
