@@ -515,7 +515,7 @@ class TradeCalc(object):
         dmdCount, supCount = 0, 0
         stmt = """
                 SELECT  station_id, item_id,
-                        strftime('%s', modified), modified,
+                        strftime('%s', modified),
                         demand_price, demand_units, demand_level,
                         supply_price, supply_units, supply_level
                   FROM  StationItem
@@ -526,7 +526,7 @@ class TradeCalc(object):
         cur = db.execute(stmt, binds)
         now = int(time.time())
         for (stnID, itmID,
-                timestamp, modified,
+                timestamp, 
                 dmdCr, dmdUnits, dmdLevel,
                 supCr, supUnits, supLevel) in cur:
             if stnID != lastStnID:
@@ -538,7 +538,7 @@ class TradeCalc(object):
             except TypeError:
                 raise BadTimestampError(
                     self.tdb,
-                    stnID, itmID, modified
+                    stnID, itmID, timestamp
                 )
             if dmdCr > 0 and dmdUnits:
                 if not minDemand or dmdUnits >= minDemand:
