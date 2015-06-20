@@ -163,18 +163,26 @@ def parse_arguments():
             default=2,
     )
     grp = parser.add_mutually_exclusive_group()
-    if grp:
+    if grp: # for indentation
         grp.add_argument(
                 '--random',
                 action='store_true',
                 required=False,
-                help='Show systems in random order, maximum of 10.',
+                help='Show systems in random order, maximum of --max-systems.',
         )
         grp.add_argument(
                 '--distance',
                 action='store_true',
                 required=False,
                 help='Select upto 10 systems by proximity.',
+        )
+    parser.add_argument(
+            '--max-systems',
+            dest='maxSystems',
+            help='Maximum systems to query with --random/--distance.',
+            required=False,
+            type=int,
+            default=10
         )
     parser.add_argument(
             '--add-to-local-db', '-A',
@@ -414,7 +422,7 @@ def main():
     ]
 
     if argv.random:
-        num = min(len(systems), 10)
+        num = min(len(systems), argv.maxSystems)
         systems = random.sample(systems, num)
 
     if argv.refSys:
@@ -435,7 +443,7 @@ def main():
             systems.sort(key=lambda sysinfo: sysinfo['refdist'])
         else:
             systems.sort(key=lambda sysinfo: sysinfo['distance'])
-        systems = systems[:10]
+        systems = systems[:argv.maxSystems]
 
     if argv.splash:
         print(
