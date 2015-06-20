@@ -123,6 +123,7 @@ ignore = [
     "UCAC3 70-2386",
     "HYADES KX-T C3-24",
     "ICZ ZF-O B2-6",
+    "ZELAND",
 ]
 
 
