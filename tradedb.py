@@ -170,7 +170,7 @@ class System(object):
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
-        if haveNumpy:
+        if ary:
             self.pos = ary([posX, posY, posZ], nptype)
         self.addedID = addedID or 0
         self.stations = ()
