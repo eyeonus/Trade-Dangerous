@@ -1106,7 +1106,8 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 
 ###Example:
 
-    trade.py buy --near achenar metals
+    trade.py buy --near achenar food      (finds all items in food category)
+    trade.py buy --near achenar foodcart  (finds food cartridges)
     trade.py buy asp
     trade.py buy --near achenar food,clothing,scrap --one-stop
     trade.py buy --near achenar type6,type7 -1

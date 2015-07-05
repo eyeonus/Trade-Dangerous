@@ -11,6 +11,9 @@ v7.3.0 Jul 05 2015:
  - Looks in the current directory and then your user directory,
  - You can also use your own fromfile as an argument prefixed with a '+':
      trade.py nav +myfrom.txt
+. (Fred Deschenes) "buy" now supports categories e.g.
+     trade.py buy --near sol metals,food
+ - to find food cartridges, use foodc or "food cartridges",
 
 Jun 20 2015:
 . (kfsone) Lots of new systems (until EDSC broke),
