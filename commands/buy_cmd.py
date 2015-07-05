@@ -102,6 +102,15 @@ def get_lookup_list(cmdenv, tdb):
     for name in names:
         if mode is not SHIP_MODE:
             try:
+                try:
+                    category = tdb.lookupCategory(name)
+                    for item in category.items:
+                        names.append(item.name())
+                    mode = ITEM_MODE
+                    continue
+                except LookupError:
+                    pass
+
                 item = tdb.lookupItem(name)
                 cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
                 queries[item.ID] = item

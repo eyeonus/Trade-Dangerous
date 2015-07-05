@@ -1035,7 +1035,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
         [--one-stop | -1]
-        item [item item,item …]
+        category|item [category|item category|item,category|item,category|item …]
         ship [ship ship,ship …]
 
 ###Options:
@@ -1101,7 +1101,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
 
 ###Example:
 
-    trade.py buy --near achenar food
+    trade.py buy --near achenar metals
     trade.py buy asp
     trade.py buy --near achenar food,clothing,scrap --one-stop
     trade.py buy --near achenar type6,type7 -1
