@@ -168,6 +168,11 @@ Other options are "parameters" which take a value, for example `--from Sol` woul
 
 In the list below, you'll see `--detail` and `-v` listed together. This indicates that `-v` is the short-form for `--detail`.
 
+##Filing under D for Default
+You can store preferred/default arguments/options in text files called "fromfiles". Each command automatically looks for a file called ".tdrc_<command>", so for the shipvendor
+command it looks for ".tdrc_shipvendor". Note the leading '.'. You can also specify your own "fromfiles". See "Fromfiles" below for more details.
+
+
 ##Basic Usage:
 
     trade.py command arguments
@@ -1307,6 +1312,53 @@ This command looks for known rare items within the space around a specified syst
     HR 7221/Veron City           HR 7221 Wheat                415 173.57      0          ? Lrg
     ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
+
+#Fromfiles: Options in a can
+A "fromfile" is a plain text file with TD command line options. For instance,
+you could create a file for each ship specifying the --ly, --cap, --empty, etc.
+
+You specify a fromfile on the command line by prefixing the filename with a '+'
+
+So if you want to read "sidewinder.tdf" you would type
+
+    trade.py nav +sidewinder.tdf
+
+Of course, that's a lot to type, and we're trying to be lazy, so just go ahead
+and call the file "sw" :)
+
+    trade.py nav +sw
+
+##Contents of a fromfile
+A fromfile is simple: each line must correspond to one position on the
+command line. So, "--empty-ly 30" becomes *two lines* while "--ly=20" is one.
+
+    --empty-ly
+    30
+    --ly=20
+
+##Default defaults: .tdrc files
+Each TD command automatically looks for a file called ".tdrc_<command>", e.g.
+".tdrc_shipvendor". Note the leading dot. If this file exists, the options are
+read at the start of the command line.
+
+So if you have the following .tdrc_nav
+
+    --empty-ly
+    30
+    --ly=20
+    -v
+
+and you type:
+
+    trade.py nav sol waruts -vv -ly=21
+
+TD will behave as though you gave the command line:
+
+    trade.py nav --empty-ly 30 --ly=20 -v sol waruts -vv --ly=21
+
+Which is equivalent to:
+
+    trade.py nav --empty-ly 30 sol waruts -vvv --ly=21
 
 #Adding or Changing Price Data
 ##Experimental GUI in 6.0
