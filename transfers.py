@@ -181,10 +181,11 @@ def download(
         tdenv.DEBUG0("End of data")
     if not tdenv.quiet:
         progBar.clear()
+        elapsed = (time.time() - started) or 1
         tdenv.NOTE(
             "Downloaded {} of {}ed data {}/s",
             makeUnit(fetched), encoding,
-            makeUnit(fetched / (time.time() - started))
+            makeUnit(fetched / elapsed)
         )
 
     # Swap the file into place
