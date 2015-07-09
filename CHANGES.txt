@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jul 07 2015:
+. (kfsone) Fixed division by zero in transfers.py with empty file
+
 v7.3.0 Jul 05 2015:
 . (ahamid/kfsone) "fromfile" support for command options:
  - All commands will now look for a "fromfile" specifying default arguments
