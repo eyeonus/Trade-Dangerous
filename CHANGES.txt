@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.3.1 Jul 21 2015:
+. (kfsone) Fix for edapi.
+
 Jul 07 2015:
 . (kfsone) Fixed division by zero in transfers.py with empty file
 
