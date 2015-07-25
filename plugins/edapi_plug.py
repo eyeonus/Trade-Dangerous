@@ -604,7 +604,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f.write("\t+ {}\n".format(commodity['categoryname']))
 
                 # If stock is zero, list it as unavailable.
-                if commodity['stock'] == 0:
+                if commodity['stock'] or 0 == 0:
                     commodity['stock'] = '-'
                 else:
                     demand = bracket_levels[int(commodity['stockBracket'])]
@@ -612,7 +612,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
                 # If demand is zero, zero out the sell price.
                 if (commodity['demand'] == 0 or
-                    commodity['demandBracket'] == 0
+                    commodity['demandBracket'] or 0 == 0
                    ):
                     commodity['demand'] = '?'
                     commodity['sellPrice'] = 0
