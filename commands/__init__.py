@@ -70,6 +70,17 @@ def addArguments(group, options, required, topGroup=None):
                     group.add_argument(*(option.args), nargs='?', **(option.kwargs))
 
 
+def _findFromFile(cmd, prefix='.tdrc'):
+    if cmd:
+        # check the current directory, fall back to home
+        filename = '{}_{}'.format(prefix, cmd)
+        for dirname in '.', os.path.expanduser('~'):
+            cmdPath = pathlib.Path(dirname) / filename
+            if cmdPath.exists():
+                return cmdPath.resolve()
+    return None
+
+
 class CommandIndex(object):
     def usage(self, argv):
         """
@@ -121,7 +132,7 @@ class CommandIndex(object):
         return text
 
 
-    def parse(self, argv):
+    def parse(self, argv, fromfile_prefix='+'):
         if len(argv) <= 1 or argv[1] == '--help' or argv[1] == '-h':
             raise exceptions.UsageError(
                     "TradeDangerous provides a set of trade database "
@@ -168,7 +179,8 @@ class CommandIndex(object):
                     add_help=False,
                     epilog='Use {prog} {cmd} -h for more help'.format(
                             prog=argv[0], cmd=argv[1]
-                        )
+                        ),
+                    fromfile_prefix_chars=fromfile_prefix,
                 )
         parser.set_defaults(_editing=False)
         parsing.registerParserHelpers(parser)
@@ -223,7 +235,12 @@ class CommandIndex(object):
                     default=None, dest='maxSystemLinkLy',
                 )
 
+        fromfilePath = _findFromFile(cmdModule.name)
+        if fromfilePath:
+            argv.insert(2, '{}{}'.format(fromfile_prefix, fromfilePath))
         properties = parser.parse_args(argv[1:])
 
-        return CommandEnv(properties, argv, cmdModule)
+        parsed = CommandEnv(properties, argv, cmdModule)
+        parsed.DEBUG0("Command line was: {}", argv)
 
+        return parsed

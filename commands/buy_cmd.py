@@ -98,9 +98,28 @@ def get_lookup_list(cmdenv, tdb):
     names = [
         name for names in cmdenv.name for name in names.split(',')
     ]
-    queries, mode = {}, None
+    # We only support searching for one type of purchase a time: ship or item.
+    # Our first match is open ended, but once we have matched one type of
+    # thing, the remaining arguments are all sourced from the same pool.
+    # Thus: [food, cobra, metals] is illegal but [metals, hydrogen] is legal.
+    mode = None
+
+    queries = {}
     for name in names:
         if mode is not SHIP_MODE:
+            # Either no mode selected yet or we are in ITEM_MODE.
+            # Consider categories first.
+            try:
+                category = tdb.lookupCategory(name)
+                for item in category.items:
+                    names.append(item.name())
+                    queries[item.ID] = item
+                mode = ITEM_MODE
+                continue
+            except LookupError:
+                pass
+
+            # Item names secondary.
             try:
                 item = tdb.lookupItem(name)
                 cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
@@ -114,6 +133,7 @@ def get_lookup_list(cmdenv, tdb):
                     )
                 pass
 
+        # Either no mode selected yet or we are in SHIP_MODE.
         try:
             ship = tdb.lookupShip(name)
             cmdenv.DEBUG0("Looking up ship {} (#{})", ship.name(), ship.ID)

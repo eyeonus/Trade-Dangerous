@@ -2,6 +2,36 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.3.2 Jul 30 2015
+. (kfsone) Alternate fix for edapi.
+
+v7.3.1 Jul 21 2015:
+. (kfsone) Fix for edapi.
+
+Jul 07 2015:
+. (kfsone) Fixed division by zero in transfers.py with empty file
+
+v7.3.0 Jul 05 2015:
+. (ahamid/kfsone) "fromfile" support for command options:
+ - All commands will now look for a "fromfile" specifying default arguments
+   for that command .tdrc_{cmd} e.g .tdrc_nav or .tdrc_shipvendor,
+ - One argument-position per line, "--ly 20" is two lines but "--ly=20" is one,
+ - The fromfile argument is replaced with the arguments in the file,
+ - Looks in the current directory and then your user directory,
+ - You can also use your own fromfile as an argument prefixed with a '+':
+     trade.py nav +myfrom.txt
+. (Fred Deschenes) "buy" now supports categories e.g.
+     trade.py buy --near sol metals,food
+ - to find food cartridges, use foodc or "food cartridges",
+
+Jun 20 2015:
+. (kfsone) Lots of new systems (until EDSC broke),
+. (kfsone) Minor optimizations,
+. (kfsone) Tweaks to edscupdate,
+
+v7.2.1 Jun 16 2015:
+. (maddavo) Lot of cleanup
+
 v7.2.0 Jun 14 2015:
 . (Orphu) Created an import plugin that uses Frontier's Mobile API,
     - See README.md for more help,

@@ -603,22 +603,31 @@ class ImportPlugin(plugins.ImportPluginBase):
 
                 f.write("\t+ {}\n".format(commodity['categoryname']))
 
+                def commodity_int(key):
+                    try:
+                        commodity[key] = int(commodity[key])
+                    except (ValueError, KeyError):
+                        commodity[key] = 0
+
+                commodity_int('stock')
+                commodity_int('demand')
+                commodity_int('demandBracket')
+                commodity_int('stockBracket')
+
                 # If stock is zero, list it as unavailable.
-                if commodity['stock'] == 0:
+                if not commodity['stock']:
                     commodity['stock'] = '-'
                 else:
-                    demand = bracket_levels[int(commodity['stockBracket'])]
-                    commodity['stock'] = str(int(commodity['stock']))+demand
+                    demand = bracket_levels[commodity['stockBracket']]
+                    commodity['stock'] = str(commodity['stock'])+demand
 
                 # If demand is zero, zero out the sell price.
-                if (commodity['demand'] == 0 or
-                    commodity['demandBracket'] == 0
-                   ):
+                if not (commodity['demand'] and commodity['demandBracket']):
                     commodity['demand'] = '?'
                     commodity['sellPrice'] = 0
                 else:
-                    demand = bracket_levels[int(commodity['demandBracket'])]
-                    commodity['demand'] = str(int(commodity['demand']))+demand
+                    demand = bracket_levels[commodity['demandBracket']]
+                    commodity['demand'] = str(commodity['demand'])+demand
 
                 f.write(
                     "\t\t{} {} {} {} {}\n".format(
