@@ -20,7 +20,7 @@ from requests.utils import cookiejar_from_dict
 import sys
 import textwrap
 
-__version_info__ = ('3', '2', '0')
+__version_info__ = ('3', '3', '0')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -53,6 +53,33 @@ ship_names = {
     'Type6': 'Type 6',
     'Type7': 'Type 7',
     'Type9': 'Type 9',
+    'Viper': 'Viper',
+    'Vulture': 'Vulture',
+}
+
+# EDDN names ships as they appear in game.
+
+eddn_ship_names = {
+    'Adder': 'Adder',
+    'Anaconda': 'Anaconda',
+    'Asp': 'Asp',
+    'CobraMkIII': 'Cobra Mk III',
+    'DiamondBack': 'DiamondBack Scout',
+    'DiamondBackXL': 'DiamondBack Explorer',
+    'Eagle': 'Eagle',
+    'Empire_Courier': 'Imperial Courier',
+    'Empire_Fighter': 'Empire_Fighter',
+    'Empire_Trader': 'Imperial Clipper',
+    'Federation_Dropship': 'Federal Dropship',
+    'Federation_Fighter': 'Federation_Fighter',
+    'FerDeLance': 'Fer-de-Lance',
+    'Hauler': 'Hauler',
+    'Orca': 'Orca',
+    'Python': 'Python',
+    'SideWinder': 'Sidewinder',
+    'Type6': 'Type-6 Transporter',
+    'Type7': 'Type-7 Transporter',
+    'Type9': 'Type-9 Heavy',
     'Viper': 'Viper',
     'Vulture': 'Vulture',
 }
@@ -338,6 +365,133 @@ class EDDN:
         r.raise_for_status()
 
 
+class EDDN:
+    _gateways = (
+        'http://eddn-gateway.elite-markets.net:8080/upload/',
+        # 'http://eddn-gateway.ed-td.space:8080/upload/',
+    )
+
+    _market_schemas = {
+        'production': 'http://schemas.elite-markets.net/eddn/commodity/2',
+        'test': 'http://schemas.elite-markets.net/eddn/commodity/2/test',
+    }
+
+    _shipyard_schemas = {
+        'production': 'http://schemas.elite-markets.net/eddn/shipyard/1',
+        'test': 'http://schemas.elite-markets.net/eddn/shipyard/1/test',
+    }
+
+    _debug = True
+
+    # As of 1.3, ED reports four levels.
+    _levels = (
+        'Low',
+        'Low',
+        'Med',
+        'High',
+    )
+
+    def __init__(
+        self,
+        uploaderID,
+        softwareName,
+        softwareVersion
+    ):
+        # Obfuscate uploaderID
+        self.uploaderID = hashlib.sha1(uploaderID.encode('utf-8')).hexdigest()
+        self.softwareName = softwareName
+        self.softwareVersion = softwareVersion
+
+    def postMessage(
+        self,
+        message,
+        timestamp=0
+    ):
+        if timestamp:
+            timestamp = datetime.fromtimestamp(timestamp).isoformat()
+        else:
+            timestamp = datetime.now(timezone.utc).astimezone().isoformat()
+
+        message['message']['timestamp'] = timestamp
+
+        url = random.choice(self._gateways)
+
+        headers = {
+            'content-type': 'application/json; charset=utf8'
+        }
+
+        if self._debug:
+            print(
+                json.dumps(
+                    message,
+                    sort_keys=True,
+                    indent=4
+                )
+            )
+
+        r = requests.post(
+            url,
+            headers=headers,
+            data=json.dumps(
+                message,
+                ensure_ascii=False
+            ).encode('utf8'),
+            verify=True
+        )
+
+        r.raise_for_status()
+
+    def publishCommodities(
+        self,
+        systemName,
+        stationName,
+        commodities,
+        timestamp=0
+    ):
+        message = {}
+
+        message['$schemaRef'] = self._market_schemas[('test' if self._debug else 'production')]  # NOQA
+
+        message['header'] = {
+            'uploaderID': self.uploaderID,
+            'softwareName': self.softwareName,
+            'softwareVersion': self.softwareVersion
+        }
+
+        message['message'] = {
+            'systemName': systemName,
+            'stationName': stationName,
+            'commodities': commodities,
+        }
+
+        self.postMessage(message, timestamp)
+
+    def publishShipyard(
+        self,
+        systemName,
+        stationName,
+        ships,
+        timestamp=0
+    ):
+        message = {}
+
+        message['$schemaRef'] = self._shipyard_schemas[('test' if self._debug else 'production')]  # NOQA
+
+        message['header'] = {
+            'uploaderID': self.uploaderID,
+            'softwareName': self.softwareName,
+            'softwareVersion': self.softwareVersion
+        }
+
+        message['message'] = {
+            'systemName': systemName,
+            'stationName': stationName,
+            'ships': ships,
+        }
+
+        self.postMessage(message, timestamp)
+
+
 class ImportPlugin(plugins.ImportPluginBase):
     """
     Plugin that downloads market and ship vendor data from the Elite Dangerous
@@ -538,6 +692,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     tdenv.NOTE("{} updated.", csvPath)
 
         # If a shipyard exists, update the ship vendor list.
+        eddn_ships = [] 
         if 'ships' in api.profile['lastStarport']:
             ships = list(
                 api.profile['lastStarport']['ships']['shipyard_list'].keys()
@@ -547,6 +702,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             db = tdb.getDB()
             for ship in ships:
                 ship_lookup = tdb.lookupShip(ship_names[ship])
+                eddn_ships.append(eddn_ship_names[ship])
                 db.execute(
                     """
                     REPLACE INTO ShipVendor
@@ -659,6 +815,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 system,
                 station,
                 eddn_market
+            )
+        if (eddn_ships):
+            print('Posting shipyard to EDDN...')
+            con.publishShipyard(
+                system,
+                station,
+                eddn_ships
             )
 
         # We did all the work
