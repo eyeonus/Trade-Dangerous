@@ -20,7 +20,7 @@ from requests.utils import cookiejar_from_dict
 import sys
 import textwrap
 
-__version_info__ = ('3', '3', '0')
+__version_info__ = ('3', '3', '1')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -274,95 +274,6 @@ class EDAPI:
             values = {}
             values['code'] = input("Code:")
             response = self._getBasicURI('user/confirm', values=values)
-
-
-class EDDN:
-    _gateways = (
-        'http://eddn-gateway.elite-markets.net:8080/upload/',
-        # 'http://eddn-gateway.ed-td.space:8080/upload/',
-    )
-
-    _schemas = {
-        'production': 'http://schemas.elite-markets.net/eddn/commodity/2',
-        'test': 'http://schemas.elite-markets.net/eddn/commodity/2/test',
-    }
-
-    _debug = True
-
-    # As of 1.3, ED reports four levels.
-    _levels = (
-        'Low',
-        'Low',
-        'Med',
-        'High',
-    )
-
-    def __init__(
-        self,
-        uploaderID,
-        softwareName,
-        softwareVersion
-    ):
-        # Obfuscate uploaderID
-        self.uploaderID = hashlib.sha1(uploaderID.encode('utf-8')).hexdigest()
-        self.softwareName = softwareName
-        self.softwareVersion = softwareVersion
-
-    def publishCommodities(
-        self,
-        systemName,
-        stationName,
-        commodities,
-        timestamp=0
-    ):
-        message = {}
-
-        message['$schemaRef'] = self._schemas[('test' if self._debug else 'production')]  # NOQA
-
-        message['header'] = {
-            'uploaderID': self.uploaderID,
-            'softwareName': self.softwareName,
-            'softwareVersion': self.softwareVersion
-        }
-
-        if timestamp:
-            timestamp = datetime.fromtimestamp(timestamp).isoformat()
-        else:
-            timestamp = datetime.now(timezone.utc).astimezone().isoformat()
-
-        message['message'] = {
-            'systemName': systemName,
-            'stationName': stationName,
-            'timestamp': timestamp,
-            'commodities': commodities,
-        }
-
-        url = random.choice(self._gateways)
-
-        headers = {
-            'content-type': 'application/json; charset=utf8'
-        }
-
-        if self._debug:
-            print(
-                json.dumps(
-                    message,
-                    sort_keys=True,
-                    indent=4
-                )
-            )
-
-        r = requests.post(
-            url,
-            headers=headers,
-            data=json.dumps(
-                message,
-                ensure_ascii=False
-            ).encode('utf8'),
-            verify=True
-        )
-
-        r.raise_for_status()
 
 
 class EDDN:
@@ -692,12 +603,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                     tdenv.NOTE("{} updated.", csvPath)
 
         # If a shipyard exists, update the ship vendor list.
-        eddn_ships = [] 
+        eddn_ships = []
         if 'ships' in api.profile['lastStarport']:
             ships = list(
                 api.profile['lastStarport']['ships']['shipyard_list'].keys()
             )
-            for ship in api.profile['lastStarport']['ships']['unavailable_list']:
+            for ship in api.profile['lastStarport']['ships']['unavailable_list']:  # NOQA
                 ships.append(ship['name'])
             db = tdb.getDB()
             for ship in ships:
@@ -739,7 +650,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if commodity['categoryname'] in cat_ignore:
                     continue
                 if commodity['categoryname'] in cat_correct:
-                    commodity['categoryname'] = cat_correct[commodity['categoryname']]
+                    commodity['categoryname'] = cat_correct[commodity['categoryname']]  # NOQA
                 if commodity['name'] in comm_correct:
                     commodity['name'] = comm_correct[commodity['name']]
 
@@ -750,10 +661,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                             "name": commodity['name'],
                             "buyPrice": int(commodity['buyPrice']),
                             "supply": int(commodity['stock']),
-                            "supplyLevel": EDDN._levels[int(commodity['stockBracket'])],
+                            "supplyLevel":
+                            EDDN._levels[int(commodity['stockBracket'])],  # NOQA
                             "sellPrice": int(commodity['sellPrice']),
                             "demand": int(commodity['demand']),
-                            "demandLevel": EDDN._levels[int(commodity['demandBracket'])]
+                            "demandLevel":
+                            EDDN._levels[int(commodity['demandBracket'])]  # NOQA
                         }
                     )
 
