@@ -775,6 +775,7 @@ Frontier provides an API for their mobile app. This can be used to report accura
 ###Options (-O):
 
     eddn:  Post market prices to EDDN.
+    csvs:  Merge shipyards into ShipVendor.csv.
 
 
 ##MARKET sub-command:
