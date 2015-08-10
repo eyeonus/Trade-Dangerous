@@ -20,7 +20,7 @@ from requests.utils import cookiejar_from_dict
 import sys
 import textwrap
 
-__version_info__ = ('3', '3', '1')
+__version_info__ = ('3', '3', '2')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -410,6 +410,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     """
 
     pluginOptions = {
+        'csvs': 'Merge shipyard into into ShipVendor.csv.',
         'eddn': 'Post market prices to EDDN.',
     }
 
@@ -610,26 +611,30 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
             for ship in api.profile['lastStarport']['ships']['unavailable_list']:  # NOQA
                 ships.append(ship['name'])
-            db = tdb.getDB()
+
             for ship in ships:
-                ship_lookup = tdb.lookupShip(ship_names[ship])
-                eddn_ships.append(eddn_ship_names[ship])
-                db.execute(
-                    """
-                    REPLACE INTO ShipVendor
-                    (ship_id, station_id)
-                    VALUES
-                    (?, ?)
-                    """,
-                    [ship_lookup.ID, station_lookup.ID]
+                    eddn_ships.append(eddn_ship_names[ship])
+
+            if self.getOption("csvs"):
+                db = tdb.getDB()
+                for ship in ships:
+                    ship_lookup = tdb.lookupShip(ship_names[ship])
+                    db.execute(
+                        """
+                        REPLACE INTO ShipVendor
+                        (ship_id, station_id)
+                        VALUES
+                        (?, ?)
+                        """,
+                        [ship_lookup.ID, station_lookup.ID]
+                    )
+                    db.commit()
+                tdenv.NOTE("Updated {} ships in {} shipyard.", len(ships), place)
+                lines, csvPath = csvexport.exportTableToFile(
+                    tdb,
+                    tdenv,
+                    "ShipVendor",
                 )
-                db.commit()
-            tdenv.NOTE("Updated {} ships in {} shipyard.", len(ships), place)
-            lines, csvPath = csvexport.exportTableToFile(
-                tdb,
-                tdenv,
-                "ShipVendor",
-            )
 
         # Some sanity checking on the market.
         if 'commodities' not in api.profile['lastStarport']:
