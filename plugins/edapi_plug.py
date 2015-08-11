@@ -19,8 +19,9 @@ from requests.utils import dict_from_cookiejar
 from requests.utils import cookiejar_from_dict
 import sys
 import textwrap
+import time
 
-__version_info__ = ('3', '3', '3')
+__version_info__ = ('3', '3', '4')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -275,6 +276,9 @@ class EDAPI:
             values['code'] = input("Code:")
             response = self._getBasicURI('user/confirm', values=values)
 
+        # Sometimes the API is slow to set a session. Wait a bit before
+        # continuing.
+        time.sleep(2)
 
 class EDDN:
     _gateways = (
