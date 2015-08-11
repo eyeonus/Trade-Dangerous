@@ -20,7 +20,7 @@ from requests.utils import cookiejar_from_dict
 import sys
 import textwrap
 
-__version_info__ = ('3', '3', '2')
+__version_info__ = ('3', '3', '3')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -695,10 +695,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                     demand = bracket_levels[commodity['stockBracket']]
                     commodity['stock'] = str(commodity['stock'])+demand
 
-                # If demand is zero, zero out the sell price.
+                # If demand is zero, list as unknown.
                 if not (commodity['demand'] and commodity['demandBracket']):
                     commodity['demand'] = '?'
-                    commodity['sellPrice'] = 0
                 else:
                     demand = bracket_levels[commodity['demandBracket']]
                     commodity['demand'] = str(commodity['demand'])+demand
