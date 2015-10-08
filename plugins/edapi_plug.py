@@ -21,7 +21,7 @@ import sys
 import textwrap
 import time
 
-__version_info__ = ('3', '3', '4')
+__version_info__ = ('3', '4', '0')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -42,10 +42,13 @@ ship_names = {
     'DiamondBackXL': 'Diamondback Explorer',
     'Eagle': 'Eagle',
     'Empire_Courier': 'Imperial Courier',
+    'Empire_Eagle': 'Imperial Eagle',
     'Empire_Fighter': 'Empire_Fighter',
     'Empire_Trader': 'Clipper',
     'Federation_Dropship': 'Dropship',
+    'Federation_Dropship_MkII': 'Federal Assault Ship',
     'Federation_Fighter': 'Federation_Fighter',
+    'Federation_Gunship': 'Federal Gunship',
     'FerDeLance': 'Fer-de-Lance',
     'Hauler': 'Hauler',
     'Orca': 'Orca',
@@ -69,10 +72,13 @@ eddn_ship_names = {
     'DiamondBackXL': 'DiamondBack Explorer',
     'Eagle': 'Eagle',
     'Empire_Courier': 'Imperial Courier',
+    'Empire_Eagle': 'Imperial Eagle',
     'Empire_Fighter': 'Empire_Fighter',
     'Empire_Trader': 'Imperial Clipper',
     'Federation_Dropship': 'Federal Dropship',
+    'Federation_Dropship_MkII': 'Federal Assault Ship',
     'Federation_Fighter': 'Federation_Fighter',
+    'Federation_Gunship': 'Federal Gunship',
     'FerDeLance': 'Fer-de-Lance',
     'Hauler': 'Hauler',
     'Orca': 'Orca',
