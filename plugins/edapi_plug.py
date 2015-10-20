@@ -21,7 +21,7 @@ import sys
 import textwrap
 import time
 
-__version_info__ = ('3', '5', '3')
+__version_info__ = ('3', '5', '4')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -3261,6 +3261,7 @@ modules = {
              'ship': 'Federal Gunship'}
 }
 
+
 class EDAPI:
     '''
     A class that handles the Frontier ED API.
@@ -3429,6 +3430,7 @@ class EDAPI:
         # continuing.
         time.sleep(2)
 
+
 class EDDN:
     _gateways = (
         'http://eddn-gateway.elite-markets.net:8080/upload/',
@@ -3584,6 +3586,7 @@ class EDDN:
         }
 
         self.postMessage(message, timestamp)
+
 
 class ImportPlugin(plugins.ImportPluginBase):
     """
@@ -3845,24 +3848,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if commodity['name'] in comm_correct:
                     commodity['name'] = comm_correct[commodity['name']]
 
-                # Populate EDDN
-                if self.getOption("eddn"):
-                    eddn_market.append(
-                        {
-                            "name": commodity['name'],
-                            "buyPrice": int(commodity['buyPrice']),
-                            "supply": int(commodity['stock']),
-                            "supplyLevel":
-                            EDDN._levels[int(commodity['stockBracket'])],  # NOQA
-                            "sellPrice": int(commodity['sellPrice']),
-                            "demand": int(commodity['demand']),
-                            "demandLevel":
-                            EDDN._levels[int(commodity['demandBracket'])]  # NOQA
-                        }
-                    )
-
-                f.write("\t+ {}\n".format(commodity['categoryname']))
-
                 def commodity_int(key):
                     try:
                         commodity[key] = int(commodity[key])
@@ -3873,6 +3858,28 @@ class ImportPlugin(plugins.ImportPluginBase):
                 commodity_int('demand')
                 commodity_int('demandBracket')
                 commodity_int('stockBracket')
+                commodity_int('buyPrice')
+                commodity_int('sellPrice')
+
+                # Populate EDDN
+                if self.getOption("eddn"):
+                    eddn_market.append(
+                        {
+                            "name": commodity['name'],
+                            "buyPrice": commodity['buyPrice'],
+                            "supply": commodity['stock'],
+                            "supplyLevel": EDDN._levels[commodity['stockBracket']],  # NOQA
+                            "sellPrice": commodity['sellPrice'],
+                            "demand": commodity['demand'],
+                            "demandLevel": EDDN._levels[commodity['demandBracket']]  # NOQA
+                        }
+                    )
+
+                f.write(
+                    "\t+ {}\n".format(
+                        commodity['categoryname']
+                    )
+                )
 
                 # If stock is zero, list it as unavailable.
                 if not commodity['stock']:
