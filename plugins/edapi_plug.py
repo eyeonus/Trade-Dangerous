@@ -21,7 +21,7 @@ import sys
 import textwrap
 import time
 
-__version_info__ = ('3', '5', '5')
+__version_info__ = ('3', '5', '6')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -3927,26 +3927,26 @@ class ImportPlugin(plugins.ImportPluginBase):
                 station,
                 eddn_market
             )
-        if (eddn_ships):
-            print('Posting shipyard to EDDN...')
-            con.publishShipyard(
-                system,
-                station,
-                eddn_ships
-            )
+            if (eddn_ships):
+                print('Posting shipyard to EDDN...')
+                con.publishShipyard(
+                    system,
+                    station,
+                    eddn_ships
+                )
 
-        eddn_modules = []
-        for key in api.profile['lastStarport'].get('modules', ()):
-            key = int(key)
-            if key in modules:
-                eddn_modules.append(modules[key])
-        if len(eddn_modules):
-            print('Posting outfitting to EDDN...')
-            con.publishOutfitting(
-                system,
-                station,
-                eddn_modules
-            )
+            eddn_modules = []
+            for key in api.profile['lastStarport'].get('modules', ()):
+                key = int(key)
+                if key in modules:
+                    eddn_modules.append(modules[key])
+            if len(eddn_modules):
+                print('Posting outfitting to EDDN...')
+                con.publishOutfitting(
+                    system,
+                    station,
+                    eddn_modules
+                )
 
         # We did all the work
         return False
