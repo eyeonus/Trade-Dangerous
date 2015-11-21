@@ -41,15 +41,16 @@ unq:name@Category.category_id,unq:name,ui_order
 'Metals','Copper',4
 'Metals','Gallium',5
 'Metals','Gold',6
-'Metals','Indium',7
-'Metals','Lithium',8
-'Metals','Osmium',9
-'Metals','Palladium',10
-'Metals','Platinum',11
-'Metals','Silver',12
-'Metals','Tantalum',13
-'Metals','Titanium',14
-'Metals','Uranium',15
+'Metals','Hafnium 178',7
+'Metals','Indium',8
+'Metals','Lithium',9
+'Metals','Osmium',10
+'Metals','Palladium',11
+'Metals','Platinum',12
+'Metals','Silver',13
+'Metals','Tantalum',14
+'Metals','Titanium',15
+'Metals','Uranium',16
 'Minerals','Bauxite',1
 'Minerals','Bertrandite',2
 'Minerals','Coltan',3
@@ -60,8 +61,16 @@ unq:name@Category.category_id,unq:name,ui_order
 'Minerals','Rutile',8
 'Minerals','Uraninite',9
 'Salvage','AI Relics',1
-'Salvage','Antiquities',2
-'Salvage','SAP 8 Core Container',3
+'Salvage','Ancient Artefact',2
+'Salvage','Antiquities',3
+'Salvage','Experimental Chemicals',4
+'Salvage','Military Intelligence',5
+'Salvage','Military Plans',6
+'Salvage','Prototype Tech',7
+'Salvage','Rebel Transmissions',8
+'Salvage','SAP 8 Core Container',9
+'Salvage','Technical Blueprints',10
+'Salvage','Trade Data',11
 'Slavery','Imperial Slaves',1
 'Slavery','Slaves',2
 'Technology','Advanced Catalysers',1

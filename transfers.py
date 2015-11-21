@@ -153,6 +153,9 @@ def download(
 
     fetched = 0
     lastTime = started = time.time()
+    spinner, spinners = 0, [ 
+        '     ', '.    ', '..   ', '...  ', ' ... ', '  ...', '   ..', '    .'
+    ]
     with tmpPath.open("wb") as fh:
         for data in req.iter_content(chunk_size=chunkSize):
             fh.write(data)
@@ -172,12 +175,15 @@ def download(
                 progBar.increment(
                     len(data),
                     postfix=lambda value, goal: \
-                        " {:>7s} [{:>7s}/s] {:>3.0f}%".format(
+                            " {:>7s} [{:>7s}/s] {:>3.0f}% {:1s}".format(
                             makeUnit(value),
                             makeUnit(sum(histogram) / len(histogram)),
                             (fetched * 100. / length),
+                            spinners[spinner]
                         )
                 )
+                if deltaT > 0.125:
+                    spinner = (spinner + 1) % len(spinners)
         tdenv.DEBUG0("End of data")
     if not tdenv.quiet:
         progBar.clear()

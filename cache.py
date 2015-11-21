@@ -150,6 +150,8 @@ ocrDerp = re.compile(r'''(
     \bE[O0]WAR[DO0] |
     III |
     STARON\b |
+    \bST.ION\b |
+    \bSTION\b |
     \BHANG[EA]R$ |
     ^\S+HUB$ |
     \bLEBEOEV |
