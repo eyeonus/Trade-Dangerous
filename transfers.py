@@ -154,7 +154,7 @@ def download(
     fetched = 0
     lastTime = started = time.time()
     spinner, spinners = 0, [ 
-        '     ', '.    ', '..   ', '...  ', ' ... ', '  ...', '   ..', '    .'
+        '.    ', '..   ', '...  ', ' ... ', '  ...', '   ..', '    .'
     ]
     with tmpPath.open("wb") as fh:
         for data in req.iter_content(chunk_size=chunkSize):
@@ -182,7 +182,7 @@ def download(
                             spinners[spinner]
                         )
                 )
-                if deltaT > 0.125:
+                if deltaT > 0.200:
                     spinner = (spinner + 1) % len(spinners)
         tdenv.DEBUG0("End of data")
     if not tdenv.quiet:
