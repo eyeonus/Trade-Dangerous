@@ -81,6 +81,8 @@ CREATE TABLE Station
        CHECK (refuel     IN ('?', 'Y', 'N')),
    repair     TEXT(1) NOT NULL DEFAULT '?'
        CHECK (repair     IN ('?', 'Y', 'N')),
+   planetary  TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (planetary  IN ('?', 'Y', 'N')),
 
    UNIQUE (system_id, name),
 

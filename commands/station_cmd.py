@@ -95,6 +95,11 @@ switches = [
         choices=['Y', 'y', 'N', 'n', '?'],
     ),
     ParseArgument(
+        '--planetary',
+        help='Is the station on a planet (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
         '--confirm',
         help='For confirmation suspicious looking station names.',
         metavar='CONFIRMATION CODE',
@@ -261,6 +266,7 @@ def addStation(tdb, cmdenv, system, stationName):
             refuel=cmdenv.refuel or '?',
             repair=cmdenv.repair or '?',
             maxPadSize=cmdenv.padSize or '?',
+            planetary=cmdenv.planetary or '?',
             commit=True,
     )
 
@@ -277,6 +283,7 @@ def updateStation(tdb, cmdenv, station):
             refuel=cmdenv.refuel,
             repair=cmdenv.repair,
             maxPadSize=cmdenv.padSize,
+            planetary=cmdenv.planetary or '?',
             force=True,
             commit=True,
     )
@@ -414,6 +421,7 @@ def render(results, cmdenv, tdb):
     print("Rearm.....:", _detail(station.rearm, TradeDB.marketStates))
     print("Refuel....:", _detail(station.refuel, TradeDB.marketStates))
     print("Repair....:", _detail(station.repair, TradeDB.marketStates))
+    print("Planetary.:", _detail(station.planetary, TradeDB.marketStates))
     print("Prices....:", station.itemCount or 'None')
 
     if station.itemCount == 0:

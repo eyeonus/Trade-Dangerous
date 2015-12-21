@@ -35,6 +35,7 @@ switches = [
     ),
     AvoidPlacesArgument(),
     PadSizeArgument(),
+    NoPlanetSwitch(),
     BlackMarketSwitch(),
     ParseArgument('--limit',
             help='Maximum number of results to list.',
@@ -133,11 +134,14 @@ def run(results, cmdenv, tdb):
 
     stationByID = tdb.stationByID
     padSize = cmdenv.padSize
+    wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
 
     for (stationID, priceCr, demand) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
+            continue
+        if wantNoPlanet and station.planetary == 'Y':
             continue
         if wantBlackMarket and station.blackMarket != 'Y':
             continue
@@ -204,6 +208,8 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.marketStates[row.station.blackMarket])
     stnRowFmt.addColumn("Pad", '>', '3',
             key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
+    stnRowFmt.addColumn("Plt", '>', '3',
+            key=lambda row: TradeDB.marketStates[row.station.planetary])
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

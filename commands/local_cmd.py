@@ -32,6 +32,7 @@ switches = [
             default=None,
     ),
     PadSizeArgument(),
+    NoPlanetSwitch(),
     ParseArgument('--stations',
             help='Limit to systems which have stations.',
             action='store_true',
@@ -75,6 +76,7 @@ def run(results, cmdenv, tdb):
     showStations = cmdenv.detail
     wantStations = cmdenv.stations
     padSize = cmdenv.padSize
+    wantNoPlanet = cmdenv.noPlanet
     wantTrading = cmdenv.trading
     wantShipYard = cmdenv.shipyard
     wantBlackMarket = cmdenv.blackMarket
@@ -85,6 +87,8 @@ def run(results, cmdenv, tdb):
 
     def station_filter(stations):
         for station in stations:
+            if wantNoPlanet and station.planetary == 'Y':
+                continue
             if wantTrading and not station.isTrading:
                 continue
             if wantBlackMarket and station.blackMarket != 'Y':
@@ -198,6 +202,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Pad", '>', '3',
                     key=lambda row: \
                         TradeDB.padSizes[row.station.maxPadSize])
+        ).append(
+                ColumnFormat("Plt", '>', '3',
+                    key=lambda row: \
+                        TradeDB.marketStates[row.station.planetary])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

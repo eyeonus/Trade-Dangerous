@@ -132,6 +132,7 @@ switches = [
         dest='maxAge',
     ),
     PadSizeArgument(),
+    NoPlanetSwitch(),
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help="Penalty per 1kls stations are from their stars.",
@@ -509,12 +510,13 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 def checkStationSuitability(cmdenv, calc, station, src=None):
     cmdenv.DEBUG2(
-        "checking {} (ls={}, bm={}, pad={}, mkt={}, shp={}) "
+        "checking {} (ls={}, bm={}, pad={}, plt={}, mkt={}, shp={}) "
         "for {} suitability",
         station.name(),
         station.lsFromStar,
         station.blackMarket,
         station.maxPadSize,
+        station.planetary,
         station.market,
         station.shipyard,
         src or "any",
@@ -574,6 +576,15 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
                     src, station.name(),
                     mps, station.maxPadSize,
                     TradeDB.padSizesExt[station.maxPadSize],
+            ))
+        return False
+    np = cmdenv.noPlanet
+    if np and station.planetary == 'Y':
+        if src and src != "--from":
+            raise CommandLineError(
+                "{} station {} does not meet no-planet "
+                "requirement.".format(
+                    src, station.name(),
             ))
         return False
     bm = cmdenv.blackMarket

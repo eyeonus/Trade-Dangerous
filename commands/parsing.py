@@ -72,7 +72,7 @@ class AvoidPlacesArgument(ParseArgument):
                 "'--avoid a,b,c' or '--avoid a,b --avoid c'"
             ),
         }
-        
+
 
 class SwitchArgument(ParseArgument):
     def __init__(self, help=None):
@@ -118,6 +118,12 @@ class RepairSwitch(SwitchArgument):
     switches = ['--repair']
     dest = 'repair'
     help = 'Require stations known to offer repairs.'
+
+
+class NoPlanetSwitch(SwitchArgument):
+    switches = ['--no-planet']
+    dest = 'noPlanet'
+    help = 'Require stations to be in space.'
 
 
 __tdParserHelpers = {

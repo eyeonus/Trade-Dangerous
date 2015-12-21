@@ -384,6 +384,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             rearm = values[9] if len(values) > 9 else '?'
             refuel = values[10] if len(values) > 10 else '?'
             repair = values[11] if len(values) > 11 else '?'
+            planetary = values[12] if len(values) > 12 else '?'
             if station:
                 if tdb.updateLocalStation(
                         station,
@@ -397,6 +398,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         rearm=rearm,
                         refuel=refuel,
                         repair=repair,
+                        planetary=planetary,
                         modified=modified,
                         commit=False,
                         ):
@@ -414,6 +416,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     rearm=rearm,
                     refuel=refuel,
                     repair=repair,
+                    planetary=planetary,
                     modified=modified,
                     commit=False,
                 )
