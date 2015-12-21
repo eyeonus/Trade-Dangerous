@@ -137,7 +137,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Fetch and import deletions/renames from Corrections.csv
         """
-    
+
         tdb, tdenv = self.tdb, self.tdenv
         sysLookup = tdb.systemByName.get
         db = tdb.getDB()
@@ -692,7 +692,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
 
         tdenv.ignoreUnknown = True
-        tdenv.mergeImport = True
 
         if self.getOption("csvs"):
             self.options["corrections"] = True
