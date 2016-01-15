@@ -758,6 +758,7 @@ class TradeCalc(object):
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
         maxPadSize = tdenv.padSize
+        noPlanet = tdenv.noPlanet
         maxLsFromStar = tdenv.maxLs or float('inf')
         reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
         maxAge = getattr(tdenv, 'maxAge') or 0
@@ -819,6 +820,7 @@ class TradeCalc(object):
                     avoidPlaces=avoidPlaces,
                     maxPadSize=maxPadSize,
                     maxLsFromStar=maxLsFromStar,
+                    noPlanet=noPlanet,
                 )
 
         prog = pbar.Progress(len(routes), 25)

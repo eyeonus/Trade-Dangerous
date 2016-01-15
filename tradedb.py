@@ -1657,6 +1657,7 @@ class TradeDB(object):
             avoidPlaces=None,
             maxPadSize=None,
             maxLsFromStar=0,
+            noPlanet=False,
             ):
         """
         Gets a list of the Station destinations that can be reached
@@ -1738,6 +1739,11 @@ class TradeDB(object):
                         yield node, station
 
         path_iter = iter(path_iter_fn())
+        if noPlanet:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.planetary != 'Y'
+            )
         if avoidPlaces:
             path_iter = iter(
                 (node, station) for (node, station) in path_iter
