@@ -2,18 +2,23 @@ unq:name,cost
 'Adder',87810
 'Anaconda',146969450
 'Asp',6661150
+'Asp Scout',3961150
 'Clipper',22295860
 'Cobra',379720
+'Cobra MkIV',764720
 'Diamondback Explorer',1894760
 'Diamondback Scout',564330
-'Dropship',19814210
+'Dropship',14314210
 'Eagle',44800
 'Federal Assault Ship',19814210
+'Federal Corvette',187969450
 'Federal Gunship',35814210
 'Fer-de-Lance',51567040
 'Hauler',52720
 'Imperial Courier',2542930
+'Imperial Cutter',208969450
 'Imperial Eagle',110830
+'Keelback',3126150
 'Orca',48539890
 'Python',56978180
 'Sidewinder',32000
@@ -21,4 +26,5 @@ unq:name,cost
 'Type 7',17472250
 'Type 9',76555840
 'Viper',142930
+'Viper MkIV',437930
 'Vulture',4925620
