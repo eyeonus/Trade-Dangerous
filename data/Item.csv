@@ -2,10 +2,14 @@ unq:name@Category.category_id,unq:name,ui_order
 'Chemicals','Explosives',1
 'Chemicals','Hydrogen Fuel',2
 'Chemicals','Mineral Oil',3
-'Chemicals','Pesticides',4
+'Chemicals','Nerve Agents',4
+'Chemicals','Pesticides',5
+'Chemicals','Surface Stabilisers',6
+'Chemicals','Synthetic Reagents',7
 'Consumer Items','Clothing',1
 'Consumer Items','Consumer Technology',2
 'Consumer Items','Domestic Appliances',3
+'Consumer Items','Evacuation Shelter',4
 'Foods','Algae',1
 'Foods','Animal Meat',2
 'Foods','Coffee',3
@@ -15,21 +19,28 @@ unq:name@Category.category_id,unq:name,ui_order
 'Foods','Grain',7
 'Foods','Synthetic Meat',8
 'Foods','Tea',9
-'Industrial Materials','Polymers',1
-'Industrial Materials','Semiconductors',2
-'Industrial Materials','Superconductors',3
+'Industrial Materials','Ceramic Composites',1
+'Industrial Materials','Meta-Alloys',2
+'Industrial Materials','Polymers',3
+'Industrial Materials','Semiconductors',4
+'Industrial Materials','Superconductors',5
 'Legal Drugs','Beer',1
-'Legal Drugs','Liquor',2
-'Legal Drugs','Narcotics',3
-'Legal Drugs','Tobacco',4
-'Legal Drugs','Wine',5
+'Legal Drugs','Bootleg Liquor',2
+'Legal Drugs','Liquor',3
+'Legal Drugs','Narcotics',4
+'Legal Drugs','Tobacco',5
+'Legal Drugs','Wine',6
 'Machinery','Atmospheric Processors',1
-'Machinery','Crop Harvesters',2
-'Machinery','Marine Equipment',3
-'Machinery','Microbial Furnaces',4
-'Machinery','Mineral Extractors',5
-'Machinery','Power Generators',6
-'Machinery','Water Purifiers',7
+'Machinery','Building Fabricators',2
+'Machinery','Crop Harvesters',3
+'Machinery','Geological Equipment',4
+'Machinery','Marine Equipment',5
+'Machinery','Microbial Furnaces',6
+'Machinery','Mineral Extractors',7
+'Machinery','Power Generators',8
+'Machinery','Skimmer Components',9
+'Machinery','Thermal Cooling Units',10
+'Machinery','Water Purifiers',11
 'Medicines','Agri-Medicines',1
 'Medicines','Basic Medicines',2
 'Medicines','Combat Stabilisers',3
@@ -37,40 +48,50 @@ unq:name@Category.category_id,unq:name,ui_order
 'Medicines','Progenitor Cells',5
 'Metals','Aluminium',1
 'Metals','Beryllium',2
-'Metals','Cobalt',3
-'Metals','Copper',4
-'Metals','Gallium',5
-'Metals','Gold',6
-'Metals','Hafnium 178',7
-'Metals','Indium',8
-'Metals','Lithium',9
-'Metals','Osmium',10
-'Metals','Palladium',11
-'Metals','Platinum',12
-'Metals','Silver',13
-'Metals','Tantalum',14
-'Metals','Titanium',15
-'Metals','Uranium',16
+'Metals','Bismuth',3
+'Metals','Cobalt',4
+'Metals','Copper',5
+'Metals','Gallium',6
+'Metals','Gold',7
+'Metals','Hafnium 178',8
+'Metals','Indium',9
+'Metals','Lanthanum',10
+'Metals','Lithium',11
+'Metals','Osmium',12
+'Metals','Palladium',13
+'Metals','Platinum',14
+'Metals','Silver',15
+'Metals','Tantalum',16
+'Metals','Thallium',17
+'Metals','Thorium',18
+'Metals','Titanium',19
+'Metals','Uranium',20
 'Minerals','Bauxite',1
 'Minerals','Bertrandite',2
 'Minerals','Coltan',3
-'Minerals','Gallite',4
-'Minerals','Indite',5
-'Minerals','Lepidolite',6
-'Minerals','Painite',7
-'Minerals','Rutile',8
-'Minerals','Uraninite',9
+'Minerals','Cryolite',4
+'Minerals','Gallite',5
+'Minerals','Goslarite',6
+'Minerals','Indite',7
+'Minerals','Lepidolite',8
+'Minerals','Moissanite',9
+'Minerals','Painite',10
+'Minerals','Pyrophyllite',11
+'Minerals','Rutile',12
+'Minerals','Taaffeite',13
+'Minerals','Uraninite',14
 'Salvage','AI Relics',1
 'Salvage','Ancient Artefact',2
 'Salvage','Antiquities',3
-'Salvage','Experimental Chemicals',4
-'Salvage','Military Intelligence',5
-'Salvage','Military Plans',6
-'Salvage','Prototype Tech',7
-'Salvage','Rebel Transmissions',8
-'Salvage','SAP 8 Core Container',9
-'Salvage','Technical Blueprints',10
-'Salvage','Trade Data',11
+'Salvage','Encrypted Data Storage',4
+'Salvage','Experimental Chemicals',5
+'Salvage','Military Intelligence',6
+'Salvage','Military Plans',7
+'Salvage','Prototype Tech',8
+'Salvage','Rebel Transmissions',9
+'Salvage','SAP 8 Core Container',10
+'Salvage','Technical Blueprints',11
+'Salvage','Trade Data',12
 'Slavery','Imperial Slaves',1
 'Slavery','Slaves',2
 'Technology','Advanced Catalysers',1
@@ -81,8 +102,10 @@ unq:name@Category.category_id,unq:name,ui_order
 'Technology','Computer Components',6
 'Technology','H.E. Suits',7
 'Technology','Land Enrichment Systems',8
-'Technology','Resonating Separators',9
-'Technology','Robotics',10
+'Technology','Muon Imager',9
+'Technology','Resonating Separators',10
+'Technology','Robotics',11
+'Technology','Structural Regulators',12
 'Textiles','Leather',1
 'Textiles','Natural Fabrics',2
 'Textiles','Synthetic Fabrics',3
@@ -90,6 +113,7 @@ unq:name@Category.category_id,unq:name,ui_order
 'Waste','Chemical Waste',2
 'Waste','Scrap',3
 'Weapons','Battle Weapons',1
-'Weapons','Non-Lethal Weapons',2
-'Weapons','Personal Weapons',3
-'Weapons','Reactive Armour',4
+'Weapons','Landmines',2
+'Weapons','Non-Lethal Weapons',3
+'Weapons','Personal Weapons',4
+'Weapons','Reactive Armour',5

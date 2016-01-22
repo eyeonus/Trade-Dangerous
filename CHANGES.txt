@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.3.3 Jan 22 2016
+. (kfsone) Maddavo Horizons import.
+
 v7.3.2 Jul 30 2015
 . (kfsone) Alternate fix for edapi.
 
