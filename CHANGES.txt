@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+v7.4.0 Jan 27 2016
+. Merged Tyler Lund's support for posting data to EDDN from edapi.
+. (kfsone) Merged Maddavo data.
+
 v7.3.3 Jan 22 2016
 . (kfsone) Maddavo Horizons import.
 
