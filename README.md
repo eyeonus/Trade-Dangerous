@@ -439,6 +439,9 @@ For additional help on a specific command, such as 'update' use
          --pad ?              (unknown only)
          --pad L              (large only, ignores unknown)
 
+     --no-planet
+       Require stations to be in space.
+
      --black-market
      --bm
        Only consider stations that have a black market.
@@ -829,7 +832,7 @@ Lists items bought / sold at a given station; with --detail (-v) also includes t
 
 Provides details of routes without worrying about trade. By default, if given a ship, it uses the maximum dry range of the ship. Use `--full` if you want to restrict to routes with a full cargo hold.
 
-    trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
+    trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations] [--no-planet]
 
 ###Options:
 
@@ -841,7 +844,11 @@ Provides details of routes without worrying about trade. By default, if given a 
       Produces a route that does not fly through place. If place is a
       station, the system it is in will be avoided.
 
+    --via PLACE[,PLACE,...]
+      Require specified systems/stations to be en-route (in order).
+
     --stations
+    -S
       Lists stations at each stop
 
     --refuel-jumps N
@@ -859,6 +866,9 @@ Provides details of routes without worrying about trade. By default, if given a 
       e.g.
         --pad-size=ML
         -p ?SL           (unknown, small or large)
+
+    --no-planet
+      Require stations to be in space.
 
     from
       Name of the starting system or a station in the system,
@@ -914,6 +924,9 @@ Provides details of local stations without worrying about trade. By default, if 
         -p ML?               (medium, large, or unknown only)
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
+
+    --no-planet
+      Require stations to be in space.
 
     --stations
       Limit results to systems which have stations
@@ -1039,7 +1052,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
         [-q | -v] [--supply N] [-P | -S] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
-        [--one-stop | -1]
+        [--one-stop | -1] [--no-planet]
         category|item [category|item category|item,category|item,category|item …]
         ship [ship ship,ship …]
 
@@ -1069,6 +1082,9 @@ Finds stations that are selling / where you can buy, a named list of items or sh
       e.g.
         --avoid sol --avoid ross154 --avoid abrahamlincoln,marshigh
 
+    --no-planet
+      Require stations to be in space.
+
     --black-market
     --bm
       Only consider stations known to have a black market.
@@ -1095,7 +1111,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
         --gt 100
         --lt 1.2k
 
-    --prices-sort
+    --price-sort
     -P
       Keeps items sorted by price when using --near
      (otherwise items are listed by distance and then price)
@@ -1121,6 +1137,7 @@ Looks for stations buying the specified item.
         [-q | -v] [--demand N] [-P] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
         [--pad-size PSML?] [--black-market | --bm]
+        [--no-planet] [--lt N] [--gt N] [--price-sort | -P]
         item
 
 ###Options:
@@ -1163,6 +1180,9 @@ Looks for stations buying the specified item.
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
+    --no-planet
+      Require stations to be in space.
+
     --lt credits
     --gt credits
       Specify min (gt) and max (lt) credit prices for items
@@ -1170,7 +1190,7 @@ Looks for stations buying the specified item.
         --gt 100
         --lt 1.2k
 
-    --prices-sort
+    --price-sort
     -P
       Keeps items sorted by price when using --near
       (otherwise items are listed by distance and then price)
@@ -1273,6 +1293,9 @@ This command looks for known rare items within the space around a specified syst
         -o ML?               (medium, large, or unknown only)
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
+
+     --no-planet
+       Require stations to be in space.
 
      --legal
      --illegal
