@@ -2,6 +2,33 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jun 10 2016 (bgol, horizon branch):
+. "--no-planet" switch now requires planetry to be "N" (issue #5)
+. Updated README
+. data update from maddavo
+. New items for 1.6/2.1 update
+. Update EDAPI plugin to version 3.6.2
+
+Jan 16 2016 (bgol, horizon branch):
+. Fixed typo in EDAPI plugin
+. Horizon ship updates (thanks dave, fixes #4)
+
+Jan 15 2016 (bgol, horizon branch):
+. Overlooked one check for noPlanet switch. Fixes bug #2
+. Latest maddavo data update.
+
+Dec 22 2015 (bgol, horizon branch):
+. Update EDAPI plugin to version 3.6.0
+
+Dec 21 2015 (bgol, horizon branch):
+. Don't merge the prices form maddavo anymore (use --merge-import if you need it).
+. New items with version 1.5/2.0 of ED
+. data update from maddavo
+. Added "planetary" column to station table and maddavo import.
+. Added "--planetary" argument to station command.
+. Added "--no-planet" switch to buy, local, nav, rares, run and sell command.
+. Added "Plt: X" output.
+
 v7.3.2 Jul 30 2015
 . (kfsone) Alternate fix for edapi.
 
