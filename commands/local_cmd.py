@@ -87,7 +87,7 @@ def run(results, cmdenv, tdb):
 
     def station_filter(stations):
         for station in stations:
-            if wantNoPlanet and station.planetary == 'Y':
+            if wantNoPlanet and station.planetary != 'N':
                 continue
             if wantTrading and not station.isTrading:
                 continue

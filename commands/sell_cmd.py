@@ -141,7 +141,7 @@ def run(results, cmdenv, tdb):
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
-        if wantNoPlanet and station.planetary == 'Y':
+        if wantNoPlanet and station.planetary != 'N':
             continue
         if wantBlackMarket and station.blackMarket != 'Y':
             continue

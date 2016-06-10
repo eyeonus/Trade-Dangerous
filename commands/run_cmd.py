@@ -579,7 +579,7 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
             ))
         return False
     np = cmdenv.noPlanet
-    if np and station.planetary == 'Y':
+    if np and station.planetary != 'N':
         if src and src != "--from":
             raise CommandLineError(
                 "{} station {} does not meet no-planet "

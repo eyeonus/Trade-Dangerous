@@ -1742,7 +1742,7 @@ class TradeDB(object):
         if noPlanet:
             path_iter = iter(
                 (node, station) for (node, station) in path_iter
-                if station.planetary != 'Y'
+                if station.planetary == 'N'
             )
         if avoidPlaces:
             path_iter = iter(

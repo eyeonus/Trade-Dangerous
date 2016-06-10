@@ -124,7 +124,7 @@ def run(results, cmdenv, tdb):
             for (station) in jumpSys.stations:
                 if maxPadSize and not station.checkPadSize(maxPadSize):
                     continue
-                if noPlanet and station.planetary == 'Y':
+                if noPlanet and station.planetary != 'N':
                     continue
                 rr = ResultRow(
                     station=station,

@@ -162,7 +162,7 @@ def run(results, cmdenv, tdb):
         if padSize:     # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
                 continue
-        if noPlanet and rare.station.planetary == 'Y':
+        if noPlanet and rare.station.planetary != 'N':
             continue
         rareSys = rare.station.system
         # Find the un-sqrt'd distance to the system.
