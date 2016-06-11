@@ -773,11 +773,13 @@ Frontier provides an API for their mobile app. This can be used to report accura
       available. You will be prompted to enter any missing station information. 
 
     trade.py imp -P edapi -O eddn
-      This will do the same thing, but also post your market into to EDDN.
+      This will do the same thing, but also post your market, shipyard, and
+      outfitting modules to EDDN.
 
 ###Options (-O):
 
-    eddn:  Post market prices to EDDN.
+    eddn:  Post market, shipyard and outfitting to EDDN.
+    csvs:  Merge shipyards into ShipVendor.csv.
 
 
 ##MARKET sub-command:

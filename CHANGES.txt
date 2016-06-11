@@ -9,6 +9,13 @@ Jun 10 2016 (bgol, horizon branch):
 . New items for 1.6/2.1 update
 . Update EDAPI plugin to version 3.6.2
 
+v7.4.0 Jan 27 2016
+. Merged Tyler Lund's support for posting data to EDDN from edapi.
+. (kfsone) Merged Maddavo data.
+
+v7.3.3 Jan 22 2016
+. (kfsone) Maddavo Horizons import.
+
 Jan 16 2016 (bgol, horizon branch):
 . Fixed typo in EDAPI plugin
 . Horizon ship updates (thanks dave, fixes #4)
