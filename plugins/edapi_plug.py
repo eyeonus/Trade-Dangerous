@@ -131,7 +131,6 @@ comm_correct = {
     'Mu Tom Imager': 'Muon Imager',
     'Non Lethal Weapons': 'Non-Lethal Weapons',
     'Power Grid Assembly': 'Energy Grid Assembly',
-    'Power Transfer Conduits': 'Power Transfer Bus',
     'S A P8 Core Container': 'SAP 8 Core Container',
     'Skimer Components': 'Skimmer Components',
     'Terrain Enrichment Systems': 'Land Enrichment Systems',
