@@ -58,7 +58,7 @@ unq:name@Category.category_id,unq:name,ui_order
 'Machinery','Modular Terminals',17
 'Machinery','Power Converter',18
 'Machinery','Power Generators',19
-'Machinery','Power Transfer Conduits',20
+'Machinery','Power Transfer Bus',20
 'Machinery','Radiation Baffle',21
 'Machinery','Reinforced Mounting Plate',22
 'Machinery','Skimmer Components',23

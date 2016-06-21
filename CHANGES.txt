@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jun 21 2016 (bgol, horizon branch):
+. Renamed item "Power Transfer Conduits" to "Power Transfer Bus"
+
 Jun 10 2016 (bgol, horizon branch):
 . "--no-planet" switch now requires planetry to be "N" (issue #5)
 . Updated README
