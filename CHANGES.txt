@@ -4,7 +4,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 Jun 28 2016 (bgol, horizon branch):
 . (maddavo) Renamed item "Low Temperature Diamond" to "Low Temperature Diamonds"
-. added EDSM utils (implement issue #1)
+. added EDSM utils (implemented issue #1)
 
 Jun 21 2016 (bgol, horizon branch):
 . Renamed item "Power Transfer Conduits" to "Power Transfer Bus"
