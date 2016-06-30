@@ -156,6 +156,14 @@ def parse_arguments():
             dest='logEDSM',
             action='store_true',
     )
+    parser.add_argument(
+            '--yes',
+            required=False,
+            help='Answer "y" to autoconfirm all EDSM systems.',
+            default=False,
+            dest='autoOK',
+            action='store_true',
+    )
 
     argv = parser.parse_args(sys.argv[1:])
     if not argv.summary:
@@ -255,6 +263,7 @@ def add_to_extras(argv, name):
 def main():
     argv = parse_arguments()
     tdenv = tradeenv.TradeEnv(properties=argv)
+    tdenv.quiet = 1
     tdb = tradedb.TradeDB(tdenv)
 
     if not argv.summary:
@@ -339,7 +348,7 @@ def main():
                 systems.sort(key=lambda sysinfo: sysinfo['distance'])
             systems = systems[:argv.maxSystems]
 
-    if argv.splash:
+    if argv.splash and not argv.autoOK:
         print(
             "\n"
             "===============================================================\n"
@@ -364,7 +373,8 @@ def main():
 
         input("Hit enter to continue: ")
 
-    print("""At the prompt enter:
+    if not argv.autoOK:
+        print("""At the prompt enter:
   q
       to indicate you've suffered enough,
   y
@@ -374,7 +384,7 @@ def main():
   =name   (e.g. =SOL)
       to accept the distance but correct spelling,
 """)
-    print()
+        print()
 
     extras = get_extras()
 
@@ -382,6 +392,10 @@ def main():
     total = len(systems)
     current = 0
     with open("tmp/new.systems.csv", "w", encoding="utf-8") as output:
+        if argv.autoOK:
+            commit=False
+        else:
+            commit=True
         for sysinfo in systems:
             current += 1
             name = sysinfo['name']
@@ -390,23 +404,24 @@ def main():
             y = sysinfo['coords']['y']
             z = sysinfo['coords']['z']
 
-            print(
-                "\n"
-                "-----------------------------------------------\n"
-                "{syidlab:.<12}: {syid}\n"
-                "{crealab:.<12}: {crts}\n"
-                .format(
-                    syidlab="ID",
-                    crealab="Created",
-                    syid=sysinfo['id'],
-                    crts=created,
+            if not argv.autoOK:
+                print(
+                    "\n"
+                    "-----------------------------------------------\n"
+                    "{syidlab:.<12}: {syid}\n"
+                    "{crealab:.<12}: {crts}\n"
+                    .format(
+                        syidlab="ID",
+                        crealab="Created",
+                        syid=sysinfo['id'],
+                        crts=created,
+                    )
                 )
-            )
-            if refSys:
-                print("{reflab:.<12}: {refdist}ly\n".format(
-                    reflab="Ref Dist",
-                    refdist=sysinfo['refdist'],
-                ))
+                if refSys:
+                    print("{reflab:.<12}: {refdist}ly\n".format(
+                        reflab="Ref Dist",
+                        refdist=sysinfo['refdist'],
+                    ))
 
             check_database(tdb, name, x, y, z)
 
@@ -422,7 +437,13 @@ def main():
                 name,
                 distance,
             )
-            ok = input(prompt)
+            if argv.autoOK:
+                if change:
+                    ok = "n"
+                else:
+                    ok = "y"
+            else:
+                ok = input(prompt)
             if ok.lower() == 'q':
                 break
             if ok.startswith('='):
@@ -434,17 +455,20 @@ def main():
                 continue
 
             if argv.add:
+                print("Add {:>6}: {:>12} {} {}".format(current, sysinfo['id'], created, name))
                 tdb.addLocalSystem(
                     name,
                     x, y, z,
                     added='EDSM',
                     modified=created,
-                    commit=True
+                    commit=commit
                 )
 
             print("'{}',{},{},{},'EDSM','{}'".format(
                 name, x, y, z, created,
             ), file=output)
+        if argv.add and not commit:
+            tdb.getDB().commit()
 
 
 if __name__ == "__main__":
