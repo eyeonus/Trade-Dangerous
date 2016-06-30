@@ -99,6 +99,7 @@ CREATE TABLE Ship
    ship_id INTEGER PRIMARY KEY AUTOINCREMENT,
    name VARCHAR(40) COLLATE nocase,
    cost INTEGER NOT NULL,
+   fdev_id INTEGER,
 
    UNIQUE (name)
  );
@@ -183,6 +184,8 @@ CREATE TABLE Item
    name VARCHAR(40) COLLATE nocase,
    category_id INTEGER NOT NULL,
    ui_order INTEGER NOT NULL DEFAULT 0,
+   avg_price INTEGER,
+   fdev_id INTEGER,
 
    UNIQUE (category_id, name),
 

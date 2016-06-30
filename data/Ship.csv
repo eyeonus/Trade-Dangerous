@@ -1,30 +1,30 @@
-unq:name,cost
-'Adder',87810
-'Anaconda',146969450
-'Asp',6661150
-'Asp Scout',3961150
-'Clipper',22295860
-'Cobra',379720
-'Cobra MkIV',764720
-'Diamondback Explorer',1894760
-'Diamondback Scout',564330
-'Dropship',14314210
-'Eagle',44800
-'Federal Assault Ship',19814210
-'Federal Corvette',187969450
-'Federal Gunship',35814210
-'Fer-de-Lance',51567040
-'Hauler',52720
-'Imperial Courier',2542930
-'Imperial Cutter',208969450
-'Imperial Eagle',110830
-'Keelback',3126150
-'Orca',48539890
-'Python',56978180
-'Sidewinder',32000
-'Type 6',1045950
-'Type 7',17472250
-'Type 9',76555840
-'Viper',142930
-'Viper MkIV',437930
-'Vulture',4925620
+unq:name,cost,fdev_id
+'Adder',87810,128049267
+'Anaconda',146969450,128049363
+'Asp',6661150,128049303
+'Asp Scout',3961150,128672276
+'Clipper',22295860,128049315
+'Cobra',379720,128049279
+'Cobra MkIV',764720,128672262
+'Diamondback Explorer',1894760,128671831
+'Diamondback Scout',564330,128671217
+'Dropship',14314210,128049321
+'Eagle',44800,128049255
+'Federal Assault Ship',19814210,128672145
+'Federal Corvette',187969450,128049369
+'Federal Gunship',35814210,128672152
+'Fer-de-Lance',51567040,128049351
+'Hauler',52720,128049261
+'Imperial Courier',2542930,128671223
+'Imperial Cutter',208969450,128049375
+'Imperial Eagle',110830,128672138
+'Keelback',3126150,128672269
+'Orca',48539890,128049327
+'Python',56978180,128049339
+'Sidewinder',32000,128049249
+'Type 6',1045950,128049285
+'Type 7',17472250,128049297
+'Type 9',76555840,128049333
+'Viper',142930,128049273
+'Viper MkIV',437930,128672255
+'Vulture',4925620,128049309
