@@ -21,7 +21,7 @@ import sys
 import textwrap
 import time
 
-__version_info__ = ('3', '6', '2')
+__version_info__ = ('3', '6', '3')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -125,6 +125,7 @@ comm_correct = {
     'Hafnium178': 'Hafnium 178',
     'Hazardous Environment Suits': 'H.E. Suits',
     'Heliostatic Furnaces': 'Microbial Furnaces',
+    'Low Temperature Diamond': 'Low Temperature Diamonds',
     'Marine Supplies': 'Marine Equipment',
     'Meta Alloys': 'Meta-Alloys',
     'Methanol Monohydrate Crystals': 'Methanol Monohydrate',
@@ -3554,6 +3555,7 @@ class EDAPI:
 
         # Grab the commander profile
         response = self._getURI('profile')
+        self.text = response.text
         try:
             self.profile = response.json()
         except:
@@ -3706,11 +3708,15 @@ class EDDN:
     def __init__(
         self,
         uploaderID,
+        noHash,
         softwareName,
         softwareVersion
     ):
         # Obfuscate uploaderID
-        self.uploaderID = hashlib.sha1(uploaderID.encode('utf-8')).hexdigest()
+        if noHash:
+            self.uploaderID = uploaderID
+        else:
+            self.uploaderID = hashlib.sha1(uploaderID.encode('utf-8')).hexdigest()
         self.softwareName = softwareName
         self.softwareVersion = softwareVersion
 
@@ -3837,6 +3843,8 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     pluginOptions = {
         'csvs': 'Merge shipyard into into ShipVendor.csv.',
+        'name': 'Do not obfuscate commander name for EDDN submit.',
+        'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
         'eddn': 'Post market prices to EDDN.',
     }
 
@@ -3862,6 +3870,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             print('Commander not docked. Aborting!')
             return False
 
+        # save profile if requested
+        if self.getOption("save"):
+            saveName = 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
+            with open(saveName, 'w', encoding="utf-8") as saveFile:
+                saveFile.write(api.text)
+                print('API response saved to: {}'.format(saveName))
+
         # Figure out where we are.
         system = api.profile['lastSystem']['name']
         station = api.profile['lastStarport']['name']
@@ -3882,8 +3897,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             station_lookup = tdb.lookupPlace(place)
         except LookupError:
             station_lookup = None
-
-        print(station_lookup)
 
         # The station isn't known. Add it.
         if not station_lookup:
@@ -3957,6 +3970,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             station_lookup = tdb.lookupStation(station, system)
         else:
             # See if we need to update the info for this station.
+            print('Station known.')
             lsFromStar = station_lookup.lsFromStar
             blackMarket = station_lookup.blackMarket
             maxPadSize = station_lookup.maxPadSize
@@ -4069,7 +4083,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ships.append(ship['name'])
 
             for ship in ships:
-                    eddn_ships.append(eddn_ship_names[ship])
+                eddn_ships.append(eddn_ship_names[ship])
 
             if self.getOption("csvs"):
                 db = tdb.getDB()
@@ -4142,12 +4156,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         }
                     )
 
-                f.write(
-                    "\t+ {}\n".format(
-                        commodity['categoryname']
-                    )
-                )
-
                 # If stock is zero, list it as unavailable.
                 # If the stockBracket is zero, ignore any stock.
                 if not commodity['stock'] or not commodity['stockBracket']:
@@ -4185,6 +4193,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             print('Posting prices to EDDN...')
             con = EDDN(
                 api.profile['commander']['name'],
+                self.getOption("name"),
                 'EDAPI Trade Dangerous Plugin',
                 __version__
             )
