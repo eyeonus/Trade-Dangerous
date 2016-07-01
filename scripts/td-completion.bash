@@ -67,7 +67,7 @@ _td_buy()
 		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt ${common_opts}"
+		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt --no-planet ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -104,15 +104,27 @@ _td_import()
 
 	case ${prev} in
 	--plug|-P)
-		opts="maddavo"
+		opts="maddavo edapi"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	--url)
 		# argument required
 		;;
 	--option|-O)
-		opts="csvs corrections systems stations shipvendors exportcsv csvonly skipdl force use3h use2d usefull help"
-		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+		# simple plugin check
+		for (( i=1; i<${COMP_CWORD-1}; i++ ));
+		do
+			if [[ "${COMP_WORDS[i]}" = "maddavo" ]]; then
+				opts="csvs corrections systems stations shipvendors exportcsv csvonly skipdl force use3h use2d usefull help"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+			if [[ "${COMP_WORDS[i]}" = "edapi" ]]; then
+				opts="csvs name save eddn"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+		done
 		;;
 	*)
 		_td_common && return 0
@@ -140,7 +152,7 @@ _td_local()
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair ${common_opts}"
+		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair --no-planet ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -179,7 +191,7 @@ _td_nav()
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly-per --avoid --via --stations --refuel-jumps ${common_opts}"
+		opts="--ly-per --avoid --via --stations --refuel-jumps --no-planet ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -221,7 +233,7 @@ _td_rares()
 		;;
 	*)
 		_td_common && return 0
-		opts="--ly --limit --price-sort --reverse --pad-size --away --from ${common_opts}"
+		opts="--ly --limit --price-sort --reverse --pad-size --away --from --no-planet ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -244,7 +256,7 @@ _td_run()
 		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten --no-planet ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -267,7 +279,7 @@ _td_sell()
 		;;
 	*)
 		_td_common && return 0
-		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt ${common_opts}"
+		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt --no-planet ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -310,7 +322,7 @@ _td_station()
 		;;
 	*)
 		_td_common && return 0
-		opts="--ls-from-star --black-market --market --shipyard --pad-size --outfitting --rearm --refuel --repair --confirm --add --remove --update --no-export ${common_opts}"
+		opts="--ls-from-star --black-market --market --shipyard --pad-size --outfitting --rearm --refuel --repair --confirm --add --remove --update --no-export --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
