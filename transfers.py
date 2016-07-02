@@ -128,23 +128,32 @@ def download(
     req.raise_for_status()
 
     encoding = req.headers.get('content-encoding', 'uncompress')
-    length = req.headers.get('content-length', None)
-
-    if length is None:
-        raise Exception("Remote server replied with invalid content-length.")
-    length = int(length)
-    if length <= 0:
-        raise TradeException(
-            "Remote server gave an empty response. Please try again later."
-        )
+    transfer = req.headers.get('transfer-encoding', None)
+    if transfer == 'chunked':
+        # chunked transfer-encoding doesn't need a content-length
+        length = None
+    else:
+        length = req.headers.get('content-length', None)
+        if length is None:
+            raise Exception("Remote server replied with invalid content-length.")
+        length = int(length)
+        if length <= 0:
+            raise TradeException(
+                "Remote server gave an empty response. Please try again later."
+            )
 
     if tdenv.detail > 1:
-        tdenv.NOTE("Downloading {} {}ed data", makeUnit(length), encoding)
-    tdenv.DEBUG0(req.headers)
+        if length:
+            tdenv.NOTE("Downloading {} {}ed data", makeUnit(length), encoding)
+        else:
+            tdenv.NOTE("Downloading {} {}ed data", transfer, encoding)
+    tdenv.DEBUG0(str(req.headers).replace("{", "{{").replace("}", "}}"))
 
     # Figure out how much data we have
-    if not tdenv.quiet:
+    if length and not tdenv.quiet:
         progBar = pbar.Progress(length, 20)
+    else:
+        progBar = None
 
     actPath = Path(localFile)
     tmpPath = Path("tmp/{}.dl".format(actPath.name))
@@ -153,7 +162,7 @@ def download(
 
     fetched = 0
     lastTime = started = time.time()
-    spinner, spinners = 0, [ 
+    spinner, spinners = 0, [
         '.    ', '..   ', '...  ', ' ... ', '  ...', '   ..', '    .'
     ]
     with tmpPath.open("wb") as fh:
@@ -165,7 +174,7 @@ def download(
                 tdenv.DEBUG0("Checking shebang of {}", bangLine)
                 shebang(bangLine)
                 shebang = None
-            if not tdenv.quiet:
+            if progBar:
                 now = time.time()
                 deltaT = max(now - lastTime, 0.001)
                 lastTime = now
@@ -186,7 +195,8 @@ def download(
                     spinner = (spinner + 1) % len(spinners)
         tdenv.DEBUG0("End of data")
     if not tdenv.quiet:
-        progBar.clear()
+        if progBar:
+            progBar.clear()
         elapsed = (time.time() - started) or 1
         tdenv.NOTE(
             "Downloaded {} of {}ed data {}/s",
