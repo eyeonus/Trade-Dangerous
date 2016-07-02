@@ -128,12 +128,10 @@ def download(
     req.raise_for_status()
 
     encoding = req.headers.get('content-encoding', 'uncompress')
+    length = req.headers.get('content-length', None)
     transfer = req.headers.get('transfer-encoding', None)
-    if transfer == 'chunked':
+    if transfer != 'chunked':
         # chunked transfer-encoding doesn't need a content-length
-        length = None
-    else:
-        length = req.headers.get('content-length', None)
         if length is None:
             raise Exception("Remote server replied with invalid content-length.")
         length = int(length)
