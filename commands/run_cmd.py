@@ -132,7 +132,10 @@ switches = [
         dest='maxAge',
     ),
     PadSizeArgument(),
-    NoPlanetSwitch(),
+    MutuallyExclusiveGroup(
+        NoPlanetSwitch(),
+        PlanetaryArgument(),
+    ),
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help="Penalty per 1kls stations are from their stars.",
@@ -576,6 +579,18 @@ def checkStationSuitability(cmdenv, calc, station, src=None):
                     src, station.name(),
                     mps, station.maxPadSize,
                     TradeDB.padSizesExt[station.maxPadSize],
+            ))
+        return False
+    pla = cmdenv.planetary
+    if pla and not station.checkPlanetary(pla):
+        if src:
+            raise CommandLineError(
+                "{} station {} does not meet planetary requirement.\n"
+                "You specified: {}, Current data for station: {} ({})\n"
+                "You can use \"trade.py station\" to correct this.".format(
+                    src, station.name(),
+                    pla, station.planetary,
+                    TradeDB.planetStatesExt[station.planetary],
             ))
         return False
     np = cmdenv.noPlanet

@@ -351,6 +351,35 @@ class Station(object):
         """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
 
+    def checkPlanetary(self, planetary):
+        """
+        Tests if the Station's planetary matches one of the
+        values in 'planetary'.
+
+        Args:
+            askPlanetary
+                A string of one or more planetary values that
+                you want to match against.
+
+        Returns:
+            True
+                If self.planetary is None or empty, or matches a
+                member of planetary
+            False
+                If planetary was not empty but self.planetary
+                did not match it.
+
+        Examples:
+            # Require a planetary station
+            station.checkPlanetary("Y")
+            # Require planetary or unknown
+            station.checkPadSize("Y?")
+            # Require no planetary station
+            station.checkPadSize("N")
+
+        """
+        return (not planetary or self.planetary in planetary)
+
     def distFromStar(self, addSuffix=False):
         """
         Returns a textual description of the distance from this
@@ -588,8 +617,8 @@ class TradeDB(object):
     )
 
     # Translation matrixes for attributes -> common presentation
-    marketStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
-    marketStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
+    marketStates = planetStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+    marketStatesExt = planetStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
     padSizes = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     padSizesExt = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
 
@@ -1660,6 +1689,7 @@ class TradeDB(object):
             maxPadSize=None,
             maxLsFromStar=0,
             noPlanet=False,
+            planetary=None,
             ):
         """
         Gets a list of the Station destinations that can be reached
@@ -1755,6 +1785,11 @@ class TradeDB(object):
             path_iter = iter(
                 (node, station) for (node, station) in path_iter
                 if station.checkPadSize(maxPadSize)
+            )
+        if planetary:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.checkPlanetary(planetary)
             )
         if maxLsFromStar:
             path_iter = iter(

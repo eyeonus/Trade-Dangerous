@@ -3,6 +3,7 @@
 
 common_opts="--help --debug --detail --quiet --db --cwd --link-ly"
 pad_opts="? l l? m m? ml ml? s s? sl sm sm? sml sml?"
+pla_opts="? y y? n n? yn yn?"
 ynq_opts="y n ?"
 
 _td_file_list()
@@ -65,9 +66,13 @@ _td_buy()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt --no-planet ${common_opts}"
+		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -150,9 +155,13 @@ _td_local()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair --no-planet ${common_opts}"
+		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -189,9 +198,13 @@ _td_nav()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly-per --avoid --via --stations --refuel-jumps --no-planet ${common_opts}"
+		opts="--ly-per --avoid --via --stations --refuel-jumps --pad-size --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -231,9 +244,13 @@ _td_rares()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly --limit --price-sort --reverse --pad-size --away --from --no-planet ${common_opts}"
+		opts="--ly --limit --price-sort --reverse --pad-size --away --from --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -254,9 +271,13 @@ _td_run()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten --no-planet ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -277,9 +298,13 @@ _td_sell()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt --no-planet ${common_opts}"
+		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -318,6 +343,10 @@ _td_station()
 		;;
 	--pad-size)
 		opts="${pad_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
+	--planetary)
+		opts="${pla_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	*)

@@ -43,7 +43,10 @@ switches = [
             type=int,
     ),
     PadSizeArgument(),
-    NoPlanetSwitch(),
+    MutuallyExclusiveGroup(
+        NoPlanetSwitch(),
+        PlanetaryArgument(),
+    ),
     ParseArgument('--price-sort', '-P',
             help='(When using --near) Sort by price not distance.',
             action='store_true',
@@ -123,9 +126,10 @@ def run(results, cmdenv, tdb):
 
     # Lookup the system we're currently in.
     start = cmdenv.nearSystem
-    # Hoist the padSize and noPlanet parameter for convenience
+    # Hoist the padSize, noPlanet and planetary parameter for convenience
     padSize = cmdenv.padSize
     noPlanet = cmdenv.noPlanet
+    planetary = cmdenv.planetary
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.)
 
@@ -161,6 +165,9 @@ def run(results, cmdenv, tdb):
             continue
         if padSize:     # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
+                continue
+        if planetary:     # do we care about planetary?
+            if not rare.station.checkPlanetary(planetary):
                 continue
         if noPlanet and rare.station.planetary != 'N':
             continue
@@ -243,7 +250,7 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn("Pad", '>', '3',
             key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
     rowFmt.addColumn("Plt", '>', '3',
-            key=lambda row: TradeDB.marketStates[row.rare.station.planetary])
+            key=lambda row: TradeDB.planetStates[row.rare.station.planetary])
 
     # Print a heading summary if the user didn't use '-q'
     if not cmdenv.quiet:

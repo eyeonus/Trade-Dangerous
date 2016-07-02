@@ -1,6 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from commands import *
-from commands.exceptions import CommandLineError, PadSizeError
+from commands.exceptions import CommandLineError, PadSizeError, PlanetaryError
 from tradedb import AmbiguityError, System, Station
 from tradeenv import TradeEnv
 
@@ -75,6 +75,7 @@ class CommandEnv(TradeEnv):
         self.checkAvoids()
         self.checkVias()
         self.checkPadSize()
+        self.checkPlanetary()
 
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
@@ -219,3 +220,17 @@ class CommandEnv(TradeEnv):
             if not value in 'SML?':
                 raise PadSizeError(padSize)
         self.padSize = padSize
+
+    def checkPlanetary(self):
+        planetary = getattr(self, 'planetary', None)
+        if not planetary:
+            return
+        planetary = ''.join(sorted(list(set(planetary)))).upper()
+        if planetary == '?NY':
+            self.planetary = None
+            return
+        self.planetary = planetary = planetary.upper()
+        for value in planetary:
+            if not value in 'YN?':
+                raise PlanetaryError(planetary)
+        self.planetary = planetary

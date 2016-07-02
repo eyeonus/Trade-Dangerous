@@ -38,7 +38,10 @@ switches = [
         dest='stationInterval',
     ),
     PadSizeArgument(),
-    NoPlanetSwitch(),
+    MutuallyExclusiveGroup(
+        NoPlanetSwitch(),
+        PlanetaryArgument(),
+    ),
 ]
 
 ######################################################################
@@ -105,6 +108,7 @@ def run(results, cmdenv, tdb):
 
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     maxPadSize = cmdenv.padSize
+    planetary = cmdenv.planetary
     noPlanet = cmdenv.noPlanet
 
     for (jumpSys, dist) in route:
@@ -123,6 +127,8 @@ def run(results, cmdenv, tdb):
         if cmdenv.stations:
             for (station) in jumpSys.stations:
                 if maxPadSize and not station.checkPadSize(maxPadSize):
+                    continue
+                if planetary and not station.checkPlanetary(planetary):
                     continue
                 if noPlanet and station.planetary != 'N':
                     continue
@@ -215,7 +221,7 @@ def render(results, cmdenv, tdb):
         ).append(
                 ColumnFormat("Plt", '>', '3',
                     key=lambda row: \
-                        TradeDB.marketStates[row.station.planetary])
+                        TradeDB.planetStates[row.station.planetary])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(
