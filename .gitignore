@@ -12,6 +12,8 @@ data/*.ini
 data/extra-stars.txt
 data/*.txt
 data/edapi.cookies
+data/FDevShipyard.csv
+data/FDevOutfitting.csv
 
 *.prices
 *.suo
