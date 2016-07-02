@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jul 02 2016 (bgol, horizon branch):
+. Merged changes from devel branch into horizon (see below).
+
 Jul 02 2016 (bgol, devel branch):
 . "Chunked" transfers don't need a length header.
 . Added new tables for FdevID -> EDDN mapping
