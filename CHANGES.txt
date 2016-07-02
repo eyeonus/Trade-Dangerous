@@ -4,6 +4,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 
 Jul 02 2016 (bgol, horizon branch):
 . Merged changes from devel branch into horizon (see below).
+. Data update from maddavo.
+. Added "--planetary" argument to buy, local, nav, rares, run and sell command.
+  The "--no-planet" and "--planetary" arguments are mutually exclusive.
+  (implemented issue #5)
 
 Jul 02 2016 (bgol, devel branch):
 . "Chunked" transfers don't need a length header.
