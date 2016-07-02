@@ -74,19 +74,24 @@ class FDEVMappingBase(object):
 
 	def addUnknown(self, wrong, right):
 		# add Entries by name with unknown IDs
-		if self._colCount == 1:
+		if isinstance(wrong, (str,int,tuple)):
 			self.tdenv.DEBUG2("{}: {}".format(wrong, right))
 			self.entries[wrong] = right
+		else:
+			self.tdenv.WARN("{}: {}".format(wrong, right))
 		return
 
 	def mapUnknown(self):
 		# override this and add unknown IDs in the derived class
 		return
 
-	def mapID(self, ID, oldName):
+	def mapID(self, ID, oldValue=None):
 		res = self.entries.get(int(ID), None)
-		if not res and self._colCount == 1:
-			res = self.entries.get(oldName, oldName)
+		if not res:
+			if isinstance(oldValue, (str,int)):
+				res = self.entries.get(oldValue, oldValue)
+			elif isinstance(oldValue, tuple):
+				res = self.entries.get(oldValue, None)
 		return res
 
 class FDEVMappingItems(FDEVMappingBase):
