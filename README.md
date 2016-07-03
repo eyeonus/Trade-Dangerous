@@ -786,9 +786,9 @@ Frontier provides an API for their mobile app. This can be used to report accura
 
 ###Options (-O):
 
-    csvs:  Merge shipyard into into ShipVendor.csv.
+    csvs:  Merge shipyards into ShipVendor.csv.
     edcd:  Download current FDevIDs from EDCD
-    eddn:  Post market prices to EDDN.
+    eddn:  Post market, shipyard and outfitting to EDDN.
     name:  Do not obfuscate commander name for EDDN submit.
     save:  Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).
 
