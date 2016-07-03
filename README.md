@@ -792,6 +792,41 @@ Frontier provides an API for their mobile app. This can be used to report accura
     name:  Do not obfuscate commander name for EDDN submit.
     save:  Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).
 
+##Elite Dangerous netLog parser import plugin:
+
+Elite Dangerous writes a logfile which includes the name and position data of the system you are in.
+
+This plugin tries to extract these information and store it in the database.
+
+In order do find the log files, the environment variable "FDEVLOGDIR" must be set to the correct path, e.g. "C:\Program Files (x86)\Frontier\Products\elite-dangerous-64\logs\"
+
+###Basic usage:
+
+    trade.py import --plug netlog
+      This will parse all found netlog files and adds new systems to the database.
+
+    trade.py import --plug netlog -O last
+      This will parse the newest netlog file and adds new systems to the database.
+
+    trade.py imp -P netlog -O show
+      This will parse all found netlog files but will only display the new systems
+      without adding them to the database.
+
+    trade.py imp -P netlog -O date=2016-01,last
+      This will parse the newest netlog file from January 2016 and adds new systems
+      to the database.
+      The date given can be given in the form [YY]YY[-MM[-DD]]. Year is mandatory
+      in 2- or 4-digit form, month and day are optional 2-digits, separator
+      is the hyphen "-".
+
+###Options (-O):
+
+    last:  Only parse the last (newest) netLog file.
+    date:  Only parse netLog files from date, format=[YY]YY[-MM[-DD]].
+    show:  Only show the system name and position. Don't update the DB.
+
+    (All options can be combined.)
+
 ##MARKET sub-command:
 
 Lists items bought / sold at a given station; with --detail (-v) also includes the average price for those items.
