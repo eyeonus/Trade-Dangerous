@@ -120,17 +120,17 @@ _td_import()
 		for (( i=1; i<${COMP_CWORD-1}; i++ ));
 		do
 			if [[ "${COMP_WORDS[i]}" = "maddavo" ]]; then
-				opts="csvs corrections systems stations shipvendors exportcsv csvonly skipdl force use3h use2d usefull help"
+				opts="corrections csvonly csvs exportcsv force shipvendors skipdl stations systems use2d use3h usefull help"
 				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 				return 0
 			fi
 			if [[ "${COMP_WORDS[i]}" = "edapi" ]]; then
-				opts=""
+				opts="csvs edcd eddn name save help"
 				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 				return 0
 			fi
 			if [[ "${COMP_WORDS[i]}" = "netlog" ]]; then
-				opts="show last date"
+				opts="date last show help"
 				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 				return 0
 			fi
