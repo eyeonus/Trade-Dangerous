@@ -95,7 +95,7 @@ class PluginBase(object):
             text += tw.fill(options[opt].strip()) + "\n"
         text += "\n"
         text += "You can also chain options together, e.g.:\n"
-        text += "  --opt=systems,stations,csvonly\n"
+        text += "  --opt={}\n".format(",".join(list(options.keys())[:3]))
 
         return text
 
