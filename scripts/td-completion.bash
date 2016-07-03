@@ -125,7 +125,7 @@ _td_import()
 				return 0
 			fi
 			if [[ "${COMP_WORDS[i]}" = "edapi" ]]; then
-				opts="csvs name save eddn"
+				opts="csvs name save eddn edcd"
 				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 				return 0
 			fi
