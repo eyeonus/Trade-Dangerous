@@ -109,7 +109,7 @@ _td_import()
 
 	case ${prev} in
 	--plug|-P)
-		opts="maddavo edapi"
+		opts="maddavo edapi netlog"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	--url)
@@ -125,7 +125,12 @@ _td_import()
 				return 0
 			fi
 			if [[ "${COMP_WORDS[i]}" = "edapi" ]]; then
-				opts="csvs name save eddn edcd"
+				opts=""
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+			if [[ "${COMP_WORDS[i]}" = "netlog" ]]; then
+				opts="show last date"
 				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 				return 0
 			fi
