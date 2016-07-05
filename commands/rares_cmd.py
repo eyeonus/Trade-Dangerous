@@ -48,7 +48,7 @@ switches = [
         PlanetaryArgument(),
     ),
     ParseArgument('--price-sort', '-P',
-            help='(When using --near) Sort by price not distance.',
+            help='Sort by price not distance.',
             action='store_true',
             default=False,
             dest='sortByPrice',
@@ -225,16 +225,24 @@ def render(results, cmdenv, tdb):
     # Calculate the longest station name in our list.
     longestStnName = max(results.rows, key=lambda result: len(result.rare.station.name())).rare.station
     longestStnNameLen = len(longestStnName.name())
-    longestRareName = max(results.rows, key=lambda result: len(result.rare.dbname)).rare
-    longestRareNameLen = len(longestRareName.dbname)
+    if cmdenv.detail > 0:
+        longestRareName = max(results.rows, key=lambda result: len(result.rare.fullname)).rare
+        longestRareNameLen = len(longestRareName.fullname)
+    else:
+        longestRareName = max(results.rows, key=lambda result: len(result.rare.dbname)).rare
+        longestRareNameLen = len(longestRareName.dbname)
 
     # Use the formatting system to describe what our
     # output rows are going to look at (see formatting.py)
     rowFmt = RowFormat()
     rowFmt.addColumn('Station', '<', longestStnNameLen,
             key=lambda row: row.rare.station.name())
-    rowFmt.addColumn('Rare', '<', longestRareNameLen,
-            key=lambda row: row.rare.name())
+    if cmdenv.detail > 0:
+        rowFmt.addColumn('Rare', '<', longestRareNameLen,
+                key=lambda row: row.rare.fullname)
+    else:
+        rowFmt.addColumn('Rare', '<', longestRareNameLen,
+                key=lambda row: row.rare.dbname)
     rowFmt.addColumn('Cost', '>', 10, 'n',
             key=lambda row: row.rare.costCr)
     rowFmt.addColumn('DistLy', '>', 6, '.2f',
