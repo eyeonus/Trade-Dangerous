@@ -155,15 +155,21 @@ CREATE TABLE RareItem
  (
    rare_id INTEGER PRIMARY KEY AUTOINCREMENT,
    station_id INTEGER NOT NULL,
+   category_id INTEGER NOT NULL,
    name VARCHAR(40) COLLATE nocase,
    cost INTEGER,
    max_allocation INTEGER,
    illegal TEXT(1) NOT NULL DEFAULT '?'
        CHECK (illegal IN ('?', 'Y', 'N')),
+   suppressed TEXT(1) NOT NULL DEFAULT '?'
+       CHECK (suppressed IN ('?', 'Y', 'N')),
 
    UNIQUE (name),
 
    FOREIGN KEY (station_id) REFERENCES Station(station_id)
+    ON UPDATE CASCADE
+    ON DELETE CASCADE,
+   FOREIGN KEY (category_id) REFERENCES Category(category_id)
     ON UPDATE CASCADE
     ON DELETE CASCADE
  )

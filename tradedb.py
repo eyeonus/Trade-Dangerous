@@ -506,17 +506,21 @@ class Item(object):
 
 class RareItem(namedtuple('RareItem', (
         'ID', 'station', 'dbname', 'costCr', 'maxAlloc', 'illegal',
+        'suppressed', 'category', 'fullname',
         ))):
     """
     Describes a RareItem from the database.
 
     Attributes:
-        ID       -- Database ID,
-        station  -- Which Station this is bought from,
-        dbname   -- The name are presented in the database,
-        costCr   -- Buying price.
-        maxAlloc -- How many the player can carry at a time,
-        illegal  -- If the item may be considered illegal,
+        ID         -- Database ID,
+        station    -- Which Station this is bought from,
+        dbname     -- The name are presented in the database,
+        costCr     -- Buying price.
+        maxAlloc   -- How many the player can carry at a time,
+        illegal    -- If the item may be considered illegal,
+        suppressed -- The item is suppressed.
+        category   -- Reference to the category.
+        fullname   -- Combined category/dbname.
     """
 
     def name(self):
@@ -1958,21 +1962,24 @@ class TradeDB(object):
         Populate the RareItem list.
         """
         stmt = """
-            SELECT  rare_id,
-                    station_id,
-                    name,
-                    cost,
-                    max_allocation,
-                    illegal
+            SELECT  rare_id, station_id, category_id, name,
+                    cost, max_allocation, illegal, suppressed
               FROM  RareItem
         """
         self.cur.execute(stmt)
 
         rareItemByID, rareItemByName = {}, {}
         stationByID = self.stationByID
-        for (ID, stnID, name, cost, maxAlloc, illegal) in self.cur:
+        for (
+            ID, stnID, catID, name,
+            cost, maxAlloc, illegal, suppressed
+        ) in self.cur:
             station = stationByID[stnID]
-            rare = RareItem(ID, station, name, cost, maxAlloc, illegal)
+            category = self.categoryByID[catID]
+            rare = RareItem(
+                ID, station, name, cost, maxAlloc, illegal, suppressed,
+                category, '{}/{}'.format(category.dbname, name)
+            )
             rareItemByID[ID] = rareItemByName[name] = rare
         self.rareItemByID = rareItemByID
         self.rareItemByName = rareItemByName
