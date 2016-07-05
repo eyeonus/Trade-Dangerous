@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jul 05 2016 (bgol, horizon branch):
+. Added category and suppressed to RareItem and updated data.
+. Show "Category/Itemname" if more detail is requested for the "rares" command.
+
 Jul 03 2016 (bgol, horizon branch):
 . New import plugin "netLog" which parses the netLog files and add new
   systems to the database (see README for description).
