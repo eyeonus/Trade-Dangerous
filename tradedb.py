@@ -1487,6 +1487,8 @@ class TradeDB(object):
             return name
 
         slashPos = name.find('/')
+        if slashPos < 0:
+            slashPos = name.find('\\')
         nameOff = 1 if name.startswith('@') else 0
         if slashPos > nameOff:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
