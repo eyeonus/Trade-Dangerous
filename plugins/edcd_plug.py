@@ -42,7 +42,7 @@ class ImportPlugin(ImportPluginBase):
 			for itemTD in sorted(catTD.items, key=lambda x: x.dbname):
 				itemEDCD = self.edcdItems.get(itemTD.dbname, None)
 				if not itemEDCD:
-					tdenv.DEBUG0("Item '{}' not in EDCD", itemTD.dbname)
+					tdenv.DEBUG0("Item '{}' not in EDCD", itemTD.fullname)
 				else:
 					if catTD.dbname != itemEDCD.category.dbname:
 						tdenv.WARN("Item '{}' has different category "
@@ -114,7 +114,7 @@ class ImportPlugin(ImportPluginBase):
 							itemEDCD.fdevID, itemEDCD.dbname, itemTD.dbname
 						)
 					else:
-						tdenv.NOTE("New Item '{}'", itemEDCD.dbname)
+						tdenv.NOTE("New Item '{}'", itemEDCD.fullname)
 						insColumns = [
 							"name",
 							"category_id",
@@ -152,11 +152,11 @@ class ImportPlugin(ImportPluginBase):
 						if itemTD.fdevID != itemEDCD.fdevID:
 							tdenv.WARN(
 								"Item '{}' has different FDevID {} (TD) != {} (EDCD).",
-								itemTD.dbname, itemTD.fdevID, itemEDCD.fdevID
+								itemTD.fullname, itemTD.fdevID, itemEDCD.fdevID
 							)
 					if len(updColumns):
 						tdenv.NOTE("Update Item '{}' {} {}",
-							itemTD.dbname, updColumns, updValues
+							itemTD.fullname, updColumns, updValues
 						)
 						updValues.append(itemTD.ID)
 						sqlStmt = (
