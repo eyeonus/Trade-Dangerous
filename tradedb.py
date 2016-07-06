@@ -431,7 +431,7 @@ class Station(object):
 
 
 class Ship(namedtuple('Ship', (
-        'ID', 'dbname', 'cost', 'stations'
+        'ID', 'dbname', 'cost', 'fdevID', 'stations'
         ))):
     """
     Ship description.
@@ -440,6 +440,7 @@ class Ship(namedtuple('Ship', (
         ID          -- The database ID
         dbname      -- The name as present in the database
         cost        -- How many credits to buy
+        fdevID      -- FDevID as provided by the companion API.
         stations    -- List of Stations ship is sold at.
     """
 
@@ -488,14 +489,18 @@ class Item(object):
         dbname   -- Name as it appears in-game and in the DB.
         category -- Reference to the category.
         fullname -- Combined category/dbname for lookups.
+        avgPrice -- Galactic average as shown in game.
+        fdevID   -- FDevID as provided by the companion API.
     """
-    __slots__ = ('ID', 'dbname', 'category', 'fullname')
+    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID')
 
-    def __init__(self, ID, dbname, category, fullname):
+    def __init__(self, ID, dbname, category, fullname, avgPrice=None, fdevID=None):
         self.ID = ID
         self.dbname = dbname
         self.category = category
         self.fullname = fullname
+        self.avgPrice = avgPrice
+        self.fdevID   = fdevID
 
     def name(self):
         return self.dbname
@@ -1816,7 +1821,7 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-            SELECT ship_id, name, cost
+            SELECT ship_id, name, cost, fdev_id
               FROM Ship
         """
         self.cur.execute(stmt)
@@ -1882,15 +1887,16 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-            SELECT item_id, name, category_id
+            SELECT item_id, name, category_id, avg_price, fdev_id
               FROM Item
         """
-        itemByID, itemByName = {}, {}
-        for ID, name, categoryID in self.cur.execute(stmt):
+        itemByID, itemByName = {}, {}, {}
+        for ID, name, categoryID, avgPrice, fdevID in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
             item = Item(
                 ID, name, category,
-                '{}/{}'.format(category.dbname, name)
+                '{}/{}'.format(category.dbname, name),
+                avgPrice, fdevID
             )
             itemByID[ID] = item
             itemByName[name] = item
