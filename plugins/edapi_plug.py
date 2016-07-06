@@ -23,7 +23,7 @@ import time
 import mapping
 import transfers
 
-__version_info__ = ('3', '7', '1')
+__version_info__ = ('3', '7', '2')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -378,7 +378,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'csvs': 'Merge shipyards into ShipVendor.csv.',
         'name': 'Do not obfuscate commander name for EDDN submit.',
         'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
-        'edcd': 'Download current FDevIDs from EDCD',
+        'edcd': 'Call the EDCD plugin first',
         'eddn': 'Post market, shipyard and outfitting to EDDN.',
     }
 
@@ -391,49 +391,23 @@ class ImportPlugin(plugins.ImportPluginBase):
         cookieFilePath = pathlib.Path(ImportPlugin.cookieFile)
         self.cookiePath = tdb.dataPath / cookieFilePath
 
-    def download_fdevids(self):
-        """
-            Download the current Shipyard and Outfitting data
-            from EDCD, see https://github.com/EDCD/FDevIDs
-        """
-        tdb, tdenv = self.tdb, self.tdenv
-
-        baseUrl = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/"
-        downloadList = [
-            ('FDevShipyard', 'FDevShipyard.csv', 'shipyard.csv'),
-            ('FDevOutfitting', 'FDevOutfitting.csv', 'outfitting.csv'),
-        ]
-
-        db = tdb.getDB()
-        for tableName, fileTD, fileEDCD in downloadList:
-            localPath = tdb.dataPath / pathlib.Path(fileTD)
-            transfers.download(
-                tdenv,
-                baseUrl + fileEDCD,
-                str(localPath),
-            )
-            db.execute("DELETE FROM {}".format(tableName))
-            cache.processImportFile(
-                tdenv,
-                db,
-                localPath,
-                tableName
-            )
-            lines, csvPath = csvexport.exportTableToFile(
-                tdb,
-                tdenv,
-                tableName,
-            )
-            tdenv.NOTE("{} updated.", csvPath)
-        db.commit()
-
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
 
         # first check for EDCD
         if self.getOption("edcd"):
-            # download the current FDevIDs from EDCD
-            self.download_fdevids()
+            # Call the EDCD plugin
+            try:
+                import plugins.edcd_plug as EDCD
+            except:
+                raise plugins.PluginException(
+                    "EDCE plugin not found.".format(str(localPath))
+                )
+            tdenv.NOTE("Calling the EDCD plugin.")
+            edcdPlugin = EDCD.ImportPlugin(tdb, tdenv)
+            edcdPlugin.options["csvs"] = True
+            edcdPlugin.run()
+            tdenv.NOTE("Going back to EDAPI.\n")
 
         # now load the mapping tables
         itemMap = mapping.FDEVMappingItems(tdb, tdenv)
