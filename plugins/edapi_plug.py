@@ -30,7 +30,7 @@ __version__ = '.'.join(__version_info__)
 # Deal with some differences in names between TD, ED and the API.
 # ----------------------------------------------------------------
 
-bracket_levels = ('-', 'L', 'M', 'H')
+bracket_levels = ('?', 'L', 'M', 'H')
 
 # Categories to ignore. Drones end up here. No idea what they are.
 cat_ignore = [
@@ -687,7 +687,9 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # Create the import file.
         with open(self.filename, 'w', encoding="utf-8") as f:
+            # write System/Station line
             f.write("@ {}/{}\n".format(system, station))
+
             eddn_market = []
             for commodity in api.profile['lastStarport']['commodities']:
                 if commodity['categoryname'] in cat_ignore:
@@ -707,42 +709,51 @@ class ImportPlugin(plugins.ImportPluginBase):
                 commodity_int('buyPrice')
                 commodity_int('sellPrice')
 
-                # Populate EDDN
-                if self.getOption("eddn"):
-                    eddn_market.append(
-                        {
-                            "name": commodity['name'],
-                            "buyPrice": commodity['buyPrice'],
-                            "supply": commodity['stock'],
-                            "supplyLevel": EDDN._levels[commodity['stockBracket']],  # NOQA
-                            "sellPrice": commodity['sellPrice'],
-                            "demand": commodity['demand'],
-                            "demandLevel": EDDN._levels[commodity['demandBracket']]  # NOQA
-                        }
+                demandLevel = True
+                supplyLevel = True
+                if commodity['buyPrice'] == 0:
+                    # If there is not buyPrice, ignore stock
+                    supplyLevel = False
+                    commodity['stock'] = 0
+                    commodity['stockBracket'] = 0
+                    tdStock  = '-'
+                    tdDemand = "{}{}".format(
+                        commodity['demand'],
+                        bracket_levels[commodity['demandBracket']]
+                    )
+                else:
+                    # otherwise don't care about demand
+                    demandLevel = False
+                    commodity['demand'] = 0
+                    commodity['demandBracket'] = 0
+                    tdDemand = '?'
+                    tdStock  = "{}{}".format(
+                        commodity['stock'],
+                        bracket_levels[commodity['stockBracket']]
                     )
 
-                # If stock is zero, list it as unavailable.
-                # If the stockBracket is zero, ignore any stock.
-                if not commodity['stock'] or not commodity['stockBracket']:
-                    commodity['stock'] = '-'
-                else:
-                    demand = bracket_levels[commodity['stockBracket']]
-                    commodity['stock'] = str(commodity['stock'])+demand
+                # Populate EDDN
+                if self.getOption("eddn"):
+                    itemEDDN = {
+                        "name": commodity['name'],
+                        "buyPrice": commodity['buyPrice'],
+                        "supply": commodity['stock'],
+                        "sellPrice": commodity['sellPrice'],
+                        "demand": commodity['demand'],
+                    }
+                    if supplyLevel:
+                        itemEDDN["supplyLevel"] = EDDN._levels[commodity['stockBracket']]
+                    if demandLevel:
+                        itemEDDN["demandLevel"] = EDDN._levels[commodity['demandBracket']]
+                    eddn_market.append(itemEDDN)
 
-                # If demand is zero, list as unknown.
-                if not (commodity['demand'] and commodity['demandBracket']):
-                    commodity['demand'] = '?'
-                else:
-                    demand = bracket_levels[commodity['demandBracket']]
-                    commodity['demand'] = str(commodity['demand'])+demand
-
+                # write Item line (category lines are not needed)
                 f.write(
                     "\t\t{} {} {} {} {}\n".format(
                         commodity['name'],
                         commodity['sellPrice'],
                         commodity['buyPrice'],
-                        commodity['demand'],
-                        commodity['stock'],
+                        tdDemand, tdStock,
                     ))
 
         tdenv.ignoreUnknown = True
