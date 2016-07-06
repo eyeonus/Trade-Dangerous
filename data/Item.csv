@@ -52,8 +52,8 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Machinery','Ion Distributor',11,1133,128673874
 'Machinery','Magnetic Emitter Coil',12,199,128673869
 'Machinery','Marine Equipment',13,3916,128049223
-'Machinery','Micro-weave Cooling Hoses',15,'',''
-'Machinery','Microbial Furnaces',14,236,128049220
+'Machinery','Micro-weave Cooling Hoses',14,'',''
+'Machinery','Microbial Furnaces',15,236,128049220
 'Machinery','Mineral Extractors',16,443,128049221
 'Machinery','Modular Terminals',17,695,128673870
 'Machinery','Power Converter',18,246,128673862
@@ -148,7 +148,8 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Salvage','Technical Blueprints',34,4506,128666761
 'Salvage','Trade Data',35,1704,128666754
 'Salvage','Unknown Artefact',36,361217,128668547
-'Salvage','Unstable Data Core',37,'',''
+'Salvage','Unknown Probe',37,411003,128673876
+'Salvage','Unstable Data Core',38,'',''
 'Slavery','Imperial Slaves',1,15984,128667728
 'Slavery','Slaves',2,10360,128049243
 'Technology','Advanced Catalysers',1,2947,128049231
