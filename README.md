@@ -787,7 +787,7 @@ Frontier provides an API for their mobile app. This can be used to report accura
 ###Options (-O):
 
     csvs:  Merge shipyards into ShipVendor.csv.
-    edcd:  Download current FDevIDs from EDCD
+    edcd:  Call the EDCD plugin first (see below).
     eddn:  Post market, shipyard and outfitting to EDDN.
     name:  Do not obfuscate commander name for EDDN submit.
     save:  Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).
@@ -826,6 +826,27 @@ In order do find the log files, the environment variable "FDEVLOGDIR" must be se
     show:  Only show the system name and position. Don't update the DB.
 
     (All options can be combined.)
+
+##Elite Dangerous Community Developers (EDCD) import plugin:
+
+In the provided API for their mobile app Frontier sends IDs. These IDs are unique and could be used to map the FDevIDs to internal database names (or IDs). This plugin synchronises the FDevIDs (from EDCD) with the TD database, which should help the EDAPI (and the included EDDN) to be more accurate.
+
+###Basic usage:
+
+    trade.py import --plug edcd
+      This does nothing.
+
+    trade.py imp -P edapi -O csvs
+      This will download all three (shipyard, commodity, outfitting) FDevIDs
+      CSV-files and import them into the database.
+
+###Options (-O):
+
+    local:      Use local EDCD CSV-files.
+    shipyard:   Download and process EDCD shipyard.csv
+    commodity:  Download and process EDCD commodity.csv
+    outfitting: Download and process EDCD outfitting.csv
+    csvs:       Download and process all EDCD CSV-files.
 
 ##MARKET sub-command:
 
