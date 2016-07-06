@@ -1377,7 +1377,7 @@ class TradeDB(object):
         _check_setting("arm", "rearm", rearm, TradeDB.marketStates)
         _check_setting("ref", "refuel", refuel, TradeDB.marketStates)
         _check_setting("rep", "repair", repair, TradeDB.marketStates)
-        _check_setting("plt", "planetary", planetary, TradeDB.marketStates)
+        _check_setting("plt", "planetary", planetary, TradeDB.planetStates)
 
         if not changes:
             return False

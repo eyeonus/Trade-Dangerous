@@ -421,7 +421,7 @@ def render(results, cmdenv, tdb):
     print("Rearm.....:", _detail(station.rearm, TradeDB.marketStates))
     print("Refuel....:", _detail(station.refuel, TradeDB.marketStates))
     print("Repair....:", _detail(station.repair, TradeDB.marketStates))
-    print("Planetary.:", _detail(station.planetary, TradeDB.marketStates))
+    print("Planetary.:", _detail(station.planetary, TradeDB.planetStates))
     print("Prices....:", station.itemCount or 'None')
 
     if station.itemCount == 0:
