@@ -525,8 +525,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "Station"
                 )
                 tdenv.NOTE("{} updated.", csvPath)
-                station_lookup = tdb.lookupPlace(place)
             station_lookup = tdb.lookupStation(station, system)
+            if not station_lookup:
+                raise plugins.PluginException(
+                    "Something went wrong while adding the station to the DB."
+                )
         else:
             # See if we need to update the info for this station.
             print('Station known.')
@@ -774,7 +777,42 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
             con._debug = False
 
-            if len(eddn_market):
+            def consistencyCheck(checkName, checkList):
+                warnList = [
+                    "The station should{s} have a {what}, but the API did{d} return one.",
+                    "If you think the DB entry is wrong you can correct it by running:",
+                    "   trade.py station -u --{what} {yn} '@{sys}/{stn}'",
+                ]
+                warnParameter = [
+                    ("n't", "", "Y"),
+                    ("", "n't", "N"),
+                ]
+                warnResult  = False
+                checkResult = True
+
+                checkAttribute = getattr(station_lookup, checkName)
+                if len(checkList) > 0:
+                    if checkAttribute == "N":
+                        warnResult  = True
+                        checkResult = False
+                        s, d, yn = warnParameter[0]
+                        warnList.append("Ignoring {what}.")
+                else:
+                    checkResult = False
+                    if checkAttribute == "Y":
+                        warnResult  = True
+                        s, d, yn = warnParameter[1]
+
+                if warnResult:
+                    for warnText in warnList:
+                        tdenv.WARN(
+                        warnText,
+                        what=checkName, sys=system, stn=station,
+                        s=s, d=d, yn=yn
+                    )
+                return checkResult
+
+            if consistencyCheck("market", eddn_market):
                 print('Posting commodities to EDDN...')
                 con.publishCommodities(
                     system,
@@ -782,7 +820,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     eddn_market
                 )
 
-            if len(yardList):
+            if consistencyCheck("shipyard", yardList):
                 print('Posting shipyard to EDDN...')
                 con.publishShipyard(
                     system,
@@ -802,7 +840,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                             ('bobble', 'decal', 'paintjob')
                         ):
                             tdenv.NOTE("Unknown module ID: {}, name: {}", module['id'], module['name'])
-                if len(eddn_modules):
+                if consistencyCheck("outfitting", eddn_modules):
                     print('Posting outfitting to EDDN...')
                     con.publishOutfitting(
                         system,
