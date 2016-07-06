@@ -180,7 +180,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Waste','Scrap',3,48,128049248
 'Waste','Toxic Waste',4,'',''
 'Weapons','Battle Weapons',1,7259,128049234
-'Weapons','Landmines',2,4202,128672312
+'Weapons','Landmines',2,4602,128672312
 'Weapons','Non-Lethal Weapons',3,1837,128049236
 'Weapons','Personal Weapons',4,4632,128049233
 'Weapons','Reactive Armour',5,2113,128049235
