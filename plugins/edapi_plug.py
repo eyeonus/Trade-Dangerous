@@ -400,9 +400,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             try:
                 import plugins.edcd_plug as EDCD
             except:
-                raise plugins.PluginException(
-                    "EDCE plugin not found.".format(str(localPath))
-                )
+                raise plugins.PluginException("EDCD plugin not found.")
             tdenv.NOTE("Calling the EDCD plugin.")
             edcdPlugin = EDCD.ImportPlugin(tdb, tdenv)
             edcdPlugin.options["csvs"] = True
