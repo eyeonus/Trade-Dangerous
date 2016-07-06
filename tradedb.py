@@ -1890,7 +1890,7 @@ class TradeDB(object):
             SELECT item_id, name, category_id, avg_price, fdev_id
               FROM Item
         """
-        itemByID, itemByName = {}, {}, {}
+        itemByID, itemByName = {}, {}
         for ID, name, categoryID, avgPrice, fdevID in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
             item = Item(
