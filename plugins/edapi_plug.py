@@ -22,8 +22,10 @@ import textwrap
 import time
 import mapping
 import transfers
+from collections import namedtuple
 
-__version_info__ = ('3', '7', '2')
+
+__version_info__ = ('3', '7', '3')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -391,6 +393,189 @@ class ImportPlugin(plugins.ImportPluginBase):
         cookieFilePath = pathlib.Path(ImportPlugin.cookieFile)
         self.cookiePath = tdb.dataPath / cookieFilePath
 
+    def askForStationData(self, system, stnName=None, station=None):
+        """
+        Ask for new or updated station data
+        """
+        tdb, tdenv = self.tdb, self.tdenv
+
+        stnDefault = namedtuple(
+            'stnDefault', [
+                'lsFromStar','market','blackMarket','shipyard','maxPadSize',
+                'outfitting','rearm','refuel','repair','planetary',
+            ]
+        )
+
+        # defaults for Station, which could come from API
+        askForData = False
+        if not station:
+            defMarket, defShipyard, defOutfitting = "?", "?", "?"
+        else:
+            defMarket     = station.market
+            defShipyard   = station.shipyard
+            defOutfitting = station.outfitting
+
+        # defaults from API response are not reliable!
+        if 'commodities' in self.edAPI.profile['lastStarport']:
+            defMarket = "Y"
+        else:
+            defMarket = "N"
+        if 'ships' in self.edAPI.profile['lastStarport']:
+            defShipyard = "Y"
+        else:
+            defShipyard = "N"
+        if 'modules' in self.edAPI.profile['lastStarport']:
+            defOutfitting = "Y"
+        else:
+            defOutfitting = "N"
+
+        def warnAPIResponse(checkName, checkYN):
+            warnText = (
+                "The station should{s} have a {what}, "
+                "but the API did{d} return one."
+            )
+            if checkYN == "Y":
+                s, d = "", "n't"
+            else:
+                s, d = "n't", ""
+
+            tdenv.WARN(warnText, what=checkName, s=s, d=d)
+            return True
+
+        if not station:
+            print('Station unknown.')
+            defStation = stnDefault(
+                lsFromStar  = 0,   market     = defMarket,
+                blackMarket = "?", shipyard   = defShipyard,
+                maxPadSize  = "?", outfitting = defOutfitting,
+                rearm       = "?", refuel     = "?",
+                repair      = "?", planetary  = "?",
+            )
+        else:
+            print('Station known.')
+            defStation = stnDefault(
+                lsFromStar  = station.lsFromStar, market     = station.market,
+                blackMarket = station.blackMarket,shipyard   = station.shipyard,
+                maxPadSize  = station.maxPadSize, outfitting = station.outfitting,
+                rearm       = station.rearm,      refuel     = station.refuel,
+                repair      = station.repair,     planetary  = station.planetary,
+            )
+
+        warning = False
+        if defStation.outfitting != defOutfitting:
+            warning = warnAPIResponse('outfitting', defStation.outfitting)
+        if defStation.shipyard != defShipyard:
+            warning = warnAPIResponse('shipyard', defStation.shipyard)
+        if defStation.market != defMarket:
+            warning = warnAPIResponse('market', defStation.market)
+        if warning:
+            tdenv.WARN("Please update station data with correct values.")
+            tdenv.WARN("(Fields will be marked with an leading asterisk '*')")
+            askForData = True
+        if ((defStation.lsFromStar == 0) or ("?" in defStation)):
+           askForData = True
+
+        newStation = {}
+        for key in defStation._fields:
+            newStation[key] = getattr(defStation, key)
+
+        if askForData:
+            tdenv.NOTE("Values in brackets are the default.")
+            lsFromStar = input(
+                " Stn/Ls..............[{}]: ".format(defStation.lsFromStar)
+            ) or defStation.lsFromStar
+            try:
+                lsFromStar = int(float(lsFromStar)+0.5)
+            except:
+                print("That doesn't seem to be a number. Defaulting to zero.")
+                lsFromStar = defStation.lsFromStar
+            newStation['lsFromStar'] = lsFromStar
+
+            for askText, askField, markValue in [
+                ('Pad Size....(s,m,l) ', 'maxPadSize',  defStation.maxPadSize),
+                ('Planetary.....(y,n) ', 'planetary',   defStation.planetary),
+                ('B/Market......(y,n) ', 'blackMarket', defStation.blackMarket),
+                ('Refuel........(y,n) ', 'refuel',      defStation.refuel),
+                ('Restock.......(y,n) ', 'rearm',       defStation.rearm),
+                ('Repair........(y,n) ', 'repair',      defStation.repair),
+                ('Outfitting....(y,n) ', 'outfitting',  defOutfitting),
+                ('Shipyard......(y,n) ', 'shipyard',    defShipyard),
+                ('Market........(y,n) ', 'market',      defMarket),
+            ]:
+                defValue = getattr(defStation, askField)
+                if defValue != markValue:
+                    mark = "*"
+                else:
+                    mark = " "
+                askValue = input(
+                    "{}{}[{}]: ".format(mark, askText, defValue)
+                ) or defValue
+                newStation[askField] = askValue
+
+        else:
+            def _detail(value, source):
+                detail = source[value]
+                if detail == '?':
+                    detail += ' [unknown]'
+                return detail
+
+            ls = station.lsFromStar
+            if ls == 0:
+                ls = '0 [unknown]'
+            print(" Stn/Ls....:", ls)
+            print(" Pad Size..:", _detail(station.maxPadSize, tdb.padSizes))
+            print(" Planetary.:", _detail(station.planetary, tdb.planetStates))
+            print(" B/Market..:", _detail(station.blackMarket, tdb.marketStates))
+            print(" Refuel....:", _detail(station.refuel, tdb.marketStates))
+            print(" Restock...:", _detail(station.rearm, tdb.marketStates))
+            print(" Repair....:", _detail(station.repair, tdb.marketStates))
+            print(" Outfitting:", _detail(station.outfitting, tdb.marketStates))
+            print(" Shipyard..:", _detail(station.shipyard, tdb.marketStates))
+            print(" Market....:", _detail(station.market, tdb.marketStates))
+
+        exportCSV = False
+        if not station:
+            station = tdb.addLocalStation(
+                system=system,
+                name=stnName,
+                lsFromStar=newStation['lsFromStar'],
+                blackMarket=newStation['blackMarket'],
+                maxPadSize=newStation['maxPadSize'],
+                market=newStation['market'],
+                shipyard=newStation['shipyard'],
+                outfitting=newStation['outfitting'],
+                rearm=newStation['rearm'],
+                refuel=newStation['refuel'],
+                repair=newStation['repair'],
+                planetary=newStation['planetary'],
+            )
+            exportCSV = True
+        else:
+            # let the function check for changes
+            if tdb.updateLocalStation(
+                station=station,
+                lsFromStar=newStation['lsFromStar'],
+                blackMarket=newStation['blackMarket'],
+                maxPadSize=newStation['maxPadSize'],
+                market=newStation['market'],
+                shipyard=newStation['shipyard'],
+                outfitting=newStation['outfitting'],
+                rearm=newStation['rearm'],
+                refuel=newStation['refuel'],
+                repair=newStation['repair'],
+                planetary=newStation['planetary'],
+            ):
+                exportCSV = True
+
+        if exportCSV:
+            lines, csvPath = csvexport.exportTableToFile(
+                tdb,
+                tdenv,
+                "Station",
+            )
+            tdenv.DEBUG0("{} updated.", csvPath)
+        return station
+
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
 
@@ -422,6 +607,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Connect to the API, authenticate, and pull down the commander
         # /profile.
         api = EDAPI(cookiefile=str(self.cookiePath))
+        self.edAPI = api
 
         # Sanity check that the commander is docked. Otherwise we will get a
         # mismatch between the last system and last station.
@@ -437,10 +623,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 print('API response saved to: {}'.format(saveName))
 
         # Figure out where we are.
-        system = api.profile['lastSystem']['name']
-        station = api.profile['lastStarport']['name']
-        place = '@{}/{}'.format(system.upper(), station)
-        print(place)
+        sysName = api.profile['lastSystem']['name']
+        stnName = api.profile['lastStarport']['name']
+        print('@{}/{}'.format(sysName.upper(), stnName))
 
         # Reload the cache.
         tdenv.DEBUG0("Checking the cache")
@@ -451,229 +636,29 @@ class ImportPlugin(plugins.ImportPluginBase):
         )
         tdb.close()
 
-        # Check to see if this system is in the Stations file
+        # Check to see if this system is in the database
         try:
-            station_lookup = tdb.lookupPlace(place)
+            system = tdb.lookupSystem(sysName)
         except LookupError:
-            station_lookup = None
+            raise plugins.PluginException(
+                "System '{}' unknown.".format(sysName)
+            )
 
-        # The station isn't known. Add it.
-        if not station_lookup:
-            print('Station unknown.')
-            print('Adding:', place)
-            lsFromStar = input(
-                "Distance from star (enter for 0): "
-            ) or 0
-            try:
-                lsFromStar = int(float(lsFromStar))
-            except:
-                print("That doesn't seem to be a number. Defaulting to zero.")
-                lsFromStar = 0
-            blackMarket = input(
-                "Black market present (Y, N or enter for ?): "
-            ) or '?'
-            maxPadSize = input(
-                "Max pad size (S, M, L or enter for ?): "
-            ) or '?'
-            outfitting = input(
-                "Outfitting present (Y, N or enter for ?): "
-            ) or '?'
-            rearm = input(
-                "Rearm present (Y, N or enter for ?): "
-            ) or '?'
-            refuel = input(
-                "Refuel present (Y, N or enter for ?): "
-            ) or '?'
-            repair = input(
-                "Repair present (Y, N or enter for ?): "
-            ) or '?'
-            planetary = input(
-                "Planetary station (Y, N or enter for ?): "
-            ) or '?'
-            # This is unreliable, so ask the user.
-            if 'commodities' in api.profile['lastStarport']:
-                market = 'Y'
-            else:
-                market = input(
-                    "Commodity market present (Y, N or enter for ?): "
-                ) or '?'
-            # This is also unreliable, so ask the user.
-            if 'ships' in api.profile['lastStarport']:
-                shipyard = 'Y'
-            else:
-                shipyard = input(
-                    "Shipyard present (Y, N or enter for ?): "
-                ) or '?'
-            system_lookup = tdb.lookupSystem(system)
-            if tdb.addLocalStation(
-                system=system_lookup,
-                name=station,
-                lsFromStar=lsFromStar,
-                blackMarket=blackMarket,
-                maxPadSize=maxPadSize,
-                market=market,
-                shipyard=shipyard,
-                outfitting=outfitting,
-                rearm=rearm,
-                refuel=refuel,
-                repair=repair,
-                planetary=planetary
-            ):
-                lines, csvPath = csvexport.exportTableToFile(
-                    tdb,
-                    tdenv,
-                    "Station"
-                )
-                tdenv.NOTE("{} updated.", csvPath)
-            station_lookup = tdb.lookupStation(station, system)
-            if not station_lookup:
-                raise plugins.PluginException(
-                    "Something went wrong while adding the station to the DB."
-                )
-        else:
-            # See if we need to update the info for this station.
-            print('Station known.')
-            lsFromStar = station_lookup.lsFromStar
-            blackMarket = station_lookup.blackMarket
-            maxPadSize = station_lookup.maxPadSize
-            market = station_lookup.market
-            shipyard = station_lookup.shipyard
-            outfitting = station_lookup.outfitting
-            rearm = station_lookup.rearm
-            refuel = station_lookup.refuel
-            repair = station_lookup.repair
-            planetary = station_lookup.planetary
+        # Check to see if this station is in the database
+        try:
+            station = tdb.lookupStation(stnName, system)
+        except LookupError:
+            station = None
 
-            if lsFromStar == 0:
-                lsFromStar = input(
-                    "Update distance from star (enter for 0): "
-                ) or 0
-                lsFromStar = int(lsFromStar)
-
-            if blackMarket is '?':
-                blackMarket = input(
-                    "Update black market present (Y, N or enter for ?): "
-                ) or '?'
-
-            if maxPadSize is '?':
-                maxPadSize = input(
-                    "Update max pad size (S, M, L or enter for ?): "
-                ) or '?'
-
-            if outfitting is '?':
-                outfitting = input(
-                    "Update outfitting present (Y, N or enter for ?): "
-                ) or '?'
-
-            if rearm is '?':
-                rearm = input(
-                    "Update rearm present (Y, N or enter for ?): "
-                ) or '?'
-
-            if refuel is '?':
-                refuel = input(
-                    "Update refuel present (Y, N or enter for ?): "
-                ) or '?'
-
-            if repair is '?':
-                repair = input(
-                    "Update repair present (Y, N or enter for ?): "
-                ) or '?'
-
-            if planetary is '?':
-                planetary = input(
-                    "Update planetary (Y, N or enter for ?): "
-                ) or '?'
-
-            # This is unreliable, so ask the user if unknown.
-            if 'commodities' in api.profile['lastStarport']:
-                market = 'Y'
-            else:
-                if market is '?':
-                    market = input(
-                        "Commodity market present (Y, N or enter for ?): "
-                    ) or '?'
-
-            # This is also unreliable, so ask the user if unknown.
-            if 'ships' in api.profile['lastStarport']:
-                shipyard = 'Y'
-            else:
-                if shipyard is '?':
-                    shipyard = input(
-                        "Shipyard present (Y, N or enter for ?): "
-                    ) or '?'
-
-            if (
-                lsFromStar != station_lookup.lsFromStar or
-                blackMarket != station_lookup.blackMarket or
-                maxPadSize != station_lookup.maxPadSize or
-                market != station_lookup.market or
-                shipyard != station_lookup.shipyard or
-                outfitting != station_lookup.outfitting or
-                rearm != station_lookup.rearm or
-                refuel != station_lookup.refuel or
-                repair != station_lookup.repair or
-                planetary != station_lookup.planetary
-            ):
-                if tdb.updateLocalStation(
-                    station=station_lookup,
-                    lsFromStar=lsFromStar,
-                    blackMarket=blackMarket,
-                    maxPadSize=maxPadSize,
-                    market=market,
-                    shipyard=shipyard,
-                    outfitting=outfitting,
-                    rearm=rearm,
-                    refuel=refuel,
-                    repair=repair,
-                    planetary=planetary
-                ):
-                    lines, csvPath = csvexport.exportTableToFile(
-                        tdb,
-                        tdenv,
-                        "Station",
-                    )
-                    tdenv.NOTE("{} updated.", csvPath)
-
-        def consistencyCheck(checkName, checkList):
-            warnList = [
-                "The station should{s} have a {what}, but the API did{d} return one.",
-                "If you think the DB entry is wrong you can correct it by running:",
-                "   trade.py station -u --{what} {yn} '@{sys}/{stn}'",
-            ]
-            warnParameter = [
-                ("n't", "", "Y"),
-                ("", "n't", "N"),
-            ]
-            warnResult  = False
-            checkResult = True
-
-            checkAttribute = getattr(station_lookup, checkName)
-            if len(checkList) > 0:
-                if checkAttribute == "N":
-                    warnResult  = True
-                    checkResult = False
-                    s, d, yn = warnParameter[0]
-                    warnList.append("Ignoring {what}.")
-            else:
-                checkResult = False
-                if checkAttribute == "Y":
-                    warnResult  = True
-                    s, d, yn = warnParameter[1]
-
-            if warnResult:
-                for warnText in warnList:
-                    tdenv.WARN(
-                        warnText,
-                        what=checkName, sys=system, stn=station,
-                        s=s, d=d, yn=yn
-                    )
-            return checkResult
+        # New or update station data
+        station = self.askForStationData(system, stnName=stnName, station=station)
 
         # If a shipyard exists, make the ship lists
         shipList = []
         eddn_ships = []
-        if 'ships' in api.profile['lastStarport']:
+        if ((station.shipyard == "Y") and
+            ('ships' in api.profile['lastStarport'])
+        ):
             if 'shipyard_list' in api.profile['lastStarport']['ships']:
                 for ship in api.profile['lastStarport']['ships']['shipyard_list'].values():
                     shipList.append(shipMap.mapID(ship['id'], ship['name']))
@@ -684,42 +669,55 @@ class ImportPlugin(plugins.ImportPluginBase):
                     shipList.append(shipMap.mapID(ship['id'], ship['name']))
                     eddn_ships.append(yardMap.mapID(ship['id'], ship['name']))
 
-        if not consistencyCheck("shipyard", shipList):
-            del shipList[:]
-            del eddn_ships[:]
-        else:
-            if self.getOption("csvs"):
-                db = tdb.getDB()
-                # first delete all ships
-                db.execute(
+        if self.getOption("csvs"):
+            exportCSV = False
+            db = tdb.getDB()
+            # first delete all ships
+            if ((len(shipList) > 0) or (station.shipyard == "N")):
+                # but only if there should be no shipyard or there is a new list
+                delRows = db.execute(
                     """
                     DELETE FROM ShipVendor
                      WHERE station_id = ?
                     """,
-                    [station_lookup.ID]
-                )
-                # and now add the shipyard list
-                for ship in shipList:
-                    ship_lookup = tdb.lookupShip(ship)
-                    db.execute(
-                        """
-                        INSERT INTO ShipVendor(ship_id, station_id)
-                                        VALUES(?, ?)
-                        """,
-                        [ship_lookup.ID, station_lookup.ID]
+                    [station.ID]
+                ).rowcount
+                if delRows > 0:
+                    exportCSV = True
+                    tdenv.NOTE(
+                        "Deleted {} ships in '{}' shipyard.",
+                        delRows, station.name()
                     )
-                db.commit()
-                tdenv.NOTE("Updated {} ships in {} shipyard.", len(shipList), place)
+            # and now add the shipyard list
+            for ship in shipList:
+                ship_lookup = tdb.lookupShip(ship)
+                db.execute(
+                    """
+                    INSERT INTO ShipVendor(ship_id, station_id)
+                                    VALUES(?, ?)
+                    """,
+                    [ship_lookup.ID, station.ID]
+                )
+                exportCSV = True
+            db.commit()
+            if exportCSV:
+                tdenv.NOTE(
+                    "Added {} ships in '{}' shipyard.",
+                    len(shipList), station.name()
+                )
                 lines, csvPath = csvexport.exportTableToFile(
                     tdb,
                     tdenv,
                     "ShipVendor",
                 )
+                tdenv.DEBUG0("{} updated.", csvPath)
 
         # If a market exists, make the item lists
         itemList = []
         eddn_market = []
-        if 'commodities' in api.profile['lastStarport']:
+        if ((station.market == "Y") and
+            ('commodities' in api.profile['lastStarport'])
+        ):
             for commodity in api.profile['lastStarport']['commodities']:
                 if commodity['categoryname'] in cat_ignore:
                     continue
@@ -784,14 +782,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                         itemEDDN["demandLevel"] = EDDN._levels[itmDemandLevel]
                     eddn_market.append(itemEDDN)
 
-        if not consistencyCheck("market", itemList):
-            del itemList[:]
-            del eddn_market[:]
-        else:
+        if itemList:
             # Create the import file.
             with open(self.filename, 'w', encoding="utf-8") as f:
                 # write System/Station line
-                f.write("@ {}/{}\n".format(system, station))
+                f.write("@ {}/{}\n".format(sysName, stnName))
 
                 # write Item lines (category lines are not needed)
                 for itemTD in itemList:
@@ -817,20 +812,22 @@ class ImportPlugin(plugins.ImportPluginBase):
             if eddn_market:
                 print('Posting commodities to EDDN...')
                 con.publishCommodities(
-                    system,
-                    station,
+                    sysName,
+                    stnName,
                     eddn_market
                 )
 
             if eddn_ships:
                 print('Posting shipyard to EDDN...')
                 con.publishShipyard(
-                    system,
-                    station,
+                    sysName,
+                    stnName,
                     eddn_ships
                 )
 
-            if 'modules' in api.profile['lastStarport']:
+            if ((station.outfitting == "Y") and
+                ('modules' in api.profile['lastStarport'])
+            ):
                 eddn_modules = []
                 for module in api.profile['lastStarport']['modules'].values():
                     res = outfMap.mapID(module['id'], None)
@@ -842,11 +839,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                             ('bobble', 'decal', 'paintjob')
                         ):
                             tdenv.NOTE("Unknown module ID: {}, name: {}", module['id'], module['name'])
-                if consistencyCheck("outfitting", eddn_modules):
+                if eddn_modules:
                     print('Posting outfitting to EDDN...')
                     con.publishOutfitting(
-                        system,
-                        station,
+                        sysName,
+                        stnName,
                         eddn_modules
                     )
 
