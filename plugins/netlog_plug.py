@@ -54,7 +54,9 @@ class ImportPlugin(ImportPluginBase):
 		logDirName = os.getenv(self.LOGDIR_NAME, None)
 		if not logDirName:
 			raise PluginException(
-				"Environment variable '{}' not set.".format(self.LOGDIR_NAME)
+				"Environment variable '{}' not set "
+				"(see 'README.md' for help)."
+				.format(self.LOGDIR_NAME)
 			)
 		tdenv.NOTE("{}={}", self.LOGDIR_NAME, logDirName)
 
