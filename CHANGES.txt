@@ -3,6 +3,11 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 Jul 06 2016 (bgol, horizon branch):
+. Updated EDAPI plugin to version 3.7.3:
+  - Reworked station data handling
+  - Reworked consistency checks for API <-> DB diffs
+
+Jul 06 2016 (bgol, horizon branch):
 . Data update from maddavo.
 . New EDCD plugin which also can update the items.
 . Updated EDAPI plugin to version 3.7.2:
