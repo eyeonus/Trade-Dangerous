@@ -415,21 +415,24 @@ class ImportPlugin(plugins.ImportPluginBase):
             defShipyard   = station.shipyard
             defOutfitting = station.outfitting
 
+        def tellUserAPIResponse(defName, defValue):
+            if defValue == "Y":
+                tdenv.NOTE("{:>12} in API response", defName)
+            else:
+                tdenv.NOTE("{:>12} NOT in API response", defName)
+
         # defaults from API response are not reliable!
-        if 'commodities' in self.edAPI.profile['lastStarport']:
-            defMarket = "Y"
-        else:
-            defMarket = "N"
-        if 'ships' in self.edAPI.profile['lastStarport']:
-            defShipyard = "Y"
-        else:
-            defShipyard = "N"
-        if 'modules' in self.edAPI.profile['lastStarport']:
-            defOutfitting = "Y"
-        else:
-            defOutfitting = "N"
+        checkStarport = self.edAPI.profile['lastStarport']
+        defMarket     = "Y" if 'commodities' in checkStarport else "N"
+        defShipyard   = "Y" if 'ships'       in checkStarport else "N"
+        defOutfitting = "Y" if 'modules'     in checkStarport else "N"
+        tellUserAPIResponse("'Outfitting'", defOutfitting)
+        tellUserAPIResponse("'ShipYard'", defShipyard)
+        tellUserAPIResponse("'Market'", defMarket)
 
         def warnAPIResponse(checkName, checkYN):
+            # no warning if unknown
+            if checkYN == "?": return False
             warnText = (
                 "The station should{s} have a {what}, "
                 "but the API did{d} return one."
