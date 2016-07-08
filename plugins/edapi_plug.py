@@ -383,6 +383,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'edcd': 'Call the EDCD plugin first',
         'eddn': 'Post market, shipyard and outfitting to EDDN.',
         'test': 'Test the plugin with a json file (test=[FILENAME]).',
+        'warn': 'Ask for station update if a API<->DB diff is encountered.',
     }
 
     cookieFile = "edapi.cookies"
@@ -444,7 +445,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 s, d = "n't", ""
 
             tdenv.WARN(warnText, what=checkName, s=s, d=d)
-            return True
+            return self.getOption('warn')
 
         if not station:
             print('Station unknown.')
