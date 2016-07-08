@@ -808,8 +808,8 @@ This plugin tries to extract these information and store it in the database.
 
 In order do find the log files, the environment variable "FDEVLOGDIR" must be set to the correct path. Take a look at 'scripts/README.txt' how the varibale "TRADEDIR" is set and just do it for "FDEVLOGDIR".
 
-Q: And how do I find the correct path?
-A: Yeah, well, that depends on your installation. Take a look at the **NetLog** entry from the [Frontier support FAQ](https://support.frontier.co.uk/kb/faq.php?id=108)
+Q: And how do I find the correct path?<br />
+A: Yeah, well, that depends on your installation. Take a look at the **NetLog** entry from the [Frontier support FAQ](https://support.frontier.co.uk/kb/faq.php?id=108)<br />
 
 ###Basic usage:
 
