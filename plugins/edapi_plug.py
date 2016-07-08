@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('3', '7', '3')
+__version_info__ = ('3', '7', '4')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -380,7 +380,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'csvs': 'Merge shipyards into ShipVendor.csv.',
         'name': 'Do not obfuscate commander name for EDDN submit.',
         'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
-        'edcd': 'Call the EDCD plugin first',
+        'edcd': 'Call the EDCD plugin first.',
         'eddn': 'Post market, shipyard and outfitting to EDDN.',
         'test': 'Test the plugin with a json file (test=[FILENAME]).',
         'warn': 'Ask for station update if a API<->DB diff is encountered.',

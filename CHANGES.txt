@@ -2,7 +2,15 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-Jul 06 2016 (bgol, horizon branch):
+Jul 08 2016 (bgol, horizon branch):
+. Updated EDAPI plugin to version 3.7.4:
+  - Let the user know about the API response.
+  - New option "test=[FILENAME]" to test the plugin.
+  - New option "warn" to ask the user if the API response differ from
+    the database entry of the station.
+    Default behavior is now to just warn the user know about it.
+
+Jul 07 2016 (bgol, horizon branch):
 . Updated EDAPI plugin to version 3.7.3:
   - Reworked station data handling
   - Reworked consistency checks for API <-> DB diffs
