@@ -382,6 +382,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
         'edcd': 'Call the EDCD plugin first',
         'eddn': 'Post market, shipyard and outfitting to EDDN.',
+        'test': 'Test the plugin with a json file (test=[FILENAME]).',
     }
 
     cookieFile = "edapi.cookies"
@@ -609,7 +610,29 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # Connect to the API, authenticate, and pull down the commander
         # /profile.
-        api = EDAPI(cookiefile=str(self.cookiePath))
+        if self.getOption("test"):
+            tdenv.WARN("#############################")
+            tdenv.WARN("###  EDAPI in test mode.  ###")
+            tdenv.WARN("#############################")
+            apiED = namedtuple('EDAPI', ['profile','text'])
+            try:
+                proPath = pathlib.Path(self.getOption("test"))
+            except TypeError:
+                raise plugins.PluginException(
+                    "Option 'test' must be a file name"
+                )
+            if proPath.exists():
+                with proPath.open() as proFile:
+                    api = apiED(
+                        profile = json.load(proFile),
+                        text = '{{"mode":"test","file":"{}"}}'.format(str(proPath))
+                    )
+            else:
+                raise plugins.PluginException(
+                    "JSON-file '{}' not found.".format(str(proPath))
+                )
+        else:
+            api = EDAPI(cookiefile=str(self.cookiePath))
         self.edAPI = api
 
         # Sanity check that the commander is docked. Otherwise we will get a
@@ -810,7 +833,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 'EDAPI Trade Dangerous Plugin',
                 __version__
             )
-            con._debug = False
+            if self.getOption("test"):
+                con._debug = True
+            else:
+                con._debug = False
 
             if eddn_market:
                 print('Posting commodities to EDDN...')

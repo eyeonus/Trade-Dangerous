@@ -784,6 +784,12 @@ Frontier provides an API for their mobile app. This can be used to report accura
       This will do the same thing, but also post your market, shipyard, and
       outfitting modules to EDDN.
 
+    trade.py imp -P edapi -O test=tmp/profile.20160707_202255.json
+      This will load a API-response from the given file and work with that
+      instead of querying to the companion API. If the EDDN option is also
+      given, it will use the "test" schema instead of the production one
+      and print out the sent message(s).
+
 ###Options (-O):
 
     csvs:  Merge shipyards into ShipVendor.csv.
@@ -791,6 +797,7 @@ Frontier provides an API for their mobile app. This can be used to report accura
     eddn:  Post market, shipyard and outfitting to EDDN.
     name:  Do not obfuscate commander name for EDDN submit.
     save:  Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).
+    test:  Test the plugin with a json file (test=[FILENAME]).
 
 ##Elite Dangerous netLog parser import plugin:
 
@@ -800,8 +807,8 @@ This plugin tries to extract these information and store it in the database.
 
 In order do find the log files, the environment variable "FDEVLOGDIR" must be set to the correct path. Take a look at 'scripts/README.txt' how the varibale "TRADEDIR" is set and just do it for "FDEVLOGDIR".
 
-Q: And how do I find the correct path?  
-A: Yeah, well, that depends on your installation. Take a look at the **NetLog** entry from the [Frontier support FAQ](https://support.frontier.co.uk/kb/faq.php?id=108)  
+Q: And how do I find the correct path?
+A: Yeah, well, that depends on your installation. Take a look at the **NetLog** entry from the [Frontier support FAQ](https://support.frontier.co.uk/kb/faq.php?id=108)
 
 ###Basic usage:
 
