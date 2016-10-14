@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('3', '7', '4')
+__version_info__ = ('3', '7', '5')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -216,18 +216,18 @@ class EDDN:
     )
 
     _market_schemas = {
-        'production': 'http://schemas.elite-markets.net/eddn/commodity/2',
-        'test': 'http://schemas.elite-markets.net/eddn/commodity/2/test',
+        'production': 'http://schemas.elite-markets.net/eddn/commodity/3',
+        'test': 'http://schemas.elite-markets.net/eddn/commodity/3/test',
     }
 
     _shipyard_schemas = {
-        'production': 'http://schemas.elite-markets.net/eddn/shipyard/1',
-        'test': 'http://schemas.elite-markets.net/eddn/shipyard/1/test',
+        'production': 'http://schemas.elite-markets.net/eddn/shipyard/2',
+        'test': 'http://schemas.elite-markets.net/eddn/shipyard/2/test',
     }
 
     _outfitting_schemas = {
-        'production': 'http://schemas.elite-markets.net/eddn/outfitting/1',
-        'test': 'http://schemas.elite-markets.net/eddn/outfitting/1/test',
+        'production': 'http://schemas.elite-markets.net/eddn/outfitting/2',
+        'test': 'http://schemas.elite-markets.net/eddn/outfitting/2/test',
     }
 
     _debug = True
@@ -600,14 +600,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         # now load the mapping tables
         itemMap = mapping.FDEVMappingItems(tdb, tdenv)
         shipMap = mapping.FDEVMappingShips(tdb, tdenv)
-        yardMap = mapping.FDEVMappingShipyard(tdb, tdenv)
-        outfMap = mapping.FDEVMappingOutfitting(tdb, tdenv)
-
-        if self.getOption("eddn"):
-            if yardMap.mapCount == 0 or outfMap.mapCount == 0:
-                tdenv.NOTE("No Ship or Outfitting mapping for EDDN found.")
-                tdenv.NOTE("Please set option 'edcd' to download current mappings.")
-                return False
 
         # Connect to the API, authenticate, and pull down the commander
         # /profile.
@@ -689,12 +681,12 @@ class ImportPlugin(plugins.ImportPluginBase):
             if 'shipyard_list' in api.profile['lastStarport']['ships']:
                 for ship in api.profile['lastStarport']['ships']['shipyard_list'].values():
                     shipList.append(shipMap.mapID(ship['id'], ship['name']))
-                    eddn_ships.append(yardMap.mapID(ship['id'], ship['name']))
+                    eddn_ships.append(ship['name'])
 
             if 'unavailable_list' in api.profile['lastStarport']['ships']:
                 for ship in api.profile['lastStarport']['ships']['unavailable_list']:
                     shipList.append(shipMap.mapID(ship['id'], ship['name']))
-                    eddn_ships.append(yardMap.mapID(ship['id'], ship['name']))
+                    eddn_ships.append(ship['name'])
 
         if self.getOption("csvs"):
             exportCSV = False
@@ -752,7 +744,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
                 def commodity_int(key):
                     try:
-                        ret = int(commodity[key])
+                        ret = int(float(commodity[key])+0.5)
                     except (ValueError, KeyError):
                         ret = 0
                     return ret
@@ -797,16 +789,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # Populate EDDN
                 if self.getOption("eddn"):
                     itemEDDN = {
-                        "name":      itmName,
-                        "buyPrice":  itmBuyPrice,
-                        "supply":    itmSupply,
-                        "sellPrice": itmSellPrice,
-                        "demand":    itmDemand,
+                        "name":          commodity['name'],
+                        "meanPrice":     commodity_int('meanPrice'),
+                        "buyPrice":      commodity_int('buyPrice'),
+                        "stock":         commodity_int('stock'),
+                        "stockBracket":  commodity['stockBracket'],
+                        "sellPrice":     commodity_int('sellPrice'),
+                        "demand":        commodity_int('demand'),
+                        "demandBracket": commodity['demandBracket'],
                     }
-                    if supplyLevel:
-                        itemEDDN["supplyLevel"] = EDDN._levels[itmSupplyLevel]
-                    if demandLevel:
-                        itemEDDN["demandLevel"] = EDDN._levels[itmDemandLevel]
+                    if len(commodity['statusFlags']) > 0:
+                        itemEDDN["statusFlags"] = commodity['statusFlags']
                     eddn_market.append(itemEDDN)
 
         if itemList:
@@ -860,21 +853,24 @@ class ImportPlugin(plugins.ImportPluginBase):
             ):
                 eddn_modules = []
                 for module in api.profile['lastStarport']['modules'].values():
-                    res = outfMap.mapID(module['id'], None)
-                    if res:
-                        eddn_modules.append(res)
-                    else:
-                        # ignore Bobble, Decals and PaintJobs
-                        if not module['name'].lower().startswith(
-                            ('bobble', 'decal', 'paintjob')
+                    # see: https://github.com/jamesremuscat/EDDN/wiki
+                    addModule = False
+                    if module['name'].startswith(('Hpt_', 'Int_')) or module['name'].find('_Armour_') > 0:
+                        if module.get('sku', None) in (
+                            None, 'ELITE_HORIZONS_V_PLANETARY_LANDINGS'
                         ):
-                            tdenv.NOTE("Unknown module ID: {}, name: {}", module['id'], module['name'])
+                            if module['name'] != 'Int_PlanetApproachSuite':
+                                addModule = True
+                    if addModule:
+                        eddn_modules.append(module['name'])
+                    elif self.getOption("test"):
+                        tdenv.NOTE("Ignored module ID: {}, name: {}", module['id'], module['name'])
                 if eddn_modules:
                     print('Posting outfitting to EDDN...')
                     con.publishOutfitting(
                         sysName,
                         stnName,
-                        eddn_modules
+                        sorted(eddn_modules)
                     )
 
         # We did all the work
