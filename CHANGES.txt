@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 Oct 14 2016 (bgol, horizon branch):
+. Data update from maddavo.
 . Updated EDAPI plugin to version 3.7.5:
   - Updated shipyard to EDDN v2 schema.
   - Updated outfitting to EDDN v2 schema.
