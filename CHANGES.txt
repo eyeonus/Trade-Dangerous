@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 Oct 26 2016 (bgol, horizon branch):
 . New ship "Beluga Liner".
 . Data update from maddavo.
+. Even with zero demandunits the station does pay the price.
 
 Oct 14 2016 (bgol, horizon branch):
 . Data update from maddavo.

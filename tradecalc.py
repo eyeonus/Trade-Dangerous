@@ -542,7 +542,7 @@ class TradeCalc(object):
                     self.tdb,
                     stnID, itmID, timestamp
                 )
-            if dmdCr > 0 and dmdUnits:
+            if dmdCr > 0:
                 if not minDemand or dmdUnits >= minDemand:
                     dmdAppend((itmID, dmdCr, dmdUnits, dmdLevel, ageS))
                     dmdCount += 1
