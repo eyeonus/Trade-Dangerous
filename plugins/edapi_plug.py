@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('4', '0', '0')
+__version_info__ = ('4', '0', '1')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -114,6 +114,7 @@ class EDAPI:
         response = self._getURI('profile')
         try:
             self.profile = response.json()
+            self.text    = response.text
         except:
             sys.exit('Unable to parse JSON response for /profile!\
                      Try with --debug and report this.')

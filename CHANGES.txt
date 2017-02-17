@@ -6,6 +6,8 @@ Feb 17 2017 (bgol, horizon branch):
 . Data update from maddavo.
 . Updated EDAPI plugin to version 4.0.0
   - Login process reworked.
+. Updated EDAPI plugin to version 4.0.1
+  - 4.0.0 broke the save option.
 
 Oct 26 2016 (bgol, horizon branch):
 . New ship "Beluga Liner".
