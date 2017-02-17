@@ -3,6 +3,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
 Feb 17 2017 (bgol, horizon branch):
+. Data update from maddavo.
 . Updated EDAPI plugin to version 4.0.0
   - Login process reworked.
 
