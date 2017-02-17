@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('3', '7', '5')
+__version_info__ = ('4', '0', '0')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -39,6 +39,7 @@ cat_ignore = [
     'NonMarketable',
 ]
 
+
 class EDAPI:
     '''
     A class that handles the Frontier ED API.
@@ -50,7 +51,14 @@ class EDAPI:
     _cookiefile = _basename + '.cookies'
     _envfile = _basename + '.vars'
 
-    def __init__(self, basename='edapi', debug=False, cookiefile=None):
+    def __init__(
+        self,
+        basename='edapi',
+        debug=False,
+        cookiefile=None,
+        json_file=None,
+        login=False
+    ):
         '''
         Initialize
         '''
@@ -65,6 +73,15 @@ class EDAPI:
         self._envfile = self._basename + '.vars'
 
         self.debug = debug
+
+        self.login = login
+
+        # If json_file was given, just load that instead.
+        if json_file:
+            with open(json_file) as file:
+                self.profile = json.load(file)
+                return
+
         # if self.debug:
         #     import http.client
         #     http.client.HTTPConnection.debuglevel = 3
@@ -88,9 +105,13 @@ class EDAPI:
             with open(self._cookiefile, 'wb') as h:
                 pickle.dump(dict_from_cookiejar(self.opener.cookies), h)
 
+        # If force login, kill the user cookie, but keep the machine token
+        # intact.
+        if self.login:
+            self.opener.cookies.pop('CompanionApp', None)
+
         # Grab the commander profile
         response = self._getURI('profile')
-        self.text = response.text
         try:
             self.profile = response.json()
         except:
@@ -134,11 +155,11 @@ class EDAPI:
         # login then ask again.
         response = self._getBasicURI(uri, values=values)
 
-        if str(response.url).endswith('user/login'):
+        if 'Password' in str(response.text):
             self._doLogin()
             response = self._getBasicURI(uri, values=values)
 
-        if str(response.url).endswith('user/login'):
+        if 'Password' in str(response.text):
             sys.exit(textwrap.fill(textwrap.dedent("""\
                 Something went terribly wrong. The login credentials
                 appear correct, but we are being denied access. Sometimes the
@@ -191,7 +212,7 @@ class EDAPI:
 
         # If we end up being redirected back to login,
         # the login failed.
-        if str(response.url).endswith('user/login'):
+        if 'Password' in str(response.text):
             sys.exit('Login failed.')
 
         # Check to see if we need to do the auth token dance.
@@ -204,8 +225,7 @@ class EDAPI:
             values['code'] = input("Code:")
             response = self._getBasicURI('user/confirm', values=values)
 
-        # Sometimes the API is slow to set a session. Wait a bit before
-        # continuing.
+        # The API is sometimes very slow to update sessions. Wait a bit...
         time.sleep(2)
 
 
@@ -215,7 +235,7 @@ class EDDN:
         # 'http://eddn-gateway.ed-td.space:8080/upload/',
     )
 
-    _market_schemas = {
+    _commodity_schemas = {
         'production': 'http://schemas.elite-markets.net/eddn/commodity/3',
         'test': 'http://schemas.elite-markets.net/eddn/commodity/3/test',
     }
@@ -303,7 +323,7 @@ class EDDN:
     ):
         message = {}
 
-        message['$schemaRef'] = self._market_schemas[('test' if self._debug else 'production')]  # NOQA
+        message['$schemaRef'] = self._commodity_schemas[('test' if self._debug else 'production')]  # NOQA
 
         message['header'] = {
             'uploaderID': self.uploaderID,
@@ -378,10 +398,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     pluginOptions = {
         'csvs': 'Merge shipyards into ShipVendor.csv.',
-        'name': 'Do not obfuscate commander name for EDDN submit.',
-        'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
         'edcd': 'Call the EDCD plugin first.',
         'eddn': 'Post market, shipyard and outfitting to EDDN.',
+        'name': 'Do not obfuscate commander name for EDDN submit.',
+        'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
         'test': 'Test the plugin with a json file (test=[FILENAME]).',
         'warn': 'Ask for station update if a API<->DB diff is encountered.',
     }
