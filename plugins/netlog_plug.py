@@ -74,11 +74,23 @@ class ImportPlugin(ImportPluginBase):
 		"""
 		# HEADER: 16-07-02-00:18 Mitteleuropäische Sommerzeit  (22:18 GMT) - part 1
 		# SYSTEM: {00:20:24} System:"Caelinus" StarPos:(0.188,-18.625,52.063)ly  NormalFlight
+		# or (since 2.3)
+		# HEADER: ============================================
+		# HEADER: Logs/netLog.170430120645.01.log (part 1)
+		# HEADER: 2017-04-30 12:06 Mitteleuropäische Sommerzeit
+		# HEADER: ============================================
+		# SYSTEM: {10:13:33GMT 407.863s} System:"Huokang" StarPos:(-12.188,35.469,-25.281)ly  NormalFlight
 		tdb, tdenv = self.tdb, self.tdenv
 		optShow = self.getOption("show")
 
-		sysRegEx  = re.compile('^\{\d\d:\d\d:\d\d\}\s+System:"(?P<sysName>[^"]+)".*StarPos:\((?P<sysPos>[^)]+)\)ly')
-		dateRegEx = re.compile('^\{(?P<logTime>\d\d:\d\d:\d\d)\}')
+		oldHeadRegEx = re.compile("^(?P<headDateTime>\d\d-\d\d-\d\d-\d\d:\d\d)\s+(?P<headTZName>.*[^\s])\s+(?P<headTimeGMT>\(.*GMT\))")
+		newHeadRegEx = re.compile("^(?P<headDateTime>\d\d\d\d-\d\d-\d\d\s+\d\d:\d\d)\s+(?P<headTZName>.*[^\s])")
+
+		sysRegEx  = re.compile('^\{[^\}]+\}\s+System:"(?P<sysName>[^"]+)".*StarPos:\((?P<sysPos>[^)]+)\)ly')
+		dateRegEx = re.compile('^\{(?P<logTime>\d\d:\d\d:\d\d)')
+
+		def calcSeconds(h=0, m=0, s=0):
+			return 3600*h + 60*m + s
 
 		sysCount = 0
 		logSysList = {}
@@ -86,38 +98,70 @@ class ImportPlugin(ImportPluginBase):
 			tdenv.NOTE("parsing '{}'", filePath.name)
 			oldCount = sysCount
 			with filePath.open() as logFile:
+				headDate, headMatch = None, None
 				lineCount = 0
+				statHeader = True
 				for line in logFile:
 					lineCount += 1
 					line = line.strip('\r\n')
-					if lineCount == 1:
-						# parse first line to get the first date and GMT offset
+					if statHeader:
+						# parse header line to get the date and timezone
 						tdenv.DEBUG0(" HEADER: {}", line.replace("{", "{{").replace("}", "}}"))
-						try:
-							headDate = line.split()[0]
-							headDate = datetime.fromtimestamp(
-								_time.mktime(
-									_time.strptime(headDate, '%y-%m-%d-%H:%M')
-								),
-								timezone.utc
-							).astimezone()
-						except:
-							headDate = None
-							pass
-						tdenv.DEBUG0("   DATE: {}", headDate)
+						if lineCount == 1:
+							# old format
+							headMatch = oldHeadRegEx.match(line)
+							timeFormat = '%y-%m-%d-%H:%M'
+						if lineCount == 3:
+							# new format since 2.3
+							headMatch = newHeadRegEx.match(line)
+							timeFormat = '%Y-%m-%d %H:%M'
+						if headMatch:
+							headDate = headMatch.group('headDateTime')
+							headTZName = headMatch.group('headTZName')
+							if headTZName == _time.tzname[1]:
+								# daylight saving time
+								headTZInfo = timedelta(seconds = -_time.altzone)
+							else:
+								# normal time
+								headTZInfo = timedelta(seconds = -_time.timezone)
+							tdenv.DEBUG0(" HEADER: Date {}".format(headDate))
+							tdenv.DEBUG0(" HEADER: TZInfo {}".format(headTZInfo))
+							try:
+								# convert it into something useable
+								headDate = datetime.fromtimestamp(
+									_time.mktime(
+										_time.strptime(headDate, timeFormat)
+									),
+									timezone(headTZInfo)
+								)
+							except:
+								headDate = None
+								pass
 						if not headDate:
-							raise PluginException("Doesn't seem do be a FDEV netLog file")
-						lastDate = logDate = headDate
+							if lineCount > 3:
+							   raise PluginException("Doesn't seem do be a FDEV netLog file")
+						else:
+							statHeader = False
+							if lineCount == 3:
+								# new format since 2.3, switch to UTC
+								headDate = headDate.astimezone()
+							tdenv.DEBUG0("   DATE: {}", headDate)
+							headSecs = calcSeconds(headDate.hour, headDate.minute, headDate.second)
+							lastDate = logDate = headDate
+							lastSecs = logSecs = headSecs
 					else:
 						tdenv.DEBUG1("LOGLINE: {}", line.replace("{", "{{").replace("}", "}}"))
 						# check every line for new time to enhance the lastDate
+						# use time difference because of different timezone usage
 						logTimeMatch = dateRegEx.match(line)
 						if logTimeMatch:
 							h, m, s = logTimeMatch.group('logTime').split(":")
-							logTime = time(int(h), int(m), int(s), tzinfo=lastDate.tzinfo)
-							logDate = datetime.combine(lastDate, logTime)
-							if logDate < lastDate:
-								logDate += timedelta(days=1)
+							logSecs = calcSeconds(int(h), int(m), int(s))
+							logDiff = logSecs - lastSecs
+							if logDiff < 0:
+								# it's a new day
+								logDiff += 86400
+							logDate = lastDate + timedelta(seconds=logDiff)
 							tdenv.DEBUG1("LOGDATE: {}", logDate)
 
 						sysMatch = sysRegEx.match(line)
@@ -134,6 +178,7 @@ class ImportPlugin(ImportPluginBase):
 							logSysList[sysName] = (sysPosX, sysPosY, sysPosZ, sysDate)
 
 						lastDate = logDate
+						lastSecs = logSecs
 			sysCount = len(logSysList)
 			tdenv.NOTE("Found {} System(s).", sysCount-oldCount)
 
@@ -162,7 +207,7 @@ class ImportPlugin(ImportPluginBase):
 		for sysName in logSysList:
 			sysPosX, sysPosY, sysPosZ, sysDate = logSysList[sysName]
 			utcDate = sysDate.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-			tdenv.DEBUG0("log system '{}' ({}, {}, {}, {})",
+			tdenv.DEBUG0("log system '{}' ({}, {}, {}, '{}')",
 				sysName, sysPosX, sysPosY, sysPosZ, utcDate
 			)
 			if sysName.upper() in self.ignoreSysNames:
@@ -171,8 +216,8 @@ class ImportPlugin(ImportPluginBase):
 			systemTD = tdb.systemByName.get(sysName.upper(), None)
 			if systemTD:
 				# we allready know the system, check coords
-				tdenv.DEBUG0("Old system '{}' ({}, {}, {}, '{}')",
-					sysName, sysPosX, sysPosY, sysPosZ, utcDate
+				tdenv.DEBUG0("Old system '{}' ({}, {}, {})",
+					systemTD.dbname, systemTD.posX, systemTD.posY, systemTD.posZ
 				)
 				oldCount += 1
 				if not (systemTD.posX == sysPosX and

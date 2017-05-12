@@ -2,6 +2,9 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May 12 2017 (bgol, horizon branch):
+. Updated the "netLog" plugin to parses new format since 2.3
+
 Feb 17 2017 (bgol, horizon branch):
 . Data update from maddavo.
 . Updated EDAPI plugin to version 4.0.0
