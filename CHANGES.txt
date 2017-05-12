@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 May 12 2017 (bgol, horizon branch):
 . Updated the "netLog" plugin to accept new log format (>= 2.3)
 . Added Dolphin (ship)
+. Data update from maddavo.
 
 Feb 17 2017 (bgol, horizon branch):
 . Data update from maddavo.
