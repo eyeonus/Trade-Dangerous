@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('4', '0', '1')
+__version_info__ = ('4', '1', '0')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -694,27 +694,32 @@ class ImportPlugin(plugins.ImportPluginBase):
         station = self.askForStationData(system, stnName=stnName, station=station)
 
         # If a shipyard exists, make the ship lists
+        shipCost = {}
         shipList = []
         eddn_ships = []
         if ((station.shipyard == "Y") and
             ('ships' in api.profile['lastStarport'])
         ):
             if 'shipyard_list' in api.profile['lastStarport']['ships']:
-                for ship in api.profile['lastStarport']['ships']['shipyard_list'].values():
-                    shipList.append(shipMap.mapID(ship['id'], ship['name']))
-                    eddn_ships.append(ship['name'])
+                if len(api.profile['lastStarport']['ships']['shipyard_list']):
+                    for ship in api.profile['lastStarport']['ships']['shipyard_list'].values():
+                        shipName = shipMap.mapID(ship['id'], ship['name'])
+                        shipCost[shipName] = ship['basevalue']
+                        shipList.append(shipName)
+                        eddn_ships.append(ship['name'])
 
             if 'unavailable_list' in api.profile['lastStarport']['ships']:
                 for ship in api.profile['lastStarport']['ships']['unavailable_list']:
-                    shipList.append(shipMap.mapID(ship['id'], ship['name']))
+                    shipName = shipMap.mapID(ship['id'], ship['name'])
+                    shipCost[shipName] = ship['basevalue']
+                    shipList.append(shipName)
                     eddn_ships.append(ship['name'])
 
         if self.getOption("csvs"):
-            exportCSV = False
+            addRows = delRows = 0
             db = tdb.getDB()
-            # first delete all ships
-            if ((len(shipList) > 0) or (station.shipyard == "N")):
-                # but only if there should be no shipyard or there is a new list
+            if station.shipyard == "N":
+                # delete all ships if there is no shipyard
                 delRows = db.execute(
                     """
                     DELETE FROM ShipVendor
@@ -722,29 +727,55 @@ class ImportPlugin(plugins.ImportPluginBase):
                     """,
                     [station.ID]
                 ).rowcount
+
+            if len(shipList):
+                # and now update the shipyard list
+                # we go through all ships to decide if a ship needs to be
+                # added or deleted from the shipyard
+                for shipID in tdb.shipByID:
+                    shipName = tdb.shipByID[shipID].dbname
+                    if shipName in shipList:
+                        # check for ship discount, costTD = 100%
+                        # python builtin round() uses "Round half to even"
+                        # but we need commercial rounding, so we do it ourself
+                        costTD = tdb.shipByID[shipID].cost
+                        costED = int((shipCost[shipName]+5)/10)*10
+                        if costTD != costED:
+                            prozED = int(shipCost[shipName]*100/costTD+0.5)-100
+                            tdenv.NOTE(
+                                "CostDiff {}: {} != {} ({}%)",
+                                shipName, costTD, costED, prozED
+                            )
+                        # add the ship to the shipyard
+                        shipSQL = (
+                            "INSERT OR IGNORE"
+                             " INTO ShipVendor(station_id, ship_id)"
+                           " VALUES(?, ?)"
+                        )
+                        tdenv.DEBUG0(shipSQL.replace("?", "{}"), station.ID, shipID)
+                        addRows += db.execute(shipSQL, [station.ID, shipID]).rowcount
+                    else:
+                        # delete the ship from the shipyard
+                        shipSQL = (
+                            "DELETE FROM ShipVendor"
+                            " WHERE station_id = ?"
+                              " AND ship_id = ?"
+                        )
+                        tdenv.DEBUG0(shipSQL.replace("?", "{}"), station.ID, shipID)
+                        delRows += db.execute(shipSQL, [station.ID, shipID]).rowcount
+
+            db.commit()
+            if (addRows + delRows) > 0:
+                if addRows > 0:
+                    tdenv.NOTE(
+                        "Added {} ships in '{}' shipyard.",
+                        addRows, station.name()
+                    )
                 if delRows > 0:
-                    exportCSV = True
                     tdenv.NOTE(
                         "Deleted {} ships in '{}' shipyard.",
                         delRows, station.name()
                     )
-            # and now add the shipyard list
-            for ship in shipList:
-                ship_lookup = tdb.lookupShip(ship)
-                db.execute(
-                    """
-                    INSERT INTO ShipVendor(ship_id, station_id)
-                                    VALUES(?, ?)
-                    """,
-                    [ship_lookup.ID, station.ID]
-                )
-                exportCSV = True
-            db.commit()
-            if exportCSV:
-                tdenv.NOTE(
-                    "Added {} ships in '{}' shipyard.",
-                    len(shipList), station.name()
-                )
                 lines, csvPath = csvexport.exportTableToFile(
                     tdb,
                     tdenv,
