@@ -5,6 +5,8 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 May 13 2017 (bgol, horizon branch):
 . Updated EDAPI plugin to version 4.1.0
   - Shipyard handling reworked.
+. Updated RareItem based on Capitan Ace Rimmer (http://www.hozbase.co.uk/elitedangerous)
+. Data update from my netLog.
 
 May 12 2017 (bgol, horizon branch):
 . Updated the "netLog" plugin to accept new log format (>= 2.3)
