@@ -72,10 +72,10 @@ class EDSMQueryBase(object):
         self.status = res.status_code
 
         try:
-        	data = res.json()
+            data = res.json()
         except:
-        	data = None
-        	pass
+            data = None
+            pass
 
         if self.log:
             edsm_log(self.apiCall, res.url, self.params, data)
@@ -88,7 +88,7 @@ class StarQuerySingle(EDSMQueryBase):
     Query EDSM System.
 
     provide:
-    	systemName
+        systemName
     """
     apiCall = "system"
 
@@ -97,7 +97,7 @@ class StarQueryMulti(EDSMQueryBase):
     Query EDSM Systems.
 
     provide:
-    	systemName
+        systemName
     """
     apiCall = "systems"
 
@@ -105,8 +105,8 @@ class StarQuerySphere(EDSMQueryBase):
     """
     Query EDSM Systems.
     provide:
-    	systemName or center-coords as x, y and z
-    	radius N.NN
+        systemName or center-coords as x, y and z
+        radius N.NN
     """
     apiCall = "sphere-systems"
 
