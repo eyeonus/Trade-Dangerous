@@ -838,6 +838,46 @@ In order do find the log files, the environment variable "FDEVLOGDIR" must be se
 
     (All options can be combined.)
 
+##Elite Dangerous Journal parser import plugin:
+
+Elite Dangerous writes a journal-file which includes system and station data.
+
+This plugin tries to extract these information and store them in the database.
+
+In order do find the log files, the environment variable "FDEVJRNDIR" must be set to the correct path. Take a look at 'scripts/README.txt' how the varibale "TRADEDIR" is set and just do it for "FDEVJRNDIR".
+
+- Q: And how do I find the correct path?
+- A: The journal files are written into the user's Saved Games folder, eg, for Windows: `C:\Users\[User Name]\Saved Games\Frontier Developments\Elite Dangerous`
+
+###Basic usage:
+
+    trade.py import --plug journal
+      This will parse all found journal files and adds new systems/stations
+      to the database and maybe update some station data.
+
+    trade.py import --plug journal -O last
+      This will parse the newest journal file and adds new systems/stations
+      to the database and maybe update some station data.
+
+    trade.py imp -P journal -O show
+      This will parse all found journal files but will only display new systems
+      and stations without adding them to the database.
+
+    trade.py imp -P journal -O date=2017-05,last
+      This will parse the newest journal file from May 2017 and adds new
+      systems/stations to the database and maybe update some station data.
+      The date given can be given in the form [YY]YY[-MM[-DD]]. Year is mandatory
+      in 2- or 4-digit form, month and day are optional 2-digits, separator
+      is the hyphen "-".
+
+###Options (-O):
+
+    last:  Only parse the last (newest) Journal file.
+    date:  Only parse Journal files from date, format=[YY]YY[-MM[-DD]].
+    show:  Only show the system or station. Don't update the DB.
+
+    (All options can be combined.)
+
 ##Elite Dangerous Community Developers (EDCD) import plugin:
 
 In the provided API for their mobile app Frontier sends IDs. These IDs are unique and could be used to map the FDevIDs to internal database names (or IDs). This plugin synchronises the FDevIDs (from EDCD) with the TD database, which should help the EDAPI (and the included EDDN) to be more accurate.

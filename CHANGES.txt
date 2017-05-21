@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May 21 2017 (bgol, horizon branch):
+. Updated some ship prices.
+. New import plugin "Journal" which parses the Journal-files and add new
+  systems and stations to the database (see README for description).
+
 May 13 2017 (bgol, horizon branch):
 . Updated EDAPI plugin to version 4.1.0
   - Shipyard handling reworked.
