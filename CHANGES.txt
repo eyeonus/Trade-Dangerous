@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May 22 2017 (bgol, horizon branch):
+. Updated buy, rares, run and trade command to also output the
+  category name of the item if more details are requested.
+
 May 21 2017 (bgol, horizon branch):
 . Updated some ship prices.
 . New import plugin "Journal" which parses the Journal-files and add new

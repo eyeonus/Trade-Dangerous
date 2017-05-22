@@ -225,7 +225,7 @@ class Route(object):
         def genSubValues():
             for hop in hops:
                 for (tr, qty) in hop[0]:
-                    yield len(tr.name())
+                    yield len(tr.name(detail))
         longestNameLen = max(genSubValues())
 
         text = self.str()
@@ -357,7 +357,7 @@ class Route(object):
                     dstAge = describeAge(trade.dstAge)
                     age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
-                    qty=qty, item=trade.name(),
+                    qty=qty, item=trade.name(detail),
                     eacost=trade.costCr,
                     easell=trade.costCr + trade.gainCr,
                     ttlcost=trade.costCr*qty,

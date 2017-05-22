@@ -262,7 +262,7 @@ class System(object):
                 return station
         return None
 
-    def name(self):
+    def name(self, detail=0):
         return self.dbname
 
     def str(self):
@@ -319,7 +319,7 @@ class Station(object):
         self.dataAge = dataAge
         system.stations = system.stations + (self,)
 
-    def name(self):
+    def name(self, detail=0):
         return '%s/%s' % (self.system.dbname, self.dbname)
 
     def checkPadSize(self, maxPadSize):
@@ -444,7 +444,7 @@ class Ship(namedtuple('Ship', (
         stations    -- List of Stations ship is sold at.
     """
 
-    def name(self):
+    def name(self, detail=0):
         return self.dbname
 
 
@@ -473,7 +473,7 @@ class Category(namedtuple('Category', (
             Returns the display name for this Category.
     """
 
-    def name(self):
+    def name(self, detail=0):
         return self.dbname.upper()
 
 
@@ -502,8 +502,8 @@ class Item(object):
         self.avgPrice = avgPrice
         self.fdevID   = fdevID
 
-    def name(self):
-        return self.dbname
+    def name(self, detail=0):
+        return self.fullname if detail > 0 else self.dbname
 
 
 ######################################################################
@@ -528,8 +528,8 @@ class RareItem(namedtuple('RareItem', (
         fullname   -- Combined category/dbname.
     """
 
-    def name(self):
-        return self.dbname
+    def name(self, detail=0):
+        return self.fullname if detail > 0 else self.dbname
 
 
 ######################################################################
@@ -546,8 +546,8 @@ class Trade(namedtuple('Trade', (
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
     """
-    def name(self):
-        return self.item.name()
+    def name(self, detail=0):
+        return self.item.name(detail=detail)
 
 
 ######################################################################

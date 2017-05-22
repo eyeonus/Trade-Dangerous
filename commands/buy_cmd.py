@@ -337,9 +337,9 @@ def render(results, cmdenv, tdb):
     stnRowFmt.addColumn('Station', '<', maxStnLen,
             key=lambda row: row.station.name())
     if not singleMode:
-        maxItmLen = max_len(results.rows, key=lambda row: row.item.name())
+        maxItmLen = max_len(results.rows, key=lambda row: row.item.name(cmdenv.detail))
         stnRowFmt.addColumn(results.summary.mode, '<', maxItmLen,
-                key=lambda row: row.item.name()
+                key=lambda row: row.item.name(cmdenv.detail)
         )
     if mode is not SHIP_MODE or not singleMode:
         stnRowFmt.addColumn('Cost', '>', 10, 'n',

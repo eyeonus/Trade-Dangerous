@@ -2,7 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import *
-from formatting import RowFormat, ColumnFormat
+from formatting import RowFormat, ColumnFormat, max_len
 from tradedb import TradeDB
 
 import math
@@ -222,27 +222,17 @@ def render(results, cmdenv, tdb):
     if not results.rows:
         raise CommandLineError("No items found.")
 
-    # Calculate the longest station name in our list.
-    longestStnName = max(results.rows, key=lambda result: len(result.rare.station.name())).rare.station
-    longestStnNameLen = len(longestStnName.name())
-    if cmdenv.detail > 0:
-        longestRareName = max(results.rows, key=lambda result: len(result.rare.fullname)).rare
-        longestRareNameLen = len(longestRareName.fullname)
-    else:
-        longestRareName = max(results.rows, key=lambda result: len(result.rare.dbname)).rare
-        longestRareNameLen = len(longestRareName.dbname)
+    # Calculate the longest station and rareitem name in our list.
+    longestStnNameLen = max_len(results.rows, key=lambda row: row.rare.station.name())
+    longestRareNameLen = max_len(results.rows, key=lambda row: row.rare.name(cmdenv.detail))
 
     # Use the formatting system to describe what our
     # output rows are going to look at (see formatting.py)
     rowFmt = RowFormat()
     rowFmt.addColumn('Station', '<', longestStnNameLen,
             key=lambda row: row.rare.station.name())
-    if cmdenv.detail > 0:
-        rowFmt.addColumn('Rare', '<', longestRareNameLen,
-                key=lambda row: row.rare.fullname)
-    else:
-        rowFmt.addColumn('Rare', '<', longestRareNameLen,
-                key=lambda row: row.rare.dbname)
+    rowFmt.addColumn('Rare', '<', longestRareNameLen,
+            key=lambda row: row.rare.name(cmdenv.detail))
     rowFmt.addColumn('Cost', '>', 10, 'n',
             key=lambda row: row.rare.costCr)
     rowFmt.addColumn('DistLy', '>', 6, '.2f',
