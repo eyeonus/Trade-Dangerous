@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 May 22 2017 (bgol, horizon branch):
 . Updated buy, rares, run and trade command to also output the
   category name of the item if more details are requested.
+. Data update from maddavo.
 
 May 21 2017 (bgol, horizon branch):
 . Updated some ship prices.
