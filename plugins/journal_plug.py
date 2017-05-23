@@ -166,6 +166,10 @@ class ImportPlugin(ImportPluginBase):
                                 sysDate, sysName, sysPosX, sysPosY, sysPosZ
                             )
                             logSysList[sysName] = (sysPosX, sysPosY, sysPosZ, sysDate)
+                        if event["event"] == "Location":
+                            if event.get("Docked", False):
+                                event["event"] = "Docked"
+                                tdenv.DEBUG0("   EVENT: Changed Location to Docked")
                         if event["event"] == "Docked":
                             stnCount += 1
                             sysName = event["StarSystem"]
@@ -193,7 +197,7 @@ class ImportPlugin(ImportPluginBase):
                             sysPosA = event.get("StarPos", None)
                             if sysPosA:
                                 # we got system data inside a docking event
-                                # use it (maybe EDDN capture)
+                                # use it (changed Location or maybe EDDN capture)
                                 sysCount += 1
                                 sysDate = logDate
                                 sysPosX, sysPosY, sysPosZ = sysPosA[0], sysPosA[1], sysPosA[2]
