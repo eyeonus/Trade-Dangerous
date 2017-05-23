@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-May ## 2017 (bgol, horizon branch):
+May 23 2017 (bgol, horizon branch):
 . Don't change the planetary state if updating via the station command
   without specifying it.
 . Updated EDAPI plugin to version 4.1.1
