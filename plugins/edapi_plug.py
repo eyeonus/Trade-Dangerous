@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('4', '1', '0')
+__version_info__ = ('4', '1', '1')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -480,20 +480,25 @@ class ImportPlugin(plugins.ImportPluginBase):
         else:
             print('Station known.')
             defStation = stnDefault(
-                lsFromStar  = station.lsFromStar, market     = station.market,
-                blackMarket = station.blackMarket,shipyard   = station.shipyard,
-                maxPadSize  = station.maxPadSize, outfitting = station.outfitting,
-                rearm       = station.rearm,      refuel     = station.refuel,
-                repair      = station.repair,     planetary  = station.planetary,
+                lsFromStar = station.lsFromStar,
+                market = defMarket if station.market == "?" else station.market,
+                blackMarket = station.blackMarket,
+                shipyard = defShipyard if station.shipyard == "?" else station.shipyard,
+                maxPadSize = station.maxPadSize,
+                outfitting = defOutfitting if station.outfitting == "?" else station.outfitting,
+                rearm = station.rearm,
+                refuel = station.refuel,
+                repair = station.repair,
+                planetary = station.planetary,
             )
 
         warning = False
         if defStation.outfitting != defOutfitting:
-            warning = warnAPIResponse('outfitting', defStation.outfitting)
+            warning |= warnAPIResponse('outfitting', defStation.outfitting)
         if defStation.shipyard != defShipyard:
-            warning = warnAPIResponse('shipyard', defStation.shipyard)
+            warning |= warnAPIResponse('shipyard', defStation.shipyard)
         if defStation.market != defMarket:
-            warning = warnAPIResponse('market', defStation.market)
+            warning |= warnAPIResponse('market', defStation.market)
         if warning:
             tdenv.WARN("Please update station data with correct values.")
             tdenv.WARN("(Fields will be marked with an leading asterisk '*')")
@@ -522,8 +527,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ('Planetary.....(y,n) ', 'planetary',   defStation.planetary),
                 ('B/Market......(y,n) ', 'blackMarket', defStation.blackMarket),
                 ('Refuel........(y,n) ', 'refuel',      defStation.refuel),
-                ('Restock.......(y,n) ', 'rearm',       defStation.rearm),
                 ('Repair........(y,n) ', 'repair',      defStation.repair),
+                ('Restock.......(y,n) ', 'rearm',       defStation.rearm),
                 ('Outfitting....(y,n) ', 'outfitting',  defOutfitting),
                 ('Shipyard......(y,n) ', 'shipyard',    defShipyard),
                 ('Market........(y,n) ', 'market',      defMarket),
@@ -553,8 +558,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             print(" Planetary.:", _detail(station.planetary, tdb.planetStates))
             print(" B/Market..:", _detail(station.blackMarket, tdb.marketStates))
             print(" Refuel....:", _detail(station.refuel, tdb.marketStates))
-            print(" Restock...:", _detail(station.rearm, tdb.marketStates))
             print(" Repair....:", _detail(station.repair, tdb.marketStates))
+            print(" Restock...:", _detail(station.rearm, tdb.marketStates))
             print(" Outfitting:", _detail(station.outfitting, tdb.marketStates))
             print(" Shipyard..:", _detail(station.shipyard, tdb.marketStates))
             print(" Market....:", _detail(station.market, tdb.marketStates))
