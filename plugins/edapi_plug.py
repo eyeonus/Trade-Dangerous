@@ -466,7 +466,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 s, d = "n't", ""
 
             tdenv.WARN(warnText, what=checkName, s=s, d=d)
-            return self.getOption('warn')
+            return True if self.getOption('warn') else False
 
         if not station:
             print('Station unknown.')
