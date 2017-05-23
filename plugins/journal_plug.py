@@ -46,6 +46,7 @@ class ImportPlugin(ImportPluginBase):
     filePathList = []
     sysList = {}
     stnList = {}
+    blkList = []
 
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
@@ -124,10 +125,11 @@ class ImportPlugin(ImportPluginBase):
 
         logSysList = {}
         stnSysList = {}
+        blkStnList = []
         for filePath in self.filePathList:
             tdenv.NOTE("parsing '{}'", filePath.name)
-            sysCount = 0
-            stnCount = 0
+            aktStation = False
+            sysCount = stnCount = blkCount = 0
             with filePath.open() as logFile:
                 lineCount = 0
                 statHeader = True
@@ -194,6 +196,7 @@ class ImportPlugin(ImportPluginBase):
                                 stnDate, sysName, stnName, lsFromStar, stnPlanet, stnPadSize
                             )
                             stnList[stnName] = (lsFromStar, stnPlanet, stnPadSize, stnDate)
+                            aktStation = True
                             sysPosA = event.get("StarPos", None)
                             if sysPosA:
                                 # we got system data inside a docking event
@@ -206,18 +209,28 @@ class ImportPlugin(ImportPluginBase):
                                 sysPosZ = snapToGrid32(sysPosZ)
                                 tdenv.DEBUG0("  SYSTEM: {} {} {} {} {}", sysDate, sysName, sysPosX, sysPosY, sysPosZ)
                                 logSysList[sysName] = (sysPosX, sysPosY, sysPosZ, sysDate)
+                        if event["event"] == "MarketSell" and aktStation:
+                            # check for BlackMarket
+                            if event.get("BlackMarket", False):
+                                stnBlackMarket = (sysName, stnName)
+                                if stnBlackMarket not in blkStnList:
+                                    tdenv.DEBUG0("B/MARKET: {}/{}", sysName, stnName)
+                                    blkCount += 1
+                                    blkStnList.append(stnBlackMarket)
                     except:
                         raise PluginException(
                             "Something wrong with line {}.".format(lineCount)
                         )
 
             tdenv.NOTE(
-                "Found {} System{} and {} Station{}.",
+                "Found {} System{}, {} Station{} and {} BlackMarket{}.",
                 sysCount, "" if sysCount == 1 else "s",
                 stnCount, "" if stnCount == 1 else "s",
+                blkCount, "" if blkCount == 1 else "s",
             )
         self.sysList = logSysList
         self.stnList = stnSysList
+        self.blkList = blkStnList
 
     def updateJournalSysList(self):
         """
@@ -327,10 +340,6 @@ class ImportPlugin(ImportPluginBase):
             for stnName in sorted(self.stnList[sysName]):
                 lsFromStar, stnPlanet, stnPadSize, stnDate = self.stnList[sysName][stnName]
                 utcDate = stnDate.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-                tdenv.DEBUG0(
-                    "log station '{}/{}' ({}ls, Plt:{}, Pad:{}, '{}')",
-                    sysName, stnName, lsFromStar, stnPlanet, stnPadSize, utcDate
-                )
                 station = None
                 if system:
                     # system could be None in show mode and the lookup
@@ -339,6 +348,23 @@ class ImportPlugin(ImportPluginBase):
                         station = tdb.lookupStation(stnName, system)
                     except LookupError:
                         pass
+
+                if (sysName, stnName) in self.blkList:
+                    # BlackMarket found
+                    stnBlackMarket = "Y"
+                else:
+                    # BlackMarket unknown
+                    if station:
+                        # don't change current value
+                        stnBlackMarket = station.blackMarket
+                    else:
+                        stnBlackMarket = "?"
+
+                tdenv.DEBUG0(
+                    "log station '{}/{}' ({}ls, Plt:{}, Pad:{}, Blk:{}, '{}')",
+                    sysName, stnName, lsFromStar,
+                    stnPlanet, stnPadSize, stnBlackMarket, utcDate
+                )
 
                 if not station:
                     # must be a new station
@@ -356,7 +382,7 @@ class ImportPlugin(ImportPluginBase):
                             system=system,
                             name=stnName,
                             lsFromStar=lsFromStar,
-                            blackMarket="?",
+                            blackMarket=stnBlackMarket,
                             maxPadSize=stnPadSize,
                             market="?",
                             shipyard="?",
@@ -377,6 +403,7 @@ class ImportPlugin(ImportPluginBase):
                     )
                     if not optShow:
                         if (station.maxPadSize == stnPadSize and
+                            station.blackMarket == stnBlackMarket and
                             station.planetary == stnPlanet
                         ):
                             # ignore 15% deviation
@@ -389,6 +416,7 @@ class ImportPlugin(ImportPluginBase):
                         if tdb.updateLocalStation(
                             station=station,
                             lsFromStar=lsFromStar,
+                            blackMarket=stnBlackMarket,
                             maxPadSize=stnPadSize,
                             planetary=stnPlanet,
                             modified=utcDate,
