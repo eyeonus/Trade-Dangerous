@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May ## 2017 (bgol, horizon branch):
+. Don't change the planetary state if updating via the station command
+  without specifying it.
+
 May 22 2017 (bgol, horizon branch):
 . Updated buy, rares, run and trade command to also output the
   category name of the item if more details are requested.

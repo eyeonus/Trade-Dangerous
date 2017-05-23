@@ -283,7 +283,7 @@ def updateStation(tdb, cmdenv, station):
             refuel=cmdenv.refuel,
             repair=cmdenv.repair,
             maxPadSize=cmdenv.padSize,
-            planetary=cmdenv.planetary or '?',
+            planetary=cmdenv.planetary,
             force=True,
             commit=True,
     )
