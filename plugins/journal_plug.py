@@ -129,12 +129,16 @@ class ImportPlugin(ImportPluginBase):
         for filePath in self.filePathList:
             tdenv.NOTE("parsing '{}'", filePath.name)
             aktStation = False
+            inMultiCrew = False
             sysCount = stnCount = blkCount = 0
             with filePath.open() as logFile:
                 lineCount = 0
                 statHeader = True
                 for line in logFile:
                     lineCount += 1
+                    if inMultiCrew:
+                        # ignore all events in multicrew
+                        continue
                     try:
                         # parse the json-event-line of the journal
                         event = json.loads(line)
@@ -154,6 +158,10 @@ class ImportPlugin(ImportPluginBase):
                             else:
                                 # don't stop parsing if it's not the header-line
                                 tdenv.WARN("Doesn't seem do be a FDEV Journal file")
+                        if event["event"] == "JoinACrew":
+                            inMultiCrew = True
+                        if event["event"] == "QuitACrew":
+                            inMultiCrew = False
                         if event["event"] == "FSDJump":
                             sysCount += 1
                             sysDate = logDate
