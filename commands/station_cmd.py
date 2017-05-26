@@ -458,12 +458,12 @@ def render(results, cmdenv, tdb):
 
         bestText = "("+explanation+")"
         for irow in best:
-            bestText += "\n    {:<{}} @ {:7n}cr (Avg {} {:7n}cr)".format(
+            bestText += "\n    {:<{len}} @ {:7n}cr (Avg {} {:7n}cr)".format(
                     irow[0].item.name(cmdenv.detail) + irow[1],
-                    maxLen + 1,
                     irow[0].price,
                     alt,
                     irow[0].avgTrade,
+                    len=maxLen + 1,
             )
         return bestText
 
