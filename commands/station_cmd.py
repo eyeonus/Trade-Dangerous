@@ -428,7 +428,7 @@ def render(results, cmdenv, tdb):
         return
 
     newest, oldest = tdb.query("""
-            SELECT JULIANDAY('NOW') - JULIANDAY(MIN(si.modified)),
+            SELECT JULIANDAY('NOW') - JULIANDAY(MAX(si.modified)),
                    JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
               FROM StationItem si
              WHERE station_id = ?
