@@ -225,6 +225,8 @@ class ImportPlugin(ImportPluginBase):
                                     tdenv.DEBUG0("B/MARKET: {}/{}", sysName, stnName)
                                     blkCount += 1
                                     blkStnList.append(stnBlackMarket)
+                        if event["event"] == "Undocked":
+                            aktStation = False
                     except:
                         raise PluginException(
                             "Something wrong with line {}.".format(lineCount)
