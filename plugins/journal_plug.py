@@ -195,7 +195,7 @@ class ImportPlugin(ImportPluginBase):
                             if stnType:
                                 # conclusions from the stationtype
                                 stnPlanet = "Y" if stnType == "SurfaceStation" else "N"
-                                stnPadSize = "M" if stnType == "Outpost" else "L"
+                                stnPadSize = "M" if stnType.startswith("Outpost") else "L"
                             else:
                                 stnPlanet = "?"
                                 stnPadSize = "?"
