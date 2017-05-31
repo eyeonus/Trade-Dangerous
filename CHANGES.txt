@@ -6,6 +6,7 @@ May ## 2017 (bgol, horizon branch):
 . Updated Journal plugin to ignore all events in multicrew.
 . Missed the station command to output the category name.
 . Item 'Neofabric Insulation' is only in category 'Industrial Materials'.
+. Some new salvage items and updated average prices.
 
 May 23 2017 (bgol, horizon branch):
 . Don't change the planetary state if updating via the station command
