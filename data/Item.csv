@@ -29,7 +29,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Industrial Materials','Cooling Hoses',3,'',''
 'Industrial Materials','Insulating Membrane',4,7837,128673855
 'Industrial Materials','Meta-Alloys',5,88148,128672701
-'Industrial Materials','Neofabric Insulation',6,'',''
+'Industrial Materials','Neofabric Insulation',6,2769,128673858
 'Industrial Materials','Polymers',7,171,128049197
 'Industrial Materials','Semiconductors',8,967,128049199
 'Industrial Materials','Superconductors',9,6609,128049200
@@ -173,8 +173,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Textiles','Leather',2,205,128049190
 'Textiles','Military Grade Fabrics',3,708,128682045
 'Textiles','Natural Fabrics',4,439,128049191
-'Textiles','Neofabric Insulation',5,'',''
-'Textiles','Synthetic Fabrics',6,211,128049193
+'Textiles','Synthetic Fabrics',5,211,128049193
 'Waste','Biowaste',1,63,128049244
 'Waste','Chemical Waste',2,131,128049246
 'Waste','Scrap',3,48,128049248
