@@ -2,12 +2,155 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+May 31 2017 (bgol, horizon branch):
+. Updated Journal plugin to ignore all events in multicrew.
+. Missed the station command to output the category name.
+. Item 'Neofabric Insulation' is only in category 'Industrial Materials'.
+. Some new salvage items and updated average prices.
+
+May 23 2017 (bgol, horizon branch):
+. Don't change the planetary state if updating via the station command
+  without specifying it.
+. Updated EDAPI plugin to version 4.1.1
+. Updated Journal plugin to recognise the "Location" event.
+. Updated Journal plugin to recognise the "MarketSell" event to capture
+  black market sales.
+
+May 22 2017 (bgol, horizon branch):
+. Updated buy, rares, run and trade command to also output the
+  category name of the item if more details are requested.
+. Data update from maddavo.
+
+May 21 2017 (bgol, horizon branch):
+. Updated some ship prices.
+. New import plugin "Journal" which parses the Journal-files and add new
+  systems and stations to the database (see README for description).
+
+May 13 2017 (bgol, horizon branch):
+. Updated EDAPI plugin to version 4.1.0
+  - Shipyard handling reworked.
+. Updated RareItem based on Capitan Ace Rimmer (http://www.hozbase.co.uk/elitedangerous)
+. Data update from my netLog.
+
+May 12 2017 (bgol, horizon branch):
+. Updated the "netLog" plugin to accept new log format (>= 2.3)
+. Added Dolphin (ship)
+. Data update from maddavo.
+
+Feb 17 2017 (bgol, horizon branch):
+. Data update from maddavo.
+. Updated EDAPI plugin to version 4.0.0
+  - Login process reworked.
+. Updated EDAPI plugin to version 4.0.1
+  - 4.0.0 broke the save option.
+
+Oct 26 2016 (bgol, horizon branch):
+. New ship "Beluga Liner".
+. Data update from maddavo.
+. Even with zero demandunits the station does pay the price.
+
+Oct 14 2016 (bgol, horizon branch):
+. Data update from maddavo.
+. Updated EDAPI plugin to version 3.7.5:
+  - Updated shipyard to EDDN v2 schema.
+  - Updated outfitting to EDDN v2 schema.
+  - Updated commodity to EDDN v3 schema.
+
+Jul 08 2016 (bgol, horizon branch):
+. Updated EDAPI plugin to version 3.7.4:
+  - Let the user know about the API response.
+  - New option "test=[FILENAME]" to test the plugin.
+  - New option "warn" to ask the user if the API response differ from
+    the database entry of the station.
+    Default behavior is now to just warn the user know about it.
+
+Jul 07 2016 (bgol, horizon branch):
+. Updated EDAPI plugin to version 3.7.3:
+  - Reworked station data handling
+  - Reworked consistency checks for API <-> DB diffs
+
+Jul 06 2016 (bgol, horizon branch):
+. Data update from maddavo.
+. New EDCD plugin which also can update the items.
+. Updated EDAPI plugin to version 3.7.2:
+  - Call new EDCD plugin for option 'edcd'
+  - Reworked demmand/supply handling
+  - Added consistency checks for "what" to import compared to what the
+    station should offer.
+
+Jul 05 2016 (bgol, horizon branch):
+. Added category and suppressed to RareItem and updated data.
+. Show "Category/Itemname" if more detail is requested for the "rares" command.
+
+Jul 03 2016 (bgol, horizon branch):
+. New import plugin "netLog" which parses the netLog files and add new
+  systems to the database (see README for description).
+
+Jul 02 2016 (bgol, horizon branch):
+. Merged changes from devel branch into horizon (see below).
+. Data update from maddavo.
+. Added "--planetary" argument to buy, local, nav, rares, run and sell command.
+  The "--no-planet" and "--planetary" arguments are mutually exclusive.
+  (implemented issue #5)
+
+Jul 02 2016 (bgol, devel branch):
+. "Chunked" transfers don't need a length header.
+. Added new tables for FdevID -> EDDN mapping
+. Added FDEVMapping classes for Items, Ships, Shipyard
+  and Outfitting.
+. Update EDAPI plugin to version 3.7.0:
+  - New option "edcd" to download FDevShipyard and FDevOutfitting data.
+  - Using new mapping classes to map the IDs from the API.
+  - Delete old ShipVendor entries to avoid stale data.
+
+Jul 01 2016 (bgol, horizon branch):
+. Update EDAPI plugin to version 3.6.3
+
+Jun 30 2016 (bgol, devel branch):
+. Added autoconfirm (--yes) to edsmupdate.py
+. Added FDEV ID to Item and Ship table for API mapping.
+. Added average price to Item table (as shown ingame).
+
+Jun 28 2016 (bgol, horizon branch):
+. (maddavo) Renamed item "Low Temperature Diamond" to "Low Temperature Diamonds"
+. added EDSM utils (implemented issue #1)
+
+Jun 21 2016 (bgol, horizon branch):
+. Renamed item "Power Transfer Conduits" to "Power Transfer Bus"
+
+Jun 10 2016 (bgol, horizon branch):
+. "--no-planet" switch now requires planetry to be "N" (issue #5)
+. Updated README
+. data update from maddavo
+. New items for 1.6/2.1 update
+. Update EDAPI plugin to version 3.6.2
+
 v7.4.0 Jan 27 2016
 . Merged Tyler Lund's support for posting data to EDDN from edapi.
 . (kfsone) Merged Maddavo data.
 
 v7.3.3 Jan 22 2016
 . (kfsone) Maddavo Horizons import.
+
+Jan 16 2016 (bgol, horizon branch):
+. Fixed typo in EDAPI plugin
+. Horizon ship updates (thanks dave, fixes #4)
+
+Jan 15 2016 (bgol, horizon branch):
+. Overlooked one check for noPlanet switch. Fixes bug #2
+. Latest maddavo data update.
+
+Dec 22 2015 (bgol, horizon branch):
+. Update EDAPI plugin to version 3.6.0
+
+Dec 21 2015 (bgol, horizon branch):
+. Don't merge the prices form maddavo anymore (use --merge-import if you need it).
+. New items with version 1.5/2.0 of ED
+. data update from maddavo
+. Added "planetary" column to station table and maddavo import.
+. Added "--planetary" argument to station command.
+. Added "--no-planet" switch to buy, local, nav, rares, run and sell command.
+. Added "Plt: X" output.
 
 v7.3.2 Jul 30 2015
 . (kfsone) Alternate fix for edapi.

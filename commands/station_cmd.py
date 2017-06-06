@@ -5,6 +5,7 @@ from commands.parsing import *
 from tradedb import AmbiguityError
 from tradedb import System, Station
 from tradedb import TradeDB
+from formatting import max_len
 
 import cache
 import csvexport
@@ -92,6 +93,11 @@ switches = [
     ParseArgument(
         '--repair',
         help='Does the station provide repairs (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--planetary',
+        help='Is the station on a planet (Y or N) or ? if unknown.',
         choices=['Y', 'y', 'N', 'n', '?'],
     ),
     ParseArgument(
@@ -261,6 +267,7 @@ def addStation(tdb, cmdenv, system, stationName):
             refuel=cmdenv.refuel or '?',
             repair=cmdenv.repair or '?',
             maxPadSize=cmdenv.padSize or '?',
+            planetary=cmdenv.planetary or '?',
             commit=True,
     )
 
@@ -277,6 +284,7 @@ def updateStation(tdb, cmdenv, station):
             refuel=cmdenv.refuel,
             repair=cmdenv.repair,
             maxPadSize=cmdenv.padSize,
+            planetary=cmdenv.planetary,
             force=True,
             commit=True,
     )
@@ -414,13 +422,14 @@ def render(results, cmdenv, tdb):
     print("Rearm.....:", _detail(station.rearm, TradeDB.marketStates))
     print("Refuel....:", _detail(station.refuel, TradeDB.marketStates))
     print("Repair....:", _detail(station.repair, TradeDB.marketStates))
+    print("Planetary.:", _detail(station.planetary, TradeDB.planetStates))
     print("Prices....:", station.itemCount or 'None')
 
     if station.itemCount == 0:
         return
 
     newest, oldest = tdb.query("""
-            SELECT JULIANDAY('NOW') - JULIANDAY(MIN(si.modified)),
+            SELECT JULIANDAY('NOW') - JULIANDAY(MAX(si.modified)),
                    JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
               FROM StationItem si
              WHERE station_id = ?
@@ -436,7 +445,7 @@ def render(results, cmdenv, tdb):
 
     print("Price Age.:", pricesAge)
 
-    def makeBest(rows, explanation, alt, starFn):
+    def makeBest(rows, explanation, alt, maxLen, starFn):
         if not rows:
             return "[n/a]"
         best = []
@@ -449,22 +458,27 @@ def render(results, cmdenv, tdb):
 
         bestText = "("+explanation+")"
         for irow in best:
-            bestText += "\n    {:<30} @ {:7n}cr (Avg {} {:7n}cr)".format(
-                    irow[0].item.name() + irow[1],
+            bestText += "\n    {:<{len}} @ {:7n}cr (Avg {} {:7n}cr)".format(
+                    irow[0].item.name(cmdenv.detail) + irow[1],
                     irow[0].price,
                     alt,
                     irow[0].avgTrade,
+                    len=maxLen + 1,
             )
         return bestText
 
 
+    longestNameLen = max(
+        max_len(results.summary.selling, key=lambda row: row.item.name(cmdenv.detail)),
+        max_len(results.summary.buying, key=lambda row: row.item.name(cmdenv.detail)),
+    )
     print("Best Buy..:", makeBest(
-            results.summary.selling, "Buy from this station", "Sell",
+            results.summary.selling, "Buy from this station", "Sell", longestNameLen,
             starFn=lambda price, avgCr: \
                 price <= (avgCr * 0.9),
     ))
     print("Best Sale.:", makeBest(
-            results.summary.buying, "Sell to this station", "Cost",
+            results.summary.buying, "Sell to this station", "Cost", longestNameLen,
             starFn=lambda price, avgCr: \
                 price >= (avgCr * 1.1),
     ))

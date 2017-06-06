@@ -225,7 +225,7 @@ class Route(object):
         def genSubValues():
             for hop in hops:
                 for (tr, qty) in hop[0]:
-                    yield len(tr.name())
+                    yield len(tr.name(detail))
         longestNameLen = max(genSubValues())
 
         text = self.str()
@@ -313,6 +313,8 @@ class Route(object):
                     details.append('BMk:'+station.blackMarket)
                 if station.maxPadSize != '?':
                     details.append('Pad:'+station.maxPadSize)
+                if station.planetary != '?':
+                    details.append('Plt:'+station.planetary)
                 if station.shipyard != '?':
                     details.append('Shp:'+station.shipyard)
                 if station.outfitting != '?':
@@ -355,7 +357,7 @@ class Route(object):
                     dstAge = describeAge(trade.dstAge)
                     age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
-                    qty=qty, item=trade.name(),
+                    qty=qty, item=trade.name(detail),
                     eacost=trade.costCr,
                     easell=trade.costCr + trade.gainCr,
                     ttlcost=trade.costCr*qty,
@@ -526,7 +528,7 @@ class TradeCalc(object):
         cur = db.execute(stmt, binds)
         now = int(time.time())
         for (stnID, itmID,
-                timestamp, 
+                timestamp,
                 dmdCr, dmdUnits, dmdLevel,
                 supCr, supUnits, supLevel) in cur:
             if stnID != lastStnID:
@@ -540,7 +542,7 @@ class TradeCalc(object):
                     self.tdb,
                     stnID, itmID, timestamp
                 )
-            if dmdCr > 0 and dmdUnits:
+            if dmdCr > 0:
                 if not minDemand or dmdUnits >= minDemand:
                     dmdAppend((itmID, dmdCr, dmdUnits, dmdLevel, ageS))
                     dmdCount += 1
@@ -756,6 +758,8 @@ class TradeCalc(object):
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
         maxPadSize = tdenv.padSize
+        planetary = tdenv.planetary
+        noPlanet = tdenv.noPlanet
         maxLsFromStar = tdenv.maxLs or float('inf')
         reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
         maxAge = getattr(tdenv, 'maxAge') or 0
@@ -817,6 +821,8 @@ class TradeCalc(object):
                     avoidPlaces=avoidPlaces,
                     maxPadSize=maxPadSize,
                     maxLsFromStar=maxLsFromStar,
+                    noPlanet=noPlanet,
+                    planetary=planetary,
                 )
 
         prog = pbar.Progress(len(routes), 25)

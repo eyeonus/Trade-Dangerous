@@ -65,14 +65,13 @@ def run(results, cmdenv, tdb):
 ## Transform result set into output
 
 def render(results, cmdenv, tdb):
-    from formatting import RowFormat, ColumnFormat
+    from formatting import RowFormat, ColumnFormat, max_len
 
-    longestNamed = max(results.rows, key=lambda result: len(result.item.dbname))
-    longestNameLen = len(longestNamed.item.dbname)
+    longestNameLen = max_len(results.rows, key=lambda row: row.item.name(cmdenv.detail))
 
     rowFmt = RowFormat()
     rowFmt.addColumn('Item', '<', longestNameLen,
-            key=lambda row: row.item.dbname)
+            key=lambda row: row.item.name(cmdenv.detail))
     rowFmt.addColumn('Profit', '>', 10, 'n',
             key=lambda row: row.gainCr)
     rowFmt.addColumn('Cost', '>', 10, 'n',

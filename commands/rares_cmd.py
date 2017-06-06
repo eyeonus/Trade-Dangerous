@@ -2,7 +2,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 from commands.commandenv import ResultRow
 from commands.exceptions import *
 from commands.parsing import *
-from formatting import RowFormat, ColumnFormat
+from formatting import RowFormat, ColumnFormat, max_len
 from tradedb import TradeDB
 
 import math
@@ -43,8 +43,12 @@ switches = [
             type=int,
     ),
     PadSizeArgument(),
+    MutuallyExclusiveGroup(
+        NoPlanetSwitch(),
+        PlanetaryArgument(),
+    ),
     ParseArgument('--price-sort', '-P',
-            help='(When using --near) Sort by price not distance.',
+            help='Sort by price not distance.',
             action='store_true',
             default=False,
             dest='sortByPrice',
@@ -122,8 +126,10 @@ def run(results, cmdenv, tdb):
 
     # Lookup the system we're currently in.
     start = cmdenv.nearSystem
-    # Hoist the padSize parameter for convenience
+    # Hoist the padSize, noPlanet and planetary parameter for convenience
     padSize = cmdenv.padSize
+    noPlanet = cmdenv.noPlanet
+    planetary = cmdenv.planetary
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.)
 
@@ -160,6 +166,11 @@ def run(results, cmdenv, tdb):
         if padSize:     # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
                 continue
+        if planetary:     # do we care about planetary?
+            if not rare.station.checkPlanetary(planetary):
+                continue
+        if noPlanet and rare.station.planetary != 'N':
+            continue
         rareSys = rare.station.system
         # Find the un-sqrt'd distance to the system.
         dist = distCheckFn(rareSys)
@@ -211,11 +222,9 @@ def render(results, cmdenv, tdb):
     if not results.rows:
         raise CommandLineError("No items found.")
 
-    # Calculate the longest station name in our list.
-    longestStnName = max(results.rows, key=lambda result: len(result.rare.station.name())).rare.station
-    longestStnNameLen = len(longestStnName.name())
-    longestRareName = max(results.rows, key=lambda result: len(result.rare.dbname)).rare
-    longestRareNameLen = len(longestRareName.dbname)
+    # Calculate the longest station and rareitem name in our list.
+    longestStnNameLen = max_len(results.rows, key=lambda row: row.rare.station.name())
+    longestRareNameLen = max_len(results.rows, key=lambda row: row.rare.name(cmdenv.detail))
 
     # Use the formatting system to describe what our
     # output rows are going to look at (see formatting.py)
@@ -223,7 +232,7 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn('Station', '<', longestStnNameLen,
             key=lambda row: row.rare.station.name())
     rowFmt.addColumn('Rare', '<', longestRareNameLen,
-            key=lambda row: row.rare.name())
+            key=lambda row: row.rare.name(cmdenv.detail))
     rowFmt.addColumn('Cost', '>', 10, 'n',
             key=lambda row: row.rare.costCr)
     rowFmt.addColumn('DistLy', '>', 6, '.2f',
@@ -238,6 +247,8 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.marketStates[row.rare.station.blackMarket])
     rowFmt.addColumn("Pad", '>', '3',
             key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
+    rowFmt.addColumn("Plt", '>', '3',
+            key=lambda row: TradeDB.planetStates[row.rare.station.planetary])
 
     # Print a heading summary if the user didn't use '-q'
     if not cmdenv.quiet:

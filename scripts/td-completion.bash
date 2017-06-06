@@ -3,6 +3,7 @@
 
 common_opts="--help --debug --detail --quiet --db --cwd --link-ly"
 pad_opts="? l l? m m? ml ml? s s? sl sm sm? sml sml?"
+pla_opts="? y y? n n? yn yn?"
 ynq_opts="y n ?"
 
 _td_file_list()
@@ -65,9 +66,13 @@ _td_buy()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt ${common_opts}"
+		opts="--quantity --near --ly --limit --pad-size --black-market --one-stop --price-sort --supply-sort --gt --lt --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -104,15 +109,42 @@ _td_import()
 
 	case ${prev} in
 	--plug|-P)
-		opts="maddavo"
+		opts="maddavo edapi netlog edcd journal"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	--url)
 		# argument required
 		;;
 	--option|-O)
-		opts="csvs corrections systems stations shipvendors exportcsv csvonly skipdl force use3h use2d usefull help"
-		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+		# simple plugin check
+		for (( i=1; i<${COMP_CWORD-1}; i++ ));
+		do
+			if [[ "${COMP_WORDS[i]}" = "maddavo" ]]; then
+				opts="corrections csvonly csvs exportcsv force shipvendors skipdl stations systems use2d use3h usefull help"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+			if [[ "${COMP_WORDS[i]}" = "edapi" ]]; then
+				opts="csvs edcd eddn name save help"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+			if [[ "${COMP_WORDS[i]}" = "netlog" ]]; then
+				opts="date last show help"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+			if [[ "${COMP_WORDS[i]}" = "edcd" ]]; then
+				opts="local csvs shipyard commodity outfitting help"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+			if [[ "${COMP_WORDS[i]}" = "journal" ]]; then
+				opts="date last show help"
+				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
+				return 0
+			fi
+		done
 		;;
 	*)
 		_td_common && return 0
@@ -138,9 +170,13 @@ _td_local()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair ${common_opts}"
+		opts="--ly --pad-size --stations --trading --black-market --shipyard --outfitting --rearm --refuel --repair --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -177,9 +213,13 @@ _td_nav()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly-per --avoid --via --stations --refuel-jumps ${common_opts}"
+		opts="--ly-per --avoid --via --stations --refuel-jumps --pad-size --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -219,9 +259,13 @@ _td_rares()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ly --limit --price-sort --reverse --pad-size --away --from ${common_opts}"
+		opts="--ly --limit --price-sort --reverse --pad-size --away --from --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -242,9 +286,13 @@ _td_run()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten ${common_opts}"
+		opts="--capacity --credits --ly-per --from --to --via --avoid --hops --jumps-per --empty-ly --start-jumps --end-jumps --limit --age --max-days-old --ls-penalty --unique --margin --insurance --routes --checklist --x52-pro --towards --loop --direct --pad-size --black-market --ls-max --gain-per-ton --gpt --max-gain-per-ton --mgpt --max-routes --prune-score --prune-hops --progress --supply --summary --loop-interval --shorten --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -265,9 +313,13 @@ _td_sell()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt ${common_opts}"
+		opts="--near --ly-per --limit --price-sort --pad-size --black-market --gt --lt --no-planet --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac
@@ -308,9 +360,13 @@ _td_station()
 		opts="${pad_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
+	--planetary)
+		opts="${pla_opts}"
+		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+		;;
 	*)
 		_td_common && return 0
-		opts="--ls-from-star --black-market --market --shipyard --pad-size --outfitting --rearm --refuel --repair --confirm --add --remove --update --no-export ${common_opts}"
+		opts="--ls-from-star --black-market --market --shipyard --pad-size --outfitting --rearm --refuel --repair --confirm --add --remove --update --no-export --planetary ${common_opts}"
 		COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	esac

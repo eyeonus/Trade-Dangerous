@@ -53,6 +53,10 @@ switches = (
     ),
     AvoidPlacesArgument(),
     PadSizeArgument(),
+    MutuallyExclusiveGroup(
+        NoPlanetSwitch(),
+        PlanetaryArgument(),
+    ),
     BlackMarketSwitch(),
     MutuallyExclusiveGroup(
         ParseArgument(
@@ -252,6 +256,8 @@ def run(results, cmdenv, tdb):
 
     oneStopMode = cmdenv.oneStop
     padSize = cmdenv.padSize
+    planetary = cmdenv.planetary
+    wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
 
     stations = defaultdict(list)
@@ -261,6 +267,10 @@ def run(results, cmdenv, tdb):
     for (ID, stationID, price, units) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
+            continue
+        if planetary and not station.checkPlanetary(planetary):
+            continue
+        if wantNoPlanet and station.planetary != 'N':
             continue
         if wantBlackMarket and station.blackMarket != 'Y':
             continue
@@ -327,9 +337,9 @@ def render(results, cmdenv, tdb):
     stnRowFmt.addColumn('Station', '<', maxStnLen,
             key=lambda row: row.station.name())
     if not singleMode:
-        maxItmLen = max_len(results.rows, key=lambda row: row.item.name())
+        maxItmLen = max_len(results.rows, key=lambda row: row.item.name(cmdenv.detail))
         stnRowFmt.addColumn(results.summary.mode, '<', maxItmLen,
-                key=lambda row: row.item.name()
+                key=lambda row: row.item.name(cmdenv.detail)
         )
     if mode is not SHIP_MODE or not singleMode:
         stnRowFmt.addColumn('Cost', '>', 10, 'n',
@@ -351,6 +361,8 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.marketStates[row.station.blackMarket])
     stnRowFmt.addColumn("Pad", '>', '3',
             key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
+    stnRowFmt.addColumn("Plt", '>', '3',
+            key=lambda row: TradeDB.planetStates[row.station.planetary])
 
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

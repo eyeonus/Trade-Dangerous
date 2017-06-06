@@ -54,9 +54,21 @@ class PadSizeError(CommandLineError):
     """ Raised when an invalid pad-size option is given. """
     def __init__(self, value):
         super().__init__(
-            "Invalid --pad-size '{}: Use a combination of one or more "
+            "Invalid --pad-size '{}': Use a combination of one or more "
             "from 'S' for Small, 'M' for Medium, 'L' for Large or "
             "'?' for unknown, e.g. 'SML?' matches any pad size while "
             "'M?' matches medium or unknown or 'L' matches only large."
+            .format(value)
+        )
+
+
+class PlanetaryError(CommandLineError):
+    """ Raised when an invalid planetary option is given. """
+    def __init__(self, value):
+        super().__init__(
+            "Invalid --planetary '{}': Use a combination of one or more "
+            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
+            "e.g. 'YN?' matches any station while 'Y?' matches "
+            "yes or unknown or 'N' matches only planetary stations."
             .format(value)
         )

@@ -1,119 +1,189 @@
-unq:name@Category.category_id,unq:name,ui_order
-'Chemicals','Explosives',1
-'Chemicals','Hydrogen Fuel',2
-'Chemicals','Mineral Oil',3
-'Chemicals','Nerve Agents',4
-'Chemicals','Pesticides',5
-'Chemicals','Surface Stabilisers',6
-'Chemicals','Synthetic Reagents',7
-'Consumer Items','Clothing',1
-'Consumer Items','Consumer Technology',2
-'Consumer Items','Domestic Appliances',3
-'Consumer Items','Evacuation Shelter',4
-'Foods','Algae',1
-'Foods','Animal Meat',2
-'Foods','Coffee',3
-'Foods','Fish',4
-'Foods','Food Cartridges',5
-'Foods','Fruit And Vegetables',6
-'Foods','Grain',7
-'Foods','Synthetic Meat',8
-'Foods','Tea',9
-'Industrial Materials','Ceramic Composites',1
-'Industrial Materials','Meta-Alloys',2
-'Industrial Materials','Polymers',3
-'Industrial Materials','Semiconductors',4
-'Industrial Materials','Superconductors',5
-'Legal Drugs','Beer',1
-'Legal Drugs','Bootleg Liquor',2
-'Legal Drugs','Liquor',3
-'Legal Drugs','Narcotics',4
-'Legal Drugs','Tobacco',5
-'Legal Drugs','Wine',6
-'Machinery','Atmospheric Processors',1
-'Machinery','Building Fabricators',2
-'Machinery','Crop Harvesters',3
-'Machinery','Geological Equipment',4
-'Machinery','Marine Equipment',5
-'Machinery','Microbial Furnaces',6
-'Machinery','Mineral Extractors',7
-'Machinery','Power Generators',8
-'Machinery','Skimmer Components',9
-'Machinery','Thermal Cooling Units',10
-'Machinery','Water Purifiers',11
-'Medicines','Agri-Medicines',1
-'Medicines','Basic Medicines',2
-'Medicines','Combat Stabilisers',3
-'Medicines','Performance Enhancers',4
-'Medicines','Progenitor Cells',5
-'Metals','Aluminium',1
-'Metals','Beryllium',2
-'Metals','Bismuth',3
-'Metals','Cobalt',4
-'Metals','Copper',5
-'Metals','Gallium',6
-'Metals','Gold',7
-'Metals','Hafnium 178',8
-'Metals','Indium',9
-'Metals','Lanthanum',10
-'Metals','Lithium',11
-'Metals','Osmium',12
-'Metals','Palladium',13
-'Metals','Platinum',14
-'Metals','Silver',15
-'Metals','Tantalum',16
-'Metals','Thallium',17
-'Metals','Thorium',18
-'Metals','Titanium',19
-'Metals','Uranium',20
-'Minerals','Bauxite',1
-'Minerals','Bertrandite',2
-'Minerals','Coltan',3
-'Minerals','Cryolite',4
-'Minerals','Gallite',5
-'Minerals','Goslarite',6
-'Minerals','Indite',7
-'Minerals','Lepidolite',8
-'Minerals','Moissanite',9
-'Minerals','Painite',10
-'Minerals','Pyrophyllite',11
-'Minerals','Rutile',12
-'Minerals','Taaffeite',13
-'Minerals','Uraninite',14
-'Salvage','AI Relics',1
-'Salvage','Ancient Artefact',2
-'Salvage','Antiquities',3
-'Salvage','Encrypted Data Storage',4
-'Salvage','Experimental Chemicals',5
-'Salvage','Military Intelligence',6
-'Salvage','Military Plans',7
-'Salvage','Prototype Tech',8
-'Salvage','Rebel Transmissions',9
-'Salvage','SAP 8 Core Container',10
-'Salvage','Technical Blueprints',11
-'Salvage','Trade Data',12
-'Slavery','Imperial Slaves',1
-'Slavery','Slaves',2
-'Technology','Advanced Catalysers',1
-'Technology','Animal Monitors',2
-'Technology','Aquaponic Systems',3
-'Technology','Auto-Fabricators',4
-'Technology','Bioreducing Lichen',5
-'Technology','Computer Components',6
-'Technology','H.E. Suits',7
-'Technology','Land Enrichment Systems',8
-'Technology','Muon Imager',9
-'Technology','Resonating Separators',10
-'Technology','Robotics',11
-'Technology','Structural Regulators',12
-'Textiles','Leather',1
-'Textiles','Natural Fabrics',2
-'Textiles','Synthetic Fabrics',3
-'Waste','Biowaste',1
-'Waste','Chemical Waste',2
-'Waste','Scrap',3
-'Weapons','Battle Weapons',1
-'Weapons','Landmines',2
-'Weapons','Non-Lethal Weapons',3
-'Weapons','Personal Weapons',4
-'Weapons','Reactive Armour',5
+unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
+'Chemicals','Explosives',1,261,128049204
+'Chemicals','Hydrogen Fuel',2,110,128049202
+'Chemicals','Hydrogen Peroxide',3,917,128673850
+'Chemicals','Liquid Oxygen',4,263,128673851
+'Chemicals','Mineral Oil',5,181,128049203
+'Chemicals','Nerve Agents',6,13526,128672304
+'Chemicals','Pesticides',7,241,128049205
+'Chemicals','Surface Stabilisers',8,467,128672305
+'Chemicals','Synthetic Reagents',9,6675,128672303
+'Chemicals','Water',10,120,128049166
+'Consumer Items','Clothing',1,285,128049241
+'Consumer Items','Consumer Technology',2,6769,128049240
+'Consumer Items','Domestic Appliances',3,487,128049238
+'Consumer Items','Evacuation Shelter',4,343,128672314
+'Consumer Items','Survival Equipment',5,485,128682048
+'Consumer Items','Trinkets Of Hidden Fortune',6,964,128671444
+'Foods','Algae',1,137,128049177
+'Foods','Animal Meat',2,1292,128049182
+'Foods','Coffee',3,1279,128049189
+'Foods','Fish',4,406,128049183
+'Foods','Food Cartridges',5,105,128049184
+'Foods','Fruit And Vegetables',6,312,128049178
+'Foods','Grain',7,210,128049180
+'Foods','Synthetic Meat',8,271,128049185
+'Foods','Tea',9,1467,128049188
+'Industrial Materials','Ceramic Composites',1,232,128672302
+'Industrial Materials','CMM Composite',2,3132,128673856
+'Industrial Materials','Cooling Hoses',3,'',''
+'Industrial Materials','Insulating Membrane',4,7837,128673855
+'Industrial Materials','Meta-Alloys',5,88148,128672701
+'Industrial Materials','Neofabric Insulation',6,2769,128673858
+'Industrial Materials','Polymers',7,171,128049197
+'Industrial Materials','Semiconductors',8,967,128049199
+'Industrial Materials','Superconductors',9,6609,128049200
+'Legal Drugs','Beer',1,186,128049214
+'Legal Drugs','Bootleg Liquor',2,855,128672306
+'Legal Drugs','Liquor',3,587,128049216
+'Legal Drugs','Narcotics',4,9966,128049212
+'Legal Drugs','Tobacco',5,5035,128049213
+'Legal Drugs','Wine',6,260,128049215
+'Machinery','Articulation Motors',1,4997,128673859
+'Machinery','Atmospheric Processors',2,357,128064028
+'Machinery','Building Fabricators',3,980,128672309
+'Machinery','Crop Harvesters',4,2021,128049222
+'Machinery','Emergency Power Cells',5,1011,128673861
+'Machinery','Energy Grid Assembly',6,1684,128673863
+'Machinery','Exhaust Manifold',7,479,128673866
+'Machinery','Geological Equipment',8,1661,128672307
+'Machinery','Heatsink Interlink',9,729,128673868
+'Machinery','HN Shock Mount',10,406,128673860
+'Machinery','Ion Distributor',11,1133,128673874
+'Machinery','Magnetic Emitter Coil',12,199,128673869
+'Machinery','Marine Equipment',13,3916,128049223
+'Machinery','Micro-weave Cooling Hoses',14,'',''
+'Machinery','Microbial Furnaces',15,236,128049220
+'Machinery','Mineral Extractors',16,443,128049221
+'Machinery','Modular Terminals',17,695,128673870
+'Machinery','Power Converter',18,246,128673862
+'Machinery','Power Generators',19,458,128049217
+'Machinery','Power Transfer Bus',20,857,128673864
+'Machinery','Radiation Baffle',21,383,128673865
+'Machinery','Reinforced Mounting Plate',22,1074,128673867
+'Machinery','Skimmer Components',23,859,128672313
+'Machinery','Thermal Cooling Units',24,256,128672308
+'Machinery','Water Purifiers',25,258,128049218
+'Medicines','Advanced Medicines',1,1259,128682046
+'Medicines','Agri-Medicines',2,1038,128049208
+'Medicines','Basic Medicines',3,279,128049210
+'Medicines','Combat Stabilisers',4,3505,128049670
+'Medicines','Performance Enhancers',5,6816,128049209
+'Medicines','Progenitor Cells',6,6779,128049669
+'Metals','Aluminium',1,340,128049176
+'Metals','Beryllium',2,8288,128049168
+'Metals','Bismuth',3,2284,128672300
+'Metals','Cobalt',4,647,128049162
+'Metals','Copper',5,481,128049175
+'Metals','Gallium',6,5135,128049170
+'Metals','Gold',7,9401,128049154
+'Metals','Hafnium 178',8,69098,128668549
+'Metals','Indium',9,5727,128049169
+'Metals','Lanthanum',10,8766,128672298
+'Metals','Lithium',11,1596,128049173
+'Metals','Osmium',12,7591,128671118
+'Metals','Palladium',13,13298,128049153
+'Metals','Platinum',14,19279,128049152
+'Metals','Praseodymium',15,7156,128673845
+'Metals','Samarium',16,6330,128673847
+'Metals','Silver',17,4775,128049155
+'Metals','Tantalum',18,3962,128049171
+'Metals','Thallium',19,3618,128672299
+'Metals','Thorium',20,11513,128672301
+'Metals','Titanium',21,1006,128049174
+'Metals','Uranium',22,2705,128049172
+'Minerals','Bauxite',1,120,128049165
+'Minerals','Bertrandite',2,2374,128049156
+'Minerals','Bromellite',3,7062,128673846
+'Minerals','Coltan',4,1319,128049159
+'Minerals','Cryolite',5,2266,128672294
+'Minerals','Gallite',6,1819,128049158
+'Minerals','Goslarite',7,916,128672295
+'Minerals','Indite',8,2088,128049157
+'Minerals','Jadeite',9,13474,128672776
+'Minerals','Lepidolite',10,544,128049161
+'Minerals','Lithium Hydroxide',11,5646,128673853
+'Minerals','Low Temperature Diamonds',12,57445,128673848
+'Minerals','Methane Clathrate',13,629,128673854
+'Minerals','Methanol Monohydrate',14,2282,128673852
+'Minerals','Moissanite',15,8273,128672296
+'Minerals','Painite',16,40508,128668550
+'Minerals','Pyrophyllite',17,1565,128672297
+'Minerals','Rutile',18,299,128049163
+'Minerals','Taaffeite',19,20696,128672775
+'Minerals','Uraninite',20,836,128049160
+'Salvage','AI Relics',1,138613,128668548
+'Salvage','Ancient Artefact',2,8183,128666756
+'Salvage','Antimatter Containment Unit',3,'',''
+'Salvage','Antiquities',4,115511,128668551
+'Salvage','Assault Plans',5,'',''
+'Salvage','Black Box',6,'',''
+'Salvage','Commercial Samples',7,'',''
+'Salvage','Data Core',8,'',''
+'Salvage','Diplomatic Bag',9,'',''
+'Salvage','Encrypted Correspondence',10,'',''
+'Salvage','Encrypted Data Storage',11,'',''
+'Salvage','Experimental Chemicals',12,3524,128666758
+'Salvage','Fossil Remnants',13,'',''
+'Salvage','Galactic Travel Guide',14,'',''
+'Salvage','Geological Samples',15,'',''
+'Salvage','Hostage',16,'',''
+'Salvage','Military Intelligence',17,55527,128668552
+'Salvage','Military Plans',18,9413,128666755
+'Salvage','Mysterious Idol',19,'',''
+'Salvage','Occupied CryoPod',20,'',''
+'Salvage','Occupied Escape Pod',21,'',''
+'Salvage','Personal Effects',22,'',''
+'Salvage','Political Prisoner',23,'',''
+'Salvage','Prohibited Research Materials',24,'',''
+'Salvage','Prototype Tech',25,10696,128666760
+'Salvage','Rare Artwork',26,'',''
+'Salvage','Rebel Transmissions',27,4068,128666759
+'Salvage','Salvageable Wreckage',28,'',''
+'Salvage','SAP 8 Core Container',29,'',128671443
+'Salvage','Scientific Research',30,'',''
+'Salvage','Scientific Samples',31,'',''
+'Salvage','Space Pioneer Relics',32,'',''
+'Salvage','Tactical Data',33,'',''
+'Salvage','Technical Blueprints',34,6333,128666761
+'Salvage','Trade Data',35,2790,128666754
+'Salvage','Unknown Artefact',36,290190,128668547
+'Salvage','Unknown Biological Matter',37,25479,128737288
+'Salvage','Unknown Link',38,31350,128740752
+'Salvage','Unknown Probe',39,411003,128673876
+'Salvage','Unknown Resin',40,18652,128737287
+'Salvage','Unknown Technology Samples',41,22551,128737289
+'Salvage','Unstable Data Core',42,'',''
+'Slavery','Imperial Slaves',1,15984,128667728
+'Slavery','Slaves',2,10360,128049243
+'Technology','Advanced Catalysers',1,2947,128049231
+'Technology','Animal Monitors',2,324,128049229
+'Technology','Aquaponic Systems',3,314,128049230
+'Technology','Auto-Fabricators',4,3734,128049228
+'Technology','Bioreducing Lichen',5,998,128049672
+'Technology','Computer Components',6,513,128049225
+'Technology','H.E. Suits',7,340,128049226
+'Technology','Hardware Diagnostic Sensor',8,4337,128673875
+'Technology','Land Enrichment Systems',9,4887,128049232
+'Technology','Medical Diagnostic Equipment',10,2848,128682047
+'Technology','Micro Controllers',11,3274,128673873
+'Technology','Muon Imager',12,6447,128672310
+'Technology','Nanobreakers',13,639,128673871
+'Technology','Resonating Separators',14,5958,128049671
+'Technology','Robotics',15,1856,128049227
+'Technology','Structural Regulators',16,1791,128672311
+'Technology','Telemetry Suite',17,2080,128673872
+'Textiles','Conductive Fabrics',1,507,128682044
+'Textiles','Leather',2,205,128049190
+'Textiles','Military Grade Fabrics',3,708,128682045
+'Textiles','Natural Fabrics',4,439,128049191
+'Textiles','Synthetic Fabrics',5,211,128049193
+'Waste','Biowaste',1,63,128049244
+'Waste','Chemical Waste',2,131,128049246
+'Waste','Scrap',3,48,128049248
+'Waste','Toxic Waste',4,'',''
+'Weapons','Battle Weapons',1,7259,128049234
+'Weapons','Landmines',2,4602,128672312
+'Weapons','Non-Lethal Weapons',3,1837,128049236
+'Weapons','Personal Weapons',4,4632,128049233
+'Weapons','Reactive Armour',5,2113,128049235

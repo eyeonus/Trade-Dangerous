@@ -1,5 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from commands.exceptions import PadSizeError
+from commands.exceptions import PadSizeError, PlanetaryError
 
 ######################################################################
 # Parsing Helpers
@@ -44,7 +44,7 @@ class PadSizeArgument(int):
                 raise PadSizeError(val)
             for v in val:
                 if "SML?".find(v.upper()) < 0:
-                    raise PadSizeError(v)
+                    raise PadSizeError(val.upper())
             return super().__new__(cls, val, **kwargs)
 
     def __init__(self):
@@ -72,7 +72,7 @@ class AvoidPlacesArgument(ParseArgument):
                 "'--avoid a,b,c' or '--avoid a,b --avoid c'"
             ),
         }
-        
+
 
 class SwitchArgument(ParseArgument):
     def __init__(self, help=None):
@@ -120,9 +120,43 @@ class RepairSwitch(SwitchArgument):
     help = 'Require stations known to offer repairs.'
 
 
+class NoPlanetSwitch(SwitchArgument):
+    switches = ['--no-planet']
+    dest = 'noPlanet'
+    help = 'Require stations to be in space.'
+
+
+class PlanetaryArgument(int):
+    """
+    argparse helper for --planetary
+    """
+    class PlanetaryParser(str):
+        def __new__(cls, val, **kwargs):
+            if not isinstance(val, str):
+                raise PlanetaryError(val)
+            for v in val:
+                if "YN?".find(v.upper()) < 0:
+                    raise PlanetaryError(val.upper())
+            return super().__new__(cls, val, **kwargs)
+
+    def __init__(self):
+        self.args = ['--planetary']
+        self.kwargs = {
+            'help': (
+                'Limit to stations with one of the specified planetary, '
+                'e.g. --pla YN? matches any station, --pla Y matches only '
+                'planetary stations.'
+            ),
+            'dest': 'planetary',
+            'metavar': 'PLANETARY',
+            'type': 'planetary',
+        }
+
+
 __tdParserHelpers = {
     'credits': CreditParser,
     'padsize': PadSizeArgument.PadSizeParser,
+    'planetary': PlanetaryArgument.PlanetaryParser,
 }
 
 def registerParserHelpers(into):

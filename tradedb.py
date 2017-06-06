@@ -262,7 +262,7 @@ class System(object):
                 return station
         return None
 
-    def name(self):
+    def name(self, detail=0):
         return self.dbname
 
     def str(self):
@@ -294,14 +294,14 @@ class Station(object):
     __slots__ = (
         'ID', 'system', 'dbname',
         'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
-        'outfitting', 'rearm', 'refuel', 'repair',
+        'outfitting', 'rearm', 'refuel', 'repair', 'planetary',
         'itemCount', 'dataAge',
     )
 
     def __init__(
             self, ID, system, dbname,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair,
+            outfitting, rearm, refuel, repair, planetary,
             itemCount=0, dataAge=None,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
@@ -314,11 +314,12 @@ class Station(object):
         self.rearm = rearm
         self.refuel = refuel
         self.repair = repair
+        self.planetary = planetary
         self.itemCount = itemCount
         self.dataAge = dataAge
         system.stations = system.stations + (self,)
 
-    def name(self):
+    def name(self, detail=0):
         return '%s/%s' % (self.system.dbname, self.dbname)
 
     def checkPadSize(self, maxPadSize):
@@ -349,6 +350,35 @@ class Station(object):
 
         """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
+
+    def checkPlanetary(self, planetary):
+        """
+        Tests if the Station's planetary matches one of the
+        values in 'planetary'.
+
+        Args:
+            askPlanetary
+                A string of one or more planetary values that
+                you want to match against.
+
+        Returns:
+            True
+                If self.planetary is None or empty, or matches a
+                member of planetary
+            False
+                If planetary was not empty but self.planetary
+                did not match it.
+
+        Examples:
+            # Require a planetary station
+            station.checkPlanetary("Y")
+            # Require planetary or unknown
+            station.checkPadSize("Y?")
+            # Require no planetary station
+            station.checkPadSize("N")
+
+        """
+        return (not planetary or self.planetary in planetary)
 
     def distFromStar(self, addSuffix=False):
         """
@@ -401,7 +431,7 @@ class Station(object):
 
 
 class Ship(namedtuple('Ship', (
-        'ID', 'dbname', 'cost', 'stations'
+        'ID', 'dbname', 'cost', 'fdevID', 'stations'
         ))):
     """
     Ship description.
@@ -410,10 +440,11 @@ class Ship(namedtuple('Ship', (
         ID          -- The database ID
         dbname      -- The name as present in the database
         cost        -- How many credits to buy
+        fdevID      -- FDevID as provided by the companion API.
         stations    -- List of Stations ship is sold at.
     """
 
-    def name(self):
+    def name(self, detail=0):
         return self.dbname
 
 
@@ -442,7 +473,7 @@ class Category(namedtuple('Category', (
             Returns the display name for this Category.
     """
 
-    def name(self):
+    def name(self, detail=0):
         return self.dbname.upper()
 
 
@@ -458,17 +489,21 @@ class Item(object):
         dbname   -- Name as it appears in-game and in the DB.
         category -- Reference to the category.
         fullname -- Combined category/dbname for lookups.
+        avgPrice -- Galactic average as shown in game.
+        fdevID   -- FDevID as provided by the companion API.
     """
-    __slots__ = ('ID', 'dbname', 'category', 'fullname')
+    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID')
 
-    def __init__(self, ID, dbname, category, fullname):
+    def __init__(self, ID, dbname, category, fullname, avgPrice=None, fdevID=None):
         self.ID = ID
         self.dbname = dbname
         self.category = category
         self.fullname = fullname
+        self.avgPrice = avgPrice
+        self.fdevID   = fdevID
 
-    def name(self):
-        return self.dbname
+    def name(self, detail=0):
+        return self.fullname if detail > 0 else self.dbname
 
 
 ######################################################################
@@ -476,21 +511,25 @@ class Item(object):
 
 class RareItem(namedtuple('RareItem', (
         'ID', 'station', 'dbname', 'costCr', 'maxAlloc', 'illegal',
+        'suppressed', 'category', 'fullname',
         ))):
     """
     Describes a RareItem from the database.
 
     Attributes:
-        ID       -- Database ID,
-        station  -- Which Station this is bought from,
-        dbname   -- The name are presented in the database,
-        costCr   -- Buying price.
-        maxAlloc -- How many the player can carry at a time,
-        illegal  -- If the item may be considered illegal,
+        ID         -- Database ID,
+        station    -- Which Station this is bought from,
+        dbname     -- The name are presented in the database,
+        costCr     -- Buying price.
+        maxAlloc   -- How many the player can carry at a time,
+        illegal    -- If the item may be considered illegal,
+        suppressed -- The item is suppressed.
+        category   -- Reference to the category.
+        fullname   -- Combined category/dbname.
     """
 
-    def name(self):
-        return self.dbname
+    def name(self, detail=0):
+        return self.fullname if detail > 0 else self.dbname
 
 
 ######################################################################
@@ -507,8 +546,8 @@ class Trade(namedtuple('Trade', (
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
     """
-    def name(self):
-        return self.item.name()
+    def name(self, detail=0):
+        return self.item.name(detail=detail)
 
 
 ######################################################################
@@ -582,11 +621,13 @@ class TradeDB(object):
         ('Category.csv', 'Category'),
         ('Item.csv', 'Item'),
         ('RareItem.csv', 'RareItem'),
+        ('FDevShipyard.csv', 'FDevShipyard'),
+        ('FDevOutfitting.csv', 'FDevOutfitting'),
     )
 
     # Translation matrixes for attributes -> common presentation
-    marketStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
-    marketStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
+    marketStates = planetStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+    marketStatesExt = planetStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
     padSizes = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     padSizesExt = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
 
@@ -1148,7 +1189,7 @@ class TradeDB(object):
         stmt = """
             SELECT  station_id, system_id, name,
                     ls_from_star, market, blackmarket, shipyard,
-                    max_pad_size, outfitting, rearm, refuel, repair
+                    max_pad_size, outfitting, rearm, refuel, repair, planetary
               FROM  Station
         """
         self.cur.execute(stmt)
@@ -1158,12 +1199,12 @@ class TradeDB(object):
         for (
             ID, systemID, name,
             lsFromStar, market, blackMarket, shipyard,
-            maxPadSize, outfitting, rearm, refuel, repair,
+            maxPadSize, outfitting, rearm, refuel, repair, planetary,
         ) in self.cur:
             station = Station(
                 ID, systemByID[systemID], name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair,
+                maxPadSize, outfitting, rearm, refuel, repair, planetary,
                 0, None,
             )
             stationByID[ID] = station
@@ -1201,6 +1242,7 @@ class TradeDB(object):
             rearm,
             refuel,
             repair,
+            planetary,
             modified='now',
             commit=True,
             ):
@@ -1216,6 +1258,7 @@ class TradeDB(object):
         rearm = rearm.upper()
         refuel = refuel.upper()
         repair = repair.upper()
+        planetary = planetary.upper()
         assert market in "?YN"
         assert blackMarket in "?YN"
         assert shipyard in "?YN"
@@ -1224,6 +1267,7 @@ class TradeDB(object):
         assert rearm in "?YN"
         assert refuel in "?YN"
         assert repair in "?YN"
+        assert planetary in '?YN'
 
         db = self.getDB()
         cur = db.cursor()
@@ -1231,18 +1275,18 @@ class TradeDB(object):
             INSERT INTO Station (
                 name, system_id,
                 ls_from_star, market, blackmarket, shipyard, max_pad_size,
-                outfitting, rearm, refuel, repair,
+                outfitting, rearm, refuel, repair, planetary,
                 modified
             ) VALUES (
                 ?, ?,
                 ?, ?, ?, ?, ?,
-                ?, ?, ?, ?,
+                ?, ?, ?, ?, ?,
                 DATETIME(?)
             )
         """, [
             name, system.ID,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair,
+            outfitting, rearm, refuel, repair, planetary,
             modified,
         ])
         ID = cur.lastrowid
@@ -1257,6 +1301,7 @@ class TradeDB(object):
             rearm=rearm,
             refuel=refuel,
             repair=repair,
+            planetary=planetary,
             itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
@@ -1265,12 +1310,12 @@ class TradeDB(object):
         self.tdenv.NOTE(
             "{} (#{}) added to {}: "
             "ls={}, mkt={}, bm={}, yard={}, pad={}, "
-            "out={}, arm={}, ref={}, rep={}, "
+            "out={}, arm={}, ref={}, rep={}, plt={}, "
             "mod={}",
             station.name(), station.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair,
+            outfitting, rearm, refuel, repair, planetary,
             modified,
         )
         return station
@@ -1288,6 +1333,7 @@ class TradeDB(object):
             rearm=None,
             refuel=None,
             repair=None,
+            planetary=None,
             modified='now',
             force=False,
             commit=True,
@@ -1331,6 +1377,7 @@ class TradeDB(object):
         _check_setting("arm", "rearm", rearm, TradeDB.marketStates)
         _check_setting("ref", "refuel", refuel, TradeDB.marketStates)
         _check_setting("rep", "repair", repair, TradeDB.marketStates)
+        _check_setting("plt", "planetary", planetary, TradeDB.planetStates)
 
         if not changes:
             return False
@@ -1348,6 +1395,7 @@ class TradeDB(object):
                    rearm=?,
                    refuel=?,
                    repair=?,
+                   planetary=?,
                    modified=DATETIME(?)
              WHERE station_id = ?
         """, [
@@ -1361,6 +1409,7 @@ class TradeDB(object):
             station.rearm,
             station.refuel,
             station.repair,
+            station.planetary,
             modified,
             station.ID
         ])
@@ -1438,6 +1487,8 @@ class TradeDB(object):
             return name
 
         slashPos = name.find('/')
+        if slashPos < 0:
+            slashPos = name.find('\\')
         nameOff = 1 if name.startswith('@') else 0
         if slashPos > nameOff:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
@@ -1648,6 +1699,8 @@ class TradeDB(object):
             avoidPlaces=None,
             maxPadSize=None,
             maxLsFromStar=0,
+            noPlanet=False,
+            planetary=None,
             ):
         """
         Gets a list of the Station destinations that can be reached
@@ -1729,6 +1782,11 @@ class TradeDB(object):
                         yield node, station
 
         path_iter = iter(path_iter_fn())
+        if noPlanet:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.planetary == 'N'
+            )
         if avoidPlaces:
             path_iter = iter(
                 (node, station) for (node, station) in path_iter
@@ -1738,6 +1796,11 @@ class TradeDB(object):
             path_iter = iter(
                 (node, station) for (node, station) in path_iter
                 if station.checkPadSize(maxPadSize)
+            )
+        if planetary:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.checkPlanetary(planetary)
             )
         if maxLsFromStar:
             path_iter = iter(
@@ -1760,7 +1823,7 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-            SELECT ship_id, name, cost
+            SELECT ship_id, name, cost, fdev_id
               FROM Ship
         """
         self.cur.execute(stmt)
@@ -1826,22 +1889,27 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-            SELECT item_id, name, category_id
+            SELECT item_id, name, category_id, avg_price, fdev_id
               FROM Item
         """
-        itemByID, itemByName = {}, {}
-        for ID, name, categoryID in self.cur.execute(stmt):
+        itemByID, itemByName, itemByFDevID = {}, {}, {}
+        for ID, name, categoryID, avgPrice, fdevID in self.cur.execute(stmt):
             category = self.categoryByID[categoryID]
             item = Item(
                 ID, name, category,
-                '{}/{}'.format(category.dbname, name)
+                '{}/{}'.format(category.dbname, name),
+                avgPrice, fdevID
             )
             itemByID[ID] = item
             itemByName[name] = item
+            if fdevID:
+                itemByFDevID[fdevID] = item
+
             category.items.append(item)
 
         self.itemByID = itemByID
         self.itemByName = itemByName
+        self.itemByFDevID = itemByFDevID
 
         self.tdenv.DEBUG1(
             "Loaded {:n} Items",
@@ -1906,21 +1974,24 @@ class TradeDB(object):
         Populate the RareItem list.
         """
         stmt = """
-            SELECT  rare_id,
-                    station_id,
-                    name,
-                    cost,
-                    max_allocation,
-                    illegal
+            SELECT  rare_id, station_id, category_id, name,
+                    cost, max_allocation, illegal, suppressed
               FROM  RareItem
         """
         self.cur.execute(stmt)
 
         rareItemByID, rareItemByName = {}, {}
         stationByID = self.stationByID
-        for (ID, stnID, name, cost, maxAlloc, illegal) in self.cur:
+        for (
+            ID, stnID, catID, name,
+            cost, maxAlloc, illegal, suppressed
+        ) in self.cur:
             station = stationByID[stnID]
-            rare = RareItem(ID, station, name, cost, maxAlloc, illegal)
+            category = self.categoryByID[catID]
+            rare = RareItem(
+                ID, station, name, cost, maxAlloc, illegal, suppressed,
+                category, '{}/{}'.format(category.dbname, name)
+            )
             rareItemByID[ID] = rareItemByName[name] = rare
         self.rareItemByID = rareItemByID
         self.rareItemByName = rareItemByName

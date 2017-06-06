@@ -25,7 +25,7 @@ You're in a ship with 8 cargo spaces that can make 8.56 ly per jump; you're will
 
 If we ran this, TD would search the galaxy for trade runs. But it could take us days to reach some of them. So lets say we're currently at Kummer City in the Andere system.
 
-    trade.py run --from "andere/kummer city" 
+    trade.py run --from "andere/kummer city"
         --credits 5000 --capacity 8 --ly-per 8.56 --jumps 2 --hops 2
 
 (The above represents a single line)
@@ -121,7 +121,7 @@ There's a lot going on here:
     . Fine detail about stations (distance from star, has black market, etc),
     . "score" tells us how TD ranked this based on factors such as total gain, supercruise distances, number of jumps, etc,
     . Expected purchase/sale costs and rough data age (some crowd-sourced data can appear to be very old if it hasn't changed),
-    . How much we expect to gain each hop and the cr/ton we make, 
+    . How much we expect to gain each hop and the cr/ton we make,
 
 Most users tend to use the in-game route planner and prefer the cleaner "--summary" presentation:
 
@@ -438,6 +438,17 @@ For additional help on a specific command, such as 'update' use
          -p ML?               (medium, large, or unknown only)
          --pad ?              (unknown only)
          --pad L              (large only, ignores unknown)
+
+     --no-planet
+       Require stations to be in space.
+
+     --planetary YN?
+     --pla YN?
+       Limit result to stations with one of the specified planetary
+       attribute.
+         --pla Y?             (on planet or unknown)
+         --pad ?              (unknown only)
+         --pla N              (in space only, equals --no-planet)
 
      --black-market
      --bm
@@ -760,24 +771,133 @@ To take maximum advantage of Maddavo's services, you should consider using "-O c
 
 ##Elite Dangerous Mobile API import plugin:
 
-Frontier provides an API for their mobile app. This can be used to report accurate information about your currently docked station such as market prices, shipyard, and other station information. The "edapi" plugin provides a way to accurately import this information into your prices file and optionally report the market prices to EDDN. 
+Frontier provides an API for their mobile app. This can be used to report accurate information about your currently docked station such as market prices, shipyard, and other station information. The "edapi" plugin provides a way to accurately import this information into your prices file and optionally report the market prices to EDDN.
 
 ###Basic usage:
 
     trade.py import --plug edapi
       This will query the API for information abotu your currently docked
       station and import any market prices and shipyard information
-      available. You will be prompted to enter any missing station information. 
+      available. You will be prompted to enter any missing station information.
 
     trade.py imp -P edapi -O eddn
       This will do the same thing, but also post your market, shipyard, and
       outfitting modules to EDDN.
 
+    trade.py imp -P edapi -O test=tmp/profile.20160707_202255.json
+      This will load a API-response from the given file and work with that
+      instead of querying to the companion API. If the EDDN option is also
+      given, it will use the "test" schema instead of the production one
+      and print out the sent message(s).
+
 ###Options (-O):
 
-    eddn:  Post market, shipyard and outfitting to EDDN.
     csvs:  Merge shipyards into ShipVendor.csv.
+    edcd:  Call the EDCD plugin first (see below).
+    eddn:  Post market, shipyard and outfitting to EDDN.
+    name:  Do not obfuscate commander name for EDDN submit.
+    save:  Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).
+    test:  Test the plugin with a json file (test=[FILENAME]).
+    warn:  Ask for station update if a API<->DB diff is encountered.
 
+##Elite Dangerous netLog parser import plugin:
+
+Elite Dangerous writes a logfile which includes the name and position data of the system you are in.
+
+This plugin tries to extract these information and store it in the database.
+
+In order do find the log files, the environment variable "FDEVLOGDIR" must be set to the correct path. Take a look at 'scripts/README.txt' how the varibale "TRADEDIR" is set and just do it for "FDEVLOGDIR".
+
+- Q: And how do I find the correct path?
+- A: Yeah, well, that depends on your installation. Take a look at the **NetLog** entry from the [Frontier support FAQ](https://support.frontier.co.uk/kb/faq.php?id=108)
+
+###Basic usage:
+
+    trade.py import --plug netlog
+      This will parse all found netlog files and adds new systems to the database.
+
+    trade.py import --plug netlog -O last
+      This will parse the newest netlog file and adds new systems to the database.
+
+    trade.py imp -P netlog -O show
+      This will parse all found netlog files but will only display the new systems
+      without adding them to the database.
+
+    trade.py imp -P netlog -O date=2016-01,last
+      This will parse the newest netlog file from January 2016 and adds new systems
+      to the database.
+      The date given can be given in the form [YY]YY[-MM[-DD]]. Year is mandatory
+      in 2- or 4-digit form, month and day are optional 2-digits, separator
+      is the hyphen "-".
+
+###Options (-O):
+
+    last:  Only parse the last (newest) netLog file.
+    date:  Only parse netLog files from date, format=[YY]YY[-MM[-DD]].
+    show:  Only show the system name and position. Don't update the DB.
+
+    (All options can be combined.)
+
+##Elite Dangerous Journal parser import plugin:
+
+Elite Dangerous writes a journal-file which includes system and station data.
+
+This plugin tries to extract these information and store them in the database.
+
+In order do find the log files, the environment variable "FDEVJRNDIR" must be set to the correct path. Take a look at 'scripts/README.txt' how the varibale "TRADEDIR" is set and just do it for "FDEVJRNDIR".
+
+- Q: And how do I find the correct path?
+- A: The journal files are written into the user's Saved Games folder, eg, for Windows: `C:\Users\[User Name]\Saved Games\Frontier Developments\Elite Dangerous`
+
+###Basic usage:
+
+    trade.py import --plug journal
+      This will parse all found journal files and adds new systems/stations
+      to the database and maybe update some station data.
+
+    trade.py import --plug journal -O last
+      This will parse the newest journal file and adds new systems/stations
+      to the database and maybe update some station data.
+
+    trade.py imp -P journal -O show
+      This will parse all found journal files but will only display new systems
+      and stations without adding them to the database.
+
+    trade.py imp -P journal -O date=2017-05,last
+      This will parse the newest journal file from May 2017 and adds new
+      systems/stations to the database and maybe update some station data.
+      The date given can be given in the form [YY]YY[-MM[-DD]]. Year is mandatory
+      in 2- or 4-digit form, month and day are optional 2-digits, separator
+      is the hyphen "-".
+
+###Options (-O):
+
+    last:  Only parse the last (newest) Journal file.
+    date:  Only parse Journal files from date, format=[YY]YY[-MM[-DD]].
+    show:  Only show the system or station. Don't update the DB.
+
+    (All options can be combined.)
+
+##Elite Dangerous Community Developers (EDCD) import plugin:
+
+In the provided API for their mobile app Frontier sends IDs. These IDs are unique and could be used to map the FDevIDs to internal database names (or IDs). This plugin synchronises the FDevIDs (from EDCD) with the TD database, which should help the EDAPI (and the included EDDN) to be more accurate.
+
+###Basic usage:
+
+    trade.py import --plug edcd
+      This does nothing.
+
+    trade.py imp -P edapi -O csvs
+      This will download all three (shipyard, commodity, outfitting) FDevIDs
+      CSV-files and import them into the database.
+
+###Options (-O):
+
+    local:      Use local EDCD CSV-files.
+    shipyard:   Download and process EDCD shipyard.csv
+    commodity:  Download and process EDCD commodity.csv
+    outfitting: Download and process EDCD outfitting.csv
+    csvs:       Download and process all EDCD CSV-files.
 
 ##MARKET sub-command:
 
@@ -831,7 +951,8 @@ Lists items bought / sold at a given station; with --detail (-v) also includes t
 
 Provides details of routes without worrying about trade. By default, if given a ship, it uses the maximum dry range of the ship. Use `--full` if you want to restrict to routes with a full cargo hold.
 
-    trade.py nav [-q | -v] [--ly-per] from to [--avoid] [--stations]
+    trade.py nav [-q | -v] [--ly-per] from to
+                 [--avoid] [--stations] [--no-planet | --planetary YN?]
 
 ###Options:
 
@@ -843,7 +964,11 @@ Provides details of routes without worrying about trade. By default, if given a 
       Produces a route that does not fly through place. If place is a
       station, the system it is in will be avoided.
 
+    --via PLACE[,PLACE,...]
+      Require specified systems/stations to be en-route (in order).
+
     --stations
+    -S
       Lists stations at each stop
 
     --refuel-jumps N
@@ -853,7 +978,7 @@ Provides details of routes without worrying about trade. By default, if given a 
       jump on the route have a station. "--ref 2" would require that
       you not make more than one stationless jump after another.
 
-    --pad-size ?SML
+    --pad-size SML?
     -p ?SML
       Specify pad size required for a station to be listed or considered
       for refuelling stops. Specify one or all pad sizes you are want,
@@ -861,6 +986,17 @@ Provides details of routes without worrying about trade. By default, if given a 
       e.g.
         --pad-size=ML
         -p ?SL           (unknown, small or large)
+
+    --no-planet
+      Require stations to be in space.
+
+    --planetary YN?
+    --pla YN?
+      Limit result to stations with one of the specified planetary
+      attribute.
+        --pla Y?             (on planet or unknown)
+        --pad ?              (unknown only)
+        --pla N              (in space only, equals --no-planet)
 
     from
       Name of the starting system or a station in the system,
@@ -916,6 +1052,17 @@ Provides details of local stations without worrying about trade. By default, if 
         -p ML?               (medium, large, or unknown only)
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
+
+    --no-planet
+      Require stations to be in space.
+
+    --planetary YN?
+    --pla YN?
+      Limit result to stations with one of the specified planetary
+      attribute.
+        --pla Y?             (on planet or unknown)
+        --pad ?              (unknown only)
+        --pla N              (in space only, equals --no-planet)
 
     --stations
       Limit results to systems which have stations
@@ -1040,8 +1187,8 @@ Finds stations that are selling / where you can buy, a named list of items or sh
     trade.py buy
         [-q | -v] [--supply N] [-P | -S] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
-        [--pad-size PSML?] [--black-market | --bm]
-        [--one-stop | -1]
+        [--pad-size SML?] [--black-market | --bm]
+        [--one-stop | -1] [--no-planet | --planetary YN?]
         category|item [category|item category|item,category|item,category|item …]
         ship [ship ship,ship …]
 
@@ -1071,6 +1218,17 @@ Finds stations that are selling / where you can buy, a named list of items or sh
       e.g.
         --avoid sol --avoid ross154 --avoid abrahamlincoln,marshigh
 
+    --no-planet
+      Require stations to be in space.
+
+    --planetary YN?
+    --pla YN?
+      Limit result to stations with one of the specified planetary
+      attribute.
+        --pla Y?             (on planet or unknown)
+        --pad ?              (unknown only)
+        --pla N              (in space only, equals --no-planet)
+
     --black-market
     --bm
       Only consider stations known to have a black market.
@@ -1097,7 +1255,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
         --gt 100
         --lt 1.2k
 
-    --prices-sort
+    --price-sort
     -P
       Keeps items sorted by price when using --near
      (otherwise items are listed by distance and then price)
@@ -1122,7 +1280,9 @@ Looks for stations buying the specified item.
     trade.py sell
         [-q | -v] [--demand N] [-P] [--limit]
         [--near N] [--ly-per N] [--avoid PLACES]
-        [--pad-size PSML?] [--black-market | --bm]
+        [--pad-size SML?] [--black-market | --bm]
+        [--no-planet | --planetary YN?]
+        [--lt N] [--gt N] [--price-sort | -P]
         item
 
 ###Options:
@@ -1165,6 +1325,17 @@ Looks for stations buying the specified item.
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
 
+    --no-planet
+      Require stations to be in space.
+
+    --planetary YN?
+    --pla YN?
+      Limit result to stations with one of the specified planetary
+      attribute.
+        --pla Y?             (on planet or unknown)
+        --pad ?              (unknown only)
+        --pla N              (in space only, equals --no-planet)
+
     --lt credits
     --gt credits
       Specify min (gt) and max (lt) credit prices for items
@@ -1172,7 +1343,7 @@ Looks for stations buying the specified item.
         --gt 100
         --lt 1.2k
 
-    --prices-sort
+    --price-sort
     -P
       Keeps items sorted by price when using --near
       (otherwise items are listed by distance and then price)
@@ -1275,6 +1446,17 @@ This command looks for known rare items within the space around a specified syst
         -o ML?               (medium, large, or unknown only)
         --pad ?              (unknown only)
         --pad L              (large only, ignores unknown)
+
+     --no-planet
+       Require stations to be in space.
+
+    --planetary YN?
+    --pla YN?
+      Limit result to stations with one of the specified planetary
+      attribute.
+        --pla Y?             (on planet or unknown)
+        --pad ?              (unknown only)
+        --pla N              (in space only, equals --no-planet)
 
      --legal
      --illegal
