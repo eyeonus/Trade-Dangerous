@@ -799,6 +799,7 @@ Frontier provides an API for their mobile app. This can be used to report accura
     save:  Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).
     test:  Test the plugin with a json file (test=[FILENAME]).
     warn:  Ask for station update if a API<->DB diff is encountered.
+    login: Ask for login credentials.
 
 ##Elite Dangerous netLog parser import plugin:
 

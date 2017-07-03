@@ -2,6 +2,11 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Jul 03 2017 (bgol, horizon branch):
+. Updated EDAPI plugin to version 4.2.0
+  - Added "login option.
+  - EDDN Server Migration
+
 May 31 2017 (bgol, horizon branch):
 . Updated Journal plugin to ignore all events in multicrew.
 . Missed the station command to output the category name.
