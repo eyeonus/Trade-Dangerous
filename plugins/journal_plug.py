@@ -143,6 +143,8 @@ class ImportPlugin(ImportPluginBase):
                             # ignore all events in multicrew except
                             if event["event"] == "QuitACrew":
                                 inMultiCrew = False
+                            else:
+                                tdenv.DEBUG1("event '{}' ignored (multicrew)", event["event"])
                             continue
                         logDate = datetime.strptime(
                             event["timestamp"], "%Y-%m-%dT%H:%M:%SZ"
@@ -160,8 +162,12 @@ class ImportPlugin(ImportPluginBase):
                             else:
                                 # don't stop parsing if it's not the header-line
                                 tdenv.WARN("Doesn't seem do be a FDEV Journal file")
-                        if event["event"] == "JoinACrew":
-                            inMultiCrew = True
+                        if event["event"] == "Location":
+                            # convert event before the if-elif starts
+                            if event.get("Docked", False):
+                                event["event"] = "Docked"
+                                tdenv.DEBUG0("   EVENT: Changed Location to Docked")
+                        # if-elif starts here
                         if event["event"] == "FSDJump":
                             sysCount += 1
                             sysDate = logDate
@@ -176,11 +182,7 @@ class ImportPlugin(ImportPluginBase):
                                 sysDate, sysName, sysPosX, sysPosY, sysPosZ
                             )
                             logSysList[sysName] = (sysPosX, sysPosY, sysPosZ, sysDate)
-                        if event["event"] == "Location":
-                            if event.get("Docked", False):
-                                event["event"] = "Docked"
-                                tdenv.DEBUG0("   EVENT: Changed Location to Docked")
-                        if event["event"] == "Docked":
+                        elif event["event"] == "Docked":
                             stnCount += 1
                             sysName = event["StarSystem"]
                             stnList = stnSysList.get(sysName, None)
@@ -217,7 +219,7 @@ class ImportPlugin(ImportPluginBase):
                                 sysPosZ = snapToGrid32(sysPosZ)
                                 tdenv.DEBUG0("  SYSTEM: {} {} {} {} {}", sysDate, sysName, sysPosX, sysPosY, sysPosZ)
                                 logSysList[sysName] = (sysPosX, sysPosY, sysPosZ, sysDate)
-                        if event["event"] == "MarketSell" and aktStation:
+                        elif event["event"] == "MarketSell" and aktStation:
                             # check for BlackMarket
                             if event.get("BlackMarket", False):
                                 stnBlackMarket = (sysName, stnName)
@@ -225,8 +227,12 @@ class ImportPlugin(ImportPluginBase):
                                     tdenv.DEBUG0("B/MARKET: {}/{}", sysName, stnName)
                                     blkCount += 1
                                     blkStnList.append(stnBlackMarket)
-                        if event["event"] == "Undocked":
+                        elif event["event"] == "Undocked":
                             aktStation = False
+                        elif event["event"] == "JoinACrew":
+                            inMultiCrew = True
+                        else:
+                            tdenv.DEBUG1("event '{}' ignored", event["event"])
                     except:
                         raise PluginException(
                             "Something wrong with line {}.".format(lineCount)
