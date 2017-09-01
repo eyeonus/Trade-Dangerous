@@ -136,12 +136,14 @@ class ImportPlugin(ImportPluginBase):
                 statHeader = True
                 for line in logFile:
                     lineCount += 1
-                    if inMultiCrew:
-                        # ignore all events in multicrew
-                        continue
                     try:
                         # parse the json-event-line of the journal
                         event = json.loads(line)
+                        if inMultiCrew:
+                            # ignore all events in multicrew except
+                            if event["event"] == "QuitACrew":
+                                inMultiCrew = False
+                            continue
                         logDate = datetime.strptime(
                             event["timestamp"], "%Y-%m-%dT%H:%M:%SZ"
                         ).replace(tzinfo=timezone.utc)
@@ -160,8 +162,6 @@ class ImportPlugin(ImportPluginBase):
                                 tdenv.WARN("Doesn't seem do be a FDEV Journal file")
                         if event["event"] == "JoinACrew":
                             inMultiCrew = True
-                        if event["event"] == "QuitACrew":
-                            inMultiCrew = False
                         if event["event"] == "FSDJump":
                             sysCount += 1
                             sysDate = logDate
