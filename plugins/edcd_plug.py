@@ -118,20 +118,24 @@ class ImportPlugin(ImportPluginBase):
                         insColumns = [
                             "name",
                             "category_id",
-                            "avg_price",
                             "fdev_id"
                         ]
                         insValues = [
                             itemEDCD.dbname,
                             catEDCD.dbname,
-                            itemEDCD.avgPrice,
                             itemEDCD.fdevID
                         ]
+                        if itemEDCD.avgPrice:
+                            insColumns.append('avg_price')
+                            insValues.append(itemEDCD.avgPrice)
                         sqlStmt = (
                             "INSERT INTO Item({}) VALUES(?,"
                                 "(SELECT category_id "
-                                   "FROM Category WHERE name = ?),?,?)"
-                            .format(",".join(insColumns))
+                                   "FROM Category WHERE name = ?),?{})"
+                            .format(
+                                ",".join(insColumns),
+                                ",?" if itemEDCD.avgPrice else ""
+                            )
                         )
                         tdenv.DEBUG0("SQL-Statement: {}", sqlStmt)
                         tdenv.DEBUG0("SQL-Values: {}", insValues)
@@ -218,10 +222,11 @@ class ImportPlugin(ImportPluginBase):
             tdenv.DEBUG0("idxMap: {}", idxMap)
 
             notGood = False
-            for checkMe in ('id', 'category' , 'name' , 'average'):
+            for checkMe in ('id', 'category', 'name'):
                 if checkMe not in idxMap:
                     tdenv.WARN("'{}' column not in {}.", checkMe, localPath)
                     notGood = True
+            hasAverage = True if 'average' in idxMap else False
 
             def castToInteger(val):
                 try:
@@ -243,7 +248,10 @@ class ImportPlugin(ImportPluginBase):
                     edcdId       = lineIn[idxMap['id']].strip()
                     edcdCategory = lineIn[idxMap['category']].strip()
                     edcdName     = lineIn[idxMap['name']].strip()
-                    edcdAverage  = lineIn[idxMap['average']].strip()
+                    if hasAverage:
+                        edcdAverage = lineIn[idxMap['average']].strip()
+                    else:
+                        edcdAverage = None
 
                     if edcdCategory.lower() == "nonmarketable":
                         # we are, after all, a trading tool
