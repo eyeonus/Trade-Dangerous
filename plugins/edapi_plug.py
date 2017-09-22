@@ -716,12 +716,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
         self.edAPI = api
 
-        # Sanity check that the commander is docked. Otherwise we will get a
-        # mismatch between the last system and last station.
-        if not api.profile['commander']['docked']:
-            print('Commander not docked. Aborting!')
-            return False
-
         # save profile if requested
         if self.getOption("save"):
             saveName = 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
@@ -732,6 +726,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 else:
                     saveFile.write(api.text)
                 print('API response saved to: {}'.format(saveName))
+
+        # Sanity check that the commander is docked. Otherwise we will get a
+        # mismatch between the last system and last station.
+        if not api.profile['commander']['docked']:
+            print('Commander not docked. Aborting!')
+            return False
 
         # Figure out where we are.
         sysName = api.profile['lastSystem']['name']
