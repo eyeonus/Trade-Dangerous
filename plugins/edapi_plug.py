@@ -863,7 +863,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             for commodity in api.profile['lastStarport']['commodities']:
                 if commodity['categoryname'] in cat_ignore:
                     continue
-                itmName = itemMap.mapID(commodity['id'], commodity['name'])
+
+                if commodity.get('legality', '') != '':
+                    # ignore if present and not empty
+                    continue
+
+                locName = commodity.get('locName', commodity['name'])
+                itmName = itemMap.mapID(commodity['id'], locName)
 
                 def commodity_int(key):
                     try:
