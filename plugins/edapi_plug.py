@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('4', '2', '0')
+__version_info__ = ('4', '3', '0')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -114,7 +114,7 @@ class EDAPI:
         response = self._getURI('profile')
         try:
             self.profile = response.json()
-            self.text    = response.text
+            self.text    = [ response.text ]
         except:
             if self.debug:
                 print('   URL:', response.url)
@@ -125,6 +125,24 @@ class EDAPI:
                 "\nTry to relogin with the 'login' option."
                 "{}".format("" if self.debug else "\nTry with --debug and report this.")
             )
+
+        # Grab the market and shipyard data
+        for dataUrl in ("market", "shipyard"):
+            response = self._getURI(dataUrl)
+            try:
+                jsonData = response.json()
+                self.text.append(response.text)
+                if int(jsonData["id"]) == int(self.profile["lastStarport"]["id"]):
+                    self.profile["lastStarport"].update(jsonData)
+            except:
+                if self.debug:
+                    print('   URL:', response.url)
+                    print('status:', response.status_code)
+                    print('  text:', response.text)
+                sys.exit(
+                    "Unable to parse JSON response for /{}!"
+                    "{}".format(dataUrl, "" if self.debug else "\nTry with --debug and report this.")
+                )
 
     def _getBasicURI(self, uri, values=None):
         '''
@@ -650,8 +668,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
             if proPath.exists():
                 with proPath.open() as proFile:
+                    proData = json.load(proFile)
+                    if isinstance(proData, list):
+                        # since 4.3.0: list(profile, market, shipyard)
+                        testProfile = proData[0]
+                        for data in proData[1:]:
+                            if int(data["id"]) == int(testProfile["lastStarport"]["id"]):
+                                testProfile["lastStarport"].update(data)
+                    else:
+                        testProfile = proData
                     api = apiED(
-                        profile = json.load(proFile),
+                        profile = testProfile,
                         text = '{{"mode":"test","file":"{}"}}'.format(str(proPath))
                     )
             else:
@@ -676,7 +703,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("save"):
             saveName = 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
             with open(saveName, 'w', encoding="utf-8") as saveFile:
-                saveFile.write(api.text)
+                if isinstance(api.text, list):
+                    # since 4.3.0: list(profile, market, shipyard)
+                    saveFile.write("[{}]".format(",".join(api.text)))
+                else:
+                    saveFile.write(api.text)
                 print('API response saved to: {}'.format(saveName))
 
         # Figure out where we are.
