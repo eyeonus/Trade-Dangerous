@@ -885,11 +885,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 itmBuyPrice    = commodity_int('buyPrice')
                 itmSellPrice   = commodity_int('sellPrice')
 
-                demandLevel = True
-                supplyLevel = True
-                if itmBuyPrice == 0:
-                    # If there is not buyPrice, ignore stock
-                    supplyLevel = False
+                if itmSupplyLevel == 0 or itmBuyPrice == 0:
+                    # If there is not stockBracket or buyPrice, ignore stock
+                    itmBuyPrice = 0
                     itmSupply = 0
                     itmSupplyLevel = 0
                     tdSupply = "-"
@@ -899,7 +897,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                     )
                 else:
                     # otherwise don't care about demand
-                    demandLevel = False
                     itmDemand = 0
                     itmDemandLevel = 0
                     tdDemand = "?"
@@ -908,12 +905,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                         bracket_levels[itmSupplyLevel]
                     )
 
-                itemTD = (
-                    itmName,
-                    itmSellPrice, itmBuyPrice,
-                    tdDemand, tdSupply,
-                )
-                itemList.append(itemTD)
+                # ignore items without supply or demand bracket (TD only)
+                if itmSupplyLevel > 0 or itmDemandLevel > 0:
+                    itemTD = (
+                        itmName,
+                        itmSellPrice, itmBuyPrice,
+                        tdDemand, tdSupply,
+                    )
+                    itemList.append(itemTD)
 
                 # Populate EDDN
                 if self.getOption("eddn"):
