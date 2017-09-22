@@ -462,11 +462,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             else:
                 tdenv.NOTE("{:>12} NOT in API response", defName)
 
+        def getYNfromObject(obj, key):
+            return "Y" if key in obj else "N"
+
         # defaults from API response are not reliable!
         checkStarport = self.edAPI.profile['lastStarport']
-        defMarket     = "Y" if 'commodities' in checkStarport else "N"
-        defShipyard   = "Y" if 'ships'       in checkStarport else "N"
-        defOutfitting = "Y" if 'modules'     in checkStarport else "N"
+        defMarket     = getYNfromObject(checkStarport, 'commodities')
+        defShipyard   = getYNfromObject(checkStarport, 'ships')
+        defOutfitting = getYNfromObject(checkStarport, 'modules')
         tellUserAPIResponse("'Outfitting'", defOutfitting)
         tellUserAPIResponse("'ShipYard'", defShipyard)
         tellUserAPIResponse("'Market'", defMarket)
@@ -486,17 +489,38 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.WARN(warnText, what=checkName, s=s, d=d)
             return True if self.getOption('warn') else False
 
-        if not station:
-            print('Station unknown.')
+        # station services since ED update 2.4
+        checkServices = checkStarport.get('services', None)
+        if checkServices:
+            if station:
+                tdenv.NOTE('Station known.')
+                stnlsFromStar = station.lsFromStar
+                stnmaxPadSize = station.maxPadSize
+                stnplanetary  = station.planetary
+            else:
+                tdenv.NOTE('Station unknown.')
+                stnlsFromStar = 0
+                stnmaxPadSize = "?"
+                stnplanetary  = "?"
+            tdenv.NOTE("Found station services.")
+            if checkStarport.get('outpostType', None) == 'starport':
+                # only the big one can be detected
+                stnmaxPadSize = "L"
+                stnplanetary  = "N"
             defStation = stnDefault(
-                lsFromStar  = 0,   market     = defMarket,
-                blackMarket = "?", shipyard   = defShipyard,
-                maxPadSize  = "?", outfitting = defOutfitting,
-                rearm       = "?", refuel     = "?",
-                repair      = "?", planetary  = "?",
+                lsFromStar = stnlsFromStar,
+                market = getYNfromObject(checkServices, 'commodities'),
+                blackMarket = getYNfromObject(checkServices, 'blackmarket'),
+                shipyard = getYNfromObject(checkServices, 'shipyard'),
+                maxPadSize = stnmaxPadSize,
+                outfitting = getYNfromObject(checkServices, 'outfitting'),
+                rearm = getYNfromObject(checkServices, 'rearm'),
+                refuel = getYNfromObject(checkServices, 'refuel'),
+                repair = getYNfromObject(checkServices, 'repair'),
+                planetary = stnplanetary,
             )
-        else:
-            print('Station known.')
+        elif station:
+            tdenv.NOTE('Station known.')
             defStation = stnDefault(
                 lsFromStar = station.lsFromStar,
                 market = defMarket if station.market == "?" else station.market,
@@ -508,6 +532,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 refuel = station.refuel,
                 repair = station.repair,
                 planetary = station.planetary,
+            )
+        else:
+            tdenv.NOTE('Station unknown.')
+            defStation = stnDefault(
+                lsFromStar  = 0,   market     = defMarket,
+                blackMarket = "?", shipyard   = defShipyard,
+                maxPadSize  = "?", outfitting = defOutfitting,
+                rearm       = "?", refuel     = "?",
+                repair      = "?", planetary  = "?",
             )
 
         warning = False
@@ -568,19 +601,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                     detail += ' [unknown]'
                 return detail
 
-            ls = station.lsFromStar
-            if ls == 0:
-                ls = '0 [unknown]'
-            print(" Stn/Ls....:", ls)
-            print(" Pad Size..:", _detail(station.maxPadSize, tdb.padSizes))
-            print(" Planetary.:", _detail(station.planetary, tdb.planetStates))
-            print(" B/Market..:", _detail(station.blackMarket, tdb.marketStates))
-            print(" Refuel....:", _detail(station.refuel, tdb.marketStates))
-            print(" Repair....:", _detail(station.repair, tdb.marketStates))
-            print(" Restock...:", _detail(station.rearm, tdb.marketStates))
-            print(" Outfitting:", _detail(station.outfitting, tdb.marketStates))
-            print(" Shipyard..:", _detail(station.shipyard, tdb.marketStates))
-            print(" Market....:", _detail(station.market, tdb.marketStates))
+            ls = newStation['lsFromStar']
+            print(" Stn/Ls....:", ls, '[unknown]' if ls == 0 else '')
+            print(" Pad Size..:", _detail(newStation['maxPadSize'], tdb.padSizes))
+            print(" Planetary.:", _detail(newStation['planetary'], tdb.planetStates))
+            print(" B/Market..:", _detail(newStation['blackMarket'], tdb.marketStates))
+            print(" Refuel....:", _detail(newStation['refuel'], tdb.marketStates))
+            print(" Repair....:", _detail(newStation['repair'], tdb.marketStates))
+            print(" Restock...:", _detail(newStation['rearm'], tdb.marketStates))
+            print(" Outfitting:", _detail(newStation['outfitting'], tdb.marketStates))
+            print(" Shipyard..:", _detail(newStation['shipyard'], tdb.marketStates))
+            print(" Market....:", _detail(newStation['market'], tdb.marketStates))
 
         exportCSV = False
         if not station:

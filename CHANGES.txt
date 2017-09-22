@@ -5,6 +5,7 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 Sep 22 2017 (bgol, horizon branch):
 . Updated EDAPI plugin to version 4.3.0
   - Added "/market" and "/shipyard" check from cAPI.
+  - Get station data from the new "services" entry if available.
 
 Jul 03 2017 (bgol, horizon branch):
 . Updated EDAPI plugin to version 4.2.0
