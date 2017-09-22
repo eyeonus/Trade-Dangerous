@@ -447,6 +447,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Ask for new or updated station data
         """
         tdb, tdenv = self.tdb, self.tdenv
+        askForData = False
 
         stnDefault = namedtuple(
             'stnDefault', [
@@ -454,15 +455,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 'outfitting','rearm','refuel','repair','planetary',
             ]
         )
-
-        # defaults for Station, which could come from API
-        askForData = False
-        if not station:
-            defMarket, defShipyard, defOutfitting = "?", "?", "?"
-        else:
-            defMarket     = station.market
-            defShipyard   = station.shipyard
-            defOutfitting = station.outfitting
 
         def tellUserAPIResponse(defName, defValue):
             if defValue == "Y":
