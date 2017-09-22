@@ -7,6 +7,7 @@ Sep 22 2017 (bgol, horizon branch):
   - Added "/market" and "/shipyard" check from cAPI.
   - Get station data from the new "services" entry if available.
   - Updated item handling for upcoming ED 2.4 cAPI changes.
+. Updated Journal plugin to use "StationServices" if available.
 
 Jul 03 2017 (bgol, horizon branch):
 . Updated EDAPI plugin to version 4.2.0

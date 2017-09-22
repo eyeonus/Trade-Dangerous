@@ -17,6 +17,41 @@ def snapToGrid32(val):
         pass
     return pos
 
+def getYNfromService(obj, key):
+    return "Y" if key in obj else "N"
+
+class JournalStation(object):
+    __slots__ = (
+        'lsFromStar', 'blackMarket', 'maxPadSize',
+        'market', 'shipyard', 'outfitting',
+        'rearm', 'refuel', 'repair',
+        'planetary', 'modified'
+    )
+
+    def __init__(
+        self, lsFromStar=0, blackMarket='?', maxPadSize='?',
+        market='?', shipyard='?', outfitting='?',
+        rearm='?', refuel='?', repair='?',
+        planetary='?', modified='now'
+    ):
+        self.lsFromStar = lsFromStar
+        self.blackMarket = blackMarket
+        self.maxPadSize = maxPadSize
+        self.market = market
+        self.shipyard = shipyard
+        self.outfitting = outfitting
+        self.rearm = rearm
+        self.refuel = refuel
+        self.repair = repair
+        self.planetary = planetary
+        self.modified = modified
+
+    def __str__(self):
+        return "{}ls Pad:{} Mkt:{} Blk:{} Shp:{} Out:{} Arm:{} Ref:{} Rep:{} Plt:{}".format(
+            self.lsFromStar, self.maxPadSize, self.market,
+            self.blackMarket, self.shipyard, self.outfitting,
+            self.rearm, self.refuel, self.repair, self.planetary
+        )
 
 class ImportPlugin(ImportPluginBase):
     """
@@ -190,22 +225,28 @@ class ImportPlugin(ImportPluginBase):
                                 stnList = stnSysList[sysName] = {}
                             stnDate = logDate
                             stnName = event["StationName"]
-                            lsFromStar = event.get("DistFromStarLS", 0)
-                            if lsFromStar > 0:
-                                lsFromStar = int(lsFromStar + 0.5)
+                            jrnStation = JournalStation(modified=stnDate)
+                            jrnStation.lsFromStar = int(event.get("DistFromStarLS", 0) + 0.5)
                             stnType = event.get("StationType", None)
                             if stnType:
                                 # conclusions from the stationtype
-                                stnPlanet = "Y" if stnType == "SurfaceStation" else "N"
-                                stnPadSize = "M" if stnType.startswith("Outpost") else "L"
-                            else:
-                                stnPlanet = "?"
-                                stnPadSize = "?"
+                                jrnStation.planetary = "Y" if stnType == "SurfaceStation" else "N"
+                                jrnStation.maxPadSize = "M" if stnType.startswith("Outpost") else "L"
+                            stnServices = event.get("StationServices", None)
+                            if stnServices:
+                                # station services since ED update 2.4
+                                jrnStation.blackMarket = getYNfromService(stnServices, 'BlackMarket')
+                                jrnStation.market = getYNfromService(stnServices, 'Commodities')
+                                jrnStation.shipyard = getYNfromService(stnServices, 'Shipyard')
+                                jrnStation.outfitting = getYNfromService(stnServices, 'Outfitting')
+                                jrnStation.rearm = getYNfromService(stnServices, 'Rearm')
+                                jrnStation.refuel = getYNfromService(stnServices, 'Refuel')
+                                jrnStation.repair = getYNfromService(stnServices, 'Repair')
                             tdenv.DEBUG0(
-                                " STATION: {} {}/{} {}ls Plt:{} Pad:{}",
-                                stnDate, sysName, stnName, lsFromStar, stnPlanet, stnPadSize
+                                " STATION: {} {}/{} {}",
+                                stnDate, sysName, stnName, str(jrnStation)
                             )
-                            stnList[stnName] = (lsFromStar, stnPlanet, stnPadSize, stnDate)
+                            stnList[stnName] = jrnStation
                             aktStation = True
                             sysPosA = event.get("StarPos", None)
                             if sysPosA:
@@ -354,8 +395,8 @@ class ImportPlugin(ImportPluginBase):
                 tdenv.WARN("System '{}' unknown.", sysName)
                 continue
             for stnName in sorted(self.stnList[sysName]):
-                lsFromStar, stnPlanet, stnPadSize, stnDate = self.stnList[sysName][stnName]
-                utcDate = stnDate.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+                jrnStation = self.stnList[sysName][stnName]
+                utcDate = jrnStation.modified.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
                 station = None
                 if system:
                     # system could be None in show mode and the lookup
@@ -367,19 +408,15 @@ class ImportPlugin(ImportPluginBase):
 
                 if (sysName, stnName) in self.blkList:
                     # BlackMarket found
-                    stnBlackMarket = "Y"
-                else:
-                    # BlackMarket unknown
-                    if station:
-                        # don't change current value
-                        stnBlackMarket = station.blackMarket
-                    else:
-                        stnBlackMarket = "?"
+                    jrnStation.blackMarket = "Y"
+                elif station:
+                    if jrnStation.blackMarket == "?":
+                        # don't change current value if new one is unknown
+                        jrnStation.blackMarket = station.blackMarket
 
                 tdenv.DEBUG0(
-                    "log station '{}/{}' ({}ls, Plt:{}, Pad:{}, Blk:{}, '{}')",
-                    sysName, stnName, lsFromStar,
-                    stnPlanet, stnPadSize, stnBlackMarket, utcDate
+                    "log station '{}/{}' ({}, '{}')",
+                    sysName, stnName, str(jrnStation), utcDate
                 )
 
                 if not station:
@@ -388,8 +425,8 @@ class ImportPlugin(ImportPluginBase):
                     if optShow:
                         # display only
                         tdenv.NOTE(
-                            "New station '{}/{}' ({}ls, Plt:{}, Pad:{}, '{}')",
-                            sysName, stnName, lsFromStar, stnPlanet, stnPadSize, utcDate
+                            "New station '{}/{}' ({}, '{}')",
+                            sysName, stnName, str(jrnStation), utcDate
                         )
                     else:
                         # add it to the database
@@ -397,16 +434,16 @@ class ImportPlugin(ImportPluginBase):
                         station = tdb.addLocalStation(
                             system=system,
                             name=stnName,
-                            lsFromStar=lsFromStar,
-                            blackMarket=stnBlackMarket,
-                            maxPadSize=stnPadSize,
-                            market="?",
-                            shipyard="?",
-                            outfitting="?",
-                            rearm="?",
-                            refuel="?",
-                            repair="?",
-                            planetary=stnPlanet,
+                            lsFromStar=jrnStation.lsFromStar,
+                            blackMarket=jrnStation.blackMarket,
+                            maxPadSize=jrnStation.maxPadSize,
+                            market=jrnStation.market,
+                            shipyard=jrnStation.shipyard,
+                            outfitting=jrnStation.outfitting,
+                            rearm=jrnStation.rearm,
+                            refuel=jrnStation.refuel,
+                            repair=jrnStation.repair,
+                            planetary=jrnStation.planetary,
                             modified=utcDate,
                             commit=False,
                         )
@@ -414,27 +451,46 @@ class ImportPlugin(ImportPluginBase):
                 else:
                     oldCount += 1
                     tdenv.DEBUG0(
-                        "Old station '{}' ({}ls, Plt:{}, Pad:{})",
-                        station.name(), station.lsFromStar, station.planetary, station.maxPadSize
+                        "Old station '{}' ({}ls Pad:{} Mkt:{} Blk:{} Shp:{} Out:{} Arm:{} Ref:{} Rep:{} Plt:{})",
+                        station.name(), station.lsFromStar, station.maxPadSize, station.market,
+                        station.blackMarket, station.shipyard, station.outfitting,
+                        station.rearm, station.refuel, station.repair, station.planetary
                     )
                     if not optShow:
-                        if (station.maxPadSize == stnPadSize and
-                            station.blackMarket == stnBlackMarket and
-                            station.planetary == stnPlanet
+                        if (station.lsFromStar != jrnStation.lsFromStar and
+                            station.blackMarket == jrnStation.blackMarket and
+                            station.maxPadSize == jrnStation.maxPadSize and
+                            station.market == jrnStation.market and
+                            station.shipyard == jrnStation.shipyard and
+                            station.outfitting == jrnStation.outfitting and
+                            station.rearm == jrnStation.rearm and
+                            station.refuel == jrnStation.refuel and
+                            station.repair == jrnStation.repair and
+                            station.planetary == jrnStation.planetary
                         ):
-                            # ignore 15% deviation
+                            # ignore 15% deviation if it's the only change
                             lsMin = int(station.lsFromStar * 0.85)
                             lsMax = int(station.lsFromStar*1.15 + 1)
-                            if lsMin <= lsFromStar <= lsMax:
-                                lsFromStar = station.lsFromStar
+                            if lsMin <= jrnStation.lsFromStar <= lsMax:
+                                tdenv.DEBUG0(
+                                    "ignore 15% deviation ({}ls ~ {}ls)",
+                                    jrnStation.lsFromStar, station.lsFromStar
+                                )
+                                jrnStation.lsFromStar = station.lsFromStar
                         # the function will do it's own check and output
                         # something if the station is updated
                         if tdb.updateLocalStation(
                             station=station,
-                            lsFromStar=lsFromStar,
-                            blackMarket=stnBlackMarket,
-                            maxPadSize=stnPadSize,
-                            planetary=stnPlanet,
+                            lsFromStar=jrnStation.lsFromStar,
+                            blackMarket=jrnStation.blackMarket,
+                            maxPadSize=jrnStation.maxPadSize,
+                            market=jrnStation.market,
+                            shipyard=jrnStation.shipyard,
+                            outfitting=jrnStation.outfitting,
+                            rearm=jrnStation.rearm,
+                            refuel=jrnStation.refuel,
+                            repair=jrnStation.repair,
+                            planetary=jrnStation.planetary,
                             modified=utcDate,
                             commit=False,
                         ):
