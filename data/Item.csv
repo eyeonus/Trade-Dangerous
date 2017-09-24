@@ -129,7 +129,6 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Salvage','Military Intelligence',17,55527,128668552
 'Salvage','Military Plans',18,9413,128666755
 'Salvage','Mysterious Idol',19,'',128682051
-'Salvage','Occupied CryoPod',20,'',''
 'Salvage','Occupied Escape Pod',21,'',128672125
 'Salvage','Personal Effects',22,'',128672126
 'Salvage','Political Prisoner',23,'',128672134

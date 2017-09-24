@@ -27,6 +27,7 @@ items = {
     'LOW TEMPERATURE DIAMOND': 'Low Temperature Diamonds',
     'COOLING HOSES': 'Micro-weave Cooling Hoses',
     'GALACTIC TRAVEL GUIDE': DELETED,
+    'OCCUPIED CRYOPOD': DELETED,
 }
 
 def correctSystem(oldName):
