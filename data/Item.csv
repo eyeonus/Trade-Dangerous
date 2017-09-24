@@ -113,36 +113,36 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Minerals','Uraninite',20,836,128049160
 'Salvage','AI Relics',1,138613,128668548
 'Salvage','Ancient Artefact',2,8183,128666756
-'Salvage','Antimatter Containment Unit',3,'',''
+'Salvage','Antimatter Containment Unit',3,'',128682053
 'Salvage','Antiquities',4,115511,128668551
-'Salvage','Assault Plans',5,'',''
-'Salvage','Black Box',6,'',''
-'Salvage','Commercial Samples',7,'',''
-'Salvage','Data Core',8,'',''
-'Salvage','Diplomatic Bag',9,'',''
-'Salvage','Encrypted Correspondence',10,'',''
-'Salvage','Encrypted Data Storage',11,'',''
+'Salvage','Assault Plans',5,'',128672129
+'Salvage','Black Box',6,'',128666752
+'Salvage','Commercial Samples',7,'',128672127
+'Salvage','Data Core',8,'',128682049
+'Salvage','Diplomatic Bag',9,'',128672131
+'Salvage','Encrypted Correspondence',10,'',128672130
+'Salvage','Encrypted Data Storage',11,'',128672124
 'Salvage','Experimental Chemicals',12,3524,128666758
-'Salvage','Fossil Remnants',13,'',''
-'Salvage','Geological Samples',15,'',''
-'Salvage','Hostage',16,'',''
+'Salvage','Fossil Remnants',13,'',128682055
+'Salvage','Geological Samples',15,'',128672315
+'Salvage','Hostage',16,'',128672135
 'Salvage','Military Intelligence',17,55527,128668552
 'Salvage','Military Plans',18,9413,128666755
-'Salvage','Mysterious Idol',19,'',''
+'Salvage','Mysterious Idol',19,'',128682051
 'Salvage','Occupied CryoPod',20,'',''
-'Salvage','Occupied Escape Pod',21,'',''
-'Salvage','Personal Effects',22,'',''
-'Salvage','Political Prisoner',23,'',''
-'Salvage','Prohibited Research Materials',24,'',''
+'Salvage','Occupied Escape Pod',21,'',128672125
+'Salvage','Personal Effects',22,'',128672126
+'Salvage','Political Prisoner',23,'',128672134
+'Salvage','Prohibited Research Materials',24,'',128682052
 'Salvage','Prototype Tech',25,10696,128666760
-'Salvage','Rare Artwork',26,'',''
+'Salvage','Rare Artwork',26,'',128666757
 'Salvage','Rebel Transmissions',27,4068,128666759
 'Salvage','Salvageable Wreckage',28,'',''
 'Salvage','SAP 8 Core Container',29,'',128671443
-'Salvage','Scientific Research',30,'',''
-'Salvage','Scientific Samples',31,'',''
-'Salvage','Space Pioneer Relics',32,'',''
-'Salvage','Tactical Data',33,'',''
+'Salvage','Scientific Research',30,'',128672132
+'Salvage','Scientific Samples',31,'',128672133
+'Salvage','Space Pioneer Relics',32,'',128682054
+'Salvage','Tactical Data',33,'',128672128
 'Salvage','Technical Blueprints',34,6333,128666761
 'Salvage','Trade Data',35,2790,128666754
 'Salvage','Unknown Artefact',36,290190,128668547
@@ -151,7 +151,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Salvage','Unknown Probe',39,411003,128673876
 'Salvage','Unknown Resin',40,18652,128737287
 'Salvage','Unknown Technology Samples',41,22551,128737289
-'Salvage','Unstable Data Core',42,'',''
+'Salvage','Unstable Data Core',42,'',128672810
 'Slavery','Imperial Slaves',1,15984,128667728
 'Slavery','Slaves',2,10360,128049243
 'Technology','Advanced Catalysers',1,2947,128049231
@@ -179,7 +179,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Waste','Biowaste',1,63,128049244
 'Waste','Chemical Waste',2,131,128049246
 'Waste','Scrap',3,48,128049248
-'Waste','Toxic Waste',4,'',''
+'Waste','Toxic Waste',4,'',128049245
 'Weapons','Battle Weapons',1,7259,128049234
 'Weapons','Landmines',2,4602,128672312
 'Weapons','Non-Lethal Weapons',3,1837,128049236
