@@ -676,14 +676,17 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 if modified < lastModified:
                     ignItems += 1
                 return
-    
+
         # Check for duplicate items within the station.
         if itemID in processedItems:
-            raise MultipleItemEntriesError(
-                        priceFile, lineNo,
-                        "{}".format(itemName),
-                        processedItems[itemID]
-                    )
+            ignoreOrWarn(
+                MultipleItemEntriesError(
+                    priceFile, lineNo,
+                    "{}".format(itemName),
+                    processedItems[itemID]
+                )
+            )
+            return
 
         demandCr, supplyCr = matches.group('sell', 'buy')
         demandCr, supplyCr = int(demandCr), int(supplyCr)
