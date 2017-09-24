@@ -24,7 +24,8 @@ categories = {
 
 items = {
     'POWER TRANSFER CONDUITS': 'Power Transfer Bus',
-    'LOW TEMPERATURE DIAMOND': 'Low Temperature Diamonds'
+    'LOW TEMPERATURE DIAMOND': 'Low Temperature Diamonds',
+    'COOLING HOSES': 'Micro-weave Cooling Hoses',
 }
 
 def correctSystem(oldName):

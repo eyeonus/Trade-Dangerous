@@ -26,9 +26,9 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Foods','Tea',9,1467,128049188
 'Industrial Materials','Ceramic Composites',1,232,128672302
 'Industrial Materials','CMM Composite',2,3132,128673856
-'Industrial Materials','Cooling Hoses',3,'',''
-'Industrial Materials','Insulating Membrane',4,7837,128673855
-'Industrial Materials','Meta-Alloys',5,88148,128672701
+'Industrial Materials','Insulating Membrane',3,7837,128673855
+'Industrial Materials','Meta-Alloys',4,88148,128672701
+'Industrial Materials','Micro-weave Cooling Hoses',5,403,128673857
 'Industrial Materials','Neofabric Insulation',6,2769,128673858
 'Industrial Materials','Polymers',7,171,128049197
 'Industrial Materials','Semiconductors',8,967,128049199
@@ -52,18 +52,17 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Machinery','Ion Distributor',11,1133,128673874
 'Machinery','Magnetic Emitter Coil',12,199,128673869
 'Machinery','Marine Equipment',13,3916,128049223
-'Machinery','Micro-weave Cooling Hoses',14,'',''
-'Machinery','Microbial Furnaces',15,236,128049220
-'Machinery','Mineral Extractors',16,443,128049221
-'Machinery','Modular Terminals',17,695,128673870
-'Machinery','Power Converter',18,246,128673862
-'Machinery','Power Generators',19,458,128049217
-'Machinery','Power Transfer Bus',20,857,128673864
-'Machinery','Radiation Baffle',21,383,128673865
-'Machinery','Reinforced Mounting Plate',22,1074,128673867
-'Machinery','Skimmer Components',23,859,128672313
-'Machinery','Thermal Cooling Units',24,256,128672308
-'Machinery','Water Purifiers',25,258,128049218
+'Machinery','Microbial Furnaces',14,236,128049220
+'Machinery','Mineral Extractors',15,443,128049221
+'Machinery','Modular Terminals',16,695,128673870
+'Machinery','Power Converter',17,246,128673862
+'Machinery','Power Generators',18,458,128049217
+'Machinery','Power Transfer Bus',19,857,128673864
+'Machinery','Radiation Baffle',20,383,128673865
+'Machinery','Reinforced Mounting Plate',21,1074,128673867
+'Machinery','Skimmer Components',22,859,128672313
+'Machinery','Thermal Cooling Units',23,256,128672308
+'Machinery','Water Purifiers',24,258,128049218
 'Medicines','Advanced Medicines',1,1259,128682046
 'Medicines','Agri-Medicines',2,1038,128049208
 'Medicines','Basic Medicines',3,279,128049210
