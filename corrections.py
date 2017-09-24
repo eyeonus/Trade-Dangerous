@@ -26,6 +26,7 @@ items = {
     'POWER TRANSFER CONDUITS': 'Power Transfer Bus',
     'LOW TEMPERATURE DIAMOND': 'Low Temperature Diamonds',
     'COOLING HOSES': 'Micro-weave Cooling Hoses',
+    'GALACTIC TRAVEL GUIDE': DELETED,
 }
 
 def correctSystem(oldName):
