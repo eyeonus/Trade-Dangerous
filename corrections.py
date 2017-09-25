@@ -26,6 +26,7 @@ items = {
     'POWER TRANSFER CONDUITS': 'Power Transfer Bus',
     'LOW TEMPERATURE DIAMOND': 'Low Temperature Diamonds',
     'COOLING HOSES': 'Micro-weave Cooling Hoses',
+    'METHANOL MONOHYDRATE': 'Methanol Monohydrate Crystals',
     'GALACTIC TRAVEL GUIDE': DELETED,
     'OCCUPIED CRYOPOD': DELETED,
 }
