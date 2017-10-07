@@ -275,9 +275,7 @@ class ImportPlugin(ImportPluginBase):
                         else:
                             tdenv.DEBUG1("event '{}' ignored", event["event"])
                     except:
-                        raise PluginException(
-                            "Something wrong with line {}.".format(lineCount)
-                        )
+                        tdenv.WARN("Something wrong with line {} (skipped it).", lineCount)
 
             tdenv.NOTE(
                 "Found {} System{}, {} Station{} and {} BlackMarket{}.",
