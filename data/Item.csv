@@ -137,7 +137,6 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Salvage','Prototype Tech',24,10696,128666760
 'Salvage','Rare Artwork',25,7774,128666757
 'Salvage','Rebel Transmissions',26,4068,128666759
-'Salvage','Salvageable Wreckage',27,'',''
 'Salvage','SAP 8 Core Container',28,'',128671443
 'Salvage','Scientific Research',29,'',128672132
 'Salvage','Scientific Samples',30,'',128672133
@@ -152,6 +151,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Salvage','Unknown Resin',39,18652,128737287
 'Salvage','Unknown Technology Samples',40,22551,128737289
 'Salvage','Unstable Data Core',41,'',128672810
+'Salvage','Wreckage Components',42,394,128672123
 'Slavery','Imperial Slaves',1,15984,128667728
 'Slavery','Slaves',2,10360,128049243
 'Technology','Advanced Catalysers',1,2947,128049231

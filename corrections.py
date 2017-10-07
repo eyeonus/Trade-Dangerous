@@ -29,6 +29,7 @@ items = {
     'METHANOL MONOHYDRATE': 'Methanol Monohydrate Crystals',
     'GALACTIC TRAVEL GUIDE': DELETED,
     'OCCUPIED CRYOPOD': DELETED,
+    'Salvageable Wreckage': 'Wreckage Components',
 }
 
 def correctSystem(oldName):
