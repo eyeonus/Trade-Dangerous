@@ -2,7 +2,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Chemicals','Explosives',1,261,128049204
 'Chemicals','Hydrogen Fuel',2,110,128049202
 'Chemicals','Hydrogen Peroxide',3,917,128673850
-'Chemicals','Liquid Oxygen',4,263,128673851
+'Chemicals','Liquid oxygen',4,263,128673851
 'Chemicals','Mineral Oil',5,181,128049203
 'Chemicals','Nerve Agents',6,13526,128672304
 'Chemicals','Pesticides',7,241,128049205
@@ -20,12 +20,12 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Foods','Coffee',3,1279,128049189
 'Foods','Fish',4,406,128049183
 'Foods','Food Cartridges',5,105,128049184
-'Foods','Fruit And Vegetables',6,312,128049178
+'Foods','Fruit and Vegetables',6,312,128049178
 'Foods','Grain',7,210,128049180
 'Foods','Synthetic Meat',8,271,128049185
 'Foods','Tea',9,1467,128049188
-'Industrial Materials','Ceramic Composites',1,232,128672302
-'Industrial Materials','CMM Composite',2,3132,128673856
+'Industrial Materials','CMM Composite',1,3132,128673856
+'Industrial Materials','Ceramic Composites',2,232,128672302
 'Industrial Materials','Insulating Membrane',3,7837,128673855
 'Industrial Materials','Meta-Alloys',4,88148,128672701
 'Industrial Materials','Micro-weave Cooling Hoses',5,403,128673857
@@ -47,8 +47,8 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Machinery','Energy Grid Assembly',6,1684,128673863
 'Machinery','Exhaust Manifold',7,479,128673866
 'Machinery','Geological Equipment',8,1661,128672307
-'Machinery','Heatsink Interlink',9,729,128673868
-'Machinery','HN Shock Mount',10,406,128673860
+'Machinery','HN Shock Mount',9,406,128673860
+'Machinery','Heatsink Interlink',10,729,128673868
 'Machinery','Ion Distributor',11,1133,128673874
 'Machinery','Magnetic Emitter Coil',12,199,128673869
 'Machinery','Marine Equipment',13,3916,128049223
@@ -137,9 +137,10 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Salvage','Prototype Tech',24,10696,128666760
 'Salvage','Rare Artwork',25,7774,128666757
 'Salvage','Rebel Transmissions',26,4068,128666759
-'Salvage','SAP 8 Core Container',28,'',128671443
-'Salvage','Scientific Research',29,'',128672132
-'Salvage','Scientific Samples',30,'',128672133
+'Salvage','SAP 8 Core Container',27,'',128671443
+'Salvage','Scientific Research',28,'',128672132
+'Salvage','Scientific Samples',29,'',128672133
+'Salvage','Small Survey Data Cache',30,'',128672137
 'Salvage','Space Pioneer Relics',31,'',128682054
 'Salvage','Tactical Data',32,'',128672128
 'Salvage','Technical Blueprints',33,6333,128666761
