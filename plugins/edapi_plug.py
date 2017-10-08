@@ -110,39 +110,50 @@ class EDAPI:
         if self.login:
             self.opener.cookies.pop('CompanionApp', None)
 
-        # Grab the commander profile
-        response = self._getURI('profile')
-        try:
-            self.profile = response.json()
-            self.text    = [ response.text ]
-        except:
-            if self.debug:
-                print('   URL:', response.url)
-                print('status:', response.status_code)
-                print('  text:', response.text)
-            sys.exit(
-                "Unable to parse JSON response for /profile!"
-                "\nTry to relogin with the 'login' option."
-                "{}".format("" if self.debug else "\nTry with --debug and report this.")
-            )
-
-        # Grab the market and shipyard data
-        for dataUrl in ("market", "shipyard"):
+        def getData(dataUrl):
             response = self._getURI(dataUrl)
             try:
-                jsonData = response.json()
+                data = response.json()
                 self.text.append(response.text)
-                if int(jsonData["id"]) == int(self.profile["lastStarport"]["id"]):
-                    self.profile["lastStarport"].update(jsonData)
             except:
                 if self.debug:
                     print('   URL:', response.url)
                     print('status:', response.status_code)
                     print('  text:', response.text)
+                    txtDebug = ""
+                else:
+                    txtDebug = "\nTry with --debug and report this."
                 sys.exit(
                     "Unable to parse JSON response for /{}!"
-                    "{}".format(dataUrl, "" if self.debug else "\nTry with --debug and report this.")
+                    "\nTry to relogin with the 'login' option."
+                    "{}".format(dataUrl, txtDebug)
                 )
+            return data
+
+        # Grab the commander profile
+        self.text = []
+        self.profile = getData("profile")
+
+        # Grab the market, outfitting and shipyard data if needed
+        portServices = self.profile['lastStarport'].get('services')
+        if self.profile['commander']['docked'] and portServices:
+            if portServices.get('commodities'):
+                res = getData("market")
+                if int(res["id"]) == int(self.profile["lastStarport"]["id"]):
+                    self.profile["lastStarport"].update(res)
+            hasShipyard = portServices.get('shipyard')
+            if hasShipyard or portServices.get('outfitting'):
+                # the ships for the shipyard are not always returned the first time
+                for attempt in range(3):
+                    # try up to 3 times
+                    res = getData("shipyard")
+                    if not hasShipyard or res.get('ships'):
+                        break
+                    if self.debug:
+                        print("No shipyard in response, I'll try again in 5s")
+                    time.sleep(5)
+                if int(res["id"]) == int(self.profile["lastStarport"]["id"]):
+                    self.profile["lastStarport"].update(res)
 
     def _getBasicURI(self, uri, values=None):
         '''
