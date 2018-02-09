@@ -2,6 +2,12 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Oct 2017 (bgol, horizon branch):
+. Item maintenance.
+. Journal plugin just skips faulty lines.
+. Updated EDAPI plugin to version 4.3.1
+  - Reworked "/market" and "/shipyard" check from cAPI.
+
 Sep 2017 (bgol, horizon branch):
 . Item cleanup (just ignore all the errors about "Cooling Hoses").
 
