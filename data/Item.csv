@@ -14,7 +14,7 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Consumer Items','Domestic Appliances',3,488,128049238
 'Consumer Items','Evacuation Shelter',4,343,128672314
 'Consumer Items','Survival Equipment',5,486,128682048
-'Consumer Items','Trinkets Of Hidden Fortune',6,964,128671444
+'Consumer Items','Trinkets of Hidden Fortune',6,964,128671444
 'Foods','Algae',1,137,128049177
 'Foods','Animal Meat',2,1293,128049182
 'Foods','Coffee',3,1280,128049189
@@ -113,46 +113,63 @@ unq:name@Category.category_id,unq:name,ui_order,avg_price,fdev_id
 'Minerals','Uraninite',20,836,128049160
 'Salvage','AI Relics',1,138613,128668548
 'Salvage','Ancient Artefact',2,8183,128666756
-'Salvage','Ancient Relic',3,11000,128732183
-'Salvage','Antimatter Containment Unit',4,'',128682053
-'Salvage','Antiquities',5,115511,128668551
-'Salvage','Assault Plans',6,'',128672129
-'Salvage','Black Box',7,6995,128666752
-'Salvage','Commercial Samples',8,'',128672127
-'Salvage','Data Core',9,'',128682049
-'Salvage','Diplomatic Bag',10,'',128672131
-'Salvage','Encrypted Correspondence',11,'',128672130
-'Salvage','Encrypted Data Storage',12,806,128672124
-'Salvage','Experimental Chemicals',13,3524,128666758
-'Salvage','Fossil Remnants',14,'',128682055
-'Salvage','Geological Samples',15,'',128672315
-'Salvage','Hostage',16,'',128672135
-'Salvage','Military Intelligence',17,55527,128668552
-'Salvage','Military Plans',18,9254,128666755
-'Salvage','Mysterious Idol',19,'',128682051
-'Salvage','Occupied Escape Pod',20,5132,128672125
-'Salvage','Personal Effects',21,379,128672126
-'Salvage','Political Prisoner',22,'',128672134
-'Salvage','Prohibited Research Materials',23,'',128682052
-'Salvage','Prototype Tech',24,10514,128666760
-'Salvage','Rare Artwork',25,7774,128666757
-'Salvage','Rebel Transmissions',26,4068,128666759
-'Salvage','SAP 8 Core Container',27,'',128671443
-'Salvage','Scientific Research',28,'',128672132
-'Salvage','Scientific Samples',29,'',128672133
-'Salvage','Small Survey Data Cache',30,4055,128672137
-'Salvage','Space Pioneer Relics',31,'',128682054
-'Salvage','Tactical Data',32,'',128672128
-'Salvage','Technical Blueprints',33,6333,128666761
-'Salvage','Trade Data',34,2748,128666754
-'Salvage','Unknown Artefact',35,290190,128668547
-'Salvage','Unknown Biological Matter',36,25479,128737288
-'Salvage','Unknown Link',37,31350,128740752
-'Salvage','Unknown Probe',38,411003,128673876
-'Salvage','Unknown Resin',39,18652,128737287
-'Salvage','Unknown Technology Samples',40,22551,128737289
-'Salvage','Unstable Data Core',41,'',128672810
-'Salvage','Wreckage Components',42,394,128672123
+'Salvage','Ancient Casket',3,6473,128732185
+'Salvage','Ancient Orb',4,7351,128732184
+'Salvage','Ancient Relic',5,11520,128732183
+'Salvage','Ancient Tablet',6,7351,128732186
+'Salvage','Ancient Totem',7,9496,128732188
+'Salvage','Ancient Urn',8,4723,128732187
+'Salvage','Antimatter Containment Unit',9,'',128682053
+'Salvage','Antique Jewellery',10,'',128672159
+'Salvage','Antiquities',11,115015,128668551
+'Salvage','Assault Plans',12,446,128672129
+'Salvage','Black Box',13,6995,128666752
+'Salvage','Commercial Samples',14,361,128672127
+'Salvage','Damaged Escape Pod',15,11912,128672811
+'Salvage','Data Core',16,'',128682049
+'Salvage','Diplomatic Bag',17,'',128672131
+'Salvage','Earth Relics',18,'',128672161
+'Salvage','Encrypted Correspondence',19,372,128672130
+'Salvage','Encrypted Data Storage',20,806,128672124
+'Salvage','Experimental Chemicals',21,3524,128666758
+'Salvage','Fossil Remnants',22,'',128682055
+'Salvage','Galactic Travel Guide',23,8131,128682050
+'Salvage','Gene Bank',24,'',128672162
+'Salvage','Geological Samples',25,446,128672315
+'Salvage','Hostage',26,2427,128672135
+'Salvage','Large Survey Data Cache',27,157420,128672136
+'Salvage','Military Intelligence',28,55294,128668552
+'Salvage','Military Plans',29,9254,128666755
+'Salvage','Mysterious Idol',30,'',128682051
+'Salvage','Occupied Escape Pod',31,5132,128672125
+'Salvage','Personal Effects',32,379,128672126
+'Salvage','Political Prisoner',33,5132,128672134
+'Salvage','Precious Gems',34,109641,128672160
+'Salvage','Prohibited Research Materials',35,'',128682052
+'Salvage','Prototype Tech',36,10514,128666760
+'Salvage','Rare Artwork',37,7774,128666757
+'Salvage','Rebel Transmissions',38,4068,128666759
+'Salvage','SAP 8 Core Container',39,'',128671443
+'Salvage','Scientific Research',40,635,128672132
+'Salvage','Scientific Samples',41,772,128672133
+'Salvage','Small Survey Data Cache',42,4055,128672137
+'Salvage','Space Pioneer Relics',43,'',128682054
+'Salvage','Tactical Data',44,457,128672128
+'Salvage','Technical Blueprints',45,6333,128666761
+'Salvage','Thargoid Basilisk Tissue Sample',46,'',128793129
+'Salvage','Thargoid Biological Matter',53,25479,128737288
+'Salvage','Thargoid Cyclops Tissue Sample',47,'',128793128
+'Salvage','Thargoid Heart',48,'',128793127
+'Salvage','Thargoid Link',54,31350,128740752
+'Salvage','Thargoid Medusa Tissue Sample',49,'',128793130
+'Salvage','Thargoid Probe',55,411003,128673876
+'Salvage','Thargoid Resin',56,18652,128737287
+'Salvage','Thargoid Sensor',52,290190,128668547
+'Salvage','Thargoid Technology Samples',57,22551,128737289
+'Salvage','Time Capsule',50,'',128672163
+'Salvage','Trade Data',51,2748,128666754
+'Salvage','Unstable Data Core',58,'',128672810
+'Salvage','Wreckage Components',59,394,128672123
 'Slavery','Imperial Slaves',1,15967,128667728
 'Slavery','Slaves',2,9888,128049243
 'Technology','Advanced Catalysers',1,2943,128049231
