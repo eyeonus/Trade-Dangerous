@@ -2,7 +2,7 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
-Xxx 2018 (bgol, horizon branch):
+Mar 02 2018 (bgol, horizon branch):
 . Item maintenance.
 . Two new Ships (Alliance Chieftain, Type-10 Defender).
 . Updated EDAPI plugin to version 4.3.2
