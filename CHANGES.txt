@@ -2,6 +2,10 @@
 TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 ==============================================================================
 
+Xxx 2018 (bgol, horizon branch):
+. Item maintenance.
+. Two new Ships (Alliance Chieftain, Type-10 Defender).
+
 Oct 2017 (bgol, horizon branch):
 . Item maintenance.
 . Journal plugin just skips faulty lines.
