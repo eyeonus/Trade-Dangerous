@@ -5,6 +5,10 @@ TradeDangerous, Copyright (C) Oliver "kfsone" Smith, July 2014
 Xxx 2018 (bgol, horizon branch):
 . Item maintenance.
 . Two new Ships (Alliance Chieftain, Type-10 Defender).
+. Updated EDAPI plugin to version 4.3.2
+  - Ignore empty Outfitting list.
+  - Added "marketId" to commodity, shipyard and outfitting message.
+  - Added "economies" and "prohibited" to commodity message.
 
 Oct 2017 (bgol, horizon branch):
 . Item maintenance.

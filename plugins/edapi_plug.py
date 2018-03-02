@@ -25,7 +25,7 @@ import transfers
 from collections import namedtuple
 
 
-__version_info__ = ('4', '3', '1')
+__version_info__ = ('4', '3', '2')
 __version__ = '.'.join(__version_info__)
 
 # ----------------------------------------------------------------
@@ -355,7 +355,9 @@ class EDDN:
         self,
         systemName,
         stationName,
+        marketId,
         commodities,
+        additional=None,
         timestamp=0
     ):
         message = {}
@@ -371,8 +373,11 @@ class EDDN:
         message['message'] = {
             'systemName': systemName,
             'stationName': stationName,
+            'marketId': marketId,
             'commodities': commodities,
         }
+        if additional:
+            message['message'].update(additional)
 
         self.postMessage(message, timestamp)
 
@@ -380,6 +385,7 @@ class EDDN:
         self,
         systemName,
         stationName,
+        marketId,
         ships,
         timestamp=0
     ):
@@ -396,6 +402,7 @@ class EDDN:
         message['message'] = {
             'systemName': systemName,
             'stationName': stationName,
+            'marketId': marketId,
             'ships': ships,
         }
 
@@ -405,6 +412,7 @@ class EDDN:
         self,
         systemName,
         stationName,
+        marketId,
         modules,
         timestamp=0
     ):
@@ -421,6 +429,7 @@ class EDDN:
         message['message'] = {
             'systemName': systemName,
             'stationName': stationName,
+            'marketId': marketId,
             'modules': modules,
         }
 
@@ -747,7 +756,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Figure out where we are.
         sysName = api.profile['lastSystem']['name']
         stnName = api.profile['lastStarport']['name']
-        print('@{}/{}'.format(sysName.upper(), stnName))
+        marketId = int(api.profile['lastStarport']['id'])
+        print('@{}/{} (ID: {})'.format(sysName.upper(), stnName, marketId))
 
         # Reload the cache.
         tdenv.DEBUG0("Checking the cache")
@@ -973,10 +983,22 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             if eddn_market:
                 print('Posting commodities to EDDN...')
+                eddn_additional = {}
+                if 'economies' in api.profile['lastStarport']:
+                    eddn_additional['economies'] = []
+                    for economy in api.profile['lastStarport']['economies'].values():
+                        eddn_additional['economies'].append(economy)
+                if 'prohibited' in api.profile['lastStarport']:
+                    eddn_additional['prohibited'] = []
+                    for item in api.profile['lastStarport']['prohibited'].values():
+                        eddn_additional['prohibited'].append(item)
+
                 con.publishCommodities(
                     sysName,
                     stnName,
-                    eddn_market
+                    marketId,
+                    eddn_market,
+                    additional=eddn_additional
                 )
 
             if eddn_ships:
@@ -984,11 +1006,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 con.publishShipyard(
                     sysName,
                     stnName,
+                    marketId,
                     eddn_ships
                 )
 
             if ((station.outfitting == "Y") and
-                ('modules' in api.profile['lastStarport'])
+                ('modules' in api.profile['lastStarport'] and
+                len(api.profile['lastStarport']['modules']))
             ):
                 eddn_modules = []
                 for module in api.profile['lastStarport']['modules'].values():
@@ -1009,6 +1033,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     con.publishOutfitting(
                         sysName,
                         stnName,
+                        marketId,
                         sorted(eddn_modules)
                     )
 
