@@ -40,7 +40,7 @@ CREATE TABLE Added
 
 CREATE TABLE System
  (
-   system_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   system_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE System
    added_id INTEGER,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-   UNIQUE (name),
+   UNIQUE (system_id),
 
     FOREIGN KEY (added_id) REFERENCES Added(added_id)
     ON UPDATE CASCADE
@@ -59,7 +59,7 @@ CREATE INDEX idx_system_by_pos ON System (pos_x, pos_y, pos_z, system_id);
 
 CREATE TABLE Station
  (
-   station_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   station_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    system_id INTEGER NOT NULL,
    ls_from_star INTEGER NOT NULL DEFAULT 0
@@ -84,7 +84,7 @@ CREATE TABLE Station
    planetary  TEXT(1) NOT NULL DEFAULT '?'
        CHECK (planetary  IN ('?', 'Y', 'N')),
 
-   UNIQUE (system_id, name),
+   UNIQUE (station_id),
 
    FOREIGN KEY (system_id) REFERENCES System(system_id)
     ON UPDATE CASCADE
@@ -96,12 +96,12 @@ CREATE INDEX idx_station_by_name ON Station (name);
 
 CREATE TABLE Ship
  (
-   ship_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   ship_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    cost INTEGER NOT NULL,
    fdev_id INTEGER,
 
-   UNIQUE (name)
+   UNIQUE (ship_id)
  );
 
 
@@ -125,11 +125,12 @@ CREATE TABLE ShipVendor
 
 CREATE TABLE Upgrade
  (
-   upgrade_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   upgrade_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    weight NUMBER NOT NULL,
+   cost NUMBER NOT NULL,
 
-   UNIQUE (name)
+   UNIQUE (upgrade_id)
  );
 
 
@@ -138,6 +139,7 @@ CREATE TABLE UpgradeVendor
    upgrade_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
    cost INTEGER,
+   modified DATETIME NOT NULL,
 
    PRIMARY KEY (upgrade_id, station_id),
 
@@ -149,7 +151,7 @@ CREATE TABLE UpgradeVendor
     ON DELETE CASCADE
  ) WITHOUT ROWID
 ;
-
+CREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);
 
 CREATE TABLE RareItem
  (
@@ -177,23 +179,23 @@ CREATE TABLE RareItem
 
 CREATE TABLE Category
  (
-   category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   category_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
 
-   UNIQUE (name)
+   UNIQUE (category_id)
  );
 
 
 CREATE TABLE Item
  (
-   item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   item_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    category_id INTEGER NOT NULL,
    ui_order INTEGER NOT NULL DEFAULT 0,
    avg_price INTEGER,
    fdev_id INTEGER,
 
-   UNIQUE (category_id, name),
+   UNIQUE (item_id),
 
    FOREIGN KEY (category_id) REFERENCES Category(category_id)
     ON UPDATE CASCADE
@@ -212,6 +214,7 @@ CREATE TABLE StationItem
   supply_units INT NOT NULL,
   supply_level INT NOT NULL,
   modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  from_live INTEGER DEFAULT 0 NOT NULL,
 
   PRIMARY KEY (station_id, item_id),
   FOREIGN KEY (station_id) REFERENCES Station(station_id)

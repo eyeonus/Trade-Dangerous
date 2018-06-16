@@ -12,9 +12,17 @@ data/*.ini
 data/extra-stars.txt
 data/*.txt
 data/edapi.cookies
+data/Category.csv
+data/Item.csv
 data/FDevShipyard.csv
 data/FDevOutfitting.csv
 data/FDevCommodity.csv
+data/Ship.csv
+data/ShipVendor.csv
+data/Station.csv
+data/System.csv
+data/Upgrade.csv
+data/UpgradeVendor.csv
 
 *.prices
 *.suo
@@ -29,3 +37,5 @@ pycallgraph.png
 /config.sh
 venv/
 .venv/
+data/eddb/*
+.project

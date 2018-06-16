@@ -28,12 +28,7 @@ import sqlite3
 # Default values
 
 # for some tables the first two columns will be reversed
-reverseList = [
-    'Item',
-    'ShipVendor',
-    'Station',
-    'UpgradeVendor',
-]
+reverseList = []
 
 ######################################################################
 # Helpers
@@ -146,7 +141,7 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
         columnList = []
         for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
             # if there is only one PK column, ignore it
-            if columnRow['pk'] > 0 and pkCount == 1: continue
+            #if columnRow['pk'] > 0 and pkCount == 1: continue
             columnList.append(columnRow)
 
         if len(columnList) == 0:
