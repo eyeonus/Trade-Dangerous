@@ -636,6 +636,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         except FileExistsError:
             pass
         
+        # Run 'listings' by default:
+        # If no options, or if only 'force', 'skipvend', and/or 'fallback', 
+        # have been passed, enable 'listings'.
+        default = False
+        for option in self.options:
+            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
+                default = True
+                
+        print(default)
+        if default:
+            self.options["listings"] = True
+        
         # We can probably safely assume that the plugin has never been run if
         # the prices file doesn't exist, since the plugin always generates it.
         firstRun = not (tdb.dataPath / Path("TradeDangerous.prices")).exists()
@@ -702,7 +714,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             except sqlite3.OperationalError:
                 print("Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
-
+        
         #Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True
@@ -732,7 +744,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-            
+        
         # Download required files and update tables.
         if self.getOption("upgrade"):
             if self.downloadFile(UPGRADES, self.upgradesPath) or self.getOption("force"):

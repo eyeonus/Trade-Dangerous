@@ -39,3 +39,4 @@ venv/
 .venv/
 data/eddb/*
 .project
+.pydevproject
