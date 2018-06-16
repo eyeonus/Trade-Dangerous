@@ -643,8 +643,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         for option in self.options:
             if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
                 default = True
-                
-        print(default)
+        
         if default:
             self.options["listings"] = True
         
