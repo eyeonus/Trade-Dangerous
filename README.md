@@ -752,6 +752,7 @@ The plugin gets its data from Tromador's EDDN mirror, "http://elite.ripz.org/", 
       Then imports prices.
 
 ###Options (-O):
+
   'item':         "Regenerate Categories and Items using latest commodities.json dump.",
   'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
   'station':      "Regenerate Stations using latest stations.jsonl dump. (implies '-O system')",
