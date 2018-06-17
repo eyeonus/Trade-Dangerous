@@ -926,15 +926,47 @@ class TradeCalc(object):
                 else:
                     score = trade.gainCr
                 if lsPenalty:
-                    # Only want 1dp
-                    cruiseKls = int(dstStation.lsFromStar / 100) / 10
-                    # Produce a curve that favors distances under 1kls
-                    # positively, starts to penalize distances over 1k,
-                    # and after 4kls starts to penalize aggresively
-                    # http://goo.gl/Otj2XP
-                    penalty = ((cruiseKls ** 2) - cruiseKls) / 3
-                    penalty *= lsPenalty
-                    multiplier *= (1 - penalty)
+                    # [kfsone] Only want 1dp
+                    # [aadler] Changed implementation slightly to use round
+
+                    cruiseKls = round(dstStation.lsFromStar / 1000.0, 1)
+
+                    # [kfsone] Produce a curve that favors distances under 1kls
+                    # [kfsone] positively, starts to penalize distances over 1k,
+                    # [kfsone] and after 4kls starts to penalize aggresively
+                    # [kfsone] http://goo.gl/Otj2XP
+                    # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+
+                    # [aadler] Need to turn penalty into muliplier between 0
+                    # [aadler] and 1 to handle multiple long distance platforms
+                    # [aadler] see issues #14 and #15 in [bgol] version.
+                    # [aadler] Simplest implementation is to make it linear
+                    # [aadler] between 0 and 4, which would be a score boost
+                    # [aadler] between 0 and 1. Then make it quadratic above 4.
+                    # [aadler] See green curves at http://bit.ly/2jg7r9K
+                    # [aadler] Note that preference for < 1Kls means that
+                    # [aadler] less money may be made than --ls-penalty 0
+                    # [aadler] if there is a close enough station in both
+                    # [aadler] funds and distance
+                
+                    if (cruiseKls) < 4.0:
+                        penalty = cruiseKls
+                    else:
+                        penalty = (cruiseKls - 2.0) ** 2
+
+                    # [aadler] Implementation of lsPenalty means that bonus < 1
+                    # [aadler] is also affected. Therefore, root function will
+                    # [aadler] be used to bring the multiplier closer to 1
+                    # [aadler] keeping the intent of the penalty. Also,
+                    # [aadler] lsPenalty will never allow the denominator to
+                    # [aadler] be less than 1, turning the penalty into a bonus
+
+                    if penalty < 0.01: # [aadler] Rare to be so close and prevents ZeroDiv
+                        multiplier = 100.0
+                    elif penalty < 1:
+                        multiplier /= penalty ** (max(min(1 - lsPenalty, 1), 0))
+                    else:
+                        multiplier /= max(1, penalty * lsPenalty)
 
                 score *= multiplier
 
