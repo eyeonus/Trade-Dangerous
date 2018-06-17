@@ -14,7 +14,7 @@ TradeDangerous is set of powerful trading tools for Elite Dangerous, organized a
 
 The TRO is a heavy hitter that can calculate complex routes with multiple-stops while taking into account the profits you make along the route.
 
-The price data in TradeDangerous is either manually entered (by you) or crowd sourced (e.g. [http://www.davek.com.au/td](http://www.davek.com.au/td)).
+The price data in TradeDangerous is either manually entered (by you) or crowd sourced. (e.g. using the included eddblink plugin to access EDDN data.)
 
 
 #What can it do for me?
@@ -162,7 +162,7 @@ Each command has a number of optional/required arguments that can be specified.
 
 Optional arguments are denoted by a keyword that starts with one or two dashes (`--from`, `-S`). The difference between long and short versions? Readability. You can also 'stack' short versions, for example `update -F -G -A` can be written as `update -FGA`
 
-There are "switches" which turn a feature on or off, such as `--detail` which makes the command more verbose or --quiet` which makes it less noisy.
+There are "switches" which turn a feature on or off, such as `--detail` which makes the command more verbose or `--quiet` which makes it less noisy.
 
 Other options are "parameters" which take a value, for example `--from Sol` would state the starting location for a command. You can write these as `--param value` or `--param=value`. You can often get away with just the first couple of letters, e.g. `--cr` for `--credits`.
 
@@ -721,53 +721,51 @@ Plugins are specified with the "-P" option and can have their own options, not l
     --plug <plugin>
     -P <plugin>
       Specifies a plugin to use instead of the default .prices importer,
-      By default "TD" comes with a plugin that supports Maddavo's Market Share
-      (http://www.davek.com.au/td/)
+      By default "TD" comes with a plugin that supports eddblink
+      (http://elite,ripz.org/)
       e.g.
-        -P maddavo
+        -P eddblink
 
     --option <option>
     --option <option1>,<option2>,...<optionN>
     -O <option>,...
       Passes options to a plugin.
       e.g.
-        -O left,right
+        -O all,skipvend
         -O help
 
-##MADDAVO's "import" plugin:
+##EDDBlink "import" plugin:
 
-Maddavo's Market Share is a 3rd party Elite Dangerous crowd sourcing project that gathers system, station, item and other data. This is the recommended way for TradeDangerous users to get their data.
+EDDBlink is a 3rd party Elite Dangerous crowd sourcing project that gathers system, station, item and other data. This is the recommended way for TradeDangerous users to get their data.
 
-The "maddavo" plugin provides a simple way to fetch and import updates from Maddavo's site.
-
-To take maximum advantage of Maddavo's services, you should consider using "-O csvs" periodically.
+The plugin gets its data from Tromador's EDDN mirror, "http://elite.ripz.org/", which runs an EDDN listener server designed to work with the plugin, but if for any reason that site goes down it will automatically fallback to downloading directly from EDDB.io's API.
 
 ###Basic usage:
 
-    trade.py import -P maddavo
+    trade.py import -P eddblink
       This will check for and import new data from Maddavo's site. If
       you have newer data of your own, it will not be overwritten.
 
-    trade.py import -P maddavo -O csvs
+    trade.py import -P eddblink -O all
       Starts by checking for new Systems, Stations, ShipVendors, etc,
-      listed in the ".csv" files Maddavo makes available.
+      listed in the ".json" files mirrored from EDDB by Tromador
       Then imports prices.
 
 ###Options (-O):
-    csvs:         Merges all supported .CSVs (Systems, Stations,
-                  ShipVendors, RareItems) and implies "exportcsv".
-    systems:      Merge maddavo's System data into local db,
-    stations:     Merge maddavo's Station data into local db,
-    shipvendors:  Merge maddavo's ShipVendor data into local db,
-    exportcsv:    Regenerate System and Station .csv files after
-                  merging System/Station data.
-    csvonly:      Stop after importing CSV files, no prices,
-    skipdl:       Skip doing any downloads.
-    force:        Process prices even if timestamps suggest
-                  there is no new data.
-    use3h:        Force download of the 3-hours .prices file
-    use2d:        Force download of the 2-days .prices file
-    usefull:      Force download of the full .prices file
+  'item':         "Regenerate Categories and Items using latest commodities.json dump.",
+  'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
+  'station':      "Regenerate Stations using latest stations.jsonl dump. (implies '-O system')",
+  'ship':         "Regenerate Ships using latest coriolis.io json dump.",
+  'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (implies '-O system,station,ship')",
+  'upgrade':      "Regenerate Upgrades using latest modules.json dump.",
+  'upvend':       "Regenerate UpgradeVendors using latest stations.jsonl dump. (implies '-O system,station,upgrade')",
+  'listings':     "Update market data using latest listings.csv dump. (implies '-O item,system,station')",
+  'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
+  'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
+  'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. Supercedes '-O all', '-O clean'.",
+  'force':        "Force regeneration of selected items even if source file not updated since previous run. "
+                  "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
+  'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working."
 
 ##Elite Dangerous Mobile API import plugin:
 
@@ -1179,7 +1177,7 @@ It can also be used to show some basic data about a given station:
         Crop Harvesters*               @   2,568cr (Avg Buy   1,997cr)
         Domestic Appliances*           @     714cr (Avg Buy     445cr)
 
-This shows that 'Tea' is a star buy at this station: it is being sold by the station for 1217cr but the average selling price is 1570 credits. A star trade (indicated by '*') is at least 10% better than the average trading price for that commodity.
+This shows that 'Tea' is a star buy at this station: it is being sold by the station for 1217cr but the average selling price is 1570 credits. A star trade (indicated by `*`) is at least 10% better than the average trading price for that commodity.
 
 ##BUY sub-command:
 
