@@ -43,10 +43,10 @@ Possible causes:
 - Missing price data (see "market -vv" or "update -h"),
 
 If you are not sure where to get data from, consider using a crowd-sourcing
-project such as "maddavo's" (http://www.davek.com.au/td/).
+project such as EDDBlink (https://github.com/eyeonus/EDDBlink).
 
 For more help, see the TradeDangerous Wiki:
-    http://kfs.org/td/wiki
+    https://github.com/eyeonus/Trade-Dangerous/wiki
 """).format(sys.argv[0])
 
 
