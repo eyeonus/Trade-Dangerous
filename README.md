@@ -674,7 +674,7 @@ For instance, if you "updated"d a station and there was an error importing it, y
 
 ### Plugins:
 
-TD also supports the concept of an "import plugin". These are user-contributed extensions to TD that will fetch data from a 3rd party, such as Maddavo's Market Share, and populate the local database with that information.  (see http://www.davek.com.au/td/)
+TD also supports the concept of an "import plugin". These are user-contributed extensions to TD that will fetch data from a 3rd party, such as EDDB, and populate the local database with that information (see https://github.com/eyeonus/EDDBlink).
 
 Plugins are specified with the "-P" option and can have their own options, not listed here, with the "-O" option. See "-O=help" for a list of the options provided by a particular plugin.
 
@@ -743,7 +743,7 @@ The plugin gets its data from Tromador's EDDN mirror, "http://elite.ripz.org/", 
 ### Basic usage:
 
     trade.py import -P eddblink
-      This will check for and import new data from Maddavo's site. If
+      This will check for and import new data from EDDB. If
       you have newer data of your own, it will not be overwritten.
 
     trade.py import -P eddblink -O all
