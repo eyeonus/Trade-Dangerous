@@ -915,26 +915,64 @@ class TradeCalc(object):
                 if goalSystem and dstSys is not goalSystem:
                     dstGoalDist = goalDistTo(dstSys)
                     # Biggest reward for shortening distance to goal
-                    score = 5000 * origGoalDist / dstGoalDist
+                    score = 5000.0 * origGoalDist / dstGoalDist
                     # bias towards bigger reductions
-                    score += 50 * srcGoalDist / dstGoalDist
+                    score += 50.0 * srcGoalDist / dstGoalDist
                     # discourage moving back towards origin
                     if dstSys is not origSystem:
-                        score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                        score += 10.0 * (origDistTo(dstSys) - srcOrigDist)
                     # Gain per unit pays a small part
-                    score += (trade.gainCr / trade.units) / 25
+                    score += (trade.gainCr / trade.units) / 25.0
                 else:
                     score = trade.gainCr
                 if lsPenalty:
-                    # Only want 1dp
-                    cruiseKls = int(dstStation.lsFromStar / 100) / 10
-                    # Produce a curve that favors distances under 1kls
-                    # positively, starts to penalize distances over 1k,
-                    # and after 4kls starts to penalize aggresively
-                    # http://goo.gl/Otj2XP
-                    penalty = ((cruiseKls ** 2) - cruiseKls) / 3
-                    penalty *= lsPenalty
-                    multiplier *= (1 - penalty)
+                    # [kfsone] Only want 1dp
+                    # [aadler] Changed implementation slightly to use round
+
+                    cruiseKls = round(dstStation.lsFromStar / 1000.0, 1)
+
+                    # [kfsone] Produce a curve that favors distances under 1kls
+                    # [kfsone] positively, starts to penalize distances over 1k,
+                    # [kfsone] and after 4kls starts to penalize aggresively
+                    # [kfsone] http://goo.gl/Otj2XP
+                    # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+
+                    # [aadler] Need to turn penalty into muliplier between 0
+                    # [aadler] and 1 to handle multiple long distance platforms
+                    # [aadler] see issues #14 and #15 in [bgol] version.
+                    # [aadler] Simplest implementation is to make it linear
+                    # [aadler] between 0 and 4, which would be a score boost
+                    # [aadler] between 0 and 1. Then make it quadratic above 4.
+                    # [aadler] See green curves at http://bit.ly/2jg7r9K
+                    # [aadler] Note that preference for < 1Kls means that
+                    # [aadler] less money may be made than --ls-penalty 0
+                    # [aadler] if there is a close enough station in both
+                    # [aadler] funds and distance
+                
+                    # if (cruiseKls) < 4.0:
+                    #     penalty = cruiseKls
+                    # else:
+                    #     penalty = (cruiseKls - 2.0) ** 2
+
+                    # [aadler] Implementation of lsPenalty means that bonus < 1
+                    # [aadler] is also affected.
+                    
+                    # [aadler/eyeonus] Using multiplier =
+                    # [aadler/eyeonus]   (1/((x/2)+1))+
+                    # [aadler/eyeonus]   (1/8-((25*(x-1))/(1+abs(25*(x-1)))/8))+
+                    # [aadler/eyeonus]   (1/8-((50*(x-4))/(1+abs(50*(x-4)))/8))
+                    # [aadler/eyeonus] will keep multiplier between 1.5 and 0
+                    # [aadler/eyeonus] Multiplying result by (1-lspenalty) will factor
+                    # [aadler/eyeonus] in user weight. See discussion at
+                    # [aadler/eyeonus] https://github.com/eyeonus/Trade-Dangerous/pull/5
+                    
+                    
+                    ckm1t25 = 25.0 * (cruiseKls - 1.0)
+                    ckm4t50 = 50.0 * (cruiseKls - 4.0)
+                    multiplier = (((1.0 / (0.5 * cruiseKls + 1.0)) + 
+                                 (0.125 - (ckm1t25 / (1.0 + abs(ckm1t25)) / 8.0)) + 
+                                 (0.125 - (ckm4t50 / (1.0 + abs(ckm4t50)) / 8.0))) * 
+                                 (1.0 - lsPenalty))
 
                 score *= multiplier
 
