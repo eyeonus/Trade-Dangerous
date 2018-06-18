@@ -915,14 +915,14 @@ class TradeCalc(object):
                 if goalSystem and dstSys is not goalSystem:
                     dstGoalDist = goalDistTo(dstSys)
                     # Biggest reward for shortening distance to goal
-                    score = 5000 * origGoalDist / dstGoalDist
+                    score = 5000.0 * origGoalDist / dstGoalDist
                     # bias towards bigger reductions
-                    score += 50 * srcGoalDist / dstGoalDist
+                    score += 50.0 * srcGoalDist / dstGoalDist
                     # discourage moving back towards origin
                     if dstSys is not origSystem:
-                        score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                        score += 10.0 * (origDistTo(dstSys) - srcOrigDist)
                     # Gain per unit pays a small part
-                    score += (trade.gainCr / trade.units) / 25
+                    score += (trade.gainCr / trade.units) / 25.0
                 else:
                     score = trade.gainCr
                 if lsPenalty:
@@ -949,22 +949,30 @@ class TradeCalc(object):
                     # [aadler] if there is a close enough station in both
                     # [aadler] funds and distance
                 
-                    if (cruiseKls) < 4.0:
-                        penalty = cruiseKls
-                    else:
-                        penalty = (cruiseKls - 2.0) ** 2
+                    # if (cruiseKls) < 4.0:
+                    #     penalty = cruiseKls
+                    # else:
+                    #     penalty = (cruiseKls - 2.0) ** 2
 
                     # [aadler] Implementation of lsPenalty means that bonus < 1
-                    # [aadler] is also affected. Therefore, root function will
-                    # [aadler] be used to bring the multiplier closer to 1
-                    # [aadler] keeping the intent of the penalty. Also,
-                    # [aadler] lsPenalty will never allow the denominator to
-                    # [aadler] be less than 1, turning the penalty into a bonus
-
-                    if penalty < 1:
-                        multiplier /= max(2.0 / 3.0, penalty ** (max(min(1 - lsPenalty, 1), 0)))
-                    else:
-                        multiplier /= max(1, penalty * lsPenalty)
+                    # [aadler] is also affected.
+                    
+                    # [aadler/eyeonus] Using multiplier =
+                    # [aadler/eyeonus]   (1/((x/2)+1))+
+                    # [aadler/eyeonus]   (1/8-((25*(x-1))/(1+abs(25*(x-1)))/8))+
+                    # [aadler/eyeonus]   (1/8-((50*(x-4))/(1+abs(50*(x-4)))/8))
+                    # [aadler/eyeonus] will keep multiplier between 1.5 and 0
+                    # [aadler/eyeonus] Multiplying result by (1-lspenalty) will factor
+                    # [aadler/eyeonus] in user weight. See discussion at
+                    # [aadler/eyeonus] https://github.com/eyeonus/Trade-Dangerous/pull/5
+                    
+                    
+                    ckm1t25 = 25.0 * (cruiseKls - 1.0)
+                    ckm4t50 = 50.0 * (cruiseKls - 4.0)
+                    multiplier = (((1.0 / (0.5 * cruiseKls + 1.0)) + 
+                                 (0.125 - (ckm1t25 / (1.0 + abs(ckm1t25)) / 8.0)) + 
+                                 (0.125 - (ckm4t50 / (1.0 + abs(ckm4t50)) / 8.0))) * 
+                                 (1.0 - lsPenalty))
 
                 score *= multiplier
 
