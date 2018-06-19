@@ -934,7 +934,7 @@ class TradeCalc(object):
                     # and after 4kls starts to penalize aggresively
                     # http://goo.gl/Otj2XP
                     
-                    # [eyeonus] As "aadler" pointed out, this goes into negative
+                    # [eyeonus] As aadler pointed out, this goes into negative
                     # numbers, which causes problems.
                     #penalty = ((cruiseKls ** 2) - cruiseKls) / 3
                     #penalty *= lsPenalty
@@ -976,7 +976,7 @@ class TradeCalc(object):
                     
                     boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
                     drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
-                    penalty = (-1 + 1 / (cruiseKls + 1)^((cruiseKls + 1) / 4)) / 2
+                    penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
                     
                     multiplier += (penalty + boost + drop) * lsPenalty
 
