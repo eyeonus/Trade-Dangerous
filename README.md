@@ -8,16 +8,16 @@ REQUIRES PYTHON 3.4 OR HIGHER.
 
 [For recent changes see CHANGES.txt]
 
-#What is Trade Dangerous?
+# What is Trade Dangerous?
 
 TradeDangerous is set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers (TRO) available.
 
 The TRO is a heavy hitter that can calculate complex routes with multiple-stops while taking into account the profits you make along the route.
 
-The price data in TradeDangerous is either manually entered (by you) or crowd sourced (e.g. [http://www.davek.com.au/td](http://www.davek.com.au/td)).
+The price data in TradeDangerous is either manually entered (by you) or crowd sourced. (e.g. using the included eddblink plugin to access EDDN data.)
 
 
-#What can it do for me?
+# What can it do for me?
 
 You're in a ship with 8 cargo spaces that can make 8.56 ly per jump; you're willing to make upto 2 jumps between stations, and we want to see how much money we can make if in 2 trade stops (hops).
 
@@ -57,7 +57,7 @@ This tells us our overall route (line #1), what load to pick up from the first s
 
 Note that it could have just told us to pick up 6 Titanium (the max we could afford) or 8 Copper (the highest profit we could fill up with), Instead, TD crunched hard numbers and maximized the earnings of every cargo space AND credit.
 
-##TIP: Last stop
+## TIP: Last stop
 
 Consider the last hop of a route as "best dumping ground". It is the only step TD doesn't think about "what next", so it's possible to arrive at a station that doesn't have much (or anything) worth buying. To avoid this, it's worth asking TD for 1 or 2 additional hops.
 
@@ -72,11 +72,11 @@ Consider the last hop of a route as "best dumping ground". It is the only step T
 
 Malzberg was a great place to sell, but not such a great waypoint.
 
-##TIP: Earn as you go
+## TIP: Earn as you go
 
 TD takes into account the money you make along a trip (see --margin), in the 5 hop route we see the cargo loads changing as TD sees you becoming able to afford more expensive-but-profitable wares. This is another reason it can pay to ask for more hops than you intend to make.
 
-##How do I get there?
+## How do I get there?
 
 While one of TD's sub-commands, "nav", can help with that:
 
@@ -98,7 +98,7 @@ We can also just ask TD to give us more detail with our trade run using the "--s
       Jump G 224-46 -> LTT 14542 -> ANDERE
       ANDERE/Malzberg Vision +8,032cr (502/ton)
 
-##Getting more (or less) detail
+## Getting more (or less) detail
 
 All TD commands can be asked more or less detail using either "--detail" (short-cut -v) or "--quiet" (short-cut -q). These are incremental, so "-vvv" or "-v v v" ask for 3 levels of increase, "-qq" asks for 2 levels of quiet.
 
@@ -140,18 +140,18 @@ Most users tend to use the in-game route planner and prefer the cleaner "--summa
       ----------------------------------------------------------------------------
     Finish at ANDERE/Malzberg Vision (493ls, BMk:N, Pad:L, Shp:Y, Out:Y, Ref:Y) gaining 8,032cr (502cr/ton) => est 13,032cr total
 
-##It's been a long time...
+## It's been a long time...
 
 So you installed TD and you got crazy and you asked it to calculate 150 hops for you, and there was silence. If you specify the "--progress" option it'll tell you what's going on.
 
 
-#TradeDangerous: Setup
+# TradeDangerous: Setup
 At the moment, the primary interface to TradeDangerous' goodness is through a command line tool, "trade.py". I've built TD in a modular, open source way so that other programmers can use it to power their own tools; hopefully tools with web or graphical interfaces.
 
 For instructions on how to get setup with TD see the wiki at: [http://bitbucket.org/kfsone/tradedangerous/wiki/](http://bitbucket.org/kfsone/tradedangerous/wiki/) and click the "Setup Guide" link.
 
 
-#Command Line Options
+# Command Line Options
 TD functionality is broken up into "sub-commands". For instance, when we refer to the `update` command, we mean `trade.py update …`.
 
 If you run `trade.py` without any commands or options, it will give you a list of the sub-commands available. You can find out more details about a specific command, such as 'local', by typing:
@@ -162,23 +162,23 @@ Each command has a number of optional/required arguments that can be specified.
 
 Optional arguments are denoted by a keyword that starts with one or two dashes (`--from`, `-S`). The difference between long and short versions? Readability. You can also 'stack' short versions, for example `update -F -G -A` can be written as `update -FGA`
 
-There are "switches" which turn a feature on or off, such as `--detail` which makes the command more verbose or --quiet` which makes it less noisy.
+There are "switches" which turn a feature on or off, such as `--detail` which makes the command more verbose or `--quiet` which makes it less noisy.
 
 Other options are "parameters" which take a value, for example `--from Sol` would state the starting location for a command. You can write these as `--param value` or `--param=value`. You can often get away with just the first couple of letters, e.g. `--cr` for `--credits`.
 
 In the list below, you'll see `--detail` and `-v` listed together. This indicates that `-v` is the short-form for `--detail`.
 
-##Filing under D for Default
+## Filing under D for Default
 You can store preferred/default arguments/options in text files called "fromfiles". Each command automatically looks for a file called ".tdrc_<command>", so for the shipvendor
 command it looks for ".tdrc_shipvendor". Note the leading '.'. You can also specify your own "fromfiles". See "Fromfiles" below for more details.
 
 
-##Basic Usage:
+## Basic Usage:
 
     trade.py command arguments
 
 
-###Common Options:
+### Common Options:
   These can be used with ALL TD commands
 
      --detail
@@ -202,7 +202,7 @@ command it looks for ".tdrc_shipvendor". Note the leading '.'. You can also spec
        Short version is stackable, e.g. "-w -w -w" or "-www"
 
 
-###Sub Commands:
+### Sub Commands:
 
 For additional help on a specific command, such as 'update' use
 
@@ -242,7 +242,7 @@ For additional help on a specific command, such as 'update' use
     trade.py olddata …
       Lists old data
 
-###Advanced Commands:
+### Advanced Commands:
 
     trade.py buildcache
     Rebuilds the cache (data/TradeDangerous.db)
@@ -253,11 +253,11 @@ For additional help on a specific command, such as 'update' use
     trade.py station …
     Query, add, update or remove stations
 
-##RUN sub-command:
+## RUN sub-command:
 
   This command provides the primary trade run calculator functionality (it provides the functionality of the older TradeDangerous versions prior to 3.1)
 
-###Ship/Trade options:
+### Ship/Trade options:
      --capacity N
      --cap N
        Maximum items you can carry on each hop.
@@ -307,7 +307,7 @@ For additional help on a specific command, such as 'update' use
          --margin 0      (no margin)
          --margin 0.01   (1% margin)
 
-###Route options:
+### Route options:
      --from <station or system>
        Lets you specify the starting station
        e.g.
@@ -387,7 +387,7 @@ For additional help on a specific command, such as 'update' use
        specified destination (--to).
          --to lave -e 3      (find runs that end within 3 jumps of lave)
 
-###Filter options:
+### Filter options:
      --max-days-old N.NN
      -MD N.NN
        Filters out price data that exceeds a specified age in days
@@ -507,7 +507,7 @@ For additional help on a specific command, such as 'update' use
      --uni
        Only show routes which do not visit any station twice
 
-###Other options:
+### Other options:
      --summary
        Uses a slightly different format for showing trade routes,
        especially useful for longer routes in conjunction with -vvv
@@ -533,13 +533,13 @@ For additional help on a specific command, such as 'update' use
        OMFG Output the current step of the checklist on your X52 Pro MFD.
        Is that some sweetness or what?
 
-##TRADE sub-command:
+## TRADE sub-command:
 
 Lists trades between two stations. Specify `-v`, `-vv`, or `-vvv` for more data.
 
     trade.py trade [-v | -vv | -vvv] <from station> <to station>
 
-###Examples:
+### Examples:
     trade.py trade "sol/daedalus" "groom/frank"
     Item                  Profit       Cost
     ---------------------------------------
@@ -567,7 +567,7 @@ Lists trades between two stations. Specify `-v`, `-vv`, or `-vvv` for more data.
     Gold                   1,004      9,276       9212      10280       9600     82,951    938,765     1.17     2.37
 
 
-##UPDATE sub-command:
+## UPDATE sub-command:
 
 For maintenance of your local prices database. The default is to walk you through a list of all the prices known for the station. You can either   hit enter or type the correction.
 
@@ -575,7 +575,7 @@ Alternatively, if you specify one of the editing switches, it will put the price
 
     trade.py update
 
-###Options:
+### Options:
 
     --gui
     -G
@@ -643,7 +643,7 @@ Alternatively, if you specify one of the editing switches, it will put the price
       Like "--editor" but tries to use the VI iMproved editor.
       Mostly applies to Linux, Mac and Cygwin/Git installs.
 
-###Examples:
+### Examples:
 
     trade.py update "aulin enterprise" --notepad
     trade.py update chango --subl --supply
@@ -656,7 +656,7 @@ Alternatively, if you specify one of the editing switches, it will put the price
     trade.py update --sub -T0 aulin
 
 
-##IMPORT sub-command and plugins:
+## IMPORT sub-command and plugins:
 
 Provides mechanisms for loading data, epsecially price data, into the local database, using either "import" or "merge" modes.
 
@@ -664,21 +664,21 @@ Both modes operate on a station-by-station basis: you can import data for a sing
 
 For instance, if you "updated"d a station and there was an error importing it, your data is saved as "prices.last". Edit this file, correct the errors and then "import" it, rather than having to re-enter all of the data.
 
-###Import Mode (default):
+### Import Mode (default):
 - Overwrites local data even if the import data is older,
 - Items are removed from stations when there is an explicit "0 0" entry or there is no entry for the item at the station in the import file.
 
-###Merge Mode (--merge):
+### Merge Mode (--merge):
 - Items are only imported if they are newer than the local data,
 - Items are removed from stations only when there is an explicit "0 0" entry that is newer than the local data.
 
-###Plugins:
+### Plugins:
 
-TD also supports the concept of an "import plugin". These are user-contributed extensions to TD that will fetch data from a 3rd party, such as Maddavo's Market Share, and populate the local database with that information.  (see http://www.davek.com.au/td/)
+TD also supports the concept of an "import plugin". These are user-contributed extensions to TD that will fetch data from a 3rd party, such as EDDB, and populate the local database with that information (see https://github.com/eyeonus/EDDBlink).
 
 Plugins are specified with the "-P" option and can have their own options, not listed here, with the "-O" option. See "-O=help" for a list of the options provided by a particular plugin.
 
-###Options:
+### Options:
 
     trade.py import
         [-q | -v] [--ignore-unknown] [--reset-all]
@@ -694,7 +694,7 @@ Plugins are specified with the "-P" option and can have their own options, not l
       e.g.
         http://kfs.org/td/prices
 
-####".prices" import mode options:
+#### ".prices" import mode options:
     --ignore-unknown
     -i
       Any systems, stations, categories or items that aren't recognized
@@ -717,63 +717,62 @@ Plugins are specified with the "-P" option and can have their own options, not l
       CAUTION: DANGER ELITE ROBINSON
       Deletes all existing prices from the database.
 
-####Plugin options:
+#### Plugin options:
     --plug <plugin>
     -P <plugin>
       Specifies a plugin to use instead of the default .prices importer,
-      By default "TD" comes with a plugin that supports Maddavo's Market Share
-      (http://www.davek.com.au/td/)
+      By default "TD" comes with a plugin that supports eddblink
+      (http://elite,ripz.org/)
       e.g.
-        -P maddavo
+        -P eddblink
 
     --option <option>
     --option <option1>,<option2>,...<optionN>
     -O <option>,...
       Passes options to a plugin.
       e.g.
-        -O left,right
+        -O all,skipvend
         -O help
 
-##MADDAVO's "import" plugin:
+## EDDBlink "import" plugin:
 
-Maddavo's Market Share is a 3rd party Elite Dangerous crowd sourcing project that gathers system, station, item and other data. This is the recommended way for TradeDangerous users to get their data.
+EDDBlink is a 3rd party Elite Dangerous crowd sourcing project that gathers system, station, item and other data. This is the recommended way for TradeDangerous users to get their data.
 
-The "maddavo" plugin provides a simple way to fetch and import updates from Maddavo's site.
+The plugin gets its data from Tromador's EDDN mirror, "http://elite.ripz.org/", which runs an EDDN listener server designed to work with the plugin, but if for any reason that site goes down it will automatically fallback to downloading directly from EDDB.io's API.
 
-To take maximum advantage of Maddavo's services, you should consider using "-O csvs" periodically.
+### Basic usage:
 
-###Basic usage:
-
-    trade.py import -P maddavo
-      This will check for and import new data from Maddavo's site. If
+    trade.py import -P eddblink
+      This will check for and import new data from EDDB. If
       you have newer data of your own, it will not be overwritten.
 
-    trade.py import -P maddavo -O csvs
+    trade.py import -P eddblink -O all
       Starts by checking for new Systems, Stations, ShipVendors, etc,
-      listed in the ".csv" files Maddavo makes available.
+      listed in the ".json" files mirrored from EDDB by Tromador
       Then imports prices.
 
-###Options (-O):
-    csvs:         Merges all supported .CSVs (Systems, Stations,
-                  ShipVendors, RareItems) and implies "exportcsv".
-    systems:      Merge maddavo's System data into local db,
-    stations:     Merge maddavo's Station data into local db,
-    shipvendors:  Merge maddavo's ShipVendor data into local db,
-    exportcsv:    Regenerate System and Station .csv files after
-                  merging System/Station data.
-    csvonly:      Stop after importing CSV files, no prices,
-    skipdl:       Skip doing any downloads.
-    force:        Process prices even if timestamps suggest
-                  there is no new data.
-    use3h:        Force download of the 3-hours .prices file
-    use2d:        Force download of the 2-days .prices file
-    usefull:      Force download of the full .prices file
+### Options (-O):
 
-##Elite Dangerous Mobile API import plugin:
+	item:         Regenerate Categories and Items using latest commodities.json dump.
+	system:       Regenerate Systems using latest system-populated.jsonl dump.
+	station:      Regenerate Stations using latest stations.jsonl dump. (implies '-O system')
+	ship:         Regenerate Ships using latest coriolis.io json dump.
+	shipvend:     Regenerate ShipVendors using latest stations.jsonl dump. (implies '-O system,station,ship')
+	upgrade:      Regenerate Upgrades using latest modules.json dump
+	upvend:       Regenerate UpgradeVendors using latest stations.jsonl dump. (implies '-O system,station,upgrade')
+	listings:     Update market data using latest listings.csv dump. (implies '-O item,system,station')
+	all:          Update everything with latest dumpfiles. (Regenerates all tables)
+	clean:        Erase entire database and rebuild from empty. (Regenerates all tables.)
+	skipvend:     Don't regenerate ShipVendors or UpgradeVendors. Supercedes '-O all', '-O clean'.
+	force:        Force regeneration of selected items even if source file not updated since previous run.
+				  (Useful for updating Vendor tables if they were skipped during a '-O clean' run.)
+	fallback:     Fallback to using EDDB.io if Tromador's mirror isn't working.
+
+## Elite Dangerous Mobile API import plugin:
 
 Frontier provides an API for their mobile app. This can be used to report accurate information about your currently docked station such as market prices, shipyard, and other station information. The "edapi" plugin provides a way to accurately import this information into your prices file and optionally report the market prices to EDDN.
 
-###Basic usage:
+### Basic usage:
 
     trade.py import --plug edapi
       This will query the API for information abotu your currently docked
@@ -790,7 +789,7 @@ Frontier provides an API for their mobile app. This can be used to report accura
       given, it will use the "test" schema instead of the production one
       and print out the sent message(s).
 
-###Options (-O):
+### Options (-O):
 
     csvs:  Merge shipyards into ShipVendor.csv.
     edcd:  Call the EDCD plugin first (see below).
@@ -801,7 +800,7 @@ Frontier provides an API for their mobile app. This can be used to report accura
     warn:  Ask for station update if a API<->DB diff is encountered.
     login: Ask for login credentials.
 
-##Elite Dangerous netLog parser import plugin:
+## Elite Dangerous netLog parser import plugin:
 
 Elite Dangerous writes a logfile which includes the name and position data of the system you are in.
 
@@ -812,7 +811,7 @@ In order do find the log files, the environment variable "FDEVLOGDIR" must be se
 - Q: And how do I find the correct path?
 - A: Yeah, well, that depends on your installation. Take a look at the **NetLog** entry from the [Frontier support FAQ](https://support.frontier.co.uk/kb/faq.php?id=108)
 
-###Basic usage:
+### Basic usage:
 
     trade.py import --plug netlog
       This will parse all found netlog files and adds new systems to the database.
@@ -831,7 +830,7 @@ In order do find the log files, the environment variable "FDEVLOGDIR" must be se
       in 2- or 4-digit form, month and day are optional 2-digits, separator
       is the hyphen "-".
 
-###Options (-O):
+### Options (-O):
 
     last:  Only parse the last (newest) netLog file.
     date:  Only parse netLog files from date, format=[YY]YY[-MM[-DD]].
@@ -839,7 +838,7 @@ In order do find the log files, the environment variable "FDEVLOGDIR" must be se
 
     (All options can be combined.)
 
-##Elite Dangerous Journal parser import plugin:
+## Elite Dangerous Journal parser import plugin:
 
 Elite Dangerous writes a journal-file which includes system and station data.
 
@@ -850,7 +849,7 @@ In order do find the log files, the environment variable "FDEVJRNDIR" must be se
 - Q: And how do I find the correct path?
 - A: The journal files are written into the user's Saved Games folder, eg, for Windows: `C:\Users\[User Name]\Saved Games\Frontier Developments\Elite Dangerous`
 
-###Basic usage:
+### Basic usage:
 
     trade.py import --plug journal
       This will parse all found journal files and adds new systems/stations
@@ -871,7 +870,7 @@ In order do find the log files, the environment variable "FDEVJRNDIR" must be se
       in 2- or 4-digit form, month and day are optional 2-digits, separator
       is the hyphen "-".
 
-###Options (-O):
+### Options (-O):
 
     last:  Only parse the last (newest) Journal file.
     date:  Only parse Journal files from date, format=[YY]YY[-MM[-DD]].
@@ -879,11 +878,11 @@ In order do find the log files, the environment variable "FDEVJRNDIR" must be se
 
     (All options can be combined.)
 
-##Elite Dangerous Community Developers (EDCD) import plugin:
+## Elite Dangerous Community Developers (EDCD) import plugin:
 
 In the provided API for their mobile app Frontier sends IDs. These IDs are unique and could be used to map the FDevIDs to internal database names (or IDs). This plugin synchronises the FDevIDs (from EDCD) with the TD database, which should help the EDAPI (and the included EDDN) to be more accurate.
 
-###Basic usage:
+### Basic usage:
 
     trade.py import --plug edcd
       This does nothing.
@@ -892,7 +891,7 @@ In the provided API for their mobile app Frontier sends IDs. These IDs are uniqu
       This will download all three (shipyard, commodity, outfitting) FDevIDs
       CSV-files and import them into the database.
 
-###Options (-O):
+### Options (-O):
 
     local:      Use local EDCD CSV-files.
     shipyard:   Download and process EDCD shipyard.csv
@@ -900,14 +899,14 @@ In the provided API for their mobile app Frontier sends IDs. These IDs are uniqu
     outfitting: Download and process EDCD outfitting.csv
     csvs:       Download and process all EDCD CSV-files.
 
-##MARKET sub-command:
+## MARKET sub-command:
 
 Lists items bought / sold at a given station; with --detail (-v) also includes the average price for those items.
 
 
     trade.py market <station> [--buy | --sell] [--detail]
 
-###Options:
+### Options:
 
     station
       Name of the station to list, e.g. "paes/ramon" or "ramoncity",
@@ -925,7 +924,7 @@ Lists items bought / sold at a given station; with --detail (-v) also includes t
       Once: includes average prices
       Twice: include demand column and category headings
 
-###Examples:
+### Examples:
     trade.py market --buy ramoncity
     Item                    Buying
     ------------------------------
@@ -948,14 +947,14 @@ Lists items bought / sold at a given station; with --detail (-v) also includes t
 
     …
 
-##NAV sub-command:
+## NAV sub-command:
 
 Provides details of routes without worrying about trade. By default, if given a ship, it uses the maximum dry range of the ship. Use `--full` if you want to restrict to routes with a full cargo hold.
 
     trade.py nav [-q | -v] [--ly-per] from to
                  [--avoid] [--stations] [--no-planet | --planetary YN?]
 
-###Options:
+### Options:
 
     --ly-per N.NN
       Constrains jumps to a maximum ly distance
@@ -1005,7 +1004,7 @@ Provides details of routes without worrying about trade. By default, if given a 
     to
       Name of the destination system or a station in the system,
 
-###Examples:
+### Examples:
 
     trade.py nav mok/be v7/me --ly 8.56
     System         JumpLy
@@ -1033,13 +1032,13 @@ Provides details of routes without worrying about trade. By default, if given a 
     ('DirLy' is the direct distance left to the destination)
 
 
-##LOCAL sub-command:
+## LOCAL sub-command:
 
 Provides details of local stations without worrying about trade. By default, if given a ship, it uses the maximum dry range of the ship. Use `--full` if you want to restrict to systems with a full cargo hold.
 
     trade.py local [-q | -v] [--ly N.NN] system
 
-###Options:
+### Options:
 
     --ly N.NN
       Constrains local systems to a maximum ly distance
@@ -1099,7 +1098,7 @@ Provides details of local stations without worrying about trade. By default, if 
     system
       Name of the system or a station in the system,
 
-###Examples:
+### Examples:
 
     trade.py local mokosh --ly 6
     System        Dist
@@ -1141,7 +1140,7 @@ Adding detail ('-vv' or '-v -v' or '--detail --detail') would add a count of the
       /  George Lucas         255     0.58 Yes Yes Yes Lrg   52
       /  Kolmogorov Hub     2.96K     1.61 Yes Yes  No Med   53
 
-##STATION sub-command:
+## STATION sub-command:
 
 This command can be used to add a new station:
 
@@ -1179,9 +1178,9 @@ It can also be used to show some basic data about a given station:
         Crop Harvesters*               @   2,568cr (Avg Buy   1,997cr)
         Domestic Appliances*           @     714cr (Avg Buy     445cr)
 
-This shows that 'Tea' is a star buy at this station: it is being sold by the station for 1217cr but the average selling price is 1570 credits. A star trade (indicated by '*') is at least 10% better than the average trading price for that commodity.
+This shows that 'Tea' is a star buy at this station: it is being sold by the station for 1217cr but the average selling price is 1570 credits. A star trade (indicated by `*`) is at least 10% better than the average trading price for that commodity.
 
-##BUY sub-command:
+## BUY sub-command:
 
 Finds stations that are selling / where you can buy, a named list of items or ships.
 
@@ -1193,7 +1192,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
         category|item [category|item category|item,category|item,category|item …]
         ship [ship ship,ship …]
 
-###Options:
+### Options:
 
     --supply N
     --quantity N
@@ -1265,7 +1264,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
     -S
       Sorts items by supply available first and then price
 
-###Example:
+### Example:
 
     trade.py buy --near achenar food      (finds all items in food category)
     trade.py buy --near achenar foodcart  (finds food cartridges)
@@ -1274,7 +1273,7 @@ Finds stations that are selling / where you can buy, a named list of items or sh
     trade.py buy --near achenar type6,type7 -1
 
 
-##SELL sub-command:
+## SELL sub-command:
 
 Looks for stations buying the specified item.
 
@@ -1286,7 +1285,7 @@ Looks for stations buying the specified item.
         [--lt N] [--gt N] [--price-sort | -P]
         item
 
-###Options:
+### Options:
 
     --demand N
     --quantity N
@@ -1350,7 +1349,7 @@ Looks for stations buying the specified item.
       (otherwise items are listed by distance and then price)
 
 
-##EXPORT sub-command:
+## EXPORT sub-command:
 
 This command generates the CSV data files of the current database. It defaults to export all (except the price) tables and overwrites the files in the data directory.
 
@@ -1358,7 +1357,7 @@ This command generates the CSV data files of the current database. It defaults t
 
     trade.py export [-q | -v] [--path PATH] [--tables TABLE[,TABLE,…] | --all-tables ] [--delete-empty]
 
-###Options:
+### Options:
 
     --path PATH
       Specify the save location of the CSV files. Defaults to './data'
@@ -1373,7 +1372,7 @@ This command generates the CSV data files of the current database. It defaults t
     --delete-empty
       Delete CSV files without content.
 
-###Examples:
+### Examples:
 
     trade.py export --path misc
     Using database './data/TradeDangerous.db'
@@ -1396,13 +1395,13 @@ This command generates the CSV data files of the current database. It defaults t
     Export Table 'System' to 'data/System.csv'
 
 
-##RARES sub-command:
+## RARES sub-command:
 
 This command looks for known rare items within the space around a specified system.
 
     trade.py rare [-q] <system> [--ly N.NN] [--limit N] [--price-sort] [--reverse]
 
-###Options:
+### Options:
 
      <system>
        System to center search on
@@ -1472,7 +1471,7 @@ This command looks for known rare items within the space around a specified syst
        Don't include the header lines
 
 
-###Examples:
+### Examples:
 
     trade.py rare sol --ly 10
     Station                       Rare                    Cost DistLy  Alloc
@@ -1499,7 +1498,7 @@ This command looks for known rare items within the space around a specified syst
     ANY NA/Libby Orbital         Any Na Coffee              1,790 170.32     11          ?   ?
 
 
-#Fromfiles: Options in a can
+# Fromfiles: Options in a can
 A "fromfile" is a plain text file with TD command line options. For instance,
 you could create a file for each ship specifying the --ly, --cap, --empty, etc.
 
@@ -1514,7 +1513,7 @@ and call the file "sw" :)
 
     trade.py nav +sw
 
-##Contents of a fromfile
+## Contents of a fromfile
 A fromfile is simple: each line must correspond to one position on the
 command line. So, "--empty-ly 30" becomes *two lines* while "--ly=20" is one.
 
@@ -1522,7 +1521,7 @@ command line. So, "--empty-ly 30" becomes *two lines* while "--ly=20" is one.
     30
     --ly=20
 
-##Default defaults: .tdrc files
+## Default defaults: .tdrc files
 Each TD command automatically looks for a file called ".tdrc_<command>", e.g.
 ".tdrc_shipvendor". Note the leading dot. If this file exists, the options are
 read at the start of the command line.
@@ -1546,8 +1545,8 @@ Which is equivalent to:
 
     trade.py nav --empty-ly 30 sol waruts -vvv --ly=21
 
-#Adding or Changing Price Data
-##Experimental GUI in 6.0
+# Adding or Changing Price Data
+## Experimental GUI in 6.0
 As of v6.0 I've added an experimental GUI for updating prices. I'm still working out some of the issues, in particular you currently have to manually size and scroll the window.
 
 To use it, simply type:
@@ -1569,7 +1568,7 @@ To **navigate**
 To **add** items to a station, use the "-A" switch and leave the items you don't want empty.
 
 
-##Other ways of editing Price Data
+## Other ways of editing Price Data
 
 TradeDangerous uses a human-readable text format for price information. This is designed to closely resemble what we see in the market screens in-game.
 
@@ -1631,7 +1630,7 @@ NOTE: The order items are listed within their category is saved between edits, s
 
 See `trade.py update -h` for more help with the update command.
 
-#That's nice, but I'm a programmer and I want to …
+# That's nice, but I'm a programmer and I want to …
 
 TradeDangerous is organized into modules, the key of which are:
 
