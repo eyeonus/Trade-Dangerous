@@ -926,17 +926,62 @@ class TradeCalc(object):
                 else:
                     score = trade.gainCr
                 if lsPenalty:
-                    # Only want 1dp
+                    # [kfsone] Only want 1dp
+                    
                     cruiseKls = int(dstStation.lsFromStar / 100) / 10
                     # Produce a curve that favors distances under 1kls
                     # positively, starts to penalize distances over 1k,
                     # and after 4kls starts to penalize aggresively
                     # http://goo.gl/Otj2XP
-                    penalty = ((cruiseKls ** 2) - cruiseKls) / 3
-                    penalty *= lsPenalty
-                    multiplier *= (1 - penalty)
+                    
+                    # [eyeonus] As "aadler" pointed out, this goes into negative
+                    # numbers, which causes problems.
+                    #penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                    #penalty *= lsPenalty
+                    #multiplier *= (1 - penalty)
+                    
+                    # [eyeonus]:
+                    # (Keep in mind all this ignores values of x<0.)
+                    # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
+                    # ranges between 0.5 and 0 with a drop around x=1,
+                    # which makes it great for giving a boost to distances < 1Kls.
+                    #
+                    # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
+                    # ranges between 0 and -0.5 with a drop around x=4,
+                    # making it great for penalizing distances > 4Kls.
+                    #
+                    # The curve: (-1+1/(x+1)^((x+1)/4))/2
+                    # ranges between 0 and -0.5 in a smooth arc,
+                    # which will be used for making distances
+                    # closer to 4Kls get a slightly higher penalty
+                    # then distances closer to 1Kls.
+                    # 
+                    # Adding the three together creates a doubly-kinked curve
+                    # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
+                    # which closely matches ksfone's intention without going into
+                    # negative numbers and causing problems when we add it to
+                    # the multiplier variable. ( 1 + -1 = 0 )
+                    # 
+                    # You can see a graph of the formula here:
+                    # https://goo.gl/sn1PqQ
+                    # NOTE: The black curve is at a penalty of 0%,
+                    # the red curve at a penalty of 100%, with intermediates at
+                    # 25%, 50%, and 75%.
+                    # The other colored lines show the penalty curves individually
+                    # and the teal composite of all three.
+
+                    
+                    def sigmoid(x):
+                        return x/(1+abs(x))
+                    
+                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
+                    drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
+                    penalty = (-1 + 1 / (cruiseKls + 1)^((cruiseKls + 1) / 4)) / 2
+                    
+                    multiplier += (penalty + boost + drop) * lsPenalty
 
                 score *= multiplier
+
 
                 dstID = dstStation.ID
                 try:
