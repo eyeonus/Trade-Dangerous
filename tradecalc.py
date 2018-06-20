@@ -976,7 +976,10 @@ class TradeCalc(object):
                     
                     boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
                     drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
-                    penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
+                    try:
+                        penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
+                    except OverflowError:
+                        penalty = -0.5
                     
                     multiplier += (penalty + boost + drop) * lsPenalty
 
