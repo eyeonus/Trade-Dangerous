@@ -633,7 +633,6 @@ class TradeCalc(object):
             bestSub = None
 
             qtyCeil = min(maxUnits, cap)
-            print(items)
 
             for iNo in range(offset, len(items)):
                 item = items[iNo]
@@ -644,8 +643,10 @@ class TradeCalc(object):
                     continue
 
                 supply = item.supply
-                if supply > 0:
-                    maxQty = min(maxQty, supply)
+                if supply <= 0:
+                    continue
+                
+                maxQty = min(maxQty, supply)
 
                 itemGainCr = item.gainCr
                 if maxQty == cap:
