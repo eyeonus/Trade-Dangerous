@@ -633,6 +633,7 @@ class TradeCalc(object):
             bestSub = None
 
             qtyCeil = min(maxUnits, cap)
+            print(items)
 
             for iNo in range(offset, len(items)):
                 item = items[iNo]
@@ -695,7 +696,7 @@ class TradeCalc(object):
             if bestSub:
                 bestLoad = bestLoad + bestSub.items
                 bestQty += bestSub.units
-            return TradeLoad(bestLoad, bestGainCr, bestGainCr, bestQty)
+            return TradeLoad(bestLoad, bestGainCr, bestCostCr, bestQty)
 
         return _fitCombos(0, credits, capacity)
 
