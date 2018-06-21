@@ -480,8 +480,6 @@ class TradeCalc(object):
             tdenv = tdb.tdenv
         self.tdb = tdb
         self.tdenv = tdenv
-        #self.defaultFit = fit or self.fastFit
-        #self.defaultFit = fit or self.recursionLimitedFit
         self.defaultFit = fit or self.simpleFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
@@ -613,6 +611,9 @@ class TradeCalc(object):
         """
             Best load calculator using a recursive knapsack-like
             algorithm to find multiple loads and return the best.
+            [eyeonus] Left in for the masochists, as this becomes
+            horribly slow at stations with many items for sale.
+            As in iooks-like-the-program-has-frozen slow.
         """
 
         def _fitCombos(offset, cr, cap):
@@ -705,103 +706,6 @@ class TradeCalc(object):
 
     # Mark's test run, to spare searching back through the forum posts for it.
     # python trade.py run --fr="Orang/Bessel Gateway" --cap=720 --cr=11b --ly=24.73 --empty=37.61 --pad=L --hops=2 --jum=3 --loop --summary -vv --progress
-    def recursionLimitedFit(self, items, credits, capacity, maxUnits):
-        """
-            Best load calculator using a recursive knapsack-like
-            algorithm to find multiple loads and return the best.
-            Exactly like fastFit, above, but with a limit to how
-            much recursion it's allowed to do.
-        """
-        recursion_limit = 3
-
-        def _fitCombos(offset, cr, cap, recursion_depth):
-            """
-                Starting from offset, consider a scenario where we
-                would purchase the maximum number of each item
-                given the cr+cap limitations. Then, assuming that
-                load, solve for the remaining cr+cap from the next
-                value of offset.
-
-                The "best fit" is not always the most profitable,
-                so we yield all the results and leave the caller
-                to determine which is actually most profitable.
-            """
-
-            bestGainCr = -1
-            bestItem = None
-            bestQty = 0
-            bestCostCr = 0
-            bestSub = None
-
-            qtyCeil = min(maxUnits, cap)
-
-            for iNo in range(offset, len(items)):
-                item = items[iNo]
-                itemCostCr = item.costCr
-                maxQty = min(qtyCeil, cr // itemCostCr)
-
-                if maxQty <= 0:
-                    continue
-
-                supply = item.supply
-                if supply <= 0:
-                    continue
-                
-                maxQty = min(maxQty, supply)
-
-                itemGainCr = item.gainCr
-                if maxQty == cap:
-                    # full load
-                    gain = itemGainCr * maxQty
-                    if gain > bestGainCr:
-                        cost = itemCostCr * maxQty
-                        # list is sorted by gain DESC, cost ASC
-                        bestGainCr = gain
-                        bestItem = item
-                        bestQty = maxQty
-                        bestCostCr = cost
-                        bestSub = None
-                    break
-
-                loadCostCr = maxQty * itemCostCr
-                loadGainCr = maxQty * itemGainCr
-                if loadGainCr > bestGainCr:
-                    bestGainCr = loadGainCr
-                    bestCostCr = loadCostCr
-                    bestItem = item
-                    bestQty = maxQty
-                    bestSub = None
-
-                crLeft, capLeft = cr - loadCostCr, cap - maxQty
-                if crLeft > 0 and capLeft > 0 and recursion_depth < recursion_limit:
-                    # Solve for the remaining credits and capacity with what
-                    # is left in items after the item we just checked.
-                    subLoad = _fitCombos(iNo+1, crLeft, capLeft, recursion_depth + 1)
-                    if subLoad is emptyLoad:
-                        continue
-                    ttlGain = loadGainCr + subLoad.gainCr
-                    if ttlGain < bestGainCr:
-                        continue
-                    ttlCost = loadCostCr + subLoad.costCr
-                    if ttlGain == bestGainCr and ttlCost >= bestCostCr:
-                        continue
-                    bestGainCr = ttlGain
-                    bestItem = item
-                    bestQty = maxQty
-                    bestCostCr = ttlCost
-                    bestSub = subLoad
-
-            if not bestItem:
-                return emptyLoad
-
-            bestLoad = ((bestItem, bestQty),)
-            if bestSub:
-                bestLoad = bestLoad + bestSub.items
-                bestQty += bestSub.units
-            return TradeLoad(bestLoad, bestGainCr, bestCostCr, bestQty)
-
-        return _fitCombos(0, credits, capacity, 0)
-
     def simpleFit(self, items, credits, capacity, maxUnits):
         """
         Simplistic load calculator:
@@ -814,7 +718,10 @@ class TradeCalc(object):
                 or the commander is too poor to buy more.
                 
         When amount of credits isn't a limiting factor, this should produce
-        the most profitable route 100% of the time. (Not yet tested.)
+        the most profitable route ~99.7% of the time, and still be very
+        close to the most profitable the rest of the time.
+        (Very close = not enough less profit that anyone should care,
+        especially since this thing doesn't suffer slowdowns like fastFit.)
         """
             
         n = 0
