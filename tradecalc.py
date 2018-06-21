@@ -480,7 +480,10 @@ class TradeCalc(object):
             tdenv = tdb.tdenv
         self.tdb = tdb
         self.tdenv = tdenv
-        self.defaultFit = fit or self.fastFit
+        #self.defaultFit = fit or self.fastFit
+        #self.defaultFit = fit or self.recursionLimitedFit
+        self.defaultFit = fit or self.simpleFit
+        print(str(self.defaultFit)  )
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
         minSupply = self.tdenv.supply or 0
@@ -701,6 +704,149 @@ class TradeCalc(object):
 
         return _fitCombos(0, credits, capacity)
 
+    # Mark's test run, to spare searching back through the forum posts for it.
+    # python trade.py run --fr="Orang/Bessel Gateway" --cap=720 --cr=11b --ly=24.73 --empty=37.61 --pad=L --hops=2 --jum=3 --loop --summary -vv --progress
+    def recursionLimitedFit(self, items, credits, capacity, maxUnits):
+        """
+            Best load calculator using a recursive knapsack-like
+            algorithm to find multiple loads and return the best.
+            Exactly like fastFit, above, but with a limit to how
+            much recursion it's allowed to do.
+        """
+        recursion_limit = 3
+
+        def _fitCombos(offset, cr, cap, recursion_depth):
+            """
+                Starting from offset, consider a scenario where we
+                would purchase the maximum number of each item
+                given the cr+cap limitations. Then, assuming that
+                load, solve for the remaining cr+cap from the next
+                value of offset.
+
+                The "best fit" is not always the most profitable,
+                so we yield all the results and leave the caller
+                to determine which is actually most profitable.
+            """
+
+            bestGainCr = -1
+            bestItem = None
+            bestQty = 0
+            bestCostCr = 0
+            bestSub = None
+
+            qtyCeil = min(maxUnits, cap)
+
+            for iNo in range(offset, len(items)):
+                item = items[iNo]
+                itemCostCr = item.costCr
+                maxQty = min(qtyCeil, cr // itemCostCr)
+
+                if maxQty <= 0:
+                    continue
+
+                supply = item.supply
+                if supply <= 0:
+                    continue
+                
+                maxQty = min(maxQty, supply)
+
+                itemGainCr = item.gainCr
+                if maxQty == cap:
+                    # full load
+                    gain = itemGainCr * maxQty
+                    if gain > bestGainCr:
+                        cost = itemCostCr * maxQty
+                        # list is sorted by gain DESC, cost ASC
+                        bestGainCr = gain
+                        bestItem = item
+                        bestQty = maxQty
+                        bestCostCr = cost
+                        bestSub = None
+                    break
+
+                loadCostCr = maxQty * itemCostCr
+                loadGainCr = maxQty * itemGainCr
+                if loadGainCr > bestGainCr:
+                    bestGainCr = loadGainCr
+                    bestCostCr = loadCostCr
+                    bestItem = item
+                    bestQty = maxQty
+                    bestSub = None
+
+                crLeft, capLeft = cr - loadCostCr, cap - maxQty
+                if crLeft > 0 and capLeft > 0 and recursion_depth < recursion_limit:
+                    # Solve for the remaining credits and capacity with what
+                    # is left in items after the item we just checked.
+                    subLoad = _fitCombos(iNo+1, crLeft, capLeft, recursion_depth + 1)
+                    if subLoad is emptyLoad:
+                        continue
+                    ttlGain = loadGainCr + subLoad.gainCr
+                    if ttlGain < bestGainCr:
+                        continue
+                    ttlCost = loadCostCr + subLoad.costCr
+                    if ttlGain == bestGainCr and ttlCost >= bestCostCr:
+                        continue
+                    bestGainCr = ttlGain
+                    bestItem = item
+                    bestQty = maxQty
+                    bestCostCr = ttlCost
+                    bestSub = subLoad
+
+            if not bestItem:
+                return emptyLoad
+
+            bestLoad = ((bestItem, bestQty),)
+            if bestSub:
+                bestLoad = bestLoad + bestSub.items
+                bestQty += bestSub.units
+            return TradeLoad(bestLoad, bestGainCr, bestCostCr, bestQty)
+
+        return _fitCombos(0, credits, capacity, 0)
+
+    def simpleFit(self, items, credits, capacity, maxUnits):
+        """
+        Simplistic load calculator:
+        (The item list is sorted with highest profit margin items in front.)
+        Step 1: Fill hold with as much of item1 as possible based on the limiting 
+                factors of hold size, supply amount, and available credits.
+        
+        Step 2: If there is space in the hold and money available, repeat Step 1 
+                with item2, item3, etc. until either the hold is filled 
+                or the commander is too poor to buy more.
+                
+        When amount of credits isn't a limiting factor, this should produce
+        the most profitable route 100% of the time. (Not yet tested.)
+        """
+            
+        n = 0
+        load = ()
+        gainCr = 0
+        costCr = 0
+        qty = 0
+        while n < len(items) and credits > 0 and capacity > 0:
+            qtyCeil = min(maxUnits, capacity)
+            
+            item = items[n]
+            maxQty = min(qtyCeil, cr // item.costCr)
+            
+            if maxQty > 0 and item.supply > 0:
+                maxQty = min(maxQty, item.supply)
+                
+                loadCostCr = maxQty * item.costCr
+                loadGainCr = maxQty * item.gainCr
+                
+                load = load + ((item, maxQty),)
+                qty += maxQty
+                capacity -= maxQty
+                
+                gainCr += loadGainCr
+                costCr += loadCostCr
+                credits -= loadCostCr
+            
+            n += 1
+        
+        return TradeLoad(load, gainCr, costCr, qty)
+
     def getTrades(self, srcStation, dstStation, srcSelling=None):
         """
         Returns the most profitable trading options from
@@ -888,7 +1034,7 @@ class TradeCalc(object):
                     d for d in stations
                     if d.system is goalSystem or d.distLy < srcGoalDist
                 )
-
+            
             if tdenv.debug >= 1:
                 def annotate(dest):
                     tdenv.DEBUG1(
