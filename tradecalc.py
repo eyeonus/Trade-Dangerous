@@ -483,7 +483,6 @@ class TradeCalc(object):
         #self.defaultFit = fit or self.fastFit
         #self.defaultFit = fit or self.recursionLimitedFit
         self.defaultFit = fit or self.simpleFit
-        print(str(self.defaultFit)  )
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
         minSupply = self.tdenv.supply or 0
@@ -827,7 +826,7 @@ class TradeCalc(object):
             qtyCeil = min(maxUnits, capacity)
             
             item = items[n]
-            maxQty = min(qtyCeil, cr // item.costCr)
+            maxQty = min(qtyCeil, credits // item.costCr)
             
             if maxQty > 0 and item.supply > 0:
                 maxQty = min(maxQty, item.supply)
