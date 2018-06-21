@@ -10,6 +10,8 @@ import math
 import misc.progress as pbar
 import platform
 import time
+import subprocess
+import sys
 
 try:
     import requests
@@ -25,29 +27,33 @@ def import_requests():
 
     if platform.system() == 'Linux':
         extra = (
-            "\nUbuntu users: You may be able to install 'pip' "
-            "with 'apt-get install python3-pip' and requets with "
-            "'pip3 install --upgrade requests'."
+            "Ubuntu users: You may be able to install 'pip'\n"
+            "with 'apt-get install python3-pip' and requests with\n"
+            "'pip3 install --upgrade requests'.\n"
         )
     elif platform.system() == 'Windows':
         extra = (
-            "\nThis often happens if you have bits of 32-bit and "
-            "64-bit Python installed.\n"
-            "Consider using control panel to uninstall Python, "
-            "delete the Python folder (usually C:\\Python34\\) "
-            "and re-install Python."
+            "\n\nThe requests package can be installed with\n"
+            "'pip3 install --upgrade requests'.\n\n"
+            "If requests is installed, you may have bits\n"
+            "of 32-bit and 64-bit Python installed.\n"
+            "Consider using control panel to uninstall Python,\n"
+            "delete the Python folder (usually C:\\Python34\\),\n"
+            "and then re-install Python.\n"
         )
     else:
         extra = ""
 
     print(
-        "ERROR: Unable to load the Python 'requests' package." + extra + "\n"
+        "ERROR: Unable to load the Python 'requests' package.\n" + extra
     )
     approval = input(
         "I can try and install the package automatically using 'pip'.\n"
         "Try to install 'requests' now (y/n)? "
     )
-    if approval.lower() != 'y':
+    # Idiot-proofing: take just the first character in case the user typed 
+    # 'YES' (upper or lower case) instead of 'Y'.
+    if approval[0:1].lower() != 'y':
         raise TradeException("Missing package: 'requests'")
 
     try:
@@ -59,8 +65,12 @@ def import_requests():
             "except it doesn't appear to be installed on your system:\n"
             "{}{}".format(str(e), extra)
         ) from None
-
-    pip.main(["install", "--upgrade", "requests"])
+    
+    # Let's use "The most reliable approach, and the one that is fully supported."
+    # Especially since the old way produces an error for me on Python 3.6:
+    # "AttributeError: 'module' object has no attribute 'main'"
+    #pip.main(["install", "--upgrade", "requests"])
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'requests'])
 
     try:
         import requests
