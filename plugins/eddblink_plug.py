@@ -94,7 +94,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     result = cur.execute(sql_cmd)
                 success = True
             except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+                print("(execute) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         return result
     
@@ -768,7 +768,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdb.getDB().commit()
                 success = True
             except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+                print("(commit) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         
         #Remake the .csv files with the updated info.
@@ -786,7 +786,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdb.getDB().commit()
                 success = True
             except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+                print("(commit) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         
         tdb.close()
