@@ -11,8 +11,8 @@ import time
 import tradedb
 import tradeenv
 import transfers
-import urllib
 
+from urllib import request
 from calendar import timegm
 from pathlib import Path
 from plugins import PluginException
@@ -108,7 +108,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             url = SHIPS_URL
         else:
             try:
-                urllib.request.urlopen(BASE_URL + urlTail)
+                request.urlopen(BASE_URL + urlTail)
             except:
                 # If Tromador's mirror fails for whatever reason,
                 # fallback to download direct from EDDB.io
@@ -133,7 +133,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             Months = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12}
 
             # We need to split the string twice, because the time is separated by ':', not ' '.
-            dDL = urllib.request.urlopen(url).getheader("Last-Modified").split(' ')
+            dDL = request.urlopen(url).getheader("Last-Modified").split(' ')
             dTL = dDL[4].split(':')
 
             # Now we need to make a datetime object using the DateList and TimeList we just created,
@@ -142,9 +142,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                hour=int(dTL[0]), minute=int(dTL[1]), second=int(dTL[2]),\
                tzinfo=datetime.timezone.utc)
             dumpModded = timegm(dumpDT.timetuple())
-            #dumpModded = timegm(datetime.datetime.strptime( \
-            #        urllib.request.urlopen(url).getheader("Last-Modified"),\
-            #       "%a, %d %b %Y %X GMT").timetuple())
 
         if Path.exists(self.dataPath / path):
             localModded = (self.dataPath / path).stat().st_mtime
