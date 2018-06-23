@@ -99,6 +99,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             except sqlite3.OperationalError as e:
                 if str(e) != "database is locked":
                     success = True
+                    raise sqlite3.OperationalError(e)
                 else:
                     print("(execute) Database is locked, waiting for access.", end = "\r")
                     time.sleep(1)
@@ -678,8 +679,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if firstRun:
             self.options["clean"] = True
-           
-        self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
+        
+        try:
+            self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
+        except sqlite3.OperationalError:
+            pass
         
         if self.getOption("clean"):
             # Rebuild the tables from scratch. Must be done on first run of plugin.
