@@ -353,7 +353,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 refuel = 'Y' if station['has_refuel'] else 'N'
                 repair = 'Y' if station['has_repair'] else 'N'
                 planetary = 'Y' if station['is_planetary'] else 'N'
-                type_id = station['type_id']
+                type_id = station['type_id'] if station['type_id'] else 0
                 
                 system = self.execute("SELECT System.name FROM System WHERE System.system_id = ?", (system_id,)).fetchone()[0].upper()
                 
