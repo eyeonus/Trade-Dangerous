@@ -831,7 +831,7 @@ class TradeCalc(object):
         if tdenv.lsPenalty:
             lsPenalty = tdenv.lsPenalty / 100
         else:
-            lsPenalty = 0
+            lsPenalty = 0.05
 
         goalSystem = tdenv.goalSystem
         uniquePath = None
@@ -1028,7 +1028,7 @@ class TradeCalc(object):
                     def sigmoid(x):
                         return x/(1+abs(x))
                     
-                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 20
+                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
                     drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
                     try:
                         penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
