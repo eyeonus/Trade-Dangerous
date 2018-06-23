@@ -96,9 +96,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 else:
                     result = cur.execute(sql_cmd)
                 success = True
-            except sqlite3.OperationalError:
-                print("(execute) Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
+            except sqlite3.OperationalError as e:
+                if str(e) == "duplicate column name: type_id":
+                    success = True
+                else:
+                    print("(execute) Database is locked, waiting for access.", end = "\r")
+                    time.sleep(1)
         return result
     
     def downloadFile(self, urlTail, path):
@@ -676,10 +679,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if firstRun:
             self.options["clean"] = True
            
-        try:
-            self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
-        except:
-            pass
+        self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
         
         if self.getOption("clean"):
             # Rebuild the tables from scratch. Must be done on first run of plugin.
