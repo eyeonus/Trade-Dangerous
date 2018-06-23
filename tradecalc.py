@@ -831,7 +831,7 @@ class TradeCalc(object):
         if tdenv.lsPenalty:
             lsPenalty = tdenv.lsPenalty / 100
         else:
-            lsPenalty = 0.05
+            lsPenalty = 0.5
 
         goalSystem = tdenv.goalSystem
         uniquePath = None
