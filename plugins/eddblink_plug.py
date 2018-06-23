@@ -79,7 +79,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Station": False,
                 "System": False,
                 "Upgrade": False,
-                "UpgradeVendor": False
+                "UpgradeVendor": False,
+                "Listings": False
             }
     
     def execute(self, sql_cmd, args = None):
@@ -645,7 +646,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         tdenv.DEBUG1("Error on insert.")
             if self.getOption("progbar"):
                 prog.clear()
-
+        
+        self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
     def run(self):
@@ -818,9 +820,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 time.sleep(1)
         
         tdb.close()
-
-        tdenv.NOTE("Regenerating .prices file.")
-        cache.regeneratePricesFile(tdb, tdenv)
+        
+        if self.updated['Listings']:
+            tdenv.NOTE("Regenerating .prices file.")
+            cache.regeneratePricesFile(tdb, tdenv)
 
         tdenv.NOTE("Import completed.")
 
