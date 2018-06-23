@@ -83,6 +83,7 @@ CREATE TABLE Station
        CHECK (repair     IN ('?', 'Y', 'N')),
    planetary  TEXT(1) NOT NULL DEFAULT '?'
        CHECK (planetary  IN ('?', 'Y', 'N')),
+   type_id INTEGER DEFAULT 0 NOT NULL,
 
    UNIQUE (station_id),
 

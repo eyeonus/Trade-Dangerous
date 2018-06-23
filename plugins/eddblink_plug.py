@@ -11,7 +11,7 @@ import time
 import tradedb
 import tradeenv
 import transfers
-import misc.progress as pbar							
+import misc.progress as pbar
 
 from urllib import request
 from calendar import timegm
@@ -353,6 +353,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 refuel = 'Y' if station['has_refuel'] else 'N'
                 repair = 'Y' if station['has_repair'] else 'N'
                 planetary = 'Y' if station['is_planetary'] else 'N'
+                type_id = station['type_id']
                 
                 system = self.execute("SELECT System.name FROM System WHERE System.system_id = ?", (system_id,)).fetchone()[0].upper()
                 
@@ -363,37 +364,37 @@ class ImportPlugin(plugins.ImportPluginBase):
                         tdenv.DEBUG0("{}/{} has been updated: {} vs {}", 
                                     system ,name, modified, result[0])
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}, {},"
-                                              " {}, {}, {}, {}, {}, {}, {}",
+                                              " {}, {}, {}, {}, {}, {}, {}, {}",
                                     station_id, name, system_id, ls_from_star, blackmarket,
                                     max_pad_size, market, shipyard, modified, outfitting,
-                                    rearm, refuel, repair, planetary)
+                                    rearm, refuel, repair, planetary, type_id)
                         self.execute("""UPDATE Station
                                     SET name = ?, system_id = ?, ls_from_star = ?, blackmarket = ?,
                                     max_pad_size = ?, market = ?, shipyard = ?, modified = ?,
-                                    outfitting = ?, rearm = ?, refuel = ?, repair = ?, planetary = ?
+                                    outfitting = ?, rearm = ?, refuel = ?, repair = ?, planetary = ?, type_id = ?
                                     WHERE station_id = ?""", 
                                     (name, system_id, ls_from_star, blackmarket,
                                      max_pad_size, market, shipyard, modified,
-                                     outfitting, rearm, refuel, repair, planetary, 
+                                     outfitting, rearm, refuel, repair, planetary, type_id,
                                      station_id))
                         self.updated['Station'] = True
                 else:
                     tdenv.DEBUG0("{}/{} has been added:", system ,name)
                     tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}, {}, {},"
-                                              " {}, {}, {}, {}, {}, {}, {}",
+                                              " {}, {}, {}, {}, {}, {}, {}, {}",
                         station_id, name, system_id, ls_from_star, blackmarket,
                         max_pad_size, market, shipyard, modified, outfitting,
-                        rearm, refuel, repair, planetary)
+                        rearm, refuel, repair, planetary, type_id)
                     self.execute("""INSERT INTO Station (
                                 station_id,name,system_id,ls_from_star,
                                 blackmarket,max_pad_size,market,shipyard,
                                 modified,outfitting,rearm,refuel,
-                                repair,planetary ) VALUES
-                                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) """,
+                                repair,planetary,type_id ) VALUES
+                                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) """,
                                 (station_id,name,system_id,ls_from_star,
                                  blackmarket,max_pad_size,market,shipyard,
                                  modified,outfitting,rearm,refuel,
-                                 repair,planetary))
+                                 repair,planetary,type_id))
                     self.updated['Station'] = True
                 
                 #Import shipyards into ShipVendors if shipvend is set.
@@ -673,7 +674,12 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         if firstRun:
             self.options["clean"] = True
-            
+           
+        try:
+            self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
+        except:
+            pass
+        
         if self.getOption("clean"):
             # Rebuild the tables from scratch. Must be done on first run of plugin.
             # Can be done at anytime with the "clean" option.
