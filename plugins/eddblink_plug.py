@@ -97,7 +97,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     result = cur.execute(sql_cmd)
                 success = True
             except sqlite3.OperationalError as e:
-                if str(e) == "duplicate column name: type_id":
+                if str(e) != "database is locked":
                     success = True
                 else:
                     print("(execute) Database is locked, waiting for access.", end = "\r")
