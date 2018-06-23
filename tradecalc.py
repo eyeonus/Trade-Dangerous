@@ -1028,7 +1028,7 @@ class TradeCalc(object):
                     def sigmoid(x):
                         return x/(1+abs(x))
                     
-                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
+                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 20
                     drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
                     try:
                         penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
