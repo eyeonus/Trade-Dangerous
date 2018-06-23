@@ -660,11 +660,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Run 'listings' by default:
         # If no options, or if only 'force', 'skipvend', and/or 'fallback', 
         # have been passed, enable 'listings'.
-        default = False
+        default = True
         for option in self.options:
             if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
-                default = True
-        
+                default = False
+        print(default)
         if default:
             self.options["listings"] = True
         
