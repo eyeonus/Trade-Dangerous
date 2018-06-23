@@ -265,7 +265,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 100)
+                prog = pbar.Progress(total, 80)
             for line in fh:
                 if self.getOption("progbar"):
                     prog.increment(1)
@@ -334,7 +334,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 100)
+                prog = pbar.Progress(total, 80)
             for line in fh:
                 if self.getOption("progbar"):
                     prog.increment(1)
@@ -589,7 +589,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 100)
+                prog = pbar.Progress(total, 80)
             listings = csv.DictReader(fh)
             for listing in listings:
                 if self.getOption("progbar"):
