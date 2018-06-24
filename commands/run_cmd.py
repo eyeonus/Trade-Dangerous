@@ -139,7 +139,7 @@ switches = [
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help="Penalty per 1kls stations are from their stars.",
-        default=0.6,
+        default=0.5,
         type=float,
         dest='lsPenalty'
     ),
