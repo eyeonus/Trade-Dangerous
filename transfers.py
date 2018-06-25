@@ -143,6 +143,7 @@ def download(
     if transfer != 'chunked':
         # chunked transfer-encoding doesn't need a content-length
         if length is None:
+            print(req.headers)
             raise Exception("Remote server replied with invalid content-length.")
         length = int(length)
         if length <= 0:
