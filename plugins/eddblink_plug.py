@@ -265,10 +265,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 80)
+                prog = pbar.Progress(total, 50)
             for line in fh:
                 if self.getOption("progbar"):
-                    prog.increment(1)
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 else:
                     progress += 1
                     print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
@@ -334,10 +334,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 80)
+                prog = pbar.Progress(total, 50)
             for line in fh:
                 if self.getOption("progbar"):
-                    prog.increment(1)
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 else:
                     progress += 1
                     print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
@@ -589,11 +589,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 80)
+                prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             for listing in listings:
                 if self.getOption("progbar"):
-                    prog.increment(1)
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 else:
                     progress += 1
                     print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
