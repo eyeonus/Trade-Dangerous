@@ -609,6 +609,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
+                    from_live = 0 if listings_file == LISTINGS else 1
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     # When the dump file data matches the database, update to make from_live == 0.
                     if int(listing['collected_at']) == updated and listings_file == LISTINGS:
@@ -626,9 +627,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     SET modified = ?,
                                      demand_price = ?, demand_units = ?, demand_level = ?,
                                      supply_price = ?, supply_units = ?, supply_level = ?,
-                                     from_live = 0
+                                     from_live = ?
                                     WHERE station_id = ? AND item_id = ?""",
-                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level,
+                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level, from_live,
                                      station_id, item_id))
                         except sqlite3.IntegrityError:
                             tdenv.DEBUG1("Error on update.")
@@ -642,10 +643,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 (station_id, item_id, modified,
                                  demand_price, demand_units, demand_level,
                                  supply_price, supply_units, supply_level, from_live)
-                                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, 0 )""",
+                                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )""",
                                 (station_id, item_id, modified,
                                  demand_price, demand_units, demand_level,
-                                 supply_price, supply_units, supply_level))
+                                 supply_price, supply_units, supply_level, from_live))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
             if self.getOption("progbar"):
