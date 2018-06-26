@@ -606,10 +606,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_price = int(listing['buy_price'])
                 supply_units = int(listing['supply'])
                 supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
+                from_live = 0 if listings_file == LISTINGS else 1
                 
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
-                    from_live = 0 if listings_file == LISTINGS else 1
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     # When the dump file data matches the database, update to make from_live == 0.
                     if int(listing['collected_at']) == updated and listings_file == LISTINGS:
