@@ -829,7 +829,7 @@ class TradeCalc(object):
 
         # Penalty is expressed as percentage, reduce it to a multiplier
         if tdenv.lsPenalty:
-            lsPenalty = tdenv.lsPenalty / 100
+            lsPenalty = min(tdenv.lsPenalty / 100, 1)
         else:
             lsPenalty = 0
 
