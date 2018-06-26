@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.6
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 #  You are free to use, redistribute, or even print and eat a copy of
