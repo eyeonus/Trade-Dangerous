@@ -606,7 +606,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_price = int(listing['buy_price'])
                 supply_units = int(listing['supply'])
                 supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
-                from_live = 0 if listings_file == LISTINGS else 1
+                #from_live = 0 if listings_file == LISTINGS else 1
+                from_live = 0
                 
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
