@@ -1,7 +1,7 @@
 
 ----------
 
-TradeDangerous
+TradeDangerous  
 Copyright (C) Oliver "kfsone" Smith, July 2014  
 Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017  
 Copyright (C) Jonathan 'Eyeonus' Jones 2018
