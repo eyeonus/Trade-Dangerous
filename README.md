@@ -2,8 +2,8 @@
 ----------
 
 TradeDangerous
-Copyright (C) Oliver "kfsone" Smith, July 2014
-Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
+Copyright (C) Oliver "kfsone" Smith, July 2014  
+Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017  
 Copyright (C) Jonathan 'Eyeonus' Jones 2018
 
 REQUIRES PYTHON 3.4 OR HIGHER.
