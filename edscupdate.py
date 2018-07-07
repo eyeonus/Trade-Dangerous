@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python3.6
 
 """
 This tool looks for changes in the EDSC service since the most
