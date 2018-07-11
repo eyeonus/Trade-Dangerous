@@ -97,7 +97,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     result = cur.execute(sql_cmd)
                 success = True
             except sqlite3.OperationalError as e:
-                if str(e) != "database is locked":
+                if "locked" not in str(e):
                     success = True
                     raise sqlite3.OperationalError(e)
                 else:
