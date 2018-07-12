@@ -212,6 +212,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         for ship in iter(ships):
             ship_id = ships[ship]['eddbID']
             name = ships[ship]['properties']['name']
+            # Temporary code until EDDB adds these two ships.
+            if name == "Alliance Challenger":
+                ship_id = 34
+            # Currently name is "Krait MkII", but I expect it will be fixed at some point to match the other "Mk." ships.
+            if "Krait" in name:
+                ship_id = 35
+                name = "Krait Mk. II"
             cost = ships[ship]['retailCost']
             fdev_id = ships[ship]['edID']
             #Change the names to match how they appear in Stations.jsonl
@@ -418,6 +425,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
                             ship = ship.replace(' MK ', ' Mk ').replace(' Mk ', ' Mk. ')
+                            # Temporary code until EDDB adds the Krait Mk. II.
+                            if "Krait" in ship or "krait" in ship:
+                                ship = "Krait Mk. II"
                             tdenv.DEBUG2("ship_id:{},station_id:{},modified:{}",
                                  ship,
                                  station_id,
