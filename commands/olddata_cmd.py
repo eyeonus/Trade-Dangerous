@@ -42,6 +42,7 @@ switches = [
             type=float,
             dest='minAge',
     ),
+    PadSizeArgument(),
 ]
 
 ######################################################################
@@ -138,6 +139,8 @@ def run(results, cmdenv, tdb):
 
     cmdenv.DEBUG1(stmt)
 
+    padSize = cmdenv.padSize
+
     for (stnID, age, ls, dist2) in tdb.query(stmt):
         cmdenv.DEBUG2("{}:{}:{}", stnID, age, ls)
         row = ResultRow()
@@ -148,7 +151,8 @@ def run(results, cmdenv, tdb):
         else:
             row.ls = "?"
         row.dist = dist2 ** 0.5
-        results.rows.append(row)
+        if not padSize or row.station.checkPadSize(padSize):
+            results.rows.append(row)
 
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
