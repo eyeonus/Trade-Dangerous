@@ -308,6 +308,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
             if self.getOption("progbar"):
+                while prog.value < prog.maxValue:
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
@@ -467,6 +469,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                          modified))
                         self.updated['UpgradeVendor'] = True
             if self.getOption("progbar"):
+                while prog.value < prog.maxValue:
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 prog.clear()
 
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
@@ -661,6 +665,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
             if self.getOption("progbar"):
+                while prog.value < prog.maxValue:
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 prog.clear()
         
         self.updated['Listings'] = True
