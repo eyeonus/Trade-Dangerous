@@ -88,7 +88,7 @@ class PluginBase(object):
         except AttributeError:
             return text + "This plugin does not support any options.\n"
 
-        tw.subsequent_indent=' ' * 16,
+        tw.subsequent_indent=' ' * 24
         text += "Options supported by this plugin:\n"
         for opt in sorted(options.keys()):
             text += "--opt={:<12}  ".format(opt)
