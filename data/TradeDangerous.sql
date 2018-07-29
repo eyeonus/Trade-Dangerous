@@ -25,6 +25,8 @@
 -- -Oliver
 
 PRAGMA foreign_keys=ON;
+PRAGMA synchronous=OFF;
+PRAGMA temp_store=MEMORY;
 
 BEGIN TRANSACTION;
 
