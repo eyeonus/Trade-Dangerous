@@ -120,7 +120,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     url = BASE_URL + urlTail
                     response = request.urlopen(url)
                 except:
-                    # If Tromador's mirror fails for whatever reason,
+                    # If Tromador's server fails for whatever reason,
                     # fallback to download direct from EDDB.io
                     self.options["fallback"] = True
             if self.getOption('fallback'):
@@ -215,6 +215,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             cost = ships[ship]['retailCost']
             fdev_id = ships[ship]['edID']
             #Change the names to match how they appear in Stations.jsonl
+            #Krait may (or may not) be temporary. EDDB and Coriolis may one day agree
+            #as it has no '.' it is a special case, fix it first.
+            if name == "Krait Mk II":
+                name = "Krait MkII"
             name = name.replace('Mk ', 'Mk. ')
             if name == "Eagle":
                 name = "Eagle Mk. II"
@@ -420,6 +424,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
                             ship = ship.replace(' MK ', ' Mk ').replace(' Mk ', ' Mk. ')
+       
                             tdenv.DEBUG2("ship_id:{},station_id:{},modified:{}",
                                  ship,
                                  station_id,
