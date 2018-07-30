@@ -431,7 +431,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         self.execute("DELETE FROM ShipVendor WHERE station_id = ?", (station_id,))
                         tdenv.DEBUG1("{}/{} has shipyard, updating ships sold.", system, name)
                         for ship in station['selling_ships']:
-                            # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
+                            # Make sure all the 'Mark N' ship names abbreviate 'Mark' as '<Name> Mk. <Number>'.
                             # Fix capitalization.
                             ship = ship.replace('MK', 'Mk').replace('mk','Mk').replace('mK','Mk')
                             # Fix no '.' in abbreviation.
