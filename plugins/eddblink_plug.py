@@ -214,14 +214,27 @@ class ImportPlugin(plugins.ImportPluginBase):
             name = ships[ship]['properties']['name']
             cost = ships[ship]['retailCost']
             fdev_id = ships[ship]['edID']
+            
             #Change the names to match how they appear in Stations.jsonl
-            name = name.replace('Mk ', 'Mk. ')
             if name == "Eagle":
                 name = "Eagle Mk. II"
             if name == "Sidewinder":
                 name = "Sidewinder Mk. I"
             if name == "Viper":
                 name = "Viper Mk. III"
+
+            # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
+            # Fix capitalization.
+            name = name.replace('MK', 'Mk').replace('mk','Mk').replace('mK','Mk')
+            # Fix no '.' in abbreviation.
+            if "Mk" in name and "Mk." not in name:
+                name = name.replace('Mk', 'Mk.')
+            # Fix no trailing space.
+            if "Mk." in name and "Mk. " not in name:
+                name = name.replace("Mk.", "Mk. ")
+            # Fix no leading space.
+            if " Mk." in name and " Mk." not in name:
+                name = name.replace("Mk.", " Mk.")
             
             tdenv.DEBUG1("Updating: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
             try:
@@ -419,7 +432,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                         tdenv.DEBUG1("{}/{} has shipyard, updating ships sold.", system, name)
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
-                            ship = ship.replace('MK', 'Mk').replace('Mk', 'Mk.')
+                            # Fix capitalization.
+                            ship = ship.replace('MK', 'Mk').replace('mk','Mk').replace('mK','Mk')
+                            # Fix no '.' in abbreviation.
+                            if "Mk" in ship and "Mk." not in ship:
+                                ship = ship.replace('Mk', 'Mk.')
                             # Fix no trailing space.
                             if "Mk." in ship and "Mk. " not in ship:
                                 ship = ship.replace("Mk.", "Mk. ")
