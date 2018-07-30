@@ -420,8 +420,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
                             ship = ship.replace('MK', 'Mk').replace('Mk', 'Mk.')
+                            # Fix no trailing space.
                             if "Mk." in ship and "Mk. " not in ship:
                                 ship = ship.replace("Mk.", "Mk. ")
+                            # Fix no leading space.
+                            if " Mk." in ship and " Mk." not in ship:
+                                ship = ship.replace("Mk.", " Mk.")
                             
                             tdenv.DEBUG2("ship_id:{},station_id:{},modified:{}",
                                  ship,
