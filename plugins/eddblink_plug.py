@@ -233,7 +233,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if "Mk." in name and "Mk. " not in name:
                 name = name.replace("Mk.", "Mk. ")
             # Fix no leading space.
-            if " Mk." in name and " Mk." not in name:
+            if "Mk." in name and " Mk." not in name:
                 name = name.replace("Mk.", " Mk.")
             
             tdenv.DEBUG1("Updating: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
@@ -441,7 +441,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                             if "Mk." in ship and "Mk. " not in ship:
                                 ship = ship.replace("Mk.", "Mk. ")
                             # Fix no leading space.
-                            if " Mk." in ship and " Mk." not in ship:
+                            if "Mk." in ship and " Mk." not in ship:
                                 ship = ship.replace("Mk.", " Mk.")
                             
                             tdenv.DEBUG2("ship_id:{},station_id:{},modified:{}",
