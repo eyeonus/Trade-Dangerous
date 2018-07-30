@@ -702,6 +702,8 @@ class TradeDB(object):
         self.tdenv.DEBUG1("Connecting to DB")
         conn = sqlite3.connect(self.dbFilename)
         conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute("PRAGMA synchronous=OFF")
+        conn.execute("PRAGMA temp_store=MEMORY")
         conn.create_function('dist2', 6, TradeDB.calculateDistance2)
         return conn
 
