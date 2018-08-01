@@ -55,7 +55,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
-        'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'"
+        'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
+        'solo':         "Don't download crowd-sourced market data. Supercedes '-O all', '-O clean', '-O listings'."
     }
 
     def __init__(self, tdb, tdenv):
@@ -806,6 +807,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
+        
+        if self.getOption("solo"):
+            self.options["listings"] = False
         
         # Download required files and update tables.
         if self.getOption("upgrade"):
