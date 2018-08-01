@@ -43,20 +43,20 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginOptions = {
         'item':         "Regenerate Categories and Items using latest commodities.json dump.",
         'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
-        'station':      "Regenerate Stations using latest stations.jsonl dump. (implies '-O system')",
+        'station':      "Regenerate Stations using latest stations.jsonl dump. (Implies '-O system')",
         'ship':         "Regenerate Ships using latest coriolis.io json dump.",
-        'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (implies '-O system,station,ship')",
+        'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (Implies '-O system,station,ship')",
         'upgrade':      "Regenerate Upgrades using latest modules.json dump.",
-        'upvend':       "Regenerate UpgradeVendors using latest stations.jsonl dump. (implies '-O system,station,upgrade')",
-        'listings':     "Update market data using latest listings.csv dump. (implies '-O item,system,station')",
+        'upvend':       "Regenerate UpgradeVendors using latest stations.jsonl dump. (Implies '-O system,station,upgrade')",
+        'listings':     "Update market data using latest listings.csv dump. (Implies '-O item,system,station')",
         'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
         'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
-        'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. Supercedes '-O all', '-O clean'.",
+        'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. (Supercedes '-O all', '-O clean'.)",
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
         'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
-        'solo':         "Don't download crowd-sourced market data. Supercedes '-O all', '-O clean', '-O listings'."
+        'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)"
     }
 
     def __init__(self, tdb, tdenv):
@@ -804,12 +804,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upvend"] = True
             self.options["listings"] = True
 
+        if self.getOption("solo"):
+            self.options["listings"] = False
+            self.options["skipvend"] = True
+        
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-        
-        if self.getOption("solo"):
-            self.options["listings"] = False
         
         # Download required files and update tables.
         if self.getOption("upgrade"):
