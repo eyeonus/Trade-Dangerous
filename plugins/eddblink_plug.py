@@ -697,7 +697,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             pass
         
         # Run 'listings' by default:
-        # If no options, or if only 'force', 'skipvend', and/or 'fallback', 
+        # If no options, or if only 'progbar', 'force', 'skipvend', and/or 'fallback', 
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
