@@ -701,7 +701,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
+            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar')):
                 default = False
         if default:
             self.options["listings"] = True
@@ -765,7 +765,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 rib_path.rename(ri_path)
                         
             self.options["all"] = True
-            self.options['force'] = True
+            self.options["force"] = True
 
         tdenv.ignoreUnknown = True
         
