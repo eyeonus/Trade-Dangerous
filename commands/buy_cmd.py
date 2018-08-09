@@ -242,6 +242,8 @@ def run(results, cmdenv, tdb):
                   FROM StationItem AS si
                  WHERE si.item_id = ? AND si.supply_price > 0
             """, [first.ID]).fetchone()[0]
+            if not avgPrice:
+                avgPrice = 0
             results.summary.avg = int(avgPrice)
 
     # System-based search
