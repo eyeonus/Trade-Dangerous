@@ -499,6 +499,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
         tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
+            # EDDB still hasn't added these Salvage Commodities, so we'll add them ourselves.
+            if "Antique Jewellery" not in fh:
+                fh.replace("]",',{"id":1001,"name":"Antique Jewellery","category_id":16,"average_price":142465,"is_rare":0,"max_buy_price":null,"max_sell_price":null,"min_buy_price":null,"min_sell_price":null,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672159,"category":{"id":16,"name":"Salvage"}}]')
+            if "Gene Bank" not in fh:
+                fh.replace("]",',{"id"1002,"name":"Gene Bank","category_id":16,"average_price":11100,"is_rare":0,"max_buy_price":null,"max_sell_price":null,"min_buy_price":null,"min_sell_price":null,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672162,"category":{"id":16,"name":"Salvage"}}]')
+            if "Time Capsule" not in fh:
+                fh.replace("]",',{"id":1003,"name":"Time Capsule","category_id":16,"average_price":4187,"is_rare":0,"max_buy_price":null,"max_sell_price":null,"min_buy_price":null,"min_sell_price":null,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672163,"category":{"id":16,"name":"Salvage"}}]')
             commodities = json.load(fh)
 
         for commodity in iter(commodities):
