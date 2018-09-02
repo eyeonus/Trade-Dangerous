@@ -502,17 +502,17 @@ class ImportPlugin(plugins.ImportPluginBase):
             commodities = json.load(fh)
             # EDDB still hasn't added these Salvage Commodities, so we'll add them ourselves.
             if not any(c.get('name', None) == 'Antique Jewellery' for c in commodities):
-                commodities.append({"id":1001,"name":"Antique Jewellery","category_id":16,"average_price":142465,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672159,"category":{"id":16,"name":"Salvage"}})
+                commodities.append({"id":1001,"name":"Antique Jewellery","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672159,"category":{"id":16,"name":"Salvage"}})
             else:
                 self.execute("DELETE FROM Item WHERE item_id = 1001")
             
             if not any(c.get('name', None) == 'Gene Bank' for c in commodities):
-                commodities.append({"id":1002,"name":"Gene Bank","category_id":16,"average_price":11100,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672162,"category":{"id":16,"name":"Salvage"}})
+                commodities.append({"id":1002,"name":"Gene Bank","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672162,"category":{"id":16,"name":"Salvage"}})
             else:
                 self.execute("DELETE FROM Item WHERE item_id = 1002")
             
             if not any(c.get('name', None) == 'Time Capsule' for c in commodities):
-                commodities.append({"id":1003,"name":"Time Capsule","category_id":16,"average_price":4187,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672163,"category":{"id":16,"name":"Salvage"}})
+                commodities.append({"id":1003,"name":"Time Capsule","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672163,"category":{"id":16,"name":"Salvage"}})
             else:
                 self.execute("DELETE FROM Item WHERE item_id = 1003")
 
