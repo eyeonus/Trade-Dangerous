@@ -519,28 +519,30 @@ class ImportPlugin(plugins.ImportPluginBase):
         for commodity in iter(commodities):
             # Get the categories from the json and place them into the Category table.
             category_id = commodity['category']['id']
-            name = commodity['category']['name']
+            category_name = commodity['category']['name']
             
-            tdenv.DEBUG1("Updating: {}, {}", category_id, name)
+            tdenv.DEBUG1("Updating: {}, {}", category_id, category_name)
             try:
                 self.execute("""INSERT INTO Category
                             ( category_id, name ) VALUES
                             ( ?, ? ) """,
-                            (category_id, name))
+                            (category_id, category_name))
             except sqlite3.IntegrityError:
                 try:
                     self.execute("""UPDATE Category
                                 SET name = ?
                                 WHERE category_id = ?""", 
-                                (name, category_id))
+                                (category_name, category_id))
 
                 except sqlite3.IntegrityError:
-                    tdenv.DEBUG0("Unable to insert or update: {}, {}", category_id, name)
+                    tdenv.DEBUG0("Unable to insert or update: {}, {}", category_id, category_name)
             
             # Only put regular items here, rare items can't be dealt with.
             if not commodity['is_rare']:
                 item_id = commodity['id']
                 name = commodity['name']
+                if name == 'Salvageable Wreckage':
+                    name = 'Wreckage Components'
                 category_id = commodity['category_id']
                 avg_price = commodity['average_price']
                 fdev_id = commodity['ed_id']
