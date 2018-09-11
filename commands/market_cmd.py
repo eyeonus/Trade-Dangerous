@@ -129,7 +129,7 @@ def render(results, cmdenv, tdb):
     if showCategories:
         rowFmt.prefix = '    '
 
-    sellPred = lambda row: row.sellCr != 0 and row.demand != '-'
+    sellPred = lambda row: row.sellCr != 0 and row.supply != '-'
     buyPred = lambda row: row.buyCr != 0 and row.demand != '-'
 
     rowFmt.addColumn('Item', '<', longestLen,
@@ -159,8 +159,7 @@ def render(results, cmdenv, tdb):
             pred=sellPred)
     if cmdenv.detail:
         rowFmt.addColumn('Age/Days', '>', 7, '.2f',
-        key=lambda row: row.age,
-        pred=buyPred)
+        key=lambda row: row.age)
 
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
