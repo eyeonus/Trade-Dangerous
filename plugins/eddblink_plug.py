@@ -630,12 +630,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         progress = 0
         total = 1
+        if listings_file == LISTINGS:
+            from_live = 0
+        else:
+            from_live = 1
+        
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
                 if not b: break
                 yield b
-
+        
         with open(str(self.dataPath / listings_file), "r",encoding = "utf-8",errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
@@ -643,6 +648,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.getOption("progbar"):
                 prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
+            
+            cur_station = -1
+            station_items = dict()
+            
             for listing in listings:
                 if self.getOption("progbar"):
                     prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
@@ -658,8 +667,21 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_price = int(listing['buy_price'])
                 supply_units = int(listing['supply'])
                 supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
-                #from_live = 0 if listings_file == LISTINGS else 1
-                from_live = 0
+                
+                if station_id != cur_station:
+                    self.execute("BEGIN IMMEDIATE")
+                    for item in station_items:
+                        if not item:
+                            self.execute("DELETE from StationItem WHERE station_id = ? and item_id = ?", (station_id, item))
+                    del station_items, cur_station, item
+                    cur_station = station_id
+                    station_items = dict()
+                    cursor = self.execute("SELECT item_id from StationItem WHERE station_id = ?", (station_id,))
+                    for item in cursor:
+                        station_items(item) = False
+                    del cursor, item
+                
+                station_items(item_id) = True
                 
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
@@ -707,6 +729,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 prog.clear()
         
+        del from_live
         self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
@@ -740,6 +763,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
         except sqlite3.OperationalError:
             pass
+        except sqlite3.DatabaseError as e:
+            self.options['clean'] = True
+            tdenv.NOTE("Cleaning database: ",str(e))
         
         if self.getOption("clean"):
             # Rebuild the tables from scratch. Must be done on first run of plugin.
