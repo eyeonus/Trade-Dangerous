@@ -448,6 +448,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'eddn': 'Post market, shipyard and outfitting to EDDN.',
         'name': 'Do not obfuscate commander name for EDDN submit.',
         'save': 'Save the API response (tmp/profile.YYYYMMDD_HHMMSS.json).',
+        'tdh': 'Save the API response for TDH (tmp/tdh_profile.json).',
         'test': 'Test the plugin with a json file (test=[FILENAME]).',
         'warn': 'Ask for station update if a API<->DB diff is encountered.',
         'login': 'Ask for login credentials.',
@@ -736,9 +737,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
         self.edAPI = api
 
+        if self.getOption("tdh"):
+            self.options["save"] = True
         # save profile if requested
         if self.getOption("save"):
-            saveName = 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
+            saveName = 'tmp/tdh_profile.json' if self.getOption("tdh") else 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
             with open(saveName, 'w', encoding="utf-8") as saveFile:
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
