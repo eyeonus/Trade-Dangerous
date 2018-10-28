@@ -160,7 +160,7 @@ def render(results, cmdenv, tdb):
 
     rowFmt = RowFormat()
     if cmdenv.detail:
-        rowFmt.addColumn("Action", '<', 6, key=lambda row: row.action)
+        rowFmt.addColumn("Action", '<', 6, post=":", key=lambda row: row.action)
     rowFmt.addColumn("System", '<', longestNameLen,
             key=lambda row: row.system.name())
     rowFmt.addColumn("JumpLy", '>', '7', '.2f',
