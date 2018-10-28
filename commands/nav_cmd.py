@@ -178,8 +178,8 @@ def render(results, cmdenv, tdb):
     showStations = cmdenv.stations
     if showStations:
         stnRowFmt = RowFormat(prefix='  /  ').append(
-                ColumnFormat("Station", '<', 32,
-                    key=lambda row: row.station.str())
+                ColumnFormat("Station", '<', 38,
+                    key=lambda row: row.station.dbname)
         ).append(
                 ColumnFormat("StnLs", '>', '10',
                     key=lambda row: row.station.distFromStar())
