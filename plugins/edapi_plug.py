@@ -23,6 +23,7 @@ import time
 import mapping
 import transfers
 from collections import namedtuple
+from asyncio.tasks import sleep
 
 
 __version_info__ = ('4', '3', '2')
@@ -737,11 +738,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
         self.edAPI = api
 
+        tdh_path = pathlib.Path('tmp/tdh_profile.json')
         if self.getOption("tdh"):
             self.options["save"] = True
+            if tdh_path.exists():
+                tdh_path.unlink()
         # save profile if requested
         if self.getOption("save"):
-            saveName = 'tmp/tdh_profile.json' if self.getOption("tdh") else 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
+            saveName = tdh_path if self.getOption("tdh") else 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
             with open(saveName, 'w', encoding="utf-8") as saveFile:
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
@@ -750,6 +754,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                     saveFile.write(api.text)
                 print('API response saved to: {}'.format(saveName))
 
+        # If TDH is calling the plugin, nothing else needs to be done
+        # now that the file has been created.
+        if self.getOption("tdh"):
+            return False
+        
         # Sanity check that the commander is docked. Otherwise we will get a
         # mismatch between the last system and last station.
         if not api.profile['commander']['docked']:
