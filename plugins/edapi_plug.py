@@ -23,7 +23,6 @@ import time
 import mapping
 import transfers
 from collections import namedtuple
-from asyncio.tasks import sleep
 
 
 __version_info__ = ('4', '3', '2')
@@ -743,6 +742,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["save"] = True
             if tdh_path.exists():
                 tdh_path.unlink()
+        
         # save profile if requested
         if self.getOption("save"):
             saveName = tdh_path if self.getOption("tdh") else 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
