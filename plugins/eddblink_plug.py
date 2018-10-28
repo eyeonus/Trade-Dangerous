@@ -669,19 +669,18 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
                 
                 if station_id != cur_station:
-                    self.execute("BEGIN IMMEDIATE")
                     for item in station_items:
                         if not item:
                             self.execute("DELETE from StationItem WHERE station_id = ? and item_id = ?", (station_id, item))
-                    del station_items, cur_station, item
+                    del station_items, cur_station
                     cur_station = station_id
                     station_items = dict()
                     cursor = self.execute("SELECT item_id from StationItem WHERE station_id = ?", (station_id,))
                     for item in cursor:
-                        station_items(item) = False
-                    del cursor, item
+                        station_items[item] = False
+                    del cursor
                 
-                station_items(item_id) = True
+                station_items[item_id] = True
                 
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
