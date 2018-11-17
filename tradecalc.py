@@ -445,7 +445,7 @@ class Route(object):
                 hops=len(hops),
                 jumps=numJumps,
                 gain=ttlGainCr,
-                hopgain=ttlGainCr / len(hops),
+                hopgain=ttlGainCr // len(hops),
                 final=credits + ttlGainCr
             )
         )
