@@ -132,3 +132,6 @@ class ImportPlugin(ImportPluginBase):
         # Split into a path list, verify all paths are good.
         self.set_environment(self.sanitize_files(file_list))
         return True
+
+    def finish(self):
+        return True
