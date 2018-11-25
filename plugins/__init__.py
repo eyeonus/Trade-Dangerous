@@ -136,7 +136,8 @@ class PluginBase(object):
         Returning True will allow the sub-command to finish its
         normal workflow after you return.
         """
-        raise Exception("Plugin did not implement finish()")
+        raise Warning("Plugin did not implement finish()")
+        return True
 
 
 class ImportPluginBase(PluginBase):
@@ -220,7 +221,8 @@ class ImportPluginBase(PluginBase):
             try to import the .prices data,
             False or None to early out after your return.
         """
-        raise PluginException("Not implemented")
+        self.tdenv.WARN("Plugin did not implement finish()")
+        return True
 
 
 def load(pluginName, typeName):
