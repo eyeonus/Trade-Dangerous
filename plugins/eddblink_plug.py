@@ -56,7 +56,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
         'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
-        'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)"
+        'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
+        'nolive':       "Don't import the listings_live.csv (for server use only)."
     }
 
     def __init__(self, tdb, tdenv):
@@ -630,13 +631,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         progress = 0
         total = 1
-        from_live = 0
-        """
-        if listings_file == LISTINGS:
-            from_live = 0
-        else:
-            from_live = 1
-        """
         
         def blocks(f, size = 65536):
             while True:
@@ -706,7 +700,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                      supply_price = ?, supply_units = ?, supply_level = ?,
                                      from_live = ?
                                     WHERE station_id = ? AND item_id = ?""",
-                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level, from_live,
+                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level, 0,
                                      station_id, item_id))
                         except sqlite3.IntegrityError:
                             tdenv.DEBUG1("Error on update.")
@@ -723,7 +717,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )""",
                                 (station_id, item_id, modified,
                                  demand_price, demand_units, demand_level,
-                                 supply_price, supply_units, supply_level, from_live))
+                                 supply_price, supply_units, supply_level, 0))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
             if self.getOption("progbar"):
@@ -731,7 +725,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                     prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 prog.clear()
         
-        del from_live
         self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
@@ -899,7 +892,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("listings"):
             if self.downloadFile(LISTINGS, self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
-            if self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force"):
+            if not self.getOption('nolive') and (self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force")):
                 self.importListings(self.liveListingsPath)
 
         success = False
