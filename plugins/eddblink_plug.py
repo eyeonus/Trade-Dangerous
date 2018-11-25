@@ -57,7 +57,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
         'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
-        'nolive':       "Don't import the listings_live.csv (for server use only)."
+        'nolive':       "For server use only."
     }
 
     def __init__(self, tdb, tdenv):
