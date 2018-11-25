@@ -56,8 +56,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
         'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
-        'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
-        'nolive':       "For server use only."
+        'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)"
     }
 
     def __init__(self, tdb, tdenv):
@@ -745,7 +744,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar') or (option == 'nolive')):
+            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar')):
                 default = False
         if default:
             self.options["listings"] = True
@@ -895,7 +894,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("listings"):
             if self.downloadFile(LISTINGS, self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
-            if not self.getOption('nolive') and (self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force")):
+            if self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
 
         success = False
