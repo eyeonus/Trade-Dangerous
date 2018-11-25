@@ -630,13 +630,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         progress = 0
         total = 1
-        from_live = 0
-        """
         if listings_file == LISTINGS:
             from_live = 0
         else:
             from_live = 1
-        """
         
         def blocks(f, size = 65536):
             while True:
