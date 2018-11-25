@@ -632,6 +632,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         progress = 0
         total = 1
         
+        from_live = 0 if listings_file == self.listingsPath else 1
+        
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
@@ -683,7 +685,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     # When the dump file data matches the database, update to make from_live == 0.
-                    if int(listing['collected_at']) == updated and listings_file == LISTINGS:
+                    if int(listing['collected_at']) == updated and not from_live:
                         self.execute("""UPDATE StationItem
                                     SET from_live = 0
                                     WHERE station_id = ? AND item_id = ?""",
@@ -700,7 +702,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                      supply_price = ?, supply_units = ?, supply_level = ?,
                                      from_live = ?
                                     WHERE station_id = ? AND item_id = ?""",
-                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level, 0,
+                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level, from_live,
                                      station_id, item_id))
                         except sqlite3.IntegrityError:
                             tdenv.DEBUG1("Error on update.")
@@ -717,7 +719,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )""",
                                 (station_id, item_id, modified,
                                  demand_price, demand_units, demand_level,
-                                 supply_price, supply_units, supply_level, 0))
+                                 supply_price, supply_units, supply_level, from_live))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
             if self.getOption("progbar"):
@@ -725,6 +727,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 prog.clear()
         
+        del from_live
         self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
@@ -742,7 +745,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar')):
+            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar') or (option == 'nolive')):
                 default = False
         if default:
             self.options["listings"] = True
