@@ -5,28 +5,28 @@
 
 import cache
 import csvexport
-from datetime import datetime, timezone
-import getpass
 import hashlib
 import json
-import os
 import pathlib
 import plugins
-import pickle
 import random
 import requests
-from requests.utils import dict_from_cookiejar
-from requests.utils import cookiejar_from_dict
-import sys
-import textwrap
 import time
 import mapping
-import transfers
+import base64
+import secrets
+import webbrowser
+import configparser
+
+from datetime import datetime, timezone
 from collections import namedtuple
+from http import HTTPStatus
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlsplit, parse_qs
 
 
-__version_info__ = ('4', '3', '2')
-__version__ = '.'.join(__version_info__)
+__version_info__ = (5, 0, 2)
+__version__ = '.'.join(map(str, __version_info__))
 
 # ----------------------------------------------------------------
 # Deal with some differences in names between TD, ED and the API.
@@ -40,22 +40,51 @@ cat_ignore = [
 ]
 
 
+class OAuthCallbackHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        split_url = urlsplit(self.path)
+        if split_url.path == "/callback":
+            parsed_url = parse_qs(split_url.query)
+            self.server.callback_code = parsed_url.get("code", [None])[0]
+            self.server.callback_state = parsed_url.get("state", [None])[0]
+            self.send_response(HTTPStatus.OK)
+            body_text = b"<p>You can close me now.</p>"
+        else:
+            self.send_response(HTTPStatus.NOT_IMPLEMENTED)
+            body_text = b"<p>Something went wrong.</p>"
+        self.end_headers()
+        self.wfile.write(b"<html><head><title>EDAPI Frontier Login</title></head>")
+        self.wfile.write(b"<body><h1>AUTHENTICATION</h1>")
+        self.wfile.write(body_text)
+        self.wfile.write(b"</body></html>")
+    def log_message(self, format, *args):
+        pass
+
+
+class OAuthCallbackServer(object):
+    def __init__(self, hostname, port, handler):
+        myServer = HTTPServer
+        myServer.callback_code = None
+        myServer.callback_state = None
+        self.httpd = myServer((hostname, port), handler)
+        self.httpd.handle_request()
+        self.httpd.server_close()
+
+
 class EDAPI:
     '''
     A class that handles the Frontier ED API.
     '''
 
-    _agent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 8_1 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Mobile/12B411'  # NOQA
-    _baseurl = 'https://companion.orerve.net/'
+    _agent = "EDCD-TradeDangerousPluginEDAPI-%s" % __version__
     _basename = 'edapi'
-    _cookiefile = _basename + '.cookies'
-    _envfile = _basename + '.vars'
+    _configfile = _basename + '.config'
 
     def __init__(
         self,
         basename='edapi',
         debug=False,
-        cookiefile=None,
+        configfile=None,
         json_file=None,
         login=False
     ):
@@ -65,15 +94,10 @@ class EDAPI:
 
         # Build common file names from basename.
         self._basename = basename
-        if cookiefile:
-            self._cookiefile = cookiefile
-        else:
-            self._cookiefile = self._basename + '.cookies'
-
-        self._envfile = self._basename + '.vars'
+        if configfile:
+            self._configfile = configfile
 
         self.debug = debug
-
         self.login = login
 
         # If json_file was given, just load that instead.
@@ -82,63 +106,41 @@ class EDAPI:
                 self.profile = json.load(file)
                 return
 
-        # if self.debug:
-        #     import http.client
-        #     http.client.HTTPConnection.debuglevel = 3
-
-        # Setup the HTTP session.
+        # Setup the session.
         self.opener = requests.Session()
 
-        self.opener.headers = {
-            'User-Agent': self._agent
-        }
+        # Setup config
+        self.config = configparser.ConfigParser()
+        self.config.read_dict({
+            "frontier": {
+                "AUTH_URL": "https://auth.frontierstore.net",
+                "AUTH_URL_AUTH": "https://auth.frontierstore.net/auth",
+                "AUTH_URL_TOKEN": "https://auth.frontierstore.net/token",
+            },
+            "companion": {
+                "CAPI_LIVE_URL": "https://companion.orerve.net",
+                "CAPI_BETA_URL": "https://pts-companion.orerve.net",
+                "CLIENT_ID": "0d60c9fe-1ae3-4849-91e9-250db5de9d79",
+                "REDIRECT_URI": "http://127.2.0.1:2989/callback",
+            },
+            "authorization": {}
+        })
+        self._authorization_set_config({})
+        self.config.read(self._configfile)
 
-        # Read/create the cookie jar.
-        if os.path.exists(self._cookiefile):
-            try:
-                with open(self._cookiefile, 'rb') as h:
-                    self.opener.cookies = cookiejar_from_dict(pickle.load(h))
-            except:
-                print('Unable to read cookie file.')
-
-        else:
-            with open(self._cookiefile, 'wb') as h:
-                pickle.dump(dict_from_cookiejar(self.opener.cookies), h)
-
-        # If force login, kill the user cookie, but keep the machine token
-        # intact.
+        # If force login, kill the authorization
         if self.login:
-            self.opener.cookies.pop('CompanionApp', None)
-
-        def getData(dataUrl):
-            response = self._getURI(dataUrl)
-            try:
-                data = response.json()
-                self.text.append(response.text)
-            except:
-                if self.debug:
-                    print('   URL:', response.url)
-                    print('status:', response.status_code)
-                    print('  text:', response.text)
-                    txtDebug = ""
-                else:
-                    txtDebug = "\nTry with --debug and report this."
-                sys.exit(
-                    "Unable to parse JSON response for /{}!"
-                    "\nTry to relogin with the 'login' option."
-                    "{}".format(dataUrl, txtDebug)
-                )
-            return data
+            self._authorization_set_config({})
 
         # Grab the commander profile
         self.text = []
-        self.profile = getData("profile")
+        self.profile = self.query_capi("/profile")
 
         # Grab the market, outfitting and shipyard data if needed
         portServices = self.profile['lastStarport'].get('services')
         if self.profile['commander']['docked'] and portServices:
             if portServices.get('commodities'):
-                res = getData("market")
+                res = self.query_capi("/market")
                 if int(res["id"]) == int(self.profile["lastStarport"]["id"]):
                     self.profile["lastStarport"].update(res)
             hasShipyard = portServices.get('shipyard')
@@ -146,7 +148,7 @@ class EDAPI:
                 # the ships for the shipyard are not always returned the first time
                 for attempt in range(3):
                     # try up to 3 times
-                    res = getData("shipyard")
+                    res = self.query_capi("/shipyard")
                     if not hasShipyard or res.get('ships'):
                         break
                     if self.debug:
@@ -155,115 +157,113 @@ class EDAPI:
                 if int(res["id"]) == int(self.profile["lastStarport"]["id"]):
                     self.profile["lastStarport"].update(res)
 
-    def _getBasicURI(self, uri, values=None):
-        '''
-        Perform a GET/POST to a URI
-        '''
-
-        # POST if data is present, otherwise GET.
-        if values is None:
+    def query_capi(self, capi_endpoint):
+        self._authorization_check()
+        response = self.opener.get(self.config["companion"]["CAPI_LIVE_URL"] + capi_endpoint)
+        try:
+            data = response.json()
+            self.text.append(response.text)
+        except:
             if self.debug:
-                print('GET on: ', self._baseurl+uri)
-                print(dict_from_cookiejar(self.opener.cookies))
-            response = self.opener.get(self._baseurl+uri)
-        else:
-            if self.debug:
-                print('POST on: ', self._baseurl+uri)
-                print(dict_from_cookiejar(self.opener.cookies))
-            response = self.opener.post(self._baseurl+uri, data=values)
+                print('   URL:', response.url)
+                print('status:', response.status_code)
+                print('  text:', response.text)
+                txtDebug = ""
+            else:
+                txtDebug = "\nTry with --debug and report this."
+            raise plugins.PluginException(
+                "Unable to parse JSON response for {}!"
+                "\nTry to relogin with the 'login' option."
+                "{}".format(capi_endpoint, txtDebug)
+            )
+        return data
 
+    def _authorization_check(self):
+        status_ok = True
+        expires_at = self.config.getint("authorization", "expires_at")
         if self.debug:
-            print('Final URL:', response.url)
-            print(dict_from_cookiejar(self.opener.cookies))
+            print("auth expires_at", time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(expires_at)))
+        if (expires_at - time.time()) < 60:
+            if self.debug:
+                print("authorization expired")
+            status_ok = False
+            if self.config["authorization"]["refresh_token"]:
+                status_ok = self._authorization_refresh()
+            if not status_ok:
+                status_ok = self._authorization_login()
+            with open(self._configfile, "w") as c:
+                self.config.write(c)
 
-        # Save the cookies.
-        with open(self._cookiefile, 'wb') as h:
-            pickle.dump(dict_from_cookiejar(self.opener.cookies), h)
+        if not status_ok:
+            # Something terrible happend
+            raise plugins.PluginException("Couldn't get frontier authorization.")
 
-        # Return the response object.
-        return response
+        # Setup session authorization
+        self.opener.headers = {
+            'User-Agent': self._agent,
+            'Authorization': "%s %s" % (
+                self.config['authorization']['token_type'],
+                self.config['authorization']['access_token'],
+            ),
+        }
 
-    def _getURI(self, uri, values=None):
-        '''
-        Perform a GET/POST and try to login if needed.
-        '''
+    def _authorization_set_config(self, auth_data):
+        self.config.set("authorization", "access_token", auth_data.get("access_token", ""))
+        self.config.set("authorization", "token_type", auth_data.get("token_type", ""))
+        self.config.set("authorization", "expires_at", str(auth_data.get("expires_at", 0)))
+        self.config.set("authorization", "refresh_token", auth_data.get("refresh_token", ""))
 
-        # Try the URI. If our credentials are no good, try to
-        # login then ask again.
-        response = self._getBasicURI(uri, values=values)
+    def _authorization_token(self, data):
+        expires_at = int(time.time())
+        res = requests.post(self.config["frontier"]["AUTH_URL_TOKEN"], data=data)
+        if self.debug:
+            print(res, res.url)
+            print(res.text)
+        if res.status_code == requests.codes.ok:
+            auth_data = res.json()
+            auth_data['expires_at'] = expires_at + int(auth_data.get('expires_in', 0))
+            self._authorization_set_config(auth_data)
+            return True
+        self._authorization_set_config({})
+        return False
 
-        if 'Password' in str(response.text):
-            self._doLogin()
-            response = self._getBasicURI(uri, values=values)
+    def _authorization_refresh(self):
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": self.config["authorization"]["refresh_token"],
+            "client_id": self.config["companion"]["CLIENT_ID"],
+        }
+        return self._authorization_token(data)
 
-        if 'Password' in str(response.text):
-            sys.exit(textwrap.fill(textwrap.dedent("""\
-                Something went terribly wrong. The login credentials
-                appear correct, but we are being denied access. Sometimes the
-                API is slow to update, so if you are authenticating for the
-                first time, wait a minute or so and try again. If this
-                persists try deleting your cookies file and starting over.
-                """)))
+    def _authorization_login(self):
+        session_state = secrets.token_urlsafe(36)
+        code_verifier = secrets.token_urlsafe(36)
+        code_digest = hashlib.sha256(code_verifier.encode()).digest()
+        code_challenge = base64.urlsafe_b64encode(code_digest).decode().rstrip("=")
+        data = {
+            'response_type': 'code',
+            'redirect_uri': self.config["companion"]["REDIRECT_URI"],
+            'client_id': self.config["companion"]["CLIENT_ID"],
+            'code_challenge': code_challenge,
+            'code_challenge_method': 'S256',
+            'state': session_state,
+        }
+        req = requests.Request("GET", self.config["frontier"]["AUTH_URL_AUTH"], params=data)
+        pre = req.prepare()
+        webbrowser.open_new_tab(pre.url)
 
-        return response
-
-    def _doLogin(self):
-        '''
-        Go though the login process
-        '''
-        # First hit the login page to get our auth cookies set.
-        response = self._getBasicURI('')
-
-        # Our current cookies look okay? No need to login.
-        if str(response.url).endswith('/'):
-            return
-
-        # Perform the login POST.
-        print(textwrap.fill(textwrap.dedent("""\
-              You do not appear to have any valid login cookies set.
-              We will attempt to log you in with your Frontier
-              account, and cache your auth cookies for future use.
-              THIS WILL NOT STORE YOUR USER NAME AND PASSWORD.
-              """)))
-
-        print("\nYour auth cookies will be stored here:")
-
-        print("\n"+self._cookiefile+"\n")
-
-        print(textwrap.fill(textwrap.dedent("""\
-            It is advisable that you keep this file secret. It may
-            be possible to hijack your account with the information
-            it contains.
-            """)))
-
-        print(
-            "\nIf you are not comfortable with this, "
-            "DO NOT USE THIS TOOL."
-        )
-        print()
-
-        values = {}
-        values['email'] = input("User Name (email):")
-        values['password'] = getpass.getpass()
-        response = self._getBasicURI('user/login', values=values)
-
-        # If we end up being redirected back to login,
-        # the login failed.
-        if 'Password' in str(response.text):
-            sys.exit('Login failed.')
-
-        # Check to see if we need to do the auth token dance.
-        if str(response.url).endswith('user/confirm'):
-            print()
-            print("A verification code should have been sent to your "
-                  "email address.")
-            print("Please provide that code (case sensitive!)")
-            values = {}
-            values['code'] = input("Code:")
-            response = self._getBasicURI('user/confirm', values=values)
-
-        # The API is sometimes very slow to update sessions. Wait a bit...
-        time.sleep(2)
+        redirect_uri = urlsplit(self.config["companion"]["REDIRECT_URI"])
+        oauth = OAuthCallbackServer(redirect_uri.hostname, redirect_uri.port, OAuthCallbackHandler)
+        if oauth.httpd.callback_code and oauth.httpd.callback_state == session_state:
+            data = {
+                "grant_type": "authorization_code",
+                "code": oauth.httpd.callback_code,
+                "code_verifier": code_verifier,
+                "client_id": self.config["companion"]["CLIENT_ID"],
+                "redirect_uri": self.config["companion"]["REDIRECT_URI"],
+            }
+            return self._authorization_token(data)
+        return False
 
 
 class EDDN:
@@ -454,14 +454,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         'login': 'Ask for login credentials.',
     }
 
-    cookieFile = "edapi.cookies"
+    configFile = "edapi.config"
 
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
 
         self.filename = self.defaultImportFile
-        cookieFilePath = pathlib.Path(ImportPlugin.cookieFile)
-        self.cookiePath = tdb.dataPath / cookieFilePath
+        self.configPath = tdb.dataPath / pathlib.Path(ImportPlugin.configFile)
 
     def askForStationData(self, system, stnName=None, station=None):
         """
@@ -483,8 +482,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             else:
                 tdenv.NOTE("{:>12} NOT in API response", defName)
 
-        def getYNfromObject(obj, key):
-            return "Y" if key in obj else "N"
+        def getYNfromObject(obj, key, val=None):
+            if val:
+                return "Y" if obj.get(key) == val else "N"
+            else:
+                return "Y" if key in obj else "N"
 
         # defaults from API response are not reliable!
         checkStarport = self.edAPI.profile['lastStarport']
@@ -530,14 +532,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 stnplanetary  = "N"
             defStation = stnDefault(
                 lsFromStar = stnlsFromStar,
-                market = getYNfromObject(checkServices, 'commodities'),
-                blackMarket = getYNfromObject(checkServices, 'blackmarket'),
-                shipyard = getYNfromObject(checkServices, 'shipyard'),
+                market = getYNfromObject(checkServices, 'commodities', val='ok'),
+                blackMarket = getYNfromObject(checkServices, 'blackmarket', val='ok'),
+                shipyard = getYNfromObject(checkServices, 'shipyard', val='ok'),
                 maxPadSize = stnmaxPadSize,
-                outfitting = getYNfromObject(checkServices, 'outfitting'),
-                rearm = getYNfromObject(checkServices, 'rearm'),
-                refuel = getYNfromObject(checkServices, 'refuel'),
-                repair = getYNfromObject(checkServices, 'repair'),
+                outfitting = getYNfromObject(checkServices, 'outfitting', val='ok'),
+                rearm = getYNfromObject(checkServices, 'rearm', val='ok'),
+                refuel = getYNfromObject(checkServices, 'refuel', val='ok'),
+                repair = getYNfromObject(checkServices, 'repair', val='ok'),
                 planetary = stnplanetary,
             )
         elif station:
@@ -731,7 +733,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
         else:
             api = EDAPI(
-                cookiefile=str(self.cookiePath),
+                configfile=str(self.configPath),
                 login=self.getOption('login'),
                 debug=tdenv.debug,
             )
@@ -820,6 +822,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     eddn_ships.append(ship['name'])
 
         if self.getOption("csvs"):
+            addShipList = set()
+            delShipList = set()
             addRows = delRows = 0
             db = tdb.getDB()
             if station.shipyard == "N":
@@ -857,7 +861,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                            " VALUES(?, ?)"
                         )
                         tdenv.DEBUG0(shipSQL.replace("?", "{}"), station.ID, shipID)
-                        addRows += db.execute(shipSQL, [station.ID, shipID]).rowcount
+                        rc = db.execute(shipSQL, [station.ID, shipID]).rowcount
+                        if rc:
+                            addRows += rc
+                            addShipList.add(shipName)
+                        # remove ship from the list
+                        shipList.remove(shipName)
                     else:
                         # delete the ship from the shipyard
                         shipSQL = (
@@ -866,19 +875,25 @@ class ImportPlugin(plugins.ImportPluginBase):
                               " AND ship_id = ?"
                         )
                         tdenv.DEBUG0(shipSQL.replace("?", "{}"), station.ID, shipID)
-                        delRows += db.execute(shipSQL, [station.ID, shipID]).rowcount
+                        rc = db.execute(shipSQL, [station.ID, shipID]).rowcount
+                        if rc:
+                            delRows += rc
+                            delShipList.add(shipName)
+
+                if len(shipList):
+                    tdenv.WARN("unknown Ship(s): {}", ",".join(shipList))
 
             db.commit()
             if (addRows + delRows) > 0:
                 if addRows > 0:
                     tdenv.NOTE(
-                        "Added {} ships in '{}' shipyard.",
-                        addRows, station.name()
+                        "Added {} ({}) ships in '{}' shipyard.",
+                        addRows, ", ".join(sorted(addShipList)), station.name()
                     )
                 if delRows > 0:
                     tdenv.NOTE(
-                        "Deleted {} ships in '{}' shipyard.",
-                        delRows, station.name()
+                        "Deleted {} ({}) ships in '{}' shipyard.",
+                        delRows, ", ".join(sorted(delShipList)), station.name()
                     )
                 lines, csvPath = csvexport.exportTableToFile(
                     tdb,
