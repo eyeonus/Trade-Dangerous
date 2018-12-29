@@ -23,7 +23,7 @@ data/Station.csv
 data/System.csv
 data/Upgrade.csv
 data/UpgradeVendor.csv
-
+data/edapi.config
 *.prices
 *.suo
 *.pyperf
