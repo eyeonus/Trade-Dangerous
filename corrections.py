@@ -8,10 +8,10 @@ DELETED = -111
 
 systems = {
     "PANDAMONIUM": "PANDEMONIUM",
-    "ARGETLÁMH": "ARGETLAMH",
-    "LíFTHRUTI": "LIFTHRUTI",
-    "MANTóAC": "MANTOAC",
-    "NANTóAC": "NANTOAC",
+    "ARGETLÃ�MH": "ARGETLAMH",
+    "LÃ­FTHRUTI": "LIFTHRUTI",
+    "MANTÃ³AC": "MANTOAC",
+    "NANTÃ³AC": "NANTOAC",
 
 #ADD_SYSTEMS_HERE
 }
@@ -29,7 +29,9 @@ items = {
     'METHANOL MONOHYDRATE': 'Methanol Monohydrate Crystals',
     'GALACTIC TRAVEL GUIDE': DELETED,
     'OCCUPIED CRYOPOD': DELETED,
-    'Salvageable Wreckage': 'Wreckage Components',
+    'Salvageable Wreckage': 'Wreckage Components', 
+    'Political Prisoner': 'Political Prisoners',
+    'Hostage': 'Hostages',
 }
 
 def correctSystem(oldName):

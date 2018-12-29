@@ -547,8 +547,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             if not commodity['is_rare']:
                 item_id = commodity['id']
                 name = commodity['name']
-                if name == 'Salvageable Wreckage':
+                if name.lower() == 'salvageable wreckage':
                     name = 'Wreckage Components'
+                if name.lower() == 'political prisoner':
+                    name = 'Political Prisoners'
+                if name.lower() == 'hostage':
+                    name = 'Hostages'
+                if name.lower() == 'methanol monohydrate':
+                    name = 'Methanol Monohydrate Crystals'
                 category_id = commodity['category_id']
                 avg_price = commodity['average_price']
                 fdev_id = commodity['ed_id']
