@@ -18,6 +18,7 @@ from calendar import timegm
 from pathlib import Path
 from plugins import PluginException
 from importlib import reload
+from builtins import str
 
 # Constants
 
@@ -506,23 +507,55 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
             commodities = json.load(fh)
-            # EDDB still hasn't added these Salvage Commodities to the API,
-            # even though they are on the site with an ID# and everything,
+            # EDDB still hasn't added these Commodities to the API,
             # so we'll add them ourselves.
-            if not any(c.get('name', None) == 'Ancient Key' for c in commodities):
-                commodities.append({"id":332,"name":"Ancient Key","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":None,"category":{"id":16,"name":"Salvage"}})
-            if not any(c.get('name', None) == 'Antique Jewellery' for c in commodities):
-                commodities.append({"id":333,"name":"Antique Jewellery","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672159,"category":{"id":16,"name":"Salvage"}})
-            if not any(c.get('name', None) == 'Gene Bank' for c in commodities):
-                commodities.append({"id":334,"name":"Gene Bank","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672162,"category":{"id":16,"name":"Salvage"}})
-            if not any(c.get('name', None) == 'Time Capsule' for c in commodities):
-                commodities.append({"id":335,"name":"Time Capsule","category_id":16,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":128672163,"category":{"id":16,"name":"Salvage"}})
-            # Older versions used a temporary id#, so we need to make sure to delete those.
-            self.execute("DELETE FROM Item WHERE item_id = 1001")
-            self.execute("DELETE FROM Item WHERE item_id = 1002")
-            self.execute("DELETE FROM Item WHERE item_id = 1003")
+            tdenv.NOTE("Checking for missing items....")
+            def blank_item(name,ed_id,category,category_id):
+                return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,"category":{"id":category_id,"name":category}}
+            if not any(c.get('name', None) == 'Thargoid Heart' for c in commodities):
+                commodities.append(blank_item("Thargoid Heart",128793127,"Salvage",16))
+            if not any(c.get('name', None) == 'Thargoid Cyclops Tissue Sample' for c in commodities):
+                commodities.append(blank_item("Thargoid Cyclops Tissue Sample",128793128,"Salvage",16))
+            if not any(c.get('name', None) == 'Thargoid Basilisk Tissue Sample' for c in commodities):
+                commodities.append(blank_item("Thargoid Basilisk Tissue Sample",128793129,"Salvage",16))
+            if not any(c.get('name', None) == 'Thargoid Medusa Tissue Sample' for c in commodities):
+                commodities.append(blank_item("Thargoid Medusa Tissue Sample",128793130,"Salvage",16))
+            if not any(c.get('name', None) == 'Thargoid Hydra Tissue Sample' for c in commodities):
+                commodities.append(blank_item("Thargoid Hydra Tissue Sample",128902652,"Salvage",16))
+            if not any(c.get('name', None) == 'Nanomedicines' for c in commodities):
+                commodities.append(blank_item("Nanomedicines",128913661,"Medicines",7))
+            if not any(c.get('name', None) == 'Duradrives' for c in commodities):
+                commodities.append(blank_item("Duradrives",128913661,"Consumer Items",2))
+            if not any(c.get('name', None) == 'Rhodplumsite' for c in commodities):
+                commodities.append(blank_item("Rhodplumsite",128924325,"Minerals",9))
+            if not any(c.get('name', None) == 'Serendibite' for c in commodities):
+                commodities.append(blank_item("Serendibite",128924326,"Minerals",9))
+            if not any(c.get('name', None) == 'Monazite' for c in commodities):
+                commodities.append(blank_item("Monazite",128924327,"Minerals",9))
+            if not any(c.get('name', None) == 'Musgravite' for c in commodities):
+                commodities.append(blank_item("Musgravite",128924328,"Minerals",9))
+            if not any(c.get('name', None) == 'Benitoite' for c in commodities):
+                commodities.append(blank_item("Benitoite",128924329,"Minerals",9))
+            if not any(c.get('name', None) == 'Grandidierite' for c in commodities):
+                commodities.append(blank_item("Grandidierite",128924330,"Minerals",9))
+            if not any(c.get('name', None) == 'Alexandrite' for c in commodities):
+                commodities.append(blank_item("Alexandrite",128924331,"Minerals",9))
+            if not any(c.get('name', None) == 'Void Opals' for c in commodities):
+                commodities.append(blank_item("Void Opals",128924332,"Minerals",9))
+            tdenv.NOTE("Missing item check complete.")
         
+        # Prep-work for checking if an item's item_id has changed.
+        cur_ids = dict()
+        result = self.execute("SELECT fdev_id,item_id FROM Item ORDER BY fdev_id").fetchall()
+        for item in result:
+            cur_ids[item[0]] = item[1]
+        
+        tdenv.DEBUG0("Beginning loop.")
         for commodity in iter(commodities):
+            # Make sure the broken item in EDDB.io's API isn't imported. 
+            if commodity['id'] == 270:
+                tdenv.DEBUG0("Skipping faulty item: {}:{}" , commodity['id'], commodity['name'])
+                continue
             # Get the categories from the json and place them into the Category table.
             category_id = commodity['category']['id']
             category_name = commodity['category']['name']
@@ -561,6 +594,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # "ui_order" doesn't have an equivalent field in the json.
                 
                 tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+                
+                # If the item_id has changed, we need to completely delete the old entry.
+                if cur_ids.get(fdev_id) != item_id:
+                    tdenv.DEBUG1("Did not match item_id:{} with fdev_id:{} -- {}", item_id, fdev_id, cur_ids.get(fdev_id))
+                    if cur_ids.get(fdev_id):
+                        tdenv.DEBUG0("item_id  for '{}' has changed, updating.", name)
+                        self.execute("DELETE FROM Item where fdev_id = ?", (fdev_id,))
+                
                 try:
                     self.execute("""INSERT INTO Item
                                 ( item_id,name,category_id,avg_price,fdev_id ) VALUES
@@ -581,7 +622,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # by category and second by name, as in the UI, which will then be used to
         # update the entries in the database with the correct "ui_order" value.
         temp = self.execute("""SELECT
-                        name, category_id, item_id
+                        name, category_id, fdev_id
                         FROM Item
                         ORDER BY category_id, name
                        """)
@@ -596,7 +637,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ui_order+= 1
             self.execute("""UPDATE Item
                         set ui_order = ?
-                        WHERE item_id = ?""",
+                        WHERE fdev_id = ?""",
                        (ui_order, line[2]))
         
         self.updated['Category'] = True
