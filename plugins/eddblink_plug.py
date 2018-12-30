@@ -1,4 +1,5 @@
 import cache
+import codecs
 import csv
 import csvexport
 import datetime
@@ -507,42 +508,33 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
             commodities = json.load(fh)
-            # EDDB still hasn't added these Commodities to the API,
-            # so we'll add them ourselves.
-            tdenv.NOTE("Checking for missing items....")
-            def blank_item(name,ed_id,category,category_id):
-                return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,"category":{"id":category_id,"name":category}}
-            if not any(c.get('name', None) == 'Thargoid Heart' for c in commodities):
-                commodities.append(blank_item("Thargoid Heart",128793127,"Salvage",16))
-            if not any(c.get('name', None) == 'Thargoid Cyclops Tissue Sample' for c in commodities):
-                commodities.append(blank_item("Thargoid Cyclops Tissue Sample",128793128,"Salvage",16))
-            if not any(c.get('name', None) == 'Thargoid Basilisk Tissue Sample' for c in commodities):
-                commodities.append(blank_item("Thargoid Basilisk Tissue Sample",128793129,"Salvage",16))
-            if not any(c.get('name', None) == 'Thargoid Medusa Tissue Sample' for c in commodities):
-                commodities.append(blank_item("Thargoid Medusa Tissue Sample",128793130,"Salvage",16))
-            if not any(c.get('name', None) == 'Thargoid Hydra Tissue Sample' for c in commodities):
-                commodities.append(blank_item("Thargoid Hydra Tissue Sample",128902652,"Salvage",16))
-            if not any(c.get('name', None) == 'Nanomedicines' for c in commodities):
-                commodities.append(blank_item("Nanomedicines",128913661,"Medicines",7))
-            if not any(c.get('name', None) == 'Duradrives' for c in commodities):
-                commodities.append(blank_item("Duradrives",128913661,"Consumer Items",2))
-            if not any(c.get('name', None) == 'Rhodplumsite' for c in commodities):
-                commodities.append(blank_item("Rhodplumsite",128924325,"Minerals",9))
-            if not any(c.get('name', None) == 'Serendibite' for c in commodities):
-                commodities.append(blank_item("Serendibite",128924326,"Minerals",9))
-            if not any(c.get('name', None) == 'Monazite' for c in commodities):
-                commodities.append(blank_item("Monazite",128924327,"Minerals",9))
-            if not any(c.get('name', None) == 'Musgravite' for c in commodities):
-                commodities.append(blank_item("Musgravite",128924328,"Minerals",9))
-            if not any(c.get('name', None) == 'Benitoite' for c in commodities):
-                commodities.append(blank_item("Benitoite",128924329,"Minerals",9))
-            if not any(c.get('name', None) == 'Grandidierite' for c in commodities):
-                commodities.append(blank_item("Grandidierite",128924330,"Minerals",9))
-            if not any(c.get('name', None) == 'Alexandrite' for c in commodities):
-                commodities.append(blank_item("Alexandrite",128924331,"Minerals",9))
-            if not any(c.get('name', None) == 'Void Opals' for c in commodities):
-                commodities.append(blank_item("Void Opals",128924332,"Minerals",9))
-            tdenv.NOTE("Missing item check complete.")
+            
+        # EDDB still hasn't added these Commodities to the API,
+        # so we'll add them ourselves.
+        tdenv.NOTE("Checking for missing items....")
+
+        # Need to get the category_ids from the .csv file.
+        cat_ids = dict()
+        with open(str(tdb.dataPath / Path("Category.csv")), "r") as fh:
+            cats = csv.DictReader(fh, quotechar="'")
+            for cat in cats:
+                cat_ids[cat['name']] =  int(cat['unq:category_id'])
+        
+        # EDMC is really quick about getting new items updated, so we'll use its item list to check
+        # for missing items in EDDB.io's list.
+        edmc_source = 'https://raw.githubusercontent.com/Marginal/EDMarketConnector/master/commodity.csv'
+        edmc_csv = request.urlopen(edmc_source)
+        edmc_dict = csv.DictReader(codecs.iterdecode(edmc_csv, 'utf-8'))
+        
+        def blank_item(name,ed_id,category,category_id):
+            return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,"category":{"id":category_id,"name":category}}
+        
+        for line in iter(edmc_dict):
+            if not any(c.get('ed_id', None) == int(line['id']) for c in commodities):
+                tdenv.DEBUG0("'{}' with fdev_id {} not found, adding.", line['name'], line['id'])
+                commodities.append(blank_item(line['name'],line['id'],line['category'],cat_ids[line['category']]))
+        
+        tdenv.NOTE("Missing item check complete.")
         
         # Prep-work for checking if an item's item_id has changed.
         cur_ids = dict()
