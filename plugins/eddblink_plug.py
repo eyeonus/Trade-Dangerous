@@ -544,8 +544,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         tdenv.DEBUG0("Beginning loop.")
         for commodity in iter(commodities):
-            # Make sure the broken item in EDDB.io's API isn't imported. 
-            if commodity['id'] == 270:
+            # Make sure the broken item(s) in EDDB.io's API isn't imported. 
+            if not commodity['ed_id']:
                 tdenv.DEBUG0("Skipping faulty item: {}:{}" , commodity['id'], commodity['name'])
                 continue
             # Get the categories from the json and place them into the Category table.
@@ -580,6 +580,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     name = 'Hostages'
                 if name.lower() == 'methanol monohydrate':
                     name = 'Methanol Monohydrate Crystals'
+                if name.lower() == 'occupied cryopod':
+                    name = 'Occupied Escape Pod'
                 category_id = commodity['category_id']
                 avg_price = commodity['average_price']
                 fdev_id = commodity['ed_id']
