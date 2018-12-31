@@ -515,10 +515,16 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # Need to get the category_ids from the .csv file.
         cat_ids = dict()
-        with open(str(tdb.dataPath / Path("Category.csv")), "r") as fh:
-            cats = csv.DictReader(fh, quotechar="'")
-            for cat in cats:
-                cat_ids[cat['name']] =  int(cat['unq:category_id'])
+        try:
+            with open(str(tdb.dataPath / Path("Category.csv")), "r") as fh:
+                cats = csv.DictReader(fh, quotechar="'")
+                for cat in cats:
+                    cat_ids[cat['name']] =  int(cat['unq:category_id'])
+        # Use default if no file, such as on a 'clean' run.
+        except FileNotFoundError:
+            cat_ids = {'Chemicals':1, 'Consumer Items':2, 'Legal Drugs':3, 'Foods':4, 'Industrial Materials':5,
+                       'Machinery':6, 'Medicines':7, 'Metals':8, 'Minerals':9, 'Slavery':10, 'Technology':11,
+                       'Textiles':12, 'Waste':13, 'Weapons':14, 'Unknown':15, 'Salvage':16}
         
         # EDMC is really quick about getting new items updated, so we'll use its item list to check
         # for missing items in EDDB.io's list.
