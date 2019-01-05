@@ -198,13 +198,11 @@ CREATE TABLE Item
    avg_price INTEGER,
    fdev_id INTEGER,
 
-   UNIQUE (item_id, fdev_id),
-
    FOREIGN KEY (category_id) REFERENCES Category(category_id)
     ON UPDATE CASCADE
     ON DELETE CASCADE
  );
- CREATE INDEX idx_item_by_fdev_id ON Item (fdev_id);
+ CREATE UNIQUE INDEX idx_item_by_fdev_id ON Item (fdev_id);
 
 
 CREATE TABLE StationItem
