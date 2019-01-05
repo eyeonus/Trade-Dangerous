@@ -1,0 +1,15 @@
+{
+    "cmdr": "Jameson",
+    "credit": 1000000,
+    "ship": {
+        "capacity": 42,
+        "empty_ly": 10.5,
+        "jumps": 6,
+        "ly": 10,
+        "name": "Cobra MK III"
+    },
+    "paths": {
+        "fdevlogdir": "F:\\Programs\\EDLaunch\\Products\\elite-dangerous-64\\Logs",
+        "edmarket": "F:\\Dumps\\EDMarket"
+    }
+}

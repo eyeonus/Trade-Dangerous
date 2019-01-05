@@ -1,42 +1,43 @@
+# python related
 __pycache__
-import.txt
-tmp
 *.pyc
-
-data/TradeDangerous.db
-data/TradeDangerous.old
-data/TradeDangerous.db-journal
-data/TradeDangerous.prices
-data/*.stamp
-data/*.ini
-data/extra-stars.txt
-data/*.txt
-data/edapi.cookies
-data/Category.csv
-data/Item.csv
-data/FDevShipyard.csv
-data/FDevOutfitting.csv
-data/FDevCommodity.csv
-data/Ship.csv
-data/ShipVendor.csv
-data/Station.csv
-data/System.csv
-data/Upgrade.csv
-data/UpgradeVendor.csv
-data/edapi.config
-*.prices
-*.suo
+*.pyo
 *.pyperf
-misc/*.csv
+.tox/
+.pytest
+.pytest_cache
+
+# python virtualenv
+venv/
+.venv/
+
+# python package stuff
+*.egg-info/
+.eggs/
+
+# project-stuff
+data/
+tmp/
+
+# coding environment
+*.suo
+.project
+.pydevproject
+.vscode
+.private
+
+# scm
 *.orig
 *.prev
 *.last
 
+# misc
+import.txt
+/config.sh
+*.prices
+misc/*.csv
 wip/
 pycallgraph.png
-/config.sh
-venv/
-.venv/
-data/eddb/*
-.project
-.pydevproject
+
+
+

@@ -1,0 +1,219 @@
+item_id,name,category_id@Category.category_id,ui_order,avg_price,fdev_id
+1,'Explosives',1,1,420,128049204
+2,'Hydrogen Fuel',1,2,107,128049202
+3,'Mineral Oil',1,5,396,128049203
+4,'Pesticides',1,7,439,128049205
+117,'Synthetic Reagents',1,9,6516,128672303
+118,'Surface Stabilisers',1,8,675,128672305
+122,'Nerve Agents',1,6,13447,128672304
+271,'Water',1,10,269,128049166
+277,'Hydrogen Peroxide',1,3,1210,128673850
+278,'Liquid Oxygen',1,4,432,128673851
+5,'Clothing',2,1,460,128049241
+6,'Consumer Technology',2,2,6810,128049240
+7,'Domestic Appliances',2,3,659,128049238
+116,'Evacuation Shelter',2,5,551,128672314
+307,'Survival Equipment',2,6,647,128682048
+128922524,'Duradrives',2,4,'',128922524
+8,'Beer',3,1,406,128049214
+9,'Liquor',3,3,794,128049216
+10,'Narcotics',3,4,10192,128049212
+11,'Tobacco',3,5,5360,128049213
+12,'Wine',3,6,486,128049215
+113,'Bootleg Liquor',3,2,809,128672306
+13,'Algae',4,1,323,128049177
+14,'Animal Meat',4,2,1527,128049182
+15,'Coffee',4,3,1507,128049189
+16,'Fish',4,4,644,128049183
+17,'Food Cartridges',4,5,225,128049184
+18,'Fruit and Vegetables',4,6,531,128049178
+19,'Grain',4,7,437,128049180
+20,'Synthetic Meat',4,8,490,128049185
+21,'Tea',4,9,1696,128049188
+22,'Polymers',5,7,308,128049197
+23,'Semiconductors',5,8,1093,128049199
+24,'Superconductors',5,9,6473,128049200
+114,'Meta-Alloys',5,4,93923,128672701
+115,'Ceramic Composites',5,1,392,128672302
+282,'Insulating Membrane',5,3,10695,128673855
+283,'CMM Composite',5,2,5988,128673856
+284,'Micro-Weave Cooling Hoses',5,5,1887,128673857
+285,'Neofabric Insulation',5,6,5995,128673858
+25,'Atmospheric Processors',6,2,471,128064028
+26,'Crop Harvesters',6,4,2101,128049222
+27,'Marine Equipment',6,13,3976,128049223
+28,'Microbial Furnaces',6,14,469,128049220
+29,'Mineral Extractors',6,15,729,128049221
+30,'Power Generators',6,18,628,128049217
+31,'Water Purifiers',6,24,411,128049218
+101,'Thermal Cooling Units',6,23,454,128672308
+102,'Skimmer Components',6,22,1082,128672313
+103,'Geological Equipment',6,8,1859,128672307
+119,'Building Fabricators',6,3,1205,128672309
+286,'Articulation Motors',6,1,7589,128673859
+287,'HN Shock Mount',6,10,1724,128673860
+288,'Emergency Power Cells',6,5,2439,128673861
+289,'Power Converter',6,17,1464,128673862
+290,'Energy Grid Assembly',6,6,2692,128673863
+291,'Power Transfer Bus',6,19,2216,128673864
+292,'Radiation Baffle',6,20,1804,128673865
+293,'Exhaust Manifold',6,7,1992,128673866
+294,'Reinforced Mounting Plate',6,21,2473,128673867
+295,'Heatsink Interlink',6,9,2113,128673868
+296,'Magnetic Emitter Coil',6,12,1356,128673869
+297,'Modular Terminals',6,16,2476,128673870
+301,'Ion Distributor',6,11,2386,128673874
+32,'Agri-Medicines',7,2,1234,128049208
+33,'Basic Medicines',7,3,436,128049210
+34,'Combat Stabilisers',7,4,3719,128049670
+35,'Performance Enhancers',7,6,6839,128049209
+36,'Progenitor Cells',7,7,6804,128049669
+305,'Advanced Medicines',7,1,1479,128682046
+128913661,'Nanomedicines',7,5,'',128913661
+37,'Aluminium',8,1,473,128049176
+38,'Beryllium',8,2,8130,128049168
+39,'Cobalt',8,4,752,128049162
+40,'Copper',8,5,612,128049175
+41,'Gallium',8,6,5065,128049170
+42,'Gold',8,7,9842,128049154
+43,'Indium',8,9,5647,128049169
+44,'Lithium',8,11,1695,128049173
+45,'Palladium',8,13,12956,128049153
+46,'Platinum',8,14,42501,128049152
+47,'Silver',8,17,4764,128049155
+48,'Tantalum',8,18,3945,128049171
+49,'Titanium',8,21,1115,128049174
+50,'Uranium',8,22,2755,128049172
+97,'Osmium',8,12,10349,128671118
+109,'Thorium',8,20,11270,128672301
+110,'Thallium',8,19,3678,128672299
+111,'Lanthanum',8,10,8648,128672298
+112,'Bismuth',8,3,2372,128672300
+247,'Hafnium 178',8,8,69098,128668549
+273,'Praseodymium',8,15,8622,128673845
+275,'Samarium',8,16,8110,128673847
+51,'Bauxite',9,2,262,128049165
+52,'Bertrandite',9,4,2516,128049156
+53,'Coltan',9,6,1472,128049159
+54,'Gallite',9,8,1959,128049158
+55,'Indite',9,11,2233,128049157
+56,'Lepidolite',9,13,711,128049161
+57,'Rutile',9,24,448,128049163
+58,'Uraninite',9,27,989,128049160
+83,'Painite',9,21,67167,128668550
+105,'Pyrophyllite',9,22,1663,128672297
+106,'Moissanite',9,18,8225,128672296
+107,'Goslarite',9,9,1051,128672295
+108,'Cryolite',9,7,2325,128672294
+266,'Taaffeite',9,26,30904,128672775
+267,'Jadeite',9,12,20985,128672776
+274,'Bromellite',9,5,8590,128673846
+276,'Low Temperature Diamonds',9,15,93678,128673848
+279,'Methanol Monohydrate Crystals',9,17,2478,128673852
+280,'Lithium Hydroxide',9,14,5678,128673853
+281,'Methane Clathrate',9,16,956,128673854
+128924325,'Rhodplumsite',9,23,'',128924325
+128924326,'Serendibite',9,25,'',128924326
+128924327,'Monazite',9,19,'',128924327
+128924328,'Musgravite',9,20,'',128924328
+128924329,'Benitoite',9,3,'',128924329
+128924330,'Grandidierite',9,10,'',128924330
+128924331,'Alexandrite',9,1,'',128924331
+128924332,'Void Opals',9,28,'',128924332
+59,'Imperial Slaves',10,1,17515,128667728
+60,'Slaves',10,2,13169,128049243
+61,'Advanced Catalysers',11,1,3118,128049231
+62,'Animal Monitors',11,2,534,128049229
+63,'Aquaponic Systems',11,3,528,128049230
+64,'Auto-Fabricators',11,4,3865,128049228
+65,'Bioreducing Lichen',11,5,1234,128049672
+66,'Computer Components',11,6,694,128049225
+67,'H.E. Suits',11,7,575,128049226
+68,'Land Enrichment Systems',11,9,4955,128049232
+69,'Resonating Separators',11,14,6059,128049671
+70,'Robotics',11,15,2039,128049227
+104,'Structural Regulators',11,16,1954,128672311
+124,'Muon Imager',11,12,6340,128672310
+298,'Nanobreakers',11,13,2372,128673871
+299,'Telemetry Suite',11,17,3222,128673872
+300,'Micro Controllers',11,11,5626,128673873
+302,'Hardware Diagnostic Sensor',11,8,6738,128673875
+306,'Medical Diagnostic Equipment',11,10,3082,128682047
+72,'Leather',12,2,426,128049190
+73,'Natural Fabrics',12,4,679,128049191
+74,'Synthetic Fabrics',12,5,359,128049193
+303,'Conductive Fabrics',12,1,657,128682044
+304,'Military Grade Fabrics',12,3,911,128682045
+75,'Biowaste',13,1,342,128049244
+76,'Chemical Waste',13,2,676,128049246
+77,'Scrap',13,3,253,128049248
+82,'Toxic Waste',13,4,282,128049245
+78,'Non-lethal Weapons',14,3,1927,128049236
+79,'Personal Weapons',14,4,4800,128049233
+80,'Reactive Armour',14,5,2220,128049235
+81,'Battle Weapons',14,1,7386,128049234
+121,'Landmines',14,2,4654,128672312
+84,'Limpet',15,1,0,128066403
+95,'Ai Relics',16,1,171208,128668548
+96,'Antiquities',16,12,123831,128668551
+98,'Sap 8 Core Container',16,40,59196,128671443
+99,'Trinkets Of Hidden Fortune',16,61,1413,128671444
+100,'Trade Data',16,60,3191,128666754
+123,'Occupied Escape Pod',16,32,30359,128672125
+126,'Black Box',16,14,19245,128666752
+127,'Military Plans',16,30,9254,128666755
+128,'Ancient Artefact',16,2,7466,128666756
+129,'Rare Artwork',16,38,5217,128666757
+130,'Experimental Chemicals',16,22,3481,128666758
+131,'Rebel Transmissions',16,39,4001,128666759
+132,'Prototype Tech',16,37,10516,128666760
+133,'Technical Blueprints',16,46,5453,128666761
+246,'Thargoid Sensor',16,57,280996,128668547
+248,'Military Intelligence',16,29,55296,128668552
+251,'Wreckage Components',16,63,7983,128672123
+252,'Encrypted Data Storage',16,21,1229,128672124
+253,'Personal Effects',16,33,9541,128672126
+254,'Commercial Samples',16,15,701,128672127
+255,'Tactical Data',16,45,794,128672128
+256,'Assault Plans',16,13,777,128672129
+257,'Encrypted Correspondence',16,20,712,128672130
+258,'Diplomatic Bag',16,18,945,128672131
+259,'Scientific Research',16,41,1034,128672132
+260,'Scientific Samples',16,42,1184,128672133
+261,'Political Prisoners',16,34,6242,128672134
+262,'Hostages',16,27,24945,128672135
+263,'Geological Samples',16,26,777,128672315
+268,'Unstable Data Core',16,62,3123,128672810
+308,'Data Core',16,17,3689,128682049
+309,'Galactic Travel Guide',16,24,8417,128682050
+310,'Mysterious Idol',16,31,16982,128682051
+311,'Prohibited Research Materials',16,36,46607,128682052
+312,'Antimatter Containment Unit',16,10,26608,128682053
+313,'Space Pioneer Relics',16,44,8474,128682054
+314,'Fossil Remnants',16,23,10878,128682055
+315,'Thargoid Probe',16,54,418919,128673876
+316,'Precious Gems',16,35,139619,128672160
+317,'Thargoid Link',16,52,37030,128740752
+318,'Thargoid Biological Matter',16,48,44209,128737288
+319,'Thargoid Resin',16,55,23418,128737287
+320,'Thargoid Technology Samples',16,58,32042,128737289
+321,'Ancient Relic',16,6,13161,128732183
+322,'Ancient Orb',16,5,9024,128732184
+323,'Ancient Casket',16,3,7975,128732185
+324,'Ancient Tablet',16,7,9024,128732186
+325,'Ancient Urn',16,9,6250,128732187
+326,'Ancient Totem',16,8,10888,128732188
+327,'Small Survey Data Cache',16,43,10878,128672137
+328,'Large Survey Data Cache',16,28,222973,128672136
+329,'Damaged Escape Pod',16,16,13136,128672811
+330,'Earth Relics',16,19,11587,128672161
+331,'Thargoid Scout Tissue Sample',16,56,20296,128824468
+332,'Ancient Key',16,4,13161,128888499
+333,'Antique Jewellery',16,11,159579,128672159
+334,'Gene Bank',16,25,13151,128672162
+335,'Time Capsule',16,59,4919,128672163
+128793127,'Thargoid Heart',16,50,'',128793127
+128793128,'Thargoid Cyclops Tissue Sample',16,49,'',128793128
+128793129,'Thargoid Basilisk Tissue Sample',16,47,'',128793129
+128793130,'Thargoid Medusa Tissue Sample',16,53,'',128793130
+128902652,'Thargoid Hydra Tissue Sample',16,51,'',128902652
