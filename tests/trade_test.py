@@ -46,7 +46,7 @@ class TestTrade(object):
         #"Dekker's Yard"
         trade.main([PROG, "station", "-rm", "sol/dekkers"])
         captured = capsys.readouterr()
-        assert regex_findin("NOTE: Sol\/Dekker's Yard \(#\d+\) removed", captured.out)
+        assert regex_findin("NOTE: Sol/Dekker's Yard \(#\d+\) removed", captured.out)
 
 
     def test_station_add(self, capsys):
@@ -108,7 +108,7 @@ class TestTrade(object):
         #     print(captured.out)
         #     print("to Here")
         assert "NOTE: Nothing had to be done" in captured.out
-        assert regex_findin("NOTE: Found \d+ item\(s\)", captured.out)
+        assert regex_findin(r"NOTE: Found \d+ item\(s\)", captured.out)
 
 
     def test_import_maddavo(self, capsys):
@@ -119,5 +119,17 @@ class TestTrade(object):
         #     print("Here")
         #     print(captured.out)
         #     print("to Here")
-        assert regex_findin("NOTE: Import complete: \d+ items over \d+ stations in \d+ systems", captured.out)
+        assert regex_findin(r"NOTE: Import complete: \d+ items over \d+ stations in \d+ systems", captured.out)
 
+
+    def test_pyproj_run(self, capsys):
+        trade.main([PROG, "run", "-vv", "--progress", "--empty=82",
+            "--cap=212", "--jumps=4", "--cr=2153796", "--from=sol/abr",
+            "--hops=6", "--ls-m=8000", "--sup=10000",
+            "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"])
+        captured = capsys.readouterr()
+        # with capsys.disabled():
+        #     print("Here")
+        #     print(captured.out)
+        #     print("to Here")
+        assert regex_findin(r"=> est [\d\s,]+cr total", captured.out)
