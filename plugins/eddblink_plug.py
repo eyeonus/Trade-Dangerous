@@ -24,7 +24,7 @@ from builtins import str
 # Constants
 
 BASE_URL = "http://elite.ripz.org/files/"
-FALLBACK_URL = "https://eddb.io/archive/v5/"
+FALLBACK_URL = "https://eddb.io/archive/v6/"
 SHIPS_URL = "https://raw.githubusercontent.com/EDCD/coriolis-data/master/dist/index.json"
 COMMODITIES = "commodities.json"
 SYSTEMS = "systems_populated.jsonl"
@@ -526,16 +526,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                        'Machinery':6, 'Medicines':7, 'Metals':8, 'Minerals':9, 'Slavery':10, 'Technology':11,
                        'Textiles':12, 'Waste':13, 'Weapons':14, 'Unknown':15, 'Salvage':16}
         
-        # EDMC is really quick about getting new items updated, so we'll use its item list to check
+        # EDCD is really quick about getting new items updated, so we'll use its item list to check
         # for missing items in EDDB.io's list.
-        edmc_source = 'https://raw.githubusercontent.com/Marginal/EDMarketConnector/master/commodity.csv'
-        edmc_csv = request.urlopen(edmc_source)
-        edmc_dict = csv.DictReader(codecs.iterdecode(edmc_csv, 'utf-8'))
+        edcd_source = 'https://raw.githubusercontent.com/EDCD/FDevIDs/master/commodity.csv'
+        edcd_csv = request.urlopen(edcd_source)
+        edcd_dict = csv.DictReader(codecs.iterdecode(edcd_csv, 'utf-8'))
         
         def blank_item(name,ed_id,category,category_id):
             return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,"category":{"id":category_id,"name":category}}
         
-        for line in iter(edmc_dict):
+        for line in iter(edcd_dict):
             if not any(c.get('ed_id', None) == int(line['id']) for c in commodities):
                 tdenv.DEBUG0("'{}' with fdev_id {} not found, adding.", line['name'], line['id'])
                 commodities.append(blank_item(line['name'],line['id'],line['category'],cat_ids[line['category']]))
@@ -680,6 +680,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         from_live = 0 if listings_file == self.listingsPath else 1
         
+        # Used to check if the listings file is using the fdev_id as a temporary
+        # item_id, but the item is in the DB with a permanent item_id.
+        fdev2item = dict()
+        result = self.execute("SELECT fdev_id,item_id FROM Item ORDER BY fdev_id").fetchall()
+        for item in result:
+            fdev2item[item[0]] = item[1]
+            
+        
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
@@ -716,7 +724,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if station_id != cur_station:
                     for item in station_items:
                         if not item:
-                            self.execute("DELETE from StationItem WHERE station_id = ? and item_id = ?", (station_id, item))
+                            self.execute("DELETE from StationItem WHERE station_id = ? and item_id = ?", (cur_station, item))
                     del station_items, cur_station
                     cur_station = station_id
                     station_items = dict()
@@ -727,7 +735,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 station_items[item_id] = True
                 
+                # Check if listing already exists in DB and needs updated. 
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
+                # Listing may have be using the fdev_id as a temp item_id, but that commodity now has an item_id. 
+                if not result:
+                    result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, fdev2item.get(item_id))).fetchone()
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     # When the dump file data matches the database, update to make from_live == 0.
