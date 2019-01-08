@@ -39,7 +39,7 @@ def search_keyList(list, val):
         if row['from'] == row['to'] == val: return row
 
 def getUniqueIndex(conn, tableName):
-    """ return the first unique index """
+    """ return all unique columns """
     idxCursor = conn.cursor()
     unqIndex = []
     for idxRow in idxCursor.execute("PRAGMA index_list('%s')" % tableName):
