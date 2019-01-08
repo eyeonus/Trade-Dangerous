@@ -48,7 +48,6 @@ def getUniqueIndex(conn, tableName):
             unqCursor = conn.cursor()
             for unqRow in unqCursor.execute("PRAGMA index_info('%s')" % idxRow['name']):
                 unqIndex.append(unqRow['name'])
-            return unqIndex
     return unqIndex
 
 def getFKeyList(conn, tableName):
