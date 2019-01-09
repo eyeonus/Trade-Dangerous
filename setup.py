@@ -20,7 +20,6 @@ setup(name='tradedangerous',
             'requests'
         ],
         packages=['tradedangerous'],
-        #package_dir={'nodemcu_uploader': 'lib'},
         url='https://github.com/eyeonus/Trade-Dangerous',
         author='eyeonus',
         author_email='eyeonus@example.com',
@@ -38,7 +37,7 @@ setup(name='tradedangerous',
         tests_require=["pytest"],
         entry_points={
             'console_scripts': [
-                'trade=tradedangerous.main:main_func'
+                'trade=tradedangerous.core:main'
             ]
         },
         zip_safe=False
