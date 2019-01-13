@@ -751,7 +751,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             with open(saveName, 'w', encoding="utf-8") as saveFile:
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
-                    tdenv.DEBUG0(api.text)
+                    tdenv.DEBUG0("{}",api.text)
                     saveFile.write('{{"profile":{}, "market":{}, "shipyard":{}}}'.format(*api.text))
                 else:
                     saveFile.write(api.text)
