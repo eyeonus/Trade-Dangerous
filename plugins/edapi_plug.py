@@ -738,6 +738,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 debug=tdenv.debug,
             )
         self.edAPI = api
+        while len(api.text) < 3:
+            api.text.append({})
 
         tdh_path = pathlib.Path('tmp/tdh_profile.json')
         if self.getOption("tdh"):
