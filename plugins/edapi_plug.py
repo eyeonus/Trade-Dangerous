@@ -135,6 +135,8 @@ class EDAPI:
         # Grab the commander profile
         self.text = []
         self.profile = self.query_capi("/profile")
+        market = self.query_capi("/market")
+        shipyard = self.query_capi("/shipyard")
 
         # Grab the market, outfitting and shipyard data if needed
         portServices = self.profile['lastStarport'].get('services')
@@ -161,6 +163,7 @@ class EDAPI:
         self._authorization_check()
         response = self.opener.get(self.config["companion"]["CAPI_LIVE_URL"] + capi_endpoint)
         try:
+            print(response.text)
             data = response.json()
             self.text.append(response.text)
         except:
@@ -738,8 +741,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 debug=tdenv.debug,
             )
         self.edAPI = api
-        while len(api.text) < 3:
-            api.text.append({})
 
         tdh_path = pathlib.Path('tmp/tdh_profile.json')
         if self.getOption("tdh"):
@@ -754,7 +755,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
                     tdenv.DEBUG0("{}",api.text)
-                    saveFile.write('{{"profile":{}, "market":{}, "shipyard":{}}}'.format(*api.text))
+                    saveFile.write('{{"profile":{}}}'.format(api.text[0]))
                 else:
                     saveFile.write(api.text)
                 print('API response saved to: {}'.format(saveName))
