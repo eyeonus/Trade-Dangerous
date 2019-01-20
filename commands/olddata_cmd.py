@@ -43,6 +43,7 @@ switches = [
             dest='minAge',
     ),
     PadSizeArgument(),
+    NoPlanetSwitch(),
 ]
 
 ######################################################################
@@ -140,6 +141,7 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG1(stmt)
 
     padSize = cmdenv.padSize
+    noPlanet = cmdenv.noPlanet
 
     for (stnID, age, ls, dist2) in tdb.query(stmt):
         cmdenv.DEBUG2("{}:{}:{}", stnID, age, ls)
@@ -152,6 +154,14 @@ def run(results, cmdenv, tdb):
             row.ls = "?"
         row.dist = dist2 ** 0.5
         if not padSize or row.station.checkPadSize(padSize):
+            padcheck = True
+        else:
+            padcheck = False
+        if not noPlanet or row.station.planetary == 'N':
+            plancheck = True
+        else:
+            plancheck = False
+        if (padcheck and plancheck):
             results.rows.append(row)
 
     if cmdenv.route and len(results.rows) > 1:
