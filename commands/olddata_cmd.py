@@ -44,6 +44,13 @@ switches = [
     ),
     PadSizeArgument(),
     NoPlanetSwitch(),
+    ParseArgument('--ls-max',
+        help='Only consider stations upto this many ls from their star.',
+        metavar='LS',
+        dest='maxLs',
+        type=int,
+        default=0,
+    ),
 ]
 
 ######################################################################
@@ -142,6 +149,7 @@ def run(results, cmdenv, tdb):
 
     padSize = cmdenv.padSize
     noPlanet = cmdenv.noPlanet
+    mls = cmdenv.maxLs
 
     for (stnID, age, ls, dist2) in tdb.query(stmt):
         cmdenv.DEBUG2("{}:{}:{}", stnID, age, ls)
@@ -161,7 +169,11 @@ def run(results, cmdenv, tdb):
             plancheck = True
         else:
             plancheck = False
-        if (padcheck and plancheck):
+        if not mls or row.station.lsFromStar <= mls:
+            distcheck = True
+        else:
+            distcheck = False
+        if (padcheck and plancheck and distcheck):
             results.rows.append(row)
 
     if cmdenv.route and len(results.rows) > 1:
