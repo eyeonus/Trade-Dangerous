@@ -12,7 +12,7 @@ import time
 import tradedb
 import tradeenv
 import transfers
-import misc.progress as pbar
+import tqdm
 
 from urllib import request
 from calendar import timegm
@@ -57,7 +57,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
-        'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)"
     }
 
@@ -268,8 +267,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
 
-        progress = 0
-        total = 1
+        total = 0
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
@@ -280,14 +278,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
-            if self.getOption("progbar"):
-                prog = pbar.Progress(total, 50)
-            for line in fh:
-                if self.getOption("progbar"):
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                else:
-                    progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
+            for line in tqdm.tqdm(fh, total=total, unit=" records", smoothing=0.1): 
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -315,12 +306,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
                                 ( ?, ?, ?, ?, ?, ? ) """,
                                 (system_id, name, pos_x, pos_y, pos_z, modified))
-                    self.updated['System'] = True
-            if self.getOption("progbar"):
-                while prog.value < prog.maxValue:
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                prog.clear()
-        
+                    self.updated['System'] = True      
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
 
     def importStations(self):
@@ -339,8 +325,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.NOTE("Simultaneously processing UpgradeVendors, this will take quite a while.")
 
 
-        progress = 0
-        total = 1
+        total = 0
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
@@ -351,16 +336,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
-            if self.getOption("progbar"):
-                prog = pbar.Progress(total, 50)
-            for line in fh:
-                if self.getOption("progbar"):
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                else:
-                    progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
+            for line in tqdm.tqdm(fh, total=total, unit=" records", smoothing=0.1):
                 station = json.loads(line)
-                
                 # Import Stations
                 station_id = station['id']
                 name = station['name']
@@ -491,11 +468,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                             except sqlite3.IntegrityError:
                                 continue
                         self.updated['UpgradeVendor'] = True
-            if self.getOption("progbar"):
-                while prog.value < prog.maxValue:
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                prog.clear()
-
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
 
     def importCommodities(self):
@@ -675,8 +647,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.NOTE("File not found, aborting: {}", (self.dataPath / listings_file))
             return
         
-        progress = 0
-        total = 1
+        total = 0
         
         from_live = 0 if listings_file == self.listingsPath else 1
         
@@ -698,19 +669,12 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
-            if self.getOption("progbar"):
-                prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             
             cur_station = -1
             station_items = dict()
             
-            for listing in listings:
-                if self.getOption("progbar"):
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                else:
-                    progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
+            for listing in tqdm.tqdm(listings, total=total, unit=" records", smoothing=0.1):
                 station_id = int(listing['station_id'])
                 item_id = int(listing['commodity_id'])
                 modified = datetime.datetime.utcfromtimestamp(int(listing['collected_at'])).strftime('%Y-%m-%d %H:%M:%S')
@@ -780,10 +744,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  supply_price, supply_units, supply_level, from_live))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
-            if self.getOption("progbar"):
-                while prog.value < prog.maxValue:
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                prog.clear()
         
         del from_live
         self.updated['Listings'] = True
@@ -799,11 +759,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             pass
         
         # Run 'listings' by default:
-        # If no options, or if only 'progbar', 'force', 'skipvend', and/or 'fallback', 
+        # If no options, or if only 'force', 'skipvend', and/or 'fallback', 
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar')):
+            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
                 default = False
         if default:
             self.options["listings"] = True
