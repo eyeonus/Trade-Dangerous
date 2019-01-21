@@ -69,10 +69,9 @@ import sys
 
 haveNumpy = False
 try:
-    if os.environ['NUMPY']:
-        import numpy
-        import numpy.linalg
-        haveNumpy = True
+    import numpy
+    import numpy.linalg
+    haveNumpy = True
 except (KeyError, ImportError):
     pass
 if not haveNumpy:
