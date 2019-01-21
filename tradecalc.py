@@ -47,10 +47,10 @@ import datetime
 import locale
 import math
 import os
-import misc.progress as pbar
 import re
 import sys
 import time
+import tqdm
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -883,12 +883,13 @@ class TradeCalc(object):
                     planetary=planetary,
                 )
 
-        prog = pbar.Progress(len(routes), 25)
+        if tdenv.progress:
+            prog = tqdm.tqdm(total = len(routes), unit=" routes")
         connections = 0
         getSelling = self.stationsSelling.get
         for route in routes:
             if tdenv.progress:
-                prog.increment(1)
+                prog.update(1)
             tdenv.DEBUG1("Route = {}", route.str())
 
             srcStation = route.lastStation
@@ -1068,7 +1069,8 @@ class TradeCalc(object):
                     dstStation, route, trade, dest.via, dest.distLy, score
                 )
 
-        prog.clear()
+        if tdenv.progress:
+            prog.close()
 
         if connections == 0:
             raise NoHopsError(
