@@ -884,7 +884,7 @@ class TradeCalc(object):
                 )
 
         if tdenv.progress:
-            prog = tqdm.tqdm(total = len(routes), unit=" routes")
+            prog = tqdm.tqdm(total = len(routes), unit=" origins")
         connections = 0
         getSelling = self.stationsSelling.get
         for route in routes:
