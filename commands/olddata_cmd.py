@@ -162,19 +162,9 @@ def run(results, cmdenv, tdb):
             row.ls = "?"
         row.dist = dist2 ** 0.5
         if not padSize or row.station.checkPadSize(padSize):
-            padcheck = True
-        else:
-            padcheck = False
-        if not noPlanet or row.station.planetary == 'N':
-            plancheck = True
-        else:
-            plancheck = False
-        if not mls or row.station.lsFromStar <= mls:
-            distcheck = True
-        else:
-            distcheck = False
-        if (padcheck and plancheck and distcheck):
-            results.rows.append(row)
+            if not noPlanet or row.station.planetary == 'N':
+                if not mls or row.station.lsFromStar <= mls:
+                    results.rows.append(row)
 
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
