@@ -176,7 +176,6 @@ def download(
         total_chunks = None
         
     with tmpPath.open("wb") as fh:
-        print(length)
         for data in tqdm.tqdm(req.iter_content(chunk_size=chunkSize), total=total_chunks, smoothing=0.1, unit=" " + str(chunkSize//1024) + " KB chunks"):
             fh.write(data)
             fetched += len(data)
