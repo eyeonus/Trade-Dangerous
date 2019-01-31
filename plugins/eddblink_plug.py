@@ -194,7 +194,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return False
         
         tdenv.NOTE("Downloading file '{}'.", path)
-        transfers.download( self.tdenv, url, self.dataPath / path, )
+        transfers.download( self.tdenv, url, self.dataPath / path, chunkSize=8192)
         return True
 
     def importUpgrades(self):
