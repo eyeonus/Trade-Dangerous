@@ -107,6 +107,37 @@ class ImportPlugin(plugins.ImportPluginBase):
                     time.sleep(1)
         return result
     
+    def executemany(self, sql_cmd, args):
+        tdb, tdenv = self.tdb, self.tdenv
+        cur = tdb.getDB().cursor()
+        
+        success = False
+        result = None
+        while not success:
+            try:
+                result = cur.executemany(sql_cmd, args)
+                success = True
+            except sqlite3.OperationalError as e:
+                if "locked" not in str(e):
+                    success = True
+                    raise sqlite3.OperationalError(e)
+                else:
+                    print("(execute) Database is locked, waiting for access.", end = "\r")
+                    time.sleep(1)
+        return result
+    
+    def fetchIter(self, cursor, arraysize=1000):
+        """
+        An iterator that uses fetchmany to keep memory usage down
+        and speed up the time to retrieve the results dramatically.
+        """
+        while True:
+            results = cursor.fetchmany(arraysize)
+            if not results:
+                break
+            for result in results:
+                yield result
+            
     def downloadFile(self, urlTail, path):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
@@ -162,7 +193,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return False
         
         tdenv.NOTE("Downloading file '{}'.", path)
-        transfers.download( self.tdenv, url, self.dataPath / path, )
+        transfers.download( self.tdenv, url, self.dataPath / path, chunkSize=8192)
         return True
 
     def importUpgrades(self):
@@ -216,7 +247,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             name = ships[ship]['properties']['name']
             cost = ships[ship]['retailCost']
             fdev_id = ships[ship]['edID']
-            
+            # Arg. Why you do this to me, EDCD?
+            if "Phantom" in name and ship_id == 35:
+                 ship_id = 37
             #Change the names to match how they appear in Stations.jsonl
             if name == "Eagle":
                 name = "Eagle Mk. II"
@@ -634,6 +667,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                         self.tdb, self.tdenv, table
                     )
                     self.tdenv.NOTE("{} exported.", path)
+    
+    def commit(self):
+        success = False
+        while not success:
+            try:
+                self.tdb.getDB().commit()
+                success = True
+            except sqlite3.OperationalError:
+                print("(commit) Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
 
     def importListings(self, listings_file):
         """
@@ -667,85 +710,85 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with open(str(self.dataPath / listings_file), "r",encoding = "utf-8",errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in blocks(f)))
-
+        
+        liveList = []
+        liveStmt = """UPDATE StationItem
+                    SET from_live = 0
+                    WHERE station_id = ?"""
+        
+        delList = []
+        delStmt = "DELETE from StationItem WHERE station_id = ?"
+        
+        listingList = []
+        listingStmt = """INSERT OR IGNORE INTO StationItem
+                        (station_id, item_id, modified,
+                         demand_price, demand_units, demand_level,
+                         supply_price, supply_units, supply_level, from_live)
+                        VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )"""
+        
+        items = []
+        it_result = self.execute("SELECT item_id FROM Item ORDER BY item_id").fetchall()
+        for item in it_result:
+            items.append(item[0])
+        
         with open(str(self.dataPath / listings_file), "rU") as fh:
             listings = csv.DictReader(fh)
             
             cur_station = -1
-            station_items = dict()
             
             for listing in tqdm.tqdm(listings, total=total, unit=" records", smoothing=0.1):
                 station_id = int(listing['station_id'])
+                
+                if station_id != cur_station:
+                    cur_station = station_id
+                    skipStation = False
+                    
+                    # Check if listing already exists in DB and needs updated.
+                    # Only need to check the date for the first item at a specific station.
+                    result = self.execute("SELECT modified FROM StationItem WHERE station_id = ?", (station_id,)).fetchone()
+                    if result:
+                        updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                        # When the listings.csv data matches the database, update to make from_live == 0.
+                        if int(listing['collected_at']) == updated and not from_live:
+                            liveList.append((cur_station,))
+                        # Unless the import file data is newer, nothing else needs to be done for this station,
+                        # so the rest of the listings for this station can be skipped. 
+                        if int(listing['collected_at']) <= updated:
+                            skipStation = True
+                            continue
+                        
+                        # The data from the import file is newer, so we need to delete the old data for this station.
+                        delList.append((cur_station,))
+                
+                if skipStation:
+                    continue
+                
+                # Since this station is not being skipped, get the data and prepare for insertion into the DB.
                 item_id = int(listing['commodity_id'])
+                # listings.csv includes rare items, which we are ignoring.
+                if item_id not in items:
+                    continue
                 modified = datetime.datetime.utcfromtimestamp(int(listing['collected_at'])).strftime('%Y-%m-%d %H:%M:%S')
                 demand_price = int(listing['sell_price'])
                 demand_units = int(listing['demand'])
                 demand_level = int(listing['demand_bracket']) if listing['demand_bracket'] != '' else -1
                 supply_price = int(listing['buy_price'])
                 supply_units = int(listing['supply'])
-                supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
-                
-                if station_id != cur_station:
-                    for item in station_items:
-                        if not item:
-                            self.execute("DELETE from StationItem WHERE station_id = ? and item_id = ?", (cur_station, item))
-                    del station_items, cur_station
-                    cur_station = station_id
-                    station_items = dict()
-                    cursor = self.execute("SELECT item_id from StationItem WHERE station_id = ?", (station_id,))
-                    for item in cursor:
-                        station_items[item] = False
-                    del cursor
-                
-                station_items[item_id] = True
-                
-                # Check if listing already exists in DB and needs updated. 
-                result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
-                # Listing may have be using the fdev_id as a temp item_id, but that commodity now has an item_id. 
-                if not result:
-                    result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, fdev2item.get(item_id))).fetchone()
-                if result:
-                    updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
-                    # When the dump file data matches the database, update to make from_live == 0.
-                    if int(listing['collected_at']) == updated and not from_live:
-                        self.execute("""UPDATE StationItem
-                                    SET from_live = 0
-                                    WHERE station_id = ? AND item_id = ?""",
-                                    (station_id, item_id))
-                    if int(listing['collected_at']) > updated:
-                        tdenv.DEBUG1("Updating:{}, {}, {}, {}, {}, {}, {}, {}, {}",
-                             station_id, item_id, modified,
-                             demand_price, demand_units, demand_level,
-                             supply_price, supply_units, supply_level)
-                        try:
-                            self.execute("""UPDATE StationItem
-                                    SET modified = ?,
-                                     demand_price = ?, demand_units = ?, demand_level = ?,
-                                     supply_price = ?, supply_units = ?, supply_level = ?,
-                                     from_live = ?
-                                    WHERE station_id = ? AND item_id = ?""",
-                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level, from_live,
-                                     station_id, item_id))
-                        except sqlite3.IntegrityError:
-                            tdenv.DEBUG1("Error on update.")
-                else:
-                    tdenv.DEBUG1("Inserting:{}, {}, {}, {}, {}, {}, {}, {}, {}",
-                             station_id, item_id, modified,
-                             demand_price, demand_units, demand_level,
-                             supply_price, supply_units, supply_level)
-                    try:
-                        self.execute("""INSERT INTO StationItem
-                                (station_id, item_id, modified,
-                                 demand_price, demand_units, demand_level,
-                                 supply_price, supply_units, supply_level, from_live)
-                                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )""",
-                                (station_id, item_id, modified,
-                                 demand_price, demand_units, demand_level,
-                                 supply_price, supply_units, supply_level, from_live))
-                    except sqlite3.IntegrityError:
-                        tdenv.DEBUG1("Error on insert.")
-        
-        del from_live
+                supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1         
+                listingList.append((station_id, item_id, modified,
+                                    demand_price, demand_units, demand_level,
+                                    supply_price, supply_units, supply_level, from_live))
+         
+            tdenv.NOTE("Import file processing complete, updating database. {}", datetime.datetime.now())
+            if liveList:
+                tdenv.NOTE("Marking data now in the EDDB listings.csv as no longer 'live'. {}", datetime.datetime.now())
+                self.executemany(liveStmt, liveList)
+            if delList:
+                tdenv.NOTE("Deleting old listing data. {}", datetime.datetime.now())
+                self.executemany(delStmt, delList)
+            if listingList:
+                tdenv.NOTE("Inserting new listing data. {}", datetime.datetime.now())
+                self.executemany(listingStmt, listingList)        
         self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
@@ -770,18 +813,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # We can probably safely assume that the plugin has never been run if
         # the prices file doesn't exist, since the plugin always generates it.
-        firstRun = not (tdb.dataPath / Path("TradeDangerous.prices")).exists()
-
-        if firstRun:
+        if not (tdb.dataPath / Path("TradeDangerous.prices")).exists():
             self.options["clean"] = True
-        
-        try:
-            self.execute("ALTER TABLE Station ADD type_id INTEGER DEFAULT 0 NOT NULL")
-        except sqlite3.OperationalError:
-            pass
-        except sqlite3.DatabaseError as e:
-            self.options['clean'] = True
-            tdenv.NOTE("Cleaning database: ",str(e))
         
         if self.getOption("clean"):
             # Rebuild the tables from scratch. Must be done on first run of plugin.
@@ -881,31 +914,27 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("upgrade"):
             if self.downloadFile(UPGRADES, self.upgradesPath) or self.getOption("force"):
                 self.importUpgrades()
+                self.commit()
 
         if self.getOption("ship"):
             if self.downloadFile(SHIPS_URL, self.shipsPath) or self.getOption("force"):
                 self.importShips()
+                self.commit()
 
         if self.getOption("system"):
             if self.downloadFile(SYSTEMS, self.systemsPath) or self.getOption("force"):
                 self.importSystems()
+                self.commit()
 
         if self.getOption("station"):
             if self.downloadFile(STATIONS, self.stationsPath) or self.getOption("force"):
                 self.importStations()
+                self.commit()
 
         if self.getOption("item"):
             if self.downloadFile(COMMODITIES, self.commoditiesPath) or self.getOption("force"):
                 self.importCommodities()
-        
-        success = False
-        while not success:
-            try:
-                tdb.getDB().commit()
-                success = True
-            except sqlite3.OperationalError:
-                print("(commit) Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
+                self.commit()
         
         #Remake the .csv files with the updated info.
         self.regenerate()
@@ -913,17 +942,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("listings"):
             if self.downloadFile(LISTINGS, self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
-            if self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force"):
+            if not self.getOption("fallback") and (self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force")):
                 self.importListings(self.liveListingsPath)
-
-        success = False
-        while not success:
-            try:
-                tdb.getDB().commit()
-                success = True
-            except sqlite3.OperationalError:
-                print("(commit) Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
+        
+        self.commit()
         
         tdb.close()
         
