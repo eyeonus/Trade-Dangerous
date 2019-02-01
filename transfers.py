@@ -110,7 +110,7 @@ def download(
             headers=None,
             backup=False,
             shebang=None,
-            chunkSize=8192,
+            chunkSize=4096,
         ):
     """
     Fetch data from a URL and save the output
