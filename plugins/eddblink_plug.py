@@ -311,7 +311,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
-            for line in tqdm.tqdm(fh, total=total, unit=" records", smoothing=0.1): 
+            for line in tqdm.tqdm(fh, total=total, unit=" systems", smoothing=0.1): 
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -369,7 +369,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
-            for line in tqdm.tqdm(fh, total=total, unit=" records", smoothing=0.1):
+            for line in tqdm.tqdm(fh, total=total, unit=" stations", smoothing=0.1):
                 station = json.loads(line)
                 # Import Stations
                 station_id = station['id']
@@ -736,7 +736,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             cur_station = -1
             
-            for listing in tqdm.tqdm(listings, total=total, unit=" records", smoothing=0.1):
+            for listing in tqdm.tqdm(listings, total=total, unit=" listings", smoothing=0.1):
                 station_id = int(listing['station_id'])
                 
                 if station_id != cur_station:
