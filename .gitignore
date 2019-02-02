@@ -4,6 +4,7 @@ tmp
 *.pyc
 
 data/TradeDangerous.db
+data/TradeDangerous.new
 data/TradeDangerous.old
 data/TradeDangerous.db-journal
 data/TradeDangerous.prices

@@ -57,7 +57,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
-        'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'",
+        'progbar':      "Does nothing, only included for backwards compatibility.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)"
     }
 
@@ -194,7 +194,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return False
         
         tdenv.NOTE("Downloading file '{}'.", path)
-        transfers.download( self.tdenv, url, self.dataPath / path, chunkSize=8192)
+        transfers.download( self.tdenv, url, self.dataPath / path)
         return True
 
     def importUpgrades(self):
@@ -313,14 +313,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
-            if self.getOption("progbar"):
-                prog = pbar.Progress(total, 50)
+            prog = pbar.Progress(total, 50)
             for line in fh:
-                if self.getOption("progbar"):
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                else:
-                    progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -349,10 +344,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ( ?, ?, ?, ?, ?, ? ) """,
                                 (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
-            if self.getOption("progbar"):
-                while prog.value < prog.maxValue:
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                prog.clear()
+            while prog.value < prog.maxValue:
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+            prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
 
@@ -384,14 +378,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
-            if self.getOption("progbar"):
-                prog = pbar.Progress(total, 50)
+            prog = pbar.Progress(total, 50)
             for line in fh:
-                if self.getOption("progbar"):
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                else:
-                    progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 station = json.loads(line)
                 
                 # Import Stations
@@ -524,10 +513,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                             except sqlite3.IntegrityError:
                                 continue
                         self.updated['UpgradeVendor'] = True
-            if self.getOption("progbar"):
-                while prog.value < prog.maxValue:
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                prog.clear()
+            while prog.value < prog.maxValue:
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+            prog.clear()
 
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
 
@@ -761,18 +749,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             items.append(item[0])
         
         with open(str(self.dataPath / listings_file), "rU") as fh:
-            if self.getOption("progbar"):
-                prog = pbar.Progress(total, 50)
+            prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             
             cur_station = -1
             
             for listing in listings:
-                if self.getOption("progbar"):
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                else:
-                    progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 
                 station_id = int(listing['station_id'])
                 
@@ -817,10 +800,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     demand_price, demand_units, demand_level,
                                     supply_price, supply_units, supply_level, from_live))
             
-            if self.getOption("progbar"):
-                while prog.value < prog.maxValue:
-                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                prog.clear()
+            while prog.value < prog.maxValue:
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+            prog.clear()
             
             tdenv.NOTE("Import file processing complete, updating database. {}", datetime.datetime.now())
             if liveList:
