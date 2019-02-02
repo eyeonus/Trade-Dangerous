@@ -301,7 +301,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
 
-        progress = 0
         total = 1
         def blocks(f, size = 65536):
             while True:
@@ -366,7 +365,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.NOTE("Simultaneously processing UpgradeVendors, this will take quite a while.")
 
 
-        progress = 0
         total = 1
         def blocks(f, size = 65536):
             while True:
@@ -706,7 +704,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.NOTE("File not found, aborting: {}", (self.dataPath / listings_file))
             return
         
-        progress = 0
         total = 1
         
         from_live = 0 if listings_file == self.listingsPath else 1
