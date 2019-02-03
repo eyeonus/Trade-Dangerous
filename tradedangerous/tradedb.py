@@ -592,9 +592,6 @@ class TradeDB(object):
         normalizedStr(text)
             Case and punctuation normalizes a string to make it easier
             to find approximate matches.
-
-        titleFixup(text)
-            Case formats a proper noun.
     """
 
     # Translation map for normalizing strings
@@ -647,7 +644,7 @@ class TradeDB(object):
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
         self.tdenv = tdenv
 
-        self.templatePath = templatePath = Path(tdenv.templateDir).resolve()
+        self.templatePath = Path(tdenv.templateDir).resolve()
         self.dataPath = dataPath = fs.ensurefolder(tdenv.dataDir)
 
         fs.ensureflag(self.dataPath / Path('.tddata'), lambda: fs.copyallfiles(self.templatePath, self.dataPath))
@@ -2124,35 +2121,7 @@ class TradeDB(object):
         ).translate(
             TradeDB.trimTrans
         )
-
-    @staticmethod
-    def titleFixup(text):
-        """
-        Correct case in a word assuming the presence of titles/surnames,
-        including 'McDonald', 'MacNair', 'McKilroy', and cases that
-        python's title screws up such as "Smith's".
-        """
-
-        text = text.title()
-        text = re.sub(
-            r"\b(Mc)([a-z])",
-            lambda match: match.group(1) + match.group(2).upper(),
-            text
-        )
-        text = re.sub(
-            r"\b(Mac)([bcdfgjklmnpqrstvwxyz])([a-z]{4,})",
-            lambda m: m.group(1) + m.group(2).upper() + m.group(3),
-            text
-        )
-        text = re.sub("\b(von|van|de|du|of)\b",
-            lambda m: m.group(1).lower,
-            text
-        )
-        text = re.sub(r"'S\b", "'s", text)
-        text = ''.join((text[0].upper(), text[1:]))
-
-        return text
-
+    
 
 ######################################################################
 # Assorted helpers

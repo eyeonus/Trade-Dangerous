@@ -42,6 +42,10 @@ venv/
 data/
 tmp/
 
+# testing
+.coverage
+test-data/
+
 # coding environment
 *.suo
 .project

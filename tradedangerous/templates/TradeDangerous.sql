@@ -205,7 +205,7 @@ CREATE TABLE Item
     ON UPDATE CASCADE
     ON DELETE CASCADE
  );
- CREATE UNIQUE INDEX idx_item_by_fdev_id ON Item (fdev_id);
+ CREATE INDEX idx_item_by_fdev_id ON Item (fdev_id);
 
 
 CREATE TABLE StationItem

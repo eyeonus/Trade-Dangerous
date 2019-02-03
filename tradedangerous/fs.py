@@ -1,3 +1,5 @@
+"""This module should handle filesystem related operations
+"""
 from shutil import copy as shcopy
 from os import makedirs, path, utime
 from pathlib import Path
@@ -45,10 +47,19 @@ def touch(filename):
 
 
 def ensureflag(flagfile, action=None):
-    """
-    Checks if flagfile exist and IF NOT the action function will be executed.
-    The flagfile will be 'touched' at the end
-    Returns Path(flagfile)
+    """Checks if flagfile exist and IF NOT the action function
+    will be executed. The flagfile will be 'touched' at the end
+
+    Parameters
+    ----------
+    flagfile : string
+        path to the file used as flag
+    action : callable
+        this will be called if the flagfiled doesn't exist
+
+    Returns
+    -------
+    Path(flagfile)
     """
     flagPath = pathify(flagfile)
     if not flagPath.exists() and callable(action):
@@ -57,12 +68,21 @@ def ensureflag(flagfile, action=None):
 
 
 def ensurefolder(folder):
+    """Creates the folder if it doesn't exist
+
+    Parameters
+    ----------
+    folder : string|pathlib.Path
+        path to the folder
+
+    Returns
+    -------
+    pathlib.Path
+        Resolved path of the folder
+    """
     folderPath = pathify(folder)
     try:
         makedirs(str(folderPath))
     except FileExistsError:
         pass
     return folderPath.resolve()
-
-
-

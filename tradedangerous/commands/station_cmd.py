@@ -5,6 +5,7 @@ from .parsing import *
 from ..tradedb import AmbiguityError
 from ..tradedb import System, Station
 from ..tradedb import TradeDB
+from .. import utils
 from ..formatting import max_len
 
 from .. import cache
@@ -239,7 +240,7 @@ def checkSystemAndStation(tdb, cmdenv):
     if not sysName:
         raise CommandLineError("No system name specified")
 
-    cmdenv.system, cmdenv.station = sysName, TradeDB.titleFixup(stnName)
+    cmdenv.system, cmdenv.station = sysName, utils.titleFixup(stnName)
     try:
         system = tdb.lookupSystem(sysName)
     except LookupError:

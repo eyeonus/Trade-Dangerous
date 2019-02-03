@@ -5,8 +5,7 @@ from pathlib import Path
 from contextlib import contextmanager
 from io import StringIO
 
-from tradedangerous import fs
-from tradedangerous import TradeEnv
+from tradedangerous import fs, TradeEnv
 
 __all__ = ['tdenv', 'captured_output', 'is_initialized']
 

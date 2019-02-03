@@ -5,7 +5,7 @@ from __future__ import absolute_import, with_statement, print_function, division
 import sys
 import pytest
 from tradedangerous import commands
-from tradedangerous.commands.exceptions import *
+from tradedangerous.commands.exceptions import UsageError, CommandLineError
 
 @pytest.fixture
 def cmd():
@@ -13,7 +13,7 @@ def cmd():
 
 prog = "trade.py"
 
-class TestFixture(object):
+class TestCommands(object):
 
     def test_dashh(self, cmd):
         with pytest.raises(UsageError):

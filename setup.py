@@ -10,35 +10,40 @@
 # --------------------------------------------------------------------
 """Setup for trade-dangerous"""
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
-exec(open('tradedangerous/version.py').read()) #pylint: disable=W0122
+package = "tradedangerous"
 
-setup(name='tradedangerous',
+exec(open("tradedangerous/version.py").read()) #pylint: disable=W0122
+
+setup(name=package,
         version=__version__, #pylint: disable=E0602
-        install_requires=[
-            'requests'
-        ],
-        packages=['tradedangerous'],
-        #package_dir={'nodemcu_uploader': 'lib'},
-        url='https://github.com/eyeonus/Trade-Dangerous',
-        author='eyeonus',
-        author_email='eyeonus@example.com',
-        description='Trade-Dangerous is set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available.',
-        keywords=['trade', 'elite', 'elite-dangerous'],
-        classifiers=[
-            'Development Status :: 4 - Beta',
-            'Intended Audience :: Developers',
-            'Programming Language :: Python :: 3'
-        ],
-        license='MPL',
-        test_suite='tests',
-        package_data={'tradedangerous': ['data/TradeDangerous.sql', 'data/Added.csv', 'data/RareItem.csv']},
+        install_requires=["requests"],
         setup_requires=["pytest-runner"],
         tests_require=["pytest"],
+        packages=find_packages(exclude=["tests"]),
+        url="https://github.com/eyeonus/Trade-Dangerous",
+        project_urls={
+            "Bug Tracker": "https://github.com/eyeonus/Trade-Dangerous/issues",
+            "Documentation": "https://github.com/eyeonus/Trade-Dangerous/wiki",
+            "Source Code": "https://github.com/eyeonus/Trade-Dangerous",
+        },
+        author="eyeonus",
+        author_email="eyeonus@gmail.com",
+        description="Trade-Dangerous is set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available.",
+        keywords=["trade", "elite", "elite-dangerous"],
+        classifiers=[
+            "Intended Audience :: Developers",
+            "Programming Language :: Python :: 3"
+            "Programming Language :: Python :: 3.5"
+            "Programming Language :: Python :: 3.6"
+        ],
+        license="MPL",
+        test_suite="tests",
+        package_data={"tradedangerous": ["data/TradeDangerous.sql", "data/Added.csv", "data/RareItem.csv"]},
         entry_points={
-            'console_scripts': [
-                'trade=tradedangerous.main:main_func'
+            "console_scripts": [
+                "trade=tradedangerous.cli:main"
             ]
         },
         zip_safe=False

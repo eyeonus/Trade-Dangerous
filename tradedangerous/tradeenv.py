@@ -30,9 +30,9 @@ class TradeEnv(object):
         'debug': 0,
         'detail': 0,
         'quiet': 0,
-        'dataDir': os.path.join(os.getcwd(), 'data'),
-        'tmpDir': os.path.join(os.getcwd(), 'tmp'),
-        'templateDir': os.path.join(_ROOT, 'templates'),
+        'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
+        'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
+        'templateDir': os.environ.get('TD_TEMPLATES', None) or os.path.join(_ROOT, 'templates'),
         'cwDir': os.getcwd()
     }
 

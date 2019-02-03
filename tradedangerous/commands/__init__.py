@@ -7,7 +7,8 @@ import importlib
 import os
 import pathlib
 import sys
-from .. import commands
+
+thismodule = sys.modules[__name__]
 from . import exceptions
 from . import parsing
 
@@ -28,8 +29,8 @@ from . import trade_cmd
 from . import update_cmd
 
 commandIndex = {
-    cmd[0:cmd.find('_cmd')]: getattr(commands, cmd)
-    for cmd in commands.__dir__() if cmd.endswith("_cmd")
+    cmd[0:cmd.find('_cmd')]: getattr(thismodule, cmd)
+    for cmd in thismodule.__dir__() if cmd.endswith("_cmd")
 }
 
 ######################################################################
