@@ -6,3 +6,9 @@ python:
   - "3.6"
 install: pip install tox-travis
 script: tox
+
+after_success:
+  - git config --global user.name "semantic-release (via TravisCI)"
+  - git config --global user.email "semantic-release@travis"
+  - pip install python-semantic-release
+  - semantic-release publish
