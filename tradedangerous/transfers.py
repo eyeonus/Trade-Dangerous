@@ -215,6 +215,8 @@ def download(
             makeUnit(fetched / elapsed)
         )
 
+    fs.ensurefolder(actPath.parent)
+
     # Swap the file into place
     if backup:
         bakPath = Path(localFile + ".bak")
