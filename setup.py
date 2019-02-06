@@ -9,8 +9,14 @@
 # I guarantee there is at least one bug neither of us knew about.
 # --------------------------------------------------------------------
 """Setup for trade-dangerous"""
-
+import sys
 from setuptools import setup, find_packages
+
+try:
+    from semantic_release import setup_hook
+    setup_hook(sys.argv)
+except ImportError:
+    pass
 
 package = "tradedangerous"
 
