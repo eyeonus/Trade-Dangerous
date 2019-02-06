@@ -4,13 +4,15 @@ import pytest
 
 from tradedangerous.cli import trade
 from tradedangerous.commands.exceptions import UsageError
-from tradedangerous import tools
-from .helpers import copy_fixtures, regex_findin
+from .helpers import copy_fixtures, regex_findin, remove_fixtures
 
 PROG = "trade"
 
 def setup_module():
     copy_fixtures()
+
+def teardown_module():
+    remove_fixtures()
 
 class TestTrade(object):
     def test_local_help(self):
@@ -81,25 +83,6 @@ class TestTrade(object):
         assert "Water                            323" in captured.out
 
 
-    def test_run(self, capsys):
-        trade([PROG, "run", "--capacity=10", "--credits=10000", "--from=sol/abr", "--jumps-per=3", "--ly-per=10.5", "--no-planet"])
-        captured = capsys.readouterr()
-        assert "Sol/Abraham Lincoln: 10 x Hydrogen Fuel," in captured.out
-        assert "Sol/Burnell Station: 2 x Silver," in captured.out
-        assert "560cr (213/ton)" in captured.out
-
-
-    @pytest.mark.slow
-    def test_import_eddblink(self, capsys):
-        trade([PROG, "import", "-P=eddblink", '--opt=clean,skipvend,force'])
-        captured = capsys.readouterr()
-        # with capsys.disabled():
-        #     print("Here")
-        #     print(captured.out)
-        #     print("to Here")
-        assert "NOTE: Import completed." in captured.out
-
-
     def test_import_edcd(self, capsys):
         #trade import -P=edcd --opt=commodity
         trade([PROG, "import", "-P=edcd", "--opt=commodity"])
@@ -121,19 +104,3 @@ class TestTrade(object):
         #     print(captured.out)
         #     print("to Here")
         assert regex_findin(r"NOTE: Import complete: \d+ items over \d+ stations in \d+ systems", captured.out)
-
-
-    def test_pyproj_run(self, capsys):
-        trade([PROG, "run", "-vv", "--progress", "--empty=82",
-            "--cap=212", "--jumps=4", "--cr=2153796", "--from=sol/abr",
-            "--hops=6", "--ls-m=8000", "--sup=10000",
-            "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"])
-        captured = capsys.readouterr()
-        # with capsys.disabled():
-        #     print("Here")
-        #     print(captured.out)
-        #     print("to Here")
-        assert regex_findin(r"=> est [\d\s,]+cr total", captured.out)
-
-    def test_derp(self, capsys):
-        tools.test_derp()
