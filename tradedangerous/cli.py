@@ -120,9 +120,13 @@ def trade(argv):
                 )
             )
 
-    results = cmdenv.run(tdb)
-    if results:
+    try:
+        results = cmdenv.run(tdb)
+    finally:
+        # always close tdb
         tdb.close()
+
+    if results:
         results.render()
 
 
