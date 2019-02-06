@@ -1,3 +1,9 @@
+stages:
+  - test
+  - name: deploy
+    # require the branch name to be master (note for PRs this is the base branch name)
+    if: branch = master
+
 sudo: false
 language: python
 python:
@@ -7,8 +13,14 @@ python:
 install: pip install tox-travis
 script: tox
 
-after_success:
-  - git config --global user.name "semantic-release (via TravisCI)"
-  - git config --global user.email "semantic-release@travis"
-  - pip install python-semantic-release
-  - semantic-release publish
+jobs:
+  include:
+    - stage: deploy
+      python: 3.6
+      env:
+        - FOO=foo
+      script:
+        - git config --global user.name "semantic-release (via TravisCI)"
+        - git config --global user.email "semantic-release@travis"
+        - pip install python-semantic-release
+        - semantic-release publish
