@@ -1,7 +1,11 @@
+# python related
 __pycache__
-import.txt
-tmp
 *.pyc
+*.pyo
+*.pyperf
+.tox/
+.pytest
+.pytest_cache
 
 data/TradeDangerous.db
 data/TradeDangerous.new
@@ -26,18 +30,41 @@ data/Upgrade.csv
 data/UpgradeVendor.csv
 data/edapi.config
 *.prices
+# python virtualenv
+venv/
+.venv/
+
+# python package stuff
+*.egg-info/
+.eggs/
+
+# project-stuff
+data/
+tmp/
+
+# testing
+.coverage
+test-data/
+
+# coding environment
 *.suo
-*.pyperf
-misc/*.csv
+.project
+.pydevproject
+.vscode
+.private
+
+# scm
 *.orig
 *.prev
 *.last
 
+# misc
+import.txt
+/config.sh
+*.prices
+misc/*.csv
 wip/
 pycallgraph.png
-/config.sh
-venv/
-.venv/
-data/eddb/*
-.project
-.pydevproject
+
+
+

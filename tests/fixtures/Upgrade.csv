@@ -1,0 +1,927 @@
+unq:upgrade_id,name,weight,cost
+738,'SideWinder Armour Grade1',0,0
+739,'SideWinder Armour Grade2',2,25600
+740,'SideWinder Armour Grade3',4,80320
+741,'SideWinder Armour Mirrored',4,132060
+742,'SideWinder Armour Reactive',4,139420
+743,'Eagle Armour Grade1',0,0
+744,'Eagle Armour Grade2',4,26880
+745,'Eagle Armour Grade3',8,90050
+746,'Eagle Armour Mirrored',8,140090
+747,'Eagle Armour Reactive',8,150390
+748,'Hauler Armour Grade1',0,0
+749,'Hauler Armour Grade2',1,42180
+750,'Hauler Armour Grade3',2,185050
+751,'Hauler Armour Mirrored',2,270300
+752,'Hauler Armour Reactive',2,282420
+753,'Adder Armour Grade1',0,0
+754,'Adder Armour Grade2',3,35120
+755,'Adder Armour Grade3',5,79030
+756,'Adder Armour Mirrored',5,186770
+757,'Adder Armour Reactive',5,206960
+758,'Viper Armour Grade1',0,0
+759,'Viper Armour Grade2',5,57170
+760,'Viper Armour Grade3',9,128640
+761,'Viper Armour Mirrored',9,304010
+762,'Viper Armour Reactive',9,336890
+763,'CobraMkIII Armour Grade1',0,0
+764,'CobraMkIII Armour Grade2',14,151890
+765,'CobraMkIII Armour Grade3',27,341750
+766,'CobraMkIII Armour Mirrored',27,797410
+767,'CobraMkIII Armour Reactive',27,895000
+768,'Type6 Armour Grade1',0,0
+769,'Type6 Armour Grade2',12,418380
+770,'Type6 Armour Grade3',23,941350
+771,'Type6 Armour Mirrored',23,2224730
+772,'Type6 Armour Reactive',23,2465290
+773,'Type7 Armour Grade1',0,0
+774,'Type7 Armour Grade2',32,6988900
+775,'Type7 Armour Grade3',63,15725030
+776,'Type7 Armour Mirrored',63,37163480
+777,'Type7 Armour Reactive',63,41182100
+778,'Asp Armour Grade1',0,0
+779,'Asp Armour Grade2',21,2664460
+780,'Asp Armour Grade3',42,5995040
+781,'Asp Armour Mirrored',42,14168270
+782,'Asp Armour Reactive',42,15700340
+783,'Vulture Armour Grade1',0,0
+784,'Vulture Armour Grade2',17,1970250
+785,'Vulture Armour Grade3',35,4433050
+786,'Vulture Armour Mirrored',35,10476780
+787,'Vulture Armour Reactive',35,11609670
+788,'Empire Trader Armour Grade1',0,0
+789,'Empire Trader Armour Grade2',30,8918340
+790,'Empire Trader Armour Grade3',60,20066270
+791,'Empire Trader Armour Mirrored',60,47423290
+792,'Empire Trader Armour Reactive',60,52551340
+793,'Federation Dropship Armour Grade1',0,0
+794,'Federation Dropship Armour Grade2',44,5725680
+795,'Federation Dropship Armour Grade3',87,12882780
+796,'Federation Dropship Armour Mirrored',87,30446310
+797,'Federation Dropship Armour Reactive',87,33738580
+798,'Orca Armour Grade1',0,0
+799,'Orca Armour Grade2',21,19415950
+800,'Orca Armour Grade3',87,43685900
+801,'Orca Armour Mirrored',87,103244340
+802,'Orca Armour Reactive',87,114408510
+803,'Type9 Armour Grade1',0,0
+804,'Type9 Armour Grade2',75,30622340
+805,'Type9 Armour Grade3',150,68900260
+806,'Type9 Armour Mirrored',150,162834280
+807,'Type9 Armour Reactive',150,180442120
+808,'Python Armour Grade1',0,0
+809,'Python Armour Grade2',26,22791270
+810,'Python Armour Grade3',53,51280360
+811,'Python Armour Mirrored',53,121192590
+812,'Python Armour Reactive',53,134297570
+813,'FerDeLance Armour Grade1',0,0
+814,'FerDeLance Armour Grade2',19,20626820
+815,'FerDeLance Armour Grade3',38,46410340
+816,'FerDeLance Armour Mirrored',38,109683090
+817,'FerDeLance Armour Reactive',38,121543510
+818,'Anaconda Armour Grade1',0,0
+819,'Anaconda Armour Grade2',30,58787780
+820,'Anaconda Armour Grade3',60,132272510
+821,'Anaconda Armour Mirrored',60,312604020
+822,'Anaconda Armour Reactive',60,346407000
+823,'Hpt PulseLaser Fixed Small',2,2200
+824,'Hpt PulseLaser Fixed Medium',4,17600
+825,'Hpt PulseLaser Fixed Large',8,70400
+826,'Hpt PulseLaser Gimbal Small',2,6600
+827,'Hpt PulseLaser Gimbal Medium',4,35400
+828,'Hpt PulseLaser Gimbal Large',8,140600
+829,'Hpt PulseLaser Turret Small',2,26000
+830,'Hpt PulseLaser Turret Medium',4,132800
+831,'Hpt PulseLaser Turret Large',8,400400
+832,'Hpt PulseLaserBurst Fixed Small',2,4400
+833,'Hpt PulseLaserBurst Fixed Medium',4,23000
+834,'Hpt PulseLaserBurst Fixed Large',8,140400
+835,'Hpt PulseLaserBurst Gimbal Small',2,8600
+836,'Hpt PulseLaserBurst Gimbal Medium',4,48500
+837,'Hpt PulseLaserBurst Gimbal Large',8,281600
+838,'Hpt PulseLaserBurst Turret Small',2,52800
+839,'Hpt PulseLaserBurst Turret Medium',4,162800
+840,'Hpt PulseLaserBurst Turret Large',8,800400
+841,'Hpt BeamLaser Fixed Small',2,37430
+842,'Hpt BeamLaser Fixed Medium',4,299520
+843,'Hpt BeamLaser Fixed Large',8,1177600
+844,'Hpt BeamLaser Gimbal Small',2,74650
+845,'Hpt BeamLaser Gimbal Medium',4,500600
+846,'Hpt BeamLaser Gimbal Large',8,2396160
+847,'Hpt BeamLaser Turret Small',2,500000
+848,'Hpt BeamLaser Turret Medium',4,2099900
+849,'Hpt BeamLaser Turret Large',8,19399600
+850,'Hpt Cannon Fixed Small',2,21100
+851,'Hpt Cannon Fixed Medium',4,168430
+852,'Hpt Cannon Fixed Large',8,675200
+853,'Hpt Cannon Fixed Huge',16,2700800
+854,'Hpt Cannon Gimbal Small',2,42200
+855,'Hpt Cannon Gimbal Medium',4,337600
+856,'Hpt Cannon Gimbal Huge',16,5401600
+857,'Hpt Cannon Turret Small',2,506400
+858,'Hpt Cannon Turret Medium',4,4051200
+859,'Hpt Cannon Turret Large',8,16204800
+860,'Hpt Slugshot Fixed Small',2,36000
+861,'Hpt Slugshot Fixed Medium',4,291840
+862,'Hpt Slugshot Fixed Large',8,1167360
+863,'Hpt Slugshot Gimbal Small',2,54720
+864,'Hpt Slugshot Gimbal Medium',4,437800
+865,'Hpt Slugshot Turret Small',2,182400
+866,'Hpt Slugshot Turret Medium',4,1459200
+867,'Hpt MultiCannon Fixed Small',2,9500
+868,'Hpt MultiCannon Fixed Medium',4,38000
+869,'Hpt MultiCannon Gimbal Small',2,14250
+870,'Hpt MultiCannon Gimbal Medium',4,57000
+871,'Hpt MultiCannon Turret Small',2,81600
+872,'Hpt MultiCannon Turret Medium',4,1292800
+873,'Hpt PlasmaAccelerator Fixed Medium',4,834200
+874,'Hpt PlasmaAccelerator Fixed Large',8,3051200
+875,'Hpt PlasmaAccelerator Fixed Huge',16,13793600
+876,'Hpt Railgun Fixed Small',2,51600
+877,'Hpt Railgun Fixed Medium',4,412800
+878,'Hpt BasicMissileRack Fixed Small',2,72600
+879,'Hpt BasicMissileRack Fixed Medium',4,512400
+880,'Hpt MineLauncher Fixed Small',2,24260
+881,'Hpt MineLauncher Fixed Medium',4,294080
+882,'Hpt AdvancedTorpPylon Fixed Small',2,11200
+883,'Hpt AdvancedTorpPylon Fixed Medium',4,44800
+884,'Hpt ChaffLauncher Tiny',1.3,8500
+885,'Hpt ElectronicCountermeasure Tiny',1.3,12500
+886,'Hpt HeatSinkLauncher Turret Tiny',1.3,3500
+887,'Hpt PlasmaPointDefence Turret Tiny',0.5,18550
+888,'Hpt MiningLaser Fixed Small',2,6800
+889,'Hpt MiningLaser Fixed Medium',2,22580
+890,'Int DockingComputer Standard',0,4500
+891,'Int Powerplant Size2 Class1',2.5,1980
+892,'Int Powerplant Size2 Class2',1,5930
+893,'Int Powerplant Size2 Class3',1.3,17800
+894,'Int Powerplant Size2 Class4',2,53410
+895,'Int Powerplant Size2 Class5',1.3,160220
+896,'Int Powerplant Size3 Class1',5,6270
+897,'Int Powerplant Size3 Class2',2,18810
+898,'Int Powerplant Size3 Class3',2.5,56440
+899,'Int Powerplant Size3 Class4',4,169300
+900,'Int Powerplant Size3 Class5',2.5,507910
+901,'Int Powerplant Size4 Class1',10,19880
+902,'Int Powerplant Size4 Class2',4,59630
+903,'Int Powerplant Size4 Class3',5,178900
+904,'Int Powerplant Size4 Class4',8,536690
+905,'Int Powerplant Size4 Class5',5,1610080
+906,'Int Powerplant Size5 Class1',20,63010
+907,'Int Powerplant Size5 Class2',8,189040
+908,'Int Powerplant Size5 Class3',10,567110
+909,'Int Powerplant Size5 Class4',16,1701320
+910,'Int Powerplant Size5 Class5',10,5103950
+911,'Int Powerplant Size6 Class1',40,199750
+912,'Int Powerplant Size6 Class2',16,599240
+913,'Int Powerplant Size6 Class3',20,1797730
+914,'Int Powerplant Size6 Class4',32,5393180
+915,'Int Powerplant Size6 Class5',20,16179530
+916,'Int Powerplant Size7 Class1',80,633200
+917,'Int Powerplant Size7 Class2',32,1899600
+918,'Int Powerplant Size7 Class3',40,5698790
+919,'Int Powerplant Size7 Class4',64,17096370
+920,'Int Powerplant Size7 Class5',40,51289110
+921,'Int Powerplant Size8 Class1',160,2007240
+922,'Int Powerplant Size8 Class2',64,6021720
+923,'Int Powerplant Size8 Class3',80,18065170
+924,'Int Powerplant Size8 Class4',128,54195500
+925,'Int Powerplant Size8 Class5',80,162586490
+926,'Int Engine Size2 Class1',2.5,1980
+927,'Int Engine Size2 Class2',1,5930
+928,'Int Engine Size2 Class3',2.5,17800
+929,'Int Engine Size2 Class4',4,53410
+930,'Int Engine Size2 Class5',2.5,160220
+931,'Int Engine Size3 Class1',5,6270
+932,'Int Engine Size3 Class2',2,18810
+933,'Int Engine Size3 Class3',5,56440
+934,'Int Engine Size3 Class4',8,169300
+935,'Int Engine Size3 Class5',5,507910
+936,'Int Engine Size4 Class1',10,19880
+937,'Int Engine Size4 Class2',4,59630
+938,'Int Engine Size4 Class3',10,178900
+939,'Int Engine Size4 Class4',16,536690
+940,'Int Engine Size4 Class5',10,1610080
+941,'Int Engine Size5 Class1',20,63010
+942,'Int Engine Size5 Class2',8,189040
+943,'Int Engine Size5 Class3',20,567110
+944,'Int Engine Size5 Class4',32,1701320
+945,'Int Engine Size5 Class5',20,5103950
+946,'Int Engine Size6 Class1',40,199750
+947,'Int Engine Size6 Class2',16,599240
+948,'Int Engine Size6 Class3',40,1797730
+949,'Int Engine Size6 Class4',64,5393180
+950,'Int Engine Size6 Class5',40,16179530
+951,'Int Engine Size7 Class1',80,633200
+952,'Int Engine Size7 Class2',32,1899600
+953,'Int Engine Size7 Class3',80,5698790
+954,'Int Engine Size7 Class4',128,17096370
+955,'Int Engine Size7 Class5',80,51289110
+956,'Int Engine Size8 Class1',160,2007240
+957,'Int Engine Size8 Class2',64,6021720
+958,'Int Engine Size8 Class3',160,18065170
+959,'Int Engine Size8 Class4',256,54195500
+960,'Int Engine Size8 Class5',160,162586490
+961,'Int Hyperdrive Size2 Class1',2.5,1980
+962,'Int Hyperdrive Size2 Class2',1,5930
+963,'Int Hyperdrive Size2 Class3',2.5,17800
+964,'Int Hyperdrive Size2 Class4',4,53410
+965,'Int Hyperdrive Size2 Class5',2.5,160220
+966,'Int Hyperdrive Size3 Class1',5,6270
+967,'Int Hyperdrive Size3 Class2',2,18810
+968,'Int Hyperdrive Size3 Class3',5,56440
+969,'Int Hyperdrive Size3 Class4',8,169300
+970,'Int Hyperdrive Size3 Class5',5,507910
+971,'Int Hyperdrive Size4 Class1',10,19880
+972,'Int Hyperdrive Size4 Class2',4,59630
+973,'Int Hyperdrive Size4 Class3',10,178900
+974,'Int Hyperdrive Size4 Class4',16,536690
+975,'Int Hyperdrive Size4 Class5',10,1610080
+976,'Int Hyperdrive Size5 Class1',20,63010
+977,'Int Hyperdrive Size5 Class2',8,189040
+978,'Int Hyperdrive Size5 Class3',20,567110
+979,'Int Hyperdrive Size5 Class4',32,1701320
+980,'Int Hyperdrive Size5 Class5',20,5103950
+981,'Int Hyperdrive Size6 Class1',40,199750
+982,'Int Hyperdrive Size6 Class2',16,599240
+983,'Int Hyperdrive Size6 Class3',40,1797730
+984,'Int Hyperdrive Size6 Class4',64,5393180
+985,'Int Hyperdrive Size6 Class5',40,16179530
+986,'Int Hyperdrive Size7 Class1',80,633200
+987,'Int Hyperdrive Size7 Class2',32,1899600
+988,'Int Hyperdrive Size7 Class3',80,5698790
+989,'Int Hyperdrive Size7 Class4',128,17096370
+990,'Int Hyperdrive Size7 Class5',80,51289110
+991,'Int Hyperdrive Size8 Class1',160,0
+992,'Int Hyperdrive Size8 Class2',64,0
+993,'Int Hyperdrive Size8 Class3',160,0
+994,'Int Hyperdrive Size8 Class4',256,0
+995,'Int Hyperdrive Size8 Class5',160,0
+996,'Int LifeSupport Size1 Class1',1.3,520
+997,'Int LifeSupport Size1 Class2',0.5,1290
+998,'Int LifeSupport Size1 Class3',1.3,3230
+999,'Int LifeSupport Size1 Class4',2,8080
+1000,'Int LifeSupport Size1 Class5',1.3,20200
+1001,'Int LifeSupport Size2 Class1',2.5,1450
+1002,'Int LifeSupport Size2 Class2',1,3620
+1003,'Int LifeSupport Size2 Class3',2.5,9050
+1004,'Int LifeSupport Size2 Class4',4,22620
+1005,'Int LifeSupport Size2 Class5',2.5,56550
+1006,'Int LifeSupport Size3 Class1',5,4050
+1007,'Int LifeSupport Size3 Class2',2,10130
+1008,'Int LifeSupport Size3 Class3',5,25330
+1009,'Int LifeSupport Size3 Class4',8,63330
+1010,'Int LifeSupport Size3 Class5',5,158330
+1011,'Int LifeSupport Size4 Class1',10,11350
+1012,'Int LifeSupport Size4 Class2',4,28370
+1013,'Int LifeSupport Size4 Class3',10,70930
+1014,'Int LifeSupport Size4 Class4',16,177330
+1015,'Int LifeSupport Size4 Class5',10,443330
+1016,'Int LifeSupport Size5 Class1',20,31780
+1017,'Int LifeSupport Size5 Class2',8,79440
+1018,'Int LifeSupport Size5 Class3',20,198610
+1019,'Int LifeSupport Size5 Class4',32,496530
+1020,'Int LifeSupport Size5 Class5',20,1241320
+1021,'Int LifeSupport Size6 Class1',40,88980
+1022,'Int LifeSupport Size6 Class2',16,222440
+1023,'Int LifeSupport Size6 Class3',40,556110
+1024,'Int LifeSupport Size6 Class4',64,1390280
+1025,'Int LifeSupport Size6 Class5',40,3475690
+1026,'Int LifeSupport Size7 Class1',80,249140
+1027,'Int LifeSupport Size7 Class2',32,622840
+1028,'Int LifeSupport Size7 Class3',80,1557110
+1029,'Int LifeSupport Size7 Class4',128,3892770
+1030,'Int LifeSupport Size7 Class5',80,9731930
+1031,'Int LifeSupport Size8 Class1',160,697590
+1032,'Int LifeSupport Size8 Class2',64,1743970
+1033,'Int LifeSupport Size8 Class3',160,4359900
+1034,'Int LifeSupport Size8 Class4',256,10899770
+1035,'Int LifeSupport Size8 Class5',160,27249400
+1036,'Int PowerDistributor Size1 Class1',1.3,520
+1037,'Int PowerDistributor Size1 Class2',0.5,1290
+1038,'Int PowerDistributor Size1 Class3',1.3,3230
+1039,'Int PowerDistributor Size1 Class4',2,8080
+1040,'Int PowerDistributor Size1 Class5',1.3,20200
+1041,'Int PowerDistributor Size2 Class1',2.5,1450
+1042,'Int PowerDistributor Size2 Class2',1,3620
+1043,'Int PowerDistributor Size2 Class3',2.5,9050
+1044,'Int PowerDistributor Size2 Class4',4,22620
+1045,'Int PowerDistributor Size2 Class5',2.5,56550
+1046,'Int PowerDistributor Size3 Class1',5,4050
+1047,'Int PowerDistributor Size3 Class2',2,10130
+1048,'Int PowerDistributor Size3 Class3',5,25330
+1049,'Int PowerDistributor Size3 Class4',8,63330
+1050,'Int PowerDistributor Size3 Class5',5,158330
+1051,'Int PowerDistributor Size4 Class1',10,11350
+1052,'Int PowerDistributor Size4 Class2',4,28370
+1053,'Int PowerDistributor Size4 Class3',10,70930
+1054,'Int PowerDistributor Size4 Class4',16,177330
+1055,'Int PowerDistributor Size4 Class5',10,443330
+1056,'Int PowerDistributor Size5 Class1',20,31780
+1057,'Int PowerDistributor Size5 Class2',8,79440
+1058,'Int PowerDistributor Size5 Class3',20,198610
+1059,'Int PowerDistributor Size5 Class4',32,496530
+1060,'Int PowerDistributor Size5 Class5',20,1241320
+1061,'Int PowerDistributor Size6 Class1',40,88980
+1062,'Int PowerDistributor Size6 Class2',16,222440
+1063,'Int PowerDistributor Size6 Class3',40,556110
+1064,'Int PowerDistributor Size6 Class4',64,1390280
+1065,'Int PowerDistributor Size6 Class5',40,3475690
+1066,'Int PowerDistributor Size7 Class1',80,249140
+1067,'Int PowerDistributor Size7 Class2',32,622840
+1068,'Int PowerDistributor Size7 Class3',80,1557110
+1069,'Int PowerDistributor Size7 Class4',128,3892770
+1070,'Int PowerDistributor Size7 Class5',80,9731930
+1071,'Int PowerDistributor Size8 Class1',160,697580
+1072,'Int PowerDistributor Size8 Class2',64,1743960
+1073,'Int PowerDistributor Size8 Class3',160,4359900
+1074,'Int PowerDistributor Size8 Class4',256,10899760
+1075,'Int PowerDistributor Size8 Class5',160,27249390
+1076,'Int Sensors Size1 Class1',1.3,520
+1077,'Int Sensors Size1 Class2',0.5,1290
+1078,'Int Sensors Size1 Class3',1.3,3230
+1079,'Int Sensors Size1 Class4',2,8080
+1080,'Int Sensors Size1 Class5',1.3,20200
+1081,'Int Sensors Size2 Class1',2.5,1450
+1082,'Int Sensors Size2 Class2',1,3620
+1083,'Int Sensors Size2 Class3',2.5,9050
+1084,'Int Sensors Size2 Class4',4,22620
+1085,'Int Sensors Size2 Class5',2.5,56550
+1086,'Int Sensors Size3 Class1',5,4050
+1087,'Int Sensors Size3 Class2',2,10130
+1088,'Int Sensors Size3 Class3',5,25330
+1089,'Int Sensors Size3 Class4',8,63330
+1090,'Int Sensors Size3 Class5',5,158330
+1091,'Int Sensors Size4 Class1',10,11350
+1092,'Int Sensors Size4 Class2',4,28370
+1093,'Int Sensors Size4 Class3',10,70930
+1094,'Int Sensors Size4 Class4',16,177330
+1095,'Int Sensors Size4 Class5',10,443330
+1096,'Int Sensors Size5 Class1',20,31780
+1097,'Int Sensors Size5 Class2',8,79440
+1098,'Int Sensors Size5 Class3',20,198610
+1099,'Int Sensors Size5 Class4',32,496530
+1100,'Int Sensors Size5 Class5',20,1241320
+1101,'Int Sensors Size6 Class1',40,88980
+1102,'Int Sensors Size6 Class2',16,222440
+1103,'Int Sensors Size6 Class3',40,556110
+1104,'Int Sensors Size6 Class4',64,1390280
+1105,'Int Sensors Size6 Class5',40,3475690
+1106,'Int Sensors Size7 Class1',80,249140
+1107,'Int Sensors Size7 Class2',32,622840
+1108,'Int Sensors Size7 Class3',80,1557110
+1109,'Int Sensors Size7 Class4',128,3892770
+1110,'Int Sensors Size7 Class5',80,9731930
+1111,'Int Sensors Size8 Class1',160,697580
+1112,'Int Sensors Size8 Class2',64,1743960
+1113,'Int Sensors Size8 Class3',160,4359900
+1114,'Int Sensors Size8 Class4',256,10899760
+1115,'Int Sensors Size8 Class5',160,27249390
+1116,'Int ShieldGenerator Size2 Class1',2.5,1980
+1117,'Int ShieldGenerator Size2 Class2',1,5930
+1118,'Int ShieldGenerator Size2 Class3',2.5,17800
+1119,'Int ShieldGenerator Size2 Class4',4,53410
+1120,'Int ShieldGenerator Size2 Class5',2.5,160220
+1121,'Int ShieldGenerator Size3 Class1',5,6270
+1122,'Int ShieldGenerator Size3 Class2',2,18810
+1123,'Int ShieldGenerator Size3 Class3',5,56440
+1124,'Int ShieldGenerator Size3 Class4',8,169300
+1125,'Int ShieldGenerator Size3 Class5',5,507910
+1126,'Int ShieldGenerator Size4 Class1',10,19880
+1127,'Int ShieldGenerator Size4 Class2',4,59630
+1128,'Int ShieldGenerator Size4 Class3',10,178900
+1129,'Int ShieldGenerator Size4 Class4',16,536690
+1130,'Int ShieldGenerator Size4 Class5',10,1610080
+1131,'Int ShieldGenerator Size5 Class1',20,63010
+1132,'Int ShieldGenerator Size5 Class2',8,189040
+1133,'Int ShieldGenerator Size5 Class3',20,567110
+1134,'Int ShieldGenerator Size5 Class4',32,1701320
+1135,'Int ShieldGenerator Size5 Class5',20,5103950
+1136,'Int ShieldGenerator Size6 Class1',40,199750
+1137,'Int ShieldGenerator Size6 Class2',16,599240
+1138,'Int ShieldGenerator Size6 Class3',40,1797730
+1139,'Int ShieldGenerator Size6 Class4',64,5393180
+1140,'Int ShieldGenerator Size6 Class5',40,16179530
+1141,'Int ShieldGenerator Size7 Class1',80,633200
+1142,'Int ShieldGenerator Size7 Class2',32,1899600
+1143,'Int ShieldGenerator Size7 Class3',80,5698790
+1144,'Int ShieldGenerator Size7 Class4',128,17096370
+1145,'Int ShieldGenerator Size7 Class5',80,51289110
+1146,'Int ShieldGenerator Size8 Class1',160,2007240
+1147,'Int ShieldGenerator Size8 Class2',64,6021720
+1148,'Int ShieldGenerator Size8 Class3',160,18065170
+1149,'Int ShieldGenerator Size8 Class4',256,54195500
+1150,'Int ShieldGenerator Size8 Class5',160,162586490
+1151,'Int ShieldCellBank Size1 Class1',1.3,517
+1152,'Int ShieldCellBank Size1 Class2',0.5,1293
+1153,'Int ShieldCellBank Size1 Class3',1.3,3231
+1154,'Int ShieldCellBank Size1 Class4',2,8078
+1155,'Int ShieldCellBank Size1 Class5',1.3,20195
+1156,'Int ShieldCellBank Size2 Class1',2.5,1448
+1157,'Int ShieldCellBank Size2 Class2',1,3619
+1158,'Int ShieldCellBank Size2 Class3',2.5,9048
+1159,'Int ShieldCellBank Size2 Class4',4,22619
+1160,'Int ShieldCellBank Size2 Class5',2.5,56547
+1161,'Int ShieldCellBank Size3 Class1',5,4053
+1162,'Int ShieldCellBank Size3 Class2',2,10133
+1163,'Int ShieldCellBank Size3 Class3',5,25333
+1164,'Int ShieldCellBank Size3 Class4',8,61909
+1165,'Int ShieldCellBank Size3 Class5',5,158331
+1166,'Int ShieldCellBank Size4 Class1',10,11349
+1167,'Int ShieldCellBank Size4 Class2',4,28373
+1168,'Int ShieldCellBank Size4 Class3',10,70932
+1169,'Int ShieldCellBank Size4 Class4',16,177331
+1170,'Int ShieldCellBank Size4 Class5',10,443328
+1171,'Int ShieldCellBank Size5 Class1',20,31778
+1172,'Int ShieldCellBank Size5 Class2',8,79444
+1173,'Int ShieldCellBank Size5 Class3',20,194143
+1174,'Int ShieldCellBank Size5 Class4',32,496527
+1175,'Int ShieldCellBank Size5 Class5',20,1210285
+1176,'Int ShieldCellBank Size6 Class1',40,88987
+1177,'Int ShieldCellBank Size6 Class2',16,222444
+1178,'Int ShieldCellBank Size6 Class3',40,556110
+1179,'Int ShieldCellBank Size6 Class4',64,1390275
+1180,'Int ShieldCellBank Size6 Class5',40,3475688
+1181,'Int ShieldCellBank Size7 Class1',80,249137
+1182,'Int ShieldCellBank Size7 Class2',32,622843
+1183,'Int ShieldCellBank Size7 Class3',80,1557108
+1184,'Int ShieldCellBank Size7 Class4',128,3892770
+1185,'Int ShieldCellBank Size7 Class5',80,9731925
+1186,'Int ShieldCellBank Size8 Class1',160,697584
+1187,'Int ShieldCellBank Size8 Class2',64,1743961
+1188,'Int ShieldCellBank Size8 Class3',160,4359903
+1189,'Int ShieldCellBank Size8 Class4',256,10899756
+1190,'Int ShieldCellBank Size8 Class5',160,27249391
+1191,'Int CargoRack Size1 Class1',0,1000
+1192,'Int CargoRack Size2 Class1',0,3250
+1193,'Int CargoRack Size3 Class1',0,10560
+1194,'Int CargoRack Size4 Class1',0,34330
+1195,'Int CargoRack Size5 Class1',0,111570
+1196,'Int CargoRack Size6 Class1',0,362590
+1197,'Int CargoRack Size7 Class1',0,1178420
+1198,'Int CargoRack Size8 Class1',0,3829870
+1199,'Int FuelTank Size1 Class3',0,1000
+1200,'Int FuelTank Size2 Class3',0,3750
+1201,'Int FuelTank Size3 Class3',0,7060
+1202,'Int FuelTank Size4 Class3',0,24730
+1203,'Int FuelTank Size5 Class3',0,97750
+1204,'Int FuelTank Size6 Class3',0,341580
+1205,'Int FuelTank Size7 Class3',0,1780910
+1206,'Int FuelTank Size8 Class3',0,5428400
+1207,'Int DroneControl ResourceSiphon Size1 Class1',1.3,600
+1208,'Int DroneControl ResourceSiphon Size1 Class2',0.5,1200
+1209,'Int DroneControl ResourceSiphon Size1 Class3',1.3,2400
+1210,'Int DroneControl ResourceSiphon Size1 Class4',2,4800
+1211,'Int DroneControl ResourceSiphon Size1 Class5',1.3,9600
+1212,'Int DroneControl ResourceSiphon Size3 Class1',5,5400
+1213,'Int DroneControl ResourceSiphon Size3 Class2',2,10800
+1214,'Int DroneControl ResourceSiphon Size3 Class3',5,21600
+1215,'Int DroneControl ResourceSiphon Size3 Class4',8,43200
+1216,'Int DroneControl ResourceSiphon Size3 Class5',5,86400
+1217,'Int DroneControl ResourceSiphon Size5 Class1',20,48600
+1218,'Int DroneControl ResourceSiphon Size5 Class2',8,97200
+1219,'Int DroneControl ResourceSiphon Size5 Class3',20,194400
+1220,'Int DroneControl ResourceSiphon Size5 Class4',32,388800
+1221,'Int DroneControl ResourceSiphon Size5 Class5',20,777600
+1222,'Int DroneControl ResourceSiphon Size7 Class1',80,437400
+1223,'Int DroneControl ResourceSiphon Size7 Class2',32,874800
+1224,'Int DroneControl ResourceSiphon Size7 Class3',80,1749600
+1225,'Int DroneControl ResourceSiphon Size7 Class4',128,3499200
+1226,'Int DroneControl ResourceSiphon Size7 Class5',90,6998400
+1227,'Hpt CargoScanner Size0 Class1',1.3,13540
+1228,'Hpt CargoScanner Size0 Class2',1.3,40630
+1229,'Hpt CargoScanner Size0 Class3',1.3,121900
+1230,'Hpt CargoScanner Size0 Class4',1.3,365700
+1231,'Hpt CargoScanner Size0 Class5',1.3,1097100
+1232,'Hpt CloudScanner Size0 Class1',1.3,13540
+1233,'Hpt CloudScanner Size0 Class2',1.3,40630
+1234,'Hpt CloudScanner Size0 Class3',1.3,121900
+1235,'Hpt CloudScanner Size0 Class4',1.3,365700
+1236,'Hpt CloudScanner Size0 Class5',1.3,1097100
+1237,'Hpt CrimeScanner Size0 Class1',1.3,13540
+1238,'Hpt CrimeScanner Size0 Class2',1.3,40630
+1239,'Hpt CrimeScanner Size0 Class3',1.3,121900
+1240,'Hpt CrimeScanner Size0 Class4',1.3,365700
+1241,'Hpt CrimeScanner Size0 Class5',1.3,1097100
+1242,'Int StellarBodyDiscoveryScanner Standard',2,1000
+1243,'Int StellarBodyDiscoveryScanner Intermediate',2,505000
+1244,'Int StellarBodyDiscoveryScanner Advanced',2,1545000
+1245,'Int DetailedSurfaceScanner Tiny',1.3,250000
+1246,'Int FuelScoop Size1 Class1',0,310
+1247,'Int FuelScoop Size2 Class1',0,1070
+1248,'Int FuelScoop Size3 Class1',0,3390
+1249,'Int FuelScoop Size4 Class1',0,10730
+1250,'Int FuelScoop Size5 Class1',0,34030
+1251,'Int FuelScoop Size6 Class1',0,107860
+1252,'Int FuelScoop Size7 Class1',0,341930
+1253,'Int FuelScoop Size8 Class1',0,1083910
+1254,'Int FuelScoop Size1 Class2',0,1290
+1255,'Int FuelScoop Size2 Class2',0,4450
+1256,'Int FuelScoop Size3 Class2',0,14110
+1257,'Int FuelScoop Size4 Class2',0,44720
+1258,'Int FuelScoop Size5 Class2',0,141780
+1259,'Int FuelScoop Size6 Class2',0,449430
+1260,'Int FuelScoop Size7 Class2',0,1424700
+1261,'Int FuelScoop Size8 Class2',0,4516290
+1262,'Int FuelScoop Size1 Class3',0,5140
+1263,'Int FuelScoop Size2 Class3',0,17800
+1264,'Int FuelScoop Size3 Class3',0,56440
+1265,'Int FuelScoop Size4 Class3',0,178900
+1266,'Int FuelScoop Size5 Class3',0,567110
+1267,'Int FuelScoop Size6 Class3',0,1797730
+1268,'Int FuelScoop Size7 Class3',0,5698790
+1269,'Int FuelScoop Size8 Class3',0,18065160
+1270,'Int FuelScoop Size1 Class4',0,20570
+1271,'Int FuelScoop Size2 Class4',0,71210
+1272,'Int FuelScoop Size3 Class4',0,225740
+1273,'Int FuelScoop Size4 Class4',0,715590
+1274,'Int FuelScoop Size5 Class4',0,2268420
+1275,'Int FuelScoop Size6 Class4',0,7190900
+1276,'Int FuelScoop Size7 Class4',0,22795160
+1277,'Int FuelScoop Size8 Class4',0,72260660
+1278,'Int FuelScoop Size1 Class5',0,82270
+1279,'Int FuelScoop Size2 Class5',0,284840
+1280,'Int FuelScoop Size3 Class5',0,902950
+1281,'Int FuelScoop Size4 Class5',0,2862360
+1282,'Int FuelScoop Size5 Class5',0,9073690
+1283,'Int FuelScoop Size6 Class5',0,28763610
+1284,'Int FuelScoop Size7 Class5',0,91180640
+1285,'Int FuelScoop Size8 Class5',0,289042540
+1286,'Int Refinery Size1 Class1',0,6000
+1287,'Int Refinery Size2 Class1',0,12600
+1288,'Int Refinery Size3 Class1',0,26460
+1289,'Int Refinery Size4 Class1',0,55570
+1290,'Int Refinery Size1 Class2',0,18000
+1291,'Int Refinery Size2 Class2',0,37800
+1292,'Int Refinery Size3 Class2',0,79380
+1293,'Int Refinery Size4 Class2',0,166700
+1294,'Int Refinery Size1 Class3',0,54000
+1295,'Int Refinery Size2 Class3',0,113400
+1296,'Int Refinery Size3 Class3',0,238140
+1297,'Int Refinery Size4 Class3',0,500090
+1298,'Int Refinery Size1 Class4',0,162000
+1299,'Int Refinery Size2 Class4',0,340200
+1300,'Int Refinery Size3 Class4',0,714420
+1301,'Int Refinery Size4 Class4',0,1500280
+1302,'Int Refinery Size1 Class5',0,486000
+1303,'Int Refinery Size2 Class5',0,1020600
+1304,'Int Refinery Size3 Class5',0,2143260
+1305,'Int Refinery Size4 Class5',0,4500850
+1306,'Int FSDInterdictor Size1 Class1',1.3,12000
+1307,'Int FSDInterdictor Size2 Class1',2.5,33600
+1308,'Int FSDInterdictor Size3 Class1',5,94080
+1309,'Int FSDInterdictor Size4 Class1',10,263420
+1310,'Int FSDInterdictor Size1 Class2',0.5,36000
+1311,'Int FSDInterdictor Size2 Class2',1,100800
+1312,'Int FSDInterdictor Size3 Class2',2,282240
+1313,'Int FSDInterdictor Size4 Class2',4,790270
+1314,'Int FSDInterdictor Size1 Class3',1.3,108000
+1315,'Int FSDInterdictor Size2 Class3',2.5,302400
+1316,'Int FSDInterdictor Size3 Class3',5,846720
+1317,'Int FSDInterdictor Size4 Class3',10,2370820
+1318,'Int FSDInterdictor Size1 Class4',2,324000
+1319,'Int FSDInterdictor Size2 Class4',4,907200
+1320,'Int FSDInterdictor Size3 Class4',8,2540160
+1321,'Int FSDInterdictor Size4 Class4',16,7112450
+1322,'Int FSDInterdictor Size1 Class5',1.3,972000
+1323,'Int FSDInterdictor Size2 Class5',2.5,2721600
+1324,'Int FSDInterdictor Size3 Class5',5,7620480
+1325,'Int FSDInterdictor Size4 Class5',10,21337340
+1326,'Hpt DumbfireMissileRack Fixed Small',2,32180
+1327,'Hpt DumbfireMissileRack Fixed Medium',4,240400
+1328,'Int Repairer Size1 Class1',0,10000
+1329,'Int Repairer Size2 Class1',0,18000
+1330,'Int Repairer Size3 Class1',0,32400
+1331,'Int Repairer Size4 Class1',0,58320
+1332,'Int Repairer Size5 Class1',0,104980
+1333,'Int Repairer Size6 Class1',0,188960
+1334,'Int Repairer Size7 Class1',0,340120
+1335,'Int Repairer Size8 Class1',0,612220
+1336,'Int Repairer Size1 Class2',0,30000
+1337,'Int Repairer Size2 Class2',0,54000
+1338,'Int Repairer Size3 Class2',0,97200
+1339,'Int Repairer Size4 Class2',0,174960
+1340,'Int Repairer Size5 Class2',0,314930
+1341,'Int Repairer Size6 Class2',0,566870
+1342,'Int Repairer Size7 Class2',0,1020370
+1343,'Int Repairer Size8 Class2',0,1836660
+1344,'Int Repairer Size1 Class3',0,90000
+1345,'Int Repairer Size2 Class3',0,162000
+1346,'Int Repairer Size3 Class3',0,291600
+1347,'Int Repairer Size4 Class3',0,524880
+1348,'Int Repairer Size5 Class3',0,944780
+1349,'Int Repairer Size6 Class3',0,1700610
+1350,'Int Repairer Size7 Class3',0,3061100
+1351,'Int Repairer Size8 Class3',0,5509980
+1352,'Int Repairer Size1 Class4',0,270000
+1353,'Int Repairer Size2 Class4',0,486000
+1354,'Int Repairer Size3 Class4',0,874800
+1355,'Int Repairer Size4 Class4',0,1574640
+1356,'Int Repairer Size5 Class4',0,2834350
+1357,'Int Repairer Size6 Class4',0,5101830
+1358,'Int Repairer Size7 Class4',0,9183300
+1359,'Int Repairer Size8 Class4',0,16529940
+1360,'Int Repairer Size1 Class5',0,810000
+1361,'Int Repairer Size2 Class5',0,1458000
+1362,'Int Repairer Size3 Class5',0,2624400
+1363,'Int Repairer Size4 Class5',0,4723920
+1364,'Int Repairer Size5 Class5',0,8503060
+1365,'Int Repairer Size6 Class5',0,15305500
+1366,'Int Repairer Size7 Class5',0,27549900
+1367,'Int Repairer Size8 Class5',0,49589820
+1368,'Hpt ShieldBooster Size0 Class1',0.5,10000
+1369,'Hpt ShieldBooster Size0 Class2',1,23000
+1370,'Hpt ShieldBooster Size0 Class3',2,53000
+1371,'Hpt ShieldBooster Size0 Class4',3,122000
+1372,'Hpt ShieldBooster Size0 Class5',3.5,281000
+1373,'Int HullReinforcement Size1 Class1',2,5000
+1374,'Int HullReinforcement Size1 Class2',1,15000
+1375,'Int HullReinforcement Size2 Class1',4,12000
+1376,'Int HullReinforcement Size2 Class2',2,36000
+1377,'Int HullReinforcement Size3 Class1',8,28000
+1378,'Int HullReinforcement Size3 Class2',4,84000
+1379,'Int HullReinforcement Size4 Class1',16,65000
+1380,'Int HullReinforcement Size4 Class2',8,195000
+1381,'Int HullReinforcement Size5 Class1',32,150000
+1382,'Int HullReinforcement Size5 Class2',16,450000
+1383,'Hpt Cannon Gimbal Large',8,1350400
+1384,'DiamondBack Armour Grade1',0,0
+1385,'DiamondBack Armour Grade2',13,225700
+1386,'DiamondBack Armour Grade3',26,507900
+1387,'DiamondBack Armour Mirrored',26,1185100
+1388,'DiamondBack Armour Reactive',26,1330100
+1389,'Empire Courier Armour Grade1',0,0
+1390,'Empire Courier Armour Grade2',4,1017200
+1391,'Empire Courier Armour Grade3',8,2288600
+1392,'Empire Courier Armour Mirrored',8,5408800
+1393,'Empire Courier Armour Reactive',8,5993700
+1394,'Int DroneControl Collection Size1 Class1',0.5,600
+1395,'Int DroneControl Collection Size1 Class2',0.5,1200
+1396,'Int DroneControl Collection Size1 Class3',1.3,2400
+1397,'Int DroneControl Collection Size1 Class4',2,4800
+1398,'Int DroneControl Collection Size1 Class5',2,9600
+1399,'Int DroneControl Collection Size3 Class1',2,5400
+1400,'Int DroneControl Collection Size3 Class2',2,10800
+1401,'Int DroneControl Collection Size3 Class3',5,21600
+1402,'Int DroneControl Collection Size3 Class4',8,43200
+1403,'Int DroneControl Collection Size3 Class5',8,86400
+1404,'Int DroneControl Collection Size5 Class1',8,48600
+1405,'Int DroneControl Collection Size5 Class2',8,97200
+1406,'Int DroneControl Collection Size5 Class3',20,194400
+1407,'Int DroneControl Collection Size5 Class4',32,388800
+1408,'Int DroneControl Collection Size5 Class5',32,777600
+1409,'Int DroneControl Collection Size7 Class1',32,437400
+1410,'Int DroneControl Collection Size7 Class2',32,874800
+1411,'Int DroneControl Collection Size7 Class3',80,1749600
+1412,'Int DroneControl Collection Size7 Class4',128,3499200
+1413,'Int DroneControl Collection Size7 Class5',128,6998400
+1414,'Int DroneControl FuelTransfer Size1 Class1',1.3,600
+1415,'Int DroneControl FuelTransfer Size1 Class2',0.5,1200
+1416,'Int DroneControl FuelTransfer Size1 Class3',1.3,2400
+1417,'Int DroneControl FuelTransfer Size1 Class4',2,4800
+1418,'Int DroneControl FuelTransfer Size1 Class5',1.3,9600
+1419,'Int DroneControl FuelTransfer Size3 Class1',5,5400
+1420,'Int DroneControl FuelTransfer Size3 Class2',2,10800
+1421,'Int DroneControl FuelTransfer Size3 Class3',5,21600
+1422,'Int DroneControl FuelTransfer Size3 Class4',8,43200
+1423,'Int DroneControl FuelTransfer Size3 Class5',5,86400
+1424,'Int DroneControl FuelTransfer Size5 Class1',20,48600
+1425,'Int DroneControl FuelTransfer Size5 Class2',8,97200
+1426,'Int DroneControl FuelTransfer Size5 Class3',20,194400
+1427,'Int DroneControl FuelTransfer Size5 Class4',32,388800
+1428,'Int DroneControl FuelTransfer Size5 Class5',20,777600
+1429,'Int DroneControl FuelTransfer Size7 Class1',80,437400
+1430,'Int DroneControl FuelTransfer Size7 Class2',32,874800
+1431,'Int DroneControl FuelTransfer Size7 Class3',80,1749600
+1432,'Int DroneControl FuelTransfer Size7 Class4',128,3499200
+1433,'Int DroneControl FuelTransfer Size7 Class5',80,6998400
+1434,'Int DroneControl Prospector Size1 Class1',1.3,600
+1435,'Int DroneControl Prospector Size1 Class2',0.5,1200
+1436,'Int DroneControl Prospector Size1 Class3',1.3,2400
+1437,'Int DroneControl Prospector Size1 Class4',2,4800
+1438,'Int DroneControl Prospector Size1 Class5',1.3,9600
+1439,'Int DroneControl Prospector Size3 Class1',5,5400
+1440,'Int DroneControl Prospector Size3 Class2',2,10800
+1441,'Int DroneControl Prospector Size3 Class3',5,21600
+1442,'Int DroneControl Prospector Size3 Class4',8,43200
+1443,'Int DroneControl Prospector Size3 Class5',5,86400
+1444,'Int DroneControl Prospector Size5 Class1',20,48600
+1445,'Int DroneControl Prospector Size5 Class2',8,97200
+1446,'Int DroneControl Prospector Size5 Class3',20,194400
+1447,'Int DroneControl Prospector Size5 Class4',32,388800
+1448,'Int DroneControl Prospector Size5 Class5',20,777600
+1449,'Int DroneControl Prospector Size7 Class1',80,437400
+1450,'Int DroneControl Prospector Size7 Class2',32,874800
+1451,'Int DroneControl Prospector Size7 Class3',80,1749600
+1452,'Int DroneControl Prospector Size7 Class4',128,3499200
+1453,'Int DroneControl Prospector Size7 Class5',80,6998400
+1454,'Hpt Slugshot Gimbal Large',8,1751040
+1455,'Hpt Slugshot Turret Large',8,5836800
+1456,'DiamondBackXL Armour Grade1',0,0
+1457,'DiamondBackXL Armour Grade2',23,800000
+1458,'DiamondBackXL Armour Grade3',47,1800000
+1459,'DiamondBackXL Armour Mirrored',26,4200000
+1460,'DiamondBackXL Armour Reactive',47,4714000
+1461,'Empire Eagle Armour Grade1',0,0
+1462,'Empire Eagle Armour Grade2',4,66500
+1463,'Empire Eagle Armour Grade3',8,222760
+1464,'Empire Eagle Armour Mirrored',8,346550
+1465,'Empire Eagle Armour Reactive',8,372040
+1466,'Federation Dropship MkII Armour Grade1',0,0
+1467,'Federation Dropship MkII Armour Grade2',44,7925680
+1468,'Federation Dropship MkII Armour Grade3',87,17832780
+1469,'Federation Dropship MkII Armour Mirrored',87,42144810
+1470,'Federation Dropship MkII Armour Reactive',87,46702080
+1471,'Federation Gunship Armour Grade1',0,0
+1472,'Federation Gunship Armour Grade2',44,14325690
+1473,'Federation Gunship Armour Grade3',87,32232790
+1474,'Federation Gunship Armour Mirrored',87,76176810
+1475,'Federation Gunship Armour Reactive',87,84414090
+1476,'Retributor',2,56150
+1477,'Cytoscrambler',2,8800
+1478,'Pacifier',8,1400830
+1479,'Mining Lance',2,13600
+1480,'Pack-Hound Missile Rack',4,768600
+1481,'Enforcer',2,13980
+1482,'Advanced Plasma Accelerator',8,4119120
+1483,'Distruptor',4,26400
+1484,'Imperial Hammer',4,619200
+1485,'Prismatic Shield Generator',2.5,132200
+1486,'Prismatic Shield Generator',5,240340
+1487,'Prismatic Shield Generator',10,761870
+1488,'Prismatic Shield Generator',20,2415120
+1489,'Prismatic Shield Generator',40,7655930
+1490,'Prismatic Shield Generator',80,24269300
+1491,'Prismatic Shield Generator',160,76933670
+1492,'Prismatic Shield Generator',320,243879730
+1493,'Cutter Armour Grade1',0,0
+1494,'Cutter Armour Grade2',30,83587790
+1495,'Cutter Armour Grade3',60,188072510
+1496,'Cutter Armour Mirrored',60,444478020
+1497,'Cutter Armour Reactive',60,492541000
+1498,'Federation Corvette Armour Grade1',0,0
+1499,'Federation Corvette Armour Grade2',30,75187790
+1500,'Federation Corvette Armour Grade3',60,169172510
+1501,'Federation Corvette Armour Mirrored',60,399811020
+1502,'Federation Corvette Armour Reactive',60,443044000
+1503,'Asp Scout Armour Grade1',0,0
+1504,'Asp Scout Armour Grade2',21,1584460
+1505,'Asp Scout Armour Grade3',42,3565040
+1506,'Asp Scout Armour Mirrored',42,8425380
+1507,'Asp Scout Armour Reactive',42,9336440
+1508,'Viper MkIV Armour Grade1',0,0
+1509,'Viper MkIV Armour Grade2',5,175180
+1510,'Viper MkIV Armour Grade3',9,394140
+1511,'Viper MkIV Armour Mirrored',9,931490
+1512,'Viper MkIV Armour Reactive',9,1033210
+1513,'Independant Trader Armour Grade1',0,0
+1514,'Independant Trader Armour Grade2',12,1250460
+1515,'Independant Trader Armour Grade3',23,2813540
+1516,'Independant Trader Armour Mirrored',23,6649330
+1517,'Independant Trader Armour Reactive',23,7368340
+1518,'CobraMkIV Armour Grade1',0,0
+1519,'CobraMkIV Armour Grade2',14,305890
+1520,'CobraMkIV Armour Grade3',27,688250
+1521,'CobraMkIV Armour Mirrored',27,1605910
+1522,'CobraMkIV Armour Reactive',27,1802440
+1523,'Hpt MineLauncher Fixed Small Impulse',2,36400
+1524,'Int BuggyBay Size6 Class1',34,576000
+1525,'Int BuggyBay Size6 Class2',17,691200
+1526,'Int BuggyBay Size4 Class1',20,72000
+1527,'Int BuggyBay Size4 Class2',10,86400
+1528,'Int BuggyBay Size2 Class1',12,18000
+1529,'Int BuggyBay Size2 Class2',6,21600
+1530,'Int ShieldGenerator Size1 Class3 Fast',1.3,7710
+1531,'Int ShieldGenerator Size2 Class3 Fast',2.5,26710
+1532,'Int ShieldGenerator Size3 Class3 Fast',5,84650
+1533,'Int ShieldGenerator Size4 Class3 Fast',10,268350
+1534,'Int ShieldGenerator Size5 Class3 Fast',20,850660
+1535,'Int ShieldGenerator Size6 Class3 Fast',40,2696600
+1536,'Int ShieldGenerator Size7 Class3 Fast',80,8548200
+1537,'Int ShieldGenerator Size8 Class3 Fast',160,27097750
+1538,'Int PlanetApproachSuite',0,500
+1539,'Hpt PulseLaser Fixed Huge',16,177600
+1540,'Hpt BeamLaser Fixed Huge',16,2396160
+1541,'Hpt MultiCannon Fixed Large',8,140400
+1542,'Hpt MultiCannon Fixed Huge',16,1177600
+1543,'Hpt MultiCannon Gimbal Large',8,578436
+1544,'Hpt BeamLaser Gimbal Huge',16,8746160
+1545,'Hpt PulseLaser Gimbal Huge',16,877600
+1546,'Hpt MultiCannon Gimbal Huge',16,6377600
+1547,'Int Engine Size2 Class5 Fast',2.5,1610080
+1548,'Int Engine Size3 Class5 Fast',5,5103950
+1549,'Hpt PulseLaserBurst Fixed Huge',16,281600
+1550,'Hpt PulseLaserBurst Gimbal Huge',16,1245600
+1551,'Int ShieldGenerator Size1 Class5',1.3,88075
+1552,'Int CorrosionProofCargoRack Size1 Class2',0,12563
+1553,'Int CorrosionProofCargoRack Size1 Class1',0,6250
+1554,'BelugaLiner Armour Grade1',0,0
+1555,'BelugaLiner Armour Grade2',83,33813120
+1556,'BelugaLiner Armour Grade3',165,76079500
+1557,'BelugaLiner Armour Mirrored',165,179801200
+1558,'BelugaLiner Armour Reactive',165,199243730
+1559,'Rocket Propelled FSD Disruptor',4,1951040
+1560,'Int FighterBay Size7 Class1',60,2369330
+1561,'Int FighterBay Size6 Class1',40,1869350
+1562,'Int FighterBay Size5 Class1',20,575660
+1563,'Int PassengerCabin Size2 Class1',2.5,4320
+1564,'Int PassengerCabin Size3 Class1',5,8670
+1565,'Int PassengerCabin Size4 Class1',10,18960
+1566,'Int PassengerCabin Size5 Class1',20,34960
+1567,'Int PassengerCabin Size6 Class1',40,61420
+1568,'Int PassengerCabin Size3 Class2',5,26720
+1569,'Int PassengerCabin Size4 Class2',10,56870
+1570,'Int PassengerCabin Size5 Class2',20,92370
+1571,'Int PassengerCabin Size6 Class2',40,184240
+1572,'Int PassengerCabin Size4 Class3',10,170600
+1573,'Int PassengerCabin Size5 Class3',20,340540
+1574,'Int PassengerCabin Size6 Class3',40,552700
+1575,'Int PassengerCabin Size5 Class4',20,1658100
+1576,'Int PassengerCabin Size6 Class4',40,4974300
+1577,'Int ModuleReinforcement Size1 Class1',2,5000
+1578,'Int ModuleReinforcement Size1 Class2',1,15000
+1579,'Int ModuleReinforcement Size2 Class1',4,12000
+1580,'Int ModuleReinforcement Size2 Class2',2,36000
+1581,'Int ModuleReinforcement Size3 Class1',8,28000
+1582,'Int ModuleReinforcement Size3 Class2',4,84000
+1583,'Int ModuleReinforcement Size4 Class1',16,65000
+1584,'Int ModuleReinforcement Size4 Class2',8,195000
+1585,'Int ModuleReinforcement Size5 Class1',32,150000
+1586,'Int ModuleReinforcement Size5 Class2',16,450000
+1587,'Hpt MiningLaser Turret Small',2,9400
+1588,'Hpt MiningLaser Turret Medium',2,32590
+1589,'Dolphin Armour Grade1',0,0
+1590,'Dolphin Armour Grade2',32,534940
+1591,'Dolphin Armour Grade3',63,1203600
+1592,'Dolphin Armour Mirrored',63,2808390
+1593,'Dolphin Armour Reactive',63,3152080
+1594,'Int DroneControl Repair Size1 Class1',0,0
+1595,'Int DroneControl Repair Size1 Class2',0,0
+1596,'Int DroneControl Repair Size1 Class3',0,0
+1597,'Int DroneControl Repair Size1 Class4',0,0
+1598,'Int DroneControl Repair Size1 Class5',0,0
+1599,'Int DroneControl Repair Size3 Class1',0,0
+1600,'Int DroneControl Repair Size3 Class2',0,0
+1601,'Int DroneControl Repair Size3 Class3',0,0
+1602,'Int DroneControl Repair Size3 Class4',0,0
+1603,'Int DroneControl Repair Size3 Class5',0,0
+1604,'Int DroneControl Repair Size5 Class1',0,0
+1605,'Int DroneControl Repair Size5 Class2',0,0
+1606,'Int DroneControl Repair Size5 Class3',0,0
+1607,'Int DroneControl Repair Size5 Class4',0,0
+1608,'Int DroneControl Repair Size5 Class5',0,0
+1609,'Int DroneControl Repair Size7 Class1',0,0
+1610,'Int DroneControl Repair Size7 Class2',0,0
+1611,'Int DroneControl Repair Size7 Class3',0,0
+1612,'Int DroneControl Repair Size7 Class4',0,0
+1613,'Int DroneControl Repair Size7 Class5',0,0
+1614,'Hpt ATDumbfireMissile Fixed Medium',0,0
+1615,'Hpt ATDumbfireMissile Turret Medium',0,0
+1616,'Hpt XenoScanner Basic Tiny',0,0
+1617,'Int DroneControl UnkVesselResearch',0,0
+1618,'Hpt ATMultiCannon Fixed Medium',0,0
+1619,'Hpt ATMultiCannon Turret Medium',0,0
+1620,'Hpt FlakMortar Fixed Medium',0,0
+1621,'Hpt FlakMortar Turret Medium',0,0
+1622,'Hpt AntiUnknownShutdown Tiny',0,0
+1623,'Hpt ATDumbfireMissile Fixed Large',0,0
+1624,'Hpt ATDumbfireMissile Turret Large',0,0
+1625,'Hpt ATMultiCannon Fixed Large',0,0
+1626,'Hpt ATMultiCannon Turret Large',0,0
+1627,'Type9 Military Armour Grade1',0,0
+1628,'Type9 Military Armour Grade2',0,0
+1629,'Type9 Military Armour Grade3',0,0
+1630,'Type9 Military Armour Mirrored',0,0
+1631,'Type9 Military Armour Reactive',0,0
+1632,'Int DroneControl Decontamination Size1 Class1',0,0
+1633,'Int DroneControl Decontamination Size3 Class1',0,0
+1634,'Int DroneControl Decontamination Size5 Class1',0,0
+1635,'Int DroneControl Decontamination Size7 Class1',0,0
+1636,'Int DroneControl Recon Size1 Class1',0,0
+1637,'Int DroneControl Recon Size3 Class1',0,0
+1638,'Int DroneControl Recon Size5 Class1',0,0
+1639,'Int DroneControl Recon Size7 Class1',0,0
+1640,'TypeX Armour Grade1',0,0
+1641,'TypeX Armour Grade2',0,0
+1642,'TypeX Armour Grade3',0,0
+1643,'TypeX Armour Mirrored',0,0
+1644,'TypeX Armour Reactive',0,0
+1645,'Krait MkII Armour Grade1',0,0
+1646,'Krait MkII Armour Grade2',0,0
+1647,'Krait MkII Armour Grade3',0,0
+1648,'Krait MkII Armour Mirrored',0,0
+1649,'Krait MkII Armour Reactive',0,0
+1650,'TypeX 3 Armour Grade1',0,0
+1651,'TypeX 3 Armour Grade2',0,0
+1652,'TypeX 3 Armour Grade3',0,0
+1653,'TypeX 3 Armour Mirrored',0,0
+1654,'TypeX 3 Armour Reactive',0,0
+1655,'Hpt AdvancedTorpPylon Fixed Large',0,0
+1656,'Hpt BasicMissileRack Fixed Large',0,0
+1657,'Hpt DumbfireMissileRack Fixed Large',0,0
+1658,'Hpt MultiCannon Turret Large',0,0
+1659,'TypeX 2 Armour Grade1',0,0
+1660,'TypeX 2 Armour Grade2',0,0
+1661,'TypeX 2 Armour Grade3',0,0
+1662,'TypeX 2 Armour Mirrored',0,0
+1663,'TypeX 2 Armour Reactive',0,0
