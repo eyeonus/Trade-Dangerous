@@ -16,7 +16,7 @@ script: tox
 jobs:
   include:
     - stage: deploy
-      python: 3.4
+      python: 3.6
       env:
         - FOO=foo
       script:
