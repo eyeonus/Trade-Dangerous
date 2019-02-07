@@ -812,7 +812,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
+        
+        if self.getOption("progbar"):
+            tdenv.NOTE("The 'progbar' option has been deprecated and no longer has any function.")
+        
         #Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
            Path(str(self.dataPath)).mkdir()
