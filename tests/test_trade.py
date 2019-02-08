@@ -82,7 +82,7 @@ class TestTrade(object):
         assert "Hydrogen Fuel" in captured.out
         assert "Water                            323" in captured.out
 
-
+    @pytest.mark.slow
     def test_import_edcd(self, capsys):
         #trade import -P=edcd --opt=commodity
         trade([PROG, "import", "-P=edcd", "--opt=commodity"])
@@ -94,7 +94,7 @@ class TestTrade(object):
         assert "NOTE: Nothing had to be done" in captured.out
         assert regex_findin(r"NOTE: Found \d+ item\(s\)", captured.out)
 
-
+    @pytest.mark.slow
     def test_import_maddavo(self, capsys):
         #trade import -P maddavo -i -O use2d
         trade([PROG, "import", "-P=maddavo", "-i", "--opt=use2d"])

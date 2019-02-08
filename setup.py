@@ -18,6 +18,9 @@ try:
 except ImportError:
     pass
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 package = "tradedangerous"
 
 exec(open("tradedangerous/version.py").read()) #pylint: disable=W0122
@@ -37,12 +40,13 @@ setup(name=package,
         author="eyeonus",
         author_email="eyeonus@gmail.com",
         description="Trade-Dangerous is set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available.",
+        long_description=long_description,
+        long_description_content_type="text/markdown",
         keywords=["trade", "elite", "elite-dangerous"],
         classifiers=[
-            "Intended Audience :: Developers",
-            "Programming Language :: Python :: 3"
-            "Programming Language :: Python :: 3.5"
-            "Programming Language :: Python :: 3.6"
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: MIT License",
+            "Operating System :: OS Independent",
         ],
         license="MPL",
         test_suite="tests",
