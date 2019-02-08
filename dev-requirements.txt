@@ -1,6 +1,0 @@
-﻿m2r==0.2.1
-pytest==4.1.0
-Sphinx==1.8.3
-tox==3.6.1
-typing==3.6.6
-python-semantic-release

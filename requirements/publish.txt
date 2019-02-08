@@ -1,0 +1,3 @@
+-r dev.txt
+
+python-semantic-release

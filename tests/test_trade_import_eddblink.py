@@ -21,6 +21,7 @@ def teardown_module():
 
 class TestTradeImportEddblink(object):
 
+    @pytest.mark.slow
     def test_upgrades(self, capsys):
         plug = module.ImportPlugin(tdb, tdenv)
         assert module.UPGRADES == "modules.json"
@@ -29,7 +30,7 @@ class TestTradeImportEddblink(object):
         assert (plug.dataPath / plug.upgradesPath).is_file()
 
 
-    @pytest.mark.slow
+    @pytest.mark.superslow
     def test_import_clean(self, capsys):
         trade([PROG, "import", "-P=eddblink", '--opt=clean,skipvend,force'])
         captured = capsys.readouterr()
@@ -39,7 +40,7 @@ class TestTradeImportEddblink(object):
         #     print("to Here")
         assert "NOTE: Import completed." in captured.out
 
-    @pytest.mark.slow
+    @pytest.mark.superslow
     def test_import_upgrade(self, capsys):
         trade([PROG, "import", "-P=eddblink", '--opt=upgrade'])
         captured = capsys.readouterr()

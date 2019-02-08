@@ -2,6 +2,7 @@ stages:
   - test
   - name: deploy
     # require the branch name to be master (note for PRs this is the base branch name)
+    # semantic-release currently only works on master
     if: branch = master
 
 sudo: false
@@ -10,17 +11,20 @@ python:
   - "3.4"
   - "3.5"
   - "3.6"
-install: pip install tox-travis
+  - "3.7"
+dist: xenial
+
+install: pip install -r requirements/dev.txt
 script: tox
 
 jobs:
   include:
     - stage: deploy
+      # use just ONE of the tested versions for deploy
+      # and pick a version that has no issues
       python: 3.6
-      env:
-        - FOO=foo
       script:
         - git config --global user.name "semantic-release (via TravisCI)"
         - git config --global user.email "semantic-release@travis"
-        - pip install typing python-semantic-release
+        - pip install --upgrade -r requirements/publish.txt
         - semantic-release publish
