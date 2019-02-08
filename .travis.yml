@@ -27,8 +27,7 @@ jobs:
         - git config --global user.name "semantic-release (via TravisCI)"
         - git config --global user.email "semantic-release@travis"
         - pip install --upgrade -r requirements/publish.txt
-        - echo "$PYPI_USERNAME"
-        - echo "$NAME"
-        - PYPI_USERNAME=$NAME ; semantic-release publish
-        - echo "$PYPI_USERNAME"
+        - echo "$PYPI_USERNAME, $NAME"
+        - PYPI_USERNAME=$NAME semantic-release publish
+        - echo "$PYPI_USERNAME, $NAME"
         
