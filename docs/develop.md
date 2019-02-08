@@ -10,7 +10,7 @@ cd Trade-Dangerous
 python3 -m venv venv
 . venv/bin/activate
 pip3 install -e .
-pip3 install -r dev-requirements.txt
+pip3 install -r requirements/dev.txt
 ```
 
 __Windows__
@@ -21,7 +21,7 @@ cd Trade-Dangerous
 python3 -m venv venv
 .\venv\Scripts\activate
 pip3 install -e .
-pip3 install -r dev-requirements.txt
+pip3 install -r requirements/dev.txt
 ```
 
 ## Generate Documentation
