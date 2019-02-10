@@ -30,7 +30,7 @@ setup(name=package,
         install_requires=["requests"],
         setup_requires=["pytest-runner"],
         tests_require=["pytest"],
-        packages=['tradedangerous', 'tradedangerous.commands', 'tradedangerous.mfd', 'tradedangerous.mfd.saitek', 'tradedangerous.misc', 'tradedangerous.plugins', 'tradedangerous.templates'],
+        packages=['tradedangerous', 'tradedangerous.commands', 'tradedangerous.mfd', 'tradedangerous.mfd.saitek', 'tradedangerous.misc', 'tradedangerous.plugins'],
         url="https://github.com/eyeonus/Trade-Dangerous",
         project_urls={
             "Bug Tracker": "https://github.com/eyeonus/Trade-Dangerous/issues",
