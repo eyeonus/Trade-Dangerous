@@ -47,8 +47,10 @@ from .plugins import PluginException
 from . import tradedb
 
 
-def main():
+def main(argv = None):
     import sys
+    if not argv:
+        argv = sys.argv
     if sys.hexversion < 0x03040200:
         raise SystemExit(
             "Sorry: TradeDangerous requires Python 3.4.2 or higher.\n"
@@ -63,16 +65,16 @@ def main():
         try:
             if "CPROF" in os.environ:
                 import cProfile
-                cProfile.run("trade(sys.argv)")
+                cProfile.run("trade(argv)")
             else:
-                trade(sys.argv)
+                trade(argv)
         except PluginException as e:
             print("PLUGIN ERROR: {}".format(e))
             if 'EXCEPTIONS' in os.environ:
                 raise e
             sys.exit(1)
         except tradeexcept.TradeException as e:
-            print("%s: %s" % (sys.argv[0], str(e)))
+            print("%s: %s" % (argv[0], str(e)))
             if 'EXCEPTIONS' in os.environ:
                 raise e
             sys.exit(1)

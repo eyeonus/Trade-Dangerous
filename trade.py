@@ -32,8 +32,12 @@
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
 
-from tradedangerous.core import main
+from tradedangerous import cli
 
+def main(argv):
+    cli.trade(argv)
 
 if __name__ == "__main__":
-    main()
+    import sys
+    cli.main(sys.argv)
+    
