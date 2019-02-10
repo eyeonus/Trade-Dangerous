@@ -12,7 +12,7 @@ REQUIRES PYTHON 3.4 OR HIGHER.
 
 # What is Trade Dangerous? <img align="right" src="https://raw.githubusercontent.com/wiki/eyeonus/Trade-Dangerous/TradeDangerousCrest.png" alt="Trade Dangerous Crest">
 
-TradeDangerous is set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available.
+TradeDangerous is a set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available.
 
 The TRO is a heavy hitter that can calculate complex routes with multiple stops while taking into account the profits you make along the route 
 
