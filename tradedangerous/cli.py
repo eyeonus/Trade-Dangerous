@@ -55,9 +55,9 @@ def main(argv = None):
         raise SystemExit(
             "Sorry: TradeDangerous requires Python 3.4.2 or higher.\n"
             "For assistance, see:\n"
-            "\tFacebook Group: http://kfs.org/td/group\n"
-            "\tBitbucket Page: http://kfs.org/td/source\n"
-            "\tEDForum Thread: http://kfs.org/td/thread\n"
+            "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
+            "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"
+            "\tEDForum Thread: https://forums.frontier.co.uk/showthread.php/441509\n"
             )
     from . import tradeexcept
 
