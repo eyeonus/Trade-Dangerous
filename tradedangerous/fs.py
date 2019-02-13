@@ -14,7 +14,8 @@ def pathify(*args):
 
 def copy(src, dst):
     """
-    copy src to dst and takes string or Path object as input
+    copy src to dst
+    takes string or Path object as input
     returns Path(dst) on success
     raises FileNotFoundError if src does not exist
     """
@@ -24,6 +25,21 @@ def copy(src, dst):
     return dstPath
 
 
+def copy_if_newer(src, dst):
+    """
+    copy src to dst if src is newer 
+    takes string or Path object as input
+    returns Path(dst) on success
+    raises FileNotFoundError if src does not exist
+    """
+    srcPath = pathify(src).resolve()
+    dstPath = pathify(dst)
+    if dstPath.exists() and not (dstPath.stat().st_mtime < srcPath.stat().st_mtime):
+        return srcPath
+    else:
+        shcopy(str(srcPath), str(dstPath))
+        return dstPath
+    
 def copyallfiles(srcdir, dstdir):
     """
     Copies all files in srcdir to dstdir
@@ -38,7 +54,8 @@ def copyallfiles(srcdir, dstdir):
 
 def touch(filename):
     """
-    Creates file if it doesn't exist but always modifies utime.
+    Creates file if it doesn't exist.
+    Always modifies utime.
     Returns a Path(filename)
     """
     path = pathify(filename)
