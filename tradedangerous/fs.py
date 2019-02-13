@@ -55,7 +55,7 @@ def ensureflag(flagfile, action=None):
     flagfile : string
         path to the file used as flag
     action : callable
-        this will be called if the flagfiled doesn't exist
+        this will be called if the flagfile doesn't exist
 
     Returns
     -------

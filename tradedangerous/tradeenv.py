@@ -32,7 +32,7 @@ class TradeEnv(object):
         'quiet': 0,
         'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
         'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
-        'templateDir': os.environ.get('TD_TEMPLATES', None) or os.path.join(_ROOT, 'templates'),
+        'templateDir': os.path.join(_ROOT, 'templates'),
         'cwDir': os.getcwd()
     }
 
