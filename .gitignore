@@ -6,29 +6,6 @@ __pycache__
 .tox/
 .pytest
 .pytest_cache
-
-data/TradeDangerous.db
-data/TradeDangerous.new
-data/TradeDangerous.old
-data/TradeDangerous.db-journal
-data/TradeDangerous.prices
-data/*.stamp
-data/*.ini
-data/extra-stars.txt
-data/*.txt
-data/edapi.cookies
-data/Category.csv
-data/Item.csv
-data/FDevShipyard.csv
-data/FDevOutfitting.csv
-data/FDevCommodity.csv
-data/Ship.csv
-data/ShipVendor.csv
-data/Station.csv
-data/System.csv
-data/Upgrade.csv
-data/UpgradeVendor.csv
-data/edapi.config
 *.prices
 # python virtualenv
 venv/
@@ -39,6 +16,8 @@ venv/
 .eggs/
 
 # project-stuff
+build/
+dist/
 data/
 tmp/
 
