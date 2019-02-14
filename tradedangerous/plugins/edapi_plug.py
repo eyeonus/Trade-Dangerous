@@ -19,7 +19,7 @@ from http import HTTPStatus
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlsplit, parse_qs
 
-from .. import cache, csvexport, plugins, mapping
+from .. import cache, csvexport, plugins, mapping, fs
 
 import secrets
 
@@ -740,8 +740,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 debug=tdenv.debug,
             )
         self.edAPI = api
-
-        tdh_path = pathlib.Path('tmp/tdh_profile.json')
+        
+        fs.ensurefolder(tdenv.tmpDir)
+        tdh_path = tdenv.tmpDir / pathlib.Path('tdh_profile.json')
         if self.getOption("tdh"):
             self.options["save"] = True
             if tdh_path.exists():
