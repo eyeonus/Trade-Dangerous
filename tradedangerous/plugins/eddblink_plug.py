@@ -13,7 +13,7 @@ from pathlib import Path
 from importlib import reload
 from builtins import str
 
-from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers
+from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers, fs
 from ..misc import progress as pbar
 from ..plugins import PluginException
 # Constants
@@ -59,7 +59,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
 
-        self.dataPath = tdb.dataPath / Path("eddb")
+        self.dataPath =  fs.pathify(os.environ.get('TD_EDDB_DATA')) or tdb.dataPath / Path("eddb")
         self.commoditiesPath = Path(COMMODITIES)
         self.systemsPath = Path(SYSTEMS)
         self.stationsPath = Path(STATIONS)
