@@ -31,12 +31,11 @@ LIVE_LISTINGS = "listings-live.csv"
 class DecodingError(PluginException):
     pass
 
-
 class ImportPlugin(plugins.ImportPluginBase):
     """
     Plugin that downloads data from eddb.
     """
-
+    
     pluginOptions = {
         'item':         "Regenerate Categories and Items using latest commodities.json dump.",
         'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
@@ -55,10 +54,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         'progbar':      "Does nothing, only included for backwards compatibility.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)"
     }
-
+    
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
-
+        
         self.dataPath = Path(os.environ.get('TD_EDDB')) or tdb.dataPath / Path("eddb")
         self.commoditiesPath = Path(COMMODITIES)
         self.systemsPath = Path(SYSTEMS)
@@ -133,7 +132,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 break
             for result in results:
                 yield result
-            
+    
     def downloadFile(self, urlTail, path):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
@@ -156,7 +155,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # EDDB.io doesn't have live listings.
                 if urlTail == LIVE_LISTINGS:
                     return False
-
+                
                 url = FALLBACK_URL + urlTail
                 response = request.urlopen(url)
         
@@ -167,21 +166,21 @@ class ImportPlugin(plugins.ImportPluginBase):
             # 'Last-Modified' is in the form "DDD, dd MMM yyyy hh:mm:ss GMT"
             # dDL                               0   1   2    3        4   5
             # dTL                                               0  1  2
-
+            
             # We'll need to turn the 'MMM' into a number.
             Months = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12}
-
+            
             # We need to split the string twice, because the time is separated by ':', not ' '.
             dDL = response.getheader("Last-Modified").split(' ')
             dTL = dDL[4].split(':')
-
+            
             # Now we need to make a datetime object using the DateList and TimeList we just created,
             # and then we can finally convert that to a Unix-epoch number.
             dumpDT = datetime.datetime(int(dDL[3]), Months[dDL[2]], int(dDL[1]),\
                hour=int(dTL[0]), minute=int(dTL[1]), second=int(dTL[2]),\
                tzinfo=datetime.timezone.utc)
             dumpModded = timegm(dumpDT.timetuple())
-
+        
         if Path.exists(self.dataPath / path):
             localModded = (self.dataPath / path).stat().st_mtime
             if localModded >= dumpModded and url != SHIPS_URL:
@@ -191,7 +190,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Downloading file '{}'.", path)
         transfers.download( self.tdenv, url, self.dataPath / path)
         return True
-
+    
     def importUpgrades(self):
         """
         Populate the Upgrade table using modules.json
@@ -223,11 +222,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  upgrade_id))
                 except sqlite3.IntegrityError:
                     tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}", upgrade_id, name, weight, cost)
-
+        
         self.updated['Upgrade'] = True
         
         tdenv.NOTE("Finished processing Upgrades. End time = {}", datetime.datetime.now())
-
+    
     def importShips(self):
         """
         Populate the Ship table using coriolis.io's index.json
@@ -253,7 +252,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 name = "Sidewinder Mk. I"
             if name == "Viper":
                 name = "Viper Mk. III"
-
+            
             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
             # Fix capitalization.
             name = name.replace('MK', 'Mk').replace('mk','Mk').replace('mK','Mk')
@@ -282,11 +281,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                                      ship_id))
                 except sqlite3.IntegrityError:
                     tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
-
+        
         self.updated['Ship'] = True
         
         tdenv.NOTE("Finished processing Ships. End time = {}", datetime.datetime.now())
-
+    
     def importSystems(self):
         """
         Populate the System table using systems_populated.jsonl
@@ -295,17 +294,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         
         tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
-
+        
         total = 1
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
                 if not b: break
                 yield b
-
+        
         with open(str(self.dataPath / self.systemsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in blocks(f)))
-
+        
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             prog = pbar.Progress(total, 50)
             for line in fh:
@@ -343,7 +342,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
-
+    
     def importStations(self):
         """
         Populate the Station table using stations.jsonl
@@ -355,18 +354,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Processing Stations, this may take a bit: Start time = {}", datetime.datetime.now())
         if self.getOption('shipvend'):
             tdenv.NOTE("Simultaneously processing ShipVendors.")
-
+        
         if self.getOption('upvend'):
             tdenv.NOTE("Simultaneously processing UpgradeVendors, this will take quite a while.")
-
-
+        
         total = 1
         def blocks(f, size = 65536):
             while True:
                 b = f.read(size)
                 if not b: break
                 yield b
-
+        
         with open(str(self.dataPath / self.stationsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
@@ -476,7 +474,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                             except sqlite3.IntegrityError:
                                 continue
                         self.updated['ShipVendor'] = True
-                        
+                
                 #Import Outfitters into UpgradeVendors if upvend is set.
                 if station['has_outfitting'] and self.getOption('upvend'):
                     if not station['outfitting_updated_at']:
@@ -509,24 +507,24 @@ class ImportPlugin(plugins.ImportPluginBase):
             while prog.value < prog.maxValue:
                 prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
-
+        
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
-
+    
     def importCommodities(self):
         """
         Populate the Category, and Item tables using commodities.json
         Writes directly to the database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-                
+        
         tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
             commodities = json.load(fh)
-            
+        
         # EDDB still hasn't added these Commodities to the API,
         # so we'll add them ourselves.
         tdenv.NOTE("Checking for missing items....")
-
+        
         # Need to get the category_ids from the .csv file.
         cat_ids = dict()
         try:
@@ -630,7 +628,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                      item_id))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
-                        
+        
         # The items aren't in the same order in the json as they are in the game's UI.
         # This creates a temporary object that has all the items sorted first
         # by category and second by name, as in the UI, which will then be used to
@@ -658,7 +656,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.updated['Item'] = True
         
         tdenv.NOTE("Finished processing Categories and Items. End time = {}", datetime.datetime.now())
-
+    
     def regenerate(self):
             for table in [
                 "Category",
@@ -686,7 +684,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             except sqlite3.OperationalError:
                 print("(commit) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
-
+    
     def importListings(self, listings_file):
         """
         Updates the market data (AKA the StationItem table) using listings.csv
@@ -709,7 +707,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         result = self.execute("SELECT fdev_id,item_id FROM Item ORDER BY fdev_id").fetchall()
         for item in result:
             fdev2item[item[0]] = item[1]
-            
         
         def blocks(f, size = 65536):
             while True:
@@ -809,7 +806,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
-
+    
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
         
@@ -855,7 +852,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     os.remove(str(file))
                 except FileNotFoundError:
                     pass
-                
+            
             try:
                 os.remove(str(tdb.dataPath) + "/TradeDangerous.db")
             except FileNotFoundError:
@@ -864,7 +861,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 os.remove(str(tdb.dataPath) + "/TradeDangerous.prices")
             except FileNotFoundError:
                 pass
-
+            
             # Because this is a clean run, we need to temporarily rename the RareItem.csv,
             # otherwise TD will crash trying to insert the rare items to the database,
             # because there's nothing in the Station table it tries to pull from.
@@ -874,7 +871,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 rib_path.unlink()
             if ri_path.exists():
                 ri_path.rename(rib_path)
-
+            
             tdb.reloadCache()
             
             # Now it's safe to move RareItems back.
@@ -882,10 +879,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ri_path.unlink()
             if rib_path.exists():
                 rib_path.rename(ri_path)
-                        
+            
             self.options["all"] = True
             self.options["force"] = True
-
+        
         tdenv.ignoreUnknown = True
         
         success = False
@@ -901,18 +898,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("listings"):
             self.options["item"] = True
             self.options["station"] = True
-
+        
         if self.getOption("shipvend"):
             self.options["ship"] = True
             self.options["station"] = True
-
+        
         if self.getOption("upvend"):
             self.options["upgrade"] = True
             self.options["station"] = True
-
+        
         if self.getOption("station"):
             self.options["system"] = True
-
+        
         if self.getOption("all"):
             self.options["item"] = True
             self.options["ship"] = True
@@ -922,7 +919,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upgrade"] = True
             self.options["upvend"] = True
             self.options["listings"] = True
-
+        
         if self.getOption("solo"):
             self.options["listings"] = False
             self.options["skipvend"] = True
@@ -936,22 +933,22 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(UPGRADES, self.upgradesPath) or self.getOption("force"):
                 self.importUpgrades()
                 self.commit()
-
+        
         if self.getOption("ship"):
             if self.downloadFile(SHIPS_URL, self.shipsPath) or self.getOption("force"):
                 self.importShips()
                 self.commit()
-
+        
         if self.getOption("system"):
             if self.downloadFile(SYSTEMS, self.systemsPath) or self.getOption("force"):
                 self.importSystems()
                 self.commit()
-
+        
         if self.getOption("station"):
             if self.downloadFile(STATIONS, self.stationsPath) or self.getOption("force"):
                 self.importStations()
                 self.commit()
-
+        
         if self.getOption("item"):
             if self.downloadFile(COMMODITIES, self.commoditiesPath) or self.getOption("force"):
                 self.importCommodities()
@@ -959,7 +956,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         #Remake the .csv files with the updated info.
         self.regenerate()
-
+        
         if self.getOption("listings"):
             if self.downloadFile(LISTINGS, self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
@@ -973,8 +970,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.updated['Listings']:
             tdenv.NOTE("Regenerating .prices file.")
             cache.regeneratePricesFile(tdb, tdenv)
-
+        
         tdenv.NOTE("Import completed.")
-
+        
         # TD doesn't need to do anything, tell it to just quit.
         return False
