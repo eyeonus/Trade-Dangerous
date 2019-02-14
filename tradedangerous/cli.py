@@ -60,7 +60,7 @@ def main(argv = None):
             "\tEDForum Thread: https://forums.frontier.co.uk/showthread.php/441509\n"
             )
     from . import tradeexcept
-
+    
     try:
         try:
             if "CPROF" in os.environ:
@@ -90,14 +90,13 @@ def main(argv = None):
             "you want to support UTF-8 characters."
         )
 
-
 def trade(argv):
     """
     This method represents the trade command.
     """
     cmdIndex = commands.CommandIndex()
     cmdenv = cmdIndex.parse(argv)
-
+    
     tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
     if cmdenv.usesTradeData:
         tsc = tdb.tradingStationCount
@@ -121,14 +120,12 @@ def trade(argv):
                     tsc
                 )
             )
-
+    
     try:
         results = cmdenv.run(tdb)
     finally:
         # always close tdb
         tdb.close()
-
+    
     if results:
         results.render()
-
-

@@ -26,10 +26,10 @@ Classes:
 
     TradeCalc
         Encapsulates the calculation functions and item-trades,
-
+    
     Route
         Describes a sequence of trade hops.
-
+    
     TradeLoad
         Describe a cargo load to be carried on a hop.
 """
@@ -68,7 +68,7 @@ class BadTimestampError(TradeException):
         self.station = tdb.stationByID[stationID]
         self.item = tdb.itemByID[itemID]
         self.modified = modified
-
+    
     def __str__(self):
         return (
             "Error loading price data from the local db:\n"
@@ -79,7 +79,6 @@ class BadTimestampError(TradeException):
                 str(self.modified),
             )
         )
-
 
 class NoHopsError(TradeException):
     pass
@@ -93,7 +92,7 @@ class TradeLoad(namedtuple('TradeLoad', (
     """
     Describes the manifest of items to be exchanged in a
     trade.
-
+    
     Public attributes:
         items
             A list of (item,qty) tuples tracking the load.
@@ -106,7 +105,7 @@ class TradeLoad(namedtuple('TradeLoad', (
     """
     def __bool__(self):
         return self.units > 0
-
+    
     def __lt__(self, rhs):
         if self.gainCr < rhs.gainCr:
             return True
@@ -117,18 +116,15 @@ class TradeLoad(namedtuple('TradeLoad', (
         if rhs.units < self.units:
             return False
         return self.costCr < rhs.costCr
-
+    
     @property
     def gpt(self):
         return self.gainCr / self.units if self.units else 0
-
-
+    
 emptyLoad = TradeLoad((), 0, 0, 0)
-
 
 ######################################################################
 # Classes
-
 
 class Route(object):
     """
@@ -140,7 +136,7 @@ class Route(object):
     jump to system4 and sell everything at Station X.
     """
     __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score')
-
+    
     def __init__(self, stations, hops, startCr, gainCr, jumps, score):
         assert stations
         self.route = stations
@@ -149,33 +145,33 @@ class Route(object):
         self.gainCr = gainCr
         self.jumps = jumps
         self.score = score
-
+    
     @property
     def firstStation(self):
         """ Returns the first station in the route. """
         return self.route[0]
-
+    
     @property
     def firstSystem(self):
         """ Returns the first system in the route. """
         return self.route[0].system
-
+    
     @property
     def lastStation(self):
         """ Returns the last station in the route. """
         return self.route[-1]
-
+    
     @property
     def lastSystem(self):
         """ Returns the last system in the route. """
         return self.route[-1].system
-
+    
     @property
     def avggpt(self):
         if self.hops:
             return sum(hop.gpt for hop in self.hops) // len(self.hops)
         return 0
-
+    
     @property
     def gpt(self):
         if self.hops:
@@ -184,7 +180,7 @@ class Route(object):
                 sum(hop.units for hop in self.hops)
             )
         return 0
-
+    
     def plus(self, dst, hop, jumps, score):
         """
         Returns a new route describing the sum of this route plus a new hop.
@@ -197,33 +193,33 @@ class Route(object):
             self.jumps + (jumps,),
             self.score + score,
         )
-
+    
     def __lt__(self, rhs):
         # One route is less than the other if it has a higher score,
         # or the scores are even and the number of jumps are shorter.
         if self.score == rhs.score:
             return len(self.jumps) < len(rhs.jumps)
         return self.score > rhs.score
-
+    
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
-
+    
     def str(self):
         return "%s -> %s" % (self.firstStation.name(), self.lastStation.name())
-
+    
     def detail(self, tdenv):
         """
         Return a string describing this route to a given level of detail.
         """
-
+        
         detail, goalSystem = tdenv.detail, tdenv.goalSystem
-
+        
         credits = self.startCr + (tdenv.insurance or 0)
         gainCr = 0
         route = self.route
-
+        
         hops = self.hops
-
+        
         # TODO: Write as a comprehension, just can't wrap my head
         # around it this morning.
         def genSubValues():
@@ -231,7 +227,7 @@ class Route(object):
                 for (tr, qty) in hop[0]:
                     yield len(tr.name(detail))
         longestNameLen = max(genSubValues())
-
+        
         text = self.str()
         if detail >= 1:
             text += " (score: {:f})".format(self.score)
@@ -289,7 +285,7 @@ class Route(object):
             footer = None
             dockFmt = None
             endFmt = "  {station} +{gain:n}cr ({tongain:n}/ton)"
-
+        
         def jumpList(jumps):
             text, last = "", None
             travelled = 0.
@@ -307,7 +303,7 @@ class Route(object):
                 text += jump.name()
                 last = jump
             return travelled, text
-
+        
         if detail > 1:
             def decorateStation(station):
                 details = []
@@ -333,7 +329,7 @@ class Route(object):
         else:
             def decorateStation(station):
                 return station.name()
-
+        
         if detail and goalSystem:
             def goalDistance(station):
                 return " [Distance to {}: {:.2f} ly]\n".format(
@@ -343,7 +339,7 @@ class Route(object):
         else:
             def goalDistance(station):
                 return ""
-
+        
         for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
             purchases = ""
@@ -406,9 +402,9 @@ class Route(object):
                     tongain=hopGainCr / hopTonnes,
                     credits=credits + gainCr + hopGainCr
                 )
-
+            
             gainCr += hopGainCr
-
+        
         lastStation = self.lastStation
         if lastStation.system is not goalSystem:
             text += goalDistance(lastStation)
@@ -419,14 +415,14 @@ class Route(object):
             credits=credits + gainCr,
             tongain=self.gpt
         )
-
+        
         return text
-
+    
     def summary(self):
         """
         Returns a string giving a short summary of this route.
         """
-
+        
         credits, hops, jumps = self.startCr, self.hops, self.jumps
         ttlGainCr = sum(hop[1] for hop in hops)
         numJumps = sum(
@@ -450,16 +446,15 @@ class Route(object):
             )
         )
 
-
 class TradeCalc(object):
     """
     Container for accessing trade calculations with common properties.
     """
-
+    
     def __init__(self, tdb, tdenv=None, fit=None, items=None):
         """
         Constructs the TradeCalc object and loads sell/buy data.
-
+        
         Parameters:
             tdb
                 The TradeDB() object to use to access data,
@@ -469,7 +464,7 @@ class TradeCalc(object):
                 Lets you specify a fitting function,
             items [optional]
                 Iterable [itemID or Item()] that restricts loading,
-
+        
         TradeEnv options:
             tdenv.avoidItems
                 Iterable of [Item] that prevents items being loaded
@@ -489,16 +484,16 @@ class TradeCalc(object):
             self.defaultFit = self.bruteForceFit
         minSupply = self.tdenv.supply or 0
         minDemand = self.tdenv.demand or 0
-
+        
         db = tdb.getDB()
-
+        
         wheres, binds = [], []
         if tdenv.maxAge:
             maxDays = datetime.timedelta(days=tdenv.maxAge)
             cutoff = datetime.datetime.now() - maxDays
             wheres.append("(modified >= ?)")
             binds.append(str(cutoff.replace(microsecond=0)))
-
+        
         if tdenv.avoidItems or items:
             avoidItemIDs = set(item.ID for item in tdenv.avoidItems)
             loadItems = items or tdb.itemByID.values()
@@ -511,12 +506,12 @@ class TradeCalc(object):
                 raise TradeException("No items to load.")
             loadItemIDs = ",".join(str(ID) for ID in loadItemIDs)
             wheres.append("(item_id IN ({}))".format(loadItemIDs))
-
+        
         demand = self.stationsBuying = defaultdict(list)
         supply = self.stationsSelling = defaultdict(list)
-
+        
         whereClause = " AND ".join(wheres) or "1"
-
+        
         lastStnID, stnAppend = 0, None
         dmdCount, supCount = 0, 0
         stmt = """
@@ -554,9 +549,9 @@ class TradeCalc(object):
                 if not minSupply or supUnits >= minSupply:
                     supAppend((itmID, supCr, supUnits, supLevel, ageS))
                     supCount += 1
-
+                    
         tdenv.DEBUG0("Loaded {} buys, {} sells".format(dmdCount, supCount))
-
+    
     def bruteForceFit(self, items, credits, capacity, maxUnits):
         """
         Brute-force generation of all possible combinations of items.
@@ -571,20 +566,20 @@ class TradeCalc(object):
                     return emptyLoad
                 item = items[offset]
                 offset += 1
-
+                
                 itemCost = item.costCr
                 maxQty = min(maxUnits, cap, cr // itemCost)
-
+                
                 if item.supply < maxQty and item.supply > 0:  # -1 = unknown
                     maxQty = min(maxQty, item.supply)
-
+                
                 if maxQty > 0:
                     break
-
+            
             # find items that don't include us
             bestLoad = _fitCombos(offset, cr, cap, level + 1)
             itemGain = item.gainCr
-
+            
             for qty in range(1, maxQty + 1):
                 loadGain, loadCost = itemGain * qty, itemCost * qty
                 load = TradeLoad(((item, qty),), loadGain, loadCost, qty)
@@ -606,11 +601,11 @@ class TradeCalc(object):
                     load.items + subLoad.items,
                     combGain, combCost, combUnits
                 )
-
+            
             return bestLoad
-
+        
         return _fitCombos(0, credits, capacity)
-
+    
     def fastFit(self, items, credits, capacity, maxUnits):
         """
             Best load calculator using a recursive knapsack-like
@@ -619,7 +614,7 @@ class TradeCalc(object):
             horribly slow at stations with many items for sale.
             As in iooks-like-the-program-has-frozen slow.
         """
-
+        
         def _fitCombos(offset, cr, cap):
             """
                 Starting from offset, consider a scenario where we
@@ -627,34 +622,34 @@ class TradeCalc(object):
                 given the cr+cap limitations. Then, assuming that
                 load, solve for the remaining cr+cap from the next
                 value of offset.
-
+                
                 The "best fit" is not always the most profitable,
                 so we yield all the results and leave the caller
                 to determine which is actually most profitable.
             """
-
+            
             bestGainCr = -1
             bestItem = None
             bestQty = 0
             bestCostCr = 0
             bestSub = None
-
+            
             qtyCeil = min(maxUnits, cap)
-
+            
             for iNo in range(offset, len(items)):
                 item = items[iNo]
                 itemCostCr = item.costCr
                 maxQty = min(qtyCeil, cr // itemCostCr)
-
+                
                 if maxQty <= 0:
                     continue
-
+                
                 supply = item.supply
                 if supply <= 0:
                     continue
-
+                
                 maxQty = min(maxQty, supply)
-
+                
                 itemGainCr = item.gainCr
                 if maxQty == cap:
                     # full load
@@ -668,7 +663,7 @@ class TradeCalc(object):
                         bestCostCr = cost
                         bestSub = None
                     break
-
+                
                 loadCostCr = maxQty * itemCostCr
                 loadGainCr = maxQty * itemGainCr
                 if loadGainCr > bestGainCr:
@@ -677,7 +672,7 @@ class TradeCalc(object):
                     bestItem = item
                     bestQty = maxQty
                     bestSub = None
-
+                
                 crLeft, capLeft = cr - loadCostCr, cap - maxQty
                 if crLeft > 0 and capLeft > 0:
                     # Solve for the remaining credits and capacity with what
@@ -696,18 +691,18 @@ class TradeCalc(object):
                     bestQty = maxQty
                     bestCostCr = ttlCost
                     bestSub = subLoad
-
+            
             if not bestItem:
                 return emptyLoad
-
+            
             bestLoad = ((bestItem, bestQty),)
             if bestSub:
                 bestLoad = bestLoad + bestSub.items
                 bestQty += bestSub.units
             return TradeLoad(bestLoad, bestGainCr, bestCostCr, bestQty)
-
+        
         return _fitCombos(0, credits, capacity)
-
+    
     # Mark's test run, to spare searching back through the forum posts for it.
     # python trade.py run --fr="Orang/Bessel Gateway" --cap=720 --cr=11b --ly=24.73 --empty=37.61 --pad=L --hops=2 --jum=3 --loop --summary -vv --progress
     def simpleFit(self, items, credits, capacity, maxUnits):
@@ -716,18 +711,18 @@ class TradeCalc(object):
         (The item list is sorted with highest profit margin items in front.)
         Step 1: Fill hold with as much of item1 as possible based on the limiting
                 factors of hold size, supply amount, and available credits.
-
+        
         Step 2: If there is space in the hold and money available, repeat Step 1
                 with item2, item3, etc. until either the hold is filled
                 or the commander is too poor to buy more.
-
+        
         When amount of credits isn't a limiting factor, this should produce
         the most profitable route ~99.7% of the time, and still be very
         close to the most profitable the rest of the time.
         (Very close = not enough less profit that anyone should care,
         especially since this thing doesn't suffer slowdowns like fastFit.)
         """
-
+        
         n = 0
         load = ()
         gainCr = 0
@@ -735,28 +730,28 @@ class TradeCalc(object):
         qty = 0
         while n < len(items) and credits > 0 and capacity > 0:
             qtyCeil = min(maxUnits, capacity)
-
+            
             item = items[n]
             maxQty = min(qtyCeil, credits // item.costCr)
-
+            
             if maxQty > 0 and item.supply > 0:
                 maxQty = min(maxQty, item.supply)
-
+                
                 loadCostCr = maxQty * item.costCr
                 loadGainCr = maxQty * item.gainCr
-
+                
                 load = load + ((item, maxQty),)
                 qty += maxQty
                 capacity -= maxQty
-
+                
                 gainCr += loadGainCr
                 costCr += loadCostCr
                 credits -= loadCostCr
-
+            
             n += 1
-
+        
         return TradeLoad(load, gainCr, costCr, qty)
-
+    
     def getTrades(self, srcStation, dstStation, srcSelling=None):
         """
         Returns the most profitable trading options from
@@ -769,7 +764,7 @@ class TradeCalc(object):
         dstBuying = self.stationsBuying.get(dstStation.ID, None)
         if not dstBuying:
             return None
-
+        
         trading = []
         itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
@@ -788,27 +783,26 @@ class TradeCalc(object):
                         buy[2], buy[3],
                         sell[4], buy[4],
                     ))
-
+        
         # SORT BY profit DESC, cost ASC
         # So if two items have the same profit, the cheapest will come first.
         trading.sort(key=lambda trade: trade.costCr)
         trading.sort(key=lambda trade: trade.gainCr, reverse=True)
-
+        
         return trading
-
-
+    
     def getBestHops(self, routes, restrictTo=None):
         """
         Given a list of routes, try all available next hops from each
         route.
-
+        
         Store the results by destination so that we pick the
         best route-to-point for each destination at each step.
-
+        
         If we have two routes: A->B->D, A->C->D and A->B->D produces
         more profit, there's no point continuing the A->C->D path.
         """
-
+        
         tdb = self.tdb
         tdenv = self.tdenv
         avoidPlaces = getattr(tdenv, 'avoidPlaces', None) or ()
@@ -825,21 +819,21 @@ class TradeCalc(object):
         fitFunction = self.defaultFit
         capacity = tdenv.capacity
         maxUnits = getattr(tdenv, 'limit') or capacity
-
+        
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
         unique = tdenv.unique
         loopInt = getattr(tdenv, 'loopInt', 0) or None
-
+        
         # Penalty is expressed as percentage, reduce it to a multiplier
         if tdenv.lsPenalty:
             lsPenalty = max(min(tdenv.lsPenalty / 100, 1), 0)
         else:
             lsPenalty = 0
-
+        
         goalSystem = tdenv.goalSystem
         uniquePath = None
-
+        
         restrictStations = set()
         if restrictTo:
             for place in restrictTo:
@@ -847,7 +841,7 @@ class TradeCalc(object):
                     restrictStations.add(place)
                 elif isinstance(place, System) and place.stations:
                     restrictStations.update(place.stations)
-
+        
         # Are we doing direct routes?
         if tdenv.direct:
             if goalSystem and not restrictTo:
@@ -882,7 +876,7 @@ class TradeCalc(object):
                     noPlanet=noPlanet,
                     planetary=planetary,
                 )
-
+        
         prog = pbar.Progress(len(routes), 25)
         connections = 0
         getSelling = self.stationsSelling.get
@@ -890,11 +884,11 @@ class TradeCalc(object):
             if tdenv.progress:
                 prog.increment(1)
             tdenv.DEBUG1("Route = {}", route.str())
-
+            
             srcStation = route.lastStation
             startCr = credits + int(route.gainCr * safetyMargin)
             routeJumps = len(route.jumps)
-
+            
             srcSelling = getSelling(srcStation.ID, None)
             srcSelling = tuple(
                 values for values in srcSelling
@@ -903,7 +897,7 @@ class TradeCalc(object):
             if not srcSelling:
                 tdenv.DEBUG1("Nothing sold/affordable - next.")
                 continue
-
+            
             if goalSystem:
                 origSystem = route.firstSystem
                 srcSystem = srcStation.system
@@ -913,12 +907,12 @@ class TradeCalc(object):
                 srcGoalDist = srcDistTo(goalSystem)
                 srcOrigDist = srcDistTo(origSystem)
                 origGoalDist = origDistTo(goalSystem)
-
+            
             if unique:
                 uniquePath = route.route
             elif loopInt:
                 uniquePath = route.route[-loopInt:-1]
-
+            
             stations = (
                 dest for dest in station_iterator(srcStation)
                 if dest.station != srcStation
@@ -944,7 +938,7 @@ class TradeCalc(object):
                     d for d in stations
                     if d.system is goalSystem or d.distLy < srcGoalDist
                 )
-
+            
             if tdenv.debug >= 1:
                 def annotate(dest):
                     tdenv.DEBUG1(
@@ -956,16 +950,16 @@ class TradeCalc(object):
                     )
                     return True
                 stations = (d for d in stations if annotate(d))
-
+            
             for dest in stations:
                 dstStation = dest.station
-
+                
                 connections += 1
                 items = self.getTrades(srcStation, dstStation, srcSelling)
                 if not items:
                     continue
                 trade = fitFunction(items, startCr, capacity, maxUnits)
-
+                
                 multiplier = 1.0
                 # Calculate total K-lightseconds supercruise time.
                 # This will amortize for the start/end stations
@@ -985,19 +979,19 @@ class TradeCalc(object):
                     score = trade.gainCr
                 if lsPenalty:
                     # [kfsone] Only want 1dp
-
+                    
                     cruiseKls = int(dstStation.lsFromStar / 100) / 10
                     # Produce a curve that favors distances under 1kls
                     # positively, starts to penalize distances over 1k,
-                    # and after 4kls starts to penalize aggresively
+                    # and after 4kls starts to penalize aggressively
                     # http://goo.gl/Otj2XP
-
+                    
                     # [eyeonus] As aadler pointed out, this goes into negative
                     # numbers, which causes problems.
                     #penalty = ((cruiseKls ** 2) - cruiseKls) / 3
                     #penalty *= lsPenalty
                     #multiplier *= (1 - penalty)
-
+                    
                     # [eyeonus]:
                     # (Keep in mind all this ignores values of x<0.)
                     # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
@@ -1027,23 +1021,21 @@ class TradeCalc(object):
                     # 25%, 50%, and 75%.
                     # The other colored lines show the penalty curves individually
                     # and the teal composite of all three.
-
-
+                    
                     def sigmoid(x):
                         return x/(1+abs(x))
-
+                    
                     boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
                     drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
                     try:
                         penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
                     except OverflowError:
                         penalty = -0.5
-
+                    
                     multiplier += (penalty + boost + drop) * lsPenalty
-
+                
                 score *= multiplier
-
-
+                
                 dstID = dstStation.ID
                 try:
                     # See if there is already a candidate for this destination
@@ -1063,20 +1055,20 @@ class TradeCalc(object):
                         bestLy = btd[4]
                         if bestLy <= dest.distLy:
                             continue
-
+                
                 bestToDest[dstID] = (
                     dstStation, route, trade, dest.via, dest.distLy, score
                 )
-
+        
         prog.clear()
-
+        
         if connections == 0:
             raise NoHopsError(
                 "No destinations could be reached within the constraints."
             )
-
+        
         result = []
         for (dst, route, trade, jumps, ly, score) in bestToDest.values():
             result.append(route.plus(dst, trade, jumps, score))
-
+        
         return result

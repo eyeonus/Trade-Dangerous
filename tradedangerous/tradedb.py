@@ -16,7 +16,6 @@ TradeDB, System, Station, Ship, Item, RareItem and Trade.
 
 These classes are primarily for describing the database.
 
-
 Simplistic use might be:
 
     import tradedb
@@ -341,7 +340,6 @@ class Station(object):
             station.checkPadSize("M?")
             # Require small, large or unknown
             station.checkPadSize("SL?")
-
         """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
     
@@ -370,7 +368,6 @@ class Station(object):
             station.checkPadSize("Y?")
             # Require no planetary station
             station.checkPadSize("N")
-
         """
         return (not planetary or self.planetary in planetary)
     
@@ -404,7 +401,7 @@ class Station(object):
     def isTrading(self):
         """
         True if the station is thought to be trading.
-
+        
         A station is considered 'trading' if it has an item count > 0 or
         if it's "market" column is flagged 'Y'.
         """
@@ -804,7 +801,7 @@ class TradeDB(object):
             return key
         if isinstance(key, Station):
             return key.system
-
+        
         return TradeDB.listSearch(
             "System", key, self.systems(), key=lambda system: system.dbname
         )
@@ -936,13 +933,13 @@ class TradeDB(object):
     def genStellarGrid(self, system, ly):
         """
         Yields Systems within a given radius of a specified System.
-
+        
         Args:
             system:
                 The System to center the search on,
             ly:
                 The radius of the search around system,
-
+        
         Yields:
             (candidate, distLySq)
                 candidate:
@@ -950,7 +947,6 @@ class TradeDB(object):
                 distLySq:
                     The *SQUARE* of the distance in light-years
                     between system and candidate.
-
         """
         if self.stellarGrid is None:
             self.__buildStellarGrid()
@@ -985,7 +981,7 @@ class TradeDB(object):
         Yields Systems within a given radius of a specified System.
         Results are sorted by distance and cached for subsequent
         queries in the same run.
-
+        
         Args:
             system:
                 The System to center the search on,
@@ -993,7 +989,7 @@ class TradeDB(object):
                 The radius of the search around system,
             includeSelf:
                 Whether to include 'system' in the results or not.
-
+        
         Yields:
             (candidate, distLy)
                 candidate:
@@ -1419,7 +1415,7 @@ class TradeDB(object):
     def removeLocalStation(self, station, commit=True):
         """
         Removes a station from the local database and memory image.
-
+        
         Becareful of any references to the station you may still have
         after this.
         """
@@ -2108,7 +2104,6 @@ class TradeDB(object):
 
 ######################################################################
 # Assorted helpers
-
 
 def describeAge(ageInSeconds):
     """

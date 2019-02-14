@@ -41,14 +41,14 @@ def dumpPrices(
         If stationID is not none, only the specified station is dumped.
         If file is not none, outputs to the given file handle.
     """
-
+    
     withTimes  = (elementMask & Element.timestamp)
     getBlanks  = (elementMask & Element.blanks)
-
+    
     conn = sqlite3.connect(str(dbPath))
     conn.execute("PRAGMA foreign_keys=ON")
     cur  = conn.cursor()
-
+    
     systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM System") }
     stations = {
         ID: [ name, systems[sysID] ]
@@ -61,11 +61,11 @@ def dumpPrices(
         for (ID, name, catID)
         in cur.execute("SELECT item_id, name, category_id FROM Item")
     }
-
+    
     # find longest item name
     longestName = max(items.values(), key=lambda ent: len(ent[0]))
     longestNameLen = len(longestName[0])
-
+    
     if stationID:
         # check if there are prices for the station
         cur.execute("""
@@ -75,21 +75,21 @@ def dumpPrices(
         """.format(stationID))
         if not cur.fetchone()[0]:
             getBlanks = True
-
+    
     defaultDemandVal = 0 if defaultZero else -1
     if stationID:
         stationWhere = "WHERE stn.station_id = {}".format(stationID)
     else:
         stationWhere = ""
-
+    
     if getBlanks:
         itemJoin = "LEFT OUTER"
     else:
         itemJoin = "INNER"
-
+    
     cur.execute("SELECT CURRENT_TIMESTAMP")
     now = cur.fetchone()[0]
-
+    
     stmt = """
         SELECT  stn.station_id, itm.item_id
                 , IFNULL(si.demand_price, 0)
@@ -108,7 +108,7 @@ def dumpPrices(
                 {stationWhere}
          ORDER  BY stn.station_id, cat.name, itm.ui_order
     """
-
+    
     sql = stmt.format(
         stationWhere=stationWhere,
         defDemand=defaultDemandVal,
@@ -117,16 +117,16 @@ def dumpPrices(
     if debug:
         print(sql)
     cur.execute(sql)
-
+    
     lastSys, lastStn, lastCat = None, None, None
-
+    
     if not file: file = sys.stdout
-
+    
     if stationID:
         stationSet = str(stations[stationID])
     else:
         stationSet = "ALL Systems/Stations"
-
+    
     file.write(
         "# TradeDangerous prices for {}\n"
         "\n"
@@ -145,11 +145,11 @@ def dumpPrices(
         "\n".format(
             stationSet
     ))
-
+    
     levelDesc = "?0LMH"
     maxCrWidth = 7
     levelWidth = 9
-
+    
     outFmt = (
         "      {{:<{width}}}"
         " {{:>{crwidth}}}"
@@ -171,11 +171,11 @@ def dumpPrices(
         "Timestamp",
     )
     file.write('#' + output[1:])
-
+    
     naIQL = "-"
     unkIQL = "?"
     defIQL = "?" if not defaultZero else "-"
-
+    
     output = ""
     for (stnID, itemID, fromStn, toStn, demand, demandLevel, supply, supplyLevel, modified) in cur:
         modified = modified or now
@@ -190,7 +190,7 @@ def dumpPrices(
         if catID is not lastCat:
             output += "   + {}\n".format(category)
             lastCat = catID
-
+        
         # Is this item on sale?
         if toStn > 0:
             # Zero demand-price gets default demand, which will
@@ -223,7 +223,7 @@ def dumpPrices(
                     demandStr, supplyStr,
                     modified
                 )
-
+    
     file.write(output)
 
 if __name__ == "__main__":

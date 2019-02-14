@@ -11,7 +11,6 @@ def pathify(*args):
         return Path(*args)
     return args[0]
 
-
 def copy(src, dst):
     """
     copy src to dst
@@ -24,12 +23,12 @@ def copy(src, dst):
     shcopy(str(srcPath), str(dstPath))
     return dstPath
 
-
 def copy_if_newer(src, dst):
     """
     copy src to dst if src is newer 
     takes string or Path object as input
     returns Path(dst) on success
+    returns Path(src) if not newer
     raises FileNotFoundError if src does not exist
     """
     srcPath = pathify(src).resolve()
@@ -51,7 +50,6 @@ def copyallfiles(srcdir, dstdir):
         if p.is_file():
             copy(p, dstPath / p.name)
 
-
 def touch(filename):
     """
     Creates file if it doesn't exist.
@@ -62,18 +60,17 @@ def touch(filename):
     path.touch(exist_ok=True)
     return path
 
-
 def ensureflag(flagfile, action=None):
     """Checks if flagfile exist and IF NOT the action function
     will be executed. The flagfile will be 'touched' at the end
-
+    
     Parameters
     ----------
     flagfile : string
         path to the file used as flag
     action : callable
         this will be called if the flagfile doesn't exist
-
+    
     Returns
     -------
     Path(flagfile)
@@ -83,15 +80,14 @@ def ensureflag(flagfile, action=None):
         action()
     return touch(flagPath)
 
-
 def ensurefolder(folder):
     """Creates the folder if it doesn't exist
-
+    
     Parameters
     ----------
     folder : string|pathlib.Path
         path to the folder
-
+    
     Returns
     -------
     pathlib.Path

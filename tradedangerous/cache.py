@@ -90,18 +90,13 @@ newItemPriceRe = re.compile(r"""
             {time_f}
         )?
     )?
-
 \s*
 $
 """.format(base_f=itemPriceFrag, qtylvl_f=qtyLevelFrag, time_f=timeFrag),
             re.IGNORECASE + re.VERBOSE)
 
-
-
-
 ######################################################################
 # Exception classes
-
 
 class BuildCacheBaseException(TradeException):
     """
@@ -116,14 +111,13 @@ class BuildCacheBaseException(TradeException):
         self.lineNo = lineNo
         self.category = "ERROR"
         self.error = error or "UNKNOWN ERROR"
-
+    
     def __str__(self):
         return "{}:{} {} {}".format(
                 self.fileName, self.lineNo,
                 self.category,
                 self.error,
         )
-
 
 class UnknownSystemError(BuildCacheBaseException):
     """
@@ -133,7 +127,6 @@ class UnknownSystemError(BuildCacheBaseException):
         error = 'Unrecognized SYSTEM: "{}"'.format(key)
         super().__init__(fromFile, lineNo, error)
 
-
 class UnknownStationError(BuildCacheBaseException):
     """
     Raised when the file contains an unknown star/station name.
@@ -141,7 +134,6 @@ class UnknownStationError(BuildCacheBaseException):
     def __init__(self, fromFile, lineNo, key):
         error = 'Unrecognized STAR/Station: "{}"'.format(key)
         super().__init__(fromFile, lineNo, error)
-
 
 class UnknownItemError(BuildCacheBaseException):
     """
@@ -152,7 +144,6 @@ class UnknownItemError(BuildCacheBaseException):
     def __init__(self, fromFile, lineNo, itemName):
         error = 'Unrecognized item name: "{}"'.format(itemName)
         super().__init__(fromFile, lineNo, error)
-
 
 class DuplicateKeyError(BuildCacheBaseException):
     """
@@ -167,7 +158,6 @@ class DuplicateKeyError(BuildCacheBaseException):
                     prev=prevLineNo
                 ))
 
-
 class DeletedKeyError(BuildCacheBaseException):
     """
     Raised when a key value in a .csv file is marked as DELETED in the
@@ -178,7 +168,6 @@ class DeletedKeyError(BuildCacheBaseException):
                 "{} '{}' is marked as DELETED and should not be used.".format(
                     keyType, keyValue
         ))
-
 
 class DeprecatedKeyError(BuildCacheBaseException):
     """
@@ -192,18 +181,15 @@ class DeprecatedKeyError(BuildCacheBaseException):
                     keyType, keyValue, newValue
         ))
 
-
 class MultipleStationEntriesError(DuplicateKeyError):
     """ Raised when a station appears multiple times in the same file. """
     def __init__(self, fromFile, lineNo, facility, prevLineNo):
         super().__init__(fromFile, lineNo, 'station', facility, prevLineNo)
 
-
 class MultipleItemEntriesError(DuplicateKeyError):
     """ Raised when one item appears multiple times in the same station. """
     def __init__(self, fromFile, lineNo, item, prevLineNo):
         super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
-
 
 class SyntaxError(BuildCacheBaseException):
     """
@@ -216,7 +202,6 @@ class SyntaxError(BuildCacheBaseException):
         error = "{},\ngot: '{}'.".format(problem, text.strip())
         super().__init__(fromFile, lineNo, error)
 
-
 class SupplyError(BuildCacheBaseException):
     """
     Raised when a supply field is incorrectly formatted.
@@ -226,10 +211,8 @@ class SupplyError(BuildCacheBaseException):
                     format(category, problem, value)
         super().__init__(fromFile, lineNo, error)
 
-
 ######################################################################
 # Helpers
-
 
 def parseSupply(pricesFile, lineNo, category, reading):
     units, level = reading[0:-1], reading[-1]
@@ -251,7 +234,7 @@ def parseSupply(pricesFile, lineNo, category, reading):
         return unitsNo, levelNo
     except ValueError:
         pass
-
+    
     raise SupplyError(
         pricesFile, lineNo, category, reading,
         'Unrecognized units/level value: "{}": '
@@ -260,7 +243,6 @@ def parseSupply(pricesFile, lineNo, category, reading):
             level
         )
     )
-
 
 ######################################################################
 # Code
@@ -274,7 +256,6 @@ def getSystemByNameIndex(cur):
         """)
     return { name: ID for (ID, name) in cur }
 
-
 def getStationByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
@@ -286,7 +267,6 @@ def getStationByNameIndex(cur):
         """)
     return { name: ID for (ID, name) in cur }
 
-
 def getItemByNameIndex(cur):
     """
         Generate item name index.
@@ -294,21 +274,20 @@ def getItemByNameIndex(cur):
     cur.execute("SELECT item_id, UPPER(name) FROM item")
     return { name: itemID for (itemID, name) in cur }
 
-
 def processPrices(tdenv, priceFile, db, defaultZero):
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
     """
-
+    
     DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
     DEBUG0("Processing prices file: {}", priceFile)
-
+    
     cur = db.cursor()
     ignoreUnknown = tdenv.ignoreUnknown
     quiet = tdenv.quiet
     merging = tdenv.mergeImport
-
+    
     systemByName = getSystemByNameIndex(cur)
     stationByName = getStationByNameIndex(cur)
     stationByName.update(
@@ -322,12 +301,12 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         for stn, alt in corrections.stations.items()
         if isinstance(alt, str)
     }
-
+    
     itemByName = getItemByNameIndex(cur)
-
+    
     defaultUnits = -1 if not defaultZero else 0
     defaultLevel = -1 if not defaultZero else 0
-
+    
     stationID = None
     facility = None
     processedStations = {}
@@ -337,26 +316,26 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     itemPrefix = ""
     DELETED = corrections.DELETED
     items, zeros, buys, sells = [], [], [], []
-
+    
     lineNo, localAdd = 0, 0
     if not ignoreUnknown:
         def ignoreOrWarn(error):
             raise error
     elif not quiet:
         ignoreOrWarn = tdenv.WARN
-
+    
     def changeStation(matches):
         nonlocal facility, stationID
         nonlocal processedStations, processedItems, localAdd
         nonlocal stationItemDates
-
+        
         ### Change current station
         stationItemDates = {}
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
         corrected = False
         facility = "/".join((systemName, stationName))
-
+        
         # Make sure it's valid.
         stationID = DELETED
         newID = stationByName.get(facility, -1)
@@ -375,14 +354,14 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             if altName:
                 DEBUG1("SYSTEM '{}' renamed '{}'", systemName, altName)
                 systemName, facility = altName, "/".join((altName, stationName))
-
+            
             systemID = systemByName.get(systemName, -1)
             if systemID < 0:
                 ignoreOrWarn(
                     UnknownSystemError(priceFile, lineNo, facility)
                 )
                 return
-
+            
             altStation = stnCorrections.get(facility, None)
             if altStation is DELETED:
                 DEBUG1("DELETED Station: {}", facility)
@@ -391,12 +370,12 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 DEBUG1("Station '{}' renamed '{}'", facility, altStation)
                 stationName = altStation.upper()
                 facility = "/".join((systemName, stationName))
-
+            
             newID = stationByName.get(facility, -1)
             if newID is DELETED:
                 DEBUG1("Renamed station DELETED: {}", facility)
                 return
-
+            
         if newID < 0:
             if not ignoreUnknown:
                 ignoreOrWarn(
@@ -432,28 +411,28 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                     priceFile, lineNo, facility,
                     processedStations[newID]
                 )
-
+        
         stationID = newID
         processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
-
+        
         cur = db.execute("""
             SELECT item_id, modified
               FROM StationItem
              WHERE station_id = ?
         """, [stationID])
         stationItemDates = {ID: modified for ID, modified in cur}
-
+    
     addItem, addZero = items.append, zeros.append
     getItemID = itemByName.get
     newItems, updtItems, ignItems = 0, 0, 0
-
+    
     def processItemLine(matches):
         nonlocal newItems, updtItems, ignItems
         itemName, modified = matches.group('item', 'time')
         itemName = itemName.upper()
-
+        
         # Look up the item ID.
         itemID = getItemID(itemName, -1)
         if itemID < 0:
@@ -470,7 +449,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 )
                 return
             DEBUG1("Renamed {} -> {}", oldName, itemName)
-
+        
         lastModified = stationItemDates.get(itemID, None)
         if lastModified and merging:
             if modified and modified != 'now' and modified <= lastModified:
@@ -481,7 +460,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 if modified < lastModified:
                     ignItems += 1
                 return
-
+        
         # Check for duplicate items within the station.
         if itemID in processedItems:
             ignoreOrWarn(
@@ -492,11 +471,11 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                 )
             )
             return
-
+        
         demandCr, supplyCr = matches.group('sell', 'buy')
         demandCr, supplyCr = int(demandCr), int(supplyCr)
         demandString, supplyString = matches.group('demand', 'supply')
-
+        
         if demandCr == 0 and supplyCr == 0:
             if lastModified:
                 addZero((stationID, itemID))
@@ -516,7 +495,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                     )
             else:
                 demandUnits, demandLevel = defaultUnits, defaultLevel
-
+            
             if demandString and supplyString:
                     if supplyString == "?":
                         supplyUnits, supplyLevel = -1, -1
@@ -528,30 +507,30 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                         )
             else:
                 supplyUnits, supplyLevel = defaultUnits, defaultLevel
-
+            
             if modified == 'now':
                 modified = None         # Use CURRENT_FILESTAMP
-
+            
             addItem((
                 stationID, itemID, modified,
                 demandCr, demandUnits, demandLevel,
                 supplyCr, supplyUnits, supplyLevel,
             ))
-
+        
         processedItems[itemID] = lineNo
-
+    
     for line in priceFile:
         lineNo += 1
         text, _, comment = line.partition('#')
         text = text.strip()
         if not text:
             continue
-
+        
         # replace whitespace with single spaces
         if text.find("  "):
             # http://stackoverflow.com/questions/2077897
             text = ' '.join(text.split())
-
+        
         ########################################
         ### "@ STAR/Station" lines.
         if text.startswith('@'):
@@ -562,7 +541,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
                         ))
             changeStation(matches)
             continue
-
+        
         if not stationID:
             # Need a station to process any other type of line.
             raise SyntaxError(priceFile, lineNo,
@@ -570,24 +549,24 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         if stationID == DELETED:
             # Ignore all values from a deleted station/system.
             continue
-
+        
         ########################################
         ### "+ Category" lines
         if text.startswith('+'):
             # we now ignore these.
             continue
-
+        
         ########################################
         ### "Item sell buy ..." lines.
         matches = newItemPriceRe.match(text)
         if not matches:
             raise SyntaxError(priceFile, lineNo,
                         "Unrecognized line/syntax", text)
-
+        
         processItemLine(matches)
-
+    
     numSys = len(processedSystems)
-
+    
     if localAdd > 0:
         tdenv.NOTE(
             "Placeholder stations are added to the local DB only "
@@ -595,21 +574,20 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             "Use 'trade.py export --table Station' "
             "if you /need/ to persist them."
         )
-
+    
     stations = tuple((ID,) for ID in processedStations.keys())
     return stations, items, zeros, newItems, updtItems, ignItems, numSys
-
 
 ######################################################################
 
 def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
-
+    
     with pricesFh or pricesPath.open('rU', encoding='utf-8') as pricesFh:
         stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
             tdenv, pricesFh, db, defaultZero
         )
-
+    
     if not tdenv.mergeImport:
         db.executemany("""
             DELETE FROM StationItem
@@ -622,7 +600,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
                AND item_id = ?
         """, zeros)
     removedItems = len(zeros)
-
+    
     if items:
         db.executemany("""
             INSERT OR REPLACE INTO StationItem (
@@ -636,7 +614,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
             )
         """, items)
     updatedItems = len(items)
-
+    
     tdenv.DEBUG0("Marking populated stations as having a market")
     db.execute(
         "UPDATE Station SET market = 'Y'"
@@ -645,15 +623,15 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
               " WHERE StationItem.station_id = Station.station_id"
              ")"
     )
-
+    
     db.commit()
-
+    
     changes = " and ".join("{} {}".format(v, k) for k, v in {
         "new": newItems,
         "updated": updtItems,
         "removed": removedItems,
     }.items() if v) or "0"
-
+    
     tdenv.NOTE(
         "Import complete: "
             "{:s} items "
@@ -663,13 +641,11 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh=None, defaultZero=False):
                 len(stations),
                 numSys,
     )
-
+    
     if ignItems:
         tdenv.NOTE("Ignored {} items with old data", ignItems)
 
-
 ######################################################################
-
 
 def depCheck(importPath, lineNo, depType, key, correctKey):
     if correctKey == key:
@@ -678,13 +654,11 @@ def depCheck(importPath, lineNo, depType, key, correctKey):
         raise DeletedKeyError(importPath, lineNo, depType, key)
     raise DeprecatedKeyError(importPath, lineNo, depType, key, correctKey)
 
-
 def deprecationCheckSystem(importPath, lineNo, line):
     depCheck(
         importPath, lineNo, 'System',
         line[0], corrections.correctSystem(line[0]),
     )
-
 
 def deprecationCheckStation(importPath, lineNo, line):
     depCheck(
@@ -696,13 +670,11 @@ def deprecationCheckStation(importPath, lineNo, line):
         line[1], corrections.correctStation(line[0], line[1]),
     )
 
-
 def deprecationCheckCategory(importPath, lineNo, line):
     depCheck(
         importPath, lineNo, 'Category',
         line[0], corrections.correctCategory(line[0]),
     )
-
 
 def deprecationCheckItem(importPath, lineNo, line):
     depCheck(
@@ -714,13 +686,12 @@ def deprecationCheckItem(importPath, lineNo, line):
         line[1], corrections.correctItem(line[1]),
     )
 
-
 def processImportFile(tdenv, db, importPath, tableName):
     tdenv.DEBUG0(
         "Processing import file '{}' for table '{}'",
         str(importPath), tableName
     )
-
+    
     fkeySelectStr = ("("
             "SELECT {newValue}"
             " FROM {table}"
@@ -730,7 +701,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     uniquePfx = "unq:"
     uniqueLen = len(uniquePfx)
     ignorePfx = "!"
-
+    
     with importPath.open('rU', encoding='utf-8') as importFile:
         csvin = csv.reader(
             importFile, delimiter=',', quotechar="'", doublequote=True
@@ -738,7 +709,7 @@ def processImportFile(tdenv, db, importPath, tableName):
         # first line must be the column names
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
-
+        
         # split up columns and values
         # this is necessqary because the insert might use a foreign key
         bindColumns = []
@@ -756,7 +727,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                 bindColumns.append(colName)
                 bindValues.append('?')
                 continue
-
+            
             queryTab, _, queryCol = srcKey.partition('.')
             if colName.startswith(ignorePfx):
                 # this column is only used to resolve an FK
@@ -764,7 +735,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                 colName = colName[len(ignorePfx):]
                 joinHelper.append((colName, queryTab, queryCol))
                 continue
-
+            
             # foreign key, we need to make a select
             joinTable = [ queryTab ]
             joinStmt  = []
@@ -794,18 +765,18 @@ def processImportFile(tdenv, db, importPath, tableName):
                 values=','.join(bindValues)
             )
         tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
-
+        
         # Check if there is a deprecation check for this table.
         deprecationFn = getattr(
             sys.modules[__name__],
             "deprecationCheck"+tableName,
             None
         )
-
+        
         # import the data
         importCount = 0
         uniqueIndex = dict()
-
+        
         for linein in csvin:
             if not linein:
                 continue
@@ -840,7 +811,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                             prevLineNo
                         )
                     uniqueIndex[key] = lineNo
-
+                
                 try:
                     db.execute(sql_stmt, linein)
                 except Exception as e:
@@ -870,41 +841,39 @@ def processImportFile(tdenv, db, importPath, tableName):
                             count=importCount,
                             table=tableName)
 
-
-
 ######################################################################
 
 def buildCache(tdb, tdenv):
     """
     Rebuilds the SQlite database from source files.
-
+    
     TD's data is either "stable" - information that rarely changes like Ship
     details, star systems etc - and "volatile" - pricing information, etc.
-
+    
     The stable data starts out in data/TradeDangerous.sql while other data
     is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
-
+    
     We load both sets of data into an SQLite database, after which we can
     avoid the text-processing overhead by simply checking if the text files
     are newer than the database.
     """
-
+    
     tdenv.NOTE(
         "Rebuilding cache file: this may take a few moments.",
         file=sys.stderr
     )
-
+    
     dbPath = tdb.dbPath
     sqlPath = tdb.sqlPath
     pricesPath = tdb.pricesPath
-
+    
     # Create an in-memory database to populate with our data.
     tempPath = dbPath.with_suffix(".new")
     backupPath = dbPath.with_suffix(".old")
-
+    
     if tempPath.exists():
         tempPath.unlink()
-
+    
     tempDB = sqlite3.connect(str(tempPath))
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
@@ -912,7 +881,7 @@ def buildCache(tdb, tdenv):
     with sqlPath.open('rU', encoding='utf-8') as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
-
+    
     # import standard tables
     for (importName, importTable) in tdb.importTables:
         try:
@@ -927,7 +896,7 @@ def buildCache(tdb, tdenv):
                 "Remove it or add the column definition line.",
                 importName
             )
-
+    
     # Parse the prices file
     if pricesPath.exists():
         processPricesFile(tdenv, tempDB, pricesPath)
@@ -937,32 +906,32 @@ def buildCache(tdb, tdenv):
                     pricesPath,
                     file=sys.stderr,
         )
-
+    
     tempDB.commit()
     tempDB.close()
-
+    
     tdenv.DEBUG0("Swapping out db files")
-
+    
     if dbPath.exists():
         if backupPath.exists():
             backupPath.unlink()
         dbPath.rename(backupPath)
     tempPath.rename(dbPath)
-
+    
     tdenv.DEBUG0("Finished")
 
 ######################################################################
 
 def regeneratePricesFile(tdb, tdenv):
     tdenv.DEBUG0("Regenerating .prices file")
-
+    
     with tdb.pricesPath.open("w", encoding='utf-8') as pricesFile:
         prices.dumpPrices(
                 tdb.dbFilename,
                 prices.Element.full,
                 file=pricesFile,
                 debug=tdenv.debug)
-
+    
     # Update the DB file so we don't regenerate it.
     os.utime(tdb.dbFilename)
 
@@ -974,25 +943,25 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
         that is when a new station is encountered, delete any
         existing records for that station in the database.
     """
-
+    
     if not pricesFh and not path.exists():
         raise TradeException("No such file: {}".format(
                     str(path)
                 ))
-
+    
     if reset:
         tdenv.DEBUG0("Resetting price data")
         with tdb.getDB() as db:
             db.execute("DELETE FROM StationItem")
             db.commit()
-
+    
     tdenv.DEBUG0("Importing data from {}".format(str(path)))
     processPricesFile(tdenv,
             db=tdb.getDB(),
             pricesPath=path,
             pricesFh=pricesFh,
             )
-
+    
     # If everything worked, we may need to re-build the prices file.
     if path != tdb.pricesPath:
         regeneratePricesFile(tdb, tdenv)

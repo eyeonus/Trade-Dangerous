@@ -4,17 +4,17 @@ import itertools
 class ColumnFormat(object):
     """
         Describes formatting of a column to be populated with data.
-
+        
         Member Functions:
-
+        
             str()
                 Applies all formatting (except qualifier) to the name to
                 produce a correctly sized title field.
-
+            
             format(value)
                 Applies all formatting to key(value) to produce a correctly
                 sized value field.
-
+            
         Attributes:
             name
                 Heading for column to display when calling title()
@@ -36,7 +36,7 @@ class ColumnFormat(object):
                 Retrieve the printable name of the item
             pred
                 Predicate: Return False to leave this column blank
-
+            
         e.g.
             cols = [
                 ColumnFormat("Name", "<", "5", '', key=lambda item:item['name']),
@@ -75,16 +75,14 @@ class ColumnFormat(object):
         self.pre = pre or ''
         self.post = post or ''
         self.pred = pred
-
-
+    
     def str(self):
         return '{pre}{title:{align}{width}}{post}'.format(
                 title=self.name,
                 align=self.align, width=self.width,
                 pre=self.pre, post=self.post,
             )
-
-
+    
     def format(self, value):
         if self.pred(value):
             return '{pre}{value:{align}{width}{qual}}{post}'.format(
@@ -100,7 +98,6 @@ class ColumnFormat(object):
                 pre=self.pre, post=self.post,
             )
 
-
 class RowFormat(object):
     """
         Describes an ordered collection of ColumnFormats
@@ -108,21 +105,21 @@ class RowFormat(object):
           rowFmt.format(rowData)
         will return the result of formatting each column
         against rowData.
-
+        
         Member Functions
-
+            
             append(col, [after])
                 Adds a ColumnFormatter to the end of the row
                 If 'after' is specified, tries to insert
                 the new column immediately after the first
                 column who's name matches after.
-
+            
             insert(pos, newCol)
                 Inserts a ColumnFormatter at position pos in the list
-
+            
             str()
                 Returns a list of all the column headings
-
+            
             format(rowData):
                 Returns a list of applying rowData to all
                 of the columns
@@ -131,12 +128,10 @@ class RowFormat(object):
     def __init__(self, prefix=None):
         self.columns = []
         self.prefix = prefix or ""
-
-
+    
     def addColumn(self, *args, **kwargs):
         self.append(ColumnFormat(*args, **kwargs))
-
-
+    
     def append(self, column, after=None):
         columns = self.columns
         if after:
@@ -146,25 +141,21 @@ class RowFormat(object):
                     return self
         columns.append(column)
         return self
-
-
+    
     def insert(self, pos, column):
         if column is not None:
             self.columns.insert(pos, column)
-
-
+    
     def str(self):
         return self.prefix + ' '.join(col.str() for col in self.columns)
-
-
+    
     def heading(self):
         headline = self.str()
         return headline, '-' * len(headline)
-
-
+    
     def format(self, rowData):
         return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
-
+    
 def max_len(iterable, key=lambda item: item):
     iterable, readahead = itertools.tee(iter(iterable))
     try:
@@ -177,24 +168,24 @@ if __name__ == '__main__':
     rowFmt = RowFormat(). \
                 append(ColumnFormat("Name", '<', '8', key=lambda row: row['name'])). \
                 append(ColumnFormat("Dist", '>', '6', '.2f', pre='[', post=']', key=lambda row: row['dist']))
-
+    
     rows = [
         { 'name': 'Bob', 'dist': 6.2, 'age': 30 },
         { 'name': 'Dave', 'dist': 42, 'age': 18 },
     ]
-
+    
     def present():
         rowTitle = rowFmt.str()
         print(rowTitle)
         print('-' * len(rowTitle))
         for row in rows:
             print(rowFmt.format(row))
-
+    
     print("Simple usage:")
     present()
-
+    
     print()
     print("Adding age ColumnFormat:")
-
+    
     rowFmt.append(after='Name', col=ColumnFormat("Age", '>', 3, pre='|', post='|', key=lambda row: row['age']))
     present()

@@ -18,12 +18,12 @@ __all__ = ['test_derp']
 def test_derp(tdb=None, tdenv=None):
     """
     Test whether the station names in a trade database are free of derp.
-
+    
     Examples:
         import tradedb
         tdb = tradedb.TradeDB()
         test_derp(tdb)
-
+        
         python -i cache.py
         >>> test_derp()
     """

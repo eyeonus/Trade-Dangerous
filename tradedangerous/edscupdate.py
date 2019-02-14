@@ -37,7 +37,6 @@ import tradeenv
 
 DEFAULT_DATE = "2015-04-01 00:00:00"
 
-
 # Systems we know are bad.
 ignore = [
     "ADAM NAPAT",
@@ -64,7 +63,6 @@ ignore = [
     "FLECHS",
     "GD 139",
     "HYADES SECTOR WF-M B8-3",
-
     "22 LYNCIS",
     "ALANI",
     "BODB DJEDI",
@@ -112,7 +110,6 @@ ignore = [
     "MINIMAR",
     "MV URSAE MAJORIS",
     "PLAA EURK BU-Q B5-0",
-
     "COL 285 SECTOR LP-S B-19-1",
     "COL 285 SECTOR LP-S B-19-2",
     "CORE SYS SECTOR CB-0 A6-5",
@@ -126,11 +123,9 @@ ignore = [
     "ZELAND",
 ]
 
-
 class UsageError(Exception):
     """ Raised when command line usage is invalid. """
     pass
-
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -242,7 +237,7 @@ def parse_arguments():
             dest='refSys',
             type=str,
     )
-
+    
     argv = parser.parse_args(sys.argv[1:])
     dateRe = re.compile(r'^20\d\d-(0\d|1[012])-([012]\d|3[01]) ([01]\d|2[0123]):[0-5]\d:[0-5]\d$')
     if not argv.summary:
@@ -263,9 +258,8 @@ def parse_arguments():
         )
     if not argv.distance and argv.refSys:
         raise UsageError("--ref requires --distance")
-
+    
     return argv
-
 
 def is_change(tdb, sysinfo):
     """ Check if a system's EDSC data is different than TDs """
@@ -284,18 +278,16 @@ def is_change(tdb, sysinfo):
     sysinfo['place'] = place
     return True
 
-
 def has_position_changed(place, name, x, y, z):
     if not place:
         return False
-
+    
     print("! @{} [{},{},{}] changed to @{} [{},{},{}]".format(
         name, x, y, z,
         place.dbname, place.posX, place.posY, place.posZ
     ))
-
+    
     return True
-
 
 def check_database(tdb, name, x, y, z):
     # is it in the database?
@@ -318,14 +310,12 @@ def check_database(tdb, name, x, y, z):
                     mname, mx, my, mz
         ), file=sys.stderr)
 
-
 def get_distance(tdb, startSys, x, y, z):
     distance = tdb.calculateDistance(
         startSys.posX, startSys.posY, startSys.posZ,
         x, y, z
     )
     return float("{:.2f}".format(distance))
-
 
 def submit_distance(argv, name, distance, refSys=None, refDist=None):
     p0 = name.upper()
@@ -352,7 +342,6 @@ def submit_distance(argv, name, distance, refSys=None, refDist=None):
     )
     print(str(result))
 
-
 def get_extras():
     extras = set()
     try:
@@ -365,18 +354,16 @@ def get_extras():
         pass
     return extras
 
-
 def add_to_extras(argv, name):
     with open("data/extra-stars.txt", "a", encoding="utf-8") as fh:
         print(name.upper(), file=fh)
         print("Added {} to data/extra-stars.txt".format(name))
 
-
 def main():
     argv = parse_arguments()
     tdenv = tradeenv.TradeEnv(properties=argv)
     tdb = tradedb.TradeDB(tdenv)
-
+    
     if not argv.summary:
         try:
             argv.startSys = tdb.lookupSystem(argv.refSystem)
@@ -388,43 +375,43 @@ def main():
                 "system name?"
                 .format(argv.refSystem)
             )
-
+    
     print("start date: {}".format(argv.date))
-
+    
     edsq = misc.edsc.StarQuery(
         test=argv.test,
         confidence=argv.confidence,
         date=argv.date,
         )
     data = edsq.fetch()
-
+    
     if edsq.status['statusnum'] != 0:
         raise Exception("Query failed: {} ({})".format(
                     edsq.status['msg'],
                     edsq.status['statusnum'],
                 ))
-
+    
     date = data['date']
     systems = data['systems']
-
+    
     print("{} results".format(len(systems)))
     # Filter out systems we already know that match the EDSC data.
     systems = [
         sysinfo for sysinfo in systems if is_change(tdb, sysinfo)
     ]
     print("{} deltas".format(len(systems)))
-
+    
     if argv.summary or len(systems) <= 0:
         return
-
+    
     systems = [
         sysinfo for sysinfo in systems if 'coord' in sysinfo
     ]
-
+    
     if argv.random:
         num = min(len(systems), argv.maxSystems)
         systems = random.sample(systems, num)
-
+    
     if argv.refSys:
         refSys = tdb.lookupPlace(argv.refSys)
     else:
@@ -437,14 +424,14 @@ def main():
             sysinfo['refdist'] = get_distance(tdb, refSys, x, y, z)
         else:
             sysinfo['refdist'] = None
-
+    
     if argv.distance:
         if refSys:
             systems.sort(key=lambda sysinfo: sysinfo['refdist'])
         else:
             systems.sort(key=lambda sysinfo: sysinfo['distance'])
         systems = systems[:argv.maxSystems]
-
+    
     if argv.splash:
         print(
             "\n"
@@ -467,9 +454,9 @@ def main():
             "===============================================================\n"
             "\n"
         )
-
+        
         input("Hit enter to continue: ")
-
+    
     print("""At the prompt enter:
   q
       to indicate you've suffered enough,
@@ -483,9 +470,9 @@ def main():
       to submit a distance correction for the system,
 """)
     print()
-
+    
     extras = get_extras()
-
+    
     clip = misc.clipboard.SystemNameClip()
     total = len(systems)
     current = 0
@@ -495,7 +482,7 @@ def main():
             name = sysinfo['name']
             created = sysinfo['createdate']
             x, y, z = sysinfo['coord']
-
+            
             print(
                 "\n"
                 "-----------------------------------------------\n"
@@ -521,14 +508,14 @@ def main():
                     reflab="Ref Dist",
                     refdist=sysinfo['refdist'],
                 ))
-
+            
             check_database(tdb, name, x, y, z)
-
+            
             change = has_position_changed(sysinfo['place'], name, x, y, z)
             if change:
                 oldDist = startSys.distanceTo(sysinfo['place'])
                 print("Old Distance: {:.2f}ly".format(oldDist))
-
+            
             distance = sysinfo['distance']
             clip.copy_text(name)
             prompt = "{}/{}: '{}': {:.2f}ly? ".format(
@@ -552,7 +539,7 @@ def main():
                 ok = 'y'
             if ok.lower() != 'y':
                 continue
-
+            
             if argv.add:
                 tdb.addLocalSystem(
                     name,
@@ -561,13 +548,12 @@ def main():
                     modified=created,
                     commit=True
                 )
-
+            
             print("'{}',{},{},{},'Release 1.00-EDStar','{}'".format(
                 name, x, y, z, created,
             ), file=output)
-
+            
             submit_distance(argv, name, distance)
-
 
 if __name__ == "__main__":
     try:
@@ -578,4 +564,3 @@ if __name__ == "__main__":
         print("ERROR: {}\nSee {} --help for usage help.".format(
             str(e), sys.argv[0]
         ))
-

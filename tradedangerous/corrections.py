@@ -40,20 +40,17 @@ def correctSystem(oldName):
     except KeyError:
         return oldName
 
-
 def correctStation(systemName, oldName):
     try:
         return stations[systemName.upper() + "/" + oldName.upper()]
     except KeyError:
         return oldName
 
-
 def correctCategory(oldName):
     try:
         return categories[oldName.upper()]
     except KeyError:
         return oldName
-
 
 def correctItem(oldName):
     try:

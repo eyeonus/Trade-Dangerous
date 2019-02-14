@@ -25,7 +25,7 @@ def import_requests():
     global platform
     if __requests:
         return __requests
-
+    
     if platform.system() == 'Linux':
         extra = (
             "Ubuntu users: You may be able to install 'pip'\n"
@@ -44,7 +44,7 @@ def import_requests():
         )
     else:
         extra = ""
-
+    
     print(
         "ERROR: Unable to load the Python 'requests' package.\n" + extra
     )
@@ -56,7 +56,7 @@ def import_requests():
     # 'YES' (upper or lower case) instead of 'Y'.
     if approval[0:1].lower() != 'y':
         raise TradeException("Missing package: 'requests'")
-
+    
     try:
         import pip
     except ImportError as e:
@@ -66,13 +66,13 @@ def import_requests():
             "except it doesn't appear to be installed on your system:\n"
             "{}{}".format(str(e), extra)
         ) from None
-
+    
     # Let's use "The most reliable approach, and the one that is fully supported."
     # Especially since the old way produces an error for me on Python 3.6:
     # "AttributeError: 'module' object has no attribute 'main'"
     #pip.main(["install", "--upgrade", "requests"])
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'requests'])
-
+    
     try:
         import requests
         __requests = requests
@@ -84,19 +84,17 @@ def import_requests():
 
     return __requests
 
-
 ######################################################################
 # Helpers
 
 class HTTP404(TradeException):
     pass
 
-
 def makeUnit(value):
     """
     Convert a value in bytes into a Kb, Mb, Gb etc.
     """
-
+    
     units = [ 'B ', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB' ]
     unitSize = int(value)
     for unit in units:
@@ -104,7 +102,6 @@ def makeUnit(value):
             return "{:>5.01f}{}".format(unitSize, unit)
         unitSize /= 1024
     return None
-
 
 def download(
             tdenv, url, localFile,
@@ -116,28 +113,28 @@ def download(
     """
     Fetch data from a URL and save the output
     to a local file. Returns the response headers.
-
+    
     tdenv:
         TradeEnv we're working under
-
+    
     url:
         URL we're fetching (http, https or ftp)
-
+    
     localFile:
         Name of the local file to open.
-
+    
     headers:
         dict() of additional HTTP headers to send
-
+    
     shebang:
         function to call on the first line
     """
-
+    
     requests = import_requests()
     tdenv.NOTE("Requesting {}".format(url))
     req = requests.get(url, headers=headers or None, stream=True)
     req.raise_for_status()
-
+    
     encoding = req.headers.get('content-encoding', 'uncompress')
     length = req.headers.get('content-length', None)
     transfer = req.headers.get('transfer-encoding', None)
@@ -151,26 +148,26 @@ def download(
             raise TradeException(
                 "Remote server gave an empty response. Please try again later."
             )
-
+    
     if tdenv.detail > 1:
         if length:
             tdenv.NOTE("Downloading {} {}ed data", makeUnit(length), encoding)
         else:
             tdenv.NOTE("Downloading {} {}ed data", transfer, encoding)
     tdenv.DEBUG0(str(req.headers).replace("{", "{{").replace("}", "}}"))
-
+    
     # Figure out how much data we have
     if length and not tdenv.quiet:
         progBar = pbar.Progress(length, 20)
     else:
         progBar = None
-
+    
     actPath = Path(localFile)
     fs.ensurefolder(tdenv.tmpDir)
     tmpPath = Path(tdenv.tmpDir, "{}.dl".format(actPath.name))
-
+    
     histogram = deque()
-
+    
     fetched = 0
     lastTime = started = time.time()
     spinner, spinners = 0, [
@@ -214,9 +211,9 @@ def download(
             makeUnit(fetched), encoding,
             makeUnit(fetched / elapsed)
         )
-
+    
     fs.ensurefolder(actPath.parent)
-
+    
     # Swap the file into place
     if backup:
         bakPath = Path(localFile + ".bak")
@@ -227,21 +224,20 @@ def download(
     if actPath.exists():
         actPath.unlink()
     tmpPath.rename(actPath)
-
+    
     req.close()
     return req.headers
-
 
 def get_json_data(url):
     """
     Fetch JSON data from a URL and return the resulting dictionary.
-
+    
     Displays a progress bar as it downloads.
     """
-
+    
     requests = import_requests()
     req = requests.get(url, stream=True)
-
+    
     totalLength = req.headers.get('content-length')
     if totalLength is None:
         compression = req.headers.get('content-encoding')
@@ -262,21 +258,20 @@ def get_json_data(url):
                     makeUnit(goal),
             ))
         progBar.clear()
-
+    
     return json.loads(jsData.decode())
-
 
 class CSVStream(object):
     """
     Provides an iterator that fetches CSV data from a given URL
     and presents it as an iterable of (columns, values).
-
+    
     Example:
         stream = transfers.CSVStream("http://blah.com/foo.csv")
         for cols, vals in stream:
             print("{} = {}".format(cols[0], vals[0]))
     """
-
+    
     def __init__(self, url, tdenv=None):
         self.url = url
         self.tdenv = tdenv
@@ -287,7 +282,7 @@ class CSVStream(object):
         else:
             self.lines = open(url[8:], "rUb")
         self.columns = self.next_line().split(',')
-
+    
     def next_line(self):
         """ Fetch the next line as a text string """
         while True:
@@ -301,7 +296,7 @@ class CSVStream(object):
                     "{}: line:{}: {}\n{}",
                     self.url, self.csvin.line_num, line, e
                 )
-
+    
     def __iter__(self):
         """
         Iterate across data received as csv values.

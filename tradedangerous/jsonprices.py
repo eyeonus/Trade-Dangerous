@@ -8,11 +8,9 @@ class UnknownSystemError(TradeException):
     def __str__(self):
         return "Unknown System: " + ' '.join(self.args)
 
-
 class UnknownStationError(TradeException):
     def __str__(self):
         return "Unknown Station: " + ' '.join(self.args)
-
 
 def lookup_system(tdb, tdenv, name, x, y, z):
     try:
@@ -24,7 +22,7 @@ def lookup_system(tdb, tdenv, name, x, y, z):
             system = tdb.lookupSystem(name)
         except LookupError:
             pass
-
+    
     if system:
         if (system.posX != x or system.posY != y or system.posZ != z):
             raise Exception("System {} position mismatch: "
@@ -34,11 +32,11 @@ def lookup_system(tdb, tdenv, name, x, y, z):
                         system.posX, system.posY, system.posZ
             ))
         return system
-
+    
     newSystem = "@{} [{}, {}, {}]".format(
             name, x, y, z
     )
-
+    
     candidates = []
     for candidate in tdb.systemByID.values():
         if (candidate.posX == x and
@@ -46,7 +44,7 @@ def lookup_system(tdb, tdenv, name, x, y, z):
                 candidate.posZ == z
                 ):
             candidates.append(candidate)
-
+    
     if len(candidates) == 1:
         candidate = candidates[0]
         if candidate.casefold() != name.casefold():
@@ -62,17 +60,16 @@ def lookup_system(tdb, tdenv, name, x, y, z):
                             candidate.posZ,
                 ))
         return candidates[0]
-
+    
     if len(candidates):
         raise Exception("System {} matches co-ordinates for systems: {}" +
                 ','.join([system.name for system in candidates])
                 )
-
+    
     if tdenv.addUnknown:
         return tdb.addLocalSystem(name, x, y, z)
-
+    
     return None
-
 
 def lookup_station(
         tdb, tdenv,
@@ -86,18 +83,17 @@ def lookup_station(
         if stnNormalizedName == normalizedName:
             station = stn
             break
-
+    
     if not station:
         if not tdenv.addUnknown:
             return None
         station = tdb.addLocalStation(system, name)
-
+    
     # Now set the parameters
     tdb.updateLocalStation(
             stn, lsFromStar, blackMarket, maxPadSize
     )
     return station
-
 
 def load_prices_json(
         tdb,
@@ -107,24 +103,24 @@ def load_prices_json(
     """
     Take data from a prices file and load it into the database.
     """
-
+    
     data = json.loads(jsonText)
-
+    
     sysData = data['sys']
     sysName = sysData['name']
     pos = sysData['pos']
-
+    
     stnData = data['stn']
     stnName = stnData['name']
     lsFromStar = stnData['ls']
-
+    
     try:
         blackMarket = stnData['bm'].upper()
         if not blackMarket in [ 'Y', 'N' ]:
             blackMarket = '?'
     except KeyError:
         blackMarket = '?'
-
+    
     system = lookup_system(
             tdb, tdenv,
             sysName,
@@ -144,7 +140,7 @@ def load_prices_json(
                 name, system.dbname
         ))
     tdenv.DEBUG1("- System: {}", system.dbname)
-
+    
     station = lookup_station(
             tdb, tdenv,
             system,
@@ -162,7 +158,6 @@ def load_prices_json(
         return
     tdenv.DEBUG1("- Station: {}", station.dbname)
 
-
 def generate_prices_json(
         tdb,
         tdenv,
@@ -172,7 +167,7 @@ def generate_prices_json(
     Generate a JSON dump of the specified station along
     with everything we know about the station and the system
     it is in. 
-
+    
     tdb:
         The TradeDB object to use
     tdenv:
@@ -180,9 +175,9 @@ def generate_prices_json(
     station:
         Station to dump
     """
-
+    
     system = station.system
-
+    
     stationData = {
         'cmdr': tdenv.commander or "unknown",
         'src': 'td/price-json',
@@ -196,7 +191,7 @@ def generate_prices_json(
         },
         'items': {}
     }
-
+    
     conn = tdb.getDB()
     cur = conn.cursor()
     cur.execute("""
@@ -217,9 +212,9 @@ def generate_prices_json(
                         )
              WHERE  si.station_id = ?
     """, [station.ID])
-
+    
     items = {}
-
+    
     lastModified = "0"
     for (
             itemID, modified,
@@ -241,13 +236,13 @@ def generate_prices_json(
             ]
         elif ssPrice:
             itemData['s'] = ssPrice
-
+    
     # dedupe timestamps.
     for itemData in items.values():
         if itemData['m'] == lastModified:
             del itemData['m']
-
+    
     stationData['m'] = lastModified
     stationData['items'] = items
-
+    
     return json.dumps(stationData, separators=(',',':'))

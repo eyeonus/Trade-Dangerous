@@ -4,7 +4,6 @@
 Small tool to submit new star data to EDStarCoordinator.
 
 Use:
-
     submit-distances.py "system name"
 """
 
@@ -72,7 +71,6 @@ class UsageError(Exception):
     def __str__(self):
         return error + "\n" + argv.format_usage()
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description='Submit star distances to the EDSC project.',
@@ -133,35 +131,33 @@ def parse_arguments():
         default=[],
         nargs='*',
     )
-
+    
     argv = parser.parse_args(sys.argv[1:])
     argv.origin = argv.origin.upper()
     if argv.origin.startswith('@'):
         argv.origin = argv.origin[1:]
-
+    
     if not argv.cmdr:
         raise UsageError(argv, "No commander name specified")
-
+    
     return argv
-
 
 def get_system(argv, tdb):
     system = tdb.systemByName.get(argv.origin.upper(), None)
     if not system:
         return argv.origin, None
-
+    
     if not argv.allowUpdate:
         raise UsageError(
             argv,
             "System '{}' already exists.\n"
             .format(systemName)
         )
-
+    
     if argv.detail:
         print("EXISTING SYSTEM:", argv.origin)
-
+    
     return argv.origin, system
-
 
 def pick_destinations(argv, tdb):
     numSystems = len(tdb.systemByName)
@@ -182,9 +178,8 @@ def pick_destinations(argv, tdb):
         if system.addedID <= gamma and \
             not sysName in standardStars
     ], num)
-
+    
     return destinations
-
 
 def get_outliers(argv):
     outliers = set()
@@ -200,7 +195,6 @@ def get_outliers(argv):
     random.shuffle(outliers)
     return outliers
 
-
 def get_distances(argv, clip, stars):
     distances = []
     for star in stars:
@@ -209,9 +203,9 @@ def get_distances(argv, clip, stars):
         star = star.upper()
         if star in distances:
             continue
-
+        
         clip.copy_text(star)
-
+        
         if len(stars) > 1:
             prefix = "{:>2}/{:2}: ".format(starNo, len(stars))
         else:
@@ -219,15 +213,14 @@ def get_distances(argv, clip, stars):
         dist = input(prefix + "Distance to {}: ".format(star))
         if dist == 'q':
             return distances, 'q'
-
+        
         if dist:
             distances.append({
                 'name': star.upper(),
                 'dist': float(dist),
             })
-
+    
     return distances, 'end'
- 
 
 def check_system(argv, tdb, tdbSys, name):
     system = tdb.systemByName.get(name.upper(), None)
@@ -238,7 +231,6 @@ def check_system(argv, tdb, tdbSys, name):
         print("KNOWN SYSTEM: {:.2f} ly".format(
             tdbSys.distanceTo(system)
         ))
-
 
 def add_extra_stars(argv, extraStars):
     if not extraStars:
@@ -254,12 +246,11 @@ def add_extra_stars(argv, extraStars):
     except FileNotFoundError:
         pass
 
-
 def submit_distances(argv, tdb, distances):
     system = argv.origin
     cmdr = argv.cmdr
     mode = "TEST" if argv.test else "Live"
-
+    
     print()
     print("System:", system)
     print("Database:", mode)
@@ -269,15 +260,15 @@ def submit_distances(argv, tdb, distances):
             ref['name'], ref['dist']
         ))
     print()
-
+    
     ok = input("Does this look correct (y/n)? ")
     if ok != 'y':
         print("Stopped")
         return
-
+    
     print()
     print("Submitting {} {}".format(mode, system))
-
+    
     sub = StarSubmission(
         star=system,
         commander=cmdr,
@@ -285,7 +276,7 @@ def submit_distances(argv, tdb, distances):
         test=argv.test,
     )
     resp = sub.submit()
-
+    
     result = StarSubmissionResult(star=system, response=resp)
     print(str(result))
     if result.valid:
@@ -306,55 +297,51 @@ def submit_distances(argv, tdb, distances):
             return list(result.recheck.keys())
     return None
 
-
 def do_rechecks(argv, clip, rechecks):
     print("\aSome systems need their distances rechecked:")
-
+    
     distances, term = get_distances(argv, clip, rechecks)
     return distances
-
 
 def send_and_check_distances(argv, tdb, clip, distances):
     if not distances:
         if argv.detail:
             print("No distances, no submission.")
         return False
-
+    
     while distances:
         rechecks = submit_distances(argv, tdb, distances)
         if not rechecks:
             break
-
+        
         distances = do_rechecks(argv, clip, rechecks)
-
+    
     return True
-
 
 def process_destinations(argv, tdb):
     clip = SystemNameClip()
-
+    
     print("Distances from {}:".format(argv.origin))
     distances, _ = get_distances(argv, clip, argv.destinations)
     send_and_check_distances(argv, tdb, clip, distances)
-
 
 ############################################################################
 
 def main():
     argv = parse_arguments()
-
+    
     tdenv = tradeenv.TradeEnv(properties=argv)
     tdb = tradedb.TradeDB(tdenv)
-
+    
     system, tdbSys = get_system(argv, tdb)
-
+    
     if argv.pick:
         argv.destinations.extend(pick_destinations(argv, tdb))
-
+    
     if argv.destinations:
         process_destinations(argv, tdb)
         return
-
+    
     print("Add EDSC Star Distances for \"{}\"".format(system))
     print()
     print("You will now be prompted for distances to various stars.")
@@ -370,7 +357,6 @@ def main():
         "or leave the line empty if you don't want to enter data for "
         "this star."
     )
-
     print(
         "5 distances are required for EDSC to make a first guess at a "
         "star's location. You can submit more to increase the accuracy "
@@ -378,9 +364,9 @@ def main():
         "are trying to submit corrections."
     )
     print()
-
+    
     clip = SystemNameClip()
-
+    
     print()
     print("""
 ===================================================
@@ -392,7 +378,7 @@ STANDARD STARS: (q to skip to the next section)
     distances, term = get_distances(argv, clip, standardStars)
     if distances:
         send_and_check_distances(argv, tdb, clip, distances)
-
+    
     outliers = get_outliers(argv)
     if outliers:
         print("""
@@ -405,13 +391,13 @@ EXTRA STARS: (q to skip to the next section)
         distances, term = get_distances(argv, clip, outliers)
         if distances:
             send_and_check_distances(argv, tdb, clip, distances)
-
+    
     print("""
 ===================================================
 CHOOSE YOUR OWN: (q to stop)
 
   Specify additional stars.
-
+  
   Prefix names with a '+' to add them to
   {}.
 ===================================================
@@ -447,13 +433,12 @@ CHOOSE YOUR OWN: (q to stop)
             distances.extend(extras)
             if save and star not in outliers and star not in newOutliers:
                 newOutliers.append(star)
-
+    
     if send_and_check_distances(argv, tdb, clip, distances):
         add_extra_stars(argv, newOutliers)
-
+    
 if __name__ == "__main__":
     try:
         main()
     except (SubmissionError, UsageError) as e:
         print(str(e))
-

@@ -66,7 +66,7 @@ def getFKeyList(conn, tableName):
             # if there is a second column, remove it from the list
             keyList.remove( keyList[keyCount] )
             keyCount -= 1
-
+        
     return keyList
 
 def buildFKeyStmt(conn, tableName, key):
@@ -92,7 +92,7 @@ def buildFKeyStmt(conn, tableName, key):
                 'joinTable': key['table'],
                 'joinColumn': key['to']
             })
-
+    
     return keyStmt
 
 ######################################################################
@@ -104,52 +104,52 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
         Generate the csv file for tableName in dataPath
         returns lineCount, exportPath
     """
-
+    
     # path for csv file
     dataPath = dataPath or tdb.dataPath
     if not dataPath.is_dir():
         raise TradeException("Save location '{}' not found.".format(str(dataPath)))
-
+    
     # connect to the database
     conn = tdb.getDB()
     conn.row_factory = sqlite3.Row
-
+    
     # prefix for unique/ignore columns
     uniquePfx = "unq:"
     ignorePfx = "!"
-
+    
     # create CSV files
     exportPath = (dataPath / Path(tableName)).with_suffix(".csv")
     tdenv.DEBUG0("Export Table '{table}' to '{file}'".format(
                     table=tableName, file=str(exportPath)
                     ))
-
+    
     lineCount = 0
     with exportPath.open("w", encoding='utf-8', newline="\n") as exportFile:
         exportOut = csv.writer(exportFile, delimiter=",", quotechar="'", doublequote=True, quoting=csv.QUOTE_NONNUMERIC, lineterminator="\n")
-
+        
         cur = conn.cursor()
-
+        
         # check for single PRIMARY KEY
         pkCount = 0
         for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
             # count the columns of the primary key
             if columnRow['pk'] > 0: pkCount += 1
-
+        
         # build column list
         columnList = []
         for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
             # if there is only one PK column, ignore it
             #if columnRow['pk'] > 0 and pkCount == 1: continue
             columnList.append(columnRow)
-
+        
         if len(columnList) == 0:
             raise TradeException("No columns to export for table '{}'.".format(tableName))
-
+        
         # reverse the first two columns for some tables
         if tableName in reverseList:
             columnList[0], columnList[1] = columnList[1], columnList[0]
-
+        
         # initialize helper lists
         csvHead    = []
         stmtColumn = []
@@ -157,9 +157,9 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
         stmtOrder  = []
         unqIndex   = getUniqueIndex(conn, tableName)
         keyList    = getFKeyList(conn, tableName)
-
+        
         tdenv.DEBUG1('UNIQUE: ' + ", ".join(unqIndex))
-
+        
         # iterate over all columns of the table
         for col in columnList:
             # check if the column is a foreign key
@@ -197,13 +197,13 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
                 else:
                     csvHead += [ col['name'] ]
                 stmtColumn += [ "{}.{}".format(tableName, col['name']) ]
-
+        
         # build the SQL statement
         sqlStmt = "SELECT {} FROM {}".format(",".join(stmtColumn)," ".join(stmtTable))
         if len(stmtOrder) > 0:
             sqlStmt += " ORDER BY {}".format(",".join(stmtOrder))
         tdenv.DEBUG1("SQL: %s" % sqlStmt)
-
+        
         # finally generate the csv file
         # write header line without quotes
         exportFile.write("{}\n".format(",".join(csvHead)))
@@ -212,8 +212,8 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
             tdenv.DEBUG2("{count}: {values}".format(count=lineCount, values=list(line)))
             exportOut.writerow(list(line))
         tdenv.DEBUG1("{count} {table}s exported".format(count=lineCount, table=tableName))
-
+    
     # Update the DB file so we don't regenerate it.
     os.utime(str(tdb.dbPath))
-
+    
     return lineCount, exportPath

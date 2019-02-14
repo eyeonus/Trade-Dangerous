@@ -211,7 +211,7 @@ def titleFixup(text):
     including 'McDonald', 'MacNair', 'McKilroy', and cases that
     python's title screws up such as "Smith's".
     """
-
+    
     text = text.title()
     text = re.sub(
         r"\b(Mc)([a-z])",
@@ -229,9 +229,8 @@ def titleFixup(text):
     )
     text = re.sub(r"'S\b", "'s", text)
     text = ''.join((text[0].upper(), text[1:]))
-
+    
     return text
-
 
 def checkForOcrDerp(tdenv, systemName, stationName):
     match = ocrDerp.search(stationName.upper())

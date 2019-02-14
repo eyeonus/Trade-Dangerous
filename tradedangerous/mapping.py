@@ -5,16 +5,16 @@
 class FDEVMappingBase(object):
     """
     Base class to map FDEV-IDs to TD names, do not use directly.
-
+    
     Derived class must declare "tableName" and "colNames" which are used
     to select the ID->Name mapping from the database.
-
+    
     "colNames" is a list() of columns. The first one must be the idColumn.
-
+    
     If there are unknown IDs but name mappings override the mapUnknown()
     method and use addUnknown().
     """
-
+    
     def __init__(self, tdb, tdenv):
         """
         Parameters:
@@ -31,15 +31,15 @@ class FDEVMappingBase(object):
         anz = self._mapCount - anz
         if anz > 0:
             self.tdenv.DEBUG1("Added {:n} unkown {}-Mappings".format(anz, self.tableName))
-
+    
     @property
     def colCount(self):
         return self._colCount
-
+    
     @property
     def mapCount(self):
         return self._mapCount
-
+    
     def mapLoad(self):
         """
         Loads the mapping
@@ -52,12 +52,12 @@ class FDEVMappingBase(object):
                    table=self.tableName,
                    idCol=self.colNames[0]
                   )
-
+        
         self.tdenv.DEBUG1("Loading mapping for {}".format(self.tableName))
-
+        
         conn = self.tdb.getDB()
         curs = conn.cursor()
-
+        
         entries = {}
         curs.execute(stmt)
         for line in curs:
@@ -71,7 +71,7 @@ class FDEVMappingBase(object):
             self.tdenv.DEBUG2("{}: {}".format(ID, str(entries[ID]).replace("{", "{{").replace("}", "}}")))
         self.entries = entries
         self.tdenv.DEBUG1("Loaded {:n} {}-Mappings".format(len(entries), self.tableName))
-
+    
     def addUnknown(self, wrong, right):
         # add Entries by name with unknown IDs
         if isinstance(wrong, (str,int,tuple)):
@@ -80,11 +80,11 @@ class FDEVMappingBase(object):
         else:
             self.tdenv.WARN("{}: {}".format(wrong, right))
         return
-
+    
     def mapUnknown(self):
         # override this and add unknown IDs in the derived class
         return
-
+    
     def mapID(self, ID, oldValue=None):
         res = self.entries.get(int(ID), None)
         if not res:
@@ -100,28 +100,27 @@ class FDEVMappingItems(FDEVMappingBase):
     """
     tableName = "Item"
     colNames  = [ 'fdev_id', 'name' ]
-
+    
     def mapUnknown(self):
         # no ID known yet for:
         self.addUnknown('Comercial Samples',      'Commercial Samples')
         self.addUnknown('Encripted Data Storage', 'Encrypted Data Storage')
         self.addUnknown('Wreckage Components',    'Salvageable Wreckage')
-
+    
 class FDEVMappingShips(FDEVMappingBase):
     """
         Maps ID to TD ships
     """
     tableName = "Ship"
     colNames  = [ 'fdev_id', 'name' ]
-
+    
 class FDEVMappingShipyard(FDEVMappingBase):
     """
         Maps ID to EDDN shipyard
     """
     tableName = "FDevShipyard"
     colNames  = [ 'id', 'name' ]
-
-
+    
 class FDEVMappingOutfitting(FDEVMappingBase):
     """
         Maps ID to EDDN outfitting
