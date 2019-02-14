@@ -742,7 +742,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.edAPI = api
         
         fs.ensurefolder(tdenv.tmpDir)
-        tdh_path = tdenv.tmpDir / pathlib.Path('tdh_profile.json')
+        tdh_path = 'tdh_profile.json'
         if self.getOption("tdh"):
             self.options["save"] = True
             if tdh_path.exists():
@@ -750,15 +750,16 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # save profile if requested
         if self.getOption("save"):
-            saveName = tdh_path if self.getOption("tdh") else 'tmp/profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
-            with open(saveName, 'w', encoding="utf-8") as saveFile:
+            saveName = tdh_path if self.getOption("tdh") else 'profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
+            savePath = tdenv.tmpDir / pathlib.Path(saveName)
+            with open(savePath, 'w', encoding="utf-8") as saveFile:
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
                     tdenv.DEBUG0("{}",api.text)
                     saveFile.write('{{"profile":{}}}'.format(api.text[0]))
                 else:
                     saveFile.write(api.text)
-                print('API response saved to: {}'.format(saveName))
+                print('API response saved to: {}'.format(savePath))
 
         # If TDH is calling the plugin, nothing else needs to be done
         # now that the file has been created.
