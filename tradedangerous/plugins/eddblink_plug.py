@@ -58,7 +58,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
         
-        self.dataPath = Path(os.environ.get('TD_EDDB')) or tdb.dataPath / Path("eddb")
+        self.dataPath = Path(os.environ.get('TD_EDDB')) if os.environ.get('TD_EDDB') else tdb.dataPath / Path("eddb")
         self.commoditiesPath = Path(COMMODITIES)
         self.systemsPath = Path(SYSTEMS)
         self.stationsPath = Path(STATIONS)
