@@ -17,10 +17,9 @@ from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
 # Constants
-
-BASE_URL = "http://elite.ripz.org/files/"
-FALLBACK_URL = "https://eddb.io/archive/v6/"
-SHIPS_URL = "https://raw.githubusercontent.com/EDCD/coriolis-data/master/dist/index.json"
+BASE_URL = os.environ.get('TD_SERVER') or "http://elite.tromador.com/files/"
+FALLBACK_URL = os.environ.get('TD_FALLBACK') or "https://eddb.io/archive/v6/"
+SHIPS_URL = os.environ.get('TD_SHIPS') or "https://raw.githubusercontent.com/EDCD/coriolis-data/master/dist/index.json"
 COMMODITIES = "commodities.json"
 SYSTEMS = "systems_populated.jsonl"
 STATIONS = "stations.jsonl"
@@ -58,9 +57,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
         
-        self.dataPath = tdb.dataPath / Path("eddb")
-        if os.environ.get('TD_EDDB'):
-            self.dataPath = Path(os.environ.get('TD_EDDB'))
+        self.dataPath = Path(os.environ.get('TD_EDDB')) if os.environ.get('TD_EDDB') else tdb.dataPath / Path("eddb")
         self.commoditiesPath = Path(COMMODITIES)
         self.systemsPath = Path(SYSTEMS)
         self.stationsPath = Path(STATIONS)
