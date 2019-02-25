@@ -736,6 +736,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         for item in it_result:
             items.append(item[0])
         
+        stationList = {
+            stationID
+            for (stationID,) in self.execute("SELECT station_id FROM Station")
+        }
+        
         with open(str(self.dataPath / listings_file), "rU") as fh:
             prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
@@ -746,6 +751,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 
                 station_id = int(listing['station_id'])
+                if station_id not in stationList:
+                    continue
                 
                 if station_id != cur_station:
                     cur_station = station_id
