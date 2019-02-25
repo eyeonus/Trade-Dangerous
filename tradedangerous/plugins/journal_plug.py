@@ -82,6 +82,12 @@ class ImportPlugin(ImportPluginBase):
     sysList = {}
     stnList = {}
     blkList = []
+ 
+    planetTypeList = (
+        "SURFACESTATION",
+        "CRATERPORT",
+        "CRATEROUTPOST",
+    )
 
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
@@ -230,7 +236,7 @@ class ImportPlugin(ImportPluginBase):
                             stnType = event.get("StationType", None)
                             if stnType:
                                 # conclusions from the stationtype
-                                jrnStation.planetary = "Y" if stnType == "SurfaceStation" else "N"
+                                jrnStation.planetary = "Y" if stnType.upper() in self.planetTypeList else "N"
                                 jrnStation.maxPadSize = "M" if stnType.startswith("Outpost") else "L"
                             stnServices = event.get("StationServices", None)
                             if stnServices:
