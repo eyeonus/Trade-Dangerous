@@ -585,48 +585,45 @@ class ImportPlugin(plugins.ImportPluginBase):
                 except sqlite3.IntegrityError:
                     tdenv.DEBUG0("Unable to insert or update: {}, {}", category_id, category_name)
             
-            # Only put regular items here, rare items can't be dealt with.
-            if not commodity['is_rare']:
-                item_id = commodity['id']
-                name = commodity['name']
-                if name.lower() == 'salvageable wreckage':
-                    name = 'Wreckage Components'
-                if name.lower() == 'political prisoner':
-                    name = 'Political Prisoners'
-                if name.lower() == 'hostage':
-                    name = 'Hostages'
-                if name.lower() == 'methanol monohydrate':
-                    name = 'Methanol Monohydrate Crystals'
-                if name.lower() == 'occupied cryopod':
-                    name = 'Occupied Escape Pod'
-                category_id = commodity['category_id']
-                avg_price = commodity['average_price']
-                fdev_id = commodity['ed_id']
-                # "ui_order" doesn't have an equivalent field in the json.
+            item_id = commodity['id']
+            name = commodity['name']
+            if name.lower() == 'salvageable wreckage':
+                name = 'Wreckage Components'
+            if name.lower() == 'political prisoner':
+                name = 'Political Prisoners'
+            if name.lower() == 'hostage':
+                name = 'Hostages'
+            if name.lower() == 'methanol monohydrate':
+                name = 'Methanol Monohydrate Crystals'
+            if name.lower() == 'occupied cryopod':
+                name = 'Occupied Escape Pod'
+            category_id = commodity['category_id']
+            avg_price = commodity['average_price']
+            fdev_id = commodity['ed_id']
+            # "ui_order" doesn't have an equivalent field in the json.
                 
-                tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+            tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
                 
-                # If the item_id has changed, we need to completely delete the old entry.
-                if cur_ids.get(fdev_id) != item_id:
-                    tdenv.DEBUG1("Did not match item_id:{} with fdev_id:{} -- {}", item_id, fdev_id, cur_ids.get(fdev_id))
-                    if cur_ids.get(fdev_id):
-                        tdenv.DEBUG0("item_id  for '{}' has changed, updating.", name)
-                        self.execute("DELETE FROM Item where fdev_id = ?", (fdev_id,))
+            # If the item_id has changed, we need to completely delete the old entry.
+            if cur_ids.get(fdev_id) != item_id:
+                tdenv.DEBUG1("Did not match item_id:{} with fdev_id:{} -- {}", item_id, fdev_id, cur_ids.get(fdev_id))
+                if cur_ids.get(fdev_id):
+                    tdenv.DEBUG0("item_id  for '{}' has changed, updating.", name)
+                    self.execute("DELETE FROM Item where fdev_id = ?", (fdev_id,))
                 
+            try:
+                self.execute("""INSERT INTO Item
+                            (item_id,name,category_id,avg_price,fdev_id) VALUES
+                            ( ?, ?, ?, ?, ? )""",
+                            (item_id,name,category_id,avg_price,fdev_id))
+            except sqlite3.IntegrityError:
                 try:
-                    self.execute("""INSERT INTO Item
-                                ( item_id,name,category_id,avg_price,fdev_id ) VALUES
-                                ( ?, ?, ?, ?, ? )""",
-                                (item_id,name,category_id,avg_price,fdev_id))
+                    self.execute("""UPDATE Item
+                                SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
+                                WHERE item_id = ?""", 
+                                (name,category_id,avg_price,fdev_id, item_id))
                 except sqlite3.IntegrityError:
-                    try:
-                        self.execute("""UPDATE Item
-                                    SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
-                                    WHERE item_id = ?""", 
-                                    (name,category_id,avg_price,fdev_id,
-                                     item_id))
-                    except sqlite3.IntegrityError:
-                        tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+                    tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
         
         # The items aren't in the same order in the json as they are in the game's UI.
         # This creates a temporary object that has all the items sorted first
