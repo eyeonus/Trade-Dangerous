@@ -106,7 +106,7 @@ class ImportPlugin(ImportPluginBase):
                     if itemTD:
                         tdenv.WARN(
                             "Item '{}' has different name '{}' (TD) != '{} '(EDCD).",
-                            itemEDCD.fdevID, itemEDCD.dbname, itemTD.dbname
+                            itemEDCD.fdevID, itemTD.dbname, itemEDCD.dbname
                         )
                     else:
                         tdenv.NOTE("New Item '{}'", itemEDCD.fullname)
