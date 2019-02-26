@@ -223,7 +223,7 @@ class EDAPI:
         if self.debug:
             print(res, res.url)
             print(res.text)
-        if res.status_code == requests.codes.ok:
+        if res.status_code == requests.codes.ok:  # pylint: disable=no-member
             auth_data = res.json()
             auth_data['expires_at'] = expires_at + int(auth_data.get('expires_in', 0))
             self._authorization_set_config(auth_data)
@@ -745,16 +745,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.edAPI = api
         
         fs.ensurefolder(tdenv.tmpDir)
-        tdh_path = tdenv.tmpDir / pathlib.Path('tdh_profile.json')
+
         if self.getOption("tdh"):
             self.options["save"] = True
-            if tdh_path.exists():
-                tdh_path.unlink()
         
         # save profile if requested
         if self.getOption("save"):
-            saveName = tdh_path if self.getOption("tdh") else 'profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
+            saveName = 'tdh_profile.json' if self.getOption("tdh") else \
+                       'profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
             savePath = tdenv.tmpDir / pathlib.Path(saveName)
+            if savePath.exists():
+                savePath.unlink()
             with open(savePath, 'w', encoding = "utf-8") as saveFile:
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
