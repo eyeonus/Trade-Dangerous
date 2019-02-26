@@ -39,7 +39,7 @@ cat_ignore = [
 
 
 class OAuthCallbackHandler(BaseHTTPRequestHandler):
-
+    
     def do_GET(self):
         split_url = urlsplit(self.path)
         if split_url.path == "/callback":
@@ -56,13 +56,13 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"<body><h1>AUTHENTICATION</h1>")
         self.wfile.write(body_text)
         self.wfile.write(b"</body></html>")
-
+    
     def log_message(self, format, *args):
         pass
 
 
 class OAuthCallbackServer(object):
-
+    
     def __init__(self, hostname, port, handler):
         myServer = HTTPServer
         myServer.callback_code = None
@@ -622,7 +622,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 newStation[askField] = askValue
         
         else:
-
+            
             def _detail(value, source):
                 detail = source[value]
                 if detail == '?':
@@ -745,7 +745,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.edAPI = api
         
         fs.ensurefolder(tdenv.tmpDir)
-
+        
         if self.getOption("tdh"):
             self.options["save"] = True
         

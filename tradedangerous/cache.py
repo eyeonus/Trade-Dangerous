@@ -107,7 +107,7 @@ class BuildCacheBaseException(TradeException):
         lineNo      Line the error occurred on
         error       Description of the error
     """
-
+    
     def __init__(self, fromFile, lineNo, error = None):
         self.fileName = fromFile.name
         self.lineNo = lineNo
@@ -126,7 +126,7 @@ class UnknownSystemError(BuildCacheBaseException):
     """
     Raised when the file contains an unknown star name.
     """
-
+    
     def __init__(self, fromFile, lineNo, key):
         error = 'Unrecognized SYSTEM: "{}"'.format(key)
         super().__init__(fromFile, lineNo, error)
@@ -136,7 +136,7 @@ class UnknownStationError(BuildCacheBaseException):
     """
     Raised when the file contains an unknown star/station name.
     """
-
+    
     def __init__(self, fromFile, lineNo, key):
         error = 'Unrecognized STAR/Station: "{}"'.format(key)
         super().__init__(fromFile, lineNo, error)
@@ -148,7 +148,7 @@ class UnknownItemError(BuildCacheBaseException):
     Attributes:
         itemName   Key we tried to look up.
     """
-
+    
     def __init__(self, fromFile, lineNo, itemName):
         error = 'Unrecognized item name: "{}"'.format(itemName)
         super().__init__(fromFile, lineNo, error)
@@ -158,7 +158,7 @@ class DuplicateKeyError(BuildCacheBaseException):
     """
         Raised when an item is being redefined.
     """
-
+    
     def __init__(self, fromFile, lineNo, keyType, keyValue, prevLineNo):
         super().__init__(fromFile, lineNo,
                 "Second occurrance of {keytype} \"{keyval}\", "
@@ -174,7 +174,7 @@ class DeletedKeyError(BuildCacheBaseException):
     Raised when a key value in a .csv file is marked as DELETED in the
     corrections file.
     """
-
+    
     def __init__(self, fromFile, lineNo, keyType, keyValue):
         super().__init__(fromFile, lineNo,
                 "{} '{}' is marked as DELETED and should not be used.".format(
@@ -187,7 +187,7 @@ class DeprecatedKeyError(BuildCacheBaseException):
     Raised when a key value in a .csv file has a correction; the old
     name should not appear in the .csv file.
     """
-
+    
     def __init__(self, fromFile, lineNo, keyType, keyValue, newValue):
         super().__init__(fromFile, lineNo,
                 "{} '{}' is deprecated "
@@ -198,14 +198,14 @@ class DeprecatedKeyError(BuildCacheBaseException):
 
 class MultipleStationEntriesError(DuplicateKeyError):
     """ Raised when a station appears multiple times in the same file. """
-
+    
     def __init__(self, fromFile, lineNo, facility, prevLineNo):
         super().__init__(fromFile, lineNo, 'station', facility, prevLineNo)
 
 
 class MultipleItemEntriesError(DuplicateKeyError):
     """ Raised when one item appears multiple times in the same station. """
-
+    
     def __init__(self, fromFile, lineNo, item, prevLineNo):
         super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
 
@@ -217,7 +217,7 @@ class SyntaxError(BuildCacheBaseException):
         problem     The problem that occurred
         text        Offending text
     """
-
+    
     def __init__(self, fromFile, lineNo, problem, text):
         error = "{},\ngot: '{}'.".format(problem, text.strip())
         super().__init__(fromFile, lineNo, error)
@@ -227,7 +227,7 @@ class SupplyError(BuildCacheBaseException):
     """
     Raised when a supply field is incorrectly formatted.
     """
-
+    
     def __init__(self, fromFile, lineNo, category, problem, value):
         error = "Invalid {} supply value: {}. Got: {}". \
                     format(category, problem, value)
@@ -346,10 +346,10 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     
     lineNo, localAdd = 0, 0
     if not ignoreUnknown:
-
+        
         def ignoreOrWarn(error):
             raise error
-
+    
     elif not quiet:
         ignoreOrWarn = tdenv.WARN
     
