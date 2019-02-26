@@ -14,10 +14,10 @@ class TestCache(object):
             10,
             'demand',
             reading)
-
+        
         assert demandUnits == 897
         assert demandLevel == 3
-
+    
     def test_parseSupply_bad_level(self):
         fil = FakeFile('faked-file.prices')
         reading = '897X'
@@ -27,7 +27,7 @@ class TestCache(object):
                 10,
                 'demand',
                 reading)
-
+    
     def test_parseSupply_bad_units(self):
         fil = FakeFile('faked-file.prices')
         reading = '-10H'

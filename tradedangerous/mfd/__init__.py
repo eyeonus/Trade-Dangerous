@@ -33,7 +33,7 @@ class DummyMFD(object):
         Base class for the MFD drivers, implemented as no-ops so that
         you can always use all MFD functions without conditionals.
     """
-
+    
     def __init__(self):
         pass
 
@@ -68,7 +68,7 @@ class X52ProMFD(DummyMFD):
     """
         Wrapper for the Saitek X52 Pro MFD.
     """
-
+    
     def __init__(self):
         from sys import exit
         from . saitek import directoutput, x52pro
@@ -80,7 +80,7 @@ class X52ProMFD(DummyMFD):
         except directoutput.DLLError as e:
             print("{}: error#{}: Unable to initialize the Saitek X52 Pro module: {}".format(__name__, e.error_code, e.msg), file=sys.stderr)
             exit(1)
-
+        
         self.page = self.doObj.add_page('TD')
         self.display('TradeDangerous', 'INITIALIZING')
 
@@ -93,7 +93,7 @@ class X52ProMFD(DummyMFD):
         self.page[0], self.page[1], self.page[2] = line1, line2, line3
         if delay:
             time.sleep(delay)
-
+    
     def attention(self, duration):
         page = self.page
         iterNo = 0

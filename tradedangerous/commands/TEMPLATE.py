@@ -33,19 +33,19 @@ def run(results, cmdenv, tdb):
     """
     Implement code that validates arguments, collects and prepares
     any data you will need to generate your results for the user.
-
+    
     If your command has finished and has no output to generate,
     return None, otherwise return "results" to be forwarded to
     the 'render' function.
-
+    
     DO NOT print() during 'run', this allows run() functions to
     be re-used between modules and allows them to be used beyond
     the trade.py command line - e.g. someone writing a TD GUI
     will call run() and then render the results themselves.
     """
-
+    
     ### TODO: Implement
-
+    
     return results
 
 ######################################################################
@@ -55,8 +55,8 @@ def render(results, cmdenv, tdb):
     """
     If run() returns a non-None value, the trade.py code will then
     call the corresponding render() function.
-
+    
     This is where you should generate any output from your command.
     """
-
+    
     ### TODO: Implement

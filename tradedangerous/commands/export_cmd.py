@@ -68,7 +68,7 @@ def run(results, cmdenv, tdb):
     # check database exists
     if not tdb.dbPath.is_file():
         raise CommandLineError("Database '{}' not found.".format(tdb.dbPath))
-
+    
     # check export path exists
     if cmdenv.path:
         # the "--path" overwrites the default path of TD
@@ -77,15 +77,15 @@ def run(results, cmdenv, tdb):
         exportPath = Path(cmdenv.dataDir)
     if not exportPath.is_dir():
         raise CommandLineError("Save location '{}' not found.".format(str(exportPath)))
-
+    
     # connect to the database
     cmdenv.NOTE("Using database '{}'", tdb.dbPath)
     conn = tdb.getDB()
     conn.row_factory = sqlite3.Row
-
+    
     # some tables might be ignored
     ignoreList = []
-
+    
     # extract tables from command line
     if cmdenv.tables:
         bindValues = cmdenv.tables.split(',')
@@ -96,7 +96,7 @@ def run(results, cmdenv, tdb):
         tableStmt = ''
         if not cmdenv.allTables:
             ignoreList.append("StationItem")
-
+    
     tableCursor = conn.cursor()
     for row in tableCursor.execute("""
                                       SELECT name
@@ -112,14 +112,14 @@ def run(results, cmdenv, tdb):
             # ignore the table
             cmdenv.NOTE("Ignore Table '{table}'", table=tableName)
             continue
-
+        
         cmdenv.NOTE("Export Table '{table}'", table=tableName)
-
+        
         # create CSV files
         lineCount, filePath = exportTableToFile(tdb, cmdenv, tableName, exportPath)
         if cmdenv.deleteEmpty and lineCount == 0:
             # delete file if emtpy
             filePath.unlink()
             cmdenv.DEBUG0("Delete empty file {file}'".format(file=filePath))
-
+    
     return None

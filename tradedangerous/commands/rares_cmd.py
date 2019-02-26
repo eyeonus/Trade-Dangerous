@@ -91,23 +91,23 @@ def run(results, cmdenv, tdb):
     """
     Fetch all the data needed to display the results of a "rares"
     command. Does not actually print anything.
-
+    
     Command execution is broken into two steps:
         1. cmd.run(results, cmdenv, tdb)
             Gather all the data required but generate no output,
         2. cmd.render(results, cmdenv, tdb)
             Print output to the user.
-
+    
     This separation of concerns allows modularity; you can write
     a command that calls another command to fetch data for you
     and knowing it doesn't generate any output. Then you can
     process the data and return it and let the command parser
     decide when to turn it into output.
-
+    
     It also opens a future door to commands that can present
     their data in a GUI as well as the command line by having
     a custom render() function.
-
+    
     Parameters:
         results
             An object to be populated and returned
@@ -116,14 +116,14 @@ def run(results, cmdenv, tdb):
             for the command.
         tdb
             A TradeDB object to query against.
-
+    
     Returns:
         None
             End execution without any output
         results
             Proceed to "render" with the output.
     """
-
+    
     # Lookup the system we're currently in.
     start = cmdenv.nearSystem
     # Hoist the padSize, noPlanet and planetary parameter for convenience
@@ -132,14 +132,14 @@ def run(results, cmdenv, tdb):
     planetary = cmdenv.planetary
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.)
-
+    
     if cmdenv.illegal:
         wantIllegality = 'Y'
     elif cmdenv.legal:
         wantIllegality = 'N'
     else:
         wantIllegality = 'YN?'
-
+    
     awaySystems = set()
     if cmdenv.away or cmdenv.awayFrom:
         if not cmdenv.away or not cmdenv.awayFrom:
@@ -150,15 +150,15 @@ def run(results, cmdenv, tdb):
         for sysName in cmdenv.awayFrom:
             system = tdb.lookupPlace(sysName).system
             awaySystems.add(system)
-
+    
     # Start to build up the results data.
     results.summary = ResultRow()
     results.summary.near = start
     results.summary.ly = maxLy
     results.summary.awaySystems = awaySystems
-
+    
     distCheckFn = start.distanceTo
-
+    
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
         if not rare.illegal in wantIllegality:
@@ -176,37 +176,37 @@ def run(results, cmdenv, tdb):
         dist = distCheckFn(rareSys)
         if maxLy > 0. and dist > maxLy:
             continue
-
+        
         if awaySystems:
             awayCheck = rareSys.distanceTo
             if any(awayCheck(away) < minAwayDist for away in awaySystems):
                 continue
-
+        
         # Create a row for this item
         row = ResultRow()
         row.rare = rare
         row.dist = dist
         results.rows.append(row)
-
+    
     # Was anything matched?
     if not results:
         print("No matches found.")
         return None
-
+    
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
     else:
         results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
         results.rows.sort(key=lambda row: row.dist)
-
+    
     if cmdenv.reverse:
         results.rows.reverse()
-
+    
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
-
+    
     return results
 
 #######################################################################
@@ -218,14 +218,14 @@ def render(results, cmdenv, tdb):
     from the command line, this function will be called to generate
     the output of the command.
     """
-
+    
     if not results.rows:
         raise CommandLineError("No items found.")
-
+    
     # Calculate the longest station and rareitem name in our list.
     longestStnNameLen = max_len(results.rows, key=lambda row: row.rare.station.name())
     longestRareNameLen = max_len(results.rows, key=lambda row: row.rare.name(cmdenv.detail))
-
+    
     # Use the formatting system to describe what our
     # output rows are going to look at (see formatting.py)
     rowFmt = RowFormat()
@@ -249,12 +249,12 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
     rowFmt.addColumn("Plt", '>', '3',
             key=lambda row: TradeDB.planetStates[row.rare.station.planetary])
-
+    
     # Print a heading summary if the user didn't use '-q'
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     # Print out our results.
     for row in results.rows:
         print(rowFmt.format(row))

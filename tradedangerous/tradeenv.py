@@ -12,11 +12,11 @@ class TradeEnv(object):
         
         To print debug lines, use DEBUG<N>, e.g. DEBUG0, which
         takes a format() string and parameters, e.g.
-        
+            
             DEBUG1("hello, {world}{}", "!", world="world")
         
         is equivalent to:
-        
+            
             if tdenv.debug >= 1:
                 print("#hello, {world}{}".format(
                         "!", world="world"

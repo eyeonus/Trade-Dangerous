@@ -54,14 +54,14 @@ def run(results, cmdenv, tdb):
         raise CommandLineError(
             "No trade data available for {}".format(origin.name())
         )
-
+    
     buying, selling = cmdenv.buying, cmdenv.selling
-
+    
     results.summary = ResultRow()
     results.summary.origin = origin
     results.summary.buying = cmdenv.buying
     results.summary.selling = cmdenv.selling
-
+    
     tdb.getAverageSelling()
     tdb.getAverageBuying()
     cur = tdb.query("""
@@ -72,7 +72,7 @@ def run(results, cmdenv, tdb):
           FROM  StationItem
          WHERE  station_id = ?
     """, [origin.ID])
-
+    
     for row in cur:
         it = iter(row)
         item = tdb.itemByID[next(it)]
@@ -99,16 +99,16 @@ def run(results, cmdenv, tdb):
         else:
             hasSell = False
         row.age = float(next(it) or 0)
-
+        
         if hasBuy or hasSell:
             results.rows.append(row)
-
+    
     if not results.rows:
         raise CommandLineError("No items found")
-
+    
     results.rows.sort(key=lambda row: row.item.dbname)
     results.rows.sort(key=lambda row: row.item.category.dbname)
-
+    
     return results
 
 #######################################################################
@@ -122,16 +122,16 @@ def render(results, cmdenv, tdb):
     longestSup = max(results.rows, key=lambda row: len(row.supply)).supply
     dmdLen = max(len(longestDmd), len("Demand"))
     supLen = max(len(longestSup), len("Supply"))
-
+    
     showCategories = (cmdenv.detail > 0)
-
+    
     rowFmt = RowFormat()
     if showCategories:
         rowFmt.prefix = '    '
-
+    
     sellPred = lambda row: row.sellCr != 0 and row.supply != '-'
     buyPred = lambda row: row.buyCr != 0 and row.demand != '-'
-
+    
     rowFmt.addColumn('Item', '<', longestLen,
             key=lambda row: row.item.name())
     if not cmdenv.selling:
@@ -160,11 +160,11 @@ def render(results, cmdenv, tdb):
     if cmdenv.detail:
         rowFmt.addColumn('Age/Days', '>', 7, '.2f',
         key=lambda row: row.age)
-
+    
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     lastCat = None
     for row in results.rows:
         if showCategories and row.item.category is not lastCat:

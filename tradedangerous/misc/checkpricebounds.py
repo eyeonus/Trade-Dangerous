@@ -21,10 +21,10 @@ def check_price_bounds(
         ):
     assert isinstance(percentile, (int,float))
     assert percentile >= 0.01 and percentile < 50
-
+    
     lowP = percentile / 100
     highP = 1 - lowP
-
+    
     mask = "{:>7}:{:<28}|{:>8}|{:>8}|{:>8}|{:>8}|{:>8}|{:>8}|{:>8}|{:>8}|{:>8} {}"
     header = "{}:\n".format(table)
     header += mask.format(
@@ -36,10 +36,10 @@ def check_price_bounds(
     )
     header += "\n" + '-' * len(header)
     print(header)
-
+    
     deletions = []
     stations = defaultdict(list)
-
+    
     def remediation(item, compare, value):
         deletion = (
             "DELETE FROM {} "
@@ -58,12 +58,12 @@ def check_price_bounds(
             stations[stnID].append((item.ID, compare, value))
             count += 1
         return count
-
+    
     # Distance between p50 and p5 or p95 is 45.
     # We use multiplier to expand projections so that our thresholds
     # behave as though they are pX to p50+M instead of pX to p50.
     multiplier = (50 + margin) / (50 - lowP)
-
+    
     for item in tdb.itemByID.values():
         if item.dbname.upper() in tdb.tdenv.ignore:
             continue
@@ -83,19 +83,19 @@ def check_price_bounds(
         if numPrices < 20:
             tdb.tdenv.NOTE("{}: only {} rows", item.dbname, numPrices)
             continue
-
+        
         lowPos = int(numPrices * lowP)
         midPos = int(numPrices * 0.5)
         highPos = int(numPrices * highP)
-
+        
         low = prices[lowPos]
         mid = prices[midPos]
         high = prices[highPos]
-
+        
         avg = int(sum(prices) / numPrices)
         midlist = prices[lowPos:highPos]
         midavg = int(sum(midlist) / len(midlist))
-
+        
         # project the line from p50->p5 to predict
         # what we would expect p0 to be.
         # prices under 11 are invalid anyway
@@ -103,7 +103,7 @@ def check_price_bounds(
         leastMid = min(mid, avg)
         lowCutoff = max(int(leastMid - (bestMid - low) * multiplier), 0)
         highCutoff = int(bestMid + (high - leastMid) * multiplier)
-
+        
         if prices[0] < 11:
             alert = colorama.Fore.RED
             comp, cutoff, error = '<', 11, 'DUMB'
@@ -115,10 +115,10 @@ def check_price_bounds(
             comp, cutoff, error = '>', highCutoff, 'HIGH'
         else:
             continue
-
+        
         if errorFilter and error != errorFilter:
             continue
-
+        
         count = remediation(item, comp, cutoff)
         print(
             alert,
@@ -139,7 +139,7 @@ def check_price_bounds(
             colorama.Fore.RESET,
             sep="",
         )
-
+    
     if stations:
         print()
         print("Generating", deletePrices)
@@ -176,7 +176,7 @@ def check_price_bounds(
 
 def main():
     doDeletions = False
-
+    
     parser = argparse.ArgumentParser(
         description='Check for prices that are outside reasonable bounds.'
     )
@@ -237,7 +237,7 @@ def main():
         action='append',
         default=list(),
     )
-
+    
     filters = parser.add_mutually_exclusive_group()
     filters.add_argument(
         '--dumb',
@@ -260,20 +260,20 @@ def main():
         action='store_const',
         const='LOW',
     )
-
+    
     argv = parser.parse_args(sys.argv[1:])
     argv.ignore = [
         ignore.upper() for ignore in argv.ignore
     ]
-
+    
     table = "StationSelling" if argv.selling else "StationBuying"
     tdenv = tradeenv.TradeEnv(properties=argv)
     tdb = tradedb.TradeDB(tdenv)
-
+    
     tdenv.NOTE(
         "Checking {}, margin={}", table, argv.margin,
     )
-
+    
     errorFilter = getattr(argv, "filters", None)
     check_price_bounds(
         tdb,

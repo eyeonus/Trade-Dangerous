@@ -95,7 +95,7 @@ def maybeExportToCSV(tdb, cmdenv):
     if cmdenv.noExport:
         cmdenv.DEBUG0("no-export set, not exporting stations")
         return
-
+    
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "ShipVendor")
     cmdenv.NOTE("{} updated.", csvPath)
 
@@ -113,7 +113,7 @@ def checkShipPresent(tdb, station, ship):
     )
     # Get the first result of the row and get the first column of that row
     count = int(cur.fetchone()[0])
-
+    
     # Test if count > 0, if so, we'll return True, otherwise False
     return (count > 0)
 
@@ -126,22 +126,22 @@ def listShipsPresent(tdb, cmdenv, station, results):
          WHERE station_id = ?
     """, [station.ID]
     )
-
+    
     results.summary = ResultRow()
     results.summary.station = station
     ships = tdb.shipByID
     addShip = results.rows.append
-
+    
     for (ship_id,) in cur:
         ship = ships.get(ship_id, None)
         if ship:
             addShip(ResultRow(ship=ship))
-
+    
     if cmdenv.nameSort:
         results.rows.sort(key=lambda row: row.ship.name())
     else:
         results.rows.sort(key=lambda row: row.ship.cost, reverse=True)
-
+    
     return results
 
 
@@ -160,19 +160,19 @@ def run(results, cmdenv, tdb):
             "{} is flagged as having no shipyard."
             .format(station.name())
         )
-
+    
     if cmdenv.add:
         action = addShipVendor
     elif cmdenv.remove:
         action = removeShipVendor
     else:
         return listShipsPresent(tdb, cmdenv, station, results)
-
+    
     if not cmdenv.ship:
         raise CommandLineError(
             "No ship names specified."
         )
-
+    
     cmdenv.NOTE("Using local database ({})", tdb.dbPath)
     ships = {}
     shipNames = chain.from_iterable(
@@ -183,7 +183,7 @@ def run(results, cmdenv, tdb):
             ship = tdb.lookupShip(shipName)
         except LookupError:
             raise CommandLineError("Unrecognized Ship: {}".format(shipName))
-
+        
         # Lets see if that ship sails from the specified port.
         shipPresent = checkShipPresent(tdb, station, ship)
         if cmdenv.add:
@@ -200,19 +200,19 @@ def run(results, cmdenv, tdb):
                 )
             else:
                 ships[ship.ID] = ship
-
+    
     if len(ships) == 0:
         cmdenv.NOTE("Nothing to do.")
         return None
-
+    
     # We've checked that everything should be good.
     dataToExport = False
     for ship in ships.values():
         if action(tdb, cmdenv,station, ship):
             dataToExport = True
-
+    
     maybeExportToCSV(tdb, cmdenv)
-
+    
     return None
 
 ######################################################################
@@ -224,9 +224,9 @@ def render(results, cmdenv, tdb):
             "No ships available at {}"
             .format(results.summary.station.name())
         )
-
+    
     maxShipLen = max_len(results.rows, key=lambda row: row.ship.name())
-
+    
     rowFmt = RowFormat().append(
         ColumnFormat("Ship", '<', maxShipLen,
             key=lambda row: row.ship.name())
@@ -234,10 +234,10 @@ def render(results, cmdenv, tdb):
         ColumnFormat("Cost", '>', 12, 'n',
             key=lambda row: row.ship.cost)
     )
-
+    
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(rowFmt.format(row))

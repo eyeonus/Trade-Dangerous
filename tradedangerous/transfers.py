@@ -81,7 +81,7 @@ def import_requests():
             "The requests module did not install correctly.{}"
             .format(extra)
         ) from None
-
+    
     return __requests
 
 ######################################################################

@@ -31,7 +31,7 @@ class TestTradeRun(object):
             "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"])
         captured = capsys.readouterr()
         assert regex_findin(r"=> est [\d\s,]+cr total", captured.out)
-
+    
     def test_run3(self, capsys):
         """Testing --checklist
         """
@@ -42,7 +42,7 @@ class TestTradeRun(object):
                 "--cap=212", "--jumps=4", "--cr=2153796", "--from=sol/abr",
                 "--hops=6", "--ls-m=8000", "--sup=10000",
                 "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"])
-
+        
         captured = capsys.readouterr()
         # with capsys.disabled():
         #      print("Here")
@@ -50,7 +50,7 @@ class TestTradeRun(object):
         #      print("to Here")
         assert "BEGINNING CHECKLIST FOR Sol/Abraham Lincoln -> LHS 449/Fisher Point" in captured.out
         assert "35 : Sell 212 x Polymers"
-
+    
     def test_run4(self, capsys):
         trade([PROG, "run", "--capacity=10", "--credits=10000", "--from=sol/abr", "--jumps-per=3", "--ly-per=10.5", "--start-jumps=2"])
         captured = capsys.readouterr()

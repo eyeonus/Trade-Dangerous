@@ -13,11 +13,11 @@ class CommandResults(object):
     """
         Encapsulates the results returned by running a command.
     """
-
+    
     def __init__(self, cmdenv):
         self.cmdenv = cmdenv
         self.summary, self.rows = {}, []
-
+    
     def render(self, cmdenv=None, tdb=None):
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
@@ -35,20 +35,20 @@ class CommandEnv(TradeEnv):
         Base class for a TradeDangerous sub-command which has auxilliary
         "environment" data in the form of command line options.
     """
-
+    
     def __init__(self, properties, argv, cmdModule):
         super().__init__(properties=properties)
         self.tdb = None
         self.mfd = None
         self.argv = argv or sys.argv
-
+        
         if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
-
+        
         self._cmd   = cmdModule or __main__
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
-
+        
         # We need to relocate to the working directory so that
         # we can load a TradeDB after this without things going
         # pear-shaped
@@ -69,14 +69,14 @@ class CommandEnv(TradeEnv):
             the properties we have are valid.
         """
         self.tdb = tdb
-
+        
         self.checkMFD()
         self.checkFromToNear()
         self.checkAvoids()
         self.checkVias()
         self.checkPadSize()
         self.checkPlanetary()
-
+        
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
 
@@ -92,7 +92,7 @@ class CommandEnv(TradeEnv):
                 return
         except AttributeError:
             return
-
+        
         from ..mfd import X52ProMFD
         self.mfd = X52ProMFD()
 
@@ -102,7 +102,7 @@ class CommandEnv(TradeEnv):
             key = getattr(self, fieldName, None)
             if not key:
                 return None
-
+            
             try:
                 place = self.tdb.lookupPlace(key)
             except LookupError:
@@ -117,7 +117,7 @@ class CommandEnv(TradeEnv):
 
             if isinstance(place, Station):
                 return place
-
+            
             # it's a system, we want a station
             if not place.stations:
                 raise CommandLineError(
@@ -130,9 +130,9 @@ class CommandEnv(TradeEnv):
                         label, key, place.stations,
                         key=lambda key: key.name()
                 )
-
+            
             return place.stations[0]
-
+        
         def lookupPlace(label, fieldName):
             key = getattr(self, fieldName, None)
             if key:
@@ -151,16 +151,16 @@ class CommandEnv(TradeEnv):
         """
             Process a list of avoidances.
         """
-
+        
         avoidItems = self.avoidItems = []
         avoidPlaces = self.avoidPlaces = []
         avoidances = self.avoid
         if not self.avoid:
             return
         avoidances = self.avoid
-
+        
         tdb = self.tdb
-
+        
         # You can use --avoid to specify an item, system or station.
         # and you can group them together with commas or list them
         # individually.
@@ -183,15 +183,15 @@ class CommandEnv(TradeEnv):
                 continue
             except LookupError:
                 pass
-
+            
             # If it was none of the above, whine about it
             if not (item or place):
                 raise CommandLineError("Unknown item/system/station: {}".format(avoid))
-
+            
             # But if it matched more than once, whine about ambiguity
             if item and place:
                 raise AmbiguityError('Avoidance', avoid, [ item, place.str() ])
-
+        
         self.DEBUG0("Avoiding items {}, places {}",
                     [ item.name() for item in avoidItems ],
                     [ place.name() for place in avoidPlaces ],
@@ -206,7 +206,7 @@ class CommandEnv(TradeEnv):
         if viaPlaceNames:
             for via in ",".join(viaPlaceNames).split(","):
                 viaPlaces.append(self.tdb.lookupPlace(via))
-
+    
     def checkPadSize(self):
         padSize = getattr(self, 'padSize', None)
         if not padSize:
@@ -220,7 +220,7 @@ class CommandEnv(TradeEnv):
             if not value in 'SML?':
                 raise PadSizeError(padSize)
         self.padSize = padSize
-
+    
     def checkPlanetary(self):
         planetary = getattr(self, 'planetary', None)
         if not planetary:

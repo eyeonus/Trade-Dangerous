@@ -60,22 +60,22 @@ def run(results, cmdenv, tdb):
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
     srcSystem = cmdenv.nearSystem
-
+    
     ly = cmdenv.maxLyPer
     if ly is None:
         ly = tdb.maxSystemLinkLy
-
+    
     results.summary = ResultRow()
     results.summary.near = srcSystem
     results.summary.ly = ly
     results.summary.stations = 0
-
+    
     distances = { srcSystem: 0.0 }
-
+    
     # Calculate the bounding dimensions
     for destSys, dist in tdb.genSystemsInRange(srcSystem, ly):
         distances[destSys] = dist
-
+    
     showStations = cmdenv.detail
     wantStations = cmdenv.stations
     padSize = cmdenv.padSize
@@ -88,7 +88,7 @@ def run(results, cmdenv, tdb):
     wantRearm = cmdenv.rearm
     wantRefuel = cmdenv.refuel
     wantRepair = cmdenv.repair
-
+    
     def station_filter(stations):
         for station in stations:
             if wantNoPlanet and station.planetary != 'N':
@@ -112,7 +112,7 @@ def run(results, cmdenv, tdb):
             if wantRepair and station.repair != 'Y':
                 continue
             yield station
-
+    
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         if showStations or wantStations:
             stations = []
@@ -125,14 +125,14 @@ def run(results, cmdenv, tdb):
                 )
             if not stations and wantStations:
                 continue
-
+        
         row = ResultRow()
         row.system = system
         row.dist = dist
         row.stations = stations if showStations else []
         results.rows.append(row)
         results.summary.stations += len(row.stations)
-
+    
     return results
 
 ######################################################################
@@ -144,10 +144,10 @@ def render(results, cmdenv, tdb):
             "No systems found within {}ly of {}."
             .format(results.summary.ly, results.summary.near.name())
         )
-
+    
     # Compare system names so we can tell
     maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
-
+    
     sysRowFmt = RowFormat().append(
         ColumnFormat("System", '<', maxSysLen,
                 key=lambda row: row.system.name())
@@ -155,7 +155,7 @@ def render(results, cmdenv, tdb):
         ColumnFormat("Dist", '>', '7', '.2f',
                 key=lambda row: row.dist)
     )
-
+    
     showStations = cmdenv.detail
     if showStations:
         maxStnLen = max_len(
@@ -218,20 +218,20 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Itms", ">", 4,
                     key=lambda row: row.station.itemCount)
             )
-
+    
     cmdenv.DEBUG0(
         "Systems within {ly:<5.2f}ly of {sys}.\n",
         sys=results.summary.near.name(),
         ly=results.summary.ly,
     )
-
+    
     if not cmdenv.quiet:
         heading, underline = sysRowFmt.heading()
         if showStations:
             print(heading)
             heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(sysRowFmt.format(row))
         for stnRow in row.stations:

@@ -31,7 +31,7 @@ class TestTradeImportEddblink(object):
         monkeypatch.setitem(os.environ, 'TD_EDDB', '/my/testdir')
         plug = module.ImportPlugin(tdb, tdenv)
         assert os.path.join('my', 'testdir') in str(plug.dataPath)
-
+    
     @pytest.mark.slow
     def test_upgrades(self, capsys):
         plug = module.ImportPlugin(tdb, tdenv)
@@ -50,7 +50,7 @@ class TestTradeImportEddblink(object):
         #     print(captured.out)
         #     print("to Here")
         assert "NOTE: Import completed." in captured.out
-
+    
     @pytest.mark.superslow
     def test_import_upgrade(self, capsys):
         trade([PROG, "import", "-P=eddblink", '--opt=upgrade'])

@@ -74,11 +74,11 @@ class EDAPI:
     '''
     A class that handles the Frontier ED API.
     '''
-
+    
     _agent = "EDCD-TradeDangerousPluginEDAPI-%s" % __version__
     _basename = 'edapi'
     _configfile = _basename + '.config'
-
+    
     def __init__(
         self,
         basename='edapi',
@@ -90,24 +90,24 @@ class EDAPI:
         '''
         Initialize
         '''
-
+        
         # Build common file names from basename.
         self._basename = basename
         if configfile:
             self._configfile = configfile
-
+        
         self.debug = debug
         self.login = login
-
+        
         # If json_file was given, just load that instead.
         if json_file:
             with open(json_file) as file:
                 self.profile = json.load(file)
                 return
-
+        
         # Setup the session.
         self.opener = requests.Session()
-
+        
         # Setup config
         self.config = configparser.ConfigParser()
         self.config.read_dict({
@@ -126,17 +126,17 @@ class EDAPI:
         })
         self._authorization_set_config({})
         self.config.read(self._configfile)
-
+        
         # If force login, kill the authorization
         if self.login:
             self._authorization_set_config({})
-
+        
         # Grab the commander profile
         self.text = []
         self.profile = self.query_capi("/profile")
         market = self.query_capi("/market")
         shipyard = self.query_capi("/shipyard")
-
+        
         # Grab the market, outfitting and shipyard data if needed
         portServices = self.profile['lastStarport'].get('services')
         if self.profile['commander']['docked'] and portServices:
@@ -157,7 +157,7 @@ class EDAPI:
                     time.sleep(5)
                 if int(res["id"]) == int(self.profile["lastStarport"]["id"]):
                     self.profile["lastStarport"].update(res)
-
+    
     def query_capi(self, capi_endpoint):
         self._authorization_check()
         response = self.opener.get(self.config["companion"]["CAPI_LIVE_URL"] + capi_endpoint)
@@ -179,7 +179,7 @@ class EDAPI:
                 "{}".format(capi_endpoint, txtDebug)
             )
         return data
-
+    
     def _authorization_check(self):
         status_ok = True
         expires_at = self.config.getint("authorization", "expires_at")
@@ -195,11 +195,11 @@ class EDAPI:
                 status_ok = self._authorization_login()
             with open(self._configfile, "w") as c:
                 self.config.write(c)
-
+        
         if not status_ok:
             # Something terrible happend
             raise plugins.PluginException("Couldn't get frontier authorization.")
-
+        
         # Setup session authorization
         self.opener.headers = {
             'User-Agent': self._agent,
@@ -208,13 +208,13 @@ class EDAPI:
                 self.config['authorization']['access_token'],
             ),
         }
-
+    
     def _authorization_set_config(self, auth_data):
         self.config.set("authorization", "access_token", auth_data.get("access_token", ""))
         self.config.set("authorization", "token_type", auth_data.get("token_type", ""))
         self.config.set("authorization", "expires_at", str(auth_data.get("expires_at", 0)))
         self.config.set("authorization", "refresh_token", auth_data.get("refresh_token", ""))
-
+    
     def _authorization_token(self, data):
         expires_at = int(time.time())
         res = requests.post(self.config["frontier"]["AUTH_URL_TOKEN"], data=data)
@@ -228,7 +228,7 @@ class EDAPI:
             return True
         self._authorization_set_config({})
         return False
-
+    
     def _authorization_refresh(self):
         data = {
             "grant_type": "refresh_token",
@@ -236,7 +236,7 @@ class EDAPI:
             "client_id": self.config["companion"]["CLIENT_ID"],
         }
         return self._authorization_token(data)
-
+    
     def _authorization_login(self):
         session_state = secrets.token_urlsafe(36)
         code_verifier = secrets.token_urlsafe(36)
@@ -253,7 +253,7 @@ class EDAPI:
         req = requests.Request("GET", self.config["frontier"]["AUTH_URL_AUTH"], params=data)
         pre = req.prepare()
         webbrowser.open_new_tab(pre.url)
-
+        
         redirect_uri = urlsplit(self.config["companion"]["REDIRECT_URI"])
         oauth = OAuthCallbackServer(redirect_uri.hostname, redirect_uri.port, OAuthCallbackHandler)
         if oauth.httpd.callback_code and oauth.httpd.callback_state == session_state:
@@ -273,24 +273,24 @@ class EDDN:
         'https://eddn.edcd.io:4430/upload/',
         # 'http://eddn-gateway.ed-td.space:8080/upload/',
     )
-
+    
     _commodity_schemas = {
         'production': 'https://eddn.edcd.io/schemas/commodity/3',
         'test': 'https://eddn.edcd.io/schemas/commodity/3/test',
     }
-
+    
     _shipyard_schemas = {
         'production': 'https://eddn.edcd.io/schemas/shipyard/2',
         'test': 'https://eddn.edcd.io/schemas/shipyard/2/test',
     }
-
+    
     _outfitting_schemas = {
         'production': 'https://eddn.edcd.io/schemas/outfitting/2',
         'test': 'https://eddn.edcd.io/schemas/outfitting/2/test',
     }
-
+    
     _debug = True
-
+    
     # As of 1.3, ED reports four levels.
     _levels = (
         'Low',
@@ -298,7 +298,7 @@ class EDDN:
         'Med',
         'High',
     )
-
+    
     def __init__(
         self,
         uploaderID,
@@ -313,7 +313,7 @@ class EDDN:
             self.uploaderID = hashlib.sha1(uploaderID.encode('utf-8')).hexdigest()
         self.softwareName = softwareName
         self.softwareVersion = softwareVersion
-
+    
     def postMessage(
         self,
         message,
@@ -323,15 +323,15 @@ class EDDN:
             timestamp = datetime.fromtimestamp(timestamp).isoformat()
         else:
             timestamp = datetime.now(timezone.utc).astimezone().isoformat()
-
+        
         message['message']['timestamp'] = timestamp
-
+        
         url = random.choice(self._gateways)
-
+        
         headers = {
             'content-type': 'application/json; charset=utf8'
         }
-
+        
         if self._debug:
             print(
                 json.dumps(
@@ -340,7 +340,7 @@ class EDDN:
                     indent=4
                 )
             )
-
+        
         r = requests.post(
             url,
             headers=headers,
@@ -350,9 +350,9 @@ class EDDN:
             ).encode('utf8'),
             verify=True
         )
-
+        
         r.raise_for_status()
-
+    
     def publishCommodities(
         self,
         systemName,
@@ -363,15 +363,15 @@ class EDDN:
         timestamp=0
     ):
         message = {}
-
+        
         message['$schemaRef'] = self._commodity_schemas[('test' if self._debug else 'production')]  # NOQA
-
+        
         message['header'] = {
             'uploaderID': self.uploaderID,
             'softwareName': self.softwareName,
             'softwareVersion': self.softwareVersion
         }
-
+        
         message['message'] = {
             'systemName': systemName,
             'stationName': stationName,
@@ -380,9 +380,9 @@ class EDDN:
         }
         if additional:
             message['message'].update(additional)
-
+        
         self.postMessage(message, timestamp)
-
+    
     def publishShipyard(
         self,
         systemName,
@@ -392,24 +392,24 @@ class EDDN:
         timestamp=0
     ):
         message = {}
-
+        
         message['$schemaRef'] = self._shipyard_schemas[('test' if self._debug else 'production')]  # NOQA
-
+        
         message['header'] = {
             'uploaderID': self.uploaderID,
             'softwareName': self.softwareName,
             'softwareVersion': self.softwareVersion
         }
-
+        
         message['message'] = {
             'systemName': systemName,
             'stationName': stationName,
             'marketId': marketId,
             'ships': ships,
         }
-
+        
         self.postMessage(message, timestamp)
-
+    
     def publishOutfitting(
         self,
         systemName,
@@ -419,22 +419,22 @@ class EDDN:
         timestamp=0
     ):
         message = {}
-
+        
         message['$schemaRef'] = self._outfitting_schemas[('test' if self._debug else 'production')]  # NOQA
-
+        
         message['header'] = {
             'uploaderID': self.uploaderID,
             'softwareName': self.softwareName,
             'softwareVersion': self.softwareVersion
         }
-
+        
         message['message'] = {
             'systemName': systemName,
             'stationName': stationName,
             'marketId': marketId,
             'modules': modules,
         }
-
+        
         self.postMessage(message, timestamp)
 
 
@@ -443,7 +443,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     Plugin that downloads market and ship vendor data from the Elite Dangerous
     mobile API.
     """
-
+    
     pluginOptions = {
         'csvs': 'Merge shipyards into ShipVendor.csv.',
         'edcd': 'Call the EDCD plugin first.',
@@ -455,41 +455,41 @@ class ImportPlugin(plugins.ImportPluginBase):
         'warn': 'Ask for station update if a API<->DB diff is encountered.',
         'login': 'Ask for login credentials.',
     }
-
+    
     configFile = "edapi.config"
-
+    
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
-
+        
         self.filename = self.defaultImportFile
         self.configPath = tdb.dataPath / pathlib.Path(ImportPlugin.configFile)
-
+    
     def askForStationData(self, system, stnName=None, station=None):
         """
         Ask for new or updated station data
         """
         tdb, tdenv = self.tdb, self.tdenv
         askForData = False
-
+        
         stnDefault = namedtuple(
             'stnDefault', [
                 'lsFromStar','market','blackMarket','shipyard','maxPadSize',
                 'outfitting','rearm','refuel','repair','planetary',
             ]
         )
-
+        
         def tellUserAPIResponse(defName, defValue):
             if defValue == "Y":
                 tdenv.NOTE("{:>12} in API response", defName)
             else:
                 tdenv.NOTE("{:>12} NOT in API response", defName)
-
+        
         def getYNfromObject(obj, key, val=None):
             if val:
                 return "Y" if obj.get(key) == val else "N"
             else:
                 return "Y" if key in obj else "N"
-
+        
         # defaults from API response are not reliable!
         checkStarport = self.edAPI.profile['lastStarport']
         defMarket     = getYNfromObject(checkStarport, 'commodities')
@@ -498,7 +498,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tellUserAPIResponse("'Outfitting'", defOutfitting)
         tellUserAPIResponse("'ShipYard'", defShipyard)
         tellUserAPIResponse("'Market'", defMarket)
-
+        
         def warnAPIResponse(checkName, checkYN):
             # no warning if unknown
             if checkYN == "?": return False
@@ -510,10 +510,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 s, d = "", "n't"
             else:
                 s, d = "n't", ""
-
+            
             tdenv.WARN(warnText, what=checkName, s=s, d=d)
             return True if self.getOption('warn') else False
-
+        
         # station services since ED update 2.4
         checkServices = checkStarport.get('services', None)
         if checkServices:
@@ -567,7 +567,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 rearm       = "?", refuel     = "?",
                 repair      = "?", planetary  = "?",
             )
-
+        
         warning = False
         if defStation.outfitting != defOutfitting:
             warning |= warnAPIResponse('outfitting', defStation.outfitting)
@@ -581,11 +581,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             askForData = True
         if ((defStation.lsFromStar == 0) or ("?" in defStation)):
            askForData = True
-
+        
         newStation = {}
         for key in defStation._fields:
             newStation[key] = getattr(defStation, key)
-
+        
         if askForData:
             tdenv.NOTE("Values in brackets are the default.")
             lsFromStar = input(
@@ -597,7 +597,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 print("That doesn't seem to be a number. Defaulting to zero.")
                 lsFromStar = defStation.lsFromStar
             newStation['lsFromStar'] = lsFromStar
-
+            
             for askText, askField, markValue in [
                 ('Pad Size....(s,m,l) ', 'maxPadSize',  defStation.maxPadSize),
                 ('Planetary.....(y,n) ', 'planetary',   defStation.planetary),
@@ -618,14 +618,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "{}{}[{}]: ".format(mark, askText, defValue)
                 ) or defValue
                 newStation[askField] = askValue
-
+        
         else:
             def _detail(value, source):
                 detail = source[value]
                 if detail == '?':
                     detail += ' [unknown]'
                 return detail
-
+            
             ls = newStation['lsFromStar']
             print(" Stn/Ls....:", ls, '[unknown]' if ls == 0 else '')
             print(" Pad Size..:", _detail(newStation['maxPadSize'], tdb.padSizes))
@@ -637,7 +637,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             print(" Outfitting:", _detail(newStation['outfitting'], tdb.marketStates))
             print(" Shipyard..:", _detail(newStation['shipyard'], tdb.marketStates))
             print(" Market....:", _detail(newStation['market'], tdb.marketStates))
-
+        
         exportCSV = False
         if not station:
             station = tdb.addLocalStation(
@@ -671,7 +671,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 planetary=newStation['planetary'],
             ):
                 exportCSV = True
-
+        
         if exportCSV:
             lines, csvPath = csvexport.exportTableToFile(
                 tdb,
@@ -680,10 +680,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
             tdenv.DEBUG0("{} updated.", csvPath)
         return station
-
+    
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         # first check for EDCD
         if self.getOption("edcd"):
             # Call the EDCD plugin
@@ -696,11 +696,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             edcdPlugin.options["csvs"] = True
             edcdPlugin.run()
             tdenv.NOTE("Going back to EDAPI.\n")
-
+        
         # now load the mapping tables
         itemMap = mapping.FDEVMappingItems(tdb, tdenv)
         shipMap = mapping.FDEVMappingShips(tdb, tdenv)
-
+        
         # Connect to the API, authenticate, and pull down the commander
         # /profile.
         if self.getOption("test"):
@@ -747,7 +747,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["save"] = True
             if tdh_path.exists():
                 tdh_path.unlink()
-
+        
         # save profile if requested
         if self.getOption("save"):
             saveName = tdh_path if self.getOption("tdh") else 'profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
@@ -760,24 +760,24 @@ class ImportPlugin(plugins.ImportPluginBase):
                 else:
                     saveFile.write(api.text)
                 print('API response saved to: {}'.format(savePath))
-
+        
         # If TDH is calling the plugin, nothing else needs to be done
         # now that the file has been created.
         if self.getOption("tdh"):
             return False
-
+        
         # Sanity check that the commander is docked. Otherwise we will get a
         # mismatch between the last system and last station.
         if not api.profile['commander']['docked']:
             print('Commander not docked. Aborting!')
             return False
-
+        
         # Figure out where we are.
         sysName = api.profile['lastSystem']['name']
         stnName = api.profile['lastStarport']['name']
         marketId = int(api.profile['lastStarport']['id'])
         print('@{}/{} (ID: {})'.format(sysName.upper(), stnName, marketId))
-
+        
         # Reload the cache.
         tdenv.DEBUG0("Checking the cache")
         tdb.close()
@@ -786,7 +786,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             maxSystemLinkLy=tdenv.maxSystemLinkLy,
         )
         tdb.close()
-
+        
         # Check to see if this system is in the database
         try:
             system = tdb.lookupSystem(sysName)
@@ -794,16 +794,16 @@ class ImportPlugin(plugins.ImportPluginBase):
             raise plugins.PluginException(
                 "System '{}' unknown.".format(sysName)
             )
-
+        
         # Check to see if this station is in the database
         try:
             station = tdb.lookupStation(stnName, system)
         except LookupError:
             station = None
-
+        
         # New or update station data
         station = self.askForStationData(system, stnName=stnName, station=station)
-
+        
         # If a shipyard exists, make the ship lists
         shipCost = {}
         shipList = []
@@ -818,14 +818,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                         shipCost[shipName] = ship['basevalue']
                         shipList.append(shipName)
                         eddn_ships.append(ship['name'])
-
+            
             if 'unavailable_list' in api.profile['lastStarport']['ships']:
                 for ship in api.profile['lastStarport']['ships']['unavailable_list']:
                     shipName = shipMap.mapID(ship['id'], ship['name'])
                     shipCost[shipName] = ship['basevalue']
                     shipList.append(shipName)
                     eddn_ships.append(ship['name'])
-
+        
         if self.getOption("csvs"):
             addShipList = set()
             delShipList = set()
@@ -840,7 +840,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     """,
                     [station.ID]
                 ).rowcount
-
+            
             if len(shipList):
                 # and now update the shipyard list
                 # we go through all ships to decide if a ship needs to be
@@ -884,10 +884,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if rc:
                             delRows += rc
                             delShipList.add(shipName)
-
+                
                 if len(shipList):
                     tdenv.WARN("unknown Ship(s): {}", ",".join(shipList))
-
+            
             db.commit()
             if (addRows + delRows) > 0:
                 if addRows > 0:
@@ -906,7 +906,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "ShipVendor",
                 )
                 tdenv.DEBUG0("{} updated.", csvPath)
-
+        
         # If a market exists, make the item lists
         itemList = []
         eddn_market = []
@@ -916,28 +916,28 @@ class ImportPlugin(plugins.ImportPluginBase):
             for commodity in api.profile['lastStarport']['commodities']:
                 if commodity['categoryname'] in cat_ignore:
                     continue
-
+                
                 if commodity.get('legality', '') != '':
                     # ignore if present and not empty
                     continue
-
+                
                 locName = commodity.get('locName', commodity['name'])
                 itmName = itemMap.mapID(commodity['id'], locName)
-
+                
                 def commodity_int(key):
                     try:
                         ret = int(float(commodity[key])+0.5)
                     except (ValueError, KeyError):
                         ret = 0
                     return ret
-
+                
                 itmSupply      = commodity_int('stock')
                 itmDemand      = commodity_int('demand')
                 itmSupplyLevel = commodity_int('stockBracket')
                 itmDemandLevel = commodity_int('demandBracket')
                 itmBuyPrice    = commodity_int('buyPrice')
                 itmSellPrice   = commodity_int('sellPrice')
-
+                
                 if itmSupplyLevel == 0 or itmBuyPrice == 0:
                     # If there is not stockBracket or buyPrice, ignore stock
                     itmBuyPrice = 0
@@ -957,7 +957,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         itmSupply,
                         bracket_levels[itmSupplyLevel]
                     )
-
+                
                 # ignore items without supply or demand bracket (TD only)
                 if itmSupplyLevel > 0 or itmDemandLevel > 0:
                     itemTD = (
@@ -966,7 +966,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         tdDemand, tdSupply,
                     )
                     itemList.append(itemTD)
-
+                
                 # Populate EDDN
                 if self.getOption("eddn"):
                     itemEDDN = {
@@ -982,24 +982,24 @@ class ImportPlugin(plugins.ImportPluginBase):
                     if len(commodity['statusFlags']) > 0:
                         itemEDDN["statusFlags"] = commodity['statusFlags']
                     eddn_market.append(itemEDDN)
-
+        
         if itemList:
             # Create the import file.
             with open(self.filename, 'w', encoding="utf-8") as f:
                 # write System/Station line
                 f.write("@ {}/{}\n".format(sysName, stnName))
-
+                
                 # write Item lines (category lines are not needed)
                 for itemTD in itemList:
                     f.write("\t\t%s %s %s %s %s\n" % itemTD)
-
+            
             tdenv.ignoreUnknown = True
             cache.importDataFromFile(
                 tdb,
                 tdenv,
                 pathlib.Path(self.filename),
             )
-
+        
         # Import EDDN
         if self.getOption("eddn"):
             con = EDDN(
@@ -1012,7 +1012,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 con._debug = True
             else:
                 con._debug = False
-
+            
             if eddn_market:
                 print('Posting commodities to EDDN...')
                 eddn_additional = {}
@@ -1024,7 +1024,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     eddn_additional['prohibited'] = []
                     for item in api.profile['lastStarport']['prohibited'].values():
                         eddn_additional['prohibited'].append(item)
-
+                
                 con.publishCommodities(
                     sysName,
                     stnName,
@@ -1032,7 +1032,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     eddn_market,
                     additional=eddn_additional
                 )
-
+            
             if eddn_ships:
                 print('Posting shipyard to EDDN...')
                 con.publishShipyard(
@@ -1041,7 +1041,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     marketId,
                     eddn_ships
                 )
-
+            
             if ((station.outfitting == "Y") and
                 ('modules' in api.profile['lastStarport'] and
                 len(api.profile['lastStarport']['modules']))
@@ -1068,6 +1068,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         marketId,
                         sorted(eddn_modules)
                     )
-
+        
         # We did all the work
         return False

@@ -62,12 +62,12 @@ def run(results, cmdenv, tdb):
                     "SQLite3 database '{}' already exists.\n"
                      "Either remove the file first or use the '-f' option."
                         .format(tdb.dbFilename))
-
+    
     if not tdb.sqlPath.exists():
         raise CommandLineError(
                     "SQL File does not exist: {}"
                         .format(tdb.sqlFilename))
-
+    
     buildCache(tdb, cmdenv)
-
+    
     return None

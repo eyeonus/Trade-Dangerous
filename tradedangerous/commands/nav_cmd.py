@@ -57,18 +57,18 @@ class NoRouteError(TradeException):
 
 def run(results, cmdenv, tdb):
     from .commandenv import ResultRow
-
+    
     srcSystem, dstSystem = cmdenv.origPlace, cmdenv.destPlace
     if isinstance(srcSystem, Station):
         srcSystem = srcSystem.system
     if isinstance(dstSystem, Station):
         dstSystem = dstSystem.system
-
+    
     maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
-
+    
     cmdenv.DEBUG0("Route from {} to {} with max {}ly per jump.",
                     srcSystem.name(), dstSystem.name(), maxLyPer)
-
+    
     # Build a list of src->dst pairs
     hops = [ [ srcSystem, None ] ]
     if cmdenv.viaPlaces:
@@ -76,12 +76,12 @@ def run(results, cmdenv, tdb):
             hops[-1][1] = hop
             hops.append([hop, None])
     hops[-1][1] = dstSystem
-
+    
     avoiding = [
         avoid for avoid in cmdenv.avoidPlaces
         if isinstance(avoid, System)
     ]
-
+    
     route = [ ]
     stationInterval = cmdenv.stationInterval
     for hop in hops:
@@ -99,18 +99,18 @@ def run(results, cmdenv, tdb):
                         maxLyPer,
             ))
         route = route[:-1] + hopRoute
-
+    
     results.summary = ResultRow(
                 fromSys=srcSystem,
                 toSys=dstSystem,
                 maxLy=maxLyPer,
             )
-
+    
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     maxPadSize = cmdenv.padSize
     planetary = cmdenv.planetary
     noPlanet = cmdenv.noPlanet
-
+    
     for (jumpSys, dist) in route:
         jumpLy = lastSys.distanceTo(jumpSys)
         totalLy += jumpLy
@@ -141,7 +141,7 @@ def run(results, cmdenv, tdb):
         lastSys = jumpSys
     results.rows[0].action='Depart'
     results.rows[-1].action='Arrive'
-
+    
     return results
 
 ######################################################################
@@ -149,15 +149,15 @@ def run(results, cmdenv, tdb):
 
 def render(results, cmdenv, tdb):
     from ..formatting import RowFormat, ColumnFormat
-
+    
     if cmdenv.quiet > 1:
         print(','.join(row.system.name() for row in results.rows))
         return
-
+    
     longestNamed = max(results.rows,
                     key=lambda row: len(row.system.name()))
     longestNameLen = len(longestNamed.system.name())
-
+    
     rowFmt = RowFormat()
     if cmdenv.detail:
         rowFmt.addColumn("Action", '<', 6, post=":", key=lambda row: row.action)
@@ -174,7 +174,7 @@ def render(results, cmdenv, tdb):
     if cmdenv.detail > 1:
         rowFmt.addColumn("DirLy", '>', 7, '.2f',
             key=lambda row: row.dirLy)
-
+    
     showStations = cmdenv.stations
     if showStations:
         stnRowFmt = RowFormat(prefix='  /  ').append(
@@ -228,17 +228,17 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Itms", ">", 4,
                     key=lambda row: row.station.itemCount)
             )
-
+    
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         if showStations:
             print(heading)
             heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(rowFmt.format(row))
         for stnRow in row.stations:
             print(stnRowFmt.format(stnRow))
-
+    
     return results

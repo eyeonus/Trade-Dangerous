@@ -27,7 +27,7 @@ class JournalStation(object):
         'rearm', 'refuel', 'repair',
         'planetary', 'modified'
     )
-
+    
     def __init__(
         self, lsFromStar=0, blackMarket='?', maxPadSize='?',
         market='?', shipyard='?', outfitting='?',
@@ -45,7 +45,7 @@ class JournalStation(object):
         self.repair = repair
         self.planetary = planetary
         self.modified = modified
-
+    
     def __str__(self):
         return "{}ls Pad:{} Mkt:{} Blk:{} Shp:{} Out:{} Arm:{} Ref:{} Rep:{} Plt:{}".format(
             self.lsFromStar, self.maxPadSize, self.market,
@@ -57,7 +57,7 @@ class ImportPlugin(ImportPluginBase):
     """
     Plugin that parses the Journal file and add or update systems and stations.
     """
-
+    
     logGlob = "Journal.*.log"
     ADDED_NAME = 'Journal'
     LOGDIR_NAME = "FDEVJRNDIR"
@@ -82,16 +82,16 @@ class ImportPlugin(ImportPluginBase):
     sysList = {}
     stnList = {}
     blkList = []
- 
+    
     planetTypeList = (
         "SURFACESTATION",
         "CRATERPORT",
         "CRATEROUTPOST",
     )
-
+    
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
-
+        
         logDirName = os.getenv(self.LOGDIR_NAME, None)
         if not logDirName:
             raise PluginException(
@@ -100,7 +100,7 @@ class ImportPlugin(ImportPluginBase):
                 .format(self.LOGDIR_NAME)
             )
         tdenv.NOTE("{}={}", self.LOGDIR_NAME, logDirName)
-
+        
         self.logPath = pathlib.Path(logDirName)
         if not self.logPath.is_dir():
             raise PluginException(
@@ -108,7 +108,7 @@ class ImportPlugin(ImportPluginBase):
                     str(self.logPath)
                 )
             )
-
+    
     def getJournalDirList(self):
         """
         get all Journal files
@@ -116,7 +116,7 @@ class ImportPlugin(ImportPluginBase):
         tdenv = self.tdenv
         optDate = self.getOption("date")
         logLast = self.getOption("last")
-
+        
         logDate = None
         if isinstance(optDate, str):
             fmtLen = len(optDate)
@@ -141,11 +141,11 @@ class ImportPlugin(ImportPluginBase):
                     )
                 )
         tdenv.NOTE("using pattern: {}", self.logGlob)
-
+        
         for filePath in sorted(self.logPath.glob(self.logGlob)):
             tdenv.DEBUG0("logfile: {}", str(filePath))
             self.filePathList.append(filePath)
-
+        
         listLen = len(self.filePathList)
         if listLen == 0:
             raise PluginException("No journal file found.")
@@ -153,17 +153,17 @@ class ImportPlugin(ImportPluginBase):
             tdenv.NOTE("Found one journal file.")
         else:
             tdenv.NOTE("Found {} journal files.", listLen)
-
+        
         if logLast and listLen > 1:
             del self.filePathList[:-1]
-
+    
     def parseJournalDirList(self):
         """
         parse Journal files
         see: https://forums.frontier.co.uk/showthread.php/275151-Commanders-log-manual-and-data-sample
         """
         tdenv = self.tdenv
-
+        
         logSysList = {}
         stnSysList = {}
         blkStnList = []
@@ -282,7 +282,7 @@ class ImportPlugin(ImportPluginBase):
                             tdenv.DEBUG1("event '{}' ignored", event["event"])
                     except:
                         tdenv.WARN("Something wrong with line {} (skipped it).", lineCount)
-
+            
             tdenv.NOTE(
                 "Found {} System{}, {} Station{} and {} BlackMarket{}.",
                 sysCount, "" if sysCount == 1 else "s",
@@ -292,14 +292,14 @@ class ImportPlugin(ImportPluginBase):
         self.sysList = logSysList
         self.stnList = stnSysList
         self.blkList = blkStnList
-
+    
     def updateJournalSysList(self):
         """
         check the found systems and add them to the DB if new.
         """
         tdb, tdenv = self.tdb, self.tdenv
         optShow = self.getOption("show")
-
+        
         if not optShow:
             try:
                 idJournal = tdb.lookupAdded(self.ADDED_NAME)
@@ -316,7 +316,7 @@ class ImportPlugin(ImportPluginBase):
                 tdenv.NOTE("Export Table 'Added'")
                 _, path = csvexport.exportTableToFile(tdb, tdenv, "Added")
                 pass
-
+        
         addCount = oldCount = newCount = 0
         for sysName in sorted(self.sysList):
             sysPosX, sysPosY, sysPosZ, sysDate = self.sysList[sysName]
@@ -362,7 +362,7 @@ class ImportPlugin(ImportPluginBase):
                         commit=False
                     )
                     addCount += 1
-
+        
         # output statistics
         allCount = oldCount + newCount
         tdenv.NOTE(
@@ -377,7 +377,7 @@ class ImportPlugin(ImportPluginBase):
             tdb.getDB().commit()
             tdenv.NOTE("Export Table 'System'")
             _, path = csvexport.exportTableToFile(tdb, tdenv, "System")
-
+    
     def updateJournalStnList(self):
         """
         check the found stations and
@@ -386,7 +386,7 @@ class ImportPlugin(ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         optShow = self.getOption("show")
-
+        
         addCount = oldCount = newCount = updCount = 0
         for sysName in sorted(self.stnList):
             if sysName.upper() in self.ignoreSysNames:
@@ -409,7 +409,7 @@ class ImportPlugin(ImportPluginBase):
                         station = tdb.lookupStation(stnName, system)
                     except LookupError:
                         pass
-
+                
                 if (sysName, stnName) in self.blkList:
                     # BlackMarket found
                     jrnStation.blackMarket = "Y"
@@ -417,12 +417,12 @@ class ImportPlugin(ImportPluginBase):
                     if jrnStation.blackMarket == "?":
                         # don't change current value if new one is unknown
                         jrnStation.blackMarket = station.blackMarket
-
+                
                 tdenv.DEBUG0(
                     "log station '{}/{}' ({}, '{}')",
                     sysName, stnName, str(jrnStation), utcDate
                 )
-
+                
                 if not station:
                     # must be a new station
                     newCount += 1
@@ -499,7 +499,7 @@ class ImportPlugin(ImportPluginBase):
                             commit=False,
                         ):
                             updCount += 1
-
+        
         # output statistics
         allCount = oldCount + newCount
         tdenv.NOTE(
@@ -515,22 +515,22 @@ class ImportPlugin(ImportPluginBase):
             tdb.getDB().commit()
             tdenv.NOTE("Export Table 'Station'")
             _, path = csvexport.exportTableToFile(tdb, tdenv, "Station")
-
+    
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         tdenv.DEBUG0("show: {}", self.getOption("show"))
         tdenv.DEBUG0("last: {}", self.getOption("last"))
         tdenv.DEBUG0("date: {}", self.getOption("date"))
-
+        
         # Ensure the cache is built and reloaded.
         tdb.reloadCache()
         tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
+        
         self.getJournalDirList()
         self.parseJournalDirList()
         self.updateJournalSysList()
         self.updateJournalStnList()
-
+        
         # We did all the work
         return False

@@ -112,29 +112,29 @@ def run(results, cmdenv, tdb):
             pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
         except plugins.PluginException as e:
             raise CommandLineError("Plugin Error: "+str(e))
-
+        
         # Initialize the plugin
         plugin = pluginClass(tdb, cmdenv)
-
+        
         # Run the plugin. If it returns False, then it did everything
         # that needs doing and we can stop now.
         # If it returns True, it is returning control to the module.
         if not plugin.run():
             return None
-
+    
     tdb.reloadCache()
     tdb.close()
-
+    
     if cmdenv.filename:
         if re.match(r"^https?://", cmdenv.filename, re.IGNORECASE):
             cmdenv.url, cmdenv.filename = cmdenv.filename, None
-
+    
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
         if cmdenv.download:
             return None
-
+    
     # If the filename specified was "-" or None, then go ahead
     # and present the user with an open file dialog.
     if not cmdenv.filename and hasTkInter:
@@ -153,7 +153,7 @@ def run(results, cmdenv, tdb):
         if not filename:
             raise SystemExit("Aborted")
         cmdenv.filename = filename
-
+    
     # check the file exists.
     if cmdenv.filename != "-":
         fh = None
@@ -165,12 +165,12 @@ def run(results, cmdenv, tdb):
     else:
         filePath = "stdin"
         fh = sys.stdin
-
+    
     if cmdenv.plug:
         if not plugin.finish():
             cache.regeneratePricesFile()
             return None
-
+    
     cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
-
+    
     return None

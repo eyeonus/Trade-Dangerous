@@ -14,7 +14,7 @@ for s in misc.eddb.SystemsQuery():
 def matching_stations():
     # generator that searches the eddb station set for entries that
     # match tdb entries and yields the tuple (tdStn, eddbStn)
-
+    
     for eddbStn in misc.eddb.StationsQuery():
         stationList = systems.get(eddbStn['system_id'], None)
         if not stationList:

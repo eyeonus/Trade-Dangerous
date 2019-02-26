@@ -18,12 +18,12 @@ much of that got moved into TradeEnv, so right now TradeCalc
 looks a little odd.
 
 Significant Functions:
-
+    
     Tradecalc.getBestHops
         Finds the best "next hop"s given a set of routes.
 
 Classes:
-
+    
     TradeCalc
         Encapsulates the calculation functions and item-trades,
     
@@ -120,7 +120,7 @@ class TradeLoad(namedtuple('TradeLoad', (
     @property
     def gpt(self):
         return self.gainCr / self.units if self.units else 0
-    
+
 emptyLoad = TradeLoad((), 0, 0, 0)
 
 ######################################################################
@@ -549,7 +549,7 @@ class TradeCalc(object):
                 if not minSupply or supUnits >= minSupply:
                     supAppend((itmID, supCr, supUnits, supLevel, ageS))
                     supCount += 1
-                    
+        
         tdenv.DEBUG0("Loaded {} buys, {} sells".format(dmdCount, supCount))
     
     def bruteForceFit(self, items, credits, capacity, maxUnits):

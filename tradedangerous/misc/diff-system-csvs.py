@@ -35,20 +35,20 @@ def readFile(filename):
     path = Path(filename)
     if not path.exists():
         raise SystemExit("File not found: {}".format(filename))
-
+    
     names, locs = dict(), dict()
-
+    
     with path.open("rU", encoding="utf-8") as fh:
         csvin = csv.reader(fh, delimiter=',', quotechar='\'', doublequote=True)
         # skip headings
         next(csvin)
-
+        
         for line in csvin:
             name = line[0]
             x = float(line[1])
             y = float(line[2])
             z = float(line[3])
-
+            
             normalized = normalizeRe.sub('', name).upper()
             try:
                 prevEntry = names[normalized]
@@ -68,7 +68,7 @@ def readFile(filename):
                         ))
             else:
                 locs[item.loc] = item
-
+    
     return names, locs
 
 oldNames, oldLocs = readFile(sys.argv[1])
@@ -98,20 +98,20 @@ for oldName, oldItem in oldNames.items():
                             oldItem.name.upper(),
                             newItem.name,
                         ), file=sys.stderr)
-
+        
         # Name didn't change, did the position?
         if oldItem.loc != newItem.loc:
             print("{} moved from {} -> {}".format(
                         oldItem.name, oldItem.loc, newItem.loc
                     ))
-
+        
         # We don't need to do a location check on this one.
         try:
             del newLocs[newItem.loc]
         except KeyError:
             pass
         continue
-
+    
     # We didn't find the old name in the new list, check
     # to see if there is a new star at the old position.
     try:
@@ -136,7 +136,7 @@ for oldName, oldItem in oldNames.items():
                     newItem.name,
                 ), file=sys.stderr)
         continue
-
+    
     # we didn't find it, so as best we can tell it
     # has been removed. there's no easy way for us
     # to catch the case of a move and a minor reloc.

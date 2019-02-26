@@ -50,13 +50,13 @@ def edsm_log(apiCall, url, params, jsonData=None, error=None):
 class EDSMQueryBase(object):
     """
     Base class for creating an EDSM Query class, do not use directly.
-
+    
     Derived class must declare "apiCall" which is appended to baseURL
     to form the query URL.
     """
-
+    
     baseURL = "https://www.edsm.net/api-v1/"
-
+    
     def __init__(self, log=False, known=1, coords=1, **kwargs):
         self.log = log
         self.url = self.baseURL + self.apiCall
@@ -66,27 +66,27 @@ class EDSMQueryBase(object):
         }
         for k, v in kwargs.items():
             self.params[k] = v
-
+    
     def fetch(self):
         res = requests.get(self.url, self.params)
         self.status = res.status_code
-
+        
         try:
             data = res.json()
         except:
             data = None
             pass
-
+        
         if self.log:
             edsm_log(self.apiCall, res.url, self.params, data)
-
+        
         return data
 
 
 class StarQuerySingle(EDSMQueryBase):
     """
     Query EDSM System.
-
+    
     provide:
         systemName
     """
@@ -95,7 +95,7 @@ class StarQuerySingle(EDSMQueryBase):
 class StarQueryMulti(EDSMQueryBase):
     """
     Query EDSM Systems.
-
+    
     provide:
         systemName
     """
@@ -127,7 +127,7 @@ if __name__ == "__main__":
         data['coords']['y'],
         data['coords']['z'],
     ))
-
+    
     print("Requesting 10ly sphere of Sol, coords-known")
     edsq = StarQuerySphere(systemName="Sol", radius=10)
     data = edsq.fetch()

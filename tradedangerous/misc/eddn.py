@@ -2,7 +2,7 @@
 Utilities for reading from the Elite Dangerous Data Network.
 
 Example usages:
-
+    
     # Simple:
     import eddn
     listener = eddn.Listener()
@@ -10,20 +10,20 @@ Example usages:
         batch = listener.get_batch()
         if batch:
             print("Got batch of %d" % len(batch))
-
+    
     # Advanced:
     import eddn
-
+    
     listener = eddn.Listener(
         minBatchTime=3,         # Allow at least 3-s for a batch,
         maxBatchTime=5,         # But allow upto 5s,
         reconnectTimeout=300,   # Reconnect after 5 minutes without data,
         burstLimit=500,         # Drain upto 500 prices between polls,
     )
-
+    
     def handle_listener_error(e):
         print("Listener Error:", e)
-
+    
     def process_batch(batch):
         stations = set()
         items = set()
@@ -35,7 +35,7 @@ Example usages:
         print("Batch: %d entries" % len(batch))
         print("Stations: %s" % (','.join(stations)))
         print("Items: %s" % (','.join(items)))
-
+    
     print("Listening for 100 batches")
     while listener.stats['batches'] < 100:
         batch = listener.get_batch(onerror=handle_listener_error)
@@ -51,7 +51,7 @@ Example usages:
             for error in sorted(errors.keys()):
                 print("  {:<20s} {:>10n}".format(error, errors[error]))
             listener.clear_errors()
-
+    
     listener.reset_counters()
 """
 
@@ -90,13 +90,13 @@ class Listener(object):
     """
     Provides an object that will listen to the Elite Dangerous Data Network
     firehose and capture messages for later consumption.
-
+    
     Rather than individual upates, prices are captured across a window of
     between minBatchTime and maxBatchTime. When a new update is received,
     Rather than returning individual messages, messages are captured across
     a window of potentially several seconds and returned to the caller in
     batches.
-
+    
     Attributes:
         zmqContext          Context this object is associated with,
         minBatchTime        Allow at least this long for a batch (ms),
@@ -104,16 +104,16 @@ class Listener(object):
         reconnectTimeout    Reconnect the socket after this long with no data,
         burstLimit          Read a maximum of this many messages between
                             timer checks
-
+        
         subscriber          ZMQ socket we're using
         stats               Counters of nominal events
         errors              Counters of off-nominal events
         lastRecv            time of the last receive (or 0)
     """
-
+    
     uri = 'tcp://eddn-relay.elite-markets.net:9500'
     supportedSchema = 'http://schemas.elite-markets.net/eddn/commodity/1'
-
+    
     def __init__(
         self,
         zmqContext=None,
@@ -127,12 +127,12 @@ class Listener(object):
             zmqContext = zmq.Context()
         self.zmqContext = zmqContext
         self.subscriber = None
-
+        
         self.minBatchTime = minBatchTime
         self.maxBatchTime = maxBatchTime
         self.reconnectTimeout = reconnectTimeout
         self.burstLimit = burstLimit
-
+        
         self.reset_counters()
         self.connect()
 
@@ -170,22 +170,22 @@ class Listener(object):
         Waits for data until maxBatchTime ms has elapsed
         or cutoff (absolute time) has been reached.
         """
-
+        
         now = time.time()
-
+        
         cutoff = min(softCutoff, hardCutoff)
         if self.lastRecv < now - self.reconnectTimeout:
             if self.lastRecv:
                 self.errors['reconnects'] += 1
             self.connect()
             now = time.time()
-
+        
         nextCutoff = min(now + self.minBatchTime, cutoff)
         if now > nextCutoff:
             return False
-
+        
         timeout = (nextCutoff - now) * 1000     # milliseconds
-
+        
         # Wait for an event
         events = self.subscriber.poll(timeout=timeout)
         if events == 0:
@@ -199,20 +199,20 @@ class Listener(object):
         period of between minBatchTime and maxBatchTime, with
         built-in auto-reconnection if there is nothing from the
         firehose for a period of time.
-
+        
         As json data is decoded, it is stored in self.lastJsData.
-
+        
         Parameters:
             onerror
                 None or a function/lambda that takes an error
                 string and deals with it.
-
+        
         Returns:
             A list of MarketPrice entries based on the data read.
             Prices are deduped per System+Station+Item, so that
             if two entries are received for the same combination,
             only the most recent with the newest timestamp is kept.
-
+        
         Errors:
             Errors are acculumated in the .errors dictionary. If you
             supply an 'onerror' function they are also passed to it.
@@ -220,18 +220,18 @@ class Listener(object):
         now = time.time()
         hardCutoff = now + self.maxBatchTime
         softCutoff = now + self.minBatchTime
-
+        
         # hoists
         supportedSchema = self.supportedSchema
         sub = self.subscriber
         stats, errors = self.stats, self.errors
-
+        
         # Prices are stored as a dictionary of
         # (sys,stn,item) => [MarketPrice]
         # The list thing is a trick to save us having to do
         # the dictionary lookup twice.
         batch = defaultdict(list)
-
+        
         while self.wait_for_data(softCutoff, hardCutoff):
             # When wait_for_data returns True, there is some data waiting,
             # possibly multiple messages. At this point we can afford to
@@ -245,9 +245,9 @@ class Listener(object):
                     stats['recvs'] += 1
                 except zmq.error.Again:
                     break
-
+                
                 bursts += 1
-
+                
                 try:
                     jsdata = zlib.decompress(zdata)
                 except Exception as e:
@@ -255,9 +255,9 @@ class Listener(object):
                     if onerror:
                         onerror("zlib.decompress: %s: %s"%(type(e), e))
                     continue
-
+                
                 bdata = jsdata.decode()
-
+                
                 try:
                     data = json.loads(bdata)
                 except ValueError as e:
@@ -265,9 +265,9 @@ class Listener(object):
                     if onerror:
                         onerror("json.loads: %s: %s"%(type(e), e))
                     continue
-
+                
                 self.lastJsData = jsdata
-
+                
                 try:
                     schema = data["$schemaRef"]
                 except KeyError:
@@ -299,13 +299,13 @@ class Listener(object):
                     if onerror:
                         onerror("invalid json: %s: %s"%(type(e), e))
                     continue
-
+                
                 # We've received real data.
                 stats['prices'] += 1
-
+                
                 # Normalize timestamps
                 timestamp = timestamp.replace("T"," ").replace("+00:00","")
-
+                
                 # We'll get either an empty list or a list containing
                 # a MarketPrice. This saves us having to do the expensive
                 # index operation twice.
@@ -318,7 +318,7 @@ class Listener(object):
                 else:
                     # Add a blank entry to make the list size > 0
                     oldEntryList.append(None)
-
+                
                 # Here we're replacing the contents of the list.
                 # This simple array lookup is several hundred times less
                 # expensive than looking up a potentially large dictionary
@@ -330,14 +330,14 @@ class Listener(object):
                     timestamp,
                     uploader, software, swVersion,
                 )
-
+            
             # For the edge-case where we wait 4.999 seconds and then
             # get a burst of data: stick around a little longer.
             if bursts >= self.burstLimit:
                 stats['numburst'] += 1
                 stats['maxburst'] = max(stats['maxburst'], bursts)
                 softCutoff = min(softCutoff, time.time() + 0.5)
-
+        
         # to get average batch length, divide batchlen/batches.
         # you could do the same with prices/batches except that
         stats['batches'] += 1
@@ -345,5 +345,5 @@ class Listener(object):
             stats['emptybatches'] += 1
         else:
             stats['batchlen'] += len(batch)
-
+        
         return [ entry[0] for entry in batch.values() ]

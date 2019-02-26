@@ -17,7 +17,7 @@ TradeDB, System, Station, Ship, Item, RareItem and Trade.
 These classes are primarily for describing the database.
 
 Simplistic use might be:
-
+    
     import tradedb
     
     # Create an instance: You can specify a debug level as a
@@ -456,7 +456,7 @@ class Category(namedtuple('Category', (
             The name as present in the database.
         items
             List of Item objects within this category.
-        
+    
     Member Functions:
         name()
             Returns the display name for this Category.
@@ -632,7 +632,7 @@ class TradeDB(object):
         fs.copy_if_newer((self.templatePath / Path("Added.csv")), (self.dataPath / Path("Added.csv")))
         fs.copy_if_newer((self.templatePath / Path("RareItem.csv")), (self.dataPath / Path("RareItem.csv")))
         fs.copy_if_newer((self.templatePath / Path("TradeDangerous.sql")), (self.dataPath / Path("TradeDangerous.sql")))
-                
+        
         self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         pricePath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
@@ -1046,7 +1046,7 @@ class TradeDB(object):
         Returns:
             None
                 No route was found
-        
+            
             [(origin, 0),...(dest, N)]
                 A list of (system, distanceSoFar) values describing
                 the route.
@@ -1054,13 +1054,13 @@ class TradeDB(object):
         Example:
             If there are systems A, B and C such
             that A->B is 7ly and B->C is 8ly then:
-        
+                
                 origin = lookupPlace("A")
                 dest = lookupPlace("C")
                 route = tdb.getRoute(origin, dest, 9)
-        
+            
             The route should be:
-        
+                
                 [(System(A), 0), (System(B), 7), System(C), 15)]
         
         """
@@ -1557,7 +1557,7 @@ class TradeDB(object):
                     continue
                 if placeNameTrimmed.find(nameTrimmed) >= 0:
                     anyMatch.append(place)
-                
+        
         if sysName:
             try:
                 sys = self.systemByName[sysName]

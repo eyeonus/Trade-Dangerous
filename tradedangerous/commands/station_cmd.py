@@ -127,18 +127,18 @@ def makeConfirmationCode(base, candidates):
         for character in cand:
             checksum <<= 4
             checksum += ord(character)
-
+    
     # python integers don't overflow, so we only need
     # to modulo at the end of the checksum.
     checksum %= 65521       # arbitrary prime < 2^32
-
+    
     return hex(checksum).upper()[2:]
 
 
 def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
     if not system.stations:
         return
-
+    
     upperName = stationName.upper()
     similarities = set()
     try:
@@ -156,7 +156,7 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
     except AmbiguityError as e:
         for cand in e.anyMatch:
             similarities.add(e.key(cand).upper())
-
+    
     # Check to see if there are stations with somewhat
     # similar names, but allow the user to get around
     # cases where difflib matches 'X Port' to 'Y Port'.
@@ -172,12 +172,12 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
     )
     for cand in candidates:
         similarities.add(cand)
-
+    
     if not similarities:
         return
-
+    
     confCode = makeConfirmationCode(system.ID, similarities)
-
+    
     if not cmdenv.confirm:
         raise CommandLineError(
                 "\"{}\" contains similar station names:\n"
@@ -190,19 +190,19 @@ def checkStationDoesNotExist(tdb, cmdenv, system, stationName):
                     ', '.join(candidates),
                     confCode
         ))
-
+    
     if cmdenv.confirm.upper() != confCode:
         raise CommandLineError(
             "Wrong confirmation code."
         )
-
+    
     cmdenv.NOTE("Confirmation code accepted.")
 
 
 def checkSystemAndStation(tdb, cmdenv):
     # In add mode, the user has to be more specific.
     stnName = ' '.join(cmdenv.station).strip()
-
+    
     if not cmdenv.add:
         try:
             station = tdb.lookupPlace(stnName)
@@ -216,9 +216,9 @@ def checkSystemAndStation(tdb, cmdenv):
             )
         cmdenv.system = station.system.name()
         cmdenv.station = station.dbname
-
+        
         return station.system, station
-
+    
     # Clean up the station name and potentially lift the system
     # name out of it.
     stnName = re.sub(r" +", " ", stnName)
@@ -231,15 +231,15 @@ def checkSystemAndStation(tdb, cmdenv):
         sysName = sysName.upper()
     else:
         sysName = None
-
+    
     if not stnName:
         raise CommandLineError("Invalid station name: {}".format(
                 envStnName
         ))
-
+    
     if not sysName:
         raise CommandLineError("No system name specified")
-
+    
     cmdenv.system, cmdenv.station = sysName, utils.titleFixup(stnName)
     try:
         system = tdb.lookupSystem(sysName)
@@ -248,10 +248,10 @@ def checkSystemAndStation(tdb, cmdenv):
                 "Unknown SYSTEM name: \"{}\"".format(
                     sysName
         ))
-
+    
     # check the station does not exist
     checkStationDoesNotExist(tdb, cmdenv, system, stnName)
-
+    
     return system, None
 
 
@@ -310,15 +310,15 @@ def checkResultAndExportStations(tdb, cmdenv, result):
     if cmdenv.noExport:
         cmdenv.DEBUG0("no-export set, not exporting stations")
         return None
-
+    
     lines, csvPath = csvexport.exportTableToFile(tdb, cmdenv, "Station")
     cmdenv.NOTE("{} updated.", csvPath)
-
+    
     if cmdenv.remove:
         if cmdenv.stationItemCount:
             cmdenv.NOTE("Station had items, regenerating .prices file")
             cache.regeneratePricesFile(tdb, cmdenv)
-
+    
     return None
 
 
@@ -328,12 +328,12 @@ def checkResultAndExportStations(tdb, cmdenv, result):
 def run(results, cmdenv, tdb):
     if cmdenv.lsFromStar and cmdenv.lsFromStar < 0:
         raise CommandLineError("Invalid (negative) --ls option")
-
+    
     system, station = checkSystemAndStation(tdb, cmdenv)
-
+    
     systemName = cmdenv.system
     stationName = cmdenv.station
-
+    
     if cmdenv.add:
         result = addStation(tdb, cmdenv, system, stationName)
         return checkResultAndExportStations(tdb, cmdenv, result)
@@ -343,21 +343,21 @@ def run(results, cmdenv, tdb):
     elif cmdenv.remove:
         result = removeStation(tdb, cmdenv, station)
         return checkResultAndExportStations(tdb, cmdenv, result)
-
+    
     # Otherwise, it's just a query
     results.summary = ResultRow()
     results.summary.system = station.system
     results.summary.station = station
-
+    
     avgSell = results.summary.avgSelling = tdb.getAverageSelling()
     avgBuy = results.summary.avgBuying = tdb.getAverageBuying()
-
+    
     class ItemTrade(object):
         def __init__(self, ID, price, avgAgainst):
             self.ID, self.item = ID, tdb.itemByID[ID]
             self.price = int(price)
             self.avgTrade = avgAgainst.get(ID, 0)
-
+    
     # Look up all selling and buying by the station
     selling, buying = [], []
     cur = tdb.query("""
@@ -379,23 +379,23 @@ def run(results, cmdenv, tdb):
             key=lambda item: item.avgTrade - item.price,
     )
     results.summary.buying = buying[:5]
-
+    
     return results
 
 def render(results, cmdenv, tdb):
     system, station = results.summary.system, results.summary.station
-
+    
     if cmdenv.detail:
         sysDetail = "(#{} @ {},{},{})".format(
             system.ID, system.posX, system.posY, system.posZ
         )
     else:
         sysDetail = "(#{})".format(system.ID)
-
+    
     print("Station Data:")
     print("System....:", system.name(), sysDetail)
     print("Station...:", station.dbname, "(#{})".format(station.ID))
-
+    
     if cmdenv.detail:
         siblings = ", ".join(
             stn.dbname
@@ -404,12 +404,12 @@ def render(results, cmdenv, tdb):
         )
         if siblings:
             print("Also Here.:", siblings)
-
+    
     ls = station.distFromStar()
     if cmdenv.detail and ls == '?':
         ls = '0 [unknown]'
     print("Stn/Ls....:", ls)
-
+    
     def _detail(value, source):
         detail = source[value]
         if cmdenv.detail and detail == '?':
@@ -425,10 +425,10 @@ def render(results, cmdenv, tdb):
     print("Repair....:", _detail(station.repair, TradeDB.marketStates))
     print("Planetary.:", _detail(station.planetary, TradeDB.planetStates))
     print("Prices....:", station.itemCount or 'None')
-
+    
     if station.itemCount == 0:
         return
-
+    
     newest, oldest = tdb.query("""
             SELECT JULIANDAY('NOW') - JULIANDAY(MAX(si.modified)),
                    JULIANDAY('NOW') - JULIANDAY(MIN(si.modified))
@@ -443,9 +443,9 @@ def render(results, cmdenv, tdb):
             pricesAge = "{:.2f}-{:.2f} days".format(newest, oldest)
     else:
         pricesAge = "[n/a]"
-
+    
     print("Price Age.:", pricesAge)
-
+    
     def makeBest(rows, explanation, alt, maxLen, starFn):
         if not rows:
             return "[n/a]"
@@ -453,10 +453,10 @@ def render(results, cmdenv, tdb):
         for irow in rows:
             star = '*' if starFn(irow.price, irow.avgTrade) else ''
             best.append([irow, star])
-
+        
         if not cmdenv.detail:
             return ', '.join(irow[0].item.name() + irow[1] for irow in best)
-
+        
         bestText = "("+explanation+")"
         for irow in best:
             bestText += "\n    {:<{len}} @ {:7n}cr (Avg {} {:7n}cr)".format(

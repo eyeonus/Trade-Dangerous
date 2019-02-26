@@ -21,13 +21,13 @@ def collectItemData(db):
     Station Price Data refers to this table by position in the array.
     As a result, we also need a mapping for itemID -> tableID
     """
-
+    
     items = []      # table of items
     itemIdx = {}    # mapping from itemID -> position in items
     for ID, name in db.execute("SELECT i.item_id, i.name FROM Item AS i"):
         itemIdx[ID] = len(items)
         items.append(name)
-
+    
     return items, itemIdx
 
 
@@ -41,24 +41,24 @@ def collectSystems(
     ):
     """
     Build the System -> Station -> Price data from the supplied DB.
-
+    
     withEmptySystems:
         True: include systems with no station data.
-
+    
     withStations:
         False: (implies withEmptySystems=True) don't include station data.
-
+    
     withEmptyStations:
         True: include stations with no price data.
-
+    
     withPrices:
         False: (implies withEmptyStations=True) don't include price data.
     """
-
+    
     systems = collections.defaultdict(dict)
     if not withStations:
         withEmptySystems = True
-
+    
     for sysID, sys, posX, posY, posZ in db.execute("""
             SELECT  sys.system_id, sys.name,
                     sys.pos_x, sys.pos_y, sys.pos_z
@@ -82,7 +82,7 @@ def collectSystems(
             if stations:
                 systemData['stn'] = stations
         systems[sys] = systemData
-
+    
     return systems
 
 
@@ -122,9 +122,9 @@ def collectStations(
                 )
                 stationData['buy'] = buy
                 stationData['sell'] = sell
-
+        
         stations[name] = stationData
-
+    
     return stations
 
 
@@ -133,23 +133,23 @@ def collectPriceData(db, itemIdx, stnID):
     Collect buying and selling data for a given station. Items reference the
     position in the itemData array.
     """
-
+    
     buying, selling = [], []
-
+    
     for itmID, cr in db.execute("""
             SELECT  sb.item_id, sb.price
               FROM  StationBuying AS sb
              WHERE  station_id = ?
             """, [stnID]):
         buying.append([ itemIdx[itmID], cr ])
-
+    
     for itmID, cr, units, level in db.execute("""
             SELECT  ss.item_id, ss.price, ss.units, ss.level
               FROM  StationSelling AS ss
              WHERE  station_id = ?
             """, [stnID]):
         selling.append([ itemIdx[itmID], cr, units, level ])
-
+    
     return buying, selling
 
 

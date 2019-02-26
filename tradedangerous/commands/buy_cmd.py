@@ -107,7 +107,7 @@ def get_lookup_list(cmdenv, tdb):
     # thing, the remaining arguments are all sourced from the same pool.
     # Thus: [food, cobra, metals] is illegal but [metals, hydrogen] is legal.
     mode = None
-
+    
     queries = {}
     for name in names:
         if mode is not SHIP_MODE:
@@ -122,7 +122,7 @@ def get_lookup_list(cmdenv, tdb):
                 continue
             except LookupError:
                 pass
-
+            
             # Item names secondary.
             try:
                 item = tdb.lookupItem(name)
@@ -136,7 +136,7 @@ def get_lookup_list(cmdenv, tdb):
                         "Unrecognized item: {}".format(name)
                     )
                 pass
-
+        
         # Either no mode selected yet or we are in SHIP_MODE.
         try:
             ship = tdb.lookupShip(name)
@@ -152,7 +152,7 @@ def get_lookup_list(cmdenv, tdb):
             raise CommandLineError(
                 "Unrecognized ship: {}".format(name)
             )
-
+    
     return queries, mode
 
 
@@ -182,7 +182,7 @@ def sql_query(cmdenv, tdb, queries, mode):
             "(s.supply_price > 0)",
         ]
         bindValues = []
-
+    
     # Additional constraints in ITEM_MODE
     if mode is ITEM_MODE:
         if cmdenv.supply:
@@ -194,7 +194,7 @@ def sql_query(cmdenv, tdb, queries, mode):
         if cmdenv.gt:
             constraints.append("(supply_price > ?)")
             bindValues.append(cmdenv.gt)
-
+    
     whereClause = ' AND '.join(constraints)
     stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
         columns=','.join(columns),
@@ -212,14 +212,14 @@ def run(results, cmdenv, tdb):
     if cmdenv.lt and cmdenv.gt:
         if cmdenv.lt <= cmdenv.gt:
             raise CommandLineError("--gt must be lower than --lt")
-
+    
     # Find out what we're looking for.
     queries, mode = get_lookup_list(cmdenv, tdb)
     cmdenv.DEBUG0("{} query: {}", mode, queries.values())
-
+    
     avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
     avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
-
+    
     # Summarize
     results.summary = ResultRow()
     results.summary.mode = mode
@@ -227,7 +227,7 @@ def run(results, cmdenv, tdb):
     results.summary.oneStop = cmdenv.oneStop
     results.summary.avoidSystems = avoidSystems
     results.summary.avoidStations = avoidStations
-
+    
     # In single mode with detail enabled, add average reports.
     # Thus if you're looking up "algae" or the "asp", it'll
     # tell you the average/ship cost.
@@ -245,7 +245,7 @@ def run(results, cmdenv, tdb):
             if not avgPrice:
                 avgPrice = 0
             results.summary.avg = int(avgPrice)
-
+    
     # System-based search
     nearSystem = cmdenv.nearSystem
     if nearSystem:
@@ -255,16 +255,16 @@ def run(results, cmdenv, tdb):
         distanceFn = nearSystem.distanceTo
     else:
         distanceFn = None
-
+    
     oneStopMode = cmdenv.oneStop
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
-
+    
     stations = defaultdict(list)
     stationByID = tdb.stationByID
-
+    
     cur = sql_query(cmdenv, tdb, queries, mode)
     for (ID, stationID, price, units) in cur:
         station = stationByID[stationID]
@@ -280,7 +280,7 @@ def run(results, cmdenv, tdb):
             continue
         if station.system in avoidSystems:
             continue
-
+        
         row = ResultRow()
         row.station = station
         if distanceFn:
@@ -299,12 +299,12 @@ def run(results, cmdenv, tdb):
                 results.rows.extend(stationRows)
         else:
             results.rows.append(row)
-
+    
     if not results.rows:
         if oneStopMode and len(stations):
             raise NoDataError("No one-stop stations found")
         raise NoDataError("No available items found")
-
+    
     if oneStopMode and not singleMode:
         results.rows.sort(key=lambda result: result.item.name())
     results.rows.sort(key=lambda result: result.station.name())
@@ -320,11 +320,11 @@ def run(results, cmdenv, tdb):
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Ly"
             results.rows.sort(key=lambda result: result.dist)
-
+    
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
-
+    
     return results
 
 #######################################################################
@@ -334,7 +334,7 @@ def render(results, cmdenv, tdb):
     mode = results.summary.mode
     singleMode = len(results.summary.queries) == 1
     maxStnLen = max_len(results.rows, key=lambda row: row.station.name())
-
+    
     stnRowFmt = RowFormat()
     stnRowFmt.addColumn('Station', '<', maxStnLen,
             key=lambda row: row.station.name())
@@ -349,11 +349,11 @@ def render(results, cmdenv, tdb):
     if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Units', '>', 10,
                 key=lambda row: '{:n}'.format(row.units) if row.units >= 0 else '?')
-
+    
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
-
+    
     if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Age/days', '>', 7,
                 key=lambda row: row.age)
@@ -365,14 +365,14 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
     stnRowFmt.addColumn("Plt", '>', '3',
             key=lambda row: TradeDB.planetStates[row.station.planetary])
-
+    
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(stnRowFmt.format(row))
-
+    
     if singleMode and cmdenv.detail:
         print("{:{lnl}} {:>10n}".format(
                 "-- Ship Cost" if mode is SHIP_MODE else "-- Average",

@@ -70,22 +70,22 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from .commandenv import ResultRow
-
+    
     if cmdenv.lt and cmdenv.gt:
         if cmdenv.lt <= cmdenv.gt:
             raise CommandLineError("--gt must be lower than --lt")
-
+    
     item = tdb.lookupItem(cmdenv.item)
     cmdenv.DEBUG0("Looking up item {} (#{})", item.name(), item.ID)
-
+    
     avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
     avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
-
+    
     results.summary = ResultRow()
     results.summary.item = item
     results.summary.avoidSystems = avoidSystems
     results.summary.avoidStations = avoidStations
-
+    
     if cmdenv.detail:
         avgPrice = tdb.query("""
             SELECT AVG(si.demand_price)
@@ -93,7 +93,7 @@ def run(results, cmdenv, tdb):
              WHERE si.item_id = ? AND si.demand_price > 0
         """, [item.ID]).fetchone()[0]
         results.summary.avg = int(avgPrice)
-
+    
     # Constraints
     tables = "StationItem AS si"
     constraints = [
@@ -105,18 +105,18 @@ def run(results, cmdenv, tdb):
         'si.demand_units',
     ]
     bindValues = []
-
+    
     if cmdenv.demand:
         constraints.append("(demand_units >= ?)")
         bindValues.append(cmdenv.demand)
-
+    
     if cmdenv.lt:
         constraints.append("(demand_price < ?)")
         bindValues.append(cmdenv.lt)
     if cmdenv.gt:
         constraints.append("(demand_price > ?)")
         bindValues.append(cmdenv.gt)
-
+    
     nearSystem = cmdenv.nearSystem
     if nearSystem:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
@@ -125,7 +125,7 @@ def run(results, cmdenv, tdb):
         distanceFn = nearSystem.distanceTo
     else:
         distanceFn = None
-
+    
     whereClause = ' AND '.join(constraints)
     stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
         columns=','.join(columns),
@@ -134,13 +134,13 @@ def run(results, cmdenv, tdb):
     )
     cmdenv.DEBUG0('SQL: {}', stmt)
     cur = tdb.query(stmt, bindValues)
-
+    
     stationByID = tdb.stationByID
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
-
+    
     for (stationID, priceCr, demand) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
@@ -155,7 +155,7 @@ def run(results, cmdenv, tdb):
             continue
         if station.system in avoidSystems:
             continue
-
+        
         row = ResultRow()
         row.station = station
         if distanceFn:
@@ -167,21 +167,21 @@ def run(results, cmdenv, tdb):
         row.demand = demand
         row.age = station.itemDataAgeStr
         results.rows.append(row)
-
+    
     if not results.rows:
         raise NoDataError("No available items found")
-
+    
     results.summary.sort = "Price"
     results.rows.sort(key=lambda result: result.demand, reverse=True)
     results.rows.sort(key=lambda result: result.price, reverse=True)
     if nearSystem and not cmdenv.sortByPrice:
         results.summary.sort = "Dist"
         results.rows.sort(key=lambda result: result.dist)
-
+    
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
-
+    
     return results
 
 
@@ -190,10 +190,10 @@ def run(results, cmdenv, tdb):
 
 def render(results, cmdenv, tdb):
     from ..formatting import RowFormat, ColumnFormat
-
+    
     longestNamed = max(results.rows, key=lambda result: len(result.station.name()))
     longestNameLen = len(longestNamed.station.name())
-
+    
     stnRowFmt = RowFormat()
     stnRowFmt.addColumn('Station', '<', longestNameLen,
             key=lambda row: row.station.name())
@@ -205,7 +205,7 @@ def render(results, cmdenv, tdb):
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
                 key=lambda row: row.dist)
-
+    
     stnRowFmt.addColumn('Age/days', '>', 7,
             key=lambda row: row.age)
     stnRowFmt.addColumn('StnLs', '>', 10,
@@ -216,14 +216,14 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
     stnRowFmt.addColumn("Plt", '>', '3',
             key=lambda row: TradeDB.planetStates[row.station.planetary])
-
+    
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(stnRowFmt.format(row))
-
+    
     if cmdenv.detail:
         print("{:{lnl}} {:>10n}".format(
                 "-- Average",

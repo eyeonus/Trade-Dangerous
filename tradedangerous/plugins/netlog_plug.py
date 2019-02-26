@@ -24,7 +24,7 @@ class ImportPlugin(ImportPluginBase):
     """
     Plugin that parses the netLog file and add or update the system.
     """
-
+    
     logGlob = "netLog.*.log"
     ADDED_NAME = 'netLog'
     LOGDIR_NAME = "FDEVLOGDIR"
@@ -40,16 +40,16 @@ class ImportPlugin(ImportPluginBase):
         'TRAINING',
         'DESTINATION',
     ]
-
+    
     pluginOptions = {
         'show': "Only show the system name and position. Don't update the DB.",
         'last': "Only parse the last (newest) netLog file.",
         'date': "Only parse netLog files from date, format=[YY]YY[-MM[-DD]].",
     }
-
+    
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
-
+        
         logDirName = os.getenv(self.LOGDIR_NAME, None)
         if not logDirName:
             raise PluginException(
@@ -58,7 +58,7 @@ class ImportPlugin(ImportPluginBase):
                 .format(self.LOGDIR_NAME)
             )
         tdenv.NOTE("{}={}", self.LOGDIR_NAME, logDirName)
-
+        
         self.logPath = pathlib.Path(logDirName)
         if not self.logPath.is_dir():
             raise PluginException(
@@ -66,7 +66,7 @@ class ImportPlugin(ImportPluginBase):
                     str(self.logPath)
                 )
             )
-
+    
     def parseLogDirList(self):
         """
         parse netLog files
@@ -81,16 +81,16 @@ class ImportPlugin(ImportPluginBase):
         # SYSTEM: {10:13:33GMT 407.863s} System:"Huokang" StarPos:(-12.188,35.469,-25.281)ly  NormalFlight
         tdb, tdenv = self.tdb, self.tdenv
         optShow = self.getOption("show")
-
+        
         oldHeadRegEx = re.compile("^(?P<headDateTime>\d\d-\d\d-\d\d-\d\d:\d\d)\s+(?P<headTZName>.*[^\s])\s+(?P<headTimeGMT>\(.*GMT\))")
         newHeadRegEx = re.compile("^(?P<headDateTime>\d\d\d\d-\d\d-\d\d\s+\d\d:\d\d)\s+(?P<headTZName>.*[^\s])")
-
+        
         sysRegEx  = re.compile('^\{[^\}]+\}\s+System:"(?P<sysName>[^"]+)".*StarPos:\((?P<sysPos>[^)]+)\)ly')
         dateRegEx = re.compile('^\{(?P<logTime>\d\d:\d\d:\d\d)')
-
+        
         def calcSeconds(h=0, m=0, s=0):
             return 3600*h + 60*m + s
-
+        
         sysCount = 0
         logSysList = {}
         for filePath in self.filePathList:
@@ -162,7 +162,7 @@ class ImportPlugin(ImportPluginBase):
                                 logDiff += 86400
                             logDate = lastDate + timedelta(seconds=logDiff)
                             tdenv.DEBUG1("LOGDATE: {}", logDate)
-
+                        
                         sysMatch = sysRegEx.match(line)
                         if sysMatch:
                             # we found a system, yeah
@@ -175,12 +175,12 @@ class ImportPlugin(ImportPluginBase):
                             sysPosZ = snapToGrid32(sysPosZ)
                             tdenv.DEBUG0(" SYSTEM: {} {} {} {} {}", sysDate, sysName, sysPosX, sysPosY, sysPosZ)
                             logSysList[sysName] = (sysPosX, sysPosY, sysPosZ, sysDate)
-
+                        
                         lastDate = logDate
                         lastSecs = logSecs
             sysCount = len(logSysList)
             tdenv.NOTE("Found {} System(s).", sysCount-oldCount)
-
+        
         if not optShow:
             try:
                 idNetLog = tdb.lookupAdded(self.ADDED_NAME)
@@ -199,7 +199,7 @@ class ImportPlugin(ImportPluginBase):
                 tdenv.NOTE("Export Table 'Added'")
                 _, path = csvexport.exportTableToFile(tdb, tdenv, "Added")
                 pass
-
+        
         addCount = 0
         oldCount = 0
         newCount = 0
@@ -240,7 +240,7 @@ class ImportPlugin(ImportPluginBase):
                         commit=False
                     )
                     addCount += 1
-
+        
         tdenv.NOTE("Found {:>3} System(s) altogether.", sysCount)
         if oldCount:
             tdenv.NOTE("      {:>3} old", oldCount)
@@ -251,7 +251,7 @@ class ImportPlugin(ImportPluginBase):
             tdb.getDB().commit()
             tdenv.NOTE("Export Table 'System'")
             _, path = csvexport.exportTableToFile(tdb, tdenv, "System")
-
+    
     def getLogDirList(self):
         """
         get all netLog files
@@ -259,7 +259,7 @@ class ImportPlugin(ImportPluginBase):
         tdenv   = self.tdenv
         logDate = self.getOption("date")
         logLast = self.getOption("last")
-
+        
         self.logDate = None
         if isinstance(logDate, str):
             self.fmtDate = len(logDate)
@@ -281,15 +281,15 @@ class ImportPlugin(ImportPluginBase):
                 )
             tdenv.NOTE("using date: {}", self.logDate.strftime(fmt[0]))
         tdenv.NOTE("using pattern: {}", self.logGlob)
-
+        
         self.filePathList = []
         for filePath in sorted(self.logPath.glob(self.logGlob)):
             tdenv.DEBUG0("logfile: {}", str(filePath))
             self.filePathList.append(filePath)
-
+        
         if logLast and len(self.filePathList) > 1:
             del self.filePathList[:-1]
-
+        
         listLen = len(self.filePathList)
         if listLen == 0:
             raise PluginException("No logfile found.")
@@ -297,20 +297,20 @@ class ImportPlugin(ImportPluginBase):
             tdenv.NOTE("Found one logfile.")
         else:
             tdenv.NOTE("Found {} logfiles.", listLen)
-
+    
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         tdenv.DEBUG0("show: {}", self.getOption("show"))
         tdenv.DEBUG0("last: {}", self.getOption("last"))
         tdenv.DEBUG0("date: {}", self.getOption("date"))
-
+        
         # Ensure the cache is built and reloaded.
         tdb.reloadCache()
         tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
+        
         self.getLogDirList()
         self.parseLogDirList()
-
+        
         # We did all the work
         return False

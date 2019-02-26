@@ -186,7 +186,7 @@ def dumpPrices(
             output = "\n\n@ {}/{}\n".format(system.upper(), station)
             lastStn = stnID
             lastCat = None
-
+        
         if catID is not lastCat:
             output += "   + {}\n".format(category)
             lastCat = catID

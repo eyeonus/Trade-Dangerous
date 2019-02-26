@@ -38,14 +38,14 @@ def copy_if_newer(src, dst):
     else:
         shcopy(str(srcPath), str(dstPath))
         return dstPath
-    
+
 def copyallfiles(srcdir, dstdir):
     """
     Copies all files in srcdir to dstdir
     """
     srcPath = pathify(srcdir)
     dstPath = pathify(dstdir)
-
+    
     for p in srcPath.glob('*.*'):
         if p.is_file():
             copy(p, dstPath / p.name)

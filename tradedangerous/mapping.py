@@ -106,21 +106,21 @@ class FDEVMappingItems(FDEVMappingBase):
         self.addUnknown('Comercial Samples',      'Commercial Samples')
         self.addUnknown('Encripted Data Storage', 'Encrypted Data Storage')
         self.addUnknown('Wreckage Components',    'Salvageable Wreckage')
-    
+
 class FDEVMappingShips(FDEVMappingBase):
     """
         Maps ID to TD ships
     """
     tableName = "Ship"
     colNames  = [ 'fdev_id', 'name' ]
-    
+
 class FDEVMappingShipyard(FDEVMappingBase):
     """
         Maps ID to EDDN shipyard
     """
     tableName = "FDevShipyard"
     colNames  = [ 'id', 'name' ]
-    
+
 class FDEVMappingOutfitting(FDEVMappingBase):
     """
         Maps ID to EDDN outfitting

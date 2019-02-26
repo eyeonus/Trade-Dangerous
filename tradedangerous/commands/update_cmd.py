@@ -169,9 +169,9 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
     try:
         return os.environ[envVar]
     except KeyError: pass
-
+    
     paths = []
-
+    
     import platform
     system = platform.system()
     if system == 'Windows':
@@ -181,11 +181,11 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
                 paths.append("{}\\{}\\{}".format(os.environ['SystemDrive'], folder, version))
     else:
         binary = nixExe
-
+    
     try:
         paths += os.environ['PATH'].split(os.pathsep)
     except KeyError: pass
-
+    
     for path in paths:
         candidate = os.path.join(path, binary)
         try:
@@ -193,7 +193,7 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
                 return candidate
         except OSError:
             pass
-
+    
     raise CommandLineError(
         "ERROR: Unable to locate {} editor.\n"
         "Either specify the path to your editor with --editor "
@@ -207,14 +207,14 @@ def editUpdate(tdb, cmdenv, stationID):
         Dump the price data for a specific station to a file and
         launch the user's text editor to let them make changes
         to the file.
-
+        
         If the user makes changes, re-load the file, update the
         database and regenerate the master .prices file.
     """
-
+    
     cmdenv.DEBUG0("'update' mode with editor. editor:{} station:{}",
                     cmdenv.editor, cmdenv.origin)
-
+    
     editor, editorArgs = cmdenv.editor, []
     if cmdenv.editing == 'sublime':
         cmdenv.DEBUG0("Sublime mode")
@@ -257,17 +257,17 @@ def editUpdate(tdb, cmdenv, stationID):
     elif cmdenv.editing == "notepad":
         cmdenv.DEBUG0("Notepad mode")
         editor = editor or "notepad.exe"  # herp
-
+    
     try:
         envArgs = os.environ["EDITOR_ARGS"]
         if envArgs:
             editorArgs += envArgs.split(' ')
     except KeyError:
         pass
-
+    
     # Create a temporary text file with a list of the price data.
     tmpPath = getTemporaryPath(cmdenv)
-
+    
     absoluteFilename = None
     dbFilename = tdb.dbFilename
     try:
@@ -284,12 +284,12 @@ def editUpdate(tdb, cmdenv, stationID):
                     defaultZero=cmdenv.forceNa,
                     debug=cmdenv.debug
             )
-
+        
         # Stat the file so we can determine if the user writes to it.
         # Use the most recent create/modified timestamp.
         preStat = tmpPath.stat()
         preStamp = max(preStat.st_mtime, preStat.st_ctime)
-
+        
         # Launch the editor
         editorCommandLine = [ editor ] + editorArgs + [ absoluteFilename ]
         cmdenv.DEBUG0("Invoking [{}]", ' '.join(editorCommandLine))
@@ -306,13 +306,13 @@ def editUpdate(tdb, cmdenv, stationID):
                     "Your editor exited with a 'failed' exit code ({})"
                         .format(result)
             )
-
+        
         # Did they update the file? Some editors destroy the file and rewrite it,
         # other files just write back to it, and some OSes do weird things with
         # these timestamps. That's why we have to use both mtime and ctime.
         postStat = tmpPath.stat()
         postStamp = max(postStat.st_mtime, postStat.st_ctime)
-
+        
         if postStamp == preStamp:
             import random
             print("- No changes detected - doing nothing. {}".format(
@@ -332,10 +332,10 @@ def editUpdate(tdb, cmdenv, stationID):
         else:
             cache.importDataFromFile(tdb, cmdenv, tmpPath)
             saveCopyOfChanges(cmdenv, dbFilename, stationID)
-
+        
         tmpPath.unlink()
         tmpPath = None
-
+    
     except Exception as e:
         print("ERROR:", e)
         print()
@@ -352,7 +352,7 @@ def guidedUpdate(tdb, cmdenv):
     dbFilename = tdb.dbFilename
     stationID = cmdenv.startStation.ID
     tmpPath = getTemporaryPath(cmdenv)
-
+    
     cur = tdb.query("""
         SELECT  JULIANDAY('now') - JULIANDAY(MIN(modified)),
                 JULIANDAY('now') - JULIANDAY(MAX(modified))
@@ -365,25 +365,25 @@ def guidedUpdate(tdb, cmdenv):
             "Current data {:.2f}-{:.2f} days old.",
             oldest, newest,
         )
-
+    
     from .update_gui import render
     try:
         render(tdb, cmdenv, tmpPath)
         cmdenv.DEBUG0("Got results, importing")
         cache.importDataFromFile(tdb, cmdenv, tmpPath)
-
+        
         saveCopyOfChanges(cmdenv, dbFilename, stationID)
-
+        
         tmpPath.unlink()
         tmpPath = None
-
+    
     except Exception as e:
         print("ERROR:", e)
         print()
         print("*** YOUR UPDATES WILL BE SAVED AS {} ***".format(
                 "prices.last"
         ))
-
+        
         if tmpPath:
             saveTemporaryFile(tmpPath)
         if "EXCEPTIONS" in os.environ:
@@ -404,7 +404,7 @@ def run(results, cmdenv, tdb):
         cmdenv.startStation = system.stations[0]
     else:
         cmdenv.startStation = place
-
+    
     if cmdenv.gui or (not cmdenv.editor and not cmdenv.editing):
         if not cmdenv.quiet:
             print(
@@ -420,5 +420,5 @@ def run(results, cmdenv, tdb):
     else:
         # User specified one of the options to use an editor.
         editUpdate(tdb, cmdenv, cmdenv.startStation.ID)
-
+    
     return None

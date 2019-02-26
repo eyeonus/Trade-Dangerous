@@ -61,30 +61,30 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from .commandenv import ResultRow
-
+    
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
     srcSystem = cmdenv.nearSystem
-
+    
     results.summary = ResultRow()
     results.limit = cmdenv.limit
-
+    
     fields = [
         "si.station_id",
         "JULIANDAY('NOW') - JULIANDAY(MAX(si.modified))",
         "stn.ls_from_star",
     ]
-
+    
     joins = []
     wheres = []
     havings = []
-
+    
     if cmdenv.minAge:
         wheres.append(
             "(JULIANDAY('NOW') - JULIANDAY(si.modified) >= {})"
             .format(cmdenv.minAge)
         )
-
+    
     nearSys = cmdenv.nearSystem
     if nearSys:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
@@ -114,24 +114,24 @@ def run(results, cmdenv, tdb):
         havings.append("d2 <= {}".format(maxLy2))
     else:
         fields.append("0")
-
+    
     fieldStr = ','.join(fields)
-
+    
     if joins:
         joinStr = ' '.join(joins)
     else:
         joinStr = ''
-
+    
     if wheres:
         whereStr = 'WHERE ' + ' AND '.join(wheres)
     else:
         whereStr = ''
-
+    
     if havings:
         haveStr = 'HAVING ' + ' AND '.join(havings)
     else:
         haveStr = ''
-
+    
     stmt = """
             SELECT  {fields}
               FROM  StationItem as si
@@ -147,14 +147,14 @@ def run(results, cmdenv, tdb):
             wheres=whereStr,
             having=haveStr,
     )
-
+    
     cmdenv.DEBUG1(stmt)
-
+    
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
     noPlanet = cmdenv.noPlanet
     mls = cmdenv.maxLs
-
+    
     for (stnID, age, ls, dist2) in tdb.query(stmt):
         cmdenv.DEBUG2("{}:{}:{}", stnID, age, ls)
         row = ResultRow()
@@ -170,7 +170,7 @@ def run(results, cmdenv, tdb):
                 if not noPlanet or row.station.planetary == 'N':
                     if not mls or row.station.lsFromStar <= mls:
                         results.rows.append(row)
-
+    
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
             rows = results.rows
@@ -195,10 +195,10 @@ def run(results, cmdenv, tdb):
                 if path[1] < bestPath[1]:
                     bestPath = path
         results.rows[:] = bestPath[0]
-
+    
     if cmdenv.limit:
         results.rows[:] = results.rows[:cmdenv.limit]
-
+    
     return results
 
 ######################################################################
@@ -206,26 +206,26 @@ def run(results, cmdenv, tdb):
 
 def render(results, cmdenv, tdb):
     from ..formatting import RowFormat, ColumnFormat
-
+    
     if not results or not results.rows:
         raise TradeException("No data found")
-
+    
     # Compare system names so we can tell
     longestNamed = max(results.rows,
                     key=lambda row: len(row.station.name()))
     longestNameLen = len(longestNamed.station.name())
-
+    
     rowFmt = RowFormat().append(
             ColumnFormat("Station", '<', longestNameLen,
                     key=lambda row: row.station.name())
     )
-
+    
     if cmdenv.quiet < 2:
         if cmdenv.nearSystem:
             rowFmt.addColumn('DistLy', '>', 6, '.2f',
                     key=lambda row: row.dist
             )
-
+        
         rowFmt.append(
                 ColumnFormat("Age/days", '>', '8', '.2f',
                         key=lambda row: row.age)
@@ -240,10 +240,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Plt", '>', '3',
                         key=lambda row: \
                             TradeDB.planetStates[row.station.planetary]))
-
+    
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(rowFmt.format(row))

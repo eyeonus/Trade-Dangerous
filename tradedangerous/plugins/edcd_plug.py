@@ -10,7 +10,7 @@ class ImportPlugin(ImportPluginBase):
     """
     Download and process EDCD CSV-file(s)
     """
-
+    
     pluginOptions = {
         'local':      "Use local EDCD CSV-files.",
         'csvs':       "Download and process all EDCD CSV-files.",
@@ -18,22 +18,22 @@ class ImportPlugin(ImportPluginBase):
         'commodity':  "Download and process EDCD commodity.csv",
         'outfitting': "Download and process EDCD outfitting.csv",
     }
-
+    
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
-
+    
     def check_local_edcd(self):
         """
             Check local DB against EDCD
         """
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         tdCategories = list()
         for catID, catTD in sorted(tdb.categories(), key=lambda x: x[1].dbname):
             tdCategories.append(catTD.dbname)
             if catTD.dbname not in self.edcdCategories:
                 tdenv.WARN("Category '{}' not in EDCD", catTD.dbname)
-
+            
             for itemTD in sorted(catTD.items, key=lambda x: x.dbname):
                 itemEDCD = self.edcdItems.get(itemTD.dbname, None)
                 if not itemEDCD:
@@ -46,7 +46,7 @@ class ImportPlugin(ImportPluginBase):
                             catTD.dbname, itemEDCD.category.dbname
                         )
         self.tdCategories = tdCategories
-
+    
     def update_item_order(self, db):
         """
             Update the ui_order of the items
@@ -72,17 +72,17 @@ class ImportPlugin(ImportPluginBase):
             for itmID, itmName in db.execute(itmStmt, [ catID ]):
                 itmOrder += 1
                 db.execute(updStmt, [ itmOrder, itmID ])
-
+    
     def check_edcd_local(self):
         """
             Check EDCD items against local DB
         """
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         addItem = 0
         updItem = 0
         addCategory = 0
-
+        
         commit = False
         db = tdb.getDB()
         for catNameEDCD in sorted(self.edcdCategories):
@@ -90,14 +90,14 @@ class ImportPlugin(ImportPluginBase):
             if catEDCD.dbname not in self.tdCategories:
                 tdenv.NOTE("New category '{}'", catEDCD.dbname)
                 sqlStmt = "INSERT INTO Category(name) VALUES(?)"
-
+                
                 tdenv.DEBUG0("SQL-Statement: {}", sqlStmt)
                 tdenv.DEBUG0("SQL-Values: {}", [ catEDCD.dbname ])
-
+                
                 db.execute(sqlStmt, [ catEDCD.dbname ])
                 addCategory += 1
                 commit = True
-
+            
             # Check EDCD items against local DB
             for itemEDCD in sorted(catEDCD.items, key=lambda x: x.dbname):
                 itemTD = tdb.itemByName.get(itemEDCD.dbname, None)
@@ -134,7 +134,7 @@ class ImportPlugin(ImportPluginBase):
                         )
                         tdenv.DEBUG0("SQL-Statement: {}", sqlStmt)
                         tdenv.DEBUG0("SQL-Values: {}", insValues)
-
+                        
                         db.execute(sqlStmt, insValues)
                         addItem += 1
                         commit = True
@@ -165,14 +165,14 @@ class ImportPlugin(ImportPluginBase):
                         )
                         tdenv.DEBUG0("SQL-Statement: {}", sqlStmt)
                         tdenv.DEBUG0("SQL-Values: {}", updValues)
-
+                        
                         db.execute(sqlStmt, updValues)
                         updItem += 1
                         commit = True
-
+        
         if addItem:
             self.update_item_order(db)
-
+        
         if commit:
             db.commit()
             if addCategory:
@@ -185,7 +185,7 @@ class ImportPlugin(ImportPluginBase):
                         tdenv.NOTE("{} {} item(s)", textAdd, intAdd)
                 _, csvPath = csvexport.exportTableToFile(tdb, tdenv, 'Item')
                 tdenv.NOTE("{} updated.", csvPath)
-
+        
         if not commit:
             tdenv.NOTE("Nothing had to be done")
 
@@ -196,7 +196,7 @@ class ImportPlugin(ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         tdenv.NOTE("Processing {}", tableName)
-
+        
         itmCount = 0
         catCount = 0
         edcdItems = {}
@@ -208,21 +208,21 @@ class ImportPlugin(ImportPluginBase):
             # first line must be the column names
             columnDefs = next(csvIn)
             columnCount = len(columnDefs)
-
+            
             tdenv.DEBUG0("columnDefs: {}", columnDefs)
-
+            
             idxMap = {}
             for cIndex, cName in enumerate(columnDefs):
                 idxMap[cName] = cIndex
             tdenv.DEBUG0("idxMap: {}", idxMap)
-
+            
             notGood = False
             for checkMe in ('id', 'category', 'name'):
                 if checkMe not in idxMap:
                     tdenv.WARN("'{}' column not in {}.", checkMe, localPath)
                     notGood = True
             hasAverage = True if 'average' in idxMap else False
-
+            
             def castToInteger(val):
                 try:
                     val = int(val)
@@ -230,7 +230,7 @@ class ImportPlugin(ImportPluginBase):
                     val = None
                     pass
                 return val
-
+            
             if notGood:
                 tdenv.NOTE("Import stopped.", checkMe, localPath)
             else:
@@ -238,7 +238,7 @@ class ImportPlugin(ImportPluginBase):
                     if not lineIn: continue
                     lineNo = csvIn.line_num
                     tdenv.DEBUG0("LINE {}: {}", lineNo, lineIn)
-
+                    
                     # strip() it do be save
                     edcdId       = lineIn[idxMap['id']].strip()
                     edcdCategory = lineIn[idxMap['category']].strip()
@@ -247,22 +247,22 @@ class ImportPlugin(ImportPluginBase):
                         edcdAverage = lineIn[idxMap['average']].strip()
                     else:
                         edcdAverage = None
-
+                    
                     if edcdCategory.lower() == "nonmarketable":
                         # we are, after all, a trading tool
                         tdenv.DEBUG0("Ignoring {}/{}", edcdCategory, edcdName)
                         continue
-
+                    
                     edcdId      = castToInteger(edcdId)
                     edcdAverage = castToInteger(edcdAverage)
-
+                    
                     itemCategory = edcdCategories.get(edcdCategory, None)
                     if not itemCategory:
                         itemCategory = Category(0, edcdCategory, [])
                         edcdCategories[edcdCategory] = itemCategory
                         catCount += 1
                         tdenv.DEBUG1("NEW CATEGORY: {}", edcdCategory)
-
+                    
                     if edcdName not in edcdItems:
                         newItem = Item(
                             edcdId, edcdName, itemCategory,
@@ -273,24 +273,24 @@ class ImportPlugin(ImportPluginBase):
                         itemCategory.items.append(newItem)
                         itmCount += 1
                         tdenv.DEBUG1("NEW ITEM: {}", edcdName)
-
+        
         self.edcdItems = edcdItems
         self.edcdCategories = edcdCategories
-
+        
         tdenv.NOTE("Found {} categorie(s)", catCount)
         tdenv.NOTE("Found {} item(s)", itmCount)
-
+        
         if catCount or itmCount:
             self.check_local_edcd()
             self.check_edcd_local()
-
+    
     def process_fdevids_table(self, localPath, tableName):
         """
             Shipyard and outfitting files can be directly imported.
         """
         tdb, tdenv = self.tdb, self.tdenv
         tdenv.NOTE("Processing {}", tableName)
-
+        
         db = tdb.getDB()
         db.execute("DELETE FROM {}".format(tableName))
         cache.processImportFile(
@@ -307,14 +307,14 @@ class ImportPlugin(ImportPluginBase):
         )
         tdenv.NOTE("Imported {} {}(s).", lines, tableName)
         tdenv.NOTE("{} updated.", csvPath)
-
+    
     def download_fdevids(self):
         """
             Download the current data from EDCD,
             see https://github.com/EDCD/FDevIDs
         """
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         BASE_URL = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/"
         downloadList = []
         if self.getOption("shipyard"):
@@ -329,11 +329,11 @@ class ImportPlugin(ImportPluginBase):
             downloadList.append(
                 ('FDevCommodity', 'commodity.csv', self.process_fdevids_items)
             )
-
+        
         if len(downloadList) == 0:
             tdenv.NOTE("I don't know what do to, give me some options!")
             return
-
+        
         optLocal = self.getOption("local")
         for tableName, fileEDCD, callMeBack in downloadList:
             localPath = tdb.dataPath / pathlib.Path(tableName).with_suffix(".csv")
@@ -350,25 +350,25 @@ class ImportPlugin(ImportPluginBase):
                 )
             if callMeBack:
                 callMeBack(localPath, tableName)
-
+    
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
-
+        
         tdenv.DEBUG0("csvs: {}", self.getOption("csvs"))
         tdenv.DEBUG0("shipyard: {}", self.getOption("shipyard"))
         tdenv.DEBUG0("commodity: {}", self.getOption("commodity"))
         tdenv.DEBUG0("outfitting: {}", self.getOption("outfitting"))
-
+        
         if self.getOption("csvs"):
             self.options["shipyard"] = True
             self.options["commodity"] = True
             self.options["outfitting"] = True
-
+        
         # Ensure the cache is built and reloaded.
         tdb.reloadCache()
         tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
+        
         self.download_fdevids()
-
+        
         # We did all the work
         return False

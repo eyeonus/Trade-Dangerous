@@ -66,7 +66,7 @@ def getFKeyList(conn, tableName):
             # if there is a second column, remove it from the list
             keyList.remove( keyList[keyCount] )
             keyCount -= 1
-        
+    
     return keyList
 
 def buildFKeyStmt(conn, tableName, key):

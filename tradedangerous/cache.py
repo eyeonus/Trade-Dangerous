@@ -375,7 +375,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
             if newID is DELETED:
                 DEBUG1("Renamed station DELETED: {}", facility)
                 return
-            
+        
         if newID < 0:
             if not ignoreUnknown:
                 ignoreOrWarn(

@@ -6,7 +6,7 @@ class ColumnFormat(object):
         Describes formatting of a column to be populated with data.
         
         Member Functions:
-        
+            
             str()
                 Applies all formatting (except qualifier) to the name to
                 produce a correctly sized title field.
@@ -14,7 +14,7 @@ class ColumnFormat(object):
             format(value)
                 Applies all formatting to key(value) to produce a correctly
                 sized value field.
-            
+        
         Attributes:
             name
                 Heading for column to display when calling title()
@@ -36,7 +36,7 @@ class ColumnFormat(object):
                 Retrieve the printable name of the item
             pred
                 Predicate: Return False to leave this column blank
-            
+        
         e.g.
             cols = [
                 ColumnFormat("Name", "<", "5", '', key=lambda item:item['name']),
@@ -54,7 +54,7 @@ class ColumnFormat(object):
             Name   [ Dist]
             Bob    [ 1.30]
             John   [23.00]
-
+    
     """
     def __init__(
             self,
@@ -123,7 +123,7 @@ class RowFormat(object):
             format(rowData):
                 Returns a list of applying rowData to all
                 of the columns
-
+    
     """
     def __init__(self, prefix=None):
         self.columns = []
@@ -155,7 +155,7 @@ class RowFormat(object):
     
     def format(self, rowData):
         return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
-    
+
 def max_len(iterable, key=lambda item: item):
     iterable, readahead = itertools.tee(iter(iterable))
     try:

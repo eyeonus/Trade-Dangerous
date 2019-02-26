@@ -48,13 +48,13 @@ def edsc_log(apiCall, params, jsonData=None, error=None):
 class EDSCQueryBase(object):
     """
     Base class for creating an EDSC Query class, do not use directly.
-
+    
     Derived class must declare "apiCall" which is appended to baseURL
     to form the query URL.
     """
-
+    
     baseURL = "http://edstarcoordinator.com/api.asmx/"
-
+    
     def __init__(self, detail=2, test=False, known=1, confidence=0, **kwargs):
         self.url = self.baseURL + self.apiCall
         self.params = {
@@ -70,7 +70,7 @@ class EDSCQueryBase(object):
         }
         for k, v in kwargs.items():
             self.params['data']['filter'][k] = v
-
+        
         self.jsData = None
 
 
@@ -80,16 +80,16 @@ class EDSCQueryBase(object):
                     'Content-Type': 'application/json;charset=utf-8',
                     'Content-Length': len(params)
                 })
-
+        
         with urlopen(request, params) as stream:
             self.jsData = stream.read()
-
+        
         data = json.loads(self.jsData.decode())['d']
         inputNo = 0
         self.status = data['status']['input'][inputNo]['status']
-
+        
         edsc_log(self.apiCall, self.params, data)
-
+        
         return data
 
 
@@ -121,43 +121,43 @@ class StarSubmissionResult(object):
     Translates a response the json we get back from EDSC when
     we submit a StarSubmission into something less awful to
     work with.
-
+    
     Attributes:
         valid
             True or False whether the response looked healthy
-
+        
         summary
             A summary of the /parse/; currently either "No Data"
             or "OK". This does NOT represent whether the
             submission itself was successful.
-
+        
         systems
             A dict{ system name: [msgnum, coords] } for systems which
             were reported as being added or updated. See
             translateCode for converting these to text.
             'coords' is either None if the system hasn't been
             trilaterated yet, or an array of [x,y,z]
-
+        
         distances
             A dict{ lhs system: { rhs system: dist } }. It's not
             really very useful but I didn't want to drop the data
             EDSC was sending back to us, just incase.
-
+        
         errors
             A list of SubmissionError objects describing problems
             that were encountered, mostly 304 (distance added but
             failed to verify coordinates) and 305 (distance appears
             to be wrong).
-
+        
         recheck
             A dict{ system name: dist } for systems that had a 305
             error for a distance to "star". They still appear in
             the 'errors' attribute, but this is a short-cut for
             prompting the user to double check a distance from their
             current p0.
-
+    
     """
-
+    
     codeMap = {
         201:        "New Entry",
         202:        "System CR increased",
@@ -180,7 +180,7 @@ class StarSubmissionResult(object):
         self.distances = {}
         self.errors = []
         self.recheck = {}
-
+        
         # This line righ there, this is just the beginning of
         # why it's necessary to have this complicated of a
         # wrapper for this json data. Don't forget, we have
@@ -194,10 +194,10 @@ class StarSubmissionResult(object):
                     'status', code, msg, None, None
             ))
             return
-
+        
         self.valid = True
         self.summary = "OK"
-
+        
         # We get back an array of things called 'system', which
         # allows EDSC to tell us that something got added. It
         # could be p0 or it could be one of the refs or it could
@@ -213,7 +213,7 @@ class StarSubmissionResult(object):
                 self.errors.append(Status(
                         'system', code, msg, sysName, None,
                 ))
-
+        
         # Now the pair-wise distance checks. These are either not
         # very useful/duplicate the systems list, or they tell us
         # about conflicts with pre-existing data.
@@ -255,7 +255,7 @@ class StarSubmissionResult(object):
                         self.recheck[rhsName] = ent['dist']
                     elif rhsName == star:
                         self.recheck[lhsName] = ent['dist']
-
+        
         # Finally we look thru the trilat array which is telling us
         # how the search for p0's coordinates went on a per-ref
         # basis.
@@ -290,12 +290,12 @@ class StarSubmissionResult(object):
     def __str__(self):
         if not self.valid:
             return "ERROR: {}".format(self.summary)
-
+        
         text = ""
-
+        
         if not self.errors:
             text += "Success.\n"
-
+        
         if self.systems:
             text += "+Updates:\n"
             sysNames = list(self.systems.keys())
@@ -309,7 +309,7 @@ class StarSubmissionResult(object):
                     sysName, sysText,
                 )
             text += "\n"
-
+        
         if self.errors:
             text += "+Problems:\n"
             errors = sorted(self.errors, key=lambda e: e.rhs or "")
@@ -324,9 +324,9 @@ class StarSubmissionResult(object):
                 if err.rhs:
                     text += " <-> " + err.rhs
                 text += "\n"
-
+        
         return text
-
+    
     def translateCode(self, code):
         try:
             return self.codeMap[code]
@@ -338,7 +338,7 @@ class StarSubmissionResult(object):
 class StarSubmission(object):
     baseURL = "http://edstarcoordinator.com/api.asmx/"
     apiCall = "SubmitDistances"
-
+    
     def __init__(
             self, star,
             test=False, commander=None,
@@ -362,7 +362,7 @@ class StarSubmission(object):
                 raise SubmissionError("Invalid distances parameter")
         if commander:
             self.commander = commander
-
+    
     def __repr__(self):
         return (
             "StarSubmission("
@@ -380,19 +380,19 @@ class StarSubmission(object):
         assert isinstance(name, str)
         assert isinstance(dist, (float, int))
         assert name.upper() != self.name
-
+        
         name = name.upper()
         for i, ref in enumerate(self.refs):
             if ref['name'] == name:
                 ref['dist'] = dist
                 return
-
+        
         self.refs.append({'name': name, 'dist': dist})
 
 
     def submit(self):
         assert len(self.refs) != 0
-
+        
         headers = { 'Content-Type': 'application/json; charset=utf-8' }
         data = {
             'data': {
@@ -404,9 +404,9 @@ class StarSubmission(object):
         }
         if self.commander:
             data['data']['commander'] = self.commander
-
+        
         jsonData = json.dumps(data, indent=None, separators=(',', ':'))
-
+        
         url = self.baseURL + self.apiCall
         req = requests.post(
             url,
@@ -417,7 +417,7 @@ class StarSubmission(object):
         if not resp.startswith('{'):
             edsc_log(self.apiCall, repr(self), error=resp)
             raise SubmissionError("Server Side Error: " + resp)
-
+        
         try:
             respData = json.loads(resp)
         except Exception:
@@ -428,23 +428,23 @@ class StarSubmission(object):
             innerData = respData['d']
         except KeyError:
             raise SubmissionError("Server Error: " + resp)
-
+        
         return innerData
 
 if __name__ == "__main__":
     print("Requesting recent, non-test, coords-known, cr >= 2 stars")
     edsq = StarQuery(test=False, confidence=2, known=1)
     data = edsq.fetch()
-
+    
     if edsq.status['statusnum'] != 0:
         raise Exception("Query failed: {} ({})".format(
                     edsq.status['msg'],
                     edsq.status['statusnum'],
                 ))
-
+    
     date = data['date']
     systems = data['systems']
-
+    
     for sysinfo in systems:
         print("{:<30s} {:11f} {:11f} {:11f} {}".format(
             sysinfo['name'].upper(),

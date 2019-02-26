@@ -39,7 +39,7 @@ it to talk to the EDSC web service. This package is not installed
 by default, but it can be installed with Python's package manager (pip).
 
 You can either install/update it yourself, e.g.:
-
+  
   pip install --upgrade requests
 
 or if you like, I can try and install it for you now
@@ -371,7 +371,7 @@ def main():
     print("""
 ===================================================
 STANDARD STARS: (q to skip to the next section)
-
+  
   These are stars with well-known positions.
 ===================================================
 """)
@@ -384,7 +384,7 @@ STANDARD STARS: (q to skip to the next section)
         print("""
 ===================================================
 EXTRA STARS: (q to skip to the next section)
-
+  
   Stars from {}.
 ===================================================
 """.format(argv.extraFile))
@@ -395,7 +395,7 @@ EXTRA STARS: (q to skip to the next section)
     print("""
 ===================================================
 CHOOSE YOUR OWN: (q to stop)
-
+  
   Specify additional stars.
   
   Prefix names with a '+' to add them to
@@ -436,7 +436,7 @@ CHOOSE YOUR OWN: (q to stop)
     
     if send_and_check_distances(argv, tdb, clip, distances):
         add_extra_stars(argv, newOutliers)
-    
+
 if __name__ == "__main__":
     try:
         main()

@@ -18,7 +18,7 @@ class TestTrade(object):
     def test_local_help(self):
         with pytest.raises(UsageError):
             trade([PROG, "local", "-h"])
-
+    
     def test_local_sol(self, capsys):
         trade([PROG, "local", "--ly=10", "--detail", "sol"])
         captured = capsys.readouterr()
@@ -81,7 +81,7 @@ class TestTrade(object):
         assert "Item                          Buying Selling   Supply" in captured.out
         assert "Hydrogen Fuel" in captured.out
         assert "Water                            323" in captured.out
-
+    
     @pytest.mark.slow
     def test_import_edcd(self, capsys):
         #trade import -P=edcd --opt=commodity
@@ -93,7 +93,7 @@ class TestTrade(object):
         #     print("to Here")
         assert "NOTE: Nothing had to be done" in captured.out
         assert regex_findin(r"NOTE: Found \d+ item\(s\)", captured.out)
-
+    
     @pytest.mark.slow
     def test_import_maddavo(self, capsys):
         #trade import -P maddavo -i -O use2d

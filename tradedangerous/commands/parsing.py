@@ -46,7 +46,7 @@ class PadSizeArgument(int):
                 if "SML?".find(v.upper()) < 0:
                     raise PadSizeError(val.upper())
             return super().__new__(cls, val, **kwargs)
-
+    
     def __init__(self):
         self.args = ('--pad-size', '-p',)
         self.kwargs = {
@@ -138,7 +138,7 @@ class PlanetaryArgument(int):
                 if "YN?".find(v.upper()) < 0:
                     raise PlanetaryError(val.upper())
             return super().__new__(cls, val, **kwargs)
-
+    
     def __init__(self):
         self.args = ['--planetary']
         self.kwargs = {

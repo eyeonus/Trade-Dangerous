@@ -90,13 +90,13 @@ class CommandIndex(object):
             commands, generated programatically,
             and the outlying command functionality.
         """
-
+        
         text = (
             "Usage: {prog} <command>\n\n"
             "Where <command> is one of:\n\n"
                 .format(prog=argv[0])
         )
-
+        
         # Figure out the pre-indentation
         cmdFmt = '  {:<12s}  '
         cmdFmtLen = len(cmdFmt.format(''))
@@ -115,14 +115,14 @@ class CommandIndex(object):
                 break_long_words=False,
                 break_on_hyphens=True,
                 )
-
+        
         # List each command with its help text
         lastCmdName = None
         for cmdName, cmd in sorted(commandIndex.items()):
             tw.initial_indent = cmdFmt.format(cmdName)
             text += tw.fill(cmd.help) + "\n"
             lastCmdName = cmdName
-
+        
         # Epilog
         text += (
             "\n"
@@ -138,7 +138,7 @@ class CommandIndex(object):
             raise exceptions.UsageError(
                     "TradeDangerous provides a set of trade database "
                     "facilities for Elite:Dangerous.", self.usage(argv))
-
+        
         ### TODO: Break this model up a bit more so that
         ### we just try and import the command you specify,
         ### and only worry about an index when that fails or
@@ -148,7 +148,7 @@ class CommandIndex(object):
             cmdModule = commandIndex[cmdName]
         except KeyError:
             pass
-
+        
         if not cmdModule:
             candidates = []
             for name, module in commandIndex.items():
@@ -170,11 +170,11 @@ class CommandIndex(object):
                 )
             argv[1] = cmdName = candidates[0][0]
             cmdModule = candidates[0][1]
-
+        
         class ArgParser(argparse.ArgumentParser):
             def error(self, message):
                 raise exceptions.CommandLineError(message, self.format_usage())
-
+        
         parser = ArgParser(
                     description="TradeDangerous: "+cmdName,
                     add_help=False,
@@ -185,7 +185,7 @@ class CommandIndex(object):
                 )
         parser.set_defaults(_editing=False)
         parsing.registerParserHelpers(parser)
-
+        
         subParsers = parser.add_subparsers(title='Command Options')
         subParser = subParsers.add_parser(cmdModule.name,
                                     help=cmdModule.help,
@@ -193,17 +193,17 @@ class CommandIndex(object):
                                     epilog=cmdModule.epilog,
                                     )
         parsing.registerParserHelpers(subParser)
-
+        
         arguments = cmdModule.arguments
         if arguments:
             argParser = subParser.add_argument_group('Required Arguments')
             addArguments(argParser, arguments, True)
-
+        
         switches = cmdModule.switches
         if switches:
             switchParser = subParser.add_argument_group('Optional Switches')
             addArguments(switchParser, switches, False)
-
+        
         # Arguments common to all subparsers.
         stdArgs = subParser.add_argument_group('Common Switches')
         stdArgs.add_argument('-h', '--help',
@@ -235,13 +235,13 @@ class CommandIndex(object):
                     type=float,
                     default=None, dest='maxSystemLinkLy',
                 )
-
+        
         fromfilePath = _findFromFile(cmdModule.name)
         if fromfilePath:
             argv.insert(2, '{}{}'.format(fromfile_prefix, fromfilePath))
         properties = parser.parse_args(argv[1:])
-
+        
         parsed = CommandEnv(properties, argv, cmdModule)
         parsed.DEBUG0("Command line was: {}", argv)
-
+        
         return parsed

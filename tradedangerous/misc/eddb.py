@@ -26,25 +26,25 @@ class EDDBQuery(object):
     """
     Base class for querying an EDDB data set and converting the
     JSON results into an iterable stream.
-
+    
     Example:
         for entity in EDDBQuery():
             print(entity)
     """
-
+    
     url = None      # Define in derived classes
-
+    
     def __init__(self):
         assert self.url
         self.jsonData = transfers.get_json_data(self.url)
-
+    
     def __iter__(self):
         return iter(self.jsonData)
 
 class CommoditiesQuery(EDDBQuery):
     """
     Streams Commodities data from EDDB.
-
+    
     Example:
         for comm in CommoditiesQuery():
             print(comm['name'])
@@ -54,7 +54,7 @@ class CommoditiesQuery(EDDBQuery):
 class SystemsQuery(EDDBQuery):
     """
     Streams System data from EDDB.
-
+    
     Example:
         for system in SystemsQuery():
             print(system['name'])
@@ -64,7 +64,7 @@ class SystemsQuery(EDDBQuery):
 class StationsQuery(EDDBQuery):
     """
     Streams Station data from EDDB without trade data.
-
+    
     Example:
         for station in StationsQuery():
             print(station['name'])
@@ -74,7 +74,7 @@ class StationsQuery(EDDBQuery):
 class StationsExtQuery(StationsQuery):
     """
     Streams extended Station data from EDDB with trade data.
-
+    
     Example:
         for station in StationsExtQuery():
             print(station['name'])
