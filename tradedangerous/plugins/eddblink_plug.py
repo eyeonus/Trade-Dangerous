@@ -1,3 +1,8 @@
+# ----------------------------------------------------------------
+# Import plugin that uses data files from EDDB.io and (optionally)
+# a EDDBlink_listener server to update the Database.
+# ----------------------------------------------------------------
+
 import codecs
 import csv
 import datetime
@@ -16,6 +21,7 @@ from builtins import str
 from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
+
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "http://elite.tromador.com/files/"
 FALLBACK_URL = os.environ.get('TD_FALLBACK') or "https://eddb.io/archive/v6/"
@@ -120,7 +126,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     time.sleep(1)
         return result
     
-    def fetchIter(self, cursor, arraysize=1000):
+    @staticmethod
+    def fetchIter(cursor, arraysize=1000):
         """
         An iterator that uses fetchmany to keep memory usage down
         and speed up the time to retrieve the results dramatically.
@@ -131,6 +138,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 break
             for result in results:
                 yield result
+    
+    @staticmethod
+    def blocks(f, size = 65536):
+        while True:
+            b = f.read(size)
+            if not b:
+                break
+            yield b
     
     def downloadFile(self, urlTail, path):
         """
@@ -216,7 +231,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 try:
                     self.execute("""UPDATE Upgrade
                                 SET name = ?,weight = ?,cost = ?
-                                WHERE upgrade_id = ?""", 
+                                WHERE upgrade_id = ?""",
                                 (name, weight, cost,
                                  upgrade_id))
                 except sqlite3.IntegrityError:
@@ -243,7 +258,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             fdev_id = ships[ship]['edID']
             # Arg. Why you do this to me, EDCD?
             if "Phantom" in name and ship_id == 35:
-                 ship_id = 37
+                ship_id = 37
             #Change the names to match how they appear in Stations.jsonl
             if name == "Eagle":
                 name = "Eagle Mk. II"
@@ -295,14 +310,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
         
         total = 1
-        def blocks(f, size = 65536):
-            while True:
-                b = f.read(size)
-                if not b: break
-                yield b
         
         with open(str(self.dataPath / self.systemsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
-            total += (sum(bl.count("\n") for bl in blocks(f)))
+            total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             prog = pbar.Progress(total, 50)
@@ -324,7 +334,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
                         self.execute("""UPDATE System
                                     SET name = ?,pos_x = ?,pos_y = ?,pos_z = ?,modified = ?
-                                    WHERE system_id = ?""", 
+                                    WHERE system_id = ?""",
                                     (name, pos_x, pos_y, pos_z, modified,
                                      system_id))
                         self.updated['System'] = True
@@ -358,14 +368,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.NOTE("Simultaneously processing UpgradeVendors, this will take quite a while.")
         
         total = 1
-        def blocks(f, size = 65536):
-            while True:
-                b = f.read(size)
-                if not b: break
-                yield b
         
         with open(str(self.dataPath / self.stationsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
-            total += (sum(bl.count("\n") for bl in blocks(f)))
+            total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             prog = pbar.Progress(total, 50)
@@ -407,7 +412,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     SET name = ?, system_id = ?, ls_from_star = ?, blackmarket = ?,
                                     max_pad_size = ?, market = ?, shipyard = ?, modified = ?,
                                     outfitting = ?, rearm = ?, refuel = ?, repair = ?, planetary = ?, type_id = ?
-                                    WHERE station_id = ?""", 
+                                    WHERE station_id = ?""",
                                     (name, system_id, ls_from_star, blackmarket,
                                      max_pad_size, market, shipyard, modified,
                                      outfitting, rearm, refuel, repair, planetary, type_id,
@@ -543,13 +548,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         edcd_csv = request.urlopen(edcd_source)
         edcd_dict = csv.DictReader(codecs.iterdecode(edcd_csv, 'utf-8'))
         
-        def blank_item(name,ed_id,category,category_id):
-            return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,"max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,"buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,"category":{"id":category_id,"name":category}}
+        def blankItem(name,ed_id,category,category_id):
+            return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,
+                    "max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,
+                    "buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,
+                    "category":{"id":category_id,"name":category}}
         
         for line in iter(edcd_dict):
             if not any(c.get('ed_id', None) == int(line['id']) for c in commodities):
                 tdenv.DEBUG0("'{}' with fdev_id {} not found, adding.", line['name'], line['id'])
-                commodities.append(blank_item(line['name'],line['id'],line['category'],cat_ids[line['category']]))
+                commodities.append(blankItem(line['name'],line['id'],line['category'],cat_ids[line['category']]))
         
         tdenv.NOTE("Missing item check complete.")
         
@@ -561,7 +569,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         tdenv.DEBUG0("Beginning loop.")
         for commodity in iter(commodities):
-            # Make sure the broken item(s) in EDDB.io's API isn't imported. 
+            # Make sure the broken item(s) in EDDB.io's API isn't imported.
             if not commodity['ed_id']:
                 tdenv.DEBUG0("Skipping faulty item: {}:{}" , commodity['id'], commodity['name'])
                 continue
@@ -579,7 +587,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 try:
                     self.execute("""UPDATE Category
                                 SET name = ?
-                                WHERE category_id = ?""", 
+                                WHERE category_id = ?""",
                                 (category_name, category_id))
 
                 except sqlite3.IntegrityError:
@@ -620,7 +628,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 try:
                     self.execute("""UPDATE Item
                                 SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
-                                WHERE item_id = ?""", 
+                                WHERE item_id = ?""",
                                 (name,category_id,avg_price,fdev_id, item_id))
                 except sqlite3.IntegrityError:
                     tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
@@ -654,22 +662,22 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Finished processing Categories and Items. End time = {}", datetime.datetime.now())
     
     def regenerate(self):
-            for table in [
-                "Category",
-                "Item",
-                "RareItem",
-                "Ship",
-                "ShipVendor",
-                "Station",
-                "System",
-                "Upgrade",
-                "UpgradeVendor",
-            ]:
-                if self.updated[table]:
-                    _, path = csvexport.exportTableToFile(
-                        self.tdb, self.tdenv, table
-                    )
-                    self.tdenv.NOTE("{} exported.", path)
+        for table in [
+            "Category",
+            "Item",
+            "RareItem",
+            "Ship",
+            "ShipVendor",
+            "Station",
+            "System",
+            "Upgrade",
+            "UpgradeVendor",
+        ]:
+            if self.updated[table]:
+                _, path = csvexport.exportTableToFile(
+                    self.tdb, self.tdenv, table
+                )
+                self.tdenv.NOTE("{} exported.", path)
     
     def commit(self):
         success = False
@@ -704,14 +712,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         for item in result:
             fdev2item[item[0]] = item[1]
         
-        def blocks(f, size = 65536):
-            while True:
-                b = f.read(size)
-                if not b: break
-                yield b
-        
         with open(str(self.dataPath / listings_file), "r",encoding = "utf-8",errors = 'ignore') as f:
-            total += (sum(bl.count("\n") for bl in blocks(f)))
+            total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
         liveList = []
         liveStmt = """UPDATE StationItem
@@ -764,7 +766,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if int(listing['collected_at']) == updated and not from_live:
                             liveList.append((cur_station,))
                         # Unless the import file data is newer, nothing else needs to be done for this station,
-                        # so the rest of the listings for this station can be skipped. 
+                        # so the rest of the listings for this station can be skipped.
                         if int(listing['collected_at']) <= updated:
                             skipStation = True
                             continue
@@ -818,16 +820,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         #Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
-           Path(str(self.dataPath)).mkdir()
+            Path(str(self.dataPath)).mkdir()
         except FileExistsError:
             pass
         
         # Run 'listings' by default:
-        # If no options, or if only 'progbar', 'force', 'skipvend', and/or 'fallback', 
+        # If no options, or if only 'progbar', 'force', 'skipvend', and/or 'fallback',
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend') or (option == 'progbar')):
+            if not option in ('force', 'fallback', 'skipvend', 'progbar'):
                 default = False
         if default:
             self.options["listings"] = True
