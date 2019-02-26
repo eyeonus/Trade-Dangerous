@@ -33,8 +33,10 @@ UPGRADES = "modules.json"
 LISTINGS = "listings.csv"
 LIVE_LISTINGS = "listings-live.csv"
 
+
 class DecodingError(PluginException):
     pass
+
 
 class ImportPlugin(plugins.ImportPluginBase):
     """
@@ -127,7 +129,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         return result
     
     @staticmethod
-    def fetchIter(cursor, arraysize=1000):
+    def fetchIter(cursor, arraysize = 1000):
         """
         An iterator that uses fetchmany to keep memory usage down
         and speed up the time to retrieve the results dramatically.
@@ -190,9 +192,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             # Now we need to make a datetime object using the DateList and TimeList we just created,
             # and then we can finally convert that to a Unix-epoch number.
-            dumpDT = datetime.datetime(int(dDL[3]), Months[dDL[2]], int(dDL[1]),\
-               hour=int(dTL[0]), minute=int(dTL[1]), second=int(dTL[2]),\
-               tzinfo=datetime.timezone.utc)
+            dumpDT = datetime.datetime(int(dDL[3]), Months[dDL[2]], int(dDL[1]), \
+               hour = int(dTL[0]), minute = int(dTL[1]), second = int(dTL[2]), \
+               tzinfo = datetime.timezone.utc)
             dumpModded = timegm(dumpDT.timetuple())
         
         if Path.exists(self.dataPath / path):
@@ -202,7 +204,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return False
         
         tdenv.NOTE("Downloading file '{}'.", path)
-        transfers.download( self.tdenv, url, self.dataPath / path)
+        transfers.download(self.tdenv, url, self.dataPath / path)
         return True
     
     def importUpgrades(self):
@@ -217,7 +219,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             upgrades = json.load(fh)
         for upgrade in iter(upgrades):
             upgrade_id = upgrade['id']
-            name = upgrade['name'] if upgrade['name'] else upgrade['ed_symbol'].replace('_',' ')
+            name = upgrade['name'] if upgrade['name'] else upgrade['ed_symbol'].replace('_', ' ')
             weight = upgrade['mass'] if 'mass' in upgrade else 0
             cost = upgrade['price'] if upgrade['price'] else 0
             
@@ -259,7 +261,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             # Arg. Why you do this to me, EDCD?
             if "Phantom" in name and ship_id == 35:
                 ship_id = 37
-            #Change the names to match how they appear in Stations.jsonl
+            # Change the names to match how they appear in Stations.jsonl
             if name == "Eagle":
                 name = "Eagle Mk. II"
             if name == "Sidewinder":
@@ -269,7 +271,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
             # Fix capitalization.
-            name = name.replace('MK', 'Mk').replace('mk','Mk').replace('mK','Mk')
+            name = name.replace('MK', 'Mk').replace('mk', 'Mk').replace('mK', 'Mk')
             # Fix no '.' in abbreviation.
             if "Mk" in name and "Mk." not in name:
                 name = name.replace('Mk', 'Mk.')
@@ -311,13 +313,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         total = 1
         
-        with open(str(self.dataPath / self.systemsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
+        with open(str(self.dataPath / self.systemsPath), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             prog = pbar.Progress(total, 50)
             for line in fh:
-                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -328,7 +330,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
                 if result:
-                    updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     if system['updated_at'] > updated:
                         tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
@@ -347,7 +349,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
             while prog.value < prog.maxValue:
-                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
@@ -369,13 +371,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         total = 1
         
-        with open(str(self.dataPath / self.stationsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
+        with open(str(self.dataPath / self.stationsPath), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             prog = pbar.Progress(total, 50)
             for line in fh:
-                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 station = json.loads(line)
                 
                 # Import Stations
@@ -399,10 +401,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 result = self.execute("SELECT modified FROM Station WHERE station_id = ?", (station_id,)).fetchone()
                 if result:
-                    updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     if station['updated_at'] > updated:
-                        tdenv.DEBUG0("{}/{} has been updated: {} vs {}", 
-                                    system ,name, modified, result[0])
+                        tdenv.DEBUG0("{}/{} has been updated: {} vs {}",
+                                    system , name, modified, result[0])
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}, {},"
                                               " {}, {}, {}, {}, {}, {}, {}, {}",
                                     station_id, name, system_id, ls_from_star, blackmarket,
@@ -419,7 +421,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                      station_id))
                         self.updated['Station'] = True
                 else:
-                    tdenv.DEBUG0("{}/{} has been added:", system ,name)
+                    tdenv.DEBUG0("{}/{} has been added:", system , name)
                     tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}, {}, {},"
                                               " {}, {}, {}, {}, {}, {}, {}, {}",
                         station_id, name, system_id, ls_from_star, blackmarket,
@@ -431,20 +433,20 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 modified,outfitting,rearm,refuel,
                                 repair,planetary,type_id ) VALUES
                                 ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) """,
-                                (station_id,name,system_id,ls_from_star,
-                                 blackmarket,max_pad_size,market,shipyard,
-                                 modified,outfitting,rearm,refuel,
-                                 repair,planetary,type_id))
+                                (station_id, name, system_id, ls_from_star,
+                                 blackmarket, max_pad_size, market, shipyard,
+                                 modified, outfitting, rearm, refuel,
+                                 repair, planetary, type_id))
                     self.updated['Station'] = True
                 
-                #Import shipyards into ShipVendors if shipvend is set.
+                # Import shipyards into ShipVendors if shipvend is set.
                 if station['has_shipyard'] and self.getOption('shipvend'):
                     if not station['shipyard_updated_at']:
                         station['shipyard_updated_at'] = station['updated_at']
                     modified = datetime.datetime.utcfromtimestamp(station['shipyard_updated_at']).strftime('%Y-%m-%d %H:%M:%S')
                     result = self.execute("SELECT modified FROM ShipVendor WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
-                        updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                        updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     else:
                         updated = 0
                     if station['shipyard_updated_at'] > updated:
@@ -453,7 +455,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' as '<Name> Mk. <Number>'.
                             # Fix capitalization.
-                            ship = ship.replace('MK', 'Mk').replace('mk','Mk').replace('mK','Mk')
+                            ship = ship.replace('MK', 'Mk').replace('mk', 'Mk').replace('mK', 'Mk')
                             # Fix no '.' in abbreviation.
                             if "Mk" in ship and "Mk." not in ship:
                                 ship = ship.replace('Mk', 'Mk.')
@@ -479,14 +481,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 continue
                         self.updated['ShipVendor'] = True
                 
-                #Import Outfitters into UpgradeVendors if upvend is set.
+                # Import Outfitters into UpgradeVendors if upvend is set.
                 if station['has_outfitting'] and self.getOption('upvend'):
                     if not station['outfitting_updated_at']:
                         station['outfitting_updated_at'] = station['updated_at']
                     modified = datetime.datetime.utcfromtimestamp(station['outfitting_updated_at']).strftime('%Y-%m-%d %H:%M:%S')
                     result = self.execute("SELECT modified FROM UpgradeVendor WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
-                        updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                        updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     else:
                         updated = 0
                     if station['outfitting_updated_at'] > updated:
@@ -509,7 +511,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 continue
                         self.updated['UpgradeVendor'] = True
             while prog.value < prog.maxValue:
-                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
         
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
@@ -533,9 +535,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         cat_ids = dict()
         try:
             with open(str(tdb.dataPath / Path("Category.csv")), "r") as fh:
-                cats = csv.DictReader(fh, quotechar="'")
+                cats = csv.DictReader(fh, quotechar = "'")
                 for cat in cats:
-                    cat_ids[cat['name']] =  int(cat['unq:category_id'])
+                    cat_ids[cat['name']] = int(cat['unq:category_id'])
         # Use default if no file, such as on a 'clean' run.
         except FileNotFoundError:
             cat_ids = {'Chemicals':1, 'Consumer Items':2, 'Legal Drugs':3, 'Foods':4, 'Industrial Materials':5,
@@ -548,16 +550,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         edcd_csv = request.urlopen(edcd_source)
         edcd_dict = csv.DictReader(codecs.iterdecode(edcd_csv, 'utf-8'))
         
-        def blankItem(name,ed_id,category,category_id):
-            return {"id":ed_id,"name":name,"category_id":category_id,"average_price":None,"is_rare":0,
-                    "max_buy_price":None,"max_sell_price":None,"min_buy_price":None,"min_sell_price":None,
-                    "buy_price_lower_average":0,"sell_price_upper_average":0,"is_non_marketable":0,"ed_id":ed_id,
-                    "category":{"id":category_id,"name":category}}
+        def blankItem(name, ed_id, category, category_id):
+            return {"id":ed_id, "name":name, "category_id":category_id, "average_price":None, "is_rare":0,
+                    "max_buy_price":None, "max_sell_price":None, "min_buy_price":None, "min_sell_price":None,
+                    "buy_price_lower_average":0, "sell_price_upper_average":0, "is_non_marketable":0, "ed_id":ed_id,
+                    "category":{"id":category_id, "name":category}}
         
         for line in iter(edcd_dict):
             if not any(c.get('ed_id', None) == int(line['id']) for c in commodities):
                 tdenv.DEBUG0("'{}' with fdev_id {} not found, adding.", line['name'], line['id'])
-                commodities.append(blankItem(line['name'],line['id'],line['category'],cat_ids[line['category']]))
+                commodities.append(blankItem(line['name'], line['id'], line['category'], cat_ids[line['category']]))
         
         tdenv.NOTE("Missing item check complete.")
         
@@ -610,7 +612,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             fdev_id = commodity['ed_id']
             # "ui_order" doesn't have an equivalent field in the json.
                 
-            tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+            tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id, name, category_id, avg_price, fdev_id)
                 
             # If the item_id has changed, we need to completely delete the old entry.
             if cur_ids.get(fdev_id) != item_id:
@@ -623,15 +625,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.execute("""INSERT INTO Item
                             (item_id,name,category_id,avg_price,fdev_id) VALUES
                             ( ?, ?, ?, ?, ? )""",
-                            (item_id,name,category_id,avg_price,fdev_id))
+                            (item_id, name, category_id, avg_price, fdev_id))
             except sqlite3.IntegrityError:
                 try:
                     self.execute("""UPDATE Item
                                 SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
                                 WHERE item_id = ?""",
-                                (name,category_id,avg_price,fdev_id, item_id))
+                                (name, category_id, avg_price, fdev_id, item_id))
                 except sqlite3.IntegrityError:
-                    tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+                    tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id, name, category_id, avg_price, fdev_id)
         
         # The items aren't in the same order in the json as they are in the game's UI.
         # This creates a temporary object that has all the items sorted first
@@ -650,7 +652,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ui_order = 1
                 cat_id = line[1]
             else:
-                ui_order+= 1
+                ui_order += 1
             self.execute("""UPDATE Item
                         set ui_order = ?
                         WHERE fdev_id = ?""",
@@ -712,7 +714,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         for item in result:
             fdev2item[item[0]] = item[1]
         
-        with open(str(self.dataPath / listings_file), "r",encoding = "utf-8",errors = 'ignore') as f:
+        with open(str(self.dataPath / listings_file), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
         liveList = []
@@ -747,7 +749,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             cur_station = -1
             
             for listing in listings:
-                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 
                 station_id = int(listing['station_id'])
                 if station_id not in stationList:
@@ -761,7 +763,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     # Only need to check the date for the first item at a specific station.
                     result = self.execute("SELECT modified FROM StationItem WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
-                        updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                        updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
                         # When the listings.csv data matches the database, update to make from_live == 0.
                         if int(listing['collected_at']) == updated and not from_live:
                             liveList.append((cur_station,))
@@ -795,7 +797,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     supply_price, supply_units, supply_level, from_live))
             
             while prog.value < prog.maxValue:
-                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
             
             tdenv.NOTE("Import file processing complete, updating database. {}", datetime.datetime.now())
@@ -818,7 +820,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("progbar"):
             tdenv.NOTE("The 'progbar' option has been deprecated and no longer has any function.")
         
-        #Create the /eddb folder for downloading the source files if it doesn't exist.
+        # Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
             Path(str(self.dataPath)).mkdir()
         except FileExistsError:
@@ -899,7 +901,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 print("Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         
-        #Select which options will be updated
+        # Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True
             self.options["station"] = True
@@ -959,7 +961,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importCommodities()
                 self.commit()
         
-        #Remake the .csv files with the updated info.
+        # Remake the .csv files with the updated info.
         self.regenerate()
         
         if self.getOption("listings"):
