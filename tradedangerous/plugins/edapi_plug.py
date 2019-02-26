@@ -23,7 +23,6 @@ from .. import cache, csvexport, plugins, mapping, fs
 
 import secrets
 
-
 __version_info__ = (5, 0, 2)
 __version__ = '.'.join(map(str, __version_info__))
 
@@ -40,6 +39,7 @@ cat_ignore = [
 
 
 class OAuthCallbackHandler(BaseHTTPRequestHandler):
+
     def do_GET(self):
         split_url = urlsplit(self.path)
         if split_url.path == "/callback":
@@ -56,11 +56,13 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"<body><h1>AUTHENTICATION</h1>")
         self.wfile.write(body_text)
         self.wfile.write(b"</body></html>")
+
     def log_message(self, format, *args):
         pass
 
 
 class OAuthCallbackServer(object):
+
     def __init__(self, hostname, port, handler):
         myServer = HTTPServer
         myServer.callback_code = None
@@ -81,11 +83,11 @@ class EDAPI:
     
     def __init__(
         self,
-        basename='edapi',
-        debug=False,
-        configfile=None,
-        json_file=None,
-        login=False
+        basename = 'edapi',
+        debug = False,
+        configfile = None,
+        json_file = None,
+        login = False
     ):
         '''
         Initialize
@@ -217,7 +219,7 @@ class EDAPI:
     
     def _authorization_token(self, data):
         expires_at = int(time.time())
-        res = requests.post(self.config["frontier"]["AUTH_URL_TOKEN"], data=data)
+        res = requests.post(self.config["frontier"]["AUTH_URL_TOKEN"], data = data)
         if self.debug:
             print(res, res.url)
             print(res.text)
@@ -250,7 +252,7 @@ class EDAPI:
             'code_challenge_method': 'S256',
             'state': session_state,
         }
-        req = requests.Request("GET", self.config["frontier"]["AUTH_URL_AUTH"], params=data)
+        req = requests.Request("GET", self.config["frontier"]["AUTH_URL_AUTH"], params = data)
         pre = req.prepare()
         webbrowser.open_new_tab(pre.url)
         
@@ -317,7 +319,7 @@ class EDDN:
     def postMessage(
         self,
         message,
-        timestamp=0
+        timestamp = 0
     ):
         if timestamp:
             timestamp = datetime.fromtimestamp(timestamp).isoformat()
@@ -336,19 +338,19 @@ class EDDN:
             print(
                 json.dumps(
                     message,
-                    sort_keys=True,
-                    indent=4
+                    sort_keys = True,
+                    indent = 4
                 )
             )
         
         r = requests.post(
             url,
-            headers=headers,
-            data=json.dumps(
+            headers = headers,
+            data = json.dumps(
                 message,
-                ensure_ascii=False
+                ensure_ascii = False
             ).encode('utf8'),
-            verify=True
+            verify = True
         )
         
         r.raise_for_status()
@@ -359,8 +361,8 @@ class EDDN:
         stationName,
         marketId,
         commodities,
-        additional=None,
-        timestamp=0
+        additional = None,
+        timestamp = 0
     ):
         message = {}
         
@@ -389,7 +391,7 @@ class EDDN:
         stationName,
         marketId,
         ships,
-        timestamp=0
+        timestamp = 0
     ):
         message = {}
         
@@ -416,7 +418,7 @@ class EDDN:
         stationName,
         marketId,
         modules,
-        timestamp=0
+        timestamp = 0
     ):
         message = {}
         
@@ -464,7 +466,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.filename = self.defaultImportFile
         self.configPath = tdb.dataPath / pathlib.Path(ImportPlugin.configFile)
     
-    def askForStationData(self, system, stnName=None, station=None):
+    def askForStationData(self, system, stnName = None, station = None):
         """
         Ask for new or updated station data
         """
@@ -473,8 +475,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         stnDefault = namedtuple(
             'stnDefault', [
-                'lsFromStar','market','blackMarket','shipyard','maxPadSize',
-                'outfitting','rearm','refuel','repair','planetary',
+                'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
+                'outfitting', 'rearm', 'refuel', 'repair', 'planetary',
             ]
         )
         
@@ -484,7 +486,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             else:
                 tdenv.NOTE("{:>12} NOT in API response", defName)
         
-        def getYNfromObject(obj, key, val=None):
+        def getYNfromObject(obj, key, val = None):
             if val:
                 return "Y" if obj.get(key) == val else "N"
             else:
@@ -492,8 +494,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # defaults from API response are not reliable!
         checkStarport = self.edAPI.profile['lastStarport']
-        defMarket     = getYNfromObject(checkStarport, 'commodities')
-        defShipyard   = getYNfromObject(checkStarport, 'ships')
+        defMarket = getYNfromObject(checkStarport, 'commodities')
+        defShipyard = getYNfromObject(checkStarport, 'ships')
         defOutfitting = getYNfromObject(checkStarport, 'modules')
         tellUserAPIResponse("'Outfitting'", defOutfitting)
         tellUserAPIResponse("'ShipYard'", defShipyard)
@@ -511,7 +513,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             else:
                 s, d = "n't", ""
             
-            tdenv.WARN(warnText, what=checkName, s=s, d=d)
+            tdenv.WARN(warnText, what = checkName, s = s, d = d)
             return True if self.getOption('warn') else False
         
         # station services since ED update 2.4
@@ -521,27 +523,27 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdenv.NOTE('Station known.')
                 stnlsFromStar = station.lsFromStar
                 stnmaxPadSize = station.maxPadSize
-                stnplanetary  = station.planetary
+                stnplanetary = station.planetary
             else:
                 tdenv.NOTE('Station unknown.')
                 stnlsFromStar = 0
                 stnmaxPadSize = "?"
-                stnplanetary  = "?"
+                stnplanetary = "?"
             tdenv.NOTE("Found station services.")
             if checkStarport.get('outpostType', None) == 'starport':
                 # only the big one can be detected
                 stnmaxPadSize = "L"
-                stnplanetary  = "N"
+                stnplanetary = "N"
             defStation = stnDefault(
                 lsFromStar = stnlsFromStar,
-                market = getYNfromObject(checkServices, 'commodities', val='ok'),
-                blackMarket = getYNfromObject(checkServices, 'blackmarket', val='ok'),
-                shipyard = getYNfromObject(checkServices, 'shipyard', val='ok'),
+                market = getYNfromObject(checkServices, 'commodities', val = 'ok'),
+                blackMarket = getYNfromObject(checkServices, 'blackmarket', val = 'ok'),
+                shipyard = getYNfromObject(checkServices, 'shipyard', val = 'ok'),
                 maxPadSize = stnmaxPadSize,
-                outfitting = getYNfromObject(checkServices, 'outfitting', val='ok'),
-                rearm = getYNfromObject(checkServices, 'rearm', val='ok'),
-                refuel = getYNfromObject(checkServices, 'refuel', val='ok'),
-                repair = getYNfromObject(checkServices, 'repair', val='ok'),
+                outfitting = getYNfromObject(checkServices, 'outfitting', val = 'ok'),
+                rearm = getYNfromObject(checkServices, 'rearm', val = 'ok'),
+                refuel = getYNfromObject(checkServices, 'refuel', val = 'ok'),
+                repair = getYNfromObject(checkServices, 'repair', val = 'ok'),
                 planetary = stnplanetary,
             )
         elif station:
@@ -561,11 +563,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         else:
             tdenv.NOTE('Station unknown.')
             defStation = stnDefault(
-                lsFromStar  = 0,   market     = defMarket,
-                blackMarket = "?", shipyard   = defShipyard,
-                maxPadSize  = "?", outfitting = defOutfitting,
-                rearm       = "?", refuel     = "?",
-                repair      = "?", planetary  = "?",
+                lsFromStar = 0, market = defMarket,
+                blackMarket = "?", shipyard = defShipyard,
+                maxPadSize = "?", outfitting = defOutfitting,
+                rearm = "?", refuel = "?",
+                repair = "?", planetary = "?",
             )
         
         warning = False
@@ -592,22 +594,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                 " Stn/Ls..............[{}]: ".format(defStation.lsFromStar)
             ) or defStation.lsFromStar
             try:
-                lsFromStar = int(float(lsFromStar)+0.5)
+                lsFromStar = int(float(lsFromStar) + 0.5)
             except:
                 print("That doesn't seem to be a number. Defaulting to zero.")
                 lsFromStar = defStation.lsFromStar
             newStation['lsFromStar'] = lsFromStar
             
             for askText, askField, markValue in [
-                ('Pad Size....(s,m,l) ', 'maxPadSize',  defStation.maxPadSize),
-                ('Planetary.....(y,n) ', 'planetary',   defStation.planetary),
+                ('Pad Size....(s,m,l) ', 'maxPadSize', defStation.maxPadSize),
+                ('Planetary.....(y,n) ', 'planetary', defStation.planetary),
                 ('B/Market......(y,n) ', 'blackMarket', defStation.blackMarket),
-                ('Refuel........(y,n) ', 'refuel',      defStation.refuel),
-                ('Repair........(y,n) ', 'repair',      defStation.repair),
-                ('Restock.......(y,n) ', 'rearm',       defStation.rearm),
-                ('Outfitting....(y,n) ', 'outfitting',  defOutfitting),
-                ('Shipyard......(y,n) ', 'shipyard',    defShipyard),
-                ('Market........(y,n) ', 'market',      defMarket),
+                ('Refuel........(y,n) ', 'refuel', defStation.refuel),
+                ('Repair........(y,n) ', 'repair', defStation.repair),
+                ('Restock.......(y,n) ', 'rearm', defStation.rearm),
+                ('Outfitting....(y,n) ', 'outfitting', defOutfitting),
+                ('Shipyard......(y,n) ', 'shipyard', defShipyard),
+                ('Market........(y,n) ', 'market', defMarket),
             ]:
                 defValue = getattr(defStation, askField)
                 if defValue != markValue:
@@ -620,6 +622,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 newStation[askField] = askValue
         
         else:
+
             def _detail(value, source):
                 detail = source[value]
                 if detail == '?':
@@ -641,34 +644,34 @@ class ImportPlugin(plugins.ImportPluginBase):
         exportCSV = False
         if not station:
             station = tdb.addLocalStation(
-                system=system,
-                name=stnName,
-                lsFromStar=newStation['lsFromStar'],
-                blackMarket=newStation['blackMarket'],
-                maxPadSize=newStation['maxPadSize'],
-                market=newStation['market'],
-                shipyard=newStation['shipyard'],
-                outfitting=newStation['outfitting'],
-                rearm=newStation['rearm'],
-                refuel=newStation['refuel'],
-                repair=newStation['repair'],
-                planetary=newStation['planetary'],
+                system = system,
+                name = stnName,
+                lsFromStar = newStation['lsFromStar'],
+                blackMarket = newStation['blackMarket'],
+                maxPadSize = newStation['maxPadSize'],
+                market = newStation['market'],
+                shipyard = newStation['shipyard'],
+                outfitting = newStation['outfitting'],
+                rearm = newStation['rearm'],
+                refuel = newStation['refuel'],
+                repair = newStation['repair'],
+                planetary = newStation['planetary'],
             )
             exportCSV = True
         else:
             # let the function check for changes
             if tdb.updateLocalStation(
-                station=station,
-                lsFromStar=newStation['lsFromStar'],
-                blackMarket=newStation['blackMarket'],
-                maxPadSize=newStation['maxPadSize'],
-                market=newStation['market'],
-                shipyard=newStation['shipyard'],
-                outfitting=newStation['outfitting'],
-                rearm=newStation['rearm'],
-                refuel=newStation['refuel'],
-                repair=newStation['repair'],
-                planetary=newStation['planetary'],
+                station = station,
+                lsFromStar = newStation['lsFromStar'],
+                blackMarket = newStation['blackMarket'],
+                maxPadSize = newStation['maxPadSize'],
+                market = newStation['market'],
+                shipyard = newStation['shipyard'],
+                outfitting = newStation['outfitting'],
+                rearm = newStation['rearm'],
+                refuel = newStation['refuel'],
+                repair = newStation['repair'],
+                planetary = newStation['planetary'],
             ):
                 exportCSV = True
         
@@ -688,7 +691,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("edcd"):
             # Call the EDCD plugin
             try:
-                import plugins.edcd_plug as EDCD
+                import plugins.edcd_plug as EDCD  # @UnresolvedImport
             except:
                 raise plugins.PluginException("EDCD plugin not found.")
             tdenv.NOTE("Calling the EDCD plugin.")
@@ -707,7 +710,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.WARN("#############################")
             tdenv.WARN("###  EDAPI in test mode.  ###")
             tdenv.WARN("#############################")
-            apiED = namedtuple('EDAPI', ['profile','text'])
+            apiED = namedtuple('EDAPI', ['profile', 'text'])
             try:
                 proPath = pathlib.Path(self.getOption("test"))
             except TypeError:
@@ -735,14 +738,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
         else:
             api = EDAPI(
-                configfile=str(self.configPath),
-                login=self.getOption('login'),
-                debug=tdenv.debug,
+                configfile = str(self.configPath),
+                login = self.getOption('login'),
+                debug = tdenv.debug,
             )
         self.edAPI = api
         
         fs.ensurefolder(tdenv.tmpDir)
-        tdh_path = 'tdh_profile.json'
+        tdh_path = tdenv.tmpDir / pathlib.Path('tdh_profile.json')
         if self.getOption("tdh"):
             self.options["save"] = True
             if tdh_path.exists():
@@ -752,10 +755,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("save"):
             saveName = tdh_path if self.getOption("tdh") else 'profile.' + time.strftime('%Y%m%d_%H%M%S') + '.json'
             savePath = tdenv.tmpDir / pathlib.Path(saveName)
-            with open(savePath, 'w', encoding="utf-8") as saveFile:
+            with open(savePath, 'w', encoding = "utf-8") as saveFile:
                 if isinstance(api.text, list):
                     # since 4.3.0: list(profile, market, shipyard)
-                    tdenv.DEBUG0("{}",api.text)
+                    tdenv.DEBUG0("{}", api.text)
                     saveFile.write('{{"profile":{}}}'.format(api.text[0]))
                 else:
                     saveFile.write(api.text)
@@ -783,7 +786,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb.close()
         tdb.reloadCache()
         tdb.load(
-            maxSystemLinkLy=tdenv.maxSystemLinkLy,
+            maxSystemLinkLy = tdenv.maxSystemLinkLy,
         )
         tdb.close()
         
@@ -802,7 +805,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             station = None
         
         # New or update station data
-        station = self.askForStationData(system, stnName=stnName, station=station)
+        station = self.askForStationData(system, stnName = stnName, station = station)
         
         # If a shipyard exists, make the ship lists
         shipCost = {}
@@ -852,9 +855,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         # python builtin round() uses "Round half to even"
                         # but we need commercial rounding, so we do it ourself
                         costTD = tdb.shipByID[shipID].cost
-                        costED = int((shipCost[shipName]+5)/10)*10
+                        costED = int((shipCost[shipName] + 5) / 10) * 10
                         if costTD != costED:
-                            prozED = int(shipCost[shipName]*100/costTD+0.5)-100
+                            prozED = int(shipCost[shipName] * 100 / costTD + 0.5) - 100
                             tdenv.NOTE(
                                 "CostDiff {}: {} != {} ({}%)",
                                 shipName, costTD, costED, prozED
@@ -926,17 +929,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 def commodity_int(key):
                     try:
-                        ret = int(float(commodity[key])+0.5)
+                        ret = int(float(commodity[key]) + 0.5)
                     except (ValueError, KeyError):
                         ret = 0
                     return ret
                 
-                itmSupply      = commodity_int('stock')
-                itmDemand      = commodity_int('demand')
+                itmSupply = commodity_int('stock')
+                itmDemand = commodity_int('demand')
                 itmSupplyLevel = commodity_int('stockBracket')
                 itmDemandLevel = commodity_int('demandBracket')
-                itmBuyPrice    = commodity_int('buyPrice')
-                itmSellPrice   = commodity_int('sellPrice')
+                itmBuyPrice = commodity_int('buyPrice')
+                itmSellPrice = commodity_int('sellPrice')
                 
                 if itmSupplyLevel == 0 or itmBuyPrice == 0:
                     # If there is not stockBracket or buyPrice, ignore stock
@@ -985,7 +988,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if itemList:
             # Create the import file.
-            with open(self.filename, 'w', encoding="utf-8") as f:
+            with open(self.filename, 'w', encoding = "utf-8") as f:
                 # write System/Station line
                 f.write("@ {}/{}\n".format(sysName, stnName))
                 
@@ -1030,7 +1033,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     stnName,
                     marketId,
                     eddn_market,
-                    additional=eddn_additional
+                    additional = eddn_additional
                 )
             
             if eddn_ships:
