@@ -1,0 +1,6330 @@
+{
+	"Ships": {
+		"adder": {
+			"edID": 128049267,
+			"eddbID": 1,
+			"properties": {
+				"name": "Adder",
+				"manufacturer": "Zorgon Peterson",
+				"class": 1,
+				"hullCost": 40000,
+				"speed": 220,
+				"boost": 320,
+				"boostEnergy": 9,
+				"heatCapacity": 170,
+				"baseShieldStrength": 60,
+				"baseArmour": 90,
+				"hardness": 35,
+				"hullMass": 35,
+				"masslock": 7,
+				"pipSpeed": 0.13636363636364,
+				"pitch": 38,
+				"roll": 100,
+				"yaw": 14,
+				"crew": 2
+			},
+			"retailCost": 87810,
+			"bulkheads": [
+				{
+					"id": "BC",
+					"edID": 128049268,
+					"eddbID": 753,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "BD",
+					"edID": 128049269,
+					"eddbID": 754,
+					"grp": "bh",
+					"cost": 35120,
+					"mass": 3,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "BE",
+					"edID": 128049270,
+					"eddbID": 755,
+					"grp": "bh",
+					"cost": 79030,
+					"mass": 5,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BF",
+					"edID": 128049271,
+					"eddbID": 756,
+					"grp": "bh",
+					"cost": 186770,
+					"mass": 5,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BG",
+					"edID": 128049272,
+					"eddbID": 757,
+					"grp": "bh",
+					"cost": 206960,
+					"mass": 5,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					3,
+					3,
+					3,
+					1,
+					2,
+					3,
+					3
+				],
+				"hardpoints": [
+					2,
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					3,
+					3,
+					2,
+					2,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"3E",
+					"3E",
+					"3E",
+					"1E",
+					"2E",
+					"3E",
+					"3C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0,
+					0
+				],
+				"internal": [
+					"01",
+					"44",
+					"00",
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"alliance_challenger": {
+			"edID": 128816588,
+			"eddbID": 34,
+			"properties": {
+				"name": "Alliance Challenger",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 28041035,
+				"speed": 204,
+				"boost": 310,
+				"boostEnergy": 19,
+				"heatCapacity": 316,
+				"baseShieldStrength": 220,
+				"baseArmour": 300,
+				"hardness": 65,
+				"hullMass": 450,
+				"masslock": 13,
+				"pipSpeed": 0.088709677419355,
+				"pitch": 32,
+				"roll": 90,
+				"yaw": 16,
+				"crew": 2
+			},
+			"retailCost": 30472265,
+			"requirements": {
+				"horizons": true
+			},
+			"bulkheads": [
+				{
+					"id": "0K",
+					"edID": 128816590,
+					"eddbID": 1650,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "0P",
+					"edID": 128816591,
+					"eddbID": 1651,
+					"grp": "bh",
+					"cost": 6803170,
+					"mass": 40,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "0Q",
+					"edID": 128816592,
+					"eddbID": 1652,
+					"grp": "bh",
+					"cost": 15307134,
+					"mass": 78,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "0R",
+					"edID": 128816593,
+					"eddbID": 1653,
+					"grp": "bh",
+					"cost": 36175859,
+					"mass": 78,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "0S",
+					"edID": 128816594,
+					"eddbID": 1654,
+					"grp": "bh",
+					"cost": 40087682,
+					"mass": 78,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					6,
+					4,
+					4
+				],
+				"hardpoints": [
+					3,
+					2,
+					2,
+					2,
+					1,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					6,
+					3,
+					3,
+					2,
+					2,
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"6E",
+					"4E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					0,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"4h",
+					"01",
+					"01",
+					"",
+					"",
+					"",
+					"",
+					"",
+					0
+				]
+			}
+		},
+		"alliance_chieftain": {
+			"edID": 128816574,
+			"eddbID": 33,
+			"properties": {
+				"name": "Alliance Chieftain",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 18182883,
+				"speed": 230,
+				"boost": 330,
+				"boostEnergy": 19,
+				"baseShieldStrength": 200,
+				"heatCapacity": 289,
+				"baseArmour": 280,
+				"hardness": 65,
+				"hullMass": 400,
+				"masslock": 13,
+				"pipSpeed": 0.08695652173913,
+				"pitch": 39,
+				"roll": 92,
+				"yaw": 16,
+				"crew": 2
+			},
+			"retailCost": 19382252,
+			"requirements": {
+				"horizons": true
+			},
+			"bulkheads": [
+				{
+					"id": "CI",
+					"edID": 128816576,
+					"eddbID": 1640,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "CJ",
+					"edID": 128816577,
+					"eddbID": 1641,
+					"grp": "bh",
+					"cost": 6803170,
+					"mass": 40,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "CK",
+					"edID": 128816578,
+					"eddbID": 1642,
+					"grp": "bh",
+					"cost": 15307134,
+					"mass": 78,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "CL",
+					"edID": 128816579,
+					"eddbID": 1643,
+					"grp": "bh",
+					"cost": 36175859,
+					"mass": 78,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "CM",
+					"edID": 128816580,
+					"eddbID": 1644,
+					"grp": "bh",
+					"cost": 40087682,
+					"mass": 78,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					6,
+					4,
+					4
+				],
+				"hardpoints": [
+					3,
+					3,
+					2,
+					1,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					5,
+					4,
+					2,
+					2,
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"6E",
+					"4E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					0,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"4e",
+					"02",
+					"",
+					"",
+					"",
+					"",
+					"",
+					0
+				]
+			}
+		},
+		"alliance_crusader": {
+			"edID": 128816581,
+			"eddbID": 36,
+			"properties": {
+				"name": "Alliance Crusader",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 22866341,
+				"speed": 180,
+				"boost": 300,
+				"boostEnergy": 19,
+				"baseShieldStrength": 200,
+				"baseArmour": 300,
+				"heatCapacity": 316,
+				"hardness": 65,
+				"hullMass": 500,
+				"masslock": 13,
+				"fighterHangars": true,
+				"pipSpeed": 0.15833333333333,
+				"pitch": 32,
+				"roll": 80,
+				"yaw": 16,
+				"crew": 3
+			},
+			"retailCost": 19382252,
+			"requirements": {
+				"horizons": true
+			},
+			"bulkheads": [
+				{
+					"id": "3U",
+					"edID": 128816583,
+					"eddbID": 1659,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "3V",
+					"edID": 128816584,
+					"eddbID": 1660,
+					"grp": "bh",
+					"cost": 6803170,
+					"mass": 40,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "3W",
+					"edID": 128816585,
+					"eddbID": 1661,
+					"grp": "bh",
+					"cost": 15307134,
+					"mass": 78,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "3X",
+					"edID": 128816586,
+					"eddbID": 1662,
+					"grp": "bh",
+					"cost": 36175859,
+					"mass": 78,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "3Z",
+					"edID": 128816587,
+					"eddbID": 1663,
+					"grp": "bh",
+					"cost": 40087682,
+					"mass": 78,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					6,
+					4,
+					4
+				],
+				"hardpoints": [
+					3,
+					2,
+					2,
+					1,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					5,
+					3,
+					3,
+					2,
+					2,
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"6E",
+					"4E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					0,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"4e",
+					"02",
+					"",
+					"",
+					"",
+					"",
+					"",
+					0
+				]
+			}
+		},
+		"anaconda": {
+			"edID": 128049363,
+			"eddbID": 2,
+			"properties": {
+				"name": "Anaconda",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 3,
+				"hullCost": 141889930,
+				"speed": 180,
+				"boost": 240,
+				"boostEnergy": 27,
+				"baseShieldStrength": 350,
+				"baseArmour": 525,
+				"heatCapacity": 334,
+				"hardness": 65,
+				"hullMass": 400,
+				"masslock": 23,
+				"pipSpeed": 0.13888888888889,
+				"fighterHangars": true,
+				"pitch": 25,
+				"roll": 60,
+				"yaw": 10,
+				"crew": 3
+			},
+			"retailCost": 146969450,
+			"bulkheads": [
+				{
+					"id": "bT",
+					"edID": 128049364,
+					"eddbID": 818,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bU",
+					"edID": 128049365,
+					"eddbID": 819,
+					"grp": "bh",
+					"cost": 58787780,
+					"mass": 30,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bV",
+					"edID": 128049366,
+					"eddbID": 820,
+					"grp": "bh",
+					"cost": 132272510,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bW",
+					"edID": 128049367,
+					"eddbID": 821,
+					"grp": "bh",
+					"cost": 312604020,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bX",
+					"edID": 128049368,
+					"eddbID": 822,
+					"grp": "bh",
+					"cost": 346407000,
+					"mass": 60,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					8,
+					7,
+					6,
+					5,
+					8,
+					8,
+					5
+				],
+				"hardpoints": [
+					4,
+					3,
+					3,
+					3,
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					7,
+					6,
+					6,
+					6,
+					5,
+					5,
+					5,
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					4,
+					4,
+					4,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"8E",
+					"7E",
+					"6E",
+					"5E",
+					"8E",
+					"8E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"05",
+					"04",
+					"4j",
+					0,
+					"03",
+					0,
+					0,
+					0,
+					0,
+					0,
+					"",
+					"00",
+					0
+				]
+			}
+		},
+		"asp": {
+			"edID": 128049303,
+			"eddbID": 3,
+			"properties": {
+				"name": "Asp Explorer",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 6135660,
+				"speed": 250,
+				"boost": 340,
+				"boostEnergy": 13,
+				"baseShieldStrength": 140,
+				"heatCapacity": 272,
+				"baseArmour": 210,
+				"hardness": 52,
+				"hullMass": 280,
+				"masslock": 11,
+				"pipSpeed": 0.13,
+				"pitch": 38,
+				"roll": 100,
+				"yaw": 10,
+				"crew": 2
+			},
+			"retailCost": 6661150,
+			"bulkheads": [
+				{
+					"id": "BH",
+					"edID": 128049304,
+					"eddbID": 778,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "BI",
+					"edID": 128049305,
+					"eddbID": 779,
+					"grp": "bh",
+					"cost": 2664460,
+					"mass": 21,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "BJ",
+					"edID": 128049306,
+					"eddbID": 780,
+					"grp": "bh",
+					"cost": 5995040,
+					"mass": 42,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BK",
+					"edID": 128049307,
+					"eddbID": 781,
+					"grp": "bh",
+					"cost": 14168270,
+					"mass": 42,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BL",
+					"edID": 128049308,
+					"eddbID": 782,
+					"grp": "bh",
+					"cost": 15700340,
+					"mass": 42,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					5,
+					5,
+					5,
+					4,
+					4,
+					5,
+					5
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					5,
+					3,
+					3,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"5E",
+					"5E",
+					"5E",
+					"4E",
+					"4E",
+					"5E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"4e",
+					"01",
+					0,
+					0,
+					"00",
+					"",
+					0
+				]
+			}
+		},
+		"asp_scout": {
+			"edID": 128672276,
+			"eddbID": 24,
+			"properties": {
+				"name": "Asp Scout",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 3818240,
+				"speed": 220,
+				"boost": 300,
+				"boostEnergy": 13,
+				"baseShieldStrength": 120,
+				"heatCapacity": 210,
+				"baseArmour": 180,
+				"hardness": 52,
+				"hullMass": 150,
+				"masslock": 8,
+				"pipSpeed": 0.125,
+				"pitch": 40,
+				"roll": 110,
+				"yaw": 15,
+				"crew": 2
+			},
+			"retailCost": 3961150,
+			"bulkheads": [
+				{
+					"id": "c1",
+					"edID": 128672278,
+					"eddbID": 1503,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "c2",
+					"edID": 128672279,
+					"eddbID": 1504,
+					"grp": "bh",
+					"cost": 1584460,
+					"mass": 21,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "c3",
+					"edID": 128672280,
+					"eddbID": 1505,
+					"grp": "bh",
+					"cost": 3565040,
+					"mass": 42,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "c4",
+					"edID": 128672281,
+					"eddbID": 1506,
+					"grp": "bh",
+					"cost": 8425380,
+					"mass": 42,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "c5",
+					"edID": 128672282,
+					"eddbID": 1507,
+					"grp": "bh",
+					"cost": 9336440,
+					"mass": 42,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					4,
+					3,
+					4,
+					4,
+					4
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					4,
+					3,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"4E",
+					"3E",
+					"4E",
+					"4E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					17,
+					17,
+					0,
+					0
+				],
+				"internal": [
+					"02",
+					"02",
+					"44",
+					0,
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"beluga": {
+			"edID": 128049345,
+			"eddbID": 30,
+			"properties": {
+				"name": "Beluga Liner",
+				"manufacturer": "Saud Kruger",
+				"class": 3,
+				"hullCost": 79654610,
+				"speed": 200,
+				"boost": 280,
+				"boostEnergy": 19,
+				"baseShieldStrength": 280,
+				"heatCapacity": 283,
+				"baseArmour": 280,
+				"hardness": 60,
+				"hullMass": 950,
+				"masslock": 18,
+				"pipSpeed": 0.1125,
+				"luxuryCabins": true,
+				"fighterHangars": true,
+				"pitch": 25,
+				"roll": 60,
+				"yaw": 17,
+				"crew": 3
+			},
+			"retailCost": 84532770,
+			"requirements": {
+				"horizons": true
+			},
+			"bulkheads": [
+				{
+					"id": "cl",
+					"edID": 128049346,
+					"eddbID": 1554,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "cm",
+					"edID": 128049347,
+					"eddbID": 1555,
+					"grp": "bh",
+					"cost": 33813120,
+					"mass": 83,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "cn",
+					"edID": 128049348,
+					"eddbID": 1556,
+					"grp": "bh",
+					"cost": 76079500,
+					"mass": 165,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "co",
+					"edID": 128049349,
+					"eddbID": 1557,
+					"grp": "bh",
+					"cost": 179801200,
+					"mass": 165,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "cp",
+					"edID": 128049350,
+					"eddbID": 1558,
+					"grp": "bh",
+					"cost": 199243730,
+					"mass": 165,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					7,
+					7,
+					8,
+					6,
+					5,
+					7
+				],
+				"hardpoints": [
+					2,
+					2,
+					2,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					6,
+					6,
+					6,
+					5,
+					5,
+					4,
+					3,
+					3,
+					3,
+					3,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"7E",
+					"7E",
+					"8E",
+					"6E",
+					"5E",
+					"7C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4j",
+					"04",
+					"mi",
+					"mi",
+					"mg",
+					"mg",
+					"02",
+					"01",
+					0,
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"cobra_mk_iii": {
+			"edID": 128049279,
+			"eddbID": 4,
+			"properties": {
+				"name": "Cobra Mk III",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 1,
+				"hullCost": 205800,
+				"speed": 280,
+				"boost": 400,
+				"boostEnergy": 10,
+				"baseShieldStrength": 80,
+				"baseArmour": 120,
+				"heatCapacity": 225,
+				"hardness": 35,
+				"hullMass": 180,
+				"masslock": 8,
+				"pipSpeed": 0.125,
+				"pitch": 40,
+				"roll": 100,
+				"yaw": 10,
+				"crew": 2
+			},
+			"retailCost": 349720,
+			"bulkheads": [
+				{
+					"id": "bk",
+					"edID": 128049280,
+					"eddbID": 763,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bl",
+					"edID": 128049281,
+					"eddbID": 764,
+					"grp": "bh",
+					"cost": 151890,
+					"mass": 14,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bm",
+					"edID": 128049282,
+					"eddbID": 765,
+					"grp": "bh",
+					"cost": 341750,
+					"mass": 27,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bn",
+					"edID": 128049283,
+					"eddbID": 766,
+					"grp": "bh",
+					"cost": 797410,
+					"mass": 27,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bo",
+					"edID": 128049284,
+					"eddbID": 767,
+					"grp": "bh",
+					"cost": 895000,
+					"mass": 27,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					4,
+					3,
+					3,
+					3,
+					4
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					4,
+					4,
+					4,
+					2,
+					2,
+					2,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"4E",
+					"3E",
+					"3E",
+					"3E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"02",
+					"02",
+					"49",
+					"00",
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"cobra_mk_iv": {
+			"edID": 128672262,
+			"eddbID": 29,
+			"properties": {
+				"name": "Cobra Mk IV",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 1,
+				"hullCost": 603740,
+				"speed": 200,
+				"boost": 300,
+				"boostEnergy": 10,
+				"baseShieldStrength": 120,
+				"heatCapacity": 228,
+				"baseArmour": 120,
+				"hardness": 35,
+				"hullMass": 210,
+				"masslock": 8,
+				"pipSpeed": 0.125,
+				"pitch": 30,
+				"roll": 90,
+				"yaw": 10,
+				"crew": 2
+			},
+			"retailCost": 747660,
+			"requirements": {
+				"horizonsEarlyAdoption": true
+			},
+			"bulkheads": [
+				{
+					"id": "cg",
+					"edID": 128672264,
+					"eddbID": 1518,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "ch",
+					"edID": 128672265,
+					"eddbID": 1519,
+					"grp": "bh",
+					"cost": 305890,
+					"mass": 14,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "ci",
+					"edID": 128672266,
+					"eddbID": 1520,
+					"grp": "bh",
+					"cost": 688250,
+					"mass": 27,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "cj",
+					"edID": 128672267,
+					"eddbID": 1521,
+					"grp": "bh",
+					"cost": 1605910,
+					"mass": 27,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "ck",
+					"edID": 128672268,
+					"eddbID": 1522,
+					"grp": "bh",
+					"cost": 1802440,
+					"mass": 27,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					4,
+					3,
+					3,
+					3,
+					4
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					4,
+					4,
+					4,
+					4,
+					3,
+					3,
+					2,
+					2,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"4E",
+					"3E",
+					"3E",
+					"3E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"02",
+					"02",
+					"49",
+					0,
+					0,
+					0,
+					"00",
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"diamondback_explorer": {
+			"edID": 128671831,
+			"eddbID": 5,
+			"properties": {
+				"name": "Diamondback Explorer",
+				"manufacturer": "Lakon",
+				"class": 1,
+				"hullCost": 1635700,
+				"speed": 260,
+				"boost": 340,
+				"boostEnergy": 13,
+				"baseShieldStrength": 150,
+				"baseArmour": 150,
+				"hardness": 42,
+				"heatCapacity": 351,
+				"hullMass": 260,
+				"masslock": 10,
+				"pipSpeed": 0.098214285714286,
+				"pitch": 35,
+				"roll": 90,
+				"yaw": 13,
+				"crew": 1
+			},
+			"retailCost": 1894760,
+			"bulkheads": [
+				{
+					"id": "ba",
+					"edID": 128671832,
+					"eddbID": 1456,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bb",
+					"edID": 128671833,
+					"eddbID": 1457,
+					"grp": "bh",
+					"cost": 800000,
+					"mass": 23,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bc",
+					"edID": 128671834,
+					"eddbID": 1458,
+					"grp": "bh",
+					"cost": 1800000,
+					"mass": 47,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bd",
+					"edID": 128671835,
+					"eddbID": 1459,
+					"grp": "bh",
+					"cost": 4200000,
+					"mass": 26,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "be",
+					"edID": 128671836,
+					"eddbID": 1460,
+					"grp": "bh",
+					"cost": 4714000,
+					"mass": 47,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					5,
+					3,
+					4,
+					3,
+					5
+				],
+				"hardpoints": [
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					4,
+					4,
+					3,
+					3,
+					2,
+					2,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"5E",
+					"3E",
+					"4E",
+					"3E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"49",
+					"02",
+					"01",
+					0,
+					"",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"diamondback": {
+			"edID": 128671217,
+			"eddbID": 6,
+			"properties": {
+				"name": "Diamondback Scout",
+				"manufacturer": "Lakon",
+				"class": 1,
+				"hullCost": 461340,
+				"speed": 280,
+				"boost": 380,
+				"boostEnergy": 10,
+				"baseShieldStrength": 120,
+				"baseArmour": 120,
+				"hardness": 40,
+				"heatCapacity": 346,
+				"hullMass": 170,
+				"masslock": 8,
+				"pipSpeed": 0.096153846153846,
+				"pitch": 42,
+				"roll": 100,
+				"yaw": 15,
+				"crew": 1
+			},
+			"retailCost": 564330,
+			"bulkheads": [
+				{
+					"id": "b5",
+					"edID": 128671218,
+					"eddbID": 1384,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "b6",
+					"edID": 128671219,
+					"eddbID": 1385,
+					"grp": "bh",
+					"cost": 225700,
+					"mass": 13,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "b7",
+					"edID": 128671220,
+					"eddbID": 1386,
+					"grp": "bh",
+					"cost": 507900,
+					"mass": 26,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "b8",
+					"edID": 128671221,
+					"eddbID": 1387,
+					"grp": "bh",
+					"cost": 1185100,
+					"mass": 26,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "b9",
+					"edID": 128671222,
+					"eddbID": 1388,
+					"grp": "bh",
+					"cost": 1330100,
+					"mass": 26,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					4,
+					2,
+					3,
+					2,
+					4
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					3,
+					3,
+					3,
+					2,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"4E",
+					"2E",
+					"3E",
+					"2E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"44",
+					0,
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"dolphin": {
+			"edID": 128049291,
+			"eddbID": 31,
+			"properties": {
+				"name": "Dolphin",
+				"manufacturer": "Saud Kruger",
+				"class": 1,
+				"hullCost": 1115330,
+				"speed": 250,
+				"boost": 350,
+				"boostEnergy": 10,
+				"baseShieldStrength": 110,
+				"baseArmour": 110,
+				"hardness": 35,
+				"hullMass": 140,
+				"heatCapacity": 165,
+				"masslock": 9,
+				"pipSpeed": 0.13,
+				"luxuryCabins": true,
+				"pitch": 30,
+				"roll": 100,
+				"yaw": 20,
+				"crew": 1
+			},
+			"retailCost": 1337330,
+			"requirements": {
+				"horizons": true
+			},
+			"bulkheads": [
+				{
+					"id": "cq",
+					"edID": 128049292,
+					"eddbID": 1589,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "cr",
+					"edID": 128049293,
+					"eddbID": 1590,
+					"grp": "bh",
+					"cost": 534940,
+					"mass": 32,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "cs",
+					"edID": 128049294,
+					"eddbID": 1591,
+					"grp": "bh",
+					"cost": 1203600,
+					"mass": 63,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "ct",
+					"edID": 128049295,
+					"eddbID": 1592,
+					"grp": "bh",
+					"cost": 2808390,
+					"mass": 63,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "cu",
+					"edID": 128049296,
+					"eddbID": 1593,
+					"grp": "bh",
+					"cost": 3152080,
+					"mass": 63,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					5,
+					4,
+					4,
+					3,
+					3,
+					4
+				],
+				"hardpoints": [
+					1,
+					1,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					4,
+					4,
+					3,
+					2,
+					2,
+					2,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"5E",
+					"4E",
+					"4E",
+					"3E",
+					"3E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"md",
+					"02",
+					"49",
+					"01",
+					"00",
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"eagle": {
+			"edID": 128049255,
+			"eddbID": 7,
+			"properties": {
+				"name": "Eagle",
+				"manufacturer": "Core Dynamics",
+				"class": 1,
+				"hullCost": 10440,
+				"speed": 240,
+				"boost": 350,
+				"boostEnergy": 8,
+				"baseShieldStrength": 60,
+				"baseArmour": 40,
+				"hardness": 28,
+				"hullMass": 50,
+				"heatCapacity": 165,
+				"masslock": 6,
+				"pipSpeed": 0.0625,
+				"pitch": 50,
+				"roll": 120,
+				"yaw": 18,
+				"crew": 1
+			},
+			"retailCost": 44800,
+			"bulkheads": [
+				{
+					"id": "bY",
+					"edID": 128049256,
+					"eddbID": 743,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bZ",
+					"edID": 128049257,
+					"eddbID": 744,
+					"grp": "bh",
+					"cost": 26880,
+					"mass": 4,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "B0",
+					"edID": 128049258,
+					"eddbID": 745,
+					"grp": "bh",
+					"cost": 90050,
+					"mass": 8,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "B1",
+					"edID": 128049259,
+					"eddbID": 746,
+					"grp": "bh",
+					"cost": 140090,
+					"mass": 8,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "B2",
+					"edID": 128049260,
+					"eddbID": 747,
+					"grp": "bh",
+					"cost": 150390,
+					"mass": 8,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					2,
+					3,
+					3,
+					1,
+					2,
+					2,
+					2
+				],
+				"hardpoints": [
+					1,
+					1,
+					1,
+					0
+				],
+				"internal": [
+					3,
+					2,
+					{
+						"class": 2,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"2E",
+					"3E",
+					"3E",
+					"1E",
+					"2E",
+					"2E",
+					"2C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0
+				],
+				"internal": [
+					"44",
+					"00",
+					0,
+					"",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"federal_assault_ship": {
+			"edID": 128672145,
+			"eddbID": 8,
+			"properties": {
+				"name": "Federal Assault Ship",
+				"manufacturer": "Core Dynamics",
+				"class": 2,
+				"hullCost": 19072000,
+				"speed": 210,
+				"boost": 350,
+				"boostEnergy": 19,
+				"baseShieldStrength": 200,
+				"baseArmour": 300,
+				"hardness": 60,
+				"hullMass": 480,
+				"heatCapacity": 286,
+				"masslock": 14,
+				"pipSpeed": 0.071428571428571,
+				"pitch": 38,
+				"roll": 90,
+				"yaw": 19,
+				"crew": 2
+			},
+			"retailCost": 19814210,
+			"requirements": {
+				"federationRank": 5
+			},
+			"bulkheads": [
+				{
+					"id": "bz",
+					"edID": 128672147,
+					"eddbID": 1466,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bA",
+					"edID": 128672148,
+					"eddbID": 1467,
+					"grp": "bh",
+					"cost": 7925680,
+					"mass": 44,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bB",
+					"edID": 128672149,
+					"eddbID": 1468,
+					"grp": "bh",
+					"cost": 17832780,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bC",
+					"edID": 128672150,
+					"eddbID": 1469,
+					"grp": "bh",
+					"cost": 42144810,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bD",
+					"edID": 128672151,
+					"eddbID": 1470,
+					"grp": "bh",
+					"cost": 46702080,
+					"mass": 87,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					6,
+					4,
+					4
+				],
+				"hardpoints": [
+					3,
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					5,
+					4,
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"6E",
+					"4E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4e",
+					"03",
+					"02",
+					0,
+					0,
+					"02",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"federal_corvette": {
+			"edID": 128049369,
+			"eddbID": 25,
+			"properties": {
+				"name": "Federal Corvette",
+				"manufacturer": "Core Dynamics",
+				"class": 3,
+				"hullCost": 182589570,
+				"speed": 200,
+				"boost": 260,
+				"boostEnergy": 27,
+				"baseShieldStrength": 555,
+				"baseArmour": 370,
+				"hardness": 70,
+				"hullMass": 900,
+				"masslock": 24,
+				"heatCapacity": 333,
+				"pipSpeed": 0.125,
+				"fighterHangars": true,
+				"pitch": 28,
+				"roll": 75,
+				"yaw": 8,
+				"crew": 3
+			},
+			"retailCost": 187969450,
+			"requirements": {
+				"federationRank": 12
+			},
+			"bulkheads": [
+				{
+					"id": "BW",
+					"edID": 128049370,
+					"eddbID": 1498,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "BX",
+					"edID": 128049371,
+					"eddbID": 1499,
+					"grp": "bh",
+					"cost": 75187790,
+					"mass": 30,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "BY",
+					"edID": 128049372,
+					"eddbID": 1500,
+					"grp": "bh",
+					"cost": 169172510,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BZ",
+					"edID": 128049373,
+					"eddbID": 1501,
+					"grp": "bh",
+					"cost": 399811020,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "c0",
+					"edID": 128049374,
+					"eddbID": 1502,
+					"grp": "bh",
+					"cost": 443044000,
+					"mass": 60,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					8,
+					7,
+					6,
+					5,
+					8,
+					8,
+					5
+				],
+				"hardpoints": [
+					4,
+					4,
+					3,
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					7,
+					7,
+					7,
+					6,
+					6,
+					5,
+					5,
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					4,
+					4,
+					3,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"8E",
+					"7E",
+					"6E",
+					"5E",
+					"8E",
+					"8E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4o",
+					"05",
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					"02",
+					"01",
+					"",
+					0
+				]
+			}
+		},
+		"federal_dropship": {
+			"edID": 128049321,
+			"eddbID": 9,
+			"properties": {
+				"name": "Federal Dropship",
+				"manufacturer": "Core Dynamics",
+				"class": 2,
+				"hullCost": 13469990,
+				"speed": 180,
+				"boost": 300,
+				"boostEnergy": 19,
+				"baseShieldStrength": 200,
+				"baseArmour": 300,
+				"hardness": 60,
+				"hullMass": 580,
+				"heatCapacity": 331,
+				"masslock": 14,
+				"pipSpeed": 0.11111111111111,
+				"pitch": 30,
+				"roll": 80,
+				"yaw": 14,
+				"crew": 2
+			},
+			"retailCost": 14314210,
+			"requirements": {
+				"federationRank": 3
+			},
+			"bulkheads": [
+				{
+					"id": "bE",
+					"edID": 128049322,
+					"eddbID": 793,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bF",
+					"edID": 128049323,
+					"eddbID": 794,
+					"grp": "bh",
+					"cost": 5725680,
+					"mass": 44,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bG",
+					"edID": 128049324,
+					"eddbID": 795,
+					"grp": "bh",
+					"cost": 12882780,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bH",
+					"edID": 128049325,
+					"eddbID": 796,
+					"grp": "bh",
+					"cost": 30446310,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bI",
+					"edID": 128049326,
+					"eddbID": 797,
+					"grp": "bh",
+					"cost": 33738580,
+					"mass": 87,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					6,
+					4,
+					4
+				],
+				"hardpoints": [
+					3,
+					2,
+					2,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					5,
+					5,
+					4,
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					3,
+					3,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"6E",
+					"4E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"03",
+					"4e",
+					"02",
+					0,
+					0,
+					0,
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"federal_gunship": {
+			"edID": 128672152,
+			"eddbID": 10,
+			"properties": {
+				"name": "Federal Gunship",
+				"manufacturer": "Core Dynamics",
+				"class": 2,
+				"hullCost": 34774790,
+				"speed": 170,
+				"boost": 280,
+				"boostEnergy": 23,
+				"baseShieldStrength": 250,
+				"baseArmour": 350,
+				"hardness": 60,
+				"hullMass": 580,
+				"heatCapacity": 325,
+				"masslock": 14,
+				"pipSpeed": 0.10294117647059,
+				"fighterHangars": true,
+				"pitch": 25,
+				"roll": 80,
+				"yaw": 18,
+				"crew": 2
+			},
+			"retailCost": 35814210,
+			"requirements": {
+				"federationRank": 7
+			},
+			"bulkheads": [
+				{
+					"id": "bJ",
+					"edID": 128672154,
+					"eddbID": 1471,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bK",
+					"edID": 128672155,
+					"eddbID": 1472,
+					"grp": "bh",
+					"cost": 14325690,
+					"mass": 44,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bL",
+					"edID": 128672156,
+					"eddbID": 1473,
+					"grp": "bh",
+					"cost": 32232790,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bM",
+					"edID": 128672157,
+					"eddbID": 1474,
+					"grp": "bh",
+					"cost": 76176810,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bN",
+					"edID": 128672158,
+					"eddbID": 1475,
+					"grp": "bh",
+					"cost": 84414090,
+					"mass": 87,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					7,
+					5,
+					4
+				],
+				"hardpoints": [
+					3,
+					2,
+					2,
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					6,
+					5,
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 4,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"7E",
+					"5E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					0,
+					"4j",
+					"03",
+					0,
+					0,
+					0,
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"fer_de_lance": {
+			"edID": 128049351,
+			"eddbID": 11,
+			"properties": {
+				"name": "Fer-de-Lance",
+				"manufacturer": "Zorgon Peterson",
+				"class": 2,
+				"hullCost": 51232230,
+				"speed": 260,
+				"boost": 350,
+				"boostEnergy": 19,
+				"baseShieldStrength": 300,
+				"baseArmour": 225,
+				"hardness": 70,
+				"hullMass": 250,
+				"heatCapacity": 224,
+				"masslock": 12,
+				"pipSpeed": 0.038461538461538,
+				"pitch": 38,
+				"roll": 90,
+				"yaw": 12,
+				"crew": 2
+			},
+			"retailCost": 51567040,
+			"bulkheads": [
+				{
+					"id": "Bd",
+					"edID": 128049352,
+					"eddbID": 813,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "Be",
+					"edID": 128049353,
+					"eddbID": 814,
+					"grp": "bh",
+					"cost": 20626820,
+					"mass": 19,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "Bf",
+					"edID": 128049354,
+					"eddbID": 815,
+					"grp": "bh",
+					"cost": 46410340,
+					"mass": 38,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bg",
+					"edID": 128049355,
+					"eddbID": 816,
+					"grp": "bh",
+					"cost": 109683090,
+					"mass": 38,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bh",
+					"edID": 128049356,
+					"eddbID": 817,
+					"grp": "bh",
+					"cost": 121543510,
+					"mass": 38,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					5,
+					4,
+					4,
+					6,
+					4,
+					3
+				],
+				"hardpoints": [
+					4,
+					2,
+					2,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					4,
+					4,
+					2,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"5E",
+					"5E",
+					"4E",
+					"4E",
+					"6E",
+					"4E",
+					"3C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"03",
+					"49",
+					"02",
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"hauler": {
+			"edID": 128049261,
+			"eddbID": 12,
+			"properties": {
+				"name": "Hauler",
+				"manufacturer": "Zorgon Peterson",
+				"class": 1,
+				"hullCost": 29790,
+				"speed": 200,
+				"boost": 300,
+				"boostEnergy": 7,
+				"baseShieldStrength": 50,
+				"baseArmour": 100,
+				"hardness": 20,
+				"heatCapacity": 123,
+				"hullMass": 14,
+				"masslock": 6,
+				"pipSpeed": 0.1625,
+				"pitch": 36,
+				"roll": 100,
+				"yaw": 14,
+				"crew": 1
+			},
+			"retailCost": 52720,
+			"bulkheads": [
+				{
+					"id": "Bi",
+					"edID": 128049262,
+					"eddbID": 748,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "Bj",
+					"edID": 128049263,
+					"eddbID": 749,
+					"grp": "bh",
+					"cost": 42180,
+					"mass": 1,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "Bk",
+					"edID": 128049264,
+					"eddbID": 750,
+					"grp": "bh",
+					"cost": 185050,
+					"mass": 2,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bl",
+					"edID": 128049265,
+					"eddbID": 751,
+					"grp": "bh",
+					"cost": 270300,
+					"mass": 2,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bm",
+					"edID": 128049266,
+					"eddbID": 752,
+					"grp": "bh",
+					"cost": 282420,
+					"mass": 2,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					2,
+					2,
+					2,
+					1,
+					1,
+					1,
+					2
+				],
+				"hardpoints": [
+					1,
+					0,
+					0
+				],
+				"internal": [
+					3,
+					3,
+					2,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"2E",
+					"2E",
+					"2E",
+					"1E",
+					"1E",
+					"1E",
+					"2C"
+				],
+				"hardpoints": [
+					17,
+					0,
+					0
+				],
+				"internal": [
+					"01",
+					"01",
+					"3v",
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"imperial_clipper": {
+			"edID": 128049315,
+			"eddbID": 13,
+			"properties": {
+				"name": "Imperial Clipper",
+				"manufacturer": "Gutamaya",
+				"class": 3,
+				"hullCost": 21077780,
+				"speed": 300,
+				"boost": 380,
+				"boostEnergy": 19,
+				"baseShieldStrength": 180,
+				"baseArmour": 270,
+				"hardness": 60,
+				"hullMass": 400,
+				"masslock": 12,
+				"heatCapacity": 304,
+				"pipSpeed": 0.1,
+				"pitch": 40,
+				"roll": 80,
+				"yaw": 18,
+				"crew": 2
+			},
+			"retailCost": 22296860,
+			"requirements": {
+				"empireRank": 7
+			},
+			"bulkheads": [
+				{
+					"id": "bp",
+					"edID": 128049316,
+					"eddbID": 788,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bq",
+					"edID": 128049317,
+					"eddbID": 789,
+					"grp": "bh",
+					"cost": 8918340,
+					"mass": 30,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "br",
+					"edID": 128049318,
+					"eddbID": 790,
+					"grp": "bh",
+					"cost": 20066270,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bs",
+					"edID": 128049319,
+					"eddbID": 791,
+					"grp": "bh",
+					"cost": 47423290,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bt",
+					"edID": 128049320,
+					"eddbID": 792,
+					"grp": "bh",
+					"cost": 52551340,
+					"mass": 60,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					6,
+					5,
+					5,
+					6,
+					5,
+					4
+				],
+				"hardpoints": [
+					3,
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					7,
+					6,
+					4,
+					4,
+					3,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"6E",
+					"5E",
+					"5E",
+					"6E",
+					"5E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"05",
+					"4j",
+					"02",
+					0,
+					0,
+					0,
+					"00",
+					"",
+					0
+				]
+			}
+		},
+		"imperial_courier": {
+			"edID": 128671223,
+			"eddbID": 14,
+			"properties": {
+				"name": "Imperial Courier",
+				"manufacturer": "Gutamaya",
+				"class": 1,
+				"hullCost": 2481550,
+				"speed": 280,
+				"boost": 380,
+				"boostEnergy": 10,
+				"baseShieldStrength": 200,
+				"baseArmour": 80,
+				"hardness": 30,
+				"hullMass": 35,
+				"masslock": 7,
+				"heatCapacity": 230,
+				"pipSpeed": 0.053571428571429,
+				"pitch": 38,
+				"roll": 90,
+				"yaw": 16,
+				"crew": 1
+			},
+			"retailCost": 2542930,
+			"requirements": {
+				"empireRank": 3
+			},
+			"bulkheads": [
+				{
+					"id": "bf",
+					"edID": 128671224,
+					"eddbID": 1389,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bg",
+					"edID": 128671225,
+					"eddbID": 1390,
+					"grp": "bh",
+					"cost": 1017200,
+					"mass": 4,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bh",
+					"edID": 128671226,
+					"eddbID": 1391,
+					"grp": "bh",
+					"cost": 2288600,
+					"mass": 8,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bi",
+					"edID": 128671227,
+					"eddbID": 1392,
+					"grp": "bh",
+					"cost": 5408800,
+					"mass": 8,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bj",
+					"edID": 128671228,
+					"eddbID": 1393,
+					"grp": "bh",
+					"cost": 5993700,
+					"mass": 8,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					3,
+					3,
+					1,
+					3,
+					2,
+					3
+				],
+				"hardpoints": [
+					2,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					3,
+					3,
+					2,
+					2,
+					2,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"3E",
+					"3E",
+					"1E",
+					"3E",
+					"2E",
+					"3C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"01",
+					"01",
+					"3v",
+					"00",
+					"00",
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"imperial_cutter": {
+			"edID": 128049375,
+			"eddbID": 26,
+			"properties": {
+				"name": "Imperial Cutter",
+				"manufacturer": "Gutamaya",
+				"class": 3,
+				"hullCost": 199926890,
+				"speed": 200,
+				"boost": 320,
+				"boostEnergy": 23,
+				"baseShieldStrength": 600,
+				"baseArmour": 400,
+				"hardness": 70,
+				"hullMass": 1100,
+				"heatCapacity": 327,
+				"masslock": 27,
+				"pipSpeed": 0.05,
+				"fighterHangars": true,
+				"pitch": 18,
+				"roll": 45,
+				"yaw": 8,
+				"crew": 3
+			},
+			"retailCost": 208969450,
+			"requirements": {
+				"empireRank": 12
+			},
+			"bulkheads": [
+				{
+					"id": "BR",
+					"edID": 128049376,
+					"eddbID": 1493,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "BS",
+					"edID": 128049377,
+					"eddbID": 1494,
+					"grp": "bh",
+					"cost": 83587790,
+					"mass": 30,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "BT",
+					"edID": 128049378,
+					"eddbID": 1495,
+					"grp": "bh",
+					"cost": 188072510,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BU",
+					"edID": 128049379,
+					"eddbID": 1496,
+					"grp": "bh",
+					"cost": 444478020,
+					"mass": 60,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BV",
+					"edID": 128049380,
+					"eddbID": 1497,
+					"grp": "bh",
+					"cost": 492541000,
+					"mass": 60,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					8,
+					8,
+					7,
+					7,
+					7,
+					7,
+					6
+				],
+				"hardpoints": [
+					4,
+					3,
+					3,
+					2,
+					2,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					8,
+					8,
+					6,
+					6,
+					6,
+					5,
+					5,
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					4,
+					3,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"8E",
+					"8E",
+					"7E",
+					"7E",
+					"7E",
+					"7E",
+					"6C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4t",
+					"06",
+					"04",
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					"01",
+					"",
+					0
+				]
+			}
+		},
+		"imperial_eagle": {
+			"edID": 128672138,
+			"eddbID": 15,
+			"properties": {
+				"name": "Imperial Eagle",
+				"manufacturer": "Gutamaya",
+				"class": 1,
+				"hullCost": 72180,
+				"speed": 300,
+				"boost": 400,
+				"boostEnergy": 8,
+				"baseShieldStrength": 80,
+				"baseArmour": 60,
+				"hardness": 28,
+				"heatCapacity": 163,
+				"hullMass": 50,
+				"masslock": 6,
+				"pipSpeed": 0.075,
+				"pitch": 40,
+				"roll": 100,
+				"yaw": 15,
+				"crew": 1
+			},
+			"retailCost": 110830,
+			"bulkheads": [
+				{
+					"id": "bu",
+					"edID": 128672140,
+					"eddbID": 1461,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bv",
+					"edID": 128672141,
+					"eddbID": 1462,
+					"grp": "bh",
+					"cost": 66500,
+					"mass": 4,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bw",
+					"edID": 128672142,
+					"eddbID": 1463,
+					"grp": "bh",
+					"cost": 222760,
+					"mass": 8,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bx",
+					"edID": 128672143,
+					"eddbID": 1464,
+					"grp": "bh",
+					"cost": 346550,
+					"mass": 8,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "by",
+					"edID": 128672144,
+					"eddbID": 1465,
+					"grp": "bh",
+					"cost": 372040,
+					"mass": 8,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					3,
+					3,
+					3,
+					1,
+					2,
+					2,
+					2
+				],
+				"hardpoints": [
+					2,
+					1,
+					1,
+					0
+				],
+				"internal": [
+					3,
+					2,
+					{
+						"class": 2,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"3E",
+					"3E",
+					"3E",
+					"1E",
+					"2E",
+					"2E",
+					"2C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0
+				],
+				"internal": [
+					"44",
+					"00",
+					0,
+					"",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"keelback": {
+			"edID": 128672269,
+			"eddbID": 27,
+			"properties": {
+				"name": "Keelback",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 2943870,
+				"speed": 200,
+				"boost": 300,
+				"boostEnergy": 10,
+				"baseShieldStrength": 135,
+				"baseArmour": 270,
+				"hardness": 45,
+				"heatCapacity": 215,
+				"hullMass": 180,
+				"masslock": 8,
+				"pipSpeed": 0.1375,
+				"fighterHangars": true,
+				"pitch": 27,
+				"roll": 100,
+				"yaw": 15,
+				"crew": 2
+			},
+			"retailCost": 3126150,
+			"bulkheads": [
+				{
+					"id": "cb",
+					"edID": 128672271,
+					"eddbID": 1513,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "cc",
+					"edID": 128672272,
+					"eddbID": 1514,
+					"grp": "bh",
+					"cost": 1250460,
+					"mass": 12,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "cd",
+					"edID": 128672273,
+					"eddbID": 1515,
+					"grp": "bh",
+					"cost": 2813540,
+					"mass": 23,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "ce",
+					"edID": 128672274,
+					"eddbID": 1516,
+					"grp": "bh",
+					"cost": 6649330,
+					"mass": 23,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "cf",
+					"edID": 128672275,
+					"eddbID": 1517,
+					"grp": "bh",
+					"cost": 7368340,
+					"mass": 23,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					4,
+					1,
+					3,
+					2,
+					4
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					5,
+					4,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"4E",
+					"1E",
+					"3E",
+					"2E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"03",
+					"03",
+					"02",
+					"44",
+					"00",
+					"",
+					0
+				]
+			}
+		},
+		"krait_mkii": {
+			"edID": 128816567,
+			"eddbID": 35,
+			"properties": {
+				"name": "Krait Mk II",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 2,
+				"hullCost": 42409425,
+				"speed": 240,
+				"boost": 330,
+				"boostEnergy": 13,
+				"baseShieldStrength": 220,
+				"heatCapacity": 300,
+				"baseArmour": 220,
+				"hardness": 55,
+				"hullMass": 320,
+				"masslock": 17,
+				"pipSpeed": 0.09375,
+				"fighterHangars": true,
+				"pitch": 26,
+				"roll": 90,
+				"yaw": 10,
+				"crew": 3
+			},
+			"retailCost": 45814205,
+			"bulkheads": [
+				{
+					"id": "2T",
+					"edID": 128816569,
+					"eddbID": 1645,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "2U",
+					"edID": 128816570,
+					"eddbID": 1646,
+					"grp": "bh",
+					"cost": 22791270,
+					"mass": 36,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "2V",
+					"edID": 128816571,
+					"eddbID": 1647,
+					"grp": "bh",
+					"cost": 51280360,
+					"mass": 67,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "2W",
+					"edID": 128816572,
+					"eddbID": 1648,
+					"grp": "bh",
+					"cost": 121192590,
+					"mass": 67,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "2X",
+					"edID": 128816573,
+					"eddbID": 1649,
+					"grp": "bh",
+					"cost": 134297570,
+					"mass": 67,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					7,
+					6,
+					5,
+					4,
+					7,
+					6,
+					5
+				],
+				"hardpoints": [
+					3,
+					3,
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					6,
+					5,
+					5,
+					4,
+					3,
+					3,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"7E",
+					"6E",
+					"5E",
+					"4E",
+					"7E",
+					"6E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4h",
+					"04",
+					"04",
+					"03",
+					0,
+					"",
+					0,
+					"00",
+					0
+				]
+			}
+		},
+		"krait_phantom": {
+			"edID": 128839281,
+			"eddbID": 37,
+			"properties": {
+				"name": "Krait Phantom",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 2,
+				"hullCost": 42409425,
+				"speed": 250,
+				"boost": 350,
+				"heatCapacity": 300,
+				"boostEnergy": 13,
+				"baseShieldStrength": 200,
+				"baseArmour": 180,
+				"hardness": 60,
+				"hullMass": 270,
+				"masslock": 17,
+				"pipSpeed": 0.09,
+				"pitch": 26,
+				"roll": 90,
+				"yaw": 10,
+				"crew": 2
+			},
+			"retailCost": 37472254,
+			"bulkheads": [
+				{
+					"id": "3B",
+					"edID": 128839283,
+					"eddbID": 1768,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "3C",
+					"edID": 128839284,
+					"eddbID": 1769,
+					"grp": "bh",
+					"cost": 22791270,
+					"mass": 36,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "3D",
+					"edID": 128839285,
+					"eddbID": 1770,
+					"grp": "bh",
+					"cost": 51280360,
+					"mass": 67,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "3E",
+					"edID": 128839286,
+					"eddbID": 1771,
+					"grp": "bh",
+					"cost": 121192590,
+					"mass": 67,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "3F",
+					"edID": 128839287,
+					"eddbID": 1772,
+					"grp": "bh",
+					"cost": 134297570,
+					"mass": 67,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					7,
+					6,
+					5,
+					4,
+					7,
+					6,
+					5
+				],
+				"hardpoints": [
+					3,
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					5,
+					5,
+					5,
+					3,
+					3,
+					3,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"7E",
+					"6E",
+					"5E",
+					"4E",
+					"7E",
+					"6E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					"17",
+					"17",
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4j",
+					"04",
+					"04",
+					"04",
+					0,
+					"",
+					0,
+					"00",
+					0
+				]
+			}
+		},
+		"orca": {
+			"edID": 128049327,
+			"eddbID": 16,
+			"properties": {
+				"name": "Orca",
+				"manufacturer": "Saud Kruger",
+				"class": 3,
+				"hullCost": 47790590,
+				"speed": 300,
+				"boost": 380,
+				"boostEnergy": 16,
+				"baseShieldStrength": 220,
+				"baseArmour": 220,
+				"heatCapacity": 262,
+				"hardness": 55,
+				"hullMass": 290,
+				"masslock": 16,
+				"pipSpeed": 0.083333333333333,
+				"luxuryCabins": true,
+				"pitch": 25,
+				"roll": 55,
+				"yaw": 18,
+				"crew": 2
+			},
+			"retailCost": 48539900,
+			"bulkheads": [
+				{
+					"id": "BM",
+					"edID": 128049328,
+					"eddbID": 798,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "BN",
+					"edID": 128049329,
+					"eddbID": 799,
+					"grp": "bh",
+					"cost": 19415950,
+					"mass": 21,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "BO",
+					"edID": 128049330,
+					"eddbID": 800,
+					"grp": "bh",
+					"cost": 43685900,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BP",
+					"edID": 128049331,
+					"eddbID": 801,
+					"grp": "bh",
+					"cost": 103244340,
+					"mass": 87,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BQ",
+					"edID": 128049332,
+					"eddbID": 802,
+					"grp": "bh",
+					"cost": 114408510,
+					"mass": 87,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					5,
+					6,
+					5,
+					6,
+					5,
+					4,
+					5
+				],
+				"hardpoints": [
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					5,
+					5,
+					5,
+					4,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"5E",
+					"6E",
+					"5E",
+					"6E",
+					"5E",
+					"4E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"me",
+					"mc",
+					"03",
+					"4e",
+					"02",
+					0,
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"mamba": {
+			"edID": 128915979,
+			"eddbID": 38,
+			"properties": {
+				"name": "Mamba",
+				"manufacturer": "Zorgon Peterson",
+				"class": 2,
+				"hullCost": 55866341,
+				"speed": 310,
+				"boost": 380,
+				"boostEnergy": 17,
+				"baseShieldStrength": 270,
+				"heatCapacity": 165,
+				"baseArmour": 230,
+				"hardness": 65,
+				"hullMass": 250,
+				"masslock": 12,
+				"pipSpeed": 0.056451612903226,
+				"pitch": 27,
+				"roll": 80,
+				"yaw": 10,
+				"crew": 2
+			},
+			"retailCost": 55867041,
+			"bulkheads": [
+				{
+					"id": "1A",
+					"edID": 128915981,
+					"eddbID": 1798,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "1B",
+					"edID": 128915982,
+					"eddbID": 1799,
+					"grp": "bh",
+					"cost": 20626820,
+					"mass": 19,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "1C",
+					"edID": 128915983,
+					"eddbID": 1800,
+					"grp": "bh",
+					"cost": 46410340,
+					"mass": 38,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "1D",
+					"edID": 128915984,
+					"eddbID": 1801,
+					"grp": "bh",
+					"cost": 109683090,
+					"mass": 38,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "3A",
+					"edID": 128915985,
+					"eddbID": 1802,
+					"grp": "bh",
+					"cost": 121543510,
+					"mass": 38,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					5,
+					4,
+					4,
+					6,
+					4,
+					3
+				],
+				"hardpoints": [
+					4,
+					3,
+					3,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					4,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"5E",
+					"4E",
+					"4E",
+					"6E",
+					"4E",
+					"3C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					"17",
+					"17",
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"03",
+					"49",
+					"01",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"python": {
+			"edID": 128049339,
+			"eddbID": 17,
+			"properties": {
+				"name": "Python",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 2,
+				"hullCost": 55171380,
+				"speed": 230,
+				"boost": 300,
+				"boostEnergy": 23,
+				"baseShieldStrength": 260,
+				"baseArmour": 260,
+				"heatCapacity": 300,
+				"hardness": 65,
+				"hullMass": 350,
+				"masslock": 17,
+				"pipSpeed": 0.097826086956522,
+				"pitch": 29,
+				"roll": 90,
+				"yaw": 10,
+				"crew": 2
+			},
+			"retailCost": 56978180,
+			"bulkheads": [
+				{
+					"id": "bO",
+					"edID": 128049340,
+					"eddbID": 808,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "bP",
+					"edID": 128049341,
+					"eddbID": 809,
+					"grp": "bh",
+					"cost": 22791270,
+					"mass": 26,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "bQ",
+					"edID": 128049342,
+					"eddbID": 810,
+					"grp": "bh",
+					"cost": 51280360,
+					"mass": 53,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bR",
+					"edID": 128049343,
+					"eddbID": 811,
+					"grp": "bh",
+					"cost": 121192590,
+					"mass": 53,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "bS",
+					"edID": 128049344,
+					"eddbID": 812,
+					"grp": "bh",
+					"cost": 134297570,
+					"mass": 53,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					7,
+					6,
+					5,
+					4,
+					7,
+					6,
+					5
+				],
+				"hardpoints": [
+					3,
+					3,
+					3,
+					2,
+					2,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					6,
+					6,
+					5,
+					5,
+					4,
+					3,
+					3,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"7E",
+					"6E",
+					"5E",
+					"4E",
+					"7E",
+					"6E",
+					"5C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"04",
+					"4j",
+					"03",
+					0,
+					0,
+					0,
+					"00",
+					"",
+					0
+				]
+			}
+		},
+		"sidewinder": {
+			"edID": 128049249,
+			"eddbID": 18,
+			"properties": {
+				"name": "Sidewinder",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 1,
+				"hullCost": 4070,
+				"speed": 220,
+				"boost": 320,
+				"boostEnergy": 7,
+				"heatCapacity": 140,
+				"baseShieldStrength": 40,
+				"baseArmour": 60,
+				"hardness": 20,
+				"hullMass": 25,
+				"masslock": 6,
+				"pipSpeed": 0.13636363636364,
+				"pitch": 42,
+				"roll": 110,
+				"yaw": 16,
+				"crew": 1
+			},
+			"retailCost": 32000,
+			"bulkheads": [
+				{
+					"id": "b0",
+					"edID": 128049250,
+					"eddbID": 738,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "b1",
+					"edID": 128049251,
+					"eddbID": 739,
+					"grp": "bh",
+					"cost": 25600,
+					"mass": 2,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "b2",
+					"edID": 128049252,
+					"eddbID": 740,
+					"grp": "bh",
+					"cost": 80320,
+					"mass": 4,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "b3",
+					"edID": 128049253,
+					"eddbID": 741,
+					"grp": "bh",
+					"cost": 132060,
+					"mass": 4,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "b4",
+					"edID": 128049254,
+					"eddbID": 742,
+					"grp": "bh",
+					"cost": 139420,
+					"mass": 4,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					2,
+					2,
+					2,
+					1,
+					1,
+					1,
+					1
+				],
+				"hardpoints": [
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					2,
+					2,
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"2E",
+					"2E",
+					"2E",
+					"1E",
+					"1E",
+					"1E",
+					"1C"
+				],
+				"hardpoints": [
+					18,
+					18,
+					0,
+					0
+				],
+				"internal": [
+					"3v",
+					"01",
+					"",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"type_6_transporter": {
+			"edID": 128049285,
+			"eddbID": 19,
+			"properties": {
+				"name": "Type-6 Transporter",
+				"manufacturer": "Lakon",
+				"class": 2,
+				"hullCost": 865790,
+				"speed": 220,
+				"boost": 350,
+				"heatCapacity": 179,
+				"boostEnergy": 10,
+				"baseShieldStrength": 90,
+				"baseArmour": 180,
+				"hardness": 35,
+				"hullMass": 155,
+				"masslock": 8,
+				"pipSpeed": 0.14772727272727,
+				"pitch": 30,
+				"roll": 100,
+				"yaw": 17,
+				"crew": 1
+			},
+			"retailCost": 1045950,
+			"bulkheads": [
+				{
+					"id": "Bn",
+					"edID": 128049286,
+					"eddbID": 768,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "Bo",
+					"edID": 128049287,
+					"eddbID": 769,
+					"grp": "bh",
+					"cost": 418380,
+					"mass": 12,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "Bp",
+					"edID": 128049288,
+					"eddbID": 770,
+					"grp": "bh",
+					"cost": 941350,
+					"mass": 23,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bq",
+					"edID": 128049289,
+					"eddbID": 771,
+					"grp": "bh",
+					"cost": 2224730,
+					"mass": 23,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Br",
+					"edID": 128049290,
+					"eddbID": 772,
+					"grp": "bh",
+					"cost": 2465290,
+					"mass": 23,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					3,
+					4,
+					4,
+					2,
+					3,
+					2,
+					4
+				],
+				"hardpoints": [
+					1,
+					1,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					5,
+					4,
+					4,
+					3,
+					2,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"3E",
+					"4E",
+					"4E",
+					"2E",
+					"3E",
+					"2E",
+					"4C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"03",
+					"03",
+					"02",
+					"02",
+					"44",
+					"00",
+					"",
+					0
+				]
+			}
+		},
+		"type_7_transport": {
+			"edID": 128049297,
+			"eddbID": 20,
+			"properties": {
+				"name": "Type-7 Transporter",
+				"manufacturer": "Lakon",
+				"class": 3,
+				"hullCost": 16780510,
+				"speed": 180,
+				"heatCapacity": 226,
+				"boost": 300,
+				"boostEnergy": 10,
+				"baseShieldStrength": 155,
+				"baseArmour": 340,
+				"hardness": 54,
+				"hullMass": 350,
+				"masslock": 10,
+				"pipSpeed": 0.16666666666667,
+				"pitch": 22,
+				"roll": 60,
+				"yaw": 22,
+				"crew": 1
+			},
+			"retailCost": 17472260,
+			"bulkheads": [
+				{
+					"id": "Bs",
+					"edID": 128049298,
+					"eddbID": 773,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "Bt",
+					"edID": 128049299,
+					"eddbID": 774,
+					"grp": "bh",
+					"cost": 6988900,
+					"mass": 32,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "Bu",
+					"edID": 128049300,
+					"eddbID": 775,
+					"grp": "bh",
+					"cost": 15725030,
+					"mass": 63,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bv",
+					"edID": 128049301,
+					"eddbID": 776,
+					"grp": "bh",
+					"cost": 37163480,
+					"mass": 63,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bw",
+					"edID": 128049302,
+					"eddbID": 777,
+					"grp": "bh",
+					"cost": 41182100,
+					"mass": 63,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					5,
+					5,
+					5,
+					4,
+					4,
+					3,
+					5
+				],
+				"hardpoints": [
+					1,
+					1,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					6,
+					6,
+					6,
+					5,
+					5,
+					5,
+					3,
+					3,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"5E",
+					"5E",
+					"4E",
+					"3E",
+					"3E",
+					"5C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"04",
+					"04",
+					"04",
+					"03",
+					"03",
+					"49",
+					0,
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"type_9_heavy": {
+			"edID": 128049333,
+			"eddbID": 21,
+			"properties": {
+				"name": "Type-9 Heavy",
+				"manufacturer": "Lakon",
+				"class": 3,
+				"hullCost": 73255150,
+				"speed": 130,
+				"boost": 200,
+				"boostEnergy": 19,
+				"heatCapacity": 289,
+				"baseShieldStrength": 240,
+				"baseArmour": 480,
+				"hardness": 65,
+				"hullMass": 850,
+				"masslock": 16,
+				"pipSpeed": 0.17307692307692,
+				"fighterHangars": true,
+				"pitch": 20,
+				"roll": 20,
+				"yaw": 8,
+				"crew": 3
+			},
+			"retailCost": 76555840,
+			"bulkheads": [
+				{
+					"id": "Bx",
+					"edID": 128049334,
+					"eddbID": 803,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "By",
+					"edID": 128049335,
+					"eddbID": 804,
+					"grp": "bh",
+					"cost": 30622340,
+					"mass": 75,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "Bz",
+					"edID": 128049336,
+					"eddbID": 805,
+					"grp": "bh",
+					"cost": 68900260,
+					"mass": 150,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BA",
+					"edID": 128049337,
+					"eddbID": 806,
+					"grp": "bh",
+					"cost": 162834280,
+					"mass": 150,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "BB",
+					"edID": 128049338,
+					"eddbID": 807,
+					"grp": "bh",
+					"cost": 180442120,
+					"mass": 150,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					6,
+					7,
+					6,
+					5,
+					6,
+					4,
+					6
+				],
+				"hardpoints": [
+					2,
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					8,
+					8,
+					7,
+					6,
+					5,
+					4,
+					4,
+					3,
+					3,
+					2,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"7E",
+					"6E",
+					"5E",
+					"6E",
+					"4E",
+					"6C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"06",
+					"06",
+					"05",
+					"4j",
+					"03",
+					"02",
+					0,
+					"01",
+					0,
+					"",
+					0
+				]
+			}
+		},
+		"type_10_defender": {
+			"edID": 128785619,
+			"eddbID": 32,
+			"properties": {
+				"name": "Type-10 Defender",
+				"manufacturer": "Lakon",
+				"class": 3,
+				"hullCost": 121454173,
+				"speed": 179,
+				"boost": 219,
+				"boostEnergy": 19,
+				"baseShieldStrength": 320,
+				"baseArmour": 580,
+				"hardness": 75,
+				"hullMass": 1200,
+				"heatCapacity": 335,
+				"masslock": 26,
+				"pipSpeed": 0.041666666666667,
+				"fighterHangars": true,
+				"pitch": 20,
+				"roll": 20,
+				"yaw": 8,
+				"crew": 3
+			},
+			"retailCost": 121454652,
+			"bulkheads": [
+				{
+					"id": "1Q",
+					"edID": 128785621,
+					"eddbID": 1627,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "1R",
+					"edID": 128785622,
+					"eddbID": 1628,
+					"grp": "bh",
+					"cost": 49902137,
+					"mass": 75,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "1S",
+					"edID": 128785623,
+					"eddbID": 1629,
+					"grp": "bh",
+					"cost": 112279807,
+					"mass": 150,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "1T",
+					"edID": 128785624,
+					"eddbID": 1630,
+					"grp": "bh",
+					"cost": 265354612,
+					"mass": 150,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "1U",
+					"edID": 128785625,
+					"eddbID": 1631,
+					"grp": "bh",
+					"cost": 294048342,
+					"mass": 150,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					8,
+					7,
+					7,
+					5,
+					7,
+					4,
+					6
+				],
+				"hardpoints": [
+					3,
+					3,
+					3,
+					3,
+					2,
+					2,
+					2,
+					1,
+					1,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					8,
+					7,
+					6,
+					5,
+					4,
+					4,
+					3,
+					3,
+					2,
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"6E",
+					"7E",
+					"6E",
+					"5E",
+					"7E",
+					"4E",
+					"6C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					0,
+					0,
+					17,
+					17,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"06",
+					"05",
+					"4j",
+					"03",
+					"02",
+					0,
+					"01",
+					0,
+					"",
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"viper": {
+			"edID": 128049273,
+			"eddbID": 22,
+			"properties": {
+				"name": "Viper",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 1,
+				"hullCost": 95900,
+				"speed": 320,
+				"boost": 400,
+				"boostEnergy": 10,
+				"baseShieldStrength": 105,
+				"baseArmour": 70,
+				"hardness": 35,
+				"hullMass": 50,
+				"heatCapacity": 195,
+				"masslock": 7,
+				"pipSpeed": 0.09375,
+				"pitch": 35,
+				"roll": 90,
+				"yaw": 15,
+				"crew": 1
+			},
+			"retailCost": 142930,
+			"bulkheads": [
+				{
+					"id": "B3",
+					"edID": 128049274,
+					"eddbID": 758,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "B4",
+					"edID": 128049275,
+					"eddbID": 759,
+					"grp": "bh",
+					"cost": 57170,
+					"mass": 5,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "B5",
+					"edID": 128049276,
+					"eddbID": 760,
+					"grp": "bh",
+					"cost": 128640,
+					"mass": 9,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "B6",
+					"edID": 128049277,
+					"eddbID": 761,
+					"grp": "bh",
+					"cost": 304010,
+					"mass": 9,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "B7",
+					"edID": 128049278,
+					"eddbID": 762,
+					"grp": "bh",
+					"cost": 336890,
+					"mass": 9,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					3,
+					3,
+					3,
+					2,
+					3,
+					3,
+					2
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					3,
+					3,
+					{
+						"class": 3,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					2,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"3E",
+					"3E",
+					"3E",
+					"2E",
+					"3E",
+					"3E",
+					"2C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"01",
+					"44",
+					0,
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"viper_mk_iv": {
+			"edID": 128672255,
+			"eddbID": 28,
+			"properties": {
+				"name": "Viper Mk IV",
+				"manufacturer": "Faulcon DeLacy",
+				"class": 1,
+				"hullCost": 310220,
+				"speed": 270,
+				"boost": 340,
+				"boostEnergy": 10,
+				"baseShieldStrength": 150,
+				"baseArmour": 150,
+				"hardness": 35,
+				"hullMass": 190,
+				"heatCapacity": 209,
+				"masslock": 7,
+				"pipSpeed": 0.087962962962963,
+				"pitch": 30,
+				"roll": 90,
+				"yaw": 12,
+				"crew": 1
+			},
+			"retailCost": 437930,
+			"bulkheads": [
+				{
+					"id": "c6",
+					"edID": 128672257,
+					"eddbID": 1508,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "c7",
+					"edID": 128672258,
+					"eddbID": 1509,
+					"grp": "bh",
+					"cost": 175180,
+					"mass": 5,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "c8",
+					"edID": 128672259,
+					"eddbID": 1510,
+					"grp": "bh",
+					"cost": 394140,
+					"mass": 9,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "c9",
+					"edID": 128672260,
+					"eddbID": 1511,
+					"grp": "bh",
+					"cost": 931490,
+					"mass": 9,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "ca",
+					"edID": 128672261,
+					"eddbID": 1512,
+					"grp": "bh",
+					"cost": 1033210,
+					"mass": 9,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					4,
+					4,
+					2,
+					3,
+					3,
+					4
+				],
+				"hardpoints": [
+					2,
+					2,
+					1,
+					1,
+					0,
+					0
+				],
+				"internal": [
+					4,
+					4,
+					3,
+					{
+						"class": 3,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					2,
+					2,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"4E",
+					"4E",
+					"2E",
+					"3E",
+					"3E",
+					"4C"
+				],
+				"hardpoints": [
+					0,
+					0,
+					17,
+					17,
+					0,
+					0
+				],
+				"internal": [
+					"02",
+					"02",
+					"44",
+					0,
+					"00",
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		},
+		"vulture": {
+			"edID": 128049309,
+			"eddbID": 23,
+			"properties": {
+				"name": "Vulture",
+				"manufacturer": "Core Dynamics",
+				"class": 1,
+				"hullCost": 4689640,
+				"speed": 210,
+				"boost": 340,
+				"boostEnergy": 16,
+				"baseShieldStrength": 240,
+				"baseArmour": 160,
+				"heatCapacity": 237,
+				"hardness": 55,
+				"hullMass": 230,
+				"masslock": 10,
+				"pipSpeed": 0.023809523809524,
+				"pitch": 42,
+				"roll": 110,
+				"yaw": 17,
+				"crew": 2
+			},
+			"retailCost": 4925620,
+			"bulkheads": [
+				{
+					"id": "B8",
+					"edID": 128049310,
+					"eddbID": 783,
+					"grp": "bh",
+					"cost": 0,
+					"mass": 0,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 0.8
+				},
+				{
+					"id": "B9",
+					"edID": 128049311,
+					"eddbID": 784,
+					"grp": "bh",
+					"cost": 1970250,
+					"mass": 17,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 1.52
+				},
+				{
+					"id": "Ba",
+					"edID": 128049312,
+					"eddbID": 785,
+					"grp": "bh",
+					"cost": 4433050,
+					"mass": 35,
+					"causres": 0,
+					"explres": -0.4,
+					"kinres": -0.2,
+					"thermres": 0,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bb",
+					"edID": 128049313,
+					"eddbID": 786,
+					"grp": "bh",
+					"cost": 10476780,
+					"mass": 35,
+					"causres": 0,
+					"explres": -0.5,
+					"kinres": -0.75,
+					"thermres": 0.5,
+					"hullboost": 2.5
+				},
+				{
+					"id": "Bc",
+					"edID": 128049314,
+					"eddbID": 787,
+					"grp": "bh",
+					"cost": 11609670,
+					"mass": 35,
+					"causres": 0,
+					"explres": 0.2,
+					"kinres": 0.25,
+					"thermres": -0.4,
+					"hullboost": 2.5
+				}
+			],
+			"slots": {
+				"standard": [
+					4,
+					5,
+					4,
+					3,
+					5,
+					4,
+					3
+				],
+				"hardpoints": [
+					3,
+					3,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					5,
+					{
+						"class": 5,
+						"name": "Military",
+						"eligible": {
+							"mahr": 1,
+							"hr": 1,
+							"scb": 1,
+							"mrp": 1,
+							"gsrp": 1,
+							"gmrp": 1,
+							"ghrp": 1
+						}
+					},
+					4,
+					2,
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"defaults": {
+				"standard": [
+					"4E",
+					"5E",
+					"4E",
+					"3E",
+					"5E",
+					"4E",
+					"3C"
+				],
+				"hardpoints": [
+					17,
+					17,
+					0,
+					0,
+					0,
+					0
+				],
+				"internal": [
+					"4e",
+					0,
+					"02",
+					0,
+					0,
+					"",
+					0,
+					0
+				]
+			}
+		}
+	}
+}

@@ -21,6 +21,7 @@ from builtins import str
 from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
+from shutil import copyfile
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "http://elite.tromador.com/files/"
@@ -155,25 +156,36 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.DEBUG0("Checking for update to '{}'.", path)
+        tdenv.NOTE("Checking for update to '{}'.", path)
         if urlTail == SHIPS_URL:
             url = SHIPS_URL
         else:
-            if not self.getOption('fallback'):
-                try:
-                    url = BASE_URL + urlTail
-                    response = request.urlopen(url)
-                except:
-                    # If Tromador's server fails for whatever reason,
-                    # fallback to download direct from EDDB.io
-                    self.options["fallback"] = True
-            if self.getOption('fallback'):
-                # EDDB.io doesn't have live listings.
-                if urlTail == LIVE_LISTINGS:
-                    return False
-                
-                url = FALLBACK_URL + urlTail
+            url = BASE_URL + urlTail
+        if url == SHIPS_URL or not self.getOption('fallback'):
+            try:
                 response = request.urlopen(url)
+            except Exception as e:
+                # If Tromador's server fails for whatever reason,
+                # fallback to download direct from EDDB.io
+                tdenv.WARN("Problem with download:\nURL: {}\nError: {}", url, str(e))
+                self.options["fallback"] = True
+        
+        if self.getOption('fallback'):
+            # EDDB.io doesn't have live listings or the ship index.
+            if urlTail == LIVE_LISTINGS:
+                return False
+
+            if urlTail == SHIPS_URL:
+                tdenv.NOTE("Using Default Ship Index.")
+                copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
+                return True
+            
+            url = FALLBACK_URL + urlTail
+            try:
+                response = request.urlopen(url)
+            except Exception as e:
+                tdenv.WARN("Problem with download (fallback enabled):\nURL: {}\nError: {}", url, str(e))
+                return False
         
         dumpModded = 0
         # The coriolis file is from github, so it doesn't have a "Last-Modified" metadata.
