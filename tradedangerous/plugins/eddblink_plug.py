@@ -155,6 +155,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         Fetch the latest dumpfile from the website if newer than local copy.
         """
         tdb, tdenv = self.tdb, self.tdenv
+
+        def URLopen(url):
+            return request.urlopen(request.Request(url, headers = {'User-Agent': 'Trade-Dangerous'}))
         
         tdenv.NOTE("Checking for update to '{}'.", path)
         if urlTail == SHIPS_URL:
@@ -163,7 +166,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             url = BASE_URL + urlTail
         if url == SHIPS_URL or not self.getOption('fallback'):
             try:
-                response = request.urlopen(url)
+                response = URLopen(url)
             except Exception as e:
                 # If Tromador's server fails for whatever reason,
                 # fallback to download direct from EDDB.io
@@ -182,7 +185,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             url = FALLBACK_URL + urlTail
             try:
-                response = request.urlopen(url)
+                response = URLopen(url)
             except Exception as e:
                 tdenv.WARN("Problem with download (fallback enabled):\nURL: {}\nError: {}", url, str(e))
                 return False
