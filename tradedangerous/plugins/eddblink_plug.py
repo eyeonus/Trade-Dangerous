@@ -26,7 +26,7 @@ from shutil import copyfile
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "http://elite.tromador.com/files/"
 FALLBACK_URL = os.environ.get('TD_FALLBACK') or "https://eddb.io/archive/v6/"
-SHIPS_URL = os.environ.get('TD_SHIPS') or "https://beta.coriolis.io/data/index.json"
+SHIPS_URL = os.environ.get('TD_SHIPS') or "https://coriolis.io/data/index.json"
 COMMODITIES = "commodities.json"
 SYSTEMS = "systems_populated.jsonl"
 STATIONS = "stations.jsonl"
@@ -155,8 +155,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         Fetch the latest dumpfile from the website if newer than local copy.
         """
         tdb, tdenv = self.tdb, self.tdenv
-
-        def URLopen(url):
+        
+        def openURL(url):
             return request.urlopen(request.Request(url, headers = {'User-Agent': 'Trade-Dangerous'}))
         
         tdenv.NOTE("Checking for update to '{}'.", path)
@@ -166,7 +166,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             url = BASE_URL + urlTail
         if url == SHIPS_URL or not self.getOption('fallback'):
             try:
-                response = URLopen(url)
+                response = openURL(url)
             except Exception as e:
                 # If Tromador's server fails for whatever reason,
                 # fallback to download direct from EDDB.io
@@ -185,7 +185,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             url = FALLBACK_URL + urlTail
             try:
-                response = URLopen(url)
+                response = openURL(url)
             except Exception as e:
                 tdenv.WARN("Problem with download (fallback enabled):\nURL: {}\nError: {}", url, str(e))
                 return False
