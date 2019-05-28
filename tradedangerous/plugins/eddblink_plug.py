@@ -173,12 +173,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdenv.WARN("Problem with download:\nURL: {}\nError: {}", url, str(e))
                 self.options["fallback"] = True
         
-        if self.getOption('fallback'):
+        if self.getOption('fallback') and response.getcode() != 200:
             # EDDB.io doesn't have live listings or the ship index.
             if urlTail == LIVE_LISTINGS:
                 return False
 
-            if urlTail == SHIPS_URL:
+            if url == SHIPS_URL:
                 tdenv.NOTE("Using Default Ship Index.")
                 copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
                 return True
