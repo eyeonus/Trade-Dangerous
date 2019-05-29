@@ -26,7 +26,7 @@ from shutil import copyfile
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "http://elite.tromador.com/files/"
 FALLBACK_URL = os.environ.get('TD_FALLBACK') or "https://eddb.io/archive/v6/"
-SHIPS_URL = os.environ.get('TD_SHIPS') or "https://coriolis.io/data/index.json"
+SHIPS_URL = os.environ.get('TD_SHIPS') or "https://beta.coriolis.io/data/index.json"
 COMMODITIES = "commodities.json"
 SYSTEMS = "systems_populated.jsonl"
 STATIONS = "stations.jsonl"
@@ -171,18 +171,19 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # If Tromador's server fails for whatever reason,
                 # fallback to download direct from EDDB.io
                 tdenv.WARN("Problem with download:\nURL: {}\nError: {}", url, str(e))
-                self.options["fallback"] = True
+                if url == SHIPS_URL:
+                    tdenv.NOTE("Using Default Ship Index.")
+                    copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
+                    return True
+
+                if urlTail != LIVE_LISTINGS:
+                    self.options["fallback"] = True
         
-        if self.getOption('fallback') and response.getcode() != 200:
+        if self.getOption('fallback') and url != SHIPS_URL:
             # EDDB.io doesn't have live listings or the ship index.
             if urlTail == LIVE_LISTINGS:
                 return False
 
-            if url == SHIPS_URL:
-                tdenv.NOTE("Using Default Ship Index.")
-                copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
-                return True
-            
             url = FALLBACK_URL + urlTail
             try:
                 response = openURL(url)
