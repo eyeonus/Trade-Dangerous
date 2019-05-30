@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018
+# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
@@ -34,8 +34,10 @@
 
 from tradedangerous import cli
 
+
 def main(argv):
     cli.trade(argv)
+
 
 if __name__ == "__main__":
     import sys

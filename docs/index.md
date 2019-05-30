@@ -8,7 +8,7 @@ Copyright (C) Oliver "kfsone" Smith, July 2014
 
 Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
 
-Copyright (C) Jonathan 'eyeonus' Jones 2018
+Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
 
 _REQUIRES PYTHON 3.4.2 OR HIGHER._
 

@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018
+# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
@@ -11,6 +11,6 @@
 
 """just keeper of current version"""
 
-#TODO: remember to update tests when version changes
+# TODO: remember to update tests when version changes
 __version__ = '10.4.8'
 
