@@ -32,7 +32,7 @@
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
 
-from tradedangerous import cli
+from tradedangerous import cli, gui
 
 
 def main(argv):
@@ -41,5 +41,8 @@ def main(argv):
 
 if __name__ == "__main__":
     import sys
-    cli.main(sys.argv)
+    if 1 < len(sys.argv) and sys.argv[1] == 'gui':
+        gui.main(sys.argv)
+    else:
+        cli.main(sys.argv)
     
