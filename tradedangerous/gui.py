@@ -46,19 +46,13 @@ from .version import __version__
 
 from . import tradedb
 
-import PySimpleGUI as sg
+from appJar import gui
 from _ast import arg
-
-
-class Frame(sg.Frame):
-
-    def Refresh(self, layout):
-        super().__del__()
-        super().Layout(layout)
 
 
 def main(argv = None):
     import sys
+    sys.argv = ['trade']
     if not argv:
         argv = sys.argv
     if sys.hexversion < 0x03040200:
@@ -77,70 +71,37 @@ def main(argv = None):
   
     # event, (number,) = sg.Window('Get filename example').Layout(layout).Read()
     
-    Commands = [''] + [ i for i, j in sorted(commands.commandIndex.items()) ]
+    Commands = ['help'] + [ i for i, j in sorted(commands.commandIndex.items()) ]
     cmdIndex = commands.commandIndex
     cmdenv = commands.CommandIndex().parse
-    
-    try:
-        cmdenv(['trade'])
-    except exceptions.UsageError as e:
-        cmdHelp = str(e)
-        
-    layout = [[sg.Text('## TODO: Make this window.')],
-              [sg.InputCombo(Commands, readonly = True, key = '_cmd_', enable_events = True)],
-              [Frame('Required Arguments', [[sg.Text('')]], key = "_req_"), Frame('Optional Switches', [[sg.Text('')]], key = "_opt_")],
-              [sg.Multiline(cmdHelp, disabled = True, key = '_Output_', size = (80, 20))],
-              [sg.Button('Close')]]
-    window = sg.Window('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)).Layout(layout)
-    
-    while True:  # Event Loop
-        event, values = window.Read()
-        if event is None or event == 'Close':
-            break
-        if event == '_cmd_':
-            try:
-                if values['_cmd_'] == '':
-                    cmdenv(['trade'])
-                else:
-                    cmdenv(['trade', values['_cmd_'], '-h'])
-            except exceptions.UsageError as e:
-                cmdHelp = str(e)
-            window.Element('_Output_').Update(disabled = False)
-            window.Element('_Output_').Update(value = cmdHelp)
-            window.Element('_Output_').Update(disabled = True)
-            if values['_cmd_'] != '':
-                print(values['_cmd_'])
-                command = cmdIndex[values['_cmd_']]
-                req = dict()
-                if command.arguments:
-                    for pargs in command.arguments:
-                        arg = pargs.args[0]
-                        req[arg] = pargs.kwargs
-                reqFrame = []
-                for key in req:
-                    if req[key].get("type"):
-                        if req[key]["type"] == str:
-                            reqFrame.append([sg.Input(key, '', (1, 20), key = key)])
-                print(reqFrame)
-                    
-                window.Element('_req_').Refresh(reqFrame)
-                window.Element('_req_').Update(visible = True)
-                print('Rows: \n' + str(window.Element('_req_').Rows))
-                
-                opt = dict()
-                if command.switches:
-                    for pargs in command.switches:
-                        try:
-                            arg = pargs.args[0]
-                            opt[arg] = pargs.kwargs
-                        except AttributeError as e:
-                            for argGrp in pargs.arguments:
-                                arg = argGrp.args[0]
-                                opt[arg] = argGrp.kwargs
-                
-                print(opt.keys())
+    cmdHelp = dict()
 
-    window.Close()
+    try:
+        cmdenv(['help'])
+    except exceptions.UsageError as e:
+        cmdHelp['help'] = str(e)
+    for cmd in Commands:
+        if cmd == 'help':
+            continue
+        try:
+            cmdenv(['trade', cmd, '-h'])
+        except exceptions.UsageError as e:
+            cmdHelp[cmd] = str(e)
+    
+    def updCmd():
+        print(win.combo("Command"))
+        win.message("helpText", cmdHelp[win.combo("Command")])
+    
+    with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
+        win.label('TODO', '## TODO: Make this window.', colspan = 50)
+        win.combo("Command", Commands, change = updCmd, stretch = "none", sticky = "W", width = 10)
+    
+        with win.scrollPane('helpPane', disabled = 'horizontal', colspan = 50) as pane:
+            pane.configure(width = 560, height = 420)
+            win.message("helpText", cmdHelp['help'])
+    
+    # End of window
+    
 #    try:
 #        try:
 #            if "CPROF" in os.environ:
