@@ -78,7 +78,38 @@ def main(argv = None):
     cmdenv = commands.CommandIndex().parse
     # 'help' output, required/optional/common arguments, for each command 
     cmdHelp, reqArg, optArg, comArg = dict(), dict(), dict(), dict()
-
+    """
+        stdArgs = subParser.add_argument_group('Common Switches')
+        stdArgs.add_argument('-h', '--help',
+                    help = 'Show this help message and exit.',
+                    action = HelpAction, nargs = 0,
+                )
+        stdArgs.add_argument('--debug', '-w',
+                    help = 'Enable/raise level of diagnostic output.',
+                    default = 0, required = False, action = 'count',
+                )
+        stdArgs.add_argument('--detail', '-v',
+                    help = 'Increase level  of detail in output.',
+                    default = 0, required = False, action = 'count',
+                )
+        stdArgs.add_argument('--quiet', '-q',
+                    help = 'Reduce level of detail in output.',
+                    default = 0, required = False, action = 'count',
+                )
+        stdArgs.add_argument('--db',
+                    help = 'Specify location of the SQLite database.',
+                    default = None, dest = 'dbFilename', type = str,
+                )
+        stdArgs.add_argument('--cwd', '-C',
+                    help = 'Change the working directory file accesses are made from.',
+                    type = str, required = False,
+                )
+        stdArgs.add_argument('--link-ly', '-L',
+                    help = 'Maximum lightyears between systems to be considered linked.',
+                    type = float,
+                    default = None, dest = 'maxSystemLinkLy',
+                )
+    """
     try:
         cmdenv(['help'])
     except exceptions.UsageError as e:
@@ -94,28 +125,17 @@ def main(argv = None):
         index = cmdIndex[cmd]
         
         if index.arguments:
-            # Get all the extra bits for the option.
-            reqArg[cmd] = [arg.kwargs for arg in index.arguments]
-            # Get the name of the option and put it in the 'arg' key.]
-            for i in range(len(index.arguments)):
-                reqArg[cmd][i]['arg'] = index.arguments[i].args[0]
-            print(reqArg[cmd])
+            reqArg[cmd] = [{arg.args[0]: arg.kwargs} for arg in index.arguments]
+            # print(reqArg[cmd])
         
         if index.switches:
             optArg[cmd] = list()
             for arg in index.switches:
                 try:
-                    optArg[cmd].append(arg.kwargs)
+                    optArg[cmd].append({arg.args[0]: arg.kwargs})
                 except AttributeError:
-                    optArg[cmd].append([argGrp.kwargs for argGrp in arg.arguments])
-            for i in range(len(optArg[cmd])):
-                try:
-                    optArg[cmd][i]['arg'] = index.switches[i].args[0]
-                except AttributeError:
-                    for j in range(len(index.switches[i].arguments)):
-                        optArg[cmd][i][j]['arg'] = index.switches[i].arguments[j].args[0]
-            
-            print(optArg[cmd])
+                    optArg[cmd].append([{argGrp.args[0]: argGrp.kwargs} for argGrp in arg.arguments])
+            # print(optArg[cmd])
     
     def updCmd():
         print(win.combo("Command"))
