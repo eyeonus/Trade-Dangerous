@@ -71,22 +71,51 @@ def main(argv = None):
   
     # event, (number,) = sg.Window('Get filename example').Layout(layout).Read()
     
-    Commands = ['help'] + [ i for i, j in sorted(commands.commandIndex.items()) ]
+    # All available commands
+    Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
+    # Used to run TD cli commands.
     cmdIndex = commands.commandIndex
     cmdenv = commands.CommandIndex().parse
-    cmdHelp = dict()
+    # 'help' output, required/optional/common arguments, for each command 
+    cmdHelp, reqArg, optArg, comArg = dict(), dict(), dict(), dict()
 
     try:
         cmdenv(['help'])
     except exceptions.UsageError as e:
         cmdHelp['help'] = str(e)
     for cmd in Commands:
+        print(cmd)
         if cmd == 'help':
             continue
         try:
             cmdenv(['trade', cmd, '-h'])
         except exceptions.UsageError as e:
             cmdHelp[cmd] = str(e)
+        index = cmdIndex[cmd]
+        
+        if index.arguments:
+            # Get all the extra bits for the option.
+            reqArg[cmd] = [arg.kwargs for arg in index.arguments]
+            # Get the name of the option and put it in the 'arg' key.]
+            for i in range(len(index.arguments)):
+                reqArg[cmd][i]['arg'] = index.arguments[i].args[0]
+            print(reqArg[cmd])
+        
+        if index.switches:
+            optArg[cmd] = list()
+            for arg in index.switches:
+                try:
+                    optArg[cmd].append(arg.kwargs)
+                except AttributeError:
+                    optArg[cmd].append([argGrp.kwargs for argGrp in arg.arguments])
+            for i in range(len(optArg[cmd])):
+                try:
+                    optArg[cmd][i]['arg'] = index.switches[i].args[0]
+                except AttributeError:
+                    for j in range(len(index.switches[i].arguments)):
+                        optArg[cmd][i][j]['arg'] = index.switches[i].arguments[j].args[0]
+            
+            print(optArg[cmd])
     
     def updCmd():
         print(win.combo("Command"))

@@ -12,111 +12,110 @@ import pathlib
 ######################################################################
 # Parser config
 
-help='Update prices for a station.'
-name='update'
-epilog=("Generates a human-readable version of the price list for a given station "
+help = 'Update prices for a station.'
+name = 'update'
+epilog = ("Generates a human-readable version of the price list for a given station "
             "and opens it in the specified text editor.\n"
             "The format is intended to closely resemble the presentation of the "
             "market in-game. If you change the order items are listed in, "
             "the order will be kept for future edits, making it easier to quickly "
             "check for changes.")
-wantsTradeDB=True
+wantsTradeDB = True
 arguments = [
-    ParseArgument('starting', help='Name of the station to update.', type=str)
+    ParseArgument('starting', help = 'Name of the station to update.', type = str)
 ]
 switches = [
     ParseArgument('--timestamps', '-T',
-            help='[Text editing] Includes timestamps in the update.',
-            action='store_true',
-            default=False,
+            help = '[Text editing] Includes timestamps in the update.',
+            action = 'store_true',
+            default = False,
     ),
     ParseArgument('--all', '-A',
-            help='List all known items.',
-            action='store_true',
-            default=False,
+            help = 'List all known items.',
+            action = 'store_true',
+            default = False,
     ),
     ParseArgument('--use-demand', '-D',
-            help='Unlock the "Demand" column in the GUI.',
-            action='store_true',
-            dest='useDemand',
-            default=False,
+            help = 'Unlock the "Demand" column in the GUI.',
+            action = 'store_true',
+            dest = 'useDemand',
+            default = False,
     ),
     ParseArgument('--force-na', '-0',
-            help="Forces 'unk' supply to become 'n/a' by default",
-            action='store_true',
-            default=False,
-            dest='forceNa',
+            help = "Forces 'unk' supply to become 'n/a' by default",
+            action = 'store_true',
+            default = False,
+            dest = 'forceNa',
     ),
     ParseArgument('--height', '-H',
-            help="[GUI] Specify height of the window",
-            type=int,
-            default=800,
+            help = "[GUI] Specify height of the window",
+            type = int,
+            default = 800,
     ),
     ParseArgument('--front', '-F',
-            help=(
+            help = (
                 "[GUI] Keep the GUI infront of other windows; "
                 "this allows you to put the window infront of "
                 "the game UI if you run the game in windowed mode."
                 ),
-            action='store_true',
-            default=False,
-            dest='alwaysOnTop',
+            action = 'store_true',
+            default = False,
+            dest = 'alwaysOnTop',
     ),
     ParseArgument('--window-x', '-wx',
-            help=(
+            help = (
                 "[GUI] Specify the window X position "
                 "Use a negative value for a right-of-screen relative offset"
                 ),
-            default=-1,
-            dest='windowX',
-            type=int,
+            default = -1,
+            dest = 'windowX',
+            type = int,
     ),
     ParseArgument('--window-y', '-wy',
-            help=(
+            help = (
                 "[GUI] Specify the window U position "
                 "Use a negative value for a bottom-of-screen relative offset"
                 ),
-            default=1,
-            dest='windowY',
-            type=int,
+            default = 1,
+            dest = 'windowY',
+            type = int,
     ),
     MutuallyExclusiveGroup(
         ParseArgument('--gui', '-G',
-                help="Use the experimental built-in GUI",
-                action='store_true',
-                default=False,
-                dest='gui',
+                help = "Use the experimental built-in GUI",
+                action = 'store_true',
+                default = False,
+                dest = 'gui',
         ),
-        MutuallyExclusiveGroup(
-            ParseArgument('--editor',
-                    help='Generates a text file containing the prices for '
-                            'the station and loads it into the specified '
-                            'text editor for you.',
-                    default=None,
-                    type=str,
-            ),
-            ParseArgument('--sublime',
-                    help='Like --editor but uses Sublime Text (2 or 3).',
-                    action='store_const', const='sublime', dest='editing',
-            ),
-            ParseArgument('--notepad',
-                    help='Like --editor but uses Notepad.',
-                    action='store_const', const='notepad', dest='editing',
-            ),
-            ParseArgument('--npp',
-                    help='Like --editor but uses Notepad++.',
-                    action='store_const', const='npp', dest='editing',
-            ),
-            ParseArgument('--vim',
-                    help='Like --editor but uses vim.',
-                    action='store_const', const='vim', dest='editing',
-            ),
+        ParseArgument('--editor',
+                help = 'Generates a text file containing the prices for '
+                        'the station and loads it into the specified '
+                        'text editor for you.',
+                default = None,
+                type = str,
+        ),
+        ParseArgument('--sublime',
+                help = 'Like --editor but uses Sublime Text (2 or 3).',
+                action = 'store_const', const = 'sublime', dest = 'editing',
+        ),
+        ParseArgument('--notepad',
+                help = 'Like --editor but uses Notepad.',
+                action = 'store_const', const = 'notepad', dest = 'editing',
+        ),
+        ParseArgument('--npp',
+                help = 'Like --editor but uses Notepad++.',
+                action = 'store_const', const = 'npp', dest = 'editing',
+        ),
+        ParseArgument('--vim',
+                help = 'Like --editor but uses vim.',
+                action = 'store_const', const = 'vim', dest = 'editing',
         ),
     )
 ]
 
 ######################################################################
 # Helpers
+
 
 class TemporaryFileExistsError(TradeException):
     pass
@@ -149,14 +148,14 @@ def saveCopyOfChanges(cmdenv, dbFilename, stationID):
     else:
         mode = "w"
     dumpPath = pathlib.Path("updated.prices")
-    with dumpPath.open(mode, encoding='utf-8') as dumpFile:
+    with dumpPath.open(mode, encoding = 'utf-8') as dumpFile:
         # Remember the filename so we know we need to delete it.
         prices.dumpPrices(dbFilename,
                 prices.Element.full | prices.Element.blanks,
-                file=dumpFile,
-                stationID=stationID,
-                defaultZero=False,
-                debug=cmdenv.debug,
+                file = dumpFile,
+                stationID = stationID,
+                defaultZero = False,
+                debug = cmdenv.debug,
         )
     if not cmdenv.quiet:
         print("- Copy of changes saved as '{}'".format(
@@ -245,7 +244,7 @@ def editUpdate(tdb, cmdenv, stationID):
             # This has a disadvantage in that: we don't check for just "vim" (no .exe) under Windows
             vimDirs = [
                     "Git\\share\\vim\\vim{}".format(vimVer)
-                    for vimVer in range(70,75)
+                    for vimVer in range(70, 75)
             ]
             editor = getEditorPaths(cmdenv,
                     "vim",
@@ -275,14 +274,14 @@ def editUpdate(tdb, cmdenv, stationID):
         if cmdenv.timestamps: elementMask |= prices.Element.timestamp
         if cmdenv.all: elementMask |= prices.Element.blanks
         # Open the file and dump data to it.
-        with tmpPath.open("w", encoding='utf-8') as tmpFile:
+        with tmpPath.open("w", encoding = 'utf-8') as tmpFile:
             # Remember the filename so we know we need to delete it.
             absoluteFilename = str(tmpPath.resolve())
             prices.dumpPrices(dbFilename, elementMask,
-                    file=tmpFile,
-                    stationID=stationID,
-                    defaultZero=cmdenv.forceNa,
-                    debug=cmdenv.debug
+                    file = tmpFile,
+                    stationID = stationID,
+                    defaultZero = cmdenv.forceNa,
+                    debug = cmdenv.debug
             )
         
         # Stat the file so we can determine if the user writes to it.
@@ -348,6 +347,7 @@ def editUpdate(tdb, cmdenv, stationID):
         if "EXCEPTIONS" in os.environ:
             raise e
 
+
 def guidedUpdate(tdb, cmdenv):
     dbFilename = tdb.dbFilename
     stationID = cmdenv.startStation.ID
@@ -392,6 +392,7 @@ def guidedUpdate(tdb, cmdenv):
 ######################################################################
 # Perform query and populate result set
 
+
 def run(results, cmdenv, tdb):
     place = cmdenv.origPlace
     if isinstance(place, System):
@@ -414,7 +415,7 @@ def run(results, cmdenv, tdb):
                     ". '-F' makes the window show in-front of the "
                     "E:D Window.\n"
                     ". '-A' forces all items to be listed.\n",
-                    file=sys.stderr
+                    file = sys.stderr
             )
         guidedUpdate(tdb, cmdenv)
     else:
