@@ -80,7 +80,7 @@ def main(argv = None):
     cmdHelp, reqArg, optArg = dict(), dict(), dict()
     comArg = [
                 { '--help': { 'help': 'Show this help message and exit.',
-                             'action': HelpAction, 'nargs': 0 } },
+                             'action': commands.HelpAction, 'nargs': 0 } },
                 { '--debug': { 'help': 'Enable/raise level of diagnostic output.',
                               'default': 0, 'required': False, 'action': 'count' } },
                 { '--detail': { 'help': 'Increase level  of detail in output.',
@@ -110,22 +110,37 @@ def main(argv = None):
         index = cmdIndex[cmd]
         
         if index.arguments:
-            reqArg[cmd] = [{arg.args[0]: arg.kwargs} for arg in index.arguments]
-            # print(reqArg[cmd])
+            reqArg[cmd] = {arg.args[0]: arg.kwargs for arg in index.arguments}
+        else:
+            reqArg[cmd] = dict()
+        print(reqArg[cmd])
         
         if index.switches:
-            optArg[cmd] = list()
+            optArg[cmd] = dict()
             for arg in index.switches:
                 try:
-                    # # TODO: Implement plugin option handling.
-                    optArg[cmd].append({arg.args[0]: arg.kwargs})
+                    # TODO: Implement plugin option handling.
+                    
+                    optArg[cmd][arg.args[0]] = arg.kwargs
                 except AttributeError:
-                    optArg[cmd].append([{argGrp.args[0]: argGrp.kwargs} for argGrp in arg.arguments])
-            # print(optArg[cmd])
+                    for argGrp in arg.arguments:
+                        optArg[cmd][argGrp.args[0]] = argGrp.kwargs
+        else:
+            optArg[cmd] = dict()
+        print(optArg[cmd])
     
     def updCmd():
-        print(win.combo("Command"))
-        win.message("helpText", cmdHelp[win.combo("Command")])
+        cmd = win.combo("Command")
+        print(cmd)
+        if cmd == 'help':
+            return
+        for key in reqArg[cmd]:
+            print(key + ": " + str(reqArg[cmd][key]))
+        for key in optArg[cmd]:
+            print(key + ": " + str(optArg[cmd][key]))
+        
+        win.message("helpText", cmdHelp[cmd])
+        # TODO: Implement panels and procedural argument population.
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
         win.label('TODO', '## TODO: Make this window.', colspan = 50)
