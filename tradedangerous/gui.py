@@ -77,39 +77,24 @@ def main(argv = None):
     cmdIndex = commands.commandIndex
     cmdenv = commands.CommandIndex().parse
     # 'help' output, required/optional/common arguments, for each command 
-    cmdHelp, reqArg, optArg, comArg = dict(), dict(), dict(), dict()
-    """
-        stdArgs = subParser.add_argument_group('Common Switches')
-        stdArgs.add_argument('-h', '--help',
-                    help = 'Show this help message and exit.',
-                    action = HelpAction, nargs = 0,
-                )
-        stdArgs.add_argument('--debug', '-w',
-                    help = 'Enable/raise level of diagnostic output.',
-                    default = 0, required = False, action = 'count',
-                )
-        stdArgs.add_argument('--detail', '-v',
-                    help = 'Increase level  of detail in output.',
-                    default = 0, required = False, action = 'count',
-                )
-        stdArgs.add_argument('--quiet', '-q',
-                    help = 'Reduce level of detail in output.',
-                    default = 0, required = False, action = 'count',
-                )
-        stdArgs.add_argument('--db',
-                    help = 'Specify location of the SQLite database.',
-                    default = None, dest = 'dbFilename', type = str,
-                )
-        stdArgs.add_argument('--cwd', '-C',
-                    help = 'Change the working directory file accesses are made from.',
-                    type = str, required = False,
-                )
-        stdArgs.add_argument('--link-ly', '-L',
-                    help = 'Maximum lightyears between systems to be considered linked.',
-                    type = float,
-                    default = None, dest = 'maxSystemLinkLy',
-                )
-    """
+    cmdHelp, reqArg, optArg = dict(), dict(), dict()
+    comArg = [
+                { '--help': { 'help': 'Show this help message and exit.',
+                             'action': HelpAction, 'nargs': 0 } },
+                { '--debug': { 'help': 'Enable/raise level of diagnostic output.',
+                              'default': 0, 'required': False, 'action': 'count' } },
+                { '--detail': { 'help': 'Increase level  of detail in output.',
+                               'default': 0, 'required': False, 'action': 'count' } },
+                { '--quiet': { 'help': 'Reduce level of detail in output.',
+                              'default': 0, 'required': False, 'action': 'count' } },
+                { '--db': { 'help': 'Specify location of the SQLite database.',
+                           'default': None, 'dest': 'dbFilename', 'type': str } },
+                { '--cwd': { 'help': 'Change the working directory file accesses are made from.',
+                            'type': str, 'required': False } },
+                { '--link-ly': { 'help': 'Maximum lightyears between systems to be considered linked.',
+                                'type': float, 'default': None, 'dest': 'maxSystemLinkLy' } }
+            ]
+    
     try:
         cmdenv(['help'])
     except exceptions.UsageError as e:
@@ -132,6 +117,7 @@ def main(argv = None):
             optArg[cmd] = list()
             for arg in index.switches:
                 try:
+                    # # TODO: Implement plugin option handling.
                     optArg[cmd].append({arg.args[0]: arg.kwargs})
                 except AttributeError:
                     optArg[cmd].append([{argGrp.args[0]: argGrp.kwargs} for argGrp in arg.arguments])

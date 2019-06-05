@@ -209,7 +209,7 @@ class CommandIndex(object):
         
         # Arguments common to all subparsers.
         stdArgs = subParser.add_argument_group('Common Switches')
-        stdArgs.add_argument('-h', '--help',
+        stdArgs.add_argument('--help', '-h',
                     help = 'Show this help message and exit.',
                     action = HelpAction, nargs = 0,
                 )
