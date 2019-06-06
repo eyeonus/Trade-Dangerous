@@ -174,7 +174,6 @@ def main(argv = None):
             with win.scrollPane('reqArg', disabled = 'horizontal', colspan = 1) as pane:
                 for key in reqArg[cmd]:
                     print(key + ": " + str(reqArg[cmd][key]))
-                    # TODO: Populate pane with arguments.
                     win.entry(key, label = True, tooltip = reqArg[cmd][key]['help'])
         
         if reqArg[cmd]:
