@@ -56,8 +56,8 @@ WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 def _populateSpinBox(self, spin, vals, reverse = True):
     # make sure it's a list
     #  reverse it, so the spin box functions properly
-    # vals = list(vals)
     # if reverse:
+    #    vals = list(vals)
     #    vals.reverse()
     vals = tuple(vals)
     spin.config(values = vals)
@@ -110,12 +110,6 @@ def main(argv = None):
     # 'help' output, required/optional/common arguments, for each command 
     cmdHelp, reqArg, optArg = dict(), dict(), dict()
     comArg = [
-                { '--help': { 'help': 'Show this help message and exit.',
-                             'action': commands.HelpAction, 'nargs': 0 } },
-                { '--debug': { 'help': 'Enable/raise level of diagnostic output.',
-                              'default': 0, 'required': False, 'action': 'count' } },
-                { '--detail': { 'help': 'Increase level  of detail in output.',
-                               'default': 0, 'required': False, 'action': 'count' } },
                 { '--quiet': { 'help': 'Reduce level of detail in output.',
                               'default': 0, 'required': False, 'action': 'count' } },
                 { '--db': { 'help': 'Specify location of the SQLite database.',
@@ -167,40 +161,40 @@ def main(argv = None):
         win.message("helpText", cmdHelp[cmd])
         # TODO: Implement panels and procedural argument population.
         win.emptyScrollPane('reqArg')
-        # win.emptyScrollPane('optArg')
+        win.emptyScrollPane('optArg')
         if cmd == 'help':
             return
         if reqArg[cmd]:
-            with win.scrollPane('reqArg', disabled = 'horizontal', colspan = 1) as pane:
+            with win.scrollPane('reqArg', disabled = 'horizontal') as pane:
+                win.label('Required:', sticky = 'w')
                 for key in reqArg[cmd]:
                     print(key + ": " + str(reqArg[cmd][key]))
-                    win.entry(key, label = True, tooltip = reqArg[cmd][key]['help'])
+                    win.entry(key, label = True, sticky = 'ew', tooltip = reqArg[cmd][key]['help'])
         
-        if reqArg[cmd]:
-            with win.scrollPane('optArg', disabled = 'horizontal', colspan = 1) as pane:
+        if optArg[cmd]:
+            with win.scrollPane('optArg', disabled = 'horizontal') as pane:
+                win.label('Optional:', sticky = 'w')
                 for key in optArg[cmd]:
                     print(key + ": " + str(optArg[cmd][key]))
                     # TODO: Populate pane with arguments.
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
         win.combo('Command', Commands, change = updCmd, stretch = 'none', sticky = 'W', width = 10)
-        win.spinBox('--debug', [0, 1, 2, 3], tooltip = 'Enable/raise level of diagnostic output.',
-                      label = True, selected = 0, sticky = 'w', width = 1, row = 0, column = 1)
-    
-        win.spinBox('--detail', 0, endValue = 3, tooltip = 'Increase level of detail in output.',
-                      label = True, selected = 0, sticky = 'w', width = 1, row = 0, column = 2)
-    
-        with win.scrollPane('reqArg', disabled = 'horizontal', row = 1, column = 0, colspan = 2) as pane:
+        with win.scrollPane('reqArg', disabled = 'horizontal', row = 1, column = 0, colspan = 25) as pane:
             pane.configure(width = 280, height = 100)
-            win.label('TODO', '## TODO: Make this window.')
         
-        with win.scrollPane('optArg', disabled = 'horizontal', row = 1, column = 2, colspan = 2) as pane:
+        with win.scrollPane('optArg', disabled = 'horizontal', row = 1, column = 25, colspan = 25) as pane:
             pane.configure(width = 280, height = 100)
-            win.label('TODO2', '## TODO: Make this window.')
         
         with win.scrollPane('helpPane', disabled = 'horizontal', colspan = 50) as pane:
             pane.configure(width = 560, height = 420)
             win.message("helpText", cmdHelp['help'])
+    
+        win.spinBox('--debug', [0, 1, 2, 3], tooltip = 'Enable/raise level of diagnostic output.',
+                      label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 48)
+    
+        win.spinBox('--detail', 0, endValue = 3, tooltip = 'Increase level of detail in output.',
+                      label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 49)
     
     # End of window
     
