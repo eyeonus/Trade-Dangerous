@@ -37,11 +37,11 @@ from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
 import os
-import traceback
+import sys
 
 from . import commands
-from .commands import exceptions, parsing
-from .plugins import PluginException
+from . import plugins
+from .commands import exceptions
 from .version import __version__
 
 from . import tradedb
@@ -51,6 +51,16 @@ from appJar import gui
 from _ast import arg
 
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
+
+# Plugins available to the 'import' command are stored here.
+# The list is populated by scanning the plugin folder directly,
+# so it updates automagically at start as plugins are added or removed.
+#
+# Any other command with available plugins must have a similar list.
+importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
+             for plug in os.scandir(sys.modules['tradedangerous.plugins'].__path__[0])
+             if plug.name.endswith("_plug.py")
+             ]
 
 
 def _populateSpinBox(self, spin, vals, reverse = True):
@@ -96,12 +106,6 @@ def main(argv = None):
             )
     from . import tradeexcept
     
-    # layout = [[sg.Text('Filename')],
-    #      [sg.Input(), sg.FileBrowse()],
-    #      [sg.OK(), sg.Cancel()] ]
-  
-    # event, (number,) = sg.Window('Get filename example').Layout(layout).Read()
-    
     # All available commands
     Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
     # Used to run TD cli commands.
@@ -144,12 +148,22 @@ def main(argv = None):
             optArg[cmd] = dict()
             for arg in index.switches:
                 try:
-                    # TODO: Implement plugin option handling.
-                    
-                    optArg[cmd][arg.args[0]] = arg.kwargs
+                    optArg[cmd][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
+                    if arg.args[0] == '--option':
+                        # Currently only the 'import' cmd has the '--plug' option,
+                        # but this could no longer be the case in future.
+                        if cmd == 'import':
+                            plugOptions = {plug: plugins.load(cmdenv(['trade', cmd, '--plug', plug, '-O', 'help']).plug, "ImportPlugin").pluginOptions for plug in importPlugs}
+                            optArg[cmd][arg.args[0]]['options'] = plugOptions
+                        
                 except AttributeError:
                     for argGrp in arg.arguments:
-                        optArg[cmd][argGrp.args[0]] = argGrp.kwargs
+                        optArg[cmd][argGrp.args[0]] = {kwarg : argGrp.kwargs[kwarg] for kwarg in argGrp.kwargs}
+                        if argGrp.args[0] == '--plug':
+                            # Currently only the 'import' cmd has the '--plug' option,
+                            # but this could no longer be the case in future.
+                            if cmd == 'import':
+                                optArg[cmd][argGrp.args[0]]['plugins'] = importPlugs
         else:
             optArg[cmd] = dict()
         # print(optArg[cmd])
@@ -159,7 +173,6 @@ def main(argv = None):
         print(cmd)
         
         win.message("helpText", cmdHelp[cmd])
-        # TODO: Implement panels and procedural argument population.
         win.emptyScrollPane('reqArg')
         win.emptyScrollPane('optArg')
         if cmd == 'help':
@@ -168,15 +181,16 @@ def main(argv = None):
             with win.scrollPane('reqArg', disabled = 'horizontal') as pane:
                 win.label('Required:', sticky = 'w')
                 for key in reqArg[cmd]:
-                    print(key + ": " + str(reqArg[cmd][key]))
+                    # print(key + ": " + str(reqArg[cmd][key]))
                     win.entry(key, label = True, sticky = 'ew', tooltip = reqArg[cmd][key]['help'])
         
         if optArg[cmd]:
             with win.scrollPane('optArg', disabled = 'horizontal') as pane:
                 win.label('Optional:', sticky = 'w')
                 for key in optArg[cmd]:
-                    print(key + ": " + str(optArg[cmd][key]))
+                    # print(key + ": " + str(optArg[cmd][key]))
                     # TODO: Populate pane with arguments.
+                    pass
     
     def setDetail():
         if int(win.spin('--quiet')) > 0:
