@@ -17,47 +17,48 @@ import sys
 ######################################################################
 # Parser config
 
-help='List, add or update available ships to a station'
-name='shipvendor'
-epilog=None
+help = 'List, add or update available ships to a station'
+name = 'shipvendor'
+epilog = None
 arguments = [
     ParseArgument(
         'origin',
-        help='Specify the full name of the station '
+        help = 'Specify the full name of the station '
             '(SYS NAME/STN NAME is also supported).',
-        metavar='STATIONNAME',
-        type=str,
+        metavar = 'STATIONNAME',
+        type = str,
     ),
     ParseArgument(
         'ship',
-        help='Comma or space separated list of ship names.',
-        nargs='*',
+        help = 'Comma or space separated list of ship names.',
+        type = str,
+        nargs = '*',
     ),
 ]
 switches = [
     MutuallyExclusiveGroup(
         ParseArgument(
             '--remove', '-rm',
-            help='Indicates you want to remove an entry.',
-            action='store_true',
+            help = 'Indicates you want to remove an entry.',
+            action = 'store_true',
         ),
         ParseArgument(
             '--add', '-a',
-            help='Indicates you want to add a new station.',
-            action='store_true',
+            help = 'Indicates you want to add a new station.',
+            action = 'store_true',
         ),
         ParseArgument(
             '--name-sort',
-            help='Sort listed ships by name.',
-            action='store_true',
-            dest='nameSort',
+            help = 'Sort listed ships by name.',
+            action = 'store_true',
+            dest = 'nameSort',
         ),
     ),
     ParseArgument(
         '--no-export',
-        help='Do not update the .csv files.',
-        action='store_true',
-        dest='noExport',
+        help = 'Do not update the .csv files.',
+        action = 'store_true',
+        dest = 'noExport',
     ),
 ]
 
@@ -85,7 +86,7 @@ def removeShipVendor(tdb, cmdenv, station, ship):
     db = tdb.getDB()
     db.execute("""
             DELETE FROM ShipVendor WHERE ship_id = ? and station_id = ?
-    """, [ship.ID,station.ID])
+    """, [ship.ID, station.ID])
     db.commit()
     cmdenv.NOTE("At {} removing {}", station.name(), ship.name())
     return ship
@@ -135,18 +136,18 @@ def listShipsPresent(tdb, cmdenv, station, results):
     for (ship_id,) in cur:
         ship = ships.get(ship_id, None)
         if ship:
-            addShip(ResultRow(ship=ship))
+            addShip(ResultRow(ship = ship))
     
     if cmdenv.nameSort:
-        results.rows.sort(key=lambda row: row.ship.name())
+        results.rows.sort(key = lambda row: row.ship.name())
     else:
-        results.rows.sort(key=lambda row: row.ship.cost, reverse=True)
+        results.rows.sort(key = lambda row: row.ship.cost, reverse = True)
     
     return results
 
-
 ######################################################################
 # Perform query and populate result set
+
 
 def run(results, cmdenv, tdb):
     station = cmdenv.startStation
@@ -208,7 +209,7 @@ def run(results, cmdenv, tdb):
     # We've checked that everything should be good.
     dataToExport = False
     for ship in ships.values():
-        if action(tdb, cmdenv,station, ship):
+        if action(tdb, cmdenv, station, ship):
             dataToExport = True
     
     maybeExportToCSV(tdb, cmdenv)
@@ -218,6 +219,7 @@ def run(results, cmdenv, tdb):
 ######################################################################
 # Transform result set into output
 
+
 def render(results, cmdenv, tdb):
     if not results or not results.rows:
         raise CommandLineError(
@@ -225,19 +227,19 @@ def render(results, cmdenv, tdb):
             .format(results.summary.station.name())
         )
     
-    maxShipLen = max_len(results.rows, key=lambda row: row.ship.name())
+    maxShipLen = max_len(results.rows, key = lambda row: row.ship.name())
     
     rowFmt = RowFormat().append(
         ColumnFormat("Ship", '<', maxShipLen,
-            key=lambda row: row.ship.name())
+            key = lambda row: row.ship.name())
     ).append(
         ColumnFormat("Cost", '>', 12, 'n',
-            key=lambda row: row.ship.cost)
+            key = lambda row: row.ship.cost)
     )
     
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
-        print(heading, underline, sep='\n')
+        print(heading, underline, sep = '\n')
     
     for row in results.rows:
         print(rowFmt.format(row))

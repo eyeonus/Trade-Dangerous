@@ -14,42 +14,43 @@ SHIP_MODE = "Ship"
 ######################################################################
 # Parser config
 
-help='Find places to buy a given item within range of a given station.'
-name='buy'
-epilog=None
-wantsTradeDB=True
+help = 'Find places to buy a given item within range of a given station.'
+name = 'buy'
+epilog = None
+wantsTradeDB = True
 arguments = (
     ParseArgument(
         'name',
-        help='Items or Ships to look for.',
-        nargs='+',
+        help = 'Items or Ships to look for.',
+        type = str,
+        nargs = '+',
     ),
 )
 switches = (
     ParseArgument(
         '--supply', '--quantity',
-        help='Limit to stations known to have at least this much supply.',
-        default=0,
-        type=int,
+        help = 'Limit to stations known to have at least this much supply.',
+        default = 0,
+        type = int,
     ),
     ParseArgument(
         '--near',
-        help='Find sellers within jump range of this system.',
-        type=str
+        help = 'Find sellers within jump range of this system.',
+        type = str
     ),
     ParseArgument(
         '--ly',
-        help='[Requires --near] Systems within this range of --near.',
-        default=None,
-        dest='maxLyPer',
-        metavar='N.NN',
-        type=float,
+        help = '[Requires --near] Systems within this range of --near.',
+        default = None,
+        dest = 'maxLyPer',
+        metavar = 'N.NN',
+        type = float,
     ),
     ParseArgument(
         '--limit',
-        help='Maximum number of results to list.',
-        default=None,
-        type=int,
+        help = 'Maximum number of results to list.',
+        default = None,
+        type = int,
     ),
     AvoidPlacesArgument(),
     PadSizeArgument(),
@@ -61,40 +62,41 @@ switches = (
     MutuallyExclusiveGroup(
         ParseArgument(
             '--one-stop', '-1',
-            help='Only list stations that carry all items listed.',
-            action='store_true',
-            dest='oneStop',
+            help = 'Only list stations that carry all items listed.',
+            action = 'store_true',
+            dest = 'oneStop',
         ),
         ParseArgument(
             '--price-sort', '-P',
-            help='(When using --near) Sort by price not distance',
-            action='store_true',
-            default=False,
-            dest='sortByPrice',
+            help = '(When using --near) Sort by price not distance',
+            action = 'store_true',
+            default = False,
+            dest = 'sortByPrice',
         ),
         ParseArgument(
             '--units-sort', '-S',
-            help='Sort by available units followed by price',
-            action='store_true',
-            default=False,
-            dest='sortByUnits',
+            help = 'Sort by available units followed by price',
+            action = 'store_true',
+            default = False,
+            dest = 'sortByUnits',
         ),
     ),
     ParseArgument(
         '--gt',
-        help='Limit to prices above Ncr',
-        metavar='N',
-        dest='gt',
-        type="credits",
+        help = 'Limit to prices above Ncr',
+        metavar = 'N',
+        dest = 'gt',
+        type = "credits",
     ),
     ParseArgument(
         '--lt',
-        help='Limit to prices below Ncr',
-        metavar='N',
-        dest='lt',
-        type="credits",
+        help = 'Limit to prices below Ncr',
+        metavar = 'N',
+        dest = 'lt',
+        type = "credits",
     ),
 )
+
 
 def get_lookup_list(cmdenv, tdb):
     # Credit: http://stackoverflow.com/a/952952/257645
@@ -197,16 +199,16 @@ def sql_query(cmdenv, tdb, queries, mode):
     
     whereClause = ' AND '.join(constraints)
     stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
-        columns=','.join(columns),
-        tables=tables,
-        where=whereClause
+        columns = ','.join(columns),
+        tables = tables,
+        where = whereClause
     )
     cmdenv.DEBUG0('SQL: {}', stmt)
     return tdb.query(stmt, bindValues)
 
-
 ######################################################################
 # Perform query and populate result set
+
 
 def run(results, cmdenv, tdb):
     if cmdenv.lt and cmdenv.gt:
@@ -306,20 +308,20 @@ def run(results, cmdenv, tdb):
         raise NoDataError("No available items found")
     
     if oneStopMode and not singleMode:
-        results.rows.sort(key=lambda result: result.item.name())
-    results.rows.sort(key=lambda result: result.station.name())
+        results.rows.sort(key = lambda result: result.item.name())
+    results.rows.sort(key = lambda result: result.station.name())
     if cmdenv.sortByUnits:
         results.summary.sort = "units"
-        results.rows.sort(key=lambda result: result.price)
-        results.rows.sort(key=lambda result: result.units, reverse=True)
+        results.rows.sort(key = lambda result: result.price)
+        results.rows.sort(key = lambda result: result.units, reverse = True)
     else:
         if not oneStopMode:
             results.summary.sort = "Price"
-            results.rows.sort(key=lambda result: result.units, reverse=True)
-            results.rows.sort(key=lambda result: result.price)
+            results.rows.sort(key = lambda result: result.units, reverse = True)
+            results.rows.sort(key = lambda result: result.price)
         if nearSystem and not cmdenv.sortByPrice:
             results.summary.sort = "Ly"
-            results.rows.sort(key=lambda result: result.dist)
+            results.rows.sort(key = lambda result: result.dist)
     
     limit = cmdenv.limit or 0
     if limit > 0:
@@ -328,47 +330,48 @@ def run(results, cmdenv, tdb):
     return results
 
 #######################################################################
-## Transform result set into output
+# # Transform result set into output
+
 
 def render(results, cmdenv, tdb):
     mode = results.summary.mode
     singleMode = len(results.summary.queries) == 1
-    maxStnLen = max_len(results.rows, key=lambda row: row.station.name())
+    maxStnLen = max_len(results.rows, key = lambda row: row.station.name())
     
     stnRowFmt = RowFormat()
     stnRowFmt.addColumn('Station', '<', maxStnLen,
-            key=lambda row: row.station.name())
+            key = lambda row: row.station.name())
     if not singleMode:
-        maxItmLen = max_len(results.rows, key=lambda row: row.item.name(cmdenv.detail))
+        maxItmLen = max_len(results.rows, key = lambda row: row.item.name(cmdenv.detail))
         stnRowFmt.addColumn(results.summary.mode, '<', maxItmLen,
-                key=lambda row: row.item.name(cmdenv.detail)
+                key = lambda row: row.item.name(cmdenv.detail)
         )
     if mode is not SHIP_MODE or not singleMode:
         stnRowFmt.addColumn('Cost', '>', 10, 'n',
-                key=lambda row: row.price)
+                key = lambda row: row.price)
     if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Units', '>', 10,
-                key=lambda row: '{:n}'.format(row.units) if row.units >= 0 else '?')
+                key = lambda row: '{:n}'.format(row.units) if row.units >= 0 else '?')
     
     if cmdenv.nearSystem:
         stnRowFmt.addColumn('DistLy', '>', 6, '.2f',
-                key=lambda row: row.dist)
+                key = lambda row: row.dist)
     
     if mode is not SHIP_MODE:
         stnRowFmt.addColumn('Age/days', '>', 7,
-                key=lambda row: row.age)
+                key = lambda row: row.age)
     stnRowFmt.addColumn("StnLs", '>', 10,
-            key=lambda row: row.station.distFromStar())
+            key = lambda row: row.station.distFromStar())
     stnRowFmt.addColumn('B/mkt', '>', 4,
-            key=lambda row: TradeDB.marketStates[row.station.blackMarket])
+            key = lambda row: TradeDB.marketStates[row.station.blackMarket])
     stnRowFmt.addColumn("Pad", '>', '3',
-            key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
+            key = lambda row: TradeDB.padSizes[row.station.maxPadSize])
     stnRowFmt.addColumn("Plt", '>', '3',
-            key=lambda row: TradeDB.planetStates[row.station.planetary])
+            key = lambda row: TradeDB.planetStates[row.station.planetary])
     
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()
-        print(heading, underline, sep='\n')
+        print(heading, underline, sep = '\n')
     
     for row in results.rows:
         print(stnRowFmt.format(row))
@@ -377,5 +380,5 @@ def render(results, cmdenv, tdb):
         print("{:{lnl}} {:>10n}".format(
                 "-- Ship Cost" if mode is SHIP_MODE else "-- Average",
                 results.summary.avg,
-                lnl=maxStnLen,
+                lnl = maxStnLen,
         ))

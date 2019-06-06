@@ -218,7 +218,7 @@ class CommandIndex(object):
                     default = 0, required = False, action = 'count',
                 )
         stdArgs.add_argument('--detail', '-v',
-                    help = 'Increase level  of detail in output.',
+                    help = 'Increase level of detail in output.',
                     default = 0, required = False, action = 'count',
                 )
         stdArgs.add_argument('--quiet', '-q',

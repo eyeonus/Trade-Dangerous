@@ -46,8 +46,39 @@ from .version import __version__
 
 from . import tradedb
 
+import appJar
 from appJar import gui
 from _ast import arg
+
+WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
+
+
+def _populateSpinBox(self, spin, vals, reverse = True):
+    # make sure it's a list
+    #  reverse it, so the spin box functions properly
+    # vals = list(vals)
+    # if reverse:
+    #    vals.reverse()
+    vals = tuple(vals)
+    spin.config(values = vals)
+
+
+def setSpinBoxPos(self, title, pos, callFunction = True):
+    spin = self.widgetManager.get(WIDGET_NAMES.SpinBox, title)
+    vals = spin.cget("values")  # .split()
+    vals = self._getSpinBoxValsAsList(vals)
+    pos = int(pos)
+    if pos < 0 or pos >= len(vals):
+        raise Exception("Invalid position: " + str(pos) + ". No position in SpinBox: " + 
+                    title + "=" + str(vals))
+    # if reverse:
+    #    pos = len(vals) - 1 - pos
+    val = vals[pos]
+    self._setSpinBoxVal(spin, val, callFunction)
+
+
+gui._populateSpinBox = _populateSpinBox
+gui.setSpinBoxPos = setSpinBoxPos
 
 
 def main(argv = None):
@@ -100,7 +131,7 @@ def main(argv = None):
     except exceptions.UsageError as e:
         cmdHelp['help'] = str(e)
     for cmd in Commands:
-        print(cmd)
+        # print(cmd)
         if cmd == 'help':
             continue
         try:
@@ -113,7 +144,7 @@ def main(argv = None):
             reqArg[cmd] = {arg.args[0]: arg.kwargs for arg in index.arguments}
         else:
             reqArg[cmd] = dict()
-        print(reqArg[cmd])
+        # print(reqArg[cmd])
         
         if index.switches:
             optArg[cmd] = dict()
@@ -127,25 +158,47 @@ def main(argv = None):
                         optArg[cmd][argGrp.args[0]] = argGrp.kwargs
         else:
             optArg[cmd] = dict()
-        print(optArg[cmd])
+        # print(optArg[cmd])
     
     def updCmd():
         cmd = win.combo("Command")
         print(cmd)
-        if cmd == 'help':
-            return
-        for key in reqArg[cmd]:
-            print(key + ": " + str(reqArg[cmd][key]))
-        for key in optArg[cmd]:
-            print(key + ": " + str(optArg[cmd][key]))
         
         win.message("helpText", cmdHelp[cmd])
         # TODO: Implement panels and procedural argument population.
+        win.emptyScrollPane('reqArg')
+        # win.emptyScrollPane('optArg')
+        if cmd == 'help':
+            return
+        if reqArg[cmd]:
+            with win.scrollPane('reqArg', disabled = 'horizontal', colspan = 1) as pane:
+                for key in reqArg[cmd]:
+                    print(key + ": " + str(reqArg[cmd][key]))
+                    # TODO: Populate pane with arguments.
+                    win.entry(key, label = True, tooltip = reqArg[cmd][key]['help'])
+        
+        if reqArg[cmd]:
+            with win.scrollPane('optArg', disabled = 'horizontal', colspan = 1) as pane:
+                for key in optArg[cmd]:
+                    print(key + ": " + str(optArg[cmd][key]))
+                    # TODO: Populate pane with arguments.
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
-        win.label('TODO', '## TODO: Make this window.', colspan = 50)
-        win.combo("Command", Commands, change = updCmd, stretch = "none", sticky = "W", width = 10)
+        win.combo('Command', Commands, change = updCmd, stretch = 'none', sticky = 'W', width = 10)
+        win.spinBox('--debug', [0, 1, 2, 3], tooltip = 'Enable/raise level of diagnostic output.',
+                      label = True, selected = 0, sticky = 'w', width = 1, row = 0, column = 1)
     
+        win.spinBox('--detail', 0, endValue = 3, tooltip = 'Increase level of detail in output.',
+                      label = True, selected = 0, sticky = 'w', width = 1, row = 0, column = 2)
+    
+        with win.scrollPane('reqArg', disabled = 'horizontal', row = 1, column = 0, colspan = 2) as pane:
+            pane.configure(width = 280, height = 100)
+            win.label('TODO', '## TODO: Make this window.')
+        
+        with win.scrollPane('optArg', disabled = 'horizontal', row = 1, column = 2, colspan = 2) as pane:
+            pane.configure(width = 280, height = 100)
+            win.label('TODO2', '## TODO: Make this window.')
+        
         with win.scrollPane('helpPane', disabled = 'horizontal', colspan = 50) as pane:
             pane.configure(width = 560, height = 420)
             win.message("helpText", cmdHelp['help'])
