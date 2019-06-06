@@ -178,6 +178,14 @@ def main(argv = None):
                     print(key + ": " + str(optArg[cmd][key]))
                     # TODO: Populate pane with arguments.
     
+    def setDetail():
+        if int(win.spin('--quiet')) > 0:
+            win.spin('--detail', 0)
+    
+    def setQuiet():
+        if int(win.spin('--detail')) > 0:
+            win.spin('--quiet', 0)
+    
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
         win.combo('Command', Commands, change = updCmd, stretch = 'none', sticky = 'W', width = 10)
         with win.scrollPane('reqArg', disabled = 'horizontal', row = 1, column = 0, colspan = 25) as pane:
@@ -190,10 +198,13 @@ def main(argv = None):
             pane.configure(width = 560, height = 420)
             win.message("helpText", cmdHelp['help'])
     
-        win.spinBox('--debug', [0, 1, 2, 3], tooltip = 'Enable/raise level of diagnostic output.',
+        win.spin('--quiet', [*range(4)], change = setDetail, tooltip = 'Reduce level of detail in output.',
+                      label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 47)
+    
+        win.spin('--detail', [*range(4)], change = setQuiet, tooltip = 'Increase level of detail in output.',
                       label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 48)
     
-        win.spinBox('--detail', 0, endValue = 3, tooltip = 'Increase level of detail in output.',
+        win.spin('--debug', [*range(4)], tooltip = 'Enable/raise level of diagnostic output.',
                       label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 49)
     
     # End of window
