@@ -39,16 +39,16 @@ from __future__ import unicode_literals
 import os
 import sys
 
+from pathlib import Path
+from appJar import gui
+import appJar
+from _ast import arg
 from . import commands
 from . import plugins
 from .commands import exceptions
 from .version import __version__
 
 from . import tradedb
-
-import appJar
-from appJar import gui
-from _ast import arg
 
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 
@@ -62,7 +62,11 @@ importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
              if plug.name.endswith("_plug.py")
              ]
 
+cwd = os.getcwd()
+db = tradedb.TradeDB().dbFilename
 
+
+# @Override
 def _populateSpinBox(self, spin, vals, reverse = True):
     # make sure it's a list
     #  reverse it, so the spin box functions properly
@@ -73,6 +77,10 @@ def _populateSpinBox(self, spin, vals, reverse = True):
     spin.config(values = vals)
 
 
+gui._populateSpinBox = _populateSpinBox
+
+
+# @Override
 def setSpinBoxPos(self, title, pos, callFunction = True):
     spin = self.widgetManager.get(WIDGET_NAMES.SpinBox, title)
     vals = spin.cget("values")  # .split()
@@ -81,18 +89,15 @@ def setSpinBoxPos(self, title, pos, callFunction = True):
     if pos < 0 or pos >= len(vals):
         raise Exception("Invalid position: " + str(pos) + ". No position in SpinBox: " + 
                     title + "=" + str(vals))
-    # if reverse:
     #    pos = len(vals) - 1 - pos
     val = vals[pos]
     self._setSpinBoxVal(spin, val, callFunction)
 
 
-gui._populateSpinBox = _populateSpinBox
 gui.setSpinBoxPos = setSpinBoxPos
 
 
 def main(argv = None):
-    import sys
     sys.argv = ['trade']
     if not argv:
         argv = sys.argv
@@ -111,18 +116,8 @@ def main(argv = None):
     # Used to run TD cli commands.
     cmdIndex = commands.commandIndex
     cmdenv = commands.CommandIndex().parse
-    # 'help' output, required/optional/common arguments, for each command 
+    # 'help' output, required & optional arguments, for each command
     cmdHelp, reqArg, optArg = dict(), dict(), dict()
-    comArg = [
-                { '--quiet': { 'help': 'Reduce level of detail in output.',
-                              'default': 0, 'required': False, 'action': 'count' } },
-                { '--db': { 'help': 'Specify location of the SQLite database.',
-                           'default': None, 'dest': 'dbFilename', 'type': str } },
-                { '--cwd': { 'help': 'Change the working directory file accesses are made from.',
-                            'type': str, 'required': False } },
-                { '--link-ly': { 'help': 'Maximum lightyears between systems to be considered linked.',
-                                'type': float, 'default': None, 'dest': 'maxSystemLinkLy' } }
-            ]
     
     try:
         cmdenv(['help'])
@@ -153,7 +148,10 @@ def main(argv = None):
                         # Currently only the 'import' cmd has the '--plug' option,
                         # but this could no longer be the case in future.
                         if cmd == 'import':
-                            plugOptions = {plug: plugins.load(cmdenv(['trade', cmd, '--plug', plug, '-O', 'help']).plug, "ImportPlugin").pluginOptions for plug in importPlugs}
+                            plugOptions = {
+                                plug: plugins.load(cmdenv(['trade', cmd, '--plug', plug, '-O', 'help']).plug,
+                                                    "ImportPlugin").pluginOptions for plug in importPlugs
+                                }
                             optArg[cmd][arg.args[0]]['options'] = plugOptions
                         
                 except AttributeError:
@@ -178,30 +176,50 @@ def main(argv = None):
         if cmd == 'help':
             return
         if reqArg[cmd]:
-            with win.scrollPane('reqArg', disabled = 'horizontal') as pane:
+            with win.scrollPane('reqArg', disabled = 'horizontal'):
                 win.label('Required:', sticky = 'w')
                 for key in reqArg[cmd]:
-                    # print(key + ": " + str(reqArg[cmd][key]))
                     win.entry(key, label = True, sticky = 'ew', tooltip = reqArg[cmd][key]['help'])
         
         if optArg[cmd]:
-            with win.scrollPane('optArg', disabled = 'horizontal') as pane:
+            with win.scrollPane('optArg', disabled = 'horizontal'):
                 win.label('Optional:', sticky = 'w')
                 for key in optArg[cmd]:
-                    # print(key + ": " + str(optArg[cmd][key]))
+                    print(key + ": " + str(optArg[cmd][key]))
                     # TODO: Populate pane with arguments.
-                    pass
     
-    def setDetail():
-        if int(win.spin('--quiet')) > 0:
+    def reset(name):
+        if name == '--quiet' and int(win.spin('--quiet')) > 0:
             win.spin('--detail', 0)
-    
-    def setQuiet():
-        if int(win.spin('--detail')) > 0:
+        if name == '--detail' and int(win.spin('--detail')) > 0:
             win.spin('--quiet', 0)
+            
+    def changeCWD():
+        """
+        Opens a folder select dialog.
+        """
+        global cwd
+        cwd = win.directoryBox("Select the top-level folder for TD to work in...", dirName = cwd) or cwd
+        win.label('cwd', str(Path(cwd)))
+        
+    def changeDB():
+        """
+        Opens a file select dialog.
+        """
+        global db
+        db = win.openBox("Select the TD database file to use...", dirName = str(Path(db).parent),
+                          fileTypes = [('Data Base File', '*.db')]) or db
+        win.label('db', str(Path(db)))
+        
+    def runTD():
+        """
+        Executes the TD command selected in the GUI.
+        """
+        # TODO: Implement running commands.
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
-        win.combo('Command', Commands, change = updCmd, stretch = 'none', sticky = 'W', width = 10)
+        win.combo('Command', Commands, change = updCmd, stretch = 'none', sticky = 'W',
+                   width = 10, row = 0, column = 0, colspan = 5)
         with win.scrollPane('reqArg', disabled = 'horizontal', row = 1, column = 0, colspan = 25) as pane:
             pane.configure(width = 280, height = 100)
         
@@ -211,16 +229,33 @@ def main(argv = None):
         with win.scrollPane('helpPane', disabled = 'horizontal', colspan = 50) as pane:
             pane.configure(width = 560, height = 420)
             win.message("helpText", cmdHelp['help'])
-    
-        win.spin('--quiet', [*range(4)], change = setDetail, tooltip = 'Reduce level of detail in output.',
-                      label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 47)
-    
-        win.spin('--detail', [*range(4)], change = setQuiet, tooltip = 'Increase level of detail in output.',
-                      label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 48)
-    
+        
+        win.entry('--link-ly', 30.0, tooltip = 'Maximum lightyears between systems to be considered linked.',
+                  label = True, kind = 'numeric', sticky = 'w', width = 4, row = 3, column = 2)
+        win.spin('--quiet', [*range(4)], change = reset, tooltip = 'Reduce level of detail in output.',
+                 label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 46)
+        
+        win.spin('--detail', [*range(4)], change = reset, tooltip = 'Increase level of detail in output.',
+                 label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 47)
+        
         win.spin('--debug', [*range(4)], tooltip = 'Enable/raise level of diagnostic output.',
-                      label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 49)
-    
+                 label = True, selected = 0, sticky = 'e', width = 1, row = 3, column = 48)
+        
+        win.button('Run', runTD, tooltip = 'Execute the selected command.',
+                   sticky = 'w', row = 3, column = 49)
+        
+        win.button('--cwd', changeCWD, tooltip = 'Change the working directory file accesses are made from.',
+                   sticky = 'ew', width = 4, row = 4, column = 0)
+        with win.scrollPane('CWD', disabled = 'vertical', row = 4, column = 1, colspan = 49) as pane:
+            pane.configure(width = 500, height = 20)
+            win.label('cwd', str(Path(cwd)), sticky = 'w')
+        
+        win.button('--db', changeDB, tooltip = 'Specify location of the SQLite database.',
+                   sticky = 'ew', width = 4, row = 5, column = 0)
+        with win.scrollPane('DB', disabled = 'vertical', row = 5, column = 1, colspan = 49) as pane:
+            pane.configure(width = 500, height = 20)
+            win.label('db', str(Path(db)), sticky = 'w')
+        
     # End of window
     
 #    try:
