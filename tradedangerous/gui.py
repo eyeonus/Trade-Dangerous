@@ -157,6 +157,9 @@ def main(argv = None):
                 except AttributeError:
                     for argGrp in arg.arguments:
                         optArg[cmd][argGrp.args[0]] = {kwarg : argGrp.kwargs[kwarg] for kwarg in argGrp.kwargs}
+                        
+                        optArg[cmd][argGrp.args[0]]['excludes'] = [excl.args[0] for excl in arg.arguments 
+                                                                   if excl.args[0] != argGrp.args[0]]
                         if argGrp.args[0] == '--plug':
                             # Currently only the 'import' cmd has the '--plug' option,
                             # but this could no longer be the case in future.
@@ -179,14 +182,33 @@ def main(argv = None):
             with win.scrollPane('reqArg', disabled = 'horizontal'):
                 win.label('Required:', sticky = 'w')
                 for key in reqArg[cmd]:
-                    win.entry(key, label = True, sticky = 'ew', tooltip = reqArg[cmd][key]['help'])
+                    if '--c' in key:
+                        win.entry(key, 0, tooltip = reqArg[cmd][key]['help'],
+                                  label = True, sticky = 'ew')
+                    else:
+                        # All other required arguments are strings.
+                        win.entry(key, label = True, sticky = 'ew', tooltip = reqArg[cmd][key]['help'])
         
         if optArg[cmd]:
             with win.scrollPane('optArg', disabled = 'horizontal'):
                 win.label('Optional:', sticky = 'w')
                 for key in optArg[cmd]:
-                    print(key + ": " + str(optArg[cmd][key]))
+                    arg = optArg[cmd][key]
+                    if arg.get('excludes'):
+                        print(key + " excludes: " + str(arg['excludes']))
                     # TODO: Populate pane with arguments.
+                    # 'action':'store_true' -> check
+                    # 'type':<class 'int'> -> spin(range(255 / 4095 ?))
+                    # 'type':<class 'float'> -> entry(numeric)
+                    # 'type':'type':'credits' -> entry
+                    # if arg.get('choices') -> spin(['y','n','?'] / ['s','m','l','?'])
+                    # 'type':'planetary' -> combo(ticks['y','n','?'])
+                    # 'type':'padsize' -> combo(ticks['s','m','l','?'])
+                    # 'action':'store_const' -> check
+                    # '--option' -> custom handling
+                    # 'type':<class 'str'> -> entry
+                    # Everything else -> entry
+                    # if arg.get('excludes') -> resetOther(arg['excludes'])
     
     def reset(name):
         if name == '--quiet' and int(win.spin('--quiet')) > 0:
