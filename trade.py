@@ -42,7 +42,7 @@ def main(argv):
 if __name__ == "__main__":
     import sys
     if 1 < len(sys.argv) and sys.argv[1] == 'gui':
-        gui.main(sys.argv)
+        gui.main()
     else:
         cli.main(sys.argv)
     
