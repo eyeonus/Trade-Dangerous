@@ -49,6 +49,7 @@ from .version import __version__
 
 from . import tradedb
 from test.test_importlib import test_namespace_pkgs
+from PySide2.examples import webenginewidgets
 
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 WidgetManager = appJar.appjar.WidgetManager
@@ -61,6 +62,13 @@ importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
              for plug in os.scandir(sys.modules['tradedangerous.plugins'].__path__[0])
              if plug.name.endswith("_plug.py")
              ]
+
+
+def get(self, widgetType, title):
+    return eval('self.get' + str(widgetType) + '("' + str(title) + '")')
+
+
+gui.get = get
 
 
 # @Override
@@ -191,7 +199,7 @@ def main():
 # 'action':'store_true' -> check
 # 'action':'store_const' -> check
 # 'type':<class 'int'> -> spin(range(255 / 4095 ?))
-# if arg.get('choices') -> spin(['y','n','?'] / ['s','m','l','?'])
+# if arg.get('choices') -> combo(['y','n','?'] / ['s','m','l','?'])
 # 'type':'planetary' -> combo(ticks['y','n','?'])
 # 'type':'padsize' -> combo(ticks['s','m','l','?'])
 # '--plugin' -> combo(plugins)
@@ -205,39 +213,114 @@ def main():
         if arg.kwargs.get('action') == 'store_true' or arg.kwargs.get('action') == 'store_const':
             return {'type':'check'}
         if arg.kwargs.get('type') == int:
-            return {'type':'spin', 'list': 4096}
+            return {'type':'spin', 'range': 4096}
         if arg.kwargs.get('choices'):
             if arg.kwargs.get('choices')[0] != 'S':
-                return {'type':'spin', 'list':['Y', 'N', '?']}
+                return {'type':'combo', 'list':['Y', 'N', '?']}
             else:
-                return {'type':'spin', 'list':['S', 'M', 'L', '?']}
+                return {'type':'combo', 'list':['S', 'M', 'L', '?']}
         if arg.kwargs.get('type') == 'planetary':
             return {'type':'combo', 'sub':'ticks', 'list':['Y', 'N', '?']}
         if arg.kwargs.get('type') == 'padsize':
             return {'type':'combo', 'sub':'ticks', 'list':['S', 'M', 'L', '?']}
         if arg.args[0] == '--plug':
-            return {'type':'combo', 'list': arg.kwargs.get('plugins')}
-        if arg.args[0] == '--option':
-            return {'type':'option'}
+            return {'type':'combo', 'list': [''] + importPlugs}
+        # TODO: Implement 'option' in makeWidget.
+        # if arg.args[0] == '--option':
+        #    return {'type':'option'}
         if arg.kwargs.get('type') == float:
             return {'type':'entry', 'sub':'numeric'}
         if arg.kwargs.get('type') == 'credits':
             return {'type':'entry', 'sub':'credits'}
         return {'type':'entry'}
     
-    def makeWidget(name, arg, sticky = 'ew', **kwargs):
-        # TODO: Implement
+    def makeWidget(name, arg, sticky = 'ew', label = True, **kwargs):
+        kwargs['sticky'] = sticky
+        kwargs['label'] = label
+        kwargs['change'] = updArgs
+        kwargs['tooltip'] = arg['help']
+        
         widget = arg['widget']
-        print(name + ': ' + str(widget))
-        if widget['type'] == 'entry':
+        # print(name + ': ' + str(widget))
+        if widget['type'] == 'button':
+            kwargs.pop('change')
+            kwargs.pop('label')
+            win.button(name, widget['func'], **kwargs)
+        elif widget['type'] == 'check':
+            win.check(name, argVals[name] or arg.get('default'), text = name, **kwargs)
+        elif widget['type'] == 'spin':
+            kwargs['item'] = argVals[name] or arg.get('default') or 0
+            win.spin(name, 0 - widget['range'], endValue = widget['range'], **kwargs)
+        elif widget['type'] == 'combo':
+            kwargs['sticky'] = 'w'
             if widget.get('sub'):
-                print('sub: ' + widget['sub'])
+                kwargs['kind'] = widget['sub']
+                kwargs.pop('label')
+            win.combo(name, widget['list'], **kwargs)
+            if not widget.get('sub'):
+                default = '?' if arg.get('choices') else ''
+                win.combo(name, argVals[name] or arg.get('default') or default, callFunction = False)
             else:
-                win.entry(name, argVals[name] or arg.get('default'), label = True, sticky = sticky, **kwargs)
-     
+                try:
+                    for val in argVals[name]:
+                        win.setOptionBox(name, val, value = argVals[name][val], callFunction = False)
+                except:
+                    pass
+        
+        elif widget['type'] == 'option':
+            # TODO: Implement, use subwindow.
+            pass 
+        elif widget['type'] == 'entry':
+            if widget.get('sub'):
+                kwargs['kind'] = 'numeric'
+            win.entry(name, argVals[name] or arg.get('default'), **kwargs)
+    
+    def updArgs(name):
+
+        def getWidgetType(name):
+            for widgetType in [WIDGET_NAMES.Entry, WIDGET_NAMES.Button, WIDGET_NAMES.CheckBox,
+                               WIDGET_NAMES.RadioButton, WIDGET_NAMES.SpinBox, WIDGET_NAMES.OptionBox]:
+                try:
+                    win.widgetManager.get(widgetType, name)
+                    return WIDGET_NAMES.widgets[widgetType]
+                except:
+                    pass
+            return None
+
+        # Update the stored value of the argument that's been changed.
+        # TODO: Handle the crossover between 'station' vars and non-'station' vars.
+        argVals[name] = win.get(getWidgetType(name), name)
+        print('Changed: "' + name + '" (' + getWidgetType(name) + '): [' + str(argVals[name]) + ']')
+        
+        if allArgs.get(name):
+            excluded = allArgs[name].get('excludes')
+            argBase = allArgs
+        else:
+            excluded = allArgs[win.combo("Command")]['opt'][name].get('excludes')
+            argBase = allArgs[win.combo("Command")]['opt']
+        
+        # Reset any arguments excluded by this one if it's been set.
+        
+        # print("'" + str(argVals[name]) + "': " + str(argVals[name] == True)
+        #       + "': " + str(not argVals[name]) + " : " + str(not not argVals[name])
+        #      )
+        
+        # Apparently, with strings, 'not not ""' != '""' when considered as a boolean.
+        if excluded and not not argVals[name]:
+            for exclude in excluded:
+                widgetType = argBase[exclude]['widget']['type']
+                if widgetType == 'combo':
+                    win.combo(exclude, mode = 'clear', callFunction = False)
+                elif widgetType == 'spin':
+                    win.spin(exclude, mode = 'clear', callFunction = False)
+                elif widgetType == 'entry':
+                    win.setEntry(exclude, '', callFunction = False)
+                elif widgetType == 'check':
+                    win.check(exclude, False, callFunction = False)
+    
     def updCmd():
         cmd = win.combo("Command")
-        print(cmd)
+        # print(cmd)
         
         win.message("helpText", cmdHelp[cmd])
         win.emptyScrollPane('req')
@@ -258,13 +341,6 @@ def main():
         
         # print(win.getAllInputs(includeEmptyInputs = True))
     
-    def reset(name):
-        # TODO: Handle all the different kinds of cases as generally as possible.
-        if name == '--quiet' and win.combo('--quiet') != ' ':
-            win.combo('--detail', 0, callFunction = False)
-        if name == '--detail' and win.combo('--detail') != ' ':
-            win.combo('--quiet', 0, callFunction = False)
-            
     def changeCWD():
         """
         Opens a folder select dialog.
@@ -273,7 +349,7 @@ def main():
         if cwd:
             argVals['--cwd'] = str(Path(cwd))
         win.label('cwd', argVals['--cwd'])
-        
+    
     def changeDB():
         """
         Opens a file select dialog.
@@ -283,38 +359,46 @@ def main():
         if db:
             argVals['--db'] = str(Path(db))
         win.label('db', argVals['--db'])
-        
+    
     def runTD():
         """
         Executes the TD command selected in the GUI.
         """
         # TODO: Implement running commands.
-        
+    
     # All available commands
     Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
     # Used to run TD cli commands.
     cmdenv = commands.CommandIndex().parse
     # 'help' output, required & optional arguments, for each command
     cmdHelp = {}
-    
-    allArgs = {'--debug': { 'help': 'Enable/raise level of diagnostic output.',
-                       'default':  0, 'required': False, 'action': 'count',
-                       'widget': ('spin', range(4))},
-           '--detail':{ 'help': 'Increase level of detail in output.',
-                       'default': ' ', 'required': False, 'action': 'count',
-                       'excludes': ['--quiet'], 'widget': ('spin', range(4))},
-           '--quiet':{ 'help': 'Reduce level of detail in output.',
-                      'default': 0, 'required': False, 'action': 'count',
-                      'excludes': ['--detail'], 'widget': ('spin', range(4))},
-           '--db':{ 'help': 'Specify location of the SQLite database.',
-                   'default': None, 'dest': 'dbFilename', 'type': str,
-                   'widget': ('button', changeDB)},
-           '--cwd':{ 'help': 'Change the working directory file accesses are made from.',
-                    'type': str, 'required': False,
-                    'widget': ('button', changeCWD)},
-           '--link-ly':{ 'help': 'Maximum lightyears between systems to be considered linked.',
-                        'widget': ('entry', 'numeric')}
+       
+    allArgs = {
+        '--debug': { 'help': 'Enable/raise level of diagnostic output.',
+                    'default':  0, 'required': False, 'action': 'count',
+                    'widget': {'type':'combo', 'list': ['', ' -w', ' -ww', ' -www']}
+                    },
+        '--detail':{ 'help': 'Increase level of detail in output.',
+                    'default': 0, 'required': False, 'action': 'count',
+                    'excludes': ['--quiet'], 'widget': {'type':'combo', 'list': ['', ' -v', ' -vv', ' -vvv']}
+                    },
+        '--quiet':{ 'help': 'Reduce level of detail in output.',
+                   'default': 0, 'required': False, 'action': 'count',
+                   'excludes': ['--detail'], 'widget': {'type':'combo', 'list': ['', ' -q', ' -qq', ' -qqq']}
+                   },
+        '--db':{ 'help': 'Specify location of the SQLite database.',
+                'default': None, 'dest': 'dbFilename', 'type': str,
+                'widget': {'type':'button', 'func':changeDB}
+                },
+        '--cwd':{ 'help': 'Change the working directory file accesses are made from.',
+                 'type': str, 'required': False,
+                 'widget': {'type':'button', 'func':changeCWD}
+                 },
+        '--link-ly':{ 'help': 'Maximum lightyears between systems to be considered linked.',
+                     'widget': {'type':'entry', 'sub':'numeric'}
+                     }
            }
+    
     # Used to save the value and the type of widget of the arguments.
     argVals = {'--debug': '',
                '--detail': '',
@@ -386,41 +470,34 @@ def main():
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
         win.combo('Command', Commands, change = updCmd, tooltip = 'Trade Dangerous command to run.',
-                  stretch = 'none', sticky = 'W', width = 10, row = 0, column = 0, colspan = 10)
-        with win.scrollPane('req', disabled = 'horizontal', row = 1, column = 0, colspan = 25) as pane:
-            pane.configure(width = 350, height = 100)
+                  stretch = 'none', sticky = 'ew', width = 10, row = 0, column = 0, colspan = 5)
+        with win.scrollPane('req', disabled = 'horizontal', row = 1, column = 0, colspan = 10) as pane:
+            pane.configure(width = 200, height = 75)
         
-        with win.scrollPane('opt', disabled = 'horizontal', row = 1, column = 25, colspan = 25) as pane:
-            pane.configure(width = 350, height = 100)
+        with win.scrollPane('opt', disabled = 'horizontal', row = 2, column = 0, colspan = 10) as pane:
+            pane.configure(width = 200, height = 345)
         
-        with win.scrollPane('helpPane', disabled = 'horizontal', colspan = 50) as pane:
-            pane.configure(width = 700, height = 420)
+        with win.scrollPane('helpPane', disabled = 'horizontal', row = 1, column = 10, rowspan = 2, colspan = 40) as pane:
+            pane.configure(width = 560, height = 420)
             win.message("helpText", cmdHelp['help'])
         
-        win.entry('--link-ly', argVals['--link-ly'], tooltip = allArgs['--link-ly']['help'],
-                  label = True, kind = 'numeric', sticky = 'w', width = 4, row = 3, column = 2)
-        win.combo('--quiet', [' ', ' -q', ' -qq', ' -qqq'], change = reset,
-                  tooltip = allArgs['--quiet']['help'],
-                 label = True, sticky = 'e', width = 1, row = 3, column = 46)
+        makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
+
+        makeWidget('--quiet', allArgs['--quiet'], sticky = 'e', width = 1, row = 3, column = 46)
         
-        win.combo('--detail', [' ', ' -v', ' -vv', ' -vvv'], change = reset,
-                  tooltip = allArgs['--detail']['help'],
-                 label = True, sticky = 'e', width = 1, row = 3, column = 47)
+        makeWidget('--detail', allArgs['--detail'], sticky = 'e', width = 1, row = 3, column = 47)
         
-        win.combo('--debug', [' ', ' -w', ' -ww', ' -www'], tooltip = allArgs['--debug']['help'],
-                 label = True, sticky = 'e', width = 1, row = 3, column = 48)
+        makeWidget('--debug', allArgs['--debug'], sticky = 'e', width = 1, row = 3, column = 48)
         
         win.button('Run', runTD, tooltip = 'Execute the selected command.',
                    sticky = 'w', row = 3, column = 49)
         
-        win.button('--cwd', changeCWD, tooltip = allArgs['--cwd']['help'],
-                   sticky = 'ew', width = 4, row = 4, column = 0)
+        makeWidget('--cwd', allArgs['--cwd'], width = 4, row = 4, column = 0)
         with win.scrollPane('CWD', disabled = 'vertical', row = 4, column = 1, colspan = 49) as pane:
             pane.configure(width = 500, height = 20)
             win.label('cwd', argVals['--cwd'], sticky = 'w')
         
-        win.button('--db', changeDB, tooltip = allArgs['--db']['help'],
-                   sticky = 'ew', width = 4, row = 5, column = 0)
+        makeWidget('--db', allArgs['--db'], width = 4, row = 5, column = 0)
         with win.scrollPane('DB', disabled = 'vertical', row = 5, column = 1, colspan = 49) as pane:
             pane.configure(width = 500, height = 20)
             win.label('db', argVals['--db'], sticky = 'w')

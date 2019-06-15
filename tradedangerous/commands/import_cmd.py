@@ -19,78 +19,81 @@ except ImportError:
 ######################################################################
 # Parser config
 
-help=(
+help = (
     "TD data import system. On its own, this command lets you "
     "merge station prices from a '.prices' file (entries in the "
     "file that are older than your local data are not loaded)."
 )
-name='import'
-epilog=(
+name = 'import'
+epilog = (
     "This sub-command provides a plugin infrastructure, and comes "
     "with a module to import data from Maddavo's Market Share "
     "(http://www.davek.com.au/td/).\n"
     "See \"import -P maddavo -O help\" for more help."
 )
-wantsTradeDB=False
+wantsTradeDB = False
 arguments = [
 ]
 switches = [
     MutuallyExclusiveGroup(
         ParseArgument('filename',
-            help='Name of the file to read.',
-            type=str,
-            default=None,
+            help = (
+                "Name of the file to read, or, used with '--url', "
+                "will save the downloaded file as this name."
+            ),
+            type = str,
+            default = None,
         ),
         ParseArgument('--plug', '-P',
-                help="Use the specified import plugin.",
-                type=str,
-                default=None,
+                help = "Use the specified import plugin.",
+                type = str,
+                default = None,
         ),
     ),
     ParseArgument('--url',
-        help='Name of the file to read.',
-        type=str,
-        default=None,
+        help = 'URL to download filename (default "import.prices") from.',
+        type = str,
+        default = None,
     ),
     ParseArgument('--download',
-        help='Stop after downloading.',
-        action='store_true',
-        default=False,
+        help = 'Stop after downloading.',
+        action = 'store_true',
+        default = False,
     ),
     ParseArgument(
         '--ignore-unknown', '-i',
-        default=False, action='store_true',
-        dest='ignoreUnknown',
-        help=(
+        default = False, action = 'store_true',
+        dest = 'ignoreUnknown',
+        help = (
             "Data for systems, stations and items that are not "
             "recognized is reported as warning but skipped."
         ),
     ),
     ParseArgument(
         '--option', '-O',
-        default=[], action='append',
-        dest='pluginOptions',
-        help=(
+        default = [], action = 'append',
+        dest = 'pluginOptions',
+        help = (
             "Provides a way to pass additional arguments to plugins."
         ),
     ),
     MutuallyExclusiveGroup(
         ParseArgument('--reset-all',
-            help='Clear the database before importing.',
-            action='store_true',
-            default=False,
+            help = 'Clear the database before importing.',
+            action = 'store_true',
+            default = False,
         ),
         ParseArgument('--merge-import', '-M',
-            help=(
+            help = (
                 'Merge the import file with the existing local database: '
                 'only loads values that have an explicit entry with a '
                 'newer timestamp than the existing data. Local values '
                 'are only removed if there is an explicit entry with a '
                 '0/0 demand/supply price.'
             ),
-            action='store_true',
-            default=False,
-            dest='mergeImport',
+            action = 'store_true',
+            default = False,
+            dest = 'mergeImport',
         ),
     ),
 ]
@@ -100,6 +103,7 @@ switches = [
 
 ######################################################################
 # Perform query and populate result set
+
 
 def run(results, cmdenv, tdb):
     # If we're using a plugin, initialize that first.
@@ -111,7 +115,7 @@ def run(results, cmdenv, tdb):
         try:
             pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
         except plugins.PluginException as e:
-            raise CommandLineError("Plugin Error: "+str(e))
+            raise CommandLineError("Plugin Error: " + str(e))
         
         # Initialize the plugin
         plugin = pluginClass(tdb, cmdenv)
@@ -145,10 +149,10 @@ def run(results, cmdenv, tdb):
                 ("All Files", "*.*"),
                 )
         filename = tkfd.askopenfilename(
-                    title="Select the file to import",
-                    initialfile="TradeDangerous.prices",
-                    filetypes=filetypes,
-                    initialdir='.',
+                    title = "Select the file to import",
+                    initialfile = "TradeDangerous.prices",
+                    filetypes = filetypes,
+                    initialdir = '.',
                 )
         if not filename:
             raise SystemExit("Aborted")
@@ -171,6 +175,6 @@ def run(results, cmdenv, tdb):
             cache.regeneratePricesFile()
             return None
     
-    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
+    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh = fh, reset = cmdenv.reset)
     
     return None
