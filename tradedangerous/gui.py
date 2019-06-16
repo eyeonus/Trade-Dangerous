@@ -183,32 +183,8 @@ def getOptionBox(self, title):
 gui.getOptionBox = getOptionBox
 
 
-def main():
-    argv = ['trade']
-    sys.argv = argv
-    if sys.hexversion < 0x03040200:
-        raise SystemExit(
-            "Sorry: TradeDangerous requires Python 3.4.2 or higher.\n"
-            "For assistance, see:\n"
-            "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
-            "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"
-            "\tEDForum Thread: https://forums.frontier.co.uk/showthread.php/441509\n"
-            )
-    from . import tradeexcept
+def main(argv = None):
     
-# 'action':'store_true' -> check
-# 'action':'store_const' -> check
-# 'type':<class 'int'> -> spin(range(255 / 4095 ?))
-# if arg.get('choices') -> combo(['y','n','?'] / ['s','m','l','?'])
-# 'type':'planetary' -> combo(ticks['y','n','?'])
-# 'type':'padsize' -> combo(ticks['s','m','l','?'])
-# '--plugin' -> combo(plugins)
-# '--option' -> custom handling
-# 'type':<class 'float'> -> entry(numeric)
-# 'type':'type':'credits' -> entry
-# 'type':<class 'str'> -> entry
-# Everything else -> entry
-# if arg.get('excludes') -> resetOther(allArgs['excludes'])
     def chooseType(arg):
         if arg.kwargs.get('action') == 'store_true' or arg.kwargs.get('action') == 'store_const':
             return {'type':'check'}
@@ -288,7 +264,7 @@ def main():
             win.entry(name, argVals[name] or arg.get('default'), **kwargs)
     
     def updArgs(name):
-
+    
         def getWidgetType(name):
             for widgetType in [WIDGET_NAMES.Entry, WIDGET_NAMES.Button, WIDGET_NAMES.CheckBox,
                                WIDGET_NAMES.RadioButton, WIDGET_NAMES.SpinBox, WIDGET_NAMES.OptionBox]:
@@ -298,17 +274,20 @@ def main():
                 except:
                     pass
             return None
-
+    
         # Update the stored value of the argument that's been changed.
         argVals[name] = win.get(getWidgetType(name), name)
-        print('Changed: "' + name + '" (' + getWidgetType(name) + '): [' + str(argVals[name]) + ']')
+        print('Changed: "' + name + '" [' + str(argVals[name]) + ']')
         
         if allArgs.get(name):
             excluded = allArgs[name].get('excludes')
             argBase = allArgs
         else:
-            excluded = allArgs[win.combo("Command")]['opt'][name].get('excludes')
-            argBase = allArgs[win.combo("Command")]['opt']
+            try:
+                excluded = allArgs[win.combo("Command")]['opt'][name].get('excludes')
+                argBase = allArgs[win.combo("Command")]['opt']
+            except KeyError:
+                excluded = None
         
         # Reset any arguments excluded by this one if it's been set.
         
@@ -350,8 +329,6 @@ def main():
                 for key in allArgs[cmd]['opt']:
                     makeWidget(key, allArgs[cmd]['opt'][key])
         
-        # print(win.getAllInputs(includeEmptyInputs = True))
-    
     def changeCWD():
         """
         Opens a folder select dialog.
@@ -376,15 +353,17 @@ def main():
         Executes the TD command selected in the GUI.
         """
         
+        from . import tradeexcept
+        
         def getVals(arg, argBase):
             curArg = argVals[arg]
             vals = []
             # See string weirdness, above.
             if not not curArg and curArg != argBase[arg].get('default'):
-                if arg in ['--detail', '--debug', '--quiet']:
+                if arg in ['--detail', '--debug', '--quiet'] or argBase == allArgs[cmd]['req']:
                     pass
                 else:
-                    vals.append(arg)
+                    vals.append(str(arg))
                 widget = argBase[arg]['widget']
                 if widget['type'] == 'check':
                     return vals
@@ -398,47 +377,51 @@ def main():
                 if widget.get('sub') == 'credits':
                     # TODO: Handle 'credits' type
                     pass
-                vals.append(curArg)
+                vals.append(str(curArg))
             if vals == []:
                 return None
             return vals
         
+        win.setTabbedFrameSelectedTab('tabFrame', 'Output')
         cmd = win.combo("Command")
-        env = ['trade', cmd ]
+        argv = ['trade', cmd ]
         if cmd != 'help':
             for arg in allArgs[cmd]['req']:
                 result = getVals(arg, allArgs[cmd]['req'])
                 if result:
-                    env = env + result
+                    argv = argv + result
             
             for arg in allArgs[cmd]['opt']:
                 result = getVals(arg, allArgs[cmd]['opt'])
                 if result:
-                    env = env + result
+                    argv = argv + result
             
             for arg in allArgs:
                 if arg in Commands:
                     continue
                 result = getVals(arg, allArgs)
                 if result:
-                    env = env + result
+                    argv = argv + result
         
-        print("TD command: " + str(env))
+        sys.argv = argv
+        
+        # This bit needs to be put into its own method so it can be threaded.
+        print("TD command: " + str(argv))
         try:
             try:
                 try:
                     if "CPROF" in os.environ:
                         import cProfile
-                        cProfile.run("trade(env)")
+                        cProfile.run("trade(argv)")
                     else:
-                        trade(env)
+                        trade(argv)
                 except PluginException as e:
                     print("PLUGIN ERROR: {}".format(e))
                     if 'EXCEPTIONS' in os.environ:
                         raise e
                     sys.exit(1)
                 except tradeexcept.TradeException as e:
-                    print("%s: %s" % (env[0], str(e)))
+                    print("%s: %s" % (argv[0], str(e)))
                     if 'EXCEPTIONS' in os.environ:
                         raise e
                     sys.exit(1)
@@ -462,26 +445,28 @@ def main():
     cmdenv = commands.CommandIndex().parse
     # 'help' output, required & optional arguments, for each command
     cmdHelp = {}
-       
+    
+    dbS = str(Path((os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data')) / Path('TradeDangerous.db')))
+    cwdS = str(Path(os.getcwd()))
     allArgs = {
         '--debug': { 'help': 'Enable/raise level of diagnostic output.',
                     'default':  0, 'required': False, 'action': 'count',
-                    'widget': {'type':'combo', 'list': ['', ' -w', ' -ww', ' -www']}
+                    'widget': {'type':'combo', 'list': ['', '-w', '-ww', '-www']}
                     },
         '--detail':{ 'help': 'Increase level of detail in output.',
                     'default': 0, 'required': False, 'action': 'count',
-                    'excludes': ['--quiet'], 'widget': {'type':'combo', 'list': ['', ' -v', ' -vv', ' -vvv']}
+                    'excludes': ['--quiet'], 'widget': {'type':'combo', 'list': ['', '-v', '-vv', '-vvv']}
                     },
         '--quiet':{ 'help': 'Reduce level of detail in output.',
                    'default': 0, 'required': False, 'action': 'count',
-                   'excludes': ['--detail'], 'widget': {'type':'combo', 'list': ['', ' -q', ' -qq', ' -qqq']}
+                   'excludes': ['--detail'], 'widget': {'type':'combo', 'list': ['', '-q', '-qq', '-qqq']}
                    },
         '--db':{ 'help': 'Specify location of the SQLite database.',
-                'default': str(Path(tradedb.TradeDB().dbFilename)), 'dest': 'dbFilename', 'type': str,
+                'default': dbS, 'dest': 'dbFilename', 'type': str,
                 'widget': {'type':'button', 'func':changeDB}
                 },
         '--cwd':{ 'help': 'Change the working directory file accesses are made from.',
-                 'default': str(Path(os.getcwd())), 'type': str, 'required': False,
+                 'default': cwdS, 'type': str, 'required': False,
                  'widget': {'type':'button', 'func':changeCWD}
                  },
         '--link-ly':{ 'help': 'Maximum lightyears between systems to be considered linked.',
@@ -494,10 +479,22 @@ def main():
     argVals = {'--debug': '',
                '--detail': '',
                '--quiet': '',
-               '--db': str(Path(tradedb.TradeDB().dbFilename)),
-               '--cwd': str(Path(os.getcwd())),
+               '--db': dbS,
+               '--cwd': cwdS,
                '--link-ly': 30
                }
+    
+    sys.argv = ['trade']
+    if not argv:
+        argv = sys.argv
+    if sys.hexversion < 0x03040200:
+        raise SystemExit(
+            "Sorry: TradeDangerous requires Python 3.4.2 or higher.\n"
+            "For assistance, see:\n"
+            "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
+            "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"
+            "\tEDForum Thread: https://forums.frontier.co.uk/showthread.php/441509\n"
+            )
     
     try:
         cmdenv(['help'])
@@ -519,7 +516,7 @@ def main():
                 # print(arg.args[0])
                 argVals[arg.args[0]] = arg.kwargs.get('default') or None
 
-                allArgs[cmd]['req'][arg.args[0]] = arg.kwargs
+                allArgs[cmd]['req'][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
                 allArgs[cmd]['req'][arg.args[0]]['widget'] = chooseType(arg)
         # print(allArgs[cmd]['req'])
 
@@ -568,9 +565,14 @@ def main():
         with win.scrollPane('opt', disabled = 'horizontal', row = 2, column = 0, colspan = 10) as pane:
             pane.configure(width = 200, height = 345)
         
-        with win.scrollPane('helpPane', disabled = 'horizontal', row = 1, column = 10, rowspan = 2, colspan = 40) as pane:
-            pane.configure(width = 560, height = 420)
-            win.message("helpText", cmdHelp['help'])
+        with win.tabbedFrame('tabFrame', disabled = 'horizontal', row = 1, column = 10, rowspan = 2, colspan = 40) as tabFrame:
+            with win.tab('Help'):
+                with win.scrollPane('helpPane', disabled = 'horizontal') as pane:
+                    pane.configure(width = 560, height = 420)
+                    win.message('helpText', cmdHelp['help'])
+            
+            with win.tab('Output'):
+                win.message('outputText', '')
         
         makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
 
