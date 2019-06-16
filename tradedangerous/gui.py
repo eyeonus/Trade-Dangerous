@@ -38,6 +38,7 @@ from __future__ import division
 from __future__ import unicode_literals
 import os
 import sys
+import traceback
 
 from pathlib import Path
 from appJar import gui
@@ -48,8 +49,7 @@ from .commands import exceptions
 from .version import __version__
 
 from . import tradedb
-from test.test_importlib import test_namespace_pkgs
-from PySide2.examples import webenginewidgets
+from .plugins import PluginException
 
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 WidgetManager = appJar.appjar.WidgetManager
@@ -257,22 +257,34 @@ def main():
                 kwargs['kind'] = widget['sub']
                 kwargs.pop('label')
             win.combo(name, widget['list'], **kwargs)
+            
+            # If we're switching to the 'station' command from another command,
+            # this argument needs to be cleared from allArgs to not mess things up.
             if not widget.get('sub'):
+                if argVals[name] != str:
+                    argVals[name] = None
                 default = '?' if arg.get('choices') else ''
                 win.combo(name, argVals[name] or arg.get('default') or default, callFunction = False)
             else:
-                try:
+            # If we're switching to another command from the 'station' command,
+            # this argument needs to be cleared from allArgs to not mess things up.
+                if argVals[name] == str:
+                    argVals[name] = None
+                if argVals[name]:
                     for val in argVals[name]:
                         win.setOptionBox(name, val, value = argVals[name][val], callFunction = False)
-                except:
-                    pass
         
         elif widget['type'] == 'option':
             # TODO: Implement, use subwindow.
             pass 
         elif widget['type'] == 'entry':
             if widget.get('sub'):
-                kwargs['kind'] = 'numeric'
+                if widget.get('sub') == 'credits':
+                    # TODO: Handle 'credits' type.
+                    pass
+                else:
+                    kwargs['kind'] = 'numeric'
+            
             win.entry(name, argVals[name] or arg.get('default'), **kwargs)
     
     def updArgs(name):
@@ -288,7 +300,6 @@ def main():
             return None
 
         # Update the stored value of the argument that's been changed.
-        # TODO: Handle the crossover between 'station' vars and non-'station' vars.
         argVals[name] = win.get(getWidgetType(name), name)
         print('Changed: "' + name + '" (' + getWidgetType(name) + '): [' + str(argVals[name]) + ']')
         
@@ -364,7 +375,86 @@ def main():
         """
         Executes the TD command selected in the GUI.
         """
-        # TODO: Implement running commands.
+        
+        def getVals(arg, argBase):
+            curArg = argVals[arg]
+            vals = []
+            # See string weirdness, above.
+            if not not curArg and curArg != argBase[arg].get('default'):
+                if arg in ['--detail', '--debug', '--quiet']:
+                    pass
+                else:
+                    vals.append(arg)
+                widget = argBase[arg]['widget']
+                if widget['type'] == 'check':
+                    return vals
+                if widget.get('sub') == 'ticks':
+                    choices = ''
+                    for choice in curArg:
+                        if argVals[choice]:
+                            choices = choices + choice
+                    vals.append(choices)
+                    return vals
+                if widget.get('sub') == 'credits':
+                    # TODO: Handle 'credits' type
+                    pass
+                vals.append(curArg)
+            if vals == []:
+                return None
+            return vals
+        
+        cmd = win.combo("Command")
+        env = ['trade', cmd ]
+        if cmd != 'help':
+            for arg in allArgs[cmd]['req']:
+                result = getVals(arg, allArgs[cmd]['req'])
+                if result:
+                    env = env + result
+            
+            for arg in allArgs[cmd]['opt']:
+                result = getVals(arg, allArgs[cmd]['opt'])
+                if result:
+                    env = env + result
+            
+            for arg in allArgs:
+                if arg in Commands:
+                    continue
+                result = getVals(arg, allArgs)
+                if result:
+                    env = env + result
+        
+        print("TD command: " + str(env))
+        try:
+            try:
+                try:
+                    if "CPROF" in os.environ:
+                        import cProfile
+                        cProfile.run("trade(env)")
+                    else:
+                        trade(env)
+                except PluginException as e:
+                    print("PLUGIN ERROR: {}".format(e))
+                    if 'EXCEPTIONS' in os.environ:
+                        raise e
+                    sys.exit(1)
+                except tradeexcept.TradeException as e:
+                    print("%s: %s" % (env[0], str(e)))
+                    if 'EXCEPTIONS' in os.environ:
+                        raise e
+                    sys.exit(1)
+            except (UnicodeEncodeError, UnicodeDecodeError) as e:
+                print("-----------------------------------------------------------")
+                print("ERROR: Unexpected unicode error in the wild!")
+                print()
+                print(traceback.format_exc())
+                print(
+                    "Please report this bug (http://kfs.org/td/issues). You may be "
+                    "able to work around it by using the '-q' parameter. Windows "
+                    "users may be able to use 'chcp.com 65001' to tell the console "
+                    "you want to support UTF-8 characters."
+                    )
+        except SystemExit as e:
+            print(e)
     
     # All available commands
     Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
@@ -387,14 +477,15 @@ def main():
                    'excludes': ['--detail'], 'widget': {'type':'combo', 'list': ['', ' -q', ' -qq', ' -qqq']}
                    },
         '--db':{ 'help': 'Specify location of the SQLite database.',
-                'default': None, 'dest': 'dbFilename', 'type': str,
+                'default': str(Path(tradedb.TradeDB().dbFilename)), 'dest': 'dbFilename', 'type': str,
                 'widget': {'type':'button', 'func':changeDB}
                 },
         '--cwd':{ 'help': 'Change the working directory file accesses are made from.',
-                 'type': str, 'required': False,
+                 'default': str(Path(os.getcwd())), 'type': str, 'required': False,
                  'widget': {'type':'button', 'func':changeCWD}
                  },
         '--link-ly':{ 'help': 'Maximum lightyears between systems to be considered linked.',
+                     'default': 30,
                      'widget': {'type':'entry', 'sub':'numeric'}
                      }
            }
@@ -503,35 +594,6 @@ def main():
             win.label('db', argVals['--db'], sticky = 'w')
         
     # End of window
-    
-#    try:
-#        try:
-#            if "CPROF" in os.environ:
-#                import cProfile
-#                cProfile.run("trade(argv)")
-#            else:
-#                trade(argv)
-#        except PluginException as e:
-#            print("PLUGIN ERROR: {}".format(e))
-#            if 'EXCEPTIONS' in os.environ:
-#                raise e
-#            sys.exit(1)
-#        except tradeexcept.TradeException as e:
-#            print("%s: %s" % (argv[0], str(e)))
-#            if 'EXCEPTIONS' in os.environ:
-#                raise e
-#            sys.exit(1)
-#    except (UnicodeEncodeError, UnicodeDecodeError) as e:
-#        print("-----------------------------------------------------------")
-#        print("ERROR: Unexpected unicode error in the wild!")
-#        print()
-#        print(traceback.format_exc())
-#        print(
-#            "Please report this bug (http://kfs.org/td/issues). You may be "
-#            "able to work around it by using the '-q' parameter. Windows "
-#            "users may be able to use 'chcp.com 65001' to tell the console "
-#            "you want to support UTF-8 characters."
-#        )
 
 
 def trade(argv):
