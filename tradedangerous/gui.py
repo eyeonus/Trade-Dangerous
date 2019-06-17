@@ -292,7 +292,7 @@ def main(argv = None):
     
         # Update the stored value of the argument that's been changed.
         argVals[name] = win.get(getWidgetType(name), name)
-        print('Changed: "' + name + '" [' + str(argVals[name]) + ']')
+        # print('Changed: "' + name + '" [' + str(argVals[name]) + ']')
         
         if allArgs.get(name):
             excluded = allArgs[name].get('excludes')
@@ -400,8 +400,8 @@ def main(argv = None):
         def runTrade():
             # Can't allow the Run button to do anything when a command is running.
             win.button('Run', lambda x : x)
-            outputText = win.widgetManager.get(WIDGET_NAMES.Message, 'outputText')
             # Redirect output to the Output tab in the GUI
+            outputText = win.widgetManager.get(WIDGET_NAMES.Message, 'outputText')
             oldout = sys.stdout
             sys.stdout = StdoutRedirector(outputText)
             
@@ -466,7 +466,7 @@ def main(argv = None):
         
         sys.argv = argv
         
-        print('TD command: ' + str(argv))
+        # print('TD command: ' + str(argv))
         win.message('outputText', '')
         threading.Thread(target = runTrade, name = "TDThread").start()
     
@@ -602,11 +602,13 @@ def main(argv = None):
                 with win.scrollPane('helpPane', disabled = 'horizontal') as pane:
                     pane.configure(width = 560, height = 420)
                     win.message('helpText', cmdHelp['help'])
+                    win.widgetManager.get(WIDGET_NAMES.Message, 'helpText').config(width = 560)
             
             with win.tab('Output'):
                 with win.scrollPane('outPane', disabled = 'horizontal') as pane:
                     pane.configure(width = 560, height = 420)
-                    win.message('outputText', '', width = 560, height = 420)
+                    win.message('outputText', '')
+                    win.widgetManager.get(WIDGET_NAMES.Message, 'outputText').config(width = 560)
         
         makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
 
