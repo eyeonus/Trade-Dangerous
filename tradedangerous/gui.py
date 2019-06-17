@@ -39,6 +39,7 @@ from __future__ import unicode_literals
 import os
 import sys
 import traceback
+import threading
 
 from pathlib import Path
 from appJar import gui
@@ -184,6 +185,20 @@ gui.getOptionBox = getOptionBox
 
 
 def main(argv = None):
+
+    class IORedirector(object):
+
+        def __init__(self, TEXT_INFO):
+            self.TEXT_INFO = TEXT_INFO
+    
+    class StdoutRedirector(IORedirector):
+        
+        def write(self, string):
+            self.TEXT_INFO.config(text = self.TEXT_INFO.cget('text').rsplit('\r', 1)[0] + string)
+        
+        def flush(self):
+            
+            sys.__stdout__.flush()
     
     def chooseType(arg):
         if arg.kwargs.get('action') == 'store_true' or arg.kwargs.get('action') == 'store_const':
@@ -382,7 +397,53 @@ def main(argv = None):
                 return None
             return vals
         
+        def runTrade():
+            # Can't allow the Run button to do anything when a command is already running.
+            win.button('Run', lambda x : x)
+            outputText = win.widgetManager.get(WIDGET_NAMES.Message, 'outputText')
+            # Redirect output to the Output tab in the GUI
+            oldout = sys.stdout
+            sys.stdout = StdoutRedirector(outputText)
+            
+            try:
+                try:
+                    try:
+                        if "CPROF" in os.environ:
+                            import cProfile
+                            cProfile.run("trade(argv)")
+                        else:
+                            trade(argv)
+                    except PluginException as e:
+                        print("PLUGIN ERROR: {}".format(e))
+                        if 'EXCEPTIONS' in os.environ:
+                            raise e
+                        sys.exit(1)
+                    except tradeexcept.TradeException as e:
+                        print("%s: %s" % (argv[0], str(e)))
+                        if 'EXCEPTIONS' in os.environ:
+                            raise e
+                        sys.exit(1)
+                except (UnicodeEncodeError, UnicodeDecodeError) as e:
+                    print("-----------------------------------------------------------")
+                    print("ERROR: Unexpected unicode error in the wild!")
+                    print()
+                    print(traceback.format_exc())
+                    print(
+                        "Please report this bug (http://kfs.org/td/issues). You may be "
+                        "able to work around it by using the '-q' parameter. Windows "
+                        "users may be able to use 'chcp.com 65001' to tell the console "
+                        "you want to support UTF-8 characters."
+                        )
+            except SystemExit as e:
+                print(e)
+            
+            # Set the output back to normal
+            sys.stdout = oldout
+            # Allow the Run button to do something again.
+            win.button('Run', runTD)
+        
         win.setTabbedFrameSelectedTab('tabFrame', 'Output')
+        
         cmd = win.combo("Command")
         argv = ['trade', cmd ]
         if cmd != 'help':
@@ -405,39 +466,9 @@ def main(argv = None):
         
         sys.argv = argv
         
-        # This bit needs to be put into its own method so it can be threaded.
-        print("TD command: " + str(argv))
-        try:
-            try:
-                try:
-                    if "CPROF" in os.environ:
-                        import cProfile
-                        cProfile.run("trade(argv)")
-                    else:
-                        trade(argv)
-                except PluginException as e:
-                    print("PLUGIN ERROR: {}".format(e))
-                    if 'EXCEPTIONS' in os.environ:
-                        raise e
-                    sys.exit(1)
-                except tradeexcept.TradeException as e:
-                    print("%s: %s" % (argv[0], str(e)))
-                    if 'EXCEPTIONS' in os.environ:
-                        raise e
-                    sys.exit(1)
-            except (UnicodeEncodeError, UnicodeDecodeError) as e:
-                print("-----------------------------------------------------------")
-                print("ERROR: Unexpected unicode error in the wild!")
-                print()
-                print(traceback.format_exc())
-                print(
-                    "Please report this bug (http://kfs.org/td/issues). You may be "
-                    "able to work around it by using the '-q' parameter. Windows "
-                    "users may be able to use 'chcp.com 65001' to tell the console "
-                    "you want to support UTF-8 characters."
-                    )
-        except SystemExit as e:
-            print(e)
+        print('TD command: ' + str(argv))
+        win.message('outputText', '')
+        threading.Thread(target = runTrade, name = "TDThread").start()
     
     # All available commands
     Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
@@ -557,6 +588,7 @@ def main(argv = None):
     # print(argVals)
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
+        win.setFont(size = 8, family = 'Courier')
         win.combo('Command', Commands, change = updCmd, tooltip = 'Trade Dangerous command to run.',
                   stretch = 'none', sticky = 'ew', width = 10, row = 0, column = 0, colspan = 5)
         with win.scrollPane('req', disabled = 'horizontal', row = 1, column = 0, colspan = 10) as pane:
@@ -572,15 +604,17 @@ def main(argv = None):
                     win.message('helpText', cmdHelp['help'])
             
             with win.tab('Output'):
-                win.message('outputText', '')
+                with win.scrollPane('outPane', disabled = 'horizontal') as pane:
+                    pane.configure(width = 560, height = 420)
+                    win.message('outputText', '', width = 560, height = 420)
         
         makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
 
-        makeWidget('--quiet', allArgs['--quiet'], sticky = 'e', width = 1, row = 3, column = 46)
+        makeWidget('--quiet', allArgs['--quiet'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 46)
         
-        makeWidget('--detail', allArgs['--detail'], sticky = 'e', width = 1, row = 3, column = 47)
+        makeWidget('--detail', allArgs['--detail'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 47)
         
-        makeWidget('--debug', allArgs['--debug'], sticky = 'e', width = 1, row = 3, column = 48)
+        makeWidget('--debug', allArgs['--debug'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 48)
         
         win.button('Run', runTD, tooltip = 'Execute the selected command.',
                    sticky = 'w', row = 3, column = 49)
