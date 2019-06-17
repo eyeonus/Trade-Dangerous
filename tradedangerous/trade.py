@@ -35,7 +35,7 @@
 from tradedangerous import cli, gui
 
 
-def main(argv):
+def main(argv = None):
     import sys
     if 1 < len(sys.argv) and sys.argv[1] == 'gui':
         gui.main()

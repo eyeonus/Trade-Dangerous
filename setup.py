@@ -53,7 +53,7 @@ setup(name = package,
         package_data = {"tradedangerous": ["templates/TradeDangerous.sql", "templates/Added.csv", "templates/RareItem.csv", "templates/DefaultShipIndex.json"]},
         entry_points = {
             "console_scripts": [
-                "trade=tradedangerous.cli:main"
+                "trade=tradedangerous.trade:main"
             ]
         },
         zip_safe = False
