@@ -398,7 +398,7 @@ def main(argv = None):
             return vals
         
         def runTrade():
-            # Can't allow the Run button to do anything when a command is already running.
+            # Can't allow the Run button to do anything when a command is running.
             win.button('Run', lambda x : x)
             outputText = win.widgetManager.get(WIDGET_NAMES.Message, 'outputText')
             # Redirect output to the Output tab in the GUI
