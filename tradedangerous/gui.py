@@ -51,6 +51,8 @@ from .version import __version__
 
 from . import tradedb
 from .plugins import PluginException
+from _ast import arg
+from pylint.test.functional.invalid_name import argv
 
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 WidgetManager = appJar.appjar.WidgetManager
@@ -216,9 +218,8 @@ def main(argv = None):
             return {'type':'combo', 'sub':'ticks', 'list':['S', 'M', 'L', '?']}
         if arg.args[0] == '--plug':
             return {'type':'combo', 'list': [''] + importPlugs}
-        # TODO: Implement 'option' in makeWidget.
-        # if arg.args[0] == '--option':
-        #    return {'type':'option'}
+        if arg.args[0] == '--option':
+            return {'type':'option'}
         if arg.kwargs.get('type') == float:
             return {'type':'entry', 'sub':'numeric'}
         if arg.kwargs.get('type') == 'credits':
@@ -230,12 +231,17 @@ def main(argv = None):
         kwargs['label'] = label
         kwargs['change'] = updArgs
         kwargs['tooltip'] = arg['help']
+        if arg == allArgs.get(name):
+            kwargs['colspan'] = 1
+        else:
+            kwargs['colspan'] = 9
         
         widget = arg['widget']
         # print(name + ': ' + str(widget))
         if widget['type'] == 'button':
             kwargs.pop('change')
             kwargs.pop('label')
+            kwargs.pop('colspan')
             win.button(name, widget['func'], **kwargs)
         elif widget['type'] == 'check':
             win.check(name, argVals[name] or arg.get('default'), text = name, **kwargs)
@@ -267,7 +273,13 @@ def main(argv = None):
         
         elif widget['type'] == 'option':
             # TODO: Implement, use subwindow.
-            pass 
+            kwargs.pop('change')
+            kwargs.pop('label')
+            kwargs.pop('colspan')
+            win.button('optionButton', optionsWin, name = '--option', **kwargs)
+            kwargs['sticky'] = sticky
+            kwargs['change'] = updArgs
+            win.entry(name, argVals[name] or arg.get('default'), row = 'p' , column = 1, colspan = 9, **kwargs)
         elif widget['type'] == 'entry':
             if widget.get('sub'):
                 if widget.get('sub') == 'credits':
@@ -275,9 +287,54 @@ def main(argv = None):
                     pass
                 else:
                     kwargs['kind'] = 'numeric'
-            
+                        
             win.entry(name, argVals[name] or arg.get('default'), **kwargs)
     
+    def setOpts():
+        sw = win.widgetManager.get(WIDGET_NAMES.SubWindow, "Plugin Options")
+        plugOpts = allArgs['import']['opt']['--option']['options'].get(win.combo('--plug'))
+        argStr = ''
+        # print(plugOpts)
+        if plugOpts:
+            for option in plugOpts:
+                # print(option + ': ' + plugOpts[option])
+                if '=' in plugOpts[option]:
+                    if win.entry(option):
+                        argStr = argStr + option + '=' + win.entry(option) + ','
+                elif win.check(option):
+                    argStr = argStr + option + ','
+            # print(argStr)
+            argStr = argStr.rsplit(',', 1)[0]
+            win.entry('--option', argStr)
+        sw.hide()
+    
+    def optionsWin():
+        with win.subWindow("Plugin Options", modal = True) as sw:
+            win.emptyCurrentContainer()
+            optDict = {}
+            if argVals['--option']:
+                for option in enumerate(argVals['--option'].split(',')):
+                    if '=' in option[1]:
+                        optDict[option[1].split('=')[0]] = option[1].split('=')[1]
+                    else:
+                        if option[1] != '':
+                            optDict[option[1]] = True
+            # print(optDict)
+            if not win.combo('--plug'):
+                win.message('No import plugin chosen.', width = 170, colspan = 10)
+            else:
+                plugOpts = allArgs['import']['opt']['--option']['options'][win.combo('--plug')]
+                for option in plugOpts:
+                    # print(option + ': ' + plugOpts[option])
+                    if '=' in plugOpts[option]:
+                        win.entry(option, optDict.get(option) or '', label = True, sticky = 'ew', colspan = 10, tooltip = plugOpts[option])
+                    else:
+                        win.check(option, optDict.get(option) or False, sticky = 'ew', colspan = 10, tooltip = plugOpts[option])
+                # print(plugOpts)
+            win.button("Done", setOpts, column = 8)
+            win.button("Cancel", sw.hide, row = 'p', column = 9)
+            sw.show()
+        
     def updArgs(name):
     
         def getWidgetType(name):
@@ -291,6 +348,9 @@ def main(argv = None):
             return None
     
         # Update the stored value of the argument that's been changed.
+        if name == '--plug' and argVals[name] != win.get(getWidgetType(name), name):
+            win.entry('--option', '')
+        
         argVals[name] = win.get(getWidgetType(name), name)
         # print('Changed: "' + name + '" [' + str(argVals[name]) + ']')
         
@@ -468,7 +528,7 @@ def main(argv = None):
         
         # print('TD command: ' + str(argv))
         win.message('outputText', '')
-        threading.Thread(target = runTrade, name = "TDThread").start()
+        threading.Thread(target = runTrade, name = "TDThread", daemon = True).start()
     
     # All available commands
     Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
@@ -587,7 +647,7 @@ def main(argv = None):
     # print(allArgs)
     # print(argVals)
     
-    with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,)) as win:
+    with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,), inPadding = 1) as win:
         win.setFont(size = 8, family = 'Courier')
         win.combo('Command', Commands, change = updCmd, tooltip = 'Trade Dangerous command to run.',
                   stretch = 'none', sticky = 'ew', width = 10, row = 0, column = 0, colspan = 5)
