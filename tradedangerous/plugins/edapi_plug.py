@@ -122,7 +122,7 @@ class EDAPI:
                 "CAPI_LIVE_URL": "https://companion.orerve.net",
                 "CAPI_BETA_URL": "https://pts-companion.orerve.net",
                 "CLIENT_ID": "0d60c9fe-1ae3-4849-91e9-250db5de9d79",
-                "REDIRECT_URI": "http://127.2.0.1:2989/callback",
+                "REDIRECT_URI": "http://127.0.0.1:2989/callback",
             },
             "authorization": {}
         })
