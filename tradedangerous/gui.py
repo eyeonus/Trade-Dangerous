@@ -51,8 +51,6 @@ from .version import __version__
 
 from . import tradedb
 from .plugins import PluginException
-from _ast import arg
-from pylint.test.functional.invalid_name import argv
 
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 WidgetManager = appJar.appjar.WidgetManager
@@ -272,7 +270,6 @@ def main(argv = None):
                         win.setOptionBox(name, val, value = argVals[name][val], callFunction = False)
         
         elif widget['type'] == 'option':
-            # TODO: Implement, use subwindow.
             kwargs.pop('change')
             kwargs.pop('label')
             kwargs.pop('colspan')
@@ -464,6 +461,7 @@ def main(argv = None):
             outputText = win.widgetManager.get(WIDGET_NAMES.Message, 'outputText')
             oldout = sys.stdout
             sys.stdout = StdoutRedirector(outputText)
+            print('TD command: "' + ' '.join(argv) + '"')
             
             try:
                 try:
@@ -497,6 +495,7 @@ def main(argv = None):
             except SystemExit as e:
                 print(e)
             
+            print("Execution complete.")
             # Set the output back to normal
             sys.stdout = oldout
             # Allow the Run button to do something again.
@@ -524,9 +523,6 @@ def main(argv = None):
                 if result:
                     argv = argv + result
         
-        sys.argv = argv
-        
-        # print('TD command: ' + str(argv))
         win.message('outputText', '')
         threading.Thread(target = runTrade, name = "TDThread", daemon = True).start()
     
@@ -564,9 +560,9 @@ def main(argv = None):
                      'default': 30,
                      'widget': {'type':'entry', 'sub':'numeric'}
                      }
-           }
+        }
     
-    # Used to save the value and the type of widget of the arguments.
+    # Used to save the value of the arguments.
     argVals = {'--debug': '',
                '--detail': '',
                '--quiet': '',
