@@ -210,37 +210,26 @@ class Route(object):
         """
         Set up some coloring for readability
         """
+        colorMap = {
+            "red": "\033[31m",
+            "green": "\033[32m",
+            "yellow": "\033[33m",
+            "blue": "\033[34m",
+            "magenta": "\033[35m",
+            "cyan": "\033[36m",
+            "lightGray": "\033[37m",
+            "darkGray": "\033[90m",
+            "lightRed": "\033[91m",
+            "lightGreen": "\033[92m",
+            "lightYellow": "\033[93m",
+            "lightBlue": "\033[94m",
+            "lightMagenta": "\033[95m",
+            "lightCyan": "\033[96m",
+            "white": "\033[97m",
+        }
+
         if self.colorize:
-            if color == "red":
-                return "\033[31m{}\033[00m" .format(rawText)
-            if color == "green":
-                return "\033[32m{}\033[00m" .format(rawText)
-            if color == "yellow":
-                return "\033[33m{}\033[00m" .format(rawText)
-            if color == "blue":
-                return "\033[34m{}\033[00m" .format(rawText)
-            if color == "magenta":
-                return "\033[35m{}\033[00m" .format(rawText)
-            if color == "cyan":
-                return "\033[36m{}\033[00m" .format(rawText)
-            if color == "lightGray":
-                return "\033[37m{}\033[00m" .format(rawText)
-            if color == "darkGray":
-                return "\033[90m{}\033[00m" .format(rawText)
-            if color == "lightRed":
-                return "\033[91m{}\033[00m" .format(rawText)
-            if color == "lightGreen":
-                return "\033[92m{}\033[00m" .format(rawText)
-            if color == "lightYellow":
-                return "\033[93m{}\033[00m" .format(rawText)
-            if color == "lightBlue":
-                return "\033[94m{}\033[00m" .format(rawText)
-            if color == "lightMagenta":
-                return "\033[95m{}\033[00m" .format(rawText)
-            if color == "lightCyan":
-                return "\033[96m{}\033[00m" .format(rawText)
-            if color == "white":
-                return "\033[97m{}\033[00m" .format(rawText)
+            return "{}{}\033[00m" .format(colorMap.get(color, "\033[00m"), rawText)
         else:
             return rawText
 
