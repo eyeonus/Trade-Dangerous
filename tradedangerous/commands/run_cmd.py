@@ -27,6 +27,12 @@ arguments = [
             metavar='CR',
             type="credits",
         ),
+    ParseArgument('--ly-per',
+            help='Maximum light years per jump.',
+            dest='maxLyPer',
+            metavar='N.NN',
+            type=float,
+        ),
 ]
 
 switches = [
@@ -87,12 +93,6 @@ switches = [
         dest='maxJumpsPer',
         metavar='N',
         type=int,
-    ),
-    ParseArgument('--ly-per',
-        help='Maximum light years per jump.',
-        dest='maxLyPer',
-        metavar='N.NN',
-        type=float,
     ),
     ParseArgument('--empty-ly',
         help='Maximum light years ship can jump when empty.',
