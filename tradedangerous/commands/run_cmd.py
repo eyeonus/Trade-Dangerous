@@ -1119,7 +1119,8 @@ def run(results, cmdenv, tdb):
             jumps=(),
             startCr=startCr,
             gainCr=0,
-            score=0
+            score=0,
+            colorize=cmdenv.colorize
         )
         for src in cmdenv.origins
     ]

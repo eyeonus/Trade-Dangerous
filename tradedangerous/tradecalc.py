@@ -135,9 +135,9 @@ class Route(object):
     jump to System3, dock at Station B, sell everything, buy gold,
     jump to system4 and sell everything at Station X.
     """
-    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score')
+    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score', 'colorize')
     
-    def __init__(self, stations, hops, startCr, gainCr, jumps, score):
+    def __init__(self, stations, hops, startCr, gainCr, jumps, score, colorize = 0):
         assert stations
         self.route = stations
         self.hops = hops
@@ -145,6 +145,7 @@ class Route(object):
         self.gainCr = gainCr
         self.jumps = jumps
         self.score = score
+        self.colorize = colorize
     
     @property
     def firstStation(self):
@@ -192,6 +193,7 @@ class Route(object):
             self.gainCr + hop[1],
             self.jumps + (jumps,),
             self.score + score,
+            self.colorize,
         )
     
     def __lt__(self, rhs):
@@ -204,8 +206,46 @@ class Route(object):
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
     
+    def __colorize(self, color, rawText):
+        """
+        Set up some coloring for readability
+        """
+        if self.colorize:
+            if color == "red":
+                return "\033[31m{}\033[00m" .format(rawText)
+            if color == "green":
+                return "\033[32m{}\033[00m" .format(rawText)
+            if color == "yellow":
+                return "\033[33m{}\033[00m" .format(rawText)
+            if color == "blue":
+                return "\033[34m{}\033[00m" .format(rawText)
+            if color == "magenta":
+                return "\033[35m{}\033[00m" .format(rawText)
+            if color == "cyan":
+                return "\033[36m{}\033[00m" .format(rawText)
+            if color == "lightGray":
+                return "\033[37m{}\033[00m" .format(rawText)
+            if color == "darkGray":
+                return "\033[90m{}\033[00m" .format(rawText)
+            if color == "lightRed":
+                return "\033[91m{}\033[00m" .format(rawText)
+            if color == "lightGreen":
+                return "\033[92m{}\033[00m" .format(rawText)
+            if color == "lightYellow":
+                return "\033[93m{}\033[00m" .format(rawText)
+            if color == "lightBlue":
+                return "\033[94m{}\033[00m" .format(rawText)
+            if color == "lightMagenta":
+                return "\033[95m{}\033[00m" .format(rawText)
+            if color == "lightCyan":
+                return "\033[96m{}\033[00m" .format(rawText)
+            if color == "white":
+                return "\033[97m{}\033[00m" .format(rawText)
+        else:
+            return rawText
+
     def str(self):
-        return "%s -> %s" % (self.firstStation.name(), self.lastStation.name())
+        return "%s -> %s" % (self.__colorize("cyan", self.firstStation.name()), self.__colorize("blue", self.lastStation.name()))
     
     def detail(self, tdenv):
         """
@@ -242,9 +282,15 @@ class Route(object):
                     distFmt = (
                         "  Direct: {dist:0.2f}ly, Trip: {trav:0.2f}ly\n"
                     )
-            hopFmt = "  Load from {station}:\n{purchases}"
+            hopFmt = (
+                "  Load from "
+                + self.__colorize("cyan", "{station}") +
+                ":\n{purchases}"
+            )
             hopStepFmt = (
-                "     {qty:>4} x {item:<{longestName}} "
+                self.__colorize("lightYellow", "     {qty:>4}") +
+                " x "
+                + self.__colorize("yellow", "{item:<{longestName}} ") +
                 "{eacost:>8n}cr vs {easell:>8n}cr, "
                 "{age}"
             )
@@ -253,7 +299,9 @@ class Route(object):
             hopStepFmt += "\n"
             if not tdenv.summary:
                 dockFmt = (
-                    "  Unload at {station} => Gain {gain:n}cr "
+                    "  Unload at "
+                    + self.__colorize("lightBlue", "{station}") +
+                    " => Gain {gain:n}cr "
                     "({tongain:n}cr/ton) => {credits:n}cr\n"
                 )
             else:
@@ -265,26 +313,47 @@ class Route(object):
                 dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton)\n"
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
-                "Finish at {station} "
+                "Finish at "
+                + self.__colorize("blue", "{station} ") +
                 "gaining {gain:n}cr ({tongain:n}cr/ton) "
                 "=> est {credits:n}cr total\n"
             )
         elif detail:
-            hopFmt = "  Load from {station}:{purchases}\n"
-            hopStepFmt = " {qty} x {item} (@{eacost}cr),"
+            hopFmt = (
+                "  Load from "
+                + self.__colorize("cyan", "{station}") +
+                ":{purchases}\n"
+            )
+            hopStepFmt = (
+                self.__colorize("lightYellow", " {qty}") +
+                " x "
+                + self.__colorize("yellow", "{item}") +
+                " (@{eacost}cr),")
             footer = None
-            dockFmt = "  Dock at {station}\n"
+            dockFmt = (
+                "  Dock at " +
+                self.__colorize("lightBlue", "{station}\n")
+            )
             endFmt = (
-                "  Finish {station} "
+                "  Finish "
+                + self.__colorize("blue", "{station} ") +
                 "+ {gain:n}cr ({tongain:n}cr/ton)"
                 "=> {credits:n}cr\n"
             )
         else:
-            hopFmt = "  {station}:{purchases}\n"
-            hopStepFmt = " {qty} x {item},"
+            hopFmt = self.__colorize("cyan", "  {station}:{purchases}\n")
+            hopStepFmt = (
+                self.__colorize("lightYellow", " {qty}") +
+                " x "
+                + self.__colorize("yellow", "{item}") +
+                ","
+            )
             footer = None
             dockFmt = None
-            endFmt = "  {station} +{gain:n}cr ({tongain:n}/ton)"
+            endFmt = (
+                self.__colorize("blue", "  {station}") +
+                " +{gain:n}cr ({tongain:n}/ton)"
+            )
         
         def jumpList(jumps):
             text, last = "", None
