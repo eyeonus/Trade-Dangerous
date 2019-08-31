@@ -5,6 +5,7 @@ import traceback
 import sys
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 
+
 class TradeEnv(object):
     """
         Container for a TradeDangerous "environment", which is a
@@ -38,6 +39,7 @@ class TradeEnv(object):
     
     encoding = sys.stdout.encoding
     if str(sys.stdout.encoding).upper() != 'UTF-8':
+
         def uprint(self, *args, **kwargs):
             try:
                 print(*args, **kwargs)
@@ -58,6 +60,7 @@ class TradeEnv(object):
                     for arg in args
                 ]
                 print(*strs, **kwargs)
+
     else:
         uprint = print
     
@@ -72,6 +75,7 @@ class TradeEnv(object):
     def __getattr__(self, key):
         """ Return the default for attributes we don't have """
         if key.startswith("DEBUG"):
+
             # Self-assembling DEBUGN functions
             def __DEBUG_ENABLED(outText, *args, **kwargs):
                 print('#', outText.format(*args, **kwargs))
@@ -90,6 +94,7 @@ class TradeEnv(object):
             return debugFn
         
         if key == "NOTE":
+
             def __NOTE_ENABLED(outText, *args, file = None, **kwargs):
                 self.uprint(
                     "NOTE:", str(outText).format(*args, **kwargs),
@@ -108,6 +113,7 @@ class TradeEnv(object):
             return noteFn
         
         if key == "WARN":
+
             def _WARN_ENABLED(outText, *args, file = None, **kwargs):
                 self.uprint(
                     "WARNING:", str(outText).format(*args, **kwargs),

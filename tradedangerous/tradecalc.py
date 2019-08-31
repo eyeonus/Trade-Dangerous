@@ -59,6 +59,7 @@ locale.setlocale(locale.LC_ALL, '')
 
 
 class BadTimestampError(TradeException):
+
     def __init__(
             self,
             tdb,
@@ -80,11 +81,13 @@ class BadTimestampError(TradeException):
             )
         )
 
+
 class NoHopsError(TradeException):
     pass
 
 ######################################################################
 # Stuff that passes for classes (but isn't)
+
 
 class TradeLoad(namedtuple('TradeLoad', (
         'items', 'gainCr', 'costCr', 'units'
@@ -103,6 +106,7 @@ class TradeLoad(namedtuple('TradeLoad', (
         units
             Total of all the qty values in the items list.
     """
+
     def __bool__(self):
         return self.units > 0
     
@@ -121,10 +125,12 @@ class TradeLoad(namedtuple('TradeLoad', (
     def gpt(self):
         return self.gainCr / self.units if self.units else 0
 
+
 emptyLoad = TradeLoad((), 0, 0, 0)
 
 ######################################################################
 # Classes
+
 
 class Route(object):
     """
@@ -204,32 +210,6 @@ class Route(object):
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
     
-    def __colorize(self, color, rawText):
-        """
-        Set up some coloring for readability
-        """
-        colorMap = {
-            "red": "31",
-            "green": "32",
-            "yellow": "33",
-            "blue": "34",
-            "magenta": "35",
-            "cyan": "36",
-            "lightGray": "37",
-            "darkGray": "90",
-            "lightRed": "91",
-            "lightGreen": "92",
-            "lightYellow": "93",
-            "lightBlue": "94",
-            "lightMagenta": "95",
-            "lightCyan": "96",
-            "white": "97",
-        }
-        
-        os.system('color')
-        
-        return "\033[{}m{}\033[00m" .format(colorMap.get(color, "00"), rawText)
-    
     def str(self, colorize):
         return "%s -> %s" % (colorize("cyan", self.firstStation.name()), colorize("blue", self.lastStation.name()))
     
@@ -240,7 +220,7 @@ class Route(object):
         
         detail, goalSystem = tdenv.detail, tdenv.goalSystem
         
-        colorize = self.__colorize if tdenv.color else lambda x, y : y
+        colorize = tdenv.colorize if tdenv.color else lambda x, y : y
         
         credits = self.startCr + (tdenv.insurance or 0)
         gainCr = 0
@@ -254,6 +234,7 @@ class Route(object):
             for hop in hops:
                 for (tr, qty) in hop[0]:
                     yield len(tr.name(detail))
+
         longestNameLen = max(genSubValues())
         
         text = self.str(colorize)
@@ -362,6 +343,7 @@ class Route(object):
             return travelled, text
         
         if detail > 1:
+
             def decorateStation(station):
                 details = []
                 if station.lsFromStar:
@@ -383,17 +365,22 @@ class Route(object):
                     ", ".join(details or ["no details"])
                 )
                 return details
+
         else:
+
             def decorateStation(station):
                 return station.name()
         
         if detail and goalSystem:
+
             def goalDistance(station):
                 return " [Distance to {}: {:.2f} ly]\n".format(
                     goalSystem.name(),
                     station.system.distanceTo(goalSystem),
                 )
+
         else:
+
             def goalDistance(station):
                 return ""
         
@@ -502,6 +489,7 @@ class Route(object):
                 final = credits + ttlGainCr
             )
         )
+
 
 class TradeCalc(object):
     """
@@ -615,6 +603,7 @@ class TradeCalc(object):
         This is provided to make it easy to validate the results of future
         variants or optimizations of the fit algorithm.
         """
+
         def _fitCombos(offset, cr, cap, level = 1):
             if cr <= 0 or cap <= 0:
                 return emptyLoad
@@ -910,6 +899,7 @@ class TradeCalc(object):
                     if stn not in avoidPlaces and \
                         stn.system not in avoidPlaces
                 )
+
             def station_iterator(srcStation):
                 srcSys = srcStation.system
                 srcDist = srcSys.distanceTo
@@ -920,8 +910,10 @@ class TradeCalc(object):
                         (srcSys, stnSys),
                         srcDist(stnSys)
                     )
+
         else:
             getDestinations = tdb.getDestinations
+
             def station_iterator(srcStation):
                 yield from getDestinations(
                     srcStation,
@@ -997,6 +989,7 @@ class TradeCalc(object):
                 )
             
             if tdenv.debug >= 1:
+
                 def annotate(dest):
                     tdenv.DEBUG1(
                         "destSys {}, destStn {}, jumps {}, distLy {}",
@@ -1006,6 +999,7 @@ class TradeCalc(object):
                         dest.distLy
                     )
                     return True
+
                 stations = (d for d in stations if annotate(d))
             
             for dest in stations:
