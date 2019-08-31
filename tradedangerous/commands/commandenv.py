@@ -18,13 +18,14 @@ class CommandResults(object):
         self.cmdenv = cmdenv
         self.summary, self.rows = {}, []
     
-    def render(self, cmdenv=None, tdb=None):
+    def render(self, cmdenv = None, tdb = None):
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
         cmdenv._cmd.render(self, cmdenv, tdb)
 
 
 class ResultRow(object):
+    
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -37,7 +38,7 @@ class CommandEnv(TradeEnv):
     """
     
     def __init__(self, properties, argv, cmdModule):
-        super().__init__(properties=properties)
+        super().__init__(properties = properties)
         self.tdb = None
         self.mfd = None
         self.argv = argv or sys.argv
@@ -45,7 +46,7 @@ class CommandEnv(TradeEnv):
         if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
         
-        self._cmd   = cmdModule or __main__
+        self._cmd = cmdModule or __main__
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
         
@@ -61,8 +62,7 @@ class CommandEnv(TradeEnv):
                                 cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
-
-
+    
     def run(self, tdb):
         """
             Set the current database context for this env and check that
@@ -79,12 +79,10 @@ class CommandEnv(TradeEnv):
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
-
-
+    
     def render(self, results):
         self._cmd.render(self, results, self, self.tdb)
-
-
+    
     def checkMFD(self):
         self.mfd = None
         try:
@@ -95,9 +93,9 @@ class CommandEnv(TradeEnv):
         
         from ..mfd import X52ProMFD
         self.mfd = X52ProMFD()
-
-
+    
     def checkFromToNear(self):
+        
         def check(label, fieldName, wantStation):
             key = getattr(self, fieldName, None)
             if not key:
@@ -113,8 +111,7 @@ class CommandEnv(TradeEnv):
                 if isinstance(place, Station):
                     return place.system
                 return place
-
-
+            
             if isinstance(place, Station):
                 return place
             
@@ -128,7 +125,7 @@ class CommandEnv(TradeEnv):
             if len(place.stations) > 1:
                 raise AmbiguityError(
                         label, key, place.stations,
-                        key=lambda key: key.name()
+                        key = lambda key: key.name()
                 )
             
             return place.stations[0]
@@ -138,15 +135,13 @@ class CommandEnv(TradeEnv):
             if key:
                 return self.tdb.lookupPlace(key)
             return None
-
-
+        
         self.startStation = check('origin station', 'origin', True)
-        self.stopStation  = check('destination station', 'dest', True)
-        self.origPlace    = lookupPlace('origin', 'starting')
-        self.destPlace    = lookupPlace('destination', 'ending')
-        self.nearSystem   = check('system', 'near', False)
-
-
+        self.stopStation = check('destination station', 'dest', True)
+        self.origPlace = lookupPlace('origin', 'starting')
+        self.destPlace = lookupPlace('destination', 'ending')
+        self.nearSystem = check('system', 'near', False)
+    
     def checkAvoids(self):
         """
             Process a list of avoidances.
@@ -196,8 +191,7 @@ class CommandEnv(TradeEnv):
                     [ item.name() for item in avoidItems ],
                     [ place.name() for place in avoidPlaces ],
         )
-
-
+    
     def checkVias(self):
         """ Process a list of station names and build them into a list of waypoints. """
         viaPlaceNames = getattr(self, 'via', None)
@@ -234,3 +228,30 @@ class CommandEnv(TradeEnv):
             if not value in 'YN?':
                 raise PlanetaryError(planetary)
         self.planetary = planetary
+    
+    def colorize(self, color, rawText):
+        """
+        Set up some coloring for readability
+        """
+        colorMap = {
+            "red": "31",
+            "green": "32",
+            "yellow": "33",
+            "blue": "34",
+            "magenta": "35",
+            "cyan": "36",
+            "lightGray": "37",
+            "darkGray": "90",
+            "lightRed": "91",
+            "lightGreen": "92",
+            "lightYellow": "93",
+            "lightBlue": "94",
+            "lightMagenta": "95",
+            "lightCyan": "96",
+            "white": "97",
+        }
+        
+        # Needed in Windows and possibly OSX for color output to work.
+        os.system('color')
+        
+        return "\033[{}m{}\033[00m" .format(colorMap.get(color, "00"), rawText)

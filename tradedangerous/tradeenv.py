@@ -5,6 +5,7 @@ import traceback
 import sys
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 
+
 class TradeEnv(object):
     """
         Container for a TradeDangerous "environment", which is a
@@ -29,6 +30,7 @@ class TradeEnv(object):
         'debug': 0,
         'detail': 0,
         'quiet': 0,
+        'color': False,
         'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
         'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
         'templateDir': os.path.join(_ROOT, 'templates'),
@@ -37,6 +39,7 @@ class TradeEnv(object):
     
     encoding = sys.stdout.encoding
     if str(sys.stdout.encoding).upper() != 'UTF-8':
+        
         def uprint(self, *args, **kwargs):
             try:
                 print(*args, **kwargs)
@@ -52,15 +55,16 @@ class TradeEnv(object):
                         print(str(e))
                 strs = [
                     str(arg).
-                        encode(TradeEnv.encoding, errors='replace').
+                        encode(TradeEnv.encoding, errors = 'replace').
                         decode(TradeEnv.encoding)
                     for arg in args
                 ]
                 print(*strs, **kwargs)
+    
     else:
         uprint = print
     
-    def __init__(self, properties=None, **kwargs):
+    def __init__(self, properties = None, **kwargs):
         properties = properties or dict()
         self.__dict__.update(self.defaults)
         if properties:
@@ -71,6 +75,7 @@ class TradeEnv(object):
     def __getattr__(self, key):
         """ Return the default for attributes we don't have """
         if key.startswith("DEBUG"):
+            
             # Self-assembling DEBUGN functions
             def __DEBUG_ENABLED(outText, *args, **kwargs):
                 print('#', outText.format(*args, **kwargs))
@@ -89,10 +94,11 @@ class TradeEnv(object):
             return debugFn
         
         if key == "NOTE":
-            def __NOTE_ENABLED(outText, *args, file=None, **kwargs):
+            
+            def __NOTE_ENABLED(outText, *args, file = None, **kwargs):
                 self.uprint(
                     "NOTE:", str(outText).format(*args, **kwargs),
-                    file=file,
+                    file = file,
                 )
             
             def __NOTE_DISABLED(*args, **kwargs):
@@ -107,10 +113,11 @@ class TradeEnv(object):
             return noteFn
         
         if key == "WARN":
-            def _WARN_ENABLED(outText, *args, file=None, **kwargs):
+            
+            def _WARN_ENABLED(outText, *args, file = None, **kwargs):
                 self.uprint(
                     "WARNING:", str(outText).format(*args, **kwargs),
-                    file=file
+                    file = file
                 )
             
             def _WARN_DISABLED(*args, **kwargs):
