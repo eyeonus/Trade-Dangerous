@@ -269,7 +269,7 @@ class Checklist(object):
         self.tdb = tdb
         self.cmdenv = cmdenv
         self.mfd = cmdenv.mfd
-
+    
     def doStep(self, action, detail = None, extra = None):
         self.stepNo += 1
         try:
@@ -287,10 +287,10 @@ class Checklist(object):
                 " ".join(item for item in (action, detail, extra) if item)
             )
         )
-
+    
     def note(self, str, addBreak = True):
         print("(i) {} (i){}".format(str, "\n" if addBreak else ""))
-
+    
     def run(self, route, cr):
         tdb, mfd = self.tdb, self.mfd
         stations, hops, jumps = route.route, route.hops, route.jumps
@@ -1121,7 +1121,6 @@ def run(results, cmdenv, tdb):
             startCr = startCr,
             gainCr = 0,
             score = 0,
-            colorize = cmdenv.colorize
         )
         for src in cmdenv.origins
     ]

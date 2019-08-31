@@ -185,9 +185,9 @@ gui.getOptionBox = getOptionBox
 
 
 def main(argv = None):
-
+    
     class IORedirector(object):
-
+        
         def __init__(self, TEXT_INFO):
             self.TEXT_INFO = TEXT_INFO
     
@@ -284,7 +284,7 @@ def main(argv = None):
                     pass
                 else:
                     kwargs['kind'] = 'numeric'
-                        
+            
             win.entry(name, argVals[name] or arg.get('default'), **kwargs)
     
     def setOpts():
@@ -331,9 +331,9 @@ def main(argv = None):
             win.button("Done", setOpts, column = 8)
             win.button("Cancel", sw.hide, row = 'p', column = 9)
             sw.show()
-        
-    def updArgs(name):
     
+    def updArgs(name):
+        
         def getWidgetType(name):
             for widgetType in [WIDGET_NAMES.Entry, WIDGET_NAMES.Button, WIDGET_NAMES.CheckBox,
                                WIDGET_NAMES.RadioButton, WIDGET_NAMES.SpinBox, WIDGET_NAMES.OptionBox]:
@@ -343,7 +343,7 @@ def main(argv = None):
                 except:
                     pass
             return None
-    
+        
         # Update the stored value of the argument that's been changed.
         if name == '--plug' and argVals[name] != win.get(getWidgetType(name), name):
             win.entry('--option', '')
@@ -400,7 +400,7 @@ def main(argv = None):
                 win.label('Optional:', sticky = 'w')
                 for key in allArgs[cmd]['opt']:
                     makeWidget(key, allArgs[cmd]['opt'][key])
-        
+    
     def changeCWD():
         """
         Opens a folder select dialog.
@@ -602,11 +602,11 @@ def main(argv = None):
             for arg in index.arguments:
                 # print(arg.args[0])
                 argVals[arg.args[0]] = arg.kwargs.get('default') or None
-
+                
                 allArgs[cmd]['req'][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
                 allArgs[cmd]['req'][arg.args[0]]['widget'] = chooseType(arg)
         # print(allArgs[cmd]['req'])
-
+        
         if index.switches:
             for arg in index.switches:
                 try:
@@ -667,7 +667,7 @@ def main(argv = None):
                     win.widgetManager.get(WIDGET_NAMES.Message, 'outputText').config(width = 560)
         
         makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
-
+        
         makeWidget('--quiet', allArgs['--quiet'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 46)
         
         makeWidget('--detail', allArgs['--detail'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 47)
@@ -686,7 +686,7 @@ def main(argv = None):
         with win.scrollPane('DB', disabled = 'vertical', row = 5, column = 1, colspan = 49) as pane:
             pane.configure(width = 500, height = 20)
             win.label('db', argVals['--db'], sticky = 'w')
-        
+    
     # End of window
 
 

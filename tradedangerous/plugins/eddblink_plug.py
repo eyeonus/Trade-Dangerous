@@ -175,7 +175,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     tdenv.NOTE("Using Default Ship Index.")
                     copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
                     return True
-
+                
                 if urlTail != LIVE_LISTINGS:
                     self.options["fallback"] = True
         
@@ -183,7 +183,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             # EDDB.io doesn't have live listings or the ship index.
             if urlTail == LIVE_LISTINGS:
                 return False
-
+            
             url = FALLBACK_URL + urlTail
             try:
                 response = openURL(url)
