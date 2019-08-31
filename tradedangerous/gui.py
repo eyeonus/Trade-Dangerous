@@ -432,7 +432,7 @@ def main(argv = None):
             vals = []
             # See string weirdness, above.
             if not not curArg and curArg != argBase[arg].get('default'):
-                if arg in ['--detail', '--debug', '--quiet'] or (argBase == allArgs[cmd]['req'] and not arg.startswith('--')):
+                if arg in ['--detail', '--debug', '--quiet']:
                     pass
                 else:
                     vals.append(str(arg))
