@@ -42,7 +42,7 @@ class HelpAction(argparse.Action):
         argparse action helper for printing the argument usage,
         because Python 3.4's argparse is ever-so subtly very broken.
     """
-
+    
     def __call__(self, parser, namespace, values, option_string = None):
         raise exceptions.UsageError(
                 "TradeDangerous help",
@@ -85,7 +85,7 @@ def _findFromFile(cmd, prefix = '.tdrc'):
 
 
 class CommandIndex(object):
-
+    
     def usage(self, argv):
         """
             Generate the outlying usage text for TD.
@@ -134,7 +134,7 @@ class CommandIndex(object):
                 .format(prog = argv[0], cmd = lastCmdName)
             )
         return text
-
+    
     def parse(self, argv, fromfile_prefix = '+'):
         if len(argv) <= 1 or argv[1] == '--help' or argv[1] == '-h':
             raise exceptions.UsageError(
@@ -174,7 +174,7 @@ class CommandIndex(object):
             cmdModule = candidates[0][1]
         
         class ArgParser(argparse.ArgumentParser):
-
+            
             def error(self, message):
                 raise exceptions.CommandLineError(message, self.format_usage())
         
