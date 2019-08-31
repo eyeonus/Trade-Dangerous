@@ -298,7 +298,7 @@ class Checklist(object):
         gainCr = 0
         self.stepNo = 0
         
-        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.str())
+        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.str(lambda x, y : y))
         print(heading, "\n", '-' * len(heading), "\n\n", sep = '')
         
         cmdenv = self.cmdenv
