@@ -25,7 +25,7 @@ class CommandResults(object):
 
 
 class ResultRow(object):
-
+    
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
@@ -62,7 +62,7 @@ class CommandEnv(TradeEnv):
                                 cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
-
+    
     def run(self, tdb):
         """
             Set the current database context for this env and check that
@@ -79,10 +79,10 @@ class CommandEnv(TradeEnv):
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
-
+    
     def render(self, results):
         self._cmd.render(self, results, self, self.tdb)
-
+    
     def checkMFD(self):
         self.mfd = None
         try:
@@ -93,9 +93,9 @@ class CommandEnv(TradeEnv):
         
         from ..mfd import X52ProMFD
         self.mfd = X52ProMFD()
-
+    
     def checkFromToNear(self):
-
+        
         def check(label, fieldName, wantStation):
             key = getattr(self, fieldName, None)
             if not key:
@@ -111,7 +111,7 @@ class CommandEnv(TradeEnv):
                 if isinstance(place, Station):
                     return place.system
                 return place
-
+            
             if isinstance(place, Station):
                 return place
             
@@ -135,13 +135,13 @@ class CommandEnv(TradeEnv):
             if key:
                 return self.tdb.lookupPlace(key)
             return None
-
+        
         self.startStation = check('origin station', 'origin', True)
         self.stopStation = check('destination station', 'dest', True)
         self.origPlace = lookupPlace('origin', 'starting')
         self.destPlace = lookupPlace('destination', 'ending')
         self.nearSystem = check('system', 'near', False)
-
+    
     def checkAvoids(self):
         """
             Process a list of avoidances.
@@ -191,7 +191,7 @@ class CommandEnv(TradeEnv):
                     [ item.name() for item in avoidItems ],
                     [ place.name() for place in avoidPlaces ],
         )
-
+    
     def checkVias(self):
         """ Process a list of station names and build them into a list of waypoints. """
         viaPlaceNames = getattr(self, 'via', None)

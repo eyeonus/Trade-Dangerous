@@ -59,7 +59,7 @@ locale.setlocale(locale.LC_ALL, '')
 
 
 class BadTimestampError(TradeException):
-
+    
     def __init__(
             self,
             tdb,
@@ -106,7 +106,7 @@ class TradeLoad(namedtuple('TradeLoad', (
         units
             Total of all the qty values in the items list.
     """
-
+    
     def __bool__(self):
         return self.units > 0
     
@@ -234,7 +234,7 @@ class Route(object):
             for hop in hops:
                 for (tr, qty) in hop[0]:
                     yield len(tr.name(detail))
-
+        
         longestNameLen = max(genSubValues())
         
         text = self.str(colorize)
@@ -343,7 +343,7 @@ class Route(object):
             return travelled, text
         
         if detail > 1:
-
+            
             def decorateStation(station):
                 details = []
                 if station.lsFromStar:
@@ -365,22 +365,22 @@ class Route(object):
                     ", ".join(details or ["no details"])
                 )
                 return details
-
+        
         else:
-
+            
             def decorateStation(station):
                 return station.name()
         
         if detail and goalSystem:
-
+            
             def goalDistance(station):
                 return " [Distance to {}: {:.2f} ly]\n".format(
                     goalSystem.name(),
                     station.system.distanceTo(goalSystem),
                 )
-
+        
         else:
-
+            
             def goalDistance(station):
                 return ""
         
@@ -603,7 +603,7 @@ class TradeCalc(object):
         This is provided to make it easy to validate the results of future
         variants or optimizations of the fit algorithm.
         """
-
+        
         def _fitCombos(offset, cr, cap, level = 1):
             if cr <= 0 or cap <= 0:
                 return emptyLoad
@@ -899,7 +899,7 @@ class TradeCalc(object):
                     if stn not in avoidPlaces and \
                         stn.system not in avoidPlaces
                 )
-
+            
             def station_iterator(srcStation):
                 srcSys = srcStation.system
                 srcDist = srcSys.distanceTo
@@ -910,10 +910,10 @@ class TradeCalc(object):
                         (srcSys, stnSys),
                         srcDist(stnSys)
                     )
-
+        
         else:
             getDestinations = tdb.getDestinations
-
+            
             def station_iterator(srcStation):
                 yield from getDestinations(
                     srcStation,
@@ -989,7 +989,7 @@ class TradeCalc(object):
                 )
             
             if tdenv.debug >= 1:
-
+                
                 def annotate(dest):
                     tdenv.DEBUG1(
                         "destSys {}, destStn {}, jumps {}, distLy {}",
@@ -999,7 +999,7 @@ class TradeCalc(object):
                         dest.distLy
                     )
                     return True
-
+                
                 stations = (d for d in stations if annotate(d))
             
             for dest in stations:
