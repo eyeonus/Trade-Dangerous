@@ -221,9 +221,9 @@ class CommandIndex(object):
                     help = 'Increase level of detail in output.',
                     default = 0, required = False, action = 'count',
                 )
-        stdArgs.add_argument('--colorize', '-c',
-                    help = 'Print output with some colorization.',
-                    default = 0, required = False, action = 'count',
+        stdArgs.add_argument('--color', '-c',
+                    help = 'Add color to output for enhanced readability.',
+                    default = False, action = 'store_true',
                 )
         stdArgs.add_argument('--quiet', '-q',
                     help = 'Reduce level of detail in output.',
