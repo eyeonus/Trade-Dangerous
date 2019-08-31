@@ -442,7 +442,7 @@ def main(argv = None):
                 if widget.get('sub') == 'ticks':
                     choices = ''
                     for choice in curArg:
-                        if argVals[choice]:
+                        if curArg[choice]:
                             choices = choices + choice
                     vals.append(choices)
                     return vals
