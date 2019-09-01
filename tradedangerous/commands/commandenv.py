@@ -251,7 +251,8 @@ class CommandEnv(TradeEnv):
             "white": "97",
         }
         
-        # Needed in Windows and possibly OSX for color output to work.
-        os.system('color')
+        # Needed in Windows for color output to work.
+        if os.name == 'nt':
+            os.system('color')
         
         return "\033[{}m{}\033[00m" .format(colorMap.get(color, "00"), rawText)
