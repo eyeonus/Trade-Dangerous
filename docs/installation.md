@@ -63,6 +63,19 @@ pyenv global 3.7.4
 # Trade Dangerous now works - get some general help
 trade --help
 ```
+You can verify if Tcl/Tk is working with:
+
+```bash
+python -m tkinter -c 'tkinter._test()'
+```
+
+If you get an errors as shown below (which may not show until you run a command such as `trade update`), then you may have to reinstall python with pyenv using a workaround.
+
+```
+ERROR: tk.h version (8.6) doesn't match libtk.a version (8.5)
+```
+
+This is a known issue with Mac OS 10.14.6 (Mojave) and pyenv. [This workaround](https://github.com/pyenv/pyenv/issues/1375#issuecomment-524280004) can be used with a fresh `pyenv` python installation to get the latest Tcl/Tk version working on Mac OS 10.14.6 (Mojave).
 
 # Usage
 This section only contains some very basic stuff.
