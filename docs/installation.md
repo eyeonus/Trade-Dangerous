@@ -35,6 +35,34 @@ to `Applications/Python 3.6` and double-click `Install Certificates.command`
 
 This is shown when you ran the installer for python but is easily overlooked.
 
+## TKinter on Mac - python installed with pyenv
+If you've used [pyenv](https://github.com/pyenv/pyenv) to install a more recent version of python on Mac (3.7.0+, 3.6.8+ and 2.7.16+), there may be
+issues with `TKinter` not being available for appJar.
+
+```python
+import _tkinter # If this fails your Python may not be configured for Tk
+ModuleNotFoundError: No module named '_tkinter'
+```
+
+Normally the python installers for macOS would supply
+[their own private copies](https://www.python.org/download/mac/tcltk/#built-in-8-6-8) of Tcl/Tk. If you've installed
+python with `pyenv` then you would need to [install a newer version of Tk](https://github.com/pyenv/pyenv/issues/94#issuecomment-437180736) first using [homebrew](https://brew.sh).
+
+```bash
+# Install Tcl/Tk for pyenv
+brew install tcl-tk
+
+# Have python compiler find tcl-tk:
+export LDFLAGS="-L/usr/local/opt/tcl-tk/lib"
+export CPPFLAGS="-I/usr/local/opt/tcl-tk/include"
+
+# Install and set latest python with pyenv
+pyenv install 3.7.4
+pyenv global 3.7.4
+
+# Trade Dangerous now works - get some general help
+trade --help
+```
 
 # Usage
 This section only contains some very basic stuff.
