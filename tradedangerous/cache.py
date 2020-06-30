@@ -850,8 +850,9 @@ def processImportFile(tdenv, db, importPath, tableName):
                 
                 try:
                     db.execute(sql_stmt, linein)
+                    importCount += 1
                 except Exception as e:
-                    raise SystemExit(
+                    tdenv.WARN(
                         "*** INTERNAL ERROR: {err}\n"
                         "CSV File: {file}:{line}\n"
                         "SQL Query: {query}\n"
@@ -863,8 +864,8 @@ def processImportFile(tdenv, db, importPath, tableName):
                             query = sql_stmt.strip(),
                             params = linein
                         )
-                    ) from None
-                importCount += 1
+                    )
+                    pass
             else:
                 tdenv.NOTE(
                         "Wrong number of columns ({}:{}): {}",
