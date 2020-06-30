@@ -28,7 +28,9 @@ BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 FALLBACK_URL = os.environ.get('TD_FALLBACK') or "https://eddb.io/archive/v6/"
 SHIPS_URL = os.environ.get('TD_SHIPS') or "https://beta.coriolis.io/data/index.json"
 COMMODITIES = "commodities.json"
-SYSTEMS = "systems_populated.jsonl"
+SYS_FULL = "systems.csv"
+SYS_RECENT = "systems_recently.csv"
+SYS_POP = "systems_populated.jsonl"
 STATIONS = "stations.jsonl"
 UPGRADES = "modules.json"
 LISTINGS = "listings.csv"
@@ -46,7 +48,8 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     pluginOptions = {
         'item':         "Regenerate Categories and Items using latest commodities.json dump.",
-        'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
+        'systemfull':   "Regenerate Systems with full list of all recorded systems in latest systems.csv dump.",
+        'system':       "Regenerate Systems using latest system-populated.jsonl and systems_recently.csv dumps.",
         'station':      "Regenerate Stations using latest stations.jsonl dump. (Implies '-O system')",
         'ship':         "Regenerate Ships using latest coriolis.io json dump.",
         'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (Implies '-O system,station,ship')",
@@ -68,7 +71,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.dataPath = Path(os.environ.get('TD_EDDB')) if os.environ.get('TD_EDDB') else tdb.dataPath / Path("eddb")
         self.commoditiesPath = Path(COMMODITIES)
-        self.systemsPath = Path(SYSTEMS)
+        self.sysFullPath = Path(SYS_FULL)
+        self.sysRecentPath = Path(SYS_RECENT)
+        self.sysPopPath = Path(SYS_POP)
         self.stationsPath = Path(STATIONS)
         self.upgradesPath = Path(UPGRADES)
         self.listingsPath = Path(LISTINGS)
@@ -160,6 +165,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             return request.urlopen(request.Request(url, headers = {'User-Agent': 'Trade-Dangerous'}))
         
         tdenv.NOTE("Checking for update to '{}'.", path)
+        if path == self.sysFullPath:
+            tdenv.WARN("Full " + str(self.sysFullPath) + " file is ~5GB in size. This will take awhile.")
         if urlTail == SHIPS_URL:
             url = SHIPS_URL
         else:
@@ -321,6 +328,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def importSystems(self):
         """
         Populate the System table using systems_populated.jsonl
+        and either systems.csv or systems_recent.csv
         Writes directly to database.
         """
         tdb, tdenv = self.tdb, self.tdenv
@@ -329,10 +337,55 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         total = 1
         
-        with open(str(self.dataPath / self.systemsPath), "r", encoding = "utf-8", errors = 'ignore') as f:
+        tdenv.NOTE("Now processing " + str(self.sysRecentPath))
+        
+        with open(str(self.dataPath / self.sysRecentPath), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
-        with open(str(self.dataPath / self.systemsPath), "rU") as fh:
+        with open(str(self.dataPath / self.sysRecentPath), "rU") as fh:
+            sysDict = csv.DictReader(fh)
+            prog = pbar.Progress(total, 50)
+            for system in sysDict:
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                system_id = system['id']
+                name = system['name']
+                pos_x = system['x']
+                pos_y = system['y']
+                pos_z = system['z']
+                modified = datetime.datetime.utcfromtimestamp(int(system['updated_at'])).strftime('%Y-%m-%d %H:%M:%S')
+                
+                result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
+                if result:
+                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                    if int(system['updated_at']) > updated:
+                        tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
+                        tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
+                        self.execute("""UPDATE System
+                                    SET name = ?,pos_x = ?,pos_y = ?,pos_z = ?,modified = ?
+                                    WHERE system_id = ?""",
+                                    (name, pos_x, pos_y, pos_z, modified,
+                                     system_id))
+                        self.updated['System'] = True
+                else:
+                    tdenv.DEBUG0("System '{}' has been added.", name)
+                    tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
+                    self.execute("""INSERT INTO System
+                                ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
+                                ( ?, ?, ?, ?, ?, ? ) """,
+                                (system_id, name, pos_x, pos_y, pos_z, modified))
+                    self.updated['System'] = True
+            while prog.value < prog.maxValue:
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
+            prog.clear()
+            
+        tdenv.NOTE("Now processing " + str(self.sysPopPath))
+        
+        total = 1
+        
+        with open(str(self.dataPath / self.sysPopPath), "r", encoding = "utf-8", errors = 'ignore') as f:
+            total += (sum(bl.count("\n") for bl in self.blocks(f)))
+        
+        with open(str(self.dataPath / self.sysPopPath), "rU") as fh:
             prog = pbar.Progress(total, 50)
             for line in fh:
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
@@ -370,6 +423,59 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
     
+    def importAllSystems(self):
+        """
+        Populate the System table using systems_populated.jsonl
+        and either systems.csv or systems_recent.csv
+        Writes directly to database.
+        """
+        tdb, tdenv = self.tdb, self.tdenv
+        
+        tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
+        
+        total = 1
+        
+        tdenv.NOTE("Now processing " + str(self.sysFullPath))
+        
+        with open(str(self.dataPath / self.sysFullPath), "r", encoding = "utf-8", errors = 'ignore') as f:
+            total += (sum(bl.count("\n") for bl in self.blocks(f)))
+        
+        with open(str(self.dataPath / self.sysFullPath), "rU") as fh:
+            sysDict = csv.DictReader(fh)
+            prog = pbar.Progress(total, 50)
+            for system in sysDict:
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                system_id = system['id']
+                name = system['name']
+                pos_x = system['x']
+                pos_y = system['y']
+                pos_z = system['z']
+                modified = datetime.datetime.utcfromtimestamp(int(system['updated_at'])).strftime('%Y-%m-%d %H:%M:%S')
+                
+                result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
+                if result:
+                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                    if int(system['updated_at']) > updated:
+                        tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
+                        tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
+                        self.execute("""UPDATE System
+                                    SET name = ?,pos_x = ?,pos_y = ?,pos_z = ?,modified = ?
+                                    WHERE system_id = ?""",
+                                    (name, pos_x, pos_y, pos_z, modified,
+                                     system_id))
+                        self.updated['System'] = True
+                else:
+                    tdenv.DEBUG0("System '{}' has been added.", name)
+                    tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
+                    self.execute("""INSERT INTO System
+                                ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
+                                ( ?, ?, ?, ?, ?, ? ) """,
+                                (system_id, name, pos_x, pos_y, pos_z, modified))
+                    self.updated['System'] = True
+            while prog.value < prog.maxValue:
+                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
+            prog.clear()
+        
     def importStations(self):
         """
         Populate the Station table using stations.jsonl
@@ -899,9 +1005,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             # because there's nothing in the Station table it tries to pull from.
             ri_path = tdb.dataPath / Path("RareItem.csv")
             rib_path = ri_path.with_suffix(".tmp")
-            if rib_path.exists() and ri_path.exists():
-                rib_path.unlink()
             if ri_path.exists():
+                if rib_path.exists():
+                    rib_path.unlink()
                 ri_path.rename(rib_path)
             
             tdb.reloadCache()
@@ -952,6 +1058,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upvend"] = True
             self.options["listings"] = True
         
+        if self.getOption("systemfull"):
+            self.options["system"] = False
+        
         if self.getOption("solo"):
             self.options["listings"] = False
             self.options["skipvend"] = True
@@ -971,8 +1080,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importShips()
                 self.commit()
         
+        if self.getOption("systemfull"):
+            if self.downloadFile(SYS_FULL, self.sysFullPath) or self.getOption("force"):
+                self.importAllSystems()
+                self.commit()
+        
         if self.getOption("system"):
-            if self.downloadFile(SYSTEMS, self.systemsPath) or self.getOption("force"):
+            if self.downloadFile(SYS_RECENT, self.sysRecentPath) or self.downloadFile(SYS_POP, self.sysPopPath) or self.getOption("force"):
                 self.importSystems()
                 self.commit()
         
