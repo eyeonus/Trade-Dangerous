@@ -24,7 +24,7 @@ from ..plugins import PluginException
 from shutil import copyfile
 
 # Constants
-BASE_URL = os.environ.get('TD_SERVER') or "http://elite.tromador.com/files/"
+BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 FALLBACK_URL = os.environ.get('TD_FALLBACK') or "https://eddb.io/archive/v6/"
 SHIPS_URL = os.environ.get('TD_SHIPS') or "https://beta.coriolis.io/data/index.json"
 COMMODITIES = "commodities.json"
