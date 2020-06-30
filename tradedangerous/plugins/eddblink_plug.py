@@ -1058,9 +1058,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upvend"] = True
             self.options["listings"] = True
         
-        if self.getOption("systemfull"):
-            self.options["system"] = False
-        
         if self.getOption("solo"):
             self.options["listings"] = False
             self.options["skipvend"] = True
