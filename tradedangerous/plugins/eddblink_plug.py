@@ -413,7 +413,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                 planetary = 'Y' if station['is_planetary'] else 'N'
                 type_id = station['type_id'] if station['type_id'] else 0
                 
-                system = self.execute("SELECT System.name FROM System WHERE System.system_id = ?", (system_id,)).fetchone()[0].upper()
+                systemList = self.execute("SELECT System.name FROM System WHERE System.system_id = ?", (system_id,)).fetchone()
+                if systemList:
+                    system = systemList[0].upper()
+                else:
+                    system = "Unknown Space"
+                    self.execute("""INSERT INTO System
+                                ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
+                                ( ?, ?, ?, ?, ?, ? ) """,
+                                (system_id, system, 0, 0, 0, modified))
+                    self.updated['System'] = True
                 
                 result = self.execute("SELECT modified FROM Station WHERE station_id = ?", (station_id,)).fetchone()
                 if result:
