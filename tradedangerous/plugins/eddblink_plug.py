@@ -1086,7 +1086,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.commit()
         
         if self.getOption("system"):
-            if self.downloadFile(SYS_RECENT, self.sysRecentPath) or self.downloadFile(SYS_POP, self.sysPopPath) or self.getOption("force"):
+            if self.downloadFile(SYS_POP, self.sysPopPath) or self.getOption("force"):
+                self.downloadFile(SYS_RECENT, self.sysRecentPath)
                 self.importSystems()
                 self.commit()
         
