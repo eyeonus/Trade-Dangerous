@@ -49,7 +49,8 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginOptions = {
         'item':         "Regenerate Categories and Items using latest commodities.json dump.",
         'systemfull':   "Regenerate Systems with full list of all recorded systems in latest systems.csv dump.",
-        'system':       "Regenerate Systems using latest system-populated.jsonl and systems_recently.csv dumps.",
+        'systemrec':    "Regenerate Systems using latest systems_recently.csv dump.",
+        'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
         'station':      "Regenerate Stations using latest stations.jsonl dump. (Implies '-O system')",
         'ship':         "Regenerate Ships using latest coriolis.io json dump.",
         'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (Implies '-O system,station,ship')",
@@ -333,52 +334,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
-        
-        total = 1
-        
-        tdenv.NOTE("Now processing " + str(self.sysRecentPath))
-        
-        with open(str(self.dataPath / self.sysRecentPath), "r", encoding = "utf-8", errors = 'ignore') as f:
-            total += (sum(bl.count("\n") for bl in self.blocks(f)))
-        
-        with open(str(self.dataPath / self.sysRecentPath), "rU") as fh:
-            sysDict = csv.DictReader(fh)
-            prog = pbar.Progress(total, 50)
-            for system in sysDict:
-                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
-                system_id = system['id']
-                name = system['name']
-                pos_x = system['x']
-                pos_y = system['y']
-                pos_z = system['z']
-                modified = datetime.datetime.utcfromtimestamp(int(system['updated_at'])).strftime('%Y-%m-%d %H:%M:%S')
-                
-                result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
-                if result:
-                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
-                    if int(system['updated_at']) > updated:
-                        tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
-                        tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
-                        self.execute("""UPDATE System
-                                    SET name = ?,pos_x = ?,pos_y = ?,pos_z = ?,modified = ?
-                                    WHERE system_id = ?""",
-                                    (name, pos_x, pos_y, pos_z, modified,
-                                     system_id))
-                        self.updated['System'] = True
-                else:
-                    tdenv.DEBUG0("System '{}' has been added.", name)
-                    tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
-                    self.execute("""INSERT INTO System
-                                ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
-                                ( ?, ?, ?, ?, ?, ? ) """,
-                                (system_id, name, pos_x, pos_y, pos_z, modified))
-                    self.updated['System'] = True
-            while prog.value < prog.maxValue:
-                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
-            prog.clear()
-            
-        tdenv.NOTE("Now processing " + str(self.sysPopPath))
+        tdenv.NOTE("Processing Systems: Start time = {}", self.now())
         
         total = 1
         
@@ -421,9 +377,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
         
-        tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
+        tdenv.NOTE("Finished processing Systems. End time = {}", self.now())
     
-    def importAllSystems(self):
+    def importAllSystems(self, source):
         """
         Populate the System table using systems_populated.jsonl
         and either systems.csv or systems_recent.csv
@@ -431,16 +387,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
+        tdenv.NOTE("Processing Systems in {}: Start time = {}", str(source), self.now())
         
         total = 1
-        
-        tdenv.NOTE("Now processing " + str(self.sysFullPath))
-        
-        with open(str(self.dataPath / self.sysFullPath), "r", encoding = "utf-8", errors = 'ignore') as f:
+                
+        with open(str(self.dataPath / source), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
-        with open(str(self.dataPath / self.sysFullPath), "rU") as fh:
+        with open(str(self.dataPath / source), "rU") as fh:
             sysDict = csv.DictReader(fh)
             prog = pbar.Progress(total, 50)
             for system in sysDict:
@@ -475,6 +429,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             while prog.value < prog.maxValue:
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
+        
+        tdenv.NOTE("Finished processing Systems. End time = {}", self.now())
         
     def importStations(self):
         """
@@ -1079,12 +1035,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self.getOption("systemfull"):
             if self.downloadFile(SYS_FULL, self.sysFullPath) or self.getOption("force"):
-                self.importAllSystems()
+                self.importAllSystems(self.sysFullPath)
+                self.commit()
+        
+        if self.getOption("systemrec"):
+            if self.downloadFile(SYS_RECENT, self.sysRecentPath) or self.getOption("force"):
+                self.importAllSystems(self.sysRecentPath)
                 self.commit()
         
         if self.getOption("system"):
             if self.downloadFile(SYS_POP, self.sysPopPath) or self.getOption("force"):
-                self.downloadFile(SYS_RECENT, self.sysRecentPath)
                 self.importSystems()
                 self.commit()
         
