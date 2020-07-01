@@ -49,14 +49,15 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginOptions = {
         'item':         "Regenerate Categories and Items using latest commodities.json dump.",
         'systemfull':   "Regenerate Systems with full list of all recorded systems in latest systems.csv dump.",
-        'systemrec':    "Regenerate Systems using latest systems_recently.csv dump.",
+        'systemrec':    "Regenerate Systems using latest systems_recently.csv dump. (Implies '-O purge')",
         'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
+        'purge':        "Remove any empty systems that previously had fleet carriers.",
         'station':      "Regenerate Stations using latest stations.jsonl dump. (Implies '-O system')",
         'ship':         "Regenerate Ships using latest coriolis.io json dump.",
         'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (Implies '-O system,station,ship')",
         'upgrade':      "Regenerate Upgrades using latest modules.json dump.",
         'upvend':       "Regenerate UpgradeVendors using latest stations.jsonl dump. (Implies '-O system,station,upgrade')",
-        'listings':     "Update market data using latest listings.csv dump. (Implies '-O item,system,station')",
+        'listings':     "Update market data using latest listings.csv dump. (Implies '-O item,system,station,purge')",
         'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
         'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
         'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. (Supercedes '-O all', '-O clean'.)",
@@ -94,6 +95,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Listings": False
             }
     
+    def now(self):
+        return datetime.datetime.now()
+        
     def execute(self, sql_cmd, args = None):
         tdb, tdenv = self.tdb, self.tdenv
         cur = tdb.getDB().cursor()
@@ -238,7 +242,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing Upgrades: Start time = {}", datetime.datetime.now())
+        tdenv.NOTE("Processing Upgrades: Start time = {}", self.now())
         with open(str(self.dataPath / self.upgradesPath), "rU") as fh:
             upgrades = json.load(fh)
         for upgrade in iter(upgrades):
@@ -265,7 +269,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.updated['Upgrade'] = True
         
-        tdenv.NOTE("Finished processing Upgrades. End time = {}", datetime.datetime.now())
+        tdenv.NOTE("Finished processing Upgrades. End time = {}", self.now())
     
     def importShips(self):
         """
@@ -274,7 +278,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing Ships: Start time = {}", datetime.datetime.now())
+        tdenv.NOTE("Processing Ships: Start time = {}", self.now())
         with open(str(self.dataPath / self.shipsPath), "rU") as fh:
             ships = json.load(fh)['Ships']
         for ship in iter(ships):
@@ -324,7 +328,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.updated['Ship'] = True
         
-        tdenv.NOTE("Finished processing Ships. End time = {}", datetime.datetime.now())
+        tdenv.NOTE("Finished processing Ships. End time = {}", self.now())
     
     def importSystems(self):
         """
@@ -432,6 +436,33 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         tdenv.NOTE("Finished processing Systems. End time = {}", self.now())
         
+    def purgeSystems(self):
+        """
+        Purges systems from the System table that do not have any stations claiming to be in them.
+        Keeps table from becoming too large because of fleet carriers moving to unpopulated systems.
+        """
+        tdb, tdenv = self.tdb, self.tdenv
+        
+        tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
+        
+        self.execute("PRAGMA foreign_keys = OFF")
+
+        print("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
+        self.execute("DROP TABLE IF EXISTS System_copy")
+        self.execute("""CREATE TABLE System_copy AS SELECT * FROM System
+                            WHERE system_id IN (SELECT system_id FROM Station)
+                    """)
+        
+        print("Erasing table and reinserting kept systems.... " + str(self.now()) + "\t\t\t\t", end="\r")
+        self.execute("DELETE FROM System")
+        self.execute("INSERT INTO System SELECT * FROM System_copy")
+        
+        print("Removing copy.... " + str(self.now()) + "\t\t\t\t", end="\r")
+        self.execute("PRAGMA foreign_keys = ON")
+        self.execute("DROP TABLE IF EXISTS System_copy")
+        
+        tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
+    
     def importStations(self):
         """
         Populate the Station table using stations.jsonl
@@ -440,7 +471,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing Stations, this may take a bit: Start time = {}", datetime.datetime.now())
+        tdenv.NOTE("Processing Stations, this may take a bit: Start time = {}", self.now())
         if self.getOption('shipvend'):
             tdenv.NOTE("Simultaneously processing ShipVendors.")
         
@@ -601,7 +632,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
         
-        tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
+        tdenv.NOTE("Finished processing Stations. End time = {}", self.now())
     
     def importCommodities(self):
         """
@@ -610,7 +641,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
+        tdenv.NOTE("Processing Categories and Items: Start time = {}", self.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
             commodities = json.load(fh)
         
@@ -748,7 +779,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.updated['Category'] = True
         self.updated['Item'] = True
         
-        tdenv.NOTE("Finished processing Categories and Items. End time = {}", datetime.datetime.now())
+        tdenv.NOTE("Finished processing Categories and Items. End time = {}", self.now())
     
     def regenerate(self):
         for table in [
@@ -785,7 +816,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdenv.NOTE("Processing market data from {}: Start time = {}", listings_file, datetime.datetime.now())
+        tdenv.NOTE("Processing market data from {}: Start time = {}", listings_file, self.now())
         if not (self.dataPath / listings_file).exists():
             tdenv.NOTE("File not found, aborting: {}", (self.dataPath / listings_file))
             return
@@ -887,19 +918,19 @@ class ImportPlugin(plugins.ImportPluginBase):
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
             prog.clear()
             
-            tdenv.NOTE("Import file processing complete, updating database. {}", datetime.datetime.now())
+            tdenv.NOTE("Import file processing complete, updating database. {}", self.now())
             if liveList:
-                tdenv.NOTE("Marking data now in the EDDB listings.csv as no longer 'live'. {}", datetime.datetime.now())
+                tdenv.NOTE("Marking data now in the EDDB listings.csv as no longer 'live'. {}", self.now())
                 self.executemany(liveStmt, liveList)
             if delList:
-                tdenv.NOTE("Deleting old listing data. {}", datetime.datetime.now())
+                tdenv.NOTE("Deleting old listing data. {}", self.now())
                 self.executemany(delStmt, delList)
             if listingList:
-                tdenv.NOTE("Inserting new listing data. {}", datetime.datetime.now())
+                tdenv.NOTE("Inserting new listing data. {}", self.now())
                 self.executemany(listingStmt, listingList)
         
         self.updated['Listings'] = True
-        tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
+        tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
@@ -982,11 +1013,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         success = False
         while not success:
             try:
+                tdenv.DEBUG0("Loading Database. {}", self.now())
                 tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
                 success = True
             except sqlite3.OperationalError:
                 print("Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
+        tdenv.DEBUG0("Database loaded.")
         
         # Select which options will be updated
         if self.getOption("listings"):
@@ -1013,6 +1046,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upgrade"] = True
             self.options["upvend"] = True
             self.options["listings"] = True
+        
+        if self.getOption("systemrec"):
+            self.options["purge"] = True
         
         if self.getOption("solo"):
             self.options["listings"] = False
@@ -1051,6 +1087,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("station"):
             if self.downloadFile(STATIONS, self.stationsPath) or self.getOption("force"):
                 self.importStations()
+                self.commit()
+        
+        if self.getOption("purge"):
+                self.purgeSystems()
                 self.commit()
         
         if self.getOption("item"):
