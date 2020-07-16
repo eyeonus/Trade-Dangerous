@@ -136,6 +136,7 @@ switches = [
         NoPlanetSwitch(),
         PlanetaryArgument(),
     ),
+    FleetCarrierArgument(),
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help = "Penalty per 1kls stations are from their stars.",
@@ -511,13 +512,14 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 def checkStationSuitability(cmdenv, calc, station, src = None):
     cmdenv.DEBUG2(
-        "checking {} (ls={}, bm={}, pad={}, plt={}, mkt={}, shp={}) "
+        "checking {} (ls={}, bm={}, pad={}, plt={}, flc={}, mkt={}, shp={}) "
         "for {} suitability",
         station.name(),
         station.lsFromStar,
         station.blackMarket,
         station.maxPadSize,
         station.planetary,
+        station.fleet,
         station.market,
         station.shipyard,
         src or "any",
@@ -577,6 +579,18 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
                     src, station.name(),
                     mps, station.maxPadSize,
                     TradeDB.padSizesExt[station.maxPadSize],
+            ))
+        return False
+    flc = cmdenv.fleet
+    if flc and not station.checkFleet(flc):
+        if src:
+            raise CommandLineError(
+                "{} station {} does not meet fleet carrier requirement.\n"
+                "You specified: {}, Current data for station: {} ({})\n"
+                "You can use \"trade.py station\" to correct this.".format(
+                    src, station.name(),
+                    flc, station.fleet,
+                    TradeDB.fleetStatesExt[station.fleet],
             ))
         return False
     pla = cmdenv.planetary

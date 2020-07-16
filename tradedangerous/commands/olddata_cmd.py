@@ -47,6 +47,7 @@ switches = [
         NoPlanetSwitch(),
         PlanetaryArgument(),
     ),
+    FleetCarrierArgument(),
     ParseArgument('--ls-max',
         help='Only consider stations upto this many ls from their star.',
         metavar='LS',
@@ -151,6 +152,7 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG1(stmt)
     
     padSize = cmdenv.padSize
+    fleet = cmdenv.fleet
     planetary = cmdenv.planetary
     noPlanet = cmdenv.noPlanet
     mls = cmdenv.maxLs
@@ -166,10 +168,11 @@ def run(results, cmdenv, tdb):
             row.ls = "?"
         row.dist = dist2 ** 0.5
         if not padSize or row.station.checkPadSize(padSize):
-            if not planetary or row.station.checkPlanetary(planetary):
-                if not noPlanet or row.station.planetary == 'N':
-                    if not mls or row.station.lsFromStar <= mls:
-                        results.rows.append(row)
+            if not fleet or row.station.checkFleet(fleet):
+                if not planetary or row.station.checkPlanetary(planetary):
+                    if not noPlanet or row.station.planetary == 'N':
+                        if not mls or row.station.lsFromStar <= mls:
+                            results.rows.append(row)
     
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
@@ -236,6 +239,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Pad", '>', '3',
                         key=lambda row: \
                             TradeDB.padSizes[row.station.maxPadSize])
+        ).append(
+                ColumnFormat("Flc", '>', '3',
+                        key=lambda row: \
+                            TradeDB.fleetStates[row.station.fleet])
         ).append(
                 ColumnFormat("Plt", '>', '3',
                         key=lambda row: \

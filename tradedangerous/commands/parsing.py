@@ -1,5 +1,5 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from .exceptions import PadSizeError, PlanetaryError
+from .exceptions import PadSizeError, PlanetaryError, FleetCarrierError
 
 ######################################################################
 # Parsing Helpers
@@ -58,6 +58,7 @@ class PadSizeArgument(int):
             'dest': 'padSize',
             'metavar': 'PADSIZES',
             'type': 'padsize',
+            'choices': 'SML?',
         }
 
 
@@ -150,6 +151,35 @@ class PlanetaryArgument(int):
             'dest': 'planetary',
             'metavar': 'PLANETARY',
             'type': 'planetary',
+            'choices': 'YN??',
+        }
+
+
+class FleetCarrierArgument(int):
+    """
+    argparse helper for --fleet-carrier
+    """
+    class FleetCarrierParser(str):
+        def __new__(cls, val, **kwargs):
+            if not isinstance(val, str):
+                raise FleetCarrierError(val)
+            for v in val:
+                if "YN?".find(v.upper()) < 0:
+                    raise FleetCarrierError(val.upper())
+            return super().__new__(cls, val, **kwargs)
+    
+    def __init__(self):
+        self.args = ['--fleet-carrier', '--fc']
+        self.kwargs = {
+            'help': (
+                'Limit to stations with one of the specified fleet-carrier, '
+                'e.g. --fc YN? matches any station, --fc Y matches only '
+                'fleet-carrier stations.'
+            ),
+            'dest': 'fleet',
+            'metavar': 'FLEET',
+            'type': 'fleet',
+            'choices': 'YN?',
         }
 
 
@@ -157,6 +187,7 @@ __tdParserHelpers = {
     'credits': CreditParser,
     'padsize': PadSizeArgument.PadSizeParser,
     'planetary': PlanetaryArgument.PlanetaryParser,
+    'fleet': FleetCarrierArgument.FleetCarrierParser,
 }
 
 def registerParserHelpers(into):

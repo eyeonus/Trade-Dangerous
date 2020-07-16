@@ -354,6 +354,8 @@ class Route(object):
                     details.append('Pad:' + station.maxPadSize)
                 if station.planetary != '?':
                     details.append('Plt:' + station.planetary)
+                if station.fleet != '?':
+                    details.append('Flc:' + station.fleet)
                 if station.shipyard != '?':
                     details.append('Shp:' + station.shipyard)
                 if station.outfitting != '?':
@@ -857,6 +859,7 @@ class TradeCalc(object):
         maxLyPer = tdenv.maxLyPer
         maxPadSize = tdenv.padSize
         planetary = tdenv.planetary
+        fleet = tdenv.fleet
         noPlanet = tdenv.noPlanet
         maxLsFromStar = tdenv.maxLs or float('inf')
         reqBlackMarket = getattr(tdenv, 'blackMarket', False) or False
@@ -924,6 +927,7 @@ class TradeCalc(object):
                     maxLsFromStar = maxLsFromStar,
                     noPlanet = noPlanet,
                     planetary = planetary,
+                    fleet = fleet,
                 )
         
         prog = pbar.Progress(len(routes), 25)

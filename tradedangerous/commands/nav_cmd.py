@@ -42,6 +42,7 @@ switches = [
         NoPlanetSwitch(),
         PlanetaryArgument(),
     ),
+    FleetCarrierArgument(),
 ]
 
 ######################################################################
@@ -108,6 +109,7 @@ def run(results, cmdenv, tdb):
     
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     maxPadSize = cmdenv.padSize
+    fleet = cmdenv.fleet
     planetary = cmdenv.planetary
     noPlanet = cmdenv.noPlanet
     
@@ -127,6 +129,8 @@ def run(results, cmdenv, tdb):
         if cmdenv.stations:
             for (station) in jumpSys.stations:
                 if maxPadSize and not station.checkPadSize(maxPadSize):
+                    continue
+                if fleet and not station.checkFleet(fleet):
                     continue
                 if planetary and not station.checkPlanetary(planetary):
                     continue
@@ -222,6 +226,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Plt", '>', '3',
                     key=lambda row: \
                         TradeDB.planetStates[row.station.planetary])
+        ).append(
+                ColumnFormat("Flc", '>', '3',
+                    key=lambda row: \
+                        TradeDB.fleetStates[row.station.fleet])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

@@ -36,6 +36,7 @@ switches = [
         NoPlanetSwitch(),
         PlanetaryArgument(),
     ),
+    FleetCarrierArgument(),
     ParseArgument('--stations',
             help='Limit to systems which have stations.',
             action='store_true',
@@ -79,6 +80,7 @@ def run(results, cmdenv, tdb):
     showStations = cmdenv.detail
     wantStations = cmdenv.stations
     padSize = cmdenv.padSize
+    fleet = cmdenv.fleet
     planetary = cmdenv.planetary
     wantNoPlanet = cmdenv.noPlanet
     wantTrading = cmdenv.trading
@@ -100,6 +102,8 @@ def run(results, cmdenv, tdb):
             if wantShipYard and station.shipyard != 'Y':
                 continue
             if padSize and not station.checkPadSize(padSize):
+                continue
+            if fleet and not station.checkFleet(fleet):
                 continue
             if planetary and not station.checkPlanetary(planetary):
                 continue
@@ -212,6 +216,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Plt", '>', '3',
                     key=lambda row: \
                         TradeDB.planetStates[row.station.planetary])
+        ).append(
+                ColumnFormat("Flc", '>', '3',
+                    key=lambda row: \
+                        TradeDB.fleetStates[row.station.fleet])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(

@@ -210,10 +210,8 @@ def main(argv = None):
                 return {'type':'combo', 'list':['Y', 'N', '?']}
             else:
                 return {'type':'combo', 'list':['S', 'M', 'L', '?']}
-        if arg.kwargs.get('type') == 'planetary':
-            return {'type':'combo', 'sub':'ticks', 'list':['Y', 'N', '?']}
-        if arg.kwargs.get('type') == 'padsize':
-            return {'type':'combo', 'sub':'ticks', 'list':['S', 'M', 'L', '?']}
+        if arg.kwargs.get('metavar'):
+            return {'type':'combo', 'sub':'ticks', 'list':[val for val in arg.kwargs.get('choices')]}
         if arg.args[0] == '--plug':
             return {'type':'combo', 'list': [''] + importPlugs}
         if arg.args[0] == '--option':

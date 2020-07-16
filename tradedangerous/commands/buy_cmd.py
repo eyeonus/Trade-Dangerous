@@ -58,6 +58,7 @@ switches = (
         NoPlanetSwitch(),
         PlanetaryArgument(),
     ),
+    FleetCarrierArgument(),
     BlackMarketSwitch(),
     MutuallyExclusiveGroup(
         ParseArgument(
@@ -260,6 +261,7 @@ def run(results, cmdenv, tdb):
     
     oneStopMode = cmdenv.oneStop
     padSize = cmdenv.padSize
+    fleet = cmdenv.fleet
     planetary = cmdenv.planetary
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
@@ -271,6 +273,8 @@ def run(results, cmdenv, tdb):
     for (ID, stationID, price, units) in cur:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
+            continue
+        if fleet and not station.checkFleet(fleet):
             continue
         if planetary and not station.checkPlanetary(planetary):
             continue
@@ -368,6 +372,8 @@ def render(results, cmdenv, tdb):
             key = lambda row: TradeDB.padSizes[row.station.maxPadSize])
     stnRowFmt.addColumn("Plt", '>', '3',
             key = lambda row: TradeDB.planetStates[row.station.planetary])
+    stnRowFmt.addColumn("Flc", '>', '3',
+            key = lambda row: TradeDB.fleetStates[row.station.fleet])
     
     if not cmdenv.quiet:
         heading, underline = stnRowFmt.heading()

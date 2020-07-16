@@ -47,6 +47,7 @@ switches = [
         NoPlanetSwitch(),
         PlanetaryArgument(),
     ),
+    FleetCarrierArgument(),
     ParseArgument('--price-sort', '-P',
             help='Sort by price not distance.',
             action='store_true',
@@ -130,6 +131,7 @@ def run(results, cmdenv, tdb):
     padSize = cmdenv.padSize
     noPlanet = cmdenv.noPlanet
     planetary = cmdenv.planetary
+    fleet = cmdenv.fleet
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.)
     
@@ -163,8 +165,11 @@ def run(results, cmdenv, tdb):
     for rare in tdb.rareItemByID.values():
         if not rare.illegal in wantIllegality:
             continue
-        if padSize:     # do we care about pad size?
+        if padSize:       # do we care about pad size?
             if not rare.station.checkPadSize(padSize):
+                continue
+        if fleet:         # do we care about fleet carrier?
+            if not rare.station.checkFleet(fleet):
                 continue
         if planetary:     # do we care about planetary?
             if not rare.station.checkPlanetary(planetary):
@@ -249,6 +254,8 @@ def render(results, cmdenv, tdb):
             key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
     rowFmt.addColumn("Plt", '>', '3',
             key=lambda row: TradeDB.planetStates[row.rare.station.planetary])
+    rowFmt.addColumn("Flc", '>', '3',
+            key=lambda row: TradeDB.fleetStates[row.rare.station.fleet])
     
     # Print a heading summary if the user didn't use '-q'
     if not cmdenv.quiet:

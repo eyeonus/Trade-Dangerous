@@ -287,14 +287,14 @@ class Station(object):
     __slots__ = (
         'ID', 'system', 'dbname',
         'lsFromStar', 'market', 'blackMarket', 'shipyard', 'maxPadSize',
-        'outfitting', 'rearm', 'refuel', 'repair', 'planetary',
+        'outfitting', 'rearm', 'refuel', 'repair', 'planetary','fleet',
         'itemCount', 'dataAge',
     )
     
     def __init__(
             self, ID, system, dbname,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair, planetary,
+            outfitting, rearm, refuel, repair, planetary, fleet,
             itemCount=0, dataAge=None,
             ):
         self.ID, self.system, self.dbname = ID, system, dbname
@@ -308,6 +308,7 @@ class Station(object):
         self.refuel = refuel
         self.repair = repair
         self.planetary = planetary
+        self.fleet = fleet
         self.itemCount = itemCount
         self.dataAge = dataAge
         system.stations = system.stations + (self,)
@@ -349,7 +350,7 @@ class Station(object):
         values in 'planetary'.
         
         Args:
-            askPlanetary
+            planetary
                 A string of one or more planetary values that
                 you want to match against.
         
@@ -365,11 +366,18 @@ class Station(object):
             # Require a planetary station
             station.checkPlanetary("Y")
             # Require planetary or unknown
-            station.checkPadSize("Y?")
+            station.checkPlanetary("Y?")
             # Require no planetary station
-            station.checkPadSize("N")
+            station.checkPlanetary("N")
         """
         return (not planetary or self.planetary in planetary)
+    
+    def checkFleet(self, fleet):
+        """
+        Same as checkPlanetary, but for fleet carriers.
+        """
+        return (not fleet or self.fleet in fleet)
+    
     
     def distFromStar(self, addSuffix=False):
         """
@@ -608,8 +616,8 @@ class TradeDB(object):
     )
     
     # Translation matrixes for attributes -> common presentation
-    marketStates = planetStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
-    marketStatesExt = planetStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
+    marketStates = planetStates = fleetStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
+    marketStatesExt = planetStatesExt = fleetStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
     padSizes = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     padSizesExt = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     
@@ -1177,22 +1185,26 @@ class TradeDB(object):
         stmt = """
             SELECT  station_id, system_id, name,
                     ls_from_star, market, blackmarket, shipyard,
-                    max_pad_size, outfitting, rearm, refuel, repair, planetary
+                    max_pad_size, outfitting, rearm, refuel, repair, planetary, type_id
               FROM  Station
         """
         self.cur.execute(stmt)
         stationByID = {}
         systemByID = self.systemByID
         self.tradingStationCount = 0
+        # Fleet Carriers are station type 24.
+        # Storing as a list allows easy expansion if needed.
+        fc_types = [24]
         for (
             ID, systemID, name,
             lsFromStar, market, blackMarket, shipyard,
-            maxPadSize, outfitting, rearm, refuel, repair, planetary,
+            maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
         ) in self.cur:
+            isFleet = 'Y' if int(type_id) in fc_types else 'N'
             station = Station(
                 ID, systemByID[systemID], name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair, planetary,
+                maxPadSize, outfitting, rearm, refuel, repair, planetary, isFleet, 
                 0, None,
             )
             stationByID[ID] = station
@@ -1290,6 +1302,7 @@ class TradeDB(object):
             refuel=refuel,
             repair=repair,
             planetary=planetary,
+            fleet='?',
             itemCount=0, dataAge=0,
         )
         self.stationByID[ID] = station
@@ -1365,6 +1378,7 @@ class TradeDB(object):
         _check_setting("ref", "refuel", refuel, TradeDB.marketStates)
         _check_setting("rep", "repair", repair, TradeDB.marketStates)
         _check_setting("plt", "planetary", planetary, TradeDB.planetStates)
+        _check_setting("flc", "fleet", fleet, TradeDB.fleetStates)
         
         if not changes:
             return False
@@ -1686,6 +1700,7 @@ class TradeDB(object):
             maxLsFromStar=0,
             noPlanet=False,
             planetary=None,
+            fleet=None,
             ):
         """
         Gets a list of the Station destinations that can be reached
@@ -1786,6 +1801,11 @@ class TradeDB(object):
             path_iter = iter(
                 (node, station) for (node, station) in path_iter
                 if station.checkPlanetary(planetary)
+            )
+        if fleet:
+            path_iter = iter(
+                (node, station) for (node, station) in path_iter
+                if station.checkFleet(fleet)
             )
         if maxLsFromStar:
             path_iter = iter(

@@ -72,3 +72,15 @@ class PlanetaryError(CommandLineError):
             "yes or unknown or 'N' matches only planetary stations."
             .format(value)
         )
+
+
+class FleetCarrierError(CommandLineError):
+    """ Raised when an invalid fleet-carrier option is given. """
+    def __init__(self, value):
+        super().__init__(
+            "Invalid --fleet-carrier '{}': Use a combination of one or more "
+            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
+            "e.g. 'YN?' matches any station while 'Y?' matches "
+            "yes or unknown or 'N' matches only fleet-carrier stations."
+            .format(value)
+        )

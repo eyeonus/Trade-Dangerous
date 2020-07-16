@@ -1,6 +1,6 @@
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
-from .exceptions import CommandLineError, PadSizeError, PlanetaryError
+from .exceptions import CommandLineError, PadSizeError, PlanetaryError, FleetCarrierError
 from ..tradedb import AmbiguityError, System, Station
 from ..tradeenv import TradeEnv
 
@@ -76,6 +76,7 @@ class CommandEnv(TradeEnv):
         self.checkVias()
         self.checkPadSize()
         self.checkPlanetary()
+        self.checkFleet()
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
@@ -228,6 +229,19 @@ class CommandEnv(TradeEnv):
             if not value in 'YN?':
                 raise PlanetaryError(planetary)
         self.planetary = planetary
+    
+    def checkFleet(self):
+        fleet = getattr(self, 'fleet', None)
+        if not fleet:
+            return
+        fleet = ''.join(sorted(list(set(fleet)))).upper()
+        for value in fleet:
+            if not value in 'YN?':
+                raise FleetError(fleet)
+        if fleet == '?NY':
+            self.fleet = None
+            return
+        self.fleet = fleet = fleet.upper()
     
     def colorize(self, color, rawText):
         """
