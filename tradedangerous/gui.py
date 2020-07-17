@@ -206,11 +206,6 @@ def main(argv = None):
         if arg.kwargs.get('type') == int:
             return {'type':'spin', 'range': 4096}
         if arg.kwargs.get('choices'):
-            if arg.kwargs.get('choices')[0] != 'S':
-                return {'type':'combo', 'list':['Y', 'N', '?']}
-            else:
-                return {'type':'combo', 'list':['S', 'M', 'L', '?']}
-        if arg.kwargs.get('metavar'):
             return {'type':'combo', 'sub':'ticks', 'list':[val for val in arg.kwargs.get('choices')]}
         if arg.args[0] == '--plug':
             return {'type':'combo', 'list': [''] + importPlugs}
@@ -507,8 +502,8 @@ def main(argv = None):
             for arg in allArgs[cmd]['req']:
                 result = getVals(arg, allArgs[cmd]['req'])
                 if result:
-                    #required args don't include the arg name
-                    argv = argv + result[1:]
+                    #not all required args don't include the arg name
+                    argv = argv + result if '-' in result[0] else result[1:]
             
             for arg in allArgs[cmd]['opt']:
                 result = getVals(arg, allArgs[cmd]['opt'])
