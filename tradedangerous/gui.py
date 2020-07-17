@@ -503,7 +503,7 @@ def main(argv = None):
                 result = getVals(arg, allArgs[cmd]['req'])
                 if result:
                     #not all required args don't include the arg name
-                    argv = argv + result if '-' in result[0] else result[1:]
+                    argv = argv + (result if '-' in result[0] else result[1:])
             
             for arg in allArgs[cmd]['opt']:
                 result = getVals(arg, allArgs[cmd]['opt'])
