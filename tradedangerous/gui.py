@@ -507,7 +507,8 @@ def main(argv = None):
             for arg in allArgs[cmd]['req']:
                 result = getVals(arg, allArgs[cmd]['req'])
                 if result:
-                    argv = argv + result
+                    #required args don't include the arg name
+                    argv = argv + result[1:]
             
             for arg in allArgs[cmd]['opt']:
                 result = getVals(arg, allArgs[cmd]['opt'])
