@@ -2,8 +2,7 @@ import os
 import re
 from pathlib import Path
 
-
-from .. import tradedb, tradeenv, cache
+from .. import tradedb, tradeenv, cache, fs
 from ..commands.exceptions import CommandLineError
 from . import PluginException, ImportPluginBase
 
@@ -13,7 +12,7 @@ class ImportPlugin(ImportPluginBase):
     """
     
     PRICE_GLOB = "*.prices"
-    TEMP_FILE_PATH = "tmp/batch_prices.prices"
+    BATCH_FILE = "batch.prices"
     
     pluginOptions = {
         'files': 'Path to some .price files to import (file=file1;file2)',
@@ -79,9 +78,12 @@ class ImportPlugin(ImportPluginBase):
     def set_environment(self, files):
         tdenv = self.tdenv
         path_list = files
-        
+        fs.ensurefolder(tdenv.tmpDir)
+        batchfile = tdenv.tmpDir / pathlib.Path(self.BATCH_FILE)
+        if batchfile.exists():
+                batchfile.unlink()
         # We now have a list of paths. Add all contents to a new file
-        temp_file = open(self.TEMP_FILE_PATH, "w")
+        temp_file = open(batchfile, "w")
         
         for f in path_list:
             contents = f.read_text()
@@ -89,7 +91,7 @@ class ImportPlugin(ImportPluginBase):
             temp_file.write(contents)
         
         # Set the file we're reading from to the temp file
-        tdenv.filename = self.TEMP_FILE_PATH
+        tdenv.filename = batchfile
     
     def split_files(self, files):
         file_list = self.getOption("files").split(";")
