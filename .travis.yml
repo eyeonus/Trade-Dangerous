@@ -5,14 +5,12 @@ stages:
     # semantic-release currently only works on master
     if: branch = master
 
-sudo: false
 language: python
 python:
-  - "3.4"
   - "3.5"
   - "3.6"
   - "3.7"
-dist: xenial
+  - "3.8"
 
 install: pip install -r requirements/dev.txt
 script: tox
