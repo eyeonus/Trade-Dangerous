@@ -27,5 +27,5 @@ jobs:
         - git config --global user.name "semantic-release (via TravisCI)"
         - git config --global user.email "semantic-release@travis"
         - pip install --upgrade -r requirements/publish.txt
-        - semantic-release publish
+        - semantic-release publish -v DEBUG
         
