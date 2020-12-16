@@ -3,3 +3,4 @@ pytest
 Sphinx
 tox
 tox-travis
+importlib-metadata>=1
