@@ -5,3 +5,8 @@ services:
     build:
       context: .
     network_mode: host
+    volumes: 
+      - $HOME/.Xauthority:/root/.Xauthority:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    environment: 
+      - DISPLAY: host.docker.internal:0
