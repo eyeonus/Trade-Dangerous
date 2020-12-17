@@ -1,3 +1,6 @@
 FROM python:3.9.1
-RUN pip install tradedangerous
-ENTRYPOINT [ "trade" ]
+COPY . /
+RUN pip install appJar \
+  && pip install -r requirements/dev.txt
+RUN python trade.py import -P eddblink -O clean,skipvend
+ENTRYPOINT [ "python", "trade.py", "gui"]

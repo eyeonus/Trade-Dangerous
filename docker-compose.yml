@@ -1,0 +1,7 @@
+version: "2"
+services:
+  td:
+    image: trade-dangerously:local
+    build:
+      context: .
+    network_mode: host
