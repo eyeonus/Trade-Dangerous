@@ -9,4 +9,4 @@ services:
       - $HOME/.Xauthority:/root/.Xauthority:rw
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
     environment: 
-      - DISPLAY: host.docker.internal:0
+      - DISPLAY=${HOSTNAME}:0
