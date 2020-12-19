@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.9.4 (2020-12-19)
+### Fix
+* Galactic Travel Guides are not deleted, just rare. ([`b20b9d0`](https://github.com/eyeonus/Trade-Dangerous/commit/b20b9d0abbcf4fb1d371715bc47da2e625a2cb23))
+
 ## v10.9.3 (2020-12-16)
 ### Fix
 * Hopefully actually fix Travis this time. ([`970d721`](https://github.com/eyeonus/Trade-Dangerous/commit/970d721c2b512fff096f4bc76c15716f35a03633))
