@@ -27,7 +27,6 @@ items = {
     'LOW TEMPERATURE DIAMOND': 'Low Temperature Diamonds',
     'COOLING HOSES': 'Micro-weave Cooling Hoses',
     'METHANOL MONOHYDRATE': 'Methanol Monohydrate Crystals',
-    'GALACTIC TRAVEL GUIDE': DELETED,
     'OCCUPIED CRYOPOD': 'Occupied Escape Pod',
     'Salvageable Wreckage': 'Wreckage Components', 
     'Political Prisoner': 'Political Prisoners',
