@@ -161,7 +161,7 @@ switches = [
         help = 'Specify the maximum gain per ton of cargo',
         dest = 'maxGainPerTon',
         type = "credits",
-        default = 10000
+        default = 0
     ),
     ParseArgument('--unique',
         help = 'Only visit each station once.',
