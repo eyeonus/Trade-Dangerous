@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.9.5 (2021-01-09)
+### Fix
+* MaxGainPerTon shouldn't be set by default. ([`00c558c`](https://github.com/eyeonus/Trade-Dangerous/commit/00c558cf7f31fb82deb4ca176b43ca16db130559))
+
 ## v10.9.4 (2020-12-19)
 ### Fix
 * Galactic Travel Guides are not deleted, just rare. ([`b20b9d0`](https://github.com/eyeonus/Trade-Dangerous/commit/b20b9d0abbcf4fb1d371715bc47da2e625a2cb23))
