@@ -79,7 +79,7 @@ class ImportPlugin(ImportPluginBase):
         tdenv = self.tdenv
         path_list = files
         fs.ensurefolder(tdenv.tmpDir)
-        batchfile = tdenv.tmpDir / pathlib.Path(self.BATCH_FILE)
+        batchfile = tdenv.tmpDir / Path(self.BATCH_FILE)
         if batchfile.exists():
                 batchfile.unlink()
         # We now have a list of paths. Add all contents to a new file
@@ -91,7 +91,7 @@ class ImportPlugin(ImportPluginBase):
             temp_file.write(contents)
         
         # Set the file we're reading from to the temp file
-        tdenv.filename = batchfile
+        tdenv.filename = batchfile.as_posix()
     
     def split_files(self, files):
         file_list = self.getOption("files").split(";")
