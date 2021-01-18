@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.9.6 (2021-01-18)
+### Fix
+* Edmc_batch_plug Path issues ([#83](https://github.com/eyeonus/Trade-Dangerous/issues/83)) ([`ef06684`](https://github.com/eyeonus/Trade-Dangerous/commit/ef06684e0534d1d969658e9b55f3a752c502475e))
+
 ## v10.9.5 (2021-01-09)
 ### Fix
 * MaxGainPerTon shouldn't be set by default. ([`00c558c`](https://github.com/eyeonus/Trade-Dangerous/commit/00c558cf7f31fb82deb4ca176b43ca16db130559))
