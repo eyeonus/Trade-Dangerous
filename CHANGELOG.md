@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.9.7 (2021-02-05)
+### Fix
+* Add 'VOID OPAL' to corrections ([`f208023`](https://github.com/eyeonus/Trade-Dangerous/commit/f20802319a503f569d836c8d46ca7231779f5024))
+
 ## v10.9.6 (2021-01-18)
 ### Fix
 * Edmc_batch_plug Path issues ([#83](https://github.com/eyeonus/Trade-Dangerous/issues/83)) ([`ef06684`](https://github.com/eyeonus/Trade-Dangerous/commit/ef06684e0534d1d969658e9b55f3a752c502475e))
