@@ -1,4 +1,4 @@
-# Provides an interface for correcting star/station names that
+# Provides an interface for correcting names that
 # have changed in recent versions.
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
