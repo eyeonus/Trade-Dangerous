@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.9.8 (2021-02-05)
+### Fix
+* Update the build semantic, you jerk ([`8ca4e39`](https://github.com/eyeonus/Trade-Dangerous/commit/8ca4e392f7949e106636a1fee90a0d381b8a03e0))
+
 ## v10.9.7 (2021-02-05)
 ### Fix
 * Add 'VOID OPAL' to corrections ([`f208023`](https://github.com/eyeonus/Trade-Dangerous/commit/f20802319a503f569d836c8d46ca7231779f5024))
