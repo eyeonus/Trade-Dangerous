@@ -28,9 +28,10 @@ items = {
     'COOLING HOSES': 'Micro-weave Cooling Hoses',
     'METHANOL MONOHYDRATE': 'Methanol Monohydrate Crystals',
     'OCCUPIED CRYOPOD': 'Occupied Escape Pod',
-    'Salvageable Wreckage': 'Wreckage Components', 
-    'Political Prisoner': 'Political Prisoners',
-    'Hostage': 'Hostages',
+    'SALVAGEABLE WRECKAGE': 'Wreckage Components', 
+    'POLITICAL PRISONER': 'Political Prisoners',
+    'HOSTAGE': 'Hostages',
+    "VOID OPAL": "void opals",
 }
 
 def correctSystem(oldName):
