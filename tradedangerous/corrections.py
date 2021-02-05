@@ -12,8 +12,6 @@ systems = {
     "LíFTHRUTI": "LIFTHRUTI",
     "MANTóAC": "MANTOAC",
     "NANTóAC": "NANTOAC",
-
-#ADD_SYSTEMS_HERE
 }
 
 stations = {
