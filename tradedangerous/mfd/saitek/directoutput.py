@@ -164,10 +164,10 @@ class DirectOutput(object):
         Returns:
         S_OK: The call completed successfully.
         E_HANDLE: The device handle specified is invalid.
-        
         """
+
         logging.debug("DirectOutput.RegisterSoftButtonCallback({}, {})".format(device_handle, function))
-        return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(device_handle, function, 0)
+        return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(ctypes.wintypes.HANDLE(device_handle), function, 0)
     
     def RegisterPageCallback(self, device_handle, function):
         """
@@ -182,7 +182,7 @@ class DirectOutput(object):
         E_HANDLE: The device handle specified is invalid.
         """
         logging.debug("DirectOutput.RegisterPageCallback({}, {})".format(device_handle,function))
-        return self.DirectOutputDLL.DirectOutput_RegisterPageCallback(device_handle, function, 0)
+        return self.DirectOutputDLL.DirectOutput_RegisterPageCallback(ctypes.wintypes.HANDLE(device_handle), function, 0)
     
     def SetProfile(self, device_handle, profile):
         """
@@ -194,9 +194,9 @@ class DirectOutput(object):
         """
         logging.debug("DirectOutput.SetProfile({}, {})".format(device_handle, profile))
         if profile:
-            return self.DirectOutputDLL.DirectOutput_SetProfile(device_handle, len(profile), ctypes.wintypes.LPWSTR(profile))
+            return self.DirectOutputDLL.DirectOutput_SetProfile(ctypes.wintypes.HANDLE(device_handle), len(profile), ctypes.wintypes.LPWSTR(profile))
         else:
-            return self.DirectOutputDLL.DirectOutput_SetProfile(device_handle, 0, 0)
+            return self.DirectOutputDLL.DirectOutput_SetProfile(ctypes.wintypes.HANDLE(device_handle), 0, 0)
     
     def AddPage(self, device_handle, page, name, active):
         """
@@ -216,7 +216,7 @@ class DirectOutput(object):
         
         """
         logging.debug("DirectOutput.AddPage({}, {}, {}, {})".format(device_handle, page, name, active))
-        return self.DirectOutputDLL.DirectOutput_AddPage(device_handle, page, active)
+        return self.DirectOutputDLL.DirectOutput_AddPage(ctypes.wintypes.HANDLE(device_handle), page, active)
     
     def RemovePage(self, device_handle, page):
         """
@@ -233,7 +233,7 @@ class DirectOutput(object):
         
         """
         logging.debug("DirectOutput.RemovePage({}, {})".format(device_handle, page))
-        return self.DirectOutputDLL.DirectOutput_RemovePage(device_handle, page)
+        return self.DirectOutputDLL.DirectOutput_RemovePage(ctypes.wintypes.HANDLE(device_handle), page)
     
     def SetLed(self, device_handle, page, led, value):
         """
@@ -252,7 +252,7 @@ class DirectOutput(object):
         
         """
         logging.debug("DirectOutput.SetLed({}, {}, {}, {})".format(device_handle, page, led, value))
-        return self.DirectOutputDLL.DirectOutput_SetLed(device_handle, page, led, value)
+        return self.DirectOutputDLL.DirectOutput_SetLed(ctypes.wintypes.HANDLE(device_handle), page, led, value)
 
 
     def SetString(self, device_handle, page, line, string):
@@ -273,7 +273,7 @@ class DirectOutput(object):
         
         """
         logging.debug("DirectOutput.SetString({}, {}, {}, {})".format(device_handle, page, line, string))
-        return self.DirectOutputDLL.DirectOutput_SetString(device_handle, page, line, len(string), ctypes.wintypes.LPWSTR(string))
+        return self.DirectOutputDLL.DirectOutput_SetString(ctypes.wintypes.HANDLE(device_handle), page, line, len(string), ctypes.wintypes.LPWSTR(string))
 
 
 class DirectOutputDevice(object):
@@ -328,7 +328,7 @@ class DirectOutputDevice(object):
             # 64-bit machine, are we a 32-bit python?
             if platform.architecture()[0] == '32bit':
                 prog_dir = os.environ["ProgramFiles(x86)"]
-        dll_path = os.path.join(prog_dir, "Saitek\\DirectOutput\\DirectOutput.dll")
+        dll_path = os.path.join(prog_dir, "Logitech\\DirectOutput\\DirectOutput.dll")
         
         self.application_name = name or DirectOutputDevice.application_name
         self.debug_level = debug_level
