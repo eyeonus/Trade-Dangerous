@@ -809,10 +809,23 @@ def validateRunArguments(tdb, cmdenv, calc):
     if cmdenv.capacity < 0:
         raise CommandLineError("Invalid (negative) cargo capacity")
     if cmdenv.capacity > 1500:
-        raise CommandLineError(
-            "Capacity > 1500 not supported (you specified {})"
-            .format(cmdenv.capacity)
-        )
+        cmdenv.WARN("Capacity > 1500 not supported (you specified {})", cmdenv.capacity)
+        cmdenv.WARN("Forcing jumps per hop to 1.")
+        cmdenv.maxJumpsPer = 1
+        if cmdenv.hops > 2:
+            cmdenv.WARN("{} hops? Press [CTRL][C] to quit.", cmdenv.hops)
+        if not cmdenv.supply:
+            cmdenv.WARN("Please provide a '--supply' value.")
+            cmdenv.supply = cmdenv.capacity * 10
+            cmdenv.DEBUG0("'supply' minimum set to {}.", cmdenv.supply)
+        if not cmdenv.demand:
+            cmdenv.WARN("Please provide a '--demand' value.")
+            cmdenv.demand = cmdenv.capacity * 10
+            cmdenv.DEBUG0("'demand' minimum set to {}.", cmdenv.demand)
+    #    raise CommandLineError(
+    #        "Capacity > 1500 not supported (you specified {})"
+    #        .format(cmdenv.capacity)
+    #    )
     
     if cmdenv.limit and cmdenv.limit > cmdenv.capacity:
         raise CommandLineError("'limit' must be <= capacity")
