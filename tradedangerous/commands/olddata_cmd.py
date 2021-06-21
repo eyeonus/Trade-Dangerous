@@ -48,6 +48,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
+    OdysseyArgument(),
     ParseArgument('--ls-max',
         help='Only consider stations upto this many ls from their star.',
         metavar='LS',
@@ -152,8 +153,9 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG1(stmt)
     
     padSize = cmdenv.padSize
-    fleet = cmdenv.fleet
     planetary = cmdenv.planetary
+    fleet = cmdenv.fleet
+    odyssey = cmdenv.odyssey
     noPlanet = cmdenv.noPlanet
     mls = cmdenv.maxLs
     
@@ -168,11 +170,12 @@ def run(results, cmdenv, tdb):
             row.ls = "?"
         row.dist = dist2 ** 0.5
         if not padSize or row.station.checkPadSize(padSize):
-            if not fleet or row.station.checkFleet(fleet):
-                if not planetary or row.station.checkPlanetary(planetary):
-                    if not noPlanet or row.station.planetary == 'N':
-                        if not mls or row.station.lsFromStar <= mls:
-                            results.rows.append(row)
+            if not planetary or row.station.checkPlanetary(planetary):
+                if not fleet or row.station.checkFleet(fleet):
+                    if not odyseey or row.station.checkOdyssey(odyssey):
+                        if not noPlanet or row.station.planetary == 'N':
+                            if not mls or row.station.lsFromStar <= mls:
+                                results.rows.append(row)
     
     if cmdenv.route and len(results.rows) > 1:
         def walk(startNode, dist):
@@ -240,13 +243,18 @@ def render(results, cmdenv, tdb):
                         key=lambda row: \
                             TradeDB.padSizes[row.station.maxPadSize])
         ).append(
+                ColumnFormat("Plt", '>', '3',
+                        key=lambda row: \
+                            TradeDB.planetStates[row.station.planetary])
+        ).append(
                 ColumnFormat("Flc", '>', '3',
                         key=lambda row: \
                             TradeDB.fleetStates[row.station.fleet])
         ).append(
-                ColumnFormat("Plt", '>', '3',
+                ColumnFormat("Ody", '>', '3',
                         key=lambda row: \
-                            TradeDB.planetStates[row.station.planetary]))
+                            TradeDB.odysseyStates[row.station.odyssey])
+        )
     
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()

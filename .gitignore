@@ -20,6 +20,7 @@ build/
 dist/
 data/
 tmp/
+test/
 
 # testing
 .coverage

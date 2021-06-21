@@ -137,6 +137,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
+    OdysseyArgument(),
     BlackMarketSwitch(),
     ParseArgument('--ls-penalty', '--lsp',
         help = "Penalty per 1kls stations are from their stars.",
@@ -512,7 +513,7 @@ def checkAnchorNotInVia(hops, anchorName, place, viaSet):
 
 def checkStationSuitability(cmdenv, calc, station, src = None):
     cmdenv.DEBUG2(
-        "checking {} (ls={}, bm={}, pad={}, plt={}, flc={}, mkt={}, shp={}) "
+        "checking {} (ls={}, bm={}, pad={}, plt={}, flc={}, ody={}, mkt={}, shp={}) "
         "for {} suitability",
         station.name(),
         station.lsFromStar,
@@ -520,6 +521,7 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
         station.maxPadSize,
         station.planetary,
         station.fleet,
+        station.odyssey,
         station.market,
         station.shipyard,
         src or "any",
@@ -581,6 +583,18 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
                     TradeDB.padSizesExt[station.maxPadSize],
             ))
         return False
+    pla = cmdenv.planetary
+    if pla and not station.checkPlanetary(pla):
+        if src:
+            raise CommandLineError(
+                "{} station {} does not meet planetary requirement.\n"
+                "You specified: {}, Current data for station: {} ({})\n"
+                "You can use \"trade.py station\" to correct this.".format(
+                    src, station.name(),
+                    pla, station.planetary,
+                    TradeDB.planetStatesExt[station.planetary],
+            ))
+        return False
     flc = cmdenv.fleet
     if flc and not station.checkFleet(flc):
         if src:
@@ -593,16 +607,16 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
                     TradeDB.fleetStatesExt[station.fleet],
             ))
         return False
-    pla = cmdenv.planetary
-    if pla and not station.checkPlanetary(pla):
+    ody = cmdenv.odyssey
+    if ody and not station.checkOdyssey(ody):
         if src:
             raise CommandLineError(
-                "{} station {} does not meet planetary requirement.\n"
+                "{} station {} does not meet odyssey requirement.\n"
                 "You specified: {}, Current data for station: {} ({})\n"
                 "You can use \"trade.py station\" to correct this.".format(
                     src, station.name(),
-                    pla, station.planetary,
-                    TradeDB.planetStatesExt[station.planetary],
+                    ody, station.odyssey,
+                    TradeDB.odysseyStatesExt[station.odyssey],
             ))
         return False
     np = cmdenv.noPlanet

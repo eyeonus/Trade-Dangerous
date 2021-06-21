@@ -77,6 +77,7 @@ class CommandEnv(TradeEnv):
         self.checkPadSize()
         self.checkPlanetary()
         self.checkFleet()
+        self.checkOdyssey()
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
@@ -242,6 +243,19 @@ class CommandEnv(TradeEnv):
             self.fleet = None
             return
         self.fleet = fleet = fleet.upper()
+    
+    def checkOdyssey(self):
+        odyssey = getattr(self, 'odyssey', None)
+        if not odyssey:
+            return
+        odyssey = ''.join(sorted(list(set(odyssey)))).upper()
+        for value in odyssey:
+            if not value in 'YN?':
+                raise odysseyError(odyssey)
+        if odyssey == '?NY':
+            self.odyssey = None
+            return
+        self.odyssey = odyssey = odyssey.upper()
     
     def colorize(self, color, rawText):
         """

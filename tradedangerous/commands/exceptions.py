@@ -69,7 +69,7 @@ class PlanetaryError(CommandLineError):
             "Invalid --planetary '{}': Use a combination of one or more "
             "from 'Y' for Yes, 'N' for No or '?' for unknown, "
             "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown or 'N' matches only planetary stations."
+            "yes or unknown, or 'N' matches only non-planetary stations."
             .format(value)
         )
 
@@ -81,6 +81,17 @@ class FleetCarrierError(CommandLineError):
             "Invalid --fleet-carrier '{}': Use a combination of one or more "
             "from 'Y' for Yes, 'N' for No or '?' for unknown, "
             "e.g. 'YN?' matches any station while 'Y?' matches "
-            "yes or unknown or 'N' matches only fleet-carrier stations."
+            "yes or unknown, or 'N' matches only non-fleet-carrier stations."
+            .format(value)
+        )
+
+class OdysseyError(CommandLineError):
+    """ Raised when an invalid odyssey option is given. """
+    def __init__(self, value):
+        super().__init__(
+            "Invalid --odyssey '{}': Use a combination of one or more "
+            "from 'Y' for Yes, 'N' for No or '?' for unknown, "
+            "e.g. 'YN?' matches any station while 'Y?' matches "
+            "yes or unknown, or 'N' matches only non-odyssey stations."
             .format(value)
         )

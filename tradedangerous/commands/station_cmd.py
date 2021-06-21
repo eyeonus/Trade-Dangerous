@@ -102,6 +102,17 @@ switches = [
         choices=['Y', 'y', 'N', 'n', '?'],
     ),
     ParseArgument(
+        '--fleet-carrier', '--fc',
+        dest='fleet',
+        help='Is the station a Fleet Carrier (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
+        '--odyssey', '--od',
+        help='Is the station an Odyssey Settlement (Y or N) or ? if unknown.',
+        choices=['Y', 'y', 'N', 'n', '?'],
+    ),
+    ParseArgument(
         '--confirm',
         help='For confirmation suspicious looking station names.',
         metavar='CONFIRMATION CODE',
@@ -269,6 +280,8 @@ def addStation(tdb, cmdenv, system, stationName):
             repair=cmdenv.repair or '?',
             maxPadSize=cmdenv.padSize or '?',
             planetary=cmdenv.planetary or '?',
+            fleet=cmdenv.fleet or '?',
+            odyssey=cmdenv.odyssey or '?',
             commit=True,
     )
 
@@ -286,6 +299,8 @@ def updateStation(tdb, cmdenv, station):
             repair=cmdenv.repair,
             maxPadSize=cmdenv.padSize,
             planetary=cmdenv.planetary,
+            fleet=cmdenv.fleet,
+            odyssey=cmdenv.odyssey,
             force=True,
             commit=True,
     )
@@ -424,6 +439,8 @@ def render(results, cmdenv, tdb):
     print("Refuel....:", _detail(station.refuel, TradeDB.marketStates))
     print("Repair....:", _detail(station.repair, TradeDB.marketStates))
     print("Planetary.:", _detail(station.planetary, TradeDB.planetStates))
+    print("Fleet.....:", _detail(station.fleet, TradeDB.fleetStates))
+    print("Odyssey...:", _detail(station.odyssey, TradeDB.odysseyStates))
     print("Prices....:", station.itemCount or 'None')
     
     if station.itemCount == 0:

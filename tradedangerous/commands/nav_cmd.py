@@ -43,6 +43,7 @@ switches = [
         PlanetaryArgument(),
     ),
     FleetCarrierArgument(),
+    OdysseyArgument(),
 ]
 
 ######################################################################
@@ -109,8 +110,9 @@ def run(results, cmdenv, tdb):
     
     lastSys, totalLy, dirLy = srcSystem, 0.00, 0.00
     maxPadSize = cmdenv.padSize
-    fleet = cmdenv.fleet
     planetary = cmdenv.planetary
+    fleet = cmdenv.fleet
+    odyssey = cmdenv.odyssey
     noPlanet = cmdenv.noPlanet
     
     for (jumpSys, dist) in route:
@@ -130,9 +132,11 @@ def run(results, cmdenv, tdb):
             for (station) in jumpSys.stations:
                 if maxPadSize and not station.checkPadSize(maxPadSize):
                     continue
+                if planetary and not station.checkPlanetary(planetary):
+                    continue
                 if fleet and not station.checkFleet(fleet):
                     continue
-                if planetary and not station.checkPlanetary(planetary):
+                if odyssey and not station.checkOdyssey(odyssey):
                     continue
                 if noPlanet and station.planetary != 'N':
                     continue
@@ -230,6 +234,10 @@ def render(results, cmdenv, tdb):
                 ColumnFormat("Flc", '>', '3',
                     key=lambda row: \
                         TradeDB.fleetStates[row.station.fleet])
+        ).append(
+                ColumnFormat("Ody", '>', '3',
+                    key=lambda row: \
+                        TradeDB.odysseyStates[row.station.odyssey])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(
