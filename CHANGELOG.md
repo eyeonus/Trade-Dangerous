@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.11.0 (2021-06-22)
+### Feature
+* Add switch to filter Odyssey Settlements ['--odyssey'|'--od']. ([`396d9f0`](https://github.com/eyeonus/Trade-Dangerous/commit/396d9f0876bcb2c1c4cf7ecb7e164c5139df5c8c))
+
 ## v10.10.0 (2021-03-26)
 ### Feature
 * Allow for capacities above 1500 ([`76537b9`](https://github.com/eyeonus/Trade-Dangerous/commit/76537b9d84fc55994970f55f3cf39649c9c6bc5f))
