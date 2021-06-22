@@ -1301,7 +1301,7 @@ class TradeDB(object):
             ) VALUES (
                 ?, ?,
                 ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?,
                 DATETIME(?)
             )
         """, [
