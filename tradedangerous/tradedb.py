@@ -1254,6 +1254,8 @@ class TradeDB(object):
             refuel,
             repair,
             planetary,
+            fleet,
+            odyssey,
             modified='now',
             commit=True,
             ):
@@ -1279,6 +1281,14 @@ class TradeDB(object):
         assert refuel in "?YN"
         assert repair in "?YN"
         assert planetary in '?YN'
+        assert fleet in '?YN'
+        assert odyssey in '?YN'
+        
+        type_id = 0
+        if fleet == 'Y':
+            type_id = 24
+        if odyssey == 'Y':
+            type_id = 25
         
         db = self.getDB()
         cur = db.cursor()
@@ -1286,18 +1296,18 @@ class TradeDB(object):
             INSERT INTO Station (
                 name, system_id,
                 ls_from_star, market, blackmarket, shipyard, max_pad_size,
-                outfitting, rearm, refuel, repair, planetary,
+                outfitting, rearm, refuel, repair, planetary, type_id,
                 modified
             ) VALUES (
                 ?, ?,
                 ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?
                 DATETIME(?)
             )
         """, [
             name, system.ID,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair, planetary,
+            outfitting, rearm, refuel, repair, planetary, type_id,
             modified,
         ])
         ID = cur.lastrowid
@@ -1346,6 +1356,8 @@ class TradeDB(object):
             refuel=None,
             repair=None,
             planetary=None,
+            fleet=None,
+            odyssey=None,
             modified='now',
             force=False,
             commit=True,
