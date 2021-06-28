@@ -1807,42 +1807,16 @@ class TradeDB(object):
                     for station in node.system.stations:
                         yield node, station
         
-        path_iter = iter(path_iter_fn())
-        if noPlanet:
-            path_iter = iter(
-                (node, station) for (node, station) in path_iter
-                if station.planetary == 'N'
-            )
-        if avoidPlaces:
-            path_iter = iter(
-                (node, station) for (node, station) in path_iter
-                if station not in avoidPlaces
-            )
-        if maxPadSize:
-            path_iter = iter(
-                (node, station) for (node, station) in path_iter
-                if station.checkPadSize(maxPadSize)
-            )
-        if planetary:
-            path_iter = iter(
-                (node, station) for (node, station) in path_iter
-                if station.checkPlanetary(planetary)
-            )
-        if fleet:
-            path_iter = iter(
-                (node, station) for (node, station) in path_iter
-                if station.checkFleet(fleet)
-            )
-        if odyssey:
-            path_iter = iter(
-                (node, station) for (node, station) in path_iter
-                if station.checkOdyssey(odyssey)
-            )
-        if maxLsFromStar:
-            path_iter = iter(
-                (node, stn) for (node, stn) in path_iter
-                if stn.lsFromStar > 0 and stn.lsFromStar <= maxLsFromStar
-            )
+        path_iter = iter(
+          (node, station) for (node, station) in path_iter_fn()
+          if (station.planetary == 'N' if noPlanet else True) and
+            (station not in avoidPlaces if avoidPlaces else True) and
+            (station.checkPadSize(maxPadSize) if maxPadSize else True) and
+            (station.checkPlanetary(planetary) if planetary else True) and
+            (station.checkFleet(fleet) if fleet else True) and
+            (station.checkOdyssey(odyssey) if odyssey else True) and
+            (station.lsFromStar > 0 and station.lsFromStar <= maxLsFromStar if maxLsFromStar else True)
+        )
         for node, stn in path_iter:
             yield Destination(node.system, stn, node.via, node.distLy)
     
