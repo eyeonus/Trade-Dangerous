@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.11.1 (2021-06-28)
+### Performance
+* Avoid excessive loops ([#93](https://github.com/eyeonus/Trade-Dangerous/issues/93)) ([`f457db5`](https://github.com/eyeonus/Trade-Dangerous/commit/f457db5c9a6b46ce3610d993ff629d2a579e7ce8))
+
 ## v10.11.0 (2021-06-22)
 ### Feature
 * Add switch to filter Odyssey Settlements ['--odyssey'|'--od']. ([`396d9f0`](https://github.com/eyeonus/Trade-Dangerous/commit/396d9f0876bcb2c1c4cf7ecb7e164c5139df5c8c))
