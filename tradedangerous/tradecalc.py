@@ -970,31 +970,14 @@ class TradeCalc(object):
             elif loopInt:
                 uniquePath = route.route[-loopInt:-1]
             
-            stations = (
-                dest for dest in station_iterator(srcStation)
-                if dest.station != srcStation
+            stations = (d for d in station_iterator(srcStation)
+              if (d.station != srcStation) and
+                (d.station.blackMarket == 'Y' if reqBlackMarket else True) and
+                (d.station not in uniquePath if uniquePath else True) and
+                (d.station in restrictStations if restrictStations else True) and
+                (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True) and
+                (((d.system is not srcSystem) if bool(tdenv.unique) else (d.system is goalSystem or d.distLy < srcGoalDist)) if goalSystem else True)
             )
-            if reqBlackMarket:
-                stations = (d for d in stations if d.station.blackMarket == 'Y')
-            if uniquePath:
-                stations = (d for d in stations if d.station not in uniquePath)
-            if restrictStations:
-                stations = (
-                    d for d in stations
-                    if d.station in restrictStations
-                )
-            if maxAge:
-                stations = (d for d in stations if d.station.dataAge)
-                stations = (d for d in stations if d.station.dataAge <= maxAge)
-            if goalSystem:
-                if bool(tdenv.unique):
-                    stations = (
-                        d for d in stations if d.system is not srcSystem
-                    )
-                stations = (
-                    d for d in stations
-                    if d.system is goalSystem or d.distLy < srcGoalDist
-                )
             
             if tdenv.debug >= 1:
                 
