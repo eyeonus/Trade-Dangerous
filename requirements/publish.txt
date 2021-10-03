@@ -1,4 +1,4 @@
 -r dev.txt
 
-
+packaging>=20.0
 python-semantic-release
