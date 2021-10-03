@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v10.11.2 (2021-10-03)
+### Fix
+* Correct typo in olddata. ([`8cd12c5`](https://github.com/eyeonus/Trade-Dangerous/commit/8cd12c5875566728c0ff79299004b6f19406ebfe))
+
+### Documentation
+* Update README.md ([`d38a096`](https://github.com/eyeonus/Trade-Dangerous/commit/d38a09641eac6ab5f25fa59e9b8187c686267b47))
+
 ## v10.11.1 (2021-06-28)
 ### Performance
 * Avoid excessive loops ([#93](https://github.com/eyeonus/Trade-Dangerous/issues/93)) ([`f457db5`](https://github.com/eyeonus/Trade-Dangerous/commit/f457db5c9a6b46ce3610d993ff629d2a579e7ce8))
