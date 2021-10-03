@@ -172,7 +172,7 @@ def run(results, cmdenv, tdb):
         if not padSize or row.station.checkPadSize(padSize):
             if not planetary or row.station.checkPlanetary(planetary):
                 if not fleet or row.station.checkFleet(fleet):
-                    if not odyseey or row.station.checkOdyssey(odyssey):
+                    if not odyssey or row.station.checkOdyssey(odyssey):
                         if not noPlanet or row.station.planetary == 'N':
                             if not mls or row.station.lsFromStar <= mls:
                                 results.rows.append(row)
