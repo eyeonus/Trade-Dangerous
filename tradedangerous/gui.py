@@ -53,7 +53,7 @@ from . import tradedb
 from .plugins import PluginException
 
 
-# TODO: Rework without appJar dependency 
+# TODO: Rework without appJar dependency.
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 WidgetManager = appJar.appjar.WidgetManager
 # Plugins available to the 'import' command are stored here.
