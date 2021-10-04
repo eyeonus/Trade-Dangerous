@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.11.3 (2021-10-04)
+### Fix
+* Publish the new version! ([`d8f0dd7`](https://github.com/eyeonus/Trade-Dangerous/commit/d8f0dd700f46c73ba9505ce0dbb6fa726ebd931b))
+
 ## v10.11.2 (2021-10-03)
 ### Fix
 * Correct typo in olddata. ([`8cd12c5`](https://github.com/eyeonus/Trade-Dangerous/commit/8cd12c5875566728c0ff79299004b6f19406ebfe))
