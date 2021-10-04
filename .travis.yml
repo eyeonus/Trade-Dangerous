@@ -3,7 +3,7 @@ stages:
   - name: deploy
     # require the branch name to be master (note for PRs this is the base branch name)
     # semantic-release currently only works on master
-    if: branch = master
+    # if: branch = master
 
 language: python
 python:
