@@ -97,6 +97,13 @@ switches = (
         dest = 'lt',
         type = "credits",
     ),
+    ParseArgument('--ls-max',
+        help='Only consider stations upto this many ls from their star.',
+        metavar='LS',
+        dest='maxLs',
+        type=int,
+        default=0,
+    ),
 )
 
 
@@ -267,6 +274,7 @@ def run(results, cmdenv, tdb):
     odyssey = cmdenv.odyssey
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
+    maxLS = cmdenv.maxLs
     
     stations = defaultdict(list)
     stationByID = tdb.stationByID
@@ -293,6 +301,10 @@ def run(results, cmdenv, tdb):
         
         row = ResultRow()
         row.station = station
+        if maxLs:
+            distanceFromStar = station.lsFromStar
+            if distanceFromStar > maxLs:
+                continue
         if distanceFn:
             distance = distanceFn(row.station.system)
             if distance > maxLy:
