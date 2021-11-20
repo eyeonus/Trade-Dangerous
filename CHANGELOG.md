@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v10.12.0 (2021-11-20)
+### Feature
+* Added --max-ls parameter to the buy command. ([#96](https://github.com/eyeonus/Trade-Dangerous/issues/96)) ([`ff371eb`](https://github.com/eyeonus/Trade-Dangerous/commit/ff371eb25b91f745e872dce953001c3644a4db2c))
+
+### Fix
+* Buy command var "maxLS" not named consistently ("maxLS", "maxLs") ([`1f4989a`](https://github.com/eyeonus/Trade-Dangerous/commit/1f4989a8280702110b68f8b52c08b60a27c41e33))
+
 ## v10.11.3 (2021-10-04)
 ### Fix
 * Publish the new version! ([`d8f0dd7`](https://github.com/eyeonus/Trade-Dangerous/commit/d8f0dd700f46c73ba9505ce0dbb6fa726ebd931b))
