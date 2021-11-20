@@ -274,7 +274,7 @@ def run(results, cmdenv, tdb):
     odyssey = cmdenv.odyssey
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
-    maxLS = cmdenv.maxLs
+    mls = cmdenv.maxLs
     
     stations = defaultdict(list)
     stationByID = tdb.stationByID
@@ -301,9 +301,9 @@ def run(results, cmdenv, tdb):
         
         row = ResultRow()
         row.station = station
-        if maxLs:
+        if mls:
             distanceFromStar = station.lsFromStar
-            if distanceFromStar > maxLs:
+            if distanceFromStar > mls:
                 continue
         if distanceFn:
             distance = distanceFn(row.station.system)
