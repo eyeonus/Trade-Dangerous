@@ -99,16 +99,16 @@ def buildFKeyStmt(conn, tableName, key):
 # Code
 ######################################################################
 
-def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
+def exportTableToFile(tdb, tdenv, tableName, csvPath=None):
     """
-        Generate the csv file for tableName in dataPath
+        Generate the csv file for tableName in csvPath
         returns lineCount, exportPath
     """
     
     # path for csv file
-    dataPath = dataPath or tdb.dataPath
-    if not dataPath.is_dir():
-        raise TradeException("Save location '{}' not found.".format(str(dataPath)))
+    csvPath = csvPath or tdb.csvPath
+    if not csvPath.is_dir():
+        raise TradeException("Save location '{}' not found.".format(str(csvPath)))
     
     # connect to the database
     conn = tdb.getDB()
@@ -119,7 +119,7 @@ def exportTableToFile(tdb, tdenv, tableName, dataPath=None):
     ignorePfx = "!"
     
     # create CSV files
-    exportPath = (dataPath / Path(tableName)).with_suffix(".csv")
+    exportPath = (csvPath / Path(tableName)).with_suffix(".csv")
     tdenv.DEBUG0("Export Table '{table}' to '{file}'".format(
                     table=tableName, file=str(exportPath)
                     ))

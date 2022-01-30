@@ -32,6 +32,7 @@ class TradeEnv(object):
         'quiet': 0,
         'color': False,
         'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
+        'csvDir': os.environ.get('TD_CSV') or os.path.join(os.getcwd(), 'data'),
         'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
         'templateDir': os.path.join(_ROOT, 'templates'),
         'cwDir': os.getcwd()

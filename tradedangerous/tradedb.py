@@ -644,9 +644,10 @@ class TradeDB(object):
         
         self.templatePath = Path(tdenv.templateDir).resolve()
         self.dataPath = dataPath = fs.ensurefolder(tdenv.dataDir)
+        self.csvPath = fs.ensurefolder(tdenv.csvDir)
         
-        fs.copy_if_newer((self.templatePath / Path("Added.csv")), (self.dataPath / Path("Added.csv")))
-        fs.copy_if_newer((self.templatePath / Path("RareItem.csv")), (self.dataPath / Path("RareItem.csv")))
+        fs.copy_if_newer((self.templatePath / Path("Added.csv")), (self.csvPath / Path("Added.csv")))
+        fs.copy_if_newer((self.templatePath / Path("RareItem.csv")), (self.csvPath / Path("RareItem.csv")))
         fs.copy_if_newer((self.templatePath / Path("TradeDangerous.sql")), (self.dataPath / Path("TradeDangerous.sql")))
         
         self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
@@ -654,7 +655,7 @@ class TradeDB(object):
         pricePath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         self.pricesPath = dataPath / pricePath
         self.importTables = [
-            (str(dataPath / Path(fn)), tn)
+            (str(self.csvPath / Path(fn)), tn)
             for fn, tn in TradeDB.defaultTables
         ]
         self.importPaths = {tn: tp for tp, tn in self.importTables}
