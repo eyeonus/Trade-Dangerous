@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.0 (2022-01-31)
+### Feature
+* Add TD_CSV environment variable detection to csv export ([`9537082`](https://github.com/eyeonus/Trade-Dangerous/commit/95370829da9b25e3d6aba0e9161c92716be82633))
+
+### Fix
+* (maybe) remove test that travis keeps failing on ([`9e23361`](https://github.com/eyeonus/Trade-Dangerous/commit/9e23361b43d5068c0ef2c5ce13489a74275d653a))
+
 ## v10.12.0 (2021-11-20)
 ### Feature
 * Added --max-ls parameter to the buy command. ([#96](https://github.com/eyeonus/Trade-Dangerous/issues/96)) ([`ff371eb`](https://github.com/eyeonus/Trade-Dangerous/commit/ff371eb25b91f745e872dce953001c3644a4db2c))
