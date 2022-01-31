@@ -6,6 +6,10 @@
 ### Fix
 * Make semantic tell me what's broke ([`0c328ca`](https://github.com/eyeonus/Trade-Dangerous/commit/0c328ca49556958438621f5ff84aba7cde39dbdd))
 
+## v10.13.1 (2022-01-31)
+### Fix
+* Make semantic tell me what's broke ([`0c328ca`](https://github.com/eyeonus/Trade-Dangerous/commit/0c328ca49556958438621f5ff84aba7cde39dbdd))
+
 ## v10.13.0 (2022-01-31)
 ### Feature
 * Add TD_CSV environment variable detection to csv export ([`9537082`](https://github.com/eyeonus/Trade-Dangerous/commit/95370829da9b25e3d6aba0e9161c92716be82633))
