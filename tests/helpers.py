@@ -12,7 +12,8 @@ from tradedangerous import fs, TradeEnv
 __all__ = ['tdenv', 'captured_output', 'is_initialized']
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
-tdenv = TradeEnv(debug=3)
+_DEBUG=5
+tdenv = TradeEnv(debug=_DEBUG)
 
 @contextmanager
 def captured_output():
@@ -39,7 +40,7 @@ def tdfactory():
     [TradeEnv, TradeDB]
         list with instances of TradeEnv and TradeDB
     """
-    return [TradeDB(tdenv=tdenv, load=True, debug=3), tdenv]
+    return [TradeDB(tdenv=tdenv, load=True, debug=_DEBUG), tdenv]
 
 
 def file_exists(filename):
@@ -86,6 +87,7 @@ def copy_fixtures(toDir=None):
     fs.copyallfiles(Path(_ROOT, 'fixtures'), tdenv.dataDir)
     fs.ensureflag(Path(tdenv.dataDir, '.tddata'))
     touch(Path(tdenv.dataDir, 'TradeDangerous.db'))
+    print("copy fixtures done")
 
 
 def touch(*args):

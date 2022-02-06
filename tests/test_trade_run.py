@@ -1,11 +1,9 @@
-import re
 import io
 
 import pytest
 
 from tradedangerous.cli import trade
-from tradedangerous.commands.exceptions import UsageError
-from tradedangerous import tools
+
 from .helpers import copy_fixtures, regex_findin, replace_stdin
 
 PROG = "trade"
@@ -22,27 +20,29 @@ class TestTradeRun(object):
         assert "Sol/Abraham Lincoln: 10 x Hydrogen Fuel," in captured.out
         assert "Sol/Burnell Station: 2 x Silver," in captured.out
         assert "560cr (213/ton)" in captured.out
-
-
+    
+    @pytest.mark.slow
     def test_run2(self, capsys):
-        trade([PROG, "run", "-vv", "--progress", "--empty=82",
+        trade([
+            PROG, "run", "-vv", "--progress", "--empty=82",
             "--cap=212", "--jumps=4", "--cr=2153796", "--from=sol/abr",
             "--hops=6", "--ls-m=8000", "--sup=10000",
             "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"])
         captured = capsys.readouterr()
         assert regex_findin(r"=> est [\d\s,]+cr total", captured.out)
     
+    @pytest.mark.slow
     def test_run3(self, capsys):
         """Testing --checklist
         """
         # monkeypatch.setattr('sys.stdin', io.StringIO('100'))
         STEPS = 37
         with replace_stdin(io.StringIO('\n' * STEPS)):
-            trade([PROG, "run", "-vv", "--progress", "--empty=82", "--checklist",
+            trade([
+                PROG, "run", "-vv", "--progress", "--empty=82", "--checklist",
                 "--cap=212", "--jumps=4", "--cr=2153796", "--from=sol/abr",
                 "--hops=6", "--ls-m=8000", "--sup=10000",
                 "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"])
-        
         captured = capsys.readouterr()
         # with capsys.disabled():
         #      print("Here")

@@ -1,6 +1,9 @@
+mistune<2.0.0
 m2r
 pytest
 Sphinx
 tox
 tox-travis
+flake8
 importlib-metadata>=1
+wheel
