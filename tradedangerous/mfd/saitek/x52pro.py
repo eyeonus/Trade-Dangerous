@@ -15,7 +15,7 @@ TODO:
 
 from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
-from mfd.saitek.directoutput import DirectOutputDevice
+from tradedangerous.mfd.saitek.directoutput import DirectOutputDevice
 
 
 class X52Pro(DirectOutputDevice):
