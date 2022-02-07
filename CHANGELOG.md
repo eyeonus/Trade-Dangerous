@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.2 (2022-02-07)
+### Fix
+* Minor fixes ([`154db36`](https://github.com/eyeonus/Trade-Dangerous/commit/154db361ce739ff22db63f84c2bc5cd2691046b0))
+
 ## v10.13.1 (2022-01-31)
 ### Fix
 * Make semantic tell me what's broke ([`0c328ca`](https://github.com/eyeonus/Trade-Dangerous/commit/0c328ca49556958438621f5ff84aba7cde39dbdd))
