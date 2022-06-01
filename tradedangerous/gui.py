@@ -1,35 +1,35 @@
+#!/usr/bin/env python3
 # --------------------------------------------------------------------
-# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-# Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
+# Copyright (C) Jonathan 'eyeonus' Jones 2018-2022
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
 # I guarantee there is at least one bug neither of us knew about.
 # --------------------------------------------------------------------
-# TradeDangerous :: Command Line App :: Main Module
-#
-# TradeDangerous is a powerful set of tools for traders in Frontier
-# Development's game "Elite: Dangerous". It's main function is
-# calculating the most profitable trades between either individual
-# stations or working out "profit runs".
-#
-# I wrote TD because I realized that the best trade run - in terms
-# of the "average profit per stop" was rarely as simple as going
-# Chango -> Dahan -> Chango.
-#
-# E:D's economy is complex; sometimes you can make the most profit
-# by trading one item A->B and flying a second item B->A.
-# But more often you need to fly multiple stations, especially since
-# as you are making money different trade options are coming into
-# your affordable range.
-#
-# END USERS: If you are a user looking to find out how to use TD,
-# please consult the file "README.md".
-#
-# DEVELOPERS: If you are a programmer who wants TD to do something
-# cool, please see the TradeDB and TradeCalc modules. TD is designed
-# to empower other programmers to do cool stuff.
+# TradeDangerous :: GUI App :: Main Module
+# 
+# Where all the graphics happens. Uses TD CLI under the hood.
+# 
+# Current features:
+# ----------------
+# Drop-down list of all available TD commands
+# Fully populated list of all arguments and switches for each command
+# Automatic setting of default value for the above which have one
+# Procedural generation of all above for future proofing in the 
+#   event of new import plugins, switches, arguments, commands(?)
+# RAM resident save-state: altered values retain new value while main
+#    window remains open
+# 
+# Planned features:
+# ----------------
+# Code overhaul to utilize tk directly rather than via appJar
+# User-defined initial values AKA tdrc files (.tdrc_run, .tdrc_trade, ..)
+# Profiles AKA fromfiles (+ship1, +ship2, ..)
+# Select-able output text
+# graphical render of results
+# send results to new window
+# individual always-on-top for every window
+# Data retrieval from CMDR's journal
 
 from __future__ import absolute_import
 from __future__ import with_statement
@@ -67,12 +67,12 @@ importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
              ]
 
 
+# Needed changes to appJar that are the cause for why we want to use tk instead:
 def get(self, widgetType, title):
     return eval('self.get' + str(widgetType) + '("' + str(title) + '")')
 
 
 gui.get = get
-
 
 # @Override
 def _populateSpinBox(self, spin, vals, reverse = True):
@@ -185,6 +185,7 @@ def getOptionBox(self, title):
 
 gui.getOptionBox = getOptionBox
 
+# END appJar fixes
 
 def main(argv = None):
     
@@ -531,6 +532,7 @@ def main(argv = None):
     
     dbS = str(Path((os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data')) / Path('TradeDangerous.db')))
     cwdS = str(Path(os.getcwd()))
+    # Manually add the global arguments for now, maybe figure out how to auto-populate them as well.
     allArgs = {
         '--debug': { 'help': 'Enable/raise level of diagnostic output.',
                     'default':  0, 'required': False, 'action': 'count',
