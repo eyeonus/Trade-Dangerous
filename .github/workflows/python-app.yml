@@ -72,9 +72,6 @@ jobs:
         git config --global user.name "semantic-release (via GitHub Actions)"
         git config --global user.email "semantic-release@gh"
     
-    - name: semantic-release version
-      run: semantic-release version
-    
     - name: semantic-release changelog
       run: semantic-release changelog
 
