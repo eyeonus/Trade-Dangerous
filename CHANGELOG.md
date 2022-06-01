@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.5 (2022-06-01)
+### Fix
+* Set default argv to None ([`4b44458`](https://github.com/eyeonus/Trade-Dangerous/commit/4b444581844a356c7cf65c1d4301bac83cf93436))
+
 ## v10.13.4 (2022-06-01)
 ### Fix
 * Pypi authentication error ([`87e2c82`](https://github.com/eyeonus/Trade-Dangerous/commit/87e2c82a3deee9f0679f76723f420c24b79ff8b9))
