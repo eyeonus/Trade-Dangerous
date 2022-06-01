@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.3 (2022-06-01)
+
+
 ## v10.13.2 (2022-02-07)
 ### Fix
 * Minor fixes ([`154db36`](https://github.com/eyeonus/Trade-Dangerous/commit/154db361ce739ff22db63f84c2bc5cd2691046b0))
