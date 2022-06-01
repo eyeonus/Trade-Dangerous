@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.4 (2022-06-01)
+### Fix
+* Pypi authentication error ([`87e2c82`](https://github.com/eyeonus/Trade-Dangerous/commit/87e2c82a3deee9f0679f76723f420c24b79ff8b9))
+
 ## v10.13.3 (2022-06-01)
 
 
