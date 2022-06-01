@@ -14,7 +14,7 @@
 
 from tradedangerous import gui
 
-def main(argv):
+def main(argv = None):
   gui.main()
 
 if __name__ == "__main__":
