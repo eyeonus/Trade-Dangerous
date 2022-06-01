@@ -52,22 +52,13 @@ from .version import __version__
 from . import tradedb
 from .plugins import PluginException
 
+# ==================
+# BEGIN appJar fixes
+# ==================
 
-# TODO: Rework without appJar dependency.
 WIDGET_NAMES = appJar.appjar.WIDGET_NAMES
 WidgetManager = appJar.appjar.WidgetManager
-# Plugins available to the 'import' command are stored here.
-# The list is populated by scanning the plugin folder directly,
-# so it updates automagically at start as plugins are added or removed.
-#
-# Any other command with available plugins must have a similar list.
-importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
-             for plug in os.scandir(sys.modules['tradedangerous.plugins'].__path__[0])
-             if plug.name.endswith("_plug.py")
-             ]
 
-
-# Needed changes to appJar that are the cause for why we want to use tk instead:
 def get(self, widgetType, title):
     return eval('self.get' + str(widgetType) + '("' + str(title) + '")')
 
@@ -185,7 +176,19 @@ def getOptionBox(self, title):
 
 gui.getOptionBox = getOptionBox
 
+# ================
 # END appJar fixes
+# ================
+
+# Plugins available to the 'import' command are stored here.
+# The list is populated by scanning the plugin folder directly,
+# so it updates automagically at start as plugins are added or removed.
+#
+# Any other command with available plugins must have a similar list.
+importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
+             for plug in os.scandir(sys.modules['tradedangerous.plugins'].__path__[0])
+             if plug.name.endswith("_plug.py")
+             ]
 
 def main(argv = None):
     
