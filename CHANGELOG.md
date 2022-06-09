@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.6 (2022-06-09)
+### Fix
+* Strip microseconds off timestamps which have them ([`17b603d`](https://github.com/eyeonus/Trade-Dangerous/commit/17b603d52517d1bfdf9956993bec656a3e8b6673))
+
 ## v10.13.5 (2022-06-01)
 ### Fix
 * Set default argv to None ([`4b44458`](https://github.com/eyeonus/Trade-Dangerous/commit/4b444581844a356c7cf65c1d4301bac83cf93436))
