@@ -359,7 +359,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
                 if result:
-                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                    updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     if system['updated_at'] > updated:
                         tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
@@ -412,7 +412,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
                 if result:
-                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                    updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     if int(system['updated_at']) > updated:
                         tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
@@ -519,7 +519,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 result = self.execute("SELECT modified FROM Station WHERE station_id = ?", (station_id,)).fetchone()
                 if result:
-                    updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                    updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     if station['updated_at'] > updated:
                         tdenv.DEBUG0("{}/{} has been updated: {} vs {}",
                                     system , name, modified, result[0])
@@ -564,7 +564,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     modified = datetime.datetime.utcfromtimestamp(station['shipyard_updated_at']).strftime('%Y-%m-%d %H:%M:%S')
                     result = self.execute("SELECT modified FROM ShipVendor WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
-                        updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                        updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     else:
                         updated = 0
                     if station['shipyard_updated_at'] > updated:
@@ -606,7 +606,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     modified = datetime.datetime.utcfromtimestamp(station['outfitting_updated_at']).strftime('%Y-%m-%d %H:%M:%S')
                     result = self.execute("SELECT modified FROM UpgradeVendor WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
-                        updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                        updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
                     else:
                         updated = 0
                     if station['outfitting_updated_at'] > updated:
@@ -881,7 +881,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     # Only need to check the date for the first item at a specific station.
                     result = self.execute("SELECT modified FROM StationItem WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
-                        updated = timegm(datetime.datetime.strptime(result[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                        updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
                         # When the listings.csv data matches the database, update to make from_live == 0.
                         if int(listing['collected_at']) == updated and not from_live:
                             liveList.append((cur_station,))
