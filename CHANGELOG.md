@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.7 (2022-06-15)
+### Fix
+* Forgot to remove some debug code. ([`8b1b889`](https://github.com/eyeonus/Trade-Dangerous/commit/8b1b889823365b337ac9657cfbf034c0373ee76c))
+
 ## v10.13.6 (2022-06-09)
 ### Fix
 * Strip microseconds off timestamps which have them ([`17b603d`](https://github.com/eyeonus/Trade-Dangerous/commit/17b603d52517d1bfdf9956993bec656a3e8b6673))
