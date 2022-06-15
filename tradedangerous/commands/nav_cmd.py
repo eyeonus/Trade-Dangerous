@@ -86,7 +86,6 @@ def run(results, cmdenv, tdb):
     
     route = [ ]
     stationInterval = cmdenv.stationInterval
-    print(hops)
     for hop in hops:
         try:
             hopRoute = list(tdb.getRoute(
