@@ -86,14 +86,16 @@ def run(results, cmdenv, tdb):
     
     route = [ ]
     stationInterval = cmdenv.stationInterval
+    print(hops)
     for hop in hops:
-        hopRoute = list(tdb.getRoute(
+        try:
+            hopRoute = list(tdb.getRoute(
                 hop[0], hop[1],
                 maxLyPer,
                 avoiding,
                 stationInterval=stationInterval,
                 ))
-        if not hopRoute:
+        except TypeError:
             raise NoRouteError(
                     "No route found between {} and {} "
                     "with a max {}ly/jump limit.".format(
