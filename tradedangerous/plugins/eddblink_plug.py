@@ -97,7 +97,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     def now(self):
         return datetime.datetime.now()
-        
+    
     def execute(self, sql_cmd, args = None):
         tdb, tdenv = self.tdb, self.tdenv
         cur = tdb.getDB().cursor()
@@ -182,9 +182,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             except Exception as e:
                 # If Tromador's server fails for whatever reason,
                 # fallback to download direct from EDDB.io
-                tdenv.WARN("Problem with download:\nURL: {}\nError: {}", url, str(e))
+                tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
                 if url == SHIPS_URL:
-                    tdenv.NOTE("Using Default Ship Index.")
+                    tdenv.WARN("Do not report this problem, it is known and not currently fixable.\n    Using Default Ship Index.")
                     copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
                     return True
                 
@@ -208,7 +208,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if url != SHIPS_URL:
             # Stupid strptime() is locale-dependent, so we do it ourself.
             # 'Last-Modified' is in the form "DDD, dd MMM yyyy hh:mm:ss GMT"
-            # dDL                               0   1   2    3        4   5
+            # dDL                               0   1   2    3    4=dTL   5
             # dTL                                               0  1  2
             
             # We'll need to turn the 'MMM' into a number.
@@ -394,7 +394,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Processing Systems in {}: Start time = {}", str(source), self.now())
         
         total = 1
-                
+        
         with open(str(self.dataPath / source), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
@@ -435,7 +435,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", self.now())
-        
+    
     def purgeSystems(self):
         """
         Purges systems from the System table that do not have any stations claiming to be in them.
@@ -446,7 +446,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
         
         self.execute("PRAGMA foreign_keys = OFF")
-
+        
         print("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("DROP TABLE IF EXISTS System_copy")
         self.execute("""CREATE TABLE System_copy AS SELECT * FROM System
