@@ -173,7 +173,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if path == self.sysFullPath:
             tdenv.WARN("Full " + str(self.sysFullPath) + " file is ~5GB in size. This will take awhile.")
         if urlTail == SHIPS_URL:
-            url = SHIPS_URL
+            url = urlTail
+            #Temp until I figure out how to automate this again.
+            copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
+            return True
         else:
             url = BASE_URL + urlTail
         if url == SHIPS_URL or not self.getOption('fallback'):
@@ -183,10 +186,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # If Tromador's server fails for whatever reason,
                 # fallback to download direct from EDDB.io
                 tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
-                if url == SHIPS_URL:
-                    tdenv.WARN("Do not report this problem, it is known and not currently fixable.\n    Using Default Ship Index.")
-                    copyfile(self.tdenv.templateDir / Path("DefaultShipIndex.json"), self.dataPath / path)
-                    return True
                 
                 if urlTail != LIVE_LISTINGS:
                     self.options["fallback"] = True
@@ -243,7 +242,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         
         tdenv.NOTE("Processing Upgrades: Start time = {}", self.now())
-        with open(str(self.dataPath / self.upgradesPath), "rU") as fh:
+        with open(str(self.dataPath / self.upgradesPath), "r") as fh:
             upgrades = json.load(fh)
         for upgrade in iter(upgrades):
             upgrade_id = upgrade['id']
@@ -279,7 +278,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         
         tdenv.NOTE("Processing Ships: Start time = {}", self.now())
-        with open(str(self.dataPath / self.shipsPath), "rU") as fh:
+        with open(str(self.dataPath / self.shipsPath), "r") as fh:
             ships = json.load(fh)['Ships']
         for ship in iter(ships):
             ship_id = ships[ship]['eddbID']
@@ -345,7 +344,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / self.sysPopPath), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
-        with open(str(self.dataPath / self.sysPopPath), "rU") as fh:
+        with open(str(self.dataPath / self.sysPopPath), "r") as fh:
             prog = pbar.Progress(total, 50)
             for line in fh:
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
@@ -398,7 +397,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / source), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
-        with open(str(self.dataPath / source), "rU") as fh:
+        with open(str(self.dataPath / source), "r") as fh:
             sysDict = csv.DictReader(fh)
             prog = pbar.Progress(total, 50)
             for system in sysDict:
@@ -483,7 +482,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / self.stationsPath), "r", encoding = "utf-8", errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in self.blocks(f)))
         
-        with open(str(self.dataPath / self.stationsPath), "rU") as fh:
+        with open(str(self.dataPath / self.stationsPath), "r") as fh:
             prog = pbar.Progress(total, 50)
             for line in fh:
                 prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
@@ -642,7 +641,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         
         tdenv.NOTE("Processing Categories and Items: Start time = {}", self.now())
-        with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
+        with open(str(self.dataPath / self.commoditiesPath), "r") as fh:
             commodities = json.load(fh)
         
         # EDDB still hasn't added these Commodities to the API,
@@ -860,7 +859,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             for (stationID,) in self.execute("SELECT station_id FROM Station")
         }
         
-        with open(str(self.dataPath / listings_file), "rU") as fh:
+        with open(str(self.dataPath / listings_file), "r") as fh:
             prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             

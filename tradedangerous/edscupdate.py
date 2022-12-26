@@ -345,7 +345,7 @@ def submit_distance(argv, name, distance, refSys=None, refDist=None):
 def get_extras():
     extras = set()
     try:
-        with open("data/extra-stars.txt", "rU", encoding="utf-8") as fh:
+        with open("data/extra-stars.txt", "r", encoding="utf-8") as fh:
             for line in fh:
                 name = line.partition('#')[0].strip().upper()
                 if name:

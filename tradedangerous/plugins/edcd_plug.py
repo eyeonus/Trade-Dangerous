@@ -201,7 +201,7 @@ class ImportPlugin(ImportPluginBase):
         catCount = 0
         edcdItems = {}
         edcdCategories = {}
-        with localPath.open('rU', encoding='utf-8') as importFile:
+        with localPath.open('r', encoding='utf-8') as importFile:
             csvIn = csv.reader(
                 importFile, delimiter=',', quotechar="'", doublequote=True
             )

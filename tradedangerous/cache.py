@@ -613,7 +613,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
 def processPricesFile(tdenv, db, pricesPath, pricesFh = None, defaultZero = False):
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
     
-    with pricesFh or pricesPath.open('rU', encoding = 'utf-8') as pricesFh:
+    with pricesFh or pricesPath.open('r', encoding = 'utf-8') as pricesFh:
         stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
             tdenv, pricesFh, db, defaultZero
         )
@@ -738,7 +738,7 @@ def processImportFile(tdenv, db, importPath, tableName):
     uniqueLen = len(uniquePfx)
     ignorePfx = "!"
     
-    with importPath.open('rU', encoding = 'utf-8') as importFile:
+    with importPath.open('r', encoding = 'utf-8') as importFile:
         csvin = csv.reader(
             importFile, delimiter = ',', quotechar = "'", doublequote = True
         )
@@ -916,7 +916,7 @@ def buildCache(tdb, tdenv):
     tempDB.execute("PRAGMA foreign_keys=ON")
     # Read the SQL script so we are ready to populate structure, etc.
     tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
-    with sqlPath.open('rU', encoding = 'utf-8') as sqlFile:
+    with sqlPath.open('r', encoding = 'utf-8') as sqlFile:
         sqlScript = sqlFile.read()
         tempDB.executescript(sqlScript)
     
