@@ -73,12 +73,11 @@ def get(self, widgetType, title):
 gui.get = get
 
 # @Override
-def _populateSpinBox(self, spin, vals, reverse = True):
+def _populateSpinBox(self, spin, vals, reverse = False):
     # make sure it's a list
-    #  reverse it, so the spin box functions properly
-    # if reverse:
-    #    vals = list(vals)
-    #    vals.reverse()
+    if reverse:
+        vals = list(vals)
+        vals.reverse()
     vals = tuple(vals)
     spin.config(values = vals)
 
