@@ -2,7 +2,7 @@
 # Import plugin that uses data files from EDDB.io and (optionally)
 # a EDDBlink_listener server to update the Database.
 # ----------------------------------------------------------------
-
+import certifi
 import codecs
 import csv
 import datetime
@@ -10,6 +10,7 @@ import json
 import os
 import platform
 import sqlite3
+import ssl
 import time
 
 from urllib import request
@@ -35,6 +36,20 @@ STATIONS = "stations.jsonl"
 UPGRADES = "modules.json"
 LISTINGS = "listings.csv"
 LIVE_LISTINGS = "listings-live.csv"
+CONTEXT=ssl.create_default_context(cafile=certifi.where())
+
+
+def request_url(url, headers=None):
+    try:
+        print('***** context:', url, certifi.where())
+    except Exception as err:
+        print("error!", err)
+    
+    data = None
+    if headers:
+        data = bytes(json.dumps(headers), encoding="utf-8")
+        
+    return request.urlopen(request.Request(url, data=data), context=CONTEXT)
 
 
 class DecodingError(PluginException):
@@ -167,7 +182,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         
         def openURL(url):
-            return request.urlopen(request.Request(url, headers = {'User-Agent': 'Trade-Dangerous'}))
+            return request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
         
         tdenv.NOTE("Checking for update to '{}'.", path)
         if path == self.sysFullPath:
@@ -664,7 +679,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # EDCD is really quick about getting new items updated, so we'll use its item list to check
         # for missing items in EDDB.io's list.
         edcd_source = 'https://raw.githubusercontent.com/EDCD/FDevIDs/master/commodity.csv'
-        edcd_csv = request.urlopen(edcd_source)
+        edcd_csv = request_url(edcd_source)
         edcd_dict = csv.DictReader(codecs.iterdecode(edcd_csv, 'utf-8'))
         
         def blankItem(name, ed_id, category, category_id):
