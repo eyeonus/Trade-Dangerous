@@ -9,7 +9,10 @@ from tradedangerous.tradedb import TradeDB
 
 @pytest.fixture(scope="module")
 def tdb() -> TradeDB:
-    return TradeDB()
+    tdb = TradeDB()
+    yield tdb
+    # closing tdb when done with it
+    tdb.close()
 
 
 @pytest.fixture(scope="module")

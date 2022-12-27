@@ -70,7 +70,7 @@ switches = [
 ######################################################################
 # Perform query and populate result set
 
-def run(results, cmdenv, tdb):
+def run(results, cmdenv, tdb:TradeDB):
     from .commandenv import ResultRow
     
     if cmdenv.lt and cmdenv.gt:
@@ -175,6 +175,8 @@ def run(results, cmdenv, tdb):
         row.demand = demand
         row.age = station.itemDataAgeStr
         results.rows.append(row)
+    
+    cur.close()
     
     if not results.rows:
         raise NoDataError("No available items found")

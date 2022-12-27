@@ -57,6 +57,7 @@ from .tradeenv import TradeEnv
 from .tradeexcept import TradeException
 
 from . import cache, fs
+from contextlib import closing
 import heapq
 import itertools
 import locale
@@ -635,8 +636,7 @@ class TradeDB(object):
             load=True,
             debug=None,
             ):
-        self.conn = None
-        self.cur = None
+        self.conn : sqlite3.Connection = None
         self.tradingCount = None
         
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
@@ -696,7 +696,7 @@ class TradeDB(object):
     ############################################################
     # Access to the underlying database.
     
-    def getDB(self):
+    def getDB(self) -> sqlite3.Connection:
         if self.conn:
             return self.conn
         self.tdenv.DEBUG1("Connecting to DB")
@@ -705,14 +705,12 @@ class TradeDB(object):
         conn.execute("PRAGMA synchronous=OFF")
         conn.execute("PRAGMA temp_store=MEMORY")
         conn.create_function('dist2', 6, TradeDB.calculateDistance2)
+        self.conn = conn
         return conn
     
     def query(self, *args):
         """ Perform an SQL query on the DB and return the cursor. """
-        conn = self.getDB()
-        cur = conn.cursor()
-        cur.execute(*args)
-        return cur
+        return self.getDB().execute(*args)
     
     def queryColumn(self, *args):
         """ perform an SQL query and return a single column. """
@@ -769,10 +767,10 @@ class TradeDB(object):
             SELECT added_id, name
               FROM Added
         """
-        self.cur.execute(stmt)
         addedByID = {}
-        for ID, name in self.cur:
-            addedByID[ID] = name
+        with closing(self.query(stmt)) as cur:
+            for ID, name in cur:
+                addedByID[ID] = name
         self.addedByID = addedByID
         self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
     
@@ -801,11 +799,12 @@ class TradeDB(object):
                        added_id
                   FROM System
             """
-        self.cur.execute(stmt)
+        
         systemByID, systemByName = {}, {}
-        for (ID, name, posX, posY, posZ, addedID) in self.cur:
-            system = System(ID, name, posX, posY, posZ, addedID)
-            systemByID[ID] = systemByName[name.upper()] = system
+        with closing(self.getDB().execute(stmt)) as cur:
+            for (ID, name, posX, posY, posZ, addedID) in cur:
+                system = System(ID, name, posX, posY, posZ, addedID)
+                systemByID[ID] = systemByName[name.upper()] = system
         
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
@@ -1197,7 +1196,7 @@ class TradeDB(object):
                     max_pad_size, outfitting, rearm, refuel, repair, planetary, type_id
               FROM  Station
         """
-        self.cur.execute(stmt)
+        
         stationByID = {}
         systemByID = self.systemByID
         self.tradingStationCount = 0
@@ -1205,21 +1204,21 @@ class TradeDB(object):
         # Odyssey settlements are station type 25.
         # Storing as a list allows easy expansion if needed.
         types = {'fleet-carrier':[24,],'odyssey':[25,],}
-        
-        for (
-            ID, systemID, name,
-            lsFromStar, market, blackMarket, shipyard,
-            maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
-        ) in self.cur:
-            isFleet = 'Y' if int(type_id) in types['fleet-carrier'] else 'N'
-            isOdyssey = 'Y' if int(type_id) in types['odyssey'] else 'N'
-            station = Station(
-                ID, systemByID[systemID], name,
+        with closing(self.query(stmt)) as cur:
+            for (
+                ID, systemID, name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair, planetary, isFleet, isOdyssey,
-                0, None,
-            )
-            stationByID[ID] = station
+                maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
+            ) in cur :
+                isFleet = 'Y' if int(type_id) in types['fleet-carrier'] else 'N'
+                isOdyssey = 'Y' if int(type_id) in types['odyssey'] else 'N'
+                station = Station(
+                    ID, systemByID[systemID], name,
+                    lsFromStar, market, blackMarket, shipyard,
+                    maxPadSize, outfitting, rearm, refuel, repair, planetary, isFleet, isOdyssey,
+                    0, None,
+                )
+                stationByID[ID] = station
         
         tradingCount = 0
         stmt = """
@@ -1230,11 +1229,12 @@ class TradeDB(object):
              GROUP  BY 1
              HAVING item_count > 0
         """
-        for ID, itemCount, dataAge in self.cur.execute(stmt):
-            station = stationByID[ID]
-            station.itemCount = itemCount
-            station.dataAge = dataAge
-            tradingCount += 1
+        with closing(self.query(stmt)) as cur:
+            for ID, itemCount, dataAge in cur:
+                station = stationByID[ID]
+                station.itemCount = itemCount
+                station.dataAge = dataAge
+                tradingCount += 1
         
         self.stationByID = stationByID
         self.tradingStationCount = tradingCount
@@ -1837,10 +1837,9 @@ class TradeDB(object):
             SELECT ship_id, name, cost, fdev_id
               FROM Ship
         """
-        self.cur.execute(stmt)
         self.shipByID = {
             row[0]: Ship(*row, stations=[])
-            for row in self.cur
+            for row in self.query(stmt)
         }
         
         self.tdenv.DEBUG1("Loaded {} Ships", len(self.shipByID))
@@ -1873,10 +1872,11 @@ class TradeDB(object):
             SELECT category_id, name
               FROM Category
         """
-        self.categoryByID = {
-            ID: Category(ID, name, [])
-            for (ID, name) in self.cur.execute(stmt)
-        }
+        with closing(self.query(stmt)) as cur:
+            self.categoryByID = {
+                ID: Category(ID, name, [])
+                for (ID, name) in cur
+            }
         
         self.tdenv.DEBUG1("Loaded {} Categories", len(self.categoryByID))
     
@@ -1904,19 +1904,20 @@ class TradeDB(object):
               FROM Item
         """
         itemByID, itemByName, itemByFDevID = {}, {}, {}
-        for ID, name, categoryID, avgPrice, fdevID in self.cur.execute(stmt):
-            category = self.categoryByID[categoryID]
-            item = Item(
-                ID, name, category,
-                '{}/{}'.format(category.dbname, name),
-                avgPrice, fdevID
-            )
-            itemByID[ID] = item
-            itemByName[name] = item
-            if fdevID:
-                itemByFDevID[fdevID] = item
-            
-            category.items.append(item)
+        with closing(self.query(stmt)) as cur:
+            for ID, name, categoryID, avgPrice, fdevID in cur:
+                category = self.categoryByID[categoryID]
+                item = Item(
+                    ID, name, category,
+                    '{}/{}'.format(category.dbname, name),
+                    avgPrice, fdevID
+                )
+                itemByID[ID] = item
+                itemByName[name] = item
+                if fdevID:
+                    itemByFDevID[fdevID] = item
+                
+                category.items.append(item)
         
         self.itemByID = itemByID
         self.itemByName = itemByName
@@ -1989,21 +1990,22 @@ class TradeDB(object):
                     cost, max_allocation, illegal, suppressed
               FROM  RareItem
         """
-        self.cur.execute(stmt)
+        
         
         rareItemByID, rareItemByName = {}, {}
         stationByID = self.stationByID
-        for (
-            ID, stnID, catID, name,
-            cost, maxAlloc, illegal, suppressed
-        ) in self.cur:
-            station = stationByID[stnID]
-            category = self.categoryByID[catID]
-            rare = RareItem(
-                ID, station, name, cost, maxAlloc, illegal, suppressed,
-                category, '{}/{}'.format(category.dbname, name)
-            )
-            rareItemByID[ID] = rareItemByName[name] = rare
+        with closing(self.query(stmt)) as cur:
+            for (
+                ID, stnID, catID, name,
+                cost, maxAlloc, illegal, suppressed
+            ) in cur:
+                station = stationByID[stnID]
+                category = self.categoryByID[catID]
+                rare = RareItem(
+                    ID, station, name, cost, maxAlloc, illegal, suppressed,
+                    category, '{}/{}'.format(category.dbname, name)
+                )
+                rareItemByID[ID] = rareItemByName[name] = rare
         self.rareItemByID = rareItemByID
         self.rareItemByName = rareItemByName
         
@@ -2033,8 +2035,7 @@ class TradeDB(object):
         
         self.tdenv.DEBUG1("Loading data")
         
-        self.conn = conn = self.getDB()
-        self.cur = conn.cursor()
+    
         
         self._loadAdded()
         self._loadSystems()
