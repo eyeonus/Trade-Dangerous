@@ -82,11 +82,11 @@ class ImportPlugin(ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         optShow = self.getOption("show")
         
-        oldHeadRegEx = re.compile("^(?P<headDateTime>\d\d-\d\d-\d\d-\d\d:\d\d)\s+(?P<headTZName>.*[^\s])\s+(?P<headTimeGMT>\(.*GMT\))")
-        newHeadRegEx = re.compile("^(?P<headDateTime>\d\d\d\d-\d\d-\d\d\s+\d\d:\d\d)\s+(?P<headTZName>.*[^\s])")
+        oldHeadRegEx = re.compile(r"^(?P<headDateTime>\d\d-\d\d-\d\d-\d\d:\d\d)\s+(?P<headTZName>.*[^\s])\s+(?P<headTimeGMT>\(.*GMT\))")
+        newHeadRegEx = re.compile(r"^(?P<headDateTime>\d\d\d\d-\d\d-\d\d\s+\d\d:\d\d)\s+(?P<headTZName>.*[^\s])")
         
-        sysRegEx  = re.compile('^\{[^\}]+\}\s+System:"(?P<sysName>[^"]+)".*StarPos:\((?P<sysPos>[^)]+)\)ly')
-        dateRegEx = re.compile('^\{(?P<logTime>\d\d:\d\d:\d\d)')
+        sysRegEx  = re.compile(r'^\{[^\}]+\}\s+System:"(?P<sysName>[^"]+)".*StarPos:\((?P<sysPos>[^)]+)\)ly')
+        dateRegEx = re.compile(r'^\{(?P<logTime>\d\d:\d\d:\d\d)')
         
         def calcSeconds(h=0, m=0, s=0):
             return 3600*h + 60*m + s

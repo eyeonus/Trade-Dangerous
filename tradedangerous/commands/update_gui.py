@@ -695,7 +695,7 @@ class UpdateGUI(ScrollingCanvas):
                     supply = "-"
                 elif not supply:
                     supply = "?"
-                elif re.match('^\d+$', supply):
+                elif re.match(r"^\d+$", supply):
                     if int(supply) != 0:
                         supply += '?'
             

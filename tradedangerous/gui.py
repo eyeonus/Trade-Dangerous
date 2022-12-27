@@ -36,6 +36,7 @@ from __future__ import with_statement
 from __future__ import print_function
 from __future__ import division
 from __future__ import unicode_literals
+from pkg_resources import resource_filename
 import os
 import sys
 import traceback
@@ -47,6 +48,8 @@ from appJar import gui
 import appJar
 
 from tkinter import *
+import tkinter.font as font
+import tkinter.scrolledtext as scrolledtext
 from tkinter.ttk import *
 
 from . import commands
@@ -960,7 +963,7 @@ def main(argv = None):
     buildArgDicts()
 
     window.title('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,))
-    window.iconbitmap('../tradedangerouscrest.ico')
+    window.iconbitmap(resource_filename(__name__, "../tradedangerouscrest.ico"))
     
     widgets['Command'] = addWidget('combo', window, 3, 0, values = Commands, bind = updateCommandBox, 
                 width = 10, state = 'readonly', height = len(Commands), default = Commands[0], columnspan = 4,
