@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.8 (2022-12-27)
+### Fix
+* New Sementic release ([`1b2a46c`](https://github.com/eyeonus/Trade-Dangerous/commit/1b2a46c29eef708e439abea86d863409edc350ef))
+
 ## v10.13.7 (2022-06-15)
 ### Fix
 * Forgot to remove some debug code. ([`8b1b889`](https://github.com/eyeonus/Trade-Dangerous/commit/8b1b889823365b337ac9657cfbf034c0373ee76c))
