@@ -4,7 +4,7 @@ import random
 import pytest
 
 from tradedangerous.tradedb import Trade, TradeDB, Station, System
-from .helpers import is_initialized, copy_fixtures
+from .helpers import copy_fixtures
 
 ORIGIN='Shinrarta Dezhra'
 #tdb = None
@@ -12,7 +12,7 @@ ORIGIN='Shinrarta Dezhra'
 def setup_module():
     copy_fixtures()
 
-def route_to_closest(tdb, origin, destinations, maxLy=15):
+def route_to_closest(tdb:TradeDB, origin, destinations, maxLy=15):
     closest = min(destinations, key=lambda candidate: candidate.distanceTo(origin))
     print("Closest:", closest.name(), closest.distanceTo(origin))
     route = tdb.getRoute(origin, closest, maxLy)
@@ -24,6 +24,7 @@ def route_to_closest(tdb, origin, destinations, maxLy=15):
 
 def should_skip() -> bool:
     return False # os.getenv("CI") != None
+
 
 class TestPeek(object):
     """

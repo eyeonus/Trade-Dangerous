@@ -37,3 +37,4 @@ def test_derp(tdb=None, tdenv=None):
             matches += 1
     if not matches:
         print("Current data is free of known derp")
+    tdb.close()

@@ -16,7 +16,7 @@ jobs:
       matrix:
         os:
           - Ubuntu
-#          - Windows
+          - Windows
         py:
           - "3.11"
           - "3.10"
