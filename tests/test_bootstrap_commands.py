@@ -47,4 +47,7 @@ class TestBootstrapCommands(unittest.TestCase):
     
     def test_import_update_cmd(self):
         from tradedangerous.commands import update_cmd
+        
+    def test_import_update_gui(self):
+        from tradedangerous.commands import update_gui
 
