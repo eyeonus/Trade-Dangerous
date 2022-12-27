@@ -40,11 +40,6 @@ CONTEXT=ssl.create_default_context(cafile=certifi.where())
 
 
 def request_url(url, headers=None):
-    try:
-        print('***** context:', url, certifi.where())
-    except Exception as err:
-        print("error!", err)
-    
     data = None
     if headers:
         data = bytes(json.dumps(headers), encoding="utf-8")
