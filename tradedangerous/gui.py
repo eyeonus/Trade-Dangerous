@@ -47,10 +47,10 @@ from pathlib import Path
 from appJar import gui
 import appJar
 
-from tkinter import *
-import tkinter.font as font
-import tkinter.scrolledtext as scrolledtext
-from tkinter.ttk import *
+# from tkinter import *
+# import tkinter.font as font
+# import tkinter.scrolledtext as scrolledtext
+# from tkinter.ttk import *
 
 from . import commands
 from . import plugins
@@ -297,7 +297,7 @@ def buildArgDicts():
         if index.arguments:
             for arg in index.arguments:
                 # print(arg.args[0])
-                argVals[arg.args[0]] = StringVar(value = arg.kwargs.get('default') or None)
+                argVals[arg.args[0]] = arg.kwargs.get('default') or None
                 
                 allArgs[cmd]['req'][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
                 allArgs[cmd]['req'][arg.args[0]]['widget'] = chooseType(arg)
@@ -306,7 +306,7 @@ def buildArgDicts():
         if index.switches:
             for arg in index.switches:
                 try:
-                    argVals[arg.args[0]] = StringVar(value = arg.kwargs.get('default') or None)
+                    argVals[arg.args[0]] = value = arg.kwargs.get('default') or None
                     
                     allArgs[cmd]['opt'][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
                     allArgs[cmd]['opt'][arg.args[0]]['widget'] = chooseType(arg)
@@ -323,7 +323,7 @@ def buildArgDicts():
                 
                 except AttributeError:
                     for argGrp in arg.arguments:
-                        argVals[argGrp.args[0]] = StringVar(value = argGrp.kwargs.get('default') or None)
+                        argVals[argGrp.args[0]] = value = argGrp.kwargs.get('default') or None
                         
                         allArgs[cmd]['opt'][argGrp.args[0]] = {kwarg : argGrp.kwargs[kwarg] for kwarg in argGrp.kwargs}
                         allArgs[cmd]['opt'][argGrp.args[0]]['widget'] = chooseType(argGrp)
@@ -475,7 +475,7 @@ def addWidgetFromArg(name, arg, parent):
     sub = kwargs.pop('sub', None)
     if type == 'ticks':
         kwargs['height'] = len(kwargs['values'])
-        argVals[name] = StringVar(value = kwargs.pop('values', None))
+        argVals[name] = value = kwargs.pop('values', None)
         kwargs['listvariable'] = argVals[name]
         kwargs['selectmode'] = 'extended'
     #numeric
@@ -959,24 +959,24 @@ def main(argv = None):
             )
     
     
-    window = Tk()
     buildArgDicts()
-
-    window.title('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,))
-    window.iconbitmap(resource_filename(__name__, "../tradedangerouscrest.ico"))
     
-    widgets['Command'] = addWidget('combo', window, 3, 0, values = Commands, bind = updateCommandBox, 
-                width = 10, state = 'readonly', height = len(Commands), default = Commands[0], columnspan = 4,
-                justify = 'center', sticky = 'ew', tooltip = 'Trade Dangerous command to run.')
-    widgets['req'] = addWidget('frame', window, 0, 1, width = 200, height = 175, columnspan = 10, sdir = 'v')
-    widgets['opt'] = addWidget('frame', window, 0, 2, width = 200, height = 345, columnspan = 10, sdir = 'v')
-    
-    widgets['tabFrame'] = addWidget('tab', window, 10, 1, rowspan = 2, columnspan = 40, width = 560, height = 520)
-    widgets [ 'helpPane'] = addWidget('stext', widgets['tabFrame'], width = 80, font = font.Font(family = 'Courier New', size=10),
-              #'fixed', 'oemfixed', 'ansifixed', 'systemfixed', 'TkFixedFont'
-              default = (0.0, cmdHelp['help']), state = 'disabled', tab = 'Help')
-    widgets['outPane'] = addWidget('stext', widgets['tabFrame'], width = 80, state = 'disabled', tab = 'Output')
-    
+#    window = Tk()
+#    window.title('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,))
+#    window.iconbitmap(resource_filename(__name__, "../tradedangerouscrest.ico"))
+#    
+#    widgets['Command'] = addWidget('combo', window, 3, 0, values = Commands, bind = updateCommandBox, 
+#                width = 10, state = 'readonly', height = len(Commands), default = Commands[0], columnspan = 4,
+#                justify = 'center', sticky = 'ew', tooltip = 'Trade Dangerous command to run.')
+#    widgets['req'] = addWidget('frame', window, 0, 1, width = 200, height = 175, columnspan = 10, sdir = 'v')
+#    widgets['opt'] = addWidget('frame', window, 0, 2, width = 200, height = 345, columnspan = 10, sdir = 'v')
+#    
+#    widgets['tabFrame'] = addWidget('tab', window, 10, 1, rowspan = 2, columnspan = 40, width = 560, height = 520)
+#    widgets [ 'helpPane'] = addWidget('stext', widgets['tabFrame'], width = 80, font = font.Font(family = 'Courier New', size=10),
+#              #'fixed', 'oemfixed', 'ansifixed', 'systemfixed', 'TkFixedFont'
+#              default = (0.0, cmdHelp['help']), state = 'disabled', tab = 'Help')
+#    widgets['outPane'] = addWidget('stext', widgets['tabFrame'], width = 80, state = 'disabled', tab = 'Output')
+#    
 #        makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
 #        
 #        makeWidget('--quiet', allArgs['--quiet'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 46)
@@ -997,8 +997,8 @@ def main(argv = None):
 #        with win.scrollPane('DB', disabled = 'vertical', row = 5, column = 1, colspan = 49) as pane:
 #            pane.configure(width = 500, height = 20)
 #            win.label('db', argVals['--db'], sticky = 'w')
-    
-    window.mainloop()
+#    
+#    window.mainloop()
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,), inPadding = 1) as win:
         win.setFont(size = 8, family = 'Courier')
