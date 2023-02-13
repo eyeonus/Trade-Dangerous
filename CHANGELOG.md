@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v10.13.10 (2023-02-13)
+### Fix
+* Make gui work again ([`f0a95c3`](https://github.com/eyeonus/Trade-Dangerous/commit/f0a95c3950783c6377df0c0ef3fce0f24769c4c9))
+
 ## v10.13.9 (2022-12-27)
 ### Fix
 * Make tox work on windows again ([#106](https://github.com/eyeonus/Trade-Dangerous/issues/106)) ([`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
