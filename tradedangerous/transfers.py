@@ -173,7 +173,7 @@ def download(
     spinner, spinners = 0, [
         '.    ', '..   ', '...  ', ' ... ', '  ...', '   ..', '    .'
     ]
-    with tmpPath.open("wb") as fh:
+    with tmpPath.open("wb", encoding="utf-8") as fh:
         for data in req.iter_content(chunk_size=chunkSize):
             fh.write(data)
             fetched += len(data)
