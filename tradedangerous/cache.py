@@ -285,12 +285,12 @@ def getStationByNameIndex(cur):
     """ Build station index in STAR/Station notation """
     cur.execute("""
             SELECT station_id,
-                    UPPER(system.name) || '/' || UPPER(station.name)
+                    system.name || '/' || station.name
               FROM System
                    INNER JOIN Station
                       USING (system_id)
         """)
-    return { name: ID for (ID, name) in cur }
+    return { name.upper(): ID for (ID, name) in cur }
 
 
 def getItemByNameIndex(cur):
