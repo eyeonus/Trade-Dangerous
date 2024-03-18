@@ -2,6 +2,15 @@
 
 
 
+## v10.14.1 (2024-03-18)
+
+### Fix
+
+* fix: remove incorrect cast to boolean for the modified timestamp values (#118)
+
+also include distance from star from stations ([`6f2027a`](https://github.com/eyeonus/Trade-Dangerous/commit/6f2027aefbf2210821358cfcb4eae8a2f8375452))
+
+
 ## v10.14.0 (2024-03-17)
 
 ### Feature
