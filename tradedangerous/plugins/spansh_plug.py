@@ -217,6 +217,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             INSERT INTO Station (
                 system_id,
                 name,
+                ls_from_star,
                 max_pad_size,
                 market,
                 blackmarket,
@@ -231,11 +232,12 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
             VALUES (
                 (SELECT system_id FROM System WHERE upper(name) = ?),
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
             ''',
             system.name.upper(),
             station.name,
+            station.distance,
             station.max_pad_size,
             self.bool_yn(station.market),
             self.bool_yn(station.black_market),
@@ -245,7 +247,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.bool_yn(station.refuel),
             self.bool_yn(station.repair),
             self.bool_yn(station.planetary),
-            self.bool_yn(station.modified),
+            station.modified,
             station.type,
         )
         self.need_commit = True
