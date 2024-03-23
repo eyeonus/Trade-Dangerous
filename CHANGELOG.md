@@ -2,6 +2,13 @@
 
 
 
+## v10.14.4 (2024-03-23)
+
+### Fix
+
+* fix: Update python-app.yml ([`96c29bd`](https://github.com/eyeonus/Trade-Dangerous/commit/96c29bdbb884036ce96e0e67abc8d490f3ac83b2))
+
+
 ## v10.14.3 (2024-03-23)
 
 ### Fix
