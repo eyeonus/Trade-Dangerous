@@ -1,0 +1,4 @@
+[tool.semantic_release.branches.main]
+match = "(main|master|release/v1)"
+prerelease_token = "rc"
+prerelease = false
