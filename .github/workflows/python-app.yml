@@ -86,6 +86,9 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
     
+    - name : Semantic Release Version
+      run : semantic-release version
+    
     - name: Twine
       run: twine upload dist/*
     
