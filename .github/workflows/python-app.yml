@@ -104,6 +104,12 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
     
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
