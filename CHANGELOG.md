@@ -2,30 +2,37 @@
 
 
 
-## v10.14.6 (2024-03-23)
+## v10.14.2 (2024-03-23)
 
 ### Fix
+
+* fix: Update pyproject.toml ([`c25e778`](https://github.com/eyeonus/Trade-Dangerous/commit/c25e778df27540420d40909831f3baf4e6012794))
+
+* fix: Update python-app.yml ([`0320312`](https://github.com/eyeonus/Trade-Dangerous/commit/0320312d1d1ae1c9023e690e7603e41d72b85997))
+
+* fix: Update python-app.yml ([`d523382`](https://github.com/eyeonus/Trade-Dangerous/commit/d5233828b405148acd8f3a28762e93c0896d0231))
+
+* fix: Update python-app.yml ([`15fa4ca`](https://github.com/eyeonus/Trade-Dangerous/commit/15fa4ca952754ce148e35ae02b69396b5b2608d6))
+
+* fix: Update python-app.yml ([`7e118a8`](https://github.com/eyeonus/Trade-Dangerous/commit/7e118a865fa2dd23ec7a6b1e8b79ce4c5e2d4aee))
+
+* fix: Update publish.txt ([`1dc4031`](https://github.com/eyeonus/Trade-Dangerous/commit/1dc4031a4c9d3b31bdc06cb51f188387b1d4ea8f))
+
+* fix: Update python-app.yml ([`39b2fbc`](https://github.com/eyeonus/Trade-Dangerous/commit/39b2fbcf242cb4d8a1d9d476ba9c8fbd2ef481c3))
+
+* fix: Update python-app.yml ([`890bba8`](https://github.com/eyeonus/Trade-Dangerous/commit/890bba87796cb636554b21a81f327f3ce118e527))
+
+* fix: Update python-app.yml ([`229db1f`](https://github.com/eyeonus/Trade-Dangerous/commit/229db1fec29dbc9196f0fb341596d67dd9977a9f))
+
+* fix: Update python-app.yml ([`b79a47b`](https://github.com/eyeonus/Trade-Dangerous/commit/b79a47b535d62863be7d2157aad1e8ee54b5fd73))
+
+* fix: Update python-app.yml ([`41962ef`](https://github.com/eyeonus/Trade-Dangerous/commit/41962efb685822f5c3dcf2e9a336dbcdc024e315))
 
 * fix: Update python-app.yml ([`c7141ca`](https://github.com/eyeonus/Trade-Dangerous/commit/c7141cab3cbc92fe995a27582f4e5dfd7c690c0f))
 
-
-## v10.14.5 (2024-03-23)
-
-### Fix
-
 * fix: Update python-app.yml ([`432631e`](https://github.com/eyeonus/Trade-Dangerous/commit/432631e1c1ec6acce4bdc2754ee0bcf869bdb1c3))
 
-
-## v10.14.4 (2024-03-23)
-
-### Fix
-
 * fix: Update python-app.yml ([`96c29bd`](https://github.com/eyeonus/Trade-Dangerous/commit/96c29bdbb884036ce96e0e67abc8d490f3ac83b2))
-
-
-## v10.14.3 (2024-03-23)
-
-### Fix
 
 * fix: Update python-app.yml ([`7a4ce3b`](https://github.com/eyeonus/Trade-Dangerous/commit/7a4ce3b19ada8dc1c2f76048d9d54428063e3f95))
 
@@ -53,16 +60,11 @@
 
 * fix: Update python-app.yml ([`5d098fb`](https://github.com/eyeonus/Trade-Dangerous/commit/5d098fbcd0a5de9f0162fe6d9f4a3b60dc27217c))
 
+* fix: bump version for pypi publication ([`e05853f`](https://github.com/eyeonus/Trade-Dangerous/commit/e05853ff0d12f5117bb4e94813cba4c779c285d9))
+
 ### Refactor
 
 * refactor: Update publish.txt ([`d8ae0b7`](https://github.com/eyeonus/Trade-Dangerous/commit/d8ae0b76409d77bec68069080bba90bcc798e337))
-
-
-## v10.14.2 (2024-03-23)
-
-### Fix
-
-* fix: bump version for pypi publication ([`e05853f`](https://github.com/eyeonus/Trade-Dangerous/commit/e05853ff0d12f5117bb4e94813cba4c779c285d9))
 
 
 ## v10.14.1 (2024-03-18)
@@ -1924,7 +1926,7 @@ The .1 part of 10.0.1 is this specific refactor.
 * refactor: Include py3.7 in tox script as well. ([`489f721`](https://github.com/eyeonus/Trade-Dangerous/commit/489f721a566e1f0d5cd8752625050f19e68a4eb4))
 
 
-## v9.5.3 (2019-02-06)
+## v9.5.3 (2019-02-07)
 
 ### Refactor
 

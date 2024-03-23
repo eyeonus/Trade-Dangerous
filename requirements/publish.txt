@@ -3,3 +3,4 @@
 packaging>=20.0
 python-semantic-release
 build
+twine

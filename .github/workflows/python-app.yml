@@ -57,18 +57,7 @@ jobs:
       url: https://pypi.org/p/tradedangerous
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-      actions: write
-      checks: write
       contents: write
-      deployments: write
-      issues: write
-      discussions: write
-      packages: write
-      pages: write
-      pull-requests: write
-      repository-projects: write
-      security-events: write
-      statuses: write
     steps:
     # retrieve your distributions here
     - uses: actions/checkout@v4
@@ -93,17 +82,25 @@ jobs:
     # This action uses Python Semantic Release v8
     - name: Python Semantic Release
       id: release
-      #if: github.ref == 'refs/heads/release/v1'
       uses: python-semantic-release/python-semantic-release@v8.0.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-
+    
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+    
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       # NOTE: DO NOT wrap the conditional in ${{ }} as it will always evaluate to true.
       # See https://github.com/actions/runner/issues/1173
       if: steps.release.outputs.released == 'true'
-
+    
     - name: Publish package distributions to GitHub Releases
       uses: python-semantic-release/upload-to-gh-release@main
       if: steps.release.outputs.released == 'true'
