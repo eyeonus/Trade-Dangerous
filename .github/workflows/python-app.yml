@@ -50,10 +50,17 @@ jobs:
         tox
 
 
-  release:
+  pypi-publish:
+    name: Upload release to PyPI
     needs: test
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tradedangerous
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
+    # retrieve your distributions here
     - uses: actions/checkout@v3
       with:
           fetch-depth: 0
@@ -76,10 +83,5 @@ jobs:
     - name: semantic-release changelog
       run: semantic-release changelog
 
-    - name: semantic-release publish if master
-      if: github.ref == 'refs/heads/master'
-      uses: relekang/python-semantic-release@master
-      with: 
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        repository_username: __token__
-        repository_password: ${{ secrets.PYPI_TOKEN }}
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
