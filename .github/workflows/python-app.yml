@@ -100,7 +100,7 @@ jobs:
 
     
     - name: semantic-release changelog
-      run: semantic-release --branches release/v1 changelog
+      run: semantic-release changelog
 
     - name: build distribution
       run: python3 -m build
