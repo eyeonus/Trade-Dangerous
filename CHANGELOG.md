@@ -6,6 +6,8 @@
 
 ### Fix
 
+* fix: Update pyproject.toml ([`c25e778`](https://github.com/eyeonus/Trade-Dangerous/commit/c25e778df27540420d40909831f3baf4e6012794))
+
 * fix: Update python-app.yml ([`0320312`](https://github.com/eyeonus/Trade-Dangerous/commit/0320312d1d1ae1c9023e690e7603e41d72b85997))
 
 * fix: Update python-app.yml ([`d523382`](https://github.com/eyeonus/Trade-Dangerous/commit/d5233828b405148acd8f3a28762e93c0896d0231))
