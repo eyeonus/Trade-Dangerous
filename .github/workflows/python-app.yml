@@ -59,6 +59,18 @@ jobs:
       url: https://pypi.org/p/tradedangerous
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      actions: write
+      #checks: write
+      #contents: write
+      #deployments: write
+      #issues: write
+      #discussions: write
+      #packages: write
+      #pages: write
+      #pull-requests: write
+      #repository-projects: write
+      #security-events: write
+      #statuses: write
     steps:
     # retrieve your distributions here
     - uses: actions/checkout@v4
@@ -84,10 +96,8 @@ jobs:
       if: github.ref == 'refs/heads/release/v1'
       uses: relekang/python-semantic-release@master
       with: 
-        permissions: write-all
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        repository_username: __token__
-        repository_password: ${{ secrets.PYPI_TOKEN }}
+
     
     - name: semantic-release changelog
       run: semantic-release --branches release/v1 changelog
