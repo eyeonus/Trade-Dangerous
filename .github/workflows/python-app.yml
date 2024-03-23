@@ -61,12 +61,12 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
     # retrieve your distributions here
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
           fetch-depth: 0
 
     - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
       with:
         python-version: "3.10"
     
@@ -94,4 +94,4 @@ jobs:
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        packages-dir: tradedangerous/
+        packages-dir: /
