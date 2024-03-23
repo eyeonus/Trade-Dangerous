@@ -2,6 +2,13 @@
 
 
 
+## v10.14.2 (2024-03-23)
+
+### Fix
+
+* fix: bump version for pypi publication ([`e05853f`](https://github.com/eyeonus/Trade-Dangerous/commit/e05853ff0d12f5117bb4e94813cba4c779c285d9))
+
+
 ## v10.14.1 (2024-03-18)
 
 ### Fix
@@ -1861,7 +1868,7 @@ The .1 part of 10.0.1 is this specific refactor.
 * refactor: Include py3.7 in tox script as well. ([`489f721`](https://github.com/eyeonus/Trade-Dangerous/commit/489f721a566e1f0d5cd8752625050f19e68a4eb4))
 
 
-## v9.5.3 (2019-02-07)
+## v9.5.3 (2019-02-06)
 
 ### Refactor
 
