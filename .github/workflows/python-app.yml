@@ -84,6 +84,7 @@ jobs:
       if: github.ref == 'refs/heads/release/v1'
       uses: relekang/python-semantic-release@master
       with: 
+        permissions: write-all
         github_token: ${{ secrets.GITHUB_TOKEN }}
         repository_username: __token__
         repository_password: ${{ secrets.PYPI_TOKEN }}
