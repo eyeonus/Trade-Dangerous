@@ -79,9 +79,19 @@ jobs:
       run: |
         git config --global user.name "semantic-release (via GitHub Actions)"
         git config --global user.email "semantic-release@gh"
+
+    - name: semantic-release publish if master
+      if: github.ref == 'refs/heads/release/v1'
+      uses: relekang/python-semantic-release@release/v1
+      with: 
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        repository_username: __token__
+        repository_password: ${{ secrets.PYPI_TOKEN }}
     
     - name: semantic-release changelog
       run: semantic-release changelog
 
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: tradedangerous/
