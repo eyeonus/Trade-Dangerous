@@ -6,6 +6,8 @@
 
 ### Fix
 
+* fix: Update python-app.yml ([`b79a47b`](https://github.com/eyeonus/Trade-Dangerous/commit/b79a47b535d62863be7d2157aad1e8ee54b5fd73))
+
 * fix: Update python-app.yml ([`41962ef`](https://github.com/eyeonus/Trade-Dangerous/commit/41962efb685822f5c3dcf2e9a336dbcdc024e315))
 
 * fix: Update python-app.yml ([`c7141ca`](https://github.com/eyeonus/Trade-Dangerous/commit/c7141cab3cbc92fe995a27582f4e5dfd7c690c0f))
