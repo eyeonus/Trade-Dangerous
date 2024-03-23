@@ -5,9 +5,9 @@ name: Python application
 
 on:
   push:
-    branches: [ master ]
+    branches: [ release/v1 ]
   pull_request:
-    branches: [ master ]
+    branches: [ release/v1 ]
 
 jobs:
   test:
@@ -23,16 +23,15 @@ jobs:
           - "3.9"
           - "3.8"
           - "3.7"
-          
+    
     steps:
-    - uses: actions/checkout@v3
-
+    - uses: actions/checkout@v4
+    
     - name: Set up Python ${{ matrix.py }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.py }}
-
-   
+    
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip
@@ -48,18 +47,36 @@ jobs:
     - name: Test with tox
       run: |
         tox
-
-
-  release:
+  
+  pypi-publish:
+    name: Upload release to PyPI
     needs: test
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tradedangerous
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      actions: write
+      checks: write
+      contents: write
+      deployments: write
+      issues: write
+      discussions: write
+      packages: write
+      pages: write
+      pull-requests: write
+      repository-projects: write
+      security-events: write
+      statuses: write
     steps:
-    - uses: actions/checkout@v3
+    # retrieve your distributions here
+    - uses: actions/checkout@v4
       with:
           fetch-depth: 0
-
+    
     - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: "3.10"
     
@@ -67,19 +84,35 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install -r requirements/publish.txt
-
+    
     - name: Configure git
       run: |
         git config --global user.name "semantic-release (via GitHub Actions)"
         git config --global user.email "semantic-release@gh"
     
-    - name: semantic-release changelog
-      run: semantic-release changelog
-
     - name: semantic-release publish if master
-      if: github.ref == 'refs/heads/master'
+      if: github.ref == 'refs/heads/release/v1'
       uses: relekang/python-semantic-release@master
       with: 
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        repository_username: __token__
-        repository_password: ${{ secrets.PYPI_TOKEN }}
+    
+    - name: semantic-release changelog
+      run: semantic-release changelog
+    
+    - name: build distribution
+      run: python3 -m build
+    
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    
+    - name: Download all the dists
+      uses: actions/download-artifact@v3
+      with:
+        name: python-package-distributions
+        path: dist/
+    
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
