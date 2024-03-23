@@ -86,10 +86,10 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
     
-    - name : Semantic Release Version
-      run : semantic-release version
+    - name : Twine build
+      run : twine build
     
-    - name: Twine
+    - name: Twine upload
       run: twine upload dist/*
     
     - name: Publish package distributions to PyPI
