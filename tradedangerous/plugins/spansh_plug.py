@@ -9,7 +9,7 @@ import requests
 import simdjson
 import sqlite3
 
-from .. import plugins, cache, fs
+from .. import plugins, cache, fs, transfers
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
 
@@ -156,17 +156,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         return False
 
     def data_stream(self):
+        if not self.file:
+            url = self.url or SOURCE_URL
+            self.print(f'Downloading prices from remote URL: {url}')
+            self.file = self.tdenv.tmpDir / Path("galaxy_stations.json")
+            transfers.download(self.tdenv, url, self.file)
+            self.print(f'Download complete, saved to local file: {self.file}')
+
         if self.file == '-':
             self.print('Reading prices from stdin')
             stream = sys.stdin
         elif self.file:
             self.print(f'Reading prices from local file: {self.file}')
             stream = open(self.file, 'r', encoding='utf8')
-        else:
-            url = self.url or SOURCE_URL
-            self.print(f'Reading prices from remote URL: {url}')
-            req = requests.get(url, stream=True)
-            stream = req.iter_lines(decode_unicode=True)
+        # else:
+        #     url = self.url or SOURCE_URL
+        #     self.print(f'Reading prices from remote URL: {url}')
+        #     req = requests.get(url, stream=True)
+        #     stream = req.iter_lines(decode_unicode=True)
         return ingest_stream(stream)
 
     def categorise_commodities(self, commodities):
