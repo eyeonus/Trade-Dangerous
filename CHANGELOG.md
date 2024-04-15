@@ -2,6 +2,21 @@
 
 
 
+## v10.14.4 (2024-04-15)
+
+### Fix
+
+* fix: download file when using spansh url option
+
+If there is a connection error whilst streaming from the url, it results
+in a crash. Downloading the file first and then streaming from the local
+file instead results in a much more stable import process. ([`f6e1a9a`](https://github.com/eyeonus/Trade-Dangerous/commit/f6e1a9aa59373cdbc200b008dddbd7f4bce07fb9))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`40f8f7c`](https://github.com/eyeonus/Trade-Dangerous/commit/40f8f7c027441ff8eb6a450f915473bb9ca39201))
+
+
 ## v10.14.3 (2024-04-15)
 
 ### Fix
