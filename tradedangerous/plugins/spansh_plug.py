@@ -9,7 +9,7 @@ import requests
 import simdjson
 import sqlite3
 
-from .. import plugins
+from .. import plugins, cache, fs
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
 
@@ -55,12 +55,14 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginOptions = {
         'url':  f'URL to download galaxy data from (defaults to {SOURCE_URL})',
         'file': 'Local filename to import galaxy data from; use "-" to load from stdin',
+        'listener': 'For use by TD-listener, prevents updating cache from generated prices file',
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.url = self.getOption('url')
         self.file = self.getOption('file')
+        self.listener = self.getOption('listener')
         assert not (self.url and self.file), 'Provide either url or file, not both'
         if self.file and (self.file != '-'):
             self.file = (Path(self.tdenv.cwDir) / self.file).resolve()
@@ -71,12 +73,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         return self.tdenv.uprint(*args, **kwargs)
 
     def run(self):
-        self.tdenv.filename = str(self.tdb.pricesPath)
+        fs.ensurefolder(self.tdenv.tmpDir)
+        filePath = self.tdenv.tmpDir / Path("spansh.prices")
         if self.tdenv.detail < 1:
             self.print('This will take at least several minutes...')
             self.print('You can increase verbosity (-v) to get a sense of progress')
-        with open(self.tdb.pricesPath, 'w') as f, Timing() as timing:
-            self.print(f'Writing prices to {self.tdb.pricesPath}')
+        with open(filePath, 'w') as f, Timing() as timing:
+            self.print(f'Writing prices to {filePath}')
             f.write('# Generated from spansh galaxy data\n')
             f.write(f'# Source: {self.file or self.url}\n')
             f.write('#\n')
@@ -143,7 +146,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f'{timedelta(seconds=int(timing.elapsed))!s}  Done  '
                 f'{total_station_count} st  {total_commodity_count} co'
             )
-        return True
+            
+        if not self.listener:
+            with Timing() as timing:
+                self.print('Importing to cache...')
+                self.tdenv.mergeImport = True
+                cache.importDataFromFile(self.tdb, self.tdenv, filePath)
+                self.print(f'Cache import completed in {timedelta(seconds=int(timing.elapsed))!s}')
+        return False
 
     def data_stream(self):
         if self.file == '-':
