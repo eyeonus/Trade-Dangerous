@@ -2,6 +2,25 @@
 
 
 
+## v10.14.3 (2024-04-15)
+
+### Fix
+
+* fix: Don&#39;t overwrite TradeDangerous.prices
+
+spansh import plugin now writes to `&lt;TD_path&gt;/tmp/spansh.prices` rather
+than overwriting the cache file, and automatically imports the resulting
+spansh.prices file when processing has completed, rather than asking the
+user to import it via the import dialog box.
+
+Also added the `listener` option to the spansh plugin to forego the
+import when run from TD-listener. ([`2c5080b`](https://github.com/eyeonus/Trade-Dangerous/commit/2c5080b76d5e5c497a56fbb0de60f3e4ae204f93))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`f8db4af`](https://github.com/eyeonus/Trade-Dangerous/commit/f8db4af74af8187225b057f23f178f47b67d8b45))
+
+
 ## v10.14.2 (2024-03-23)
 
 ### Fix
@@ -66,6 +85,12 @@
 
 * refactor: Update publish.txt ([`d8ae0b7`](https://github.com/eyeonus/Trade-Dangerous/commit/d8ae0b76409d77bec68069080bba90bcc798e337))
 
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`8480ee6`](https://github.com/eyeonus/Trade-Dangerous/commit/8480ee6d75183405e7575d15d811a3c21d9ea901))
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`d4eb96a`](https://github.com/eyeonus/Trade-Dangerous/commit/d4eb96a31353222b3ee1d86c98b47001db51959c))
+
 
 ## v10.14.1 (2024-03-18)
 
@@ -88,6 +113,10 @@ sqlite&#39;s `upper()` function doesn&#39;t support non-ascii characters, so let
 move that transform to the python side, which has full unicode support
 
 * feat: plugin to ingest pricing data from https://downloads.spansh.co.uk/galaxy_stations.json ([`7dd32b5`](https://github.com/eyeonus/Trade-Dangerous/commit/7dd32b514d6aa88368e2648565410998005a02f1))
+
+### Unknown
+
+* test ([`88c1fd7`](https://github.com/eyeonus/Trade-Dangerous/commit/88c1fd7d914dd779b4a267843f7b8f831341294d))
 
 
 ## v10.13.10 (2023-02-13)
