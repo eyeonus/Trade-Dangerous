@@ -2,6 +2,20 @@
 
 
 
+## v10.15.0 (2024-04-17)
+
+### Feature
+
+* feat: add maxage option to spansh plugin
+
+By specifying maxage, any station from the source that is older than the
+age will be skipped.
+So if a full update was done using galaxy_stations.json on 13th May
+(which is updated every ~24 hours), doing a new update on 20th of May
+with a max_age of 7 will skip anything in the source that wasn&#39;t updated
+later than 13th May ([`0063e12`](https://github.com/eyeonus/Trade-Dangerous/commit/0063e12d24fc72b5e2673a28956d5262371e8e8c))
+
+
 ## v10.14.4 (2024-04-15)
 
 ### Fix
