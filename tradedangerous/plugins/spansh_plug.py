@@ -55,6 +55,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginOptions = {
         'url':  f'URL to download galaxy data from (defaults to {SOURCE_URL})',
         'file': 'Local filename to import galaxy data from; use "-" to load from stdin',
+        'maxage': 'Skip all entries older than specified age in days, ex.: maxage=1.5',
         'listener': 'For use by TD-listener, prevents updating cache from generated prices file',
     }
 
@@ -62,6 +63,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         super().__init__(*args, **kwargs)
         self.url = self.getOption('url')
         self.file = self.getOption('file')
+        self.maxage = float(self.getOption('maxage'))
         self.listener = self.getOption('listener')
         assert not (self.url and self.file), 'Provide either url or file, not both'
         if self.file and (self.file != '-'):
@@ -104,6 +106,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 station_count = 0
                 commodity_count = 0
                 for station, commodities in stations:
+                    if (datetime.now() - station.modified) > timedelta(days=self.maxage):
+                        if self.tdenv.detail >= 1:
+                            self.print(f'        |  @{system.name.upper()}/{station.name.upper():50s}  |  Skipping station due to age: {datetime.now() - station.modified}, ts: {station.modified}')
+                        continue
                     if (system.name.upper(), station.name.upper()) in seen_stations:
                         fq_station_name = f'@{system.name.upper()}/{station.name}'
                         if self.tdenv.detail >= 1:
@@ -183,15 +189,15 @@ class ImportPlugin(plugins.ImportPluginBase):
         return categories
 
     def execute(self, query, *params, **kwparams):
-        attempts = 5
+        # attempts = 5
         cursor = self.tdb.getDB().cursor()
         while True:
             try:
                 return cursor.execute(query, params or kwparams)
             except sqlite3.OperationalError as ex:
-                if not attempts:
-                    raise
-                attempts -= 1
+                # if not attempts:
+                #     raise
+                # attempts -= 1
                 self.print(f'Retrying query: {ex!s}')
                 time.sleep(1)
 

@@ -632,17 +632,34 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh = None, defaultZero = Fals
     removedItems = len(zeros)
     
     if items:
-        db.executemany("""
-            INSERT OR REPLACE INTO StationItem (
-                station_id, item_id, modified,
-                demand_price, demand_units, demand_level,
-                supply_price, supply_units, supply_level
-            ) VALUES (
-                ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
-                ?, ?, ?,
-                ?, ?, ?
-            )
-        """, items)
+        for item in items:
+            try:
+                db.execute("""
+                    INSERT OR REPLACE INTO StationItem (
+                        station_id, item_id, modified,
+                        demand_price, demand_units, demand_level,
+                        supply_price, supply_units, supply_level
+                    ) VALUES (
+                        ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
+                        ?, ?, ?,
+                        ?, ?, ?
+                    )
+                """, item)
+            except sqlite3.IntegrityError as e:
+                print(e)
+                print(item)
+                raise e
+        # db.executemany("""
+        #     INSERT OR REPLACE INTO StationItem (
+        #         station_id, item_id, modified,
+        #         demand_price, demand_units, demand_level,
+        #         supply_price, supply_units, supply_level
+        #     ) VALUES (
+        #         ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
+        #         ?, ?, ?,
+        #         ?, ?, ?
+        #     )
+        # """, items)
     updatedItems = len(items)
     
     tdenv.DEBUG0("Marking populated stations as having a market")
@@ -654,6 +671,7 @@ def processPricesFile(tdenv, db, pricesPath, pricesFh = None, defaultZero = Fals
              ")"
     )
     
+    tdenv.DEBUG0(f'Committing...')
     db.commit()
     
     changes = " and ".join("{} {}".format(v, k) for k, v in {
