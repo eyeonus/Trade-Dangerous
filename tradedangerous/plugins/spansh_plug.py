@@ -106,12 +106,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 station_count = 0
                 commodity_count = 0
                 for station, commodities in stations:
+                    fq_station_name = f'@{system.name.upper()}/{station.name}'
                     if (datetime.now() - station.modified) > timedelta(days=self.maxage):
                         if self.tdenv.detail >= 1:
-                            self.print(f'        |  @{system.name.upper()}/{station.name.upper():50s}  |  Skipping station due to age: {datetime.now() - station.modified}, ts: {station.modified}')
+                            self.print(f'        |  @{fq_station_name:50s}  |  Skipping station due to age: {datetime.now() - station.modified}, ts: {station.modified}')
                         continue
                     if (system.name.upper(), station.name.upper()) in seen_stations:
-                        fq_station_name = f'@{system.name.upper()}/{station.name}'
                         if self.tdenv.detail >= 1:
                             self.print(f'        |  {fq_station_name:50s}  |  Skipping duplicate station record')
                         continue
