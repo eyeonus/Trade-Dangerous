@@ -548,17 +548,18 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         
         processedItems[itemID] = lineNo
     
+    space_cleanup = re.compile(r'\s{2,}').sub
     for line in priceFile:
         lineNo += 1
         text, _, comment = line.partition('#')
-        text = text.strip()
+        text = space_cleanup(line, ' ').strip()
         if not text:
             continue
         
-        # replace whitespace with single spaces
-        if text.find("  "):
-            # http://stackoverflow.com/questions/2077897
-            text = ' '.join(text.split())
+        # # replace whitespace with single spaces
+        # if text.find("  "):
+        #     # http://stackoverflow.com/questions/2077897
+        #     text = ' '.join(text.split())
         
         ########################################
         # ## "@ STAR/Station" lines.

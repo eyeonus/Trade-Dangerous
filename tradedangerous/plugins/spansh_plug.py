@@ -9,7 +9,7 @@ import requests
 import simdjson
 import sqlite3
 
-from .. import plugins, cache, fs, transfers
+from .. import plugins, cache, fs, transfers, csvexport
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
 
@@ -63,7 +63,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         super().__init__(*args, **kwargs)
         self.url = self.getOption('url')
         self.file = self.getOption('file')
-        self.maxage = float(self.getOption('maxage'))
+        self.maxage = float(self.getOption('maxage')) if self.getOption('maxage') else None
         self.listener = self.getOption('listener')
         assert not (self.url and self.file), 'Provide either url or file, not both'
         if self.file and (self.file != '-'):
@@ -100,6 +100,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             total_station_count = 0
             total_commodity_count = 0
             self.need_commit = False
+            self.update_cache = False
             seen_stations = set()
             for system, stations in self.data_stream():
                 self.ensure_system(system)
@@ -107,9 +108,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 commodity_count = 0
                 for station, commodities in stations:
                     fq_station_name = f'@{system.name.upper()}/{station.name}'
-                    if (datetime.now() - station.modified) > timedelta(days=self.maxage):
+                    if self.maxage and (datetime.now() - station.modified) > timedelta(days=self.maxage):
                         if self.tdenv.detail >= 1:
-                            self.print(f'        |  @{fq_station_name:50s}  |  Skipping station due to age: {datetime.now() - station.modified}, ts: {station.modified}')
+                            self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {datetime.now() - station.modified}, ts: {station.modified}')
                         continue
                     if (system.name.upper(), station.name.upper()) in seen_stations:
                         if self.tdenv.detail >= 1:
@@ -148,6 +149,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if self.need_commit:
                     self.execute('COMMIT')
                     self.need_commit = False
+                    self.update_cache = True
+                    
+            # Need to make sure cached tables are updated, if changes were made
+            if self.update_cache:
+                for table in [ "Item", "Station", "System" ]:
+                    _, path = csvexport.exportTableToFile( self.tdb, self.tdenv, table )
+            
             self.print(
                 f'{timedelta(seconds=int(timing.elapsed))!s}  Done  '
                 f'{total_station_count} st  {total_commodity_count} co'
@@ -198,7 +206,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # if not attempts:
                 #     raise
                 # attempts -= 1
-                self.print(f'Retrying query: {ex!s}')
+                self.print(f'Retrying query \'{query}\': {ex!s}')
                 time.sleep(1)
 
     def load_known_space(self):
@@ -296,13 +304,35 @@ class ImportPlugin(plugins.ImportPluginBase):
             return commodity
         self.execute(
             '''
-            INSERT INTO Item (category_id, name, fdev_id)
-            VALUES ((SELECT category_id FROM Category WHERE upper(name) = ?), ?, ?)
+            INSERT INTO Item (item_id, category_id, name, fdev_id)
+            VALUES (?, (SELECT category_id FROM Category WHERE upper(name) = ?), ?, ?)
             ''',
+            commodity.id,
             commodity.category.upper(),
             commodity.name,
             commodity.id,
         )
+        
+        # Need to update ui_order
+        temp = self.execute("""SELECT
+                        name, category_id, fdev_id
+                        FROM Item
+                        ORDER BY category_id, name
+                        """)
+        cat_id = 0
+        ui_order = 1
+        self.tdenv.DEBUG0("Adding ui_order data to items.")
+        for line in temp:
+            if line[1] != cat_id:
+                ui_order = 1
+                cat_id = line[1]
+            else:
+                ui_order += 1
+            self.execute("""UPDATE Item
+                        set ui_order = ?
+                        WHERE fdev_id = ?""",
+                        ui_order, line[2],)                    
+        
         self.need_commit = True
         if self.tdenv.detail >= 2:
             self.print(f'        |  {commodity.name:50s}  |  Added missing commodity')
