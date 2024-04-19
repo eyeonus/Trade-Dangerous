@@ -2,6 +2,31 @@
 
 
 
+## v10.15.2 (2024-04-19)
+
+### Fix
+
+* fix: maxage errors if not set
+
+`float(null)` doesn&#39;t work, obviously, make sure to only cast to float
+is maxage has been set. Also make sure maxage is set before doing the
+math to see if a station should be skipped.
+
+fix: Make sure the cache is updated if a system, station, or commodity
+was added to the DB.
+
+fix: Use fdev_id as item_id when adding new commodity to the DB.
+
+fix: Update the ui_order for commodities when a new one is added to the
+DB.
+
+refactor: Use a better method for removing spaces from a prices file. ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`eddbbe0`](https://github.com/eyeonus/Trade-Dangerous/commit/eddbbe02f630877c25297a804cc37e543838d5ac))
+
+
 ## v10.15.1 (2024-04-19)
 
 ### Fix
