@@ -2,6 +2,13 @@
 
 
 
+## v10.15.1 (2024-04-19)
+
+### Fix
+
+* fix: fix formatting of station skip message ([`906227d`](https://github.com/eyeonus/Trade-Dangerous/commit/906227d74dda67fc4a51296372ea75eade95a8c8))
+
+
 ## v10.15.0 (2024-04-17)
 
 ### Feature
