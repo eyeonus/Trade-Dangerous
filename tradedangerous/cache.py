@@ -407,6 +407,7 @@ def processPrices(tdenv, priceFile, db, defaultZero):
         
         if newID < 0:
             if not ignoreUnknown:
+                DEBUG0(f'Key value: "{list(stationByName.keys())[list(stationByName.values()).index(128893178)]}"')
                 ignoreOrWarn(
                         UnknownStationError(priceFile, lineNo, facility)
                 )
@@ -552,14 +553,15 @@ def processPrices(tdenv, priceFile, db, defaultZero):
     for line in priceFile:
         lineNo += 1
         text, _, comment = line.partition('#')
-        text = space_cleanup(line, ' ').strip()
+        text = text.strip()
+        # text = space_cleanup(text, ' ').strip()
         if not text:
             continue
         
-        # # replace whitespace with single spaces
-        # if text.find("  "):
-        #     # http://stackoverflow.com/questions/2077897
-        #     text = ' '.join(text.split())
+        # replace whitespace with single spaces
+        if text.find("  "):
+            # http://stackoverflow.com/questions/2077897
+            text = ' '.join(text.split())
         
         ########################################
         # ## "@ STAR/Station" lines.
