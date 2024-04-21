@@ -2,6 +2,17 @@
 
 
 
+## v10.16.3 (2024-04-21)
+
+### Fix
+
+* fix: don&#39;t crash when trying to perform unneeded commit ([`afce0e2`](https://github.com/eyeonus/Trade-Dangerous/commit/afce0e287acdace7d7bd24867ee10850f6f2beca))
+
+### Refactor
+
+* refactor: include FDevShipyard.csv and FDevOutfitting.csv ([`b2398cb`](https://github.com/eyeonus/Trade-Dangerous/commit/b2398cbedc992a4b9bffb10efc46bf4cf9a7d42d))
+
+
 ## v10.16.2 (2024-04-21)
 
 ### Fix
