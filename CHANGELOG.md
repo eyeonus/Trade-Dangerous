@@ -2,6 +2,15 @@
 
 
 
+## v10.16.4 (2024-04-21)
+
+### Fix
+
+* fix: correct commodity count
+
+fix: close DB when finished with import ([`b5d17b6`](https://github.com/eyeonus/Trade-Dangerous/commit/b5d17b6f2418da5244840a27c7732febf1064dd5))
+
+
 ## v10.16.3 (2024-04-21)
 
 ### Fix
