@@ -72,10 +72,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.commoditiesPath = Path("Item.csv")
         self.rareItemPath = Path("RareItem.csv")
         self.shipPath = Path("Ship.csv")
+        self.FDevShipyardPath = Path("FDevShipyard.csv")
         self.shipVendorPath = Path("ShipVendor.csv")
         self.stationsPath = Path("Station.csv")
         self.sysPath = Path("System.csv")
         self.upgradesPath = Path("Upgrade.csv")
+        self.FDevOutfittingPath = Path("FDevOutfitting.csv")
         self.upgradeVendorPath = Path("UpgradeVendor.csv")
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
@@ -366,12 +368,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             for name in [
                 "Category",
                 "Item",
+                "RareItem",
                 "Ship",
                 "ShipVendor",
                 "Station",
                 "System",
                 "Upgrade",
                 "UpgradeVendor",
+                "FDevShipyard",
+                "FDevOutfitting",
             ]:
                 file = self.tdb.dataPath / Path(name + ".csv")
                 try:
@@ -471,10 +476,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self.getOption("upgrade"):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
+                self.downloadFile(self.FDevOutfittingPath)
                 buildCache = True
         
         if self.getOption("ship"):
             if self.downloadFile(self.shipsPath) or self.getOption("force"):
+                self.downloadFile(self.FDevShipyardPath)
                 buildCache = True
         
         if self.getOption("rare"):
