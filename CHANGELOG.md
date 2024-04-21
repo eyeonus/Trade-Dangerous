@@ -2,6 +2,17 @@
 
 
 
+## v10.16.2 (2024-04-21)
+
+### Fix
+
+* fix: check for prices cache file, not db file ([`3be19bf`](https://github.com/eyeonus/Trade-Dangerous/commit/3be19bf7bf92e81578a0ce44df59af7e12243b75))
+
+### Refactor
+
+* refactor: Use WAL and VACUUM ([`0a329ee`](https://github.com/eyeonus/Trade-Dangerous/commit/0a329ee9e5abfe2a892c6ff4298084c8d0e346bf))
+
+
 ## v10.16.1 (2024-04-21)
 
 ### Fix
