@@ -705,6 +705,8 @@ class TradeDB(object):
         conn.execute("PRAGMA foreign_keys=ON")
         conn.execute("PRAGMA synchronous=OFF")
         conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA auto_vacuum=INCREMENTAL")
+
         conn.create_function('dist2', 6, TradeDB.calculateDistance2)
         self.conn = conn
         return conn

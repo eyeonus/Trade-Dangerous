@@ -27,6 +27,8 @@
 PRAGMA foreign_keys=ON;
 PRAGMA synchronous=OFF;
 PRAGMA temp_store=MEMORY;
+PRAGMA journal_mode=WAL;
+PRAGMA auto_vacuum=INCREMENTAL;
 
 BEGIN TRANSACTION;
 
