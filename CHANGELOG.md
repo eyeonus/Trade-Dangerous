@@ -2,6 +2,13 @@
 
 
 
+## v10.16.8 (2024-04-21)
+
+### Fix
+
+* fix: Mysteriously appeared &#34;Listings&#34; should be &#34;listings&#34; ([`0153410`](https://github.com/eyeonus/Trade-Dangerous/commit/0153410cce05e14e270d77b4e52ba5e5482fc21f))
+
+
 ## v10.16.7 (2024-04-21)
 
 ### Fix
