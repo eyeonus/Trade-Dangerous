@@ -2,6 +2,13 @@
 
 
 
+## v10.16.1 (2024-04-21)
+
+### Fix
+
+* fix: copy Category.csv into data on new build ([`51a1964`](https://github.com/eyeonus/Trade-Dangerous/commit/51a19641b2f701d226efa687d89179c3a5667093))
+
+
 ## v10.16.0 (2024-04-21)
 
 ### Chore
