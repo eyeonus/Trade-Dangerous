@@ -2,6 +2,26 @@
 
 
 
+## v10.16.6 (2024-04-21)
+
+### Performance
+
+* perf: skip station if commodity in DB is not older
+
+Instead of checking all the commodities, skip the whole station if the
+first doesn&#39;t pass, because all commodities are always updated at the
+same time.
+
+Also don&#39;t increment number of stations if commodities were skipped.
+
+Also don&#39;t increment number of systems if all stations in it were
+skipped. ([`9560dc7`](https://github.com/eyeonus/Trade-Dangerous/commit/9560dc7647c363652cfa7f390cf41f914623512a))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`4b3cd6b`](https://github.com/eyeonus/Trade-Dangerous/commit/4b3cd6b2608f13b8d79c915cfa0571387155360f))
+
+
 ## v10.16.5 (2024-04-21)
 
 ### Fix
