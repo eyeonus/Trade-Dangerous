@@ -2,6 +2,13 @@
 
 
 
+## v10.16.5 (2024-04-21)
+
+### Fix
+
+* fix: Use corrections DB when adding commodities ([`d070a7c`](https://github.com/eyeonus/Trade-Dangerous/commit/d070a7c7c1a7fe18995d34ffbbb223e1d5e1fb03))
+
+
 ## v10.16.4 (2024-04-21)
 
 ### Fix
