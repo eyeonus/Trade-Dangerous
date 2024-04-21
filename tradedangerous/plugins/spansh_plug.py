@@ -154,9 +154,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                                         station.id, commodity.id, ).fetchone()
                         modified = parse_ts(result[0]) if result else None
                         if modified and commodity.modified <= modified:
-                            if self.tdenv.detail > 2:
-                                self.print(f'        |  {commodity.name:50s}  |  Skipping older commodity data')
-                            continue
+                            # All commodities in a station will have the same modified time,
+                            # so no need to check the rest if the fist is older.
+                            if self.tdenv.detail:
+                                self.print(f'        |  {fq_station_name:50s}  |  Skipping older commodity data')
+                            break
                         items.append((station.id, commodity.id, commodity.modified,
                             commodity.sell, commodity.demand, -1,
                             commodity.buy, commodity.supply, -1, 0))
@@ -191,15 +193,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                     #             modified=commodity.modified,
                     #         ))
                     #         commodity_count += 1
-                    station_count += 1
-                system_count += 1
-                total_station_count += station_count
-                total_commodity_count += commodity_count
-                if self.tdenv.detail:
-                    self.print(
-                        f'{system_count:6d}  |  {system.name.upper():50s}  |  '
-                        f'{station_count:3d} st  {commodity_count:6d} co'
-                    )
+                    if commodity_count:
+                        station_count += 1
+                if station_count:
+                    system_count += 1
+                    total_station_count += station_count
+                    total_commodity_count += commodity_count
+                    if self.tdenv.detail:
+                        self.print(
+                            f'{system_count:6d}  |  {system.name.upper():50s}  |  '
+                            f'{station_count:3d} st  {commodity_count:6d} co'
+                        )
                 # self.execute('COMMIT')
                 # if self.need_commit:
                 #     self.execute('COMMIT')
