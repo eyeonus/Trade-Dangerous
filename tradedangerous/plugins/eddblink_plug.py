@@ -336,7 +336,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.tdenv.NOTE("Inserting new listing data. {}", self.now())
                 self.executemany(listingStmt, listingList)
         
-        self.updated['Listings'] = True
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
     def run(self):
@@ -523,7 +522,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.tdb.close()
         
-        if self.updated['Listings']:
+        if self.getOption("listings"):
             self.tdenv.NOTE("Regenerating .prices file.")
             cache.regeneratePricesFile(self.tdb, self.tdenv)
         
