@@ -2,6 +2,15 @@
 
 
 
+## v10.16.9 (2024-04-21)
+
+### Fix
+
+* fix: the actual problem is there is self.updated anymore
+
+Switched to checking if listings option is set instead. ([`8f0b3ba`](https://github.com/eyeonus/Trade-Dangerous/commit/8f0b3ba180bdf98d5861ac142521356bc0fcfc9b))
+
+
 ## v10.16.8 (2024-04-21)
 
 ### Fix
