@@ -440,18 +440,18 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upgrade"] = True
             self.options["station"] = True
         
-        if self.getOption['item']:
-            self.options['station'] = True
+        if self.getOption("item"):
+            self.options["station"] = True
         
-        if self.getOption['rare']:
-            self.options['station'] = True
+        if self.getOption("rare"):
+            self.options["station"] = True
         
         if self.getOption("station"):
             self.options["system"] = True
         
         if self.getOption("all"):
             self.options["item"] = True
-            self.options['rare'] = True
+            self.options["rare"] = True
             self.options["ship"] = True
             self.options["shipvend"] = True
             self.options["station"] = True
