@@ -2,6 +2,37 @@
 
 
 
+## v10.16.0 (2024-04-21)
+
+### Chore
+
+* chore: remove eddblink test ([`c0b14fd`](https://github.com/eyeonus/Trade-Dangerous/commit/c0b14fdeeef807634e95f080e14f86c2e130f9ad))
+
+### Feature
+
+* feat: spansh doesn&#39;t crash when run on new install
+
+feat: spansh imports directly to database, rather than creating a
+.prices file and then importing that
+
+fix: strip trailing whitespace from system and station names, if any,
+when pulling from the source
+
+refactor: include station type for *all* stations, not just fleet
+carriers and odyssey settlements
+
+refactor: determine if station is planetary based on station type,
+rather than assuming based on format of source file
+
+refactor: use id provided by source for systems and stations when
+inserting new into DB, search for same by id instead of by name
+
+refactor: eddblink now uses csv files from server instead of the old
+EDDB files that no longer exist
+
+chore: include `Categories.csv` in templates ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
+
+
 ## v10.15.2 (2024-04-19)
 
 ### Fix
