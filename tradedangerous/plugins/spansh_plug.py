@@ -171,8 +171,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ?, ?, ?,
                                 ?, ?, ?, ?
                             )""", *item )
+                            commodity_count += 1
                         self.execute('COMMIT')
-                        commodity_count += 1
                     
                     # categories = self.categorise_commodities(commodities)
                     # for category_name, category_commodities in categories.items():
@@ -212,6 +212,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             #         _, path = csvexport.exportTableToFile( self.tdb, self.tdenv, table )
             
             self.execute('COMMIT')
+            self.tdb.close()
             # Need to make sure cached tables are updated
             for table in [ "Item", "Station", "System", "StationItem" ]:
                 _, path = csvexport.exportTableToFile( self.tdb, self.tdenv, table )
