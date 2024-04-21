@@ -2,6 +2,13 @@
 
 
 
+## v10.16.7 (2024-04-21)
+
+### Fix
+
+* fix: getOption(...), not getOption[...] ([`bcbc05f`](https://github.com/eyeonus/Trade-Dangerous/commit/bcbc05f74e6ca76cc54016ba2d49893d7947040c))
+
+
 ## v10.16.6 (2024-04-21)
 
 ### Performance
