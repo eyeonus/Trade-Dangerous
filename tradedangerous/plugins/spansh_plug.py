@@ -9,7 +9,7 @@ import requests
 import simdjson
 import sqlite3
 
-from .. import plugins, cache, fs, transfers, csvexport
+from .. import plugins, cache, fs, transfers, csvexport, corrections
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
 
@@ -399,7 +399,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             ''',
             commodity.id,
             commodity.category.upper(),
-            commodity.name,
+            corrections.correctItem(commodity.name),
             commodity.id,
         )
         
@@ -411,7 +411,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         """)
         cat_id = 0
         ui_order = 1
-        self.tdenv.DEBUG0("Adding ui_order data to items.")
+        self.tdenv.DEBUG0("Updating ui_order data for items.")
         for line in temp:
             if line[1] != cat_id:
                 ui_order = 1
