@@ -165,11 +165,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         try:
             response = openURL(url)
         except Exception as e:
-            tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", BASE_URL + str(path), str(e))
+            self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", BASE_URL + str(path), str(e))
             return False
         
         url_time = response.getheader("Last-Modified")
-        dumpModded = datetime.strptime(url_time, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
+        dumpModded = datetime.datetime.strptime(url_time, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
         
         if Path.exists(localPath):
             localModded = localPath.stat().st_mtime
@@ -480,7 +480,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 buildCache = True
         
         if self.getOption("ship"):
-            if self.downloadFile(self.shipsPath) or self.getOption("force"):
+            if self.downloadFile(self.shipPath) or self.getOption("force"):
                 self.downloadFile(self.FDevShipyardPath)
                 buildCache = True
         
