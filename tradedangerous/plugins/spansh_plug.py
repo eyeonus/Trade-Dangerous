@@ -268,6 +268,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             try:
                 return cursor.execute(query, params or kwparams)
             except sqlite3.OperationalError as ex:
+                if "no transaction is active" in str(ex):
+                    return
                 if not attempts:
                     raise
                 attempts -= 1
