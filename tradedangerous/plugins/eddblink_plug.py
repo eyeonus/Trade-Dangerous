@@ -509,6 +509,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # Remake the .db files with the updated info.
         if buildCache:
+            self.tdb.close()
             cache.buildCache(self.tdb, self.tdenv)
         
         if self.getOption("purge"):
