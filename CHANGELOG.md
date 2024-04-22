@@ -2,6 +2,36 @@
 
 
 
+## v10.16.11 (2024-04-22)
+
+### Chore
+
+* chore: tox test environments needs to require the packages that tradedangerous is going to be depending on (#122)
+
+The tox testenv&#39;s need to import the same set of packages as dependencies that trade is going to want. using &#34;-r requirements/dev.txt&#34; tells it to do this.
+
+I also added &#34;flake8&#34; as an env so that you can use tox to get flake results with tox -e flake8; the value there is that you get apples-to-apples. I hate running flake in my ide / vim and then tox has a slightly different config :) ([`1e15bbf`](https://github.com/eyeonus/Trade-Dangerous/commit/1e15bbf000c05bc57a57aea3a1e33192d038ae11))
+
+* chore: additional IDE folders added to .gitignore (#120) ([`79db6f1`](https://github.com/eyeonus/Trade-Dangerous/commit/79db6f1e7f3acad3e37c3913ba1311364723a55a))
+
+### Fix
+
+* fix: don&#39;t generate StationItem table
+
+It&#39;s just a bad idea, even if it didn&#39;t break things because csvexport
+doesn&#39;t know what to do with two unique keys in the same table. ([`5d50c84`](https://github.com/eyeonus/Trade-Dangerous/commit/5d50c843e9dbfe44bbe8a09aeb5033b1a7ada043))
+
+### Unknown
+
+* qol: enable rich text (#121)
+
+* chore: tox test environments needs to require the packages that tradedangerous is going to be depending on
+
+* qol: enable rich text
+
+Fix typo in markup for stack traces (dim vs out) ([`a7dba2f`](https://github.com/eyeonus/Trade-Dangerous/commit/a7dba2f6d8d25cbc600161d6039194ffb3788cc1))
+
+
 ## v10.16.10 (2024-04-22)
 
 ### Fix
