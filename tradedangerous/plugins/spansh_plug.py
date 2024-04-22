@@ -90,7 +90,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             if rib_path.exists():
                 rib_path.rename(ri_path)
         
-        # self.known_space = self.load_known_space()
         self.known_systems = self.load_known_systems()
         self.known_stations = self.load_known_stations()
         self.known_commodities = self.load_known_commodities()
@@ -99,34 +98,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         return self.tdenv.uprint(*args, **kwargs)
 
     def run(self):
-        # fs.ensurefolder(self.tdenv.tmpDir)
-        # filePath = self.tdenv.tmpDir / Path("spansh.prices")
         if not self.tdenv.detail:
             self.print('This will take at least several minutes...')
             self.print('You can increase verbosity (-v) to get a sense of progress')
         with Timing() as timing:
-        # with open(filePath, 'w') as f, Timing() as timing:
-        #     self.print(f'Writing prices to {filePath}')
-        #     f.write('# Generated from spansh galaxy data\n')
-        #     f.write(f'# Source: {self.file or self.url}\n')
-        #     f.write('#\n')
-        #     f.write((
-        #         '#     {name:50s}  {sell:>7s}  {buy:>7s}  '
-        #         '{demand:>11s}  {supply:>11s}  {ts}\n'
-        #     ).format(
-        #         name='Item Name',
-        #         sell='SellCr',
-        #         buy='BuyCr',
-        #         demand='Demand',
-        #         supply='Supply',
-        #         ts='Timestamp',
-        #     ))
             system_count = 0
             total_station_count = 0
             total_commodity_count = 0
-            # self.need_commit = False
-            # self.update_cache = False
-            # seen_stations = set()
             for system, stations in self.data_stream():
                 self.ensure_system(system)
                 station_count = 0
@@ -135,16 +113,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                     fq_station_name = f'@{system.name.upper()}/{station.name}'
                     if self.maxage and (datetime.now() - station.modified) > timedelta(days=self.maxage):
                         if self.tdenv.detail:
-                            self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {datetime.now() - station.modified}, ts: {station.modified}')
+                            self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {(datetime.now() - station.modified) / timedelta (days=1):.2f} days old')
                         continue
-                    # if (system.name.upper(), station.name.upper()) in seen_stations:
-                    #     if self.tdenv.detail:
-                    #         self.print(f'        |  {fq_station_name:50s}  |  Skipping duplicate station record')
-                    #     continue
-                    # seen_stations.add((system.name.upper(), station.name.upper()))
                     self.ensure_station(system, station)
-                    # f.write('\n')
-                    # f.write(f'@ {system.name.upper()}/{station.name}\n')
                     
                     items = []
                     for commodity in commodities:
@@ -176,23 +147,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                             commodity_count += 1
                         self.execute('COMMIT')
                     
-                    # categories = self.categorise_commodities(commodities)
-                    # for category_name, category_commodities in categories.items():
-                    #     f.write(f'   + {category_name}\n')
-                    #     for commodity in category_commodities:
-                    #         commodity = self.ensure_commodity(commodity)
-                    #         f.write((
-                    #             '      {name:50s}  {sell:7d}  {buy:7d}  '
-                    #             '{demand:10d}?  {supply:10d}?  {modified}\n'
-                    #         ).format(
-                    #             name=commodity.name,
-                    #             sell=commodity.sell,
-                    #             buy=commodity.buy,
-                    #             demand=commodity.demand,
-                    #             supply=commodity.supply,
-                    #             modified=commodity.modified,
-                    #         ))
-                    #         commodity_count += 1
                     if commodity_count:
                         station_count += 1
                 if station_count:
@@ -204,16 +158,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                             f'{system_count:6d}  |  {system.name.upper():50s}  |  '
                             f'{station_count:3d} st  {commodity_count:6d} co'
                         )
-                # self.execute('COMMIT')
-                # if self.need_commit:
-                #     self.execute('COMMIT')
-                #     self.need_commit = False
-                #     self.update_cache = True
-                    
-            # Need to make sure cached tables are updated, if changes were made
-            # if self.update_cache:
-            #     for table in [ "Item", "Station", "System" ]:
-            #         _, path = csvexport.exportTableToFile( self.tdb, self.tdenv, table )
             
             self.execute('COMMIT')
             self.tdb.close()
@@ -230,13 +174,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.print('Exporting to cache...')
             cache.regeneratePricesFile(self.tdb, self.tdenv)
             self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
-
-        # if not self.listener:
-        #     with Timing() as timing:
-        #         self.print('Importing to database...')
-        #         self.tdenv.mergeImport = True
-        #         cache.importDataFromFile(self.tdb, self.tdenv, filePath)
-        #         self.print(f'Database import completed in {timedelta(seconds=int(timing.elapsed))!s}')
+        
         return False
 
     def data_stream(self):
@@ -253,11 +191,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         elif self.file:
             self.print(f'Reading prices from local file: {self.file}')
             stream = open(self.file, 'r', encoding='utf8')
-        # else:
-        #     url = self.url or SOURCE_URL
-        #     self.print(f'Reading prices from remote URL: {url}')
-        #     req = requests.get(url, stream=True)
-        #     stream = req.iter_lines(decode_unicode=True)
         return ingest_stream(stream)
 
     def categorise_commodities(self, commodities):
@@ -280,20 +213,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 attempts -= 1
                 self.print(f'Retrying query \'{query}\': {ex!s}')
                 time.sleep(1)
-
-    # def load_known_space(self):
-    #     cache = {}
-    #     result = self.execute(
-    #         '''
-    #         SELECT System.name, Station.name FROM System
-    #         LEFT JOIN Station USING (system_id)
-    #         '''
-    #     ).fetchall()
-    #     for system, station in result:
-    #         cache.setdefault(system.upper(), set())
-    #         if station is not None:
-    #             cache[system.upper()].add(station.upper())
-    #     return cache
     
     def load_known_systems(self):
         try:
@@ -382,19 +301,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def ensure_commodity(self, commodity):
         if commodity.id in self.known_commodities:
-            # if self.known_commodities[commodity.id] != commodity.name:
-            #     if self.tdenv.detail >= 3:
-            #         self.print(f'        |    -  {commodity.name:45s}  |  Replace with pre-existing "{self.known_commodities[commodity.id]}"')
-            #     return Commodity(
-            #         id=commodity.id,
-            #         name=self.known_commodities[commodity.id],
-            #         category=commodity.category,
-            #         demand=commodity.demand,
-            #         supply=commodity.supply,
-            #         sell=commodity.sell,
-            #         buy=commodity.buy,
-            #         modified=commodity.modified,
-            #     )
             return commodity
         self.execute(
             '''
