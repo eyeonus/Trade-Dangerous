@@ -210,7 +210,7 @@ class Route(object):
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
     
-    def str(self, colorize):
+    def text(self, colorize) -> str:
         return "%s -> %s" % (colorize("cyan", self.firstStation.name()), colorize("blue", self.lastStation.name()))
     
     def detail(self, tdenv):
@@ -237,7 +237,7 @@ class Route(object):
         
         longestNameLen = max(genSubValues())
         
-        text = self.str(colorize)
+        text = self.text(colorize)
         if detail >= 1:
             text += " (score: {:f})".format(self.score)
         text += "\n"
@@ -940,7 +940,7 @@ class TradeCalc(object):
         for route in routes:
             if tdenv.progress:
                 prog.increment(1)
-            tdenv.DEBUG1("Route = {}", route.str(lambda x, y : y))
+            tdenv.DEBUG1("Route = {}", route.text(lambda x, y : y))
             
             srcStation = route.lastStation
             startCr = credits + int(route.gainCr * safetyMargin)
@@ -986,7 +986,7 @@ class TradeCalc(object):
                         "destSys {}, destStn {}, jumps {}, distLy {}",
                         dest.system.dbname,
                         dest.station.dbname,
-                        "->".join(jump.str() for jump in dest.via),
+                        "->".join(jump.text() for jump in dest.via),
                         dest.distLy
                     )
                     return True

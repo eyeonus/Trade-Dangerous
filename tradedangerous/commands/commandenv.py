@@ -187,7 +187,7 @@ class CommandEnv(TradeEnv):
             
             # But if it matched more than once, whine about ambiguity
             if item and place:
-                raise AmbiguityError('Avoidance', avoid, [ item, place.str() ])
+                raise AmbiguityError('Avoidance', avoid, [ item, place.text() ])
         
         self.DEBUG0("Avoiding items {}, places {}",
                     [ item.name() for item in avoidItems ],

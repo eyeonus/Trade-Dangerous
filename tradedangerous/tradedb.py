@@ -51,21 +51,25 @@ Simplistic use might be:
 # Imports
 
 
-from collections import namedtuple, defaultdict
-from pathlib import Path
-from .tradeenv import TradeEnv
-from .tradeexcept import TradeException
-
-from . import cache, fs
+from collections import namedtuple
 from contextlib import closing
+from math import sqrt as math_sqrt
+from pathlib import Path
 import heapq
 import itertools
 import locale
-import math
-import os
 import re
 import sqlite3
 import sys
+import typing
+
+from .tradeenv import TradeEnv
+from .tradeexcept import TradeException
+from . import cache, fs
+
+if typing.TYPE_CHECKING:
+    from typing import Optional
+
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -100,22 +104,20 @@ class AmbiguityError(TradeException):
                 key(c) for c in anyMatch[0:-1]
             )
             opportunities += " or " + key(anyMatch[-1])
-        return '{} "{}" could match {}'.format(
-            self.lookupType, str(self.searchKey),
-            opportunities
-        )
+        return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
 
 class SystemNotStationError(TradeException):
     """
         Raised when a station lookup matched a System but
         could not be automatically reduced to a Station.
     """
-    pass
+    pass  # pylint: disable=unnecessary-pass  # (it's not)
+
 
 ######################################################################
 
 
-def makeStellarGridKey(x, y, z):
+def make_stellar_grid_key(x: float, y: float, z: float) -> int:
     """
     The Stellar Grid is a map of systems based on their Stellar
     co-ordinates rounded down to 32lys. This makes it much easier
@@ -123,7 +125,8 @@ def makeStellarGridKey(x, y, z):
     """
     return (int(x) >> 5, int(y) >> 5, int(z) >> 5)
 
-class System(object):
+
+class System:
     """
     Describes a star system which may contain one or more Station objects.
     
@@ -229,7 +232,7 @@ class System(object):
     def name(self, detail=0):
         return self.dbname
     
-    def str(self):
+    def text(self) -> str:
         return self.dbname
 
 ######################################################################
@@ -244,7 +247,7 @@ class DestinationNode(namedtuple('DestinationNode', [
         ])):
     pass
 
-class Station(object):
+class Station:
     """
     Describes a station (trading or otherwise) in a system.
     
@@ -397,8 +400,8 @@ class Station(object):
             return "{:7.2f}".format(self.dataAge)
         return "-"
     
-    def str(self):
-        return '%s/%s' % (self.system.dbname, self.dbname)
+    def text(self) -> str:
+        return f"{self.system.dbname}/{self.dbname}"
 
 ######################################################################
 
@@ -450,7 +453,7 @@ class Category(namedtuple('Category', (
 ######################################################################
 
 
-class Item(object):
+class Item:
     """
     A product that can be bought/sold in the game.
     
@@ -520,7 +523,7 @@ class Trade(namedtuple('Trade', (
 ######################################################################
 
 
-class TradeDB(object):
+class TradeDB:
     """
     Encapsulation for the database layer.
     
@@ -905,9 +908,9 @@ class TradeDB(object):
         Divides the galaxy into a fixed-sized grid allowing us to
         aggregate small numbers of stars by locality.
         """
-        stellarGrid = self.stellarGrid = dict()
+        stellarGrid = self.stellarGrid = {}
         for system in self.systemByID.values():
-            key = makeStellarGridKey(system.posX, system.posY, system.posZ)
+            key = make_stellar_grid_key(system.posX, system.posY, system.posZ)
             try:
                 grid = stellarGrid[key]
             except KeyError:
@@ -1630,7 +1633,7 @@ class TradeDB(object):
                 raise SystemNotStationError(
                     "System '%s' has %d stations, "
                     "please specify a station instead." % (
-                        name.str(), len(name.stations)
+                        name.text(), len(name.stations)
                     )
                 )
             return name.stations[0]

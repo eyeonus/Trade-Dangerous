@@ -300,7 +300,7 @@ class Checklist(object):
         gainCr = 0
         self.stepNo = 0
         
-        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.str(lambda x, y : y))
+        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.text(lambda x, y : y))
         print(heading, "\n", '-' * len(heading), "\n\n", sep = '')
         
         cmdenv = self.cmdenv
@@ -345,7 +345,7 @@ class Checklist(object):
                 for jump in jumps[idx][1:]:
                     self.doStep('Jump to', jump.name())
             if cmdenv.detail:
-                self.doStep('Dock at', nxt.str())
+                self.doStep('Dock at', nxt.text())
             print()
             
             self.note("Sell at {}".format(nxt.name()))

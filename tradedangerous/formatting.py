@@ -1,13 +1,22 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-import itertools
+"""
+Provides a library of mechanisms for formatting output text to ensure consistency across
+TradeDangerous and plugin tools,
+"""
+from __future__ import annotations
 
-class ColumnFormat(object):
+import itertools
+import typing
+
+if typing.TYPE_CHECKING:
+    from typing import Any, Callable, List, Optional, Tuple
+
+class ColumnFormat:
     """
         Describes formatting of a column to be populated with data.
         
         Member Functions:
             
-            str()
+            text()
                 Applies all formatting (except qualifier) to the name to
                 produce a correctly sized title field.
             
@@ -47,7 +56,7 @@ class ColumnFormat(object):
             ]
             rows = [ {'name':'Bob', 'dist':1.5}, {'name':'John', 'dist':23}]
             # print titles
-            print(*[col.str() for col in cols])
+            print(*[col.text() for col in cols])
             for row in rows:
                 print(*[col.format(row) for col in cols])
         Produces:
@@ -56,6 +65,15 @@ class ColumnFormat(object):
             John   [23.00]
     
     """
+    name:       str                 # name of the column
+    align:      str                 # format's alignment specifier
+    width:      int                 # width specifier
+    qualifier:  Optional[str]       # optional format type specifier e.g. '.2f', 's', 'n'
+    pre:        Optional[str]       # prefix to the column
+    post:       Optional[str]       # postfix to the column
+    key:        Callable            # function to retrieve the printable name of the item
+    pred:       Callable            # predicate: return False to leave this column blank
+
     def __init__(
             self,
             name,
@@ -66,7 +84,7 @@ class ColumnFormat(object):
             post=None,
             key=lambda item: item,
             pred=lambda item: True,
-            ):
+            ) -> None:
         self.name = name
         self.align = align
         self.width = max(int(width), len(name))
@@ -76,29 +94,16 @@ class ColumnFormat(object):
         self.post = post or ''
         self.pred = pred
     
-    def str(self):
-        return '{pre}{title:{align}{width}}{post}'.format(
-                title=self.name,
-                align=self.align, width=self.width,
-                pre=self.pre, post=self.post,
-            )
+    def text(self) -> str:
+        return f'{self.pre}{self.name:{self.align}{self.width}}{self.post}'
     
-    def format(self, value):
-        if self.pred(value):
-            return '{pre}{value:{align}{width}{qual}}{post}'.format(
-                    value=self.key(value),
-                    align=self.align, width=self.width,
-                    qual=self.qualifier,
-                    pre=self.pre, post=self.post,
-                )
-        else:
-            return '{pre}{value:{align}{width}}{post}'.format(
-                value="",
-                align=self.align, width=self.width,
-                pre=self.pre, post=self.post,
-            )
+    def format(self, value: str) -> str:
+        """ Returns the string formatted with a specific value"""
+        if not self.pred(value):
+            return f'{self.pre}{"":{self.align}{self.width}}{self.post}'
+        return f'{self.pre}{self.key(value):{self.align}{self.width}{self.qualifier}}{self.post}'
 
-class RowFormat(object):
+class RowFormat:
     """
         Describes an ordered collection of ColumnFormats
         for dispay data from rows, such that calling
@@ -117,7 +122,7 @@ class RowFormat(object):
             insert(pos, newCol)
                 Inserts a ColumnFormatter at position pos in the list
             
-            str()
+            text()
                 Returns a list of all the column headings
             
             format(rowData):
@@ -125,14 +130,17 @@ class RowFormat(object):
                 of the columns
     
     """
-    def __init__(self, prefix=None):
+    columns:        List[ColumnFormat]
+    prefix:         str
+
+    def __init__(self, prefix: Optional[str] = None):
         self.columns = []
         self.prefix = prefix or ""
     
-    def addColumn(self, *args, **kwargs):
+    def addColumn(self, *args, **kwargs) -> None:
         self.append(ColumnFormat(*args, **kwargs))
     
-    def append(self, column, after=None):
+    def append(self, column: ColumnFormat, after: Optional[str] = None) -> 'RowFormat':
         columns = self.columns
         if after:
             for idx, col in enumerate(columns, 1):
@@ -142,19 +150,20 @@ class RowFormat(object):
         columns.append(column)
         return self
     
-    def insert(self, pos, column):
+    def insert(self, pos: int, column: Optional[ColumnFormat]) -> None:
         if column is not None:
             self.columns.insert(pos, column)
     
-    def str(self):
-        return self.prefix + ' '.join(col.str() for col in self.columns)
+    def text(self) -> str:
+        return f"{self.prefix} {' '.join(col.text() for col in self.columns)}"
     
-    def heading(self):
-        headline = self.str()
+    def heading(self) -> Tuple[str, str]:
+        """ Returns a title and the appropriate underline for that text. """
+        headline = f"{self}"
         return headline, '-' * len(headline)
     
-    def format(self, rowData):
-        return self.prefix + ' '.join(col.format(rowData) for col in self.columns)
+    def format(self, row_data: Optional[Any]) -> str:
+        return f"{self.prefix} {' '.join(col.format(row_data) for col in self.columns)}"
 
 def max_len(iterable, key=lambda item: item):
     iterable, readahead = itertools.tee(iter(iterable))
@@ -175,7 +184,7 @@ if __name__ == '__main__':
     ]
     
     def present():
-        rowTitle = rowFmt.str()
+        rowTitle = rowFmt.text()
         print(rowTitle)
         print('-' * len(rowTitle))
         for row in rows:
@@ -189,3 +198,4 @@ if __name__ == '__main__':
     
     rowFmt.append(after='Name', col=ColumnFormat("Age", '>', 3, pre='|', post='|', key=lambda row: row['age']))
     present()
+
