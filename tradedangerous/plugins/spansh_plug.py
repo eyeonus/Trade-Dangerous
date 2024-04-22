@@ -212,7 +212,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             for system, stations in self.data_stream():
                 upper_sys = system.name.upper()
-                if not system.name in self.known_systems:
+                if system.id not in self.known_systems:
                     self.ensure_system(system, upper_sys)
 
                 station_count = 0
@@ -226,16 +226,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                             self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {now - station.modified}, ts: {station.modified}')
                         continue
 
-                    if station.id not in self.known_stations:
+                    station_info = self.known_stations.get(station.id)
+                    if not station_info:
                         self.ensure_station(station)
+                    elif station_info[1] != station.system_id:
+                        self.print(f'        |  {station.name:50s}  |  Megaship station moved, updating system')
+                        self.execute("UPDATE Station SET system_id = ? WHERE station_id = ?", station.system_id, station.id, commitable=True)
+                        self.known_stations[station.id] = (station.name, station.system_id)
 
                     items = []
                     db_times = dict(self.execute(
-                        """SELECT item_id, modified FROM StationItem WHERE station_id = ?"""
+                        """SELECT item_id, modified FROM StationItem WHERE station_id = ?""",
+                        (station.id),
                     ))
 
                     for commodity in commodities:
-                        if commodity not in self.known_commodities:
+                        if commodity.id not in self.known_commodities:
                             commodity = self.ensure_commodity(commodity)
 
                         db_modified = db_times.get(commodity.id)
@@ -405,11 +411,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def ensure_station(self, station: Station) -> None:
         """ Adds a record for a station, and registers the station in the known_stations dict. """
-        if self.known_stations[station.id][1] != station.system_id:
-            self.print(f'        |  {station.name:50s}  |  Megaship station moved, updating system')
-            self.execute("UPDATE Station SET system_id = ? WHERE station_id = ?", station.system_id.id, station.id, commitable=True)
-            return
-
         self.execute(
             '''
             INSERT INTO Station (
@@ -520,9 +521,9 @@ def ingest_stream(stream):
 
 def ingest_stations(system_data):
     """Ingest system-level data, yielding station-level data."""
+    sys_id = system_data.get('id64')
     targets = [system_data, *system_data.get('bodies', ())]
     for target in targets:
-        sys_id = target.get('id64')
         for station_data in target.get('stations', ()):
             services = set(station_data.get('services', ()))
             if 'Market' not in services:
