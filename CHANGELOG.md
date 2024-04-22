@@ -2,6 +2,21 @@
 
 
 
+## v10.16.10 (2024-04-22)
+
+### Fix
+
+* fix: &#34;database image malformed&#34; error in eddblink
+
+caused by self.commit() method, which isn&#39;t actually needed ([`67b2410`](https://github.com/eyeonus/Trade-Dangerous/commit/67b24103fbff47cd24684e398ea5636cce946c8a))
+
+* fix: make downloaded file have correct timestamp
+
+force the modification time to be that of the timestamp from the server,
+because the downloaded file will have a different timestamp based on the
+time it was created ([`b34ba66`](https://github.com/eyeonus/Trade-Dangerous/commit/b34ba6663437b77b5c57199c043e485743bea74f))
+
+
 ## v10.16.9 (2024-04-21)
 
 ### Fix
