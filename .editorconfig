@@ -15,6 +15,7 @@ charset = utf-8
 indent_style = space
 indent_size = 4
 trim_trailing_whitespace = false
+max_line_length = 160
 
 # Tab indentation (no size specified)
 [Makefile]
