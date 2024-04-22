@@ -27,7 +27,7 @@ exec(open("tradedangerous/version.py").read())  # pylint: disable=W0122
 
 setup(name = package,
         version = __version__,  # pylint: disable=E0602
-        install_requires = ["requests", "appJar", "pysimdjson"],
+        install_requires = ["requests", "appJar", "pysimdjson", "rich"],
         setup_requires = ["pytest-runner"],
         tests_require = ["pytest"],
         packages = ['tradedangerous', 'tradedangerous.commands', 'tradedangerous.mfd', 'tradedangerous.mfd.saitek', 'tradedangerous.misc', 'tradedangerous.plugins'],
