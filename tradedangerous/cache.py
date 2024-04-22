@@ -706,6 +706,7 @@ def processPricesFile(tdenv: TradeEnv, db: sqlite3.Connection, pricesPath: Path,
     
     tdenv.DEBUG0(f'Committing...')
     db.commit()
+    db.close()
     
     changes = " and ".join("{} {}".format(v, k) for k, v in {
         "new": newItems,
@@ -999,6 +1000,7 @@ def buildCache(tdb, tdenv):
     
     tempDB.commit()
     tempDB.close()
+    tdb.close()
     
     tdenv.DEBUG0("Swapping out db files")
     
