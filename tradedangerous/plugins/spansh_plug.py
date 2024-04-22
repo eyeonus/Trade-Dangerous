@@ -218,7 +218,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.execute('COMMIT')
             self.tdb.close()
             # Need to make sure cached tables are updated
-            for table in [ "Item", "Station", "System", "StationItem" ]:
+            for table in [ "Item", "Station", "System" ]:
                 _, path = csvexport.exportTableToFile( self.tdb, self.tdenv, table )
                         
             self.print(
