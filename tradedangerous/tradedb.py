@@ -67,21 +67,6 @@ import re
 import sqlite3
 import sys
 
-haveNumpy = False
-try:
-    import numpy
-    import numpy.linalg
-    haveNumpy = True
-except (KeyError, ImportError):
-    pass
-if not haveNumpy:
-    class numpy(object):
-        array = False
-        float32 = False
-        ascontiguousarray = False
-        class linalg(object):
-            norm = False
-
 locale.setlocale(locale.LC_ALL, '')
 
 ######################################################################
@@ -160,16 +145,10 @@ class System(object):
             self.systems = []
             self.probedLy = 0.
     
-    def __init__(
-            self, ID, dbname, posX, posY, posZ, addedID,
-            ary=numpy.array,
-            nptype=numpy.float32,
-            ):
+    def __init__(self, ID, dbname, posX, posY, posZ, addedID) -> None:
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
-        if ary:
-            self.pos = ary([posX, posY, posZ], nptype)
         self.addedID = addedID or 0
         self.stations = ()
         self._rangeCache = None
@@ -231,19 +210,6 @@ class System(object):
             (self.posY - other.posY) ** 2 +
             (self.posZ - other.posZ) ** 2
         ) ** 0.5  # fast sqrt
-    
-    if haveNumpy:
-        def all_distances(
-                self, iterable,
-                ary=numpy.ascontiguousarray, norm=numpy.linalg.norm,
-                ):
-            """
-            Takes a list of systems and returns their distances from this system.
-            """
-            return numpy.linalg.norm(
-                ary([s.pos for s in iterable]) - self.pos,
-                ord=2, axis=1.
-            )
     
     def getStation(self, stationName):
         """
