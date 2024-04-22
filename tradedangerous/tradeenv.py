@@ -6,7 +6,6 @@ import os
 import sys
 import traceback
 import typing
-from contextlib import contextmanager
 
 # Import some utilities from the 'rich' library that provide ways to colorize and animate
 # the console output, along with other useful features.
@@ -17,7 +16,8 @@ from rich.traceback import install as install_rich_traces
 
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Dict, Iterator
+    import argparse
+    from typing import Any, Dict, Optional, TextIO, Union
 
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -34,21 +34,78 @@ if os.getenv("EXCEPTIONS"):
     install_rich_traces(console=STDERR, show_locals=False, extra_lines=1)
 
 
-class TradeEnv:
+class BaseConsoleIOMixin:
+    """ Base mixin for running output through rich. """
+    console: Console
+    stderr:  Console
+    quiet:   bool
+    
+    def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
+        """
+            unicode-safe print via console or stderr, with 'rich' markup handling.
+        """
+        console = self.stderr if stderr else self.console
+        console.print(*args, style=style, **kwargs)
+
+
+class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
+    """ Mixing for running output through rich with UTF8-translation smoothing. """
+    def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
+        """ unicode-handling print: when the stdout stream is not utf-8 supporting,
+            we do a little extra io work to ensure users don't get confusing unicode
+            errors. When the output stream *is* utf-8.
+            
+            :param stderr: report to stderr instead of stdout
+            :param style: specify a 'rich' console style to use when the stream supports it
+        """
+        console = self.stderr if stderr else self.console
+        try:
+            # Attempt to print; the 'file' argument isn't supported by rich, so we'll
+            # need to fall-back on old print when someone specifies it.
+            console.print(*args, style=style, **kwargs)
+
+        except UnicodeEncodeError as e:
+            # Characters in the output couldn't be translated to unicode.
+            if not self.quiet:
+                self.stderr.print(
+                    "[orange3][bold]CAUTION: Your terminal/console couldn't handle some "
+                    "text I tried to print."
+                )
+                if 'EXCEPTIONS' in os.environ:
+                    traceback.print_exc()
+                else:
+                    self.stderr.print(e)
+
+            # Try to translate each ary into a viable string using utf error-replacement.
+            components = [
+                str(arg)
+                .encode(TradeEnv.encoding, errors="replace")
+                .decode(TradeEnv.encoding)
+                for arg in args
+            ]
+            console.print(*components, style=style, **kwargs)
+
+
+# If the console doesn't support UTF8, use the more-complicated implementation.
+if str(sys.stdout.encoding).upper() != 'UTF-8':
+    Utf8SafeConsoleIOMixin = NonUtf8ConsoleIOMixin
+else:
+    Utf8SafeConsoleIOMixin = BaseConsoleIOMixin
+
+
+class TradeEnv(Utf8SafeConsoleIOMixin):
     """
-        Container for a TradeDangerous "environment", which is a collection of operational parameters.
+        TradeDangerous provides a container for runtime configuration (cli flags, etc) and io operations to
+        enable normalization of things without having to pass huge sets of arguments. This includes things
+        like logging and reporting functionality.
         
         To print debug lines, use DEBUG<N>, e.g. DEBUG0, which takes a format() string and parameters, e.g.
-            
             DEBUG1("hello, {world}{}", "!", world="world")
-        
+
         is equivalent to:
-            
             if tdenv.debug >= 1:
-                print("#hello, {world}{}".format(
-                        "!", world="world"
-                ))
-        
+                print("#hello, {world}{}".format("!", world="world"))
+
         Use "NOTE" to print remarks which can be disabled with -q.
     """
     
@@ -67,55 +124,6 @@ class TradeEnv:
     }
     
     encoding = sys.stdout.encoding
-
-    if str(sys.stdout.encoding).upper() != 'UTF-8':
-        def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
-            """ unicode-handling print: when the stdout stream is not utf-8 supporting,
-                we do a little extra io work to ensure users don't get confusing unicode
-                errors. When the output stream *is* utf-8, tradeenv replaces this method
-                with a less expensive method.
-                :param stderr: report to stderr instead of stdout
-                :param style: specify a 'rich' console style to use when the stream supports it
-            """
-            console = self.stderr if stderr else self.console
-            try:
-                # Attempt to print; the 'file' argument isn't spuported by rich, so we'll
-                # need to fall-back on old print when someone specifies it.
-                console.print(*args, style=style, **kwargs)
-
-            except UnicodeEncodeError as e:
-                # Characters in the output couldn't be translated to unicode.
-                if not self.quiet:
-                    self.stderr.print(
-                        "[orange3][bold]CAUTION: Your terminal/console couldn't handle some "
-                        "text I tried to print."
-                    )
-                    if 'EXCEPTIONS' in os.environ:
-                        traceback.print_exc()
-                    else:
-                        self.stderr.print(e)
-
-                # Try to translate each ary into a viable stirng using utf error-replacement.
-                strs = [
-                    str(arg)
-                        .encode(TradeEnv.encoding, errors="replace")
-                        .decode(TradeEnv.encoding)
-                    for arg in args
-                ]
-                console.print(*strs, style=style, **kwargs)
-    
-    else:
-        def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
-            """ unicode-handling print: when the stdout stream is not utf-8 supporting,
-                this method is replaced with one that tries to provide users better support
-                when a unicode error appears in the wild.
-
-                :param file: [optional] stream to write to (disables styles/rich support)
-                :param style: [optional] specify a rich style for the output text
-            """
-            console = self.stderr if stderr else self.console
-            console.print(*args, style=style, **kwargs)
-    
 
     def __init__(self, properties: Optional[Union[argparse.Namespace, Dict]] = None, **kwargs) -> None:
         # Inject the defaults into ourselves in a dict-like way
