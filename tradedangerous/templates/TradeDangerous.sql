@@ -104,7 +104,6 @@ CREATE TABLE Ship
    ship_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    cost INTEGER NOT NULL,
-   fdev_id INTEGER,
 
    UNIQUE (ship_id)
  );
@@ -160,7 +159,7 @@ CREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);
 
 CREATE TABLE RareItem
  (
-   rare_id INTEGER PRIMARY KEY AUTOINCREMENT,
+   rare_id INTEGER PRIMARY KEY,
    station_id INTEGER NOT NULL,
    category_id INTEGER NOT NULL,
    name VARCHAR(40) COLLATE nocase,
@@ -278,6 +277,7 @@ CREATE TABLE FDevShipyard
    id INTEGER NOT NULL,
    symbol VARCHAR(40),
    name VARCHAR(40) COLLATE nocase,
+   entitlement VARCHAR(50),
 
    UNIQUE (id)
  );
@@ -297,7 +297,7 @@ CREATE TABLE FDevOutfitting
    ship VARCHAR(40) COLLATE nocase,
    class CHAR(1) NOT NULL,
    rating CHAR(1) NOT NULL,
-   entitlement CHAR(10),
+   entitlement VARCHAR(50),
 
    UNIQUE (id)
  );

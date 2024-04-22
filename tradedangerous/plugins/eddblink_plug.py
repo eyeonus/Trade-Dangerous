@@ -72,12 +72,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.commoditiesPath = Path("Item.csv")
         self.rareItemPath = Path("RareItem.csv")
         self.shipPath = Path("Ship.csv")
-        self.FDevShipyardPath = Path("FDevShipyard.csv")
+        self.urlShipyard = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv"
+        self.FDevShipyardPath = self.tdb.dataPath / Path("FDevShipyard.csv")
         self.shipVendorPath = Path("ShipVendor.csv")
         self.stationsPath = Path("Station.csv")
         self.sysPath = Path("System.csv")
         self.upgradesPath = Path("Upgrade.csv")
-        self.FDevOutfittingPath = Path("FDevOutfitting.csv")
+        self.urlOutfitting = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/outfitting.csv"
+        self.FDevOutfittingPath = self.tdb.dataPath / Path("FDevOutfitting.csv")
         self.upgradeVendorPath = Path("UpgradeVendor.csv")
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
@@ -472,12 +474,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         buildCache = False
         if self.getOption("upgrade"):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
-                self.downloadFile(self.FDevOutfittingPath)
+                transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
                 buildCache = True
         
         if self.getOption("ship"):
             if self.downloadFile(self.shipPath) or self.getOption("force"):
-                self.downloadFile(self.FDevShipyardPath)
+                transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
                 buildCache = True
         
         if self.getOption("rare"):
