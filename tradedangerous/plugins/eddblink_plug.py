@@ -416,19 +416,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["all"] = True
             self.options["force"] = True
         
-        self.tdenv.ignoreUnknown = True
-        
-        success = False
-        while not success:
-            try:
-                self.tdenv.DEBUG0("Loading Database. {}", self.now())
-                self.tdb.load(maxSystemLinkLy = self.tdenv.maxSystemLinkLy)
-                success = True
-            except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
-        self.tdenv.DEBUG0("Database loaded.")
-        
         # Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True
@@ -511,6 +498,19 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             self.tdb.close()
             cache.buildCache(self.tdb, self.tdenv)
+        
+        self.tdenv.ignoreUnknown = True
+        
+        success = False
+        while not success:
+            try:
+                self.tdenv.DEBUG0("Loading Database. {}", self.now())
+                self.tdb.load(maxSystemLinkLy = self.tdenv.maxSystemLinkLy)
+                success = True
+            except sqlite3.OperationalError:
+                print("Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
+        self.tdenv.DEBUG0("Database loaded.")
         
         if self.getOption("purge"):
             self.purgeSystems()
