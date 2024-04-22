@@ -2,6 +2,17 @@
 
 
 
+## v10.16.13 (2024-04-22)
+
+### Fix
+
+* fix: remove fdev_id from Ships ([`8a67162`](https://github.com/eyeonus/Trade-Dangerous/commit/8a67162571e6dfd706b7be056d75529208f8f471))
+
+### Refactor
+
+* refactor: load DB after doing rebuild rather than before. ([`aaabdd1`](https://github.com/eyeonus/Trade-Dangerous/commit/aaabdd19eb395ce1f3b9f3a89789acccf23363ec))
+
+
 ## v10.16.12 (2024-04-22)
 
 ### Chore
