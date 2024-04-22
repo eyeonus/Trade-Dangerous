@@ -919,7 +919,7 @@ def buildCache(tdb, tdenv):
     
     tdenv.NOTE(
         "Rebuilding cache file: this may take a few moments.",
-        file = sys.stderr
+        stderr=True,
     )
     
     dbPath = tdb.dbPath
@@ -963,7 +963,7 @@ def buildCache(tdb, tdenv):
         tdenv.NOTE(
                 "Missing \"{}\" file - no price data.",
                     pricesPath,
-                    file = sys.stderr,
+                    stderr=True,
         )
     
     tempDB.commit()
