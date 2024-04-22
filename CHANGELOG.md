@@ -2,6 +2,39 @@
 
 
 
+## v10.16.12 (2024-04-22)
+
+### Chore
+
+* chore: add rich to install_requires in setup.py
+
+Will automatically install rich module if needed when installing TD via
+pip ([`5822a4c`](https://github.com/eyeonus/Trade-Dangerous/commit/5822a4c853602d94e7b7e621145276cc069f66ab))
+
+### Fix
+
+* fix: release lock on DB before rebuilding
+
+fixes #123 ([`031eb51`](https://github.com/eyeonus/Trade-Dangerous/commit/031eb51515371ff9e42e37c226619059a9c48f03))
+
+### Refactor
+
+* refactor: account for FDevShipyard and FDevOutfitting changes
+
+FDevShipyard now has entitlements, and FDevOutfitting has entitlements
+that are more than 10 char long, .sql updated to reflect these changes.
+
+Changes will automatically take effect when eddblink is run after
+upgrading to this version.
+
+correct eddblink plugin to download the source for both to the correct
+location. ([`5eae43d`](https://github.com/eyeonus/Trade-Dangerous/commit/5eae43da8154b3e9d6a5aeb6e726c750b8418a1e))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`f91ff79`](https://github.com/eyeonus/Trade-Dangerous/commit/f91ff798293789a82650f38382c1d055fbbfc299))
+
+
 ## v10.16.11 (2024-04-22)
 
 ### Chore
