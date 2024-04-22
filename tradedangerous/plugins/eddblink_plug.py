@@ -470,10 +470,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # Download required files and update tables.
         buildCache = False
-        if self.getOption("purge"):
-            self.purgeSystems()
-            self.commit()
-        
         if self.getOption("upgrade"):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
                 self.downloadFile(self.FDevOutfittingPath)
@@ -513,13 +509,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             cache.buildCache(self.tdb, self.tdenv)
         
+        if self.getOption("purge"):
+            self.purgeSystems()
+            # self.commit()
+        
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
             if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
         
-        self.commit()
+        # self.commit()
         self.tdb.close()
         
         if self.getOption("listings"):
