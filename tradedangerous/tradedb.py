@@ -438,16 +438,15 @@ class Station(object):
 
 
 class Ship(namedtuple('Ship', (
-        'ID', 'dbname', 'cost', 'fdevID', 'stations'
+        'ID', 'dbname', 'cost', 'stations'
         ))):
     """
     Ship description.
     
     Attributes:
-        ID          -- The database ID
+        ID          -- FDevID as provided by the companion API.
         dbname      -- The name as present in the database
         cost        -- How many credits to buy
-        fdevID      -- FDevID as provided by the companion API.
         stations    -- List of Stations ship is sold at.
     """
     
@@ -1837,7 +1836,7 @@ class TradeDB(object):
         CAUTION: Will orphan previously loaded objects.
         """
         stmt = """
-            SELECT ship_id, name, cost, fdev_id
+            SELECT ship_id, name, cost
               FROM Ship
         """
         self.shipByID = {
