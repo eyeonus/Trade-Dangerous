@@ -179,6 +179,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.tdenv.NOTE("Downloading file '{}'.", path)
         transfers.download(self.tdenv, url, localPath)
+        os.utime(localPath, (dumpModded, dumpModded))
         return True
     
     def purgeSystems(self):
@@ -519,7 +520,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importListings(self.liveListingsPath)
         
         self.commit()
-        
         self.tdb.close()
         
         if self.getOption("listings"):
