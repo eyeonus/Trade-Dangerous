@@ -85,24 +85,23 @@ qtyLevelFrag = r"""
 """
 newItemPriceRe = re.compile(r"""
 ^
-    {base_f}
+    {itemPriceFrag}
     (
     \s+
         # demand units and level
-        (?P<demand> {qtylvl_f})
+        (?P<demand> {qtyLevelFrag})
     \s+
         # supply units and level
-        (?P<supply> {qtylvl_f})
+        (?P<supply> {qtyLevelFrag})
         # time is optional
         (?:
         \s+
-            {time_f}
+            {timeFrag}
         )?
     )?
 \s*
 $
-""".format(base_f=itemPriceFrag, qtylvl_f=qtyLevelFrag, time_f=timeFrag),
-            re.IGNORECASE + re.VERBOSE)
+""", re.IGNORECASE + re.VERBOSE)
 
 ######################################################################
 # Exception classes
@@ -173,8 +172,10 @@ class DeletedKeyError(BuildCacheBaseException):
     """
     
     def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str) -> None:
-        super().__init__(fromFile, lineNo,
-                f'{keyType} "{keyValue}" is marked as DELETED and should not be used.')
+        super().__init__(
+            fromFile, lineNo,
+            f'{keyType} "{keyValue}" is marked as DELETED and should not be used.'
+        )
 
 
 class DeprecatedKeyError(BuildCacheBaseException):
@@ -184,8 +185,10 @@ class DeprecatedKeyError(BuildCacheBaseException):
     """
     
     def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str, newValue: str) -> None:
-        super().__init__(fromFile, lineNo,
-                f'{keyType} "{keyValue}" is deprecated and should be replaced with "{newValue}".')
+        super().__init__(
+            fromFile, lineNo,
+            f'{keyType} "{keyValue}" is deprecated and should be replaced with "{newValue}".'
+        )
 
 
 class MultipleStationEntriesError(DuplicateKeyError):
@@ -231,9 +234,9 @@ class SupplyError(BuildCacheBaseException):
 # for low, medium, or high. We turn these into integer values for
 # ordering convenience, and we include both upper and lower-case
 # so we don't have to sweat ordering.
-#  
+#
 SUPPLY_LEVEL_VALUES = {
-    '?':    -1,
+    '?':   -1,
     'L':    1,      'l':    1,
     'M':    2,      'm':    2,
     'H':    3,      'h':    3,
@@ -273,12 +276,12 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> T
         unitsNo = int(units)
         if unitsNo < 0:
             # Use the same code-path as if the units fail to parse.
-            raise ValueError(f'negative unit count')
+            raise ValueError('negative unit count')
     except ValueError:
         raise SupplyError(
             pricesFile, lineNo, category, reading,
-                f'Unrecognized units/level value: "{level}": expected "-", "?", or a number followed by a level (L, M, H or ?).'
-            ) from None  # don't forward the exception itself
+            f'Unrecognized units/level value: "{level}": expected "-", "?", or a number followed by a level (L, M, H or ?).'
+        ) from None  # don't forward the exception itself
     
     # Normalize the units and level when there are no units.
     if unitsNo == 0:
@@ -339,7 +342,7 @@ if typing.TYPE_CHECKING:
         int,                            # supplyLevel
     ]
     ProcessedItems = List[ProcessedItem]
-    ZeroItems = List[Tuple[int, int]]   # stationID, itemID  
+    ZeroItems = List[Tuple[int, int]]   # stationID, itemID
 
 
 def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defaultZero: bool) -> Tuple[ProcessedStationIds, ProcessedItems, ZeroItems, int, int, int, int]:
@@ -456,7 +459,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
             if not ignoreUnknown:
                 DEBUG0(f'Key value: "{list(stationByName.keys())[list(stationByName.values()).index(128893178)]}"')
                 ignoreOrWarn(
-                        UnknownStationError(priceFile, lineNo, facility)
+                    UnknownStationError(priceFile, lineNo, facility)
                 )
                 return
             name = utils.titleFixup(stationName)
@@ -477,8 +480,8 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
             """, [systemID, name])
             newID = inscur.lastrowid
             stationByName[facility] = newID
-            tdenv.NOTE("Added local station placeholder for {} (#{})",
-                    facility, newID
+            tdenv.NOTE(
+                "Added local station placeholder for {} (#{})", facility, newID
             )
             localAdd += 1
         elif newID in processedStations:
@@ -562,16 +565,16 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
             else:
                 newItems += 1
             if demandString:
-                    demandUnits, demandLevel = parseSupply(
-                        priceFile, lineNo, 'demand', demandString
-                    )
+                demandUnits, demandLevel = parseSupply(
+                    priceFile, lineNo, 'demand', demandString
+                )
             else:
                 demandUnits, demandLevel = defaultUnits, defaultLevel
             
             if demandString and supplyString:
-                    supplyUnits, supplyLevel = parseSupply(
-                        priceFile, lineNo, 'supply', supplyString
-                    )
+                supplyUnits, supplyLevel = parseSupply(
+                    priceFile, lineNo, 'supply', supplyString
+                )
             else:
                 supplyUnits, supplyLevel = defaultUnits, defaultLevel
             
@@ -702,7 +705,7 @@ def processPricesFile(tdenv: TradeEnv, db: sqlite3.Connection, pricesPath: Path,
              ")"
     )
     
-    tdenv.DEBUG0(f'Committing...')
+    tdenv.DEBUG0('Committing...')
     db.commit()
     db.close()
     
@@ -779,26 +782,27 @@ def processImportFile(tdenv, db, importPath, tableName):
         str(importPath), tableName
     )
     
-    fkeySelectStr = ("("
-            "SELECT {newValue}"
-            " FROM {table}"
-            " WHERE {stmt}"
-            ")"
+    fkeySelectStr = (
+        "("
+        " SELECT {newValue}"
+        " FROM {table}"
+        " WHERE {stmt}"
+        ")"
     )
     uniquePfx = "unq:"
     uniqueLen = len(uniquePfx)
     ignorePfx = "!"
     
-    with importPath.open('r', encoding = 'utf-8') as importFile:
+    with importPath.open('r', encoding='utf-8') as importFile:
         csvin = csv.reader(
-            importFile, delimiter = ',', quotechar = "'", doublequote = True
+            importFile, delimiter=',', quotechar="'", doublequote=True
         )
         # first line must be the column names
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
         
         # split up columns and values
-        # this is necessqary because the insert might use a foreign key
+        # this is necessary because the insert might use a foreign key
         bindColumns = []
         bindValues = []
         joinHelper = []
@@ -847,10 +851,10 @@ def processImportFile(tdenv, db, importPath, tableName):
         sql_stmt = """
             INSERT OR REPLACE INTO {table} ({columns}) VALUES({values})
         """.format(
-                table = tableName,
-                columns = ','.join(bindColumns),
-                values = ','.join(bindValues)
-            )
+            table=tableName,
+            columns=','.join(bindColumns),
+            values=','.join(bindValues)
+        )
         tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
         
         # Check if there is a deprecation check for this table.
@@ -1052,7 +1056,7 @@ def importDataFromFile(tdb, tdenv, path, pricesFh = None, reset = False):
             db = tdb.getDB(),
             pricesPath = path,
             pricesFh = pricesFh,
-            )
+    )
     
     # If everything worked, we may need to re-build the prices file.
     if path != tdb.pricesPath:

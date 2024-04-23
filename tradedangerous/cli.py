@@ -58,7 +58,7 @@ def main(argv = None):
             "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
             "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"
             "\tEDForum Thread: https://forums.frontier.co.uk/showthread.php/441509\n"
-            )
+        )
     from . import tradeexcept
     
     try:
@@ -78,7 +78,7 @@ def main(argv = None):
             if 'EXCEPTIONS' in os.environ:
                 raise e
             sys.exit(1)
-    except (UnicodeEncodeError, UnicodeDecodeError) as e:
+    except (UnicodeEncodeError, UnicodeDecodeError):
         print("-----------------------------------------------------------")
         print("ERROR: Unexpected unicode error in the wild!")
         print()

@@ -1,6 +1,4 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-import sys
-
+from __future__ import annotations
 from .exceptions import CommandLineError
 from .parsing import *
 from ..cache import buildCache
@@ -54,7 +52,7 @@ switches = [
 # Perform query and populate result set
 
 
-def run(results, cmdenv, tdb):
+def run(results, cmdenv, tdb: TradeDB):
     # Check that the file doesn't already exist.
     if not cmdenv.force:
         if tdb.dbPath.exists():
