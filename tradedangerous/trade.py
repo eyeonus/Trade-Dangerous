@@ -38,13 +38,9 @@ from __future__ import annotations
 from tradedangerous import cli
 
 import sys
-import typing
-
-if typing.TYPE_CHECKING:
-    from typing import List, Tuple
     
 
-def main(argv: List[Tuple] = None) -> None:
+def main(argv: list[tuple] = None) -> None:
     """ Entry point for the TradeDangerous command-line app. """
     if argv is None:
         argv = sys.argv

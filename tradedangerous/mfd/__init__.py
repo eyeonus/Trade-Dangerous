@@ -26,7 +26,7 @@ class MissingDeviceError(Exception):
 ######################################################################
 # classes
 
-class DummyMFD(object):
+class DummyMFD:
     """
         Base class for the MFD drivers, implemented as no-ops so that
         you can always use all MFD functions without conditionals.

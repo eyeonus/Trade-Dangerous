@@ -363,7 +363,7 @@ def run(results, cmdenv, tdb):
     avgSell = results.summary.avgSelling = tdb.getAverageSelling()
     avgBuy = results.summary.avgBuying = tdb.getAverageBuying()
     
-    class ItemTrade(object):
+    class ItemTrade:
         def __init__(self, ID, price, avgAgainst):
             self.ID, self.item = ID, tdb.itemByID[ID]
             self.price = int(price)

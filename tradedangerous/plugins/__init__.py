@@ -10,7 +10,7 @@ class PluginException(Exception):
     """
 
 
-class PluginBase(object):
+class PluginBase:
     """
     Base class for plugin implementation.
     

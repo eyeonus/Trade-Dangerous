@@ -5,7 +5,7 @@ from tradedangerous import cache
 
 FakeFile = namedtuple('FakeFile', ['name'])
 
-class TestCache(object):
+class TestCache:
     def test_parseSupply(self):
         fil = FakeFile('faked-file.prices')
         reading = '897H'

@@ -8,7 +8,7 @@ import itertools
 import typing
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Callable, List, Optional, Tuple
+    from typing import Any, Callable, Optional
 
 class ColumnFormat:
     """
@@ -130,7 +130,7 @@ class RowFormat:
                 of the columns
     
     """
-    columns:        List[ColumnFormat]
+    columns:        list[ColumnFormat]
     prefix:         str
     
     def __init__(self, prefix: Optional[str] = None):
@@ -157,7 +157,7 @@ class RowFormat:
     def text(self) -> str:
         return f"{self.prefix} {' '.join(col.text() for col in self.columns)}"
     
-    def heading(self) -> Tuple[str, str]:
+    def heading(self) -> tuple[str, str]:
         """ Returns a title and the appropriate underline for that text. """
         headline = f"{self}"
         return headline, '-' * len(headline)

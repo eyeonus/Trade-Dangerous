@@ -17,7 +17,7 @@ def tdenv():
     return TradeEnv()
 
 
-class TestFS(object):
+class TestFS:
     
     def test_copy(self, tdenv):
         src = fs.pathify(tdenv.templateDir, 'TradeDangerous.sql')

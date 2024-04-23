@@ -37,7 +37,7 @@ def edsc_log(apiCall, params, jsonData=None, error=None):
         pass
 
 
-class EDSCQueryBase(object):
+class EDSCQueryBase:
     """
     Base class for creating an EDSC Query class, do not use directly.
     
@@ -108,7 +108,7 @@ class Status(namedtuple('Status', [
         ])):
     pass
 
-class StarSubmissionResult(object):
+class StarSubmissionResult:
     """
     Translates a response the json we get back from EDSC when
     we submit a StarSubmission into something less awful to
@@ -327,7 +327,7 @@ class StarSubmissionResult(object):
 
 
 
-class StarSubmission(object):
+class StarSubmission:
     baseURL = "http://edstarcoordinator.com/api.asmx/"
     apiCall = "SubmitDistances"
     

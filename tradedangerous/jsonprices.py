@@ -54,7 +54,7 @@ def lookup_system(tdb, tdenv, name, x, y, z):
                 ))
         return candidates[0]
     
-    if len(candidates):
+    if candidates:
         options = ', '.join([s.name for s in candidates])
         raise RuntimeError(f"System {system.name} matches co-ordinates for systems: {options}")
     
@@ -83,7 +83,7 @@ def lookup_station(
     
     # Now set the parameters
     tdb.updateLocalStation(
-            stn, lsFromStar, blackMarket, maxPadSize
+            station, lsFromStar, blackMarket, maxPadSize
     )
     return station
 

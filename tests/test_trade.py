@@ -15,7 +15,7 @@ def teardown_module():
     remove_fixtures()
 
 
-class TestTrade(object):
+class TestTrade:
     def test_local_help(self):
         with pytest.raises(UsageError):
             trade([PROG, "local", "-h"])

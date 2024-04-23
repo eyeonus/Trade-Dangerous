@@ -1,6 +1,6 @@
 import sys
 
-class Progress(object):
+class Progress:
     """
     Helper class that describes a simple text-based progress bar.
     """

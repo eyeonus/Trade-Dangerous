@@ -628,7 +628,7 @@ def updateCommandBox(args = None):
 # Setup the CLI interface and build the main window
 def main(argv = None):
     
-    class IORedirector(object):
+    class IORedirector:
         
         def __init__(self, TEXT_INFO):
             self.TEXT_INFO = TEXT_INFO

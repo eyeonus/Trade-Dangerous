@@ -25,7 +25,7 @@ class CommandResults:
         cmdenv._cmd.render(self, cmdenv, tdb)
 
 
-class ResultRow(object):
+class ResultRow:
     
     def __init__(self, **kwargs):
         for k, v in kwargs.items():

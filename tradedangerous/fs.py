@@ -33,11 +33,11 @@ def copy_if_newer(src, dst):
     """
     srcPath = pathify(src).resolve()
     dstPath = pathify(dst)
-    if dstPath.exists() and not (dstPath.stat().st_mtime < srcPath.stat().st_mtime):
+    if dstPath.exists() and dstPath.stat().st_mtime >= srcPath.stat().st_mtime:
         return srcPath
-    else:
-        shcopy(str(srcPath), str(dstPath))
-        return dstPath
+
+    shcopy(str(srcPath), str(dstPath))
+    return dstPath
 
 def copyallfiles(srcdir, dstdir):
     """

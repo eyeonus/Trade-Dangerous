@@ -17,7 +17,7 @@ from rich.traceback import install as install_rich_traces
 
 if typing.TYPE_CHECKING:
     import argparse
-    from typing import Any, Dict, Optional, Union
+    from typing import Any, Optional, Union
 
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -191,7 +191,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
     
     encoding = sys.stdout.encoding
     
-    def __init__(self, properties: Optional[Union[argparse.Namespace, Dict]] = None, **kwargs) -> None:
+    def __init__(self, properties: Optional[Union[argparse.Namespace, dict]] = None, **kwargs) -> None:
         # Inject the defaults into ourselves in a dict-like way
         self.__dict__.update(self.defaults)
         

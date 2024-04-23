@@ -61,8 +61,7 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         pass
 
 
-class OAuthCallbackServer(object):
-    
+class OAuthCallbackServer:
     def __init__(self, hostname, port, handler):
         myServer = HTTPServer
         myServer.callback_code = None

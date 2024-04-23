@@ -40,7 +40,7 @@ def edsm_log(apiCall, url, params, jsonData=None, error=None):
         pass
 
 
-class EDSMQueryBase(object):
+class EDSMQueryBase:
     """
     Base class for creating an EDSM Query class, do not use directly.
     

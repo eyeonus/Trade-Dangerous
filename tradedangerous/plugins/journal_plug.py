@@ -20,7 +20,7 @@ def snapToGrid32(val):
 def getYNfromService(obj, key):
     return "Y" if key in obj else "N"
 
-class JournalStation(object):
+class JournalStation:
     __slots__ = (
         'lsFromStar', 'blackMarket', 'maxPadSize',
         'market', 'shipyard', 'outfitting',

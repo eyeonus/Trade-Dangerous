@@ -20,7 +20,7 @@ import sqlite3
 from .. import plugins, cache, transfers, csvexport, corrections
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Dict, Iterable, Optional, Tuple
+    from typing import Any, Iterable, Optional
     from .. tradeenv import TradeEnv
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
@@ -436,7 +436,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.print(f'Retrying query \'{query}\': {ex!s}')
                 time.sleep(1)
     
-    def load_known_systems(self) -> Dict[int, str]:
+    def load_known_systems(self) -> dict[int, str]:
         """ Returns a dictionary of {system_id -> system_name} for all current systems in the database. """
         try:
             return dict(self.cursor.execute('SELECT system_id, name FROM System'))
@@ -445,7 +445,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdenv.DEBUG0(f"load_known_systems query raised {e}")
             return {}
     
-    def load_known_stations(self) -> Dict[int, Tuple[str, int]]:
+    def load_known_stations(self) -> dict[int, tuple[str, int]]:
         """ Returns a dictionary of {station_id -> (station_name, system_id)} for all current stations in the database. """
         try:
             return {cols[0]: (cols[1], cols[2]) for cols in self.cursor.execute('SELECT station_id, name, system_id FROM Station')}

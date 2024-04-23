@@ -84,8 +84,7 @@ SOFTBUTTON_UP = 0x00000002
 SOFTBUTTON_DOWN = 0x00000004
 
 
-class DirectOutput(object):
-    
+class DirectOutput:
     def __init__(self, dll_path):
         """
         Creates python object to interact with DirecOutput.dll
@@ -276,9 +275,9 @@ class DirectOutput(object):
         return self.DirectOutputDLL.DirectOutput_SetString(ctypes.wintypes.HANDLE(device_handle), page, line, len(string), ctypes.wintypes.LPWSTR(string))
 
 
-class DirectOutputDevice(object):
+class DirectOutputDevice:
     
-    class Buttons(object):
+    class Buttons:
         
         select, up, down = False, False, False
         

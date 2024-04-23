@@ -25,7 +25,7 @@ def should_skip() -> bool:
     return False  # os.getenv("CI") != None
 
 
-class TestPeek(object):
+class TestPeek:
     """
     Tests based on https://github.com/eyeonus/Trade-Dangerous/wiki/Python-Quick-Peek
     """

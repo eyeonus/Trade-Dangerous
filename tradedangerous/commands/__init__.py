@@ -82,7 +82,7 @@ def _findFromFile(cmd, prefix = '.tdrc'):
     return None
 
 
-class CommandIndex(object):
+class CommandIndex:
     
     def usage(self, argv):
         """

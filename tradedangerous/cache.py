@@ -37,7 +37,7 @@ from . import prices
 
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, TextIO, Tuple
+    from typing import Any, Optional, TextIO
     
     from .tradeenv import TradeEnv
 
@@ -243,7 +243,7 @@ SUPPLY_LEVEL_VALUES = {
 }
 
 
-def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> Tuple[int, int]:
+def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> tuple[int, int]:
     """ Parse a supply specifier which is expected to be in the <number><?, L, M, or H>, and
         returns the units as an integer and a numeric level value suitable for ordering,
         such that ? = -1, L/l = 0, M/m = 1, H/h = 2 """
@@ -295,7 +295,7 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> T
 ######################################################################
 
 
-def getSystemByNameIndex(cur: sqlite3.Cursor) -> Dict[str, int]:
+def getSystemByNameIndex(cur: sqlite3.Cursor) -> dict[str, int]:
     """ Build station index in STAR/Station notation """
     cur.execute("""
             SELECT system_id, UPPER(system.name)
@@ -304,7 +304,7 @@ def getSystemByNameIndex(cur: sqlite3.Cursor) -> Dict[str, int]:
     return { name: ID for (ID, name) in cur }
 
 
-def getStationByNameIndex(cur: sqlite3.Cursor) -> Dict[str, int]:
+def getStationByNameIndex(cur: sqlite3.Cursor) -> dict[str, int]:
     """ Build station index in STAR/Station notation """
     cur.execute("""
             SELECT station_id,
@@ -316,7 +316,7 @@ def getStationByNameIndex(cur: sqlite3.Cursor) -> Dict[str, int]:
     return { name.upper(): ID for (ID, name) in cur }
 
 
-def getItemByNameIndex(cur: sqlite3.Cursor) -> Dict[str, int]:
+def getItemByNameIndex(cur: sqlite3.Cursor) -> dict[str, int]:
     """
         Generate item name index.
     """
@@ -329,8 +329,8 @@ def getItemByNameIndex(cur: sqlite3.Cursor) -> Dict[str, int]:
 # more helpful about what it is trying to return.
 if typing.TYPE_CHECKING:
     # A list of the IDs of stations that were modified so they can be updated
-    ProcessedStationIds= Tuple[Tuple[int]]
-    ProcessedItem = Tuple[
+    ProcessedStationIds= tuple[tuple[int]]
+    ProcessedItem = tuple[
         int,                            # station ID
         int,                            # item ID
         Optional[int | float |str],     # modified
@@ -341,11 +341,11 @@ if typing.TYPE_CHECKING:
         int,                            # supplyUnits
         int,                            # supplyLevel
     ]
-    ProcessedItems = List[ProcessedItem]
-    ZeroItems = List[Tuple[int, int]]   # stationID, itemID
+    ProcessedItems = list[ProcessedItem]
+    ZeroItems = list[tuple[int, int]]   # stationID, itemID
 
 
-def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defaultZero: bool) -> Tuple[ProcessedStationIds, ProcessedItems, ZeroItems, int, int, int, int]:
+def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defaultZero: bool) -> tuple[ProcessedStationIds, ProcessedItems, ZeroItems, int, int, int, int]:
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
@@ -502,7 +502,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
               FROM StationItem
              WHERE station_id = ?
         """, [stationID])
-        stationItemDates = {ID: modified for ID, modified in cur}
+        stationItemDates = dict(cur)
     
     addItem, addZero = items.append, zeros.append
     getItemID = itemByName.get
@@ -866,7 +866,7 @@ def processImportFile(tdenv, db, importPath, tableName):
         
         # import the data
         importCount = 0
-        uniqueIndex = dict()
+        uniqueIndex = {}
         
         for linein in csvin:
             if not linein:

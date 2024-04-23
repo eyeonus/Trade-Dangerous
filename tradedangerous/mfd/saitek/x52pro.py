@@ -20,7 +20,7 @@ import time
 
 
 class X52Pro(DirectOutputDevice):
-    class Page(object):
+    class Page:
         _lines = [ str(), str(), str() ]
         _leds  = dict()
         

@@ -13,7 +13,7 @@ def cmd():
 prog = "trade.py"
 
 
-class TestCommands(object):
+class TestCommands:
     
     def test_dashh(self, cmd):
         with pytest.raises(UsageError):

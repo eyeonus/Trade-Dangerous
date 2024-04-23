@@ -265,7 +265,7 @@ switches = [
 # Helpers
 
 
-class Checklist(object):
+class Checklist:
     """
         Class for encapsulating display of a route as a series of
         steps to be 'checked off' as the user passes through them.

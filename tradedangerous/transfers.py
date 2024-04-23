@@ -5,6 +5,7 @@ from .tradeexcept import TradeException
 import csv
 import json
 from .misc import progress as pbar
+import platform  # noqa: F401
 from . import fs
 import time
 import subprocess
@@ -18,7 +19,6 @@ except ImportError:
 
 def import_requests():
     global __requests
-    global platform
     if __requests:
         return __requests
     
@@ -54,9 +54,8 @@ def import_requests():
         raise TradeException("Missing package: 'requests'")
     
     try:
-        import pip  # noqa: F401
+        import pip  # noqa: F401  # pylint: disable=unused-import
     except ImportError as e:
-        import platform
         raise TradeException(
             "Python 3.4.2 includes a package manager called 'pip', "
             "except it doesn't appear to be installed on your system:\n"
@@ -70,7 +69,7 @@ def import_requests():
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'requests'])
     
     try:
-        import requests
+        import requests  # pylint: disable=redefined-outer-name
         __requests = requests
     except ImportError as e:
         raise TradeException(
@@ -125,9 +124,9 @@ def download(
         function to call on the first line
     """
     
-    requests = import_requests()
+    requests = import_requests()  # pylint: disable=redefined-outer-name
     tdenv.NOTE("Requesting {}".format(url))
-    req = requests.get(url, headers=headers or None, stream=True)
+    req = requests.get(url, headers=headers or None, stream=True, timeout=300)
     req.raise_for_status()
     
     encoding = req.headers.get('content-encoding', 'uncompress')
@@ -230,8 +229,8 @@ def get_json_data(url):
     Displays a progress bar as it downloads.
     """
     
-    requests = import_requests()
-    req = requests.get(url, stream=True)
+    requests = import_requests()  # pylint: disable=redefined-outer-name
+    req = requests.get(url, stream=True, timeout=300)
     
     totalLength = req.headers.get('content-length')
     if totalLength is None:
@@ -256,7 +255,7 @@ def get_json_data(url):
     
     return json.loads(jsData.decode())
 
-class CSVStream(object):
+class CSVStream:
     """
     Provides an iterator that fetches CSV data from a given URL
     and presents it as an iterable of (columns, values).
@@ -271,8 +270,8 @@ class CSVStream(object):
         self.url = url
         self.tdenv = tdenv
         if not url.startswith("file:///"):
-            requests = import_requests()
-            self.req = requests.get(self.url, stream=True)
+            requests = import_requests()  # pylint: disable=redefined-outer-name
+            self.req = requests.get(self.url, stream=True, timeout=300)
             self.lines = self.req.iter_lines()
         else:
             self.lines = open(url[8:], "rUb")

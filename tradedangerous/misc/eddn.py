@@ -86,12 +86,12 @@ class MarketPrice(namedtuple('MarketPrice', [
     pass
 
 
-class Listener(object):
+class Listener:
     """
     Provides an object that will listen to the Elite Dangerous Data Network
     firehose and capture messages for later consumption.
     
-    Rather than individual upates, prices are captured across a window of
+    Rather than individual updates, prices are captured across a window of
     between minBatchTime and maxBatchTime. When a new update is received,
     Rather than returning individual messages, messages are captured across
     a window of potentially several seconds and returned to the caller in

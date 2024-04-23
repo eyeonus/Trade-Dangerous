@@ -1,6 +1,6 @@
 import pytest
 
-class TestBootstrapPlugins(object):
+class TestBootstrapPlugins:
     def test_import_traded(self):
         import tradedangerous as td
     

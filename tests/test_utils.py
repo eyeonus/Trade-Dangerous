@@ -4,7 +4,7 @@ from tradedangerous import utils
 from tradedangerous import TradeEnv
 
 
-class TestUtils(object):
+class TestUtils:    # should inherit from TestCase
     # TODO: Test 'von' etc.
     
     def test_titleFixup_s(self):

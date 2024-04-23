@@ -42,7 +42,7 @@ updateUiHelp = (
 "- Use Tab, Shift-Tab, Up/Down Arrow and Enter to navigate.\n"
 )
 
-class Item(object):
+class Item:
     """ Describe a listed, tradeable item """
     
     def __init__(self, ID, catID, name, displayNo):

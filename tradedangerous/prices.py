@@ -13,12 +13,12 @@ import sys
 import sqlite3
 
 
-class Element(object):
-    basic     = (1 << 0)
-    supply    = (1 << 1)
-    timestamp = (1 << 2)
-    full      = (basic | supply | timestamp)
-    blanks    = (1 <<31)
+class Element:      # TODO: enum?
+    basic     = 1 << 0
+    supply    = 1 << 1
+    timestamp = 1 << 2
+    full      = basic | supply | timestamp
+    blanks    = 1 <<31
 
 
 ######################################################################
@@ -38,20 +38,20 @@ def dumpPrices(
         If file is not none, outputs to the given file handle.
     """
     
-    withTimes  = (elementMask & Element.timestamp)
-    getBlanks  = (elementMask & Element.blanks)
+    withTimes  = elementMask & Element.timestamp
+    getBlanks  = elementMask & Element.blanks
     
     conn = sqlite3.connect(str(dbPath))
     conn.execute("PRAGMA foreign_keys=ON")
     cur  = conn.cursor()
     
-    systems = { ID: name for (ID, name) in cur.execute("SELECT system_id, name FROM System") }
+    systems = dict(cur.execute("SELECT system_id, name FROM System"))
     stations = {
         ID: [ name, systems[sysID] ]
         for (ID, name, sysID)
         in cur.execute("SELECT station_id, name, system_id FROM Station")
     }
-    categories = { ID: name for (ID, name) in cur.execute("SELECT category_id, name FROM Category") }
+    categories = dict(cur.execute("SELECT category_id, name FROM Category"))
     items = {
         ID: [ name, catID, categories[catID] ]
         for (ID, name, catID)
@@ -224,7 +224,8 @@ def dumpPrices(
     file.write(output)
 
 
-if __name__ == "__main__":
-    import tradedb
-    tdb = tradedb.TradeDB(load=False)
-    dumpPrices(tdb.dbPath, elementMask=Element.full)
+# if __name__ == "__main__":
+#     import tradedb
+# 
+#     tdb = tradedb.TradeDB(load=False)
+#     dumpPrices(tdb.dbPath, elementMask=Element.full)

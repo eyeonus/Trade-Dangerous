@@ -32,8 +32,8 @@ reverseList = []
 # Helpers
 ######################################################################
 
-def search_keyList(list, val):
-    for row in list:
+def search_keyList(items, val):
+    for row in items:
         if row['from'] == row['to'] == val:
             return row
 
