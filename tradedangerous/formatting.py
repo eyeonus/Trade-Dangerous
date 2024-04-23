@@ -94,8 +94,9 @@ class ColumnFormat:
         self.post = post or ''
         self.pred = pred
     
-    def text(self) -> str:
+    def __str__(self) -> str:
         return f'{self.pre}{self.name:{self.align}{self.width}}{self.post}'
+    text = __str__
     
     def format(self, value: str) -> str:
         """ Returns the string formatted with a specific value"""
@@ -154,8 +155,10 @@ class RowFormat:
         if column is not None:
             self.columns.insert(pos, column)
     
-    def text(self) -> str:
-        return f"{self.prefix} {' '.join(col.text() for col in self.columns)}"
+    def __str__(self) -> str:
+        return f"{self.prefix} {' '.join(str(col) for col in self.columns)}"
+    
+    text = __str__  # alias
     
     def heading(self) -> tuple[str, str]:
         """ Returns a title and the appropriate underline for that text. """
