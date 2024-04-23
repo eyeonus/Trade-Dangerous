@@ -2,6 +2,27 @@
 
 
 
+## v10.16.14 (2024-04-23)
+
+### Fix
+
+* fix: excessive RAM usage on eddblink listings import
+
+fixes #125
+
+Instead of building a list during processing of the listings file (which
+uses a *lot* of RAM on large source files) and updating the DB after
+processing, update the DB as each line is processed.
+
+This keeps RAM usage very low, especially in comparison. ([`91a71c0`](https://github.com/eyeonus/Trade-Dangerous/commit/91a71c075d352cae91bc9cf6e5f9659cc88b2dcd))
+
+### Refactor
+
+* refactor: make skipping station message more clear ([`3434b53`](https://github.com/eyeonus/Trade-Dangerous/commit/3434b53b821f0f9d7791004066ebb2da89e46982))
+
+* refactor: removed unneeded loading of DB ([`532342e`](https://github.com/eyeonus/Trade-Dangerous/commit/532342e68c7222cf9d431ed75e4f53098f0a310f))
+
+
 ## v10.16.13 (2024-04-22)
 
 ### Fix
