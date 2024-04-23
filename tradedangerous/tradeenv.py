@@ -37,11 +37,15 @@ if os.getenv("EXCEPTIONS"):
 class BaseColorTheme:
     """ A way to theme the console output colors. The default is none. """
     CLOSE:      str = ""        # code to stop the last color
-    bold:       str = ""        # code to make text bold
     dim:        str = ""        # code to make text dim
+    bold:       str = ""        # code to make text bold
+    italic:     str = ""        # code to make text italic
+    # blink:    NEVER = "don't you dare"
 
-    NOTE:       str = ""
-    WARN:       str = ""
+    # style, label
+    debug, DEBUG    = dim,  "#"
+    note,  NOTE     = bold, "NOTE"
+    warn,  WARNING  = "",   "WARNING"
 
     seq_first:  str = ""        # the first item in a sequence
     seq_last:   str = ""        # the last item in a sequence
@@ -58,29 +62,40 @@ class BaseColorTheme:
         return str(renderable)
 
 
-class RichColorTheme(BaseColorTheme):
-    """ Provides 'rich' styling based theme for console output. """
+class BasicRichColorTheme(BaseColorTheme):
+    """ Provide's 'rich' styling without our own colorization. """
     CLOSE     = "[/]"
     bold      = "[bold]"
     dim       = "[dim]"
+    italic    = "[italic]"
 
-    DEBUG     = dim
-    NOTE      = bold
-    WARN      = "[orange3]"
-
-    seq_first = "[cyan]"
-    seq_last  = "[blue]"
-
-    # Included as examples of how you might use this to manipulate tradecal output.
-    itm_units = "[yellow3]"
-    itm_name  = "[yellow]"
-    itm_price = "[bold]"
+    # style, label
+    debug, DEBUG   = dim,  "#"
+    note,  NOTE    = bold, "NOTE"
+    warn,  WARNING =  "[orange3]", "WARNING"
 
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover
         style_attr = getattr(self, style, "")
         if not style_attr:
             return renderable if isinstance(renderable, str) else str(renderable)
         return f"{style_attr}{renderable}{self.CLOSE}"
+
+
+class RichColorTheme(BasicRichColorTheme):
+    """ Demonstrates how you might augment the rich theme with colors to be used fin e.g tradecal. """
+    DEBUG = ":spider_web:"
+    NOTE  = ":information_source:"
+    WARNING = ":warning:"
+
+    # e.g. First station
+    seq_first = "[cyan]"
+    # e.g. Last station
+    seq_last  = "[blue]"
+
+    # Included as examples of how you might use this to manipulate tradecal output.
+    itm_units = "[yellow3]"
+    itm_name  = "[yellow]"
+    itm_price = "[bold]"
 
 
 class BaseConsoleIOMixin:
@@ -194,8 +209,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         if self.__dict__['debug']:
             install_rich_traces(console=STDERR, show_locals=True, extra_lines=2)
 
-        if self.__dict__['color']:
-            self.theme = RichColorTheme()
+        self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
 
     def __getattr__(self, key: str) -> Any:
         """ Return the default for attributes we don't have """
@@ -206,7 +220,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             # Self-assembling DEBUGN functions
             def __DEBUG_ENABLED(outText, *args, **kwargs):
                 # Give debug output a less contrasted color.
-                self.console.print(f"{self.theme.DEBUG}#{outText.format(*args, **kwargs)}")
+                self.console.print(f"{self.theme.debug}{self.theme.DEBUG}{outText.format(*args, **kwargs)}")
 
             def __DEBUG_DISABLED(*args, **kwargs):
                 pass
@@ -223,9 +237,9 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
 
         if key == "NOTE":
 
-            def __NOTE_ENABLED(outText, *args, stderr: bool = False, **kwargs):
+            def __NOTE_ENABLED(outText, *args, stderr: bool=False, **kwargs):
                 self.uprint(
-                    f"{self.theme.NOTE}NOTE: {str(outText).format(*args, **kwargs)}",
+                    f"{self.theme.note}{self.theme.NOTE}: {str(outText).format(*args, **kwargs)}",
                     stderr=stderr,
                 )
 
@@ -242,9 +256,9 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
 
         if key == "WARN":
 
-            def _WARN_ENABLED(outText, *args, stderr: bool = False, **kwargs):
+            def _WARN_ENABLED(outText, *args, stderr: bool=False, **kwargs):
                 self.uprint(
-                    f"{self.theme.WARN}WARNING: {str(outText).format(*args, **kwargs)}",
+                    f"{self.theme.warn}{self.theme.WARNING}: {str(outText).format(*args, **kwargs)}",
                     stderr=stderr,
                 )
 
