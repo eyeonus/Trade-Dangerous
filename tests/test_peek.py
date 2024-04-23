@@ -30,7 +30,7 @@ class TestPeek(object):
     """
     Tests based on https://github.com/eyeonus/Trade-Dangerous/wiki/Python-Quick-Peek
     """
-
+    
     @pytest.mark.skipif(should_skip(), reason="does not work with CI")
     def test_quick_origin(self, tdb:TradeDB):
         # Look up a particular system
@@ -70,7 +70,7 @@ class TestPeek(object):
         
         abe = tdb.lookupPlace("sol/hamlinc")
         assert isinstance(abe, Station)
-
+    
     @pytest.mark.skipif(should_skip(), reason="does not work with CI")
     def test_quick_five(self, tdb):
         systemTable = tdb.systemByID.values()

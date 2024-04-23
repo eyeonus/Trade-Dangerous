@@ -236,9 +236,9 @@ class SupplyError(BuildCacheBaseException):
 #  
 SUPPLY_LEVEL_VALUES = {
     '?':    -1,
-    'L':    0,      'l':    0,
-    'M':    1,      'm':    1,
-    'H':    2,      'h':    2,
+    'L':    1,      'l':    1,
+    'M':    2,      'm':    2,
+    'H':    3,      'h':    3,
 }
 
 

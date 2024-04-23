@@ -165,7 +165,7 @@ class DirectOutput(object):
         S_OK: The call completed successfully.
         E_HANDLE: The device handle specified is invalid.
         """
-
+        
         logging.debug("DirectOutput.RegisterSoftButtonCallback({}, {})".format(device_handle, function))
         return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(ctypes.wintypes.HANDLE(device_handle), function, 0)
     
