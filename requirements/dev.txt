@@ -7,5 +7,5 @@ flake8
 importlib-metadata>=1
 wheel
 coverage
-pysimdjson~=6.0.2
+ijson
 rich==13.7.1
