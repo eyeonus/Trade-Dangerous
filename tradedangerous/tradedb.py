@@ -17,24 +17,24 @@ TradeDB, System, Station, Ship, Item, RareItem and Trade.
 These classes are primarily for describing the database.
 
 Simplistic use might be:
-
+    
     import tradedb
-
+    
     # Create an instance: You can specify a debug level as a
     # parameter, for more advanced configuration, see the
     # tradeenv.TradeEnv() class.
     tdb = tradedb.TradeDB()
-
+    
     # look up a System by name
     sol = tdb.lookupSystem("SOL")
     ibootis = tdb.lookupSystem("i BootiS")
     ibootis = tdb.lookupSystem("ibootis")
-
+    
     # look up a Station by name
     abe = tdb.lookupStation("Abraham Lincoln")
     abe = tdb.lookupStation("Abraham Lincoln", sol)
     abe = tdb.lookupStation("hamlinc")
-
+    
     # look up something that could be a system or station,
     # where 'place' syntax can be:
     #  SYS, STN, SYS/STN, @SYS, /STN or @SYS/STN
@@ -94,7 +94,7 @@ class AmbiguityError(TradeException):
         self.searchKey = searchKey
         self.anyMatch = anyMatch
         self.key = key
-
+    
     def __str__(self):
         anyMatch, key = self.anyMatch, self.key
         if len(anyMatch) > 10:
@@ -131,17 +131,17 @@ def make_stellar_grid_key(x: float, y: float, z: float) -> int:
 class System:
     """
     Describes a star system which may contain one or more Station objects.
-
+    
     Caution: Do not use _rangeCache directly, use TradeDB.genSystemsInRange.
     """
-
+    
     __slots__ = (
         'ID',
         'dbname', 'posX', 'posY', 'posZ', 'pos', 'stations',
         'addedID',
         '_rangeCache'
     )
-
+    
     class RangeCache:
         """
         Lazily populated cache of neighboring systems.
@@ -149,7 +149,7 @@ class System:
         def __init__(self):
             self.systems = []
             self.probed_ly = 0.
-
+    
     def __init__(self, ID, dbname, posX, posY, posZ, addedID) -> None:
         self.ID = ID
         self.dbname = dbname
@@ -157,22 +157,22 @@ class System:
         self.addedID = addedID or 0
         self.stations = ()
         self._rangeCache = None
-
+    
     @property
     def system(self) -> 'System':
         """ Returns self for compatibility with the undefined 'Positional' interface. """
         return self
-
+    
     def distanceTo(self, other: 'System') -> float:
         """
         Returns the distance (in ly) between two systems.
-
+        
         NOTE: If you are primarily testing/comparing
         distances, consider using "distToSq" for the test.
-
+        
         Returns:
             Distance in light years.
-
+        
         Example:
             print("{} -> {}: {} ly".format(
                 lhs.name(), rhs.name(),
@@ -181,12 +181,12 @@ class System:
         """
         dx, dy, dz = self.posX - other.posX, self.posY - other.posY, self.posZ - other.posZ
         return math_sqrt(dx * dx + dy * dy + dz * dz)
-
+    
     def getStation(self, name: str) -> 'Optional[Station]':
         """
         Quick case-insensitive lookup of a station name within the
         stations in this system.
-
+        
         Returns:
             Station() object if a match is found,
             otherwise None.
@@ -196,11 +196,11 @@ class System:
             if station.name == name:
                 return station
         return None
-
+    
     def name(self, detail: int = 0) -> str:     # pylint: disable=unused-argument
         """ Returns the display name for this System."""
         return self.dbname
-
+    
     def text(self) -> str:
         return self.dbname
 
@@ -219,7 +219,7 @@ class DestinationNode(namedtuple('DestinationNode', [
 class Station:
     """
     Describes a station (trading or otherwise) in a system.
-
+    
     For obtaining trade information for a given station see one of:
         TradeCalc.getTrades        (fast and cheap)
     """
@@ -229,7 +229,7 @@ class Station:
         'outfitting', 'rearm', 'refuel', 'repair', 'planetary','fleet',
         'odyssey', 'itemCount', 'dataAge',
     )
-
+    
     def __init__(
             self, ID, system, dbname,
             lsFromStar, market, blackMarket, shipyard, maxPadSize,
@@ -252,20 +252,20 @@ class Station:
         self.itemCount = itemCount
         self.dataAge = dataAge
         system.stations = system.stations + (self,)
-
+    
     def name(self, detail: int = 0) -> str:  # pylint: disable=unused-argument
         return f"{self.system.dbname}/{self.dbname}"
-
+    
     def checkPadSize(self, maxPadSize):
         """
         Tests if the Station's max pad size matches one of the
         values in 'maxPadSize'.
-
+        
         Args:
             maxPadSize
                 A string of one or more max pad size values that
                 you want to match against.
-
+        
         Returns:
             True
                 If self.maxPadSize is None or empty, or matches a
@@ -273,7 +273,7 @@ class Station:
             False
                 If maxPadSize was not empty but self.maxPadSize
                 did not match it.
-
+        
         Examples:
             # Require a medium max pad size - not small or large
             station.checkPadSize("M")
@@ -283,17 +283,17 @@ class Station:
             station.checkPadSize("SL?")
         """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
-
+    
     def checkPlanetary(self, planetary):
         """
         Tests if the Station's planetary matches one of the
         values in 'planetary'.
-
+        
         Args:
             planetary
                 A string of one or more planetary values that
                 you want to match against.
-
+        
         Returns:
             True
                 If self.planetary is None or empty, or matches a
@@ -301,7 +301,7 @@ class Station:
             False
                 If planetary was not empty but self.planetary
                 did not match it.
-
+        
         Examples:
             # Require a planetary station
             station.checkPlanetary("Y")
@@ -311,7 +311,7 @@ class Station:
             station.checkPlanetary("N")
         """
         return (not planetary or self.planetary in planetary)
-
+    
     def checkFleet(self, fleet):
         """
         Same as checkPlanetary, but for fleet carriers.
@@ -330,7 +330,7 @@ class Station:
         """
         Returns a textual description of the distance from this
         Station to the parent star.
-
+        
         Args:
             addSuffix[=False]:
                 Always add a unit suffix (ls, Kls, ly)
@@ -338,9 +338,9 @@ class Station:
         ls = self.lsFromStar
         if not ls:
             return "Unk" if addSuffix else "?"
-
+        
         suffix = "ls" if addSuffix else ""
-
+        
         if ls < 1000:
             return f"{ls:n}{suffix}"
         if ls < 10000:
@@ -348,24 +348,24 @@ class Station:
         if ls < 1000000:
             return f"{int(ls / 1000):n}K{suffix}"
         return f'{ls / (365*24*60*60):.2f}ly'
-
+    
     @property
     def isTrading(self) -> bool:
         """
         True if the station is thought to be trading.
-
+        
         A station is considered 'trading' if it has an item count > 0 or
         if it's "market" column is flagged 'Y'.
         """
         return (self.itemCount > 0 or self.market == 'Y')
-
+    
     @property
     def itemDataAgeStr(self):
         """ Returns the age in days of item data if present, else "-". """
         if self.itemCount and self.dataAge:
             return f"{self.dataAge:7.2f}"
         return "-"
-
+    
     def text(self) -> str:
         return f"{self.system.dbname}/{self.dbname}"
 
@@ -377,14 +377,14 @@ class Ship(namedtuple('Ship', (
         ))):
     """
     Ship description.
-
+    
     Attributes:
         ID          -- FDevID as provided by the companion API.
         dbname      -- The name as present in the database
         cost        -- How many credits to buy
         stations    -- List of Stations ship is sold at.
     """
-
+    
     def name(self, detail=0):   # pylint: disable=unused-argument
         return self.dbname
 
@@ -396,10 +396,10 @@ class Category(namedtuple('Category', (
         ))):
     """
     Item Category
-
+    
     Items are organized into categories (Food, Drugs, Metals, etc).
     Category object describes a category's ID, name and list of items.
-
+    
     Attributes:
         ID
             The database ID
@@ -407,12 +407,12 @@ class Category(namedtuple('Category', (
             The name as present in the database.
         items
             List of Item objects within this category.
-
+    
     Member Functions:
         name()
             Returns the display name for this Category.
     """
-
+    
     def name(self, detail=0):   # pylint: disable=unused-argument
         return self.dbname.upper()
 
@@ -422,7 +422,7 @@ class Category(namedtuple('Category', (
 class Item:
     """
     A product that can be bought/sold in the game.
-
+    
     Attributes:
         ID       -- Database ID.
         dbname   -- Name as it appears in-game and in the DB.
@@ -432,7 +432,7 @@ class Item:
         fdevID   -- FDevID as provided by the companion API.
     """
     __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID')
-
+    
     def __init__(self, ID, dbname, category, fullname, avgPrice=None, fdevID=None):
         self.ID = ID
         self.dbname = dbname
@@ -440,7 +440,7 @@ class Item:
         self.fullname = fullname
         self.avgPrice = avgPrice
         self.fdevID   = fdevID
-
+    
     def name(self, detail=0):
         return self.fullname if detail > 0 else self.dbname
 
@@ -453,7 +453,7 @@ class RareItem(namedtuple('RareItem', (
         ))):
     """
     Describes a RareItem from the database.
-
+    
     Attributes:
         ID         -- Database ID,
         station    -- Which Station this is bought from,
@@ -465,7 +465,7 @@ class RareItem(namedtuple('RareItem', (
         category   -- Reference to the category.
         fullname   -- Combined category/dbname.
     """
-
+    
     def name(self, detail=0):
         return self.fullname if detail > 0 else self.dbname
 
@@ -492,7 +492,7 @@ class Trade(namedtuple('Trade', (
 class TradeDB:
     """
     Encapsulation for the database layer.
-
+    
     Attributes:
         dataPath
             Path() to the data directory
@@ -510,23 +510,23 @@ class TradeDB:
             Path() of the .prices file
         importTables
             List of the .csv files
-
+    
     Static methods:
         calculateDistance2(lx, ly, lz, rx, ry, rz)
             Returns the square of the distance in ly between two points.
-
+        
         calculateDistance(lx, ly, lz, rx, ry, rz)
             Returns the distance in ly between two points.
-
+        
         listSearch(...)
             Performs partial and ambiguity matching of a word from a list
             of potential values.
-
+        
         normalizedStr(text)
             Case and punctuation normalizes a string to make it easier
             to find approximate matches.
     """
-
+    
     # Translation map for normalizing strings
     normalizeTrans = str.maketrans(
         'abcdefghijklmnopqrstuvwxyz',
@@ -534,7 +534,7 @@ class TradeDB:
         '[]()*+-.,{}:'
         )
     trimTrans = str.maketrans('', '', ' \'')
-
+    
     # The DB cache
     defaultDB = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
@@ -557,13 +557,13 @@ class TradeDB:
         ('FDevShipyard.csv', 'FDevShipyard'),
         ('FDevOutfitting.csv', 'FDevOutfitting'),
     )
-
+    
     # Translation matrixes for attributes -> common presentation
     marketStates = planetStates = fleetStates = odysseyStates = {'?': '?', 'Y': 'Yes', 'N': 'No'}
     marketStatesExt = planetStatesExt = fleetStatesExt = odysseyStatesExt = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
     padSizes = {'?': '?', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
     padSizesExt = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
-
+    
     def __init__(
             self,
             tdenv=None,
@@ -572,19 +572,19 @@ class TradeDB:
             ):
         self.conn : sqlite3.Connection = None
         self.tradingCount = None
-
+        
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
         self.tdenv = tdenv
-
+        
         self.templatePath = Path(tdenv.templateDir).resolve()
         self.dataPath = dataPath = fs.ensurefolder(tdenv.dataDir)
         self.csvPath = fs.ensurefolder(tdenv.csvDir)
-
+        
         fs.copy_if_newer((self.templatePath / Path("Added.csv")), (self.csvPath / Path("Added.csv")))
         fs.copy_if_newer((self.templatePath / Path("RareItem.csv")), (self.csvPath / Path("RareItem.csv")))
         fs.copy_if_newer((self.templatePath / Path("Category.csv")), (self.csvPath / Path("Category.csv")))
         fs.copy_if_newer((self.templatePath / Path("TradeDangerous.sql")), (self.dataPath / Path("TradeDangerous.sql")))
-
+        
         self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         pricePath = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
@@ -594,11 +594,11 @@ class TradeDB:
             for fn, tn in TradeDB.defaultTables
         ]
         self.importPaths = {tn: tp for tp, tn in self.importTables}
-
+        
         self.dbFilename = str(self.dbPath)
         self.sqlFilename = str(self.sqlPath)
         self.pricesFilename = str(self.pricesPath)
-
+        
         self.avgSelling, self.avgBuying = None, None
         self.tradingStationCount = 0
         self.addedByID = None
@@ -613,11 +613,11 @@ class TradeDB:
         self.itemByFDevID = None
         self.rareItemByID = None
         self.rareItemByName = None
-
+        
         if load:
             self.reloadCache()
             self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
+    
     @staticmethod
     def calculateDistance2(lx, ly, lz, rx, ry, rz):
         """
@@ -625,7 +625,7 @@ class TradeDB:
         """
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return (dx * dx) + (dy * dy) + (dz * dz)
-
+    
     @staticmethod
     def calculateDistance(lx, ly, lz, rx, ry, rz):
         """
@@ -633,10 +633,10 @@ class TradeDB:
         """
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return math_sqrt((dx * dx) + (dy * dy) + (dz * dz))
-
+    
     ############################################################
     # Access to the underlying database.
-
+    
     def getDB(self) -> sqlite3.Connection:
         if self.conn:
             return self.conn
@@ -646,62 +646,62 @@ class TradeDB:
         conn.execute("PRAGMA synchronous=OFF")
         conn.execute("PRAGMA temp_store=MEMORY")
         conn.execute("PRAGMA auto_vacuum=INCREMENTAL")
-
+        
         conn.create_function('dist2', 6, TradeDB.calculateDistance2)
         self.conn = conn
         return conn
-
+    
     def query(self, *args):
         """ Perform an SQL query on the DB and return the cursor. """
         return self.getDB().execute(*args)
-
+    
     def queryColumn(self, *args):
         """ perform an SQL query and return a single column. """
         return self.query(args).fetchone()[0]
-
+    
     def reloadCache(self):
         """
         Checks if the .sql, .prices or *.csv files are newer than the cache.
         """
-
+        
         if self.dbPath.exists():
             dbFileStamp = self.dbPath.stat().st_mtime
-
+            
             paths = [self.sqlPath]
             paths += [Path(f) for (f, _) in self.importTables]
-
+            
             changedPaths = [
                 [path, path.stat().st_mtime]
                 for path in paths
                 if path.exists() and path.stat().st_mtime > dbFileStamp
             ]
-
+            
             if not changedPaths:
                 # Do we need to reload the .prices file?
                 if not self.pricesPath.exists():
                     self.tdenv.DEBUG1("No .prices file to load")
                     return
-
+                
                 pricesStamp = self.pricesPath.stat().st_mtime
                 if pricesStamp <= dbFileStamp:
                     self.tdenv.DEBUG1("DB Cache is up to date.")
                     return
-
+                
                 self.tdenv.DEBUG0(".prices has changed: re-importing")
                 cache.importDataFromFile(
                     self, self.tdenv, self.pricesPath, reset=True
                 )
                 return
-
+            
             self.tdenv.DEBUG0("Rebuilding DB Cache [{}]", str(changedPaths))
         else:
             self.tdenv.DEBUG0("Building DB Cache")
-
+        
         cache.buildCache(self, self.tdenv)
-
+    
     ############################################################
     # Load "added" data.
-
+    
     def _loadAdded(self):
         """
         Loads the Added table as a simple dictionary
@@ -716,21 +716,21 @@ class TradeDB:
                 addedByID[ID] = name
         self.addedByID = addedByID
         self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
-
+    
     def lookupAdded(self, name):
         name = name.lower()
         for ID, added in self.addedByID.items():
             if added.lower() == name:
                 return ID
         raise KeyError(name)
-
+    
     ############################################################
     # Star system data.
-
+    
     def systems(self):
         """ Iterate through the list of systems. """
         yield from self.systemByID.values()
-
+    
     def _loadSystems(self):
         """
         Initial load the (raw) list of systems.
@@ -742,16 +742,16 @@ class TradeDB:
                        added_id
                   FROM System
             """
-
+        
         systemByID, systemByName = {}, {}
         with closing(self.getDB().execute(stmt)) as cur:
             for (ID, name, posX, posY, posZ, addedID) in cur:
                 system = System(ID, name, posX, posY, posZ, addedID)
                 systemByID[ID] = systemByName[name.upper()] = system
-
+        
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
-
+    
     def lookupSystem(self, key):
         """
         Look up a System object by it's name.
@@ -760,11 +760,11 @@ class TradeDB:
             return key
         if isinstance(key, Station):
             return key.system
-
+        
         return TradeDB.listSearch(
             "System", key, self.systems(), key=lambda system: system.dbname
         )
-
+    
     def addLocalSystem(
             self,
             name,
@@ -776,7 +776,7 @@ class TradeDB:
         """
         Add a system to the local cache and memory copy.
         """
-
+        
         db = self.getDB()
         cur = db.cursor()
         cur.execute("""
@@ -803,7 +803,7 @@ class TradeDB:
         # Invalidate the grid
         self.stellarGrid = None
         return system
-
+    
     def updateLocalSystem(
             self, system,
             name, x, y, z, added="Local", modified='now',
@@ -845,9 +845,9 @@ class TradeDB:
             added, modified,
         )
         self.systemByName[dbname] = system
-
+        
         return True
-
+    
     def removeLocalSystem(
             self, system,
             commit=True,
@@ -865,16 +865,16 @@ class TradeDB:
             db.commit()
         del self.systemByName[system.dbname]
         del self.systemByID[system.ID]
-
+        
         self.tdenv.NOTE(
             "{} (#{}) deleted from {}",
             system.name(), system.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
         )
-
+        
         system.dbname = "DELETED " + system.dbname
         del system
-
+    
     def __buildStellarGrid(self):
         """
         Divides the galaxy into a fixed-sized grid allowing us to
@@ -888,17 +888,17 @@ class TradeDB:
             except KeyError:
                 grid = stellarGrid[key] = []
             grid.append(system)
-
+    
     def genStellarGrid(self, system, ly):
         """
         Yields Systems within a given radius of a specified System.
-
+        
         Args:
             system:
                 The System to center the search on,
             ly:
                 The radius of the search around system,
-
+        
         Yields:
             (candidate, distLySq)
                 candidate:
@@ -909,7 +909,7 @@ class TradeDB:
         """
         if self.stellarGrid is None:
             self.__buildStellarGrid()
-
+        
         sysX, sysY, sysZ = system.posX, system.posY, system.posZ
         lwrBound = make_stellar_grid_key(sysX - ly, sysY - ly, sysZ - ly)
         uprBound = make_stellar_grid_key(sysX + ly, sysY + ly, sysZ + ly)
@@ -937,13 +937,13 @@ class TradeDB:
                             continue
                         if candidate is not system:
                             yield candidate, math_sqrt(distSq)
-
+    
     def genSystemsInRange(self, system, ly, includeSelf=False):
         """
         Yields Systems within a given radius of a specified System.
         Results are sorted by distance and cached for subsequent
         queries in the same run.
-
+        
         Args:
             system:
                 The System to center the search on,
@@ -951,7 +951,7 @@ class TradeDB:
                 The radius of the search around system,
             includeSelf:
                 Whether to include 'system' in the results or not.
-
+        
         Yields:
             (candidate, distLy)
                 candidate:
@@ -959,12 +959,12 @@ class TradeDB:
                 distLy:
                     The distance in lightyears between system and candidate.
         """
-
+        
         cur_cache = system._rangeCache  # pylint: disable=protected-access
         if not cur_cache:
             cur_cache = system._rangeCache = System.RangeCache()
         cached_systems = cur_cache.systems
-
+        
         if ly > cur_cache.probed_ly:
             # Consult the database for stars we haven't seen.
             cached_systems = cur_cache.systems = list(
@@ -972,10 +972,10 @@ class TradeDB:
             )
             cached_systems.sort(key=lambda ent: ent[1])
             cur_cache.probed_ly = ly
-
+        
         if includeSelf:
             yield system, 0.
-
+        
         if cur_cache.probed_ly > ly:
             # Cache may contain values outside our view
             for candidate, dist in cached_systems:
@@ -984,13 +984,13 @@ class TradeDB:
         else:
             # No need to be conditional inside the loop
             yield from cached_systems
-
+    
     def getRoute(self, origin, dest, maxJumpLy, avoiding=None, stationInterval=0):
         """
         Find a shortest route between two systems with an additional
         constraint that each system be a maximum of maxJumpLy from
         the previous system.
-
+        
         Args:
             origin:
                 System (or station) to start from,
@@ -1004,40 +1004,40 @@ class TradeDB:
                 If non-zero, require a station at least this many jumps,
             tdenv.padSize:
                 Controls the pad size of stations for refuelling
-
+        
         Returns:
             None
                 No route was found
-
+            
             [(origin, 0),...(dest, N)]
                 A list of (system, distanceSoFar) values describing
                 the route.
-
+        
         Example:
             If there are systems A, B and C such
             that A->B is 7ly and B->C is 8ly then:
-
+                
                 origin = lookupPlace("A")
                 dest = lookupPlace("C")
                 route = tdb.getRoute(origin, dest, 9)
-
+            
             The route should be:
-
+                
                 [(System(A), 0), (System(B), 7), System(C), 15)]
-
+        
         """
-
+        
         if avoiding is None:
             avoiding = []
-
+        
         if isinstance(origin, Station):
             origin = origin.system
         if isinstance(dest, Station):
             dest = dest.system
-
+        
         if origin == dest:
             return ((origin, 0), (dest, 0))
-
+        
         # openSet is the list of nodes we want to visit, which will be
         # used as a priority queue (heapq).
         # Each element is a tuple of the 'priority' (the combination of
@@ -1046,24 +1046,24 @@ class TradeDB:
         openSet = [(0, 0, origin.ID, 0)]
         # Track predecessor nodes for everwhere we visit
         distances = {origin: (None, 0)}
-
+        
         if avoiding:
             if dest in avoiding:
                 raise ValueError("Destination is in avoidance list")
             for avoid in avoiding:
                 if isinstance(avoid, System):
                     distances[avoid] = (None, -1)
-
+        
         systemsInRange = self.genSystemsInRange
         heappop  = heapq.heappop
         heappush = heapq.heappush
         distTo = float("inf")
         defaultDist = (None, distTo)
         getDist  = distances.get
-
+        
         destID = dest.ID
         sysByID = self.systemByID
-
+        
         maxPadSize = self.tdenv.padSize
         if not maxPadSize:
             def checkStations(system: System) -> bool:  # pylint: disable=function-redefined, missing-docstring
@@ -1071,7 +1071,7 @@ class TradeDB:
         else:
             def checkStations(system: System) -> bool:  # pylint: disable=function-redefined, missing-docstring
                 return any(stn for stn in system.stations if stn.checkPadSize(maxPadSize))
-
+        
         while openSet:
             weight, curDist, curSysID, stnDist = heappop(openSet)
             # If we reached 'goal' we've found the shortest path.
@@ -1085,7 +1085,7 @@ class TradeDB:
             # the system and if so, ignore it this time.
             if curDist > distances[curSys][1]:
                 continue
-
+            
             system_iter = iter(systemsInRange(curSys, maxJumpLy))
             if stationInterval:
                 if checkStations(curSys):
@@ -1096,7 +1096,7 @@ class TradeDB:
                         system_iter = iter(
                             v for v in system_iter if checkStations(v[0])
                         )
-
+            
             distFn = curSys.distanceTo
             for nSys, nDist in system_iter:
                 newDist = curDist + nDist
@@ -1108,30 +1108,30 @@ class TradeDB:
                 heappush(openSet, (newDist + weight, newDist, nID, stnDist))
                 if nID == destID:
                     distTo = newDist
-
+        
         if dest not in distances:
             return None
-
+        
         path = []
-
+        
         while True:
             (prevSys, dist) = getDist(dest)
             path.append((dest, dist))
             if dest == origin:
                 break
             dest = prevSys
-
+        
         path.reverse()
-
+        
         return path
-
+    
     ############################################################
     # Station data.
-
+    
     def stations(self) -> 'Generator[Station, None, None]':
         """ Iterate through the list of stations. """
         yield from self.stationByID.values()
-
+    
     def _loadStations(self):
         """
         Populate the Station list.
@@ -1144,7 +1144,7 @@ class TradeDB:
                     max_pad_size, outfitting, rearm, refuel, repair, planetary, type_id
               FROM  Station
         """
-
+        
         stationByID = {}
         systemByID = self.systemByID
         self.tradingStationCount = 0
@@ -1167,7 +1167,7 @@ class TradeDB:
                     0, None,
                 )
                 stationByID[ID] = station
-
+        
         tradingCount = 0
         stmt = """
             SELECT  station_id,
@@ -1183,12 +1183,12 @@ class TradeDB:
                 station.itemCount = itemCount
                 station.dataAge = dataAge
                 tradingCount += 1
-
+        
         self.stationByID = stationByID
         self.tradingStationCount = tradingCount
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
         self.stellarGrid = None
-
+    
     def addLocalStation(
             self,
             system,
@@ -1211,7 +1211,7 @@ class TradeDB:
         """
         Add a station to the local cache and memory copy.
         """
-
+        
         market = market.upper()
         blackMarket = blackMarket.upper()
         shipyard = shipyard.upper()
@@ -1232,13 +1232,13 @@ class TradeDB:
         assert planetary in '?YN'
         assert fleet in '?YN'
         assert odyssey in '?YN'
-
+        
         type_id = 0
         if fleet == 'Y':
             type_id = 24
         if odyssey == 'Y':
             type_id = 25
-
+        
         db = self.getDB()
         cur = db.cursor()
         cur.execute("""
@@ -1291,7 +1291,7 @@ class TradeDB:
             modified,
         )
         return station
-
+    
     def updateLocalStation(
             self, station,
             name=None,
@@ -1315,24 +1315,24 @@ class TradeDB:
         Alter the properties of a station in-memory and in the DB.
         """
         changes = []
-
+        
         def _changed(label, old, new):
             changes.append(
                 f"{label}('{old}'=>'{new}')"
             )
-
+        
         if name is not None:
             if force or name.upper() != station.dbname.upper():
                 _changed("name", station.dbname, name)
                 station.dbname = name
-
+        
         if lsFromStar is not None:
             assert lsFromStar >= 0
             if lsFromStar != station.lsFromStar:
                 if lsFromStar > 0 or force:
                     _changed("ls", station.lsFromStar, lsFromStar)
                     station.lsFromStar = lsFromStar
-
+        
         def _check_setting(label, name, newValue, allowed):
             if newValue is not None:
                 newValue = newValue.upper()
@@ -1341,7 +1341,7 @@ class TradeDB:
                 if newValue != oldValue and (force or newValue != '?'):
                     _changed(label, oldValue, newValue)
                     setattr(station, name, newValue)
-
+        
         _check_setting("pad", "maxPadSize", maxPadSize, TradeDB.padSizes)
         _check_setting("mkt", "market", market, TradeDB.marketStates)
         _check_setting("blk", "blackMarket", blackMarket, TradeDB.marketStates)
@@ -1353,10 +1353,10 @@ class TradeDB:
         _check_setting("plt", "planetary", planetary, TradeDB.planetStates)
         _check_setting("flc", "fleet", fleet, TradeDB.fleetStates)
         _check_setting("ody", "odyssey", odyssey, TradeDB.odysseyStates)
-
+        
         if not changes:
             return False
-
+        
         db = self.getDB()
         db.execute("""
             UPDATE Station
@@ -1390,31 +1390,31 @@ class TradeDB:
         ])
         if commit:
             db.commit()
-
+        
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}",
             station.name(), station.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
             ", ".join(changes)
         )
-
+        
         return True
-
+    
     def removeLocalStation(self, station, commit=True):
         """
         Removes a station from the local database and memory image.
-
+        
         Becareful of any references to the station you may still have
         after this.
         """
-
+        
         # Remove reference from my system
         system = station.system
         system.stations.remove(station)
-
+        
         # Remove the ID lookup
         del self.stationByID[station.ID]
-
+        
         # Delete database entry
         db = self.getDB()
         db.execute("""
@@ -1424,29 +1424,29 @@ class TradeDB:
         )
         if commit:
             db.commit()
-
+        
         self.tdenv.NOTE(
             "{} (#{}) deleted from {}",
             station.name(), station.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
         )
-
+        
         station.dbname = "DELETED "+station.dbname
         del station
-
+    
     def lookupPlace(self, name):
         """
         Lookup the station/system specified by 'name' which can be the
         name of a System or Station or it can be "System/Station" when
         the user needs to disambiguate a station. In this case, both
         system and station can be partial matches.
-
+        
         The system tries to allow partial matches as well as matches
         which omit whitespaces. In order to do this and still support
         the massive namespace of Stars and Systems, we rank the
         matches so that exact matches win, and only inferior close
         matches are looked at if no exacts are found.
-
+        
         Legal annotations:
             system
             station
@@ -1455,10 +1455,10 @@ class TradeDB:
             system/station
             @system/station
         """
-
+        
         if isinstance(name, (System, Station)):
             return name
-
+        
         slashPos = name.find('/')
         if slashPos < 0:
             slashPos = name.find('\\')
@@ -1476,34 +1476,34 @@ class TradeDB:
             # It could be either, use the name for both.
             stnName = name[nameOff:]
             sysName = stnName.upper()
-
+        
         exactMatch = []
         closeMatch = []
         wordMatch = []
         anyMatch = []
-
+        
         def lookup(name, candidates):
             """ Search candidates for the given name """
-
+            
             normTrans = TradeDB.normalizeTrans
             trimTrans = TradeDB.trimTrans
-
+            
             nameNorm = name.translate(normTrans)
             nameTrimmed = nameNorm.translate(trimTrans)
-
+            
             nameLen = len(name)
             nameNormLen = len(nameNorm)
             nameTrimmedLen = len(nameTrimmed)
-
+            
             for place in candidates:
                 placeName = place.dbname
                 placeNameNorm = placeName.translate(normTrans)
                 placeNameNormLen = len(placeNameNorm)
-
+                
                 if nameTrimmedLen > placeNameNormLen:
                     # The needle is bigger than this haystack.
                     continue
-
+                
                 # If the lengths match, do a direct comparison.
                 if len(placeName) == nameLen:
                     if placeNameNorm == nameNorm:
@@ -1513,7 +1513,7 @@ class TradeDB:
                     if placeNameNorm == nameNorm:
                         closeMatch.append(place)
                     continue
-
+                
                 if nameNormLen < placeNameNormLen:
                     subPos = placeNameNorm.find(nameNorm)
                     if subPos == 0:
@@ -1523,7 +1523,7 @@ class TradeDB:
                         else:
                             anyMatch.append(place)
                         continue
-
+                    
                     if subPos > 0:
                         if placeNameNorm[subPos] == ' ' and \
                                 placeNameNorm[subPos + nameNormLen] == ' ':
@@ -1531,14 +1531,14 @@ class TradeDB:
                         else:
                             anyMatch.append(place)
                         continue
-
+                
                 # Lets drop whitespace and remaining punctuation...
                 placeNameTrimmed = placeNameNorm.translate(trimTrans)
                 placeNameTrimmedLen = len(placeNameTrimmed)
                 if placeNameTrimmedLen == placeNameNormLen:
                     # No change
                     continue
-
+                
                 # A match here is not exact but still fairly interesting
                 if len(placeNameTrimmed) == nameTrimmedLen:
                     if placeNameTrimmed == nameTrimmed:
@@ -1546,14 +1546,14 @@ class TradeDB:
                     continue
                 if placeNameTrimmed.find(nameTrimmed) >= 0:
                     anyMatch.append(place)
-
+        
         if sysName:
             try:
                 system = self.systemByName[sysName]
                 exactMatch = [system]
             except KeyError:
                 lookup(sysName, self.systemByID.values())
-
+        
         if stnName:
             # Are we considering the name as a station?
             # (we don't if they type, e,g '@aulin')
@@ -1577,7 +1577,7 @@ class TradeDB:
                 # Consider against all station names
                 stationCandidates = self.stationByID.values()
             lookup(stnName, stationCandidates)
-
+        
         # consult the match sets in ranking order for a single
         # match, which denotes a win at that tier. For example,
         # if there is one exact match, we don't care how many
@@ -1585,21 +1585,21 @@ class TradeDB:
         for matchSet in exactMatch, closeMatch, wordMatch, anyMatch:
             if len(matchSet) == 1:
                 return matchSet[0]
-
+        
         # Nothing matched
         if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
             # Note: this was a TradeException and may need to be again,
             # but then we need to catch that error in commandenv
             # when we process avoids
             raise LookupError(f"Unrecognized place: {name}")
-
+        
         # More than one match
         raise AmbiguityError(
             'System/Station', name,
             exactMatch + closeMatch + wordMatch + anyMatch,
             key=lambda place: place.name()
         )
-
+    
     def lookupStation(self, name, system=None):
         """
         Look up a Station object by it's name or system.
@@ -1611,13 +1611,13 @@ class TradeDB:
             if len(name.stations) != 1:
                 raise SystemNotStationError(f"System '{name}' has {len(name.stations)} stations, please specify a station instead.")
             return name.stations[0]
-
+        
         if system:
             system = self.lookupSystem(system)
             return TradeDB.listSearch(
                 "Station", name, system.stations,
                 key=lambda system: system.dbname)
-
+        
         station, system = None, None
         try:
             system = TradeDB.listSearch(
@@ -1636,7 +1636,7 @@ class TradeDB:
         # If neither matched, we have a lookup error.
         if not (station or system):
             raise LookupError(f"'{name}' did not match any station or system.")
-
+        
         # If we matched both a station and a system, make sure they resovle to
         # the same station otherwise we have an ambiguity. Some stations have
         # the same name as their star system (Aulin/Aulin Enterprise)
@@ -1644,10 +1644,10 @@ class TradeDB:
             raise AmbiguityError(
                 'Station', name, [system.name(), station.name()]
             )
-
+        
         if station:
             return station
-
+        
         # If we only matched a system name, ensure that it's a single station
         # system otherwise they need to specify a station name.
         if len(system.stations) != 1:
@@ -1655,7 +1655,7 @@ class TradeDB:
                 f"System '{system.name()}' has {len(system.stations)} stations, please specify a station instead."
             )
         return system.stations[0]
-
+    
     def getDestinations(
             self,
             origin,
@@ -1674,20 +1674,20 @@ class TradeDB:
         from this Station within the specified constraints.
         Limits to stations we are trading with if trading is True.
         """
-
+        
         if maxJumps is None:
             maxJumps = sys.maxsize
         maxLyPer = maxLyPer or self.maxSystemLinkLy
         if avoidPlaces is None:
             avoidPlaces = ()
-
+        
         # The open list is the list of nodes we should consider next for
         # potential destinations.
         # The path list is a list of the destinations we've found and the
         # shortest path to them. It doubles as the "closed list".
         # The closed list is the list of nodes we've already been to (so
         # that we don't create loops A->B->C->A->B->C->...)
-
+        
         origSys = origin.system if isinstance(origin, Station) else origin
         openList = [DestinationNode(origSys, [origSys], 0)]
         # I don't want to have to consult both the pathList
@@ -1705,7 +1705,7 @@ class TradeDB:
         }
         if origSys.ID not in pathList:
             pathList[origSys.ID] = openList[0]
-
+        
         # As long as the open list is not empty, keep iterating.
         jumps = 0
         while openList and jumps < maxJumps:
@@ -1715,9 +1715,9 @@ class TradeDB:
             # All of the destinations we are about to consider will
             # either be on the closed list or they will be +1 jump away.
             jumps += 1
-
+            
             ring.sort(key=lambda dn: dn.distLy)
-
+            
             for node in ring:
                 for (destSys, destDist) in self.genSystemsInRange(
                         node.system, maxLyPer, False
@@ -1739,7 +1739,7 @@ class TradeDB:
                     # Add to the open list but also include node to the via
                     # list so that it serves as the via list for all next-hops.
                     openList.append(destNode)
-
+        
         # We have a system-to-system path list, now we
         # need stations to terminate at.
         def path_iter_fn():
@@ -1747,7 +1747,7 @@ class TradeDB:
                 if node.distLy >= 0.0:
                     for station in node.system.stations:
                         yield node, station
-
+        
         path_iter = iter(
           (node, station) for (node, station) in path_iter_fn()
           if (station.planetary == 'N' if noPlanet else True) and
@@ -1760,14 +1760,14 @@ class TradeDB:
         )
         for node, stn in path_iter:
             yield Destination(node.system, stn, node.via, node.distLy)
-
+    
     ############################################################
     # Ship data.
-
+    
     def ships(self):
         """ Iterate through the list of ships. """
         yield from self.shipByID.values()
-
+    
     def _loadShips(self):
         """
         Populate the Ship list.
@@ -1781,9 +1781,9 @@ class TradeDB:
             row[0]: Ship(*row, stations=[])
             for row in self.query(stmt)
         }
-
+        
         self.tdenv.DEBUG1("Loaded {} Ships", len(self.shipByID))
-
+    
     def lookupShip(self, name):
         """
         Look up a ship by name
@@ -1792,17 +1792,17 @@ class TradeDB:
             "Ship", name, self.shipByID.values(),
             key=lambda ship: ship.dbname
         )
-
+    
     ############################################################
     # Item data.
-
+    
     def categories(self):
         """
         Iterate through the list of categories.
         key = category name, value = list of items.
         """
         yield from self.categoryByID.items()
-
+    
     def _loadCategories(self):
         """
         Populate the list of item categories.
@@ -1817,9 +1817,9 @@ class TradeDB:
                 ID: Category(ID, name, [])
                 for (ID, name) in cur
             }
-
+        
         self.tdenv.DEBUG1("Loaded {} Categories", len(self.categoryByID))
-
+    
     def lookupCategory(self, name):
         """
         Look up a category by name
@@ -1829,11 +1829,11 @@ class TradeDB:
             self.categoryByID.values(),
             key=lambda cat: cat.dbname
         )
-
+    
     def items(self):
         """ Iterate through the list of items. """
         yield from self.itemByID.values()
-
+    
     def _loadItems(self):
         """
         Populate the Item list.
@@ -1856,18 +1856,18 @@ class TradeDB:
                 itemByName[name] = item
                 if fdevID:
                     itemByFDevID[fdevID] = item
-
+                
                 category.items.append(item)
-
+        
         self.itemByID = itemByID
         self.itemByName = itemByName
         self.itemByFDevID = itemByFDevID
-
+        
         self.tdenv.DEBUG1(
             "Loaded {:n} Items",
             len(self.itemByID)
         )
-
+    
     def lookupItem(self, name):
         """
             Look up an Item by name using "CATEGORY/Item"
@@ -1877,7 +1877,7 @@ class TradeDB:
             key=lambda kvTup: kvTup[0],
             val=lambda kvTup: kvTup[1]
         )
-
+    
     def getAverageSelling(self):
         """
         Query the database for average selling prices of all items.
@@ -1897,7 +1897,7 @@ class TradeDB:
                 """)
             })
         return self.avgSelling
-
+    
     def getAverageBuying(self):
         """
         Query the database for average buying prices of all items.
@@ -1917,10 +1917,10 @@ class TradeDB:
                 """)
             })
         return self.avgBuying
-
+    
     ############################################################
     # Rare Items
-
+    
     def _loadRareItems(self):
         """
         Populate the RareItem list.
@@ -1948,20 +1948,20 @@ class TradeDB:
                 rareItemByID[ID] = rareItemByName[name] = rare
         self.rareItemByID = rareItemByID
         self.rareItemByName = rareItemByName
-
+        
         self.tdenv.DEBUG1(
             "Loaded {:n} RareItems",
             len(rareItemByID)
         )
-
+    
     ############################################################
     # Price data.
-
+    
     def close(self):
         if self.conn:
             self.conn.close()
         self.conn = None
-
+    
     def load(self, maxSystemLinkLy=None):
         """
             Populate/re-populate this instance of TradeDB with data.
@@ -1971,11 +1971,11 @@ class TradeDB:
                 x = tdb.lookupPlace("Aulin")
                 tdb.load() # x now points to an orphan Aulin
         """
-
+        
         self.tdenv.DEBUG1("Loading data")
 
 
-
+        
         self._loadAdded()
         self._loadSystems()
         self._loadStations()
@@ -1983,15 +1983,15 @@ class TradeDB:
         self._loadCategories()
         self._loadItems()
         self._loadRareItems()
-
+        
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
         msll = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
         self.maxSystemLinkLy = msll
-
+    
     ############################################################
     # General purpose static methods.
-
+    
     @staticmethod
     def listSearch(
             listType, lookup, values,
@@ -2001,19 +2001,19 @@ class TradeDB:
         """
         Searches [values] for 'lookup' for least-ambiguous matches,
         return the matching value as stored in [values].
-
+        
         GIVEN [values] contains "bread", "water", "biscuits and "It",
         searching "ea" will return "bread", "WaT" will return "water"
         and "i" will return "biscuits".
-
+        
         Searching for "a" would raise an AmbiguityError because "a" matches
         "bread" and "water", but searching for "it" will return "It"
         because it provides an exact match of a key.
         """
-
+        
         class ListSearchMatch(namedtuple('Match', ['key', 'value'])):
             pass
-
+        
         normTrans = TradeDB.normalizeTrans
         trimTrans = TradeDB.trimTrans
         needle = lookup.translate(normTrans).translate(trimTrans)
@@ -2051,7 +2051,7 @@ class TradeDB:
             return partialMatch[0].value
         # No matches
         raise LookupError(f"Error: '{lookup}' doesn't match any {listType}")
-
+    
     @staticmethod
     def normalizedStr(text: str) -> str:
         """
@@ -2083,5 +2083,5 @@ def describeAge(ageInSeconds: Union[float, int]) -> str:
     days = int(hours / 24)
     if days < 90:
         return f"{days} days"
-
+    
     return f"{int(days / 31)} mths"

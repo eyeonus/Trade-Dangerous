@@ -73,7 +73,7 @@ class ColumnFormat:
     post:       Optional[str]       # postfix to the column
     key:        Callable            # function to retrieve the printable name of the item
     pred:       Callable            # predicate: return False to leave this column blank
-
+    
     def __init__(
             self,
             name,
@@ -132,7 +132,7 @@ class RowFormat:
     """
     columns:        List[ColumnFormat]
     prefix:         str
-
+    
     def __init__(self, prefix: Optional[str] = None):
         self.columns = []
         self.prefix = prefix or ""

@@ -40,7 +40,7 @@ from . import prices
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
     from typing import Any, Dict, List, Optional, TextIO, Tuple
-
+    
     from .tradeenv import TradeEnv
 
 
@@ -246,7 +246,7 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> T
     """ Parse a supply specifier which is expected to be in the <number><?, L, M, or H>, and
         returns the units as an integer and a numeric level value suitable for ordering,
         such that ? = -1, L/l = 0, M/m = 1, H/h = 2 """
-
+    
     #   supply_level <- digit+ level;
     #   digit <- [0-9];
     #   level <- Unknown / Low / Medium / High;
@@ -269,7 +269,7 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> T
             pricesFile, lineNo, category, reading,
             f'Unrecognized level suffix: "{level}": expected one of "L", "M", "H" or "?"'
         )
-   
+    
     # Expecting a numeric value in units, e.g. 123? -> (units=123, level=?)
     try:
         unitsNo = int(units)
@@ -281,11 +281,11 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> T
             pricesFile, lineNo, category, reading,
                 f'Unrecognized units/level value: "{level}": expected "-", "?", or a number followed by a level (L, M, H or ?).'
             ) from None  # don't forward the exception itself
-
+    
     # Normalize the units and level when there are no units.
     if unitsNo == 0:
         return 0, 0
-
+    
     return unitsNo, levelNo
 
 
@@ -348,7 +348,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
     """
         Yields SQL for populating the database with prices
         by reading the file handle for price lines.
-
+        
         :param tdenv:       The environment we're working in
         :param priceFile:   File to read
         :param db:          SQLite3 database to write to
@@ -396,10 +396,10 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
     if not ignoreUnknown:
         def ignoreOrWarn(error: Exception) -> None:
             raise error
-
+    
     elif not quiet:
         ignoreOrWarn = tdenv.WARN
-
+    
     def changeStation(matches: re.Match) -> None:
         nonlocal facility, stationID
         nonlocal processedStations, processedItems, localAdd
@@ -419,7 +419,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
         if newID is DELETED:
             DEBUG1("DELETED Station: {}", facility)
             return
-
+        
         if newID < 0:
             if utils.checkForOcrDerp(tdenv, systemName, stationName):
                 return
@@ -444,7 +444,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
                 if altStation is DELETED:
                     DEBUG1("DELETED Station: {}", facility)
                     return
-
+                
                 DEBUG1("Station '{}' renamed '{}'", facility, altStation)
                 stationName = altStation.upper()
                 facility = f'{systemName}/{stationName}'
@@ -591,7 +591,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
     space_cleanup = re.compile(r'\s{2,}').sub
     for line in priceFile:
         lineNo += 1
-
+        
         text = line.split('#', 1)[0]                # Discard comments
         text = space_cleanup(' ', text).strip()     # Remove leading/trailing whitespace, reduce multi-spaces
         if not text:

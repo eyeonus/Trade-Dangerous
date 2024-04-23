@@ -41,20 +41,20 @@ class BaseColorTheme:
     bold:       str = ""        # code to make text bold
     italic:     str = ""        # code to make text italic
     # blink:    NEVER = "don't you dare"
-
+    
     # style, label
     debug, DEBUG    = dim,  "#"
     note,  NOTE     = bold, "NOTE"
     warn,  WARNING  = "",   "WARNING"
-
+    
     seq_first:  str = ""        # the first item in a sequence
     seq_last:   str = ""        # the last item in a sequence
-
+    
     # Included as examples of how you might use this to manipulate tradecal output.
     itm_units:  str = ""        # the amount of something
     itm_name:   str = ""        # name of that unit
     itm_price:  str = ""        # how much does it cost?
-
+    
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover, pylint: disable=unused-argument
         """ Renders the given printable item with the given style; BaseColorTheme simply uses a string transformation. """
         if isinstance(renderable, str):
@@ -68,12 +68,12 @@ class BasicRichColorTheme(BaseColorTheme):
     bold      = "[bold]"
     dim       = "[dim]"
     italic    = "[italic]"
-
+    
     # style, label
     debug, DEBUG   = dim,  "#"
     note,  NOTE    = bold, "NOTE"
     warn,  WARNING =  "[orange3]", "WARNING"
-
+    
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover
         style_attr = getattr(self, style, "")
         if not style_attr:
@@ -86,12 +86,12 @@ class RichColorTheme(BasicRichColorTheme):
     DEBUG = ":spider_web:"
     NOTE  = ":information_source:"
     WARNING = ":warning:"
-
+    
     # e.g. First station
     seq_first = "[cyan]"
     # e.g. Last station
     seq_last  = "[blue]"
-
+    
     # Included as examples of how you might use this to manipulate tradecal output.
     itm_units = "[yellow3]"
     itm_name  = "[yellow]"
@@ -104,7 +104,7 @@ class BaseConsoleIOMixin:
     stderr:  Console
     theme:   BaseColorTheme
     quiet:   bool
-
+    
     def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
         """
             unicode-safe print via console or stderr, with 'rich' markup handling.
@@ -119,7 +119,7 @@ class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
         """ unicode-handling print: when the stdout stream is not utf-8 supporting,
             we do a little extra io work to ensure users don't get confusing unicode
             errors. When the output stream *is* utf-8.
-
+            
             :param stderr: report to stderr instead of stdout
             :param style: specify a 'rich' console style to use when the stream supports it
         """
@@ -128,7 +128,7 @@ class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
             # Attempt to print; the 'file' argument isn't supported by rich, so we'll
             # need to fall-back on old print when someone specifies it.
             console.print(*args, style=style, **kwargs)
-
+        
         except UnicodeEncodeError as e:
             # Characters in the output couldn't be translated to unicode.
             if not self.quiet:
@@ -140,7 +140,7 @@ class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
                     traceback.print_exc()
                 else:
                     self.stderr.print(e)
-
+            
             # Try to translate each ary into a viable string using utf error-replacement.
             components = [
                 str(arg)
@@ -163,17 +163,17 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         TradeDangerous provides a container for runtime configuration (cli flags, etc) and io operations to
         enable normalization of things without having to pass huge sets of arguments. This includes things
         like logging and reporting functionality.
-
+        
         To print debug lines, use DEBUG<N>, e.g. DEBUG0, which takes a format() string and parameters, e.g.
             DEBUG1("hello, {world}{}", "!", world="world")
-
+        
         is equivalent to:
             if tdenv.debug >= 1:
                 print("#hello, {world}{}".format("!", world="world"))
-
+        
         Use "NOTE" to print remarks which can be disabled with -q.
     """
-
+    
     defaults = {
         'debug': 0,
         'detail': 0,
@@ -188,43 +188,43 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         'console': CONSOLE,
         'stderr':  STDERR,
     }
-
+    
     encoding = sys.stdout.encoding
-
+    
     def __init__(self, properties: Optional[Union[argparse.Namespace, Dict]] = None, **kwargs) -> None:
         # Inject the defaults into ourselves in a dict-like way
         self.__dict__.update(self.defaults)
-
+        
         # If properties is a namespace, extract the dictionary; otherwise use it as-is
         if properties and hasattr(properties, '__dict__'):  # which arparse.Namespace has
             properties = properties.__dict__
         # Merge into our dictionary
         self.__dict__.update(properties or {})
-
+        
         # Merge the kwargs dictionary
         self.__dict__.update(kwargs or {})
-
+        
         # When debugging has been enabled on startup, enable slightly more
         # verbose rich backtraces.
         if self.__dict__['debug']:
             install_rich_traces(console=STDERR, show_locals=True, extra_lines=2)
-
+        
         self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
-
+    
     def __getattr__(self, key: str) -> Any:
         """ Return the default for attributes we don't have """
-
+        
         # The first time the DEBUG attribute is referenced, register a method for it.
         if key.startswith("DEBUG"):
-
+            
             # Self-assembling DEBUGN functions
             def __DEBUG_ENABLED(outText, *args, **kwargs):
                 # Give debug output a less contrasted color.
                 self.console.print(f"{self.theme.debug}{self.theme.DEBUG}{outText.format(*args, **kwargs)}")
-
+            
             def __DEBUG_DISABLED(*args, **kwargs):
                 pass
-
+            
             # Tried to call a .DEBUG<N> function which hasn't
             # been called before; create a stub.
             debugLevel = int(key[5:])
@@ -234,18 +234,18 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
                 debugFn = __DEBUG_DISABLED
             setattr(self, key, debugFn)
             return debugFn
-
+        
         if key == "NOTE":
-
+            
             def __NOTE_ENABLED(outText, *args, stderr: bool=False, **kwargs):
                 self.uprint(
                     f"{self.theme.note}{self.theme.NOTE}: {str(outText).format(*args, **kwargs)}",
                     stderr=stderr,
                 )
-
+            
             def __NOTE_DISABLED(*args, **kwargs):
                 pass
-
+            
             # Tried to call "NOTE" but it hasn't been called yet,
             if not self.quiet:
                 noteFn = __NOTE_ENABLED
@@ -253,20 +253,20 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
                 noteFn = __NOTE_DISABLED
             setattr(self, key, noteFn)
             return noteFn
-
+        
         if key == "WARN":
-
+            
             def _WARN_ENABLED(outText, *args, stderr: bool=False, **kwargs):
                 self.uprint(
                     f"{self.theme.warn}{self.theme.WARNING}: {str(outText).format(*args, **kwargs)}",
                     stderr=stderr,
                 )
-
+            
             def _WARN_DISABLED(*args, **kwargs):
                 pass
-
+            
             noteFn = _WARN_DISABLED if self.quiet > 1 else _WARN_ENABLED
             setattr(self, key, noteFn)
             return noteFn
-
+        
         return None

@@ -672,7 +672,7 @@ def main(argv = None):
             argStr = argStr.rsplit(',', 1)[0]
             win.entry('--option', argStr)
         sw.hide()
-
+    
     #TODO: Implement in tk
     def optionsWin():
         """
@@ -703,7 +703,7 @@ def main(argv = None):
             win.button("Done", setOpts, column = 8)
             win.button("Cancel", sw.hide, row = 'p', column = 9)
             sw.show()
-
+    
     #TODO: Implement in tk
     def updArgs(name):
         """
@@ -749,7 +749,7 @@ def main(argv = None):
                     win.setEntry(exclude, '', callFunction = False)
                 elif widgetType == 'check':
                     win.check(exclude, False, callFunction = False)
-
+    
     #TODO: REMOVE
     def updCmd():
         """
@@ -774,7 +774,7 @@ def main(argv = None):
                 win.label('Optional:', sticky = 'w')
                 for key in allArgs[cmd]['opt']:
                     makeWidgets(key, allArgs[cmd]['opt'][key])
-
+    
     def runTD():
         """
         Executes the TD command selected in the GUI.
@@ -881,7 +881,7 @@ def main(argv = None):
         
         win.message('outputText', '')
         threading.Thread(target = runTrade, name = "TDThread", daemon = True).start()
-
+    
     # TODO: replace
     def makeWidgets(name, arg, sticky = 'ew', label = True, **kwargs):
         kwargs['sticky'] = sticky
@@ -961,7 +961,7 @@ def main(argv = None):
     
     
     buildArgDicts()
-    
+
 #    window = Tk()
 #    window.title('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,))
 #    window.iconbitmap(resource_filename(__name__, "../tradedangerouscrest.ico"))
@@ -1007,23 +1007,23 @@ def main(argv = None):
                   stretch = 'none', sticky = 'ew', width = 10, row = 0, column = 0, colspan = 5)
         with win.scrollPane('req', disabled = 'horizontal', row = 1, column = 0, colspan = 10) as pane:
             pane.configure(width = 200, height = 75)
-            
+        
         with win.scrollPane('opt', disabled = 'horizontal', row = 2, column = 0, colspan = 10) as pane:
             pane.configure(width = 200, height = 345)
-            
+        
         with win.tabbedFrame('tabFrame', disabled = 'horizontal', row = 1, column = 10, rowspan = 2, colspan = 40) as tabFrame:
             with win.tab('Help'):
                 with win.scrollPane('helpPane', disabled = 'horizontal') as pane:
                     pane.configure(width = 560, height = 420)
                     win.message('helpText', cmdHelp['help'])
                     win.widgetManager.get(WIDGET_NAMES.Message, 'helpText').config(width = 560)
-                    
+            
             with win.tab('Output'):
                 with win.scrollPane('outPane', disabled = 'horizontal') as pane:
                     pane.configure(width = 560, height = 420)
                     win.message('outputText', '')
                     win.widgetManager.get(WIDGET_NAMES.Message, 'outputText').config(width = 560)
-                    
+        
         makeWidgets('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
         
         makeWidgets('--quiet', allArgs['--quiet'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 46)
@@ -1034,12 +1034,12 @@ def main(argv = None):
         
         win.button('Run', runTD, tooltip = 'Execute the selected command.',
                    sticky = 'w', row = 3, column = 49)
-                   
+        
         makeWidgets('--cwd', allArgs['--cwd'], width = 4, row = 4, column = 0)
         with win.scrollPane('CWD', disabled = 'vertical', row = 4, column = 1, colspan = 49) as pane:
             pane.configure(width = 500, height = 20)
             widgets['cwd'] = win.label('cwd', argVals['--cwd'], sticky = 'w')
-            
+        
         makeWidgets('--db', allArgs['--db'], width = 4, row = 5, column = 0)
         with win.scrollPane('DB', disabled = 'vertical', row = 5, column = 1, colspan = 49) as pane:
             pane.configure(width = 500, height = 20)

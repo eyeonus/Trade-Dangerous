@@ -32,7 +32,7 @@ def request_url(url, headers=None):
     data = None
     if headers:
         data = bytes(json.dumps(headers), encoding="utf-8")
-        
+    
     return request.urlopen(request.Request(url, data=data), context=CONTEXT)
 
 
@@ -193,25 +193,25 @@ class ImportPlugin(plugins.ImportPluginBase):
         Purges systems from the System table that do not have any stations claiming to be in them.
         Keeps table from becoming too large because of fleet carriers moving to unpopulated systems.
         """
-    
+        
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
-    
+        
         self.execute("PRAGMA foreign_keys = OFF")
-    
+        
         print("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("DROP TABLE IF EXISTS System_copy")
         self.execute("""CREATE TABLE System_copy AS SELECT * FROM System
                             WHERE system_id IN (SELECT system_id FROM Station)
                     """)
-    
+        
         print("Erasing table and reinserting kept systems.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("DELETE FROM System")
         self.execute("INSERT INTO System SELECT * FROM System_copy")
-    
+        
         print("Removing copy.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("PRAGMA foreign_keys = ON")
         self.execute("DROP TABLE IF EXISTS System_copy")
-    
+        
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
     
     def commit(self):
@@ -469,11 +469,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("rare"):
             if self.downloadFile(self.rareItemPath) or self.getOption("force"):
                 buildCache = True
-
+        
         if self.getOption("shipvend"):
             if self.downloadFile(self.shipVendorPath) or self.getOption("force"):
                 buildCache = True
-
+        
         if self.getOption("upvend"):
             if self.downloadFile(self.upgradeVendorPath) or self.getOption("force"):
                 buildCache = True
