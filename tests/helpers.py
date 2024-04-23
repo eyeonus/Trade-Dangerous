@@ -1,7 +1,6 @@
 import sys
 import os
 import re
-from time import sleep
 from io import StringIO
 from pathlib import Path
 from contextlib import contextmanager
@@ -12,7 +11,7 @@ from tradedangerous import fs, TradeEnv
 __all__ = ['tdenv', 'captured_output', 'is_initialized']
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
-_DEBUG=5
+_DEBUG = 5
 tdenv = TradeEnv(debug=_DEBUG)
 
 @contextmanager

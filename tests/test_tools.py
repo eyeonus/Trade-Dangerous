@@ -1,4 +1,4 @@
-import pytest
+import pytest       # noqa: F401
 
 from tradedangerous import tools
 from .helpers import copy_fixtures

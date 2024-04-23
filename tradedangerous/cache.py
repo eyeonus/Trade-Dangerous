@@ -22,10 +22,8 @@
 
 from __future__ import annotations
 
-from collections import namedtuple
 from pathlib import Path
 import csv
-import math
 import os
 import re
 import sqlite3
@@ -103,7 +101,7 @@ newItemPriceRe = re.compile(r"""
     )?
 \s*
 $
-""".format(base_f = itemPriceFrag, qtylvl_f = qtyLevelFrag, time_f = timeFrag),
+""".format(base_f=itemPriceFrag, qtylvl_f=qtyLevelFrag, time_f=timeFrag),
             re.IGNORECASE + re.VERBOSE)
 
 ######################################################################
