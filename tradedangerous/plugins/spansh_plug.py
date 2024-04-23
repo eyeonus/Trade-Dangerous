@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -12,6 +13,7 @@ if sys.version_info.major == 3 and sys.version_info.minor >= 10:
 else:
     dataclass = False  # pylint: disable=invalid-name
 
+from rich.progress import Progress
 import ijson
 import sqlite3
 
@@ -115,6 +117,60 @@ class Timing:
         return self.end_ts is not None
 
 
+class Progresser:
+    """ Encapsulates a potentially transient progress view for a given TradeEnv. """
+    def __init__(self, tdenv: 'TradeEnv', title: str, fancy: bool = True, total: Optional[int] = None):
+        self.started = time.time()
+        self.tdenv = tdenv
+        self.progress, self.main_task = None, None
+        self.title = title
+        self.fancy = fancy
+        self.total = total
+        self.main_task = None
+        if fancy:
+            self.progress = Progress(console=self.tdenv.console, transient=True, auto_refresh=True, refresh_per_second=2)
+        else:
+            self.progress = None
+
+    def __enter__(self):
+        if not self.fancy:
+            self.tdenv.uprint(self.title)
+        else:
+            self.progress.start()
+            self.main_task = self.progress.add_task(self.title, start=True, total=self.total)
+        return self
+
+    def __exit__(self, *args):
+        self.progress.stop()
+
+    def update(self, title: str) -> None:
+        if self.fancy:
+            self.progress.update(self.main_task, description=title)
+        else:
+            self.tdenv.DEBUG1(title)
+
+    @contextmanager
+    def task(self, title: str, total: Optional[int] = None, parent: Optional[str] = None):
+        parent = parent or self.main_task
+        if self.fancy:
+            task = self.progress.add_task(title, start=True, total=total, parent=parent)
+        else:
+            self.tdenv.DEBUG0(title)
+            task = None
+        try:
+            yield task
+        finally:
+            if self.fancy:
+                self.progress.remove_task(task)
+        if task is not None and parent is not None:
+            self.progress.update(parent, advance=1)
+
+    def bump(self, task, advance: int=1, description: Optional[str] = None):
+        """ Advances the progress of a task by one mark. """
+        if self.fancy and task is not None:
+            self.progress.update(task, advance=advance, description=description)
+
+
 def get_timings(started: float, system_count: int, total_station_count: int, *, min_count: int = 100) -> str:
     """ describes how long it is taking to process each system and station """
     elapsed = time.time() - started
@@ -202,86 +258,98 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.print('This will take at least several minutes...')
             self.print('You can increase verbosity (-v) to get a sense of progress')
 
-        with Timing() as timing:
+        theme = self.tdenv.theme
+        BOLD, CLOSE, DIM, ITALIC = theme.bold, theme.CLOSE, theme.dim, theme.italic  # pylint: disable=invalid-name
+
+        sys_desc = f"Importing {ITALIC}spansh{CLOSE} data"
+        with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_systems)) as progress:
             system_count = 0
             total_station_count = 0
             total_commodity_count = 0
 
             age_cutoff = timedelta(days=self.maxage) if self.maxage else None
             now = datetime.now()
+            started = time.time()
 
-            for system, stations in self.data_stream():
+            for system, station_iter in self.data_stream():
                 upper_sys = system.name.upper()
-                if system.id not in self.known_systems:
-                    self.ensure_system(system, upper_sys)
 
-                station_count = 0
-                commodity_count = 0
+                elapsed, averages = get_timings(started, system_count, total_station_count)
+                label = f"{ITALIC}#{system_count:<5d}{CLOSE} {BOLD}{upper_sys:30s}{CLOSE} {DIM}({elapsed:.2f}s, avgs: {averages}){CLOSE}"
+                stations = list(station_iter)
+                with progress.task(label, total=len(stations)) as sys_task:
+                    if system.id not in self.known_systems:
+                        self.ensure_system(system, upper_sys)
 
-                for station, commodities in stations:
-                    # upper_stn = station.name.upper()
-                    fq_station_name = f'@{upper_sys}/{station.name}'
-                    if age_cutoff and (now - station.modified) > age_cutoff:
-                        if self.tdenv.detail:
-                            self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {now - station.modified}, ts: {station.modified}')
-                        continue
+                    station_count = 0
+                    commodity_count = 0
 
-                    station_info = self.known_stations.get(station.id)
-                    if not station_info:
-                        self.ensure_station(station)
-                    elif station_info[1] != station.system_id:
-                        self.print(f'        |  {station.name:50s}  |  Megaship station moved, updating system')
-                        self.execute("UPDATE Station SET system_id = ? WHERE station_id = ?", station.system_id, station.id, commitable=True)
-                        self.known_stations[station.id] = (station.name, station.system_id)
-
-                    items = []
-                    db_times = dict(self.execute(
-                        """SELECT item_id, modified FROM StationItem WHERE station_id = ?""",
-                        (station.id),
-                    ))
-
-                    for commodity in commodities:
-                        if commodity.id not in self.known_commodities:
-                            commodity = self.ensure_commodity(commodity)
-
-                        db_modified = db_times.get(commodity.id)
-                        modified = parse_ts(db_modified) if db_modified else None
-                        if modified and commodity.modified <= modified:
-                            # All commodities in a station will have the same modified time,
-                            # so no need to check the rest if the fist is older.
+                    for station, commodities in stations:
+                        fq_station_name = f'@{upper_sys}/{station.name}'
+                        if age_cutoff and (now - station.modified) > age_cutoff:
                             if self.tdenv.detail:
-                                self.print(f'        |  {fq_station_name:50s}  |  Skipping older commodity data')
-                            break
-                        items.append((station.id, commodity.id, commodity.modified,
-                            commodity.sell, commodity.demand, -1,
-                            commodity.buy, commodity.supply, -1, 0))
-                    if items:
-                        self.executemany("""INSERT OR REPLACE INTO StationItem (
-                            station_id, item_id, modified,
-                            demand_price, demand_units, demand_level,
-                            supply_price, supply_units, supply_level, from_live
-                        ) VALUES (
-                            ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
-                            ?, ?, ?,
-                            ?, ?, ?, ?
-                        )""", items, commitable=True)
-                        commodity_count += len(items)
-                        # Good time to save data and try to keep the transaction small
-                        self.commit()
+                                self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {now - station.modified}, ts: {station.modified}')
+                            progress.bump(sys_task)
+                            continue
 
-                    if commodity_count:
-                        station_count += 1
+                        station_info = self.known_stations.get(station.id)
+                        if not station_info:
+                            self.ensure_station(station)
+                        elif station_info[1] != station.system_id:
+                            self.print(f'        |  {station.name:50s}  |  Megaship station moved, updating system')
+                            self.execute("UPDATE Station SET system_id = ? WHERE station_id = ?", station.system_id, station.id, commitable=True)
+                            self.known_stations[station.id] = (station.name, station.system_id)
 
-                if station_count:
-                    system_count += 1
-                    total_station_count += station_count
-                    total_commodity_count += commodity_count
-                    if self.tdenv.detail:
-                        self.print(
-                            f'{system_count:6d}  |  {upper_sys:50s}  |  '
-                            f'{station_count:3d} st  {commodity_count:6d} co'
-                        )
-                self.commit()
+                        items = []
+                        db_times = dict(self.execute("SELECT item_id, modified FROM StationItem WHERE station_id = ?", station.id))
+
+                        for commodity in commodities:
+                            if commodity.id not in self.known_commodities:
+                                commodity = self.ensure_commodity(commodity)
+
+                            db_modified = db_times.get(commodity.id)
+                            modified = parse_ts(db_modified) if db_modified else None
+                            if modified and commodity.modified <= modified:
+                                # All commodities in a station will have the same modified time,
+                                # so no need to check the rest if the fist is older.
+                                if self.tdenv.detail:
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping older commodity data')
+                                break
+                            items.append((station.id, commodity.id, commodity.modified,
+                                commodity.sell, commodity.demand, -1,
+                                commodity.buy, commodity.supply, -1, 0))
+                        if items:
+                            self.executemany("""INSERT OR REPLACE INTO StationItem (
+                                station_id, item_id, modified,
+                                demand_price, demand_units, demand_level,
+                                supply_price, supply_units, supply_level, from_live
+                            ) VALUES (
+                                ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
+                                ?, ?, ?,
+                                ?, ?, ?, ?
+                            )""", items, commitable=True)
+                            commodity_count += len(items)
+                            # Good time to save data and try to keep the transaction small
+                            self.commit()
+
+                        if commodity_count:
+                            station_count += 1
+                        progress.bump(sys_task)
+
+                    if station_count:
+                        system_count += 1
+                        total_station_count += station_count
+                        total_commodity_count += commodity_count
+                        if self.tdenv.detail:
+                            self.print(
+                                f'{system_count:6d}  |  {upper_sys:50s}  |  '
+                                f'{station_count:3d} st  {commodity_count:6d} co'
+                            )
+                    self.commit()
+
+                    if system_count % 25 == 1:
+                        avg_stations = total_station_count / (system_count or 1)
+                        progress.update(f"{sys_desc}{DIM} ({total_station_count}:station:, {avg_stations:.1f}per:glowing_star:){CLOSE}")
 
             self.commit()
 
@@ -306,7 +374,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.print('Exporting to cache...')
             cache.regeneratePricesFile(self.tdb, self.tdenv)
             self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
-        
+
         return False
 
     def data_stream(self):
@@ -315,13 +383,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.print(f'Downloading prices from remote URL: {url}')
             self.file = Path(self.tdenv.tmpDir, "galaxy_stations.json")
             transfers.download(self.tdenv, url, self.file)
-            self.print(f'Download complete, saved to local file: {self.file}')
+            self.print(f'Download complete, saved to local file: "{self.file}"')
 
         if self.file == '-':
             self.print('Reading prices from stdin')
             stream = sys.stdin
         elif self.file:
-            self.print(f'Reading prices from local file: {self.file}')
+            self.print(f'Reading prices from local file: "{self.file}"')
             stream = open(self.file, 'r', encoding='utf8')
         return ingest_stream(stream)
 
