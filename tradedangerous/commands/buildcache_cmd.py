@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .exceptions import CommandLineError
-from .parsing import *
+from .parsing import ParseArgument
 from ..cache import buildCache
 from ..tradedb import TradeDB
 
@@ -57,14 +57,11 @@ def run(results, cmdenv, tdb: TradeDB):
     if not cmdenv.force:
         if tdb.dbPath.exists():
             raise CommandLineError(
-                    "SQLite3 database '{}' already exists.\n"
-                     "Either remove the file first or use the '-f' option."
-                        .format(tdb.dbFilename))
+                "SQLite3 database '{tdb.dbFilename}' already exists.\n"
+                "Either remove the file first or use the '-f' option.")
     
     if not tdb.sqlPath.exists():
-        raise CommandLineError(
-                    "SQL File does not exist: {}"
-                        .format(tdb.sqlFilename))
+        raise CommandLineError("SQL File does not exist: {tdb.sqlFilename}")
     
     buildCache(tdb, cmdenv)
     

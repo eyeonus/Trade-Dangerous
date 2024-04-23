@@ -3,12 +3,10 @@
 # a EDDBlink_listener server to update the Database.
 # ----------------------------------------------------------------
 import certifi
-import codecs
 import csv
 import datetime
 import json
 import os
-import platform
 import sqlite3
 import ssl
 import time
@@ -16,12 +14,10 @@ import time
 from urllib import request
 from calendar import timegm
 from pathlib import Path
-from importlib import reload
 
-from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers
+from .. import plugins, cache, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
-from shutil import copyfile
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
@@ -350,8 +346,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            # if not option in ('force', 'fallback', 'skipvend', 'progbar'):
-            if not option in ('force', 'skipvend'):
+            # if option not in ('force', 'fallback', 'skipvend', 'progbar'):
+            if option not in ('force', 'skipvend'):
                 default = False
         if default:
             self.options["listings"] = True

@@ -1,8 +1,7 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from .parsing import *
+from .parsing import MutuallyExclusiveGroup, ParseArgument
 from ..tradeexcept import TradeException
 from .exceptions import CommandLineError
-from ..tradedb import System, Station
+from ..tradedb import System
 from .. import prices, cache
 import subprocess
 import os
@@ -167,7 +166,8 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
     cmdenv.DEBUG0("Locating {} editor", editorName)
     try:
         return os.environ[envVar]
-    except KeyError: pass
+    except KeyError:
+        pass
     
     paths = []
     
@@ -183,7 +183,8 @@ def getEditorPaths(cmdenv, editorName, envVar, windowsFolders, winExe, nixExe):
     
     try:
         paths += os.environ['PATH'].split(os.pathsep)
-    except KeyError: pass
+    except KeyError:
+        pass
     
     for path in paths:
         candidate = os.path.join(path, binary)
@@ -271,8 +272,10 @@ def editUpdate(tdb, cmdenv, stationID):
     dbFilename = tdb.dbFilename
     try:
         elementMask = prices.Element.basic | prices.Element.supply
-        if cmdenv.timestamps: elementMask |= prices.Element.timestamp
-        if cmdenv.all: elementMask |= prices.Element.blanks
+        if cmdenv.timestamps:
+            elementMask |= prices.Element.timestamp
+        if cmdenv.all:
+            elementMask |= prices.Element.blanks
         # Open the file and dump data to it.
         with tmpPath.open("w", encoding = 'utf-8') as tmpFile:
             # Remember the filename so we know we need to delete it.

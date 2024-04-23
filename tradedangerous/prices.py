@@ -9,11 +9,7 @@
 # --------------------------------------------------------------------
 # TradeDangerous :: Modules :: Generate TradeDangerous.prices
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 import sys
-import os
-import re
 import sqlite3
 
 
@@ -118,9 +114,10 @@ def dumpPrices(
         print(sql)
     cur.execute(sql)
     
-    lastSys, lastStn, lastCat = None, None, None
+    lastStn, lastCat = None, None
     
-    if not file: file = sys.stdout
+    if not file:
+        file = sys.stdout
     
     if stationID:
         stationSet = str(stations[stationID])
@@ -225,6 +222,7 @@ def dumpPrices(
                 )
     
     file.write(output)
+
 
 if __name__ == "__main__":
     import tradedb

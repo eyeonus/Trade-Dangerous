@@ -49,7 +49,7 @@ class PluginBase(object):
             else:
                 key, value = opt[:equals], opt[equals+1:]
             keyName = key.lower()
-            if not keyName in pluginOptions:
+            if keyName in pluginOptions:
                 if keyName == "help":
                     raise SystemExit(self.usage())
                 

@@ -1,7 +1,5 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 from ..csvexport import exportTableToFile
-from .parsing import *
+from .parsing import ParseArgument, MutuallyExclusiveGroup
 from .exceptions import CommandLineError
 from pathlib import Path
 

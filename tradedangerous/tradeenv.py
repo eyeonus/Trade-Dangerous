@@ -17,7 +17,7 @@ from rich.traceback import install as install_rich_traces
 
 if typing.TYPE_CHECKING:
     import argparse
-    from typing import Any, Dict, Optional, TextIO, Union
+    from typing import Any, Dict, Optional, Union
 
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -72,7 +72,7 @@ class BasicRichColorTheme(BaseColorTheme):
     # style, label
     debug, DEBUG   = dim,  "#"
     note,  NOTE    = bold, "NOTE"
-    warn,  WARNING =  "[orange3]", "WARNING"
+    warn,  WARNING = "[orange3]", "WARNING"
     
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover
         style_attr = getattr(self, style, "")
@@ -237,7 +237,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         
         if key == "NOTE":
             
-            def __NOTE_ENABLED(outText, *args, stderr: bool=False, **kwargs):
+            def __NOTE_ENABLED(outText, *args, stderr: bool = False, **kwargs):
                 self.uprint(
                     f"{self.theme.note}{self.theme.NOTE}: {str(outText).format(*args, **kwargs)}",
                     stderr=stderr,
@@ -256,7 +256,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         
         if key == "WARN":
             
-            def _WARN_ENABLED(outText, *args, stderr: bool=False, **kwargs):
+            def _WARN_ENABLED(outText, *args, stderr: bool = False, **kwargs):
                 self.uprint(
                     f"{self.theme.warn}{self.theme.WARNING}: {str(outText).format(*args, **kwargs)}",
                     stderr=stderr,

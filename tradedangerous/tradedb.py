@@ -570,7 +570,7 @@ class TradeDB:
             load=True,
             debug=None,
             ):
-        self.conn : sqlite3.Connection = None
+        self.conn: sqlite3.Connection = None
         self.tradingCount = None
         
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
@@ -1157,7 +1157,7 @@ class TradeDB:
                 ID, systemID, name,
                 lsFromStar, market, blackMarket, shipyard,
                 maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
-            ) in cur :
+            ) in cur:
                 isFleet = 'Y' if int(type_id) in types['fleet-carrier'] else 'N'
                 isOdyssey = 'Y' if int(type_id) in types['odyssey'] else 'N'
                 station = Station(

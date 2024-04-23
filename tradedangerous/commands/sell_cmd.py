@@ -1,9 +1,13 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from .exceptions import *
-from .parsing import *
+from .commandenv import ResultRow
+from .exceptions import CommandLineError, NoDataError
+from .parsing import (
+    AvoidPlacesArgument, BlackMarketSwitch, FleetCarrierArgument,
+    MutuallyExclusiveGroup, NoPlanetSwitch, OdysseyArgument,
+    PadSizeArgument, ParseArgument, PlanetaryArgument,
+)
 from ..tradedb import TradeDB, System, Station
+from ..formatting import RowFormat
 
-import math
 
 ######################################################################
 # Parser config
@@ -70,9 +74,7 @@ switches = [
 ######################################################################
 # Perform query and populate result set
 
-def run(results, cmdenv, tdb:TradeDB):
-    from .commandenv import ResultRow
-    
+def run(results, cmdenv, tdb: TradeDB):
     if cmdenv.lt and cmdenv.gt:
         if cmdenv.lt <= cmdenv.gt:
             raise CommandLineError("--gt must be lower than --lt")
@@ -199,8 +201,6 @@ def run(results, cmdenv, tdb:TradeDB):
 ## Transform result set into output
 
 def render(results, cmdenv, tdb):
-    from ..formatting import RowFormat, ColumnFormat
-    
     longestNamed = max(results.rows, key=lambda result: len(result.station.name()))
     longestNameLen = len(longestNamed.station.name())
     

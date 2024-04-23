@@ -303,6 +303,7 @@ class ImportPlugin(ImportPluginBase):
         if not optShow:
             try:
                 idJournal = tdb.lookupAdded(self.ADDED_NAME)
+                tdenv.DEBUG1("idjournal = {}", idJournal)
             except KeyError:
                 tdenv.WARN("Entry '{}' not found in 'Added' table.", self.ADDED_NAME)
                 tdenv.WARN("Trying to add it myself.")

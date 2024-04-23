@@ -11,8 +11,6 @@ Example:
 Original author: oliver@kfs.org
 """
 
-import json
-import sys
 import transfers
 
 BASE_URL = "http://eddb.io/archive/v3/"

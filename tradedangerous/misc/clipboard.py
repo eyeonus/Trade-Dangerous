@@ -47,4 +47,3 @@ if 'NOTK' not in os.environ:
             """
             def copy_text(self, text):
                 pass
-

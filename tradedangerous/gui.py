@@ -31,12 +31,6 @@
 # individual always-on-top for every window
 # Data retrieval from CMDR's journal
 
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-from pkg_resources import resource_filename
 import os
 import sys
 import traceback
@@ -46,7 +40,6 @@ from pathlib import Path
 
 from appJar import gui
 import appJar
-
 
 # from tkinter import *
 # import tkinter.font as font
@@ -60,8 +53,6 @@ from .version import __version__
 
 from . import tradedb
 from .plugins import PluginException
-from pycparser.ply.yacc import MAXINT
-from pkg_resources import _sset_none
 
 # ==================
 # BEGIN appJar fixes
@@ -96,8 +87,9 @@ def setSpinBoxPos(self, title, pos, callFunction = True):
     vals = self._getSpinBoxValsAsList(vals)
     pos = int(pos)
     if pos < 0 or pos >= len(vals):
-        raise Exception("Invalid position: " + str(pos) + ". No position in SpinBox: " + 
-                    title + "=" + str(vals))
+        raise RuntimeError(
+            f"Invalid position: {pos}. No position in SpinBox: {title}={vals}"
+        )
     #    pos = len(vals) - 1 - pos
     val = vals[pos]
     self._setSpinBoxVal(spin, val, callFunction)
@@ -140,10 +132,10 @@ def _configOptionBoxList(self, title, options, kind):
     # get the longest string length
     try:
         maxSize = len(str(max(options, key = len)))
-    except:
+    except:  # noqa: E722
         try:
             maxSize = len(str(max(options)))
-        except:
+        except:  # noqa: E722
             maxSize = 0
     
     # increase if ticks
@@ -220,9 +212,9 @@ def changeCWD():
     """
     Opens a folder select dialog for choosing the current working directory.
     """
-    cwd = filedialog.askdirectory(title = "Select the top-level folder for TD to work in...", 
+    cwd = filedialog.askdirectory(title = "Select the top-level folder for TD to work in...",
                                   initialdir = argVals['--cwd'])
-    #cwd = win.directoryBox("Select the top-level folder for TD to work in...", dirName = argVals['--cwd'])
+    # cwd = win.directoryBox("Select the top-level folder for TD to work in...", dirName = argVals['--cwd'])
     if cwd:
         argVals['--cwd'] = str(Path(cwd))
     widgets['cwd']['text'] = argVals['--cwd']
@@ -231,12 +223,13 @@ def changeDB():
     """
     Opens a file select dialog for choosing the database file.
     """
-    db = filedialog.askopenfilename(title = "Select the TD database file to use...", 
+    db = filedialog.askopenfilename(title = "Select the TD database file to use...",
                                     initialdir = str(Path(argVals['--db']).parent),
                                     filetypes = [('Data Base File', '*.db')])
     if db:
         argVals['--db'] = str(Path(db))
     widgets['db']['text'] = argVals['--db']        
+
 
 # A dict of all arguments in TD (mostly auto-generated)
 # Manually add the global arguments for now, maybe figure out how to auto-populate them as well.
@@ -300,16 +293,16 @@ def buildArgDicts():
                 # print(arg.args[0])
                 argVals[arg.args[0]] = arg.kwargs.get('default') or None
                 
-                allArgs[cmd]['req'][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
+                allArgs[cmd]['req'][arg.args[0]] = {kwarg: arg.kwargs[kwarg] for kwarg in arg.kwargs}
                 allArgs[cmd]['req'][arg.args[0]]['widget'] = chooseType(arg)
         # print(allArgs[cmd]['req'])
         
         if index.switches:
             for arg in index.switches:
                 try:
-                    argVals[arg.args[0]] = value = arg.kwargs.get('default') or None
+                    argVals[arg.args[0]] = arg.kwargs.get('default') or None
                     
-                    allArgs[cmd]['opt'][arg.args[0]] = {kwarg : arg.kwargs[kwarg] for kwarg in arg.kwargs}
+                    allArgs[cmd]['opt'][arg.args[0]] = {kwarg: arg.kwargs[kwarg] for kwarg in arg.kwargs}
                     allArgs[cmd]['opt'][arg.args[0]]['widget'] = chooseType(arg)
                     
                     if arg.args[0] == '--option':
@@ -324,51 +317,49 @@ def buildArgDicts():
                 
                 except AttributeError:
                     for argGrp in arg.arguments:
-                        argVals[argGrp.args[0]] = value = argGrp.kwargs.get('default') or None
+                        argVals[argGrp.args[0]] = argGrp.kwargs.get('default') or None
                         
-                        allArgs[cmd]['opt'][argGrp.args[0]] = {kwarg : argGrp.kwargs[kwarg] for kwarg in argGrp.kwargs}
+                        allArgs[cmd]['opt'][argGrp.args[0]] = {kwarg: argGrp.kwargs[kwarg] for kwarg in argGrp.kwargs}
                         allArgs[cmd]['opt'][argGrp.args[0]]['widget'] = chooseType(argGrp)
                         
                         allArgs[cmd]['opt'][argGrp.args[0]]['excludes'] = [excl.args[0] for excl in arg.arguments 
                                                                    if excl.args[0] != argGrp.args[0]]
                         if argGrp.args[0] == '--plug':
                             # Currently only the 'import' cmd has the '--plug' option,
-                            # but this could no longer be the case in future.
+                            # but this could no longer be the case in the future.
                             if cmd == 'import':
                                 allArgs[cmd]['opt'][argGrp.args[0]]['plugins'] = importPlugs
-        # print(allArgs[cmd]['opt'])
-    # print(allArgs)
-    # print(argVals)
+
 
 def optWindow():
     """
     Opens a window listing all of the options for the currently selected plugin.
     """
     # with win.subWindow("Plugin Options", modal = True) as sw:
-        # win.emptyCurrentContainer()
-        # optDict = {}
-        # if argVals['--option']:
-            # for option in enumerate(argVals['--option'].split(',')):
-                # if '=' in option[1]:
-                    # optDict[option[1].split('=')[0]] = option[1].split('=')[1]
-                # else:
-                    # if option[1] != '':
-                        # optDict[option[1]] = True
-        # # print(optDict)
-        # if not win.combo('--plug'):
-            # win.message('No import plugin chosen.', width = 170, colspan = 10)
-        # else:
-            # plugOpts = allArgs['import']['opt']['--option']['options'][win.combo('--plug')]
-            # for option in plugOpts:
-                # # print(option + ': ' + plugOpts[option])
-                # if '=' in plugOpts[option]:
-                    # win.entry(option, optDict.get(option) or '', label = True, sticky = 'ew', colspan = 10, tooltip = plugOpts[option])
-                # else:
-                    # win.check(option, optDict.get(option) or False, sticky = 'ew', colspan = 10, tooltip = plugOpts[option])
-            # # print(plugOpts)
-        # win.button("Done", setOpts, column = 8)
-        # win.button("Cancel", sw.hide, row = 'p', column = 9)
-        # sw.show()
+    #     win.emptyCurrentContainer()
+    #     optDict = {}
+    #     if argVals['--option']:
+    #         for option in enumerate(argVals['--option'].split(',')):
+    #             if '=' in option[1]:
+    #                 optDict[option[1].split('=')[0]] = option[1].split('=')[1]
+    #             else:
+    #                 if option[1] != '':
+    #                     optDict[option[1]] = True
+    #     # print(optDict)
+    #     if not win.combo('--plug'):
+    #         win.message('No import plugin chosen.', width = 170, colspan = 10)
+    #     else:
+    #         plugOpts = allArgs['import']['opt']['--option']['options'][win.combo('--plug')]
+    #         for option in plugOpts:
+    #             # print(option + ': ' + plugOpts[option])
+    #             if '=' in plugOpts[option]:
+    #                 win.entry(option, optDict.get(option) or '', label = True, sticky = 'ew', colspan = 10, tooltip = plugOpts[option])
+    #             else:
+    #                 win.check(option, optDict.get(option) or False, sticky = 'ew', colspan = 10, tooltip = plugOpts[option])
+    #         # print(plugOpts)
+    #     win.button("Done", setOpts, column = 8)
+    #     win.button("Cancel", sw.hide, row = 'p', column = 9)
+    #     sw.show()
 
 def chooseType(arg):
     """

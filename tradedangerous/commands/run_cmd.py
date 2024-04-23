@@ -1,12 +1,17 @@
 from .commandenv import ResultRow
-from .exceptions import *
-from .parsing import *
+from .exceptions import CommandLineError, NoDataError
+from .parsing import (
+    BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
+    NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument,
+    PlanetaryArgument,
+)
 from itertools import chain
-from ..formatting import RowFormat, ColumnFormat
 from ..tradedb import TradeDB, System, Station, describeAge
 from ..tradecalc import TradeCalc, Route, NoHopsError
 
 import math
+import sys
+
 
 ######################################################################
 # Parser config
@@ -220,8 +225,7 @@ switches = [
         dest = 'x52pro',
     ),
     ParseArgument('--prune-score',
-        help = 'From the 3rd hop on, only consider routes which have ' \
-            'at least this percentage of the current best route''s score.',
+        help = 'From the 3rd hop on, only consider routes which have at least this percentage of the current best route''s score.',
         dest = 'pruneScores',
         type = float,
         default = 0,
@@ -294,13 +298,13 @@ class Checklist(object):
         print("(i) {} (i){}".format(str, "\n" if addBreak else ""))
     
     def run(self, route, cr):
-        tdb, mfd = self.tdb, self.mfd
+        mfd = self.mfd
         stations, hops, jumps = route.route, route.hops, route.jumps
         lastHopIdx = len(stations) - 1
         gainCr = 0
         self.stepNo = 0
         
-        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.text(lambda x, y : y))
+        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.text(lambda x, y: y))
         print(heading, "\n", '-' * len(heading), "\n\n", sep = '')
         
         cmdenv = self.cmdenv
@@ -313,8 +317,8 @@ class Checklist(object):
             cur, nxt, hop = stations[idx], stations[idx + 1], hops[idx]
             sortedTradeOptions = sorted(
                 hop[0],
-                key = lambda tradeOption: \
-                    tradeOption[1] * tradeOption[0].gainCr, reverse = True
+                key=lambda tradeOption: tradeOption[1] * tradeOption[0].gainCr,
+                reverse=True
             )
             
             # Tell them what they need to buy.
@@ -413,9 +417,9 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
             [sys.dbname for sys in origins]
         )
         thisJump, origins = origins, set()
-        for sys in thisJump:
-            avoid.add(sys)
-            for stn in sys.stations or ():
+        for system in thisJump:
+            avoid.add(system)
+            for stn in system.stations or ():
                 if stn.ID not in tradingList:
                     cmdenv.DEBUG2(
                         "X {}/{} not in trading list",
@@ -433,7 +437,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
                     stn.system.dbname, stn.dbname,
                 )
                 stations.add(stn)
-            for dest, dist in tdb.genSystemsInRange(sys, maxLyPer):
+            for dest, dist in tdb.genSystemsInRange(system, maxLyPer):
                 if dest not in avoid:
                     origins.add(dest)
     
@@ -463,7 +467,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
         )
     
     stations = list(stations)
-    stations.sort(key = lambda stn: stn.ID)
+    stations.sort(key=lambda stn: stn.ID)
     
     return stations
 
@@ -666,16 +670,12 @@ def filterStationSet(src, cmdenv, calc, stnList):
         src,
         ",".join(station.name() for station in stnList),
         )
-    filtered = tuple(
+    stnList = tuple(
         place for place in stnList
-        if isinstance(place, System) or \
-            checkStationSuitability(cmdenv, calc, place, src)
+        if isinstance(place, System) or checkStationSuitability(cmdenv, calc, place, src)
     )
     if not stnList:
-        raise CommandLineError(
-                "No {} station met your criteria.".format(
-                    src
-        ))
+        raise CommandLineError("No {src} station met your criteria.")
     return stnList
 
 
@@ -969,9 +969,9 @@ def validateRunArguments(tdb, cmdenv, calc):
                 raise CommandLineError("Can't have same from/to with --unique")
         if viaSet:
             if len(origins) == 1 and origins[0] in viaSet:
-                raise("Can't have --from station in --via list with --unique")
+                raise CommandLineError("Can't have --from station in --via list with --unique")
             if len(destns) == 1 and destns[0] in viaSet:
-                raise("Can't have --to station in --via list with --unique")
+                raise CommandLineError("Can't have --to station in --via list with --unique")
     
     if cmdenv.mfd:
         cmdenv.mfd.display("Loading Trades")
@@ -1147,7 +1147,6 @@ def run(results, cmdenv, tdb):
     validateRunArguments(tdb, cmdenv, calc)
     
     origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
-    avoidPlaces = cmdenv.avoidPlaces
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs

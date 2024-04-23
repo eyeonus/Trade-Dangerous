@@ -1,7 +1,6 @@
 #! /usr/bin/env python
 # pytest
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 import pytest
 from tradedangerous import commands
 from tradedangerous.commands.exceptions import UsageError, CommandLineError

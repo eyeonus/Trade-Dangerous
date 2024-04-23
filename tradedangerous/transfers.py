@@ -1,15 +1,11 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from os import getcwd, path
 from collections import deque
 from pathlib import Path
 from .tradeexcept import TradeException
 
 import csv
 import json
-import math
 from .misc import progress as pbar
 from . import fs
-import platform
 import time
 import subprocess
 import sys
@@ -58,7 +54,7 @@ def import_requests():
         raise TradeException("Missing package: 'requests'")
     
     try:
-        import pip
+        import pip  # noqa: F401
     except ImportError as e:
         import platform
         raise TradeException(
@@ -70,7 +66,7 @@ def import_requests():
     # Let's use "The most reliable approach, and the one that is fully supported."
     # Especially since the old way produces an error for me on Python 3.6:
     # "AttributeError: 'module' object has no attribute 'main'"
-    #pip.main(["install", "--upgrade", "requests"])
+    #  pip.main(["install", "--upgrade", "requests"])
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'requests'])
     
     try:
@@ -78,8 +74,7 @@ def import_requests():
         __requests = requests
     except ImportError as e:
         raise TradeException(
-            "The requests module did not install correctly.{}"
-            .format(extra)
+            f"The requests module did not install correctly ({e}).{extra}"
         ) from None
     
     return __requests

@@ -17,10 +17,11 @@ from rich.progress import Progress
 import ijson
 import sqlite3
 
-from .. import plugins, cache, fs, transfers, csvexport, corrections
+from .. import plugins, cache, transfers, csvexport, corrections
 
 if typing.TYPE_CHECKING:
     from typing import Any, Dict, Iterable, Optional, Tuple
+    from .. tradeenv import TradeEnv
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
 
@@ -165,7 +166,7 @@ class Progresser:
         if task is not None and parent is not None:
             self.progress.update(parent, advance=1)
     
-    def bump(self, task, advance: int=1, description: Optional[str] = None):
+    def bump(self, task, advance: int = 1, description: Optional[str] = None):
         """ Advances the progress of a task by one mark. """
         if self.fancy and task is not None:
             self.progress.update(task, advance=advance, description=description)
@@ -239,8 +240,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         """ Perform a commit if required, but try not to do a crazy amount of committing. """
         if not force and not self.need_commit:
             return self.cursor
-        
-        #self.update_cache = True
         
         if not force and self.commit_limit > 0:
             self.commit_limit -= 1

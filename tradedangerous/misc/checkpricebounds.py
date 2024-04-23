@@ -143,7 +143,7 @@ def check_price_bounds(
     if stations:
         print()
         print("Generating", deletePrices)
-        now = tdb.query("SELECT CURRENT_TIMESTAMP").fetchone()[0];
+        now = tdb.query("SELECT CURRENT_TIMESTAMP").fetchone()[0]
         with open(deletePrices, "w", encoding="utf-8") as fh:
             print("# Deletions based on {} prices".format(
                 table,
@@ -175,8 +175,6 @@ def check_price_bounds(
                 db.commit()
 
 def main():
-    doDeletions = False
-    
     parser = argparse.ArgumentParser(
         description='Check for prices that are outside reasonable bounds.'
     )
@@ -283,6 +281,7 @@ def main():
         percentile=argv.percentile,
         errorFilter=errorFilter,
     )
+
 
 if __name__ == "__main__":
     main()

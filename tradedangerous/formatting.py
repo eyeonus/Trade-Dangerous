@@ -173,6 +173,7 @@ def max_len(iterable, key=lambda item: item):
         return 0
     return max(len(key(item)) for item in iterable)
 
+
 if __name__ == '__main__':
     rowFmt = RowFormat(). \
                 append(ColumnFormat("Name", '<', '8', key=lambda row: row['name'])). \
@@ -198,4 +199,3 @@ if __name__ == '__main__':
     
     rowFmt.append(after='Name', col=ColumnFormat("Age", '>', 3, pre='|', post='|', key=lambda row: row['age']))
     present()
-

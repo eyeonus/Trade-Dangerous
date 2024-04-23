@@ -1,6 +1,5 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from ..tradeexcept import TradeException
-import sys
+
 
 ######################################################################
 # Exceptions
@@ -8,6 +7,7 @@ import sys
 class UsageError(TradeException):
     def __init__(self, title, usage):
         self.title, self.usage = title, usage
+
     def __str__(self):
         return self.title + "\n\n" + self.usage
 
@@ -20,6 +20,7 @@ class CommandLineError(TradeException):
     """
     def __init__(self, errorStr, usage=None):
         self.errorStr, self.usage = errorStr, usage
+ 
     def __str__(self):
         if self.usage:
             return "ERROR: {}\n\n{}".format(self.errorStr, self.usage)
@@ -35,8 +36,9 @@ class NoDataError(TradeException):
     """
     def __init__(self, errorStr):
         self.errorStr = errorStr
+
     def __str__(self):
-        return "Error: {}\n".format(self.errorStr) + ("""
+        return f"""Error: {self.errorStr}
 Possible causes:
 - No profitable runs or routes meet your criteria,
 - Missing Systems or Stations along the route (see "local -vv"),
@@ -47,7 +49,7 @@ project such as EDDBlink (https://github.com/eyeonus/EDDBlink).
 
 For more help, see the TradeDangerous Wiki:
     https://github.com/eyeonus/Trade-Dangerous/wiki
-""").format(sys.argv[0])
+"""
 
 
 class PadSizeError(CommandLineError):

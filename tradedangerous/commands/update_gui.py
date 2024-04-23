@@ -1,9 +1,7 @@
 import tkinter as tk
 import tkinter.messagebox as mbox
-import tkinter.ttk as ttk
 import sqlite3
 import re
-from pathlib import Path
 
 """
 This is a crude attempt at a GUI for updating trade prices.

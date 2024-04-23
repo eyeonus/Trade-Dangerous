@@ -60,8 +60,6 @@ DirectOutput_CloseServer
 
 """
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 from tradedangerous.mfd import MissingDeviceError
 
 import ctypes
@@ -69,6 +67,8 @@ import ctypes.wintypes
 import logging
 import os
 import platform
+import sys
+import time
 
 S_OK = 0x00000000
 E_HANDLE = 0x80070006
@@ -658,8 +658,6 @@ if __name__ == '__main__':
     # logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
     
-    import time, sys
-    
     device = DirectOutputDevice(debug_level=1)
     print("Device initialized")
     
@@ -675,7 +673,7 @@ if __name__ == '__main__':
     while True:
         try:
             time.sleep(1)
-        except:
-            #This is used to catch Ctrl+C, calling finish method is *very* important to de-initalize device.
+        except:  # noqa: E722
+            # This is used to catch Ctrl+C, calling finish method is *very* important to de-initalize device.
             device.finish()
             sys.exit()

@@ -39,13 +39,12 @@ Classes:
 
 from collections import defaultdict
 from collections import namedtuple
-from .tradedb import System, Station, Trade, TradeDB, describeAge
+from .tradedb import System, Station, Trade, describeAge
 from .tradedb import Destination
 from .tradeexcept import TradeException
 
 import datetime
 import locale
-import math
 import os
 from .misc import progress as pbar
 import re
@@ -220,7 +219,7 @@ class Route(object):
         
         detail, goalSystem = tdenv.detail, tdenv.goalSystem
         
-        colorize = tdenv.colorize if tdenv.color else lambda x, y : y
+        colorize = tdenv.colorize if tdenv.color else lambda x, y: y
         
         credits = self.startCr + (tdenv.insurance or 0)
         gainCr = 0
@@ -443,7 +442,6 @@ class Route(object):
                     )
             if dockFmt:
                 stn = route[i + 1]
-                stnName = stn.name()
                 text += dockFmt.format(
                     station = decorateStation(stn),
                     gain = hopGainCr,
@@ -561,7 +559,7 @@ class TradeCalc(object):
         
         whereClause = " AND ".join(wheres) or "1"
         
-        lastStnID, stnAppend = 0, None
+        lastStnID = 0
         dmdCount, supCount = 0, 0
         stmt = """
                 SELECT  station_id, item_id,
@@ -902,7 +900,7 @@ class TradeCalc(object):
             if avoidPlaces:
                 restrictStations = set(
                     stn for stn in restrictStations
-                    if stn not in avoidPlaces and \
+                    if stn not in avoidPlaces and
                         stn.system not in avoidPlaces
                 )
             
@@ -940,11 +938,10 @@ class TradeCalc(object):
         for route in routes:
             if tdenv.progress:
                 prog.increment(1)
-            tdenv.DEBUG1("Route = {}", route.text(lambda x, y : y))
+            tdenv.DEBUG1("Route = {}", route.text(lambda x, y: y))
             
             srcStation = route.lastStation
             startCr = credits + int(route.gainCr * safetyMargin)
-            routeJumps = len(route.jumps)
             
             srcSelling = getSelling(srcStation.ID, None)
             srcSelling = tuple(

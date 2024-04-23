@@ -2,18 +2,20 @@
 
 # Experimental module to generate a JSON version of the .prices file.
 
-# Set to True to allow export of systems that don't have any station data
-emptySystems = True
-# Set to True to allow export of stations that don't have prices
-emptyStations = True
-
 import sqlite3
 import json
 import time
 import collections
 import os
 
+
+# Set to True to allow export of systems that don't have any station data
+emptySystems = True
+# Set to True to allow export of stations that don't have prices
+emptyStations = True
+
 conn = sqlite3.connect("data/TradeDangerous.db")
+
 
 def collectItemData(db):
     """

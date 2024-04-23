@@ -3,16 +3,15 @@ import os
 import re
 import pathlib
 import time as _time
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
-from .. import tradedb, tradeenv, csvexport
+from .. import csvexport
 from . import PluginException, ImportPluginBase
 
 def snapToGrid32(val):
     try:
         val = float(val)
-        if val < 0: corr = -0.5
-        else:       corr = +0.5
+        corr = -0.5 if val < 0 else +0.5
         pos = int(val*32+corr)/32
     except:
         pos = None
@@ -138,7 +137,7 @@ class ImportPlugin(ImportPluginBase):
                                 pass
                         if not headDate:
                             if lineCount > 3:
-                               raise PluginException("Doesn't seem do be a FDEV netLog file")
+                                raise PluginException("Doesn't seem do be a FDEV netLog file")
                         else:
                             statHeader = False
                             if lineCount == 3:
@@ -184,6 +183,7 @@ class ImportPlugin(ImportPluginBase):
         if not optShow:
             try:
                 idNetLog = tdb.lookupAdded(self.ADDED_NAME)
+                tdenv.DEBUG1("idNetLog = {}", idNetLog)
             except KeyError:
                 tdenv.WARN("Entry '{}' not found in 'Added' table.", self.ADDED_NAME)
                 tdenv.WARN("Trying to add it myself.")
