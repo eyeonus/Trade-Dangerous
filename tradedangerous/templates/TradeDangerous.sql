@@ -200,7 +200,6 @@ CREATE TABLE Item
    fdev_id INTEGER,
 
    UNIQUE (item_id),
-   UNIQUE (fdev_id),
 
    FOREIGN KEY (category_id) REFERENCES Category(category_id)
     ON UPDATE CASCADE
