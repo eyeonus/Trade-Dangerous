@@ -109,6 +109,7 @@ def download(
             backup=False,
             shebang=None,
             chunkSize=4096,
+            timeout=90,
         ):
     """
     Fetch data from a URL and save the output
@@ -130,9 +131,9 @@ def download(
         function to call on the first line
     """
     
-    requests = import_requests()
+    requests = import_requests()  # pylint: disable=redefined-outer-name
     tdenv.NOTE("Requesting {}".format(url))
-    req = requests.get(url, headers=headers or None, stream=True)
+    req = requests.get(url, headers=headers or None, stream=True, timeout=timeout)
     req.raise_for_status()
     
     encoding = req.headers.get('content-encoding', 'uncompress')
@@ -228,15 +229,15 @@ def download(
     req.close()
     return req.headers
 
-def get_json_data(url):
+def get_json_data(url, *, timeout: int = 90):
     """
     Fetch JSON data from a URL and return the resulting dictionary.
     
     Displays a progress bar as it downloads.
     """
     
-    requests = import_requests()
-    req = requests.get(url, stream=True)
+    requests = import_requests()  # pylint: disable=redefined-outer-name
+    req = requests.get(url, stream=True, timeout=timeout)
     
     totalLength = req.headers.get('content-length')
     if totalLength is None:
@@ -272,12 +273,12 @@ class CSVStream(object):
             print("{} = {}".format(cols[0], vals[0]))
     """
     
-    def __init__(self, url, tdenv=None):
+    def __init__(self, url, tdenv=None, *, timeout: int = 90):
         self.url = url
         self.tdenv = tdenv
         if not url.startswith("file:///"):
-            requests = import_requests()
-            self.req = requests.get(self.url, stream=True)
+            requests = import_requests()  # pylint: disable=redefined-outer-name
+            self.req = requests.get(self.url, stream=True, timeout=timeout)
             self.lines = self.req.iter_lines()
         else:
             self.lines = open(url[8:], "rUb")
