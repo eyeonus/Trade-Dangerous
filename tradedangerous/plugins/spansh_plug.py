@@ -208,7 +208,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         assert not (self.url and self.file), 'Provide either url or file, not both'
         if self.file and (self.file != '-'):
             self.file = (Path(self.tdenv.cwDir, self.file)).resolve()
-        if not Path(self.tdb.dataPath, "TradeDangerous.prices").exists():
+        if not Path(self.tdb.dataPath, "TradeDangerous.db").exists():
             ri_path = Path(self.tdb.dataPath, "RareItem.csv")
             rib_path = ri_path.with_suffix(".tmp")
             if ri_path.exists():

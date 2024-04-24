@@ -355,7 +355,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # We can probably safely assume that the plugin has never been run if
         # the prices file doesn't exist, since the plugin always generates it.
-        if not (self.tdb.dataPath / Path("TradeDangerous.prices")).exists():
+        if not (self.tdb.dataPath / Path("TradeDangerous.db")).exists():
             self.options["clean"] = True
         
         if self.getOption("clean"):
