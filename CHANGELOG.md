@@ -2,6 +2,20 @@
 
 
 
+## v10.16.15 (2024-04-24)
+
+### Performance
+
+* perf: (eddblink) get the timestamp for all station commodities at once
+
+Do one SQL query before processing the listings file to get every
+timestamp, rather than doing a SQL query for the timestamp on each
+individual listing as we come to it.
+
+This cuts the number of SQL statements being made during processing --
+and thus the time taken to process -- roughly in half. ([`6c7b8d7`](https://github.com/eyeonus/Trade-Dangerous/commit/6c7b8d73bb382f07e4281b3ad5079c5a9e506157))
+
+
 ## v10.16.14 (2024-04-23)
 
 ### Fix
