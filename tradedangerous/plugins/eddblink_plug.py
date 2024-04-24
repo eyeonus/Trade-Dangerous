@@ -40,6 +40,34 @@ class DecodingError(PluginException):
     pass
 
 
+def file_line_count(from_file: Path, bufsize: int = 128 * 1024) -> int:
+    """ counts the number of newline characters in a given file. """
+    # Pre-allocate a buffer so we're not putting pressure on the garbage collector,
+    # capture it's counting method so we don't have to keep looking that up on
+    # large files.
+    buf = bytearray(bufsize)
+    counter = buf.count
+
+    total = 0
+
+    with from_file.open("rb") as fh:
+        # Capture the 'readinto' method to avoid lookups.
+        reader = fh.readinto
+
+        # read into the buffer and capture the number of bytes fetched,
+        # which will be 'size' until the last read from the file.
+        read = reader(buf)
+        while read == bufsize:  # nominal case for large files
+            total += counter(b'\n')
+            read = reader(buf)
+
+        # when 0 <= read < bufsize we're on the last page of the
+        # file, so we need to take a slice of the buffer, which creates
+        # a new object and thus we also have to lookup count. it's trivial
+        # but if you have to do it 10,000x it's definitly not a rounding error.
+        return total + buf[:read].count(b'\n')
+
+
 class ImportPlugin(plugins.ImportPluginBase):
     """
     Plugin that downloads data from eddb.
@@ -123,14 +151,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             for result in results:
                 yield result
     
-    @staticmethod
-    def blocks(f, size = 65536):
-        while True:
-            b = f.read(size)
-            if not b:
-                break
-            yield b
-    
+
     def downloadFile(self, path):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
@@ -219,18 +240,15 @@ class ImportPlugin(plugins.ImportPluginBase):
         from_live = 0 if listings_file == self.listingsPath else 1
         
         self.tdenv.DEBUG0(f"Getting total number of entries in {listings_file}...")
-        with open(str(self.dataPath / listings_file), "r", encoding = "utf-8", errors = 'ignore') as f:
-            total += (sum(bl.count("\n") for bl in self.blocks(f)))
+        listings_path = Path(self.dataPath, listings_file)
+        total += file_line_count(listings_path)
         
-        liveList = []
         liveStmt = """UPDATE StationItem
                     SET from_live = 0
                     WHERE station_id = ?"""
         
-        delList = []
         delStmt = "DELETE from StationItem WHERE station_id = ?"
         
-        listingList = []
         listingStmt = """INSERT OR IGNORE INTO StationItem
                         (station_id, item_id, modified,
                          demand_price, demand_units, demand_level,
@@ -238,10 +256,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )"""
         
         self.tdenv.DEBUG0("Getting list of commodities...")
-        items = []
-        it_result = self.execute("SELECT item_id FROM Item ORDER BY item_id").fetchall()
-        for item in it_result:
-            items.append(item[0])
+        items = [cols[0] for cols in self.execute("SELECT item_id FROM Item ORDER BY item_id")]
         
         self.tdenv.DEBUG0("Getting list of stations...")
         stationList = {
@@ -252,14 +267,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         stationItems = dict(self.execute('SELECT station_id, UNIXEPOCH(modified) FROM StationItem').fetchall())
         
         self.tdenv.DEBUG0("Processing entries...")
-        with open(str(self.dataPath / listings_file), "r") as fh:
+        with listings_file.open("r", encoding="utf-8", errors="ignore") as fh:
             prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             
             cur_station = -1
             
             for listing in listings:
-                if prog.increment(1, postfix = lambda value, goal: f" {(value / total * 100):.0f}% {value} / {total}"):
+                if prog.increment(1, postfix = lambda value, total: f" {(value / total * 100):.0f}% {value} / {total}"):
                     # Do a commit and close the DB every 2%.
                     # This ensures the listings are put in the DB and the WAL is cleared.
                     self.commit()
@@ -318,7 +333,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdb.close()
             
             while prog.value < prog.maxValue:
-                prog.increment(1, postfix = lambda value, goal: " " + str(round(value / total * 100)) + "%")
+                prog.increment(1, postfix = lambda value, total: " " + str(round(value / total * 100)) + "%")
             prog.clear()
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
