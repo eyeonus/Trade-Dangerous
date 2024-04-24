@@ -198,7 +198,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         'url':  f'URL to download galaxy data from (defaults to {SOURCE_URL})',
         'file': 'Local filename to import galaxy data from; use "-" to load from stdin',
         'maxage': 'Skip all entries older than specified age in days, ex.: maxage=1.5',
-        'listener': 'For use by TD-listener, prevents updating cache from generated prices file',
     }
     
     def __init__(self, *args, **kwargs):
@@ -206,7 +205,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.url = self.getOption('url')
         self.file = self.getOption('file')
         self.maxage = float(self.getOption('maxage')) if self.getOption('maxage') else None
-        self.listener = self.getOption('listener')
         assert not (self.url and self.file), 'Provide either url or file, not both'
         if self.file and (self.file != '-'):
             self.file = (Path(self.tdenv.cwDir, self.file)).resolve()
@@ -376,11 +374,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f'{timedelta(seconds=int(timing.elapsed))!s}  Done  '
                 f'{total_station_count} st  {total_commodity_count} co'
             )
-        
-        with Timing() as timing:
-            self.print('Exporting to cache...')
-            cache.regeneratePricesFile(self.tdb, self.tdenv)
-            self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
         
         return False
     

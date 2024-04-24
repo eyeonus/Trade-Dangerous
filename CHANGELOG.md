@@ -2,6 +2,26 @@
 
 
 
+## v10.17.0 (2024-04-24)
+
+### Feature
+
+* feat: &#39;prices&#39; option in spansh and eddblink
+
+spansh and eddblink plugins no longer regenerate the
+`TradeDangerous.prices` cache file by default
+
+The cache file is used to rebuild the database in the event it is lost,
+corrupted or otherwise damaged.
+
+Users can manually perform a backup by running eddblink with the
+&#39;prices&#39; option. If not other options are specified, eddblink will only
+perform the backup
+
+If any other options are specified, eg. `-O listings,prices`, eddblink
+will perform the backup after the import process has completed. ([`2e1fe85`](https://github.com/eyeonus/Trade-Dangerous/commit/2e1fe85449144c684810d815f835e73124d8ed77))
+
+
 ## v10.16.17 (2024-04-24)
 
 ### Fix
