@@ -85,23 +85,24 @@ qtyLevelFrag = r"""
 """
 newItemPriceRe = re.compile(r"""
 ^
-    {itemPriceFrag}
+    {base_f}
     (
     \s+
         # demand units and level
-        (?P<demand> {qtyLevelFrag})
+        (?P<demand> {qtylvl_f})
     \s+
         # supply units and level
-        (?P<supply> {qtyLevelFrag})
+        (?P<supply> {qtylvl_f})
         # time is optional
         (?:
         \s+
-            {timeFrag}
+            {time_f}
         )?
     )?
 \s*
 $
-""", re.IGNORECASE + re.VERBOSE)
+""".format(base_f = itemPriceFrag, qtylvl_f = qtyLevelFrag, time_f = timeFrag),
+            re.IGNORECASE + re.VERBOSE)
 
 ######################################################################
 # Exception classes

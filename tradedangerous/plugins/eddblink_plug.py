@@ -348,7 +348,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         default = True
         for option in self.options:
             # if not option in ('force', 'fallback', 'skipvend', 'progbar'):
-            if option not in ('force', 'skipvend', 'prices'):
+            if option not in ('force', 'skipvend'):
                 default = False
         if default:
             self.options["listings"] = True
