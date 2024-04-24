@@ -1,10 +1,172 @@
 # CHANGELOG
 
-## v10.17.0 (2024-04-24)
+
+
+## v11.0.0 (2024-04-24)
+
+### Breaking
+
+* feat: multiple improvements from ksfone
+
+BREAKING CHANGE:
+semantic release thinks we&#39;re on 10.16.7 rather than 10.17.0, and these
+are a lot of improvements, so bump to 11.0.0 ([`31bcb4f`](https://github.com/eyeonus/Trade-Dangerous/commit/31bcb4f78e7e3d0daafb7eef2d69c84fd6762f87))
 
 ### Feature
 
-* feat: &#39;prices&#39; option in eddblink
+* feat: multiple improvements from ksfone ([`c63e757`](https://github.com/eyeonus/Trade-Dangerous/commit/c63e7570f793849f151367e7e01f8a04c1baca5e))
+
+* feat: multiple improvements from kfsone
+
+* chore: increase the line limit in the .editorconfig
+
+* chore: relax tox warnings by disabling spaces-after-:
+
+* refactor: Cleanup pass on cache and spansh_plug
+
+- introduce type annotations,
+- Small performance considerations,
+
+* refactor: flake and pylint rules
+
+- ignore warnings that are overly opinionated for our needs,
+- tell pylint to quit complaining about lines &gt; 100
+
+* fix: ensure db gets closed before trying to rename it.
+
+* perf: modernize small performance factors in spansh
+
+- lookup systems and stations by id rather than name,
+- move several &#39;is it registered&#39; tests out of ensure_ methods
+  so we can avoid calling the method if there is no work to do
+  (calling a function in python is expensive)
+- fix ingest_stream looking up body ids rather than system ids
+
+* chore: remove vestigial numpy stuff that annoyed linters
+
+I couldn&#39;t see any evidence of this code still being useful.
+
+* chore: move uprint into a mixin
+
+tradeenv was already hard enough to read, but the utf8 wrapping of uprint made it worse, and less pythonic.
+
+this change moves the io behavior into a base Mixin class, then provides the non-utf8 variant as an optional override mixin. finally, we do a simple if on which one to use as the favored implementation to mixin to TradeEnv.
+
+This should be far more readable to both humans and linters etc. At least, on my machine, PyCharm no-longer catches fire.
+(* it&#39;s possible that it never caught fire and that I just ate an overly hot chilli last night, but who are we to question the universe? not deflecting enough, well LOOK A SQUIRREL)
+
+* chore: appease the gods of pylint
+
+pylint gives deeper code warnings than flake8 can, but is slower and more spammy.
+
+* chore: change terribly misnamed &#39;str&#39; to &#39;text&#39;
+
+* chore: tox/pylint: now we&#39;ve appeased, lets ask for more
+
+this will enable some more useful pylint warnings/messages, and also making it think a little harder about others so they&#39;re more useful.
+
+* feat: introduce theming in tradeenv
+
+two fold reasoning:
+1- so people can opt out of any kind of decoration if it becomes inconvenient/problematic,
+2- localization and style
+
+In particular: the colors people want for light-vs-dark background terminals might vary, and this would make it easy to switch; second, this makes it possible to configure various strings to be localizable through the theme.
+
+The demo-case included here is that when you use --color the word &#34;NOTE&#34; will be replaced with the &#34;information-source&#34; emoji and the word &#34;WARNING&#34; will be replaced with a warning-symbol emoji, the &#39;#&#39; for bugs will be replaced with a bug emoji.
+
+* chore: cleanup/performance tradedb.py
+
+this eliminates some dead methods, and switches some of the math operations to their favored modern-python/performant/64-bit versions
+
+specifically:
+
+%timeit 2 ** 2
+94ns
+%timeit 2 * 2
+24ns
+
+Also, when I originally feared math_sqrt vs ** it was probably because I didn&#39;t realize that &#34;math.sqrt&#34; was having to lookup math and sqrt each time it was called, duh.
+
+* feat: spansh import presentation
+
+- Adds Progresser to spansh_plugin as an experimental ui presentation layer using rich,
+-- active progress bars with timers that run asynchronously (so they shouldn&#39;t have a significant performance overhead),
+-- opt-out to plain-text mode incase it needs turning off quickly,
+- present statistics with the view to give you a sense of progress,
+- small perf tweaks
+
+* style: blank lines have same indent as following non-blank line
+
+* fix: Use same supply/demand levels as before
+
+* fix: having the fdev_id listed as a unique column causes dump prices to break.
+
+* refactor: tox was configured to give flake8 its own environment
+
+The idea is that flake8 is really fast, so you give it it&#39;s own environment and it comes back and says &#34;YA MADE A TYPO OLIVER YA DID IT AGAIN WHY YOU ALWAYS...&#34; *cough*, sorry, anyway.
+
+I usually run tox one of two ways:
+
+```
+tox -e flake8   # for a quick what-did-I-type-wrong check
+tox --parallel  # run em all, but, like, in parallel so I don&#39;t retire before you finish
+```
+
+* test: flake8 appeasement
+
+turning on flake8 made linters very shouty
+
+* refactor: tox.ini
+
+flake8 now runs its own environment that is JUST flake8 so it&#39;s fast, it doesn&#39;t install the package for itself;
+added lots of flake8 ignores for formatting issues I&#39;m unclear on
+
+* chore: flake8 warnings
+
+* refactor: tox.ini
+
+added a lot more ignores and some file-specific ignores, but generally got it to a point where flake8 becomes proper useful.
+
+* chore: fix all the tox warnings
+
+This fixes all of the tox warnings that I haven&#39;t disabled, and several that I did.
+
+* chore: bump pylint score up to 9.63/10
+
+fixed a few actual problems while I was at it.
+
+* fix: formatting needs __str__ methods
+
+When I first created the &#39;str&#39; methods, it was because I wanted a display name but repr and str both confused me at the time; I&#39;ve now renamed it text but apparently I forgot that in Py2.x def str() worked like __str__...
+
+* refactor: use ijson instead of simdjson to reduce memory use in big imports
+
+* refactor: logic reversal for plugin option handling
+
+* fix: presentation was a bit wonky with doubled progress bars
+
+---------
+
+Co-authored-by: eyeonus &lt;eyeonus@panther&gt;
+Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+* feat: &#39;prices&#39; option in spansh and eddblink
+
+spansh and eddblink plugins no longer regenerate the
+`TradeDangerous.prices` cache file by default
+
+The cache file is used to rebuild the database in the event it is lost,
+corrupted or otherwise damaged.
+
+Users can manually perform a backup by running eddblink with the
+&#39;prices&#39; option. If not other options are specified, eddblink will only
+perform the backup
+
+If any other options are specified, eg. `-O listings,prices`, eddblink
+will perform the backup after the import process has completed. ([`257428a`](https://github.com/eyeonus/Trade-Dangerous/commit/257428aded8962b2a85920188e14525aa0d72863))
+
+* feat: &#39;prices&#39; option in spansh and eddblink
 
 spansh and eddblink plugins no longer regenerate the
 `TradeDangerous.prices` cache file by default
@@ -18,6 +180,18 @@ perform the backup
 
 If any other options are specified, eg. `-O listings,prices`, eddblink
 will perform the backup after the import process has completed. ([`2e1fe85`](https://github.com/eyeonus/Trade-Dangerous/commit/2e1fe85449144c684810d815f835e73124d8ed77))
+
+### Fix
+
+* fix: improve compressed download progress bars
+
+when downloading a large and extremely compressed file, user feedback would stop after we had received an uncompressed amount of data equal to the compressed size of the data.
+
+Downloading the spansh galaxy data, for example, only transfers 1.5GB of data after compression, but the file itself expands to over 9GB, resulting in the progress bar sticking at 1.5GB and looking as though it has failed/hung. ([`1801216`](https://github.com/eyeonus/Trade-Dangerous/commit/180121632b386bf5994dbf82ab81b11e155154c9))
+
+* fix: overridable timeout transfers w/sane default
+
+5 minutes was a bit long, 90s seems more reasonable tho it could probably go as low as 30. ([`3687a6b`](https://github.com/eyeonus/Trade-Dangerous/commit/3687a6b689b0eead480213a20026e1e4225e8831))
 
 
 ## v10.16.17 (2024-04-24)
