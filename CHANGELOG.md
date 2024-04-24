@@ -2,6 +2,15 @@
 
 
 
+## v10.16.17 (2024-04-24)
+
+### Fix
+
+* fix: No such file or directory error
+
+listings_path, not listings_file ([`3bf1167`](https://github.com/eyeonus/Trade-Dangerous/commit/3bf1167e08ba0c68f89b2ad5a17a36ae1c34fade))
+
+
 ## v10.16.16 (2024-04-24)
 
 ### Performance
