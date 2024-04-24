@@ -17,11 +17,12 @@
 # Original Author: Oliver "kfsone" Smith <oliver@kfs.org>
 # Released under the "use it with attribution" license.
 
-from __future__ import print_function, division
 import string
+
 
 alphabet = string.digits + string.ascii_lowercase + string.ascii_uppercase + '_.'
 precision = 100.
+
 
 def coord_to_d64(coord):
     i = int(abs(coord * precision))

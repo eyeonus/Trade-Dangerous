@@ -11,8 +11,6 @@ Example:
 Original author: oliver@kfs.org
 """
 
-import json
-import sys
 import transfers
 
 BASE_URL = "http://eddb.io/archive/v3/"
@@ -22,7 +20,7 @@ STATIONS_EXT_JSON = BASE_URL + "stations.json"
 STATIONS_LITE_JSON = BASE_URL + "stations_lite.json"
 
 
-class EDDBQuery(object):
+class EDDBQuery:
     """
     Base class for querying an EDDB data set and converting the
     JSON results into an iterable stream.

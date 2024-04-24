@@ -12,14 +12,8 @@ Use:
 # and submit a diff, that'd be greatly appreciated!
 #
 
-from __future__ import print_function
-
 import argparse
-import json
-import math
 import os
-import pathlib
-import platform
 import random
 import re
 import sys
@@ -52,7 +46,7 @@ or if you like, I can try and install it for you now
         raise e
     import pip
     pip.main(["install", "--upgrade", "requests"])
-    import requests
+    import requests  # noqa: F401
 
 standardStars = [
     "SOL",
@@ -67,7 +61,8 @@ standardStars = [
 
 class UsageError(Exception):
     def __init__(self, argv, error):
-       self.argv, self.error = argv, error
+        self.argv, self.error = argv, error
+        
     def __str__(self):
         return error + "\n" + argv.format_usage()
 

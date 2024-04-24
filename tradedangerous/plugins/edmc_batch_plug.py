@@ -1,8 +1,6 @@
-import os
-import re
 from pathlib import Path
 
-from .. import tradedb, tradeenv, cache, fs
+from .. import fs
 from ..commands.exceptions import CommandLineError
 from . import PluginException, ImportPluginBase
 
@@ -63,7 +61,7 @@ class ImportPlugin(ImportPluginBase):
                 raise PluginException("EDMC Batch unable to process files with multiple stations. Use normal import.")
             
             for s in stations:
-                if(s in stations_seen):
+                if s in stations_seen:
                     cur_file = stations_seen[s]
                     # Set the newer file as the one we'll use.
                     stations_seen[s] = self.file_get_newer(cur_file, f)
@@ -81,7 +79,7 @@ class ImportPlugin(ImportPluginBase):
         fs.ensurefolder(tdenv.tmpDir)
         batchfile = tdenv.tmpDir / Path(self.BATCH_FILE)
         if batchfile.exists():
-                batchfile.unlink()
+            batchfile.unlink()
         # We now have a list of paths. Add all contents to a new file
         temp_file = open(batchfile, "w")
         

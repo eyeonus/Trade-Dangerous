@@ -1,12 +1,14 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
+from __future__ import annotations
 from collections import defaultdict
 from .commandenv import ResultRow
-from .exceptions import *
-from .parsing import *
-from ..formatting import RowFormat, ColumnFormat, max_len
-from ..tradedb import TradeDB, AmbiguityError, System, Station
+from .exceptions import CommandLineError, NoDataError
+from ..formatting import RowFormat, max_len
+from ..tradedb import Station, System, TradeDB
+from .parsing import (
+    AvoidPlacesArgument, BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
+    NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument, PlanetaryArgument,
+)
 
-import math
 
 ITEM_MODE = "Item"
 SHIP_MODE = "Ship"
@@ -114,7 +116,7 @@ def get_lookup_list(cmdenv, tdb):
         name for names in cmdenv.name for name in names.split(',')
     ]
     # We only support searching for one type of purchase a time: ship or item.
-    # Our first match is open ended, but once we have matched one type of
+    # Our first match is open-ended, but once we have matched one type of
     # thing, the remaining arguments are all sourced from the same pool.
     # Thus: [food, cobra, metals] is illegal but [metals, hydrogen] is legal.
     mode = None
@@ -401,8 +403,5 @@ def render(results, cmdenv, tdb):
         print(stnRowFmt.format(row))
     
     if singleMode and cmdenv.detail:
-        print("{:{lnl}} {:>10n}".format(
-                "-- Ship Cost" if mode is SHIP_MODE else "-- Average",
-                results.summary.avg,
-                lnl = maxStnLen,
-        ))
+        msg = "-- Ship Cost" if mode is SHIP_MODE else "-- Average",
+        print(f"{msg:{maxStnLen}} {results.summary.avg:>10n}")

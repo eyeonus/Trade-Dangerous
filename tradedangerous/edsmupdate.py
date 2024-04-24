@@ -27,7 +27,6 @@ or "q" to stop recording.
 """
 
 import argparse
-import math
 import misc.clipboard
 import misc.edsm
 import os
@@ -67,7 +66,7 @@ def parse_arguments():
             default=os.environ.get('CMDR', None),
     )
     grp = parser.add_mutually_exclusive_group()
-    if grp: # for indentation
+    if grp:  # for indentation
         grp.add_argument(
                 '--random',
                 action='store_true',
@@ -271,7 +270,7 @@ def main():
             )
     
     if not argv.date:
-       argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
+        argv.date = tdb.query("SELECT MAX(modified) FROM System").fetchone()[0]
     dateRe = re.compile(r'^20\d\d-(0[1-9]|1[012])-(0[1-9]|[12]\d|3[01]) ([01]\d|2[0123]):[0-5]\d:[0-5]\d$')
     if not dateRe.match(argv.date):
         raise UsageError(
@@ -440,7 +439,7 @@ def main():
                 break
             if ok.startswith('='):
                 name = ok[1:].strip().upper()
-                if not name in extras:
+                if name not in extras:
                     add_to_extras(argv, name)
                 ok = 'y'
             if ok.lower() != 'y':
@@ -461,6 +460,7 @@ def main():
             ), file=output)
         if argv.add and not commit:
             tdb.getDB().commit()
+
 
 if __name__ == "__main__":
     try:

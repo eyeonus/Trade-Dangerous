@@ -61,8 +61,7 @@ class OAuthCallbackHandler(BaseHTTPRequestHandler):
         pass
 
 
-class OAuthCallbackServer(object):
-    
+class OAuthCallbackServer:
     def __init__(self, hostname, port, handler):
         myServer = HTTPServer
         myServer.callback_code = None
@@ -136,8 +135,11 @@ class EDAPI:
         # Grab the commander profile
         self.text = []
         self.profile = self.query_capi("/profile")
-        market = self.query_capi("/market")
-        shipyard = self.query_capi("/shipyard")
+        
+        # kfsone: not sure if there was a reason to query these even tho we didn't
+        # use the resulting data.
+        # market = self.query_capi("/market")
+        # shipyard = self.query_capi("/shipyard")
         
         # Grab the market, outfitting and shipyard data if needed
         portServices = self.profile['lastStarport'].get('services')
@@ -503,7 +505,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         def warnAPIResponse(checkName, checkYN):
             # no warning if unknown
-            if checkYN == "?": return False
+            if checkYN == "?":
+                return False
             warnText = (
                 "The station should{s} have a {what}, "
                 "but the API did{d} return one."
@@ -582,7 +585,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             tdenv.WARN("(Fields will be marked with an leading asterisk '*')")
             askForData = True
         if ((defStation.lsFromStar == 0) or ("?" in defStation)):
-           askForData = True
+            askForData = True
         
         newStation = {}
         for key in defStation._fields:
@@ -812,9 +815,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         shipCost = {}
         shipList = []
         eddn_ships = []
-        if ((station.shipyard == "Y") and
-            ('ships' in api.profile['lastStarport'])
-        ):
+        if ((station.shipyard == "Y") and ('ships' in api.profile['lastStarport'])):
             if 'shipyard_list' in api.profile['lastStarport']['ships']:
                 if len(api.profile['lastStarport']['ships']['shipyard_list']):
                     for ship in api.profile['lastStarport']['ships']['shipyard_list'].values():
@@ -914,9 +915,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # If a market exists, make the item lists
         itemList = []
         eddn_market = []
-        if ((station.market == "Y") and
-            ('commodities' in api.profile['lastStarport'])
-        ):
+        if ((station.market == "Y") and ('commodities' in api.profile['lastStarport'])):
             for commodity in api.profile['lastStarport']['commodities']:
                 if commodity['categoryname'] in cat_ignore:
                     continue
@@ -1046,18 +1045,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     eddn_ships
                 )
             
-            if ((station.outfitting == "Y") and
-                ('modules' in api.profile['lastStarport'] and
-                len(api.profile['lastStarport']['modules']))
-            ):
+            if station.outfitting == "Y" and 'modules' in api.profile['lastStarport'] and len(api.profile['lastStarport']['modules']):
                 eddn_modules = []
                 for module in api.profile['lastStarport']['modules'].values():
                     # see: https://github.com/EDSM-NET/EDDN/wiki
                     addModule = False
                     if module['name'].startswith(('Hpt_', 'Int_')) or module['name'].find('_Armour_') > 0:
-                        if module.get('sku', None) in (
-                            None, 'ELITE_HORIZONS_V_PLANETARY_LANDINGS'
-                        ):
+                        if module.get('sku', None) in (None, 'ELITE_HORIZONS_V_PLANETARY_LANDINGS'):
                             if module['name'] != 'Int_PlanetApproachSuite':
                                 addModule = True
                     if addModule:

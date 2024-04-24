@@ -1,9 +1,7 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from .commandenv import CommandEnv
 from textwrap import TextWrapper
 
 import argparse  # For parsing command line args.
-import importlib
 import os
 import pathlib
 import sys
@@ -63,7 +61,7 @@ def addArguments(group, options, required, topGroup = None):
             parsing.registerParserHelpers(exGrp)
             addArguments(exGrp, option.arguments, required, topGroup = group)
         else:
-            assert not required in option.kwargs
+            assert required not in option.kwargs
             if option.args[0][0] == '-':
                 group.add_argument(*(option.args), required = required, **(option.kwargs))
             else:
@@ -84,7 +82,7 @@ def _findFromFile(cmd, prefix = '.tdrc'):
     return None
 
 
-class CommandIndex(object):
+class CommandIndex:
     
     def usage(self, argv):
         """

@@ -10,7 +10,7 @@ class PluginException(Exception):
     """
 
 
-class PluginBase(object):
+class PluginBase:
     """
     Base class for plugin implementation.
     
@@ -49,7 +49,7 @@ class PluginBase(object):
             else:
                 key, value = opt[:equals], opt[equals+1:]
             keyName = key.lower()
-            if not keyName in pluginOptions:
+            if keyName not in pluginOptions:
                 if keyName == "help":
                     raise SystemExit(self.usage())
                 

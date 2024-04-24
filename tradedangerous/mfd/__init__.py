@@ -2,12 +2,10 @@
 #  You are free to use, redistribute, or even print and eat a copy of
 #  this software so long as you include this copyright notice.
 #  I guarantee there is at least one bug neither of us knew about.
-#---------------------------------------------------------------------
+# ---------------------------------------------------------------------
 # TradeDangerous :: Modules :: Multi-function display wrapper
 #
 #   Multi-Function Display wrappers
-
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 
 ######################################################################
 # imports
@@ -28,7 +26,7 @@ class MissingDeviceError(Exception):
 ######################################################################
 # classes
 
-class DummyMFD(object):
+class DummyMFD:
     """
         Base class for the MFD drivers, implemented as no-ops so that
         you can always use all MFD functions without conditionals.

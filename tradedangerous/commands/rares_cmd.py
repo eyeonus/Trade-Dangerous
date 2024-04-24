@@ -1,11 +1,12 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from .commandenv import ResultRow
-from .exceptions import *
-from .parsing import *
-from ..formatting import RowFormat, ColumnFormat, max_len
+from .exceptions import CommandLineError
+from .parsing import (
+    PadSizeArgument, ParseArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
+    PlanetaryArgument, FleetCarrierArgument, OdysseyArgument,
+)
+from ..formatting import RowFormat, max_len
 from ..tradedb import TradeDB
 
-import math
 
 ######################################################################
 # Parser config
@@ -61,8 +62,7 @@ switches = [
             default=False,
     ),
     ParseArgument('--away',
-            help='Require "--from" systems to be at least this far ' \
-                    'from primary system',
+            help='Require "--from" systems to be at least this far from primary system',
             metavar='LY',
             default=0,
             type=float,
@@ -78,8 +78,7 @@ switches = [
         )
     ),
     ParseArgument('--from',
-            help='Additional systems to range check candidates against, ' \
-                    'requires --away.',
+            help='Additional systems to range check candidates against, requires --away.',
             metavar='SYSTEMNAME',
             action='append',
             dest='awayFrom',
@@ -165,7 +164,7 @@ def run(results, cmdenv, tdb):
     
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
-        if not rare.illegal in wantIllegality:
+        if rare.illegal not in wantIllegality:
             continue
         if padSize:       # do we care about pad size?
             if not rare.station.checkPadSize(padSize):

@@ -25,7 +25,6 @@ or "q" to stop recording.
 """
 
 import argparse
-import math
 import misc.clipboard
 import misc.edsc
 import os
@@ -158,7 +157,7 @@ def parse_arguments():
             default=2,
     )
     grp = parser.add_mutually_exclusive_group()
-    if grp: # for indentation
+    if grp:  # for indentation
         grp.add_argument(
                 '--random',
                 action='store_true',
@@ -297,7 +296,7 @@ def check_database(tdb, name, x, y, z):
          WHERE pos_x BETWEEN ? and ?
            AND pos_y BETWEEN ? and ?
            AND pos_z BETWEEN ? and ?
-    """, [ 
+    """, [
         x - 0.5, x + 0.5,
         y - 0.5, y + 0.5,
         z - 0.5, z + 0.5,
@@ -391,9 +390,7 @@ def main():
                     edsq.status['statusnum'],
                 ))
     
-    date = data['date']
     systems = data['systems']
-    
     print("{} results".format(len(systems)))
     # Filter out systems we already know that match the EDSC data.
     systems = [
@@ -534,7 +531,7 @@ def main():
                 continue
             if ok.startswith('='):
                 name = ok[1:].strip().upper()
-                if not name in extras:
+                if name not in extras:
                     add_to_extras(argv, name)
                 ok = 'y'
             if ok.lower() != 'y':
@@ -554,6 +551,7 @@ def main():
             ), file=output)
             
             submit_distance(argv, name, distance)
+
 
 if __name__ == "__main__":
     try:

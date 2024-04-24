@@ -33,12 +33,19 @@
 # DEVELOPERS: If you are a programmer who wants TD to do something
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
+from __future__ import annotations
+
 from tradedangerous import cli
 
-def main(argv = None):
-  import sys
-  cli.main(sys.argv)
+import sys
+    
+
+def main(argv: list[tuple] = None) -> None:
+    """ Entry point for the TradeDangerous command-line app. """
+    if argv is None:
+        argv = sys.argv
+    cli.main(argv)
+
 
 if __name__ == "__main__":
-  import sys
-  cli.main(sys.argv)
+    cli.main(sys.argv)

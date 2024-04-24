@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 # pytest
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-import sys
 import pytest
 from tradedangerous import commands
 from tradedangerous.commands.exceptions import UsageError, CommandLineError
@@ -11,9 +9,11 @@ from tradedangerous.commands.exceptions import UsageError, CommandLineError
 def cmd():
     return commands.CommandIndex()
 
+
 prog = "trade.py"
 
-class TestCommands(object):
+
+class TestCommands:
     
     def test_dashh(self, cmd):
         with pytest.raises(UsageError):

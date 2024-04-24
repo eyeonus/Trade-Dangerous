@@ -24,6 +24,7 @@ def matching_stations():
         if tdStn:
             yield tdStn, eddbStn
 
+
 updateStation = tdb.updateLocalStation
 
 bool_trans = { None: '?', 0: 'N', 1: 'Y' }

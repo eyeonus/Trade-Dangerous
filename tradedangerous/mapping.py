@@ -2,7 +2,7 @@
 # Mapping class for FDEV-IDs to TD names
 #
 
-class FDEVMappingBase(object):
+class FDEVMappingBase:
     """
     Base class to map FDEV-IDs to TD names, do not use directly.
     
@@ -67,7 +67,8 @@ class FDEVMappingBase(object):
             else:
                 entries[ID] = {}
                 for i, val in enumerate(line[1:], start=1):
-                    if val: entries[ID][self.colNames[i]] = val
+                    if val:
+                        entries[ID][self.colNames[i]] = val
             self.tdenv.DEBUG2("{}: {}".format(ID, str(entries[ID]).replace("{", "{{").replace("}", "}}")))
         self.entries = entries
         self.tdenv.DEBUG1("Loaded {:n} {}-Mappings".format(len(entries), self.tableName))
@@ -126,6 +127,6 @@ class FDEVMappingOutfitting(FDEVMappingBase):
         Maps ID to EDDN outfitting
     """
     tableName = "FDevOutfitting"
-    colNames  = [ 'id', 'category' , 'name', 'mount',
+    colNames  = [ 'id', 'category', 'name', 'mount',
                   'guidance', 'ship', 'class', 'rating'
                 ]

@@ -1,8 +1,7 @@
 import csv
 import pathlib
-import random
 
-from .. import cache, tradeenv, transfers, csvexport
+from .. import cache, transfers, csvexport
 from ..tradedb import Category, Item
 from . import PluginException, ImportPluginBase
 
@@ -194,7 +193,7 @@ class ImportPlugin(ImportPluginBase):
         """
             More to do for commodities
         """
-        tdb, tdenv = self.tdb, self.tdenv
+        tdenv = self.tdenv
         tdenv.NOTE("Processing {}", tableName)
         
         itmCount = 0
@@ -207,7 +206,6 @@ class ImportPlugin(ImportPluginBase):
             )
             # first line must be the column names
             columnDefs = next(csvIn)
-            columnCount = len(columnDefs)
             
             tdenv.DEBUG0("columnDefs: {}", columnDefs)
             
@@ -235,7 +233,8 @@ class ImportPlugin(ImportPluginBase):
                 tdenv.NOTE("Import stopped.", checkMe, localPath)
             else:
                 for lineIn in csvIn:
-                    if not lineIn: continue
+                    if not lineIn:
+                        continue
                     lineNo = csvIn.line_num
                     tdenv.DEBUG0("LINE {}: {}", lineNo, lineIn)
                     

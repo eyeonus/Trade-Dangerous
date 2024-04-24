@@ -1,10 +1,11 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from .exceptions import PadSizeError, PlanetaryError, FleetCarrierError
+from .exceptions import (
+    FleetCarrierError, OdysseyError, PadSizeError, PlanetaryError,
+)
 
 ######################################################################
 # Parsing Helpers
 
-class ParseArgument(object):
+class ParseArgument:
     """
         Provides argument forwarding so that 'makeSubParser' can take function-like arguments.
     """
@@ -12,7 +13,7 @@ class ParseArgument(object):
         self.args, self.kwargs = args, kwargs
 
 
-class MutuallyExclusiveGroup(object):
+class MutuallyExclusiveGroup:
     def __init__(self, *args):
         self.arguments = list(args)
 
@@ -24,9 +25,10 @@ class MutuallyExclusiveGroup(object):
 class CreditParser(int):
     """
     argparse helper for parsing numeric prefixes, i.e.
-    'k' for thousand, 'm' for million and 'b' for billion.
+    'k' for thousands, 'm' for millions and 'b' for billions.
     """
     suffixes = {'k': 10**3, 'm': 10**6, 'b': 10**9}
+
     def __new__(cls, val, **kwargs):
         if isinstance(val, str):
             if val[-1] in CreditParser.suffixes:
@@ -82,7 +84,7 @@ class SwitchArgument(ParseArgument):
         else:
             self.args = (self.switches,)
         help = help or self.help
-        self.kwargs = {'action':'store_true', 'dest':self.dest, 'help':help}
+        self.kwargs = {'action': 'store_true', 'dest': self.dest, 'help': help}
 
 
 class BlackMarketSwitch(SwitchArgument):
@@ -208,6 +210,7 @@ class OdysseyArgument(int):
             'type': 'odyssey',
             'choices': 'YN?',
         }
+
 
 __tdParserHelpers = {
     'credits': CreditParser,

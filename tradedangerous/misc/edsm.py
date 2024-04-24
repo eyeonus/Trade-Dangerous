@@ -5,14 +5,7 @@ based on edsc.py
 uses EDSM - https://www.edsm.net/api
 """
 
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-
 import json
-import os
 
 try:
     import requests
@@ -47,7 +40,7 @@ def edsm_log(apiCall, url, params, jsonData=None, error=None):
         pass
 
 
-class EDSMQueryBase(object):
+class EDSMQueryBase:
     """
     Base class for creating an EDSM Query class, do not use directly.
     

@@ -1,18 +1,17 @@
-import os
 import random
 
 import pytest
 
-from tradedangerous.tradedb import Trade, TradeDB, Station, System
+from tradedangerous.tradedb import TradeDB, Station, System
 from .helpers import copy_fixtures
 
-ORIGIN='Shinrarta Dezhra'
-#tdb = None
+ORIGIN = 'Shinrarta Dezhra'
+# tdb = None
 
 def setup_module():
     copy_fixtures()
 
-def route_to_closest(tdb:TradeDB, origin, destinations, maxLy=15):
+def route_to_closest(tdb: TradeDB, origin, destinations, maxLy=15):
     closest = min(destinations, key=lambda candidate: candidate.distanceTo(origin))
     print("Closest:", closest.name(), closest.distanceTo(origin))
     route = tdb.getRoute(origin, closest, maxLy)
@@ -23,16 +22,16 @@ def route_to_closest(tdb:TradeDB, origin, destinations, maxLy=15):
     return route
 
 def should_skip() -> bool:
-    return False # os.getenv("CI") != None
+    return False  # os.getenv("CI") != None
 
 
-class TestPeek(object):
+class TestPeek:
     """
     Tests based on https://github.com/eyeonus/Trade-Dangerous/wiki/Python-Quick-Peek
     """
-
+    
     @pytest.mark.skipif(should_skip(), reason="does not work with CI")
-    def test_quick_origin(self, tdb:TradeDB):
+    def test_quick_origin(self, tdb: TradeDB):
         # Look up a particular system
         origin = tdb.lookupSystem(ORIGIN)
         
@@ -70,7 +69,7 @@ class TestPeek(object):
         
         abe = tdb.lookupPlace("sol/hamlinc")
         assert isinstance(abe, Station)
-
+    
     @pytest.mark.skipif(should_skip(), reason="does not work with CI")
     def test_quick_five(self, tdb):
         systemTable = tdb.systemByID.values()
@@ -89,7 +88,7 @@ class TestPeek(object):
         else:
             # Route is a list of Systems. Turn it into a list of
             # System names...
-            routeNames = [ system.name() for system, distance in route ]
+            routeNames = [system.name() for system, distance in route]
             print("Route:", routeNames)
         
         route_to_closest(tdb, origin, visitMe)
@@ -106,5 +105,5 @@ class TestPeek(object):
         lhs = tdb.lookupSystem("lhs 380")
         bhr = tdb.lookupSystem("bhritzameno")
         
-        result = route_to_closest(tdb, sol, [ lhs, bhr ])
+        route_to_closest(tdb, sol, [lhs, bhr])
  

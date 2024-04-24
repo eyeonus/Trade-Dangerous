@@ -17,7 +17,7 @@ def tdenv():
     return TradeEnv()
 
 
-class TestFS(object):
+class TestFS:
     
     def test_copy(self, tdenv):
         src = fs.pathify(tdenv.templateDir, 'TradeDangerous.sql')
@@ -35,7 +35,8 @@ class TestFS(object):
             self.result = True
         
         flag = fs.ensureflag(flagfile, action)
-        assert self.result == True
+        assert self.result is True
+        assert flag is not None
     
     def test_copyallfiles(self, tdenv):
         setup_module()

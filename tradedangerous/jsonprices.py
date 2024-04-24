@@ -24,7 +24,7 @@ def lookup_system(tdb, tdenv, name, x, y, z):
             pass
     
     if system:
-        if (system.posX != x or system.posY != y or system.posZ != z):
+        if system.posX != x or system.posY != y or system.posZ != z:
             raise Exception("System {} position mismatch: "
                     "Got {},{},{} expected {},{},{}".format(
                         name,
@@ -33,16 +33,9 @@ def lookup_system(tdb, tdenv, name, x, y, z):
             ))
         return system
     
-    newSystem = "@{} [{}, {}, {}]".format(
-            name, x, y, z
-    )
-    
     candidates = []
     for candidate in tdb.systemByID.values():
-        if (candidate.posX == x and
-                candidate.posY == y and
-                candidate.posZ == z
-                ):
+        if candidate.posX == x and candidate.posY == y and candidate.posZ == z:
             candidates.append(candidate)
     
     if len(candidates) == 1:
@@ -61,10 +54,9 @@ def lookup_system(tdb, tdenv, name, x, y, z):
                 ))
         return candidates[0]
     
-    if len(candidates):
-        raise Exception("System {} matches co-ordinates for systems: {}" +
-                ','.join([system.name for system in candidates])
-                )
+    if candidates:
+        options = ', '.join([s.name for s in candidates])
+        raise RuntimeError(f"System {system.name} matches co-ordinates for systems: {options}")
     
     if tdenv.addUnknown:
         return tdb.addLocalSystem(name, x, y, z)
@@ -91,7 +83,7 @@ def lookup_station(
     
     # Now set the parameters
     tdb.updateLocalStation(
-            stn, lsFromStar, blackMarket, maxPadSize
+            station, lsFromStar, blackMarket, maxPadSize
     )
     return station
 
@@ -116,7 +108,7 @@ def load_prices_json(
     
     try:
         blackMarket = stnData['bm'].upper()
-        if not blackMarket in [ 'Y', 'N' ]:
+        if blackMarket not in [ 'Y', 'N' ]:
             blackMarket = '?'
     except KeyError:
         blackMarket = '?'
@@ -137,7 +129,7 @@ def load_prices_json(
         return
     if system.dbname != sysName and tdenv.detail:
         print("NOTE: Treating '{}' as '{}'".format(
-                name, system.dbname
+                sysName, system.dbname
         ))
     tdenv.DEBUG1("- System: {}", system.dbname)
     

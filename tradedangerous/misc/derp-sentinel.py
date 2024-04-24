@@ -28,8 +28,8 @@ def mutate(text, pos):
             yield t2
             yield from mutate(str(t2), i+len(mutant))
 
+
 for name in names:
     for mutant in mutate(name, 0):
         if mutant in names:
             print("{} <-> {}".format(name, mutant))
-

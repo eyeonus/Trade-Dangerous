@@ -13,13 +13,14 @@ TODO:
     * Error handling and exceptions
 """
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 from tradedangerous.mfd.saitek.directoutput import DirectOutputDevice
+
+import sys
+import time
 
 
 class X52Pro(DirectOutputDevice):
-    class Page(object):
+    class Page:
         _lines = [ str(), str(), str() ]
         _leds  = dict()
         
@@ -45,7 +46,7 @@ class X52Pro(DirectOutputDevice):
                 self.device.SetString(self.page_id, key, value)
         
         def activate(self):
-            if self.active == True:
+            if self.active is True:
                 return
             self.device.AddPage(self.page_id, self.name, 1)
         
@@ -172,8 +173,6 @@ if __name__ == '__main__':
     
     print("Looping")
     
-    import time, sys
-    
     loopNo = 0
     while True:
         try:
@@ -194,4 +193,3 @@ if __name__ == '__main__':
             print(e)
             x52.finish()
             sys.exit()
-

@@ -1,9 +1,10 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from .commandenv import ResultRow
-from .exceptions import *
-from .parsing import *
-from ..formatting import RowFormat, ColumnFormat
-from ..tradedb import TradeDB
+from .exceptions import CommandLineError
+from .parsing import (
+    ParseArgument, MutuallyExclusiveGroup,
+)
+from ..formatting import RowFormat
+
 
 ######################################################################
 # Parser config
@@ -129,8 +130,8 @@ def render(results, cmdenv, tdb):
     if showCategories:
         rowFmt.prefix = '    '
     
-    sellPred = lambda row: row.sellCr != 0 and row.supply != '-'
-    buyPred = lambda row: row.buyCr != 0 and row.demand != '-'
+    sellPred = lambda row: row.sellCr != 0 and row.supply != '-'    # noqa: E731
+    buyPred = lambda row: row.buyCr != 0 and row.demand != '-'      # noqa: E731
     
     rowFmt.addColumn('Item', '<', longestLen,
             key=lambda row: row.item.name())

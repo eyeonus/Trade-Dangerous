@@ -60,8 +60,6 @@ DirectOutput_CloseServer
 
 """
 
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 from tradedangerous.mfd import MissingDeviceError
 
 import ctypes
@@ -69,6 +67,8 @@ import ctypes.wintypes
 import logging
 import os
 import platform
+import sys
+import time
 
 S_OK = 0x00000000
 E_HANDLE = 0x80070006
@@ -84,8 +84,7 @@ SOFTBUTTON_UP = 0x00000002
 SOFTBUTTON_DOWN = 0x00000004
 
 
-class DirectOutput(object):
-    
+class DirectOutput:
     def __init__(self, dll_path):
         """
         Creates python object to interact with DirecOutput.dll
@@ -165,7 +164,7 @@ class DirectOutput(object):
         S_OK: The call completed successfully.
         E_HANDLE: The device handle specified is invalid.
         """
-
+        
         logging.debug("DirectOutput.RegisterSoftButtonCallback({}, {})".format(device_handle, function))
         return self.DirectOutputDLL.DirectOutput_RegisterSoftButtonCallback(ctypes.wintypes.HANDLE(device_handle), function, 0)
     
@@ -276,9 +275,9 @@ class DirectOutput(object):
         return self.DirectOutputDLL.DirectOutput_SetString(ctypes.wintypes.HANDLE(device_handle), page, line, len(string), ctypes.wintypes.LPWSTR(string))
 
 
-class DirectOutputDevice(object):
+class DirectOutputDevice:
     
-    class Buttons(object):
+    class Buttons:
         
         select, up, down = False, False, False
         
@@ -658,8 +657,6 @@ if __name__ == '__main__':
     # logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(name)s [%(filename)s:%(lineno)d] %(message)s')
     
-    import time, sys
-    
     device = DirectOutputDevice(debug_level=1)
     print("Device initialized")
     
@@ -675,7 +672,7 @@ if __name__ == '__main__':
     while True:
         try:
             time.sleep(1)
-        except:
-            #This is used to catch Ctrl+C, calling finish method is *very* important to de-initalize device.
+        except:  # noqa: E722
+            # This is used to catch Ctrl+C, calling finish method is *very* important to de-initalize device.
             device.finish()
             sys.exit()

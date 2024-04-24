@@ -15,8 +15,10 @@
 
 from tradedangerous import gui
 
+
 def main(argv = None):
-  gui.main()
+    gui.main()
+
 
 if __name__ == "__main__":
-  gui.main()
+    gui.main()

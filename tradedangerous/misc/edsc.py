@@ -1,17 +1,9 @@
 #! /usr/bin/env python3
 
-from __future__ import absolute_import
-from __future__ import with_statement
-from __future__ import print_function
-from __future__ import division
-from __future__ import unicode_literals
-
-from collections import defaultdict, namedtuple
-from urllib.parse import urlencode
+from collections import namedtuple
 from urllib.request import Request, urlopen
 
 import json
-import os
 
 try:
     import requests
@@ -45,7 +37,7 @@ def edsc_log(apiCall, params, jsonData=None, error=None):
         pass
 
 
-class EDSCQueryBase(object):
+class EDSCQueryBase:
     """
     Base class for creating an EDSC Query class, do not use directly.
     
@@ -116,7 +108,7 @@ class Status(namedtuple('Status', [
         ])):
     pass
 
-class StarSubmissionResult(object):
+class StarSubmissionResult:
     """
     Translates a response the json we get back from EDSC when
     we submit a StarSubmission into something less awful to
@@ -228,7 +220,7 @@ class StarSubmissionResult(object):
             code = int(ent['status']['statusnum'])
             msg = ent['status']['msg']
             if code in [301, 302, 303, 304]:
-                if not lhsName in self.distances:
+                if lhsName not in self.distances:
                     self.distances[lhsName] = {}
                 try:
                     rhsDists = self.distances[rhsName]
@@ -238,7 +230,7 @@ class StarSubmissionResult(object):
                     pass
                 dist = float(ent['dist'])
                 self.distances[lhsName][rhsName] = dist
-                if not lhsName in self.systems:
+                if lhsName not in self.systems:
                     self.systems[lhsName] = (code, None)
             else:
                 if (lhsName,rhsName,code) in errPairs:
@@ -335,7 +327,7 @@ class StarSubmissionResult(object):
 
 
 
-class StarSubmission(object):
+class StarSubmission:
     baseURL = "http://edstarcoordinator.com/api.asmx/"
     apiCall = "SubmitDistances"
     
@@ -430,6 +422,7 @@ class StarSubmission(object):
             raise SubmissionError("Server Error: " + resp)
         
         return innerData
+
 
 if __name__ == "__main__":
     print("Requesting recent, non-test, coords-known, cr >= 2 stars")

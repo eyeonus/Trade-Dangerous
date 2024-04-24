@@ -1,7 +1,8 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
-from .exceptions import CommandLineError, PadSizeError, PlanetaryError, FleetCarrierError
-from ..tradedb import AmbiguityError, System, Station
+from .exceptions import (
+    CommandLineError, FleetCarrierError, OdysseyError,
+    PadSizeError, PlanetaryError,
+)
+from ..tradedb import AmbiguityError, Station
 from ..tradeenv import TradeEnv
 
 import os
@@ -9,7 +10,7 @@ import pathlib
 import sys
 
 
-class CommandResults(object):
+class CommandResults:
     """
         Encapsulates the results returned by running a command.
     """
@@ -24,7 +25,7 @@ class CommandResults(object):
         cmdenv._cmd.render(self, cmdenv, tdb)
 
 
-class ResultRow(object):
+class ResultRow:
     
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
@@ -46,7 +47,7 @@ class CommandEnv(TradeEnv):
         if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
         
-        self._cmd = cmdModule or __main__
+        self._cmd = cmdModule or getattr("__main__")
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
         
@@ -187,7 +188,7 @@ class CommandEnv(TradeEnv):
             
             # But if it matched more than once, whine about ambiguity
             if item and place:
-                raise AmbiguityError('Avoidance', avoid, [ item, place.str() ])
+                raise AmbiguityError('Avoidance', avoid, [ item, place.text() ])
         
         self.DEBUG0("Avoiding items {}, places {}",
                     [ item.name() for item in avoidItems ],
@@ -213,7 +214,7 @@ class CommandEnv(TradeEnv):
             return
         self.padSize = padSize = padSize.upper()
         for value in padSize:
-            if not value in 'SML?':
+            if value not in 'SML?':
                 raise PadSizeError(padSize)
         self.padSize = padSize
     
@@ -227,7 +228,7 @@ class CommandEnv(TradeEnv):
             return
         self.planetary = planetary = planetary.upper()
         for value in planetary:
-            if not value in 'YN?':
+            if value not in 'YN?':
                 raise PlanetaryError(planetary)
         self.planetary = planetary
     
@@ -237,8 +238,8 @@ class CommandEnv(TradeEnv):
             return
         fleet = ''.join(sorted(list(set(fleet)))).upper()
         for value in fleet:
-            if not value in 'YN?':
-                raise FleetError(fleet)
+            if value not in 'YN?':
+                raise FleetCarrierError(fleet)
         if fleet == '?NY':
             self.fleet = None
             return
@@ -250,12 +251,12 @@ class CommandEnv(TradeEnv):
             return
         odyssey = ''.join(sorted(list(set(odyssey)))).upper()
         for value in odyssey:
-            if not value in 'YN?':
-                raise odysseyError(odyssey)
+            if value not in 'YN?':
+                raise OdysseyError(odyssey)
         if odyssey == '?NY':
             self.odyssey = None
             return
-        self.odyssey = odyssey = odyssey.upper()
+        self.odyssey = odyssey.upper()
     
     def colorize(self, color, rawText):
         """

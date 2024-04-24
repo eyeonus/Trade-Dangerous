@@ -1,10 +1,7 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-from .exceptions import *
-from .parsing import *
-from ..tradedb import TradeDB
-from ..tradecalc import TradeCalc, Route
-
-import math
+from .exceptions import CommandLineError
+from .parsing import ParseArgument
+from ..tradecalc import TradeCalc
+from ..formatting import RowFormat, max_len
 
 ######################################################################
 # Parser config
@@ -65,8 +62,6 @@ def run(results, cmdenv, tdb):
 ## Transform result set into output
 
 def render(results, cmdenv, tdb):
-    from ..formatting import RowFormat, ColumnFormat, max_len
-    
     longestNameLen = max_len(results.rows, key=lambda row: row.item.name(cmdenv.detail))
     
     rowFmt = RowFormat()

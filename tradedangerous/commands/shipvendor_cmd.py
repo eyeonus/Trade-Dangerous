@@ -1,18 +1,13 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from .commandenv import ResultRow
 from .exceptions import CommandLineError
-from .parsing import *
+from .parsing import MutuallyExclusiveGroup, ParseArgument
 from ..formatting import RowFormat, ColumnFormat, max_len
 from itertools import chain
-from ..tradedb import AmbiguityError
-from ..tradedb import System, Station
-from ..tradedb import TradeDB
+from ..tradedb import Station
 
 # Original by Dirk Wilhelm
 
 from .. import csvexport
-import re
-import sys
 
 ######################################################################
 # Parser config
@@ -211,6 +206,8 @@ def run(results, cmdenv, tdb):
     for ship in ships.values():
         if action(tdb, cmdenv, station, ship):
             dataToExport = True
+
+    cmdenv.DEBUG0("dataToExport = {}", dataToExport)
     
     maybeExportToCSV(tdb, cmdenv)
     

@@ -1,7 +1,7 @@
 """This module should handle filesystem related operations
 """
 from shutil import copy as shcopy
-from os import makedirs, path, utime
+from os import makedirs
 from pathlib import Path
 
 __all__ = ['copy', 'copyallfiles', 'touch', 'ensurefolder']
@@ -25,7 +25,7 @@ def copy(src, dst):
 
 def copy_if_newer(src, dst):
     """
-    copy src to dst if src is newer 
+    copy src to dst if src is newer
     takes string or Path object as input
     returns Path(dst) on success
     returns Path(src) if not newer
@@ -33,11 +33,11 @@ def copy_if_newer(src, dst):
     """
     srcPath = pathify(src).resolve()
     dstPath = pathify(dst)
-    if dstPath.exists() and not (dstPath.stat().st_mtime < srcPath.stat().st_mtime):
+    if dstPath.exists() and dstPath.stat().st_mtime >= srcPath.stat().st_mtime:
         return srcPath
-    else:
-        shcopy(str(srcPath), str(dstPath))
-        return dstPath
+
+    shcopy(str(srcPath), str(dstPath))
+    return dstPath
 
 def copyallfiles(srcdir, dstdir):
     """

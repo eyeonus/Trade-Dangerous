@@ -1,13 +1,11 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
-from .exceptions import *
-from .parsing import *
+from .exceptions import CommandLineError
+from .parsing import ParseArgument, MutuallyExclusiveGroup
 from itertools import chain
 from pathlib import Path
 
 from .. import cache, plugins, transfers
-import math
 import re
+import sys
 
 try:
     import tkinter

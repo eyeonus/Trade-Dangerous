@@ -8,7 +8,7 @@ if 'NOTK' not in os.environ:
     try:
         from tkinter import Tk
         
-        class SystemNameClip(object):
+        class SystemNameClip:
             """
             A cross-platform wrapper for copying system names into
             the clipboard such that they can be pasted into the E:D
@@ -41,10 +41,9 @@ if 'NOTK' not in os.environ:
                 "Set the environment variable 'NOTK' to disable this warning."
         )
         
-        class SystemNameClip(object):
+        class SystemNameClip:
             """
             Dummy implementation when tkinter is not available.
             """
             def copy_text(self, text):
                 pass
-

@@ -3,12 +3,10 @@
 # a EDDBlink_listener server to update the Database.
 # ----------------------------------------------------------------
 import certifi
-import codecs
 import csv
 import datetime
 import json
 import os
-import platform
 import sqlite3
 import ssl
 import time
@@ -16,12 +14,10 @@ import time
 from urllib import request
 from calendar import timegm
 from pathlib import Path
-from importlib import reload
 
-from .. import plugins, cache, csvexport, tradedb, tradeenv, transfers
+from .. import plugins, cache, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
-from shutil import copyfile
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
@@ -32,7 +28,7 @@ def request_url(url, headers=None):
     data = None
     if headers:
         data = bytes(json.dumps(headers), encoding="utf-8")
-        
+    
     return request.urlopen(request.Request(url, data=data), context=CONTEXT)
 
 
@@ -194,25 +190,25 @@ class ImportPlugin(plugins.ImportPluginBase):
         Purges systems from the System table that do not have any stations claiming to be in them.
         Keeps table from becoming too large because of fleet carriers moving to unpopulated systems.
         """
-    
+        
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
-    
+        
         self.execute("PRAGMA foreign_keys = OFF")
-    
+        
         print("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("DROP TABLE IF EXISTS System_copy")
         self.execute("""CREATE TABLE System_copy AS SELECT * FROM System
                             WHERE system_id IN (SELECT system_id FROM Station)
                     """)
-    
+        
         print("Erasing table and reinserting kept systems.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("DELETE FROM System")
         self.execute("INSERT INTO System SELECT * FROM System_copy")
-    
+        
         print("Removing copy.... " + str(self.now()) + "\t\t\t\t", end="\r")
         self.execute("PRAGMA foreign_keys = ON")
         self.execute("DROP TABLE IF EXISTS System_copy")
-    
+        
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
     
     def commit(self):
@@ -352,7 +348,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         default = True
         for option in self.options:
             # if not option in ('force', 'fallback', 'skipvend', 'progbar'):
-            if not option in ('force', 'skipvend', 'prices'):
+            if option not in ('force', 'skipvend', 'prices'):
                 default = False
         if default:
             self.options["listings"] = True
@@ -470,11 +466,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("rare"):
             if self.downloadFile(self.rareItemPath) or self.getOption("force"):
                 buildCache = True
-
+        
         if self.getOption("shipvend"):
             if self.downloadFile(self.shipVendorPath) or self.getOption("force"):
                 buildCache = True
-
+        
         if self.getOption("upvend"):
             if self.downloadFile(self.upgradeVendorPath) or self.getOption("force"):
                 buildCache = True

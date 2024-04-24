@@ -1,9 +1,8 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
 from .commandenv import ResultRow
 from .exceptions import CommandLineError
-from .parsing import *
+from .parsing import MutuallyExclusiveGroup, ParseArgument
 from ..tradedb import AmbiguityError
-from ..tradedb import System, Station
+from ..tradedb import Station
 from ..tradedb import TradeDB
 from .. import utils
 from ..formatting import max_len
@@ -12,7 +11,7 @@ from .. import cache
 from .. import csvexport
 import difflib
 import re
-import sys
+
 
 ######################################################################
 # Parser config
@@ -244,9 +243,7 @@ def checkSystemAndStation(tdb, cmdenv):
         sysName = None
     
     if not stnName:
-        raise CommandLineError("Invalid station name: {}".format(
-                envStnName
-        ))
+        raise CommandLineError("Invalid station name: {stnName}")
     
     if not sysName:
         raise CommandLineError("No system name specified")
@@ -346,7 +343,6 @@ def run(results, cmdenv, tdb):
     
     system, station = checkSystemAndStation(tdb, cmdenv)
     
-    systemName = cmdenv.system
     stationName = cmdenv.station
     
     if cmdenv.add:
@@ -367,7 +363,7 @@ def run(results, cmdenv, tdb):
     avgSell = results.summary.avgSelling = tdb.getAverageSelling()
     avgBuy = results.summary.avgBuying = tdb.getAverageBuying()
     
-    class ItemTrade(object):
+    class ItemTrade:
         def __init__(self, ID, price, avgAgainst):
             self.ID, self.item = ID, tdb.itemByID[ID]
             self.price = int(price)
@@ -492,11 +488,9 @@ def render(results, cmdenv, tdb):
     )
     print("Best Buy..:", makeBest(
             results.summary.selling, "Buy from this station", "Sell", longestNameLen,
-            starFn=lambda price, avgCr: \
-                price <= (avgCr * 0.9),
+            starFn=lambda price, avgCr: price <= (avgCr * 0.9),
     ))
     print("Best Sale.:", makeBest(
             results.summary.buying, "Sell to this station", "Cost", longestNameLen,
-            starFn=lambda price, avgCr: \
-                price >= (avgCr * 1.1),
+            starFn=lambda price, avgCr: price >= (avgCr * 1.1),
     ))

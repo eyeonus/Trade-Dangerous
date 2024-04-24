@@ -1,5 +1,3 @@
-from __future__ import absolute_import, with_statement, print_function, division, unicode_literals
-
 from pathlib import Path
 from .tradeexcept import TradeException
 
@@ -34,9 +32,10 @@ reverseList = []
 # Helpers
 ######################################################################
 
-def search_keyList(list, val):
-    for row in list:
-        if row['from'] == row['to'] == val: return row
+def search_keyList(items, val):
+    for row in items:
+        if row['from'] == row['to'] == val:
+            return row
 
 def getUniqueIndex(conn, tableName):
     """ return all unique columns """
@@ -134,13 +133,14 @@ def exportTableToFile(tdb, tdenv, tableName, csvPath=None):
         pkCount = 0
         for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
             # count the columns of the primary key
-            if columnRow['pk'] > 0: pkCount += 1
+            if columnRow['pk'] > 0:
+                pkCount += 1
         
         # build column list
         columnList = []
         for columnRow in cur.execute("PRAGMA table_info('%s')" % tableName):
             # if there is only one PK column, ignore it
-            #if columnRow['pk'] > 0 and pkCount == 1: continue
+            # if columnRow['pk'] > 0 and pkCount == 1: continue
             columnList.append(columnRow)
         
         if len(columnList) == 0:
@@ -199,7 +199,7 @@ def exportTableToFile(tdb, tdenv, tableName, csvPath=None):
                 stmtColumn += [ "{}.{}".format(tableName, col['name']) ]
         
         # build the SQL statement
-        sqlStmt = "SELECT {} FROM {}".format(",".join(stmtColumn)," ".join(stmtTable))
+        sqlStmt = "SELECT {} FROM {}".format(",".join(stmtColumn), " ".join(stmtTable))
         if len(stmtOrder) > 0:
             sqlStmt += " ORDER BY {}".format(",".join(stmtOrder))
         tdenv.DEBUG1("SQL: %s" % sqlStmt)
