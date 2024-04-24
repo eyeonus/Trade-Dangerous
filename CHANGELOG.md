@@ -2,6 +2,19 @@
 
 
 
+## v11.0.2 (2024-04-24)
+
+### Fix
+
+* fix: check for existence of the DB itself
+
+The plugins don&#39;t export the prices cache anymore, so that&#39;s a bad thing
+to check for to determine if the DB needs to be built.
+
+Do the smart thing and check for the existence of the actual DB file
+itself. ([`3dee4cb`](https://github.com/eyeonus/Trade-Dangerous/commit/3dee4cb3aeaf0810d6565f4aee00284f292a3c6e))
+
+
 ## v11.0.1 (2024-04-24)
 
 ### Fix
