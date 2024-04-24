@@ -249,6 +249,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             for (stationID,) in self.execute("SELECT station_id FROM Station")
         }
         
+        stationItems = dict(self.execute('SELECT station_id, UNIXEPOCH(modified) FROM StationItem').fetchall())
+        
         self.tdenv.DEBUG0("Processing entries...")
         with open(str(self.dataPath / listings_file), "r") as fh:
             prog = pbar.Progress(total, 50)
@@ -272,23 +274,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                     skipStation = False
                     
                     # Check if listing already exists in DB and needs updated.
-                    # Only need to check the date for the first item at a specific station.
-                    result = self.execute("SELECT modified FROM StationItem WHERE station_id = ?", (station_id,)).fetchone()
-                    if result:
-                        updated = timegm(datetime.datetime.strptime(result[0].split('.')[0], '%Y-%m-%d %H:%M:%S').timetuple())
+                    if stationItems.get(station_id):
                         # When the listings.csv data matches the database, update to make from_live == 0.
-                        if int(listing['collected_at']) == updated and not from_live:
+                        if int(listing['collected_at']) == stationItems.get(station_id) and not from_live:
                             self.tdenv.DEBUG1(f"Marking {cur_station} as no longer 'live'.")
                             self.execute(liveStmt, (cur_station,))
                         # Unless the import file data is newer, nothing else needs to be done for this station,
                         # so the rest of the listings for this station can be skipped.
-                        if int(listing['collected_at']) <= updated:
+                        if int(listing['collected_at']) <= stationItems.get(station_id):
                             skipStation = True
                             continue
                         
                         # The data from the import file is newer, so we need to delete the old data for this station.
                         self.tdenv.DEBUG1(f"Deleting old listing data for {cur_station}.")
                         self.execute(delStmt, (cur_station,))
+                        # We've deleted all the items from this station, so remove it.
+                        del stationItems[station_id]
 
                 
                 if skipStation:
