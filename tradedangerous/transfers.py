@@ -149,6 +149,14 @@ def download(
             raise TradeException(
                 "Remote server gave an empty response. Please try again later."
             )
+
+    # if the file is being compressed by the server, the headers tell us the
+    # length of the compressed data, but in our loop below we will be receiving
+    # the uncompressed data, which should be larger, which will cause our
+    # download indicators to sit at 100% for a really long time if the file is
+    # heavily compressed and large (e.g spansh 1.5gb compressed vs 9GB uncompressed)
+    if encoding == "gzip" and length:
+        length *= 4
     
     if tdenv.detail > 1:
         if length:
