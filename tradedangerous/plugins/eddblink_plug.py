@@ -267,7 +267,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         stationItems = dict(self.execute('SELECT station_id, UNIXEPOCH(modified) FROM StationItem').fetchall())
         
         self.tdenv.DEBUG0("Processing entries...")
-        with listings_file.open("r", encoding="utf-8", errors="ignore") as fh:
+        with listings_path.open("r", encoding="utf-8", errors="ignore") as fh:
             prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             
