@@ -259,6 +259,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         theme = self.tdenv.theme
         BOLD, CLOSE, DIM, ITALIC = theme.bold, theme.CLOSE, theme.dim, theme.italic  # pylint: disable=invalid-name
+
+        if not self.file:
+            url = self.url or SOURCE_URL
+            self.print(f'Downloading prices from remote URL: {url}')
+            self.file = Path(self.tdenv.tmpDir, "galaxy_stations.json")
+            transfers.download(self.tdenv, url, self.file)
+            self.print(f'Download complete, saved to local file: "{self.file}"')
+        
         
         sys_desc = f"Importing {ITALIC}spansh{CLOSE} data"
         with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_systems)) as progress:
@@ -377,13 +385,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         return False
     
     def data_stream(self):
-        if not self.file:
-            url = self.url or SOURCE_URL
-            self.print(f'Downloading prices from remote URL: {url}')
-            self.file = Path(self.tdenv.tmpDir, "galaxy_stations.json")
-            transfers.download(self.tdenv, url, self.file)
-            self.print(f'Download complete, saved to local file: "{self.file}"')
-        
         if self.file == '-':
             self.print('Reading prices from stdin')
             stream = sys.stdin
