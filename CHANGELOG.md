@@ -2,6 +2,15 @@
 
 
 
+## v11.0.1 (2024-04-24)
+
+### Fix
+
+* fix: don&#39;t enable default options if `prices`
+
+revert: use the `newItemPriceRe` that works ([`3302fa5`](https://github.com/eyeonus/Trade-Dangerous/commit/3302fa515a4238190a647b43e331b16b6cac1640))
+
+
 ## v11.0.0 (2024-04-24)
 
 ### Breaking
