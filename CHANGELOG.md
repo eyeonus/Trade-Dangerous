@@ -2,6 +2,15 @@
 
 
 
+## v10.16.16 (2024-04-24)
+
+### Performance
+
+* perf: Reduce the time to load large listing files etc by a factor of 4:
+
+https://gist.github.com/kfsone/dcb0d7811570e40e73136a14c23bf128 ([`ff7a57b`](https://github.com/eyeonus/Trade-Dangerous/commit/ff7a57b9eea46e1cec8fa24124d78f74581bb057))
+
+
 ## v10.16.15 (2024-04-24)
 
 ### Performance
