@@ -6,7 +6,7 @@
 
 ### Feature
 
-* feat: &#39;prices&#39; option in spansh and eddblink
+* feat: &#39;prices&#39; option in eddblink
 
 spansh and eddblink plugins no longer regenerate the
 `TradeDangerous.prices` cache file by default
