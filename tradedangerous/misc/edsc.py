@@ -4,19 +4,7 @@ from collections import namedtuple
 from urllib.request import Request, urlopen
 
 import json
-
-try:
-    import requests
-except ImportError as e:
-    import pip
-    print("ERROR: Unable to load the Python 'requests' package.")
-    approval = input(
-        "Do you want me to try and install it with the package manager (y/n)? "
-    )
-    if approval.lower() != 'y':
-        raise e
-    pip.main(["install", "--upgrade", "requests"])
-    import requests
+import requests
 
 
 def edsc_log(apiCall, params, jsonData=None, error=None):
