@@ -1,82 +1,15 @@
+import csv
+import json
+import time
+
 from collections import deque
 from pathlib import Path
 from .tradeexcept import TradeException
-
-import csv
-import json
 from .misc import progress as pbar
-import platform  # noqa: F401
 from . import fs
-import time
-import subprocess
-import sys
 
-try:
-    import requests
-    __requests = requests
-except ImportError:
-    __requests = None
+import requests
 
-def import_requests():
-    global __requests
-    if __requests:
-        return __requests
-    
-    if platform.system() == 'Linux':
-        extra = (
-            "Ubuntu users: You may be able to install 'pip'\n"
-            "with 'apt-get install python3-pip' and requests with\n"
-            "'pip3 install --upgrade requests'.\n"
-        )
-    elif platform.system() == 'Windows':
-        extra = (
-            "\n\nThe requests package can be installed with\n"
-            "'pip3 install --upgrade requests'.\n\n"
-            "If requests is installed, you may have bits\n"
-            "of 32-bit and 64-bit Python installed.\n"
-            "Consider using control panel to uninstall Python,\n"
-            "delete the Python folder (usually C:\\Python34\\),\n"
-            "and then re-install Python.\n"
-        )
-    else:
-        extra = ""
-    
-    print(
-        "ERROR: Unable to load the Python 'requests' package.\n" + extra
-    )
-    approval = input(
-        "I can try and install the package automatically using 'pip'.\n"
-        "Try to install 'requests' now (y/n)? "
-    )
-    # Idiot-proofing: take just the first character in case the user typed
-    # 'YES' (upper or lower case) instead of 'Y'.
-    if approval[0:1].lower() != 'y':
-        raise TradeException("Missing package: 'requests'")
-    
-    try:
-        import pip  # noqa: F401  # pylint: disable=unused-import
-    except ImportError as e:
-        raise TradeException(
-            "Python 3.4.2 includes a package manager called 'pip', "
-            "except it doesn't appear to be installed on your system:\n"
-            "{}{}".format(str(e), extra)
-        ) from None
-    
-    # Let's use "The most reliable approach, and the one that is fully supported."
-    # Especially since the old way produces an error for me on Python 3.6:
-    # "AttributeError: 'module' object has no attribute 'main'"
-    #  pip.main(["install", "--upgrade", "requests"])
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'requests'])
-    
-    try:
-        import requests  # pylint: disable=redefined-outer-name
-        __requests = requests
-    except ImportError as e:
-        raise TradeException(
-            f"The requests module did not install correctly ({e}).{extra}"
-        ) from None
-    
-    return __requests
 
 ######################################################################
 # Helpers
@@ -125,7 +58,6 @@ def download(
         function to call on the first line
     """
     
-    requests = import_requests()  # pylint: disable=redefined-outer-name
     tdenv.NOTE("Requesting {}".format(url))
     req = requests.get(url, headers=headers or None, stream=True, timeout=timeout)
     req.raise_for_status()
@@ -238,7 +170,6 @@ def get_json_data(url, *, timeout: int = 90):
     Displays a progress bar as it downloads.
     """
     
-    requests = import_requests()  # pylint: disable=redefined-outer-name
     req = requests.get(url, stream=True, timeout=timeout)
     
     totalLength = req.headers.get('content-length')
@@ -279,7 +210,6 @@ class CSVStream:
         self.url = url
         self.tdenv = tdenv
         if not url.startswith("file:///"):
-            requests = import_requests()  # pylint: disable=redefined-outer-name
             self.req = requests.get(self.url, stream=True, timeout=timeout)
             self.lines = self.req.iter_lines()
         else:

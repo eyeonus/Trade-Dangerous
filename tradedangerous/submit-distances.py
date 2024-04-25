@@ -16,6 +16,7 @@ import argparse
 import os
 import random
 import re
+import requests
 import sys
 import tradedb
 import tradeenv
@@ -23,30 +24,6 @@ import tradeenv
 from misc.edsc import StarSubmission, StarSubmissionResult, SubmissionError
 from misc.clipboard import SystemNameClip
 
-try:
-    import requests
-except ImportError as e:
-    print("""ERROR: Unable to load the Python 'requests' package.
-
-This script uses a Python module/package called 'requests' to allow
-it to talk to the EDSC web service. This package is not installed
-by default, but it can be installed with Python's package manager (pip).
-
-You can either install/update it yourself, e.g.:
-  
-  pip install --upgrade requests
-
-or if you like, I can try and install it for you now
-""")
-    approval = input(
-        "Do you want me to try and install it with the package manager (y/n)? "
-    )
-    if approval.lower() != 'y':
-        print("You didn't type 'y' so I'm giving up.")
-        raise e
-    import pip
-    pip.main(["install", "--upgrade", "requests"])
-    import requests  # noqa: F401
 
 standardStars = [
     "SOL",
