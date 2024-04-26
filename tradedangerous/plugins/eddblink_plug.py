@@ -156,40 +156,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     def now(self):
         return datetime.datetime.now()
     
-    def execute(self, sql_cmd, args = None):
-        cur = self.tdb.getDB().cursor()
-        
-        self.tdenv.DEBUG2(f"SQL-Statement:\n'{sql_cmd},{args}'")
-        success = False
-        result = None
-        while not success:
-            try:
-                if args:
-                    result = cur.execute(sql_cmd, args)
-                else:
-                    result = cur.execute(sql_cmd)
-                success = True
-            except sqlite3.OperationalError as e:
-                if "locked" not in str(e):
-                    success = True
-                    raise sqlite3.OperationalError(e)
-                print("(execute) Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
-        return result
-    
-    @staticmethod
-    def fetchIter(cursor, arraysize = 1000):
-        """
-        An iterator that uses fetchmany to keep memory usage down
-        and speed up the time to retrieve the results dramatically.
-        """
-        while True:
-            results = cursor.fetchmany(arraysize)
-            if not results:
-                break
-            yield from results
-    
-
     def downloadFile(self, path):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
@@ -231,37 +197,29 @@ class ImportPlugin(plugins.ImportPluginBase):
         Purges systems from the System table that do not have any stations claiming to be in them.
         Keeps table from becoming too large because of fleet carriers moving to unpopulated systems.
         """
-        
+        db = self.tdb.getDB()
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
-        
-        self.execute("PRAGMA foreign_keys = OFF")
-        
-        print("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
-        self.execute("DROP TABLE IF EXISTS System_copy")
-        self.execute("""CREATE TABLE System_copy AS SELECT * FROM System
+
+        db.execute("PRAGMA foreign_keys = OFF")
+
+        self.tdenv.DEBUG0("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
+        db.execute("DROP TABLE IF EXISTS System_copy")
+        db.execute("""CREATE TABLE System_copy AS SELECT * FROM System
                             WHERE system_id IN (SELECT system_id FROM Station)
                     """)
-        
-        print("Erasing table and reinserting kept systems.... " + str(self.now()) + "\t\t\t\t", end="\r")
-        self.execute("DELETE FROM System")
-        self.execute("INSERT INTO System SELECT * FROM System_copy")
-        
-        print("Removing copy.... " + str(self.now()) + "\t\t\t\t", end="\r")
-        self.execute("PRAGMA foreign_keys = ON")
-        self.execute("DROP TABLE IF EXISTS System_copy")
-        
+
+        self.tdenv.DEBUG0("Erasing table and reinserting kept systems.... " + str(self.now()) + "\t\t\t\t", end="\r")
+        db.execute("DELETE FROM System")
+        db.execute("INSERT INTO System SELECT * FROM System_copy")
+
+        self.tdenv.DEBUG0("Removing copy.... " + str(self.now()) + "\t\t\t\t", end="\r")
+        db.execute("PRAGMA foreign_keys = ON")
+        db.execute("DROP TABLE IF EXISTS System_copy")
+
+        db.commit()
+
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
     
-    def commit(self):
-        success = False
-        while not success:
-            try:
-                self.tdb.getDB().commit()
-                success = True
-            except sqlite3.OperationalError:
-                print("(commit) Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
-        
     def importListings(self, listings_file):
         """
         Updates the market data (AKA the StationItem table) using listings_file
@@ -363,10 +321,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ))
             
             # Do a final commit to be sure
-            self.commit()
+            db.commit()
             
             self.tdenv.NOTE("Optimizing database...")
-            self.execute("VACUUM")
+            db.execute("VACUUM")
             self.tdb.close()
             
             prog.clear()
@@ -534,7 +492,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self.getOption("purge"):
             self.purgeSystems()
-            # self.commit()
         
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or self.getOption("force"):
