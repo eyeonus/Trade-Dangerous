@@ -320,14 +320,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                         supply_price, supply_units, supply_level,
                 ))
             
-            # Do a final commit to be sure
-            db.commit()
-            
-            self.tdenv.NOTE("Optimizing database...")
-            db.execute("VACUUM")
-            self.tdb.close()
-            
-            prog.clear()
+        prog.clear()
+        
+        # Do a final commit to be sure
+        db.commit()
+        
+        self.tdenv.NOTE("Optimizing database...")
+        db.execute("VACUUM")
+        self.tdb.close()
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
