@@ -1,26 +1,29 @@
+""" Plugin for importing data from spansh """
 from __future__ import annotations
 
+from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
+from rich.progress import Progress
 
+from .. import plugins, cache, transfers, csvexport, corrections
+
+import sqlite3
 import sys
 import time
 import typing
-from collections import namedtuple
+
+import ijson
+
 if sys.version_info.major == 3 and sys.version_info.minor >= 10:
     from dataclasses import dataclass
 else:
     dataclass = False  # pylint: disable=invalid-name
 
-from rich.progress import Progress
-import ijson
-import sqlite3
-
-from .. import plugins, cache, transfers, csvexport, corrections
-
 if typing.TYPE_CHECKING:
-    from typing import Any, Iterable, Optional
+    from typing import Any, Optional
+    from collections.abc import Iterable
     from .. tradeenv import TradeEnv
 
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
@@ -237,11 +240,11 @@ class ImportPlugin(plugins.ImportPluginBase):
     def commit(self, *, force: bool = False) -> None:
         """ Perform a commit if required, but try not to do a crazy amount of committing. """
         if not force and not self.need_commit:
-            return self.cursor
+            return
         
         if not force and self.commit_limit > 0:
             self.commit_limit -= 1
-            return self.cursor
+            return
         
         db = self.tdb.getDB()
         db.commit()
@@ -392,7 +395,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             categories.setdefault(commodity.category, []).append(commodity)
         return categories
     
-    def execute(self, query: str, *params, commitable: bool = False) -> Optional[sqlite3.Cursor]:
+    def execute(self, query: str, *params, commitable: bool = False) -> sqlite3.Cursor:
         """ helper method that performs retriable queries and marks the transaction as needing to commit
             if the query is commitable."""
         if commitable:
@@ -404,14 +407,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             except sqlite3.OperationalError as ex:
                 if "no transaction is active" in str(ex):
                     self.print(f"no transaction for {query}")
-                    return
+                    raise
                 if not attempts:
                     raise
                 attempts -= 1
                 self.print(f'Retrying query \'{query}\': {ex!s}')
                 time.sleep(1)
     
-    def executemany(self, query: str, data: Iterable[Any], *, commitable: bool = False) -> Optional[sqlite3.Cursor]:
+    def executemany(self, query: str, data: Iterable[Any], *, commitable: bool = False) -> sqlite3.Cursor:
         """ helper method that performs retriable queries and marks the transaction as needing to commit
             if the query is commitable."""
         if commitable:
@@ -423,7 +426,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             except sqlite3.OperationalError as ex:
                 if "no transaction is active" in str(ex):
                     self.print(f"no transaction for {query}")
-                    return
+                    raise
                 if not attempts:
                     raise
                 attempts -= 1
