@@ -226,7 +226,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Writes directly to database.
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
-        from_live = listings_path != self.listingsPath.absolute()
+        from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
         self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
         
         total = _count_listing_entries(self.tdenv, listings_path)
