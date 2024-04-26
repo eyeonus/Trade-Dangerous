@@ -57,11 +57,11 @@ def run(results, cmdenv, tdb: TradeDB):
     if not cmdenv.force:
         if tdb.dbPath.exists():
             raise CommandLineError(
-                "SQLite3 database '{tdb.dbFilename}' already exists.\n"
+                f"SQLite3 database '{tdb.dbFilename}' already exists.\n"
                 "Either remove the file first or use the '-f' option.")
     
     if not tdb.sqlPath.exists():
-        raise CommandLineError("SQL File does not exist: {tdb.sqlFilename}")
+        raise CommandLineError(f"SQL File does not exist: {tdb.sqlFilename}")
     
     buildCache(tdb, cmdenv)
     
