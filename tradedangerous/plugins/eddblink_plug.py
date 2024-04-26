@@ -1,7 +1,8 @@
-# ----------------------------------------------------------------
-# Import plugin that uses data files from EDDB.io and (optionally)
-# a EDDBlink_listener server to update the Database.
-# ----------------------------------------------------------------
+"""
+Import plugin that uses data files from EDDB.io and (optionally)
+a EDDBlink_listener server to update the Database.
+"""
+from __future__ import annotations
 import certifi
 import csv
 import datetime
@@ -10,14 +11,20 @@ import os
 import sqlite3
 import ssl
 import time
+import typing
 
 from urllib import request
-from calendar import timegm
 from pathlib import Path
 
 from .. import plugins, cache, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
+
+
+if typing.TYPE_CHECKING:
+    from typing import Optional
+    from .. tradeenv import TradeEnv
+
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
@@ -29,23 +36,23 @@ def request_url(url, headers=None):
     if headers:
         data = bytes(json.dumps(headers), encoding="utf-8")
     
-    return request.urlopen(request.Request(url, data=data), context=CONTEXT)
+    return request.urlopen(request.Request(url, data=data), context=CONTEXT, timeout=90)
 
 
 class DecodingError(PluginException):
     pass
 
 
-def file_line_count(from_file: Path, bufsize: int = 128 * 1024) -> int:
+def _file_line_count(from_file: Path, bufsize: int = 128 * 1024) -> int:
     """ counts the number of newline characters in a given file. """
-    # Pre-allocate a buffer so we're not putting pressure on the garbage collector,
-    # capture it's counting method so we don't have to keep looking that up on
-    # large files.
+    # Pre-allocate a buffer so we aren't putting pressure on the garbage collector.
     buf = bytearray(bufsize)
+    
+    # Capture it's counting method, so we don't have to keep looking that up on
+    # large files.
     counter = buf.count
-
+    
     total = 0
-
     with from_file.open("rb") as fh:
         # Capture the 'readinto' method to avoid lookups.
         reader = fh.readinto
@@ -60,8 +67,44 @@ def file_line_count(from_file: Path, bufsize: int = 128 * 1024) -> int:
         # when 0 <= read < bufsize we're on the last page of the
         # file, so we need to take a slice of the buffer, which creates
         # a new object and thus we also have to lookup count. it's trivial
-        # but if you have to do it 10,000x it's definitly not a rounding error.
+        # but if you have to do it 10,000x it's definitely not a rounding error.
         return total + buf[:read].count(b'\n')
+
+
+def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
+    """ Calculates the number of entries in a listing file by counting the lines. """
+    if not listings.exists():
+        tdenv.NOTE("File not found, aborting: {}", listings)
+        return 0
+    
+    tdenv.DEBUG0(f"Getting total number of entries in {listings}...")
+    count = _file_line_count(listings)
+    if count <= 1:
+        if count == 1:
+            tdenv.DEBUG0("Listing count of 1 suggests nothing but a header")
+        else:
+            tdenv.DEBUG0("Listings file is empty, nothing to do.")
+        return 0
+
+    return count + 1  # kfsone: Doesn't the header already make this + 1?
+
+
+def _make_item_id_lookup(tdenv: TradeEnv, db: sqlite3.Cursor) -> frozenset[int]:
+    """ helper: retrieve the list of commodities in database. """
+    tdenv.DEBUG0("Getting list of commodities...")
+    return frozenset(cols[0] for cols in db.execute("SELECT item_id FROM Item"))
+
+
+def _make_station_id_lookup(tdenv: TradeEnv, db: sqlite3.Cursor) -> frozenset[int]:
+    """ helper: retrieve the list of station IDs in database. """
+    tdenv.DEBUG0("Getting list of stations...")
+    return frozenset(cols[0] for cols in db.execute("SELECT station_id FROM Station"))
+
+
+def _collect_station_modified_times(tdenv: TradeEnv, db: sqlite3.Cursor) -> dict[int, int]:
+    """ helper: build a list of the last modified time for all stations by id. """
+    tdenv.DEBUG0("Getting last-update times for stations...")
+    return dict(db.execute("SELECT station_id, strftime('%s', MIN(modified)) FROM StationItem GROUP BY station_id"))
 
 
 class ImportPlugin(plugins.ImportPluginBase):
@@ -130,9 +173,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if "locked" not in str(e):
                     success = True
                     raise sqlite3.OperationalError(e)
-                else:
-                    print("(execute) Database is locked, waiting for access.", end = "\r")
-                    time.sleep(1)
+                print("(execute) Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
         return result
     
     @staticmethod
@@ -145,8 +187,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             results = cursor.fetchmany(arraysize)
             if not results:
                 break
-            for result in results:
-                yield result
+            yield from results
     
 
     def downloadFile(self, path):
@@ -157,17 +198,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         def openURL(url):
             return request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
         
-        if path != self.liveListingsPath and path != self.listingsPath:
-            localPath = self.tdb.dataPath / path
+        if path not in (self.liveListingsPath, self.listingsPath):
+            localPath = Path(self.tdb.dataPath, path)
         else:
-            localPath = self.dataPath / path
+            localPath = Path(self.dataPath, path)
         
         url  = BASE_URL + str(path)
         
         self.tdenv.NOTE("Checking for update to '{}'.", path)
         try:
             response = openURL(url)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", BASE_URL + str(path), str(e))
             return False
         
@@ -220,117 +261,114 @@ class ImportPlugin(plugins.ImportPluginBase):
             except sqlite3.OperationalError:
                 print("(commit) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
-    
+        
     def importListings(self, listings_file):
         """
         Updates the market data (AKA the StationItem table) using listings.csv
         Writes directly to database.
         """
+        listings_path = Path(self.dataPath, listings_file).absolute()
+        from_live = listings_path != self.listingsPath.absolute()
+        self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
         
-        self.tdenv.NOTE("Processing market data from {}: Start time = {}", listings_file, self.now())
-        if not (self.dataPath / listings_file).exists():
-            self.tdenv.NOTE("File not found, aborting: {}", (self.dataPath / listings_file))
+        total = _count_listing_entries(self.tdenv, listings_path)
+        if not total:
             return
+
+        stmt_unliven_station = """UPDATE StationItem SET from_live = 0 WHERE station_id = ?"""
+        stmt_flush_station   = """DELETE from StationItem WHERE station_id = ?"""
+        stmt_add_listing     = """
+            INSERT OR IGNORE INTO StationItem (
+                station_id, item_id, modified, from_live,
+                demand_price, demand_units, demand_level,
+                supply_price, supply_units, supply_level
+            )
+            VALUES (
+                ?, ?, datetime(?, 'unixepoch'), ?,
+                ?, ?, ?,
+                ?, ?, ?
+            )
+        """
         
-        total = 1
+        # Fetch all the items IDS
+        db = self.tdb.getDB()
+        item_lookup = _make_item_id_lookup(self.tdenv, db.cursor())
+        station_lookup = _make_station_id_lookup(self.tdenv, db.cursor())
+        last_station_update_times = _collect_station_modified_times(self.tdenv, db.cursor())
         
-        from_live = 0 if listings_file == self.listingsPath else 1
-        
-        self.tdenv.DEBUG0(f"Getting total number of entries in {listings_file}...")
-        listings_path = Path(self.dataPath, listings_file)
-        total += file_line_count(listings_path)
-        
-        liveStmt = """UPDATE StationItem
-                    SET from_live = 0
-                    WHERE station_id = ?"""
-        
-        delStmt = "DELETE from StationItem WHERE station_id = ?"
-        
-        listingStmt = """INSERT OR IGNORE INTO StationItem
-                        (station_id, item_id, modified,
-                         demand_price, demand_units, demand_level,
-                         supply_price, supply_units, supply_level, from_live)
-                        VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )"""
-        
-        self.tdenv.DEBUG0("Getting list of commodities...")
-        items = [cols[0] for cols in self.execute("SELECT item_id FROM Item ORDER BY item_id")]
-        
-        self.tdenv.DEBUG0("Getting list of stations...")
-        stationList = {
-            stationID
-            for (stationID,) in self.execute("SELECT station_id FROM Station")
-        }
-        
-        stationItems = dict(self.execute('SELECT station_id, UNIXEPOCH(modified) FROM StationItem').fetchall())
-        
+        cur_station = None
         self.tdenv.DEBUG0("Processing entries...")
         with listings_path.open("r", encoding="utf-8", errors="ignore") as fh:
             prog = pbar.Progress(total, 50)
-            listings = csv.DictReader(fh)
+
+            cursor: Optional[sqlite3.Cursor] = db.cursor()
             
-            cur_station = -1
-            
-            for listing in listings:
-                if prog.increment(1, postfix = lambda value, total: f" {(value / total * 100):.0f}% {value} / {total}"):
-                    # Do a commit and close the DB every 2%.
-                    # This ensures the listings are put in the DB and the WAL is cleared.
-                    self.commit()
-                    self.tdb.close()
+            for listing in csv.DictReader(fh):
+                prog.increment(1, postfix = lambda value, total: f" {(value / total * 100):.0f}% {value} / {total}")
                 
                 station_id = int(listing['station_id'])
-                if station_id not in stationList:
+                if station_id not in station_lookup:
                     continue
                 
+                listing_time = int(listing['collected_at'])
+                
                 if station_id != cur_station:
-                    cur_station = station_id
-                    skipStation = False
+                    # commit anything from the previous station, get a new cursor
+                    db.commit()
+                    cur_station, skip_station, cursor = station_id, False, db.cursor()
                     
                     # Check if listing already exists in DB and needs updated.
-                    if stationItems.get(station_id):
+                    last_modified: int = int(last_station_update_times.get(station_id, 0))
+                    if last_modified:
                         # When the listings.csv data matches the database, update to make from_live == 0.
-                        if int(listing['collected_at']) == stationItems.get(station_id) and not from_live:
-                            self.tdenv.DEBUG1(f"Marking {cur_station} as no longer 'live'.")
-                            self.execute(liveStmt, (cur_station,))
+                        if listing_time == last_modified and not from_live:
+                            self.tdenv.DEBUG1(f"Marking {cur_station} as no longer 'live' (old={last_modified}, listing={listing_time}).")
+                            cursor.execute(stmt_unliven_station, (cur_station,))
+                            skip_station = True
+                            continue
+
                         # Unless the import file data is newer, nothing else needs to be done for this station,
                         # so the rest of the listings for this station can be skipped.
-                        if int(listing['collected_at']) <= stationItems.get(station_id):
-                            skipStation = True
+                        if listing_time <= last_modified:
+                            skip_station = True
                             continue
                         
                         # The data from the import file is newer, so we need to delete the old data for this station.
-                        self.tdenv.DEBUG1(f"Deleting old listing data for {cur_station}.")
-                        self.execute(delStmt, (cur_station,))
-                        # We've deleted all the items from this station, so remove it.
-                        del stationItems[station_id]
-
+                        self.tdenv.DEBUG1(f"Deleting old listing data for {cur_station} (old={last_modified}, listing={listing_time}).")
+                        cursor.execute(stmt_flush_station, (cur_station,))
+                        last_station_update_times[station_id] = listing_time
                 
-                if skipStation:
+                # station skip lasts until we change station id.
+                if skip_station:
                     continue
                 
                 # Since this station is not being skipped, get the data and prepare for insertion into the DB.
                 item_id = int(listing['commodity_id'])
                 # listings.csv includes rare items, which we are ignoring.
-                if item_id not in items:
+                if item_id not in item_lookup:
                     continue
-                modified = datetime.datetime.utcfromtimestamp(int(listing['collected_at'])).strftime('%Y-%m-%d %H:%M:%S')
+
                 demand_price = int(listing['sell_price'])
                 demand_units = int(listing['demand'])
-                demand_level = int(listing['demand_bracket']) if listing['demand_bracket'] != '' else -1
+                demand_level = int(listing.get('demand_bracket') or '-1')
                 supply_price = int(listing['buy_price'])
                 supply_units = int(listing['supply'])
-                supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
+                supply_level = int(listing.get('supply_bracket') or '-1')
                 
                 self.tdenv.DEBUG1(f"Inserting new listing data for {station_id}.")
-                self.execute(listingStmt, (station_id, item_id, modified,
-                                    demand_price, demand_units, demand_level,
-                                    supply_price, supply_units, supply_level, from_live))
+                cursor.execute(stmt_add_listing, (
+                        station_id, item_id, listing_time, from_live,
+                        demand_price, demand_units, demand_level,
+                        supply_price, supply_units, supply_level,
+                ))
             
             # Do a final commit to be sure
             self.commit()
+            
+            self.tdenv.NOTE("Optimizing database...")
+            self.execute("VACUUM")
             self.tdb.close()
             
-            while prog.value < prog.maxValue:
-                prog.increment(1, postfix = lambda value, total: " " + str(round(value / total * 100)) + "%")
             prog.clear()
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
