@@ -1,6 +1,6 @@
 """
-Import plugin that uses data files from EDDB.io and (optionally)
-a EDDBlink_listener server to update the Database.
+Import plugin that uses data files from 
+https://elite.tromador.com/ to update the Database.
 """
 from __future__ import annotations
 import certifi
@@ -264,7 +264,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
     def importListings(self, listings_file):
         """
-        Updates the market data (AKA the StationItem table) using listings.csv
+        Updates the market data (AKA the StationItem table) using listings_file
         Writes directly to database.
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
@@ -385,14 +385,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            # if not option in ('force', 'fallback', 'skipvend', 'progbar'):
             if option not in ('force', 'skipvend'):
                 default = False
         if default:
             self.options["listings"] = True
         
-        # We can probably safely assume that the plugin has never been run if
-        # the prices file doesn't exist, since the plugin always generates it.
+        # We can probably safely assume that the plugin
+        # has never been run if the db file doesn't exist.
         if not (self.tdb.dataPath / Path("TradeDangerous.db")).exists():
             self.options["clean"] = True
         
