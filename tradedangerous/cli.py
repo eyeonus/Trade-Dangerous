@@ -32,34 +32,35 @@
 # to empower other programmers to do cool stuff.
 
 import os
+import sys
 import traceback
 
 from . import commands
+from . import tradeexcept
 from .commands import exceptions
 from .plugins import PluginException
 
-
 from . import tradedb
+
+if "CPROF" in os.environ:
+    import cProfile
 
 
 def main(argv = None):
-    import sys
     if not argv:
         argv = sys.argv
-    if sys.hexversion < 0x03040200:
+    if sys.hexversion < 0x03070000:
         raise SystemExit(
-            "Sorry: TradeDangerous requires Python 3.4.2 or higher.\n"
+            "Sorry: TradeDangerous requires Python 3.7 or higher.\n"
             "For assistance, see:\n"
             "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
             "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"
             "\tEDForum Thread: https://forums.frontier.co.uk/showthread.php/441509\n"
         )
-    from . import tradeexcept
     
     try:
         try:
             if "CPROF" in os.environ:
-                import cProfile
                 cProfile.run("trade(argv)")
             else:
                 trade(argv)
@@ -79,7 +80,7 @@ def main(argv = None):
         print()
         print(traceback.format_exc())
         print(
-            "Please report this bug (http://kfs.org/td/issues). You may be "
+            "Please report this bug (http://github.com/eyeonus/Trade-Dangerous/issues). You may be "
             "able to work around it by using the '-q' parameter. Windows "
             "users may be able to use 'chcp.com 65001' to tell the console "
             "you want to support UTF-8 characters."
