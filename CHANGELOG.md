@@ -2,6 +2,17 @@
 
 
 
+## v11.0.3 (2024-04-26)
+
+### Fix
+
+* fix: issue#130: lowercase cmd options ([`fd2370b`](https://github.com/eyeonus/Trade-Dangerous/commit/fd2370b3733d16ce9e3ec82c0b014c15cf0eb8e6))
+
+### Refactor
+
+* refactor: requests is installed by requirements, don&#39;t need code to faff with it ([`48c0382`](https://github.com/eyeonus/Trade-Dangerous/commit/48c0382ec0149febac279ac8dd75409677d487e5))
+
+
 ## v11.0.2 (2024-04-24)
 
 ### Fix
