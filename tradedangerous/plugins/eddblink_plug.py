@@ -31,7 +31,7 @@ BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 CONTEXT=ssl.create_default_context(cafile=certifi.where())
 
 
-def request_url(url, headers=None):
+def _request_url(url, headers=None):
     data = None
     if headers:
         data = bytes(json.dumps(headers), encoding="utf-8")
@@ -196,7 +196,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         
         def openURL(url):
-            return request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
+            return _request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
         
         if path not in (self.liveListingsPath, self.listingsPath):
             localPath = Path(self.tdb.dataPath, path)
