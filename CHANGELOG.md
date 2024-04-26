@@ -2,6 +2,48 @@
 
 
 
+## v11.0.4 (2024-04-26)
+
+### Documentation
+
+* docs: Update comments, method annotations to be accurate ([`87c74ba`](https://github.com/eyeonus/Trade-Dangerous/commit/87c74bad86ad6a0d05ccaf9533d8ec9de0cf2b6b))
+
+### Fix
+
+* fix: from_live calculation
+
+Need to include `self.dataPath` or it will always return False, which is
+not what we want. ([`631758c`](https://github.com/eyeonus/Trade-Dangerous/commit/631758cc37f1b64711760ba341b937d535298e8e))
+
+### Performance
+
+* perf: improve eddb import performance.
+
+small tweaks, but it redunce time to import the listings on my machine from 40 minutes to 23 ([`7716bf2`](https://github.com/eyeonus/Trade-Dangerous/commit/7716bf2e492111874dddfb1a3584c00daf5d5464))
+
+### Refactor
+
+* refactor: add `purge` to options prevent enabling default options ([`18782be`](https://github.com/eyeonus/Trade-Dangerous/commit/18782be674d6d5bf87a34ee38193b42248446695))
+
+* refactor: clear progbar, do final commit, etc., after closing file ([`9b21109`](https://github.com/eyeonus/Trade-Dangerous/commit/9b211092a8e167f42c7e6f28c2795f18b6286960))
+
+* refactor: remove unused methods, use db.* rather than self.*
+
+Don&#39;t use self.execute() or self.commit() in some cases and db.execute()
+or db.commit() in others, use db.* in all cases. ([`5e4a9de`](https://github.com/eyeonus/Trade-Dangerous/commit/5e4a9ded335a660402b38dbe170b0b1ccac85722))
+
+* refactor: `request_url()` to `_request_url()`
+
+Have all the methods external to the class have matching naming
+convention ([`2b0d5dc`](https://github.com/eyeonus/Trade-Dangerous/commit/2b0d5dc33da5a4954d2f840ca049686528ccffc2))
+
+* refactor: fix pylint warnings ([`61c159a`](https://github.com/eyeonus/Trade-Dangerous/commit/61c159a4b15fd74088ec743a908aa7af21c20aef))
+
+### Test
+
+* test: extend tox coverage with pylint and cleanup various pylint findings to make that useful ([`9b4e91c`](https://github.com/eyeonus/Trade-Dangerous/commit/9b4e91cf21e87f6f985e7cefdfae4b1708c2cf0a))
+
+
 ## v11.0.3 (2024-04-26)
 
 ### Fix
