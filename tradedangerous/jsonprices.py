@@ -1,8 +1,12 @@
-#!/usr/bin/env python3.6
+from tradedangerous import tradedb
+from tradedangerous.tradeexcept import TradeException
 
-import tradedb
-from tradeexcept import TradeException
 import json
+import sys
+
+
+sys.stderr.write("*** WARNING: jsonprices.py is deprecated; if you rely on it, please post a github issue\n")
+
 
 class UnknownSystemError(TradeException):
     def __str__(self):
@@ -11,6 +15,7 @@ class UnknownSystemError(TradeException):
 class UnknownStationError(TradeException):
     def __str__(self):
         return "Unknown Station: " + ' '.join(self.args)
+
 
 def lookup_system(tdb, tdenv, name, x, y, z):
     try:

@@ -21,8 +21,8 @@ import sys
 import tradedb
 import tradeenv
 
-from misc.edsc import StarSubmission, StarSubmissionResult, SubmissionError
-from misc.clipboard import SystemNameClip
+from tradedangerous.misc.edsc import StarSubmission, StarSubmissionResult, SubmissionError
+from tradedangerous.misc.clipboard import SystemNameClip
 
 
 standardStars = [
@@ -32,6 +32,10 @@ standardStars = [
     "HIP 79884",
     "ASELLUS AUSTRALIS",
 ]
+
+
+sys.stderr.write("*** WARNING: submit-distances.py is deprecated; if you rely on it, please post a github issue\n")
+
 
 ############################################################################
 
