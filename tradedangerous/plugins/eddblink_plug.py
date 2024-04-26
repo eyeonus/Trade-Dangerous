@@ -343,7 +343,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # have been passed, enable 'listings'.
         default = True
         for option in self.options:
-            if option not in ('force', 'skipvend'):
+            if option not in ('force', 'skipvend', 'purge'):
                 default = False
         if default:
             self.options["listings"] = True
