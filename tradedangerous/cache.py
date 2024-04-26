@@ -206,7 +206,7 @@ class MultipleItemEntriesError(DuplicateKeyError):
         super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
 
 
-class SyntaxError(BuildCacheBaseException):
+class InvalidLineError(BuildCacheBaseException):
     """
     Raised when an invalid line is read.
     Attributes:
@@ -258,7 +258,7 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> t
     #   High <- 'H';
     if reading == '?':
         return -1, -1
-    elif reading == '-':
+    if reading == '-':
         return 0, 0
     
     # extract the left most digits into unit and the last character into the level reading.
@@ -604,13 +604,13 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
         if text.startswith('@'):
             matches = systemStationRe.match(text)
             if not matches:
-                raise SyntaxError(priceFile, lineNo, "Unrecognized '@' line", text)
+                raise InvalidLineError(priceFile, lineNo, "Unrecognized '@' line", text)
             changeStation(matches)
             continue
         
         if not stationID:
             # Need a station to process any other type of line.
-            raise SyntaxError(priceFile, lineNo, "Expecting '@ SYSTEM / Station' line", text)
+            raise InvalidLineError(priceFile, lineNo, "Expecting '@ SYSTEM / Station' line", text)
         if stationID == DELETED:
             # Ignore all values from a deleted station/system.
             continue
@@ -625,7 +625,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
         # ## "Item sell buy ..." lines.
         matches = newItemPriceRe.match(text)
         if not matches:
-            raise SyntaxError(priceFile, lineNo, "Unrecognized line/syntax", text)
+            raise InvalidLineError(priceFile, lineNo, "Unrecognized line/syntax", text)
         
         processItemLine(matches)
     
@@ -639,7 +639,7 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
             "if you /need/ to persist them."
         )
     
-    stations = tuple((ID,) for ID in processedStations.keys())
+    stations = tuple((ID,) for ID in processedStations)
     return stations, items, zeros, newItems, updtItems, ignItems, numSys
 
 
@@ -649,9 +649,9 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
 def processPricesFile(tdenv: TradeEnv, db: sqlite3.Connection, pricesPath: Path, pricesFh: Optional[TextIO] = None, defaultZero: bool = False) -> None:
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
     
-    with pricesFh or pricesPath.open('r', encoding='utf-8') as pricesFh:
+    with (pricesFh or pricesPath.open('r', encoding='utf-8')) as fh:
         stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
-            tdenv, pricesFh, db, defaultZero
+            tdenv, fh, db, defaultZero
         )
     
     if not tdenv.mergeImport:
@@ -907,7 +907,7 @@ def processImportFile(tdenv, db, importPath, tableName):
                 try:
                     db.execute(sql_stmt, linein)
                     importCount += 1
-                except Exception as e:
+                except Exception as e:  # pylint: disable=broad-exception-caught
                     tdenv.WARN(
                         "*** INTERNAL ERROR: {err}\n"
                         "CSV File: {file}:{line}\n"

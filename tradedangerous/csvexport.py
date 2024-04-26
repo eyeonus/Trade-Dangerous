@@ -36,6 +36,7 @@ def search_keyList(items, val):
     for row in items:
         if row['from'] == row['to'] == val:
             return row
+    return None
 
 def getUniqueIndex(conn, tableName):
     """ return all unique columns """
