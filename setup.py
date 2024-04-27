@@ -30,7 +30,7 @@ setup(name = package,
         install_requires = ["requests", "appJar", "ijson", "rich"],
         setup_requires = ["pytest-runner"],
         tests_require = ["pytest"],
-        packages = ['tradedangerous', 'tradedangerous.commands', 'tradedangerous.mfd', 'tradedangerous.mfd.saitek', 'tradedangerous.misc', 'tradedangerous.plugins'],
+        packages = ['.', 'tradedangerous', 'tradedangerous.commands', 'tradedangerous.mfd', 'tradedangerous.mfd.saitek', 'tradedangerous.misc', 'tradedangerous.plugins'],
         url = "https://github.com/eyeonus/Trade-Dangerous",
         project_urls = {
             "Bug Tracker": "https://github.com/eyeonus/Trade-Dangerous/issues",
@@ -57,8 +57,8 @@ setup(name = package,
         package_data = {"tradedangerous": ["templates/TradeDangerous.sql", "templates/Added.csv", "templates/Category.csv", "templates/RareItem.csv"]},
         entry_points = {
             "console_scripts": [
-                "trade=tradedangerous.trade:main",
-                "tradegui=tradedangerous.tradegui:main"
+                "trade=trade:main",
+                "tradegui=tradegui:main"
             ]
         },
         zip_safe = False

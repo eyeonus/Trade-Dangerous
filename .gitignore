@@ -50,7 +50,3 @@ misc/*.csv
 wip/
 pycallgraph.png
 
-
-
-/trade.py
-/tradegui.py
