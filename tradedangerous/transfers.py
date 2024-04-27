@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from collections import deque
 from pathlib import Path
+from urllib.parse import urlparse, unquote
+
 from .tradeexcept import TradeException
 from .misc import progress as pbar
 from . import fs
@@ -38,6 +39,12 @@ def makeUnit(value):
         unitSize /= 1024
     return None
 
+
+def get_filename_from_url(url: str) -> str:
+    """ extracts just the filename from a url. """
+    return Path(unquote(urlparse(url).path)).name
+
+
 def download(
             tdenv:      TradeEnv,
             url:        str,
@@ -55,20 +62,11 @@ def download(
     Fetch data from a URL and save the output
     to a local file. Returns the response headers.
     
-    tdenv:
-        TradeEnv we're working under
-    
-    url:
-        URL we're fetching (http, https or ftp)
-    
-    localFile:
-        Name of the local file to open.
-    
-    headers:
-        dict() of additional HTTP headers to send
-    
-    shebang:
-        function to call on the first line
+    :param tdenv:       TradeEnv we're working under
+    :param url:         URL we're fetching (http, https or ftp)
+    :param localFile:   Name of the local file to open.
+    :param headers:     dict() of additional HTTP headers to send
+    :param shebang:     function to call on the first line
     """
     tdenv.NOTE("Requesting {}".format(url))
 
@@ -109,8 +107,9 @@ def download(
     tdenv.DEBUG0(str(req.headers).replace("{", "{{").replace("}", "}}"))
     
     # Figure out how much data we have
-    if length and not tdenv.quiet:
-        progBar = pbar.Progress(length, 20)
+    if not tdenv.quiet:
+        filename = get_filename_from_url(url)
+        progBar = pbar.Progress(length, 20, prefix=filename, style=pbar.TransferBar)
     else:
         progBar = None
     
@@ -118,13 +117,7 @@ def download(
     fs.ensurefolder(tdenv.tmpDir)
     tmpPath = Path(tdenv.tmpDir, "{}.dl".format(actPath.name))
     
-    histogram = deque()
-    
     fetched = 0
-    lastTime = started = time.time()
-    spinner, spinners = 0, [
-        '.    ', '..   ', '...  ', ' ... ', '  ...', '   ..', '    .'
-    ]
     with tmpPath.open("wb") as fh:
         for data in req.iter_content(chunk_size=chunkSize):
             fh.write(data)
@@ -135,28 +128,13 @@ def download(
                 shebang(bangLine)
                 shebang = None
             if progBar:
-                now = time.time()
-                deltaT = max(now - lastTime, 0.001)
-                lastTime = now
-                if len(histogram) >= 15:
-                    histogram.popleft()
-                histogram.append(len(data) / deltaT)
-                progBar.increment(
-                    len(data),
-                    postfix=lambda value, goal: \
-                            " {:>7s} [{:>7s}/s] {:>3.0f}% {:1s}".format(
-                            makeUnit(value),
-                            makeUnit(sum(histogram) / len(histogram)),
-                            (fetched * 100. / length),
-                            spinners[spinner]
-                        )
-                )
-                if deltaT > 0.200:
-                    spinner = (spinner + 1) % len(spinners)
+                progBar.increment(len(data))
         tdenv.DEBUG0("End of data")
+
+    if progBar:
+        progBar.clear()
+
     if not tdenv.quiet:
-        if progBar:
-            progBar.clear()
         elapsed = (time.time() - started) or 1
         tdenv.NOTE(
             "Downloaded {} of {}ed data {}/s",
@@ -197,7 +175,9 @@ def get_json_data(url, *, timeout: int = 90):
         jsData = req.content
     else:
         totalLength = int(totalLength)
-        progBar = pbar.Progress(totalLength, 25)
+        filename = get_filename_from_url(url)
+        progBar = pbar.Progress(totalLength, 25, style=pbar.DefaultBar, prefix=filename)
+
         jsData = bytes()
         for data in req.iter_content():
             jsData += data
