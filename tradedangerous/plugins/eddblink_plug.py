@@ -129,7 +129,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'purge':        "Remove any empty systems that previously had fleet carriers.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
-        "prices":       "Backup listings to the TradeDangerous.prices cache file",
     }
     
     def __init__(self, tdb, tdenv):
@@ -499,7 +498,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
         
-        if self.getOption("prices"):
+        if self.getOption("listings"):
             self.tdenv.NOTE("Regenerating .prices file.")
             cache.regeneratePricesFile(self.tdb, self.tdenv)
         

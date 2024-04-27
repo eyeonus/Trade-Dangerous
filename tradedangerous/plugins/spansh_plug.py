@@ -374,6 +374,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f'{total_station_count} st  {total_commodity_count} co'
             )
         
+        with Timing() as timing:
+            self.print('Exporting to cache...')
+            cache.regeneratePricesFile(self.tdb, self.tdenv)
+            self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
+        
         return False
     
     def data_stream(self):
