@@ -2,6 +2,19 @@
 
 
 
+## v11.0.5 (2024-04-27)
+
+### Fix
+
+* fix: update Station info when source timestamp newer ([`fa63e94`](https://github.com/eyeonus/Trade-Dangerous/commit/fa63e94a106088d28292a79829131cf938be34bc))
+
+### Refactor
+
+* refactor: move entry points to top level
+
+fixes #137 ([`100e417`](https://github.com/eyeonus/Trade-Dangerous/commit/100e4179c77ceed40cab5b0f88b6f06c8b7e5846))
+
+
 ## v11.0.4 (2024-04-26)
 
 ### Documentation
