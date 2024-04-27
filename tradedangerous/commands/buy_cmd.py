@@ -55,6 +55,12 @@ switches = (
         type = int,
     ),
     AvoidPlacesArgument(),
+    ParseArgument('--age', '--max-days-old', '-MD',
+        help = 'Maximum age (in days) of trade data to use.',
+        metavar = 'DAYS',
+        type = float,
+        dest = 'maxAge',
+    ),
     PadSizeArgument(),
     MutuallyExclusiveGroup(
         NoPlanetSwitch(),
@@ -100,7 +106,7 @@ switches = (
         type = "credits",
     ),
     ParseArgument('--ls-max',
-        help='Only consider stations upto this many ls from their star.',
+        help='Only consider stations up to this many ls from their star.',
         metavar='LS',
         dest='maxLs',
         type=int,
@@ -299,6 +305,9 @@ def run(results, cmdenv, tdb):
         if station in avoidStations:
             continue
         if station.system in avoidSystems:
+            continue
+        maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
+        if maxAge and stnAge > maxAge:
             continue
         
         row = ResultRow()
