@@ -130,6 +130,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'purge':        "Remove any empty systems that previously had fleet carriers.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
         "prices":       "Backup listings to the TradeDangerous.prices cache file",
+        "no-download":  "Don't download data, but treat existing files as though updated",
     }
     
     def __init__(self, tdb, tdenv):
@@ -156,10 +157,12 @@ class ImportPlugin(plugins.ImportPluginBase):
     def now(self):
         return datetime.datetime.now()
     
-    def downloadFile(self, path):
+    def downloadFile(self, path: os.PathLike) -> bool:
         """
         Fetch the latest dumpfile from the website if newer than local copy.
         """
+        if self.getOption("no-download"):
+            return True
         
         def openURL(url):
             return _request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
