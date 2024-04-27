@@ -2,6 +2,29 @@
 
 
 
+## v11.0.6 (2024-04-27)
+
+### Fix
+
+* fix: linter errors in jsonprices.py ([`193b34e`](https://github.com/eyeonus/Trade-Dangerous/commit/193b34eab862f915f1d737f633e5d7ab8eb46e97))
+
+* fix: missing f-string prefix
+
+running build-cache without force printed the mustached text rather than the path it was supposed to ([`390e00a`](https://github.com/eyeonus/Trade-Dangerous/commit/390e00a8604ad8d5f7a63021bbe1a2205c49c887))
+
+### Refactor
+
+* refactor: mark scripts as deprecated
+
+jsonprices.py and submit-distances.py appear to be unused and unworkable, so mark them as deprecated in order to remove them soon. ([`b976088`](https://github.com/eyeonus/Trade-Dangerous/commit/b976088573b393855261bb6ccfaf21999bf865f5))
+
+### Unknown
+
+* revert: feat: &#39;prices&#39; option in spansh and eddblink
+
+Sorry Tromador, it just causes too many problems. ([`d344e2e`](https://github.com/eyeonus/Trade-Dangerous/commit/d344e2eba2c81955033916e6beab154a8000cfe6))
+
+
 ## v11.0.5 (2024-04-27)
 
 ### Fix
