@@ -294,19 +294,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                     
                     for station, commodities in stations:
                         fq_station_name = f'@{upper_sys}/{station.name}'
-                        if age_cutoff and (now - station.modified) > age_cutoff:
-                            if self.tdenv.detail:
-                                self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {now - station.modified}, ts: {station.modified}')
-                            progress.bump(sys_task)
-                            continue
                         
                         station_info = self.known_stations.get(station.id)
-                        if not station_info:
+                        if not station_info or station.modified > station_info[2]:
                             self.ensure_station(station)
                         elif station_info[1] != station.system_id:
                             self.print(f'        |  {station.name:50s}  |  Megaship station moved, updating system')
                             self.execute("UPDATE Station SET system_id = ? WHERE station_id = ?", station.system_id, station.id, commitable=True)
-                            self.known_stations[station.id] = (station.name, station.system_id)
+                            self.known_stations[station.id] = (station.name, station.system_id, station.modified)
                         
                         items = []
                         db_times = dict(self.execute("SELECT item_id, modified FROM StationItem WHERE station_id = ?", station.id))
@@ -315,12 +310,19 @@ class ImportPlugin(plugins.ImportPluginBase):
                             if commodity.id not in self.known_commodities:
                                 commodity = self.ensure_commodity(commodity)
                             
+                            # We're concerned with the market age, not the station age,
+                            # as they each have their own 'modified' times.
+                            if age_cutoff and (now - commodity.modified) > age_cutoff:
+                                if self.tdenv.detail:
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {now - station.modified}, ts: {station.modified}')
+                                break
+                            
                             db_modified = db_times.get(commodity.id)
                             modified = parse_ts(db_modified) if db_modified else None
                             if modified and commodity.modified <= modified:
                                 # All commodities in a station will have the same modified time,
                                 # so no need to check the rest if the fist is older.
-                                if self.tdenv.detail:
+                                if self.tdenv.detail > 2:
                                     self.print(f'        |  {fq_station_name:50s}  |  Skipping older commodity data')
                                 break
                             items.append((station.id, commodity.id, commodity.modified,
@@ -337,8 +339,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ?, ?, ?, ?
                             )""", items, commitable=True)
                             commodity_count += len(items)
-                            # Good time to save data and try to keep the transaction small
-                            self.commit()
+                        # Good time to save data and try to keep the transaction small
+                        self.commit()
                         
                         if commodity_count:
                             station_count += 1
@@ -360,12 +362,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         progress.update(f"{sys_desc}{DIM} ({total_station_count}:station:, {avg_stations:.1f}per:glowing_star:){CLOSE}")
             
             self.commit()
-            
-            # Need to make sure cached tables are updated, if changes were made
-            # if self.update_cache:
-            #     for table in [ "Item", "Station", "System" ]:
-            #         _, path = csvexport.exportTableToFile( self.tdb, self.tdenv, table )
-            
             self.tdb.close()
             
             # Need to make sure cached tables are updated
@@ -445,7 +441,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def load_known_stations(self) -> dict[int, tuple[str, int]]:
         """ Returns a dictionary of {station_id -> (station_name, system_id)} for all current stations in the database. """
         try:
-            return {cols[0]: (cols[1], cols[2]) for cols in self.cursor.execute('SELECT station_id, name, system_id FROM Station')}
+            return {cols[0]: (cols[1], cols[2], parse_ts(cols[3])) for cols in self.cursor.execute('SELECT station_id, name, system_id, modified FROM Station')}
         except Exception as e:  # pylint: disable=broad-except
             self.print("[purple]:thinking_face:Assuming no station data yet")
             self.tdenv.DEBUG0(f"load_known_stations query raised {e}")
@@ -477,7 +473,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """ Adds a record for a station, and registers the station in the known_stations dict. """
         self.execute(
             '''
-            INSERT INTO Station (
+            INSERT OR REPLACE INTO Station (
                 system_id, station_id, name,
                 ls_from_star, max_pad_size,
                 market, blackmarket, shipyard, outfitting,
@@ -513,9 +509,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             station.type,
             commitable=True,
         )
+        note = "Updated" if self.known_stations.get(station.id) else "Added"
         if self.tdenv.detail > 1:
-            self.print(f'        |  {station.name:50s}  |  Added missing station')
-        self.known_stations[station.id] = (station.name, station.system_id)
+            self.print(f'        |  {station.name:50s}  |  {note} station')
+        self.known_stations[station.id] = (station.name, station.system_id, station.modified)
     
     def ensure_commodity(self, commodity: Commodity):
         """ Adds a record for a commodity and registers the commodity in the known_commodities dict. """
