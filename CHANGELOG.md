@@ -2,6 +2,15 @@
 
 
 
+## v11.1.0 (2024-04-27)
+
+### Feature
+
+* feat: add --age to buy command
+
+fixes #136 ([`fbf6c47`](https://github.com/eyeonus/Trade-Dangerous/commit/fbf6c476bf6ea7f2d187099f56d3b7152a68d1c3))
+
+
 ## v11.0.6 (2024-04-27)
 
 ### Fix
