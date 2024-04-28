@@ -991,6 +991,8 @@ def buildCache(tdb, tdenv):
                 importName
             )
     
+    tempDB.commit()
+    
     # Parse the prices file
     if pricesPath.exists():
         processPricesFile(tdenv, tempDB, pricesPath)
@@ -1000,9 +1002,8 @@ def buildCache(tdb, tdenv):
                     pricesPath,
                     stderr=True,
         )
+        tempDB.close()
     
-    tempDB.commit()
-    tempDB.close()
     tdb.close()
     
     tdenv.DEBUG0("Swapping out db files")
