@@ -12,6 +12,7 @@ import sqlite3
 import ssl
 import time
 import typing
+import locale
 
 from urllib import request
 from pathlib import Path
@@ -159,7 +160,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
         """
-        
         def openURL(url):
             return _request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
         
@@ -178,7 +178,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             return False
         
         url_time = response.getheader("Last-Modified")
+        locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
         dumpModded = datetime.datetime.strptime(url_time, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
+        locale.setlocale(locale.LC_ALL, '')
         
         if Path.exists(localPath):
             localModded = localPath.stat().st_mtime
