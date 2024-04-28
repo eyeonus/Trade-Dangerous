@@ -2,6 +2,17 @@
 
 
 
+## v11.1.1 (2024-04-28)
+
+### Fix
+
+* fix: commit before processPrices, only close tempDB if no prices file ([`5a421bd`](https://github.com/eyeonus/Trade-Dangerous/commit/5a421bda45d43b33eeec0c33bf921dccf396e6c9))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`3e50ef0`](https://github.com/eyeonus/Trade-Dangerous/commit/3e50ef051d87dd8640b4aba0c5255d826a8198d4))
+
+
 ## v11.1.0 (2024-04-27)
 
 ### Feature
