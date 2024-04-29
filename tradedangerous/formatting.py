@@ -199,7 +199,7 @@ if __name__ == '__main__':
     print("Simple usage:")
     present()
     
-    #print()
-    #print("Adding age ColumnFormat:")
-    #rowFmt.append(after='Name', col=ColumnFormat("Age", '>', 3, pre='|', post='|', key=lambda row: row['age']))
-    #present()
+    # print()
+    # print("Adding age ColumnFormat:")
+    # rowFmt.append(after='Name', col=ColumnFormat("Age", '>', 3, pre='|', post='|', key=lambda row: row['age']))
+    # present()

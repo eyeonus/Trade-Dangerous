@@ -1,5 +1,5 @@
 Develop Trade-Dangerous
-============================
+=======================
 
 ## Setup Environment
 
@@ -9,19 +9,17 @@ git clone https://github.com/eyeonus/Trade-Dangerous
 cd Trade-Dangerous
 python3 -m venv venv
 . venv/bin/activate
-pip3 install -e .
-pip3 install -r requirements/dev.txt
+pip3 install -r requirements-dev.txt -e .
 ```
 
-__Windows__
+__Windows__ (powershell)
 ```powershell
 git clone https://github.com/eyeonus/Trade-Dangerous
 cd Trade-Dangerous
 # This requires a python version >= 3.4.2
 python3 -m venv venv
-.\venv\Scripts\activate
-pip3 install -e .
-pip3 install -r requirements/dev.txt
+.\venv\Scripts\activate.ps1
+pip3 install -r requirements-dev.txt -e .
 ```
 
 ## Generate Documentation
@@ -39,6 +37,7 @@ cd docs
 ```
 
 ### Generate apidoc
+
 ```bash
 cd docs
 sphinx-apidoc -f -s md -o  source/ ../tradedangerous ../tradedangerous/mfd ../tradedangerous/templates ../tradedangerous/commands

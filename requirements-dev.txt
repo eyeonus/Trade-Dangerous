@@ -1,0 +1,11 @@
+-r requirements.txt
+
+tox
+flake8
+pytest
+tox-gh-actions
+coverage
+
+Sphinx
+mistune<2.0.0
+m2r
