@@ -1,6 +1,4 @@
-import csv
-import json
-import time
+from __future__ import annotations
 
 from collections import deque
 from pathlib import Path
@@ -8,7 +6,18 @@ from .tradeexcept import TradeException
 from .misc import progress as pbar
 from . import fs
 
+import csv
+import json
+import time
+import typing
+
 import requests
+
+
+if typing.TYPE_CHECKING:
+    import os  # for PathLike
+    from .tradeenv import TradeEnv
+    from typing import Optional, Union
 
 
 ######################################################################
@@ -31,12 +40,16 @@ def makeUnit(value):
     return None
 
 def download(
-            tdenv, url, localFile,
-            headers=None,
-            backup=False,
-            shebang=None,
-            chunkSize=4096,
-            timeout=90,
+            tdenv:      TradeEnv,
+            url:        str,
+            localFile:  os.PathLike,
+            headers:    Optional[dict] = None,
+            backup:     bool = False,
+            shebang:    Optional[str] = None,
+            chunkSize:  int = 4096,
+            timeout:    int = 90,
+            *,
+            length:     Optional[Union[int, str]] = None,
         ):
     """
     Fetch data from a URL and save the output
@@ -57,21 +70,24 @@ def download(
     shebang:
         function to call on the first line
     """
-    
     tdenv.NOTE("Requesting {}".format(url))
+
+    if isinstance(length, str):
+        length = int(length)
+
     req = requests.get(url, headers=headers or None, stream=True, timeout=timeout)
     req.raise_for_status()
     
     encoding = req.headers.get('content-encoding', 'uncompress')
-    length = req.headers.get('content-length', None)
+    content_length = req.headers.get('content-length', length)
     transfer = req.headers.get('transfer-encoding', None)
-    if transfer != 'chunked':
+    if not length and transfer != 'chunked':
         # chunked transfer-encoding doesn't need a content-length
-        if length is None:
+        if content_length is None:
             print(req.headers)
             raise Exception("Remote server replied with invalid content-length.")
-        length = int(length)
-        if length <= 0:
+        content_length = int(content_length)
+        if content_length <= 0:
             raise TradeException(
                 "Remote server gave an empty response. Please try again later."
             )
@@ -81,8 +97,8 @@ def download(
     # the uncompressed data, which should be larger, which will cause our
     # download indicators to sit at 100% for a really long time if the file is
     # heavily compressed and large (e.g spansh 1.5gb compressed vs 9GB uncompressed)
-    if encoding == "gzip" and length:
-        length *= 4
+    if length is None and encoding == "gzip" and content_length:
+        length = content_length * 3
     
     if tdenv.detail > 1:
         if length:
