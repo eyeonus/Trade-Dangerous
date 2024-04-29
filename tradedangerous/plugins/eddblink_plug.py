@@ -10,7 +10,6 @@ import json
 import os
 import sqlite3
 import ssl
-import time
 import typing
 
 from urllib import request
