@@ -3,39 +3,51 @@ Import plugin that uses data files from
 https://elite.tromador.com/ to update the Database.
 """
 from __future__ import annotations
-import certifi
-import csv
-import datetime
-import json
-import os
-import sqlite3
-import ssl
-import typing
 
-from urllib import request
 from pathlib import Path
-
 from .. import plugins, cache, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
+
+import certifi
+import csv
+import datetime
+import os
+import requests
+import sqlite3
+import ssl
+import typing
+import locale
+import platform
 
 
 if typing.TYPE_CHECKING:
     from typing import Optional
     from .. tradeenv import TradeEnv
 
-
+# Find the first English UTF-8 locale for use in parsing timestamps.
+LOCALE = None
+if platform.system() == 'Windows':
+    for lang in locale.windows_locale.values():
+        if "en" in lang:
+            LOCALE = lang
+            break
+else:
+    # for other operating systems
+    for lang in locale.locale_alias.values():
+        if "en" in lang and "UTF-8" in lang:
+            LOCALE = lang
+            break
+if not LOCALE:
+    raise PluginException(
+        "Unable to find compatible locale.\n" +
+        "This plugin needs an English, UTF-8 compatible " +
+        "locale installed in order to function correctly.\n" + 
+        "Please refer to your OS for instructions installing one."
+    )
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 CONTEXT=ssl.create_default_context(cafile=certifi.where())
-
-
-def _request_url(url, headers=None):
-    data = None
-    if headers:
-        data = bytes(json.dumps(headers), encoding="utf-8")
-    
-    return request.urlopen(request.Request(url, data=data), context=CONTEXT, timeout=90)
 
 
 class DecodingError(PluginException):
@@ -158,10 +170,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
         """
-        
-        def openURL(url):
-            return _request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
-        
         if path not in (self.liveListingsPath, self.listingsPath):
             localPath = Path(self.tdb.dataPath, path)
         else:
@@ -170,24 +178,38 @@ class ImportPlugin(plugins.ImportPluginBase):
         url  = BASE_URL + str(path)
         
         self.tdenv.NOTE("Checking for update to '{}'.", path)
+        # Use an HTTP Request header to obtain the Last-Modified and Content-Length headers.
+        # Also, tell the server to give us the un-compressed length of the file by saying
+        # that >this< request only wants text.
+        headers = {"User-Agent": "Trade-Dangerous", "Accept-Encoding": "text"}
         try:
-            response = openURL(url)
+            response = requests.head(url, headers=headers, timeout=70)
         except Exception as e:  # pylint: disable=broad-exception-caught
-            self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", BASE_URL + str(path), str(e))
+            self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
             return False
         
-        url_time = response.getheader("Last-Modified")
-        dumpModded = datetime.datetime.strptime(url_time, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
+        locale.setlocale(locale.LC_ALL, LOCALE)
+        last_modified = response.headers.get("last-modified")
+        dump_mod_time = datetime.datetime.strptime(last_modified, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
+        locale.setlocale(locale.LC_ALL, '')
         
         if Path.exists(localPath):
-            localModded = localPath.stat().st_mtime
-            if localModded >= dumpModded:
+            local_mod_time = localPath.stat().st_mtime
+            if local_mod_time >= dump_mod_time:
                 self.tdenv.DEBUG0("'{}': Dump is not more recent than Local.", path)
                 return False
         
+        # The server doesn't know the gzip'd length, and we won't see the gzip'd data,
+        # so we want the actual text-only length. Capture it here so we can tell the
+        # transfer mechanism how big the file is going to be.
+        length = response.headers.get("content-length")
+        
         self.tdenv.NOTE("Downloading file '{}'.", path)
-        transfers.download(self.tdenv, url, localPath)
-        os.utime(localPath, (dumpModded, dumpModded))
+        transfers.download(self.tdenv, url, localPath, chunkSize=16384, length=length)
+        
+        # Change the timestamps on the file so they match the website
+        os.utime(localPath, (dump_mod_time, dump_mod_time))
+        
         return True
     
     def purgeSystems(self):
@@ -330,6 +352,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
     def run(self):
+        self.tdenv.DEBUG2(f'Using "{LOCALE}" locale for parsing modified timestamps. Please include this information in any error reports.')
+        
+        self.tdenv.ignoreUnknown = True
+        
         # Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
             Path(str(self.dataPath)).mkdir()
@@ -485,8 +511,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             self.tdb.close()
             self.tdb.reloadCache()
-        
-        self.tdenv.ignoreUnknown = True
         
         if self.getOption("purge"):
             self.purgeSystems()

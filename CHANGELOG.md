@@ -2,11 +2,44 @@
 
 
 
+## v11.1.3 (2024-04-29)
+
+### Fix
+
+* fix: eddblink retrieval (progress, bandwidth) (#144)
+
+- reduce the amount of data transferred to determine if there is new eddblink data, previously we were downloading each file twice roughly,
+- capture the uncompressed file-length during the probe, so we can show the user an accurate progres bar
+
+Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`af5b993`](https://github.com/eyeonus/Trade-Dangerous/commit/af5b9938b6b15334f6539a94b32d7db216a050df))
+
+* fix: Assume stations with unknown type are Fleet Carriers ([`aa9cad1`](https://github.com/eyeonus/Trade-Dangerous/commit/aa9cad12b0b77e0cf5291f8eab4ed9e4658f6b95))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`80a4091`](https://github.com/eyeonus/Trade-Dangerous/commit/80a4091fa8d5c397b4af4ea83bac91fe153b9f45))
+
+
+## v11.1.2 (2024-04-29)
+
+### Fix
+
+* fix: no &#39;.UTF-8&#39; on windows ([`aee07ef`](https://github.com/eyeonus/Trade-Dangerous/commit/aee07efd63e68cb5ce4e39edc4c55c73b0ad9676))
+
+### Unknown
+
+* Merge branch &#39;locale_test&#39; into release/v1 ([`8fac2ba`](https://github.com/eyeonus/Trade-Dangerous/commit/8fac2bafa23f0a1a5b1715d47b2a8f775f1b0770))
+
+
 ## v11.1.1 (2024-04-28)
 
 ### Fix
 
 * fix: commit before processPrices, only close tempDB if no prices file ([`5a421bd`](https://github.com/eyeonus/Trade-Dangerous/commit/5a421bda45d43b33eeec0c33bf921dccf396e6c9))
+
+* fix: Don&#39;t assume machine has &#39;en_US.UTF-8&#39; installed. ([`b3a1e29`](https://github.com/eyeonus/Trade-Dangerous/commit/b3a1e291b6bf7f5648a81b375fc7cdd80ede184c))
+
+* fix: locale-dependant strptime() ([`8cd5ede`](https://github.com/eyeonus/Trade-Dangerous/commit/8cd5edef43621ace16f9e2cc850952c9a9ab0a4f))
 
 ### Unknown
 
