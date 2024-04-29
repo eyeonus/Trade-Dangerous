@@ -17,13 +17,34 @@ import requests
 import sqlite3
 import ssl
 import typing
+import locale
+import platform
 
 
 if typing.TYPE_CHECKING:
     from typing import Optional
     from .. tradeenv import TradeEnv
 
-
+# Find the first English UTF-8 locale for use in parsing timestamps.
+LOCALE = None
+if platform.system() == 'Windows':
+    for lang in locale.windows_locale.values():
+        if "en" in lang:
+            LOCALE = lang
+            break
+else:
+    # for other operating systems
+    for lang in locale.locale_alias.values():
+        if "en" in lang and "UTF-8" in lang:
+            LOCALE = lang
+            break
+if not LOCALE:
+    raise PluginException(
+        "Unable to find compatible locale.\n" +
+        "This plugin needs an English, UTF-8 compatible " +
+        "locale installed in order to function correctly.\n" + 
+        "Please refer to your OS for instructions installing one."
+    )
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 CONTEXT=ssl.create_default_context(cafile=certifi.where())
@@ -167,8 +188,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
             return False
         
+        locale.setlocale(locale.LC_ALL, LOCALE)
         last_modified = response.headers.get("last-modified")
         dump_mod_time = datetime.datetime.strptime(last_modified, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
+        locale.setlocale(locale.LC_ALL, '')
         
         if Path.exists(localPath):
             local_mod_time = localPath.stat().st_mtime
@@ -329,6 +352,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
     def run(self):
+        self.tdenv.DEBUG2(f'Using "{LOCALE}" locale for parsing modified timestamps. Please include this information in any error reports.')
+        
+        self.tdenv.ignoreUnknown = True
+        
         # Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
             Path(str(self.dataPath)).mkdir()
@@ -484,8 +511,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             self.tdb.close()
             self.tdb.reloadCache()
-        
-        self.tdenv.ignoreUnknown = True
         
         if self.getOption("purge"):
             self.purgeSystems()
