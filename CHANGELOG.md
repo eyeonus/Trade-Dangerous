@@ -2,6 +2,24 @@
 
 
 
+## v11.1.3 (2024-04-29)
+
+### Fix
+
+* fix: eddblink retrieval (progress, bandwidth) (#144)
+
+- reduce the amount of data transferred to determine if there is new eddblink data, previously we were downloading each file twice roughly,
+- capture the uncompressed file-length during the probe, so we can show the user an accurate progres bar
+
+Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`af5b993`](https://github.com/eyeonus/Trade-Dangerous/commit/af5b9938b6b15334f6539a94b32d7db216a050df))
+
+* fix: Assume stations with unknown type are Fleet Carriers ([`aa9cad1`](https://github.com/eyeonus/Trade-Dangerous/commit/aa9cad12b0b77e0cf5291f8eab4ed9e4658f6b95))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`80a4091`](https://github.com/eyeonus/Trade-Dangerous/commit/80a4091fa8d5c397b4af4ea83bac91fe153b9f45))
+
+
 ## v11.1.2 (2024-04-29)
 
 ### Fix
