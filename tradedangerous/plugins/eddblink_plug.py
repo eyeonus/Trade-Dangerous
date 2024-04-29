@@ -31,13 +31,15 @@ LOCALE = None
 import platform
 if platform.system() == 'Windows':
     for lang in locale.windows_locale.values():
-        if "en" in lang and "UTF-8" in lang and not LOCALE:
+        if "en" in lang:
             LOCALE = lang
+            break
 else:
     # for other operating systems
     for lang in locale.locale_alias.values():
-        if "en" in lang and "UTF-8" in lang and not LOCALE:
+        if "en" in lang and "UTF-8" in lang:
             LOCALE = lang
+            break
 if not LOCALE:
     raise PluginException(
         "Unable to find compatible locale.\n" +
