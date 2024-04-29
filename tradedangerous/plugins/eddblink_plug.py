@@ -12,6 +12,7 @@ import sqlite3
 import ssl
 import time
 import typing
+import locale
 
 from urllib import request
 from pathlib import Path
@@ -25,7 +26,27 @@ if typing.TYPE_CHECKING:
     from typing import Optional
     from .. tradeenv import TradeEnv
 
-
+# Find the first English UTF-8 locale for use in parsing timestamps.
+LOCALE = None
+import platform
+if platform.system() == 'Windows':
+    for lang in locale.windows_locale.values():
+        if "en" in lang:
+            LOCALE = lang
+            break
+else:
+    # for other operating systems
+    for lang in locale.locale_alias.values():
+        if "en" in lang and "UTF-8" in lang:
+            LOCALE = lang
+            break
+if not LOCALE:
+    raise PluginException(
+        "Unable to find compatible locale.\n" +
+        "This plugin needs an English, UTF-8 compatible " +
+        "locale installed in order to function correctly.\n" + 
+        "Please refer to your OS for instructions installing one."
+    )
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 CONTEXT=ssl.create_default_context(cafile=certifi.where())
@@ -159,7 +180,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
         """
-        
         def openURL(url):
             return _request_url(url, headers = {'User-Agent': 'Trade-Dangerous'})
         
@@ -178,7 +198,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             return False
         
         url_time = response.getheader("Last-Modified")
+        locale.setlocale(locale.LC_ALL, LOCALE)
         dumpModded = datetime.datetime.strptime(url_time, "%a, %d %b %Y %H:%M:%S %Z").timestamp()
+        locale.setlocale(locale.LC_ALL, '')
         
         if Path.exists(localPath):
             localModded = localPath.stat().st_mtime
@@ -331,6 +353,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
     def run(self):
+        self.tdenv.DEBUG2(f'Using "{LOCALE}" locale for parsing modified timestamps. Please include this information in any error reports.')
+        
         # Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
             Path(str(self.dataPath)).mkdir()
