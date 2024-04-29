@@ -181,7 +181,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Use an HTTP Request header to obtain the Last-Modified and Content-Length headers.
         # Also, tell the server to give us the un-compressed length of the file by saying
         # that >this< request only wants text.
-        headers = {"User-Agent": "Trade-Dangerous", "Accept-Encoding": "text"}
+        headers = {"User-Agent": "Trade-Dangerous", "Accept-Encoding": "identity"}
         try:
             response = requests.head(url, headers=headers, timeout=70)
         except Exception as e:  # pylint: disable=broad-exception-caught
