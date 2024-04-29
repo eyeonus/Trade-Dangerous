@@ -35,10 +35,10 @@
 # to empower other programmers to do cool stuff.
 from tradedangerous import cli
 
+import sys
+
 def main(argv = None):
-  import sys
-  cli.main(sys.argv)
+    cli.main(sys.argv)
 
 if __name__ == "__main__":
-  import sys
-  cli.main(sys.argv)
+    cli.main(sys.argv)
