@@ -11,24 +11,18 @@
 - reduce the amount of data transferred to determine if there is new eddblink data, previously we were downloading each file twice roughly,
 - capture the uncompressed file-length during the probe, so we can show the user an accurate progres bar
 
-Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`af5b993`](https://github.com/eyeonus/Trade-Dangerous/commit/af5b9938b6b15334f6539a94b32d7db216a050df))
+-  Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`af5b993`](https://github.com/eyeonus/Trade-Dangerous/commit/af5b9938b6b15334f6539a94b32d7db216a050df))
 
 * fix: Assume stations with unknown type are Fleet Carriers ([`aa9cad1`](https://github.com/eyeonus/Trade-Dangerous/commit/aa9cad12b0b77e0cf5291f8eab4ed9e4658f6b95))
 
-### Unknown
 
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`80a4091`](https://github.com/eyeonus/Trade-Dangerous/commit/80a4091fa8d5c397b4af4ea83bac91fe153b9f45))
+# v11.1.2 (2024-04-29)
 
+## Fix
 
-## v11.1.2 (2024-04-29)
+* fix: locale-dependant strptime() ([`aee07ef`](https://github.com/eyeonus/Trade-Dangerous/commit/8fac2bafa23f0a1a5b1715d47b2a8f775f1b0770))
 
-### Fix
-
-* fix: no &#39;.UTF-8&#39; on windows ([`aee07ef`](https://github.com/eyeonus/Trade-Dangerous/commit/aee07efd63e68cb5ce4e39edc4c55c73b0ad9676))
-
-### Unknown
-
-* Merge branch &#39;locale_test&#39; into release/v1 ([`8fac2ba`](https://github.com/eyeonus/Trade-Dangerous/commit/8fac2bafa23f0a1a5b1715d47b2a8f775f1b0770))
+Some people speak a language other than English, and have their computer set to be in that language. This messes up the timestamp parser when trying to check for new downloads in eddblink, because the timestamp is in  English.
 
 
 ## v11.1.1 (2024-04-28)
@@ -40,10 +34,6 @@ Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`af5b993`](https://gi
 * fix: Don&#39;t assume machine has &#39;en_US.UTF-8&#39; installed. ([`b3a1e29`](https://github.com/eyeonus/Trade-Dangerous/commit/b3a1e291b6bf7f5648a81b375fc7cdd80ede184c))
 
 * fix: locale-dependant strptime() ([`8cd5ede`](https://github.com/eyeonus/Trade-Dangerous/commit/8cd5edef43621ace16f9e2cc850952c9a9ab0a4f))
-
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`3e50ef0`](https://github.com/eyeonus/Trade-Dangerous/commit/3e50ef051d87dd8640b4aba0c5255d826a8198d4))
 
 
 ## v11.1.0 (2024-04-27)
@@ -71,9 +61,9 @@ running build-cache without force printed the mustached text rather than the pat
 
 jsonprices.py and submit-distances.py appear to be unused and unworkable, so mark them as deprecated in order to remove them soon. ([`b976088`](https://github.com/eyeonus/Trade-Dangerous/commit/b976088573b393855261bb6ccfaf21999bf865f5))
 
-### Unknown
+### Revert
 
-* revert: feat: &#39;prices&#39; option in spansh and eddblink
+* revert: 'feat: &#39;prices&#39; option in eddblink'
 
 Sorry Tromador, it just causes too many problems. ([`d344e2e`](https://github.com/eyeonus/Trade-Dangerous/commit/d344e2eba2c81955033916e6beab154a8000cfe6))
 
@@ -167,14 +157,6 @@ revert: use the `newItemPriceRe` that works ([`3302fa5`](https://github.com/eyeo
 
 
 ## v11.0.0 (2024-04-24)
-
-### Breaking
-
-* feat: multiple improvements from ksfone
-
-BREAKING CHANGE:
-semantic release thinks we&#39;re on 10.16.7 rather than 10.17.0, and these
-are a lot of improvements, so bump to 11.0.0 ([`31bcb4f`](https://github.com/eyeonus/Trade-Dangerous/commit/31bcb4f78e7e3d0daafb7eef2d69c84fd6762f87))
 
 ### Feature
 
@@ -313,9 +295,8 @@ When I first created the &#39;str&#39; methods, it was because I wanted a displa
 ---------
 
 Co-authored-by: eyeonus &lt;eyeonus@panther&gt;
-Co-authored-by: Jonathan Jones &lt;eyeonus@gmail.com&gt; ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
 
-* feat: &#39;prices&#39; option in spansh and eddblink
+* feat: &#39;prices&#39; option in eddblink
 
 spansh and eddblink plugins no longer regenerate the
 `TradeDangerous.prices` cache file by default
@@ -329,21 +310,6 @@ perform the backup
 
 If any other options are specified, eg. `-O listings,prices`, eddblink
 will perform the backup after the import process has completed. ([`257428a`](https://github.com/eyeonus/Trade-Dangerous/commit/257428aded8962b2a85920188e14525aa0d72863))
-
-* feat: &#39;prices&#39; option in spansh and eddblink
-
-spansh and eddblink plugins no longer regenerate the
-`TradeDangerous.prices` cache file by default
-
-The cache file is used to rebuild the database in the event it is lost,
-corrupted or otherwise damaged.
-
-Users can manually perform a backup by running eddblink with the
-&#39;prices&#39; option. If not other options are specified, eddblink will only
-perform the backup
-
-If any other options are specified, eg. `-O listings,prices`, eddblink
-will perform the backup after the import process has completed. ([`2e1fe85`](https://github.com/eyeonus/Trade-Dangerous/commit/2e1fe85449144c684810d815f835e73124d8ed77))
 
 ### Fix
 
@@ -450,10 +416,6 @@ upgrading to this version.
 correct eddblink plugin to download the source for both to the correct
 location. ([`5eae43d`](https://github.com/eyeonus/Trade-Dangerous/commit/5eae43da8154b3e9d6a5aeb6e726c750b8418a1e))
 
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`f91ff79`](https://github.com/eyeonus/Trade-Dangerous/commit/f91ff798293789a82650f38382c1d055fbbfc299))
-
 
 ## v10.16.11 (2024-04-22)
 
@@ -537,10 +499,6 @@ Also don&#39;t increment number of stations if commodities were skipped.
 
 Also don&#39;t increment number of systems if all stations in it were
 skipped. ([`9560dc7`](https://github.com/eyeonus/Trade-Dangerous/commit/9560dc7647c363652cfa7f390cf41f914623512a))
-
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`4b3cd6b`](https://github.com/eyeonus/Trade-Dangerous/commit/4b3cd6b2608f13b8d79c915cfa0571387155360f))
 
 
 ## v10.16.5 (2024-04-21)
@@ -639,10 +597,6 @@ DB.
 
 refactor: Use a better method for removing spaces from a prices file. ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
 
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`eddbbe0`](https://github.com/eyeonus/Trade-Dangerous/commit/eddbbe02f630877c25297a804cc37e543838d5ac))
-
 
 ## v10.15.1 (2024-04-19)
 
@@ -675,10 +629,6 @@ If there is a connection error whilst streaming from the url, it results
 in a crash. Downloading the file first and then streaming from the local
 file instead results in a much more stable import process. ([`f6e1a9a`](https://github.com/eyeonus/Trade-Dangerous/commit/f6e1a9aa59373cdbc200b008dddbd7f4bce07fb9))
 
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`40f8f7c`](https://github.com/eyeonus/Trade-Dangerous/commit/40f8f7c027441ff8eb6a450f915473bb9ca39201))
-
 
 ## v10.14.3 (2024-04-15)
 
@@ -694,10 +644,6 @@ user to import it via the import dialog box.
 Also added the `listener` option to the spansh plugin to forego the
 import when run from TD-listener. ([`2c5080b`](https://github.com/eyeonus/Trade-Dangerous/commit/2c5080b76d5e5c497a56fbb0de60f3e4ae204f93))
 
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`f8db4af`](https://github.com/eyeonus/Trade-Dangerous/commit/f8db4af74af8187225b057f23f178f47b67d8b45))
-
 
 ## v10.14.2 (2024-03-23)
 
@@ -705,69 +651,12 @@ import when run from TD-listener. ([`2c5080b`](https://github.com/eyeonus/Trade-
 
 * fix: Update pyproject.toml ([`c25e778`](https://github.com/eyeonus/Trade-Dangerous/commit/c25e778df27540420d40909831f3baf4e6012794))
 
-* fix: Update python-app.yml ([`0320312`](https://github.com/eyeonus/Trade-Dangerous/commit/0320312d1d1ae1c9023e690e7603e41d72b85997))
-
-* fix: Update python-app.yml ([`d523382`](https://github.com/eyeonus/Trade-Dangerous/commit/d5233828b405148acd8f3a28762e93c0896d0231))
-
-* fix: Update python-app.yml ([`15fa4ca`](https://github.com/eyeonus/Trade-Dangerous/commit/15fa4ca952754ce148e35ae02b69396b5b2608d6))
-
-* fix: Update python-app.yml ([`7e118a8`](https://github.com/eyeonus/Trade-Dangerous/commit/7e118a865fa2dd23ec7a6b1e8b79ce4c5e2d4aee))
-
-* fix: Update publish.txt ([`1dc4031`](https://github.com/eyeonus/Trade-Dangerous/commit/1dc4031a4c9d3b31bdc06cb51f188387b1d4ea8f))
-
-* fix: Update python-app.yml ([`39b2fbc`](https://github.com/eyeonus/Trade-Dangerous/commit/39b2fbcf242cb4d8a1d9d476ba9c8fbd2ef481c3))
-
-* fix: Update python-app.yml ([`890bba8`](https://github.com/eyeonus/Trade-Dangerous/commit/890bba87796cb636554b21a81f327f3ce118e527))
-
-* fix: Update python-app.yml ([`229db1f`](https://github.com/eyeonus/Trade-Dangerous/commit/229db1fec29dbc9196f0fb341596d67dd9977a9f))
-
-* fix: Update python-app.yml ([`b79a47b`](https://github.com/eyeonus/Trade-Dangerous/commit/b79a47b535d62863be7d2157aad1e8ee54b5fd73))
-
-* fix: Update python-app.yml ([`41962ef`](https://github.com/eyeonus/Trade-Dangerous/commit/41962efb685822f5c3dcf2e9a336dbcdc024e315))
-
-* fix: Update python-app.yml ([`c7141ca`](https://github.com/eyeonus/Trade-Dangerous/commit/c7141cab3cbc92fe995a27582f4e5dfd7c690c0f))
-
-* fix: Update python-app.yml ([`432631e`](https://github.com/eyeonus/Trade-Dangerous/commit/432631e1c1ec6acce4bdc2754ee0bcf869bdb1c3))
-
-* fix: Update python-app.yml ([`96c29bd`](https://github.com/eyeonus/Trade-Dangerous/commit/96c29bdbb884036ce96e0e67abc8d490f3ac83b2))
-
-* fix: Update python-app.yml ([`7a4ce3b`](https://github.com/eyeonus/Trade-Dangerous/commit/7a4ce3b19ada8dc1c2f76048d9d54428063e3f95))
-
-* fix: Update python-app.yml ([`46288d9`](https://github.com/eyeonus/Trade-Dangerous/commit/46288d9c535234259ee5f1501343972ad1d6678e))
-
-* fix: Update python-app.yml ([`d6b956c`](https://github.com/eyeonus/Trade-Dangerous/commit/d6b956c2b56ac7fc128c6725d9194a47ecb322dd))
-
 * fix: Create pyproject.toml ([`bd54be8`](https://github.com/eyeonus/Trade-Dangerous/commit/bd54be86cbe0a967f8fee06a0e9b16b4d77f4ee8))
 
-* fix: Update python-app.yml ([`85491b9`](https://github.com/eyeonus/Trade-Dangerous/commit/85491b923db25c8ca0f2914252b022c1efed9568))
-
-* fix: Update python-app.yml ([`45a420a`](https://github.com/eyeonus/Trade-Dangerous/commit/45a420ad817bc1566bb86146bef53f9b68771db7))
-
-* fix: Update python-app.yml ([`70a80a1`](https://github.com/eyeonus/Trade-Dangerous/commit/70a80a17b56de3cb989225c8a256525599d83d01))
-
-* fix: Update python-app.yml ([`69d3806`](https://github.com/eyeonus/Trade-Dangerous/commit/69d3806a6f0617316e723a136c454edbf8ee0dc4))
-
-* fix: Update python-app.yml ([`482462d`](https://github.com/eyeonus/Trade-Dangerous/commit/482462d55ccfb673a8ea765684d9fd693a1631d0))
-
-* fix: Update python-app.yml ([`563d447`](https://github.com/eyeonus/Trade-Dangerous/commit/563d447252c53e738f62afacfe65b1d7dea4b816))
-
-* fix: Update python-app.yml ([`94f5e3d`](https://github.com/eyeonus/Trade-Dangerous/commit/94f5e3d14fd365482a0a48eed43a1dbac434734e))
-
-* fix: bump again ([`3cc5254`](https://github.com/eyeonus/Trade-Dangerous/commit/3cc5254a2bd5ed0ea354c394df0edeef9929af91))
-
-* fix: Update python-app.yml ([`5d098fb`](https://github.com/eyeonus/Trade-Dangerous/commit/5d098fbcd0a5de9f0162fe6d9f4a3b60dc27217c))
-
-* fix: bump version for pypi publication ([`e05853f`](https://github.com/eyeonus/Trade-Dangerous/commit/e05853ff0d12f5117bb4e94813cba4c779c285d9))
 
 ### Refactor
 
 * refactor: Update publish.txt ([`d8ae0b7`](https://github.com/eyeonus/Trade-Dangerous/commit/d8ae0b76409d77bec68069080bba90bcc798e337))
-
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`8480ee6`](https://github.com/eyeonus/Trade-Dangerous/commit/8480ee6d75183405e7575d15d811a3c21d9ea901))
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`d4eb96a`](https://github.com/eyeonus/Trade-Dangerous/commit/d4eb96a31353222b3ee1d86c98b47001db51959c))
 
 
 ## v10.14.1 (2024-03-18)
@@ -792,10 +681,6 @@ move that transform to the python side, which has full unicode support
 
 * feat: plugin to ingest pricing data from https://downloads.spansh.co.uk/galaxy_stations.json ([`7dd32b5`](https://github.com/eyeonus/Trade-Dangerous/commit/7dd32b514d6aa88368e2648565410998005a02f1))
 
-### Unknown
-
-* test ([`88c1fd7`](https://github.com/eyeonus/Trade-Dangerous/commit/88c1fd7d914dd779b4a267843f7b8f831341294d))
-
 
 ## v10.13.10 (2023-02-13)
 
@@ -808,14 +693,6 @@ move that transform to the python side, which has full unicode support
 * refactor: use raw strings for regex
 
 Fixes #107 ([`74a4c31`](https://github.com/eyeonus/Trade-Dangerous/commit/74a4c3190eb300981d5c578fe3105c7edaf8f122))
-
-### Unknown
-
-* 10.13.10
-
-python-semantic-release automatic version update. ([`6f266ac`](https://github.com/eyeonus/Trade-Dangerous/commit/6f266ac98b7370f7d7e4322ad65fe55ea2c7fc50))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous ([`db62e14`](https://github.com/eyeonus/Trade-Dangerous/commit/db62e148faa8885db9615fa5c66fac4ac3c049af))
 
 
 ## v10.13.9 (2022-12-27)
@@ -839,12 +716,6 @@ python-semantic-release automatic version update. ([`6f266ac`](https://github.co
 * style: remove debug print infor
 
 * tests: add update_gui to bootstrap test ([`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
-
-### Unknown
-
-* 10.13.9
-
-python-semantic-release automatic version update. ([`aee966c`](https://github.com/eyeonus/Trade-Dangerous/commit/aee966cde41033246c15bf9ac340abacd517c7d8))
 
 
 ## v10.13.8 (2022-12-27)
@@ -902,13 +773,7 @@ Hopefully @kmpm will know what is going on, if not GitHub support will hopefully
 
 * fix: Forgot to remove some debug code. ([`8b1b889`](https://github.com/eyeonus/Trade-Dangerous/commit/8b1b889823365b337ac9657cfbf034c0373ee76c))
 
-### Unknown
-
-* 10.13.7
-
-python-semantic-release automatic version update. ([`df8a28f`](https://github.com/eyeonus/Trade-Dangerous/commit/df8a28fea05f29c747997892c6f11893ab9495f2))
-
-* Fix: nav errors when no route found
+* fix: nav errors when no route found
 
 Still errors, but now it&#39;s the TD-specific error that&#39;s intended to be
 thrown rather than the Python error. ([`5f8e95a`](https://github.com/eyeonus/Trade-Dangerous/commit/5f8e95abd5b49a53bb2015dadf35dd6cc372655d))
@@ -920,12 +785,6 @@ thrown rather than the Python error. ([`5f8e95a`](https://github.com/eyeonus/Tra
 
 * fix: strip microseconds off timestamps which have them ([`17b603d`](https://github.com/eyeonus/Trade-Dangerous/commit/17b603d52517d1bfdf9956993bec656a3e8b6673))
 
-### Unknown
-
-* 10.13.6
-
-python-semantic-release automatic version update. ([`339b1ce`](https://github.com/eyeonus/Trade-Dangerous/commit/339b1cebe04bc9cc17baba5fa98821b0a84c9995))
-
 
 ## v10.13.5 (2022-06-01)
 
@@ -933,26 +792,14 @@ python-semantic-release automatic version update. ([`339b1ce`](https://github.co
 
 * fix: set default argv to None ([`4b44458`](https://github.com/eyeonus/Trade-Dangerous/commit/4b444581844a356c7cf65c1d4301bac83cf93436))
 
-### Unknown
-
-* 10.13.5
-
-python-semantic-release automatic version update. ([`4e28941`](https://github.com/eyeonus/Trade-Dangerous/commit/4e289414b0cfef371744e1a8ff0eab06d152e5f6))
-
 
 ## v10.13.4 (2022-06-01)
 
-### Fix
+### Chore
 
-* fix: Pypi authentication error
+* chore: Pypi authentication error
 
 Added PYPI_TOKEN to Actions workflow ([`87e2c82`](https://github.com/eyeonus/Trade-Dangerous/commit/87e2c82a3deee9f0679f76723f420c24b79ff8b9))
-
-### Unknown
-
-* 10.13.4
-
-python-semantic-release automatic version update. ([`5e55346`](https://github.com/eyeonus/Trade-Dangerous/commit/5e553463468f16057299635553c12fed0ca248b2))
 
 
 ## v10.13.3 (2022-06-01)
@@ -982,15 +829,7 @@ As per the semantic-release doc, publish will run version, so doing it ourselves
 
 * refactor: remove Travis ([`0b28406`](https://github.com/eyeonus/Trade-Dangerous/commit/0b2840633e8e30e95a1d0f0efc4aa8481cbcce6c))
 
-### Unknown
-
-* 10.13.3
-
-python-semantic-release automatic version update. ([`f9ef6cd`](https://github.com/eyeonus/Trade-Dangerous/commit/f9ef6cdb8f657721c6644f48a74aaab5dcedbf50))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous ([`316deb8`](https://github.com/eyeonus/Trade-Dangerous/commit/316deb8e43334bdf18a49dd5e4514b08a35a6115))
-
-* refactor - split gui into own console command &#39;tradegui&#39;
+* refactor: split gui into own console command &#39;tradegui&#39;
 
 Can no longer launch TD GUI by passing the &#39;gui&#39; argument to trade as in
 &#39;&gt;python trade.py gui&#39;
@@ -998,7 +837,9 @@ Can no longer launch TD GUI by passing the &#39;gui&#39; argument to trade as in
 Good news is this means users not using the GUI won&#39;t get any tk related
 errors when running the CLI.
 
-docs - updated gui.py with development roadmap ([`5e4d272`](https://github.com/eyeonus/Trade-Dangerous/commit/5e4d2725d3086a9868733397a4dbdf778a29f9bc))
+### Documentation
+
+docs: updated gui.py with development roadmap ([`5e4d272`](https://github.com/eyeonus/Trade-Dangerous/commit/5e4d2725d3086a9868733397a4dbdf778a29f9bc))
 
 
 ## v10.13.2 (2022-02-07)
@@ -1023,36 +864,12 @@ fix potential fail when using TD_DATA but not TD_CSV ([`154db36`](https://github
 
 * test: fix locking files during tests ([`deb7317`](https://github.com/eyeonus/Trade-Dangerous/commit/deb7317c437184284976dbef2dadf481d4da7e44))
 
-### Unknown
-
-* 10.13.2
-
-python-semantic-release automatic version update. ([`9016b3c`](https://github.com/eyeonus/Trade-Dangerous/commit/9016b3c7e2589a44f75bb6f6fb542bb2ccf0b95c))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous ([`01d5375`](https://github.com/eyeonus/Trade-Dangerous/commit/01d537546d61f9ea27700ecdd2507a5b2479ded3))
-
-* minor fixes
-
-fixes #98
-
-fix potential fail when using TD_DATA but not TD_CSV ([`f7d0090`](https://github.com/eyeonus/Trade-Dangerous/commit/f7d009081c971c314de461bc972d7ea1fe316240))
-
 
 ## v10.13.1 (2022-01-31)
 
 ### Fix
 
 * fix: make semantic tell me what&#39;s broke ([`0c328ca`](https://github.com/eyeonus/Trade-Dangerous/commit/0c328ca49556958438621f5ff84aba7cde39dbdd))
-
-### Unknown
-
-* 10.13.1
-
-python-semantic-release automatic version update. ([`ffa51ae`](https://github.com/eyeonus/Trade-Dangerous/commit/ffa51ae183a45c8f90cf716b30759324dad4f5a4))
-
-* 10.13.1
-
-python-semantic-release automatic version update. ([`2df3f0f`](https://github.com/eyeonus/Trade-Dangerous/commit/2df3f0f68ad643434f2f9911b6f0c5068e8b65fb))
 
 
 ## v10.13.0 (2022-01-31)
@@ -1069,12 +886,6 @@ Allows saving the the TD cache in a location other than TD_DATA ([`9537082`](htt
 
 Possibly revert later once I figure out how this works ([`9e23361`](https://github.com/eyeonus/Trade-Dangerous/commit/9e23361b43d5068c0ef2c5ce13489a74275d653a))
 
-### Unknown
-
-* 10.13.0
-
-python-semantic-release automatic version update. ([`3400f5d`](https://github.com/eyeonus/Trade-Dangerous/commit/3400f5dfb72b8fcdf2e84f81fe8120a341d1e5ea))
-
 
 ## v10.12.0 (2021-11-20)
 
@@ -1089,12 +900,6 @@ Here&#39;s hoping TravisCL doesn&#39;t break. Again. ([`ff371eb`](https://github
 * fix: buy command var &#34;maxLS&#34; not named consistently (&#34;maxLS&#34;, &#34;maxLs&#34;)
 
 All instances have been changed to &#34;mls&#34; to match other commands. ([`1f4989a`](https://github.com/eyeonus/Trade-Dangerous/commit/1f4989a8280702110b68f8b52c08b60a27c41e33))
-
-### Unknown
-
-* 10.12.0
-
-python-semantic-release automatic version update. ([`98a8710`](https://github.com/eyeonus/Trade-Dangerous/commit/98a8710ab1241cd9fb18a765b70598a3f968f50c))
 
 
 ## v10.11.3 (2021-10-04)
@@ -1111,14 +916,6 @@ python-semantic-release automatic version update. ([`98a8710`](https://github.co
 
 * refactor: Add TODO, hopefully make Travis publish again. ([`2946b9c`](https://github.com/eyeonus/Trade-Dangerous/commit/2946b9c559a84a604d46aac8c8395c78af0b5d42))
 
-### Unknown
-
-* 10.11.3
-
-python-semantic-release automatic version update. ([`146cc1b`](https://github.com/eyeonus/Trade-Dangerous/commit/146cc1bc63e1c134dd3797f9a9e18e4a7e7f150e))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous ([`88b6ac9`](https://github.com/eyeonus/Trade-Dangerous/commit/88b6ac943beef88f8573332f66b78d6fc2369269))
-
 
 ## v10.11.2 (2021-10-03)
 
@@ -1134,12 +931,6 @@ Update copyright dates. ([`d38a096`](https://github.com/eyeonus/Trade-Dangerous/
 
 Fixes #94. ([`8cd12c5`](https://github.com/eyeonus/Trade-Dangerous/commit/8cd12c5875566728c0ff79299004b6f19406ebfe))
 
-### Unknown
-
-* 10.11.2
-
-python-semantic-release automatic version update. ([`52fe5a3`](https://github.com/eyeonus/Trade-Dangerous/commit/52fe5a324d850566dfb6b6d68215a8060f6e7cfc))
-
 
 ## v10.11.1 (2021-06-28)
 
@@ -1150,12 +941,6 @@ python-semantic-release automatic version update. ([`52fe5a3`](https://github.co
 Evaluate all filter conditions instead of looping over all stations separately for condition provided.
 This leads to a quite substantial speedup if multiple filter conditions are provided. ([`f457db5`](https://github.com/eyeonus/Trade-Dangerous/commit/f457db5c9a6b46ce3610d993ff629d2a579e7ce8))
 
-### Unknown
-
-* 10.11.1
-
-python-semantic-release automatic version update. ([`62a097b`](https://github.com/eyeonus/Trade-Dangerous/commit/62a097b844c848e5d3b2f4c7ddbe210c0212406a))
-
 
 ## v10.11.0 (2021-06-22)
 
@@ -1165,21 +950,17 @@ python-semantic-release automatic version update. ([`62a097b`](https://github.co
 
 Fixes #91 ([`396d9f0`](https://github.com/eyeonus/Trade-Dangerous/commit/396d9f0876bcb2c1c4cf7ecb7e164c5139df5c8c))
 
+### Fix
+
+* fix: mfd module not found.
+
+Fixes #92 ([`e5b01b7`](https://github.com/eyeonus/Trade-Dangerous/commit/e5b01b728bcce6eb784a2c8a720d1a1311ccac9d))
+
 ### Refactor
 
 * refactor: missing comma ([`87d53ff`](https://github.com/eyeonus/Trade-Dangerous/commit/87d53ffbec3c32ba6613b406d55e360cc32bdb47))
 
 * refactor: broke a test case ([`f7a4a32`](https://github.com/eyeonus/Trade-Dangerous/commit/f7a4a32ded2c75e06d9eefaa01f121a523db0a61))
-
-### Unknown
-
-* 10.11.0
-
-python-semantic-release automatic version update. ([`002436c`](https://github.com/eyeonus/Trade-Dangerous/commit/002436c81ac52f65a1f743b6249ae50c8c625bf3))
-
-* Fix: mfd module not found.
-
-Fixes #92 ([`e5b01b7`](https://github.com/eyeonus/Trade-Dangerous/commit/e5b01b728bcce6eb784a2c8a720d1a1311ccac9d))
 
 
 ## v10.10.0 (2021-03-26)
@@ -1218,15 +999,9 @@ find reliably, user discretion is advised.
 Doing an unsupported &gt;1500 capacity trade with &gt;3 hops will trigger a
 special warning with instructions on how to SIGTERM using a keyboard. ([`76537b9`](https://github.com/eyeonus/Trade-Dangerous/commit/76537b9d84fc55994970f55f3cf39649c9c6bc5f))
 
-### Unknown
+### Fix
 
-* 10.10.0
-
-python-semantic-release automatic version update. ([`28b9ac5`](https://github.com/eyeonus/Trade-Dangerous/commit/28b9ac5aa1346c79cbfa281c21cdd043ce3cca01))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous ([`e44eb40`](https://github.com/eyeonus/Trade-Dangerous/commit/e44eb403aae990e1e73b6abd0c2a9e613394b944))
-
-* Fix: update MFD (PR#88)
+* fix: update MFD (PR#88)
 
 Updates to device_handle to define the type as HANDLE, seems to resolve issue with &#34;ctypes.ArgumentError: argument 1: &lt;class &#39;OverflowError&#39;&gt;: int too long to convert&#34;, at least  on my x52pro.
 Also change dll install location as it&#39;s now Logitech, maybe a check can be put in to pull install location from registry?
@@ -1247,12 +1022,6 @@ I know nothing about programming but I&#39;ve been able to fudge this, hope it h
 Last fix commit didn&#39;t build because it was pushed before the previous
 one was finished building. ([`b9ebcb5`](https://github.com/eyeonus/Trade-Dangerous/commit/b9ebcb54fca6d9c003013fde50811fa42132b84b))
 
-### Unknown
-
-* 10.9.8
-
-python-semantic-release automatic version update. ([`7b8fc7e`](https://github.com/eyeonus/Trade-Dangerous/commit/7b8fc7ebb92f70b0e18b7b163785e0ef17addc7b))
-
 
 ## v10.9.7 (2021-02-05)
 
@@ -1262,13 +1031,7 @@ python-semantic-release automatic version update. ([`7b8fc7e`](https://github.co
 
 fixes #84 ([`f208023`](https://github.com/eyeonus/Trade-Dangerous/commit/f20802319a503f569d836c8d46ca7231779f5024))
 
-### Unknown
-
-* 10.9.7
-
-python-semantic-release automatic version update. ([`568ff62`](https://github.com/eyeonus/Trade-Dangerous/commit/568ff62e23c57d202962e7e77471a8f8cc417d37))
-
-* Fix: supposed to be Name Case, not lower case. ([`3da326e`](https://github.com/eyeonus/Trade-Dangerous/commit/3da326e1f5556623e7a3b6b6b4fa78a373e035ce))
+* fix: supposed to be Name Case, not lower case. ([`3da326e`](https://github.com/eyeonus/Trade-Dangerous/commit/3da326e1f5556623e7a3b6b6b4fa78a373e035ce))
 
 
 ## v10.9.6 (2021-01-18)
@@ -1282,24 +1045,12 @@ The method used `pathlib.Path` while `pathlib` was not imported as a
 module which threw a NameError. Secondly, the method set the
 environments filename to a Path object when it should be a string. ([`ef06684`](https://github.com/eyeonus/Trade-Dangerous/commit/ef06684e0534d1d969658e9b55f3a752c502475e))
 
-### Unknown
-
-* 10.9.6
-
-python-semantic-release automatic version update. ([`8a0c3c1`](https://github.com/eyeonus/Trade-Dangerous/commit/8a0c3c1ad93784c1c11425ab16f890baba6e017f))
-
 
 ## v10.9.5 (2021-01-09)
 
 ### Fix
 
 * fix: MaxGainPerTon shouldn&#39;t be set by default. ([`00c558c`](https://github.com/eyeonus/Trade-Dangerous/commit/00c558cf7f31fb82deb4ca176b43ca16db130559))
-
-### Unknown
-
-* 10.9.5
-
-python-semantic-release automatic version update. ([`7c3fa8e`](https://github.com/eyeonus/Trade-Dangerous/commit/7c3fa8e883929e744bb8bf0645099dcde02516ba))
 
 
 ## v10.9.4 (2020-12-19)
@@ -1308,14 +1059,14 @@ python-semantic-release automatic version update. ([`7c3fa8e`](https://github.co
 
 * fix: Galactic Travel Guides are not deleted, just rare. ([`b20b9d0`](https://github.com/eyeonus/Trade-Dangerous/commit/b20b9d0abbcf4fb1d371715bc47da2e625a2cb23))
 
-### Unknown
-
-* 10.9.4
-
-python-semantic-release automatic version update. ([`006b58b`](https://github.com/eyeonus/Trade-Dangerous/commit/006b58b448ff915af2e33f73a8665de608d22144))
-
 
 ## v10.9.3 (2020-12-16)
+
+### Chore
+
+* chore: Update dev.txt ([`3fe11f7`](https://github.com/eyeonus/Trade-Dangerous/commit/3fe11f756a40328b44cac912264342db30e35a9b))
+
+* chore: Update .travis.yml ([`8348b0a`](https://github.com/eyeonus/Trade-Dangerous/commit/8348b0aa19d1f383e517f7b7df18df49c8e1befe))
 
 ### Fix
 
@@ -1329,40 +1080,6 @@ Also add new 3.8 and remove soon to be unsupported 3.4 python versions ([`13adda
 
 fixes #78 ([`2de883f`](https://github.com/eyeonus/Trade-Dangerous/commit/2de883f62b1460c28da006d972da6225a9bd882f))
 
-### Unknown
-
-* 10.9.3
-
-python-semantic-release automatic version update. ([`73dbcb8`](https://github.com/eyeonus/Trade-Dangerous/commit/73dbcb862769b541f1706bd9144a19cda12d3f4f))
-
-* Update dev.txt ([`3fe11f7`](https://github.com/eyeonus/Trade-Dangerous/commit/3fe11f756a40328b44cac912264342db30e35a9b))
-
-* 10.9.2
-
-python-semantic-release automatic version update. ([`1ed15f6`](https://github.com/eyeonus/Trade-Dangerous/commit/1ed15f6805213495dd7dd0c73e6dd803b66a25c2))
-
-* Update .travis.yml ([`8348b0a`](https://github.com/eyeonus/Trade-Dangerous/commit/8348b0aa19d1f383e517f7b7df18df49c8e1befe))
-
-* Update .travis.yml ([`d150824`](https://github.com/eyeonus/Trade-Dangerous/commit/d1508245ee5b17c52f32dbac5f4714002f18ad5c))
-
-* Update .travis.yml ([`619b1e9`](https://github.com/eyeonus/Trade-Dangerous/commit/619b1e9eab64b59e9b2b92462d88126d5806665c))
-
-* Update dev.txt ([`8a3abae`](https://github.com/eyeonus/Trade-Dangerous/commit/8a3abae7c6721f95a664e21166e470db8820b2c7))
-
-* Update dev.txt ([`1695a1e`](https://github.com/eyeonus/Trade-Dangerous/commit/1695a1e652550636b0ca513d8c2792b1bc3ddd92))
-
-* 10.9.1
-
-python-semantic-release automatic version update. ([`b084ad7`](https://github.com/eyeonus/Trade-Dangerous/commit/b084ad7d449913123948fc29c38cf730934f2c1a))
-
-* Update .travis.yml ([`de7ba27`](https://github.com/eyeonus/Trade-Dangerous/commit/de7ba27ff345dbe22cadb7109a180537de74ea2b))
-
-* Update .travis.yml ([`e1db93a`](https://github.com/eyeonus/Trade-Dangerous/commit/e1db93af4314bec963a2e3a4c363c40bca3804f6))
-
-* Update .travis.yml ([`363ebf7`](https://github.com/eyeonus/Trade-Dangerous/commit/363ebf7d453d9eb4480d0d105d4169baddbaea14))
-
-* Update .travis.yml ([`0e1eaff`](https://github.com/eyeonus/Trade-Dangerous/commit/0e1eaff171dff7e36c365f7ac8396342135e19e5))
-
 
 ## v10.9.0 (2020-07-17)
 
@@ -1374,28 +1091,12 @@ python-semantic-release automatic version update. ([`b084ad7`](https://github.co
 
 * refactor: remove redundant code. ([`bf27c3e`](https://github.com/eyeonus/Trade-Dangerous/commit/bf27c3e43f0644dbb572de3cd467766595d79790))
 
-### Unknown
-
-* 10.9.0
-
-python-semantic-release automatic version update. ([`106bd74`](https://github.com/eyeonus/Trade-Dangerous/commit/106bd7465f1e2d3a2d431cc7986ac37ac84b0360))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git into fc_beta ([`40e2fdb`](https://github.com/eyeonus/Trade-Dangerous/commit/40e2fdb8793e4695dd7f205f51f33e7aa18ffddc))
-
 
 ## v10.8.2 (2020-07-17)
 
 ### Fix
 
 * fix: make certain hopRoute is a list. ([`27eba0d`](https://github.com/eyeonus/Trade-Dangerous/commit/27eba0d61895380058628fd0eeb6cdebe304fce6))
-
-### Unknown
-
-* 10.8.2
-
-python-semantic-release automatic version update. ([`a3d39b7`](https://github.com/eyeonus/Trade-Dangerous/commit/a3d39b70cd4d3996c82563e5b15659f387e224e4))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git into fc_beta ([`657cf9f`](https://github.com/eyeonus/Trade-Dangerous/commit/657cf9f4f4dfb830ec19cf9ff04572db616846a5))
 
 
 ## v10.8.1 (2020-07-17)
@@ -1413,12 +1114,6 @@ Fixes 74. ([`339b2af`](https://github.com/eyeonus/Trade-Dangerous/commit/339b2af
 ### Fix
 
 * fix: required args now pass correctly in gui ([`b21aba8`](https://github.com/eyeonus/Trade-Dangerous/commit/b21aba84766e9a7377875e89227eccd418f8814a))
-
-### Unknown
-
-* 10.8.1
-
-python-semantic-release automatic version update. ([`9fccad6`](https://github.com/eyeonus/Trade-Dangerous/commit/9fccad6c2a94bb8bb513334d0520bc2ce57cc8de))
 
 
 ## v10.8.0 (2020-07-01)
@@ -1443,12 +1138,6 @@ Use &#39;systemrec&#39; option in eddblink import plugin. ([`20fb696`](https://g
 
 * refactor: Better gui entry method. ([`9b5b175`](https://github.com/eyeonus/Trade-Dangerous/commit/9b5b1750f104c10209bd8adc414cf68723f8c684))
 
-### Unknown
-
-* 10.8.0
-
-python-semantic-release automatic version update. ([`858fc60`](https://github.com/eyeonus/Trade-Dangerous/commit/858fc60124484c519f4c651058755ee1b0a28049))
-
 
 ## v10.7.1 (2020-06-30)
 
@@ -1459,14 +1148,6 @@ python-semantic-release automatic version update. ([`858fc60`](https://github.co
 ### Refactor
 
 * refactor: don&#39;t turn off &#39;system&#39; when &#39;systemfull&#39; is on. ([`a2b9153`](https://github.com/eyeonus/Trade-Dangerous/commit/a2b9153d6e41cba97950fdd9187d22b0d64eef03))
-
-### Unknown
-
-* 10.7.1
-
-python-semantic-release automatic version update. ([`21773a4`](https://github.com/eyeonus/Trade-Dangerous/commit/21773a469339d2b780cc839a7125c38d8cff7949))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`a16a7c6`](https://github.com/eyeonus/Trade-Dangerous/commit/a16a7c6b9150d7946b3a3d36d6fc65e823a177ff))
 
 
 ## v10.7.0 (2020-06-30)
@@ -1486,12 +1167,6 @@ systems_recently contains all systems- populated or not- that have been
 update within the previous 7 days. This will make it less likely a FC
 will be marked as being in Unknown Space. ([`9b27a99`](https://github.com/eyeonus/Trade-Dangerous/commit/9b27a9985ff2360c2da5ec65dccea1308a475b63))
 
-### Unknown
-
-* 10.7.0
-
-python-semantic-release automatic version update. ([`4c7ac02`](https://github.com/eyeonus/Trade-Dangerous/commit/4c7ac028d7fc344313695b6756b594590d207a42))
-
 
 ## v10.6.3 (2020-06-30)
 
@@ -1505,12 +1180,6 @@ Added &#34;Unknown Space&#34; system for FCs in a system not in the DB.
 ### Refactor
 
 * refactor: Updated server address to use https. ([`9a77295`](https://github.com/eyeonus/Trade-Dangerous/commit/9a77295b39d9368f2ff824a814c701020a3d3ca9))
-
-### Unknown
-
-* 10.6.3
-
-python-semantic-release automatic version update. ([`62a0fb5`](https://github.com/eyeonus/Trade-Dangerous/commit/62a0fb5daba3e2048f5bb06ffda542deee9727ef))
 
 
 ## v10.6.2 (2020-06-30)
@@ -1530,16 +1199,6 @@ tcl/tk version working on Mac OS 10.14.6 (Mojave). ([`2edbdf4`](https://github.c
 
 * perf: Raise warning rather than exiting. ([`3f0b6ff`](https://github.com/eyeonus/Trade-Dangerous/commit/3f0b6ff24982560fb8ccaf5e74d0dad1b2b28fdf))
 
-### Unknown
-
-* 10.6.2
-
-python-semantic-release automatic version update. ([`9d53849`](https://github.com/eyeonus/Trade-Dangerous/commit/9d538493fcd8c6bfa330ad4cc104ea324c944468))
-
-* Document fix for Tkinter error on Mac with pyenv installed python (#66)
-
-Reference: pyenv/pyenv#94 ([`ced02f1`](https://github.com/eyeonus/Trade-Dangerous/commit/ced02f154cd8e0a5c95e66ca459eacc1db3e7d5a))
-
 
 ## v10.6.1 (2019-09-01)
 
@@ -1549,12 +1208,6 @@ Reference: pyenv/pyenv#94 ([`ced02f1`](https://github.com/eyeonus/Trade-Dangerou
 
 It&#39;s not needed on *nix or OSX and throws shell errors when int&#39;s run on
 OSX. ([`7538e98`](https://github.com/eyeonus/Trade-Dangerous/commit/7538e9869a225f0e94857900eea77fbe9cc0731a))
-
-### Unknown
-
-* 10.6.1
-
-python-semantic-release automatic version update. ([`3f1357b`](https://github.com/eyeonus/Trade-Dangerous/commit/3f1357b721335c899fc5c6d1a9f42254a014dce8))
 
 
 ## v10.6.0 (2019-08-31)
@@ -1571,12 +1224,6 @@ When running TD in terminal (command prompt/ powershell for windows users), addi
 
 * fix: missing argument in method call ([`004a6d8`](https://github.com/eyeonus/Trade-Dangerous/commit/004a6d853f89b1b605bd34e78fe2431e65d6f555))
 
-### Unknown
-
-* 10.6.0
-
-python-semantic-release automatic version update. ([`46cc8d7`](https://github.com/eyeonus/Trade-Dangerous/commit/46cc8d7a451e92b26e026d250b2c46eeed477746))
-
 
 ## v10.5.7 (2019-08-31)
 
@@ -1590,12 +1237,6 @@ Was comparing against the wrong var. ([`ba9a940`](https://github.com/eyeonus/Tra
 
 * refactor: Formatting fixes. (Indentation) ([`9da641b`](https://github.com/eyeonus/Trade-Dangerous/commit/9da641b38203ad44ba5d87a58d84b9372bc536cd))
 
-### Unknown
-
-* 10.5.7
-
-python-semantic-release automatic version update. ([`0be1517`](https://github.com/eyeonus/Trade-Dangerous/commit/0be15171766c4a9699f2b2b054d3976856f91648))
-
 
 ## v10.5.6 (2019-08-31)
 
@@ -1605,24 +1246,12 @@ python-semantic-release automatic version update. ([`0be1517`](https://github.co
 
 Don&#39;t know why I did that, but it was the wrong thing to do. ([`0617187`](https://github.com/eyeonus/Trade-Dangerous/commit/0617187874670630d32791ed7dce930362890f7d))
 
-### Unknown
-
-* 10.5.6
-
-python-semantic-release automatic version update. ([`a970e8d`](https://github.com/eyeonus/Trade-Dangerous/commit/a970e8d36cff9b7c7c1a11bff078687e765adc0b))
-
 
 ## v10.5.5 (2019-06-21)
 
 ### Fix
 
 * fix: Remove unused imports ([`4049f57`](https://github.com/eyeonus/Trade-Dangerous/commit/4049f573e1d7c6e9f311582badf177ef7e60742c))
-
-### Unknown
-
-* 10.5.5
-
-python-semantic-release automatic version update. ([`59cca16`](https://github.com/eyeonus/Trade-Dangerous/commit/59cca16ba4d94c75dff0504470ec85588f14c3bb))
 
 
 ## v10.5.4 (2019-06-21)
@@ -1632,12 +1261,6 @@ python-semantic-release automatic version update. ([`59cca16`](https://github.co
 * fix: Use 127.0.0.1, not 127.2.0.1, Because Apple computers are evil.
 
 Fixes #63 ([`1dacb3b`](https://github.com/eyeonus/Trade-Dangerous/commit/1dacb3b6816b6480c3360f8abea7bbb4bf2511c4))
-
-### Unknown
-
-* 10.5.4
-
-python-semantic-release automatic version update. ([`c9c7f87`](https://github.com/eyeonus/Trade-Dangerous/commit/c9c7f872c8ffac0cd81a20b3fbe348c0caee45e2))
 
 
 ## v10.5.3 (2019-06-20)
@@ -1654,12 +1277,6 @@ Plugin options which require a value, such as the filename to test json
 importing with in the case of the edapi plugin&#39;s &#39;test&#39; option, will
 show as a text field for typing that parameter in. ([`a471b7a`](https://github.com/eyeonus/Trade-Dangerous/commit/a471b7a107880c915f1ff14f8db63c829ab1217d))
 
-### Unknown
-
-* 10.5.3
-
-python-semantic-release automatic version update. ([`f131801`](https://github.com/eyeonus/Trade-Dangerous/commit/f13180178120a512c0adf8e6a41e8c418c22362e))
-
 
 ## v10.5.2 (2019-06-17)
 
@@ -1669,26 +1286,12 @@ python-semantic-release automatic version update. ([`f131801`](https://github.co
 
 Hooray. Figured it out. ([`dfca779`](https://github.com/eyeonus/Trade-Dangerous/commit/dfca7791a40c4e70b21a4a6cfc8aa4225c960b3e))
 
-### Unknown
-
-* 10.5.2
-
-python-semantic-release automatic version update. ([`57d0e99`](https://github.com/eyeonus/Trade-Dangerous/commit/57d0e99c7c39855c31f01c706390d404f14499ff))
-
 
 ## v10.5.1 (2019-06-17)
 
 ### Fix
 
 * fix: Make the gui actually work when TD is pip installed. ([`5c36944`](https://github.com/eyeonus/Trade-Dangerous/commit/5c3694442e5cbf977e5235dcb4b9345c320ef98b))
-
-### Unknown
-
-* 10.5.1
-
-python-semantic-release automatic version update. ([`56923e0`](https://github.com/eyeonus/Trade-Dangerous/commit/56923e0e3ab9f4ccbff29378c17f6b2b7d4a790a))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`b9036e2`](https://github.com/eyeonus/Trade-Dangerous/commit/b9036e2521f55295acc6c0ef4cd3486fe7827ce9))
 
 
 ## v10.5.0 (2019-06-17)
@@ -1705,12 +1308,6 @@ trade.py and README.md ([`1cf29ad`](https://github.com/eyeonus/Trade-Dangerous/c
 * feat: Beta release of GUI
 
 Just run &#34;trade gui&#34; and tell me what you think. ([`4d56509`](https://github.com/eyeonus/Trade-Dangerous/commit/4d565091aa081eebca1bcc5ccab941cdd0b75b3c))
-
-### Unknown
-
-* 10.5.0
-
-python-semantic-release automatic version update. ([`cbf8493`](https://github.com/eyeonus/Trade-Dangerous/commit/cbf8493b5c764b271311f7ad01865ddd4df8f635))
 
 * beta: Redirect output of command to output tab in GUI.
 
@@ -1966,14 +1563,6 @@ refactor: Switch back to beta for the ships index. Better suited so says
 Trom.
 :) ([`ab6e48e`](https://github.com/eyeonus/Trade-Dangerous/commit/ab6e48e5b3a1bca82a4b7a3d7c5962b9d3f77606))
 
-### Unknown
-
-* 10.4.8
-
-python-semantic-release automatic version update. ([`02cffb9`](https://github.com/eyeonus/Trade-Dangerous/commit/02cffb934b534dba21492c1dec79cccda895c18e))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`416136c`](https://github.com/eyeonus/Trade-Dangerous/commit/416136cbc8cd7733dfc0c8069814ee65404cd334))
-
 
 ## v10.4.7 (2019-05-28)
 
@@ -1989,12 +1578,6 @@ enabled. ([`54897cb`](https://github.com/eyeonus/Trade-Dangerous/commit/54897cb0
 
 * refactor: Update ship index to not use the beta site. ([`49ce095`](https://github.com/eyeonus/Trade-Dangerous/commit/49ce095416be1e505307f3bac14b4b5867c38c13))
 
-### Unknown
-
-* 10.4.7
-
-python-semantic-release automatic version update. ([`19454ea`](https://github.com/eyeonus/Trade-Dangerous/commit/19454eaca835fb484dd8c95c71b0b50616ecbf71))
-
 
 ## v10.4.6 (2019-05-23)
 
@@ -2004,24 +1587,12 @@ python-semantic-release automatic version update. ([`19454ea`](https://github.co
 
 Fixes #61 ([`0a10cec`](https://github.com/eyeonus/Trade-Dangerous/commit/0a10ceceebc4228b39494310d88b6997f8a36028))
 
-### Unknown
-
-* 10.4.6
-
-python-semantic-release automatic version update. ([`0fd2d68`](https://github.com/eyeonus/Trade-Dangerous/commit/0fd2d683b9b8ecb4d8825529ab88bf4e40e1196e))
-
 
 ## v10.4.5 (2019-05-23)
 
 ### Fix
 
 * fix: Update ship index URL. ([`c455594`](https://github.com/eyeonus/Trade-Dangerous/commit/c4555942c2cca0da8a49a470f2165402f50e5457))
-
-### Unknown
-
-* 10.4.5
-
-python-semantic-release automatic version update. ([`7cb764d`](https://github.com/eyeonus/Trade-Dangerous/commit/7cb764d8b245e955efe1283cccd90c6e1aa86dec))
 
 
 ## v10.4.4 (2019-05-23)
@@ -2067,14 +1638,6 @@ wrong with the code.
 Since the code it supposedly checks is never touched anyway, and it can
 easily put out a false positive, it&#39;s gone now. ([`4867f3b`](https://github.com/eyeonus/Trade-Dangerous/commit/4867f3bb50ba8dab3099c9c5d476e2d8bbe82c27))
 
-### Unknown
-
-* 10.4.4
-
-python-semantic-release automatic version update. ([`d5a9b86`](https://github.com/eyeonus/Trade-Dangerous/commit/d5a9b860890d8cca16c983f35819df3cd67b8680))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`4a06159`](https://github.com/eyeonus/Trade-Dangerous/commit/4a0615990c510cd047cb276143cbd3c7dc54a78a))
-
 
 ## v10.4.3 (2019-02-26)
 
@@ -2087,12 +1650,6 @@ Jon.
 
 Fixes #57 ([`55274fe`](https://github.com/eyeonus/Trade-Dangerous/commit/55274fefda798124714015f89d6dc803ce24544d))
 
-### Unknown
-
-* 10.4.3
-
-python-semantic-release automatic version update. ([`159cdb1`](https://github.com/eyeonus/Trade-Dangerous/commit/159cdb13d7ecf1b9504624abd1cd74102f4b9336))
-
 
 ## v10.4.2 (2019-02-26)
 
@@ -2103,14 +1660,6 @@ python-semantic-release automatic version update. ([`159cdb1`](https://github.co
 Reverts change introduced unintentionally by
 fca7f2698a5ac83dd4011c4dcd3379d9cbed0274 ([`248a4fb`](https://github.com/eyeonus/Trade-Dangerous/commit/248a4fba804e7ac99e279a678d622ce5acbc4577))
 
-### Unknown
-
-* 10.4.2
-
-python-semantic-release automatic version update. ([`47d3ace`](https://github.com/eyeonus/Trade-Dangerous/commit/47d3aceaa6a3b3c37ea321f32190fbd5c48fcda8))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`d77b728`](https://github.com/eyeonus/Trade-Dangerous/commit/d77b7284736bf944f032b8f7829fe6fabe59c3de))
-
 
 ## v10.4.1 (2019-02-26)
 
@@ -2119,14 +1668,6 @@ python-semantic-release automatic version update. ([`47d3ace`](https://github.co
 * fix: error when trying to insert rare items that already exist in table
 
 In this case, I don&#39;t think &#34;INSERT OR REPLACE&#34; is a horrible idea. ([`20d64c6`](https://github.com/eyeonus/Trade-Dangerous/commit/20d64c6f999e0108f4f1e4e56f6ac92facc08a52))
-
-### Unknown
-
-* 10.4.1
-
-python-semantic-release automatic version update. ([`ec24509`](https://github.com/eyeonus/Trade-Dangerous/commit/ec245096355c27b9670a9ca89b0e54a707587e1a))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`97779a3`](https://github.com/eyeonus/Trade-Dangerous/commit/97779a34819066a84742933313a70f545e8318b1))
 
 
 ## v10.4.0 (2019-02-26)
@@ -2181,12 +1722,6 @@ find * -type f -name &#34;*.py&#34; -print0 | xargs -0 sed -i -e &#39;/^ *$/{N;s
 *\n\( *\)\(.*\)/\1\n\1\2/}&#39;
 ``` ([`14c84c6`](https://github.com/eyeonus/Trade-Dangerous/commit/14c84c66554167ba8edf8109f81b76027ea0af79))
 
-### Unknown
-
-* 10.4.0
-
-python-semantic-release automatic version update. ([`befa982`](https://github.com/eyeonus/Trade-Dangerous/commit/befa9827ba3fd7d0eb774eb16fc4dc3841be7060))
-
 
 ## v10.3.1 (2019-02-25)
 
@@ -2197,14 +1732,6 @@ python-semantic-release automatic version update. ([`befa982`](https://github.co
 Thanks go to Bernd for the code work.
 
 Fixes #56 ([`34220dc`](https://github.com/eyeonus/Trade-Dangerous/commit/34220dc3b201c4471f117a091944c0884f670c22))
-
-### Unknown
-
-* 10.3.1
-
-python-semantic-release automatic version update. ([`3723336`](https://github.com/eyeonus/Trade-Dangerous/commit/3723336d358ec490a65b1eefdfaedd32d5327039))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`f496279`](https://github.com/eyeonus/Trade-Dangerous/commit/f49627946f979fd664e254fd81d341e4f99fdd36))
 
 
 ## v10.3.0 (2019-02-20)
@@ -2234,12 +1761,6 @@ fixes #55
 revert: 1c4d186
 Apparently caused by developer error and wasn&#39;t a necessary change. ([`5e92257`](https://github.com/eyeonus/Trade-Dangerous/commit/5e92257dd6f45bb653bfb128572f78b838c5241d))
 
-### Unknown
-
-* 10.3.0
-
-python-semantic-release automatic version update. ([`48ee104`](https://github.com/eyeonus/Trade-Dangerous/commit/48ee104715b2bdaca7cb9af8a3c21e0a3c6e4c41))
-
 
 ## v10.2.2 (2019-02-15)
 
@@ -2253,12 +1774,6 @@ get evaluated.
 
 Path(os.environ.get(&#39;TD_EDDB&#39;) = NoneType) will cause the program to
 error before even getting to the if statement. ([`1c4d186`](https://github.com/eyeonus/Trade-Dangerous/commit/1c4d186be29379217eab1d27cf72915c5c74e5c0))
-
-### Unknown
-
-* 10.2.2
-
-python-semantic-release automatic version update. ([`921b0bc`](https://github.com/eyeonus/Trade-Dangerous/commit/921b0bcbe32f2668520dffca8c3094b27e3b8264))
 
 
 ## v10.2.1 (2019-02-15)
@@ -2275,12 +1790,6 @@ fixes #51 ([`cd41144`](https://github.com/eyeonus/Trade-Dangerous/commit/cd41144
 ### Style
 
 * style: Restore whitespace to eddblink_plug.py ([`6d0de5f`](https://github.com/eyeonus/Trade-Dangerous/commit/6d0de5faba85dbe51f47f8e888b16d2c39a844ac))
-
-### Unknown
-
-* 10.2.1
-
-python-semantic-release automatic version update. ([`c70880f`](https://github.com/eyeonus/Trade-Dangerous/commit/c70880f11b07de158870fd7c98dfa53db93f6adf))
 
 
 ## v10.2.0 (2019-02-14)
@@ -2348,15 +1857,8 @@ immediately following:
         more_stuff()
     #This is the correct amount of whitespace
     while happening:
-``` ([`d509fda`](https://github.com/eyeonus/Trade-Dangerous/commit/d509fda783970ee0754752a79369b4d36c346258))
-
-### Unknown
-
-* 10.2.0
-
-python-semantic-release automatic version update. ([`767521b`](https://github.com/eyeonus/Trade-Dangerous/commit/767521bac7d4b0f06f600944cb7bfd0fa3ba54b3))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`6f778d9`](https://github.com/eyeonus/Trade-Dangerous/commit/6f778d910eecba5e625b5d2ca712e51170fc59f4))
+```
+([`d509fda`](https://github.com/eyeonus/Trade-Dangerous/commit/d509fda783970ee0754752a79369b4d36c346258))
 
 
 ## v10.1.2 (2019-02-14)
@@ -2365,24 +1867,12 @@ python-semantic-release automatic version update. ([`767521b`](https://github.co
 
 * fix: Unable to save profile.&lt;current_time&gt;.json&#34; ([`fca7f26`](https://github.com/eyeonus/Trade-Dangerous/commit/fca7f2698a5ac83dd4011c4dcd3379d9cbed0274))
 
-### Unknown
-
-* 10.1.2
-
-python-semantic-release automatic version update. ([`78329ee`](https://github.com/eyeonus/Trade-Dangerous/commit/78329eee0f76d6132e3f4571b957d76f92c513bc))
-
 
 ## v10.1.1 (2019-02-14)
 
 ### Fix
 
 * fix: Unable to save tdh_profile.json ([`a2abe01`](https://github.com/eyeonus/Trade-Dangerous/commit/a2abe01ec25347191ac792f56ac966ff8533dfdc))
-
-### Unknown
-
-* 10.1.1
-
-python-semantic-release automatic version update. ([`6e9cf97`](https://github.com/eyeonus/Trade-Dangerous/commit/6e9cf9792668572dd686b8159436c6e064811995))
 
 
 ## v10.1.0 (2019-02-13)
@@ -2425,12 +1915,6 @@ having this environment variable:
   usefulness: &lt;=0
   potential harm: &gt;0 ([`b388f60`](https://github.com/eyeonus/Trade-Dangerous/commit/b388f606cd8b4ce8d765034ff661e27e1cb1ee68))
 
-### Unknown
-
-* 10.1.0
-
-python-semantic-release automatic version update. ([`18cf0ea`](https://github.com/eyeonus/Trade-Dangerous/commit/18cf0eaef4b0b6061df367ddc4d1c81c993d91ca))
-
 
 ## v10.0.3 (2019-02-13)
 
@@ -2468,24 +1952,6 @@ M&lt;anually creating the packages list should fix the problem. ([`1595a3c`](htt
 ### Refactor
 
 * refactor: Don&#39;t include templates ([`d1c4226`](https://github.com/eyeonus/Trade-Dangerous/commit/d1c4226d67c45fde5f59edba4ffd143aa5218d63))
-
-### Unknown
-
-* 10.0.3
-
-python-semantic-release automatic version update. ([`399112e`](https://github.com/eyeonus/Trade-Dangerous/commit/399112e36838b99c74f09476e8d75692f75d13d0))
-
-* 10.0.2
-
-python-semantic-release automatic version update. ([`857dda4`](https://github.com/eyeonus/Trade-Dangerous/commit/857dda4b7589304b7b64b4628d7f70b1430891c8))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`b9d0e89`](https://github.com/eyeonus/Trade-Dangerous/commit/b9d0e893412fcd54f5eb3231236f715a68d63bb8))
-
-* 10.0.1
-
-python-semantic-release automatic version update. ([`5ab8274`](https://github.com/eyeonus/Trade-Dangerous/commit/5ab8274ebf4aa5f5738f9fb4fc99d131ef260978))
-
-* Merge branch &#39;master&#39; of https://github.com/eyeonus/Trade-Dangerous.git ([`210b197`](https://github.com/eyeonus/Trade-Dangerous/commit/210b197e74ccc5523dbf4080c8993d0907adc125))
 
 
 ## v10.0.0 (2019-02-09)
@@ -2558,21 +2024,7 @@ docs: add info about deploy
 
 chore: configure ci ([`a1626cd`](https://github.com/eyeonus/Trade-Dangerous/commit/a1626cdcadf73621500a9526448f58140ef73e60))
 
-### Unknown
-
-* 10.0.0
-
-New version by CI ([`a94cd86`](https://github.com/eyeonus/Trade-Dangerous/commit/a94cd86610c6b48927c0a8d247f9d512d6c0b2a9))
-
-* Merge branch &#39;master&#39; of https://github.com/kmpm/Trade-Dangerous.git
-
-Conflicts:
-	.travis.yml
-	dev-requirements.txt ([`5ac899f`](https://github.com/eyeonus/Trade-Dangerous/commit/5ac899f8957af0f4f82e594e455a99f0595b94ba))
-
 * Update .travis.yml ([`06c5adb`](https://github.com/eyeonus/Trade-Dangerous/commit/06c5adb47870d6df9c3ce4f5ab9d7de9126f7194))
-
-* Update .travis.yml ([`48417c6`](https://github.com/eyeonus/Trade-Dangerous/commit/48417c66d89138e47e4dc8a2b9944c606965f58c))
 
 * Trade-Dangerous as a module (#45)
 
@@ -2897,7 +2349,7 @@ installed. ([`2c897f8`](https://github.com/eyeonus/Trade-Dangerous/commit/2c897f
 
 * Ignore unknown ships/upgrades when updating shipvendor/upgradevendor
 
-#22 ([`80cdae9`](https://github.com/eyeonus/Trade-Dangerous/commit/80cdae94fef7a3af35acf1e66f225db9856c7b45))
+* Fix #22 ([`80cdae9`](https://github.com/eyeonus/Trade-Dangerous/commit/80cdae94fef7a3af35acf1e66f225db9856c7b45))
 
 * Revert &#34;Wreckage Components&#34; name change to &#34;Salvageable Wreckage&#34;.
 
@@ -3026,9 +2478,9 @@ that. ([`7a6e25f`](https://github.com/eyeonus/Trade-Dangerous/commit/7a6e25f91f2
 * Changed to GPL 3.0
 
 Oliver&#39;s original copyright allowed anything
-# You are free to use, redistribute, or even print and eat a copy of
-# this software so long as you include this copyright notice.
-# I guarantee there is at least one bug neither of us knew about.
+ # You are free to use, redistribute, or even print and eat a copy of
+ # this software so long as you include this copyright notice.
+ # I guarantee there is at least one bug neither of us knew about.
 
 So long as this is maintained, adding a more restrictive license should be no problem.
 Note that EDDBLink standalone is separately released under LGPL 3.0 ([`1d3b120`](https://github.com/eyeonus/Trade-Dangerous/commit/1d3b1200c02f3290c6d6152ab76ae185c5c629f5))
@@ -3228,6 +2680,8 @@ Since most of the data will now be updated automatically by the plugin,
 those .csv files have been added to gitignore and removed from the repo. ([`9f6f022`](https://github.com/eyeonus/Trade-Dangerous/commit/9f6f022173eefafd4b30499c7764a605db200f32))
 
 * merger ([`660c6da`](https://github.com/eyeonus/Trade-Dangerous/commit/660c6da08e1fc59e704b0cba16e8e67db984381f))
+
+### Legacy: (i.e., pre-eyeonus takeover)
 
 * EDAPI update ([`501208b`](https://github.com/eyeonus/Trade-Dangerous/commit/501208bdeccd9ec01a56dec4cc49af0e59cfc069))
 
@@ -8381,7 +7835,8 @@ Meanwhile it also slightly simplified CommandEnv
    from tradeenv import *
    tenv = TradeEnv(debug=1, dbFilename=&#39;test.db&#39;)
    tdb = TradeDB(tenv)
-``` ([`0fcd6c4`](https://github.com/eyeonus/Trade-Dangerous/commit/0fcd6c4d58e5650621c0e7e82fbad2841ee4a358))
+```
+([`0fcd6c4`](https://github.com/eyeonus/Trade-Dangerous/commit/0fcd6c4d58e5650621c0e7e82fbad2841ee4a358))
 
 * Added &#39;heading&#39; member to RowFmt ([`e74fa9d`](https://github.com/eyeonus/Trade-Dangerous/commit/e74fa9d1bbcbdcb564ead1ce5646d5f073c8a6ce))
 
