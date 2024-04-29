@@ -1150,8 +1150,9 @@ class TradeDB:
         self.tradingStationCount = 0
         # Fleet Carriers are station type 24.
         # Odyssey settlements are station type 25.
+        # Assume type 0 (Unknown) are also Fleet Carriers.
         # Storing as a list allows easy expansion if needed.
-        types = {'fleet-carrier':[24,],'odyssey':[25,],}
+        types = {'fleet-carrier':[24, 0,],'odyssey':[25,],}
         with closing(self.query(stmt)) as cur:
             for (
                 ID, systemID, name,

@@ -355,6 +355,8 @@ class ImportPlugin(plugins.ImportPluginBase):
     def run(self):
         self.tdenv.DEBUG2(f'Using "{LOCALE}" locale for parsing modified timestamps. Please include this information in any error reports.')
         
+        self.tdenv.ignoreUnknown = True
+        
         # Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
             Path(str(self.dataPath)).mkdir()
@@ -510,8 +512,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             self.tdb.close()
             self.tdb.reloadCache()
-        
-        self.tdenv.ignoreUnknown = True
         
         if self.getOption("purge"):
             self.purgeSystems()
