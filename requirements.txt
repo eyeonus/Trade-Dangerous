@@ -1,0 +1,5 @@
+appJar
+requests
+ijson
+rich==13.7.1
+importlib-metadata>=1
