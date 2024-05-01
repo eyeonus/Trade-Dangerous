@@ -2,6 +2,19 @@
 
 
 
+## v11.1.5 (2024-05-01)
+
+### Documentation
+
+* docs: correct web page ([`f71dca3`](https://github.com/eyeonus/Trade-Dangerous/commit/f71dca3b1d8a98edc5b5adf7964b56473b87e088))
+
+### Fix
+
+* fix: parse the dates in a locale-agnostic manner
+
+fixes #149 ([`1743f9f`](https://github.com/eyeonus/Trade-Dangerous/commit/1743f9f2609105b604e9db48b8df1a8973eb8c6c))
+
+
 ## v11.1.4 (2024-04-30)
 
 ### Chore
