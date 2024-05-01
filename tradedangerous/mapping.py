@@ -100,7 +100,7 @@ class FDEVMappingItems(FDEVMappingBase):
         Maps ID to TD and EDDN items
     """
     tableName = "Item"
-    colNames  = [ 'fdev_id', 'name' ]
+    colNames  = [ 'item_id', 'name' ]
     
     def mapUnknown(self):
         # no ID known yet for:
@@ -113,7 +113,7 @@ class FDEVMappingShips(FDEVMappingBase):
         Maps ID to TD ships
     """
     tableName = "Ship"
-    colNames  = [ 'fdev_id', 'name' ]
+    colNames  = [ 'ship_id', 'name' ]
 
 class FDEVMappingShipyard(FDEVMappingBase):
     """
