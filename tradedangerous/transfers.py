@@ -17,7 +17,7 @@ import requests
 if typing.TYPE_CHECKING:
     import os  # for PathLike
     from .tradeenv import TradeEnv
-    from typing import Optional, Union
+    from typing import Callable, Optional, Union
 
 
 ######################################################################
@@ -51,7 +51,7 @@ def download(
             localFile:  os.PathLike,
             headers:    Optional[dict] = None,
             backup:     bool = False,
-            shebang:    Optional[str] = None,
+            shebang:    Optional[Callable] = None,
             chunkSize:  int = 4096,
             timeout:    int = 90,
             *,
@@ -106,19 +106,14 @@ def download(
             tdenv.NOTE("Downloading {} {}ed data", transfer, encoding)
     tdenv.DEBUG0(str(req.headers).replace("{", "{{").replace("}", "}}"))
     
-    # Figure out how much data we have
-    if not tdenv.quiet:
-        filename = get_filename_from_url(url)
-        progBar = pbar.Progress(length, 20, prefix=filename, style=pbar.TransferBar)
-    else:
-        progBar = None
-    
     actPath = Path(localFile)
     fs.ensurefolder(tdenv.tmpDir)
     tmpPath = Path(tdenv.tmpDir, "{}.dl".format(actPath.name))
     
     fetched = 0
-    with tmpPath.open("wb") as fh:
+    started = time.time()
+    filename = get_filename_from_url(url)
+    with pbar.Progress(max_value=length, width=25, prefix=filename, style=pbar.CountingBar, show=not tdenv.quiet) as prog, tmpPath.open("wb") as fh:
         for data in req.iter_content(chunk_size=chunkSize):
             fh.write(data)
             fetched += len(data)
@@ -127,12 +122,9 @@ def download(
                 tdenv.DEBUG0("Checking shebang of {}", bangLine)
                 shebang(bangLine)
                 shebang = None
-            if progBar:
-                progBar.increment(len(data))
+            if prog:
+                prog.increment(len(data))
         tdenv.DEBUG0("End of data")
-
-    if progBar:
-        progBar.clear()
 
     if not tdenv.quiet:
         elapsed = (time.time() - started) or 1
