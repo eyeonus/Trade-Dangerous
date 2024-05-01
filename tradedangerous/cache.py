@@ -31,6 +31,7 @@ import sys
 import typing
 
 from .tradeexcept import TradeException
+from tradedangerous.misc.progress import Progress, CountingBar
 from . import corrections, utils
 from . import prices
 
@@ -977,25 +978,31 @@ def buildCache(tdb, tdenv):
         tempDB.executescript(sqlScript)
     
     # import standard tables
-    for (importName, importTable) in tdb.importTables:
-        try:
-            processImportFile(tdenv, tempDB, Path(importName), importTable)
-        except FileNotFoundError:
-            tdenv.DEBUG0(
-                "WARNING: processImportFile found no {} file", importName
-            )
-        except StopIteration:
-            tdenv.NOTE(
-                "{} exists but is empty. "
-                "Remove it or add the column definition line.",
-                importName
-            )
-    
-    tempDB.commit()
+    with Progress(max_value=len(tdb.importTables) + 1, width=25, style=CountingBar) as prog:
+        for (importName, importTable) in tdb.importTables:
+            with prog.sub_task(description=importName, max_value=None):
+                prog.increment(value=1, description=importName)
+                try:
+                    processImportFile(tdenv, tempDB, Path(importName), importTable)
+                except FileNotFoundError:
+                    tdenv.DEBUG0(
+                        "WARNING: processImportFile found no {} file", importName
+                    )
+                except StopIteration:
+                    tdenv.NOTE(
+                        "{} exists but is empty. "
+                        "Remove it or add the column definition line.",
+                        importName
+                    )
+            prog.increment(1)
+
+        with prog.sub_task(description="Save DB"):
+            tempDB.commit()
     
     # Parse the prices file
     if pricesPath.exists():
-        processPricesFile(tdenv, tempDB, pricesPath)
+        with Progress(max_value=None, width=25, prefix="Processing prices file"):
+            processPricesFile(tdenv, tempDB, pricesPath)
     else:
         tdenv.NOTE(
                 "Missing \"{}\" file - no price data.",
