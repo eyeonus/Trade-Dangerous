@@ -412,5 +412,5 @@ def render(results, cmdenv, tdb):
         print(stnRowFmt.format(row))
     
     if singleMode and cmdenv.detail:
-        msg = "-- Ship Cost" if mode is SHIP_MODE else "-- Average",
+        msg = "-- Ship Cost" if mode is SHIP_MODE else "-- Average"
         print(f"{msg:{maxStnLen}} {results.summary.avg:>10n}")
