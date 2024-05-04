@@ -1,7 +1,8 @@
 #
 # Mapping class for FDEV-IDs to TD names
 #
-
+# Deprecated
+# FDEVMappingItems and FDEVMappingShips used by edapi plugin
 class FDEVMappingBase:
     """
     Base class to map FDEV-IDs to TD names, do not use directly.

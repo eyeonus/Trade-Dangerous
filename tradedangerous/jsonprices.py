@@ -1,3 +1,4 @@
+# Deprecated
 from tradedangerous import tradedb
 from tradedangerous.tradeexcept import TradeException
 

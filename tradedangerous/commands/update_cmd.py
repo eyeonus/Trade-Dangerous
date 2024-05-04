@@ -1,3 +1,4 @@
+# Deprecated
 from .parsing import MutuallyExclusiveGroup, ParseArgument
 from ..tradeexcept import TradeException
 from .exceptions import CommandLineError

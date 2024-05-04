@@ -1,3 +1,4 @@
+# Deprecated
 from .commandenv import ResultRow
 from .exceptions import CommandLineError
 from .parsing import MutuallyExclusiveGroup, ParseArgument

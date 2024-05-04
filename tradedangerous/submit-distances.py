@@ -1,4 +1,6 @@
 #!/usr/bin/env python3.6
+# Deprecated
+# Website no longer exists
 
 """
 Small tool to submit new star data to EDStarCoordinator.
