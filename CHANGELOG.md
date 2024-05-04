@@ -2,6 +2,21 @@
 
 
 
+## v11.1.6 (2024-05-01)
+
+### Fix
+
+* fix: typo caused buy command to error
+
+- the code that should render the Average line at the end of
+a buy report had a typo that caused a string to become a list of
+strings, and the subsequent code could not handle that. ([`f016cec`](https://github.com/eyeonus/Trade-Dangerous/commit/f016cec41f5ced2b18bd682b1e2fee0d00457d8a))
+
+* fix: not using fdev_id for ships, as internal id is same now
+
+Fixes #152 ([`38e4ac9`](https://github.com/eyeonus/Trade-Dangerous/commit/38e4ac9c8e66640615dad863e64008841bc253d2))
+
+
 ## v11.1.5 (2024-05-01)
 
 ### Documentation
