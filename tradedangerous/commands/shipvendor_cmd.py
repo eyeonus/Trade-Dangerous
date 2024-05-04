@@ -1,3 +1,5 @@
+# Deprecated
+# Can already use buy command for ship searching
 from .commandenv import ResultRow
 from .exceptions import CommandLineError
 from .parsing import MutuallyExclusiveGroup, ParseArgument
