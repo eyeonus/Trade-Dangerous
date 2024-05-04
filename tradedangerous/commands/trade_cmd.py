@@ -6,7 +6,7 @@ from ..formatting import RowFormat, max_len
 ######################################################################
 # Parser config
 
-help='Find places to buy a given item within range of a given station.'
+help='Find potential trades between two given stations.'
 name='trade'
 epilog=None
 wantsTradeDB=True
