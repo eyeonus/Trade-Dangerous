@@ -2,6 +2,7 @@
 # into a single object, the TradeEnv. See TradeEnv docstring for more.
 from __future__ import annotations
 
+from pathlib import Path
 import os
 import sys
 import traceback
@@ -270,3 +271,36 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             return noteFn
         
         return None
+
+    def remove_file(self, *args) -> bool:
+        """ Unlinks a file, as long as it exists, and logs the action at level 1. """
+        path = Path(*args)
+        if not path.exists():
+            return False
+        path.unlink()
+        self.DEBUG1(":cross_mark: deleted {}", path)
+        return True
+
+    def rename_file(self, *, old: os.PathLike, new: os.PathLike) -> bool:
+        """
+        If 'new' exists, deletes it, and then attempts to rename old -> new. If new is not specified,
+        then '.old' is appended to the end of the old filename while retaining the original suffix.
+        
+        :param old:             The current path/name of the file.
+        :param new:             The path/name to rename the file to and remove before attempting.
+        :returns:               True if the file existed and was renamed.
+        """
+        # Promote new to a guaranteed Path and remove it if it's present.
+        new = Path(new)
+        self.remove_file(new)
+
+        # Promote new to a guaranteed Path and confirm it exists.
+        old = Path(old)
+        if not old.exists():
+            return False
+
+        # Perform the rename and log it at level 1.
+        old.rename(new)
+        self.DEBUG1(":recycle: moved {} to {}", old, new)
+
+        return True
