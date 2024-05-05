@@ -2,6 +2,50 @@
 
 
 
+## v11.2.0 (2024-05-05)
+
+### Chore
+
+* chore: additional deprecation
+
+For #157 ([`93d91c9`](https://github.com/eyeonus/Trade-Dangerous/commit/93d91c9ab48e1268e0a0448efd52d85f0532a072))
+
+* chore: Mark deprecated code
+
+For #157 ([`2afd5d6`](https://github.com/eyeonus/Trade-Dangerous/commit/2afd5d67fbf299f7121c01b43f72f315584fc875))
+
+* chore: fix github actions cache warnings
+
+I&#39;d used an older github actions of mine as a basis for the cache blocks, and they referenced an out-of-date cache version.
+
+contributes to #147 ([`fda2c26`](https://github.com/eyeonus/Trade-Dangerous/commit/fda2c26ca259cc7fc885ce7f5707ebb516ea6830))
+
+### Documentation
+
+* docs: fix help message for trade command ([`a6ca423`](https://github.com/eyeonus/Trade-Dangerous/commit/a6ca4231049cd1b028daae27081fe9e2baf484f6))
+
+### Feature
+
+* feat: enable repeat http requests over a single session
+
+If we need to make multiple requests to a single http server, we have to repeat the overhead of connection-tear up which
+can be significant for a remote https connection. &#39;requests&#39; solves for this by letting you create a &#39;Session&#39; object
+that uses http keep-alive to send followup requests over an existing connection.
+
+Commiting this separately from changes that make use of it. ([`8039aab`](https://github.com/eyeonus/Trade-Dangerous/commit/8039aab384285793d246040d06276117b1e08cf9))
+
+* feat: add rename_file and remove_file to TradeEnv
+
+This adds normalizing methods for removing and renaming files that will log the operation at DEBUG1,
+and in the case of rename will ensure a .old backup of the existing file.
+
+Committing separately of other work that leverages it. ([`778278d`](https://github.com/eyeonus/Trade-Dangerous/commit/778278db89964f38c92740b6be9868b361406be5))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`06a10d2`](https://github.com/eyeonus/Trade-Dangerous/commit/06a10d23510a3743d6aa4104ee288fe7623cf879))
+
+
 ## v11.1.6 (2024-05-01)
 
 ### Fix
