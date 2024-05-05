@@ -6,7 +6,6 @@ from .tradeexcept import TradeException
 from .misc import progress as pbar
 from . import fs
 
-import csv
 import json
 import time
 import typing
@@ -50,6 +49,7 @@ def download(
             timeout:    int = 90,
             *,
             length:     Optional[Union[int, str]] = None,
+            session:    Optional[requests.Session] = None,
         ):
     """
     Fetch data from a URL and save the output
@@ -75,7 +75,8 @@ def download(
     if isinstance(length, str):
         length = int(length)
 
-    req = requests.get(url, headers=headers or None, stream=True, timeout=timeout)
+    # If the caller provided an existing session stream, use that the fetch the request.
+    req = (session or requests).get(url, headers=headers or None, stream=True, timeout=timeout)
     req.raise_for_status()
     
     encoding = req.headers.get('content-encoding', 'uncompress')
@@ -85,7 +86,7 @@ def download(
         # chunked transfer-encoding doesn't need a content-length
         if content_length is None:
             print(req.headers)
-            raise Exception("Remote server replied with invalid content-length.")
+            raise TradeException("Remote server replied with invalid content-length.")
         content_length = int(content_length)
         if content_length <= 0:
             raise TradeException(
@@ -210,52 +211,3 @@ def get_json_data(url, *, timeout: int = 90):
         progBar.clear()
     
     return json.loads(jsData.decode())
-
-class CSVStream:
-    """
-    Provides an iterator that fetches CSV data from a given URL
-    and presents it as an iterable of (columns, values).
-    
-    Example:
-        stream = transfers.CSVStream("http://blah.com/foo.csv")
-        for cols, vals in stream:
-            print("{} = {}".format(cols[0], vals[0]))
-    """
-    
-    def __init__(self, url, tdenv=None, *, timeout: int = 90):
-        self.url = url
-        self.tdenv = tdenv
-        if not url.startswith("file:///"):
-            self.req = requests.get(self.url, stream=True, timeout=timeout)
-            self.lines = self.req.iter_lines()
-        else:
-            self.lines = open(url[8:], "rUb")
-        self.columns = self.next_line().split(',')
-    
-    def next_line(self):
-        """ Fetch the next line as a text string """
-        while True:
-            line = next(self.lines)
-            try:
-                return line.decode(encoding="utf-8")
-            except UnicodeDecodeError as e:
-                if not self.tdenv:
-                    raise e
-                self.tdenv.WARN(
-                    "{}: line:{}: {}\n{}",
-                    self.url, self.csvin.line_num, line, e
-                )
-    
-    def __iter__(self):
-        """
-        Iterate across data received as csv values.
-        Yields [column headings], [column values]
-        """
-        self.csvin = csvin = csv.reader(
-            iter(self.next_line, 'END'),
-            delimiter=',', quotechar="'", doublequote=True
-        )
-        columns = self.columns
-        for values in csvin:
-            if values and len(values) == len(columns):
-                yield columns, values
