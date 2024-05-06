@@ -60,7 +60,6 @@ class PadSizeArgument(int):
             'dest': 'padSize',
             'metavar': 'PADSIZES',
             'type': 'padsize',
-            'choices': 'SsMmLl?',
         }
 
 
@@ -153,7 +152,6 @@ class PlanetaryArgument(int):
             'dest': 'planetary',
             'metavar': 'PLANETARY',
             'type': 'planetary',
-            'choices': 'YyNn?',
         }
 
 
@@ -181,7 +179,6 @@ class FleetCarrierArgument(int):
             'dest': 'fleet',
             'metavar': 'FLEET',
             'type': 'fleet',
-            'choices': 'YyNn?',
         }
 
 class OdysseyArgument(int):
@@ -208,7 +205,6 @@ class OdysseyArgument(int):
             'dest': 'odyssey',
             'metavar': 'ODYSSEY',
             'type': 'odyssey',
-            'choices': 'YyNn?',
         }
 
 
