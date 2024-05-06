@@ -17,7 +17,8 @@ import requests
 if typing.TYPE_CHECKING:
     import os  # for PathLike
     from .tradeenv import TradeEnv
-    from typing import Callable, Optional, Union
+    from collections.abc import Callable
+    from typing import Optional, Union
 
 
 ######################################################################
@@ -53,7 +54,7 @@ def download(
             backup:     bool = False,
             shebang:    Optional[Callable] = None,
             chunkSize:  int = 4096,
-            timeout:    int = 90,
+            timeout:    int = 30,
             *,
             length:     Optional[Union[int, str]] = None,
             session:    Optional[requests.Session] = None,
@@ -168,18 +169,12 @@ def get_json_data(url, *, timeout: int = 90):
     else:
         totalLength = int(totalLength)
         filename = get_filename_from_url(url)
-        progBar = pbar.Progress(totalLength, 25, style=pbar.DefaultBar, prefix=filename)
+        progBar = pbar.Progress(totalLength, 25, prefix=filename)
 
         jsData = bytes()
         for data in req.iter_content():
             jsData += data
-            progBar.increment(
-                len(data),
-                postfix=lambda value, goal: \
-                " {}/{}".format(
-                    makeUnit(value),
-                    makeUnit(goal),
-            ))
+            progBar.increment(len(data))
         progBar.clear()
     
     return json.loads(jsData.decode())
