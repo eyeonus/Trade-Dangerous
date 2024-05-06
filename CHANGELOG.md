@@ -2,6 +2,19 @@
 
 
 
+## v11.2.1 (2024-05-06)
+
+### Fix
+
+* fix: linter warnings from moving the shebang from line 1 ([`73d4a0d`](https://github.com/eyeonus/Trade-Dangerous/commit/73d4a0d25a633b6cd622459369b8ca9ef044f83a))
+
+* fix: multiple options to --pad-size and others was no-longer working ([`f69dffd`](https://github.com/eyeonus/Trade-Dangerous/commit/f69dffd66c7c0e2f0b0acb7227bf9d96a9d380fd))
+
+### Refactor
+
+* refactor: simplify the system-purge operation to not copy/move data and abuse the db ([`ab75113`](https://github.com/eyeonus/Trade-Dangerous/commit/ab75113ed910ad1301e60376ed0f3d4ae8de6891))
+
+
 ## v11.2.0 (2024-05-05)
 
 ### Chore
