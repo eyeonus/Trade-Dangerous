@@ -8,8 +8,7 @@ from rich.progress import (
 )
 from contextlib import contextmanager
 
-from collections.abc import Iterable
-from typing import Optional, Union
+from typing import Iterable, Optional, Union, Type  # noqa
 
 
 class BarStyle:
@@ -60,7 +59,7 @@ class Progress:
                  start: float = 0,
                  prefix: Optional[str] = None,
                  *,
-                 style: Optional[type[BarStyle]] = None,
+                 style: Optional[Type[BarStyle]] = None,
                  show: bool = True,
                  ) -> None:
         """
