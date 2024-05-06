@@ -34,6 +34,13 @@ class DefaultBar(BarStyle):
         super().__init__(width, prefix, add_columns=my_columns)
 
 
+class LongRunningCountBar(BarStyle):
+    """ Creates a progress bar that is counting M/N items to completion with a time-remaining counter """
+    def __init__(self, width: int = 10, prefix: Optional[str] = None):
+        my_columns = [MofNCompleteColumn(), TimeElapsedColumn(), TimeRemainingColumn()]
+        super().__init__(width, prefix, add_columns=my_columns)
+
+
 class TransferBar(BarStyle):
     """ Creates a progress bar representing a data transfer, which shows the amount of
         data transferred, speed, and estimated time remaining. """
