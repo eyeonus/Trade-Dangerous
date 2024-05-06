@@ -92,10 +92,9 @@ CREATE TABLE Station
    UNIQUE (station_id),
 
    FOREIGN KEY (system_id) REFERENCES System(system_id)
-    ON UPDATE CASCADE
     ON DELETE CASCADE
- );
-CREATE INDEX idx_station_by_system ON Station (system_id, station_id);
+ ) WITHOUT ROWID;
+CREATE INDEX idx_station_by_system ON Station (system_id);
 CREATE INDEX idx_station_by_name ON Station (name);
 
 
@@ -226,10 +225,44 @@ CREATE TABLE StationItem
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY (item_id) REFERENCES Item(item_id)
     ON UPDATE CASCADE ON DELETE CASCADE
-);
+) WITHOUT ROWID;
 CREATE INDEX si_mod_stn_itm ON StationItem(modified, station_id, item_id);
 CREATE INDEX si_itm_dmdpr ON StationItem(item_id, demand_price) WHERE demand_price > 0;
 CREATE INDEX si_itm_suppr ON StationItem(item_id, supply_price) WHERE supply_price > 0;
+
+-- Not used yet
+CREATE TABLE IF NOT EXISTS StationDemand
+(
+    station_id      INTEGER NOT NULL,
+    item_id         INTEGER NOT NULL,
+    price           INTEGER NOT NULL,
+    units           INTEGER NOT NULL,
+    level           INTEGER NOT NULL,
+    modified        INTEGER NOT NULL,
+    from_live       INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT pk_StationDemand PRIMARY KEY (station_id, item_id),
+    CONSTRAINT fk_StationDemand_station_id_Station FOREIGN KEY (station_id) REFERENCES Station (station_id) ON DELETE CASCADE,
+    CONSTRAINT fk_StationDemand_item_id_Item       FOREIGN KEY (item_id)    REFERENCES Item    (item_id)    ON DELETE CASCADE
+) WITHOUT ROWID;
+DELETE FROM StationDemand;
+CREATE INDEX idx_StationDemand_item ON StationDemand (item_id);
+
+-- Not used yet
+CREATE TABLE IF NOT EXISTS StationSupply
+(
+    station_id      INTEGER NOT NULL,
+    item_id         INTEGER NOT NULL,
+    price           INTEGER NOT NULL,
+    units           INTEGER NOT NULL,
+    level           INTEGER NOT NULL,
+    modified        INTEGER NOT NULL,
+    from_live       INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT pk_StationSupply PRIMARY KEY (station_id, item_id),
+    CONSTRAINT fk_StationSupply_station_id_Station FOREIGN KEY (station_id) REFERENCES Station (station_id) ON DELETE CASCADE,
+    CONSTRAINT fk_StationSupply_item_id_Item       FOREIGN KEY (item_id)    REFERENCES Item    (item_id)    ON DELETE CASCADE
+) WITHOUT ROWID;
+DELETE FROM StationSupply;
+CREATE INDEX idx_StationSupply_item ON StationSupply (item_id);
 
 CREATE VIEW StationBuying AS
 SELECT  station_id,
