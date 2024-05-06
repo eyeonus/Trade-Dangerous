@@ -220,8 +220,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         # to get any benefits from constructing transactions, and blowing up
         # the WAL and memory usage by making massive transactions.
         max_transaction_items, transaction_items = 32 * 1024, 0
-        with (pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog,
-              listings_path.open("r", encoding="utf-8", errors="ignore") as fh):
+        with pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog,\
+              listings_path.open("r", encoding="utf-8", errors="ignore") as fh:
             cursor = db.cursor()
             cursor.execute("BEGIN TRANSACTION")
             
