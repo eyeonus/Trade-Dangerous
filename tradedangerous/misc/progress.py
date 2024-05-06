@@ -89,7 +89,7 @@ class Progress:
             # What fields to display.
             *style_instance.columns,
             # Hide it once it's finished, update it for us, 4x a second
-            transient=True, auto_refresh=True, refresh_per_second=4
+            transient=True, auto_refresh=True, refresh_per_second=5
         )
 
         # Now we add an actual task to track progress on.
