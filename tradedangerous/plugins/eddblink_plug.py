@@ -182,12 +182,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
-        self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
         
+        self.tdenv.NOTE("Checking listings")
         total = _count_listing_entries(self.tdenv, listings_path)
         if not total:
+            self.tdenv.NOTE("No listings")
             return
 
+        self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
+
+        db = self.tdb.getDB()
         stmt_unliven_station = """UPDATE StationItem SET from_live = 0 WHERE station_id = ?"""
         stmt_flush_station   = """DELETE from StationItem WHERE station_id = ?"""
         stmt_add_listing     = """
@@ -204,20 +208,25 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         
         # Fetch all the items IDS
-        db = self.tdb.getDB()
         item_lookup = _make_item_id_lookup(self.tdenv, db.cursor())
         station_lookup = _make_station_id_lookup(self.tdenv, db.cursor())
         last_station_update_times = _collect_station_modified_times(self.tdenv, db.cursor())
         
         cur_station = None
+        is_debug = self.tdenv.debug > 0
         self.tdenv.DEBUG0("Processing entries...")
-        with listings_path.open("r", encoding="utf-8", errors="ignore") as fh:
-            prog = pbar.Progress(total, 50)
-
-            cursor: Optional[sqlite3.Cursor] = db.cursor()
+        
+        # Try to find a balance between doing too many commits where we fail
+        # to get any benefits from constructing transactions, and blowing up
+        # the WAL and memory usage by making massive transactions.
+        max_transaction_items, transaction_items = 32 * 1024, 0
+        with (pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog,
+              listings_path.open("r", encoding="utf-8", errors="ignore") as fh):
+            cursor = db.cursor()
+            cursor.execute("BEGIN TRANSACTION")
             
             for listing in csv.DictReader(fh):
-                prog.increment(1, postfix = lambda value, total: f" {(value / total * 100):.0f}% {value} / {total}")
+                prog.increment(1)
                 
                 station_id = int(listing['station_id'])
                 if station_id not in station_lookup:
@@ -227,16 +236,21 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 if station_id != cur_station:
                     # commit anything from the previous station, get a new cursor
-                    db.commit()
-                    cur_station, skip_station, cursor = station_id, False, db.cursor()
+                    if transaction_items >= max_transaction_items:
+                        cursor.execute("COMMIT")
+                        transaction_items = 0
+                        cursor.execute("BEGIN TRANSACTION")
+                    cur_station, skip_station = station_id, False
                     
                     # Check if listing already exists in DB and needs updated.
                     last_modified: int = int(last_station_update_times.get(station_id, 0))
                     if last_modified:
                         # When the listings.csv data matches the database, update to make from_live == 0.
                         if listing_time == last_modified and not from_live:
-                            self.tdenv.DEBUG1(f"Marking {cur_station} as no longer 'live' (old={last_modified}, listing={listing_time}).")
+                            if is_debug:
+                                self.tdenv.DEBUG1(f"Marking {cur_station} as no longer 'live' (old={last_modified}, listing={listing_time}).")
                             cursor.execute(stmt_unliven_station, (cur_station,))
+                            transaction_items += 1
                             skip_station = True
                             continue
 
@@ -247,8 +261,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                             continue
                         
                         # The data from the import file is newer, so we need to delete the old data for this station.
-                        self.tdenv.DEBUG1(f"Deleting old listing data for {cur_station} (old={last_modified}, listing={listing_time}).")
+                        if is_debug:
+                            self.tdenv.DEBUG1(f"Deleting old listing data for {cur_station} (old={last_modified}, listing={listing_time}).")
                         cursor.execute(stmt_flush_station, (cur_station,))
+                        transaction_items += 1
                         last_station_update_times[station_id] = listing_time
                 
                 # station skip lasts until we change station id.
@@ -268,20 +284,24 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_units = int(listing['supply'])
                 supply_level = int(listing.get('supply_bracket') or '-1')
                 
-                self.tdenv.DEBUG1(f"Inserting new listing data for {station_id}.")
+                if is_debug:
+                    self.tdenv.DEBUG1(f"Inserting new listing data for {station_id}.")
                 cursor.execute(stmt_add_listing, (
                         station_id, item_id, listing_time, from_live,
                         demand_price, demand_units, demand_level,
                         supply_price, supply_units, supply_level,
                 ))
-            
-        prog.clear()
-        
-        # Do a final commit to be sure
-        db.commit()
-        
-        self.tdenv.NOTE("Optimizing database...")
-        db.execute("VACUUM")
+                transaction_items += 1
+
+        # These will take a little while, which has four steps, so we'll make it a counter.
+        with pbar.Progress(1, 40, prefix="Saving"):
+            # Do a final commit to be sure
+            cursor.execute("COMMIT")
+
+        if self.getOption("optimize"):
+            with pbar.Progress(1, 40, prefix="Optimizing"):
+                db.execute("VACUUM")
+
         self.tdb.close()
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())

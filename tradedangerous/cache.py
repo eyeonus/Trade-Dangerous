@@ -30,6 +30,8 @@ import sqlite3
 import sys
 import typing
 
+from functools import partial as partial_fn
+from .fs import file_line_count
 from .tradeexcept import TradeException
 from tradedangerous.misc.progress import Progress, CountingBar
 from . import corrections, utils
@@ -38,6 +40,7 @@ from . import prices
 
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any, Optional, TextIO
     
     from .tradeenv import TradeEnv
@@ -778,11 +781,14 @@ def deprecationCheckItem(importPath, lineNo, line):
     )
 
 
-def processImportFile(tdenv, db, importPath, tableName):
+def processImportFile(tdenv, db, importPath, tableName, *, line_callback: Optional[Callable] = None, call_args: Optional[dict] = None):
     tdenv.DEBUG0(
         "Processing import file '{}' for table '{}'",
         str(importPath), tableName
     )
+    call_args = call_args or {}
+    if line_callback:
+        line_callback = partial_fn(line_callback, **call_args)
     
     fkeySelectStr = (
         "("
@@ -871,6 +877,8 @@ def processImportFile(tdenv, db, importPath, tableName):
         uniqueIndex = {}
         
         for linein in csvin:
+            if line_callback:
+                line_callback()
             if not linein:
                 continue
             lineNo = csvin.line_num
@@ -978,12 +986,15 @@ def buildCache(tdb, tdenv):
         tempDB.executescript(sqlScript)
     
     # import standard tables
-    with Progress(max_value=len(tdb.importTables) + 1, width=25, style=CountingBar) as prog:
-        for (importName, importTable) in tdb.importTables:
-            with prog.sub_task(description=importName, max_value=None):
-                prog.increment(value=1, description=importName)
+    with Progress(max_value=len(tdb.importTables) + 1, prefix="Importing", width=25, style=CountingBar) as prog:
+        for importName, importTable in tdb.importTables:
+            import_path = Path(importName)
+            import_lines = file_line_count(import_path, missing_ok=True)
+            with prog.sub_task(max_value=import_lines, description=importTable) as child:
+                prog.increment(value=1)
+                call_args = {'task': child, 'advance': 1}
                 try:
-                    processImportFile(tdenv, tempDB, Path(importName), importTable)
+                    processImportFile(tdenv, tempDB, import_path, importTable, line_callback=prog.update_task, call_args=call_args)
                 except FileNotFoundError:
                     tdenv.DEBUG0(
                         "WARNING: processImportFile found no {} file", importName
@@ -994,7 +1005,7 @@ def buildCache(tdb, tdenv):
                         "Remove it or add the column definition line.",
                         importName
                     )
-            prog.increment(1)
+        prog.increment(1)
 
         with prog.sub_task(description="Save DB"):
             tempDB.commit()
