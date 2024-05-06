@@ -1,5 +1,5 @@
-# Deprecated
 #!/usr/bin/env python3.6
+# Deprecated
 
 """
 based on edscupdate.py without the submit_distance()
