@@ -40,8 +40,7 @@ from . import prices
 
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Any, Optional, TextIO
+    from typing import Any, Callable, Optional, TextIO  # noqa
     
     from .tradeenv import TradeEnv
 
