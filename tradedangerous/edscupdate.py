@@ -1,5 +1,5 @@
-# Deprecated
 #!/usr/bin/env python3.6
+# Deprecated
 
 """
 This tool looks for changes in the EDSC service since the most
