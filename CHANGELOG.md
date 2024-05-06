@@ -2,6 +2,76 @@
 
 
 
+## v11.3.0 (2024-05-06)
+
+### Chore
+
+* chore: Fix linting error about collections.abc ([`1358479`](https://github.com/eyeonus/Trade-Dangerous/commit/1358479c766bae220d6df748505506db21281c5e))
+
+### Feature
+
+* feat: better eddblink progress reporting
+
+- small tweaks to improve performance of eddblink import,
+- commit batching to try and improve eddblink import speed,
+- use rich progress bars to give better insight into commit rate
+
+one interesting thing to try is to change the progress bar description around the COMMIT while importing prices:
+
+```
+prog.increment(description=&#34;COMMIT&#34;)
+cursor.execute(&#34;COMMIT&#34;)
+transaction_items = 0
+cursor.execute(&#34;BEGIN TRANSACTION&#34;)
+prog.increment(description=&#34;Processing&#34;)
+```
+
+and then adjust the batch size. when batchsize is too low, this makes the description flicker, but you can get a sense for how increasing the batch size reduces the total import time until the amount of memory/wal etc starts to make the commit time excessively long ([`f3af244`](https://github.com/eyeonus/Trade-Dangerous/commit/f3af244d6940a2394b4b05725c412b1f1a0796da))
+
+* feat: database schema update
+
+- Remove ROWID from Station table to improve performance,
+- Introduce StationDemand and StationSupply tables for breaking up StationItem,
+- Reduce size of station/system index, ([`32a7db1`](https://github.com/eyeonus/Trade-Dangerous/commit/32a7db15ffd041d9b47463d54c4f7e87b3f08651))
+
+* feat: Swap out homebrew progress bars for Rich
+
+- make bars hideable,
+- polish,
+- default the progress bar to visible, require show=False explicitly.
+- add more bar styles,
+- use some of the bars, ([`52bb7f4`](https://github.com/eyeonus/Trade-Dangerous/commit/52bb7f456990a047b0292198d40b3b29ebc0e8d9))
+
+* feat: nicer transfer progress bars
+
+uses the new rich-based progress bars to display download speed information etc. ([`bd4738a`](https://github.com/eyeonus/Trade-Dangerous/commit/bd4738a497ebd121fa9b3bfda42cde61a0843144))
+
+* feat: rich progress bars
+
+This introduces an enhancement over the old progress bars, using rich to provide colorful, live bars. Base types for skinning them are included. ([`156904b`](https://github.com/eyeonus/Trade-Dangerous/commit/156904b9eca9c3090873dba787914fae2a98a6f2))
+
+### Fix
+
+* fix: Python version &lt;3.9 does not support parenthesized context expressions ([`aab81db`](https://github.com/eyeonus/Trade-Dangerous/commit/aab81dba2b4364c5a5bb954602182c26927b9c31))
+
+* fix: progress bar display/updates and linting
+
+- advance progress bars properly,
+- actually display the text of the progress bar, duh ([`ec94c0b`](https://github.com/eyeonus/Trade-Dangerous/commit/ec94c0b18efd1ea2f2324f67d01de6260e790099))
+
+### Refactor
+
+* refactor: make transfers use the rich bars properly. ([`ca12c5f`](https://github.com/eyeonus/Trade-Dangerous/commit/ca12c5fdf18e762da59de45fa18456b6060d69df))
+
+* refactor: move file_line_count into fs ([`8a9989b`](https://github.com/eyeonus/Trade-Dangerous/commit/8a9989be17cdd0e578d9bfff40b8a96e2850e91a))
+
+### Unknown
+
+* - feat: add LongRunningCountBar to progress bars
+
+Line CountingBar except it includes a TimeRemaining column (long running tasks seem to warrant this) ([`6f188a4`](https://github.com/eyeonus/Trade-Dangerous/commit/6f188a4a3c03eb5640c7fadc5aa408f731bbf5ea))
+
+
 ## v11.2.1 (2024-05-06)
 
 ### Fix
