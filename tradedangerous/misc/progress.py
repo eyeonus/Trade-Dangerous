@@ -8,13 +8,14 @@ from rich.progress import (
 )
 from contextlib import contextmanager
 
-from typing import Iterable, Optional, Type
+from collections.abc import Iterable
+from typing import Optional, Union
 
 
 class BarStyle:
     """ Base class for Progress bar style types. """
     def __init__(self, width: int = 10, prefix: Optional[str] = None, *, add_columns: Optional[Iterable[ProgressColumn]]):
-        self.columns = [SpinnerColumn(), TextColumn(prefix), BarColumn(bar_width=width)]
+        self.columns = [SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(bar_width=width)]
         if add_columns:
             self.columns.extend(add_columns)
 
@@ -52,7 +53,7 @@ class Progress:
                  start: float = 0,
                  prefix: Optional[str] = None,
                  *,
-                 style: Optional[Type[BarStyle]] = None,
+                 style: Optional[type[BarStyle]] = None,
                  show: bool = True,
                  ) -> None:
         """
@@ -167,6 +168,6 @@ class Progress:
         finally:
             self.progress.remove_task(task)
 
-    def update_task(self, task: TaskID, value: float, description: Optional[str] = None):
+    def update_task(self, task: TaskID, advance: Union[float, int], description: Optional[str] = None):
         if self.show:
-            self.progress.update(task, value=value, description=description)
+            self.progress.update(task, advance=advance, description=description)
