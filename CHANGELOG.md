@@ -124,10 +124,6 @@ and in the case of rename will ensure a .old backup of the existing file.
 
 Committing separately of other work that leverages it. ([`778278d`](https://github.com/eyeonus/Trade-Dangerous/commit/778278db89964f38c92740b6be9868b361406be5))
 
-### Unknown
-
-* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`06a10d2`](https://github.com/eyeonus/Trade-Dangerous/commit/06a10d23510a3743d6aa4104ee288fe7623cf879))
-
 
 ## v11.1.6 (2024-05-01)
 
