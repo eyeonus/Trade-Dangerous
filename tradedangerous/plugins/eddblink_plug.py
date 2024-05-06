@@ -4,19 +4,18 @@ https://elite.tromador.com/ to update the Database.
 """
 from __future__ import annotations
 
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from .. fs import file_line_count
 from .. import plugins, cache, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
 
-import certifi
 import csv
 import datetime
-from email.utils import parsedate_to_datetime
 import os
 import requests
 import sqlite3
-import ssl
 import typing
 
 
@@ -26,39 +25,10 @@ if typing.TYPE_CHECKING:
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
-CONTEXT=ssl.create_default_context(cafile=certifi.where())
 
 
 class DecodingError(PluginException):
     pass
-
-
-def _file_line_count(from_file: Path, bufsize: int = 128 * 1024) -> int:
-    """ counts the number of newline characters in a given file. """
-    # Pre-allocate a buffer so we aren't putting pressure on the garbage collector.
-    buf = bytearray(bufsize)
-    
-    # Capture it's counting method, so we don't have to keep looking that up on
-    # large files.
-    counter = buf.count
-    
-    total = 0
-    with from_file.open("rb") as fh:
-        # Capture the 'readinto' method to avoid lookups.
-        reader = fh.readinto
-
-        # read into the buffer and capture the number of bytes fetched,
-        # which will be 'size' until the last read from the file.
-        read = reader(buf)
-        while read == bufsize:  # nominal case for large files
-            total += counter(b'\n')
-            read = reader(buf)
-
-        # when 0 <= read < bufsize we're on the last page of the
-        # file, so we need to take a slice of the buffer, which creates
-        # a new object and thus we also have to lookup count. it's trivial
-        # but if you have to do it 10,000x it's definitely not a rounding error.
-        return total + buf[:read].count(b'\n')
 
 
 def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
@@ -68,7 +38,7 @@ def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
         return 0
     
     tdenv.DEBUG0(f"Getting total number of entries in {listings}...")
-    count = _file_line_count(listings)
+    count = file_line_count(listings)
     if count <= 1:
         if count == 1:
             tdenv.DEBUG0("Listing count of 1 suggests nothing but a header")
@@ -101,7 +71,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     """
     Plugin that downloads data from eddb.
     """
-    
     pluginOptions = {
         'item':         "Update Items using latest file from server. (Implies '-O system,station')",
         'rare':         "Update RareItems using latest file from server. (Implies '-O system,station')",

@@ -1,10 +1,10 @@
 """This module should handle filesystem related operations
 """
 from shutil import copy as shcopy
-from os import makedirs
+from os import makedirs, PathLike
 from pathlib import Path
 
-__all__ = ['copy', 'copyallfiles', 'touch', 'ensurefolder']
+__all__ = ['copy', 'copyallfiles', 'touch', 'ensurefolder', 'file_line_count']
 
 def pathify(*args):
     if len(args) > 1 or not isinstance(args[0], Path):
@@ -99,3 +99,39 @@ def ensurefolder(folder):
     except FileExistsError:
         pass
     return folderPath.resolve()
+
+
+def file_line_count(from_file: PathLike, buf_size: int = 128 * 1024, *, missing_ok: bool = False) -> int:
+    """ counts the number of newline characters in a given file. """
+    if not isinstance(from_file, Path):
+        from_file = Path(from_file)
+
+    if missing_ok and not from_file.exists():
+        return 0
+
+    # Pre-allocate a buffer so that we aren't putting pressure on the garbage collector.
+    buf = bytearray(buf_size)
+
+    # Capture it's counting method, so we don't have to keep looking that up on
+    # large files.
+    counter = buf.count
+
+    total = 0
+    with from_file.open("rb") as fh:
+        # Capture the 'readinto' method to avoid lookups.
+        reader = fh.readinto
+
+        # read into the buffer and capture the number of bytes fetched,
+        # which will be 'size' until the last read from the file.
+        read = reader(buf)
+        while read == buf_size:  # nominal case for large files
+            total += counter(b'\n')
+            read = reader(buf)
+
+        # when 0 <= read < buf_size we're on the last page of the
+        # file, so we need to take a slice of the buffer, which creates
+        # a new object, thus we also have to lookup count. it's trivial
+        # but if you have to do it 10,000x it's definitely not a rounding error.
+        return total + buf[:read].count(b'\n')
+
+
