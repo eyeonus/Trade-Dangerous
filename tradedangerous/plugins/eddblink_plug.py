@@ -118,6 +118,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'purge':        "Remove any empty systems that previously had fleet carriers.",
+        'optimize':     "Optimize ('vacuum') database after processing.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
     }
     
@@ -197,22 +198,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         db = self.tdb.getDB()
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
 
-        db.execute("PRAGMA foreign_keys = OFF")
-
-        self.tdenv.DEBUG0("Saving systems with stations.... " + str(self.now()) + "\t\t\t\t", end="\r")
-        db.execute("DROP TABLE IF EXISTS System_copy")
-        db.execute("""CREATE TABLE System_copy AS SELECT * FROM System
-                            WHERE system_id IN (SELECT system_id FROM Station)
-                    """)
-
-        self.tdenv.DEBUG0("Erasing table and reinserting kept systems.... " + str(self.now()) + "\t\t\t\t", end="\r")
-        db.execute("DELETE FROM System")
-        db.execute("INSERT INTO System SELECT * FROM System_copy")
-
-        self.tdenv.DEBUG0("Removing copy.... " + str(self.now()) + "\t\t\t\t", end="\r")
-        db.execute("PRAGMA foreign_keys = ON")
-        db.execute("DROP TABLE IF EXISTS System_copy")
-
+        db.execute("""
+            DELETE FROM System
+             WHERE NOT EXISTS(SELECT 1 FROM Station WHERE Station.system_id = System.system_id)
+        """)
         db.commit()
 
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
@@ -349,7 +338,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # We can probably safely assume that the plugin
         # has never been run if the db file doesn't exist.
-        if not (self.tdb.dataPath / Path("TradeDangerous.db")).exists():
+        if not self.tdb.dbPath.exists():
             self.options["clean"] = True
         
         if self.getOption("clean"):
@@ -392,8 +381,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if rib_path.exists():
                     rib_path.unlink()
                 ri_path.rename(rib_path)
-            
+
+            self.tdb.close()
+
             self.tdb.reloadCache()
+            self.tdb.close()
             
             # Now it's safe to move RareItems back.
             if ri_path.exists():
@@ -451,7 +443,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
                 buildCache = True
-        
+
         if self.getOption("ship"):
             if self.downloadFile(self.shipPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
@@ -486,16 +478,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             self.tdb.close()
             self.tdb.reloadCache()
-        
+            self.tdb.close()
+
         if self.getOption("purge"):
             self.purgeSystems()
+            self.tdb.close()
         
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
             if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
-        
+
         if self.getOption("listings"):
             self.tdenv.NOTE("Regenerating .prices file.")
             cache.regeneratePricesFile(self.tdb, self.tdenv)
