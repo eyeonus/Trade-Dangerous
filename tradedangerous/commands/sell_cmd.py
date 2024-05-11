@@ -37,6 +37,12 @@ switches = [
             metavar='N.NN',
             type=float,
     ),
+    ParseArgument('--age', '--max-days-old', '-MD',
+        help = 'Maximum age (in days) of trade data to use.',
+        metavar = 'DAYS',
+        type = float,
+        dest = 'maxAge',
+    ),
     AvoidPlacesArgument(),
     PadSizeArgument(),
     MutuallyExclusiveGroup(
@@ -164,6 +170,9 @@ def run(results, cmdenv, tdb: TradeDB):
         if station in avoidStations:
             continue
         if station.system in avoidSystems:
+            continue
+        maxAge, stnAge = cmdenv.maxAge, station.dataAge or float("inf")
+        if maxAge and stnAge > maxAge:
             continue
         
         row = ResultRow()
