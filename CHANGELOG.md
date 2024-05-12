@@ -2,6 +2,17 @@
 
 
 
+## v11.4.0 (2024-05-12)
+
+### Documentation
+
+* docs: remove Merge line from changelog ([`02ac0c6`](https://github.com/eyeonus/Trade-Dangerous/commit/02ac0c6eada715c127555837fde7dd9df2213539))
+
+### Feature
+
+* feat: add `--maxage` to `sell` command ([`ab34568`](https://github.com/eyeonus/Trade-Dangerous/commit/ab34568ba1bdd4aca5f236595f0c519d0f8e0f64))
+
+
 ## v11.3.0 (2024-05-06)
 
 ### Chore
@@ -123,6 +134,10 @@ This adds normalizing methods for removing and renaming files that will log the 
 and in the case of rename will ensure a .old backup of the existing file.
 
 Committing separately of other work that leverages it. ([`778278d`](https://github.com/eyeonus/Trade-Dangerous/commit/778278db89964f38c92740b6be9868b361406be5))
+
+### Unknown
+
+* Merge branch &#39;release/v1&#39; of https://github.com/eyeonus/Trade-Dangerous.git into release/v1 ([`06a10d2`](https://github.com/eyeonus/Trade-Dangerous/commit/06a10d23510a3743d6aa4104ee288fe7623cf879))
 
 
 ## v11.1.6 (2024-05-01)
