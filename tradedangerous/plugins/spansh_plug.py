@@ -516,7 +516,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         )
         note = "Updated" if self.known_stations.get(station.id) else "Added"
         if self.tdenv.detail > 1:
-            self.print(f'        |  {station.name:50s}  |  {note} station')
+            system_name = self.known_systems[station.system_id]
+            upper_sys = system_name.upper()
+            fq_station_name = f'@{upper_sys}/{station.name}'
+            self.print(f'        |  {fq_station_name:50s}  |  {note} station')
         self.known_stations[station.id] = (station.name, station.system_id, station.modified)
     
     def ensure_commodity(self, commodity: Commodity):
