@@ -443,8 +443,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdenv.DEBUG0(f"load_known_systems query raised {e}")
             return {}
     
-    def load_known_stations(self) -> dict[int, tuple[str, int]]:
-        """ Returns a dictionary of {station_id -> (station_name, system_id)} for all current stations in the database. """
+    def load_known_stations(self) -> dict[int, tuple[str, int, float]]:
+        """ Returns a dictionary of {station_id -> (station_name, system_id, modified)} for all current stations in the database. """
         try:
             return {cols[0]: (cols[1], cols[2], parse_ts(cols[3])) for cols in self.cursor.execute('SELECT station_id, name, system_id, modified FROM Station')}
         except Exception as e:  # pylint: disable=broad-except
