@@ -1096,7 +1096,7 @@ class TradeCalc:
                     bestToDest[dstID] = (
                         dstStation, route, trade, dest.via, dest.distLy, score
                     )
-            
+        
         if connections == 0:
             raise NoHopsError(
                 "No destinations could be reached within the constraints."

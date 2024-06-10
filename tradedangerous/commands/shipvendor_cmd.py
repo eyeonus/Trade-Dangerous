@@ -208,7 +208,7 @@ def run(results, cmdenv, tdb):
     for ship in ships.values():
         if action(tdb, cmdenv, station, ship):
             dataToExport = True
-
+    
     cmdenv.DEBUG0("dataToExport = {}", dataToExport)
     
     maybeExportToCSV(tdb, cmdenv)

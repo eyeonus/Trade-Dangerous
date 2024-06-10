@@ -69,10 +69,10 @@ def download(
     :param shebang:     function to call on the first line
     """
     tdenv.NOTE("Requesting {}".format(url))
-
+    
     if isinstance(length, str):
         length = int(length)
-
+    
     # If the caller provided an existing session stream, use that the fetch the request.
     req = (session or requests).get(url, headers=headers or None, stream=True, timeout=timeout)
     req.raise_for_status()
@@ -90,7 +90,7 @@ def download(
             raise TradeException(
                 "Remote server gave an empty response. Please try again later."
             )
-
+    
     # if the file is being compressed by the server, the headers tell us the
     # length of the compressed data, but in our loop below we will be receiving
     # the uncompressed data, which should be larger, which will cause our
@@ -125,7 +125,7 @@ def download(
             if prog:
                 prog.increment(len(data))
         tdenv.DEBUG0("End of data")
-
+    
     if not tdenv.quiet:
         elapsed = (time.time() - started) or 1
         tdenv.NOTE(
@@ -169,7 +169,7 @@ def get_json_data(url, *, timeout: int = 90):
         totalLength = int(totalLength)
         filename = get_filename_from_url(url)
         progBar = pbar.Progress(totalLength, 25, prefix=filename)
-
+        
         jsData = bytes()
         for data in req.iter_content():
             jsData += data

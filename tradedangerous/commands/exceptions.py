@@ -7,7 +7,7 @@ from ..tradeexcept import TradeException
 class UsageError(TradeException):
     def __init__(self, title, usage):
         self.title, self.usage = title, usage
-
+    
     def __str__(self):
         return self.title + "\n\n" + self.usage
 
@@ -20,7 +20,7 @@ class CommandLineError(TradeException):
     """
     def __init__(self, errorStr, usage=None):
         self.errorStr, self.usage = errorStr, usage
- 
+    
     def __str__(self):
         if self.usage:
             return "ERROR: {}\n\n{}".format(self.errorStr, self.usage)
@@ -36,7 +36,7 @@ class NoDataError(TradeException):
     """
     def __init__(self, errorStr):
         self.errorStr = errorStr
-
+    
     def __str__(self):
         return f"""Error: {self.errorStr}
 Possible causes:

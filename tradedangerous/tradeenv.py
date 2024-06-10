@@ -271,7 +271,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             return noteFn
         
         return None
-
+    
     def remove_file(self, *args) -> bool:
         """ Unlinks a file, as long as it exists, and logs the action at level 1. """
         path = Path(*args)
@@ -280,7 +280,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         path.unlink()
         self.DEBUG1(":cross_mark: deleted {}", path)
         return True
-
+    
     def rename_file(self, *, old: os.PathLike, new: os.PathLike) -> bool:
         """
         If 'new' exists, deletes it, and then attempts to rename old -> new. If new is not specified,
@@ -293,14 +293,14 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         # Promote new to a guaranteed Path and remove it if it's present.
         new = Path(new)
         self.remove_file(new)
-
+        
         # Promote new to a guaranteed Path and confirm it exists.
         old = Path(old)
         if not old.exists():
             return False
-
+        
         # Perform the rename and log it at level 1.
         old.rename(new)
         self.DEBUG1(":recycle: moved {} to {}", old, new)
-
+        
         return True

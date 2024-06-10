@@ -73,10 +73,10 @@ class Progress:
         self.show = bool(show)
         if not show:
             return
-
+        
         if style is None:
             style = DefaultBar
-
+        
         self.max_value = 0 if max_value is None else max(max_value, start)
         self.value = start
         self.prefix = prefix or ""
@@ -90,23 +90,23 @@ class Progress:
             # Hide it once it's finished, update it for us, 4x a second
             transient=True, auto_refresh=True, refresh_per_second=5
         )
-
+        
         # Now we add an actual task to track progress on.
         self.task = self.progress.add_task("Working...", total=max_value, start=True)
         if self.value:
             self.progress.update(self.task, advance=self.value)
-
+        
         # And show the task tracker.
         self.progress.start()
-
+    
     def __enter__(self):
         """ Context manager.
-        
+            
             Example use:
-
+                
                 import time
                 import tradedangerous.progress
-
+                
                 # Progress(max_value=100, width=32, style=progress.CountingBar)
                 with progress.Progress(100, 32, style=progress.CountingBar) as prog:
                     for i in range(100):
@@ -114,10 +114,10 @@ class Progress:
                         time.sleep(3)
         """
         return self
-
+    
     def __exit__(self, *args, **kwargs):
         self.clear()
-
+    
     def increment(self, value: Optional[float] = None, description: Optional[str] = None, *, progress: Optional[float] = None) -> None:
         """
         Increase the progress of the bar by a given amount.
@@ -139,30 +139,30 @@ class Progress:
         elif value:
             self.value += value              # Update our internal count
             bump = True
-
+        
         if self.value >= self.max_value:  # Did we go past the end? Increase the end.
             self.max_value += value * 2
             self.progress.update(self.task, description=self.prefix, total=self.max_value)
             bump = True
-
+        
         if bump and self.max_value > 0:
             self.progress.update(self.task, description=self.prefix, completed=self.value)
-
+    
     def clear(self) -> None:
         """ Remove the current progress bar, if any. """
         # These two shouldn't happen separately, but incase someone tinkers, test each
         # separately and shut them down.
         if not self.show:
             return
-
+        
         if self.task:
             self.progress.remove_task(self.task)
             self.task = None
-
+        
         if self.progress:
             self.progress.stop()
             self.progress = None
-            
+    
     @contextmanager
     def sub_task(self, description: str, max_value: Optional[int] = None, width: int = 25):
         if not self.show:
@@ -173,7 +173,7 @@ class Progress:
             yield task
         finally:
             self.progress.remove_task(task)
-
+    
     def update_task(self, task: TaskID, advance: Union[float, int], description: Optional[str] = None):
         if self.show:
             self.progress.update(task, advance=advance, description=description)

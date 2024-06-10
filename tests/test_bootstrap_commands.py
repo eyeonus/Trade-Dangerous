@@ -7,7 +7,7 @@ class TestBootstrapCommands(unittest.TestCase):
         
         self.assertIn('buildcache', commands.commandIndex)
         self.assertIn('buy', commands.commandIndex)
-
+    
     def test_import_buildcache_cmd(self):
         from tradedangerous.commands import buildcache_cmd
     

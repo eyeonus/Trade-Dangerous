@@ -1005,7 +1005,7 @@ def buildCache(tdb, tdenv):
                         importName
                     )
         prog.increment(1)
-
+        
         with prog.sub_task(description="Save DB"):
             tempDB.commit()
     

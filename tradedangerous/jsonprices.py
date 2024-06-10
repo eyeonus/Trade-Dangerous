@@ -118,7 +118,7 @@ def load_prices_json(
             blackMarket = '?'
     except KeyError:
         blackMarket = '?'
-
+    
     try:
         maxPadSize = stnData['mps'].upper()
         if maxPadSize not in ['S', 'M', 'L']:

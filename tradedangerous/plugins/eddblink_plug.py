@@ -45,7 +45,7 @@ def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
         else:
             tdenv.DEBUG0("Listings file is empty, nothing to do.")
         return 0
-
+    
     return count + 1  # kfsone: Doesn't the header already make this + 1?
 
 
@@ -166,13 +166,13 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         db = self.tdb.getDB()
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
-
+        
         db.execute("""
             DELETE FROM System
              WHERE NOT EXISTS(SELECT 1 FROM Station WHERE Station.system_id = System.system_id)
         """)
         db.commit()
-
+        
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
     
     def importListings(self, listings_file):
@@ -188,9 +188,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not total:
             self.tdenv.NOTE("No listings")
             return
-
+        
         self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
-
+        
         db = self.tdb.getDB()
         stmt_unliven_station = """UPDATE StationItem SET from_live = 0 WHERE station_id = ?"""
         stmt_flush_station   = """DELETE from StationItem WHERE station_id = ?"""
@@ -253,7 +253,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                             transaction_items += 1
                             skip_station = True
                             continue
-
+                        
                         # Unless the import file data is newer, nothing else needs to be done for this station,
                         # so the rest of the listings for this station can be skipped.
                         if listing_time <= last_modified:
@@ -276,7 +276,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # listings.csv includes rare items, which we are ignoring.
                 if item_id not in item_lookup:
                     continue
-
+                
                 demand_price = int(listing['sell_price'])
                 demand_units = int(listing['demand'])
                 demand_level = int(listing.get('demand_bracket') or '-1')
@@ -292,16 +292,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                         supply_price, supply_units, supply_level,
                 ))
                 transaction_items += 1
-
+        
         # These will take a little while, which has four steps, so we'll make it a counter.
         with pbar.Progress(1, 40, prefix="Saving"):
             # Do a final commit to be sure
             cursor.execute("COMMIT")
-
+        
         if self.getOption("optimize"):
             with pbar.Progress(1, 40, prefix="Optimizing"):
                 db.execute("VACUUM")
-
+        
         self.tdb.close()
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
@@ -370,9 +370,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if rib_path.exists():
                     rib_path.unlink()
                 ri_path.rename(rib_path)
-
+            
             self.tdb.close()
-
+            
             self.tdb.reloadCache()
             self.tdb.close()
             
@@ -432,7 +432,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
                 buildCache = True
-
+        
         if self.getOption("ship"):
             if self.downloadFile(self.shipPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
@@ -468,7 +468,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdb.close()
             self.tdb.reloadCache()
             self.tdb.close()
-
+        
         if self.getOption("purge"):
             self.purgeSystems()
             self.tdb.close()
@@ -478,7 +478,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importListings(self.listingsPath)
             if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
-
+        
         if self.getOption("listings"):
             self.tdenv.NOTE("Regenerating .prices file.")
             cache.regeneratePricesFile(self.tdb, self.tdenv)

@@ -28,7 +28,7 @@ class CreditParser(int):
     'k' for thousands, 'm' for millions and 'b' for billions.
     """
     suffixes = {'k': 10**3, 'm': 10**6, 'b': 10**9}
-
+    
     def __new__(cls, val, **kwargs):
         if isinstance(val, str):
             if val[-1] in CreditParser.suffixes:

@@ -45,7 +45,7 @@ sys.stderr.write("*** WARNING: submit-distances.py is deprecated; if you rely on
 class UsageError(Exception):
     def __init__(self, argv, error):
         self.argv, self.error = argv, error
-        
+    
     def __str__(self):
         return error + "\n" + argv.format_usage()
 
