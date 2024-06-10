@@ -359,22 +359,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         
                         if commodity_count:
                             station_count += 1
-                        progress.bump(sys_task)
-                    
-                    if station_count:
-                        system_count += 1
-                        total_station_count += station_count
-                        total_commodity_count += commodity_count
-                        if self.tdenv.detail:
-                            self.print(
-                                f'{system_count:6d}  |  {upper_sys:50s}  |  '
-                                f'{station_count:3d} st  {commodity_count:6d} co'
-                            )
-                    self.commit()
-                    
-                    if system_count % 25 == 1:
-                        avg_stations = total_station_count / (system_count or 1)
-                        progress.update(f"{sys_desc}{DIM} ({total_station_count}:station:, {avg_stations:.1f}per:glowing_star:){CLOSE}")
                         progress.bump(sta_task)
                 
                 system_count += 1
