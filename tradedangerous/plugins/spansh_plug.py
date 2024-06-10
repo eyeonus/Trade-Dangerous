@@ -382,23 +382,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         return False
     
     def data_stream(self):
+        stream = None
         if self.file == '-':
             self.print('Reading prices from stdin')
             stream = sys.stdin
         elif self.file:
             self.print(f'Reading prices from local file: "{self.file}"')
             stream = open(self.file, 'r', encoding='utf8')
-        return ingest_stream(stream)
-    
-    def categorise_commodities(self, commodities):
-        categories = {}
-        for commodity in commodities:
-            categories.setdefault(commodity.category, []).append(commodity)
-        return categories
+        return self.ingest_stream(stream)
     
     def execute(self, query: str, *params, commitable: bool = False) -> sqlite3.Cursor:
-        """ helper method that performs retriable queries and marks the transaction as needing to commit
-            if the query is commitable."""
+        """ helper method that performs retriable queries and marks the transaction 
+            as needing to commit if the query is commitable."""
         if commitable:
             self.need_commit = True
         attempts = 5
