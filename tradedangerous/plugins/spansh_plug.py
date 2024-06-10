@@ -268,9 +268,24 @@ class ImportPlugin(plugins.ImportPluginBase):
             transfers.download(self.tdenv, url, self.file)
             self.print(f'Download complete, saved to local file: "{self.file}"')
         
-        
         sys_desc = f"Importing {ITALIC}spansh{CLOSE} data"
-        with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_systems)) as progress:
+        
+        # TODO: find a better way to get the total number of systems
+        # A bad way to do it:
+        total_systems = 0
+        if self.tdenv.detail:
+            print('Counting total number of systems...')
+        with open(self.file, 'r', encoding='utf8') as stream:
+            for system_data in ijson.items(stream, 'item', use_float=True):
+                total_systems += 1
+                if (not total_systems % 250) and self.tdenv.detail:
+                    print(f'Total systems: {total_systems}', end='\r')
+        
+        if self.tdenv.detail:
+            print(f'Total systems: {total_systems}')
+        
+        with Timing() as timing, Progresser(self.tdenv, sys_desc, total=total_systems) as progress:
+        # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress:
             system_count = 0
             total_station_count = 0
             total_commodity_count = 0
@@ -285,7 +300,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 elapsed, averages = get_timings(started, system_count, total_station_count)
                 label = f"{ITALIC}#{system_count:<5d}{CLOSE} {BOLD}{upper_sys:30s}{CLOSE} {DIM}({elapsed:.2f}s, avgs: {averages}){CLOSE}"
                 stations = list(station_iter)
-                with progress.task(label, total=len(stations)) as sys_task:
+                with progress.task(label, total=len(stations)) as sta_task:
                     if system.id not in self.known_systems:
                         self.ensure_system(system, upper_sys)
                     
@@ -360,6 +375,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                     if system_count % 25 == 1:
                         avg_stations = total_station_count / (system_count or 1)
                         progress.update(f"{sys_desc}{DIM} ({total_station_count}:station:, {avg_stations:.1f}per:glowing_star:){CLOSE}")
+                        progress.bump(sta_task)
+                
+                system_count += 1
+                if station_count:
+                    total_station_count += station_count
+                    total_commodity_count += commodity_count
+                    if self.tdenv.detail:
+                        self.print(
+                            f'{system_count:6d}  |  {upper_sys:50s}  |  '
+                            f'{station_count:3d} st {commodity_count:5d} co'
+                        )
+                self.commit()
+                
+                if not system_count % 25:
+                    avg_stations = total_station_count / (system_count or 1)
+                    progress.update(f"{sys_desc}{DIM} ({total_station_count}:station:, {system_count}:glowing_star:, {avg_stations:.1f}:station:/:glowing_star:){CLOSE}")
             
             self.commit()
             self.tdb.close()
