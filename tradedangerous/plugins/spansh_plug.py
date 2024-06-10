@@ -175,7 +175,7 @@ class Progresser:
             self.progress.update(task, advance=advance, description=description)
 
 
-def get_timings(started: float, system_count: int, total_station_count: int, *, min_count: int = 100) -> str:
+def get_timings(started: float, system_count: int, total_station_count: int, *, min_count: int = 100) -> tuple[float, str]:
     """ describes how long it is taking to process each system and station """
     elapsed = time.time() - started
     timings = "sys="
