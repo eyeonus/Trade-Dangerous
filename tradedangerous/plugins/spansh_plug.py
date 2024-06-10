@@ -569,23 +569,28 @@ class ImportPlugin(plugins.ImportPluginBase):
     def bool_yn(self, value: Optional[bool]) -> str:
         """ translates a ternary (none, true, false) into the ?/Y/N representation """
         return '?' if value is None else ('Y' if value else 'N')
-
-
-def ingest_stream(stream):
-    """Ingest a spansh-style galaxy dump, yielding system-level data."""
-    for system_data in ijson.items(stream, 'item', use_float=True):
-        coords = system_data.get('coords', {})
-        yield (
-            System(
-                id=system_data.get('id64'),
-                name=system_data.get('name', 'Unnamed').strip(),
-                pos_x=coords.get('x', 999999),
-                pos_y=coords.get('y', 999999),
-                pos_z=coords.get('z', 999999),
-                modified=parse_ts(system_data.get('date')),
-            ),
-            ingest_stations(system_data),
-        )
+    
+    def ingest_stream(self, stream):
+        """Ingest a spansh-style galaxy dump, yielding system-level data."""
+        for system_data in ijson.items(stream, 'item', use_float=True):
+            if "Shinrarta Dezhra" in system_data.get('name') and self.tdenv.debug:
+                with open(Path(self.tdenv.tmpDir, "shin_dez.json"), 'w') as file:
+                    # file.write(system_data)
+                    import json
+                    json.dump(system_data, file, indent=4)
+            
+            coords = system_data.get('coords', {})
+            yield (
+                System(
+                    id=system_data.get('id64'),
+                    name=system_data.get('name', 'Unnamed').strip(),
+                    pos_x=coords.get('x', 999999),
+                    pos_y=coords.get('y', 999999),
+                    pos_z=coords.get('z', 999999),
+                    modified=parse_ts(system_data.get('date')),
+                ),
+                ingest_stations(system_data),
+            )
 
 
 def ingest_stations(system_data):
