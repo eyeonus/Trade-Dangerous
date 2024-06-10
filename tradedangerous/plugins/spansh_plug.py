@@ -39,9 +39,8 @@ STATION_TYPE_MAP = {
     'Mega ship': [13, False],
     'Asteroid base': [14, False],
     'Drake-Class Carrier': [24, False],  # fleet carriers
-    'Settlement': [25, True],           # odyssey settlements
+    'Settlement': [25, True],            # odyssey settlements
 }
-
 
 if dataclass:
     # Dataclass with slots is considerably cheaper and faster than namedtuple
@@ -110,7 +109,7 @@ class Timing:
     
     @property
     def elapsed(self) -> Optional[float]:
-        """ If the timing has finish, calculates the elapsed time. """
+        """ If the timing has finished, calculates the elapsed time. """
         if self.start_ts is None:
             return None
         return (self.end_ts or time.perf_counter()) - self.start_ts
@@ -198,7 +197,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     """
     
     pluginOptions = {
-        'url':  f'URL to download galaxy data from (defaults to {SOURCE_URL})',
+        'url': f'URL to download galaxy data from (defaults to {SOURCE_URL})',
         'file': 'Local filename to import galaxy data from; use "-" to load from stdin',
         'maxage': 'Skip all entries older than specified age in days, ex.: maxage=1.5',
     }
@@ -253,14 +252,15 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.commit_limit = self.commit_rate
         self.need_commit = False
     
-    def run(self) -> bool:
+    def run(self):
         if not self.tdenv.detail:
             self.print('This will take at least several minutes...')
             self.print('You can increase verbosity (-v) to get a sense of progress')
         
         theme = self.tdenv.theme
         BOLD, CLOSE, DIM, ITALIC = theme.bold, theme.CLOSE, theme.dim, theme.italic  # pylint: disable=invalid-name
-
+        # TODO: don't download file if local copy is not older
+        # see eddblink_plug.download_file()
         if not self.file:
             url = self.url or SOURCE_URL
             self.print(f'Downloading prices from remote URL: {url}')
@@ -659,7 +659,6 @@ def ingest_market(market):
             buy=commodity.get('buyPrice', 0),
             modified=parse_ts(market.get('updateTime'))
         )
-
 
 def parse_ts(ts):
     if ts is None:
