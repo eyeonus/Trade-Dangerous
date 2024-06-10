@@ -94,7 +94,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
         
-        self.dataPath = Path(os.environ.get('TD_EDDB')) if os.environ.get('TD_EDDB') else self.tdb.dataPath / Path("eddb")
+        self.dataPath = os.environ.get('TD_EDDB') or self.tdenv.tmpDir
         self.categoriesPath = Path("Category.csv")
         self.commoditiesPath = Path("Item.csv")
         self.rareItemPath = Path("RareItem.csv")
