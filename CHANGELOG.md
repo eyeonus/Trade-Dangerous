@@ -2,6 +2,47 @@
 
 
 
+## v11.5.0 (2024-06-11)
+
+### Chore
+
+* chore: fix Path error ([`5f5db6e`](https://github.com/eyeonus/Trade-Dangerous/commit/5f5db6e05ed911ea89cbb51ac8ca0dadf9c1572c))
+
+### Feature
+
+* feat: include more tables in spansh import
+
+Added processing spansh source for Ship, ShipVendor, Upgrade, and UpgradeVendor tables. ([`da1ee03`](https://github.com/eyeonus/Trade-Dangerous/commit/da1ee0324744294f8f26e7ddef2f4dfa8d9352c8))
+
+### Refactor
+
+* refactor: correct `get_timings()` return hint ([`beeaea7`](https://github.com/eyeonus/Trade-Dangerous/commit/beeaea7fd0cb3bbb39b910afc3535cae3617220f))
+
+* refactor: accurate progress bar ([`293c35b`](https://github.com/eyeonus/Trade-Dangerous/commit/293c35b34631767afce43325c018f106416c4f92))
+
+* refactor: accurate progress bar ([`a90a216`](https://github.com/eyeonus/Trade-Dangerous/commit/a90a216ff2c6f386d7801d68a6b6ddc54e948455))
+
+* refactor: `ingest_stream()` -&gt; `self.ingest_stream()` ([`0f18d10`](https://github.com/eyeonus/Trade-Dangerous/commit/0f18d10e4039f63c7f38e4593e9f7eeb9df912b4))
+
+* refactor: correct `load_known_stations` return hint ([`0eaed90`](https://github.com/eyeonus/Trade-Dangerous/commit/0eaed909f1da4238dc3417abaebd73a4b0096e5d))
+
+* refactor: output sample system json if debug
+
+The entire galaxy_stations.json is too big and unwieldy to look at directly, so turning on debug will output only the `Shinrarta Dezhra` system to `./tmp/shin_dez.json`, making it much easier to see the data structure, and since `Jameson Mermorial` has all the things, we can also use it to check those things against the DB. ([`3688683`](https://github.com/eyeonus/Trade-Dangerous/commit/36886837472d24f513fce6485ae94131fedb5341))
+
+* refactor: move eddblink_plug downloads to ./tmp ([`dee11c2`](https://github.com/eyeonus/Trade-Dangerous/commit/dee11c23738347329a46db23460b9b549345ad8f))
+
+* refactor: include system name in &#34;updated&#34;/&#34;added&#34; logs
+
+#177 ([`4e403fe`](https://github.com/eyeonus/Trade-Dangerous/commit/4e403fef24c002f0953f0894fde8fed88f2f91ea))
+
+### Style
+
+* style: whitespace edits ([`9f6c2b6`](https://github.com/eyeonus/Trade-Dangerous/commit/9f6c2b6b1a6384ac38df4a5e376babed2e5a660b))
+
+* style: fix white-space ([`c07eb91`](https://github.com/eyeonus/Trade-Dangerous/commit/c07eb912ba092e39d7f24c07e0b048eb9f0522dc))
+
+
 ## v11.4.0 (2024-05-12)
 
 ### Documentation
