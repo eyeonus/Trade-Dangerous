@@ -9,7 +9,7 @@ from .parsing import (
     NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument, PlanetaryArgument,
 )
 
-
+# TODO: Add UPGRADE_MODE
 ITEM_MODE = "Item"
 SHIP_MODE = "Ship"
 

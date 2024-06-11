@@ -54,7 +54,7 @@ setup(name = package,
         ],
         license = "MPL",
         test_suite = "tests",
-        package_data = {"tradedangerous": ["templates/TradeDangerous.sql", "templates/Added.csv", "templates/Category.csv", "templates/RareItem.csv"]},
+        package_data = {"tradedangerous": ["templates/TradeDangerous.sql", "templates/Added.csv", "templates/Category.csv", "templates/RareItem.csv", "templates/database_changes.json"]},
         entry_points = {
             "console_scripts": [
                 "trade=trade:main",

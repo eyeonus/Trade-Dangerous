@@ -71,8 +71,22 @@ if dataclass:
         planetary:      str     # should be Optional[bool]
         type:           int     # station type
         modified:       float
-
-
+    
+    @dataclass(slots=True)
+    class Ship:
+        id:             int
+        name:           str
+        modified:       float
+    
+    @dataclass(slots=True)
+    class Module:
+        id:             int
+        name:           str
+        cls:            int
+        rating:         str
+        ship:           str
+        modified:       float
+    
     @dataclass(slots=True)
     class Commodity:
         id:             int
@@ -89,6 +103,8 @@ else:
     Station = namedtuple('Station',
                          'id,system_id,name,distance,max_pad_size,'
                          'market,black_market,shipyard,outfitting,rearm,refuel,repair,planetary,type,modified')
+    Ship = namedtuple('Ship', 'id,name,modified')
+    Module = namedtuple('Module', 'id,name,cls,rating,ship,modified')
     Commodity = namedtuple('Commodity', 'id,name,category,demand,supply,sell,buy,modified')
 
 
@@ -230,6 +246,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.known_systems = self.load_known_systems()
         self.known_stations = self.load_known_stations()
+        self.known_ships = self.load_known_ships()
+        self.known_modules = self.load_known_modules()
         self.known_commodities = self.load_known_commodities()
     
     def print(self, *args, **kwargs) -> None:
@@ -288,6 +306,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress:
             system_count = 0
             total_station_count = 0
+            total_ship_count = 0
+            total_module_count = 0
             total_commodity_count = 0
             
             age_cutoff = timedelta(days=self.maxage) if self.maxage else None
@@ -305,9 +325,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                         self.ensure_system(system, upper_sys)
                     
                     station_count = 0
+                    ship_count = 0
+                    module_count = 0
                     commodity_count = 0
                     
-                    for station, commodities in stations:
+                    for station, ships, modules, commodities in stations:
                         fq_station_name = f'@{upper_sys}/{station.name}'
                         
                         station_info = self.known_stations.get(station.id)
@@ -318,8 +340,73 @@ class ImportPlugin(plugins.ImportPluginBase):
                             self.execute("UPDATE Station SET system_id = ? WHERE station_id = ?", station.system_id, station.id, commitable=True)
                             self.known_stations[station.id] = (station.name, station.system_id, station.modified)
                         
-                        items = []
-                        db_times = dict(self.execute("SELECT item_id, modified FROM StationItem WHERE station_id = ?", station.id))
+                        # Ships
+                        ship_entries = []
+                        db_ship_times = dict(self.execute("SELECT ship_id, modified FROM ShipVendor WHERE station_id = ?", station.id))
+                        
+                        for ship in ships:
+                            if ship.id not in self.known_ships:
+                                ship = self.ensure_ship(ship)
+                            
+                            # We're concerned with the ship age, not the station age,
+                            # as they each have their own 'modified' times.
+                            if age_cutoff and (now - ship.modified) > age_cutoff:
+                                if self.tdenv.detail:
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping shipyard due to age: {now - ship.modified}, ts: {ship.modified}')
+                                break
+                            db_modified = db_ship_times.get(ship.id)
+                            modified = parse_ts(db_modified) if db_modified else None
+                            if modified and ship.modified <= modified:
+                                # All ships in a station will have the same modified time,
+                                # so no need to check the rest if the first is older.
+                                if self.tdenv.detail > 2:
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping older shipyard data')
+                                break
+                            
+                            ship_entries.append((ship.id, station.id, ship.modified))
+                        if ship_entries:
+                            self.executemany("""INSERT OR REPLACE INTO ShipVendor (
+                                ship_id, station_id, modified
+                            ) VALUES (
+                                ?, ?, IFNULL(?, CURRENT_TIMESTAMP)
+                            )""", ship_entries, commitable=True)
+                            ship_count += len(ship_entries)
+                        
+                        # Upgrades
+                        module_entries = []
+                        db_module_times = dict(self.execute("SELECT upgrade_id, modified FROM UpgradeVendor WHERE station_id = ?", station.id))
+                        
+                        for module in modules:
+                            if module.id not in self.known_modules:
+                                module = self.ensure_module(module)
+                            
+                            # We're concerned with the outfitting age, not the station age,
+                            # as they each have their own 'modified' times.
+                            if age_cutoff and (now - module.modified) > age_cutoff:
+                                if self.tdenv.detail:
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping outfitting due to age: {now - station.modified}, ts: {station.modified}')
+                                break
+                            db_modified = db_module_times.get(module.id)
+                            modified = parse_ts(db_modified) if db_modified else None
+                            if modified and module.modified <= modified:
+                                # All modules in a station will have the same modified time,
+                                # so no need to check the rest if the fist is older.
+                                if self.tdenv.detail > 2:
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping older outfitting data')
+                                break
+                            
+                            module_entries.append((module.id, station.id, module.modified))
+                        if module_entries:
+                            self.executemany("""INSERT OR REPLACE INTO UpgradeVendor (
+                                upgrade_id, station_id, modified
+                            ) VALUES (
+                                ?, ?, IFNULL(?, CURRENT_TIMESTAMP)
+                            )""", module_entries, commitable=True)
+                            module_count += len(module_entries)
+                        
+                        # Items
+                        commodity_entries = []
+                        db_commodity_times = dict(self.execute("SELECT item_id, modified FROM StationItem WHERE station_id = ?", station.id))
                         
                         for commodity in commodities:
                             if commodity.id not in self.known_commodities:
@@ -329,21 +416,21 @@ class ImportPlugin(plugins.ImportPluginBase):
                             # as they each have their own 'modified' times.
                             if age_cutoff and (now - commodity.modified) > age_cutoff:
                                 if self.tdenv.detail:
-                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping station due to age: {now - station.modified}, ts: {station.modified}')
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping market due to age: {now - station.modified}, ts: {station.modified}')
                                 break
                             
-                            db_modified = db_times.get(commodity.id)
+                            db_modified = db_commodity_times.get(commodity.id)
                             modified = parse_ts(db_modified) if db_modified else None
                             if modified and commodity.modified <= modified:
                                 # All commodities in a station will have the same modified time,
                                 # so no need to check the rest if the fist is older.
                                 if self.tdenv.detail > 2:
-                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping older commodity data')
+                                    self.print(f'        |  {fq_station_name:50s}  |  Skipping older market data')
                                 break
-                            items.append((station.id, commodity.id, commodity.modified,
-                                commodity.sell, commodity.demand, -1,
-                                commodity.buy, commodity.supply, -1, 0))
-                        if items:
+                            commodity_entries.append((station.id, commodity.id, commodity.modified,
+                                                      commodity.sell, commodity.demand, -1,
+                                                      commodity.buy, commodity.supply, -1, 0))
+                        if commodity_entries:
                             self.executemany("""INSERT OR REPLACE INTO StationItem (
                                 station_id, item_id, modified,
                                 demand_price, demand_units, demand_level,
@@ -352,23 +439,26 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
                                 ?, ?, ?,
                                 ?, ?, ?, ?
-                            )""", items, commitable=True)
-                            commodity_count += len(items)
+                            )""", commodity_entries, commitable=True)
+                            commodity_count += len(commodity_entries)
                         # Good time to save data and try to keep the transaction small
                         self.commit()
                         
-                        if commodity_count:
+                        if commodity_count or ship_count or module_count:
                             station_count += 1
                         progress.bump(sta_task)
                 
                 system_count += 1
                 if station_count:
                     total_station_count += station_count
+                    total_ship_count += ship_count
+                    total_module_count += module_count
                     total_commodity_count += commodity_count
                     if self.tdenv.detail:
                         self.print(
                             f'{system_count:6d}  |  {upper_sys:50s}  |  '
-                            f'{station_count:3d} st {commodity_count:5d} co'
+                            f'{station_count:3d} st {commodity_count:5d} co '
+                            f'{ship_count:4d} sh {module_count:4d} mo'
                         )
                 self.commit()
                 
@@ -378,19 +468,19 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             self.commit()
             self.tdb.close()
-            
-            # Need to make sure cached tables are updated
-            for table in ("Item", "Station", "System", "StationItem"):
-                # _, path =
-                csvexport.exportTableToFile(self.tdb, self.tdenv, table)
-            
             self.print(
                 f'{timedelta(seconds=int(timing.elapsed))!s}  Done  '
-                f'{total_station_count} st  {total_commodity_count} co'
+                f'{total_station_count} st {total_commodity_count} co '
+                f'{total_ship_count} sh {total_module_count} mo'
             )
         
         with Timing() as timing:
+            # Need to make sure cached tables are updated
             self.print('Exporting to cache...')
+            for table in ("Item", "Station", "System", "StationItem", "Ship", "ShipVendor", "Upgrade", "UpgradeVendor"):
+                self.print(f'Exporting {table}.csv            ', end='\r')
+                csvexport.exportTableToFile(self.tdb, self.tdenv, table)
+            self.print('Exporting TradeDangerous.prices', end='\r')
             cache.regeneratePricesFile(self.tdb, self.tdenv)
             self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
         
@@ -399,10 +489,10 @@ class ImportPlugin(plugins.ImportPluginBase):
     def data_stream(self):
         stream = None
         if self.file == '-':
-            self.print('Reading prices from stdin')
+            self.print('Reading data from stdin')
             stream = sys.stdin
         elif self.file:
-            self.print(f'Reading prices from local file: "{self.file}"')
+            self.print(f'Reading data from local file: "{self.file}"')
             stream = open(self.file, 'r', encoding='utf8')
         return self.ingest_stream(stream)
     
@@ -460,6 +550,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception as e:  # pylint: disable=broad-except
             self.print("[purple]:thinking_face:Assuming no station data yet")
             self.tdenv.DEBUG0(f"load_known_stations query raised {e}")
+            return {}
+    
+    def load_known_ships(self):
+        """ Returns a dictionary of {ship_id -> name} for all current ships in the database. """
+        try:
+            return dict(self.cursor.execute('SELECT ship_id, name FROM Ship'))
+        except Exception as e:  # pylint: disable=broad-except
+            self.print("[purple]:thinking_face:Assuming no ship data yet")
+            self.tdenv.DEBUG0(f"load_known_ships query raised {e}")
+            return {}
+    
+    def load_known_modules(self):
+        """ Returns a dictionary of {upgrade_id -> name} for all current modules in the database. """
+        try:
+            return dict(self.cursor.execute('SELECT upgrade_id, name FROM Upgrade'))
+        except Exception as e:  # pylint: disable=broad-except
+            self.print("[purple]:thinking_face:Assuming no module data yet")
+            self.tdenv.DEBUG0(f"load_known_modules query raised {e}")
             return {}
     
     def load_known_commodities(self):
@@ -531,6 +639,32 @@ class ImportPlugin(plugins.ImportPluginBase):
             fq_station_name = f'@{upper_sys}/{station.name}'
             self.print(f'        |  {fq_station_name:50s}  |  {note} station')
         self.known_stations[station.id] = (station.name, station.system_id, station.modified)
+    
+    def ensure_ship(self, ship: Ship):
+        """ Adds a record for a ship, and registers the ship in the known_ships dict. """
+        self.execute(
+            '''
+            INSERT INTO Ship (ship_id, name) VALUES (?, ?)
+            ''',
+            ship.id, ship.name,
+            commitable=True,
+        )
+        self.known_ships[ship.id] = ship.name
+        
+        return ship
+    
+    def ensure_module(self, module: Module):
+        """ Adds a record for a module, and registers the module in the known_modules dict. """
+        self.execute(
+            '''
+            INSERT INTO Upgrade (upgrade_id, name, class, rating, ship) VALUES (?, ?, ?, ?, ?)
+            ''',
+            module.id, module.name, module.cls, module.rating, module.ship,
+            commitable=True,
+        )
+        self.known_modules[module.id] = module.name
+        
+        return module
     
     def ensure_commodity(self, commodity: Commodity):
         """ Adds a record for a commodity and registers the commodity in the known_commodities dict. """
@@ -610,10 +744,16 @@ def ingest_stations(system_data):
     for target in targets:
         for station_data in target.get('stations', ()):
             services = set(station_data.get('services', ()))
-            if 'Market' not in services:
-                continue
-            market = station_data.get('market', {})
-            if not market.get('commodities'):
+            shipyard = None
+            if 'Shipyard' in services:
+                shipyard = station_data.get('shipyard', {})
+            outfitting = None
+            if 'Outfitting' in services:
+                outfitting = station_data.get('outfitting', {})
+            market = None
+            if 'Market' in services:
+                market = station_data.get('market', {})
+            if not shipyard and not outfitting and not market:
                 continue
             landing_pads = station_data.get('landingPads', {})
             max_pad_size = '?'
@@ -631,7 +771,7 @@ def ingest_stations(system_data):
                     name=station_data.get('name', 'Unnamed').strip(),
                     distance=station_data.get('distanceToArrival', 999999),
                     max_pad_size=max_pad_size,
-                    market=True,
+                    market='Market' in services,
                     black_market='Black Market' in services,
                     shipyard='Shipyard' in services,
                     outfitting='Outfitting' in services,
@@ -642,12 +782,40 @@ def ingest_stations(system_data):
                     type=station_type[0] if station_type else 0,
                     modified=parse_ts(station_data.get('updateTime')),
                 ),
+                ingest_shipyard(shipyard),
+                ingest_outfitting(outfitting),
                 ingest_market(market),
             )
 
+def ingest_shipyard(shipyard):
+    """Ingest station-level market data, yielding commodities."""
+    if not shipyard or not shipyard.get('ships'):
+        return None
+    for ship in shipyard['ships']:
+        yield Ship(
+            id=ship.get('shipId'),
+            name=ship.get('name'),
+            modified=parse_ts(shipyard.get('updateTime'))
+        )
+
+def ingest_outfitting(outfitting):
+    """Ingest station-level market data, yielding commodities."""
+    if not outfitting or not outfitting.get('modules'):
+        return None
+    for module in outfitting['modules']:
+        yield Module(
+            id=module.get('moduleId'),
+            name=module.get('name'),
+            cls=module.get('class'),
+            rating=module.get('rating'),
+            ship=module.get('ship'),
+            modified=parse_ts(outfitting.get('updateTime'))
+        )
 
 def ingest_market(market):
     """Ingest station-level market data, yielding commodities."""
+    if not market or not market.get('commodities'):
+        return None
     for commodity in market['commodities']:
         yield Commodity(
             id=commodity.get('commodityId'),

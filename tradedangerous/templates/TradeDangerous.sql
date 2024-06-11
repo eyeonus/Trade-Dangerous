@@ -102,7 +102,7 @@ CREATE TABLE Ship
  (
    ship_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
-   cost INTEGER NOT NULL,
+   cost INTEGER,
 
    UNIQUE (ship_id)
  );
@@ -130,8 +130,9 @@ CREATE TABLE Upgrade
  (
    upgrade_id INTEGER PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
-   weight NUMBER NOT NULL,
-   cost NUMBER NOT NULL,
+   class NUMBER NOT NULL,
+   rating CHAR(1) NOT NULL,
+   ship VARCHAR(40) COLLATE nocase,
 
    UNIQUE (upgrade_id)
  );
@@ -141,7 +142,6 @@ CREATE TABLE UpgradeVendor
  (
    upgrade_id INTEGER NOT NULL,
    station_id INTEGER NOT NULL,
-   cost INTEGER,
    modified DATETIME NOT NULL,
 
    PRIMARY KEY (upgrade_id, station_id),

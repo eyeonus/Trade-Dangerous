@@ -1,0 +1,6 @@
+[
+    "DROP TABLE Ship;",
+    "CREATE TABLE Ship (ship_id INTEGER PRIMARY KEY, name VARCHAR(40) COLLATE nocase, cost INTEGER, UNIQUE (ship_id));",
+    "DROP TABLE Upgrade;",
+    "CREATE TABLE Upgrade(upgrade_id INTEGER PRIMARY KEY, name VARCHAR(40) COLLATE nocase, class NUMBER NOT NULL, rating CHAR(1) NOT NULL, ship VARCHAR(40) COLLATE nocase, UNIQUE (upgrade_id));"
+]
