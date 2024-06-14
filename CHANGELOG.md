@@ -2,6 +2,13 @@
 
 
 
+## v11.5.1 (2024-06-14)
+
+### Fix
+
+* fix: can&#39;t change if doesn&#39;t exist yet ([`59512b0`](https://github.com/eyeonus/Trade-Dangerous/commit/59512b0a61565bbe3164a4cfbfc72983b07a20cb))
+
+
 ## v11.5.0 (2024-06-11)
 
 ### Chore
