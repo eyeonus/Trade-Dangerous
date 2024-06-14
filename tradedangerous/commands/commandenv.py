@@ -1,3 +1,5 @@
+import sqlite3
+
 from .exceptions import (
     CommandLineError, FleetCarrierError, OdysseyError,
     PadSizeError, PlanetaryError,
@@ -72,11 +74,13 @@ class CommandEnv(TradeEnv):
         self.tdb = tdb
         db_change = pathlib.Path(self.tdb.templatePath, 'database_changes.json')
         if pathlib.Path.exists(db_change):
-            import ijson
-            with open(db_change) as file:
-                for change in ijson.items(file, 'item'):
-                    self.tdb.getDB().execute(change)
-            db_change.unlink()
+            try:
+                import ijson
+                with open(db_change) as file:
+                    for change in ijson.items(file, 'item'):
+                        self.tdb.getDB().execute(change)
+            finally:
+                db_change.unlink()
         
         self.checkMFD()
         self.checkFromToNear()
