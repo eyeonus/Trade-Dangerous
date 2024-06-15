@@ -2,6 +2,16 @@
 
 
 
+## v11.5.2 (2024-06-15)
+
+### Fix
+
+* fix: spansh- fix overzealous download
+
+spansh plugin now will not download the source file if the source has not been modified more recently than the local copy downloaded previously
+if the source file has been modified more recently, it is downloaded, overwriting the local copy, if any ([`5a8dd2a`](https://github.com/eyeonus/Trade-Dangerous/commit/5a8dd2a3676c48fd95c73ca1dbc72e098428960d))
+
+
 ## v11.5.1 (2024-06-14)
 
 ### Fix
@@ -35,7 +45,7 @@ Added processing spansh source for Ship, ShipVendor, Upgrade, and UpgradeVendor 
 
 * refactor: output sample system json if debug
 
-The entire galaxy_stations.json is too big and unwieldy to look at directly, so turning on debug will output only the `Shinrarta Dezhra` system to `./tmp/shin_dez.json`, making it much easier to see the data structure, and since `Jameson Memorial` has all the things, we can also use it to check those things against the DB. ([`3688683`](https://github.com/eyeonus/Trade-Dangerous/commit/36886837472d24f513fce6485ae94131fedb5341))
+The entire galaxy_stations.json is too big and unwieldy to look at directly, so turning on debug will output only the `Shinrarta Dezhra` system to `./tmp/shin_dez.json`, making it much easier to see the data structure, and since `Jameson Mermorial` has all the things, we can also use it to check those things against the DB. ([`3688683`](https://github.com/eyeonus/Trade-Dangerous/commit/36886837472d24f513fce6485ae94131fedb5341))
 
 * refactor: move eddblink_plug downloads to ./tmp ([`dee11c2`](https://github.com/eyeonus/Trade-Dangerous/commit/dee11c23738347329a46db23460b9b549345ad8f))
 
