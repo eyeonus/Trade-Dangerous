@@ -4,16 +4,18 @@ from __future__ import annotations
 from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from rich.progress import Progress
 
 from .. import plugins, cache, transfers, csvexport, corrections
 
+import os
+import requests
 import sqlite3
 import sys
 import time
 import typing
-
 import ijson
 
 if sys.version_info.major == 3 and sys.version_info.minor >= 10:
@@ -277,14 +279,32 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         theme = self.tdenv.theme
         BOLD, CLOSE, DIM, ITALIC = theme.bold, theme.CLOSE, theme.dim, theme.italic  # pylint: disable=invalid-name
-        # TODO: don't download file if local copy is not older
-        # see eddblink_plug.download_file()
         if not self.file:
             url = self.url or SOURCE_URL
-            self.print(f'Downloading prices from remote URL: {url}')
+            local_mod_time = 0
             self.file = Path(self.tdenv.tmpDir, "galaxy_stations.json")
-            transfers.download(self.tdenv, url, self.file)
-            self.print(f'Download complete, saved to local file: "{self.file}"')
+            if self.file.exists():
+                local_mod_time = self.file.stat().st_mtime
+            
+            headers = {"User-Agent": "Trade-Dangerous", "Accept-Encoding": "identity"}
+            try:
+                response = requests.head(url, headers=headers, timeout=70)
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
+                return False
+            last_modified = response.headers.get("last-modified")
+            dump_mod_time = parsedate_to_datetime(last_modified).timestamp()
+            if local_mod_time < dump_mod_time:
+                if self.file.exists():
+                    self.file.unlink()
+                self.print(f'Downloading prices from remote URL: {url}')
+                try:
+                    transfers.download(self.tdenv, url, self.file)
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
+                    return False
+                self.print(f'Download complete, saved to local file: "{self.file}"')
+                os.utime(self.file, (dump_mod_time, dump_mod_time))
         
         sys_desc = f"Importing {ITALIC}spansh{CLOSE} data"
         

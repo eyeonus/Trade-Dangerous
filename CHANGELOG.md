@@ -35,7 +35,7 @@ Added processing spansh source for Ship, ShipVendor, Upgrade, and UpgradeVendor 
 
 * refactor: output sample system json if debug
 
-The entire galaxy_stations.json is too big and unwieldy to look at directly, so turning on debug will output only the `Shinrarta Dezhra` system to `./tmp/shin_dez.json`, making it much easier to see the data structure, and since `Jameson Mermorial` has all the things, we can also use it to check those things against the DB. ([`3688683`](https://github.com/eyeonus/Trade-Dangerous/commit/36886837472d24f513fce6485ae94131fedb5341))
+The entire galaxy_stations.json is too big and unwieldy to look at directly, so turning on debug will output only the `Shinrarta Dezhra` system to `./tmp/shin_dez.json`, making it much easier to see the data structure, and since `Jameson Memorial` has all the things, we can also use it to check those things against the DB. ([`3688683`](https://github.com/eyeonus/Trade-Dangerous/commit/36886837472d24f513fce6485ae94131fedb5341))
 
 * refactor: move eddblink_plug downloads to ./tmp ([`dee11c2`](https://github.com/eyeonus/Trade-Dangerous/commit/dee11c23738347329a46db23460b9b549345ad8f))
 
