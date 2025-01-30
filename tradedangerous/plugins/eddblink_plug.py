@@ -69,7 +69,8 @@ def _collect_station_modified_times(tdenv: TradeEnv, db: sqlite3.Cursor) -> dict
 
 class ImportPlugin(plugins.ImportPluginBase):
     """
-    Plugin that downloads data from eddb.
+    Import plugin that uses data files from
+    https://elite.tromador.com/ to update the Database.
     """
     pluginOptions = {
         'item':         "Update Items using latest file from server. (Implies '-O system,station')",

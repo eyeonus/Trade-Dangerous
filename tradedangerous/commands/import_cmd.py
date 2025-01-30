@@ -25,9 +25,9 @@ help = (
 name = 'import'
 epilog = (
     "This sub-command provides a plugin infrastructure, and comes "
-    "with a module to import data from Maddavo's Market Share "
-    "(http://www.davek.com.au/td/).\n"
-    "See \"import -P maddavo -O help\" for more help."
+    "with a module to import data from Tromador's Trading Dangerously server"
+    "(https://elite.tromador.com/).\n"
+    "See \"trade import -P eddblink -O help\" for more help."
 )
 wantsTradeDB = False
 arguments = [
