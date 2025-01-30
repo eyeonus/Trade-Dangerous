@@ -1,4 +1,4 @@
-# bash completition for Trade Dangerous
+# bash completion for Trade Dangerous
 # see http://kfs.org/td/source
 
 common_opts="--help --debug --detail --quiet --db --cwd --link-ly"
@@ -109,7 +109,7 @@ _td_import()
 
 	case ${prev} in
 	--plug|-P)
-		opts="maddavo edapi netlog edcd journal"
+		opts="eddblink edapi netlog edcd journal"
 		COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 		;;
 	--url)
@@ -119,8 +119,8 @@ _td_import()
 		# simple plugin check
 		for (( i=1; i<${COMP_CWORD-1}; i++ ));
 		do
-			if [[ "${COMP_WORDS[i]}" = "maddavo" ]]; then
-				opts="corrections csvonly csvs exportcsv force shipvendors skipdl stations systems use2d use3h usefull help"
+			if [[ "${COMP_WORDS[i]}" = "eddblink" ]]; then
+				opts="all clean force item listings optimize purge rare ship shipvend skipvend solo station system upgrade upvend"
 				COMPREPLY+=( $(compgen -W "${opts}" -- ${cur}) )
 				return 0
 			fi

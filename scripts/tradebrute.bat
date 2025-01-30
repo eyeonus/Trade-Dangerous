@@ -23,7 +23,7 @@ If %update% ==y (goto :update) else (goto :Setup)
 
 
 :update
-%python%\python.exe trade.py import --plug=maddavo --opt=csvs
+%python%\python.exe trade.py import --plug=eddblink
 goto :Setup
 
 
