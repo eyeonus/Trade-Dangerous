@@ -941,9 +941,9 @@ def main(argv = None):
     sys.argv = ['trade']
     if not argv:
         argv = sys.argv
-    if sys.hexversion < 0x03040200:
+    if sys.hexversion < 0x30813F0:
         raise SystemExit(
-            "Sorry: TradeDangerous requires Python 3.4.2 or higher.\n"
+            "Sorry: TradeDangerous requires Python 3.8.19 or higher.\n"
             "For assistance, see:\n"
             "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
             "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"

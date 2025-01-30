@@ -6,7 +6,7 @@ Otherwise have a look at the
 [Setup Guide](https://github.com/eyeonus/Trade-Dangerous/wiki/Setup-Guide "Setup Guide") 
 and the [User Guide](https://github.com/eyeonus/Trade-Dangerous/wiki/User-Guide "User Guide").
 
-With a working installation of Python >= 3.4.2. 
+With a working installation of Python >= 3.8.19. 
 ```bash
 # Install
 pip3 install tradedangerous
@@ -56,9 +56,15 @@ brew install tcl-tk
 export LDFLAGS="-L/usr/local/opt/tcl-tk/lib"
 export CPPFLAGS="-I/usr/local/opt/tcl-tk/include"
 
-# Install and set latest python with pyenv
-pyenv install 3.7.4
-pyenv global 3.7.4
+# List python versions available to install with pyenv:
+pyenv install -l
+
+# Install and set default python version with pyenv:
+pyenv install 3.8.19
+pyenv global 3.8.19
+
+# Temporarily override python version used:
+pyenv shell 3.13.1
 
 # Trade Dangerous now works - get some general help
 trade --help

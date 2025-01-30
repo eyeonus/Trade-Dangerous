@@ -16,7 +16,7 @@ __Windows__ (powershell)
 ```powershell
 git clone https://github.com/eyeonus/Trade-Dangerous
 cd Trade-Dangerous
-# This requires a python version >= 3.4.2
+# This requires a python version >= 3.8.19
 python3 -m venv venv
 .\venv\Scripts\activate.ps1
 pip3 install -r requirements-dev.txt -e .

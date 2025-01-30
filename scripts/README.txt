@@ -35,11 +35,6 @@ $ tdbuyfrom <place> <item>
    e.g  tdbuyfrom ibootis gold --ly 30
 
 
-$ tdimad
-  Downloads and imports data from maddavo
-   e.g.  tdimad
-
-
 $ tdnav <from> <to>
   Calculates a route from the first place to the second using your
   current "EMPTYLY" value.
@@ -73,9 +68,9 @@ For Windows users, there are two options.
 
 1. There is a basic trade.bat file which can import market data and
 calculate simple trade runs. This trade.bat file can be run without
-any further requirements once you have Python 3.4 installed. More
-documentation for this option can be found in the <BATCH-FILE> section
-of this file
+any further requirements once you have Python 3.8 or higher installed.
+More documentation for this option can be found in the <BATCH-FILE>
+section of this file.
 
 2. To use the more powerful bash scripts you'll need "bash" from the
 msysgit package. You can download it here: http://msysgit.github.io/
@@ -185,11 +180,11 @@ of Trade Dangerous without needing to install bash.
 
 It currently implements:
 1.  Updating the local Trade Dangerous database to reflect the
-    database run at Maddavo's Market Share
-    (http://www.davek.com.au/td/default.asp).
+    database run at Tromador's Trading Dangerously
+    (http://elite.tromador.com).
     This should give you a decent database to start running trade runs.
 2.  Importing a local "import.prices" file such as would be produced
-    from EliteOCR.
+    from EDMarketConnector.
     This can be used to add more recent market information to
     the database.
 3.  Setting/Overriding currently stored default values.
@@ -222,25 +217,20 @@ Throughout the batch file the following conventions are used:
    you press enter
 
 When the batch file is first run it will ask if you want it to update
-the local database to match Maddavo's Market Share. It is generally a
-good idea to do this to ensure you have the most recent trade data to
+the local database to match Tromador's Trading Dangerously. It is generally
+a good idea to do this to ensure you have the most recent trade data to
 work with. This is highly recommended for the first run of the batch
 file to make sure there is actually some data to work with.
 
 Main Menu:
 
 The main menu will appear as such:
-(U)pdate, (Q)uick Update, (I)mport, (P)references, (R)un, Run (T)o:
+(U)pdate, (I)mport, (P)references, (R)un, Run (T)o:
 Each option is detailed below.
 
   Update:
   This is the same update that is run when the batch file is first
-  opened. It will obtain the latest market data from Maddavo.
-
-  Quick Update:
-  This update will only update the latest market data from Maddavo.
-  It will not update the Systems and Stations data. Useful if you just
-  want new trade prices.
+  opened. It will obtain the latest market data from Tromador.
 
   Import:
   Import local market data from "import.prices". If you are using
@@ -249,6 +239,7 @@ Each option is detailed below.
   (not the scripts folder) and when you choose "Export Trade
   Dangerous" in EliteOCR it should be placed in the right location to
   simply choose Import from the batch file's main menu.
+  EDMarketplaceConnector also has similar features and options.
 
   Preferences:
   These are the values used to calculate trade runs. You can use this
