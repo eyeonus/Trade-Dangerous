@@ -24,15 +24,10 @@ jobs:
           - "3.10"
           - "3.9"
           - "3.8"
-          - "3.7"
         exclude:
-          # It's unlikely people will be using 3.7 or 3.8 at this point on Win or Mac
-          - os: Windows
-            py: "3.7"
+          # It's unlikely people will be using 3.8 at this point on Win or Mac
           - os: Windows
             py: "3.8"
-          - os: MacOS
-            py: "3.7"
           - os: MacOS
             py: "3.8"
     
