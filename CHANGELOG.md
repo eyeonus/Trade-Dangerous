@@ -2,6 +2,28 @@
 
 
 
+## v11.5.3 (2025-01-30)
+
+### Chore
+
+* chore: remove py37 from testing
+
+Ubuntu no longer supports it, so the tests fail when py37 can&#39;t be installed. ([`bd66c6c`](https://github.com/eyeonus/Trade-Dangerous/commit/bd66c6c585f8348d1fb29b9dc331ff153f91e7de))
+
+### Fix
+
+* fix: update `trade import` help message
+
+Updated `trade import --help` message with Tromador&#39;s server address. ([`7fdba6e`](https://github.com/eyeonus/Trade-Dangerous/commit/7fdba6ed775628e6698f229cf881df79d02f99ac))
+
+### Refactor
+
+* refactor: remove DB changes
+
+Two versions should be long enough that everyone&#39;s DB has been updated, no need to have this anymore.
+If errors encountered, run eddblink with the `clean` option. ([`12f2adb`](https://github.com/eyeonus/Trade-Dangerous/commit/12f2adbff64d2b016dec6baa0e092debd1455bac))
+
+
 ## v11.5.2 (2024-06-15)
 
 ### Fix
