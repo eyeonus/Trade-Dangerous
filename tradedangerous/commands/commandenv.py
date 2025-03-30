@@ -65,12 +65,8 @@ class CommandEnv(TradeEnv):
                                 cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
-    
-    def run(self, tdb):
-        """
-            Set the current database context for this env and check that
-            the properties we have are valid.
-        """
+            
+    def initAndCheckParams(self, tdb):
         self.tdb = tdb
         db_change = pathlib.Path(self.tdb.templatePath, 'database_changes.json')
         if pathlib.Path.exists(db_change):
@@ -81,7 +77,7 @@ class CommandEnv(TradeEnv):
                         self.tdb.getDB().execute(change)
             finally:
                 db_change.unlink()
-        
+                
         self.checkMFD()
         self.checkFromToNear()
         self.checkAvoids()
@@ -90,6 +86,14 @@ class CommandEnv(TradeEnv):
         self.checkPlanetary()
         self.checkFleet()
         self.checkOdyssey()
+    
+    def run(self, tdb):
+        """
+            Set the current database context for this env and check that
+            the properties we have are valid.
+        """
+
+        self.initAndCheckParams(tdb)
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)

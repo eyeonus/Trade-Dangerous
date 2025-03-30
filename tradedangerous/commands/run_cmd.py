@@ -1,3 +1,8 @@
+import multiprocessing
+from concurrent import futures
+from concurrent.futures.process import ProcessPoolExecutor
+from concurrent.futures.thread import ThreadPoolExecutor
+
 from .commandenv import ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
@@ -7,7 +12,9 @@ from .parsing import (
 )
 from itertools import chain
 from ..tradedb import TradeDB, System, Station, describeAge
-from ..tradecalc import TradeCalc, Route, NoHopsError
+from ..tradecalc import TradeCalc, Route, JarredRoute, JarredPlace
+from tradedangerous.misc import progress as pbar
+from tradedangerous.tradecalcchunk import run_route, init_tradecalcchunk, init_calctradechunk_thread
 
 import math
 import sys
@@ -1211,6 +1218,10 @@ def run(results, cmdenv, tdb):
         maxHopDistLy = cmdenv.maxJumpsPer * cmdenv.maxLyPer
         if not cmdenv.loop:
             stopSystems = {stop.system for stop in stopStations}
+
+    workers_count = 4
+    executor = ProcessPoolExecutor(max_workers=workers_count, initializer=init_tradecalcchunk, mp_context=multiprocessing.get_context('spawn'))
+    # executor = ThreadPoolExecutor(max_workers=workers_count, initializer=init_calctradechunk_thread, initargs=(calc,))
     
     for hopNo in range(numHops):
         restrictTo = None
@@ -1257,9 +1268,51 @@ def run(results, cmdenv, tdb):
         elif cmdenv.debug:
             cmdenv.DEBUG0("Hop {}...", hopNo + 1)
         
-        try:
-            newRoutes = calc.getBestHops(routes, restrictTo = restrictTo)
-        except NoHopsError:
+        with pbar.Progress(max_value=len(routes), width=25, show=tdb.tdenv.progress) as prog:
+            jarredRoutes = list(map(lambda rt: JarredRoute(rt), routes))
+            
+            jarredRestrictTo = None
+            if restrictTo is not None:
+                jarredRestrictTo = list(map(lambda p: JarredPlace(p), restrictTo))
+            
+            def chunk_list(lst, chunk_size):
+                for i in range(0, len(lst), chunk_size):
+                    yield lst[i:i + chunk_size]
+
+            notDoneFutures = list(map(lambda rts: executor.submit(run_route, rts, restrictTo=jarredRestrictTo), chunk_list(jarredRoutes, 100)))
+            bestToDest = {}
+            while len(notDoneFutures) > 0:
+                doneFutures, notDoneFutures = futures.wait(notDoneFutures, return_when=futures.FIRST_COMPLETED)
+                
+                for done in doneFutures:
+                    prog.increment(100)
+                    future_result = map(lambda rt: rt.toNormalRoute(tdb), done.result())
+                    for route in future_result:
+                        dstID = route.lastStation.ID
+                        try:
+                            # See if there is already a candidate for this destination
+                            btd = bestToDest[dstID]
+                        except KeyError:
+                            # No existing candidate, we win by default
+                            pass
+                        else:
+                            # Check if it is a better option than we just produced
+                            bestTradeScore = btd.score
+                            currentTradeScore = route.score
+                            if bestTradeScore > currentTradeScore:
+                                continue
+                            if bestTradeScore == currentTradeScore:
+                                bestLy = btd.firstStation.system.distanceTo(route.lastStation.system)
+                                currentLy = route.firstStation.system.distanceTo(route.lastStation.system)
+                                if bestLy <= currentLy:
+                                    continue
+    
+                        bestToDest[dstID] = route
+            
+
+        newRoutes = list(bestToDest.values())
+
+        if len(newRoutes) == 0:
             if hopNo == 0 and len(cmdenv.origSystems) == 1:
                 raise NoDataError(
                     "Couldn't find any trading links within {} x {}ly jumps of {}."

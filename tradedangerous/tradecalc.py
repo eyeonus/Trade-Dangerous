@@ -490,6 +490,69 @@ class Route:
             )
         )
 
+class JarredRoute:
+    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score')
+    
+    def __init__(self, route):
+        self.route = tuple(map(lambda s:s.ID, route.route))
+        def mapHop(load):
+            newTradeCountTuples = []
+            for tradeCountTuple in load.items:
+                trade = tradeCountTuple[0]._replace(item=tradeCountTuple[0].item.ID)
+                count = tradeCountTuple[1]
+                newTradeCountTuples.append((trade, count))
+            return load._replace(items=newTradeCountTuples)
+        
+        self.hops = tuple(map(mapHop, route.hops))
+        self.startCr = route.startCr
+        self.gainCr = route.gainCr
+        
+        def mapJump(jumps):
+            newJumps = []
+            for jump in jumps:
+                newJumps.append(jump.ID)
+            return newJumps
+        
+        self.jumps = tuple(map(mapJump, route.jumps))
+        self.score = route.score
+        
+    def toNormalRoute(self, tdb):
+        route = tuple(map(lambda stID:tdb.stationByID[stID], self.route))
+        def unmapHop(load):
+            oldTradeCountTuples = []
+            for tradeCountTuple in load.items:
+                trade = tradeCountTuple[0]._replace(item=tdb.itemByID[tradeCountTuple[0].item])
+                count = tradeCountTuple[1]
+                oldTradeCountTuples.append((trade, count))
+            return load._replace(items=oldTradeCountTuples)
+        
+        hops = tuple(map(unmapHop, self.hops))
+        
+        def unmapJump(jumps):
+            oldJumps = []
+            for sysID in jumps:
+                oldJumps.append(tdb.systemByID[sysID])
+            return oldJumps
+        
+        jumps = tuple(map(unmapJump, self.jumps))
+
+        return Route(route, hops, self.startCr, self.gainCr, jumps, self.score)
+    
+class JarredPlace:
+    __slots__ = ('place',)
+    
+    def __init__(self, place):
+        if type(place) is System:
+            self.place = ('system', place.ID)
+        if type(place) is Station:
+            self.place = ('station', place.ID)
+        
+    def toNormalPlace(self, tdb):
+        if self.place[0] == 'system':
+            return tdb.systemByID[self.place[1]]
+        if self.place[0] == 'station':
+            return tdb.stationByID[self.place[1]]
+        
 
 class TradeCalc:
     """
@@ -850,6 +913,11 @@ class TradeCalc:
         """
         
         tdb = self.tdb
+        routes = list(map(lambda rt: rt.toNormalRoute(tdb), routes))
+
+        if restrictTo is not None:
+            restrictTo = set(map(lambda p: p.toNormalPlace(tdb), restrictTo))
+        
         tdenv = self.tdenv
         avoidPlaces = getattr(tdenv, 'avoidPlaces', None) or ()
         assert not restrictTo or isinstance(restrictTo, set)
@@ -930,180 +998,180 @@ class TradeCalc:
                     odyssey = odyssey,
                 )
         
-        with pbar.Progress(max_value=len(routes), width=25, show=tdenv.progress) as prog:
-            connections = 0
-            getSelling = self.stationsSelling.get
-            for route_no, route in enumerate(routes):
-                prog.increment(progress=route_no)
-                tdenv.DEBUG1("Route = {}", route.text(lambda x, y: y))
+        # with pbar.Progress(max_value=len(routes), width=25, show=False) as prog:
+        connections = 0
+        getSelling = self.stationsSelling.get
+        for route_no, route in enumerate(routes):
+            # prog.increment(progress=route_no)
+            tdenv.DEBUG1("Route = {}", route.text(lambda x, y: y))
+            
+            srcStation = route.lastStation
+            startCr = credits + int(route.gainCr * safetyMargin)
+            
+            srcSelling = getSelling(srcStation.ID, None)
+            srcSelling = tuple(
+                values for values in srcSelling
+                if values[1] <= startCr
+            )
+            if not srcSelling:
+                tdenv.DEBUG1("Nothing sold/affordable - next.")
+                continue
+            
+            if goalSystem:
+                origSystem = route.firstSystem
+                srcSystem = srcStation.system
+                srcDistTo = srcSystem.distanceTo
+                goalDistTo = goalSystem.distanceTo
+                origDistTo = origSystem.distanceTo
+                srcGoalDist = srcDistTo(goalSystem)
+                srcOrigDist = srcDistTo(origSystem)
+                origGoalDist = origDistTo(goalSystem)
+            
+            if unique:
+                uniquePath = route.route
+            elif loopInt:
+                pos_from_end = 0 - loopInt
+                uniquePath = route.route[pos_from_end:-1]
+            
+            stations = (d for d in station_iterator(srcStation)
+            if (d.station != srcStation) and
+                (d.station.blackMarket == 'Y' if reqBlackMarket else True) and
+                (d.station not in uniquePath if uniquePath else True) and
+                (d.station in restrictStations if restrictStations else True) and
+                (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True) and
+                (((d.system is not srcSystem) if bool(tdenv.unique) else (d.system is goalSystem or d.distLy < srcGoalDist)) if goalSystem else True)
+            )
+            
+            if tdenv.debug >= 1:
                 
-                srcStation = route.lastStation
-                startCr = credits + int(route.gainCr * safetyMargin)
-                
-                srcSelling = getSelling(srcStation.ID, None)
-                srcSelling = tuple(
-                    values for values in srcSelling
-                    if values[1] <= startCr
-                )
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing sold/affordable - next.")
-                    continue
-                
-                if goalSystem:
-                    origSystem = route.firstSystem
-                    srcSystem = srcStation.system
-                    srcDistTo = srcSystem.distanceTo
-                    goalDistTo = goalSystem.distanceTo
-                    origDistTo = origSystem.distanceTo
-                    srcGoalDist = srcDistTo(goalSystem)
-                    srcOrigDist = srcDistTo(origSystem)
-                    origGoalDist = origDistTo(goalSystem)
-                
-                if unique:
-                    uniquePath = route.route
-                elif loopInt:
-                    pos_from_end = 0 - loopInt
-                    uniquePath = route.route[pos_from_end:-1]
-                
-                stations = (d for d in station_iterator(srcStation)
-                if (d.station != srcStation) and
-                    (d.station.blackMarket == 'Y' if reqBlackMarket else True) and
-                    (d.station not in uniquePath if uniquePath else True) and
-                    (d.station in restrictStations if restrictStations else True) and
-                    (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True) and
-                    (((d.system is not srcSystem) if bool(tdenv.unique) else (d.system is goalSystem or d.distLy < srcGoalDist)) if goalSystem else True)
-                )
-                
-                if tdenv.debug >= 1:
-                    
-                    def annotate(dest):
-                        tdenv.DEBUG1(
-                            "destSys {}, destStn {}, jumps {}, distLy {}",
-                            dest.system.dbname,
-                            dest.station.dbname,
-                            "->".join(jump.text() for jump in dest.via),
-                            dest.distLy
-                        )
-                        return True
-                    
-                    stations = (d for d in stations if annotate(d))
-                
-                for dest in stations:
-                    dstStation = dest.station
-                    
-                    connections += 1
-                    items = self.getTrades(srcStation, dstStation, srcSelling)
-                    if not items:
-                        continue
-                    trade = fitFunction(items, startCr, capacity, maxUnits)
-                    
-                    multiplier = 1.0
-                    # Calculate total K-lightseconds supercruise time.
-                    # This will amortize for the start/end stations
-                    dstSys = dest.system
-                    if goalSystem and dstSys is not goalSystem:
-                        dstGoalDist = goalDistTo(dstSys)
-                        # Biggest reward for shortening distance to goal
-                        score = 5000 * origGoalDist / dstGoalDist
-                        # bias towards bigger reductions
-                        score += 50 * srcGoalDist / dstGoalDist
-                        # discourage moving back towards origin
-                        if dstSys is not origSystem:
-                            score += 10 * (origDistTo(dstSys) - srcOrigDist)
-                        # Gain per unit pays a small part
-                        score += (trade.gainCr / trade.units) / 25
-                    else:
-                        score = trade.gainCr
-                    if lsPenalty:
-                        # [kfsone] Only want 1dp
-                        
-                        cruiseKls = int(dstStation.lsFromStar / 100) / 10
-                        # Produce a curve that favors distances under 1kls
-                        # positively, starts to penalize distances over 1k,
-                        # and after 4kls starts to penalize aggressively
-                        # http://goo.gl/Otj2XP
-                        
-                        # [eyeonus] As aadler pointed out, this goes into negative
-                        # numbers, which causes problems.
-                        # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
-                        # penalty *= lsPenalty
-                        # multiplier *= (1 - penalty)
-                        
-                        # [eyeonus]:
-                        # (Keep in mind all this ignores values of x<0.)
-                        # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
-                        # ranges between 0.5 and 0 with a drop around x=1,
-                        # which makes it great for giving a boost to distances < 1Kls.
-                        #
-                        # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
-                        # ranges between 0 and -0.5 with a drop around x=4,
-                        # making it great for penalizing distances > 4Kls.
-                        #
-                        # The curve: (-1+1/(x+1)^((x+1)/4))/2
-                        # ranges between 0 and -0.5 in a smooth arc,
-                        # which will be used for making distances
-                        # closer to 4Kls get a slightly higher penalty
-                        # then distances closer to 1Kls.
-                        #
-                        # Adding the three together creates a doubly-kinked curve
-                        # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
-                        # which closely matches ksfone's intention without going into
-                        # negative numbers and causing problems when we add it to
-                        # the multiplier variable. ( 1 + -1 = 0 )
-                        #
-                        # You can see a graph of the formula here:
-                        # https://goo.gl/sn1PqQ
-                        # NOTE: The black curve is at a penalty of 0%,
-                        # the red curve at a penalty of 100%, with intermediates at
-                        # 25%, 50%, and 75%.
-                        # The other colored lines show the penalty curves individually
-                        # and the teal composite of all three.
-                        
-                        def sigmoid(x):
-                            return x / (1 + abs(x))
-                        
-                        boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
-                        drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
-                        try:
-                            penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
-                        except OverflowError:
-                            penalty = -0.5
-                        
-                        multiplier += (penalty + boost + drop) * lsPenalty
-                    
-                    score *= multiplier
-                    
-                    dstID = dstStation.ID
-                    try:
-                        # See if there is already a candidate for this destination
-                        btd = bestToDest[dstID]
-                    except KeyError:
-                        # No existing candidate, we win by default
-                        pass
-                    else:
-                        bestRoute = btd[1]
-                        bestScore = btd[5]
-                        # Check if it is a better option than we just produced
-                        bestTradeScore = bestRoute.score + bestScore
-                        newTradeScore = route.score + score
-                        if bestTradeScore > newTradeScore:
-                            continue
-                        if bestTradeScore == newTradeScore:
-                            bestLy = btd[4]
-                            if bestLy <= dest.distLy:
-                                continue
-                    
-                    bestToDest[dstID] = (
-                        dstStation, route, trade, dest.via, dest.distLy, score
+                def annotate(dest):
+                    tdenv.DEBUG1(
+                        "destSys {}, destStn {}, jumps {}, distLy {}",
+                        dest.system.dbname,
+                        dest.station.dbname,
+                        "->".join(jump.text() for jump in dest.via),
+                        dest.distLy
                     )
+                    return True
+                
+                stations = (d for d in stations if annotate(d))
+            
+            for dest in stations:
+                dstStation = dest.station
+                
+                connections += 1
+                items = self.getTrades(srcStation, dstStation, srcSelling)
+                if not items:
+                    continue
+                trade = fitFunction(items, startCr, capacity, maxUnits)
+                
+                multiplier = 1.0
+                # Calculate total K-lightseconds supercruise time.
+                # This will amortize for the start/end stations
+                dstSys = dest.system
+                if goalSystem and dstSys is not goalSystem:
+                    dstGoalDist = goalDistTo(dstSys)
+                    # Biggest reward for shortening distance to goal
+                    score = 5000 * origGoalDist / dstGoalDist
+                    # bias towards bigger reductions
+                    score += 50 * srcGoalDist / dstGoalDist
+                    # discourage moving back towards origin
+                    if dstSys is not origSystem:
+                        score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                    # Gain per unit pays a small part
+                    score += (trade.gainCr / trade.units) / 25
+                else:
+                    score = trade.gainCr
+                if lsPenalty:
+                    # [kfsone] Only want 1dp
+                    
+                    cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                    # Produce a curve that favors distances under 1kls
+                    # positively, starts to penalize distances over 1k,
+                    # and after 4kls starts to penalize aggressively
+                    # http://goo.gl/Otj2XP
+                    
+                    # [eyeonus] As aadler pointed out, this goes into negative
+                    # numbers, which causes problems.
+                    # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                    # penalty *= lsPenalty
+                    # multiplier *= (1 - penalty)
+                    
+                    # [eyeonus]:
+                    # (Keep in mind all this ignores values of x<0.)
+                    # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
+                    # ranges between 0.5 and 0 with a drop around x=1,
+                    # which makes it great for giving a boost to distances < 1Kls.
+                    #
+                    # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
+                    # ranges between 0 and -0.5 with a drop around x=4,
+                    # making it great for penalizing distances > 4Kls.
+                    #
+                    # The curve: (-1+1/(x+1)^((x+1)/4))/2
+                    # ranges between 0 and -0.5 in a smooth arc,
+                    # which will be used for making distances
+                    # closer to 4Kls get a slightly higher penalty
+                    # then distances closer to 1Kls.
+                    #
+                    # Adding the three together creates a doubly-kinked curve
+                    # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
+                    # which closely matches ksfone's intention without going into
+                    # negative numbers and causing problems when we add it to
+                    # the multiplier variable. ( 1 + -1 = 0 )
+                    #
+                    # You can see a graph of the formula here:
+                    # https://goo.gl/sn1PqQ
+                    # NOTE: The black curve is at a penalty of 0%,
+                    # the red curve at a penalty of 100%, with intermediates at
+                    # 25%, 50%, and 75%.
+                    # The other colored lines show the penalty curves individually
+                    # and the teal composite of all three.
+                    
+                    def sigmoid(x):
+                        return x / (1 + abs(x))
+                    
+                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
+                    drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
+                    try:
+                        penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
+                    except OverflowError:
+                        penalty = -0.5
+                    
+                    multiplier += (penalty + boost + drop) * lsPenalty
+                
+                score *= multiplier
+                
+                dstID = dstStation.ID
+                try:
+                    # See if there is already a candidate for this destination
+                    btd = bestToDest[dstID]
+                except KeyError:
+                    # No existing candidate, we win by default
+                    pass
+                else:
+                    bestRoute = btd[1]
+                    bestScore = btd[5]
+                    # Check if it is a better option than we just produced
+                    bestTradeScore = bestRoute.score + bestScore
+                    newTradeScore = route.score + score
+                    if bestTradeScore > newTradeScore:
+                        continue
+                    if bestTradeScore == newTradeScore:
+                        bestLy = btd[4]
+                        if bestLy <= dest.distLy:
+                            continue
+                
+                bestToDest[dstID] = (
+                    dstStation, route, trade, dest.via, dest.distLy, score
+                )
         
         if connections == 0:
-            raise NoHopsError(
-                "No destinations could be reached within the constraints."
-            )
+            return []
         
         result = []
         for (dst, route, trade, jumps, _, score) in bestToDest.values():
             result.append(route.plus(dst, trade, jumps, score))
+            
+        pickledResult = list(map(lambda r: JarredRoute(r), result))
         
-        return result
+        return pickledResult
