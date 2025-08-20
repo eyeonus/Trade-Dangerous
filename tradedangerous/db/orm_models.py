@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
-    MetaData, ForeignKey, Integer, String, CHAR, Enum, Index, UniqueConstraint, text
+    MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, UniqueConstraint, text
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.dialects.mysql import DATETIME as MySQLDateTime
@@ -28,6 +28,15 @@ PadSize  = Enum("S", "M", "L", "?", name="pad_size", native_enum=True)
 
 # ---------- Core Domain ----------
 
+class Added(Base):
+    __tablename__ = "Added"
+    added_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+
+    # Relationships
+    systems: Mapped[list["System"]] = relationship(back_populates="added")
+
+
 class System(Base):
     __tablename__ = "System"
     system_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -35,7 +44,9 @@ class System(Base):
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
-    added_id: Mapped[int | None] = mapped_column(Integer)  # FK to Added.added_id (table exists but not part of this skeleton)
+    added_id: Mapped[int | None] = mapped_column(
+        ForeignKey("Added.added_id", onupdate="CASCADE", ondelete="CASCADE")
+    )
     modified: Mapped[str] = mapped_column(
         MySQLDateTime(fsp=6),
         server_default=text("CURRENT_TIMESTAMP(6)"),
@@ -44,6 +55,7 @@ class System(Base):
     )
 
     # Relationships
+    added: Mapped["Added" | None] = relationship(back_populates="systems")
     stations: Mapped[list["Station"]] = relationship(back_populates="system", cascade="all, delete-orphan")
 
     # Indexes
@@ -81,6 +93,8 @@ class Station(Base):
     # Relationships
     system: Mapped["System"] = relationship(back_populates="stations")
     items: Mapped[list["StationItem"]] = relationship(back_populates="station", cascade="all, delete-orphan")
+    ship_vendors: Mapped[list["ShipVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
+    upgrade_vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="station", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_station_by_system", "system_id"),
@@ -160,6 +174,31 @@ class Ship(Base):
     name: Mapped[str] = mapped_column(String(40), nullable=False)
     cost: Mapped[int | None] = mapped_column(Integer)
 
+    # Relationships
+    vendors: Mapped[list["ShipVendor"]] = relationship(back_populates="ship")
+
+
+class ShipVendor(Base):
+    __tablename__ = "ShipVendor"
+    ship_id: Mapped[int] = mapped_column(
+        ForeignKey("Ship.ship_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+    )
+    station_id: Mapped[int] = mapped_column(
+        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+    )
+    modified: Mapped[str] = mapped_column(
+        MySQLDateTime(fsp=6),
+        server_default=text("CURRENT_TIMESTAMP(6)"),
+        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        nullable=False,
+    )
+
+    # Relationships
+    ship: Mapped["Ship"] = relationship(back_populates="vendors")
+    station: Mapped["Station"] = relationship(back_populates="ship_vendors")
+
+    __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),)
+
 
 class Upgrade(Base):
     __tablename__ = "Upgrade"
@@ -168,6 +207,31 @@ class Upgrade(Base):
     class_: Mapped[int] = mapped_column("class", Integer, nullable=False)
     rating: Mapped[str] = mapped_column(CHAR(1), nullable=False)
     ship: Mapped[str | None] = mapped_column(String(40))
+
+    # Relationships
+    vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="upgrade")
+
+
+class UpgradeVendor(Base):
+    __tablename__ = "UpgradeVendor"
+    upgrade_id: Mapped[int] = mapped_column(
+        ForeignKey("Upgrade.upgrade_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+    )
+    station_id: Mapped[int] = mapped_column(
+        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+    )
+    modified: Mapped[str] = mapped_column(
+        MySQLDateTime(fsp=6),
+        server_default=text("CURRENT_TIMESTAMP(6)"),
+        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        nullable=False,
+    )
+
+    # Relationships
+    upgrade: Mapped["Upgrade"] = relationship(back_populates="vendors")
+    station: Mapped["Station"] = relationship(back_populates="upgrade_vendors")
+
+    __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),)
 
 
 class RareItem(Base):
@@ -184,14 +248,64 @@ class RareItem(Base):
     __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
 
 
+# ---------- Control & Staging ----------
+
+class ExportControl(Base):
+    """
+    Singleton control row for hybrid export/watermarking.
+    - id: always 1
+    - last_full_dump_time: watermark
+    - last_reset_key: optional cursor for chunked from_live resets
+    """
+    __tablename__ = "ExportControl"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, server_default=text("1"))
+    last_full_dump_time: Mapped[str] = mapped_column(MySQLDateTime(fsp=6), nullable=False)
+    last_reset_key: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class StationItemStaging(Base):
+    """
+    Staging table for bulk loads (no FKs). Same columns as StationItem.
+    """
+    __tablename__ = "StationItem_staging"
+    station_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    demand_price: Mapped[int] = mapped_column(Integer, nullable=False)
+    demand_units: Mapped[int] = mapped_column(Integer, nullable=False)
+    demand_level: Mapped[int] = mapped_column(Integer, nullable=False)
+    supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
+    supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
+    supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
+    modified: Mapped[str] = mapped_column(
+        MySQLDateTime(fsp=6),
+        server_default=text("CURRENT_TIMESTAMP(6)"),
+        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        nullable=False,
+    )
+    from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+
+    # Optional helper index for merge step; Primary Key already covers this signature.
+    __table_args__ = (
+        Index("idx_sistaging_stn_itm", "station_id", "item_id"),
+    )
+
+
 __all__ = [
+    # Base
     "Base",
+    # Core
+    "Added",
     "System",
     "Station",
     "Category",
     "Item",
     "StationItem",
     "Ship",
+    "ShipVendor",
     "Upgrade",
+    "UpgradeVendor",
     "RareItem",
+    # Control & staging
+    "ExportControl",
+    "StationItemStaging",
 ]
