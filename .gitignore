@@ -1,52 +1,49 @@
-# python related
-__pycache__
-*.pyc
-*.pyo
-*.pyperf
-.tox/
-.pytest
-.pytest_cache
-*.prices
-# python virtualenv
-venv/
-.venv/
-.vs/
-.pycharm/
-.idea/
-.clion/
+# --- Python build / bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
 
-# python package stuff
+# --- Virtual environments ---
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+
+# --- Packaging ---
+build/
+dist/
 *.egg-info/
 .eggs/
 
-# project-stuff
-build/
-dist/
-data/
-tmp/
-test/
-
-# testing
+# --- Test / coverage ---
 .coverage
-test-data/
+*.cover
+htmlcov/
+.tox/
+.nox/
 
-# coding environment
-*.suo
-.project
-.pydevproject
-.vscode
-.private
+# --- Logs / dumps ---
+*.log
+*.tmp
+*.bak
+*.swp
 
-# scm
-*.orig
-*.prev
-*.last
+# --- IDE / editor junk ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
 
-# misc
-import.txt
-/config.sh
-*.prices
-misc/*.csv
-wip/
-pycallgraph.png
+# --- OS junk ---
+.DS_Store
+Thumbs.db
 
+# --- Project local helpers ---
+tools/*
+!tools/.gitignore
+
+# local-only
+/data/
+repo_files.txt
+tradedangerous/db/config.ini
