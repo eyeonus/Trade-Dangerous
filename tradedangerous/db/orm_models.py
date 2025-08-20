@@ -5,6 +5,7 @@ from sqlalchemy import (
     MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, UniqueConstraint, text
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from typing import Optional
 from sqlalchemy.dialects.mysql import DATETIME as MySQLDateTime
 
 # ---------- Naming & Base ----------
@@ -55,7 +56,7 @@ class System(Base):
     )
 
     # Relationships
-    added: Mapped["Added" | None] = relationship(back_populates="systems")
+    added: Mapped[Optional["Added"]] = relationship(back_populates="systems")
     stations: Mapped[list["Station"]] = relationship(back_populates="system", cascade="all, delete-orphan")
 
     # Indexes
