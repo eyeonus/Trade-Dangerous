@@ -180,7 +180,7 @@ def dumpPrices(
         item, catID, category = items[itemID]
         if stnID != lastStn:
             file.write(output)
-            output = "\n\n@ {}/{}\n".format(system.upper(), station)
+            output = "\n\n@ {}/{}:{}\n".format(system.upper(), station, stnID)
             lastStn = stnID
             lastCat = None
         

@@ -1461,18 +1461,19 @@ class TradeDB:
             return name
         
         slashPos = name.find('/')
+        colonPos = name.find(':')
         if slashPos < 0:
             slashPos = name.find('\\')
         nameOff = 1 if name.startswith('@') else 0
         if slashPos > nameOff:
             # Slash indicates it's, e.g., AULIN/ENTERPRISE
             sysName = name[nameOff:slashPos].upper()
-            stnName = name[slashPos+1:]
+            stnName = name[slashPos+1:colonPos]
         elif slashPos == nameOff:
-            sysName, stnName = None, name[nameOff+1:]
+            sysName, stnName = None, name[nameOff+1:colonPos]
         elif nameOff:
             # It's explicitly a station
-            sysName, stnName = name[nameOff:].upper(), None
+            sysName, stnName = name[nameOff:colonPos].upper(), None
         else:
             # It could be either, use the name for both.
             stnName = name[nameOff:]
