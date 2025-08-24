@@ -6,7 +6,37 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional
-from sqlalchemy.dialects.mysql import DATETIME as MySQLDateTime
+from sqlalchemy import DateTime
+from sqlalchemy.sql import expression
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.types import TypeDecorator
+
+
+# ---- Dialect-aware time utilities (moved before model usage) ----
+class now6(expression.FunctionElement):
+    """CURRENT_TIMESTAMP with microseconds on MySQL/MariaDB; plain CURRENT_TIMESTAMP elsewhere."""
+    type = DateTime()
+    inherit_cache = True
+
+@compiles(now6, "mysql")
+@compiles(now6, "mariadb")
+def _mysql_now6(element, compiler, **kw):
+    return "CURRENT_TIMESTAMP(6)"
+
+@compiles(now6)
+def _default_now(element, compiler, **kw):
+    return "CURRENT_TIMESTAMP"
+
+class DateTime6(TypeDecorator):
+    """DATETIME that is DATETIME(6) on MySQL/MariaDB, generic DateTime elsewhere."""
+    impl = DateTime
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name in ("mysql", "mariadb"):
+            from sqlalchemy.dialects.mysql import DATETIME as _MYSQL_DATETIME
+            return dialect.type_descriptor(_MYSQL_DATETIME(fsp=6))
+        return dialect.type_descriptor(DateTime())
 
 # ---------- Naming & Base ----------
 
@@ -49,9 +79,9 @@ class System(Base):
         ForeignKey("Added.added_id", onupdate="CASCADE", ondelete="CASCADE")
     )
     modified: Mapped[str] = mapped_column(
-        MySQLDateTime(fsp=6),
-        server_default=text("CURRENT_TIMESTAMP(6)"),
-        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        DateTime6(),
+        server_default=now6(),
+        onupdate=now6(),
         nullable=False,
     )
 
@@ -85,9 +115,9 @@ class Station(Base):
 
     type_id: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     modified: Mapped[str] = mapped_column(
-        MySQLDateTime(fsp=6),
-        server_default=text("CURRENT_TIMESTAMP(6)"),
-        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        DateTime6(),
+        server_default=now6(),
+        onupdate=now6(),
         nullable=False,
     )
 
@@ -150,9 +180,9 @@ class StationItem(Base):
     supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
     modified: Mapped[str] = mapped_column(
-        MySQLDateTime(fsp=6),
-        server_default=text("CURRENT_TIMESTAMP(6)"),
-        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        DateTime6(),
+        server_default=now6(),
+        onupdate=now6(),
         nullable=False,
     )
     from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
@@ -188,9 +218,9 @@ class ShipVendor(Base):
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
     )
     modified: Mapped[str] = mapped_column(
-        MySQLDateTime(fsp=6),
-        server_default=text("CURRENT_TIMESTAMP(6)"),
-        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        DateTime6(),
+        server_default=now6(),
+        onupdate=now6(),
         nullable=False,
     )
 
@@ -222,9 +252,9 @@ class UpgradeVendor(Base):
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
     )
     modified: Mapped[str] = mapped_column(
-        MySQLDateTime(fsp=6),
-        server_default=text("CURRENT_TIMESTAMP(6)"),
-        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        DateTime6(),
+        server_default=now6(),
+        onupdate=now6(),
         nullable=False,
     )
 
@@ -260,7 +290,7 @@ class ExportControl(Base):
     """
     __tablename__ = "ExportControl"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, server_default=text("1"))
-    last_full_dump_time: Mapped[str] = mapped_column(MySQLDateTime(fsp=6), nullable=False)
+    last_full_dump_time: Mapped[str] = mapped_column(DateTime6(), nullable=False)
     last_reset_key: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
 
@@ -278,9 +308,9 @@ class StationItemStaging(Base):
     supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
     modified: Mapped[str] = mapped_column(
-        MySQLDateTime(fsp=6),
-        server_default=text("CURRENT_TIMESTAMP(6)"),
-        onupdate=text("CURRENT_TIMESTAMP(6)"),
+        DateTime6(),
+        server_default=now6(),
+        onupdate=now6(),
         nullable=False,
     )
     from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
@@ -310,3 +340,5 @@ __all__ = [
     "ExportControl",
     "StationItemStaging",
 ]
+
+# ---------- Dialect-aware timestamp helpers ----------
