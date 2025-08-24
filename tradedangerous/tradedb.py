@@ -8,6 +8,30 @@
 # this software so long as you include this copyright notice.
 # I guarantee there is at least one bug neither of us knew about.
 # --------------------------------------------------------------------
+
+"""
+Trade:Dangerous — TradeDB (SQLAlchemy ORM)
+
+Provides the TradeDB API and core types:
+System, Station, Ship, Item, RareItem, Category.
+
+Quick usage:
+    from tradedangerous.tradedb import TradeDB
+
+    tdb = TradeDB()
+    sol = tdb.lookupSystem("SOL")
+    abe = tdb.lookupStation("Abraham Lincoln")            # case-insensitive, unique substring
+    abe_in_sol = tdb.lookupStation("Abraham Lincoln", sol)
+
+    avg_sell = tdb.getAverageSelling()
+    avg_buy  = tdb.getAverageBuying()
+
+Notes:
+- All database access uses SQLAlchemy ORM sessions (no raw SQL).
+- SQLite schema is created elsewhere from templates/TradeDangerous.sql; this module does no DDL.
+- MariaDB schema is managed via Alembic/ORM; runtime behaviour is backend-agnostic.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
