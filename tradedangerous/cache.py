@@ -24,37 +24,20 @@ from typing import Dict, Iterable, Sequence
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
-# ---- ORM imports (prefer package path, fall back to local) ----
-try:
-    # canonical project layout
-    from tradedangerous.db.orm_models import (
-        Base,
-        Added as SA_Added,
-        System as SA_System,
-        Station as SA_Station,
-        Item as SA_Item,
-        Category as SA_Category,
-        StationItem as SA_StationItem,
-        RareItem as SA_RareItem,
-        Ship as SA_Ship,
-        Upgrade as SA_Upgrade,
-        ShipVendor as SA_ShipVendor,
-        UpgradeVendor as SA_UpgradeVendor,
-    )
-except Exception:  # pragma: no cover
-    from orm_models import (  # type: ignore
-        Base,
-        Added as SA_Added,
-        System as SA_System,
-        Station as SA_Station,
-        Item as SA_Item,
-        Category as SA_Category,
-        StationItem as SA_StationItem,
-        RareItem as SA_RareItem,
-        Ship as SA_Ship,
-        Upgrade as SA_Upgrade,
-        ShipVendor as SA_ShipVendor,
-        UpgradeVendor as SA_UpgradeVendor,
+# ---- ORM imports ----
+from tradedangerous.db.orm_models import (
+    Base,
+    Added as SA_Added,
+    System as SA_System,
+    Station as SA_Station,
+    Item as SA_Item,
+    Category as SA_Category,
+    StationItem as SA_StationItem,
+    RareItem as SA_RareItem,
+    Ship as SA_Ship,
+    Upgrade as SA_Upgrade,
+    ShipVendor as SA_ShipVendor,
+    UpgradeVendor as SA_UpgradeVendor,
     )
 
 # ---------------- Index helpers (unchanged semantics) ----------------
