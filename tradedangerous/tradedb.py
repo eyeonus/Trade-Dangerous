@@ -38,6 +38,9 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Iterable, Tuple
 from contextlib import contextmanager
 from math import sqrt as _sqrt
+from collections import namedtuple
+
+
 
 from .tradeenv import TradeEnv          # type: ignore
 from .tradeexcept import TradeException # type: ignore
@@ -58,6 +61,44 @@ from tradedangerous.db.orm_models import (
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session as SASession
 
+######################################################################
+# Classes
+
+class AmbiguityError(TradeException):
+    """
+    Raised when a search key could match multiple entities.
+    Attributes:
+        lookupType - description of what was being queried
+        searchKey  - the key given to the search routine
+        anyMatch   - list of candidates
+        key        - function to get display string for a candidate
+    """
+    def __init__(self, lookupType, searchKey, anyMatch, key=lambda item: item):
+        self.lookupType = lookupType
+        self.searchKey = searchKey
+        self.anyMatch = anyMatch
+        self.key = key
+
+    def __str__(self):
+        anyMatch, key = self.anyMatch, self.key
+        if len(anyMatch) > 10:
+            opportunities = ", ".join([key(c) for c in anyMatch[:10]] + ["..."])
+        else:
+            opportunities = ", ".join(key(c) for c in anyMatch[0:-1])
+            opportunities += " or " + key(anyMatch[-1])
+        return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
+        
+class Destination(namedtuple('Destination', [
+        'system', 'station', 'via', 'distLy'
+        ])):
+    pass
+
+class DestinationNode(namedtuple('DestinationNode', [
+        'system', 'via', 'distLy'
+        ])):
+    pass
+
+
 @dataclass
 class System:
     ID: int
@@ -73,6 +114,26 @@ class System:
         dx = self.posX - other.posX
         dy = self.posY - other.posY
         dz = self.posZ - other.posZ
+
+    def getStation(self, name: str) -> 'Optional[Station]':
+        """
+        Quick case-insensitive lookup of a station name within the
+        stations in this system.
+        
+        Returns:
+            Station() object if a match is found,
+            otherwise None.
+        """
+        name = name.upper()
+        for station in self.stations:
+            if station.name == name:
+                return station
+        return None
+    def name(self, detail: int = 0) -> str:     # pylint: disable=unused-argument
+        """ Returns the display name for this System."""
+        return self.dbname
+    def text(self) -> str:
+        return self.dbname
         return _sqrt(dx*dx + dy*dy + dz*dz)
 
 @dataclass
@@ -94,6 +155,110 @@ class Station:
     odyssey: str
     itemCount: int = 0
     dataAge: Optional[float] = None
+
+    def name(self, detail: int = 0) -> str:  # pylint: disable=unused-argument
+        return f"{self.system.dbname}/{self.dbname}"
+    def checkPadSize(self, maxPadSize):
+        """
+        Tests if the Station's max pad size matches one of the
+        values in 'maxPadSize'.
+        
+        Args:
+            maxPadSize
+                A string of one or more max pad size values that
+                you want to match against.
+        
+        Returns:
+            True
+                If self.maxPadSize is None or empty, or matches a
+                member of maxPadSize
+            False
+                If maxPadSize was not empty but self.maxPadSize
+                did not match it.
+        
+        Examples:
+            # Require a medium max pad size - not small or large
+            station.checkPadSize("M")
+            # Require medium or unknown
+            station.checkPadSize("M?")
+            # Require small, large or unknown
+            station.checkPadSize("SL?")
+        """
+        return (not maxPadSize or self.maxPadSize in maxPadSize)
+    def checkPlanetary(self, planetary):
+        """
+        Tests if the Station's planetary matches one of the
+        values in 'planetary'.
+        
+        Args:
+            planetary
+                A string of one or more planetary values that
+                you want to match against.
+        
+        Returns:
+            True
+                If self.planetary is None or empty, or matches a
+                member of planetary
+            False
+                If planetary was not empty but self.planetary
+                did not match it.
+        
+        Examples:
+            # Require a planetary station
+            station.checkPlanetary("Y")
+            # Require planetary or unknown
+            station.checkPlanetary("Y?")
+            # Require no planetary station
+            station.checkPlanetary("N")
+        """
+        return (not planetary or self.planetary in planetary)
+    def checkFleet(self, fleet):
+        """
+        Same as checkPlanetary, but for fleet carriers.
+        """
+        return (not fleet or self.fleet in fleet)
+    def checkOdyssey(self, odyssey):
+        """
+        Same as checkPlanetary, but for Odyssey.
+        """
+        return (not odyssey or self.odyssey in odyssey)
+    def distFromStar(self, addSuffix: bool = False) -> str:
+        """
+        Returns a textual description of the distance from this
+        Station to the parent star.
+        
+        Args:
+            addSuffix[=False]:
+                Always add a unit suffix (ls, Kls, ly)
+        """
+        ls = self.lsFromStar
+        if not ls:
+            return "Unk" if addSuffix else "?"
+        
+        suffix = "ls" if addSuffix else ""
+        
+        if ls < 1000:
+            return f"{ls:n}{suffix}"
+        if ls < 10000:
+            return f"{ls / 1000:.2f}K{suffix}"
+        if ls < 1000000:
+            return f"{int(ls / 1000):n}K{suffix}"
+        return f'{ls / (365*24*60*60):.2f}ly'
+    def isTrading(self) -> bool:
+        """
+        True if the station is thought to be trading.
+        
+        A station is considered 'trading' if it has an item count > 0 or
+        if it's "market" column is flagged 'Y'.
+        """
+        return (self.itemCount > 0 or self.market == 'Y')
+    def itemDataAgeStr(self):
+        """ Returns the age in days of item data if present, else "-". """
+        if self.itemCount and self.dataAge:
+            return f"{self.dataAge:7.2f}"
+        return "-"
+    def text(self) -> str:
+        return f"{self.system.dbname}/{self.dbname}"
     def fullName(self) -> str:
         return f"{self.system.dbname}/{self.dbname}"
 
@@ -108,6 +273,9 @@ class Ship:
 
 @dataclass
 class Category:
+
+    def name(self, detail=0):   # pylint: disable=unused-argument
+        return self.dbname.upper()
     ID: int
     dbname: str
     items: List["Item"]
@@ -116,6 +284,9 @@ class Category:
 class Item:
     ID: int
     dbname: str
+
+        def name(self, detail=0):
+            return self.fullname if detail > 0 else self.dbname
     category: Category
     fullname: str
     avgprice: Optional[int] = None
@@ -127,11 +298,28 @@ class RareItem:
     station: Station
     dbname: str
     cost: Optional[int]
+
+        def name(self, detail=0):
+            return self.fullname if detail > 0 else self.dbname
     maxAllocation: Optional[int]
     illegal: str
     suppressed: str
     category: Category
     fullname: str
+    
+class Trade(namedtuple('Trade', (
+        'item',
+        'costCr', 'gainCr',
+        'supply', 'supplyLevel',
+        'demand', 'demandLevel',
+        'srcAge', 'dstAge'
+        ))):
+    """
+    Describes what it would cost and how much you would gain
+    when selling an item between two specific stations.
+    """
+    def name(self, detail=0):
+        return self.item.name(detail=detail)
 
 class TradeDB:
     defaultDB = 'TradeDangerous.db'
@@ -527,9 +715,656 @@ class TradeDB:
     # Legacy raw‑SQL helper disabled (ORM only).
     def getDB(self, *a, **k):
         raise RuntimeError("TradeDB.getDB is removed; use ORM sessions.")
+
+        def lookupAdded(self, name):
+            name = name.lower()
+            for ID, added in self.addedByID.items():
+                if added.lower() == name:
+                    return ID
+            raise KeyError(name)
+        def genStellarGrid(self, system, ly):
+            """
+            Yields Systems within a given radius of a specified System.
+        
+            Args:
+                system:
+                    The System to center the search on,
+                ly:
+                    The radius of the search around system,
+        
+            Yields:
+                (candidate, distLySq)
+                    candidate:
+                        System that was found,
+                    distLySq:
+                        The *SQUARE* of the distance in light-years
+                        between system and candidate.
+            """
+            if self.stellarGrid is None:
+                self.__buildStellarGrid()
+        
+            sysX, sysY, sysZ = system.posX, system.posY, system.posZ
+            lwrBound = make_stellar_grid_key(sysX - ly, sysY - ly, sysZ - ly)
+            uprBound = make_stellar_grid_key(sysX + ly, sysY + ly, sysZ + ly)
+            lySq = ly * ly  # in 64-bit python, ** invokes a function call making it 4x expensive as *.
+            stellarGrid = self.stellarGrid
+            for x in range(lwrBound[0], uprBound[0]+1):
+                for y in range(lwrBound[1], uprBound[1]+1):
+                    for z in range(lwrBound[2], uprBound[2]+1):
+                        try:
+                            grid = stellarGrid[(x, y, z)]
+                        except KeyError:
+                            continue
+                        for candidate in grid:
+                            delta = candidate.posX - sysX
+                            distSq = delta * delta
+                            if distSq > lySq:
+                                continue
+                            delta = candidate.posY - sysY
+                            distSq += delta * delta
+                            if distSq > lySq:
+                                continue
+                            delta = candidate.posZ - sysZ
+                            distSq += delta * delta
+                            if distSq > lySq:
+                                continue
+                            if candidate is not system:
+                                yield candidate, math_sqrt(distSq)
+        def genSystemsInRange(self, system, ly, includeSelf=False):
+            """
+            Yields Systems within a given radius of a specified System.
+            Results are sorted by distance and cached for subsequent
+            queries in the same run.
+        
+            Args:
+                system:
+                    The System to center the search on,
+                ly:
+                    The radius of the search around system,
+                includeSelf:
+                    Whether to include 'system' in the results or not.
+        
+            Yields:
+                (candidate, distLy)
+                    candidate:
+                        System that was found,
+                    distLy:
+                        The distance in lightyears between system and candidate.
+            """
+        
+            cur_cache = system._rangeCache  # pylint: disable=protected-access
+            if not cur_cache:
+                cur_cache = system._rangeCache = System.RangeCache()
+            cached_systems = cur_cache.systems
+        
+            if ly > cur_cache.probed_ly:
+                # Consult the database for stars we haven't seen.
+                cached_systems = cur_cache.systems = list(
+                    self.genStellarGrid(system, ly)
+                )
+                cached_systems.sort(key=lambda ent: ent[1])
+                cur_cache.probed_ly = ly
+        
+            if includeSelf:
+                yield system, 0.
+        
+            if cur_cache.probed_ly > ly:
+                # Cache may contain values outside our view
+                for candidate, dist in cached_systems:
+                    if dist <= ly:
+                        yield candidate, dist
+            else:
+                # No need to be conditional inside the loop
+                yield from cached_systems
+        def getRoute(self, origin, dest, maxJumpLy, avoiding=None, stationInterval=0):
+            """
+            Find a shortest route between two systems with an additional
+            constraint that each system be a maximum of maxJumpLy from
+            the previous system.
+        
+            Args:
+                origin:
+                    System (or station) to start from,
+                dest:
+                    System (or station) to terminate at,
+                maxJumpLy:
+                    Maximum light years between systems,
+                avoiding:
+                    List of systems being avoided
+                stationInterval:
+                    If non-zero, require a station at least this many jumps,
+                tdenv.padSize:
+                    Controls the pad size of stations for refuelling
+        
+            Returns:
+                None
+                    No route was found
+            
+                [(origin, 0),...(dest, N)]
+                    A list of (system, distanceSoFar) values describing
+                    the route.
+        
+            Example:
+                If there are systems A, B and C such
+                that A->B is 7ly and B->C is 8ly then:
+                
+                    origin = lookupPlace("A")
+                    dest = lookupPlace("C")
+                    route = tdb.getRoute(origin, dest, 9)
+            
+                The route should be:
+                
+                    [(System(A), 0), (System(B), 7), System(C), 15)]
+        
+            """
+        
+            if avoiding is None:
+                avoiding = []
+        
+            if isinstance(origin, Station):
+                origin = origin.system
+            if isinstance(dest, Station):
+                dest = dest.system
+        
+            if origin == dest:
+                return ((origin, 0), (dest, 0))
+        
+            # openSet is the list of nodes we want to visit, which will be
+            # used as a priority queue (heapq).
+            # Each element is a tuple of the 'priority' (the combination of
+            # the total distance to the node and the distance left from the
+            # node to the destination.
+            openSet = [(0, 0, origin.ID, 0)]
+            # Track predecessor nodes for everwhere we visit
+            distances = {origin: (None, 0)}
+        
+            if avoiding:
+                if dest in avoiding:
+                    raise ValueError("Destination is in avoidance list")
+                for avoid in avoiding:
+                    if isinstance(avoid, System):
+                        distances[avoid] = (None, -1)
+        
+            systemsInRange = self.genSystemsInRange
+            heappop  = heapq.heappop
+            heappush = heapq.heappush
+            distTo = float("inf")
+            defaultDist = (None, distTo)
+            getDist  = distances.get
+        
+            destID = dest.ID
+            sysByID = self.systemByID
+        
+            maxPadSize = self.tdenv.padSize
+            if not maxPadSize:
+                def checkStations(system: System) -> bool:  # pylint: disable=function-redefined, missing-docstring
+                    return bool(system.stations())
+            else:
+                def checkStations(system: System) -> bool:  # pylint: disable=function-redefined, missing-docstring
+                    return any(stn for stn in system.stations if stn.checkPadSize(maxPadSize))
+        
+            while openSet:
+                weight, curDist, curSysID, stnDist = heappop(openSet)
+                # If we reached 'goal' we've found the shortest path.
+                if curSysID == destID:
+                    break
+                if curDist >= distTo:
+                    continue
+                curSys = sysByID[curSysID]
+                # A node might wind up multiple times on the open list,
+                # so check if we've already found a shorter distance to
+                # the system and if so, ignore it this time.
+                if curDist > distances[curSys][1]:
+                    continue
+            
+                system_iter = iter(systemsInRange(curSys, maxJumpLy))
+                if stationInterval:
+                    if checkStations(curSys):
+                        stnDist = 0
+                    else:
+                        stnDist += 1
+                        if stnDist >= stationInterval:
+                            system_iter = iter(
+                                v for v in system_iter if checkStations(v[0])
+                            )
+            
+                distFn = curSys.distanceTo
+                for nSys, nDist in system_iter:
+                    newDist = curDist + nDist
+                    if getDist(nSys, defaultDist)[1] <= newDist:
+                        continue
+                    distances[nSys] = (curSys, newDist)
+                    weight = distFn(nSys)
+                    nID = nSys.ID
+                    heappush(openSet, (newDist + weight, newDist, nID, stnDist))
+                    if nID == destID:
+                        distTo = newDist
+        
+            if dest not in distances:
+                return None
+        
+            path = []
+        
+            while True:
+                (prevSys, dist) = getDist(dest)
+                path.append((dest, dist))
+                if dest == origin:
+                    break
+                dest = prevSys
+        
+            path.reverse()
+        
+            return path
+        def stations(self) -> 'Generator[Station, None, None]':
+            """ Iterate through the list of stations. """
+            yield from self.stationByID.values()
+        def lookupPlace(self, name):
+            """
+            Lookup the station/system specified by 'name' which can be the
+            name of a System or Station or it can be "System/Station" when
+            the user needs to disambiguate a station. In this case, both
+            system and station can be partial matches.
+        
+            The system tries to allow partial matches as well as matches
+            which omit whitespaces. In order to do this and still support
+            the massive namespace of Stars and Systems, we rank the
+            matches so that exact matches win, and only inferior close
+            matches are looked at if no exacts are found.
+        
+            Legal annotations:
+                system
+                station
+                @system    [explicitly a system name]
+                /station   [explicitly a station name]
+                system/station
+                @system/station
+            """
+        
+            if isinstance(name, (System, Station)):
+                return name
+        
+            slashPos = name.find('/')
+            if slashPos < 0:
+                slashPos = name.find('\\')
+            nameOff = 1 if name.startswith('@') else 0
+            if slashPos > nameOff:
+                # Slash indicates it's, e.g., AULIN/ENTERPRISE
+                sysName = name[nameOff:slashPos].upper()
+                stnName = name[slashPos+1:]
+            elif slashPos == nameOff:
+                sysName, stnName = None, name[nameOff+1:]
+            elif nameOff:
+                # It's explicitly a station
+                sysName, stnName = name[nameOff:].upper(), None
+            else:
+                # It could be either, use the name for both.
+                stnName = name[nameOff:]
+                sysName = stnName.upper()
+        
+            exactMatch = []
+            closeMatch = []
+            wordMatch = []
+            anyMatch = []
+        
+            def lookup(name, candidates):
+                """ Search candidates for the given name """
+            
+                normTrans = TradeDB.normalizeTrans
+                trimTrans = TradeDB.trimTrans
+            
+                nameNorm = name.translate(normTrans)
+                nameTrimmed = nameNorm.translate(trimTrans)
+            
+                nameLen = len(name)
+                nameNormLen = len(nameNorm)
+                nameTrimmedLen = len(nameTrimmed)
+            
+                for place in candidates:
+                    placeName = place.dbname
+                    placeNameNorm = placeName.translate(normTrans)
+                    placeNameNormLen = len(placeNameNorm)
+                
+                    if nameTrimmedLen > placeNameNormLen:
+                        # The needle is bigger than this haystack.
+                        continue
+                
+                    # If the lengths match, do a direct comparison.
+                    if len(placeName) == nameLen:
+                        if placeNameNorm == nameNorm:
+                            exactMatch.append(place)
+                        continue
+                    if placeNameNormLen == nameNormLen:
+                        if placeNameNorm == nameNorm:
+                            closeMatch.append(place)
+                        continue
+                
+                    if nameNormLen < placeNameNormLen:
+                        subPos = placeNameNorm.find(nameNorm)
+                        if subPos == 0:
+                            if placeNameNorm[nameNormLen] == ' ':
+                                # first word
+                                wordMatch.append(place)
+                            else:
+                                anyMatch.append(place)
+                            continue
+                    
+                        if subPos > 0:
+                            if placeNameNorm[subPos] == ' ' and \
+                                    placeNameNorm[subPos + nameNormLen] == ' ':
+                                wordMatch.append(place)
+                            else:
+                                anyMatch.append(place)
+                            continue
+                
+                    # Lets drop whitespace and remaining punctuation...
+                    placeNameTrimmed = placeNameNorm.translate(trimTrans)
+                    placeNameTrimmedLen = len(placeNameTrimmed)
+                    if placeNameTrimmedLen == placeNameNormLen:
+                        # No change
+                        continue
+                
+                    # A match here is not exact but still fairly interesting
+                    if len(placeNameTrimmed) == nameTrimmedLen:
+                        if placeNameTrimmed == nameTrimmed:
+                            closeMatch.append(place)
+                        continue
+                    if placeNameTrimmed.find(nameTrimmed) >= 0:
+                        anyMatch.append(place)
+        
+            if sysName:
+                try:
+                    system = self.systemByName[sysName]
+                    exactMatch = [system]
+                except KeyError:
+                    lookup(sysName, self.systemByID.values())
+        
+            if stnName:
+                # Are we considering the name as a station?
+                # (we don't if they type, e,g '@aulin')
+                # compare against nameOff to allow '@/station'
+                if slashPos > nameOff + 1:
+                    # "sys/station"; the user should have specified a system
+                    # name and we should be able to narrow down which
+                    # stations we compare against. Check first if there are
+                    # any matches.
+                    stationCandidates = []
+                    for system in itertools.chain(
+                            exactMatch, closeMatch, wordMatch, anyMatch
+                            ):
+                        stationCandidates += system.stations
+                    # Clear out the candidate lists
+                    exactMatch = []
+                    closeMatch = []
+                    wordMatch = []
+                    anyMatch = []
+                else:
+                    # Consider against all station names
+                    stationCandidates = self.stationByID.values()
+                lookup(stnName, stationCandidates)
+        
+            # consult the match sets in ranking order for a single
+            # match, which denotes a win at that tier. For example,
+            # if there is one exact match, we don't care how many
+            # close matches there were.
+            for matchSet in exactMatch, closeMatch, wordMatch, anyMatch:
+                if len(matchSet) == 1:
+                    return matchSet[0]
+        
+            # Nothing matched
+            if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
+                # Note: this was a TradeException and may need to be again,
+                # but then we need to catch that error in commandenv
+                # when we process avoids
+                raise LookupError(f"Unrecognized place: {name}")
+        
+            # More than one match
+            raise AmbiguityError(
+                'System/Station', name,
+                exactMatch + closeMatch + wordMatch + anyMatch,
+                key=lambda place: place.name()
+            )
+        def getDestinations(
+                self,
+                origin,
+                maxJumps=None,
+                maxLyPer=None,
+                avoidPlaces=None,
+                maxPadSize=None,
+                maxLsFromStar=0,
+                noPlanet=False,
+                planetary=None,
+                fleet=None,
+                odyssey=None,
+                ):
+            """
+            Gets a list of the Station destinations that can be reached
+            from this Station within the specified constraints.
+            Limits to stations we are trading with if trading is True.
+            """
+        
+            if maxJumps is None:
+                maxJumps = sys.maxsize
+            maxLyPer = maxLyPer or self.maxSystemLinkLy
+            if avoidPlaces is None:
+                avoidPlaces = ()
+        
+            # The open list is the list of nodes we should consider next for
+            # potential destinations.
+            # The path list is a list of the destinations we've found and the
+            # shortest path to them. It doubles as the "closed list".
+            # The closed list is the list of nodes we've already been to (so
+            # that we don't create loops A->B->C->A->B->C->...)
+        
+            origSys = origin.system if isinstance(origin, Station) else origin
+            openList = [DestinationNode(origSys, [origSys], 0)]
+            # I don't want to have to consult both the pathList
+            # AND the avoid list every time I'm considering a
+            # station, so copy the avoid list into the pathList
+            # with a negative distance so I can ignore them again
+            # when I scrape the pathList.
+            # Don't copy stations because those only affect our
+            # termination points, and not the systems we can
+            # pass through en-route.
+            pathList = {
+                system.ID: DestinationNode(system, None, -1.0)
+                for system in avoidPlaces
+                if isinstance(system, System)
+            }
+            if origSys.ID not in pathList:
+                pathList[origSys.ID] = openList[0]
+        
+            # As long as the open list is not empty, keep iterating.
+            jumps = 0
+            while openList and jumps < maxJumps:
+                # Expand the search domain by one jump; grab the list of
+                # nodes that are this many hops out and then clear the list.
+                ring, openList = openList, []
+                # All of the destinations we are about to consider will
+                # either be on the closed list or they will be +1 jump away.
+                jumps += 1
+            
+                ring.sort(key=lambda dn: dn.distLy)
+            
+                for node in ring:
+                    for (destSys, destDist) in self.genSystemsInRange(
+                            node.system, maxLyPer, False
+                            ):
+                        dist = node.distLy + destDist
+                        # If we already have a shorter path, do nothing
+                        try:
+                            prevDist = pathList[destSys.ID].distLy
+                        except KeyError:
+                            pass
+                        else:
+                            if dist >= prevDist:
+                                continue
+                        # Add to the path list
+                        destNode = DestinationNode(
+                            destSys, node.via + [destSys], dist
+                        )
+                        pathList[destSys.ID] = destNode
+                        # Add to the open list but also include node to the via
+                        # list so that it serves as the via list for all next-hops.
+                        openList.append(destNode)
+        
+            # We have a system-to-system path list, now we
+            # need stations to terminate at.
+            def path_iter_fn():
+                for node in pathList.values():
+                    if node.distLy >= 0.0:
+                        for station in node.system.stations:
+                            yield node, station
+        
+            path_iter = iter(
+              (node, station) for (node, station) in path_iter_fn()
+              if (station.planetary == 'N' if noPlanet else True) and
+                (station not in avoidPlaces if avoidPlaces else True) and
+                (station.checkPadSize(maxPadSize) if maxPadSize else True) and
+                (station.checkPlanetary(planetary) if planetary else True) and
+                (station.checkFleet(fleet) if fleet else True) and
+                (station.checkOdyssey(odyssey) if odyssey else True) and
+                (station.lsFromStar > 0 and station.lsFromStar <= maxLsFromStar if maxLsFromStar else True)
+            )
+            for node, stn in path_iter:
+                yield Destination(node.system, stn, node.via, node.distLy)
+        def ships(self):
+            """ Iterate through the list of ships. """
+            yield from self.shipByID.values()
+        def lookupShip(self, name):
+            """
+            Look up a ship by name
+            """
+            return TradeDB.listSearch(
+                "Ship", name, self.shipByID.values(),
+                key=lambda ship: ship.dbname
+            )
+        def categories(self):
+            """
+            Iterate through the list of categories.
+            key = category name, value = list of items.
+            """
+            yield from self.categoryByID.items()
+        def load(self, maxSystemLinkLy=None):
+            """
+                Populate/re-populate this instance of TradeDB with data.
+                WARNING: This will orphan existing records you have
+                taken references to:
+                    tdb.load()
+                    x = tdb.lookupPlace("Aulin")
+                    tdb.load() # x now points to an orphan Aulin
+            """
+        
+            self.tdenv.DEBUG1("Loading data")
+
+
+        
+            self._loadAdded()
+            self._loadSystems()
+            self._loadStations()
+            self._loadShips()
+            self._loadCategories()
+            self._loadItems()
+            self._loadRareItems()
+        
+            # Calculate the maximum distance anyone can jump so we can constrain
+            # the maximum "link" between any two stars.
+            msll = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
+            self.maxSystemLinkLy = msll
+        def listSearch(
+                listType, lookup, values,
+                key=lambda item: item,
+                val=lambda item: item
+                ):
+            """
+            Searches [values] for 'lookup' for least-ambiguous matches,
+            return the matching value as stored in [values].
+        
+            GIVEN [values] contains "bread", "water", "biscuits and "It",
+            searching "ea" will return "bread", "WaT" will return "water"
+            and "i" will return "biscuits".
+        
+            Searching for "a" would raise an AmbiguityError because "a" matches
+            "bread" and "water", but searching for "it" will return "It"
+            because it provides an exact match of a key.
+            """
+        
+            class ListSearchMatch(namedtuple('Match', ['key', 'value'])):
+                pass
+        
+            normTrans = TradeDB.normalizeTrans
+            trimTrans = TradeDB.trimTrans
+            needle = lookup.translate(normTrans).translate(trimTrans)
+            partialMatch, wordMatch = [], []
+            # make a regex to match whole words
+            wordRe = re.compile(f"\\b{lookup}\\b", re.IGNORECASE)
+            # describe a match
+            for entry in values:
+                entryKey = key(entry)
+                normVal = entryKey.translate(normTrans).translate(trimTrans)
+                if normVal.find(needle) > -1:
+                    # If this is an exact match, ignore ambiguities.
+                    if len(normVal) == len(needle):
+                        return val(entry)
+                    match = ListSearchMatch(entryKey, val(entry))
+                    if wordRe.match(entryKey):
+                        wordMatch.append(match)
+                    else:
+                        partialMatch.append(match)
+            # Whole word matches trump partial matches
+            if wordMatch:
+                if len(wordMatch) > 1:
+                    raise AmbiguityError(
+                        listType, lookup, wordMatch,
+                        key=lambda item: item.key,
+                    )
+                return wordMatch[0].value
+            # Fuzzy matches
+            if partialMatch:
+                if len(partialMatch) > 1:
+                    raise AmbiguityError(
+                        listType, lookup, partialMatch,
+                        key=lambda item: item.key,
+                    )
+                return partialMatch[0].value
+            # No matches
+            raise LookupError(f"Error: '{lookup}' doesn't match any {listType}")
     # Legacy raw‑SQL helper disabled (ORM only).
     def query(self, *a, **k):
         raise RuntimeError("TradeDB.query is removed; use ORM sessions.")
     # Legacy raw‑SQL helper disabled (ORM only).
     def queryColumn(self, *a, **k):
         raise RuntimeError("TradeDB.queryColumn is removed; use ORM sessions.")
+        
+####################################################################
+# Assorted helpers
+
+def describeAge(ageInSeconds: Union[float, int]) -> str:
+    """
+    Turns an age (in seconds) into a text representation.
+    """
+    hours = int(ageInSeconds / 3600)
+    if hours < 1:
+        return "<1 hr"
+    if hours == 1:
+        return "1 hr"
+    if hours < 48:
+        return f"{hours} hrs"
+    days = int(hours / 24)
+    if days < 90:
+        return f"{days} days"
+    return f"{int(days / 31)} mths"
+
+# ---- Restored API (from legacy) ----
+class SystemNotStationError(TradeException):
+    """
+        Raised when a station lookup matched a System but
+        could not be automatically reduced to a Station.
+    """
+    pass  # pylint: disable=unnecessary-pass  # (it's not)
+def make_stellar_grid_key(x: float, y: float, z: float) -> int:
+    """
+    The Stellar Grid is a map of systems based on their Stellar
+    co-ordinates rounded down to 32lys. This makes it much easier
+    to find stars within rectangular volumes.
+    """
+    return (int(x) >> 5, int(y) >> 5, int(z) >> 5)

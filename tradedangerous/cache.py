@@ -2,6 +2,28 @@
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
 # Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
+#
+# You are free to use, redistribute, or even print and eat a copy of
+# this software so long as you include this copyright notice.
+# I guarantee there is at least one bug neither of us knew about.
+# --------------------------------------------------------------------
+# TradeDangerous :: Modules :: Cache loader
+#
+#  TD works primarily from an SQLite3 database, but the data in that
+#  is sourced from text files.
+#   data/TradeDangerous.sql contains the less volatile data - systems,
+#   ships, etc
+#   data/TradeDangerous.prices contains a description of the price
+#   database that is intended to be easily editable and commitable to
+#   a source repository.
+#
+#  TODO: Split prices into per-system or per-station files so that
+#  we can tell how old data for a specific system is.
+
+# --------------------------------------------------------------------
+# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+# Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
+# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
 # Copyright (C) Stefan 'Tromador' Morrell 2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
@@ -39,6 +61,11 @@ from tradedangerous.db.orm_models import (
     ShipVendor as SA_ShipVendor,
     UpgradeVendor as SA_UpgradeVendor,
     )
+######################################################################
+# Code
+######################################################################
+
+
 
 # ---------------- Index helpers (unchanged semantics) ----------------
 
@@ -222,6 +249,9 @@ def processPricesRows(session: Session, station_id: int, rows: Sequence[dict[str
         if st and hasattr(st, "market"):
             st.market = "Y"
     return count
+######################################################################
+
+
 
 def processPricesFile(session: Session, path: Path) -> int:
     """
@@ -232,6 +262,9 @@ def processPricesFile(session: Session, path: Path) -> int:
         return 0
     stid = int(rows[0].get("station_id") or 0)
     return processPricesRows(session, stid, rows)
+######################################################################
+
+
 
 # ---------------- High-level entry points (called by tradedb) ----------------
 
@@ -258,6 +291,9 @@ def buildCache(tdb, tdenv) -> None:
                 p = template_dir / filename
                 if p.exists():
                     processImportFile(s, p, table)
+######################################################################
+
+
 
 def importDataFromFile(tdb, path: Path) -> int:
     """Compatibility shim used by callers to import a single CSV/prices file.
