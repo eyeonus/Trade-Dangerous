@@ -2,28 +2,6 @@
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
 # Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
-#
-# You are free to use, redistribute, or even print and eat a copy of
-# this software so long as you include this copyright notice.
-# I guarantee there is at least one bug neither of us knew about.
-# --------------------------------------------------------------------
-# TradeDangerous :: Modules :: Cache loader
-#
-#  TD works primarily from an SQLite3 database, but the data in that
-#  is sourced from text files.
-#   data/TradeDangerous.sql contains the less volatile data - systems,
-#   ships, etc
-#   data/TradeDangerous.prices contains a description of the price
-#   database that is intended to be easily editable and commitable to
-#   a source repository.
-#
-#  TODO: Split prices into per-system or per-station files so that
-#  we can tell how old data for a specific system is.
-
-# --------------------------------------------------------------------
-# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-# Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
 # Copyright (C) Stefan 'Tromador' Morrell 2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
@@ -38,6 +16,15 @@
 # persistence layer changes. CSV shapes must be accepted as-is.
 #
 from __future__ import annotations
+
+# --- cache.py patch: robust template directory resolution ---
+def _default_template_dir():
+    """Return the built-in templates directory (package-relative)."""
+    try:
+        return Path(__file__).resolve().parent / 'templates'
+    except Exception:
+        return Path('tradedangerous') / 'templates'
+
 
 from pathlib import Path
 import csv
@@ -61,10 +48,40 @@ from tradedangerous.db.orm_models import (
     ShipVendor as SA_ShipVendor,
     UpgradeVendor as SA_UpgradeVendor,
     )
-######################################################################
-# Code
-######################################################################
 
+# I feel pretty, oh so pretty!
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
+def _count_csv_rows(path: Path) -> int | None:
+    """Count CSV lines minus header (fast-ish)."""
+    try:
+        with path.open("rb") as fh:
+            total = sum(buf.count(b"\n") for buf in iter(lambda: fh.read(1 << 20), b""))
+        return max(0, total - 1)
+    except Exception:
+        return None
+
+def _progress_iter(path: Path, it, label: str):
+    """Wrap an iterator with a progress bar or fallback counter."""
+    total = _count_csv_rows(path)
+    if tqdm and total is not None:
+        yield from tqdm(it, total=total, unit="row", desc=f"{label}: {path.name}")
+    else:
+        # fallback counter
+        import sys
+        N, count = 10000, 0
+        for r in it:
+            count += 1
+            if count % N == 0:
+                sys.stdout.write(f"\r{label}: {path.name} … {count:,} rows")
+                sys.stdout.flush()
+            yield r
+        if count:
+            sys.stdout.write(f"\r{label}: {path.name} … {count:,} rows\n")
+            sys.stdout.flush()
 
 
 # ---------------- Index helpers (unchanged semantics) ----------------
@@ -86,12 +103,42 @@ def getItemByNameIndex(session: Session) -> Dict[str, int]:
     return {str(name).upper(): int(item_id) for item_id, name in rows}
 
 # ---------------- CSV import helpers ----------------
-
 def _read_csv(path: Path) -> Iterable[dict[str, str]]:
     with path.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.DictReader(fh)
+        if reader.fieldnames is None:
+            return
+
+        mapping = []
+        for orig in reader.fieldnames:
+            lk = (orig or "").strip().lower()
+            base = lk
+            if base.startswith("unq:"):
+                base = base[4:]
+            if base.startswith("!"):
+                base = base[1:]
+            if "@" in base:
+                base = base.split("@", 1)[0]
+            mapping.append((orig, lk, base))
+
         for row in reader:
-            # normalize headers to lower-case keys where needed?
+            out: dict[str, str] = {}
+            for orig, lk, base in mapping:
+                v = row.get(orig, "")
+                if isinstance(v, str):
+                    s = v.strip()
+                    # unwrap single-quoted CSV fields
+                    if len(s) >= 2 and s[0] == "'" and s[-1] == "'":
+                        s = s[1:-1].replace("''", "'")
+                    v = s
+                # always set the original lowered key
+                if lk not in out:
+                    out[lk] = v
+                # set base key only if not already present (avoid clobber)
+                if base and base != lk and base not in out:
+                    out[base] = v
+            yield out
+
             yield {k.strip(): v.strip() if isinstance(v, str) else v for k, v in row.items()}
 
 # Compatibility shapes: legacy CSVs have specific filenames → tables
@@ -108,14 +155,23 @@ def processImportFile(session: Session, path: Path, table_hint: str | None = Non
     count = 0
 
     if tbl == "added":
-        for r in _read_csv(path):
-            obj = SA_Added(name=r["name"])
+        first = True
+        for r in _progress_iter(path, _read_csv(path), "Import"):
+            if first:
+                # one-shot visibility into what we're actually reading
+                print(f"DEBUG Added.csv path={path} keys={sorted(r.keys())[:8]}")
+                first = False
+            # accept plain or directive-prefixed header
+            nm = r.get("name") or r.get("unq:name") or r.get("!name")
+            if nm is None:
+                raise KeyError(f"{path}: required 'name' not found.headers={list(r.keys())!r} row={r!r}")
+            obj = SA_Added(name=nm)
             # unique on name: idempotent insert-ignore via merge-like semantics
             existing = session.execute(select(SA_Added).where(SA_Added.name == obj.name)).scalar_one_or_none()
             if not existing:
                 session.add(obj); count += 1
     elif tbl == "system":
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             sid = int(r["system_id"]) if r.get("system_id") else int(r["id"]) if r.get("id") else None
             if sid is None:
                 continue
@@ -126,14 +182,21 @@ def processImportFile(session: Session, path: Path, table_hint: str | None = Non
             obj.pos_z = float(r.get("pos_z", 0) or 0)
             session.add(obj); count += 1
     elif tbl == "station":
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             stid = int(r["station_id"]) if r.get("station_id") else int(r["id"]) if r.get("id") else None
             if stid is None:
                 continue
             obj = session.get(SA_Station, stid) or SA_Station(station_id=stid)
             obj.name = r["name"]
             obj.system_id = int(r.get("system_id") or r.get("system") or 0)
-            obj.ls_from_star = int(r.get("ls_from_star") or 0)
+            val = r.get("ls_from_star")
+            if not val:
+                obj.ls_from_star = 0
+            else:
+                try:
+                    obj.ls_from_star = int(float(val))
+                except ValueError:
+                    raise ValueError(f"{path}: bad ls_from_star value {val!r}")
             # Flags: tolerate missing columns (bootstrap CSVs sometimes omit)
             for col in ("blackmarket","market","shipyard","outfitting","rearm","refuel","repair","planetary"):
                 if col in r and getattr(obj, col, None) is not None:
@@ -145,14 +208,14 @@ def processImportFile(session: Session, path: Path, table_hint: str | None = Non
                 except ValueError: pass
             session.add(obj); count += 1
     elif tbl == "category":
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             cid = int(r.get("category_id") or r.get("id") or 0)
             if cid == 0: continue
             obj = session.get(SA_Category, cid) or SA_Category(category_id=cid)
             obj.name = r["name"]
             session.add(obj); count += 1
     elif tbl == "item":
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             iid = int(r.get("item_id") or r.get("id") or 0)
             if iid == 0: continue
             obj = session.get(SA_Item, iid) or SA_Item(item_id=iid)
@@ -169,7 +232,7 @@ def processImportFile(session: Session, path: Path, table_hint: str | None = Non
                 except ValueError: pass
             session.add(obj); count += 1
     elif tbl == "rareitem" and SA_RareItem is not None:
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             rid = int(r.get("rare_id") or r.get("id") or 0)
             if rid == 0: continue
             obj = session.get(SA_RareItem, rid) or SA_RareItem(rare_id=rid)
@@ -187,7 +250,7 @@ def processImportFile(session: Session, path: Path, table_hint: str | None = Non
                     setattr(obj, col, r[col][:1])
             session.add(obj); count += 1
     elif tbl == "ship" and SA_Ship is not None:
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             shid = int(r.get("ship_id") or r.get("id") or 0)
             if shid == 0: continue
             obj = session.get(SA_Ship, shid) or SA_Ship(ship_id=shid)
@@ -197,7 +260,7 @@ def processImportFile(session: Session, path: Path, table_hint: str | None = Non
                 except ValueError: pass
             session.add(obj); count += 1
     elif tbl == "upgrade" and SA_Upgrade is not None:
-        for r in _read_csv(path):
+        for r in _progress_iter(path, _read_csv(path), "Import"):
             upid = int(r.get("upgrade_id") or r.get("id") or 0)
             if upid == 0: continue
             obj = session.get(SA_Upgrade, upid) or SA_Upgrade(upgrade_id=upid)
@@ -249,9 +312,6 @@ def processPricesRows(session: Session, station_id: int, rows: Sequence[dict[str
         if st and hasattr(st, "market"):
             st.market = "Y"
     return count
-######################################################################
-
-
 
 def processPricesFile(session: Session, path: Path) -> int:
     """
@@ -262,9 +322,6 @@ def processPricesFile(session: Session, path: Path) -> int:
         return 0
     stid = int(rows[0].get("station_id") or 0)
     return processPricesRows(session, stid, rows)
-######################################################################
-
-
 
 # ---------------- High-level entry points (called by tradedb) ----------------
 
@@ -273,7 +330,8 @@ def buildCache(tdb, tdenv) -> None:
     Seed a brand-new database from template CSVs under tradedangerous/templates.
     Mirrors the legacy buildCache() behaviour but uses the ORM.
     """
-    template_dir = Path(tdenv.templatePath)
+    raw_tpl = getattr(tdenv, 'templatePath', None)
+    template_dir = (Path(raw_tpl) if raw_tpl else _default_template_dir())
     order = [
         ("Added.csv", "Added"),
         ("System.csv", "System"),
@@ -291,9 +349,6 @@ def buildCache(tdb, tdenv) -> None:
                 p = template_dir / filename
                 if p.exists():
                     processImportFile(s, p, table)
-######################################################################
-
-
 
 def importDataFromFile(tdb, path: Path) -> int:
     """Compatibility shim used by callers to import a single CSV/prices file.
@@ -312,3 +367,53 @@ def importDataFromFile(tdb, path: Path) -> int:
                 return processPricesRows(s, stid, rows)
             else:
                 return processImportFile(s, path, table)
+def regeneratePricesFile(tdb, tdenv):
+    """
+    Write a complete '.prices' CSV snapshot from the current StationItem table.
+    Expected by plugins (e.g. eddblink) after listings import.
+
+    Output columns exactly match the loader in cache.importDataFromFile():
+    station_id,item_id,demand_price,demand_units,demand_level,
+    supply_price,supply_units,supply_level
+
+    Returns: Path to the written file.
+    """
+    from pathlib import Path
+    import csv
+    from sqlalchemy import select
+
+    # Resolve output path the same way TradeDB does (dataPath + defaultPrices).
+    out_path = Path(getattr(tdb, "pricesPath", None) or
+                    (Path(getattr(tdb, "dataPath")) / getattr(tdb, "defaultPrices", "TradeDangerous.prices")))
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Pull rows via ORM.
+    with tdb._Session() as s:  # type: ignore[attr-defined]
+        from tradedangerous.db.orm_models import StationItem as SA_StationItem
+        rows = s.execute(
+            select(
+                SA_StationItem.station_id,
+                SA_StationItem.item_id,
+                SA_StationItem.demand_price,
+                SA_StationItem.demand_units,
+                SA_StationItem.demand_level,
+                SA_StationItem.supply_price,
+                SA_StationItem.supply_units,
+                SA_StationItem.supply_level,
+            ).order_by(SA_StationItem.station_id, SA_StationItem.item_id)
+        )
+
+        with out_path.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow([
+                "station_id","item_id",
+                "demand_price","demand_units","demand_level",
+                "supply_price","supply_units","supply_level",
+            ])
+            for (station_id, item_id, d_p, d_u, d_l, s_p, s_u, s_l) in rows:
+                w.writerow([
+                    int(station_id), int(item_id),
+                    int(d_p or 0), int(d_u or 0), int(d_l or 0),
+                    int(s_p or 0), int(s_u or 0), int(s_l or 0),
+                ])
+    return out_path

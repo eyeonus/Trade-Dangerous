@@ -18,6 +18,13 @@ import requests
 import sqlite3
 import typing
 
+from sqlalchemy import select, delete, update, func, exists
+from sqlalchemy.orm import Session
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from ..db.engine import make_engine_from_config, get_session_factory
+from ..db.orm_models import System, Station, Item, StationItem
+
 
 if typing.TYPE_CHECKING:
     from typing import Optional
@@ -112,6 +119,15 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
         self.pricesPath = Path("listings.prices")
+        # SQLAlchemy engine/session
+        cfg_path = os.environ.get("TD_DB_CONFIG") or (self.tdb.dbPath.parent / "db_config.ini")
+        try:
+            self.engine = make_engine_from_config(str(cfg_path))
+        except Exception:
+            # Fallback: try environment only; engine helper will resolve defaults
+            self.engine = make_engine_from_config(os.environ.get("TD_DB_CONFIG", "db_config.ini"))
+        self.Session = get_session_factory(self.engine)
+
     
     def now(self):
         return datetime.datetime.now()
@@ -165,16 +181,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         Purges systems from the System table that do not have any stations claiming to be in them.
         Keeps table from becoming too large because of fleet carriers moving to unpopulated systems.
         """
-        db = self.tdb.getDB()
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
-        
-        db.execute("""
-            DELETE FROM System
-             WHERE NOT EXISTS(SELECT 1 FROM Station WHERE Station.system_id = System.system_id)
-        """)
-        db.commit()
-        
+        with self.Session.begin() as session:
+            from sqlalchemy import exists
+            session.execute(delete(System).where(~exists(select(1).where(Station.system_id == System.system_id))))
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
+
     
     def importListings(self, listings_file):
         """
@@ -183,129 +195,135 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
-        
+
         self.tdenv.NOTE("Checking listings")
         total = _count_listing_entries(self.tdenv, listings_path)
         if not total:
             self.tdenv.NOTE("No listings")
             return
-        
+
         self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
-        
-        db = self.tdb.getDB()
-        stmt_unliven_station = """UPDATE StationItem SET from_live = 0 WHERE station_id = ?"""
-        stmt_flush_station   = """DELETE from StationItem WHERE station_id = ?"""
-        stmt_add_listing     = """
-            INSERT OR IGNORE INTO StationItem (
-                station_id, item_id, modified, from_live,
-                demand_price, demand_units, demand_level,
-                supply_price, supply_units, supply_level
-            )
-            VALUES (
-                ?, ?, datetime(?, 'unixepoch'), ?,
-                ?, ?, ?,
-                ?, ?, ?
-            )
-        """
-        
-        # Fetch all the items IDS
-        item_lookup = _make_item_id_lookup(self.tdenv, db.cursor())
-        station_lookup = _make_station_id_lookup(self.tdenv, db.cursor())
-        last_station_update_times = _collect_station_modified_times(self.tdenv, db.cursor())
-        
+
+        # Session + lookups
+        with self.Session() as session:
+            item_lookup = {row[0] for row in session.execute(select(Item.item_id)).all()}
+            station_lookup = {row[0] for row in session.execute(select(Station.station_id)).all()}
+            last_station_update_times = {}
+            for sid, dt in session.execute(select(StationItem.station_id, func.min(StationItem.modified)).group_by(StationItem.station_id)):
+                if dt is not None:
+                    last_station_update_times[int(sid)] = int(dt.timestamp())
+
+        # Progress + batching
+        max_transaction_items = 25000  # legacy intent: keep tx bounded
+        transaction_items = 0
         cur_station = None
-        is_debug = self.tdenv.debug > 0
-        self.tdenv.DEBUG0("Processing entries...")
-        
-        # Try to find a balance between doing too many commits where we fail
-        # to get any benefits from constructing transactions, and blowing up
-        # the WAL and memory usage by making massive transactions.
-        max_transaction_items, transaction_items = 32 * 1024, 0
-        with pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog,\
-              listings_path.open("r", encoding="utf-8", errors="ignore") as fh:
-            cursor = db.cursor()
-            cursor.execute("BEGIN TRANSACTION")
-            
+        skip_station = False
+
+        with open(listings_path, "r", encoding="utf-8") as fh, \
+             pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog, \
+             self.Session.begin() as session:
+
+            # choose dialect upsert factory once
+            dialect = self.engine.dialect.name
+            def do_upsert(payloads):
+                if not payloads:
+                    return
+                if dialect == "sqlite":
+                    stmt = sqlite_insert(StationItem).values(payloads)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=[StationItem.station_id, StationItem.item_id],
+                        set_={
+                            "demand_price": stmt.excluded.demand_price,
+                            "demand_units": stmt.excluded.demand_units,
+                            "demand_level": stmt.excluded.demand_level,
+                            "supply_price": stmt.excluded.supply_price,
+                            "supply_units": stmt.excluded.supply_units,
+                            "supply_level": stmt.excluded.supply_level,
+                            "modified": stmt.excluded.modified,
+                            "from_live": stmt.excluded.from_live,
+                        },
+                    )
+                else:
+                    ins = mysql_insert(StationItem).values(payloads)
+                    stmt = ins.on_duplicate_key_update(
+                        demand_price=ins.inserted.demand_price,
+                        demand_units=ins.inserted.demand_units,
+                        demand_level=ins.inserted.demand_level,
+                        supply_price=ins.inserted.supply_price,
+                        supply_units=ins.inserted.supply_units,
+                        supply_level=ins.inserted.supply_level,
+                        modified=ins.inserted.modified,
+                        from_live=ins.inserted.from_live,
+                    )
+                session.execute(stmt)
+
+            buffer = []
+
             for listing in csv.DictReader(fh):
                 prog.increment(1)
-                
+
                 station_id = int(listing['station_id'])
                 if station_id not in station_lookup:
                     continue
-                
+
                 listing_time = int(listing['collected_at'])
-                
+
                 if station_id != cur_station:
-                    # commit anything from the previous station, get a new cursor
+                    # manage prior station boundaries / bounded transactions
                     if transaction_items >= max_transaction_items:
-                        cursor.execute("COMMIT")
+                        session.commit()
                         transaction_items = 0
-                        cursor.execute("BEGIN TRANSACTION")
+
                     cur_station, skip_station = station_id, False
-                    
-                    # Check if listing already exists in DB and needs updated.
-                    last_modified: int = int(last_station_update_times.get(station_id, 0))
+
+                    # determine existing modified watermark
+                    last_modified = int(last_station_update_times.get(station_id, 0)) or 0
                     if last_modified:
-                        # When the listings.csv data matches the database, update to make from_live == 0.
                         if listing_time == last_modified and not from_live:
-                            if is_debug:
-                                self.tdenv.DEBUG1(f"Marking {cur_station} as no longer 'live' (old={last_modified}, listing={listing_time}).")
-                            cursor.execute(stmt_unliven_station, (cur_station,))
+                            # mark no-longer-live on full import, then skip the station
+                            session.execute(update(StationItem).where(StationItem.station_id == cur_station).values(from_live=0))
                             transaction_items += 1
                             skip_station = True
                             continue
-                        
-                        # Unless the import file data is newer, nothing else needs to be done for this station,
-                        # so the rest of the listings for this station can be skipped.
-                        if listing_time <= last_modified:
+                        if listing_time < last_modified:
+                            # incoming is older; skip station entirely
                             skip_station = True
                             continue
-                        
-                        # The data from the import file is newer, so we need to delete the old data for this station.
-                        if is_debug:
-                            self.tdenv.DEBUG1(f"Deleting old listing data for {cur_station} (old={last_modified}, listing={listing_time}).")
-                        cursor.execute(stmt_flush_station, (cur_station,))
-                        transaction_items += 1
-                        last_station_update_times[station_id] = listing_time
-                
-                # station skip lasts until we change station id.
+                        # newer: flush old data for station on full run
+                        if not from_live:
+                            session.execute(delete(StationItem).where(StationItem.station_id == cur_station))
+                            transaction_items += 1
+                            last_station_update_times[station_id] = listing_time
+
                 if skip_station:
                     continue
-                
-                # Since this station is not being skipped, get the data and prepare for insertion into the DB.
+
                 item_id = int(listing['commodity_id'])
-                # listings.csv includes rare items, which we are ignoring.
                 if item_id not in item_lookup:
                     continue
-                
-                demand_price = int(listing['sell_price'])
-                demand_units = int(listing['demand'])
-                demand_level = int(listing.get('demand_bracket') or '-1')
-                supply_price = int(listing['buy_price'])
-                supply_units = int(listing['supply'])
-                supply_level = int(listing.get('supply_bracket') or '-1')
-                
-                if is_debug:
-                    self.tdenv.DEBUG1(f"Inserting new listing data for {station_id}.")
-                cursor.execute(stmt_add_listing, (
-                        station_id, item_id, listing_time, from_live,
-                        demand_price, demand_units, demand_level,
-                        supply_price, supply_units, supply_level,
-                ))
+
+                payload = dict(
+                    station_id=station_id,
+                    item_id=item_id,
+                    modified=datetime.datetime.utcfromtimestamp(listing_time),
+                    from_live=1 if from_live else 0,
+                    demand_price=int(listing['sell_price']),
+                    demand_units=int(listing['demand']),
+                    demand_level=int(listing.get('demand_bracket') or '-1'),
+                    supply_price=int(listing['buy_price']),
+                    supply_units=int(listing['supply']),
+                    supply_level=int(listing.get('supply_bracket') or '-1'),
+                )
+                buffer.append(payload)
                 transaction_items += 1
-        
-        # These will take a little while, which has four steps, so we'll make it a counter.
-        with pbar.Progress(1, 40, prefix="Saving"):
-            # Do a final commit to be sure
-            cursor.execute("COMMIT")
-        
-        if self.getOption("optimize"):
-            with pbar.Progress(1, 40, prefix="Optimizing"):
-                db.execute("VACUUM")
-        
-        self.tdb.close()
-        
-        self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
+
+                if len(buffer) >= 1000:
+                    do_upsert(buffer)
+                    buffer.clear()
+
+            if buffer:
+                do_upsert(buffer)
+
     
     def run(self):
         self.tdenv.ignoreUnknown = True
@@ -463,6 +481,17 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(self.commoditiesPath) or self.getOption("force"):
                 self.downloadFile(self.categoriesPath)
                 buildCache = True
+                
+                
+        data_dir = Path(self.tdb.tdenv.dataPath or "./data")
+        for name in [
+            "System.csv","Station.csv","Category.csv","Item.csv",
+            "RareItem.csv","Ship.csv","Upgrade.csv",
+            "ShipVendor.csv","UpgradeVendor.csv"
+        ]:
+            p = data_dir / name
+            if p.exists():
+                cache.importDataFromFile(self.tdb, p)
         
         # Remake the .db files with the updated info.
         if buildCache:

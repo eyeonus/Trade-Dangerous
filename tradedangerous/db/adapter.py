@@ -9,18 +9,21 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 # Local engine + ORM (authoritative)
-from ..db_engine import make_engine_from_config, get_session_factory  # uses db_config.ini on disk
+from .engine import make_engine_from_config, get_session_factory  # uses env/CWD-resolved db_config.ini by default
 from .orm_models import System, Station, Item, StationItem  # canonical models
+from .paths import resolve_db_config_path
 
 # ---- Public factory ---------------------------------------------------------
 
-def get_adapter_if_enabled(cfg_path: str = "db_config.ini") -> "TradeDBReadAdapter | None":
+def get_adapter_if_enabled(cfg_path: Optional[str] = None) -> "TradeDBReadAdapter | None":
     """
     Return an adapter when [database] backend != 'sqlite', else None.
     - No engine/session created at import: construction is lazy.
     - This is called by tradedb.py (thin gate).
     """
     import configparser, os
+    if cfg_path is None:
+        cfg_path = str(resolve_db_config_path())
     cfg = configparser.ConfigParser()
     if not os.path.exists(cfg_path):
         return None
@@ -33,11 +36,11 @@ def get_adapter_if_enabled(cfg_path: str = "db_config.ini") -> "TradeDBReadAdapt
     # Engine is created lazily via the property below to honour "no side-effects at import".
     return TradeDBReadAdapter(cfg_path)
 
-# ---- Adapter (read‑only) ----------------------------------------------------
+# ---- Adapter (read-only) ----------------------------------------------------
 
 class TradeDBReadAdapter:
     """
-    Very small, read‑only façade over SQLAlchemy for legacy TradeDB reads:
+    Very small, read-only façade over SQLAlchemy for legacy TradeDB reads:
       - systems() list
       - lookup system by name (case-insensitive)
       - station by (system_id, station_name) (case-insensitive)

@@ -70,8 +70,8 @@ class Added(Base):
 
 class System(Base):
     __tablename__ = "System"
-    system_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    system_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
@@ -98,8 +98,8 @@ class System(Base):
 
 class Station(Base):
     __tablename__ = "Station"
-    station_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     system_id: Mapped[int] = mapped_column(ForeignKey("System.system_id", ondelete="CASCADE"), nullable=False)
     ls_from_star: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
@@ -149,7 +149,7 @@ class Category(Base):
 class Item(Base):
     __tablename__ = "Item"
     item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     category_id: Mapped[int] = mapped_column(ForeignKey("Category.category_id", ondelete="CASCADE"), nullable=False)
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     avg_price: Mapped[int | None] = mapped_column(Integer)   # TODO: verify presence/usage in legacy
