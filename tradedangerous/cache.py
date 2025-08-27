@@ -1,419 +1,1072 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
 # Copyright (C) Stefan 'Tromador' Morrell 2025
+# Copyright (C) Jonathan 'eyeonus' Jones 2018-2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
 # I guarantee there is at least one bug neither of us knew about.
-# ---------------
-# -----------------------------------------------------
-# TradeDangerous :: Modules :: Cache loader (SQLAlchemy adapter)
+# --------------------------------------------------------------------
+# TradeDangerous :: Modules :: Cache loader
 #
-# This module replaces the sqlite3/raw-SQL implementation with SQLAlchemy 2.x.
-# Behavioural goal: same results/side-effects as legacy cache.py; only the
-# persistence layer changes. CSV shapes must be accepted as-is.
+#  TD works primarily from an SQLite3 database, but the data in that
+#  is sourced from text files.
+#   data/TradeDangerous.sql contains the less volatile data - systems,
+#   ships, etc
+#   data/TradeDangerous.prices contains a description of the price
+#   database that is intended to be easily editable and commitable to
+#   a source repository.
 #
+#  TODO: Split prices into per-system or per-station files so that
+#  we can tell how old data for a specific system is.
+
 from __future__ import annotations
-
-# --- cache.py patch: robust template directory resolution ---
-def _default_template_dir():
-    """Return the built-in templates directory (package-relative)."""
-    try:
-        return Path(__file__).resolve().parent / 'templates'
-    except Exception:
-        return Path('tradedangerous') / 'templates'
-
 
 from pathlib import Path
 import csv
-from typing import Dict, Iterable, Sequence
+import os
+import re
+import sys
+import typing
 
-from sqlalchemy import select, func
+from functools import partial as partial_fn
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+from tradedangerous.db import make_engine_from_config, get_session_factory
+from tradedangerous.db import orm_models as SA
+from tradedangerous.db import lifecycle
 
-# ---- ORM imports ----
-from tradedangerous.db.orm_models import (
-    Base,
-    Added as SA_Added,
-    System as SA_System,
-    Station as SA_Station,
-    Item as SA_Item,
-    Category as SA_Category,
-    StationItem as SA_StationItem,
-    RareItem as SA_RareItem,
-    Ship as SA_Ship,
-    Upgrade as SA_Upgrade,
-    ShipVendor as SA_ShipVendor,
-    UpgradeVendor as SA_UpgradeVendor,
-    )
-
-# I feel pretty, oh so pretty!
-try:
-    from tqdm import tqdm
-except ImportError:
-    tqdm = None
-
-def _count_csv_rows(path: Path) -> int | None:
-    """Count CSV lines minus header (fast-ish)."""
-    try:
-        with path.open("rb") as fh:
-            total = sum(buf.count(b"\n") for buf in iter(lambda: fh.read(1 << 20), b""))
-        return max(0, total - 1)
-    except Exception:
-        return None
-
-def _progress_iter(path: Path, it, label: str):
-    """Wrap an iterator with a progress bar or fallback counter."""
-    total = _count_csv_rows(path)
-    if tqdm and total is not None:
-        yield from tqdm(it, total=total, unit="row", desc=f"{label}: {path.name}")
-    else:
-        # fallback counter
-        import sys
-        N, count = 10000, 0
-        for r in it:
-            count += 1
-            if count % N == 0:
-                sys.stdout.write(f"\r{label}: {path.name} … {count:,} rows")
-                sys.stdout.flush()
-            yield r
-        if count:
-            sys.stdout.write(f"\r{label}: {path.name} … {count:,} rows\n")
-            sys.stdout.flush()
+from .fs import file_line_count
+from .tradeexcept import TradeException
+from tradedangerous.misc.progress import Progress, CountingBar
+from . import corrections, utils
+from . import prices
 
 
-# ---------------- Index helpers (unchanged semantics) ----------------
 
-def getSystemByNameIndex(session: Session) -> Dict[str, int]:
-    rows = session.execute(select(SA_System.system_id, SA_System.name))
-    return {str(name).upper(): int(sid) for sid, name in rows}
+# For mypy/pylint type checking
+if typing.TYPE_CHECKING:
+    from typing import Any, Callable, Optional, TextIO  # noqa
+    
+    from .tradeenv import TradeEnv
 
-def getStationByNameIndex(session: Session) -> Dict[str, int]:
-    q = (
-        select(SA_Station.station_id, SA_System.name, SA_Station.name)
-        .join(SA_System, SA_System.system_id == SA_Station.system_id)
-    )
-    rows = session.execute(q).all()
-    return {f"{sys}/{stn}".upper(): int(station_id) for station_id, sys, stn in rows}
 
-def getItemByNameIndex(session: Session) -> Dict[str, int]:
-    rows = session.execute(select(SA_Item.item_id, SA_Item.name))
-    return {str(name).upper(): int(item_id) for item_id, name in rows}
+######################################################################
+# Regular expression patterns. Here be draegons.
+# If you add new patterns:
+# - use fragments and re.VERBOSE (see itemPriceRe)
+# - use named captures (?P<name> ...)
+# - include comments
 
-# ---------------- CSV import helpers ----------------
-def _read_csv(path: Path) -> Iterable[dict[str, str]]:
-    with path.open("r", encoding="utf-8", newline="") as fh:
-        reader = csv.DictReader(fh)
-        if reader.fieldnames is None:
-            return
+# # Match the '@ SYSTEM/Station' line
+systemStationRe = re.compile(r'^\@\s*(.*)/(.*)')
 
-        mapping = []
-        for orig in reader.fieldnames:
-            lk = (orig or "").strip().lower()
-            base = lk
-            if base.startswith("unq:"):
-                base = base[4:]
-            if base.startswith("!"):
-                base = base[1:]
-            if "@" in base:
-                base = base.split("@", 1)[0]
-            mapping.append((orig, lk, base))
+# # Price Line matching
 
-        for row in reader:
-            out: dict[str, str] = {}
-            for orig, lk, base in mapping:
-                v = row.get(orig, "")
-                if isinstance(v, str):
-                    s = v.strip()
-                    # unwrap single-quoted CSV fields
-                    if len(s) >= 2 and s[0] == "'" and s[-1] == "'":
-                        s = s[1:-1].replace("''", "'")
-                    v = s
-                # always set the original lowered key
-                if lk not in out:
-                    out[lk] = v
-                # set base key only if not already present (avoid clobber)
-                if base and base != lk and base not in out:
-                    out[base] = v
-            yield out
+# first part of any prices line is the item name and paying/asking price
+itemPriceFrag = r"""
+    # match item name, allowing spaces in the name
+    (?P<item> .*?)
+\s+
+    # price station is buying the item for
+    (?P<sell> \d+)
+\s+
+    # price station is selling item for
+    (?P<buy> \d+)
+"""
 
-            yield {k.strip(): v.strip() if isinstance(v, str) else v for k, v in row.items()}
+# time formats per https://www.sqlite.org/lang_datefunc.html
+# YYYY-MM-DD HH:MM:SS
+# YYYY-MM-DDTHH:MM:SS
+# HH:MM:SS
+# 'now'
+timeFrag = r'(?P<time>(\d{4}-\d{2}-\d{2}[T ])?\d{2}:\d{2}:\d{2}|now)'
 
-# Compatibility shapes: legacy CSVs have specific filenames → tables
-# Added.csv, System.csv, Station.csv, Category.csv, Item.csv, RareItem.csv, Ship.csv, Upgrade.csv
-# For prices: <station_id>.prices with headers:
-# station_id,item_id,demand_price,demand_units,demand_level,supply_price,supply_units,supply_level
+# <name> <sell> <buy> [ <demand> <supply> [ <time> | now ] ]
+qtyLevelFrag = r"""
+    unk             # You can just write 'unknown'
+|   \?              # alias for unknown
+|   n/a             # alias for 0L0
+|   -               # alias for 0L0
+|   \d+[\?LMH]      # Or <number><level> where level is L(ow), M(ed) or H(igh)
+|   0               # alias for n/a
+|   bug
+"""
+newItemPriceRe = re.compile(r"""
+^
+    {base_f}
+    (
+    \s+
+        # demand units and level
+        (?P<demand> {qtylvl_f})
+    \s+
+        # supply units and level
+        (?P<supply> {qtylvl_f})
+        # time is optional
+        (?:
+        \s+
+            {time_f}
+        )?
+    )?
+\s*
+$
+""".format(base_f = itemPriceFrag, qtylvl_f = qtyLevelFrag, time_f = timeFrag),
+            re.IGNORECASE + re.VERBOSE)
 
-def processImportFile(session: Session, path: Path, table_hint: str | None = None) -> int:
+######################################################################
+# Exception classes
+
+
+class BuildCacheBaseException(TradeException):
     """
-    Import a *single* CSV file into the mapped tables using ORM objects.
-    Returns count of rows staged/added (best-effort).
+    Baseclass for BuildCache exceptions
+    Attributes:
+        fileName    Name of file being processedStations
+        lineNo      Line the error occurred on
+        error       Description of the error
     """
-    tbl = (table_hint or path.stem or "").strip().lower()
-    count = 0
+    
+    def __init__(self, fromFile: Path, lineNo: int, error: str = None) -> None:
+        self.fileName = fromFile.name
+        self.lineNo = lineNo
+        self.category = "ERROR"
+        self.error = error or "UNKNOWN ERROR"
+    
+    def __str__(self) -> str:
+        return f'{self.fileName}:{self.lineNo} {self.category} {self.error}'
 
-    if tbl == "added":
-        first = True
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            if first:
-                # one-shot visibility into what we're actually reading
-                print(f"DEBUG Added.csv path={path} keys={sorted(r.keys())[:8]}")
-                first = False
-            # accept plain or directive-prefixed header
-            nm = r.get("name") or r.get("unq:name") or r.get("!name")
-            if nm is None:
-                raise KeyError(f"{path}: required 'name' not found.headers={list(r.keys())!r} row={r!r}")
-            obj = SA_Added(name=nm)
-            # unique on name: idempotent insert-ignore via merge-like semantics
-            existing = session.execute(select(SA_Added).where(SA_Added.name == obj.name)).scalar_one_or_none()
-            if not existing:
-                session.add(obj); count += 1
-    elif tbl == "system":
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            sid = int(r["system_id"]) if r.get("system_id") else int(r["id"]) if r.get("id") else None
-            if sid is None:
-                continue
-            obj = session.get(SA_System, sid) or SA_System(system_id=sid)
-            obj.name = r["name"]
-            obj.pos_x = float(r.get("pos_x", 0) or 0)
-            obj.pos_y = float(r.get("pos_y", 0) or 0)
-            obj.pos_z = float(r.get("pos_z", 0) or 0)
-            session.add(obj); count += 1
-    elif tbl == "station":
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            stid = int(r["station_id"]) if r.get("station_id") else int(r["id"]) if r.get("id") else None
-            if stid is None:
-                continue
-            obj = session.get(SA_Station, stid) or SA_Station(station_id=stid)
-            obj.name = r["name"]
-            obj.system_id = int(r.get("system_id") or r.get("system") or 0)
-            val = r.get("ls_from_star")
-            if not val:
-                obj.ls_from_star = 0
-            else:
-                try:
-                    obj.ls_from_star = int(float(val))
-                except ValueError:
-                    raise ValueError(f"{path}: bad ls_from_star value {val!r}")
-            # Flags: tolerate missing columns (bootstrap CSVs sometimes omit)
-            for col in ("blackmarket","market","shipyard","outfitting","rearm","refuel","repair","planetary"):
-                if col in r and getattr(obj, col, None) is not None:
-                    setattr(obj, col, (r[col] or "?")[:1])
-            if "max_pad_size" in r and getattr(obj, "max_pad_size", None) is not None:
-                obj.max_pad_size = (r["max_pad_size"] or "?")[:1]
-            if "type_id" in r and r["type_id"]:
-                try: obj.type_id = int(r["type_id"])
-                except ValueError: pass
-            session.add(obj); count += 1
-    elif tbl == "category":
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            cid = int(r.get("category_id") or r.get("id") or 0)
-            if cid == 0: continue
-            obj = session.get(SA_Category, cid) or SA_Category(category_id=cid)
-            obj.name = r["name"]
-            session.add(obj); count += 1
-    elif tbl == "item":
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            iid = int(r.get("item_id") or r.get("id") or 0)
-            if iid == 0: continue
-            obj = session.get(SA_Item, iid) or SA_Item(item_id=iid)
-            obj.name = r["name"]
-            obj.category_id = int(r.get("category_id") or 0)
-            if "ui_order" in r and r["ui_order"]:
-                try: obj.ui_order = int(r["ui_order"])
-                except ValueError: pass
-            if "avg_price" in r and r["avg_price"]:
-                try: obj.avg_price = int(r["avg_price"])
-                except ValueError: pass
-            if "fdev_id" in r and r["fdev_id"]:
-                try: obj.fdev_id = int(r["fdev_id"])
-                except ValueError: pass
-            session.add(obj); count += 1
-    elif tbl == "rareitem" and SA_RareItem is not None:
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            rid = int(r.get("rare_id") or r.get("id") or 0)
-            if rid == 0: continue
-            obj = session.get(SA_RareItem, rid) or SA_RareItem(rare_id=rid)
-            obj.station_id = int(r.get("station_id") or 0)
-            obj.category_id = int(r.get("category_id") or 0)
-            obj.name = r["name"]
-            if "cost" in r and r["cost"]:
-                try: obj.cost = int(r["cost"])
-                except ValueError: pass
-            if "max_allocation" in r and r["max_allocation"]:
-                try: obj.max_allocation = int(r["max_allocation"])
-                except ValueError: pass
-            for col in ("illegal","suppressed"):
-                if col in r and r[col]:
-                    setattr(obj, col, r[col][:1])
-            session.add(obj); count += 1
-    elif tbl == "ship" and SA_Ship is not None:
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            shid = int(r.get("ship_id") or r.get("id") or 0)
-            if shid == 0: continue
-            obj = session.get(SA_Ship, shid) or SA_Ship(ship_id=shid)
-            obj.name = r["name"]
-            if "cost" in r and r["cost"]:
-                try: obj.cost = int(r["cost"])
-                except ValueError: pass
-            session.add(obj); count += 1
-    elif tbl == "upgrade" and SA_Upgrade is not None:
-        for r in _progress_iter(path, _read_csv(path), "Import"):
-            upid = int(r.get("upgrade_id") or r.get("id") or 0)
-            if upid == 0: continue
-            obj = session.get(SA_Upgrade, upid) or SA_Upgrade(upgrade_id=upid)
-            obj.name = r["name"]
-            if hasattr(obj, "class_") and "class" in r:
-                try: obj.class_ = int(r["class"])
-                except ValueError: pass
-            if "rating" in r: obj.rating = (r["rating"] or "")[0:1]
-            if "ship" in r: obj.ship = r["ship"]
-            session.add(obj); count += 1
-    else:
-        # Accept unknown tables silently (legacy seeds include extras sometimes)
-        count = 0
 
-    return count
-
-def processPricesRows(session: Session, station_id: int, rows: Sequence[dict[str, str]]) -> int:
+class UnknownSystemError(BuildCacheBaseException):
     """
-    Import <station_id>.prices content already parsed into dict rows.
+    Raised when the file contains an unknown star name.
     """
-    count = 0
-    for r in rows:
-        item_id = int(r["item_id"])
-        obj = session.get(SA_StationItem, {"station_id": station_id, "item_id": item_id})
-        if not obj:
-            obj = SA_StationItem(station_id=station_id, item_id=item_id,
-                                 demand_price=0, demand_units=0, demand_level=0,
-                                 supply_price=0, supply_units=0, supply_level=0)
-        # tolerate blanks; coerce to 0
-        def _iv(key: str) -> int:
-            v = r.get(key, "") or 0
-            try: return int(v)
-            except ValueError: return 0
-        obj.demand_price = _iv("demand_price")
-        obj.demand_units = _iv("demand_units")
-        obj.demand_level = _iv("demand_level")
-        obj.supply_price = _iv("supply_price")
-        obj.supply_units = _iv("supply_units")
-        obj.supply_level = _iv("supply_level")
-        # mark as 'has market' if any price present later
-        session.add(obj)
-        count += 1
-    # set Station.market='Y' if any StationItem now exists
-    has_rows = session.execute(
-        select(func.count()).select_from(SA_StationItem).where(SA_StationItem.station_id == station_id)
-    ).scalar_one()
-    if has_rows:
-        st = session.get(SA_Station, station_id)
-        if st and hasattr(st, "market"):
-            st.market = "Y"
-    return count
+    
+    def __init__(self, fromFile: Path, lineNo: int, key: str) -> None:
+        super().__init__(fromFile, lineNo, f'Unrecognized SYSTEM: "{key}"')
 
-def processPricesFile(session: Session, path: Path) -> int:
+
+class UnknownStationError(BuildCacheBaseException):
     """
-    Read a .prices file and apply rows to StationItem for that station.
+    Raised when the file contains an unknown star/station name.
     """
-    rows = list(_read_csv(path))
-    if not rows:
-        return 0
-    stid = int(rows[0].get("station_id") or 0)
-    return processPricesRows(session, stid, rows)
+    
+    def __init__(self, fromFile: Path, lineNo: int, key: str) -> None:
+        super().__init__(fromFile, lineNo, f'Unrecognized STAR/Station: "{key}"')
 
-# ---------------- High-level entry points (called by tradedb) ----------------
 
-def buildCache(tdb, tdenv) -> None:
+class UnknownItemError(BuildCacheBaseException):
     """
-    Seed a brand-new database from template CSVs under tradedangerous/templates.
-    Mirrors the legacy buildCache() behaviour but uses the ORM.
+    Raised in the case of an item name that we don't know.
+    Attributes:
+        itemName   Key we tried to look up.
     """
-    raw_tpl = getattr(tdenv, 'templatePath', None)
-    template_dir = (Path(raw_tpl) if raw_tpl else _default_template_dir())
-    order = [
-        ("Added.csv", "Added"),
-        ("System.csv", "System"),
-        ("Station.csv", "Station"),
-        ("Category.csv", "Category"),
-        ("Item.csv", "Item"),
-        ("RareItem.csv", "RareItem"),
-        ("Ship.csv", "Ship"),
-        ("Upgrade.csv", "Upgrade"),
-    ]
+    
+    def __init__(self, fromFile: Path, lineNo: int, itemName: str) -> None:
+        super().__init__(fromFile, lineNo, f'Unrecognized item name: "{itemName}"')
 
-    with tdb._Session() as s:  # type: ignore[attr-defined]
-        with s.begin():
-            for filename, table in order:
-                p = template_dir / filename
-                if p.exists():
-                    processImportFile(s, p, table)
 
-def importDataFromFile(tdb, path: Path) -> int:
-    """Compatibility shim used by callers to import a single CSV/prices file.
-    Returns number of rows affected (best-effort).
+class DuplicateKeyError(BuildCacheBaseException):
     """
-    suffix = path.suffix.lower()
-    table = path.stem
-    with tdb._Session() as s:  # type: ignore[attr-defined]
-        with s.begin():
-            if suffix == ".prices":
-                # very small, explicit format: station_id,item_i...demand_units,demand_level,supply_price,supply_units,supply_level
-                rows = list(_read_csv(path))
-                if not rows:
-                    return 0
-                stid = int(rows[0].get("station_id") or 0)
-                return processPricesRows(s, stid, rows)
-            else:
-                return processImportFile(s, path, table)
-def regeneratePricesFile(tdb, tdenv):
+        Raised when an item is being redefined.
     """
-    Write a complete '.prices' CSV snapshot from the current StationItem table.
-    Expected by plugins (e.g. eddblink) after listings import.
+    
+    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str, prevLineNo: int) -> None:
+        super().__init__(fromFile, lineNo,
+                         f'Second occurrance of {keyType} "{keyValue}", previous entry at line {prevLineNo}.')
 
-    Output columns exactly match the loader in cache.importDataFromFile():
-    station_id,item_id,demand_price,demand_units,demand_level,
-    supply_price,supply_units,supply_level
 
-    Returns: Path to the written file.
+class DeletedKeyError(BuildCacheBaseException):
     """
-    from pathlib import Path
-    import csv
-    from sqlalchemy import select
-
-    # Resolve output path the same way TradeDB does (dataPath + defaultPrices).
-    out_path = Path(getattr(tdb, "pricesPath", None) or
-                    (Path(getattr(tdb, "dataPath")) / getattr(tdb, "defaultPrices", "TradeDangerous.prices")))
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Pull rows via ORM.
-    with tdb._Session() as s:  # type: ignore[attr-defined]
-        from tradedangerous.db.orm_models import StationItem as SA_StationItem
-        rows = s.execute(
-            select(
-                SA_StationItem.station_id,
-                SA_StationItem.item_id,
-                SA_StationItem.demand_price,
-                SA_StationItem.demand_units,
-                SA_StationItem.demand_level,
-                SA_StationItem.supply_price,
-                SA_StationItem.supply_units,
-                SA_StationItem.supply_level,
-            ).order_by(SA_StationItem.station_id, SA_StationItem.item_id)
+    Raised when a key value in a .csv file is marked as DELETED in the
+    corrections file.
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str) -> None:
+        super().__init__(
+            fromFile, lineNo,
+            f'{keyType} "{keyValue}" is marked as DELETED and should not be used.'
         )
 
-        with out_path.open("w", encoding="utf-8", newline="") as fh:
-            w = csv.writer(fh)
-            w.writerow([
-                "station_id","item_id",
-                "demand_price","demand_units","demand_level",
-                "supply_price","supply_units","supply_level",
-            ])
-            for (station_id, item_id, d_p, d_u, d_l, s_p, s_u, s_l) in rows:
-                w.writerow([
-                    int(station_id), int(item_id),
-                    int(d_p or 0), int(d_u or 0), int(d_l or 0),
-                    int(s_p or 0), int(s_u or 0), int(s_l or 0),
-                ])
-    return out_path
+
+class DeprecatedKeyError(BuildCacheBaseException):
+    """
+    Raised when a key value in a .csv file has a correction; the old
+    name should not appear in the .csv file.
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, keyType: str, keyValue: str, newValue: str) -> None:
+        super().__init__(
+            fromFile, lineNo,
+            f'{keyType} "{keyValue}" is deprecated and should be replaced with "{newValue}".'
+        )
+
+
+class MultipleStationEntriesError(DuplicateKeyError):
+    """ Raised when a station appears multiple times in the same file. """
+    
+    def __init__(self, fromFile: Path, lineNo: int, facility: str, prevLineNo: int) -> None:
+        super().__init__(fromFile, lineNo, 'station', facility, prevLineNo)
+
+
+class MultipleItemEntriesError(DuplicateKeyError):
+    """ Raised when one item appears multiple times in the same station. """
+    
+    def __init__(self, fromFile: Path, lineNo: int, item: str, prevLineNo: int) -> None:
+        super().__init__(fromFile, lineNo, 'item', item, prevLineNo)
+
+
+class InvalidLineError(BuildCacheBaseException):
+    """
+    Raised when an invalid line is read.
+    Attributes:
+        problem     The problem that occurred
+        text        Offending text
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, problem: str, text: str) -> None:
+        super().__init__(fromFile, lineNo, f'{problem},\ngot: "{text.strip()}".')
+
+
+class SupplyError(BuildCacheBaseException):
+    """
+    Raised when a supply field is incorrectly formatted.
+    """
+    
+    def __init__(self, fromFile: Path, lineNo: int, category: str, problem: str, value: Any) -> None:
+        super().__init__(fromFile, lineNo, f'Invalid {category} supply value: {problem}. Got: {value}')
+
+
+######################################################################
+# Helpers
+
+
+# supply/demand levels are one of '?' for unknown, 'L', 'M' or 'H'
+# for low, medium, or high. We turn these into integer values for
+# ordering convenience, and we include both upper and lower-case
+# so we don't have to sweat ordering.
+#
+SUPPLY_LEVEL_VALUES = {
+    '?':   -1,
+    'L':    1,      'l':    1,
+    'M':    2,      'm':    2,
+    'H':    3,      'h':    3,
+}
+
+
+def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> tuple[int, int]:
+    """ Parse a supply specifier which is expected to be in the <number><?, L, M, or H>, and
+        returns the units as an integer and a numeric level value suitable for ordering,
+        such that ? = -1, L/l = 0, M/m = 1, H/h = 2 """
+    
+    #   supply_level <- digit+ level;
+    #   digit <- [0-9];
+    #   level <- Unknown / Low / Medium / High;
+    #   Unknown <- '?';
+    #   Low <- 'L';
+    #   Medium <- 'M';
+    #   High <- 'H';
+    if reading == '?':
+        return -1, -1
+    if reading == '-':
+        return 0, 0
+    
+    # extract the left most digits into unit and the last character into the level reading.
+    units, level = reading[0:-1], reading[-1]
+    
+    # Extract the right most character as the "level" and look up its numeric value.
+    levelNo = SUPPLY_LEVEL_VALUES.get(level)
+    if levelNo is None:
+        raise SupplyError(
+            pricesFile, lineNo, category, reading,
+            f'Unrecognized level suffix: "{level}": expected one of "L", "M", "H" or "?"'
+        )
+    
+    # Expecting a numeric value in units, e.g. 123? -> (units=123, level=?)
+    try:
+        unitsNo = int(units)
+        if unitsNo < 0:
+            # Use the same code-path as if the units fail to parse.
+            raise ValueError('negative unit count')
+    except ValueError:
+        raise SupplyError(
+            pricesFile, lineNo, category, reading,
+            f'Unrecognized units/level value: "{level}": expected "-", "?", or a number followed by a level (L, M, H or ?).'
+        ) from None  # don't forward the exception itself
+    
+    # Normalize the units and level when there are no units.
+    if unitsNo == 0:
+        return 0, 0
+    
+    return unitsNo, levelNo
+
+
+######################################################################
+# Code
+######################################################################
+
+
+def getSystemByNameIndex(session: Session) -> dict[str, int]:
+    """Build system index by uppercase name → system_id."""
+    rows = (
+        session.query(SA.System.system_id, func.upper(SA.System.name))
+        .all()
+    )
+    return {name: ID for (ID, name) in rows}
+
+
+def getStationByNameIndex(session: Session) -> dict[str, int]:
+    """Build station index in STAR/Station notation → station_id."""
+    rows = (
+        session.query(
+            SA.Station.station_id,
+            (SA.System.name + "/" + SA.Station.name)
+        )
+        .join(SA.System, SA.Station.system_id == SA.System.system_id)
+        .all()
+    )
+    # normalise case like original
+    return {name.upper(): ID for (ID, name) in rows}
+
+
+
+def getItemByNameIndex(session: Session) -> dict[str, int]:
+    """Generate item name index (uppercase item name → item_id)."""
+    rows = (
+        session.query(SA.Item.item_id, func.upper(SA.Item.name))
+        .all()
+    )
+    return {name: itemID for (itemID, name) in rows}
+
+
+
+# The return type of process prices is complicated, should probably have been a type
+# in its own right. I'm going to define some aliases to try and persuade IDEs to be
+# more helpful about what it is trying to return.
+if typing.TYPE_CHECKING:
+    # A list of the IDs of stations that were modified so they can be updated
+    ProcessedStationIds= tuple[tuple[int]]
+    ProcessedItem = tuple[
+        int,                            # station ID
+        int,                            # item ID
+        Optional[int | float |str],     # modified
+        int,                            # demandCR
+        int,                            # demandUnits
+        int,                            # demandLevel
+        int,                            # supplyCr
+        int,                            # supplyUnits
+        int,                            # supplyLevel
+    ]
+    ProcessedItems = list[ProcessedItem]
+    ZeroItems = list[tuple[int, int]]   # stationID, itemID
+
+
+def processPrices(
+    tdenv: TradeEnv,
+    priceFile: Path,
+    session: Session,
+    defaultZero: bool
+) -> tuple[ProcessedStationIds, ProcessedItems, ZeroItems, int, int, int, int]:
+    """
+    Populate the database with prices by reading the given file.
+
+    :param tdenv:       The environment we're working in
+    :param priceFile:   File to read
+    :param session:     Active SQLAlchemy session
+    :param defaultZero: Whether to create default zero-availability/-demand
+                        records for missing data. For partial updates,
+                        set False.
+    """
+
+    DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
+    DEBUG0("Processing prices file: {}", priceFile)
+
+    ignoreUnknown = tdenv.ignoreUnknown
+    quiet = tdenv.quiet
+    merging = tdenv.mergeImport
+
+    # build lookup indexes from DB
+    systemByName = getSystemByNameIndex(session)
+    stationByName = getStationByNameIndex(session)
+    stationByName.update(
+        (sys, ID)
+        for sys, ID in corrections.stations.items()
+        if isinstance(ID, int)
+    )
+    sysCorrections = corrections.systems
+    stnCorrections = {
+        stn: alt
+        for stn, alt in corrections.stations.items()
+        if isinstance(alt, str)
+    }
+
+    itemByName = getItemByNameIndex(session)
+
+    defaultUnits = -1 if not defaultZero else 0
+    defaultLevel = -1 if not defaultZero else 0
+
+    stationID = None
+    facility = None
+    processedStations = {}
+    processedSystems = set()
+    processedItems = {}
+    stationItemDates = {}
+    DELETED = corrections.DELETED
+    items, zeros = [], []
+
+    lineNo, localAdd = 0, 0
+
+    if not ignoreUnknown:
+        def ignoreOrWarn(error: Exception) -> None:
+            raise error
+    elif not quiet:
+        ignoreOrWarn = tdenv.WARN
+
+    
+    def changeStation(matches: re.Match) -> None:
+        nonlocal facility, stationID
+        nonlocal processedStations, processedItems, localAdd
+        nonlocal stationItemDates
+
+        # ## Change current station
+        stationItemDates = {}
+        systemNameIn, stationNameIn = matches.group(1, 2)
+        systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
+        corrected = False
+        facility = f'{systemName}/{stationName}'
+
+        stationID = DELETED
+        newID = stationByName.get(facility, -1)
+        DEBUG0("Selected station: {}, ID={}", facility, newID)
+
+        if newID is DELETED:
+            DEBUG1("DELETED Station: {}", facility)
+            return
+
+        if newID < 0:
+            if utils.checkForOcrDerp(tdenv, systemName, stationName):
+                return
+            corrected = True
+            altName = sysCorrections.get(systemName)
+            if altName is DELETED:
+                DEBUG1("DELETED System: {}", facility)
+                return
+            if altName:
+                DEBUG1("SYSTEM '{}' renamed '{}'", systemName, altName)
+                systemName, facility = altName, "/".join((altName, stationName))
+
+            systemID = systemByName.get(systemName, -1)
+            if systemID < 0:
+                ignoreOrWarn(
+                    UnknownSystemError(priceFile, lineNo, facility)
+                )
+                return
+
+            altStation = stnCorrections.get(facility)
+            if altStation:
+                if altStation is DELETED:
+                    DEBUG1("DELETED Station: {}", facility)
+                    return
+
+                DEBUG1("Station '{}' renamed '{}'", facility, altStation)
+                stationName = altStation.upper()
+                facility = f'{systemName}/{stationName}'
+
+            newID = stationByName.get(facility, -1)
+            if newID is DELETED:
+                DEBUG1("Renamed station DELETED: {}", facility)
+                return
+
+        if newID < 0:
+            if not ignoreUnknown:
+                ignoreOrWarn(
+                    UnknownStationError(priceFile, lineNo, facility)
+                )
+                return
+
+            name = utils.titleFixup(stationName)
+            # ORM insert: placeholder station
+            station = SA.Station(
+                system_id=systemID,
+                name=name,
+                ls_from_star=0,
+                blackmarket='?',
+                max_pad_size='?',
+                market='?',
+                shipyard='?',
+            )
+            session.add(station)
+            session.flush()  # assign station_id
+            newID = station.station_id
+
+            stationByName[facility] = newID
+            tdenv.NOTE(
+                "Added local station placeholder for {} (#{})", facility, newID
+            )
+            localAdd += 1
+
+        elif newID in processedStations:
+            if not corrected:
+                raise MultipleStationEntriesError(
+                    priceFile, lineNo, facility,
+                    processedStations[newID]
+                )
+
+        stationID = newID
+        processedSystems.add(systemName)
+        processedStations[stationID] = lineNo
+        processedItems = {}
+
+        # ORM query: load existing item → modified map
+        rows = (
+            session.query(SA.StationItem.item_id, SA.StationItem.modified)
+            .filter(SA.StationItem.station_id == stationID)
+            .all()
+        )
+        stationItemDates = dict(rows)
+
+    
+    def processItemLine(matches):
+        nonlocal newItems, updtItems, ignItems
+        itemName, modified = matches.group('item', 'time')
+        itemName = itemName.upper()
+        
+        # Look up the item ID.
+        itemID = getItemID(itemName, -1)
+        if itemID < 0:
+            oldName = itemName
+            itemName = corrections.correctItem(itemName)
+            if itemName == DELETED:
+                DEBUG1("DELETED {}", oldName)
+                return
+            itemName = itemName.upper()
+            itemID = getItemID(itemName, -1)
+            if itemID < 0:
+                ignoreOrWarn(
+                    UnknownItemError(priceFile, lineNo, itemName)
+                )
+                return
+            DEBUG1("Renamed {} -> {}", oldName, itemName)
+        
+        lastModified = stationItemDates.get(itemID, None)
+        if lastModified and merging:
+            if modified and modified != 'now' and modified <= lastModified:
+                DEBUG1("Ignoring {} @ {}: {} <= {}".format(
+                    itemName, facility,
+                    modified, lastModified,
+                ))
+                if modified < lastModified:
+                    ignItems += 1
+                return
+        
+        # Check for duplicate items within the station.
+        if itemID in processedItems:
+            ignoreOrWarn(
+                MultipleItemEntriesError(
+                    priceFile, lineNo,
+                    f'{itemName}',
+                    processedItems[itemID]
+                )
+            )
+            return
+        
+        demandCr, supplyCr = matches.group('sell', 'buy')
+        demandCr, supplyCr = int(demandCr), int(supplyCr)
+        demandString, supplyString = matches.group('demand', 'supply')
+        
+        if demandCr == 0 and supplyCr == 0:
+            if lastModified:
+                addZero((stationID, itemID))
+        else:
+            if lastModified:
+                updtItems += 1
+            else:
+                newItems += 1
+            if demandString:
+                demandUnits, demandLevel = parseSupply(
+                    priceFile, lineNo, 'demand', demandString
+                )
+            else:
+                demandUnits, demandLevel = defaultUnits, defaultLevel
+            
+            if demandString and supplyString:
+                supplyUnits, supplyLevel = parseSupply(
+                    priceFile, lineNo, 'supply', supplyString
+                )
+            else:
+                supplyUnits, supplyLevel = defaultUnits, defaultLevel
+            
+            if modified == 'now':
+                modified = None  # Use CURRENT_FILESTAMP
+            
+            addItem((
+                stationID, itemID, modified,
+                demandCr, demandUnits, demandLevel,
+                supplyCr, supplyUnits, supplyLevel,
+            ))
+        
+        processedItems[itemID] = lineNo
+    
+    space_cleanup = re.compile(r'\s{2,}').sub
+    for line in priceFile:
+        lineNo += 1
+        
+        text = line.split('#', 1)[0]                # Discard comments
+        text = space_cleanup(' ', text).strip()     # Remove leading/trailing whitespace, reduce multi-spaces
+        if not text:
+            continue
+        
+        ########################################
+        # ## "@ STAR/Station" lines.
+        if text.startswith('@'):
+            matches = systemStationRe.match(text)
+            if not matches:
+                raise InvalidLineError(priceFile, lineNo, "Unrecognized '@' line", text)
+            changeStation(matches)
+            continue
+        
+        if not stationID:
+            # Need a station to process any other type of line.
+            raise InvalidLineError(priceFile, lineNo, "Expecting '@ SYSTEM / Station' line", text)
+        if stationID == DELETED:
+            # Ignore all values from a deleted station/system.
+            continue
+        
+        ########################################
+        # ## "+ Category" lines
+        if text.startswith('+'):
+            # we now ignore these.
+            continue
+        
+        ########################################
+        # ## "Item sell buy ..." lines.
+        matches = newItemPriceRe.match(text)
+        if not matches:
+            raise InvalidLineError(priceFile, lineNo, "Unrecognized line/syntax", text)
+        
+        processItemLine(matches)
+    
+    numSys = len(processedSystems)
+    
+    if localAdd > 0:
+        tdenv.NOTE(
+            "Placeholder stations are added to the local DB only "
+            "(not the .CSV).\n"
+            "Use 'trade.py export --table Station' "
+            "if you /need/ to persist them."
+        )
+    
+    stations = tuple((ID,) for ID in processedStations)
+    return stations, items, zeros, newItems, updtItems, ignItems, numSys
+
+
+######################################################################
+
+
+def processPricesFile(tdenv: TradeEnv, db: sqlite3.Connection, pricesPath: Path, pricesFh: Optional[TextIO] = None, defaultZero: bool = False) -> None:
+    tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
+    
+    with (pricesFh or pricesPath.open('r', encoding='utf-8')) as fh:
+        stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
+            tdenv, fh, db, defaultZero
+        )
+    
+    if not tdenv.mergeImport:
+        db.executemany("""
+            DELETE FROM StationItem
+             WHERE station_id = ?
+        """, stations)
+    if zeros:
+        db.executemany("""
+            DELETE FROM StationItem
+             WHERE station_id = ?
+               AND item_id = ?
+        """, zeros)
+    removedItems = len(zeros)
+    
+    if items:
+        for item in items:
+            try:
+                db.execute("""
+                    INSERT OR REPLACE INTO StationItem (
+                        station_id, item_id, modified,
+                        demand_price, demand_units, demand_level,
+                        supply_price, supply_units, supply_level
+                    ) VALUES (
+                        ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
+                        ?, ?, ?,
+                        ?, ?, ?
+                    )
+                """, item)
+            except sqlite3.IntegrityError as e:
+                print(e)
+                print(item)
+                raise e
+        # db.executemany("""
+        #     INSERT OR REPLACE INTO StationItem (
+        #         station_id, item_id, modified,
+        #         demand_price, demand_units, demand_level,
+        #         supply_price, supply_units, supply_level
+        #     ) VALUES (
+        #         ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
+        #         ?, ?, ?,
+        #         ?, ?, ?
+        #     )
+        # """, items)
+    
+    tdenv.DEBUG0("Marking populated stations as having a market")
+    db.execute(
+        "UPDATE Station SET market = 'Y'"
+        " WHERE EXISTS"
+            " (SELECT station_id FROM StationItem"
+              " WHERE StationItem.station_id = Station.station_id"
+             ")"
+    )
+    
+    tdenv.DEBUG0('Committing...')
+    db.commit()
+    db.close()
+    
+    changes = " and ".join("{} {}".format(v, k) for k, v in {
+        "new": newItems,
+        "updated": updtItems,
+        "removed": removedItems,
+    }.items() if v) or "0"
+    
+    tdenv.NOTE(
+        "Import complete: "
+            "{:s} items "
+            "over {:n} stations "
+            "in {:n} systems",
+                changes,
+                len(stations),
+                numSys,
+    )
+    
+    if ignItems:
+        tdenv.NOTE("Ignored {} items with old data", ignItems)
+
+
+######################################################################
+
+
+def depCheck(importPath, lineNo, depType, key, correctKey):
+    if correctKey == key:
+        return
+    if correctKey == corrections.DELETED:
+        raise DeletedKeyError(importPath, lineNo, depType, key)
+    raise DeprecatedKeyError(importPath, lineNo, depType, key, correctKey)
+
+
+def deprecationCheckSystem(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'System',
+        line[0], corrections.correctSystem(line[0]),
+    )
+
+
+def deprecationCheckStation(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'System',
+        line[0], corrections.correctSystem(line[0]),
+    )
+    depCheck(
+        importPath, lineNo, 'Station',
+        line[1], corrections.correctStation(line[0], line[1]),
+    )
+
+
+def deprecationCheckCategory(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'Category',
+        line[0], corrections.correctCategory(line[0]),
+    )
+
+
+def deprecationCheckItem(importPath, lineNo, line):
+    depCheck(
+        importPath, lineNo, 'Category',
+        line[0], corrections.correctCategory(line[0]),
+    )
+    depCheck(
+        importPath, lineNo, 'Item',
+        line[1], corrections.correctItem(line[1]),
+    )
+
+
+def processImportFile(
+    tdenv,
+    session: Session,
+    importPath: Path,
+    tableName: str,
+    *,
+    line_callback: Optional[Callable] = None,
+    call_args: Optional[dict] = None,
+):
+    """
+    Import CSV data into the given ORM table.
+
+    - CSV header row defines column names.
+    - Supports uniqueness checks via "unq:" prefix.
+    - Supports deprecation checks per table.
+    - Preserves INSERT OR REPLACE semantics via session.merge.
+    """
+
+    tdenv.DEBUG0(
+        "Processing import file '{}' for table '{}'",
+        str(importPath),
+        tableName,
+    )
+
+    call_args = call_args or {}
+    if line_callback:
+        line_callback = partial_fn(line_callback, **call_args)
+
+    uniquePfx = "unq:"
+    uniqueLen = len(uniquePfx)
+
+    with importPath.open("r", encoding="utf-8") as importFile:
+        csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
+
+        # first line must be the column names
+        columnDefs = next(csvin)
+        columnCount = len(columnDefs)
+
+        bindColumns = []
+        uniqueIndexes = []
+
+        # preprocess header
+        for cIndex, cName in enumerate(columnDefs):
+            colName, _, srcKey = cName.partition("@")
+
+            # unique index columns
+            if colName.startswith(uniquePfx):
+                uniqueIndexes.append(cIndex)
+                colName = colName[uniqueLen:]
+
+            bindColumns.append(colName)
+
+        # Check if there is a deprecation check for this table
+        deprecationFn = getattr(
+            sys.modules[__name__], "deprecationCheck" + tableName, None
+        )
+
+        importCount = 0
+        uniqueIndex = {}
+
+        with session.begin():
+            for linein in csvin:
+                if line_callback:
+                    line_callback()
+                if not linein:
+                    continue
+                lineNo = csvin.line_num
+
+                if len(linein) != columnCount:
+                    tdenv.NOTE(
+                        "Wrong number of columns ({}:{}): {}",
+                        importPath,
+                        lineNo,
+                        ", ".join(linein),
+                    )
+                    continue
+
+                tdenv.DEBUG1("       Values: {}", ", ".join(linein))
+
+                # Run deprecation checks
+                if deprecationFn:
+                    try:
+                        deprecationFn(importPath, lineNo, linein)
+                    except (DeprecatedKeyError, DeletedKeyError) as e:
+                        if not tdenv.ignoreUnknown:
+                            raise e
+                        e.category = "WARNING"
+                        tdenv.NOTE("{}", e)
+                        continue
+
+                # Handle uniqueness check
+                if uniqueIndexes:
+                    keyValues = [str(linein[col]).upper() for col in uniqueIndexes]
+                    key = ":!:".join(keyValues)
+                    prevLineNo = uniqueIndex.get(key, 0)
+                    if prevLineNo:
+                        key = "/".join(keyValues)
+                        raise DuplicateKeyError(
+                            importPath, lineNo, "entry", key, prevLineNo
+                        )
+                    uniqueIndex[key] = lineNo
+
+                try:
+                    # Map column names → row values
+                    rowdict = dict(zip(bindColumns, linein))
+                    Model = getattr(SA, tableName)
+                    obj = Model(**rowdict)
+                    session.merge(obj)
+                    importCount += 1
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    tdenv.WARN(
+                        "*** INTERNAL ERROR: {err}\n"
+                        "CSV File: {file}:{line}\n"
+                        "Table: {table}\n"
+                        "Params: {params}\n".format(
+                            err=str(e),
+                            file=str(importPath),
+                            line=lineNo,
+                            table=tableName,
+                            params=linein,
+                        )
+                    )
+                    pass
+
+        tdenv.DEBUG0(
+            "{count} {table}s imported", count=importCount, table=tableName
+        )
+
+
+######################################################################
+
+
+def buildCache(tdb, tdenv):
+    """
+    Rebuild the database from source files.
+
+    TD's data is either "stable" - information that rarely changes
+    (ships, systems, etc) - or "volatile" (prices).
+    """
+
+    tdenv.NOTE("Rebuilding cache: this may take a few moments.", stderr=True)
+
+    dbPath = tdb.dbPath
+    sqlPath = tdb.sqlPath
+    pricesPath = tdb.pricesPath
+
+    # Temporary path handling (SQLite only)
+    tempPath = dbPath.with_suffix(".new")
+    backupPath = dbPath.with_suffix(".old")
+    if tempPath.exists():
+        tempPath.unlink()
+
+    # Create engine + session for temporary DB
+    engine = make_engine_from_config(str(tdb.configPath))
+    Session = get_session_factory(engine)
+
+    with Session.begin() as session:
+        # Recreate schema depending on backend
+        if engine.dialect.name == "sqlite":
+            lifecycle.reset_sqlite(engine)
+        elif engine.dialect.name in ("mysql", "mariadb"):
+            from tradedangerous.db import orm_models
+            lifecycle.reset_mariadb(engine, orm_models.Base.metadata)
+        else:
+            raise TradeException(
+                f"Unsupported database backend: {engine.dialect.name}"
+            )
+ 
+
+
+        # Import standard tables
+        with Progress(max_value=len(tdb.importTables) + 1,
+                      prefix="Importing", width=25, style=CountingBar) as prog:
+            for importName, importTable in tdb.importTables:
+                import_path = Path(importName)
+                import_lines = file_line_count(import_path, missing_ok=True)
+                with prog.sub_task(max_value=import_lines,
+                                   description=importTable) as child:
+                    prog.increment(value=1)
+                    call_args = {"task": child, "advance": 1}
+                    try:
+                        processImportFile(
+                            tdenv, session,
+                            import_path, importTable,
+                            line_callback=prog.update_task,
+                            call_args=call_args,
+                        )
+                    except FileNotFoundError:
+                        tdenv.DEBUG0(
+                            "WARNING: processImportFile found no {} file",
+                            importName,
+                        )
+                    except StopIteration:
+                        tdenv.NOTE(
+                            "{} exists but is empty. "
+                            "Remove it or add the column definition line.",
+                            importName,
+                        )
+            prog.increment(1)
+
+        # Parse the prices file
+        if pricesPath.exists():
+            with Progress(max_value=None,
+                          width=25, prefix="Processing prices file"):
+                processPricesFile(tdenv, session, pricesPath)
+        else:
+            tdenv.NOTE(
+                'Missing "{}" file - no price data.',
+                pricesPath,
+                stderr=True,
+            )
+
+    # SQLite file rotation (MariaDB uses server DB, skip)
+    if engine.dialect.name == "sqlite":
+        tdb.close()
+        tdenv.DEBUG0("Swapping out db files")
+        if dbPath.exists():
+            if backupPath.exists():
+                backupPath.unlink()
+            dbPath.rename(backupPath)
+        tempPath.rename(dbPath)
+
+    tdenv.DEBUG0("Finished")
+
+######################################################################
+
+
+def regeneratePricesFile(tdb, tdenv):
+    tdenv.DEBUG0("Regenerating .prices file")
+
+    Session = get_session_factory(tdb.engine)
+    with Session() as session:
+        with tdb.pricesPath.open("w", encoding="utf-8") as pricesFile:
+            prices.dumpPrices(
+                session,
+                prices.Element.full,
+                file=pricesFile,
+                debug=tdenv.debug,
+            )
+
+
+######################################################################
+
+
+def importDataFromFile(
+    tdb,
+    tdenv,
+    path: Path,
+    pricesFh: Optional[TextIO] = None,
+    reset: bool = False,
+):
+    """
+    Import price data from a file on a per-station basis.
+    If reset=True, all existing StationItem records are deleted first.
+    """
+
+    if not pricesFh and not path.exists():
+        raise TradeException(f"No such file: {path}")
+
+    Session = get_session_factory(tdb.engine)
+    with Session.begin() as session:
+        if reset:
+            tdenv.DEBUG0("Resetting price data")
+            session.query(SA.StationItem).delete(synchronize_session=False)
+
+        tdenv.DEBUG0("Importing data from {}", path)
+        processPricesFile(
+            tdenv,
+            session=session,
+            pricesPath=path,
+            pricesFh=pricesFh,
+        )
+
+    # If everything worked, we may need to re-build the prices file.
+    if path != tdb.pricesPath:
+        regeneratePricesFile(tdb, tdenv)

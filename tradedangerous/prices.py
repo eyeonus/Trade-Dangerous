@@ -1,7 +1,8 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
+# Copyright (C) Stefan 'Tromador' Morrell 2025
+# Copyright (C) Jonathan 'eyeonus' Jones 2018-2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
@@ -10,120 +11,131 @@
 # TradeDangerous :: Modules :: Generate TradeDangerous.prices
 
 import sys
-import sqlite3
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from tradedangerous.db import orm_models as SA
 
 
-class Element:      # TODO: enum?
+class Element:  # TODO: consider converting to enum.IntFlag
     basic     = 1 << 0
     supply    = 1 << 1
     timestamp = 1 << 2
     full      = basic | supply | timestamp
-    blanks    = 1 <<31
+    blanks    = 1 << 31
 
-
-######################################################################
-# Main
 
 def dumpPrices(
-            dbPath,             # Path() or str
-            elementMask,        # which columns to output
-            stationID=None,     # limits to one station
-            file=None,          # file handle to write to
-            defaultZero=False,
-            debug=0
-    ):
+    session: Session,      # SQLAlchemy session
+    elementMask,           # which columns to output
+    stationID=None,        # limits to one station
+    file=None,             # file handle to write to
+    defaultZero=False,
+    debug=0,
+):
     """
-        Generate a prices list using data from the DB.
-        If stationID is not none, only the specified station is dumped.
-        If file is not none, outputs to the given file handle.
+    Generate a prices list using data from the DB.
+    If stationID is not None, only the specified station is dumped.
+    If file is not None, outputs to the given file handle.
     """
-    
-    withTimes  = elementMask & Element.timestamp
-    getBlanks  = elementMask & Element.blanks
-    
-    conn = sqlite3.connect(str(dbPath))
-    conn.execute("PRAGMA foreign_keys=ON")
-    cur  = conn.cursor()
-    
-    systems = dict(cur.execute("SELECT system_id, name FROM System"))
+
+    withTimes = elementMask & Element.timestamp
+    getBlanks = elementMask & Element.blanks
+
+    # ORM queries to build lookup dicts
+    systems = dict(
+        session.query(SA.System.system_id, SA.System.name).all()
+    )
+
     stations = {
-        ID: [ name, systems[sysID] ]
-        for (ID, name, sysID)
-        in cur.execute("SELECT station_id, name, system_id FROM Station")
+        ID: [name, systems[sysID]]
+        for ID, name, sysID in session.query(
+            SA.Station.station_id, SA.Station.name, SA.Station.system_id
+        ).all()
     }
-    categories = dict(cur.execute("SELECT category_id, name FROM Category"))
+
+    categories = dict(
+        session.query(SA.Category.category_id, SA.Category.name).all()
+    )
+
     items = {
-        ID: [ name, catID, categories[catID] ]
-        for (ID, name, catID)
-        in cur.execute("SELECT item_id, name, category_id FROM Item")
+        ID: [name, catID, categories[catID]]
+        for ID, name, catID in session.query(
+            SA.Item.item_id, SA.Item.name, SA.Item.category_id
+        ).all()
     }
-    
-    # find longest item name
+
+    # find longest item name (for formatting)
     longestName = max(items.values(), key=lambda ent: len(ent[0]))
     longestNameLen = len(longestName[0])
-    
+
     if stationID:
-        # check if there are prices for the station
-        cur.execute("""
-            SELECT  COUNT(*)
-              FROM  StationItem
-             WHERE station_id = {}
-        """.format(stationID))
-        if not cur.fetchone()[0]:
+        # Check if station has any prices
+        count = (
+            session.query(SA.StationItem)
+            .filter(SA.StationItem.station_id == stationID)
+            .count()
+        )
+        if count == 0:
             getBlanks = True
-    
+
     defaultDemandVal = 0 if defaultZero else -1
-    if stationID:
-        stationWhere = "WHERE stn.station_id = {}".format(stationID)
+    stationFilter = stationID
+    itemJoinOuter = getBlanks
+
+    # Current timestamp for defaulting modified
+    now = session.query(func.now()).scalar()
+
+    # Build base query
+    q = session.query(
+        SA.Station.station_id,
+        SA.Item.item_id,
+        func.ifnull(SA.StationItem.demand_price, 0),
+        func.ifnull(SA.StationItem.supply_price, 0),
+        func.ifnull(SA.StationItem.demand_units, defaultDemandVal),
+        func.ifnull(SA.StationItem.demand_level, defaultDemandVal),
+        func.ifnull(SA.StationItem.supply_units, defaultDemandVal),
+        func.ifnull(SA.StationItem.supply_level, defaultDemandVal),
+        SA.StationItem.modified,
+    ).select_from(SA.Station)
+
+    # Join Item and Category
+    q = q.join(SA.Item, SA.Item.category_id == SA.Category.category_id).join(SA.Category)
+
+    # Join or outerjoin StationItem
+    if itemJoinOuter:
+        q = q.outerjoin(
+            SA.StationItem,
+            (SA.StationItem.station_id == SA.Station.station_id)
+            & (SA.StationItem.item_id == SA.Item.item_id),
+        )
     else:
-        stationWhere = ""
-    
-    if getBlanks:
-        itemJoin = "LEFT OUTER"
-    else:
-        itemJoin = "INNER"
-    
-    cur.execute("SELECT CURRENT_TIMESTAMP")
-    now = cur.fetchone()[0]
-    
-    stmt = """
-        SELECT  stn.station_id, itm.item_id
-                , IFNULL(si.demand_price, 0)
-                , IFNULL(si.supply_price, 0)
-                , IFNULL(si.demand_units, {defDemand})
-                , IFNULL(si.demand_level, {defDemand})
-                , IFNULL(si.supply_units, {defDemand})
-                , IFNULL(si.supply_level, {defDemand})
-                , si.modified
-          FROM  Station stn,
-                Category AS cat
-                INNER JOIN Item AS itm USING (category_id)
-                {itemJoin} JOIN StationItem AS si
-                    ON (si.station_id = stn.station_id
-                        AND si.item_id = itm.item_id)
-                {stationWhere}
-         ORDER  BY stn.station_id, cat.name, itm.ui_order
-    """
-    
-    sql = stmt.format(
-        stationWhere=stationWhere,
-        defDemand=defaultDemandVal,
-        itemJoin=itemJoin,
-    )
+        q = q.join(
+            SA.StationItem,
+            (SA.StationItem.station_id == SA.Station.station_id)
+            & (SA.StationItem.item_id == SA.Item.item_id),
+        )
+
+    # Optional station filter
+    if stationFilter:
+        q = q.filter(SA.Station.station_id == stationFilter)
+
+    # Ordering
+    q = q.order_by(SA.Station.station_id, SA.Category.name, SA.Item.ui_order)
+
     if debug:
-        print(sql)
-    cur.execute(sql)
-    
+        print(str(q))
+
+    rows = q.all()
+
     lastStn, lastCat = None, None
-    
+
     if not file:
         file = sys.stdout
-    
-    if stationID:
-        stationSet = str(stations[stationID])
-    else:
-        stationSet = "ALL Systems/Stations"
-    
+
+    stationSet = (
+        str(stations[stationID]) if stationID else "ALL Systems/Stations"
+    )
+
     file.write(
         "# TradeDangerous prices for {}\n"
         "\n"
@@ -142,11 +154,11 @@ def dumpPrices(
         "\n".format(
             stationSet
     ))
-    
+
     levelDesc = "?0LMH"
     maxCrWidth = 7
     levelWidth = 9
-    
+
     outFmt = (
         "      {{:<{width}}}"
         " {{:>{crwidth}}}"
@@ -168,33 +180,40 @@ def dumpPrices(
         "Timestamp",
     )
     file.write('#' + output[1:])
-    
+
     naIQL = "-"
     unkIQL = "?"
     defIQL = "?" if not defaultZero else "-"
-    
+
     output = ""
-    for (stnID, itemID, fromStn, toStn, demand, demandLevel, supply, supplyLevel, modified) in cur:
+
+    for (
+        stnID,
+        itemID,
+        fromStn,
+        toStn,
+        demand,
+        demandLevel,
+        supply,
+        supplyLevel,
+        modified,
+    ) in rows:
         modified = modified or now
         station, system = stations[stnID]
         item, catID, category = items[itemID]
+
         if stnID != lastStn:
             file.write(output)
-            output = "\n\n@ {}/{}\n".format(system.upper(), station)
+            output = f"\n\n@ {system.upper()}/{station}\n"
             lastStn = stnID
             lastCat = None
-        
+
         if catID is not lastCat:
-            output += "   + {}\n".format(category)
+            output += f"   + {category}\n"
             lastCat = catID
-        
+
         # Is this item on sale?
         if toStn > 0:
-            # Zero demand-price gets default demand, which will
-            # be either unknown or zero depending on -0.
-            # If there is a price, always default to unknown
-            # because it can be sold here but the demand is just
-            # not useful as data.
             demandStr = defIQL if fromStn <= 0 else unkIQL
             if supplyLevel == 0:
                 supplyStr = naIQL
@@ -214,18 +233,14 @@ def dumpPrices(
                 level = levelDesc[demandLevel + 1]
                 demandStr = units + level
             supplyStr = naIQL
+
         output += outFmt.format(
-                    item,
-                    fromStn, toStn,
-                    demandStr, supplyStr,
-                    modified
-                )
-    
+            item,
+            fromStn,
+            toStn,
+            demandStr,
+            supplyStr,
+            modified,
+        )
+
     file.write(output)
-
-
-# if __name__ == "__main__":
-#     import tradedb
-# 
-#     tdb = tradedb.TradeDB(load=False)
-#     dumpPrices(tdb.dbPath, elementMask=Element.full)
