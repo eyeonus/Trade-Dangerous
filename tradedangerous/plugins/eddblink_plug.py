@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 """
 Import plugin that uses data files from 
 https://elite.tromador.com/ to update the Database.
 """
-from __future__ import annotations
+
 
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from .. fs import file_line_count
+from ..fs import file_line_count
 from .. import plugins, cache, transfers
 from ..misc import progress as pbar
 from ..plugins import PluginException
@@ -15,20 +17,15 @@ import csv
 import datetime
 import os
 import requests
-import sqlite3
 import typing
 
-from sqlalchemy import select, delete, update, func, exists
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.dialects.mysql import insert as mysql_insert
-from ..db.engine import make_engine_from_config, get_session_factory
-from ..db.orm_models import System, Station, Item, StationItem
-
+from sqlalchemy import func, delete, select, exists, text
+from ..db import orm_models as SA, lifecycle
 
 if typing.TYPE_CHECKING:
     from typing import Optional
-    from .. tradeenv import TradeEnv
+    from ..tradeenv import TradeEnv
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
@@ -43,7 +40,7 @@ def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
     if not listings.exists():
         tdenv.NOTE("File not found, aborting: {}", listings)
         return 0
-    
+
     tdenv.DEBUG0(f"Getting total number of entries in {listings}...")
     count = file_line_count(listings)
     if count <= 1:
@@ -52,26 +49,39 @@ def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
         else:
             tdenv.DEBUG0("Listings file is empty, nothing to do.")
         return 0
-    
+
     return count + 1  # kfsone: Doesn't the header already make this + 1?
 
 
-def _make_item_id_lookup(tdenv: TradeEnv, db: sqlite3.Cursor) -> frozenset[int]:
-    """ helper: retrieve the list of commodities in database. """
+def _make_item_id_lookup(tdenv: TradeEnv, session: Session) -> frozenset[int]:
+    """Helper: retrieve the list of commodities in database."""
     tdenv.DEBUG0("Getting list of commodities...")
-    return frozenset(cols[0] for cols in db.execute("SELECT item_id FROM Item"))
+    rows = session.query(SA.Item.item_id).all()
+    return frozenset(r[0] for r in rows)
 
 
-def _make_station_id_lookup(tdenv: TradeEnv, db: sqlite3.Cursor) -> frozenset[int]:
-    """ helper: retrieve the list of station IDs in database. """
+def _make_station_id_lookup(tdenv: TradeEnv, session: Session) -> frozenset[int]:
+    """Helper: retrieve the list of station IDs in database."""
     tdenv.DEBUG0("Getting list of stations...")
-    return frozenset(cols[0] for cols in db.execute("SELECT station_id FROM Station"))
+    rows = session.query(SA.Station.station_id).all()
+    return frozenset(r[0] for r in rows)
 
 
-def _collect_station_modified_times(tdenv: TradeEnv, db: sqlite3.Cursor) -> dict[int, int]:
-    """ helper: build a list of the last modified time for all stations by id. """
+def _collect_station_modified_times(tdenv: TradeEnv, session: Session) -> dict[int, int]:
+    """Helper: build a list of the last modified time for all stations by id (epoch seconds)."""
     tdenv.DEBUG0("Getting last-update times for stations...")
-    return dict(db.execute("SELECT station_id, strftime('%s', MIN(modified)) FROM StationItem GROUP BY station_id"))
+    rows = (
+        session.query(
+            SA.StationItem.station_id,
+            func.min(SA.StationItem.modified),
+        )
+        .group_by(SA.StationItem.station_id)
+        .all()
+    )
+    return {
+        station_id: int(modified.timestamp()) if modified else 0
+        for station_id, modified in rows
+    }
 
 
 class ImportPlugin(plugins.ImportPluginBase):
@@ -98,10 +108,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         'optimize':     "Optimize ('vacuum') database after processing.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
     }
-    
+
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
-        
+
         self.dataPath = os.environ.get('TD_EDDB') or self.tdenv.tmpDir
         self.categoriesPath = Path("Category.csv")
         self.commoditiesPath = Path("Item.csv")
@@ -119,19 +129,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.listingsPath = Path("listings.csv")
         self.liveListingsPath = Path("listings-live.csv")
         self.pricesPath = Path("listings.prices")
-        # SQLAlchemy engine/session
-        cfg_path = os.environ.get("TD_DB_CONFIG") or (self.tdb.dbPath.parent / "db_config.ini")
-        try:
-            self.engine = make_engine_from_config(str(cfg_path))
-        except Exception:
-            # Fallback: try environment only; engine helper will resolve defaults
-            self.engine = make_engine_from_config(os.environ.get("TD_DB_CONFIG", "db_config.ini"))
-        self.Session = get_session_factory(self.engine)
 
-    
     def now(self):
         return datetime.datetime.now()
-    
+
     def downloadFile(self, path):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
@@ -140,9 +141,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             localPath = Path(self.tdb.dataPath, path)
         else:
             localPath = Path(self.dataPath, path)
-        
-        url  = BASE_URL + str(path)
-        
+
+        url = BASE_URL + str(path)
+
         self.tdenv.NOTE("Checking for update to '{}'.", path)
         # Use an HTTP Request header to obtain the Last-Modified and Content-Length headers.
         # Also, tell the server to give us the un-compressed length of the file by saying
@@ -153,45 +154,48 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
             return False
-        
+
         last_modified = response.headers.get("last-modified")
         dump_mod_time = parsedate_to_datetime(last_modified).timestamp()
-        
+
         if Path.exists(localPath):
             local_mod_time = localPath.stat().st_mtime
             if local_mod_time >= dump_mod_time:
                 self.tdenv.DEBUG0("'{}': Dump is not more recent than Local.", path)
                 return False
-        
+
         # The server doesn't know the gzip'd length, and we won't see the gzip'd data,
         # so we want the actual text-only length. Capture it here so we can tell the
         # transfer mechanism how big the file is going to be.
         length = response.headers.get("content-length")
-        
+
         self.tdenv.NOTE("Downloading file '{}'.", path)
         transfers.download(self.tdenv, url, localPath, chunkSize=16384, length=length)
-        
+
         # Change the timestamps on the file so they match the website
         os.utime(localPath, (dump_mod_time, dump_mod_time))
-        
+
         return True
-    
+
     def purgeSystems(self):
         """
         Purges systems from the System table that do not have any stations claiming to be in them.
         Keeps table from becoming too large because of fleet carriers moving to unpopulated systems.
         """
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
-        with self.Session.begin() as session:
-            from sqlalchemy import exists
-            session.execute(delete(System).where(~exists(select(1).where(Station.system_id == System.system_id))))
+
+        Session = self.tdb.Session
+        with Session.begin() as session:
+            subq = select(SA.Station.system_id).where(SA.Station.system_id == SA.System.system_id)
+            stmt = delete(SA.System).where(~exists(subq))
+            session.execute(stmt)
+
         self.tdenv.NOTE("Finished purging Systems. End time = {}", self.now())
 
-    
     def importListings(self, listings_file):
         """
         Updates the market data (AKA the StationItem table) using listings_file
-        Writes directly to database.
+        Writes directly to the database via SQLAlchemy.
         """
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
@@ -202,62 +206,31 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdenv.NOTE("No listings")
             return
 
-        self.tdenv.NOTE("Processing market data from {}: Start time = {}. Live = {}", listings_file, self.now(), from_live)
+        self.tdenv.NOTE(
+            "Processing market data from {}: Start time = {}. Live = {}",
+            listings_file, self.now(), from_live
+        )
 
-        # Session + lookups
-        with self.Session() as session:
-            item_lookup = {row[0] for row in session.execute(select(Item.item_id)).all()}
-            station_lookup = {row[0] for row in session.execute(select(Station.station_id)).all()}
-            last_station_update_times = {}
-            for sid, dt in session.execute(select(StationItem.station_id, func.min(StationItem.modified)).group_by(StationItem.station_id)):
-                if dt is not None:
-                    last_station_update_times[int(sid)] = int(dt.timestamp())
+        Session = self.tdb.Session
 
-        # Progress + batching
-        max_transaction_items = 25000  # legacy intent: keep tx bounded
-        transaction_items = 0
+        # Fetch all the item and station IDs
+        with Session.begin() as session:
+            item_lookup = _make_item_id_lookup(self.tdenv, session)
+            station_lookup = _make_station_id_lookup(self.tdenv, session)
+            last_station_update_times = _collect_station_modified_times(self.tdenv, session)
+
         cur_station = None
-        skip_station = False
+        is_debug = self.tdenv.debug > 0
+        self.tdenv.DEBUG0("Processing entries...")
 
-        with open(listings_path, "r", encoding="utf-8") as fh, \
-             pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog, \
-             self.Session.begin() as session:
+        # Try to find a balance between doing too many commits where we fail
+        # to get any benefits from constructing transactions, and blowing up
+        # the WAL and memory usage by making massive transactions.
+        max_transaction_items, transaction_items = 32 * 1024, 0
 
-            # choose dialect upsert factory once
-            dialect = self.engine.dialect.name
-            def do_upsert(payloads):
-                if not payloads:
-                    return
-                if dialect == "sqlite":
-                    stmt = sqlite_insert(StationItem).values(payloads)
-                    stmt = stmt.on_conflict_do_update(
-                        index_elements=[StationItem.station_id, StationItem.item_id],
-                        set_={
-                            "demand_price": stmt.excluded.demand_price,
-                            "demand_units": stmt.excluded.demand_units,
-                            "demand_level": stmt.excluded.demand_level,
-                            "supply_price": stmt.excluded.supply_price,
-                            "supply_units": stmt.excluded.supply_units,
-                            "supply_level": stmt.excluded.supply_level,
-                            "modified": stmt.excluded.modified,
-                            "from_live": stmt.excluded.from_live,
-                        },
-                    )
-                else:
-                    ins = mysql_insert(StationItem).values(payloads)
-                    stmt = ins.on_duplicate_key_update(
-                        demand_price=ins.inserted.demand_price,
-                        demand_units=ins.inserted.demand_units,
-                        demand_level=ins.inserted.demand_level,
-                        supply_price=ins.inserted.supply_price,
-                        supply_units=ins.inserted.supply_units,
-                        supply_level=ins.inserted.supply_level,
-                        modified=ins.inserted.modified,
-                        from_live=ins.inserted.from_live,
-                    )
-                session.execute(stmt)
-
-            buffer = []
+        with pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog, \
+             listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
+             Session.begin() as session:
 
             for listing in csv.DictReader(fh):
                 prog.increment(1)
@@ -267,73 +240,104 @@ class ImportPlugin(plugins.ImportPluginBase):
                     continue
 
                 listing_time = int(listing['collected_at'])
+                dt_listing_time = datetime.datetime.utcfromtimestamp(listing_time)
 
                 if station_id != cur_station:
-                    # manage prior station boundaries / bounded transactions
+                    # Start of a new station
                     if transaction_items >= max_transaction_items:
-                        session.commit()
+                        # Flush periodically to avoid holding too much in memory
+                        session.flush()
                         transaction_items = 0
-
                     cur_station, skip_station = station_id, False
 
-                    # determine existing modified watermark
-                    last_modified = int(last_station_update_times.get(station_id, 0)) or 0
+                    # Check if listing already exists in DB and needs update
+                    last_modified: int = int(last_station_update_times.get(station_id, 0))
                     if last_modified:
                         if listing_time == last_modified and not from_live:
-                            # mark no-longer-live on full import, then skip the station
-                            session.execute(update(StationItem).where(StationItem.station_id == cur_station).values(from_live=0))
+                            # listings.csv data matches DB → mark from_live = 0
+                            if is_debug:
+                                self.tdenv.DEBUG1(
+                                    f"Marking {cur_station} as no longer 'live' "
+                                    f"(old={last_modified}, listing={listing_time})."
+                                )
+                            session.query(SA.StationItem).filter_by(station_id=cur_station).update(
+                                {"from_live": 0}
+                            )
                             transaction_items += 1
                             skip_station = True
                             continue
-                        if listing_time < last_modified:
-                            # incoming is older; skip station entirely
+
+                        # Skip if data is not newer than DB
+                        if listing_time <= last_modified:
                             skip_station = True
                             continue
-                        # newer: flush old data for station on full run
-                        if not from_live:
-                            session.execute(delete(StationItem).where(StationItem.station_id == cur_station))
-                            transaction_items += 1
-                            last_station_update_times[station_id] = listing_time
+
+                        # Otherwise, delete old station data
+                        if is_debug:
+                            self.tdenv.DEBUG1(
+                                f"Deleting old listing data for {cur_station} "
+                                f"(old={last_modified}, listing={listing_time})."
+                            )
+                        session.query(SA.StationItem).filter_by(station_id=cur_station).delete()
+                        transaction_items += 1
+                        last_station_update_times[station_id] = listing_time
 
                 if skip_station:
+                    # station skip lasts until we change station id
                     continue
 
                 item_id = int(listing['commodity_id'])
                 if item_id not in item_lookup:
+                    # listings.csv includes rare items, which we are ignoring
                     continue
 
-                payload = dict(
+                demand_price = int(listing['sell_price'])
+                demand_units = int(listing['demand'])
+                demand_level = int(listing.get('demand_bracket') or '-1')
+                supply_price = int(listing['buy_price'])
+                supply_units = int(listing['supply'])
+                supply_level = int(listing.get('supply_bracket') or '-1')
+
+                if is_debug:
+                    self.tdenv.DEBUG1(f"Inserting new listing data for {station_id}.")
+
+                session.add(SA.StationItem(
                     station_id=station_id,
                     item_id=item_id,
-                    modified=datetime.datetime.utcfromtimestamp(listing_time),
-                    from_live=1 if from_live else 0,
-                    demand_price=int(listing['sell_price']),
-                    demand_units=int(listing['demand']),
-                    demand_level=int(listing.get('demand_bracket') or '-1'),
-                    supply_price=int(listing['buy_price']),
-                    supply_units=int(listing['supply']),
-                    supply_level=int(listing.get('supply_bracket') or '-1'),
-                )
-                buffer.append(payload)
+                    modified=dt_listing_time,
+                    from_live=int(from_live),
+                    demand_price=demand_price,
+                    demand_units=demand_units,
+                    demand_level=demand_level,
+                    supply_price=supply_price,
+                    supply_units=supply_units,
+                    supply_level=supply_level,
+                ))
                 transaction_items += 1
 
-                if len(buffer) >= 1000:
-                    do_upsert(buffer)
-                    buffer.clear()
+        # These will take a little while, which has four steps, so we'll make it a counter.
+        with pbar.Progress(1, 40, prefix="Saving"):
+            # Final flush/commit handled automatically by Session context
+            pass
 
-            if buffer:
-                do_upsert(buffer)
+        if self.getOption("optimize"):
+            with pbar.Progress(1, 40, prefix="Optimizing"):
+                # VACUUM is SQLite-specific; run only if backend is SQLite
+                if self.tdb.engine.dialect.name == "sqlite":
+                    with Session.begin() as session:
+                        session.execute(text("VACUUM"))
 
-    
+        self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
+
     def run(self):
         self.tdenv.ignoreUnknown = True
-        
+
         # Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
             Path(str(self.dataPath)).mkdir()
         except FileExistsError:
             pass
-        
+
         # Run 'listings' by default:
         # If no options, or if only 'force', and/or 'skipvend',
         # have been passed, enable 'listings'.
@@ -343,12 +347,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                 default = False
         if default:
             self.options["listings"] = True
-        
-        # We can probably safely assume that the plugin
-        # has never been run if the db file doesn't exist.
-        if not self.tdb.dbPath.exists():
-            self.options["clean"] = True
-        
+
+        # Detect a fresh database that requires a clean build
+        if self.tdb.engine.dialect.name == "sqlite":
+            sqlite_path = self.tdb.engine.url.database
+            if sqlite_path and not Path(sqlite_path).exists():
+                self.options["clean"] = True
+        else:
+            if lifecycle.is_empty(self.tdb.engine):
+                self.options["clean"] = True
+
         if self.getOption("clean"):
             # Rebuild the tables from scratch. Must be done on first run of plugin.
             # Can be done at anytime with the "clean" option.
@@ -370,62 +378,69 @@ class ImportPlugin(plugins.ImportPluginBase):
                     os.remove(str(file))
                 except FileNotFoundError:
                     pass
-            
+
+            # Backend-specific cleanup
+            if self.tdb.engine.dialect.name == "sqlite":
+                try:
+                    os.remove(str(self.tdb.dataPath / "TradeDangerous.db"))
+                except FileNotFoundError:
+                    pass
+
             try:
-                os.remove(str(self.tdb.dataPath) + "/TradeDangerous.db")
+                os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
-            try:
-                os.remove(str(self.tdb.dataPath) + "/TradeDangerous.prices")
-            except FileNotFoundError:
-                pass
-            
-            # Because this is a clean run, we need to temporarily rename the RareItem.csv,
-            # otherwise TD will crash trying to insert the rare items to the database,
-            # because there's nothing in the Station table it tries to pull from.
+
+            # Because this is a clean run, temporarily rename RareItem.csv.
             ri_path = self.tdb.dataPath / Path("RareItem.csv")
             rib_path = ri_path.with_suffix(".tmp")
             if ri_path.exists():
                 if rib_path.exists():
                     rib_path.unlink()
                 ri_path.rename(rib_path)
-            
-            self.tdb.close()
-            
+
+            # Reset schema using lifecycle + rebuild cache
+            lifecycle.ensure_fresh_db(
+                backend=self.tdb.engine.dialect.name,
+                engine=self.tdb.engine,
+                data_dir=self.tdb.dataPath,
+                metadata=SA.Base.metadata,
+                mode="force",
+            )
+
             self.tdb.reloadCache()
-            self.tdb.close()
-            
+
             # Now it's safe to move RareItems back.
             if ri_path.exists():
                 ri_path.unlink()
             if rib_path.exists():
                 rib_path.rename(ri_path)
-            
+
             self.options["all"] = True
             self.options["force"] = True
-        
+
         # Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True
             self.options["station"] = True
-        
+
         if self.getOption("shipvend"):
             self.options["ship"] = True
             self.options["station"] = True
-        
+
         if self.getOption("upvend"):
             self.options["upgrade"] = True
             self.options["station"] = True
-        
+
         if self.getOption("item"):
             self.options["station"] = True
-        
+
         if self.getOption("rare"):
             self.options["station"] = True
-        
+
         if self.getOption("station"):
             self.options["system"] = True
-        
+
         if self.getOption("all"):
             self.options["item"] = True
             self.options["rare"] = True
@@ -436,84 +451,72 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upgrade"] = True
             self.options["upvend"] = True
             self.options["listings"] = True
-        
+
         if self.getOption("solo"):
             self.options["listings"] = False
             self.options["skipvend"] = True
-        
+
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-        
+
         # Download required files and update tables.
         buildCache = False
         if self.getOption("upgrade"):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
                 buildCache = True
-        
+
         if self.getOption("ship"):
             if self.downloadFile(self.shipPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
                 buildCache = True
-        
+
         if self.getOption("rare"):
             if self.downloadFile(self.rareItemPath) or self.getOption("force"):
                 buildCache = True
-        
+
         if self.getOption("shipvend"):
             if self.downloadFile(self.shipVendorPath) or self.getOption("force"):
                 buildCache = True
-        
+
         if self.getOption("upvend"):
             if self.downloadFile(self.upgradeVendorPath) or self.getOption("force"):
                 buildCache = True
-        
+
         if self.getOption("system"):
             if self.downloadFile(self.sysPath) or self.getOption("force"):
                 buildCache = True
-        
+
         if self.getOption("station"):
             if self.downloadFile(self.stationsPath) or self.getOption("force"):
                 buildCache = True
-        
+
         if self.getOption("item"):
             if self.downloadFile(self.commoditiesPath) or self.getOption("force"):
                 self.downloadFile(self.categoriesPath)
                 buildCache = True
-                
-                
-        data_dir = Path(self.tdb.tdenv.dataPath or "./data")
-        for name in [
-            "System.csv","Station.csv","Category.csv","Item.csv",
-            "RareItem.csv","Ship.csv","Upgrade.csv",
-            "ShipVendor.csv","UpgradeVendor.csv"
-        ]:
-            p = data_dir / name
-            if p.exists():
-                cache.importDataFromFile(self.tdb, p)
-        
-        # Remake the .db files with the updated info.
+
+        # Rebuild cache with updated info if any static tables changed
         if buildCache:
             self.tdb.close()
             self.tdb.reloadCache()
             self.tdb.close()
-        
+
         if self.getOption("purge"):
             self.purgeSystems()
-            self.tdb.close()
-        
+
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
             if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
-        
+
         if self.getOption("listings"):
             self.tdenv.NOTE("Regenerating .prices file.")
             cache.regeneratePricesFile(self.tdb, self.tdenv)
-        
+
         self.tdenv.NOTE("Import completed.")
-        
+
         # TD doesn't need to do anything, tell it to just quit.
         return False

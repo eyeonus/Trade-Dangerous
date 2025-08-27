@@ -12,11 +12,11 @@
 
 import sys
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from tradedangerous.db import orm_models as SA
+from .db import orm_models as SA
+from .tradeexcept import TradeException
 
 
-class Element:  # TODO: consider converting to enum.IntFlag
+class Element:      # TODO: enum?
     basic     = 1 << 0
     supply    = 1 << 1
     timestamp = 1 << 2
@@ -47,7 +47,7 @@ def dumpPrices(
     )
 
     stations = {
-        ID: [name, systems[sysID]]
+        ID: [name, systems.get(sysID)]
         for ID, name, sysID in session.query(
             SA.Station.station_id, SA.Station.name, SA.Station.system_id
         ).all()
@@ -68,80 +68,53 @@ def dumpPrices(
     longestName = max(items.values(), key=lambda ent: len(ent[0]))
     longestNameLen = len(longestName[0])
 
-    if stationID:
-        # Check if station has any prices
-        count = (
-            session.query(SA.StationItem)
-            .filter(SA.StationItem.station_id == stationID)
-            .count()
-        )
-        if count == 0:
-            getBlanks = True
-
     defaultDemandVal = 0 if defaultZero else -1
-    stationFilter = stationID
-    itemJoinOuter = getBlanks
 
-    # Current timestamp for defaulting modified
-    now = session.query(func.now()).scalar()
-
-    # Build base query
-    q = session.query(
-        SA.Station.station_id,
-        SA.Item.item_id,
-        func.ifnull(SA.StationItem.demand_price, 0),
-        func.ifnull(SA.StationItem.supply_price, 0),
-        func.ifnull(SA.StationItem.demand_units, defaultDemandVal),
-        func.ifnull(SA.StationItem.demand_level, defaultDemandVal),
-        func.ifnull(SA.StationItem.supply_units, defaultDemandVal),
-        func.ifnull(SA.StationItem.supply_level, defaultDemandVal),
-        SA.StationItem.modified,
-    ).select_from(SA.Station)
-
-    # Join Item and Category
-    q = q.join(SA.Item, SA.Item.category_id == SA.Category.category_id).join(SA.Category)
-
-    # Join or outerjoin StationItem
-    if itemJoinOuter:
-        q = q.outerjoin(
-            SA.StationItem,
-            (SA.StationItem.station_id == SA.Station.station_id)
-            & (SA.StationItem.item_id == SA.Item.item_id),
+    # Build the main query
+    q = (
+        session.query(
+            SA.StationItem.station_id,
+            SA.Item.item_id,
+            SA.StationItem.demand_price,
+            SA.StationItem.supply_price,
+            SA.StationItem.demand_units,
+            SA.StationItem.demand_level,
+            SA.StationItem.supply_units,
+            SA.StationItem.supply_level,
+            SA.StationItem.modified,
+            SA.Item.name,
+            SA.Item.category_id,
+            SA.Category.name.label("category_name"),
+            SA.Station.name.label("station_name"),
+            SA.System.name.label("system_name"),
         )
-    else:
-        q = q.join(
-            SA.StationItem,
-            (SA.StationItem.station_id == SA.Station.station_id)
-            & (SA.StationItem.item_id == SA.Item.item_id),
-        )
+        .join(SA.Item, SA.Item.item_id == SA.StationItem.item_id)
+        .join(SA.Category, SA.Category.category_id == SA.Item.category_id)
+        .join(SA.Station, SA.Station.station_id == SA.StationItem.station_id)
+        .join(SA.System, SA.System.system_id == SA.Station.system_id)
+        .order_by(SA.Station.station_id, SA.Category.name, SA.Item.ui_order)
+    )
 
-    # Optional station filter
-    if stationFilter:
-        q = q.filter(SA.Station.station_id == stationFilter)
+    if stationID:
+        q = q.filter(SA.StationItem.station_id == stationID)
 
-    # Ordering
-    q = q.order_by(SA.Station.station_id, SA.Category.name, SA.Item.ui_order)
+    results = q.all()
 
-    if debug:
-        print(str(q))
-
-    rows = q.all()
-
-    lastStn, lastCat = None, None
-
+    # Set up output
     if not file:
         file = sys.stdout
 
-    stationSet = (
-        str(stations[stationID]) if stationID else "ALL Systems/Stations"
-    )
+    if stationID:
+        stationSet = str(stations[stationID])
+    else:
+        stationSet = "ALL Systems/Stations"
 
     file.write(
         "# TradeDangerous prices for {}\n"
         "\n"
         "# REMOVE ITEMS THAT DON'T APPEAR IN THE UI\n"
         "# ORDER IS REMEMBERED: Move items around within categories "
-            "to match the game UI\n"
+        "to match the game UI\n"
         "\n"
         "# File syntax:\n"
         "# <item name> <sell> <buy> [<demand> <supply> [<timestamp>]]\n"
@@ -150,10 +123,9 @@ def dumpPrices(
         "#   Otherwise use a number followed by L, M or H, e.g.\n"
         "#     1L, 23M or 30000H\n"
         "# If you omit the timestamp, the current time will be used when "
-            "the file is loaded.\n"
-        "\n".format(
-            stationSet
-    ))
+        "the file is loaded.\n"
+        "\n".format(stationSet)
+    )
 
     levelDesc = "?0LMH"
     maxCrWidth = 7
@@ -173,34 +145,35 @@ def dumpPrices(
     if withTimes:
         outFmt += "  {}"
     outFmt += "\n"
-    output = outFmt.format(
+    header = outFmt.format(
         "Item Name",
         "SellCr", "BuyCr",
         "Demand", "Supply",
         "Timestamp",
     )
-    file.write('#' + output[1:])
+    file.write('#' + header[1:])
 
     naIQL = "-"
     unkIQL = "?"
     defIQL = "?" if not defaultZero else "-"
 
+    # Main loop
     output = ""
+    lastStn, lastCat = None, None
+    for row in results:
+        stnID = row.station_id
+        itemID = row.item_id
+        station = row.station_name
+        system = row.system_name
+        item = row.name
+        catID = row.category_id
+        category = row.category_name
 
-    for (
-        stnID,
-        itemID,
-        fromStn,
-        toStn,
-        demand,
-        demandLevel,
-        supply,
-        supplyLevel,
-        modified,
-    ) in rows:
-        modified = modified or now
-        station, system = stations[stnID]
-        item, catID, category = items[itemID]
+        # Guard against bad system names
+        if not system:
+            raise TradeException(
+                f"Station {station} (ID {stnID}) is linked to a system with no name."
+            )
 
         if stnID != lastStn:
             file.write(output)
@@ -208,39 +181,32 @@ def dumpPrices(
             lastStn = stnID
             lastCat = None
 
-        if catID is not lastCat:
+        if catID != lastCat:
             output += f"   + {category}\n"
             lastCat = catID
 
-        # Is this item on sale?
-        if toStn > 0:
-            demandStr = defIQL if fromStn <= 0 else unkIQL
-            if supplyLevel == 0:
-                supplyStr = naIQL
-            elif supplyLevel < 0 and supply <= 0:
-                supplyStr = defIQL
-            else:
-                units = "?" if supply < 0 else str(supply)
-                level = levelDesc[supplyLevel + 1]
-                supplyStr = units + level
+        demandCr = row.demand_price or 0
+        supplyCr = row.supply_price or 0
+        demandUnits = row.demand_units or defaultDemandVal
+        demandLevel = row.demand_level or defaultDemandVal
+        supplyUnits = row.supply_units or defaultDemandVal
+        supplyLevel = row.supply_level or defaultDemandVal
+
+        # Demand/supply formatting
+        if supplyCr > 0:
+            demandStr = defIQL if demandCr <= 0 else unkIQL
+            supplyStr = (
+                naIQL if supplyLevel == 0
+                else (f"{supplyUnits if supplyUnits >= 0 else '?'}{levelDesc[supplyLevel+1]}")
+            )
         else:
-            if fromStn == 0 or demandLevel == 0:
-                demandStr = naIQL
-            elif demandLevel < 0 and demand <= 0:
-                demandStr = defIQL
-            else:
-                units = "?" if demand < 0 else str(demand)
-                level = levelDesc[demandLevel + 1]
-                demandStr = units + level
+            demandStr = (
+                naIQL if demandCr == 0 or demandLevel == 0
+                else (f"{demandUnits if demandUnits >= 0 else '?'}{levelDesc[demandLevel+1]}")
+            )
             supplyStr = naIQL
 
-        output += outFmt.format(
-            item,
-            fromStn,
-            toStn,
-            demandStr,
-            supplyStr,
-            modified,
-        )
+        modified = row.modified or ""
+        output += outFmt.format(item, demandCr, supplyCr, demandStr, supplyStr, modified)
 
     file.write(output)

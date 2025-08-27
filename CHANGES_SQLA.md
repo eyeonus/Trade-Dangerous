@@ -194,3 +194,80 @@ Wrappers remain in place for API compatibility; existing return shapes and calli
 - All database operations use SQLAlchemy ORM.  
 - File is backend-agnostic (SQLite and MariaDB supported).  
 - API compatibility maintained for existing callers.
+
+
+# TradeDangerous Refactor — `plugins/eddblink_plug.py`
+
+This document summarises the sqlite3 → SQLAlchemy migration applied to the **EDDBLink plugin**.  
+The plugin API (`ImportPlugin`) remains unchanged; it still exposes the same options and behaviour.  
+All database operations now use SQLAlchemy ORM and engine utilities.
+
+---
+
+## sqlite3 Removal
+- `import sqlite3` removed.
+- All direct `cursor.execute`, `BEGIN/COMMIT TRANSACTION`, `INSERT OR IGNORE`, `DELETE`, `UPDATE`, and `VACUUM` calls eliminated.
+- Manual commit/rollback management replaced with `Session.begin()` context blocks.
+- SQLite PRAGMAs remain handled centrally in `engine.py`.
+
+---
+
+## Refactored Helpers
+- **`_make_item_id_lookup`**, **`_make_station_id_lookup`**  
+  - Old: raw `SELECT` on `Item`/`Station`.  
+  - New: ORM queries on `SA.Item` / `SA.Station`.  
+
+- **`_collect_station_modified_times`**  
+  - Old: `strftime('%s', MIN(modified))` to epoch.  
+  - New: `func.min(SA.StationItem.modified)` via ORM, converted to epoch in Python.
+
+---
+
+## Refactored Methods
+
+### `purgeSystems`
+- Old: `DELETE FROM System WHERE NOT EXISTS (...)`.  
+- New: ORM `delete(SA.System).where(~exists(...))`.
+
+### `importListings`
+- Old:  
+  - Raw SQL statements: `UPDATE … SET from_live=0`, `DELETE FROM StationItem`,  
+    `INSERT OR IGNORE INTO StationItem (…)`, manual `BEGIN/COMMIT`.  
+  - SQLite-only datetime conversion (`datetime(?, 'unixepoch')`).  
+- New:  
+  - Fully ORM-driven:  
+    - `update` to unliven station.  
+    - `delete` to flush old station items.  
+    - `session.add(StationItem(...))` for inserts.  
+  - Listing timestamp converted via `datetime.utcfromtimestamp()`.  
+  - Transactions handled by `Session.begin()`.  
+  - Periodic `session.flush()` replaces manual WAL balancing.  
+  - VACUUM preserved for SQLite backends using `session.execute(text("VACUUM"))`.  
+
+### `run`
+- Detects first-run:  
+  - SQLite → check for DB file.  
+  - MariaDB → `lifecycle.is_empty(engine)`.  
+- **`clean` option**:  
+  - Old: manual file deletes + `self.tdb.reloadCache()`.  
+  - New: CSV/file cleanup preserved; schema reset via `lifecycle.ensure_fresh_db`; cache reload via existing `self.tdb.reloadCache()`.  
+- Option resolution (`listings`, `all`, `solo`, etc.) unchanged.  
+- File downloads unchanged.  
+- Static-table rebuild still calls `reloadCache()` (API preserved).  
+- Market data import calls new ORM-based `importListings`.  
+- `.prices` regeneration continues via refactored `cache.regeneratePricesFile`.
+
+---
+
+## Unchanged (No DB Access)
+- `DecodingError` exception.  
+- `downloadFile` (HTTP freshness, timestamp sync).  
+- Option parsing logic in `run`.  
+
+---
+
+## Status
+- `eddblink_plug.py` is now completely free of sqlite3.  
+- All database interactions flow through SQLAlchemy ORM and lifecycle helpers.  
+- API compatibility preserved (`reloadCache`, plugin options, entrypoints unchanged).  
+- VACUUM retained for SQLite, gated by dialect.  

@@ -659,9 +659,15 @@ class TradeDB:
 
         # --- Engine bootstrap ---
         from .db import make_engine_from_config, get_session_factory
+        import os
+
         cfg = getattr(tdenv, "dbConfig", None)
-        self.engine = make_engine_from_config(cfg or "db_config.ini")
+        if not cfg:
+            cfg = os.environ.get("TD_DB_CONFIG", "db_config.ini")
+
+        self.engine = make_engine_from_config(cfg)
         self.Session = get_session_factory(self.engine)
+
 
         # --- Initial load ---
         if load:
@@ -2071,11 +2077,11 @@ class TradeDB:
     ############################################################
     # Price data.
     
-def close(self):
-    if self.engine:
-        self.engine.dispose()
-    self.engine = None
-    self.Session = None
+    def close(self):
+        if self.engine:
+            self.engine.dispose()
+        # Keep engine + Session references so reloadCache/buildCache can reuse them
+
 
     
     def load(self, maxSystemLinkLy=None):

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from sqlalchemy import (
-    MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, UniqueConstraint, text
+    MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, UniqueConstraint, text, Column
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional
@@ -278,6 +278,30 @@ class RareItem(Base):
 
     __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
 
+class FDevShipyard(Base):
+    __tablename__ = "FDevShipyard"
+
+    id = Column(Integer, primary_key=True, unique=True, nullable=False)
+    symbol = Column(String(40))
+    name = Column(String(40, collation="NOCASE"))
+    entitlement = Column(String(50))
+
+
+class FDevOutfitting(Base):
+    __tablename__ = "FDevOutfitting"
+
+    id = Column(Integer, primary_key=True, unique=True, nullable=False)
+    symbol = Column(String(40))
+    category = Column(String(10))
+    name = Column(String(40, collation="NOCASE"))
+    mount = Column(String(10))
+    guidance = Column(String(10))
+    ship = Column(String(40, collation="NOCASE"))
+    class_ = Column("class", String(1), nullable=False)
+    rating = Column(String(1), nullable=False)
+    entitlement = Column(String(50))
+
+
 
 # ---------- Control & Staging ----------
 
@@ -336,6 +360,8 @@ __all__ = [
     "Upgrade",
     "UpgradeVendor",
     "RareItem",
+    "FDevShipyard",
+    "FDevOutfitting",
     # Control & staging
     "ExportControl",
     "StationItemStaging",

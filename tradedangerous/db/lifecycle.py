@@ -71,23 +71,11 @@ def _read_legacy_sql() -> str:
     raise FileNotFoundError("TradeDangerous.sql not found in expected locations.")
 
 def _execute_sql_script(engine: Engine, script: str) -> None:
-    """Execute a multi-statement SQL script using exec_driver_sql per statement."""
-    # naive splitter: handles semicolon-terminated statements and strips comments/empty lines
-    stmts: list[str] = []
-    current: list[str] = []
-    for raw_line in script.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("--"):
-            continue
-        current.append(raw_line)
-        if line.endswith(";"):
-            stmts.append("\n".join(current))
-            current = []
-    if current:
-        stmts.append("\n".join(current))
+    """Execute a multi-statement SQL script using sqlite3's executescript()."""
     with engine.begin() as conn:
-        for stmt in stmts:
-            conn.exec_driver_sql(stmt)
+        raw_conn = conn.connection  # DB-API connection (sqlite3.Connection)
+        raw_conn.executescript(script)
+
 
 def _create_sqlite_from_legacy(engine: Engine) -> None:
     """Create the SQLite schema by executing the legacy SQL file."""
@@ -96,17 +84,20 @@ def _create_sqlite_from_legacy(engine: Engine) -> None:
 
 # ---------- public resets ----------
 
-def reset_sqlite(engine: Engine, metadata: MetaData | None = None) -> None:
-    """Drop all user tables and recreate schema from the legacy SQLite SQL."""
-    # Drop via Inspector (robust to partial schemas)
-    insp = inspect(engine)
-    with engine.begin() as conn:
-        for tname in _user_tables(engine):
-            conn.exec_driver_sql(f'DROP TABLE IF EXISTS "{tname}"')
-        # Also drop views if present
-        for v in getattr(insp, "get_view_names", lambda: [])() or []:  # type: ignore[attr-defined]
-            conn.exec_driver_sql(f'DROP VIEW IF EXISTS "{v}"')
+def reset_sqlite(engine: Engine, db_path: Path | None = None) -> None:
+    """Reset the SQLite schema by rotating the DB file and recreating from legacy SQL."""
+    if db_path:
+        # Rotate the existing DB file
+        if db_path.exists():
+            backup = db_path.with_suffix(".old")
+            if backup.exists():
+                backup.unlink()
+            db_path.rename(backup)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Recreate schema using the canonical SQL file
     _create_sqlite_from_legacy(engine)
+
 
 def reset_mariadb(engine: Engine, metadata: MetaData) -> None:
     """Drop all tables and recreate using ORM metadata (MariaDB/InnoDB)."""
