@@ -54,8 +54,8 @@ def load_config(path: str | Path | None = None) -> Dict[str, Any]:
     """Load configuration as a dict with typed values.
     Search order:
       1) explicit *path* if provided
-      2) ./db_config.ini (cwd)
-      3) ./db_config.sample.ini (cwd)
+      2) TD_DB_CONFIG env (if file exists)
+      3) ./db_config.ini (cwd)
       4) in-code DEFAULTS
     """
     cfg_path: Path | None = None
@@ -64,11 +64,21 @@ def load_config(path: str | Path | None = None) -> Dict[str, Any]:
         if p.exists():
             cfg_path = p
     else:
-        for candidate in ("db_config.ini", "db_config.sample.ini"):
-            p = Path.cwd() / candidate
+        # Prefer environment variable if it points to an existing file
+        try:
+            from .paths import resolve_db_config_path
+            env_candidate = resolve_db_config_path()
+            if env_candidate.exists():
+                cfg_path = env_candidate
+        except Exception:
+            # If anything goes wrong resolving the env, fall back to defaults below
+            pass
+
+        # Fall back to local file in CWD
+        if cfg_path is None:
+            p = Path.cwd() / "db_config.ini"
             if p.exists():
                 cfg_path = p
-                break
 
     # start with defaults
     result: Dict[str, Any] = {k: (v.copy() if isinstance(v, dict) else v) for k, v in DEFAULTS.items()}
