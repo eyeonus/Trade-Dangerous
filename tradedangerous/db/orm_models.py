@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 from sqlalchemy import (
-    MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, UniqueConstraint, text, Column
+    MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, 
+    UniqueConstraint, text, Column, TypeDecorator
+    
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, object_session
 from typing import Optional
 from sqlalchemy import DateTime
 from sqlalchemy.sql import expression
@@ -37,6 +39,32 @@ class DateTime6(TypeDecorator):
             from sqlalchemy.dialects.mysql import DATETIME as _MYSQL_DATETIME
             return dialect.type_descriptor(_MYSQL_DATETIME(fsp=6))
         return dialect.type_descriptor(DateTime())
+        
+# ---------- Dialect Helpers --------
+
+class CIString(TypeDecorator):
+    """
+    Case-insensitive string type.
+    - SQLite → uses NOCASE collation
+    - MySQL/MariaDB → uses utf8mb4_unicode_ci
+    - Others → plain String
+    """
+    impl = String
+    cache_ok = True
+
+    def __init__(self, length, **kwargs):
+        super().__init__(length=length, **kwargs)
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "sqlite":
+            return dialect.type_descriptor(String(self.impl.length, collation="NOCASE"))
+        elif dialect.name in ("mysql", "mariadb"):
+            return dialect.type_descriptor(String(self.impl.length, collation="utf8mb4_unicode_ci"))
+        else:
+            return dialect.type_descriptor(String(self.impl.length))
+
+
+
 
 # ---------- Naming & Base ----------
 
@@ -282,8 +310,8 @@ class FDevShipyard(Base):
     __tablename__ = "FDevShipyard"
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
-    symbol = Column(String(40))
-    name = Column(String(40, collation="NOCASE"))
+    symbol = Column(String(128))
+    name = Column(CIString(128))
     entitlement = Column(String(50))
 
 
@@ -291,12 +319,12 @@ class FDevOutfitting(Base):
     __tablename__ = "FDevOutfitting"
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
-    symbol = Column(String(40))
+    symbol = Column(String(128))
     category = Column(String(10))
-    name = Column(String(40, collation="NOCASE"))
-    mount = Column(String(10))
-    guidance = Column(String(10))
-    ship = Column(String(40, collation="NOCASE"))
+    name = Column(CIString(128))
+    mount = Column(String(20))
+    guidance = Column(String(20))
+    ship = Column(CIString(128))
     class_ = Column("class", String(1), nullable=False)
     rating = Column(String(1), nullable=False)
     entitlement = Column(String(50))

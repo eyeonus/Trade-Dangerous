@@ -1140,8 +1140,9 @@ def regeneratePricesFile(tdb, tdenv):
                 debug=tdenv.debug,
             )
 
-    # Touch DB file so cache invalidation logic doesn’t trigger unnecessarily
-    os.utime(tdb.dbPath)
+    # Only touch the DB file on SQLite — MariaDB has no dbPath
+    if tdb.engine.dialect.name == "sqlite" and tdb.dbPath and os.path.exists(tdb.dbPath):
+        os.utime(tdb.dbPath)
 
 ######################################################################
 
