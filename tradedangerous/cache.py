@@ -811,9 +811,6 @@ def deprecationCheckItem(importPath, lineNo, line):
     )
 
 
-# Copyright (C) 2012-2021 Jonathan M. Dickinson
-# Copyright (C) Stefan 'Tromador' Morrell 2025
-
 def processImportFile(
     tdenv,
     session: Session,
