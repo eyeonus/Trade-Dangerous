@@ -811,6 +811,9 @@ def deprecationCheckItem(importPath, lineNo, line):
     )
 
 
+# Copyright (C) 2012-2021 Jonathan M. Dickinson
+# Copyright (C) Stefan 'Tromador' Morrell 2025
+
 def processImportFile(
     tdenv,
     session: Session,
@@ -821,12 +824,9 @@ def processImportFile(
     call_args: Optional[dict] = None,
 ):
     """
-    Import CSV data into the given ORM table.
-
-    - CSV header row defines column names.
-    - Supports uniqueness checks via "unq:" prefix.
-    - Supports deprecation checks per table.
-    - Preserves INSERT OR REPLACE semantics via session.merge.
+    Import a CSV file into the given table.
+    Column headers map to ORM model fields; special handling for
+    uniqueness, reserved names, deprecation, and type casting.
     """
 
     tdenv.DEBUG0(
@@ -841,6 +841,28 @@ def processImportFile(
 
     uniquePfx = "unq:"
     uniqueLen = len(uniquePfx)
+
+    # --- batch size config (like eddblink) ---
+    env_batch = os.environ.get("TD_LISTINGS_BATCH")
+    if env_batch:
+        try:
+            max_transaction_items = int(env_batch)
+        except ValueError:
+            tdenv.WARN(
+                "Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.",
+                env_batch,
+            )
+            max_transaction_items = None
+    else:
+        max_transaction_items = None
+
+    if max_transaction_items is None:
+        if session.bind.dialect.name in ("mysql", "mariadb"):
+            max_transaction_items = 50 * 1024   # ~50k rows per commit
+        else:
+            max_transaction_items = 250 * 1024  # ~250k rows for SQLite
+
+    transaction_items = 0
 
     with importPath.open("r", encoding="utf-8") as importFile:
         csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
@@ -874,7 +896,6 @@ def processImportFile(
 
         importCount = 0
         uniqueIndex = {}
-
 
         for linein in csvin:
             if line_callback:
@@ -920,8 +941,8 @@ def processImportFile(
             try:
                 # Map column names → row values
                 rowdict = dict(zip(bindColumns, linein))
-                
-                # Guard against invalid system names
+
+                # Guard against invalid system/station names
                 if tableName == "System":
                     if not rowdict.get("name") or not rowdict["name"].strip():
                         raise InvalidLineError(
@@ -930,7 +951,7 @@ def processImportFile(
                             "System with no name",
                             str(rowdict),
                         )
-                        
+
                 if tableName == "Station":
                     if not rowdict.get("name") or not rowdict["name"].strip():
                         raise InvalidLineError(
@@ -964,7 +985,6 @@ def processImportFile(
                             rowdict[key] = int(val)
                         except:
                             try:
-                                # handle cases like '927.609062' in ls_from_star
                                 rowdict[key] = int(float(val))
                             except ValueError:
                                 rowdict[key] = None
@@ -997,17 +1017,23 @@ def processImportFile(
                         except ValueError:
                             rowdict[key] = None
                     # else: leave as string
-                
+
                 # Special-case remaps for reserved words / ORM naming differences
                 if tableName == "Upgrade" and "class" in rowdict:
                     rowdict["class_"] = rowdict.pop("class")
                 if tableName == "FDevOutfitting" and "class" in rowdict:
                     rowdict["class_"] = rowdict.pop("class")
 
-
                 obj = Model(**rowdict)
                 session.merge(obj)
                 importCount += 1
+                transaction_items += 1
+
+                # --- commit in chunks ---
+                if transaction_items >= max_transaction_items:
+                    session.commit()
+                    session.begin()
+                    transaction_items = 0
 
             except Exception as e:  # pylint: disable=broad-exception-caught
                 tdenv.WARN(
@@ -1018,11 +1044,13 @@ def processImportFile(
                 )
                 pass
 
-
+        # final commit for leftovers
+        session.commit()
 
         tdenv.DEBUG0(
             "{count} {table}s imported", count=importCount, table=tableName
         )
+
 
 
 ######################################################################
@@ -1056,8 +1084,8 @@ def buildCache(tdb, tdenv):
 
     # Open a new session for this rebuild
     with tdb.Session() as session:
+        # --- Step 1: reset schema in a dedicated transaction ---
         with session.begin():
-            # Recreate schema depending on backend
             if engine.dialect.name == "sqlite":
                 lifecycle.reset_sqlite(engine, dbPath)
             elif engine.dialect.name in ("mysql", "mariadb"):
@@ -1068,57 +1096,60 @@ def buildCache(tdb, tdenv):
                     f"Unsupported database backend: {engine.dialect.name}"
                 )
 
-            # import standard tables
-            with Progress(
-                max_value=len(tdb.importTables) + 1,
-                prefix="Importing",
-                width=25,
-                style=CountingBar,
-            ) as prog:
-                for importName, importTable in tdb.importTables:
-                    import_path = Path(importName)
-                    import_lines = file_line_count(import_path, missing_ok=True)
-                    with prog.sub_task(
-                        max_value=import_lines, description=importTable
-                    ) as child:
-                        prog.increment(value=1)
-                        call_args = {"task": child, "advance": 1}
-                        try:
-                            processImportFile(
-                                tdenv,
-                                session,
-                                import_path,
-                                importTable,
-                                line_callback=prog.update_task,
-                                call_args=call_args,
-                            )
-                        except FileNotFoundError:
-                            tdenv.DEBUG0(
-                                "WARNING: processImportFile found no {} file", importName
-                            )
-                        except StopIteration:
-                            tdenv.NOTE(
-                                "{} exists but is empty. "
-                                "Remove it or add the column definition line.",
-                                importName,
-                            )
-                prog.increment(1)
+        # --- Step 2: import standard tables on plain session ---
+        with Progress(
+            max_value=len(tdb.importTables) + 1,
+            prefix="Importing",
+            width=25,
+            style=CountingBar,
+        ) as prog:
+            for importName, importTable in tdb.importTables:
+                import_path = Path(importName)
+                import_lines = file_line_count(import_path, missing_ok=True)
+                with prog.sub_task(
+                    max_value=import_lines, description=importTable
+                ) as child:
+                    prog.increment(value=1)
+                    call_args = {"task": child, "advance": 1}
+                    try:
+                        processImportFile(
+                            tdenv,
+                            session,
+                            import_path,
+                            importTable,
+                            line_callback=prog.update_task,
+                            call_args=call_args,
+                        )
+                        # safety commit after each file
+                        session.commit()
+                    except FileNotFoundError:
+                        tdenv.DEBUG0(
+                            "WARNING: processImportFile found no {} file", importName
+                        )
+                    except StopIteration:
+                        tdenv.NOTE(
+                            "{} exists but is empty. "
+                            "Remove it or add the column definition line.",
+                            importName,
+                        )
+            prog.increment(1)
 
-                with prog.sub_task(description="Save DB"):
-                    session.commit()
+            with prog.sub_task(description="Save DB"):
+                session.commit()
 
-            # Parse the prices file
-            if pricesPath.exists():
-                with Progress(max_value=None, width=25, prefix="Processing prices file"):
-                    processPricesFile(tdenv, session, pricesPath)
-            else:
-                tdenv.NOTE(
-                    f'Missing "{pricesPath}" file - no price data.',
-                    stderr=True,
-                )
+        # --- Step 3: parse the prices file (still plain session) ---
+        if pricesPath.exists():
+            with Progress(max_value=None, width=25, prefix="Processing prices file"):
+                processPricesFile(tdenv, session, pricesPath)
+        else:
+            tdenv.NOTE(
+                f'Missing "{pricesPath}" file - no price data.',
+                stderr=True,
+            )
 
     tdb.close()
     tdenv.DEBUG0("Finished")
+
 
 
 ######################################################################
