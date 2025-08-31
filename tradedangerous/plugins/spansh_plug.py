@@ -36,6 +36,7 @@ from ..db.orm_models import (
     StationItem,
     ShipVendor,
     UpgradeVendor,
+    Category,
 )
 
 if typing.TYPE_CHECKING:
@@ -133,6 +134,13 @@ else:
     CommodityDTO = namedtuple('CommodityDTO',
                               'id,name,category,demand,supply,sell,buy,modified')
 
+def to_datetime(value):
+    """Normalise timestamps to datetime (UTC). Accepts datetime, epoch float, or None."""
+    if value is None:
+        return datetime.utcnow()
+    if isinstance(value, datetime):
+        return value
+    return datetime.utcfromtimestamp(value)
 
 
 class Timing:
@@ -318,7 +326,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         try:
             self.session.commit()
         except SQLAlchemyError as e:
-            self.tdenv.ERROR(f"Commit failed: {e}")
+            self.tdenv.WARN(f"Commit failed: {e}")
             self.session.rollback()
             raise
 
@@ -362,23 +370,36 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         sys_desc = f"Importing {ITALIC}spansh{CLOSE} data"
         
-        # Progress bar setup: use file size in bytes instead of a full count pass.
-        # This avoids double-scanning the Spansh JSON (which can be very large).
+        """
+        # TODO: find a better way to get the total number of systems
+        # A bad way to do it:
+        total_systems = 0
+        if self.tdenv.detail:
+            print('Counting total number of systems...')
+        with open(self.file, 'r', encoding='utf8') as stream:
+            for system_data in ijson.items(stream, 'item', use_float=True):
+                total_systems += 1
+                if (not total_systems % 250) and self.tdenv.detail:
+                    print(f'Total systems: {total_systems}', end='\r')
+        
+        if self.tdenv.detail:
+            print(f'Total systems: {total_systems}')
+        """
+        
+        # Estimate total number of systems from file size and average bytes per system.
+        # Avoids a full pre-pass over the JSON (saves significant time).
         file_size = os.path.getsize(self.file)
+        AVG_BYTES_PER_SYSTEM = 220_000  # derived from 17,007,808,433 ÷ 77,365 ≈ 219,803
+        estimated_systems = max(1, int(file_size / AVG_BYTES_PER_SYSTEM))
 
         if self.tdenv.detail:
-            self.print(f"Preparing to import spansh data (~{file_size:,} bytes)")
-
-        with open(self.file, 'rb') as stream:
-            with Progress(console=self.tdenv.console, transient=True, auto_refresh=True, refresh_per_second=2) as progress:
-                task = progress.add_task("Importing spansh data", total=file_size)
-                # actual ijson processing will go here, e.g.:
-                for system_data in ijson.items(stream, 'item', use_float=True):
-                    # ... process system_data ...
-                    progress.update(task, advance=stream.tell())
+            self.print(
+                f"Estimated {estimated_systems} systems "
+                f"from {file_size:,} bytes using {AVG_BYTES_PER_SYSTEM} B/system average"
+            )
 
         
-        with Timing() as timing, Progresser(self.tdenv, sys_desc, total=total_systems) as progress:
+        with Timing() as timing, Progresser(self.tdenv, sys_desc, total=estimated_systems) as progress:
         # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress:
             system_count = 0
             total_station_count = 0
@@ -463,7 +484,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ShipVendor(
                                     ship_id=ship.id,
                                     station_id=station.id,
-                                    modified=datetime.utcfromtimestamp(ship.modified),
+                                    modified=to_datetime(ship.modified),
                                 )
                             )
 
@@ -512,7 +533,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 UpgradeVendor(
                                     upgrade_id=module.id,
                                     station_id=station.id,
-                                    modified=datetime.utcfromtimestamp(module.modified),
+                                    modified=to_datetime(module.modified),
                                 )
                             )
 
@@ -562,7 +583,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 StationItem(
                                     station_id=station.id,
                                     item_id=commodity.id,
-                                    modified=datetime.utcfromtimestamp(commodity.modified),
+                                    modified=to_datetime(commodity.modified),
                                     demand_price=commodity.sell,
                                     demand_units=commodity.demand,
                                     demand_level=-1,
@@ -644,7 +665,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             stream = open(self.file, 'r', encoding='utf8')
         return self.ingest_stream(stream)
     
-   def load_known_systems(self) -> dict[int, str]:
+    def load_known_systems(self) -> dict[int, str]:
         """Returns {system_id -> system_name} for all current systems in the database."""
         try:
             return {
@@ -717,7 +738,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     pos_x=system.pos_x,
                     pos_y=system.pos_y,
                     pos_z=system.pos_z,
-                    modified=datetime.utcfromtimestamp(system.modified)
+                    modified=to_datetime(system.modified)
                     if system.modified
                     else datetime.utcnow(),
                 )
@@ -732,7 +753,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.known_systems[system.id] = system.name
 
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.ERROR(f"Failed to ensure system {system.name} ({system.id}): {e}")
+            self.tdenv.WARN(f"Failed to ensure system {system.name} ({system.id}): {e}")
             raise
 
     
@@ -754,7 +775,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     refuel=self.bool_yn(station.refuel),
                     repair=self.bool_yn(station.repair),
                     planetary=self.bool_yn(station.planetary),
-                    modified=datetime.utcfromtimestamp(station.modified),
+                    modified=to_datetime(station.modified),
                     type_id=station.type,
                 )
             )
@@ -776,7 +797,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
 
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.ERROR(
+            self.tdenv.WARN(
                 f"Failed to ensure station {station.name} ({station.id}): {e}"
             )
             raise
@@ -789,15 +810,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 Ship(
                     ship_id=ship.id,
                     name=ship.name,
-                    modified=datetime.utcfromtimestamp(ship.modified)
-                    if ship.modified else datetime.utcnow(),
                 )
             )
             self.need_commit = True
             self.known_ships[ship.id] = ship.name
             return ship
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.ERROR(f"Failed to ensure ship {ship.name} ({ship.id}): {e}")
+            self.tdenv.WARN(f"Failed to ensure ship {ship.name} ({ship.id}): {e}")
             raise
 
     def ensure_module(self, module: UpgradeDTO):
@@ -810,15 +829,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     class_=module.cls,
                     rating=module.rating,
                     ship=module.ship,
-                    modified=datetime.utcfromtimestamp(module.modified)
-                    if module.modified else datetime.utcnow(),
                 )
             )
             self.need_commit = True
             self.known_modules[module.id] = module.name
             return module
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.ERROR(f"Failed to ensure module {module.name} ({module.id}): {e}")
+            self.tdenv.WARN(f"Failed to ensure module {module.name} ({module.id}): {e}")
             raise
 
     
@@ -878,10 +895,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             return commodity
 
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.ERROR(
+            self.tdenv.WARN(
                 f"Failed to ensure commodity {commodity.name} ({commodity.id}): {e}"
             )
             raise
+            
+    def bool_yn(self, value: Optional[bool]) -> str:
+        """ translates a ternary (none, true, false) into the ?/Y/N representation """
+        return '?' if value is None else ('Y' if value else 'N')
     
     def ingest_stream(self, stream):
         """Ingest a spansh-style galaxy dump, yielding system-level data."""
