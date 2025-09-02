@@ -376,6 +376,16 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
         for sys, ID in corrections.stations.items()
         if isinstance(ID, int)
     )
+    # Fix stations with extra spaces
+    spacePattern = re.compile(r'\s{2,}')
+    badStations = [
+        station for station in stationByName
+        if spacePattern.search(station)
+    ]
+    for station in badStations:
+        stationByName[spacePattern.sub(' ', station)] = stationByName.pop(station)
+    DEBUG0("Corrected {} stations with extra spaces.", len(badStations))
+    
     sysCorrections = corrections.systems
     stnCorrections = {
         stn: alt
@@ -491,10 +501,8 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
         elif newID in processedStations:
             # Check for duplicates
             if not corrected:
-                raise MultipleStationEntriesError(
-                    priceFile, lineNo, facility,
-                    processedStations[newID]
-                )
+                tdenv.DEBUG0("Duplicate station: {}, skipping.", facility)
+                return
         
         stationID = newID
         processedSystems.add(systemName)
