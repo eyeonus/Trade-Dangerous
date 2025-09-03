@@ -736,22 +736,8 @@ class TradeDB:
             ]
             
             if not changedPaths:
-                # Do we need to reload the .prices file?
-                if not self.pricesPath.exists():
-                    self.tdenv.DEBUG1("No .prices file to load")
-                    return
-                
-                pricesStamp = self.pricesPath.stat().st_mtime
-                if pricesStamp <= dbFileStamp:
-                    self.tdenv.DEBUG1("DB Cache is up to date.")
-                    return
-                
-                self.tdenv.DEBUG0(".prices has changed: re-importing")
-                cache.importDataFromFile(
-                    self, self.tdenv, self.pricesPath, reset=True
-                )
                 return
-            
+                
             self.tdenv.DEBUG0("Rebuilding DB Cache [{}]", str(changedPaths))
         else:
             self.tdenv.DEBUG0("Building DB Cache")

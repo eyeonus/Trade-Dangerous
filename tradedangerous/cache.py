@@ -1134,16 +1134,6 @@ def buildCache(tdb, tdenv):
             with prog.sub_task(description="Save DB"):
                 session.commit()
 
-        # --- Step 3: parse the prices file (still plain session) ---
-        if pricesPath.exists():
-            with Progress(max_value=None, width=25, prefix="Processing prices file"):
-                processPricesFile(tdenv, session, pricesPath)
-        else:
-            tdenv.NOTE(
-                f'Missing "{pricesPath}" file - no price data.',
-                stderr=True,
-            )
-
     tdb.close()
     tdenv.DEBUG0("Finished")
 
