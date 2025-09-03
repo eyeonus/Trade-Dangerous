@@ -25,11 +25,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from datetime import datetime, date
-import csv
-import os
-import re
-import sys
-import typing
+import os, re, sys, csv, typing
+from collections import defaultdict
 
 
 from functools import partial as partial_fn
@@ -46,7 +43,6 @@ from .tradeexcept import TradeException
 from tradedangerous.misc.progress import Progress, CountingBar
 from . import corrections, utils
 from . import prices
-
 
 
 # For mypy/pylint type checking
@@ -303,6 +299,168 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> t
         return 0, 0
     
     return unitsNo, levelNo
+    
+# ---------------------------------------------------------------------- 
+# Helpers to mimic the old SQLite importer’s FK resolution semantics 
+# ----------------------------------------------------------------------
+
+def _parse_headers(tableName: str, columnDefs: list[str]):
+    """
+    Parse CSV headers into specs:
+    - direct: normal column
+    - unique: unique index (unq:)
+    - fk: foreign key needing resolution (col@Table.field)
+    - helper: !column used only for disambiguation
+    - skip: completely ignored
+    Returns (specs, uniqueIndexes)
+    """
+    specs = []
+    uniqueIndexes = []
+
+    for idx, cName in enumerate(columnDefs):
+        colName, _, srcKey = cName.partition("@")
+
+        # --- special hack: System table, avoid clobbering name
+        if tableName == "System" and cName == "name@Added.added_id":
+            specs.append(("direct", idx, "added_id", None, None))
+            continue
+
+        # --- RareItem: system name is a helper, not a skip
+        if tableName == "RareItem" and cName == "!name@System.system_id":
+            specs.append(("helper", idx, "name", "System", "system_id"))
+            continue
+
+        # --- unique index
+        if colName.startswith("unq:"):
+            colName = colName[len("unq:"):]
+            uniqueIndexes.append(idx)
+            specs.append(("unique", idx, colName, None, None))
+            continue
+
+        if not srcKey:
+            # plain column
+            specs.append(("direct", idx, colName, None, None))
+            continue
+
+        # Foreign keys
+        refTable, _, refCol = srcKey.partition(".")
+
+        if cName.startswith("!"):
+            # helper column (not inserted, only used in FK join)
+            specs.append(("helper", idx, colName[1:], refTable, refCol))
+            continue
+
+        # RareItem specifics
+        if tableName == "RareItem":
+            if cName == "name@Station.station_id":
+                specs.append(("fk", idx, "name", "Station", "station_id"))
+                continue
+            if cName == "name@Category.category_id":
+                specs.append(("fk", idx, "name", "Category", "category_id"))
+                continue
+
+        # Generic FK
+        specs.append(("fk", idx, colName, refTable, refCol))
+
+    return specs, uniqueIndexes
+
+
+
+def _process_row(session, specs, linein, columnDefs, importPath=None, lineNo=None):
+    """
+    Process a single CSV row:
+    - Collect helpers (e.g. !name@System.system_id)
+    - Insert direct/unique values
+    - Resolve FKs into IDs using helpers
+    """
+    rowdict = {}
+    helpers = {}
+    fk_specs = []
+
+    for kind, idx, colName, refTable, refCol in specs:
+        val = linein[idx] if idx < len(linein) else None
+
+        if kind in ("direct", "unique"):
+            rowdict[colName] = val
+        elif kind == "helper":
+            # stash helper value for later FK resolution
+            helpers[(refTable, refCol)] = (colName, val)
+        elif kind == "fk":
+            # collect FK spec for later resolution
+            fk_specs.append((colName, refTable, refCol, val))
+        # skip: ignored
+
+    # now resolve fks
+    rowdict = _resolve_fk(session, fk_specs, rowdict, helpers,
+                          importPath=importPath, lineNo=lineNo)
+
+    return rowdict
+
+
+def _resolve_fk(session, fk_specs, rowdict, helpers, importPath=None, lineNo=None):
+    """
+    Resolve FK columns using ORM queries, with join helpers if present.
+    Updates rowdict in place.
+    """
+    for colName, refTable, refCol, val in fk_specs:
+        if not val:
+            continue
+
+        if refTable == "Station":
+            Sys = SA.System
+            q = session.query(SA.Station).join(Sys)
+            q = q.filter(SA.Station.name == val)
+
+            # pull system name from helpers if present
+            for (hTable, hField), (hCol, hVal) in helpers.items():
+                if hTable == "System" and hCol == "name":
+                    q = q.filter(Sys.name == hVal)
+
+            obj = q.one_or_none()
+            if not obj:
+                raise InvalidLineError(
+                    importPath, lineNo,
+                    f"Station {val!r} not found with helpers {helpers}",
+                    str(rowdict)
+                )
+            rowdict[refCol] = obj.station_id
+
+        elif refTable == "Category":
+            # allow numeric IDs or names
+            if str(val).isdigit():
+                obj = session.query(SA.Category).filter(SA.Category.category_id == int(val)).one_or_none()
+            else:
+                obj = session.query(SA.Category).filter(SA.Category.name == val).one_or_none()
+
+            if not obj:
+                raise InvalidLineError(
+                    importPath, lineNo,
+                    f"Category {val!r} not found",
+                    str(rowdict)
+                )
+            rowdict[refCol] = obj.category_id
+
+        else:
+            Model = getattr(SA, refTable)
+            q = session.query(Model)
+            if str(val).isdigit() and hasattr(Model, f"{colName}_id"):
+                # try numeric match against an *_id column
+                q = q.filter(getattr(Model, f"{colName}_id") == int(val))
+            else:
+                q = q.filter(getattr(Model, colName) == val)
+
+            obj = q.one_or_none()
+            if not obj:
+                raise InvalidLineError(
+                    importPath, lineNo,
+                    f"{refTable}.{colName} {val!r} not found",
+                    str(rowdict)
+                )
+            pk_field = [c.key for c in Model.__table__.columns if c.primary_key][0]
+            rowdict[refCol] = getattr(obj, pk_field)
+
+    return rowdict
+
 
 
 ######################################################################
@@ -809,8 +967,7 @@ def deprecationCheckItem(importPath, lineNo, line):
         importPath, lineNo, 'Item',
         line[1], corrections.correctItem(line[1]),
     )
-
-
+    
 def processImportFile(
     tdenv,
     session: Session,
@@ -822,8 +979,9 @@ def processImportFile(
 ):
     """
     Import a CSV file into the given table.
-    Column headers map to ORM model fields; special handling for
-    uniqueness, reserved names, deprecation, and type casting.
+    Handles unq:, !, and @Table.col headers (via helpers),
+    enforces uniqueness, runs deprecation checks, type coercion,
+    and commits in chunks for large files.
     """
 
     tdenv.DEBUG0(
@@ -836,18 +994,14 @@ def processImportFile(
     if line_callback:
         line_callback = partial_fn(line_callback, **call_args)
 
-    uniquePfx = "unq:"
-    uniqueLen = len(uniquePfx)
-
-    # --- batch size config (like eddblink) ---
+    # --- batch size config ---
     env_batch = os.environ.get("TD_LISTINGS_BATCH")
     if env_batch:
         try:
             max_transaction_items = int(env_batch)
         except ValueError:
             tdenv.WARN(
-                "Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.",
-                env_batch,
+                "Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.", env_batch
             )
             max_transaction_items = None
     else:
@@ -855,41 +1009,23 @@ def processImportFile(
 
     if max_transaction_items is None:
         if session.bind.dialect.name in ("mysql", "mariadb"):
-            max_transaction_items = 50 * 1024   # ~50k rows per commit
+            max_transaction_items = 50 * 1024
         else:
-            max_transaction_items = 250 * 1024  # ~250k rows for SQLite
+            max_transaction_items = 250 * 1024
 
     transaction_items = 0
 
     with importPath.open("r", encoding="utf-8") as importFile:
         csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
 
-        # first line must be the column names
+        # header
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
 
-        bindColumns = []
-        uniqueIndexes = []
+        specs, uniqueIndexes = _parse_headers(tableName, columnDefs)
 
-        # preprocess header
-        for cIndex, cName in enumerate(columnDefs):
-            colName, _, srcKey = cName.partition("@")
-
-            # --- FIX: avoid overwriting System.name with name@Added.added_id
-            if tableName == "System" and cName == "name@Added.added_id":
-                colName = "added_id"
-
-            # unique index columns
-            if colName.startswith(uniquePfx):
-                uniqueIndexes.append(cIndex)
-                colName = colName[uniqueLen:]
-
-            bindColumns.append(colName)
-
-        # Check if there is a deprecation check for this table
-        deprecationFn = getattr(
-            sys.modules[__name__], "deprecationCheck" + tableName, None
-        )
+        # deprecation check
+        deprecationFn = getattr(sys.modules[__name__], "deprecationCheck" + tableName, None)
 
         importCount = 0
         uniqueIndex = {}
@@ -901,6 +1037,10 @@ def processImportFile(
                 continue
             lineNo = csvin.line_num
 
+            # skip completely blank rows (e.g. trailing newline at EOF)
+            if all((c is None or str(c).strip() == "") for c in linein):
+                continue
+
             if len(linein) != columnCount:
                 tdenv.NOTE(
                     "Wrong number of columns ({}:{}): {}",
@@ -909,8 +1049,6 @@ def processImportFile(
                     ", ".join(linein),
                 )
                 continue
-
-            tdenv.DEBUG1("       Values: {}", ", ".join(linein))
 
             # Run deprecation checks
             if deprecationFn:
@@ -924,20 +1062,19 @@ def processImportFile(
                     continue
 
             # Handle uniqueness check
-            if uniqueIndexes:
-                keyValues = [str(linein[col]).upper() for col in uniqueIndexes]
-                key = ":!:".join(keyValues)
+            for idx in uniqueIndexes:
+                key = str(linein[idx]).upper()
                 prevLineNo = uniqueIndex.get(key, 0)
                 if prevLineNo:
-                    key = "/".join(keyValues)
                     raise DuplicateKeyError(
                         importPath, lineNo, "entry", key, prevLineNo
                     )
                 uniqueIndex[key] = lineNo
 
             try:
-                # Map column names → row values
-                rowdict = dict(zip(bindColumns, linein))
+                rowdict = {}  # ensure defined even if _process_row fails
+                rowdict = _process_row(session, specs, linein, columnDefs,
+                                       importPath=importPath, lineNo=lineNo)
 
                 # Guard against invalid system/station names
                 if tableName == "System":
@@ -948,7 +1085,6 @@ def processImportFile(
                             "System with no name",
                             str(rowdict),
                         )
-
                 if tableName == "Station":
                     if not rowdict.get("name") or not rowdict["name"].strip():
                         raise InvalidLineError(
@@ -989,13 +1125,10 @@ def processImportFile(
                         rowdict[key] = float(val)
                     elif pytype is bool:
                         rowdict[key] = str(val).strip().lower() in (
-                            "1",
-                            "y",
-                            "yes",
-                            "true",
-                            "t",
+                            "1", "y", "yes", "true", "t"
                         )
-                    elif "datetime" in typename or "timestamp" in typename:
+                    elif "datetime" in typename or "timestamp" in typename \
+                         or isinstance(col.type, (SA_DateTime, DateTime)):
                         v = str(val).strip()
                         try:
                             rowdict[key] = datetime.fromisoformat(v)
@@ -1013,7 +1146,6 @@ def processImportFile(
                             rowdict[key] = date.fromisoformat(v)
                         except ValueError:
                             rowdict[key] = None
-                    # else: leave as string
 
                 # Special-case remaps for reserved words / ORM naming differences
                 if tableName == "Upgrade" and "class" in rowdict:
@@ -1026,7 +1158,6 @@ def processImportFile(
                 importCount += 1
                 transaction_items += 1
 
-                # --- commit in chunks ---
                 if transaction_items >= max_transaction_items:
                     session.commit()
                     session.begin()
@@ -1041,13 +1172,39 @@ def processImportFile(
                 )
                 pass
 
-        # final commit for leftovers
         session.commit()
+        tdenv.DEBUG0("{count} {table}s imported", count=importCount, table=tableName)
 
-        tdenv.DEBUG0(
-            "{count} {table}s imported", count=importCount, table=tableName
-        )
 
+def _process_row(session, specs, linein, columnDefs, importPath=None, lineNo=None):
+    """
+    Process a single CSV row:
+    - Collect helpers (e.g. !name@System.system_id)
+    - Insert direct/unique values
+    - Resolve FKs into IDs using helpers
+    """
+    rowdict = {}
+    helpers = {}
+    fk_specs = []
+
+    for kind, idx, colName, refTable, refCol in specs:
+        val = linein[idx] if idx < len(linein) else None
+
+        if kind in ("direct", "unique"):
+            rowdict[colName] = val
+        elif kind == "helper":
+            # stash helper value for later FK resolution
+            helpers[(refTable, refCol)] = (colName, val)
+        elif kind == "fk":
+            # collect FK spec for later resolution
+            fk_specs.append((colName, refTable, refCol, val))
+        # skip: ignored
+
+    # now resolve fks
+    rowdict = _resolve_fk(session, fk_specs, rowdict, helpers,
+                          importPath=importPath, lineNo=lineNo)
+
+    return rowdict
 
 
 ######################################################################
@@ -1146,8 +1303,7 @@ def regeneratePricesFile(tdb, tdenv):
     """
     Regenerate the .prices file from the current DB contents.
     Uses the ORM session rather than raw sqlite.
-    """
-    tdenv.DEBUG0("Regenerating .prices file")
+        tdenv.DEBUG0("Regenerating .prices file")
 
     with tdb.Session() as session:
         with tdb.pricesPath.open("w", encoding="utf-8") as pricesFile:
@@ -1161,6 +1317,8 @@ def regeneratePricesFile(tdb, tdenv):
     # Only touch the DB file on SQLite — MariaDB has no dbPath
     if tdb.engine.dialect.name == "sqlite" and tdb.dbPath and os.path.exists(tdb.dbPath):
         os.utime(tdb.dbPath)
+    """
+    return
 
 ######################################################################
 

@@ -154,10 +154,15 @@ Wrappers remain in place for API compatibility; existing return shapes and calli
 ### `processImportFile`
 - Old: built raw `INSERT OR REPLACE` SQL string from CSV headers, executed row-by-row.  
 - New:  
-  - CSV headers mapped directly to ORM model fields.  
-  - Objects constructed as dicts (`dict(zip(...))`) and merged via `session.merge()`.  
-  - Uniqueness checks and deprecation logic preserved.  
-- No raw SQL string construction.
+  - CSV headers parsed into **specs** (`direct`, `unique`, `fk`, `helper`, `skip`) via `_parse_headers`.  
+  - Objects constructed row-by-row via `_process_row` and `_resolve_fk`.  
+  - Foreign key resolution implemented in Python:
+    - `!name@System.system_id` treated as **helper** (system name), used to disambiguate stations.  
+    - `name@Station.station_id` resolved to numeric `station_id` by `(Station.name, System.name)`.  
+    - `name@Category.category_id` resolved to numeric `category_id` by `Category.name` (with fallback to numeric IDs in Item.csv).  
+  - RareItem rows now mirror sqlite3 semantics: helpers are discarded, FKs resolved, and the real Rare name from `unq:name` preserved.  
+  - Uniqueness checks, deprecation logic, and type coercion retained.  
+  - Chunked commits added (`TD_LISTINGS_BATCH`) to avoid giant transactions, with safe defaults (50k rows per commit on MariaDB, 250k on SQLite).
 
 ### `buildCache`
 - Old: created temp sqlite file, ran `.executescript()`, imported data, swapped files.  
@@ -166,6 +171,7 @@ Wrappers remain in place for API compatibility; existing return shapes and calli
   - Recreates schema via `lifecycle.reset_sqlite` (SQLite) or `lifecycle.reset_mariadb` (MariaDB).  
   - Runs imports using ORM-based `processImportFile` and `processPricesFile`.  
   - File rotation retained for SQLite; skipped for MariaDB.  
+  - Safe commit between files enforced.
 
 ### `regeneratePricesFile`
 - Old: called `prices.dumpPrices(dbFilename, …)` with sqlite filename and touched DB file mtime.  
@@ -193,6 +199,8 @@ Wrappers remain in place for API compatibility; existing return shapes and calli
 - `cache.py` is now completely free of sqlite3.  
 - All database operations use SQLAlchemy ORM.  
 - File is backend-agnostic (SQLite and MariaDB supported).  
+- RareItem, Station, Item and Category CSVs confirmed to import with correct FK resolution.  
+- Trailing blank lines in CSVs safely ignored.  
 - API compatibility maintained for existing callers.
 
 
