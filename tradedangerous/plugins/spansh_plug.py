@@ -261,21 +261,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         assert not (self.url and self.file), 'Provide either url or file, not both'
         if self.file and (self.file != '-'):
             self.file = (Path(self.tdenv.cwDir, self.file)).resolve()
-        
-        # Bootstrap if DB is missing (legacy behaviour)
-        if not Path(self.tdb.dataPath, "TradeDangerous.db").exists():
-            ri_path = Path(self.tdb.dataPath, "RareItem.csv")
-            rib_path = ri_path.with_suffix(".tmp")
-            if ri_path.exists():
-                if rib_path.exists():
-                    rib_path.unlink()
-                ri_path.rename(rib_path)
-            cache.buildCache(self.tdb, self.tdenv)
-            if ri_path.exists():
-                ri_path.unlink()
-            if rib_path.exists():
-                rib_path.rename(ri_path)
-        
+
         # Transaction / batching controls
         self.need_commit = False
         env_batch = os.environ.get("TD_LISTINGS_BATCH")
@@ -296,19 +282,45 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.commit_rate = 50 * 1024   # ~50k rows per commit
             else:
                 self.commit_rate = 250 * 1024  # ~250k rows per commit (SQLite is fine with big txns)
-
         self.commit_limit = self.commit_rate
-        
+
         # SQLAlchemy session factory + active session
         self.Session = get_session_factory(self.tdb.engine)
         self.session = self.Session()
-        
+
+        # Bootstrap only if the DB is genuinely empty (backend-agnostic)
+        try:
+            has_system = self.session.query(System.system_id).limit(1).first() is not None
+            has_station = self.session.query(Station.station_id).limit(1).first() is not None
+        except Exception:
+            # If metadata/tables aren’t there yet, we need a cache build
+            has_system = has_station = False
+
+        if not (has_system or has_station):
+            # Preserve RareItem.csv shuffle exactly as before
+            ri_path = Path(self.tdb.dataPath, "RareItem.csv")
+            rib_path = ri_path.with_suffix(".tmp")
+            if ri_path.exists():
+                if rib_path.exists():
+                    rib_path.unlink()
+                ri_path.rename(rib_path)
+            cache.buildCache(self.tdb, self.tdenv)
+            if ri_path.exists():
+                ri_path.unlink()
+            if rib_path.exists():
+                rib_path.rename(ri_path)
+            # Refresh session after bootstrap to avoid stale state
+            self.session.close()
+            self.session = self.Session()
+
         # Preload known entities (to dedupe inserts)
         self.known_systems = self.load_known_systems()
         self.known_stations = self.load_known_stations()
         self.known_ships = self.load_known_ships()
         self.known_modules = self.load_known_modules()
         self.known_commodities = self.load_known_commodities()
+
+
 
     def print(self, *args, **kwargs) -> None:
         """ Shortcut to the TradeEnv uprint method. """
@@ -1016,12 +1028,21 @@ def ingest_market(market):
         )
 
 def parse_ts(ts):
-    """Parses Spansh timestamps to datetime (UTC, microsecond=0)."""
+    """Normalize Spansh timestamps to datetime (UTC, microsecond=0).
+    Accepts str, datetime, int/float epoch, or None.
+    """
     if ts is None:
         return None
-    if ts.endswith('+00'):
-        ts = ts[:-3]
-    if '.' not in ts:
-        ts += '.0'
-    return datetime.strptime(ts, '%Y-%m-%d %H:%M:%S.%f').replace(microsecond=0)
+    if isinstance(ts, datetime):
+        return ts.replace(microsecond=0)
+    if isinstance(ts, (int, float)):
+        return datetime.utcfromtimestamp(ts).replace(microsecond=0)
+    if isinstance(ts, str):
+        if ts.endswith('+00'):
+            ts = ts[:-3]
+        if '.' not in ts:
+            ts += '.0'
+        return datetime.strptime(ts, '%Y-%m-%d %H:%M:%S.%f').replace(microsecond=0)
+    raise TypeError(f"Unsupported timestamp type: {type(ts)}")
+
 
