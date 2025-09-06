@@ -100,8 +100,15 @@ def exportTableToFile(session, tdenv, tableName, csvPath=None):
     Returns: (lineCount, exportPath)
     """
 
-    # Path for CSV file
-    csvPath = csvPath or tdenv.csvPath
+    # Resolve path for CSV file
+    csvPath = csvPath or getattr(tdenv, "csvPath", None)
+    if csvPath is None:
+        # Fallback: use dataDir if csvPath not set
+        csvPath = getattr(tdenv, "dataDir", None)
+        if csvPath is None:
+            raise TradeException("No valid CSV path found (csvPath and dataDir are None).")
+    csvPath = Path(csvPath)
+
     if not csvPath.is_dir():
         raise TradeException(f"Save location '{csvPath}' not found.")
 
@@ -112,7 +119,6 @@ def exportTableToFile(session, tdenv, tableName, csvPath=None):
     # Prepare CSV output path
     exportPath = (csvPath / Path(tableName)).with_suffix(".csv")
     tdenv.DEBUG0(f"Export Table '{tableName}' to '{exportPath}'")
-
     lineCount = 0
     with exportPath.open("w", encoding="utf-8", newline="") as exportFile:
         exportOut = csv.writer(
@@ -137,7 +143,7 @@ def exportTableToFile(session, tdenv, tableName, csvPath=None):
         # Reverse the first two columns for certain tables
         if tableName in reverseList:
             columnList[0], columnList[1] = columnList[1], columnList[0]
-
+            
         # Initialize helper lists
         csvHead    = []
         stmtColumn = []

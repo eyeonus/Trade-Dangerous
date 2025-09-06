@@ -661,7 +661,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.print(f'Exporting {table}.csv            ', end='\r')
                 csvexport.exportTableToFile(self.session, self.tdenv, table)
             self.print('Exporting TradeDangerous.prices', end='\r')
-            cache.regeneratePricesFile(self.session, self.tdenv)
+            cache.regeneratePricesFile(self.tdb, self.tdenv)
             self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
         
         return False
