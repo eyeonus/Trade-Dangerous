@@ -1068,6 +1068,108 @@ def processImportFile(
             "{count} {table}s imported", count=importCount, table=tableName
         )
 
+
+
+
+######################################################################
+
+
+def buildCache(tdb, tdenv):
+    """
+    Rebuilds the database from source files.
+
+    TD's data is either "stable" - information that rarely changes like Ship
+    details, star systems etc - and "volatile" - pricing information, etc.
+
+    The stable data starts out in data/TradeDangerous.sql while other data
+    is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
+
+    We load both sets of data into a database, after which we can
+    avoid the text-processing overhead by simply checking if the text files
+    are newer than the database.
+    """
+
+    tdenv.NOTE(
+        "Rebuilding cache file: this may take a few moments.",
+        stderr=True,
+    )
+
+    dbPath = tdb.dbPath
+    sqlPath = tdb.sqlPath
+    pricesPath = tdb.pricesPath
+
+    engine = tdb.engine
+
+    # Open a new session for this rebuild
+    with tdb.Session() as session:
+        # --- Step 1: reset schema in a dedicated transaction ---
+        with session.begin():
+            if engine.dialect.name == "sqlite":
+                lifecycle.reset_sqlite(engine, dbPath)
+            elif engine.dialect.name in ("mysql", "mariadb"):
+                from tradedangerous.db import orm_models
+                lifecycle.reset_mariadb(engine, orm_models.Base.metadata)
+            else:
+                raise TradeException(
+                    f"Unsupported database backend: {engine.dialect.name}"
+                )
+
+        # --- Step 2: import standard tables on plain session ---
+        with Progress(
+            max_value=len(tdb.importTables) + 1,
+            prefix="Importing",
+            width=25,
+            style=CountingBar,
+        ) as prog:
+            for importName, importTable in tdb.importTables:
+                import_path = Path(importName)
+                import_lines = file_line_count(import_path, missing_ok=True)
+                with prog.sub_task(
+                    max_value=import_lines, description=importTable
+                ) as child:
+                    prog.increment(value=1)
+                    call_args = {"task": child, "advance": 1}
+                    try:
+                        processImportFile(
+                            tdenv,
+                            session,
+                            import_path,
+                            importTable,
+                            line_callback=prog.update_task,
+                            call_args=call_args,
+                        )
+                        # safety commit after each file
+                        session.commit()
+                    except FileNotFoundError:
+                        tdenv.DEBUG0(
+                            "WARNING: processImportFile found no {} file", importName
+                        )
+                    except StopIteration:
+                        tdenv.NOTE(
+                            "{} exists but is empty. "
+                            "Remove it or add the column definition line.",
+                            importName,
+                        )
+            prog.increment(1)
+
+            with prog.sub_task(description="Save DB"):
+                session.commit()
+
+        # --- Step 3: parse the prices file (still plain session) ---
+        if pricesPath.exists():
+            with Progress(max_value=None, width=25, prefix="Processing prices file"):
+                processPricesFile(tdenv, session, pricesPath)
+        else:
+            tdenv.NOTE(
+                f'Missing "{pricesPath}" file - no price data.',
+                stderr=True,
+            )
+
+    tdb.close()
+    tdenv.DEBUG0("Finished")
+
+
+
 ######################################################################
 
 
