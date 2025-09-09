@@ -1,6 +1,6 @@
 # TradeDangerous Refactor — `tradedb.py` 
 
-This document summarises the sqlite3 → SQLAlchemy migration applied to `tradedb.py`.  
+This summarises the sqlite3 → SQLAlchemy migration applied to `tradedb.py`.  
 Wrappers remain in place for API compatibility; a potential Pass 2 could streamline or remove them.
 
 ---
@@ -60,7 +60,7 @@ Wrappers guarantee API compatibility with existing code.
 
 # TradeDangerous Refactor — `prices.py`
 
-This document summarises the sqlite3 → SQLAlchemy migration applied to `prices.py`.  
+This summarises the sqlite3 → SQLAlchemy migration applied to `prices.py`.  
 Wrappers and output formats remain unchanged; only the DB access layer has been refactored.
 
 ---
@@ -117,7 +117,7 @@ Wrappers and output formats remain unchanged; only the DB access layer has been 
 
 # TradeDangerous Refactor — `cache.py`
 
-This document summarises the sqlite3 → SQLAlchemy migration applied to `cache.py`.  
+This summarises the sqlite3 → SQLAlchemy migration applied to `cache.py`.  
 Wrappers remain in place for API compatibility; existing return shapes and calling conventions are preserved.
 
 ---
@@ -206,7 +206,7 @@ Wrappers remain in place for API compatibility; existing return shapes and calli
 
 # TradeDangerous Refactor — `plugins/eddblink_plug.py`
 
-This document summarises the sqlite3 → SQLAlchemy migration applied to the **EDDBLink plugin**.  
+This summarises the sqlite3 → SQLAlchemy migration applied to the **EDDBLink plugin**.  
 The plugin API (`ImportPlugin`) remains unchanged; it still exposes the same options and behaviour.  
 All database operations now use SQLAlchemy ORM and engine utilities.
 
@@ -279,3 +279,64 @@ All database operations now use SQLAlchemy ORM and engine utilities.
 - All database interactions flow through SQLAlchemy ORM and lifecycle helpers.  
 - API compatibility preserved (`reloadCache`, plugin options, entrypoints unchanged).  
 - VACUUM retained for SQLite, gated by dialect.  
+
+# TradeDangerous Refactor — `plugins/spansh_plug.py`
+
+SQLAlchemy migration + performance rework for the Spansh importer. Public plugin options/behaviour unchanged.
+
+---
+
+## sqlite3 Removal / ORM Adoption
+- Eliminated `sqlite3` usage; all DB I/O goes through **SQLAlchemy ORM** (engine from `tdb.engine`).
+- Introduced DTOs (`SystemDTO`, `StationDTO`, `ShipDTO`, `UpgradeDTO`, `CommodityDTO`) to avoid name collisions with ORM models.
+- Replaced legacy `INSERT OR REPLACE/IGNORE` with ORM **upsert via `session.merge()`** and staged bulk inserts (see below).
+
+## Bootstrap & Idempotence
+- **Fixed SQLite-only bootstrap guard**: no longer checks for a `.db` file; instead inspects the DB via ORM and only builds cache if **truly empty** (prevents wiping eddblink-seeded DBs).
+- Import remains **idempotent**: re-runs don’t duplicate Systems/Stations or flip values; vendor rows (StationItem/ShipVendor/UpgradeVendor) are upserted on `station_id/item_id/...` uniques.
+
+## Bulk Staging & Flush Ordering (speed + FK safety)
+- Replaced per-row `session.merge()` with **bulk staging buffers**:
+  - Parents: `System`, `Station`, `Ship`, `Upgrade`, `Item`
+  - Children: `ShipVendor`, `UpgradeVendor`, `StationItem`
+- **Flush/commit order** enforced to satisfy FKs:  
+  `System → Station → (Ship, Upgrade, Item) → (ShipVendor, UpgradeVendor, StationItem)`
+- Flushes occur in bounded batches; size controlled by `TD_LISTINGS_BATCH` (defaults: ~50k rows/commit on MariaDB, ~250k on SQLite).
+
+## Timestamp & Tri-state Semantics
+- Added `to_datetime(...)` normaliser; `parse_ts(...)` now tolerant of `str | datetime | epoch | None`.
+- Preserved Spansh “age” semantics (epoch seconds → UTC `DATETIME(6)`); `maxage` filter applied against **entity** timestamps (not station).
+- Preserved **tri-state** service flags (`'Y'/'N'/'?'`); no boolean coercion.
+
+## Category & `ui_order`
+- Category lookup **preloaded once** (name→`category_id`) for commodity inserts.
+- Moved **`ui_order` recompute** out of per-row `ensure_commodity`; performed **once at the end** to remove O(n²) behaviour.
+
+## Ingestion & Streaming
+- `ingest_shipyard`, `ingest_outfitting`, `ingest_market` now **yield empty iterators** instead of returning `None` (simplifies streaming logic).
+- Maintained streaming parse with `ijson` (`yajl2_c` backend).
+- Progress total: added a pragmatic estimate using a fixed **`AVG_BYTES_PER_SYSTEM`**; original “count systems” pre-pass retained as a **commented** fallback for recalibration.
+
+## Progress & Diagnostics
+- `Progresser` hardened to tolerate missing/ended tasks; added **periodic staged-flush logging** (`Flushing staged: …` line overwrite) to show movement during long batches.
+- Retained user-facing timing helper (`get_timings`) and per-system summary under verbose modes.
+
+## Export / Prices
+- **CSV export** refactored to accept a **Session**:  
+  `csvexport.exportTableToFile(self.session, self.tdenv, table)`
+- **Prices regeneration** continues to use the **tdb** wrapper (needs paths/session factory):  
+  `cache.regeneratePricesFile(self.tdb, self.tdenv)`
+
+## Network / Freshness
+- Retained HEAD/GET freshness checks and mtime sync for downloads; download progress quirks unchanged (server may omit `Content-Length`).
+
+## Transactions & Defaults
+- Bounded transactions to avoid massive MariaDB locks and SQLite thrash; environment override via `TD_LISTINGS_BATCH`.
+- Final **flush + commit** performed at the end of import; session kept alive for CSV export.
+
+---
+
+### Result
+- Spansh full-import is **dramatically faster** and remains safe under FK constraints.
+- Behaviour preserved (tri-state services, typing, age filters, idempotence).
+- Export pipeline works end-to-end (CSV + `.prices`) with mixed inputs: **Session** for csvexport, **tdb** for cache.

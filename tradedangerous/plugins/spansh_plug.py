@@ -58,8 +58,8 @@ STATION_TYPE_MAP = {
     'Planetary Port': [12, True],
     'Mega ship': [13, False],
     'Asteroid base': [14, False],
-    'Drake-Class Carrier': [24, False],
-    'Settlement': [25, True],
+    'Drake-Class Carrier': [24, False], # fleet carriers
+    'Settlement': [25, True], # Odyssey settlement
 }
 
 # ---------------------------------------------------------------------------
@@ -259,16 +259,20 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.commit_rate = 250 * 1024
         self.commit_limit = self.commit_rate
 
+        # SQLAlchemy session factory + active session
         self.Session = get_session_factory(self.tdb.engine)
         self.session = self.Session()
 
+        # Bootstrap only if the DB is genuinely empty (backend-agnostic)
         try:
             has_system = self.session.query(System.system_id).limit(1).first() is not None
             has_station = self.session.query(Station.station_id).limit(1).first() is not None
         except Exception:
             has_system = has_station = False
+            # If metadata/tables aren’t there yet, we need a cache build
 
         if not (has_system or has_station):
+            # Preserve RareItem.csv shuffle exactly as before
             ri_path = Path(self.tdb.dataPath, "RareItem.csv")
             rib_path = ri_path.with_suffix(".tmp")
             if ri_path.exists():
@@ -280,9 +284,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ri_path.unlink()
             if rib_path.exists():
                 rib_path.rename(ri_path)
+            # Refresh session after bootstrap to avoid stale state
             self.session.close()
             self.session = self.Session()
-
+            
+        # Preload known entities (to dedupe inserts)
         self.known_systems = self.load_known_systems()
         self.known_stations = self.load_known_stations()
         self.known_ships = self.load_known_ships()
@@ -309,9 +315,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
 
     def print(self, *args, **kwargs) -> None:
+        """ Shortcut to the TradeEnv uprint method. """
         self.tdenv.uprint(*args, **kwargs)
 
     def commit(self, *, force: bool = False) -> None:
+        """Perform a commit if required, but try not to do a crazy amount of committing."""
         try:
             self.session.commit()
         except SQLAlchemyError as e:
@@ -360,7 +368,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         """
         # TODO: find a better way to get the total number of systems
-        # A bad way to do it (kept for recalibration of estimate):
+        # A bad way to do it (but kept for recalibration of estimate):
         total_systems = 0
         if self.tdenv.detail:
             print('Counting total number of systems...')
@@ -371,7 +379,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     print(f'Total systems: {total_systems}', end='\\r')
         if self.tdenv.detail:
             print(f'Total systems: {total_systems}')
-        # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress:
+
         """
 
         # --- Quick estimate of system count ---
@@ -400,6 +408,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         }
 
         with Timing() as timing, Progresser(self.tdenv, sys_desc, total=estimated_systems) as progress:
+      # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress: # Can be used with TODO above.
             system_count = 0
             total_station_count = 0
             total_ship_count = 0
