@@ -4,7 +4,6 @@ Refactored for SQLAlchemy ORM; legacy sqlite3 usage removed.
 """
 from __future__ import annotations
 
-from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -20,10 +19,12 @@ import time
 import typing
 import ijson
 
-from dataclasses import dataclass  # project baseline Python ≥3.9
+import signal
+signal.signal(signal.SIGINT, lambda sig, frame: sys.exit(1))
 
-# SQLAlchemy / DB engine
-from sqlalchemy.orm import Session
+
+from dataclasses import dataclass
+
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..db import get_session_factory
@@ -47,7 +48,6 @@ if typing.TYPE_CHECKING:
 SOURCE_URL = 'https://downloads.spansh.co.uk/galaxy_stations.json'
 
 # Mapping of station type names → [numeric code, planetary flag]
-# ⚠ Must be preserved exactly for compatibility with existing data/logic.
 STATION_TYPE_MAP = {
     'None': [0, False],
     'Outpost': [1, False],
@@ -58,84 +58,73 @@ STATION_TYPE_MAP = {
     'Planetary Port': [12, True],
     'Mega ship': [13, False],
     'Asteroid base': [14, False],
-    'Drake-Class Carrier': [24, False],  # fleet carriers
-    'Settlement': [25, True],            # Odyssey settlements
+    'Drake-Class Carrier': [24, False],
+    'Settlement': [25, True],
 }
 
+# ---------------------------------------------------------------------------
+# DTOs (dataclasses with slots, Python 3.10+)
+# ---------------------------------------------------------------------------
 
-if dataclass:
-    # Dataclass with slots is considerably cheaper and faster than namedtuple
-    # but is only reliably introduced in 3.10+
-    # DTO classes are used during JSON ingestion only.
-    # They intentionally use *DTO suffixes to avoid colliding with ORM model names
-    # (System, Station, Ship, Upgrade, Item, etc.) imported from db.orm_models.
-    @dataclass(slots=True)
-    class SystemDTO:
-        id:       int
-        name:     str
-        pos_x:    float
-        pos_y:    float
-        pos_z:    float
-        modified: float | None  # epoch seconds; converted to UTC datetime later
+@dataclass(slots=True)
+class SystemDTO:
+    id:       int
+    name:     str
+    pos_x:    float
+    pos_y:    float
+    pos_z:    float
+    modified: float | None
 
-    @dataclass(slots=True)
-    class StationDTO:  # pylint: disable=too-many-instance-attributes
-        id:           int
-        system_id:    int
-        name:         str
-        distance:     float
-        max_pad_size: str
-        # Service flags remain tri-state: 'Y'/'N'/'?'
-        market:       str
-        black_market: str
-        shipyard:     str
-        outfitting:   str
-        rearm:        str
-        refuel:       str
-        repair:       str
-        planetary:    str
-        type:         int
-        modified:     float  # epoch seconds
+@dataclass(slots=True)
+class StationDTO:  # pylint: disable=too-many-instance-attributes
+    id:           int
+    system_id:    int
+    name:         str
+    distance:     float
+    max_pad_size: str
+    market:       str
+    black_market: str
+    shipyard:     str
+    outfitting:   str
+    rearm:        str
+    refuel:       str
+    repair:       str
+    planetary:    str
+    type:         int
+    modified:     float
 
-    @dataclass(slots=True)
-    class ShipDTO:
-        id:       int
-        name:     str
-        modified: float  # epoch seconds
+@dataclass(slots=True)
+class ShipDTO:
+    id:       int
+    name:     str
+    modified: float
 
-    @dataclass(slots=True)
-    class UpgradeDTO:
-        id:       int
-        name:     str
-        cls:      int
-        rating:   str
-        ship:     str
-        modified: float  # epoch seconds
+@dataclass(slots=True)
+class UpgradeDTO:
+    id:       int
+    name:     str
+    cls:      int
+    rating:   str
+    ship:     str
+    modified: float
 
-    @dataclass(slots=True)
-    class CommodityDTO:
-        id:       int
-        name:     str
-        category: str
-        demand:   int
-        supply:   int
-        sell:     int
-        buy:      int
-        modified: float  # epoch seconds
+@dataclass(slots=True)
+class CommodityDTO:
+    id:       int
+    name:     str
+    category: str
+    demand:   int
+    supply:   int
+    sell:     int
+    buy:      int
+    modified: float
 
-else:
-    SystemDTO    = namedtuple('SystemDTO', 'id,name,pos_x,pos_y,pos_z,modified')
-    StationDTO   = namedtuple('StationDTO',
-                              'id,system_id,name,distance,max_pad_size,'
-                              'market,black_market,shipyard,outfitting,'
-                              'rearm,refuel,repair,planetary,type,modified')
-    ShipDTO      = namedtuple('ShipDTO', 'id,name,modified')
-    UpgradeDTO   = namedtuple('UpgradeDTO', 'id,name,cls,rating,ship,modified')
-    CommodityDTO = namedtuple('CommodityDTO',
-                              'id,name,category,demand,supply,sell,buy,modified')
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def to_datetime(value):
-    """Normalise timestamps to datetime (UTC). Accepts datetime, epoch float, or None."""
+    """Normalise timestamps to datetime (UTC)."""
     if value is None:
         return datetime.utcnow()
     if isinstance(value, datetime):
@@ -144,48 +133,39 @@ def to_datetime(value):
 
 
 class Timing:
-    """ Helper that provides a context manager for timing code execution. """
-    
+    """ Context manager for timing code execution. """
     def __init__(self):
         self.start_ts = None
         self.end_ts = None
-    
     def __enter__(self):
         self.start_ts = time.perf_counter()
         self.end_ts = None
         return self
-    
     def __exit__(self, *args):
         self.end_ts = time.perf_counter()
-    
     @property
     def elapsed(self) -> Optional[float]:
-        """ If the timing has finished, calculates the elapsed time. """
         if self.start_ts is None:
             return None
         return (self.end_ts or time.perf_counter()) - self.start_ts
-    
     @property
     def is_finished(self) -> bool:
-        """ True if the timing has finished. """
         return self.end_ts is not None
 
 
 class Progresser:
     """ Encapsulates a potentially transient progress view for a given TradeEnv. """
     def __init__(self, tdenv: 'TradeEnv', title: str, fancy: bool = True, total: Optional[int] = None):
-        self.started = time.time()
         self.tdenv = tdenv
-        self.progress, self.main_task = None, None
         self.title = title
         self.fancy = fancy
         self.total = total
+        self.progress = None
         self.main_task = None
         if fancy:
-            self.progress = Progress(console=self.tdenv.console, transient=True, auto_refresh=True, refresh_per_second=2)
-        else:
-            self.progress = None
-    
+            self.progress = Progress(console=self.tdenv.console, transient=True,
+                                     auto_refresh=True, refresh_per_second=2)
+
     def __enter__(self):
         if not self.fancy:
             self.tdenv.uprint(self.title)
@@ -193,17 +173,17 @@ class Progresser:
             self.progress.start()
             self.main_task = self.progress.add_task(self.title, start=True, total=self.total)
         return self
-    
+
     def __exit__(self, *args):
         if self.progress is not None:
             self.progress.stop()
-    
+
     def update(self, title: str) -> None:
         if self.fancy:
             self.progress.update(self.main_task, description=title)
         else:
             self.tdenv.DEBUG1(title)
-    
+
     @contextmanager
     def task(self, title: str, total: Optional[int] = None, parent: Optional[str] = None):
         parent = parent or self.main_task
@@ -219,15 +199,14 @@ class Progresser:
                 self.progress.remove_task(task)
         if task is not None and parent is not None:
             self.progress.update(parent, advance=1)
-    
+
     def bump(self, task, advance: int = 1, description: Optional[str] = None):
-        """ Advances the progress of a task by one mark. """
         if self.fancy and task is not None:
             self.progress.update(task, advance=advance, description=description)
 
 
 def get_timings(started: float, system_count: int, total_station_count: int, *, min_count: int = 100) -> tuple[float, str]:
-    """ describes how long it is taking to process each system and station """
+    """ Describe how long it is taking to process each system and station. """
     elapsed = time.time() - started
     timings = "sys="
     if system_count >= min_count:
@@ -243,16 +222,17 @@ def get_timings(started: float, system_count: int, total_station_count: int, *, 
         timings += "..."
     return elapsed, timings
 
+# ---------------------------------------------------------------------------
+# Import Plugin up to run()
+# ---------------------------------------------------------------------------
 
 class ImportPlugin(plugins.ImportPluginBase):
-    """Plugin that downloads data from https://spansh.co.uk/dumps."""
-    
     pluginOptions = {
         'url': f'URL to download galaxy data from (defaults to {SOURCE_URL})',
         'file': 'Local filename to import galaxy data from; use "-" to load from stdin',
         'maxage': 'Skip all entries older than specified age in days, ex.: maxage=1.5',
     }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.url = self.getOption('url')
@@ -262,42 +242,33 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.file and (self.file != '-'):
             self.file = (Path(self.tdenv.cwDir, self.file)).resolve()
 
-        # Transaction / batching controls
-        self.need_commit = False
         env_batch = os.environ.get("TD_LISTINGS_BATCH")
         if env_batch:
             try:
                 self.commit_rate = int(env_batch)
             except ValueError:
-                self.tdenv.WARN(
-                    "Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.",
-                    env_batch,
-                )
+                self.tdenv.WARN("Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.", env_batch)
                 self.commit_rate = None
         else:
             self.commit_rate = None
 
         if self.commit_rate is None:
             if self.tdb.engine.dialect.name in ("mysql", "mariadb"):
-                self.commit_rate = 50 * 1024   # ~50k rows per commit
+                self.commit_rate = 50 * 1024
             else:
-                self.commit_rate = 250 * 1024  # ~250k rows per commit (SQLite is fine with big txns)
+                self.commit_rate = 250 * 1024
         self.commit_limit = self.commit_rate
 
-        # SQLAlchemy session factory + active session
         self.Session = get_session_factory(self.tdb.engine)
         self.session = self.Session()
 
-        # Bootstrap only if the DB is genuinely empty (backend-agnostic)
         try:
             has_system = self.session.query(System.system_id).limit(1).first() is not None
             has_station = self.session.query(Station.station_id).limit(1).first() is not None
         except Exception:
-            # If metadata/tables aren’t there yet, we need a cache build
             has_system = has_station = False
 
         if not (has_system or has_station):
-            # Preserve RareItem.csv shuffle exactly as before
             ri_path = Path(self.tdb.dataPath, "RareItem.csv")
             rib_path = ri_path.with_suffix(".tmp")
             if ri_path.exists():
@@ -309,57 +280,62 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ri_path.unlink()
             if rib_path.exists():
                 rib_path.rename(ri_path)
-            # Refresh session after bootstrap to avoid stale state
             self.session.close()
             self.session = self.Session()
 
-        # Preload known entities (to dedupe inserts)
         self.known_systems = self.load_known_systems()
         self.known_stations = self.load_known_stations()
         self.known_ships = self.load_known_ships()
         self.known_modules = self.load_known_modules()
         self.known_commodities = self.load_known_commodities()
-
+        
+                # --- staging buffers for bulk inserts ---
+        self._staged_systems = []
+        self._staged_stations = []
+        self._staged_ships = []
+        self._staged_modules = []
+        self._staged_commodities = []
+        
+                # preload categories for commodity lookup
+        self._categories = {
+            c.name.lower(): c.category_id
+            for c in self.session.query(Category).all()
+        }
+        
+                # children — must be flushed after parents
+        self._staged_stationitems = []
+        self._staged_shipvendors = []
+        self._staged_upgradevendors = []
 
 
     def print(self, *args, **kwargs) -> None:
-        """ Shortcut to the TradeEnv uprint method. """
         self.tdenv.uprint(*args, **kwargs)
-    
+
     def commit(self, *, force: bool = False) -> None:
-        """Perform a commit if required, but try not to do a crazy amount of committing."""
-        if not force and not self.need_commit:
-            return
-
-        if not force and self.commit_limit > 0:
-            self.commit_limit -= 1
-            return
-
         try:
             self.session.commit()
         except SQLAlchemyError as e:
             self.tdenv.WARN(f"Commit failed: {e}")
             self.session.rollback()
             raise
-
         self.commit_limit = self.commit_rate
-        self.need_commit = False
-
     
     def run(self):
         if not self.tdenv.detail:
             self.print('This will take at least several minutes...')
             self.print('You can increase verbosity (-v) to get a sense of progress')
-        
+
         theme = self.tdenv.theme
-        BOLD, CLOSE, DIM, ITALIC = theme.bold, theme.CLOSE, theme.dim, theme.italic  # pylint: disable=invalid-name
+        BOLD, CLOSE, DIM, ITALIC = theme.bold, theme.CLOSE, theme.dim, theme.italic
+
+        # --- Download management ---
         if not self.file:
             url = self.url or SOURCE_URL
             local_mod_time = 0
             self.file = Path(self.tdenv.tmpDir, "galaxy_stations.json")
             if self.file.exists():
                 local_mod_time = self.file.stat().st_mtime
-            
+
             headers = {"User-Agent": "Trade-Dangerous", "Accept-Encoding": "identity"}
             try:
                 response = requests.head(url, headers=headers, timeout=70)
@@ -377,14 +353,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 except Exception as e:  # pylint: disable=broad-exception-caught
                     self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
                     return False
-                self.print(f'Download complete, saved to local file: "{self.file}"')
+                self.print(f'Download complete, saved to local file: \"{self.file}\"')
                 os.utime(self.file, (dump_mod_time, dump_mod_time))
-        
+
         sys_desc = f"Importing {ITALIC}spansh{CLOSE} data"
-        
+
         """
         # TODO: find a better way to get the total number of systems
-        # A bad way to do it:
+        # A bad way to do it (kept for recalibration of estimate):
         total_systems = 0
         if self.tdenv.detail:
             print('Counting total number of systems...')
@@ -392,16 +368,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             for system_data in ijson.items(stream, 'item', use_float=True):
                 total_systems += 1
                 if (not total_systems % 250) and self.tdenv.detail:
-                    print(f'Total systems: {total_systems}', end='\r')
-        
+                    print(f'Total systems: {total_systems}', end='\\r')
         if self.tdenv.detail:
             print(f'Total systems: {total_systems}')
+        # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress:
         """
-        
-        # Estimate total number of systems from file size and average bytes per system.
-        # Avoids a full pre-pass over the JSON (saves significant time).
+
+        # --- Quick estimate of system count ---
         file_size = os.path.getsize(self.file)
-        AVG_BYTES_PER_SYSTEM = 220_000  # derived from 17,007,808,433 ÷ 77,365 ≈ 219,803
+        AVG_BYTES_PER_SYSTEM = 220_000
         estimated_systems = max(1, int(file_size / AVG_BYTES_PER_SYSTEM))
 
         if self.tdenv.detail:
@@ -410,189 +385,113 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f"from {file_size:,} bytes using {AVG_BYTES_PER_SYSTEM} B/system average"
             )
 
-        
+        # --- Preload DB state for vendors/items ---
+        existing_shipvendors = {
+            (sv.station_id, sv.ship_id): sv.modified
+            for sv in self.session.query(ShipVendor).all()
+        }
+        existing_upgradevendors = {
+            (uv.station_id, uv.upgrade_id): uv.modified
+            for uv in self.session.query(UpgradeVendor).all()
+        }
+        existing_stationitems = {
+            (si.station_id, si.item_id): si.modified
+            for si in self.session.query(StationItem).all()
+        }
+
         with Timing() as timing, Progresser(self.tdenv, sys_desc, total=estimated_systems) as progress:
-        # with Timing() as timing, Progresser(self.tdenv, sys_desc, total=len(self.known_stations)) as progress:
             system_count = 0
             total_station_count = 0
             total_ship_count = 0
             total_module_count = 0
             total_commodity_count = 0
-            
+
             age_cutoff = timedelta(days=self.maxage) if self.maxage else None
             now = datetime.now()
             started = time.time()
-            
+
             for system, station_iter in self.data_stream():
                 upper_sys = system.name.upper()
-                
+
                 elapsed, averages = get_timings(started, system_count, total_station_count)
                 label = f"{ITALIC}#{system_count:<5d}{CLOSE} {BOLD}{upper_sys:30s}{CLOSE} {DIM}({elapsed:.2f}s, avgs: {averages}){CLOSE}"
-                stations = list(station_iter)
-                with progress.task(label, total=len(stations)) as sta_task:
+
+                with progress.task(label) as sta_task:
                     if system.id not in self.known_systems:
                         self.ensure_system(system, upper_sys)
-                    
+
                     station_count = 0
                     ship_count = 0
                     module_count = 0
                     commodity_count = 0
-                    
-                    for station, ships, modules, commodities in stations:
+
+                    for station, ships, modules, commodities in station_iter:
                         fq_station_name = f'@{upper_sys}/{station.name}'
-                        
+
                         station_info = self.known_stations.get(station.id)
                         if not station_info or station.modified > station_info[2]:
                             self.ensure_station(station)
                         elif station_info[1] != station.system_id:
                             self.print(f'        |  {station.name:50s}  |  Megaship station moved, updating system')
-                            db_station = self.session.query(Station).get(station.id)
+                            db_station = self.session.get(Station, station.id)
                             if db_station:
                                 db_station.system_id = station.system_id
                                 db_station.modified = datetime.utcnow()
-                                self.need_commit = True
                             self.known_stations[station.id] = (
                                 station.name,
                                 station.system_id,
                                 station.modified,
                             )
-                        
-                        # Ships
-                        db_ship_times = {
-                            sid: modified
-                            for sid, modified in (
-                                self.session.query(ShipVendor.ship_id, ShipVendor.modified)
-                                .filter(ShipVendor.station_id == station.id)
-                                .all()
-                            )
-                        }
 
-                        ship_entries = []
-                        for ship in ships:
+                        # Ships
+                        for ship in ships or []:
                             if ship.id not in self.known_ships:
                                 ship = self.ensure_ship(ship)
-
-                            # We're concerned with the ship age, not the station age,
-                            # as they each have their own 'modified' times.
                             if age_cutoff and (now - ship.modified) > age_cutoff:
-                                if self.tdenv.detail:
-                                    self.print(
-                                        f'        |  {fq_station_name:50s}  |  Skipping shipyard due to age: {now - ship.modified}, ts: {ship.modified}'
-                                    )
                                 break
-
-                            db_modified = db_ship_times.get(ship.id)
-                            modified_dt = parse_ts(db_modified) if db_modified else None
-                            if modified_dt and ship.modified <= modified_dt:
-                                # All ships in a station will have the same modified time,
-                                # so no need to check the rest if the first is older.
-                                if self.tdenv.detail > 2:
-                                    self.print(
-                                        f'        |  {fq_station_name:50s}  |  Skipping older shipyard data'
-                                    )
+                            db_modified = existing_shipvendors.get((station.id, ship.id))
+                            if db_modified and ship.modified <= db_modified:
                                 break
-
-                            ship_entries.append(
-                                ShipVendor(
+                            self._staged_shipvendors.append(
+                                dict(
                                     ship_id=ship.id,
                                     station_id=station.id,
                                     modified=to_datetime(ship.modified),
                                 )
                             )
+                            existing_shipvendors[(station.id, ship.id)] = ship.modified
+                            ship_count += 1
 
-                        if ship_entries:
-                            for entry in ship_entries:
-                                self.session.merge(entry)   # ORM upsert
-                            self.need_commit = True
-                            ship_count += len(ship_entries)
-                        
                         # Upgrades
-                        db_module_times = {
-                            uid: modified
-                            for uid, modified in (
-                                self.session.query(UpgradeVendor.upgrade_id, UpgradeVendor.modified)
-                                .filter(UpgradeVendor.station_id == station.id)
-                                .all()
-                            )
-                        }
-
-                        module_entries = []
-                        for module in modules:
+                        for module in modules or []:
                             if module.id not in self.known_modules:
                                 module = self.ensure_module(module)
-
-                            # We're concerned with the outfitting age, not the station age,
-                            # as they each have their own 'modified' times.
                             if age_cutoff and (now - module.modified) > age_cutoff:
-                                if self.tdenv.detail:
-                                    self.print(
-                                        f'        |  {fq_station_name:50s}  |  Skipping outfitting due to age: {now - station.modified}, ts: {station.modified}'
-                                    )
                                 break
-
-                            db_modified = db_module_times.get(module.id)
-                            modified_dt = parse_ts(db_modified) if db_modified else None
-                            if modified_dt and module.modified <= modified_dt:
-                                # All modules in a station will have the same modified time,
-                                # so no need to check the rest if the first is older.
-                                if self.tdenv.detail > 2:
-                                    self.print(
-                                        f'        |  {fq_station_name:50s}  |  Skipping older outfitting data'
-                                    )
+                            db_modified = existing_upgradevendors.get((station.id, module.id))
+                            if db_modified and module.modified <= db_modified:
                                 break
-
-                            module_entries.append(
-                                UpgradeVendor(
+                            self._staged_upgradevendors.append(
+                                dict(
                                     upgrade_id=module.id,
                                     station_id=station.id,
                                     modified=to_datetime(module.modified),
                                 )
                             )
+                            existing_upgradevendors[(station.id, module.id)] = module.modified
+                            module_count += 1
 
-                        if module_entries:
-                            for entry in module_entries:
-                                self.session.merge(entry)   # ORM upsert
-                            self.need_commit = True
-                            module_count += len(module_entries)
-
-                        
-                        # Items
-                        db_commodity_times = {
-                            iid: modified
-                            for iid, modified in (
-                                self.session.query(StationItem.item_id, StationItem.modified)
-                                .filter(StationItem.station_id == station.id)
-                                .all()
-                            )
-                        }
-
-                        commodity_entries = []
-                        for commodity in commodities:
+                        # Commodities
+                        for commodity in commodities or []:
                             if commodity.id not in self.known_commodities:
                                 commodity = self.ensure_commodity(commodity)
-
-                            # We're concerned with the market age, not the station age,
-                            # as they each have their own 'modified' times.
                             if age_cutoff and (now - commodity.modified) > age_cutoff:
-                                if self.tdenv.detail:
-                                    self.print(
-                                        f'        |  {fq_station_name:50s}  |  Skipping market due to age: {now - station.modified}, ts: {station.modified}'
-                                    )
                                 break
-
-                            db_modified = db_commodity_times.get(commodity.id)
-                            modified_dt = parse_ts(db_modified) if db_modified else None
-                            if modified_dt and commodity.modified <= modified_dt:
-                                # All commodities in a station will have the same modified time,
-                                # so no need to check the rest if the first is older.
-                                if self.tdenv.detail > 2:
-                                    self.print(
-                                        f'        |  {fq_station_name:50s}  |  Skipping older market data'
-                                    )
+                            db_modified = existing_stationitems.get((station.id, commodity.id))
+                            if db_modified and commodity.modified <= db_modified:
                                 break
-
-                            commodity_entries.append(
-                                StationItem(
+                            self._staged_stationitems.append(
+                                dict(
                                     station_id=station.id,
                                     item_id=commodity.id,
                                     modified=to_datetime(commodity.modified),
@@ -605,21 +504,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     from_live=0,
                                 )
                             )
-
-                        if commodity_entries:
-                            for entry in commodity_entries:
-                                self.session.merge(entry)   # ORM upsert
-                            self.need_commit = True
-                            commodity_count += len(commodity_entries)
-
-                        # Good time to save data and try to keep the transaction small
-                        self.commit()
+                            existing_stationitems[(station.id, commodity.id)] = commodity.modified
+                            commodity_count += 1
 
                         if commodity_count or ship_count or module_count:
                             station_count += 1
                         progress.bump(sta_task)
 
-                
+                # Per-system counters
                 system_count += 1
                 if station_count:
                     total_station_count += station_count
@@ -632,17 +524,86 @@ class ImportPlugin(plugins.ImportPluginBase):
                             f'{station_count:3d} st {commodity_count:5d} co '
                             f'{ship_count:4d} sh {module_count:4d} mo'
                         )
-                self.commit()
-                
+
+                # Commit batch every N systems
+                if not system_count % 100:
+                    self.print(
+                        f'Flushing staged: {len(self._staged_systems)} sys, '
+                        f'{len(self._staged_stations)} stn, '
+                        f'{len(self._staged_ships)} sh, '
+                        f'{len(self._staged_modules)} mo, '
+                        f'{len(self._staged_commodities)} co, '
+                        f'{len(self._staged_shipvendors)} shv, '
+                        f'{len(self._staged_upgradevendors)} upv, '
+                        f'{len(self._staged_stationitems)} sti',
+                        end='\r'
+                    )
+
+                    # parents first
+                    if self._staged_systems:
+                        self.session.bulk_insert_mappings(System, self._staged_systems)
+                        self._staged_systems.clear()
+                    if self._staged_stations:
+                        self.session.bulk_insert_mappings(Station, self._staged_stations)
+                        self._staged_stations.clear()
+                    if self._staged_ships:
+                        self.session.bulk_insert_mappings(Ship, self._staged_ships)
+                        self._staged_ships.clear()
+                    if self._staged_modules:
+                        self.session.bulk_insert_mappings(Upgrade, self._staged_modules)
+                        self._staged_modules.clear()
+                    if self._staged_commodities:
+                        self.session.bulk_insert_mappings(Item, self._staged_commodities)
+                        self._staged_commodities.clear()
+
+                    # children after parents
+                    if self._staged_shipvendors:
+                        self.session.bulk_insert_mappings(ShipVendor, self._staged_shipvendors)
+                        self._staged_shipvendors.clear()
+                    if self._staged_upgradevendors:
+                        self.session.bulk_insert_mappings(UpgradeVendor, self._staged_upgradevendors)
+                        self._staged_upgradevendors.clear()
+                    if self._staged_stationitems:
+                        self.session.bulk_insert_mappings(StationItem, self._staged_stationitems)
+                        self._staged_stationitems.clear()
+
+                    self.commit(force=True)
+
                 if not system_count % 25:
                     avg_stations = total_station_count / (system_count or 1)
                     progress.update(
                         f"{sys_desc}{DIM} ({total_station_count}:station:, "
                         f"{system_count}:glowing_star:, {avg_stations:.1f}:station:/:glowing_star:){CLOSE}"
                     )
-            
+
             # Final flush
-            self.commit()
+            if self._staged_systems:
+                self.session.bulk_insert_mappings(System, self._staged_systems)
+                self._staged_systems.clear()
+            if self._staged_stations:
+                self.session.bulk_insert_mappings(Station, self._staged_stations)
+                self._staged_stations.clear()
+            if self._staged_ships:
+                self.session.bulk_insert_mappings(Ship, self._staged_ships)
+                self._staged_ships.clear()
+            if self._staged_modules:
+                self.session.bulk_insert_mappings(Upgrade, self._staged_modules)
+                self._staged_modules.clear()
+            if self._staged_commodities:
+                self.session.bulk_insert_mappings(Item, self._staged_commodities)
+                self._staged_commodities.clear()
+
+            if self._staged_shipvendors:
+                self.session.bulk_insert_mappings(ShipVendor, self._staged_shipvendors)
+                self._staged_shipvendors.clear()
+            if self._staged_upgradevendors:
+                self.session.bulk_insert_mappings(UpgradeVendor, self._staged_upgradevendors)
+                self._staged_upgradevendors.clear()
+            if self._staged_stationitems:
+                self.session.bulk_insert_mappings(StationItem, self._staged_stationitems)
+                self._staged_stationitems.clear()
+
+            self.commit(force=True)
             self.session.close()
             self.print(
                 f'{timedelta(seconds=int(timing.elapsed))!s}  Done  '
@@ -650,22 +611,46 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f'{total_ship_count} sh {total_module_count} mo'
             )
 
-        
+        # Post-import export phase
         with Timing() as timing:
-            # Need to make sure cached tables are updated
             self.print('Exporting to cache...')
             for table in (
                 "Item", "Station", "System", "StationItem",
                 "Ship", "ShipVendor", "Upgrade", "UpgradeVendor"
             ):
-                self.print(f'Exporting {table}.csv            ', end='\r')
+                self.print(f'Exporting {table}.csv            ', end='\\r')
                 csvexport.exportTableToFile(self.session, self.tdenv, table)
-            self.print('Exporting TradeDangerous.prices', end='\r')
+            self.print('Exporting TradeDangerous.prices', end='\\r')
             cache.regeneratePricesFile(self.tdb, self.tdenv)
             self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
-        
-        return False
 
+        # Recalculate ui_order for commodities once, at the end
+        items = (
+            self.session.query(Item.name, Item.category_id, Item.fdev_id, Item.ui_order)
+            .order_by(Item.category_id, Item.name)
+            .all()
+        )
+        cat_id = 0
+        ui_order = 1
+        changes = []
+        for name, db_cat, fdev_id, db_order in items:
+            if db_cat != cat_id:
+                ui_order = 1
+                cat_id = db_cat
+            else:
+                ui_order += 1
+            if ui_order != db_order:
+                changes.append((ui_order, fdev_id))
+        if changes:
+            for new_order, fdev_id in changes:
+                (
+                    self.session.query(Item)
+                    .filter(Item.fdev_id == fdev_id)
+                    .update({"ui_order": new_order})
+                )
+            self.commit(force=True)
+
+        return False
     
     def data_stream(self):
         stream = None
@@ -741,21 +726,18 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     
     def ensure_system(self, system: SystemDTO, upper_name: str) -> None:
-        """Adds a record for a system, and registers the system in the known_systems dict."""
+        """Stage a system for insertion, update known_systems dict immediately."""
         try:
-            self.session.merge(
-                System(
+            self._staged_systems.append(
+                dict(
                     system_id=system.id,
                     name=system.name,
                     pos_x=system.pos_x,
                     pos_y=system.pos_y,
                     pos_z=system.pos_z,
-                    modified=to_datetime(system.modified)
-                    if system.modified
-                    else datetime.utcnow(),
+                    modified=to_datetime(system.modified) if system.modified else datetime.utcnow(),
                 )
             )
-            self.need_commit = True
 
             if self.tdenv.detail > 1:
                 self.print(
@@ -765,15 +747,16 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.known_systems[system.id] = system.name
 
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.WARN(f"Failed to ensure system {system.name} ({system.id}): {e}")
+            self.tdenv.WARN(f"Failed to stage system {system.name} ({system.id}): {e}")
             raise
+
 
     
     def ensure_station(self, station: StationDTO) -> None:
-        """Adds or updates a station, and registers it in the known_stations dict."""
+        """Stage a station for insertion/update, update known_stations dict immediately."""
         try:
-            self.session.merge(
-                Station(
+            self._staged_stations.append(
+                dict(
                     station_id=station.id,
                     system_id=station.system_id,
                     name=station.name,
@@ -791,11 +774,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     type_id=station.type,
                 )
             )
-            self.need_commit = True
 
             note = "Updated" if self.known_stations.get(station.id) else "Added"
             if self.tdenv.detail > 1:
-                system_name = self.known_systems[station.system_id]
+                system_name = self.known_systems.get(station.system_id, "")
                 upper_sys = system_name.upper()
                 fq_station_name = f'@{upper_sys}/{station.name}'
                 self.print(
@@ -809,6 +791,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             )
 
         except Exception as e:  # pylint: disable=broad-except
+            self.tdenv.WARN(f"Failed to stage station {station.name} ({station.id}): {e}")
+            raise
+
+
+        except Exception as e:  # pylint: disable=broad-except
             self.tdenv.WARN(
                 f"Failed to ensure station {station.name} ({station.id}): {e}"
             )
@@ -816,26 +803,25 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     
     def ensure_ship(self, ship: ShipDTO):
-        """Adds or updates a ship, and registers it in the known_ships dict."""
+        """Stage a ship for insertion/update, update known_ships dict immediately."""
         try:
-            self.session.merge(
-                Ship(
+            self._staged_ships.append(
+                dict(
                     ship_id=ship.id,
                     name=ship.name,
                 )
             )
-            self.need_commit = True
             self.known_ships[ship.id] = ship.name
             return ship
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.WARN(f"Failed to ensure ship {ship.name} ({ship.id}): {e}")
+            self.tdenv.WARN(f"Failed to stage ship {ship.name} ({ship.id}): {e}")
             raise
 
     def ensure_module(self, module: UpgradeDTO):
-        """Adds or updates a module, and registers it in the known_modules dict."""
+        """Stage a module for insertion/update, update known_modules dict immediately."""
         try:
-            self.session.merge(
-                Upgrade(
+            self._staged_modules.append(
+                dict(
                     upgrade_id=module.id,
                     name=module.name,
                     class_=module.cls,
@@ -843,74 +829,39 @@ class ImportPlugin(plugins.ImportPluginBase):
                     ship=module.ship,
                 )
             )
-            self.need_commit = True
             self.known_modules[module.id] = module.name
             return module
         except Exception as e:  # pylint: disable=broad-except
-            self.tdenv.WARN(f"Failed to ensure module {module.name} ({module.id}): {e}")
+            self.tdenv.WARN(f"Failed to stage module {module.name} ({module.id}): {e}")
             raise
+
 
     
     def ensure_commodity(self, commodity: CommodityDTO):
-        """Adds or updates a commodity, and registers it in the known_commodities dict."""
+        """Stage a commodity for insertion/update, update known_commodities dict immediately."""
         try:
-            # Find category by case-insensitive name
-            category = (
-                self.session.query(Category)
-                .filter(Category.name.ilike(commodity.category))
-                .first()
-            )
-            if not category:
+            category_id = self._categories.get(commodity.category.lower())
+            if not category_id:
                 raise RuntimeError(f"Unknown category for commodity {commodity.name}")
 
-            # Insert or update the Item
-            self.session.merge(
-                Item(
+            self._staged_commodities.append(
+                dict(
                     item_id=commodity.id,
-                    category_id=category.category_id,
+                    category_id=category_id,
                     name=corrections.correctItem(commodity.name),
                     fdev_id=commodity.id,
                 )
             )
-            self.need_commit = True
-
-            # Update ui_order across all items (preserve existing algorithm)
-            items = (
-                self.session.query(Item.name, Item.category_id, Item.fdev_id, Item.ui_order)
-                .order_by(Item.category_id, Item.name)
-                .all()
-            )
-            cat_id = 0
-            ui_order = 1
-            self.tdenv.DEBUG0("Updating ui_order data for items.")
-            changes = []
-            for name, db_cat, fdev_id, db_order in items:
-                if db_cat != cat_id:
-                    ui_order = 1
-                    cat_id = db_cat
-                else:
-                    ui_order += 1
-                if ui_order != db_order:
-                    self.tdenv.DEBUG0(f"UI order for {name} ({fdev_id}) needs correction.")
-                    changes.append((ui_order, fdev_id))
-
-            if changes:
-                for new_order, fdev_id in changes:
-                    (
-                        self.session.query(Item)
-                        .filter(Item.fdev_id == fdev_id)
-                        .update({"ui_order": new_order})
-                    )
-                self.need_commit = True
 
             self.known_commodities[commodity.id] = commodity.name
             return commodity
 
         except Exception as e:  # pylint: disable=broad-except
             self.tdenv.WARN(
-                f"Failed to ensure commodity {commodity.name} ({commodity.id}): {e}"
+                f"Failed to stage commodity {commodity.name} ({commodity.id}): {e}"
             )
             raise
+
             
     def bool_yn(self, value: Optional[bool]) -> str:
         """ translates a ternary (none, true, false) into the ?/Y/N representation """
@@ -936,9 +887,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ),
                 ingest_stations(system_data),
             )
-
-
-
+    
 def ingest_stations(system_data):
     """Ingest system-level data, yielding station-level data."""
     sys_id = system_data.get('id64')
@@ -989,7 +938,7 @@ def ingest_stations(system_data):
 def ingest_shipyard(shipyard):
     """Ingest station-level shipyard data, yielding ShipDTOs."""
     if not shipyard or not shipyard.get('ships'):
-        return None
+        return
     for ship in shipyard['ships']:
         yield ShipDTO(
             id=ship.get('shipId'),
@@ -1000,7 +949,7 @@ def ingest_shipyard(shipyard):
 def ingest_outfitting(outfitting):
     """Ingest station-level outfitting data, yielding UpgradeDTOs."""
     if not outfitting or not outfitting.get('modules'):
-        return None
+        return
     for module in outfitting['modules']:
         yield UpgradeDTO(
             id=module.get('moduleId'),
@@ -1014,7 +963,7 @@ def ingest_outfitting(outfitting):
 def ingest_market(market):
     """Ingest station-level market data, yielding CommodityDTOs."""
     if not market or not market.get('commodities'):
-        return None
+        return
     for commodity in market['commodities']:
         yield CommodityDTO(
             id=commodity.get('commodityId'),
