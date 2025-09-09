@@ -19,18 +19,10 @@ jobs:
           - Windows
           - MacOS
         py:
+          - "3.13"
           - "3.12"
           - "3.11"
           - "3.10"
-          - "3.9"
-          - "3.8"
-        exclude:
-          # It's unlikely people will be using 3.8 at this point on Win or Mac
-          - os: Windows
-            py: "3.8"
-          - os: MacOS
-            py: "3.8"
-    
     steps:
     - uses: actions/checkout@v4
     
