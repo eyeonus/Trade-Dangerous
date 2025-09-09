@@ -720,29 +720,37 @@ class TradeDB:
     
     def reloadCache(self):
         """
-        Checks if the .sql, .prices or *.csv files are newer than the cache.
+        Ensure DB is present, non-empty, and minimally populated.
+        CSVs or SQL are only used when DB is absent, empty, or unpopulated.
         """
-        
-        if self.dbPath.exists():
-            dbFileStamp = self.dbPath.stat().st_mtime
-            
-            paths = [self.sqlPath]
-            paths += [Path(f) for (f, _) in self.importTables]
-            
-            changedPaths = [
-                [path, path.stat().st_mtime]
-                for path in paths
-                if path.exists() and path.stat().st_mtime > dbFileStamp
-            ]
-            
-            if not changedPaths:
-                return
-                
-            self.tdenv.DEBUG0("Rebuilding DB Cache [{}]", str(changedPaths))
+
+        from sqlalchemy import text
+        from tradedangerous.db.lifecycle import is_empty
+
+        def _is_minimally_populated(engine) -> bool:
+            """
+            Returns True if the DB contains data in key core tables
+            (System, Station, Item). Otherwise False.
+            """
+            core_tables = ("System", "Station", "Item")
+            with engine.connect() as conn:
+                for table in core_tables:
+                    try:
+                        count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+                        if not count or count == 0:
+                            return False
+                    except Exception:
+                        # Table missing or inaccessible → treat as unpopulated
+                        return False
+            return True
+
+        # --- paranoid DB health check ---
+        if is_empty(self.engine) or not _is_minimally_populated(self.engine):
+            self.tdenv.DEBUG0("Rebuilding DB Cache (missing/empty core tables)")
+            cache.buildCache(self, self.tdenv)
         else:
-            self.tdenv.DEBUG0("Building DB Cache")
-        
-        cache.buildCache(self, self.tdenv)
+            self.tdenv.DEBUG0("DB already populated; skipping CSV/sql mtime checks")
+
     
     ############################################################
     # Load "added" data.
