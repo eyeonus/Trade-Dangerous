@@ -1,7 +1,8 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
+# Copyright (C) Stefan 'Tromador' Morrell 2025
+# Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
@@ -37,16 +38,17 @@ Classes:
 ######################################################################
 # Imports
 
-from collections import defaultdict
-from collections import namedtuple
-from .tradedb import System, Station, Trade, describeAge
-from .tradedb import Destination
+from collections import namedtuple, defaultdict
+from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from tradedangerous.db.orm_models import System, Station, Item, StationItem
 from .tradeexcept import TradeException
+from .tradedb import describeAge   # still used elsewhere
+from .misc import progress as pbar
 
 import datetime
 import locale
 import os
-from .misc import progress as pbar
 import re
 import sys
 import time
@@ -58,26 +60,22 @@ locale.setlocale(locale.LC_ALL, '')
 
 
 class BadTimestampError(TradeException):
-    
-    def __init__(
-            self,
-            tdb,
-            stationID, itemID,
-            modified
-            ):
-        self.station = tdb.stationByID[stationID]
-        self.item = tdb.itemByID[itemID]
+    def __init__(self, session: Session, stationID: int, itemID: int, modified):
+        # ORM lookups replace tdb.stationByID / tdb.itemByID
+        self.station = session.get(Station, stationID)
+        self.item = session.get(Item, itemID)
         self.modified = modified
-    
+
     def __str__(self):
+        station_name = (
+            self.station.name if hasattr(self.station, "name") else str(self.station)
+        )
+        item_name = self.item.name if hasattr(self.item, "name") else str(self.item)
+
         return (
             "Error loading price data from the local db:\n"
-            "{} has a StationItem entry for \"{}\" with an invalid "
-            "modified timestamp: '{}'.".format(
-                self.station.name(),
-                self.item.name(),
-                str(self.modified),
-            )
+            f"{station_name} has a StationItem entry for \"{item_name}\" "
+            f"with an invalid modified timestamp: '{self.modified}'."
         )
 
 
@@ -131,17 +129,19 @@ emptyLoad = TradeLoad((), 0, 0, 0)
 # Classes
 
 
+######################################################################
+# Route class
+
+
 class Route:
     """
     Describes a series of hops where a TradeLoad is picked up at
     one station, the player travels via 0 or more hyperspace
     jumps and docks at a second station where they unload.
-    E.g. 10 Algae + 5 Hydrogen at Station A, jump to System2,
-    jump to System3, dock at Station B, sell everything, buy gold,
-    jump to system4 and sell everything at Station X.
     """
-    __slots__ = ('route', 'hops', 'startCr', 'gainCr', 'jumps', 'score')
-    
+
+    __slots__ = ("route", "hops", "startCr", "gainCr", "jumps", "score")
+
     def __init__(self, stations, hops, startCr, gainCr, jumps, score):
         assert stations
         self.route = stations
@@ -150,46 +150,36 @@ class Route:
         self.gainCr = gainCr
         self.jumps = jumps
         self.score = score
-    
+
     @property
     def firstStation(self):
-        """ Returns the first station in the route. """
         return self.route[0]
-    
+
     @property
     def firstSystem(self):
-        """ Returns the first system in the route. """
         return self.route[0].system
-    
+
     @property
     def lastStation(self):
-        """ Returns the last station in the route. """
         return self.route[-1]
-    
+
     @property
     def lastSystem(self):
-        """ Returns the last system in the route. """
         return self.route[-1].system
-    
+
     @property
     def avggpt(self):
         if self.hops:
             return sum(hop.gpt for hop in self.hops) // len(self.hops)
         return 0
-    
+
     @property
     def gpt(self):
         if self.hops:
-            return (
-                sum(hop.gainCr for hop in self.hops) // 
-                sum(hop.units for hop in self.hops)
-            )
+            return sum(h.gainCr for h in self.hops) // sum(h.units for h in self.hops)
         return 0
-    
+
     def plus(self, dst, hop, jumps, score):
-        """
-        Returns a new route describing the sum of this route plus a new hop.
-        """
         return Route(
             self.route + (dst,),
             self.hops + (hop,),
@@ -198,19 +188,20 @@ class Route:
             self.jumps + (jumps,),
             self.score + score,
         )
-    
+
     def __lt__(self, rhs):
-        # One route is less than the other if it has a higher score,
-        # or the scores are even and the number of jumps are shorter.
         if self.score == rhs.score:
             return len(self.jumps) < len(rhs.jumps)
         return self.score > rhs.score
-    
+
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
-    
+
     def text(self, colorize) -> str:
-        return "%s -> %s" % (colorize("cyan", self.firstStation.name()), colorize("blue", self.lastStation.name()))
+        # Use .name property from ORM models
+        first = getattr(self.firstStation, "name", str(self.firstStation))
+        last = getattr(self.lastStation, "name", str(self.lastStation))
+        return f"{colorize('cyan', first)} -> {colorize('blue', last)}"
     
     def detail(self, tdenv):
         """
@@ -224,15 +215,14 @@ class Route:
         credits = self.startCr + (tdenv.insurance or 0)  # pylint: disable=redefined-builtin
         gainCr = 0
         route = self.route
-        
         hops = self.hops
-        
-        # TODO: Write as a comprehension, just can't wrap my head
-        # around it this morning.
+
         def genSubValues():
-            for hop in hops:
-                for tr, _ in hop[0]:
-                    yield len(tr.name(detail))
+            return (
+                len(tr.name(detail))
+                for hop in hops
+                for tr, _ in hop[0]
+            )
         
         longestNameLen = max(genSubValues())
         
@@ -250,13 +240,13 @@ class Route:
                     distFmt = "  Direct: {dist:0.2f}ly, Trip: {trav:0.2f}ly\n"
             hopFmt = (
                 "  Load from "
-                +colorize("cyan", "{station}") + 
+                + colorize("cyan", "{station}") +
                 ":\n{purchases}"
             )
             hopStepFmt = (
-                colorize("lightYellow", "     {qty:>4}") + 
+                colorize("lightYellow", "     {qty:>4}") +
                 " x "
-                +colorize("yellow", "{item:<{longestName}} ") + 
+                + colorize("yellow", "{item:<{longestName}} ") +
                 "{eacost:>8n}cr vs {easell:>8n}cr, "
                 "{age}"
             )
@@ -266,7 +256,7 @@ class Route:
             if not tdenv.summary:
                 dockFmt = (
                     "  Unload at "
-                    +colorize("lightBlue", "{station}") + 
+                    + colorize("lightBlue", "{station}") +
                     " => Gain {gain:n}cr "
                     "({tongain:n}cr/ton) => {credits:n}cr\n"
                 )
@@ -280,53 +270,58 @@ class Route:
             footer = '  ' + '-' * 76 + "\n"
             endFmt = (
                 "Finish at "
-                +colorize("blue", "{station} ") + 
+                + colorize("blue", "{station} ") +
                 "gaining {gain:n}cr ({tongain:n}cr/ton) "
                 "=> est {credits:n}cr total\n"
             )
         elif detail:
             hopFmt = (
                 "  Load from "
-                +colorize("cyan", "{station}") + 
+                + colorize("cyan", "{station}") +
                 ":{purchases}\n"
             )
             hopStepFmt = (
-                colorize("lightYellow", " {qty}") + 
+                colorize("lightYellow", " {qty}") +
                 " x "
-                +colorize("yellow", "{item}") + 
+                + colorize("yellow", "{item}") +
                 " (@{eacost}cr),")
             footer = None
             dockFmt = (
-                "  Dock at " + 
+                "  Dock at " +
                 colorize("lightBlue", "{station}\n")
             )
             endFmt = (
                 "  Finish "
-                +colorize("blue", "{station} ") + 
+                + colorize("blue", "{station} ") +
                 "+ {gain:n}cr ({tongain:n}cr/ton)"
                 "=> {credits:n}cr\n"
             )
         else:
             hopFmt = colorize("cyan", "  {station}:{purchases}\n")
             hopStepFmt = (
-                colorize("lightYellow", " {qty}") + 
+                colorize("lightYellow", " {qty}") +
                 " x "
-                +colorize("yellow", "{item}") + 
+                + colorize("yellow", "{item}") +
                 ","
             )
             footer = None
             dockFmt = None
             endFmt = (
-                colorize("blue", "  {station}") + 
+                colorize("blue", "  {station}") +
                 " +{gain:n}cr ({tongain:n}/ton)"
             )
+
         
         def jumpList(jumps):
             text, last = "", None
-            travelled = 0.
+            travelled = 0.0
             for jump in jumps:
                 if last:
-                    dist = last.distanceTo(jump)
+                    # Replace legacy .distanceTo() with coordinate distance
+                    dx = last.pos_x - jump.pos_x
+                    dy = last.pos_y - jump.pos_y
+                    dz = last.pos_z - jump.pos_z
+                    dist = (dx * dx + dy * dy + dz * dz) ** 0.5
                     if dist:
                         if tdenv.detail:
                             text += ", {:.2f}ly -> ".format(dist)
@@ -335,7 +330,7 @@ class Route:
                     else:
                         text += " >>> "
                     travelled += dist
-                text += jump.name()
+                text += jump.name
                 last = jump
             return travelled, text
         
@@ -343,12 +338,12 @@ class Route:
             
             def decorateStation(station):
                 details = []
-                if station.lsFromStar:
-                    details.append(station.distFromStar(True))
-                if station.blackMarket != '?':
-                    details.append('BMk:' + station.blackMarket)
-                if station.maxPadSize != '?':
-                    details.append('Pad:' + station.maxPadSize)
+                if station.ls_from_star:
+                    details.append(f"{station.ls_from_star}ls")
+                if station.blackmarket != '?':
+                    details.append('BMk:' + station.blackmarket)
+                if station.max_pad_size != '?':
+                    details.append('Pad:' + station.max_pad_size)
                 if station.planetary != '?':
                     details.append('Plt:' + station.planetary)
                 if station.fleet != '?':
@@ -362,7 +357,7 @@ class Route:
                 if station.refuel != '?':
                     details.append('Ref:' + station.refuel)
                 details = "{} ({})".format(
-                    station.name(),
+                    station.name,
                     ", ".join(details or ["no details"])
                 )
                 return details
@@ -370,28 +365,15 @@ class Route:
         else:
             
             def decorateStation(station):
-                return station.name()
-        
-        if detail and goalSystem:
-            
-            def goalDistance(station):
-                return " [Distance to {}: {:.2f} ly]\n".format(
-                    goalSystem.name(),
-                    station.system.distanceTo(goalSystem),
-                )
-        
-        else:
-            
-            def goalDistance(station):
-                return ""
+
         
         for i, hop in enumerate(hops):
             hopGainCr, hopTonnes = hop[1], 0
             purchases = ""
             for (trade, qty) in sorted(
                     hop[0],
-                    key = lambda tradeOpt: tradeOpt[1] * tradeOpt[0].gainCr,
-                    reverse = True
+                    key=lambda tradeOpt: tradeOpt[1] * tradeOpt[0].gainCr,
+                    reverse=True
                     ):
                 # Are they within 30 minutes of each other?
                 if abs(trade.srcAge - trade.dstAge) <= (30 * 60):
@@ -402,18 +384,19 @@ class Route:
                     dstAge = describeAge(trade.dstAge)
                     age = "{} vs {}".format(srcAge, dstAge)
                 purchases += hopStepFmt.format(
-                    qty = qty, item = trade.name(detail),
-                    eacost = trade.costCr,
-                    easell = trade.costCr + trade.gainCr,
-                    ttlcost = trade.costCr * qty,
-                    longestName = longestNameLen,
-                    age = age,
+                    qty=qty,
+                    item=trade.name,   # ORM property
+                    eacost=trade.costCr,
+                    easell=trade.costCr + trade.gainCr,
+                    ttlcost=trade.costCr * qty,
+                    longestName=longestNameLen,
+                    age=age,
                 )
                 hopTonnes += qty
             text += goalDistance(route[i])
             text += hopFmt.format(
-                station = decorateStation(route[i]),
-                purchases = purchases
+                station=decorateStation(route[i]),
+                purchases=purchases
             )
             if tdenv.showJumps and jumpsFmt and self.jumps[i]:
                 startStn = route[i]
@@ -423,28 +406,32 @@ class Route:
                     travelled, jumps = jumpList(self.jumps[i])
                 else:
                     fmt = cruiseFmt
-                    travelled, jumps = 0., "{start} >>> {stop}".format(
-                        start = startStn.name(), stop = endStn.name()
+                    travelled, jumps = 0.0, "{start} >>> {stop}".format(
+                        start=startStn.name, stop=endStn.name
                     )
                 text += fmt.format(
-                    jumps = jumps,
-                    gain = hopGainCr,
-                    tongain = hopGainCr / hopTonnes,
-                    credits = credits + gainCr + hopGainCr,
-                    stn = route[i + 1].dbname
+                    jumps=jumps,
+                    gain=hopGainCr,
+                    tongain=hopGainCr / hopTonnes,
+                    credits=credits + gainCr + hopGainCr,
+                    stn=route[i + 1].name
                 )
                 if travelled and distFmt and len(self.jumps[i]) > 2:
+                    dx = startStn.system.pos_x - endStn.system.pos_x
+                    dy = startStn.system.pos_y - endStn.system.pos_y
+                    dz = startStn.system.pos_z - endStn.system.pos_z
+                    dist = (dx * dx + dy * dy + dz * dz) ** 0.5
                     text += distFmt.format(
-                        dist = startStn.system.distanceTo(endStn.system),
-                        trav = travelled,
+                        dist=dist,
+                        trav=travelled,
                     )
             if dockFmt:
                 stn = route[i + 1]
                 text += dockFmt.format(
-                    station = decorateStation(stn),
-                    gain = hopGainCr,
-                    tongain = hopGainCr / hopTonnes,
-                    credits = credits + gainCr + hopGainCr
+                    station=decorateStation(stn),
+                    gain=hopGainCr,
+                    tongain=hopGainCr / hopTonnes,
+                    credits=credits + gainCr + hopGainCr
                 )
             
             gainCr += hopGainCr
@@ -454,13 +441,14 @@ class Route:
             text += goalDistance(lastStation)
         text += footer or ""
         text += endFmt.format(
-            station = decorateStation(lastStation),
-            gain = gainCr,
-            credits = credits + gainCr,
-            tongain = self.gpt
+            station=decorateStation(lastStation),
+            gain=gainCr,
+            credits=credits + gainCr,
+            tongain=self.gpt
         )
         
         return text
+
     
     def summary(self):
         """
@@ -480,15 +468,16 @@ class Route:
             "Jumps   : {jumps:10n}\n"
             "Gain CR : {gain:10n}\n"
             "Gain/Hop: {hopgain:10n}\n"
-            "Final CR: {final:10n}\n" . format(
-                start = credits,
-                hops = len(hops),
-                jumps = numJumps,
-                gain = ttlGainCr,
-                hopgain = ttlGainCr // len(hops),
-                final = credits + ttlGainCr
+            "Final CR: {final:10n}\n".format(
+                start=credits,
+                hops=len(hops),
+                jumps=numJumps,
+                gain=ttlGainCr,
+                hopgain=ttlGainCr // len(hops),
+                final=credits + ttlGainCr
             )
         )
+
 
 
 class TradeCalc:
@@ -496,30 +485,7 @@ class TradeCalc:
     Container for accessing trade calculations with common properties.
     """
     
-    def __init__(self, tdb, tdenv = None, fit = None, items = None):
-        """
-        Constructs the TradeCalc object and loads sell/buy data.
-        
-        Parameters:
-            tdb
-                The TradeDB() object to use to access data,
-            tdenv [optional]
-                TradeEnv() that controls behavior,
-            fit [optional]
-                Lets you specify a fitting function,
-            items [optional]
-                Iterable [itemID or Item()] that restricts loading,
-        
-        TradeEnv options:
-            tdenv.avoidItems
-                Iterable of [Item] that prevents items being loaded
-            tdenv.maxAge
-                Maximum age in days of data that gets loaded
-            tdenv.supply
-                Require at least this much supply to load an item
-            tdenv.demand
-                Require at least this much demand to load an item
-        """
+    def __init__(self, tdb, tdenv=None, fit=None, items=None):
         if not tdenv:
             tdenv = tdb.tdenv
         self.tdb = tdb
@@ -527,18 +493,20 @@ class TradeCalc:
         self.defaultFit = fit or self.simpleFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
+
         minSupply = self.tdenv.supply or 0
         minDemand = self.tdenv.demand or 0
-        
-        db = tdb.getDB()
-        
-        wheres, binds = [], []
+
+        # SQLAlchemy session from tdb
+        session = tdb.Session()
+
+        filters = []
+
         if tdenv.maxAge:
-            maxDays = datetime.timedelta(days = tdenv.maxAge)
+            maxDays = datetime.timedelta(days=tdenv.maxAge)
             cutoff = datetime.datetime.now() - maxDays
-            wheres.append("(modified >= ?)")
-            binds.append(str(cutoff.replace(microsecond = 0)))
-        
+            filters.append(StationItem.modified >= cutoff.replace(microsecond=0))
+
         if tdenv.avoidItems or items:
             avoidItemIDs = set(item.ID for item in tdenv.avoidItems)
             loadItems = items or tdb.itemByID.values()
@@ -546,46 +514,48 @@ class TradeCalc:
             for item in loadItems:
                 ID = item if isinstance(item, int) else item.ID
                 if ID not in avoidItemIDs:
-                    loadItemSet.add(str(ID))
+                    loadItemSet.add(ID)
             if not loadItemSet:
                 raise TradeException("No items to load.")
-            load_ids = ",".join(str(ID) for ID in loadItemSet)
-            wheres.append(f"(item_id IN ({load_ids}))")
-        
+            filters.append(StationItem.item_id.in_(loadItemSet))
+
         demand = self.stationsBuying = defaultdict(list)
         supply = self.stationsSelling = defaultdict(list)
-        
-        whereClause = " AND ".join(wheres) or "1"
-        
+
+        stmt = (
+            select(
+                StationItem.station_id,
+                StationItem.item_id,
+                StationItem.modified,
+                StationItem.demand_price,
+                StationItem.demand_units,
+                StationItem.demand_level,
+                StationItem.supply_price,
+                StationItem.supply_units,
+                StationItem.supply_level,
+            ).where(*filters)
+        )
+
+        tdenv.DEBUG1("TradeCalc loading StationItem values")
+        tdenv.DEBUG2("sql: {}", stmt)
+
         lastStnID = 0
         dmdCount, supCount = 0, 0
-        stmt = """
-                SELECT  station_id, item_id,
-                        strftime('%s', modified),
-                        demand_price, demand_units, demand_level,
-                        supply_price, supply_units, supply_level
-                  FROM  StationItem
-                 WHERE  {where}
-        """.format(where = whereClause)
-        tdenv.DEBUG1("TradeCalc loading StationItem values")
-        tdenv.DEBUG2("sql: {}, binds: {}", stmt, binds)
-        cur = db.execute(stmt, binds)
-        now = int(time.time())
-        for (stnID, itmID,
-                timestamp,
-                dmdCr, dmdUnits, dmdLevel,
-                supCr, supUnits, supLevel) in cur:
+
+        for (
+            stnID, itmID,
+            modified,
+            dmdCr, dmdUnits, dmdLevel,
+            supCr, supUnits, supLevel,
+        ) in session.execute(stmt):
             if stnID != lastStnID:
                 dmdAppend = demand[stnID].append
                 supAppend = supply[stnID].append
                 lastStnID = stnID
             try:
-                ageS = now - int(timestamp)
-            except TypeError:
-                raise BadTimestampError(
-                    self.tdb,
-                    stnID, itmID, timestamp
-                ) from None
+                ageS = (datetime.datetime.now() - modified).total_seconds()
+            except Exception:
+                raise BadTimestampError(session, stnID, itmID, modified) from None
             if dmdCr > 0:
                 if not minDemand or dmdUnits >= minDemand:
                     dmdAppend((itmID, dmdCr, dmdUnits, dmdLevel, ageS))
@@ -594,8 +564,9 @@ class TradeCalc:
                 if not minSupply or supUnits >= minSupply:
                     supAppend((itmID, supCr, supUnits, supLevel, ageS))
                     supCount += 1
-        
+
         tdenv.DEBUG0("Loaded {} buys, {} sells".format(dmdCount, supCount))
+
     
     def bruteForceFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
@@ -604,7 +575,7 @@ class TradeCalc:
         variants or optimizations of the fit algorithm.
         """
         
-        def _fitCombos(offset, cr, cap, level = 1):
+        def _fitCombos(offset, cr, cap, level=1):
             if cr <= 0 or cap <= 0:
                 return emptyLoad
             while True:
@@ -651,6 +622,7 @@ class TradeCalc:
             return bestLoad
         
         return _fitCombos(0, credits, capacity)
+
     
     def fastFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
@@ -837,7 +809,7 @@ class TradeCalc:
         
         return trading
     
-    def getBestHops(self, routes, restrictTo = None):
+    def getBestHops(self, routes, restrictTo=None):
         """
         Given a list of routes, try all available next hops from each
         route.
@@ -901,16 +873,19 @@ class TradeCalc:
                     if stn not in avoidPlaces and
                         stn.system not in avoidPlaces
                 )
-            
+
             def station_iterator(srcStation):
                 srcSys = srcStation.system
-                srcDist = srcSys.distanceTo
                 for stn in restrictStations:
                     stnSys = stn.system
+                    dx = srcSys.pos_x - stnSys.pos_x
+                    dy = srcSys.pos_y - stnSys.pos_y
+                    dz = srcSys.pos_z - stnSys.pos_z
+                    dist = (dx * dx + dy * dy + dz * dz) ** 0.5
                     yield Destination(
                         stnSys, stn,
                         (srcSys, stnSys),
-                        srcDist(stnSys)
+                        dist
                     )
         
         else:
@@ -919,17 +894,23 @@ class TradeCalc:
             def station_iterator(srcStation):
                 yield from getDestinations(
                     srcStation,
-                    maxJumps = maxJumpsPer,
-                    maxLyPer = maxLyPer,
-                    avoidPlaces = avoidPlaces,
-                    maxPadSize = maxPadSize,
-                    maxLsFromStar = maxLsFromStar,
-                    noPlanet = noPlanet,
-                    planetary = planetary,
-                    fleet = fleet,
-                    odyssey = odyssey,
+                    maxJumps=maxJumpsPer,
+                    maxLyPer=maxLyPer,
+                    avoidPlaces=avoidPlaces,
+                    maxPadSize=maxPadSize,
+                    maxLsFromStar=maxLsFromStar,
+                    noPlanet=noPlanet,
+                    planetary=planetary,
+                    fleet=fleet,
+                    odyssey=odyssey,
                 )
         
+        def dist_between(sys1, sys2):
+            dx = sys1.pos_x - sys2.pos_x
+            dy = sys1.pos_y - sys2.pos_y
+            dz = sys1.pos_z - sys2.pos_z
+            return (dx * dx + dy * dy + dz * dz) ** 0.5
+
         with pbar.Progress(max_value=len(routes), width=25, show=tdenv.progress) as prog:
             connections = 0
             getSelling = self.stationsSelling.get
@@ -952,12 +933,9 @@ class TradeCalc:
                 if goalSystem:
                     origSystem = route.firstSystem
                     srcSystem = srcStation.system
-                    srcDistTo = srcSystem.distanceTo
-                    goalDistTo = goalSystem.distanceTo
-                    origDistTo = origSystem.distanceTo
-                    srcGoalDist = srcDistTo(goalSystem)
-                    srcOrigDist = srcDistTo(origSystem)
-                    origGoalDist = origDistTo(goalSystem)
+                    srcGoalDist = dist_between(srcSystem, goalSystem)
+                    srcOrigDist = dist_between(srcSystem, origSystem)
+                    origGoalDist = dist_between(origSystem, goalSystem)
                 
                 if unique:
                     uniquePath = route.route
@@ -965,22 +943,23 @@ class TradeCalc:
                     pos_from_end = 0 - loopInt
                     uniquePath = route.route[pos_from_end:-1]
                 
-                stations = (d for d in station_iterator(srcStation)
-                if (d.station != srcStation) and
-                    (d.station.blackMarket == 'Y' if reqBlackMarket else True) and
-                    (d.station not in uniquePath if uniquePath else True) and
-                    (d.station in restrictStations if restrictStations else True) and
-                    (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True) and
-                    (((d.system is not srcSystem) if bool(tdenv.unique) else (d.system is goalSystem or d.distLy < srcGoalDist)) if goalSystem else True)
+                stations = (
+                    d for d in station_iterator(srcStation)
+                    if (d.station != srcStation) and
+                        (d.station.blackmarket == 'Y' if reqBlackMarket else True) and
+                        (d.station not in uniquePath if uniquePath else True) and
+                        (d.station in restrictStations if restrictStations else True) and
+                        (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True) and
+                        (((d.system is not srcSystem) if bool(tdenv.unique) else (d.system is goalSystem or d.distLy < srcGoalDist)) if goalSystem else True)
                 )
-                
+
                 if tdenv.debug >= 1:
                     
                     def annotate(dest):
                         tdenv.DEBUG1(
                             "destSys {}, destStn {}, jumps {}, distLy {}",
-                            dest.system.dbname,
-                            dest.station.dbname,
+                            dest.system.name,              # was .dbname
+                            dest.station.name,             # was .dbname
                             "->".join(jump.text() for jump in dest.via),
                             dest.distLy
                         )
@@ -1002,14 +981,14 @@ class TradeCalc:
                     # This will amortize for the start/end stations
                     dstSys = dest.system
                     if goalSystem and dstSys is not goalSystem:
-                        dstGoalDist = goalDistTo(dstSys)
+                        dstGoalDist = dist_between(goalSystem, dstSys)
                         # Biggest reward for shortening distance to goal
                         score = 5000 * origGoalDist / dstGoalDist
                         # bias towards bigger reductions
                         score += 50 * srcGoalDist / dstGoalDist
                         # discourage moving back towards origin
                         if dstSys is not origSystem:
-                            score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                            score += 10 * (dist_between(origSystem, dstSys) - srcOrigDist)
                         # Gain per unit pays a small part
                         score += (trade.gainCr / trade.units) / 25
                     else:
@@ -1017,7 +996,7 @@ class TradeCalc:
                     if lsPenalty:
                         # [kfsone] Only want 1dp
                         
-                        cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                        cruiseKls = int(dstStation.ls_from_star / 100) / 10   # was lsFromStar
                         # Produce a curve that favors distances under 1kls
                         # positively, starts to penalize distances over 1k,
                         # and after 4kls starts to penalize aggressively
@@ -1072,7 +1051,7 @@ class TradeCalc:
                         multiplier += (penalty + boost + drop) * lsPenalty
                     
                     score *= multiplier
-                    
+
                     dstID = dstStation.ID
                     try:
                         # See if there is already a candidate for this destination
@@ -1096,7 +1075,7 @@ class TradeCalc:
                     bestToDest[dstID] = (
                         dstStation, route, trade, dest.via, dest.distLy, score
                     )
-        
+
         if connections == 0:
             raise NoHopsError(
                 "No destinations could be reached within the constraints."
