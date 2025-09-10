@@ -22,6 +22,7 @@ import ijson
 import signal
 signal.signal(signal.SIGINT, lambda sig, frame: sys.exit(1))
 
+from tradedangerous import cache
 
 from dataclasses import dataclass
 
@@ -221,6 +222,24 @@ def get_timings(started: float, system_count: int, total_station_count: int, *, 
     else:
         timings += "..."
     return elapsed, timings
+    
+# put this near the top of spansh_plug.py with the other imports
+from pathlib import Path
+from tradedangerous import cache
+
+def import_rares_from_template(tdb, tdenv):
+    """
+    Import rares from the static RareItem.csv template into the DB.
+    Mirrors cache/eddblink logic so RareItem table is always populated.
+    """
+    rare_csv = Path(tdenv.templateDir) / "RareItem.csv"
+    if not rare_csv.exists():
+        tdenv.WARN("RareItem.csv template missing: {}", rare_csv)
+        return
+
+    tdenv.DEBUG0("Importing rares from template {}", rare_csv)
+    cache.processImportFile(tdb, tdenv, "RareItem", rare_csv)
+
 
 # ---------------------------------------------------------------------------
 # Import Plugin up to run()
@@ -611,6 +630,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self._staged_stationitems:
                 self.session.bulk_insert_mappings(StationItem, self._staged_stationitems)
                 self._staged_stationitems.clear()
+            
+            # --- import rares template ---
+            import_rares_from_template(self.tdb, self.tdenv)
 
             self.commit(force=True)
             self.session.close()
@@ -625,7 +647,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.print('Exporting to cache...')
             for table in (
                 "Item", "Station", "System", "StationItem",
-                "Ship", "ShipVendor", "Upgrade", "UpgradeVendor"
+                "Ship", "ShipVendor", "Upgrade", "UpgradeVendor", "RareItem"
             ):
                 self.print(f'Exporting {table}.csv            ', end='\\r')
                 csvexport.exportTableToFile(self.session, self.tdenv, table)
