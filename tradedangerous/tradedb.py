@@ -74,13 +74,13 @@ if typing.TYPE_CHECKING:
 
 locale.setlocale(locale.LC_ALL, '')
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from .db import make_engine_from_config, get_session_factory, healthcheck
 from .db.orm_models import (
     System, Station, Item, Category, Ship, Upgrade, RareItem,
     StationItem, ShipVendor, UpgradeVendor, Added, ExportControl, StationItemStaging
 )
-
 
 # --------------------------------------------------------------------
 # SQLAlchemy ORM imports (aliased to avoid clashing with legacy wrappers).
@@ -94,7 +94,7 @@ from .db.orm_models import (
 # In a possible future cleanup (Pass 2), the wrappers may be removed
 # entirely, and code updated to use ORM models directly.
 # --------------------------------------------------------------------
-from sqlalchemy import func
+
 from .db.orm_models import (
     Added           as SA_Added,
     System          as SA_System,
@@ -721,35 +721,67 @@ class TradeDB:
     def reloadCache(self):
         """
         Ensure DB is present, non-empty, and minimally populated.
-        CSVs or SQL are only used when DB is absent, empty, or unpopulated.
+        CSVs/SQL are only used when DB is absent, empty, or unpopulated.
+        Uses ORM models for backend-agnostic checks (SQLite, MariaDB, etc).
         """
-
-        from sqlalchemy import text
         from tradedangerous.db.lifecycle import is_empty
 
-        def _is_minimally_populated(engine) -> bool:
+        self.tdenv.DEBUG0("reloadCache: engine URL = {}", str(self.engine.url))
+
+        def _is_minimally_populated(engine, tdenv) -> bool:
             """
             Returns True if the DB contains data in key core tables
             (System, Station, Item). Otherwise False.
+            Uses ORM models so it is fully backend-agnostic.
             """
-            core_tables = ("System", "Station", "Item")
-            with engine.connect() as conn:
-                for table in core_tables:
+            core_models = (SA_System, SA_Station, SA_Item)
+            SessionFactory = get_session_factory(engine)
+
+            with SessionFactory() as s:
+                for model in core_models:
                     try:
-                        count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
-                        if not count or count == 0:
+                        count = s.execute(
+                            select(func.count()).select_from(model)
+                        ).scalar_one()
+                        tdenv.DEBUG0(
+                            "reloadCache: {} has {} rows",
+                            model.__tablename__,
+                            count,
+                        )
+                        if count == 0:
                             return False
-                    except Exception:
-                        # Table missing or inaccessible → treat as unpopulated
+                    except Exception as e:
+                        tdenv.DEBUG0(
+                            "reloadCache: failed to query %s: %s",
+                            model.__tablename__,
+                            e,
+                        )
                         return False
             return True
 
-        # --- paranoid DB health check ---
-        if is_empty(self.engine) or not _is_minimally_populated(self.engine):
+        empty = is_empty(self.engine)
+        populated = False
+        try:
+            populated = _is_minimally_populated(self.engine, self.tdenv)
+        except Exception as e:
+            self.tdenv.DEBUG0(
+                "reloadCache: _is_minimally_populated raised %s", e
+            )
+
+        self.tdenv.DEBUG0(
+            "reloadCache: is_empty={}, minimally_populated={}",
+            empty,
+            populated,
+        )
+
+        if empty or not populated:
             self.tdenv.DEBUG0("Rebuilding DB Cache (missing/empty core tables)")
             cache.buildCache(self, self.tdenv)
         else:
-            self.tdenv.DEBUG0("DB already populated; skipping CSV/sql mtime checks")
+            self.tdenv.DEBUG0(
+                "DB already populated; skipping CSV/sql mtime checks"
+            )
+
 
     
     ############################################################
