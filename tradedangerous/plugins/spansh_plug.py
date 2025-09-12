@@ -649,11 +649,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Item", "Station", "System", "StationItem",
                 "Ship", "ShipVendor", "Upgrade", "UpgradeVendor", "RareItem"
             ):
-                self.print(f'Exporting {table}.csv            ', end='\\r')
+                msg = f'Exporting {table}.csv'
+                self.print(msg.ljust(40), end='\r', flush=True)
                 csvexport.exportTableToFile(self.session, self.tdenv, table)
-            self.print('Exporting TradeDangerous.prices', end='\\r')
+
+            self.print('Exporting TradeDangerous.prices'.ljust(40), end='\r', flush=True)
             cache.regeneratePricesFile(self.tdb, self.tdenv)
+
             self.print(f'Cache export completed in {timedelta(seconds=int(timing.elapsed))!s}')
+
 
         # Recalculate ui_order for commodities once, at the end
         items = (
