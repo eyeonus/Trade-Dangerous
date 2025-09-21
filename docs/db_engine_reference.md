@@ -455,86 +455,6 @@ Applies deterministic naming to constraints and indexes (ix, uq, ck, fk, pk).
 
 ---
 
-## Core Domain Models
-
-### `Added`
-- `added_id` (PK, autoinc)  
-- `name` (unique, varchar(40))  
-- Relationship: `systems`
-
-### `System`
-- `system_id` (PK, bigint)  
-- `name` (varchar(100))  
-- `pos_x/y/z` (floats)  
-- `added_id` → FK to `Added`  
-- `modified` (DateTime6, default/on update `now6`)  
-- Relationships: `added`, `stations`  
-- Indexes: `idx_system_by_pos`, `idx_system_by_name`
-
-### `Station`
-- `station_id` (PK, bigint)  
-- `name` (varchar(100))  
-- `system_id` → FK to `System`  
-- Service flags: tri-state (market, blackmarket, etc.), `max_pad_size`, `type_id`  
-- `ls_from_star` (int, default 0)  
-- `modified` (DateTime6, default/on update `now6`)  
-- Relationships: `system`, `items`, `ship_vendors`, `upgrade_vendors`  
-- Indexes: `idx_station_by_system`, `idx_station_by_name`  
-- Optional: `UNIQUE(system_id,name)`
-
-### `Category`
-- `category_id` (PK)  
-- `name` (varchar(40))  
-- Relationship: `items`  
-- Index: `idx_category_by_name`
-
-### `Item`
-- `item_id` (PK)  
-- `name` (varchar(100))  
-- `category_id` → FK to `Category`  
-- `ui_order` (int, default 0), `avg_price` (nullable int), `fdev_id` (nullable int)  
-- Relationships: `category`, `stations`  
-- Indexes: `idx_item_by_fdevid`, `idx_item_by_category`
-
-### `StationItem`
-- PK: `(station_id,item_id)`  
-- Demand/supply: price, units, level (all int)  
-- `modified` (DateTime6, default/on update `now6`)  
-- `from_live` (int, default 0)  
-- Relationships: `station`, `item`  
-- Indexes: demand_price, supply_price, from_live+station_id+item_id, modified
-
-### `Ship`
-- `ship_id` (PK)  
-- `name`, `cost`  
-- Relationship: `vendors`
-
-### `ShipVendor`
-- PK: `(ship_id, station_id)`  
-- `modified` (DateTime6)  
-- Relationships: `ship`, `station`  
-- Index: `idx_shipvendor_by_station`
-
-### `Upgrade`
-- `upgrade_id` (PK)  
-- `name`, `class_`, `rating`, `ship`  
-- Relationship: `vendors`
-
-### `UpgradeVendor`
-- PK: `(upgrade_id, station_id)`  
-- `modified` (DateTime6)  
-- Relationships: `upgrade`, `station`  
-- Index: `idx_vendor_by_station_id`
-
-### `RareItem`
-- `rare_id` (PK)  
-- `station_id` → Station, `category_id` → Category  
-- `name` (unique), `cost`, `max_allocation`  
-- Flags: `illegal`, `suppressed` (TriState)  
-- Unique: `uq_rareitem_name`
-
----
-
 ## Control & Staging
 
 ### `ExportControl`
@@ -567,9 +487,6 @@ with Session(engine) as s:
     s.add(System(system_id=1, name="Sol", pos_x=0, pos_y=0, pos_z=0))
     s.commit()
 ```
-
----
-
 
 ---
 
@@ -638,7 +555,3 @@ tmp_dir  = ./tmp
 ```
 
 ---
-
-
----
-
