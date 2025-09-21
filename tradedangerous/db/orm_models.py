@@ -1,14 +1,24 @@
 # tradedangerous/db/orm_models.py
 from __future__ import annotations
 
+from typing import Optional
+
 from sqlalchemy import (
-    MetaData, ForeignKey, Integer, BigInteger, String, CHAR, Enum, Index, 
-    UniqueConstraint, text, Column, TypeDecorator
-    
+    MetaData,
+    ForeignKey,
+    Integer,
+    BigInteger,
+    String,
+    CHAR,
+    Enum,
+    Index,
+    UniqueConstraint,
+    CheckConstraint,
+    text,
+    Column,
+    DateTime,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, object_session
-from typing import Optional
-from sqlalchemy import DateTime
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import TypeDecorator
@@ -20,14 +30,17 @@ class now6(expression.FunctionElement):
     type = DateTime()
     inherit_cache = True
 
+
 @compiles(now6, "mysql")
 @compiles(now6, "mariadb")
 def _mysql_now6(element, compiler, **kw):
     return "CURRENT_TIMESTAMP(6)"
 
+
 @compiles(now6)
 def _default_now(element, compiler, **kw):
     return "CURRENT_TIMESTAMP"
+
 
 class DateTime6(TypeDecorator):
     """DATETIME that is DATETIME(6) on MySQL/MariaDB, generic DateTime elsewhere."""
@@ -39,9 +52,9 @@ class DateTime6(TypeDecorator):
             from sqlalchemy.dialects.mysql import DATETIME as _MYSQL_DATETIME
             return dialect.type_descriptor(_MYSQL_DATETIME(fsp=6))
         return dialect.type_descriptor(DateTime())
-        
-# ---------- Dialect Helpers --------
 
+
+# ---------- Dialect Helpers --------
 class CIString(TypeDecorator):
     """
     Case-insensitive string type.
@@ -64,10 +77,7 @@ class CIString(TypeDecorator):
             return dialect.type_descriptor(String(self.impl.length))
 
 
-
-
 # ---------- Naming & Base ----------
-
 naming_convention = {
     "ix": "ix_%(table_name)s__%(column_0_N_name)s",
     "uq": "uq_%(table_name)s__%(column_0_N_name)s",
@@ -77,20 +87,39 @@ naming_convention = {
 }
 metadata = MetaData(naming_convention=naming_convention)
 
+
 class Base(DeclarativeBase):
     metadata = metadata
 
-# ---------- Enums ----------
 
-TriState = Enum("Y", "N", "?", name="tri_state", native_enum=True)
-PadSize  = Enum("S", "M", "L", "?", name="pad_size", native_enum=True)
+# ---------- Enums ----------
+TriState = Enum(
+    "Y",
+    "N",
+    "?",
+    name="tri_state",
+    native_enum=False,
+    create_constraint=True,
+    validate_strings=True,
+)
+PadSize = Enum(
+    "S",
+    "M",
+    "L",
+    "?",
+    name="pad_size",
+    native_enum=False,
+    create_constraint=True,
+    validate_strings=True,
+)
+
 
 # ---------- Core Domain ----------
-
 class Added(Base):
     __tablename__ = "Added"
+
     added_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False, unique=True)
 
     # Relationships
     systems: Mapped[list["System"]] = relationship(back_populates="added")
@@ -98,8 +127,9 @@ class Added(Base):
 
 class System(Base):
     __tablename__ = "System"
+
     system_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
@@ -126,20 +156,21 @@ class System(Base):
 
 class Station(Base):
     __tablename__ = "Station"
+
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     system_id: Mapped[int] = mapped_column(ForeignKey("System.system_id", ondelete="CASCADE"), nullable=False)
     ls_from_star: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     blackmarket: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    max_pad_size: Mapped[str] = mapped_column(PadSize,  nullable=False, server_default=text("'?'"))
-    market:   Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
+    max_pad_size: Mapped[str] = mapped_column(PadSize, nullable=False, server_default=text("'?'"))
+    market: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
     shipyard: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
     outfitting: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    rearm:    Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    refuel:   Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    repair:   Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    planetary:Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
+    rearm: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
+    refuel: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
+    repair: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
+    planetary: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
 
     type_id: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     modified: Mapped[str] = mapped_column(
@@ -158,15 +189,14 @@ class Station(Base):
     __table_args__ = (
         Index("idx_station_by_system", "system_id"),
         Index("idx_station_by_name", "name"),
-        # Optional (enable once data validated):
-        # UniqueConstraint("system_id", "name", name="uq_station_sys_name"),
     )
 
 
 class Category(Base):
     __tablename__ = "Category"
+
     category_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
 
     # Relationships
     items: Mapped[list["Item"]] = relationship(back_populates="category")
@@ -176,11 +206,12 @@ class Category(Base):
 
 class Item(Base):
     __tablename__ = "Item"
+
     item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     category_id: Mapped[int] = mapped_column(ForeignKey("Category.category_id", ondelete="CASCADE"), nullable=False)
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    avg_price: Mapped[int | None] = mapped_column(Integer)   # TODO: verify presence/usage in legacy
+    avg_price: Mapped[int | None] = mapped_column(Integer)
     fdev_id: Mapped[int | None] = mapped_column(Integer)
 
     # Relationships
@@ -195,6 +226,7 @@ class Item(Base):
 
 class StationItem(Base):
     __tablename__ = "StationItem"
+
     station_id: Mapped[int] = mapped_column(
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
     )
@@ -220,17 +252,21 @@ class StationItem(Base):
     item: Mapped["Item"] = relationship(back_populates="stations")
 
     __table_args__ = (
-        Index("si_itm_dmdpr", "item_id", "demand_price"),
-        Index("si_itm_suppr", "item_id", "supply_price"),
-        Index("si_fromlive_stn_itm", "from_live", "station_id", "item_id"),
-        Index("si_modified", "modified"),
+        # Recent-changes composite (SQLite canonical)
+        Index("si_mod_stn_itm", "modified", "station_id", "item_id"),
+        # Price-side indexes (SQLite: partial indexes)
+        Index("si_itm_dmdpr", "item_id", "demand_price", sqlite_where=text("demand_price > 0")),
+        Index("si_itm_suppr", "item_id", "supply_price", sqlite_where=text("supply_price > 0")),
+        # SQLite physical layout hint
+        {"sqlite_with_rowid": False},
     )
 
 
 class Ship(Base):
     __tablename__ = "Ship"
+
     ship_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     cost: Mapped[int | None] = mapped_column(Integer)
 
     # Relationships
@@ -239,6 +275,7 @@ class Ship(Base):
 
 class ShipVendor(Base):
     __tablename__ = "ShipVendor"
+
     ship_id: Mapped[int] = mapped_column(
         ForeignKey("Ship.ship_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
     )
@@ -261,11 +298,12 @@ class ShipVendor(Base):
 
 class Upgrade(Base):
     __tablename__ = "Upgrade"
+
     upgrade_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     class_: Mapped[int] = mapped_column("class", Integer, nullable=False)
     rating: Mapped[str] = mapped_column(CHAR(1), nullable=False)
-    ship: Mapped[str | None] = mapped_column(String(40))
+    ship: Mapped[str | None] = mapped_column(CIString(128))
 
     # Relationships
     vendors: Mapped[list["UpgradeVendor"]] = relationship(back_populates="upgrade")
@@ -273,6 +311,7 @@ class Upgrade(Base):
 
 class UpgradeVendor(Base):
     __tablename__ = "UpgradeVendor"
+
     upgrade_id: Mapped[int] = mapped_column(
         ForeignKey("Upgrade.upgrade_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
     )
@@ -295,10 +334,15 @@ class UpgradeVendor(Base):
 
 class RareItem(Base):
     __tablename__ = "RareItem"
+
     rare_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    station_id: Mapped[int] = mapped_column(ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-    category_id: Mapped[int] = mapped_column(ForeignKey("Category.category_id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False)
-    name: Mapped[str] = mapped_column(String(40), nullable=False)
+    station_id: Mapped[int] = mapped_column(
+        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False
+    )
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("Category.category_id", ondelete="CASCADE", onupdate="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     cost: Mapped[int | None] = mapped_column(Integer)
     max_allocation: Mapped[int | None] = mapped_column(Integer)
     illegal: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
@@ -306,11 +350,12 @@ class RareItem(Base):
 
     __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
 
+
 class FDevShipyard(Base):
     __tablename__ = "FDevShipyard"
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
-    symbol = Column(String(128))
+    symbol = Column(CIString(128))
     name = Column(CIString(128))
     entitlement = Column(String(50))
 
@@ -319,7 +364,7 @@ class FDevOutfitting(Base):
     __tablename__ = "FDevOutfitting"
 
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
-    symbol = Column(String(128))
+    symbol = Column(CIString(128))
     category = Column(String(10))
     name = Column(CIString(128))
     mount = Column(String(20))
@@ -329,10 +374,23 @@ class FDevOutfitting(Base):
     rating = Column(String(1), nullable=False)
     entitlement = Column(String(50))
 
+    __table_args__ = (
+        CheckConstraint(
+            "category IN ('hardpoint','internal','standard','utility')",
+            name="ck_fdo_category",
+        ),
+        CheckConstraint(
+            "(mount IN ('Fixed','Gimballed','Turreted')) OR (mount IS NULL)",
+            name="ck_fdo_mount",
+        ),
+        CheckConstraint(
+            "(guidance IN ('Dumbfire','Seeker','Swarm')) OR (guidance IS NULL)",
+            name="ck_fdo_guidance",
+        ),
+    )
 
 
 # ---------- Control & Staging ----------
-
 class ExportControl(Base):
     """
     Singleton control row for hybrid export/watermarking.
@@ -341,6 +399,7 @@ class ExportControl(Base):
     - last_reset_key: optional cursor for chunked from_live resets
     """
     __tablename__ = "ExportControl"
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, server_default=text("1"))
     last_full_dump_time: Mapped[str] = mapped_column(DateTime6(), nullable=False)
     last_reset_key: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
@@ -351,6 +410,7 @@ class StationItemStaging(Base):
     Staging table for bulk loads (no FKs). Same columns as StationItem.
     """
     __tablename__ = "StationItem_staging"
+
     station_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     demand_price: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -367,7 +427,6 @@ class StationItemStaging(Base):
     )
     from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
-    # Optional helper index for merge step; Primary Key already covers this signature.
     __table_args__ = (
         Index("idx_sistaging_stn_itm", "station_id", "item_id"),
     )
@@ -394,5 +453,3 @@ __all__ = [
     "ExportControl",
     "StationItemStaging",
 ]
-
-# ---------- Dialect-aware timestamp helpers ----------
