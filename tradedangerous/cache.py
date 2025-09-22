@@ -40,6 +40,7 @@ from sqlalchemy.types import DateTime as SA_DateTime
 from tradedangerous.db import make_engine_from_config, get_session_factory
 from tradedangerous.db import orm_models as SA
 from tradedangerous.db import lifecycle
+from tradedangerous.db.utils import parse_ts, get_import_batch_size
 
 from .fs import file_line_count
 from .tradeexcept import TradeException
@@ -244,6 +245,52 @@ class SupplyError(BuildCacheBaseException):
 ######################################################################
 # Helpers
 
+# --- tiny FK lookup caches (per import run) ---
+_fk_cache_system = {}
+_fk_cache_station = {}
+_fk_cache_category = {}
+_fk_cache_added = {}
+
+def _get_system_id(session, system_name):
+    if system_name in _fk_cache_system:
+        return _fk_cache_system[system_name]
+    rid = session.query(SA.System.system_id).filter(SA.System.name == system_name).scalar()
+    if rid is None:
+        raise ValueError(f"Unknown System name: {system_name}")
+    _fk_cache_system[system_name] = rid
+    return rid
+
+def _get_station_id(session, system_id, station_name):
+    key = (system_id, station_name)
+    if key in _fk_cache_station:
+        return _fk_cache_station[key]
+    rid = (
+        session.query(SA.Station.station_id)
+        .filter(SA.Station.system_id == system_id, SA.Station.name == station_name)
+        .scalar()
+    )
+    if rid is None:
+        raise ValueError(f"Unknown Station '{station_name}' in system_id={system_id}")
+    _fk_cache_station[key] = rid
+    return rid
+
+def _get_category_id(session, cat_name):
+    if cat_name in _fk_cache_category:
+        return _fk_cache_category[cat_name]
+    rid = session.query(SA.Category.category_id).filter(SA.Category.name == cat_name).scalar()
+    if rid is None:
+        raise ValueError(f"Unknown Category name: {cat_name}")
+    _fk_cache_category[cat_name] = rid
+    return rid
+
+def _get_added_id(session, added_name):
+    if added_name in _fk_cache_added:
+        return _fk_cache_added[added_name]
+    rid = session.query(SA.Added.added_id).filter(SA.Added.name == added_name).scalar()
+    if rid is None:
+        raise ValueError(f"Unknown Added name: {added_name}")
+    _fk_cache_added[added_name] = rid
+    return rid
 
 # supply/demand levels are one of '?' for unknown, 'L', 'M' or 'H'
 # for low, medium, or high. We turn these into integer values for
@@ -811,26 +858,38 @@ def deprecationCheckItem(importPath, lineNo, line):
     )
 
 
+# --- main importer ---
 def processImportFile(
     tdenv,
-    session: Session,
-    importPath: Path,
-    tableName: str,
+    session,
+    importPath,
+    tableName,
     *,
     line_callback: Optional[Callable] = None,
     call_args: Optional[dict] = None,
 ):
     """
     Import a CSV file into the given table.
-    Column headers map to ORM model fields; special handling for
-    uniqueness, reserved names, deprecation, and type casting.
+
+    - RareItem.csv:
+        Skips FK marker columns:
+          * !name@System.system_id
+          * name@Station.station_id
+          * name@Category.category_id
+        Looks up system_id (transient), station_id, category_id via cached helpers.
+        NOTE: system_id is NOT a RareItem column and is not passed to the model.
+
+    - System.csv:
+        Skips 'name@Added.added_id' from active columns; resolves Added by name,
+        defaulting to "EDSM" when blank.
+
+    - All tables:
+        Uses parse_ts() for datetimes.
+        Enforces unq: unique headers.
+        Commits per tradedangerous.db.utils.get_import_batch_size(session).
     """
 
-    tdenv.DEBUG0(
-        "Processing import file '{}' for table '{}'",
-        str(importPath),
-        tableName,
-    )
+    tdenv.DEBUG0("Processing import file '{}' for table '{}'", str(importPath), tableName)
 
     call_args = call_args or {}
     if line_callback:
@@ -839,57 +898,58 @@ def processImportFile(
     uniquePfx = "unq:"
     uniqueLen = len(uniquePfx)
 
-    # --- batch size config (like eddblink) ---
-    env_batch = os.environ.get("TD_LISTINGS_BATCH")
-    if env_batch:
-        try:
-            max_transaction_items = int(env_batch)
-        except ValueError:
-            tdenv.WARN(
-                "Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.",
-                env_batch,
-            )
-            max_transaction_items = None
-    else:
-        max_transaction_items = None
-
-    if max_transaction_items is None:
-        if session.bind.dialect.name in ("mysql", "mariadb"):
-            max_transaction_items = 50 * 1024   # ~50k rows per commit
-        else:
-            max_transaction_items = 250 * 1024  # ~250k rows for SQLite
-
+    # Backend-aware batch policy (SQLite=None→single commit; MariaDB defaults to 50k; env override respected)
+    max_transaction_items = get_import_batch_size(session)  # from tradedangerous.db.utils
     transaction_items = 0
 
     with importPath.open("r", encoding="utf-8") as importFile:
         csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
 
-        # first line must be the column names
+        # header
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
 
-        bindColumns = []
-        uniqueIndexes = []
+        activeColumns: list[str] = []        # headers that map directly to ORM fields
+        kept_indices: list[int] = []         # original header indices that we KEEP (aligns values)
+        uniqueIndexes: list[int] = []        # indexes into activeColumns (post-skip)
+        fk_col_indices: dict[str, int] = {}  # special FK headers → their original indices
 
-        # preprocess header
+        # --- preprocess header ---
         for cIndex, cName in enumerate(columnDefs):
             colName, _, srcKey = cName.partition("@")
 
-            # --- FIX: avoid overwriting System.name with name@Added.added_id
-            if tableName == "System" and cName == "name@Added.added_id":
-                colName = "added_id"
+            # --- System.csv ---
+            if tableName == "System":
+                if cName == "name":
+                    srcKey = ""  # plain field
+                elif cName == "name@Added.added_id":
+                    # We'll resolve Added by name separately; skip from active columns.
+                    fk_col_indices["added"] = cIndex
+                    continue  # do NOT keep this header/value
 
-            # unique index columns
+            # --- RareItem.csv (skip FK headers; remember positions) ---
+            if tableName == "RareItem":
+                if cName == "!name@System.system_id":
+                    fk_col_indices["system"] = cIndex
+                    continue  # do NOT keep this header/value
+                if cName == "name@Station.station_id":
+                    fk_col_indices["station"] = cIndex
+                    continue  # do NOT keep this header/value
+                if cName == "name@Category.category_id":
+                    fk_col_indices["category"] = cIndex
+                    continue  # do NOT keep this header/value
+
+            # unique index marker (e.g., "unq:name")
             if colName.startswith(uniquePfx):
-                uniqueIndexes.append(cIndex)
+                uniqueIndexes.append(len(activeColumns))
                 colName = colName[uniqueLen:]
 
-            bindColumns.append(colName)
+            # keep normal columns and remember their source index
+            activeColumns.append(colName)
+            kept_indices.append(cIndex)
 
-        # Check if there is a deprecation check for this table
-        deprecationFn = getattr(
-            sys.modules[__name__], "deprecationCheck" + tableName, None
-        )
+        # optional deprecation checker
+        deprecationFn = getattr(sys.modules[__name__], "deprecationCheck" + tableName, None)
 
         importCount = 0
         uniqueIndex = {}
@@ -912,7 +972,7 @@ def processImportFile(
 
             tdenv.DEBUG1("       Values: {}", ", ".join(linein))
 
-            # Run deprecation checks
+            # deprecation checks
             if deprecationFn:
                 try:
                     deprecationFn(importPath, lineNo, linein)
@@ -923,150 +983,139 @@ def processImportFile(
                     tdenv.NOTE("{}", e)
                     continue
 
-            # Handle uniqueness check
+            # Build values aligned to activeColumns (skip the FK columns we excluded)
+            activeValues = [linein[i] for i in kept_indices]
+
+            # unique index enforcement over activeColumns
             if uniqueIndexes:
-                keyValues = [str(linein[col]).upper() for col in uniqueIndexes]
+                keyValues = [str(activeValues[i]).upper() for i in uniqueIndexes]
                 key = ":!:".join(keyValues)
                 prevLineNo = uniqueIndex.get(key, 0)
                 if prevLineNo:
-                    key = "/".join(keyValues)
-                    raise DuplicateKeyError(
-                        importPath, lineNo, "entry", key, prevLineNo
-                    )
+                    key_disp = "/".join(keyValues)
+                    raise DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
                 uniqueIndex[key] = lineNo
 
             try:
-                # --- fence row assembly to prevent query-invoked autoflush of partial rows ---
-                with session.no_autoflush:
-                    # Map column names → row values
-                    rowdict = dict(zip(bindColumns, linein))
+                # Base rowdict from non-FK columns only
+                rowdict = dict(zip(activeColumns, activeValues))
 
-                    # Guard against invalid system/station names
-                    if tableName == "System":
-                        if not rowdict.get("name") or not str(rowdict["name"]).strip():
-                            raise InvalidLineError(
-                                importPath,
-                                lineNo,
-                                "System with no name",
-                                str(rowdict),
-                            )
-
-                    if tableName == "Station":
-                        if not rowdict.get("name") or not str(rowdict["name"]).strip():
-                            raise InvalidLineError(
-                                importPath,
-                                lineNo,
-                                "Station with no name",
-                                str(rowdict),
-                            )
-
-                    # Look up ORM column types and cast accordingly
-                    Model = getattr(SA, tableName)
-                    mapper = sa_inspect(Model)
-
-                    for key, val in list(rowdict.items()):
-                        if val in ("", None):
-                            rowdict[key] = None
-                            continue
-
-                        col = mapper.columns.get(key)
-                        if col is None:
-                            continue  # skip unknown columns
-
-                        typename = col.type.__class__.__name__.lower()
+                # --- RareItem foreign key lookups ---
+                if tableName == "RareItem":
+                    # Resolve system (transient; only for station lookup)
+                    sys_id = None
+                    if "system" in fk_col_indices:
+                        sys_name = linein[fk_col_indices["system"]]
                         try:
-                            pytype = col.type.python_type
-                        except NotImplementedError:
-                            pytype = None
+                            sys_id = _get_system_id(session, sys_name)
+                        except ValueError:
+                            tdenv.WARN("Unknown System '{}' in {}", sys_name, importPath)
 
-                        if pytype is int:
+                    # Station (requires system context)
+                    if "station" in fk_col_indices:
+                        stn_name = linein[fk_col_indices["station"]]
+                        if sys_id is not None:
                             try:
-                                rowdict[key] = int(val)
-                            except Exception:
-                                try:
-                                    rowdict[key] = int(float(val))
-                                except ValueError:
-                                    rowdict[key] = None
-                        elif pytype is float:
+                                rowdict["station_id"] = _get_station_id(session, sys_id, stn_name)
+                            except ValueError:
+                                tdenv.WARN("Unknown Station '{}' in {}", stn_name, importPath)
+                        else:
+                            tdenv.WARN("Station lookup skipped (no system_id) for '{}'", stn_name)
+
+                    # Category
+                    if "category" in fk_col_indices:
+                        cat_name = linein[fk_col_indices["category"]]
+                        try:
+                            rowdict["category_id"] = _get_category_id(session, cat_name)
+                        except ValueError:
+                            tdenv.WARN("Unknown Category '{}' in {}", cat_name, importPath)
+
+                # --- System foreign key lookup (Added), default "EDSM" if blank ---
+                if tableName == "System" and "added" in fk_col_indices:
+                    added_val = linein[fk_col_indices["added"]] or "EDSM"
+                    try:
+                        rowdict["added_id"] = _get_added_id(session, added_val)
+                    except ValueError:
+                        rowdict["added_id"] = None
+                        tdenv.WARN("Unknown Added value '{}' in {}", added_val, importPath)
+
+                # --- type coercion ---
+                for key, val in list(rowdict.items()):
+                    if val in ("", None):
+                        rowdict[key] = None
+                        continue
+                    # ints
+                    if key.endswith("_id") or key.endswith("ID") or key in ("cost", "max_allocation"):
+                        try:
+                            rowdict[key] = int(val)
+                        except ValueError:
+                            rowdict[key] = None
+                    # floats
+                    elif key in ("pos_x", "pos_y", "pos_z", "ls_from_star"):
+                        try:
                             rowdict[key] = float(val)
-                        elif pytype is bool:
-                            rowdict[key] = str(val).strip().lower() in (
-                                "1",
-                                "y",
-                                "yes",
-                                "true",
-                                "t",
-                            )
-                        elif "datetime" in typename or "timestamp" in typename:
-                            v = str(val).strip()
-                            try:
-                                rowdict[key] = datetime.fromisoformat(v)
-                            except ValueError:
-                                try:
-                                    rowdict[key] = datetime.strptime(v, "%Y-%m-%d %H:%M:%S")
-                                except ValueError:
-                                    tdenv.WARN(
-                                        f"Unparsable datetime in {importPath} line {lineNo} col {key}: {val}"
-                                    )
-                                    rowdict[key] = None
-                        elif pytype is date:
-                            v = str(val).strip()
-                            try:
-                                rowdict[key] = date.fromisoformat(v)
-                            except ValueError:
-                                rowdict[key] = None
-                        # else: leave as string
-
-                    # Special-case remaps for reserved words / ORM naming differences
-                    if tableName == "Upgrade" and "class" in rowdict:
-                        rowdict["class_"] = rowdict.pop("class")
-                    if tableName == "FDevOutfitting" and "class" in rowdict:
-                        rowdict["class_"] = rowdict.pop("class")
-
-                    # ---- required FK guards for vendor tables (fail fast before merge) ----
-                    if tableName == "ShipVendor":
-                        if not rowdict.get("ship_id") or not rowdict.get("station_id"):
-                            raise InvalidLineError(
+                        except ValueError:
+                            rowdict[key] = None
+                    # datetimes
+                    elif "time" in key or key == "modified":
+                        parsed = parse_ts(val)
+                        if parsed:
+                            rowdict[key] = parsed
+                        else:
+                            tdenv.WARN(
+                                "Unparsable datetime in {} line {} col {}: {}",
                                 importPath,
                                 lineNo,
-                                "ShipVendor missing ship_id or station_id",
-                                str(rowdict),
+                                key,
+                                val,
                             )
-                    elif tableName == "UpgradeVendor":
-                        if not rowdict.get("upgrade_id") or not rowdict.get("station_id"):
-                            raise InvalidLineError(
-                                importPath,
-                                lineNo,
-                                "UpgradeVendor missing upgrade_id or station_id",
-                                str(rowdict),
-                            )
+                            rowdict[key] = None
+                    # strings (incl. TriState flags) left as-is
 
-                    obj = Model(**rowdict)
-                    session.merge(obj)
-                    importCount += 1
+                # reserved word remaps
+                if tableName == "Upgrade" and "class" in rowdict:
+                    rowdict["class_"] = rowdict.pop("class")
+                if tableName == "FDevOutfitting" and "class" in rowdict:
+                    rowdict["class_"] = rowdict.pop("class")
+
+                # ensure we never pass system_id to RareItem (not a column)
+                if tableName == "RareItem" and "system_id" in rowdict:
+                    rowdict.pop("system_id", None)
+
+                Model = getattr(SA, tableName)
+                obj = Model(**rowdict)
+                session.merge(obj)
+                importCount += 1
+
+                # batched commit (only if enabled for this backend)
+                if max_transaction_items:
                     transaction_items += 1
+                    if transaction_items >= max_transaction_items:
+                        session.commit()
+                        session.begin()
+                        transaction_items = 0
 
-                # --- commit in chunks (kept exactly as before) ---
-                if transaction_items >= max_transaction_items:
-                    session.commit()
-                    session.begin()
-                    transaction_items = 0
-
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e:
                 tdenv.WARN(
-                    f"*** INTERNAL ERROR: {e}\n"
-                    f"CSV File: {importPath}:{lineNo}\n"
-                    f"Table: {tableName}\n"
-                    f"Params: {rowdict!r}\n"
+                    "*** INTERNAL ERROR: {err}\n"
+                    "CSV File: {file}:{line}\n"
+                    "Table: {table}\n"
+                    "Params: {params}\n".format(
+                        err=str(e),
+                        file=str(importPath),
+                        line=lineNo,
+                        table=tableName,
+                        params=rowdict if "rowdict" in locals() else linein,
+                    )
                 )
-                pass
+                session.rollback()
 
-        # final commit for leftovers
         session.commit()
+        tdenv.DEBUG0("{count} {table}s imported", count=importCount, table=tableName)
 
-        tdenv.DEBUG0(
-            "{count} {table}s imported", count=importCount, table=tableName
-        )
+
+
+
 
 
 

@@ -238,7 +238,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.tdb.engine.dialect.name in ("mysql", "mariadb"):
                 max_transaction_items = 50 * 1024   # ~50k rows per commit
             else:
-                max_transaction_items = 250 * 1024  # ~250k rows per commit (SQLite is fine with big txns)
+                max_transaction_items = 1000 * 1024  # ~250k rows per commit (SQLite is fine with big txns)
 
         transaction_items = 0
 
