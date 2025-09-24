@@ -197,6 +197,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         Updates the market data (AKA the StationItem table) using listings_file
         Writes directly to the database via SQLAlchemy.
         """
+        from tradedangerous.db.utils import get_import_batch_size
+
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
 
@@ -223,29 +225,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         is_debug = self.tdenv.debug > 0
         self.tdenv.DEBUG0("Processing entries...")
 
-        # Commit in chunks to avoid massive transactions on MariaDB
-        env_batch = os.environ.get("TD_LISTINGS_BATCH")
-        if env_batch:
-            try:
-                max_transaction_items = int(env_batch)
-            except ValueError:
-                self.tdenv.WARN("Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.", env_batch)
-                max_transaction_items = None
-        else:
-            max_transaction_items = None
-
-        if max_transaction_items is None:
-            if self.tdb.engine.dialect.name in ("mysql", "mariadb"):
-                max_transaction_items = 50 * 1024   # ~50k rows per commit
-            else:
-                max_transaction_items = 1000 * 1024  # ~250k rows per commit (SQLite is fine with big txns)
-
-        transaction_items = 0
-
-
         with pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog, \
              listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
-             Session() as session:   # use explicit session, not one giant begin()
+             Session() as session:
+
+            max_transaction_items = get_import_batch_size(session)
+            transaction_items = 0
 
             for listing in csv.DictReader(fh):
                 prog.increment(1)
@@ -258,8 +243,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 dt_listing_time = datetime.datetime.utcfromtimestamp(listing_time)
 
                 if station_id != cur_station:
-                    if transaction_items >= max_transaction_items:
+                    if max_transaction_items and transaction_items >= max_transaction_items:
                         session.commit()
+                        session.begin()
                         transaction_items = 0
                     cur_station, skip_station = station_id, False
 
@@ -296,7 +282,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
                 item_id = int(listing['commodity_id'])
                 if item_id not in item_lookup:
-                    continue
+                    continue  # skip rare items
 
                 demand_price = int(listing['sell_price'])
                 demand_units = int(listing['demand'])
@@ -322,7 +308,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 ))
                 transaction_items += 1
 
-            # Final commit for remaining rows
+                if max_transaction_items and transaction_items >= max_transaction_items:
+                    session.commit()
+                    session.begin()
+                    transaction_items = 0
+
+            # commit tail
             session.commit()
 
         with pbar.Progress(1, 40, prefix="Saving"):
@@ -335,6 +326,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         session.execute(text("VACUUM"))
 
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
+
 
 
     def run(self):

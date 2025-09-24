@@ -899,7 +899,7 @@ def processImportFile(
     uniqueLen = len(uniquePfx)
 
     # Backend-aware batch policy (SQLite=None→single commit; MariaDB defaults to 50k; env override respected)
-    max_transaction_items = get_import_batch_size(session)  # from tradedangerous.db.utils
+    max_transaction_items = get_import_batch_size(session, profile="csv")  # from tradedangerous.db.utils
     transaction_items = 0
 
     with importPath.open("r", encoding="utf-8") as importFile:
