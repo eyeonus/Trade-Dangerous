@@ -16,14 +16,6 @@ from .db import orm_models as SA
 from .tradeexcept import TradeException
 
 
-class Element:      # TODO: enum?
-    basic     = 1 << 0
-    supply    = 1 << 1
-    timestamp = 1 << 2
-    full      = basic | supply | timestamp
-    blanks    = 1 << 31
-
-
 def dumpPrices(
     session: Session,      # SQLAlchemy session
     elementMask,           # which columns to output
@@ -98,8 +90,6 @@ def dumpPrices(
     if stationID:
         q = q.filter(SA.StationItem.station_id == stationID)
 
-    results = q.all()
-
     # Set up output
     if not file:
         file = sys.stdout
@@ -157,10 +147,10 @@ def dumpPrices(
     unkIQL = "?"
     defIQL = "?" if not defaultZero else "-"
 
-    # Main loop
+    # Main loop — stream results instead of preloading
     output = ""
     lastStn, lastCat = None, None
-    for row in results:
+    for row in q.yield_per(1000).execution_options(stream_results=True):
         stnID = row.station_id
         itemID = row.item_id
         station = row.station_name
@@ -169,7 +159,6 @@ def dumpPrices(
         catID = row.category_id
         category = row.category_name
 
-        # Guard against bad system names
         if not system:
             raise TradeException(
                 f"Station {station} (ID {stnID}) is linked to a system with no name."
@@ -192,7 +181,6 @@ def dumpPrices(
         supplyUnits = row.supply_units or defaultDemandVal
         supplyLevel = row.supply_level or defaultDemandVal
 
-        # Demand/supply formatting
         if supplyCr > 0:
             demandStr = defIQL if demandCr <= 0 else unkIQL
             supplyStr = (
