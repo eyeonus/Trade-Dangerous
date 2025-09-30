@@ -16,6 +16,17 @@ from .db import orm_models as SA
 from .tradeexcept import TradeException
 
 
+class Element:      # TODO: enum?
+    basic     = 1 << 0
+    supply    = 1 << 1
+    timestamp = 1 << 2
+    full      = basic | supply | timestamp
+    blanks    = 1 << 31
+
+
+######################################################################
+# Main
+
 def dumpPrices(
     session: Session,      # SQLAlchemy session
     elementMask,           # which columns to output
