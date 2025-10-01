@@ -282,61 +282,87 @@ All database operations now use SQLAlchemy ORM and engine utilities.
 
 # TradeDangerous Refactor — `plugins/spansh_plug.py`
 
-SQLAlchemy migration + performance rework for the Spansh importer. Public plugin options/behaviour unchanged.
+## Overview
+A from-scratch, high-throughput importer for the Spansh galaxy dump (`galaxy_stations.json`).  
+Goals: **speed**, **idempotency**, **DB-agnostic plugin surface** (dialect specifics live in `tradedangerous/db/utils.py`).
 
----
+## What it does
+- Streams a multi-GiB top-level JSON array using **ijson** (C-backed) — constant memory footprint.
+- Imports/updates: **System**, **Station**, **Item/StationItem**, **Ship/ShipVendor**, **Upgrade/UpgradeVendor**.
+- Applies **per-service freshness gating** via `-O maxage=<days>`:
+  - a station is processed iff *any* of its `market/outfitting/shipyard` sections has a fresh `updateTime`.
+  - only fresh services for that station are written.
+- Maintains **timestamp-guarded** upserts:
+  - parent tables (`System`, `Station`) track `modified`.
+  - link tables (`StationItem`, `ShipVendor`, `UpgradeVendor`) store service timestamps; **updates only if newer**.
+- Enforces **`Item.ui_order`** once at the end (stable, alphabetic per category).
+- Imports **RareItem** from template, but **only for (System, Station) pairs that already exist in the DB** (insensitive to the current run’s `maxage`). Rows are passed through **verbatim**.
 
-## sqlite3 Removal / ORM Adoption
-- Eliminated `sqlite3` usage; all DB I/O goes through **SQLAlchemy ORM** (engine from `tdb.engine`).
-- Introduced DTOs (`SystemDTO`, `StationDTO`, `ShipDTO`, `UpgradeDTO`, `CommodityDTO`) to avoid name collisions with ORM models.
-- Replaced legacy `INSERT OR REPLACE/IGNORE` with ORM **upsert via `session.merge()`** and staged bulk inserts (see below).
+## Behavior & Guarantees
+- **Idempotent**: repeated runs/narrow `maxage` won’t regress data (timestamp guards).
+- **FK-safe** ordering: upserts System → Station → Services; then “finalize” System.modified from imported stations.
+- **`System.added` policy** (if column exists):
+  - On **insert**: set to **20** (EDSM).
+  - On **update**: never overwrite **unless NULL**, then set to **20**.
+- **Counters in progress line** (TTY-friendly, width-capped; no wrap/scroll spam):
+  - `systems` and `stations`: attempted upserts.
+  - `kept: markets / outfitters / shipyards`: **count of stations** where that fresh service was processed.
+- Emits a **final summary line** after streaming, then normal scrolling output for export.
 
-## Bootstrap & Idempotence
-- **Fixed SQLite-only bootstrap guard**: no longer checks for a `.db` file; instead inspects the DB via ORM and only builds cache if **truly empty** (prevents wiping eddblink-seeded DBs).
-- Import remains **idempotent**: re-runs don’t duplicate Systems/Stations or flip values; vendor rows (StationItem/ShipVendor/UpgradeVendor) are upserted on `station_id/item_id/...` uniques.
+## Performance
+- **Streaming JSON** via `ijson.items(fh, 'item')`.
+- **No pre-read short-circuits** (no `SELECT MAX(modified)` per station/service). The database resolves per-row upserts internally.
+- **Batching/transactions** (resolved at runtime):
+  - **SQLite**: single large transaction; connection PRAGMAs applied (`WAL`, `synchronous=NORMAL`, `temp_store=MEMORY`, larger cache).
+  - **MySQL/MariaDB**: large batch commits by default (50k), using dialect `INSERT … ON DUPLICATE KEY UPDATE`.
+- Achieves stable throughput on multi-GiB inputs; DB no longer dominates wall time.
 
-## Bulk Staging & Flush Ordering (speed + FK safety)
-- Replaced per-row `session.merge()` with **bulk staging buffers**:
-  - Parents: `System`, `Station`, `Ship`, `Upgrade`, `Item`
-  - Children: `ShipVendor`, `UpgradeVendor`, `StationItem`
-- **Flush/commit order** enforced to satisfy FKs:  
-  `System → Station → (Ship, Upgrade, Item) → (ShipVendor, UpgradeVendor, StationItem)`
-- Flushes occur in bounded batches; size controlled by `TD_LISTINGS_BATCH` (defaults: ~50k rows/commit on MariaDB, ~250k on SQLite).
+## Options
+- `-O url=<http(s)>` — download source (default if neither `url` nor `file` given).
+- `-O file=<path>|-` — read local file or `stdin`.
+- `-O maxage=<days>` — per-service freshness gate (float).
+- `-O pricesonly=1` — **testing aid**: skip import; regenerate `TradeDangerous.prices` only.
 
-## Timestamp & Tri-state Semantics
-- Added `to_datetime(...)` normaliser; `parse_ts(...)` now tolerant of `str | datetime | epoch | None`.
-- Preserved Spansh “age” semantics (epoch seconds → UTC `DATETIME(6)`); `maxage` filter applied against **entity** timestamps (not station).
-- Preserved **tri-state** service flags (`'Y'/'N'/'?'`); no boolean coercion.
+## Files & Outputs
+- Uses the configured directories from your environment/ini:
+  - **tmp dir**: `tdenv.tmpDir` (fallback `tdb.tmpDir`, then `"tmp"`) for the JSON cache (with `Last-Modified` conditional fetch).
+  - **data dir**: `tdenv.dataDir` (fallback `tdb.dataDir`, then `"data"`) for CSV exports.
+  - **templates**: `tdenv.templateDir` (fallback package `templates/`) for `RareItem.csv`.
+- CSVs are written via `csvexport.exportTableToFile`.
+- `TradeDangerous.prices` is rebuilt via `cache.regeneratePricesFile(self.tdb, self.tdenv)` (kept for backward compatibility; slated for deprecation).
 
-## Category & `ui_order`
-- Category lookup **preloaded once** (name→`category_id`) for commodity inserts.
-- Moved **`ui_order` recompute** out of per-row `ensure_commodity`; performed **once at the end** to remove O(n²) behaviour.
+## DB Abstraction & Dialects
+- The plugin remains DB-agnostic; **all dialect/sql fast paths are in** `tradedangerous/db/utils.py`:
+  - SQLite: `dialects.sqlite.insert(...).on_conflict_do_update(...)`
+  - MySQL/MariaDB: `dialects.mysql.insert(...).on_duplicate_key_update(...)`
+  - Simple/modified upsert helpers and bulk PRAGMAs live there.
+- Batch size policy:
+  1. `db_utils.get_import_batch_size(session, profile="spansh")` if provided.
+  2. `TD_LISTINGS_BATCH` env (`>0` size; `<=0` = single TX).
+  3. Defaults: SQLite → single TX; MySQL → 50k; fallback → 5k.
 
-## Ingestion & Streaming
-- `ingest_shipyard`, `ingest_outfitting`, `ingest_market` now **yield empty iterators** instead of returning `None` (simplifies streaming logic).
-- Maintained streaming parse with `ijson` (`yajl2_c` backend).
-- Progress total: added a pragmatic estimate using a fixed **`AVG_BYTES_PER_SYSTEM`**; original “count systems” pre-pass retained as a **commented** fallback for recalibration.
+## Logging & UX
+- On TTY: single-line live status during import; width-capped; cleared on completion.
+- After streaming: prints **“Import complete — …”** snapshot.
+- Export stage prints each dataset on its own line and ends with “Cache export completed.”
 
-## Progress & Diagnostics
-- `Progresser` hardened to tolerate missing/ended tasks; added **periodic staged-flush logging** (`Flushing staged: …` line overwrite) to show movement during long batches.
-- Retained user-facing timing helper (`get_timings`) and per-system summary under verbose modes.
+## Error Handling
+- Uses `CleanExit` for controlled early termination (download failures, empty/invalid JSON, RareItem template missing).
+- Safe session handling with commit/rollback and close on all paths.
+- RareItem rows for missing `(System, Station)` pairs are **skipped with a warning count** (prevents NOT NULL/ FK errors).
 
-## Export / Prices
-- **CSV export** refactored to accept a **Session**:  
-  `csvexport.exportTableToFile(self.session, self.tdenv, table)`
-- **Prices regeneration** continues to use the **tdb** wrapper (needs paths/session factory):  
-  `cache.regeneratePricesFile(self.tdb, self.tdenv)`
+## Dependencies
+- `ijson` for streaming parse.
+- SQLAlchemy Core/ORM (dialect inserts).
+- Existing project modules: `plugins`, `cache`, `csvexport`, `db.utils`.
 
-## Network / Freshness
-- Retained HEAD/GET freshness checks and mtime sync for downloads; download progress quirks unchanged (server may omit `Content-Length`).
+## Typical Invocations
+```bash
+# Full import from cached/downloaded JSON, 30-day freshness:
+python -m trade import -P spansh -O maxage=30
 
-## Transactions & Defaults
-- Bounded transactions to avoid massive MariaDB locks and SQLite thrash; environment override via `TD_LISTINGS_BATCH`.
-- Final **flush + commit** performed at the end of import; session kept alive for CSV export.
+# Import from local file, narrow freshness for a fast update:
+python -m trade import -P spansh -O file=tmp/galaxy_stations.json,maxage=2
 
----
-
-### Result
-- Spansh full-import is **dramatically faster** and remains safe under FK constraints.
-- Behaviour preserved (tri-state services, typing, age filters, idempotence).
-- Export pipeline works end-to-end (CSV + `.prices`) with mixed inputs: **Session** for csvexport, **tdb** for cache.
+# Prices-only smoke test (no import):
+python -m trade import -P spansh -O pricesonly=1
