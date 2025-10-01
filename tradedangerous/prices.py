@@ -169,7 +169,8 @@ def dumpPrices(
         item = row.name
         catID = row.category_id
         category = row.category_name
-
+        
+        # Guard against bad system names
         if not system:
             raise TradeException(
                 f"Station {station} (ID {stnID}) is linked to a system with no name."
@@ -191,7 +192,8 @@ def dumpPrices(
         demandLevel = row.demand_level or defaultDemandVal
         supplyUnits = row.supply_units or defaultDemandVal
         supplyLevel = row.supply_level or defaultDemandVal
-
+        
+        # Demand/supply formatting
         if supplyCr > 0:
             demandStr = defIQL if demandCr <= 0 else unkIQL
             supplyStr = (

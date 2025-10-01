@@ -20,6 +20,7 @@ import io
 import os
 import sys
 import time
+import ijson
 import json
 import shutil
 from datetime import datetime, timedelta, timezone
@@ -63,6 +64,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         "url": "Remote URL to galaxy_stations.json (default if neither url nor file is given)",
         "file": "Local path to galaxy_stations.json; use '-' to read from stdin",
         "maxage": "Skip service sections older than <days> (float), evaluated per service",
+        "pricesonly": "Skip import/exports; regenerate TradeDangerous.prices only (for testing).",
     }
 
     # ------------------------------
@@ -104,6 +106,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb.reloadCache() and any early RareItem processing).
         """
         started = time.time()
+        
+        # Quick test path: regenerate prices only
+        if self.getOption("pricesonly"):
+            try:
+                self._print("Regenerating TradeDangerous.prices …")
+                cache.regeneratePricesFile(self.tdb, self.tdenv)
+                self._print("Prices file generated.")
+            except Exception as e:
+                self._error(f"Prices regeneration failed: {e!r}")
+                return False
+            return False
+
 
         # Acquire source path/stream
         try:
@@ -169,6 +183,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self._print("You can increase verbosity (-v) to get a sense of progress")
             self._print("Importing spansh data")
             stats = self._import_stream(source_path, categories, tables)
+            # Finalise the live status line and echo a clean summary snapshot
+            self._end_live_status()
+            self._print(
+                f"Import complete — systems: {stats.get('systems', 0):,}  "
+                f"stations: {stats.get('stations', 0):,}  "
+                f"kept: markets≈{stats.get('market_stations', 0):,} "
+                f"outfitters≈{stats.get('outfit_stations', 0):,} "
+                f"shipyards≈{stats.get('ship_stations', 0):,}"
+            )
         except CleanExit as ce:
             self._warn(str(ce))
             self._safe_close_session()
@@ -356,19 +379,35 @@ class ImportPlugin(plugins.ImportPluginBase):
         
     def _parse_progress(self, consumed_bytes: int, start_ts: float, *, min_interval: float = 0.5) -> None:
         """
-        Show a single-line 'Parsing' progress with bytes and rate.
-        Always enabled (even at low verbosity) so users see it’s alive.
+        Update parse progress (bytes + rate). We still print the 'Parsing' heartbeat
+        only *until* importing begins; after that, _progress_line will include these
+        metrics to avoid line clobbering.
         """
         now = time.time()
         if now - self._last_progress_time < min_interval:
+            # Still store latest metrics even if we don't print this tick.
+            elapsed = max(now - start_ts, 1e-9)
+            self._parse_bytes = consumed_bytes
+            self._parse_rate = consumed_bytes / elapsed
             return
         self._last_progress_time = now
 
-        rate = consumed_bytes / max(now - start_ts, 1e-9)  # B/s
-        # format rate and bytes with the same helper used by download
-        msg = f"Parsing Spansh: {self._fmt_bytes(consumed_bytes)} read  {self._fmt_bytes(rate)}/s"
-        self._live_status(msg)
+        # Lazily init state holders so we don't need to touch __init__
+        if not hasattr(self, "_parse_bytes"):
+            self._parse_bytes = 0
+        if not hasattr(self, "_parse_rate"):
+            self._parse_rate = 0.0
+        if not hasattr(self, "_started_importing"):
+            self._started_importing = False
 
+        elapsed = max(now - start_ts, 1e-9)
+        self._parse_bytes = consumed_bytes
+        self._parse_rate = consumed_bytes / elapsed
+
+        # Before importing starts, show the standalone parsing heartbeat.
+        if not self._started_importing:
+            msg = f"Parsing Spansh: {self._fmt_bytes(self._parse_bytes)} read  {self._fmt_bytes(self._parse_rate)}/s"
+            self._live_status(msg)
 
     def _write_stream_to_file(self, stream: io.BufferedReader, dest: Path) -> None:
         part = dest.with_suffix(dest.suffix + ".part")
@@ -401,11 +440,26 @@ class ImportPlugin(plugins.ImportPluginBase):
     # DB session / reflection
     # ------------------------------
     def _open_session(self) -> Session:
+        """
+        Create a DB session. If SQLite, enable bulk-write pragmas for this session/connection.
+        """
         if hasattr(self.tdb, "Session") and callable(self.tdb.Session):
-            return self.tdb.Session()
-        if hasattr(db_utils, "get_session"):
-            return db_utils.get_session(self.tdb.engine)
-        raise RuntimeError("No Session factory available")
+            sess = self.tdb.Session()
+        elif hasattr(db_utils, "get_session"):
+            sess = db_utils.get_session(self.tdb.engine)
+        else:
+            raise RuntimeError("No Session factory available")
+
+        # If SQLite, tune for bulk import speed (per-connection pragmas).
+        try:
+            if db_utils.is_sqlite(sess):
+                db_utils.sqlite_set_bulk_pragmas(sess)
+        except Exception:
+            # Don't fail the run just because pragmas couldn't be set
+            pass
+
+        return sess
+
 
     def _reflect_tables(self, engine: Engine) -> Dict[str, Table]:
         meta = MetaData()
@@ -436,19 +490,44 @@ class ImportPlugin(plugins.ImportPluginBase):
     # Import (streaming JSON → upserts)
     # ------------------------------
     def _import_stream(self, source_path: Path, categories: Dict[str, int], tables: Dict[str, Table]) -> Dict[str, int]:
+        """
+        Streaming importer with service-level maxage gating (FK-safe).
+
+        Progress counters:
+          - systems, stations → attempted upserts
+          - commodities → StationItem rows written (kept listings)
+          - modules → UpgradeVendor rows written
+          - ships → ShipVendor rows written
+          - market_stations / outfit_stations / ship_stations → number of stations where that fresh service was processed
+        """
         batch_ops = 0
-        stats = {"systems": 0, "stations": 0, "commodities": 0, "ships": 0, "modules": 0}
+        stats = {
+            "systems": 0,
+            "stations": 0,
+            "commodities": 0,
+            "ships": 0,
+            "modules": 0,
+            "market_stations": 0,
+            "outfit_stations": 0,
+            "ship_stations": 0,
+        }
 
         maxage_days = float(self.getOption("maxage")) if self.getOption("maxage") else None
         maxage_td = timedelta(days=maxage_days) if maxage_days is not None else None
         now_utc = datetime.utcnow()
 
-        def service_recent(ts: Optional[datetime]) -> bool:
+        def recent(ts: Optional[datetime]) -> bool:
             if ts is None:
-                return False
+                return False if maxage_td is not None else True
             if maxage_td is None:
                 return True
             return (now_utc - ts) <= maxage_td
+
+        def svc_ts(st: Dict[str, Any], key: str) -> Optional[datetime]:
+            obj = st.get(key) or {}
+            if not isinstance(obj, dict):
+                return None
+            return self._parse_ts(obj.get("updateTime"))
 
         with open(source_path, "rb") as fh:
             try:
@@ -459,69 +538,98 @@ class ImportPlugin(plugins.ImportPluginBase):
                 pass
 
             for sys_idx, system_obj in enumerate(self._iter_top_level_json_array(fh), 1):
-                # --- System ---
                 sys_id64 = system_obj.get("id64")
                 sys_name = system_obj.get("name")
                 coords = system_obj.get("coords") or {}
-                sys_modified = self._parse_ts(system_obj.get("date"))
-
                 if sys_id64 is None or sys_name is None or not isinstance(coords, dict):
                     if self._debug_level >= 3:
                         self._warn(f"Skipping malformed system object at index {sys_idx}")
                     continue
 
-                x, y, z = coords.get("x"), coords.get("y"), coords.get("z")
-                self._upsert_system(tables["System"], sys_id64, sys_name, x, y, z, sys_modified)
-                stats["systems"] += 1
-                batch_ops += 1
-
-                # --- Stations: top-level + body-embedded ---
-                stations_iter: List[Dict[str, Any]] = []
+                # Collect stations (top-level + body-embedded)
+                stations: List[Dict[str, Any]] = []
                 if isinstance(system_obj.get("stations"), list):
-                    stations_iter.extend(system_obj["stations"])
+                    stations.extend(system_obj["stations"])
                 bodies = system_obj.get("bodies") or []
                 if isinstance(bodies, list):
                     for b in bodies:
-                        st = b.get("stations")
-                        if isinstance(st, list):
-                            stations_iter.extend(st)
+                        if isinstance(b, dict):
+                            stl = b.get("stations")
+                            if isinstance(stl, list):
+                                stations.extend(stl)
 
-                for st in stations_iter:
+                # ---- SYSTEM GATE: any station with at least one fresh service?
+                def station_fresh_any(st: Dict[str, Any]) -> bool:
+                    raw_services = st.get("services") or []
+                    if not isinstance(raw_services, list):
+                        return False
+                    svcset = {s.strip().lower() for s in raw_services if isinstance(s, str)}
+                    has_market = "market" in svcset
+                    has_outfit = "outfitting" in svcset
+                    has_ship = "shipyard" in svcset
+                    if not (has_market or has_outfit or has_ship):
+                        return False
+                    mkt_ts = svc_ts(st, "market") if has_market else None
+                    outf_ts = svc_ts(st, "outfitting") if has_outfit else None
+                    ship_ts = svc_ts(st, "shipyard") if has_ship else None
+                    return any(recent(t) for t in (mkt_ts, outf_ts, ship_ts))
+
+                if maxage_td is not None and not any(station_fresh_any(st) for st in stations):
+                    continue
+
+                # ---- Upsert System FIRST (initial modified)
+                x, y, z = coords.get("x"), coords.get("y"), coords.get("z")
+                sys_date = self._parse_ts(system_obj.get("date"))
+                self._upsert_system(tables["System"], sys_id64, sys_name, x, y, z, sys_date)
+                stats["systems"] += 1
+                batch_ops += 1
+
+                imported_station_modifieds: List[datetime] = []
+
+                # ---- STATIONS: only those with at least one fresh service
+                for st in stations:
                     station_id = st.get("id")
                     st_name = st.get("name")
                     if station_id is None or st_name is None:
                         continue
 
-                    # --- Service detection (case-insensitive) ---
                     raw_services = st.get("services") or []
                     if not isinstance(raw_services, list):
-                        raw_services = []
+                        continue
                     services = {s.strip().lower(): s for s in raw_services if isinstance(s, str)}
 
                     has_market = "market" in services
                     has_outfit = "outfitting" in services
                     has_ship = "shipyard" in services
-
                     if not (has_market or has_outfit or has_ship):
                         continue
 
+                    # Timestamps per service
+                    ship_ts = svc_ts(st, "shipyard") if has_ship else None
+                    outf_ts = svc_ts(st, "outfitting") if has_outfit else None
+                    mkt_ts = svc_ts(st, "market") if has_market else None
+
+                    ship_fresh = recent(ship_ts)
+                    outf_fresh = recent(outf_ts)
+                    mkt_fresh = recent(mkt_ts)
+
+                    if not (ship_fresh or outf_fresh or mkt_fresh):
+                        continue
+
+                    # Derive Station row fields
                     dist = st.get("distanceToArrival")
-                    if isinstance(dist, (int, float)):
-                        ls_from_star = int(round(dist))
-                    else:
-                        ls_from_star = 999999
+                    ls_from_star = int(round(dist)) if isinstance(dist, (int, float)) else 999999
                     type_name = st.get("type")
                     landing = st.get("landingPads") or {}
-                    st_modified = self._parse_ts(st.get("updateTime"))
-
                     type_id, planetary = self._map_station_type(type_name)
                     max_pad = self._derive_pad_size(landing)
 
-                    # liberalised mappings
-                    has_rearm = "restock" in services or "rearm" in services
-                    has_blackmkt = "black market" in services or "blackmarket" in services
-                    has_refuel = "refuel" in services
-                    has_repair = "repair" in services
+                    # liberalised flags
+                    svcset = set(services.keys())
+                    has_rearm = ("restock" in svcset) or ("rearm" in svcset)
+                    has_blackmkt = ("black market" in svcset) or ("blackmarket" in svcset)
+                    has_refuel = "refuel" in svcset
+                    has_repair = "repair" in svcset
 
                     sflags = {
                         "market": "Y" if has_market else "N",
@@ -534,52 +642,49 @@ class ImportPlugin(plugins.ImportPluginBase):
                         "planetary": "Y" if planetary else "N",
                     }
 
+                    # Station.modified = latest of the services we actually import for this station
+                    st_effective_mod = max(
+                        [t for t, ok in ((mkt_ts, mkt_fresh), (outf_ts, outf_fresh), (ship_ts, ship_fresh)) if ok and t is not None],
+                        default=None
+                    )
+
                     self._upsert_station(
                         tables["Station"],
                         station_id, sys_id64, st_name, ls_from_star,
-                        max_pad, type_id, planetary, sflags, st_modified
+                        max_pad, type_id, planetary, sflags, st_effective_mod
                     )
                     stats["stations"] += 1
                     batch_ops += 1
+                    if st_effective_mod is not None:
+                        imported_station_modifieds.append(st_effective_mod)
 
-                    # --- Shipyard ---
-                    if has_ship:
-                        shipyard = st.get("shipyard") or {}
-                        ship_ts = self._parse_ts(shipyard.get("updateTime"))
-                        if service_recent(ship_ts):
-                            ships = shipyard.get("ships") or []
-                            if isinstance(ships, list) and ships:
-                                wrote = self._upsert_shipyard(tables, station_id, ships, ship_ts)
-                                stats["ships"] += wrote
-                                batch_ops += wrote
+                    # --- Per-service writes (increment kept-* once per station/service) ---
+                    if has_ship and ship_fresh:
+                        ships = (st.get("shipyard") or {}).get("ships") or []
+                        if isinstance(ships, list) and ships:
+                            wrote = self._upsert_shipyard(tables, station_id, ships, ship_ts)
+                            stats["ships"] += wrote
+                            stats["ship_stations"] += 1
+                            batch_ops += wrote
 
-                    # --- Outfitting ---
-                    if has_outfit:
-                        outfit = st.get("outfitting") or {}
-                        outf_ts = self._parse_ts(outfit.get("updateTime"))
-                        if service_recent(outf_ts):
-                            modules = outfit.get("modules") or []
-                            if isinstance(modules, list) and modules:
-                                wrote = self._upsert_outfitting(tables, station_id, modules, outf_ts)
-                                stats["modules"] += wrote
-                                batch_ops += wrote
+                    if has_outfit and outf_fresh:
+                        modules = (st.get("outfitting") or {}).get("modules") or []
+                        if isinstance(modules, list) and modules:
+                            wrote = self._upsert_outfitting(tables, station_id, modules, outf_ts)
+                            stats["modules"] += wrote
+                            stats["outfit_stations"] += 1
+                            batch_ops += wrote
 
-                    # --- Market ---
-                    if has_market:
-                        market = st.get("market") or {}
-                        mkt_ts = self._parse_ts(market.get("updateTime"))
-                        if service_recent(mkt_ts):
-                            commodities = market.get("commodities") or []
-                            if isinstance(commodities, list) and commodities:
-                                wrote_i, wrote_si = self._upsert_market(
-                                    tables, categories, station_id, commodities, mkt_ts
-                                )
-                                stats["commodities"] += wrote_i
-                                batch_ops += (wrote_i + wrote_si)
+                    if has_market and mkt_fresh:
+                        commodities = (st.get("market") or {}).get("commodities") or []
+                        if isinstance(commodities, list) and commodities:
+                            wrote_i, wrote_si = self._upsert_market(tables, categories, station_id, commodities, mkt_ts)
+                            stats["commodities"] += wrote_si   # listings written
+                            stats["market_stations"] += 1       # <-- kept market count
+                            batch_ops += (wrote_i + wrote_si)
 
-                    # --- Progress & batching ---
+                    # Progress & batching
                     self._progress_line(stats)
-
                     if (self.batch_size is not None) and self.batch_size > 0 and (batch_ops >= self.batch_size):
                         t0 = time.time()
                         try:
@@ -592,7 +697,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if self._debug_level >= 3:
                             self._print(f"commit: {self.batch_size} ops in {time.time() - t0:.2f}s")
 
+                # ---- Finalize System.modified
+                sys_modified_final = max(imported_station_modifieds) if imported_station_modifieds else sys_date
+                self._upsert_system(tables["System"], sys_id64, sys_name, x, y, z, sys_modified_final)
+
         return stats
+
+
+
+
 
 
     # ------------------------------
@@ -603,42 +716,168 @@ class ImportPlugin(plugins.ImportPluginBase):
         x: Optional[float], y: Optional[float], z: Optional[float],
         modified: Optional[datetime],
     ) -> None:
+        """
+        Upsert System with timestamp guard.
+        'added' policy (when column exists):
+          - INSERT: set added=20 (EDSM).
+          - UPDATE: do not overwrite, unless existing added IS NULL → set to 20.
+        """
         if modified is None:
-            row = self.session.execute(
-                select(t_system.c.system_id).where(t_system.c.system_id == system_id)
-            ).first()
-            if row is None:
+            modified = datetime.utcfromtimestamp(0)
+
+        has_added_col = hasattr(t_system.c, "added")
+
+        # Compose the row to insert. Include 'added' for insert semantics only.
+        row = {
+            "system_id": system_id,
+            "name": name,
+            "pos_x": x, "pos_y": y, "pos_z": z,
+            "modified": modified,
+        }
+        if has_added_col:
+            row["added"] = 20  # EDSM on INSERT
+
+        # --- Dialect fast paths ---
+        if db_utils.is_sqlite(self.session):
+            # On-conflict update does NOT touch 'added' (insert-only), then fix NULL → 20.
+            db_utils.sqlite_upsert_modified(
+                self.session, t_system,
+                rows=[row],
+                key_cols=("system_id",),
+                modified_col="modified",
+                update_cols=("name", "pos_x", "pos_y", "pos_z"),
+            )
+            if has_added_col:
                 self.session.execute(
-                    insert(t_system).values(
-                        system_id=system_id, name=name, pos_x=x, pos_y=y, pos_z=z, modified=None
-                    )
+                    update(t_system)
+                    .where((t_system.c.system_id == system_id) & (t_system.c.added.is_(None)))
+                    .values(added=20)
                 )
             return
 
-        row = self.session.execute(
-            select(t_system.c.modified).where(t_system.c.system_id == system_id)
-        ).first()
+            # (no return fall-through)
 
-        if row is None:
-            self.session.execute(
-                insert(t_system).values(
-                    system_id=system_id, name=name, pos_x=x, pos_y=y, pos_z=z, modified=modified
-                )
+        if db_utils.is_mysql(self.session):
+            # On-dup-key update does NOT touch 'added' (insert-only), then fix NULL → 20.
+            db_utils.mysql_upsert_modified(
+                self.session, t_system,
+                rows=[row],
+                key_cols=("system_id",),
+                modified_col="modified",
+                update_cols=("name", "pos_x", "pos_y", "pos_z"),
             )
-        else:
-            db_modified = row[0]
-            if db_modified is None or modified > db_modified:
+            if has_added_col:
                 self.session.execute(
                     update(t_system)
-                    .where(t_system.c.system_id == system_id)
-                    .values(name=name, pos_x=x, pos_y=y, pos_z=z, modified=modified)
+                    .where((t_system.c.system_id == system_id) & (t_system.c.added.is_(None)))
+                    .values(added=20)
                 )
+            return
+
+        # --- Generic fallback ---
+        sel_cols = [t_system.c.modified]
+        if has_added_col:
+            sel_cols.append(t_system.c.added)
+        existing = self.session.execute(
+            select(*sel_cols).where(t_system.c.system_id == system_id)
+        ).first()
+
+        if existing is None:
+            self.session.execute(insert(t_system).values(**row))
+        else:
+            db_modified = existing[0]
+            values = {"name": name, "pos_x": x, "pos_y": y, "pos_z": z}
+            if db_modified is None or modified > db_modified:
+                values["modified"] = modified
+            # Never overwrite 'added' here; fix NULL after update if needed
+            self.session.execute(
+                update(t_system)
+                .where(t_system.c.system_id == system_id)
+                .values(**values)
+            )
+            if has_added_col:
+                db_added = existing[1] if len(existing) > 1 else None
+                if db_added is None:
+                    self.session.execute(
+                        update(t_system)
+                        .where((t_system.c.system_id == system_id) & (t_system.c.added.is_(None)))
+                        .values(added=20)
+                    )
+
 
     def _upsert_station(
         self, t_station: Table, station_id: int, system_id: int, name: str,
-        ls_from_star: Optional[float], max_pad: str, type_id: int, planetary: bool,
+        ls_from_star: Optional[float], max_pad: str, type_id: int, planetary: str,
         sflags: Dict[str, str], modified: Optional[datetime],
     ) -> None:
+        """
+        Upsert Station with timestamp guard.
+        - Fast-path: delegates to db_utils.{sqlite,mysql}_upsert_modified
+        - Fallback: SELECT then INSERT/UPDATE; only bump modified when newer
+        """
+        if modified is None:
+            modified = datetime.utcfromtimestamp(0)
+
+        # Dialect fast paths (keep this plugin DB-agnostic)
+        if db_utils.is_sqlite(self.session):
+            db_utils.sqlite_upsert_modified(
+                self.session, t_station,
+                rows=[{
+                    "station_id": station_id,
+                    "system_id": system_id,
+                    "name": name,
+                    "ls_from_star": ls_from_star,
+                    "max_pad_size": max_pad,
+                    "type_id": type_id,
+                    "planetary": planetary,
+                    "market": sflags["market"],
+                    "blackmarket": sflags["blackmarket"],
+                    "shipyard": sflags["shipyard"],
+                    "outfitting": sflags["outfitting"],
+                    "rearm": sflags["rearm"],
+                    "refuel": sflags["refuel"],
+                    "repair": sflags["repair"],
+                    "modified": modified,
+                }],
+                key_cols=("station_id",),
+                modified_col="modified",
+                update_cols=(
+                    "system_id", "name", "ls_from_star", "max_pad_size", "type_id", "planetary",
+                    "market", "blackmarket", "shipyard", "outfitting", "rearm", "refuel", "repair",
+                ),
+            )
+            return
+
+        if db_utils.is_mysql(self.session):
+            db_utils.mysql_upsert_modified(
+                self.session, t_station,
+                rows=[{
+                    "station_id": station_id,
+                    "system_id": system_id,
+                    "name": name,
+                    "ls_from_star": ls_from_star,
+                    "max_pad_size": max_pad,
+                    "type_id": type_id,
+                    "planetary": planetary,
+                    "market": sflags["market"],
+                    "blackmarket": sflags["blackmarket"],
+                    "shipyard": sflags["shipyard"],
+                    "outfitting": sflags["outfitting"],
+                    "rearm": sflags["rearm"],
+                    "refuel": sflags["refuel"],
+                    "repair": sflags["repair"],
+                    "modified": modified,
+                }],
+                key_cols=("station_id",),
+                modified_col="modified",
+                update_cols=(
+                    "system_id", "name", "ls_from_star", "max_pad_size", "type_id", "planetary",
+                    "market", "blackmarket", "shipyard", "outfitting", "rearm", "refuel", "repair",
+                ),
+            )
+            return
+
+        # Generic fallback
         row = self.session.execute(
             select(t_station.c.system_id, t_station.c.modified)
             .where(t_station.c.station_id == station_id)
@@ -664,77 +903,98 @@ class ImportPlugin(plugins.ImportPluginBase):
                     modified=modified,
                 )
             )
-            return
+        else:
+            db_system_id, db_modified = row
+            values = {
+                "name": name,
+                "ls_from_star": ls_from_star,
+                "max_pad_size": max_pad,
+                "type_id": type_id,
+                "planetary": planetary,
+                "market": sflags["market"],
+                "blackmarket": sflags["blackmarket"],
+                "shipyard": sflags["shipyard"],
+                "outfitting": sflags["outfitting"],
+                "rearm": sflags["rearm"],
+                "refuel": sflags["refuel"],
+                "repair": sflags["repair"],
+            }
+            if db_system_id != system_id:
+                values["system_id"] = system_id
+            if db_modified is None or modified > db_modified:
+                values["modified"] = modified
 
-        db_system_id, db_modified = row
-        values = {
-            "name": name,
-            "ls_from_star": ls_from_star,
-            "max_pad_size": max_pad,
-            "type_id": type_id,
-            "planetary": planetary,
-            "market": sflags["market"],
-            "blackmarket": sflags["blackmarket"],
-            "shipyard": sflags["shipyard"],
-            "outfitting": sflags["outfitting"],
-            "rearm": sflags["rearm"],
-            "refuel": sflags["refuel"],
-            "repair": sflags["repair"],
-        }
+            self.session.execute(
+                update(t_station)
+                .where(t_station.c.station_id == station_id)
+                .values(**values)
+            )
 
-        if db_system_id != system_id:
-            values["system_id"] = system_id
-            values["modified"] = modified or db_modified
-
-        if modified is not None and (db_modified is None or modified > db_modified):
-            values["modified"] = modified
-
-        self.session.execute(
-            update(t_station).where(t_station.c.station_id == station_id).values(**values)
-        )
 
     def _upsert_shipyard(self, tables: Dict[str, Table], station_id: int, ships: List[Dict[str, Any]], ts: datetime) -> int:
+        """
+        Batch upsert shipyard:
+          - Ensure Ship rows exist/updated (name) via simple upsert (no timestamp)
+          - Bulk upsert ShipVendor rows with timestamp guard (ship_id, station_id, modified)
+          - No pre-read short-circuit; rely on ON CONFLICT/ON DUPLICATE guard
+        """
         t_ship, t_vendor = tables["Ship"], tables["ShipVendor"]
-        row = self.session.execute(
-            select(func.max(t_vendor.c.modified)).where(t_vendor.c.station_id == station_id)
-        ).first()
-        if row and row[0] and row[0] >= ts:
-            return 0
 
-        wrote = 0
+        ship_rows = []
+        vendor_rows = []
+
         for sh in ships:
             ship_id = sh.get("shipId")
             name = sh.get("name")
             if ship_id is None or name is None:
                 continue
 
-            exists = self.session.execute(
-                select(t_ship.c.ship_id, t_ship.c.name).where(t_ship.c.ship_id == ship_id)
-            ).first()
-            if exists is None:
-                self.session.execute(insert(t_ship).values(ship_id=ship_id, name=name))
-            else:
-                _, db_name = exists
-                if db_name != name:
-                    self.session.execute(
-                        update(t_ship).where(t_ship.c.ship_id == ship_id).values(name=name)
-                    )
+            ship_rows.append({"ship_id": ship_id, "name": name})
+            vendor_rows.append({"ship_id": ship_id, "station_id": station_id, "modified": ts})
 
-            ven = self.session.execute(
-                select(t_vendor.c.modified).where(and_(t_vendor.c.ship_id == ship_id, t_vendor.c.station_id == station_id))
-            ).first()
-            if ven is None:
-                self.session.execute(insert(t_vendor).values(ship_id=ship_id, station_id=station_id, modified=ts))
-                wrote += 1
+        # Upsert Ship
+        if ship_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_simple(self.session, t_ship, rows=ship_rows, key_cols=("ship_id",), update_cols=("name",))
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_simple(self.session, t_ship, rows=ship_rows, key_cols=("ship_id",), update_cols=("name",))
             else:
-                dbm = ven[0]
-                if dbm is None or ts > dbm:
-                    self.session.execute(
-                        update(t_vendor)
-                        .where(and_(t_vendor.c.ship_id == ship_id, t_vendor.c.station_id == station_id))
-                        .values(modified=ts)
-                    )
-                    wrote += 1
+                for r in ship_rows:
+                    exists = self.session.execute(select(t_ship.c.name).where(t_ship.c.ship_id == r["ship_id"])).first()
+                    if exists is None:
+                        self.session.execute(insert(t_ship).values(**r))
+                    elif exists[0] != r["name"]:
+                        self.session.execute(update(t_ship).where(t_ship.c.ship_id == r["ship_id"]).values(name=r["name"]))
+
+        # Upsert ShipVendor with timestamp guard
+        wrote = 0
+        if vendor_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_modified(self.session, t_vendor, rows=vendor_rows,
+                                                key_cols=("ship_id", "station_id"), modified_col="modified", update_cols=())
+                wrote = len(vendor_rows)
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_modified(self.session, t_vendor, rows=vendor_rows,
+                                               key_cols=("ship_id", "station_id"), modified_col="modified", update_cols=())
+                wrote = len(vendor_rows)
+            else:
+                for r in vendor_rows:
+                    ven = self.session.execute(
+                        select(t_vendor.c.modified).where(and_(t_vendor.c.ship_id == r["ship_id"], t_vendor.c.station_id == r["station_id"]))
+                    ).first()
+                    if ven is None:
+                        self.session.execute(insert(t_vendor).values(**r))
+                        wrote += 1
+                    else:
+                        dbm = ven[0]
+                        if dbm is None or r["modified"] > dbm:
+                            self.session.execute(
+                                update(t_vendor)
+                                .where(and_(t_vendor.c.ship_id == r["ship_id"], t_vendor.c.station_id == r["station_id"]))
+                                .values(modified=r["modified"])
+                            )
+                            wrote += 1
+
         return wrote
 
     def _upsert_outfitting(
@@ -744,14 +1004,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         modules: List[Dict[str, Any]],
         ts: datetime,
     ) -> int:
+        """
+        Batch upsert outfitting:
+          - Ensure Upgrade rows exist/updated via simple upsert (no timestamp)
+          - Bulk upsert UpgradeVendor rows with timestamp guard (upgrade_id, station_id, modified)
+          - No pre-read short-circuit; rely on ON CONFLICT/ON DUPLICATE guard
+        """
         t_up, t_vendor = tables["Upgrade"], tables["UpgradeVendor"]
-        row = self.session.execute(
-            select(func.max(t_vendor.c.modified)).where(t_vendor.c.station_id == station_id)
-        ).first()
-        if row and row[0] and row[0] >= ts:
-            return 0
 
-        wrote = 0
+        up_rows = []
+        vendor_rows = []
+
         for mo in modules:
             up_id = mo.get("moduleId")
             name = mo.get("name")
@@ -761,64 +1024,59 @@ class ImportPlugin(plugins.ImportPluginBase):
             if up_id is None or name is None:
                 continue
 
-            # --- Upgrade table upsert (no "modified" column here) ---
-            exists = self.session.execute(
-                select(
-                    t_up.c.upgrade_id,
-                    t_up.c.name,
-                    t_up.c["class"],
-                    t_up.c.rating,
-                    t_up.c.ship,
-                ).where(t_up.c.upgrade_id == up_id)
-            ).first()
+            up_rows.append({"upgrade_id": up_id, "name": name, "class": cls, "rating": rating, "ship": ship})
+            vendor_rows.append({"upgrade_id": up_id, "station_id": station_id, "modified": ts})
 
-            if exists is None:
-                self.session.execute(
-                    insert(t_up).values(
-                        upgrade_id=up_id,
-                        name=name,
-                        **{"class": cls},
-                        rating=rating,
-                        ship=ship,
-                    )
-                )
+        # Upsert Upgrade
+        if up_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_simple(self.session, t_up, rows=up_rows, key_cols=("upgrade_id",),
+                                              update_cols=("name", "class", "rating", "ship"))
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_simple(self.session, t_up, rows=up_rows, key_cols=("upgrade_id",),
+                                             update_cols=("name", "class", "rating", "ship"))
             else:
-                _, db_name, db_class, db_rating, db_ship = exists
-                if (db_name != name) or (db_class != cls) or (db_rating != rating) or (db_ship != ship):
-                    self.session.execute(
-                        update(t_up)
-                        .where(t_up.c.upgrade_id == up_id)
-                        .values(
-                            name=name,
-                            **{"class": cls},
-                            rating=rating,
-                            ship=ship,
+                for r in up_rows:
+                    exists = self.session.execute(select(t_up.c.upgrade_id).where(t_up.c.upgrade_id == r["upgrade_id"])).first()
+                    if exists is None:
+                        self.session.execute(insert(t_up).values(**r))
+                    else:
+                        self.session.execute(
+                            update(t_up).where(t_up.c.upgrade_id == r["upgrade_id"]).values(
+                                name=r["name"], **{"class": r["class"]}, rating=r["rating"], ship=r["ship"]
+                            )
                         )
-                    )
 
-            # --- UpgradeVendor upsert (timestamp lives here) ---
-            ven = self.session.execute(
-                select(t_vendor.c.modified).where(
-                    and_(t_vendor.c.upgrade_id == up_id, t_vendor.c.station_id == station_id)
-                )
-            ).first()
-            if ven is None:
-                self.session.execute(
-                    insert(t_vendor).values(upgrade_id=up_id, station_id=station_id, modified=ts)
-                )
-                wrote += 1
+        # Upsert UpgradeVendor with timestamp guard
+        wrote = 0
+        if vendor_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_modified(self.session, t_vendor, rows=vendor_rows,
+                                                key_cols=("upgrade_id", "station_id"), modified_col="modified", update_cols=())
+                wrote = len(vendor_rows)
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_modified(self.session, t_vendor, rows=vendor_rows,
+                                               key_cols=("upgrade_id", "station_id"), modified_col="modified", update_cols=())
+                wrote = len(vendor_rows)
             else:
-                dbm = ven[0]
-                if dbm is None or ts > dbm:
-                    self.session.execute(
-                        update(t_vendor)
-                        .where(and_(t_vendor.c.upgrade_id == up_id, t_vendor.c.station_id == station_id))
-                        .values(modified=ts)
-                    )
-                    wrote += 1
+                for r in vendor_rows:
+                    ven = self.session.execute(
+                        select(t_vendor.c.modified).where(and_(t_vendor.c.upgrade_id == r["upgrade_id"], t_vendor.c.station_id == r["station_id"]))
+                    ).first()
+                    if ven is None:
+                        self.session.execute(insert(t_vendor).values(**r))
+                        wrote += 1
+                    else:
+                        dbm = ven[0]
+                        if dbm is None or r["modified"] > dbm:
+                            self.session.execute(
+                                update(t_vendor)
+                                .where(and_(t_vendor.c.upgrade_id == r["upgrade_id"], t_vendor.c.station_id == r["station_id"]))
+                                .values(modified=r["modified"])
+                            )
+                            wrote += 1
 
         return wrote
-
 
 
     def _upsert_market(
@@ -830,22 +1088,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         ts: datetime,
     ) -> Tuple[int, int]:
         """
-        Upsert market commodities for a station.
-
-        - Creates new Item rows if missing, keyed by fdev_id (commodityId).
-        - Never touches avg_price (Listener maintains that).
-        - Ensures Item.name/category_id stay correct.
-        - Updates/creates StationItem rows with current supply/demand/prices.
+        Batch upsert market:
+          - Ensure Item rows exist/updated via simple upsert (no timestamp)
+          - Bulk upsert StationItem rows with timestamp guard (station_id,item_id,modified)
+          - No pre-read short-circuit; rely on ON CONFLICT/ON DUPLICATE guard
         """
         t_item, t_si = tables["Item"], tables["StationItem"]
-        wrote_items = 0
-        wrote_links = 0
 
-        row = self.session.execute(
-            select(func.max(t_si.c.modified)).where(t_si.c.station_id == station_id)
-        ).first()
-        if row and row[0] and row[0] >= ts:
-            return (0, 0)
+        item_rows = []
+        link_rows = []
+        wrote_items = 0
 
         for co in commodities:
             fdev_id = co.get("commodityId")
@@ -858,47 +1110,16 @@ class ImportPlugin(plugins.ImportPluginBase):
             if cat_id is None:
                 raise CleanExit(f'Unknown commodity category "{cat_name}"')
 
-            # --- Item upsert (ignores avg_price) ---
-            item_row = self.session.execute(
-                select(t_item.c.item_id, t_item.c.name, t_item.c.category_id).where(t_item.c.fdev_id == fdev_id)
-            ).first()
+            item_rows.append({"item_id": fdev_id, "name": name, "category_id": cat_id, "fdev_id": fdev_id, "ui_order": 0})
 
-            if item_row is None:
-                # Insert new item with minimal fields
-                self.session.execute(
-                    insert(t_item).values(
-                        item_id=fdev_id,
-                        name=name,
-                        category_id=cat_id,
-                        fdev_id=fdev_id,
-                        ui_order=0,
-                    )
-                )
-                wrote_items += 1
-                item_id = fdev_id
-            else:
-                item_id, db_name, db_cat = item_row
-                # Update only if name or category differs; do not touch avg_price
-                if (db_name != name) or (db_cat != cat_id):
-                    self.session.execute(
-                        update(t_item)
-                        .where(t_item.c.item_id == item_id)
-                        .values(name=name, category_id=cat_id)
-                    )
-
-            # --- StationItem upsert ---
             demand = co.get("demand")
             supply = co.get("supply")
             buy = co.get("buyPrice")
             sell = co.get("sellPrice")
 
-            si = self.session.execute(
-                select(t_si.c.modified).where(and_(t_si.c.station_id == station_id, t_si.c.item_id == item_id))
-            ).first()
-
-            values = dict(
+            link_rows.append(dict(
                 station_id=station_id,
-                item_id=item_id,
+                item_id=fdev_id,
                 demand_price=sell,
                 demand_units=demand,
                 demand_level=-1,
@@ -907,22 +1128,68 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_level=-1,
                 from_live=0,
                 modified=ts,
-            )
+            ))
 
-            if si is None:
-                self.session.execute(insert(t_si).values(**values))
-                wrote_links += 1
+        # Upsert Items (no timestamp guard)
+        if item_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_simple(self.session, t_item, rows=item_rows, key_cols=("item_id",),
+                                              update_cols=("name", "category_id", "fdev_id", "ui_order"))
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_simple(self.session, t_item, rows=item_rows, key_cols=("item_id",),
+                                             update_cols=("name", "category_id", "fdev_id", "ui_order"))
             else:
-                dbm = si[0]
-                if dbm is None or ts > dbm:
-                    self.session.execute(
-                        update(t_si)
-                        .where(and_(t_si.c.station_id == station_id, t_si.c.item_id == item_id))
-                        .values(**values)
-                    )
-                    wrote_links += 1
+                for r in item_rows:
+                    exists = self.session.execute(
+                        select(t_item.c.item_id, t_item.c.name, t_item.c.category_id).where(t_item.c.item_id == r["item_id"])
+                    ).first()
+                    if exists is None:
+                        self.session.execute(insert(t_item).values(**r))
+                        wrote_items += 1
+                    else:
+                        _, db_name, db_cat = exists
+                        if (db_name != r["name"]) or (db_cat != r["category_id"]):
+                            self.session.execute(
+                                update(t_item).where(t_item.c.item_id == r["item_id"]).values(
+                                    name=r["name"], category_id=r["category_id"]
+                                )
+                            )
+
+        # Upsert StationItem with timestamp guard
+        wrote_links = 0
+        if link_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_modified(self.session, t_si, rows=link_rows,
+                                                key_cols=("station_id", "item_id"), modified_col="modified",
+                                                update_cols=("demand_price", "demand_units", "demand_level",
+                                                             "supply_price", "supply_units", "supply_level", "from_live"))
+                wrote_links = len(link_rows)
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_modified(self.session, t_si, rows=link_rows,
+                                               key_cols=("station_id", "item_id"), modified_col="modified",
+                                               update_cols=("demand_price", "demand_units", "demand_level",
+                                                            "supply_price", "supply_units", "supply_level", "from_live"))
+                wrote_links = len(link_rows)
+            else:
+                for r in link_rows:
+                    si = self.session.execute(
+                        select(t_si.c.modified).where(and_(t_si.c.station_id == r["station_id"], t_si.c.item_id == r["item_id"]))
+                    ).first()
+                    if si is None:
+                        self.session.execute(insert(t_si).values(**r))
+                        wrote_links += 1
+                    else:
+                        dbm = si[0]
+                        if dbm is None or r["modified"] > dbm:
+                            self.session.execute(
+                                update(t_si)
+                                .where(and_(t_si.c.station_id == r["station_id"], t_si.c.item_id == r["item_id"]))
+                                .values(**r)
+                            )
+                            wrote_links += 1
 
         return (wrote_items, wrote_links)
+
 
     # ------------------------------
     # UI ordering
@@ -946,23 +1213,112 @@ class ImportPlugin(plugins.ImportPluginBase):
     # Rares import (via cache.processImportFile)
     # ------------------------------
     def _import_rareitems(self) -> None:
-        """Import RareItem.csv from templates via cache.processImportFile()."""
+        """
+        Import RareItem.csv filtered by DB existence of (system, station).
+        - Decision is based on the current DB contents (independent of maxage used this run).
+        - When writing the filtered file, rows are copied verbatim (no field normalisation).
+        """
+        import csv
+
+        # Locate template
         rare_src = None
-        if hasattr(self.tdenv, "templateDir") and self.tdenv.templateDir:
+        if getattr(self.tdenv, "templateDir", None):
             candidate = Path(self.tdenv.templateDir) / "RareItem.csv"
             if candidate.exists():
                 rare_src = candidate
         if rare_src is None:
             rare_src = (Path(__file__).resolve().parents[1] / "templates" / "RareItem.csv")
-
         if not rare_src.exists():
             raise CleanExit(f"RareItem.csv not found at {rare_src}")
 
         sess = None
+        tmp_csv = None
         try:
             sess = self._open_session()
-            cache.processImportFile(self.tdenv, sess, rare_src, "RareItem")
+            tables = self._reflect_tables(sess.get_bind())
+            t_station, t_system = tables["Station"], tables["System"]
+
+            # Build existence set from DB (case/whitespace-insensitive)
+            pairs = set()
+            for sys_name, st_name in sess.execute(
+                select(t_system.c.name, t_station.c.name).where(t_station.c.system_id == t_system.c.system_id)
+            ):
+                if sys_name and st_name:
+                    pairs.add((str(sys_name).strip().lower(), str(st_name).strip().lower()))
+
+            # Prepare output
+            tmp_csv = self.tmp_dir / "RareItem.filtered.csv"
+            kept = skipped = 0
+
+            # Read as text lines to preserve exact formatting for kept rows
+            with open(rare_src, "r", encoding="utf-8", newline="") as fin, \
+                 open(tmp_csv, "w", encoding="utf-8", newline="") as fout:
+
+                lines = fin.readlines()
+                if not lines:
+                    raise CleanExit(f"RareItem.csv is empty: {rare_src}")
+
+                header_line = lines[0]
+                fout.write(header_line)  # write header verbatim
+
+                # Determine column indexes robustly
+                # Expected names like: name@System.system_id , name@Station.station_id
+                reader = csv.reader([header_line])
+                headers = next(reader, [])
+                h_norm = [ (h or "").strip().lower() for h in headers ]
+
+                def find_col_idx(kind: str) -> int:
+                    # 'kind' is 'system' or 'station'
+                    # match if header contains both 'name@<kind>' and either '.system_id' or '.station_id'
+                    for i, h in enumerate(h_norm):
+                        if "name@" in h and kind in h:
+                            return i
+                    # fallback: any header that contains the token
+                    for i, h in enumerate(h_norm):
+                        if kind in h:
+                            return i
+                    return -1
+
+                idx_sys = find_col_idx("system")
+                idx_stn = find_col_idx("station")
+                if idx_sys < 0 or idx_stn < 0:
+                    # Unexpected header — pass through unchanged to avoid breaking imports.
+                    # (Given your file shape, this branch should never be hit.)
+                    for line in lines[1:]:
+                        fout.write(line)
+                        kept = -1  # unknown
+                    skipped = 0
+                else:
+                    # Evaluate each data line: parse minimally to get the two names,
+                    # but write the original line text back if we keep it.
+                    for line in lines[1:]:
+                        # Skip blank lines verbatim?
+                        if not line.strip():
+                            continue
+                        try:
+                            row = next(csv.reader([line]))
+                        except Exception:
+                            # If CSV parse fails, be conservative and skip this line
+                            skipped += 1
+                            continue
+
+                        # Pull the two names, strip surrounding quotes/space, casefold
+                        sys_name = (row[idx_sys] if idx_sys < len(row) else "").strip().strip("'\"").strip().lower()
+                        stn_name = (row[idx_stn] if idx_stn < len(row) else "").strip().strip("'\"").strip().lower()
+
+                        if sys_name and stn_name and (sys_name, stn_name) in pairs:
+                            fout.write(line)  # write verbatim
+                            kept += 1
+                        else:
+                            skipped += 1
+
+            # Hand the filtered file (verbatim rows) to the existing importer
+            cache.processImportFile(self.tdenv, sess, tmp_csv, "RareItem")
             sess.commit()
+
+            if kept >= 0 and skipped > 0:
+                self._warn(f"RareItem: imported {kept} rows; skipped {skipped} (system/station not present in DB).")
+
         except Exception as e:
             if sess is not None:
                 try:
@@ -976,11 +1332,21 @@ class ImportPlugin(plugins.ImportPluginBase):
                     sess.close()
                 except Exception:
                     pass
+            try:
+                if tmp_csv and tmp_csv.exists():
+                    tmp_csv.unlink()
+            except Exception:
+                pass
+
 
     # ------------------------------
     # Export / cache refresh
     # ------------------------------
     def _export_cache(self) -> None:
+        """
+        Export CSVs and regenerate TradeDangerous.prices.
+        Uses normal prints (no carriage returns) so output scrolls cleanly.
+        """
         sess = None
         try:
             sess = self._open_session()
@@ -990,17 +1356,23 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Ship", "ShipVendor", "Upgrade", "UpgradeVendor",
                 "RareItem",
             ):
-                self._print(f"Exporting {table}.csv            ", end="\r")
+                self._print(f"  - {table}.csv")
                 csvexport.exportTableToFile(sess, self.tdenv, table)
-            self._print("Exporting TradeDangerous.prices", end="\r")
-            cache.regeneratePricesFile(sess, self.tdenv)
+
+            self._print("Regenerating TradeDangerous.prices …")
+            # ✅ Use tdb (not Session) — regeneratePricesFile manages its own session lifecycle
+            cache.regeneratePricesFile(self.tdb, self.tdenv)
+
+            self._print("Cache export completed.")
         finally:
             if sess is not None:
                 try:
                     sess.close()
                 except Exception:
                     pass
-        self._print("Cache export completed")
+
+
+
 
     # ------------------------------
     # Categories cache
@@ -1015,109 +1387,44 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     def _iter_top_level_json_array(self, fh: io.BufferedReader) -> Generator[Dict[str, Any], None, None]:
         """
-        Robust streaming JSON reader:
-          - Handles a top-level array of objects (primary format).
-          - Falls back to concatenated objects (NDJSON-like) if no '[' found.
-          - Uses an incremental UTF-8 decoder to avoid partial-codepoint issues.
-          - Emits a single-line heartbeat (like download) as it reads.
+        High-performance streaming reader for a huge top-level JSON array of systems.
+        Requires `ijson` (declared in requirements), which provides a C-backed parser.
+
+        Behaviour:
+        - Iterates each top-level array item via ijson.items(fh, 'item').
+        - Uses fh.tell() to report parse progress (bytes read + rate) via _parse_progress().
+        - Keeps memory flat (no giant string buffers) and stable throughput even on 10–20 GiB dumps.
+
+        Notes:
+        - If the input is NOT a JSON array (e.g., NDJSON or concatenated objects), this will fail fast.
+            Spansh galaxy dump is an array, so this is acceptable here for speed.
         """
-        import codecs
-        decoder = json.JSONDecoder()
-        inc = codecs.getincrementaldecoder("utf-8")()
-        buf = ""
-        bbuf = b""
-        chunk_size = 2 * 1024 * 1024  # 2 MiB bytes
-        consumed_bytes = 0
         start_ts = time.time()
+        last_tick_systems = 0
+        TICK_EVERY = 256  # update progress roughly every 1k systems
 
-        def fill() -> bool:
-            nonlocal bbuf, buf, consumed_bytes
-            data = fh.read(chunk_size)
-            if not data:
-                return False
-            consumed_bytes += len(data)
-            # single-line parse progress (always on, throttled)
-            self._parse_progress(consumed_bytes, start_ts)
-            bbuf += data
-            # decode available bytes; incremental decoder buffers partials internally
-            buf += inc.decode(bbuf)
-            bbuf = b""
-            return True
-
-        # Prime buffer
-        if not fill():
-            raise CleanExit("Empty JSON input")
-
-        # Probe first non-space char to decide mode
-        i = 0
-        while i < len(buf) and buf[i].isspace():
-            i += 1
-        if i >= len(buf):
-            while fill():
-                while i < len(buf) and buf[i].isspace():
-                    i += 1
-                if i < len(buf):
-                    break
-            if i >= len(buf):
-                raise CleanExit("Unexpected EOF before JSON content")
-
-        mode_array = buf[i] == "["
-
-        # If not an array, attempt concatenated-object mode
-        if not mode_array and buf[i] != "{":
-            raise CleanExit("Invalid JSON: expected '[' (array) or '{' (object stream) at start")
-
-        pos = i + (1 if mode_array else 0)  # skip '[' in array mode
-        first = True
-
-        while True:
-            # Skip whitespace and commas (array mode)
-            while True:
-                while pos < len(buf) and buf[pos].isspace():
-                    pos += 1
-                if mode_array and not first and pos < len(buf) and buf[pos] == ",":
-                    pos += 1
-                    while pos < len(buf) and buf[pos].isspace():
-                        pos += 1
-                break
-            first = False
-
-            # End of array?
-            if mode_array:
-                while pos >= len(buf):
-                    if not fill():
-                        break
-                if pos < len(buf) and buf[pos] == "]":
-                    # clear the live line once finished (TTY only)
-                    if self._is_tty:
-                        self._live_status("")  # clears line
-                    return
-
-            # Decode one object
-            while True:
+        # ijson pulls incrementally from the file object. We tick progress using fh.tell().
+        for idx, obj in enumerate(ijson.items(fh, 'item'), 1):
+            # Periodic heartbeat (avoid spamming stderr)
+            if (idx - last_tick_systems) >= TICK_EVERY:
+                last_tick_systems = idx
                 try:
-                    obj, end = decoder.raw_decode(buf, pos)
-                    pos = end
-                    yield obj
-                    # Trim buffer periodically to control growth
-                    if pos > (8 * 1024 * 1024):
-                        buf = buf[pos:]
-                        pos = 0
-                    break
-                except json.JSONDecodeError:
-                    if not fill():
-                        # Final attempt on EOF
-                        try:
-                            obj, end = decoder.raw_decode(buf, pos)
-                            pos = end
-                            yield obj
-                        except Exception:
-                            raise CleanExit("Truncated or malformed JSON at EOF")
-                        if self._is_tty:
-                            self._live_status("")  # clear line
-                        return
+                    self._parse_progress(fh.tell(), start_ts)
+                except Exception:
+                    # Some file-like objects may not support tell(); ignore and keep going.
+                    pass
 
+            yield obj
 
+        # Final heartbeat to reflect 100%
+        try:
+            self._parse_progress(fh.tell(), start_ts)
+        except Exception:
+            pass
+
+        # Clear the live status line if we were printing on a TTY
+        if self._is_tty:
+            self._live_status("")
 
     # ------------------------------
     # Mapping / derivations / misc
@@ -1164,23 +1471,43 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _resolve_batch_size(self) -> Optional[int]:
         """
         Decide commit batch size for *spansh* profile.
-        Prefer utils.get_import_batch_size(session, profile="spansh"); else env; else fallback.
+
+        Rules:
+          - SQLite: single large transaction (None) for maximum throughput.
+          - MySQL/MariaDB: large batches (50k) unless overridden.
+          - Otherwise: 5000 default.
+          - TD_LISTINGS_BATCH env can override (int>0 => that size; <=0 => None).
+          - If db_utils.get_import_batch_size(session, profile="spansh") exists, use it first.
         """
+        # Prefer project-provided policy
         if self.session is not None and hasattr(db_utils, "get_import_batch_size"):
             try:
-                return db_utils.get_import_batch_size(self.session, profile="spansh")  # may be None
+                val = db_utils.get_import_batch_size(self.session, profile="spansh")
+                if val is not None:
+                    return val
             except Exception:
                 pass
 
+        # Env override
         raw = os.environ.get("TD_LISTINGS_BATCH")
         if raw is not None:
             try:
-                val = int(raw)
-                return val if val > 0 else None
+                envv = int(raw)
+                return envv if envv > 0 else None
             except ValueError:
-                return None
+                pass
 
-        return 5000  # conservative default
+        # Backend-specific defaults
+        try:
+            if db_utils.is_sqlite(self.session):
+                return None  # single transaction
+            if db_utils.is_mysql(self.session):
+                return 50_000
+        except Exception:
+            pass
+
+        return 5_000 # Conservative default
+
 
     # ---- ts/format/logging helpers ----
     def _parse_ts(self, value: Any) -> Optional[datetime]:
@@ -1191,7 +1518,14 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     @staticmethod
     def _ensure_dir(path: Path) -> None:
-        path.mkdir(parents=True, exist_ok=True)
+        """
+        Ensure directory exists (mkdir -p). Raises CleanExit on failure so the
+        import can stop cleanly with a readable message.
+        """
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise CleanExit(f"Failed to create directory {path}: {e!r}")
 
     @staticmethod
     def _format_hms(seconds: float) -> str:
@@ -1208,15 +1542,30 @@ class ImportPlugin(plugins.ImportPluginBase):
         return f"{int(n)} {units[i]}" if i == 0 else f"{n:.1f} {units[i]}"
 
     def _progress_line(self, stats: Dict[str, int]) -> None:
+        """
+        Single-line live status while importing.
+        - 'markets' = stations with fresh market processed
+        - 'outfitters' = stations with fresh outfitting processed
+        - 'shipyards' = stations with fresh shipyard processed
+        """
         now = time.time()
         if now - self._last_progress_time < (0.5 if self._debug_level < 1 else 0.2):
             return
         self._last_progress_time = now
+
+        self._started_importing = True
+
+        parse_bytes = getattr(self, "_parse_bytes", 0)
+        parse_rate = getattr(self, "_parse_rate", 0.0)
+
         msg = (
-            f"Importing…  systems: {stats['systems']:,}  "
+            f"Importing…  {self._fmt_bytes(parse_bytes)} read  {self._fmt_bytes(parse_rate)}/s  "
+            f"systems: {stats['systems']:,}  "
             f"stations: {stats['stations']:,}  "
-            f"kept: mkt≈{stats['commodities']:,} outf≈{stats['modules']:,} shp≈{stats['ships']:,}"
+            f"kept: markets≈{stats['market_stations']:,} outfitters≈{stats['outfit_stations']:,} shipyards≈{stats['ship_stations']:,}"
         )
+        self._live_status(msg)
+
         self._live_status(msg)
 
 
@@ -1228,9 +1577,18 @@ class ImportPlugin(plugins.ImportPluginBase):
             
     def _live_status(self, msg: str) -> None:
         """
-        Single-line live status (clears previous line to avoid tail artifacts).
+        Single-line live status (bounded to terminal width to avoid wrapping).
         Uses stderr when TTY; falls back to normal print on non-TTY.
         """
+        try:
+            import shutil
+            width = shutil.get_terminal_size(fallback=(120, 20)).columns
+            # Leave a little space so some terminals don't re-wrap on the last column.
+            if width and width > 4:
+                msg = msg[: width - 2]
+        except Exception:
+            pass
+
         s = f"\x1b[2K\r{msg}"
         try:
             if self._is_tty:
@@ -1241,6 +1599,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception:
             self._print(msg)
 
+    def _end_live_status(self) -> None:
+        """Finish any live status line cleanly and switch to normal scrolling output."""
+        try:
+            if self._is_tty:
+                sys.stderr.write("\x1b[2K\r\n")
+                sys.stderr.flush()
+        except Exception:
+            pass
 
     # ---- printing/warnings ----
     def _print(self, *args, **kwargs):

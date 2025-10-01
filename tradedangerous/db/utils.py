@@ -11,13 +11,171 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, Iterable, Mapping, Sequence
+import re
 
-from sqlalchemy import text
+from sqlalchemy import Table, text, func
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 
-from sqlalchemy import text
+# -----------------------------------------------------------------------------
+# spansh helpers (db specific upserts)
+# -----------------------------------------------------------------------------
+
+# --- Dialect checks (unchanged) ---
+def is_sqlite(session: Session) -> bool:
+    try:
+        return session.get_bind().dialect.name.lower() == "sqlite"
+    except Exception:
+        return False
+
+def is_mysql(session: Session) -> bool:
+    try:
+        name = session.get_bind().dialect.name.lower()
+        return name in ("mysql", "mariadb")
+    except Exception:
+        return False
+        
+def sqlite_set_bulk_pragmas(session: Session) -> None:
+    """
+    Apply connection-local PRAGMAs to speed up bulk imports.
+    Safe defaults for an import session; durability is still acceptable with WAL.
+    """
+    conn = session.connection()
+    # WAL gives better concurrency; synchronous=NORMAL keeps some safety at high speed.
+    conn.execute(text("PRAGMA journal_mode=WAL"))
+    conn.execute(text("PRAGMA synchronous=NORMAL"))
+    # Keep temp structures in memory; increase page cache.
+    conn.execute(text("PRAGMA temp_store=MEMORY"))
+    # Negative cache_size is KiB; -65536 ≈ 64 MiB page cache
+    conn.execute(text("PRAGMA cache_size=-65536"))
+    
+def sqlite_upsert_modified(
+    session: Session,
+    table: Table,
+    rows: Iterable[Mapping[str, object]],
+    *,
+    key_cols: Sequence[str],
+    modified_col: str,
+    update_cols: Sequence[str],
+) -> None:
+    """
+    SQLite ON CONFLICT fast-path with timestamp guard using the dialect insert():
+      INSERT .. ON CONFLICT(<keys>) DO UPDATE SET <cols...>, modified=excluded.modified
+      WHERE excluded.modified > table.modified OR table.modified IS NULL
+    """
+    rows = list(rows)
+    if not rows:
+        return
+
+    stmt = sqlite_insert(table)
+    excluded = stmt.excluded  # "excluded" namespace
+
+    # Build set_ mapping for update columns + modified
+    set_map = {c: getattr(excluded, c) for c in update_cols}
+    set_map[modified_col] = getattr(excluded, modified_col)
+
+    # WHERE guard: only update if incoming is newer (or DB NULL)
+    where_guard = (getattr(excluded, modified_col) > getattr(table.c, modified_col)) | (
+        getattr(table.c, modified_col).is_(None)
+    )
+
+    stmt = stmt.on_conflict_do_update(
+        index_elements=list(key_cols),
+        set_=set_map,
+        where=where_guard,
+    )
+
+    session.execute(stmt, rows)
+
+def sqlite_upsert_simple(
+    session: Session,
+    table: Table,
+    rows: Iterable[Mapping[str, object]],
+    *,
+    key_cols: Sequence[str],
+    update_cols: Sequence[str],
+) -> None:
+    """
+    SQLite INSERT .. ON CONFLICT(<keys>) DO UPDATE SET <update_cols>
+    (no timestamp guard) using dialect insert() so types are adapted correctly.
+    """
+    rows = list(rows)
+    if not rows:
+        return
+
+    stmt = sqlite_insert(table)
+    excluded = stmt.excluded
+    set_map = {c: getattr(excluded, c) for c in update_cols}
+
+    stmt = stmt.on_conflict_do_update(
+        index_elements=list(key_cols),
+        set_=set_map,
+    )
+
+    session.execute(stmt, rows)
+
+
+def mysql_upsert_modified(
+    session: Session,
+    table: Table,
+    rows: Iterable[Mapping[str, object]],
+    *,
+    key_cols: Sequence[str],      # present for interface symmetry
+    modified_col: str,
+    update_cols: Sequence[str],
+) -> None:
+    """
+    MySQL/MariaDB ON DUPLICATE KEY fast-path using dialect insert().
+    Only updates when incoming.modified > existing.modified OR existing is NULL.
+    """
+    rows = list(rows)
+    if not rows:
+        return
+
+    ins = mysql_insert(table)
+    inserted = ins.inserted  # alias to VALUES()/INSERTED
+
+    # Guard: newer incoming timestamp or DB is NULL
+    guard = (inserted[modified_col] > table.c[modified_col]) | (table.c[modified_col].is_(None))
+
+    # For each update col, write: IF(guard, inserted.col, table.col)
+    set_map = {
+        c: func.if_(guard, inserted[c], table.c[c])
+        for c in update_cols
+    }
+    # Always compute modified with the same guard
+    set_map[modified_col] = func.if_(guard, inserted[modified_col], table.c[modified_col])
+
+    stmt = ins.on_duplicate_key_update(**set_map)
+    session.execute(stmt, rows)
+
+
+def mysql_upsert_simple(
+    session: Session,
+    table: Table,
+    rows: Iterable[Mapping[str, object]],
+    *,
+    key_cols: Sequence[str],      # present for interface symmetry
+    update_cols: Sequence[str],
+) -> None:
+    """
+    MySQL/MariaDB ON DUPLICATE KEY fast-path (no timestamp guard) using dialect insert().
+    Updates the listed columns unconditionally to INSERTED/VALUES().
+    """
+    rows = list(rows)
+    if not rows:
+        return
+
+    ins = mysql_insert(table)
+    inserted = ins.inserted
+
+    set_map = {c: inserted[c] for c in update_cols}
+
+    stmt = ins.on_duplicate_key_update(**set_map)
+    session.execute(stmt, rows)
 
 # -----------------------------------------------------------------------------
 # csvexport helpers (schema introspection)
@@ -148,9 +306,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
 # -----------------------------------------------------------------------------
 # Timestamp parsing
 # -----------------------------------------------------------------------------
-from datetime import datetime, timezone
-from typing import Optional
-import re
+
 
 def parse_ts(value) -> Optional[datetime]:
     """
@@ -223,9 +379,6 @@ def parse_ts(value) -> Optional[datetime]:
                 continue
 
     return None
-
-
-
 
 # -----------------------------------------------------------------------------
 # Batch size calculation
