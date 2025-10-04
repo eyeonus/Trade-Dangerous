@@ -1114,25 +1114,6 @@ def processImportFile(
         tdenv.DEBUG0("{count} {table}s imported", count=importCount, table=tableName)
 
 
-
-
-
-
-
-
-######################################################################
-
-
-# tradedangerous/cache.py
-
-from __future__ import annotations
-from pathlib import Path
-
-from tradedangerous.db import lifecycle
-
-# ... (other existing imports and helpers) ...
-
-
 def buildCache(tdb, tdenv):
     """
     Rebuilds the database from source files.
