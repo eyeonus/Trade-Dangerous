@@ -1123,6 +1123,16 @@ def processImportFile(
 ######################################################################
 
 
+# tradedangerous/cache.py
+
+from __future__ import annotations
+from pathlib import Path
+
+from tradedangerous.db import lifecycle
+
+# ... (other existing imports and helpers) ...
+
+
 def buildCache(tdb, tdenv):
     """
     Rebuilds the database from source files.
@@ -1146,24 +1156,15 @@ def buildCache(tdb, tdenv):
     dbPath = tdb.dbPath
     sqlPath = tdb.sqlPath
     pricesPath = tdb.pricesPath
-
     engine = tdb.engine
 
-    # Open a new session for this rebuild
-    with tdb.Session() as session:
-        # --- Step 1: reset schema in a dedicated transaction ---
-        with session.begin():
-            if engine.dialect.name == "sqlite":
-                lifecycle.reset_sqlite(engine, dbPath)
-            elif engine.dialect.name in ("mysql", "mariadb"):
-                from tradedangerous.db import orm_models
-                lifecycle.reset_mariadb(engine, orm_models.Base.metadata)
-            else:
-                raise TradeException(
-                    f"Unsupported database backend: {engine.dialect.name}"
-                )
+    # --- Step 1: reset schema BEFORE opening a session/transaction ---
+    # Single unified call; no dialect branching here.
+    lifecycle.reset_db(engine, db_path=dbPath)
 
-        # --- Step 2: import standard tables on plain session ---
+    # --- Step 2: open a new session for rebuild work ---
+    with tdb.Session() as session:
+        # Import standard tables on a plain session with progress
         with Progress(
             max_value=len(tdb.importTables) + 1,
             prefix="Importing",
@@ -1216,7 +1217,6 @@ def buildCache(tdb, tdenv):
 
     tdb.close()
     tdenv.DEBUG0("Finished")
-
 
 
 ######################################################################

@@ -330,17 +330,24 @@ class ImportPlugin(plugins.ImportPluginBase):
 
 
     def run(self):
+        """
+        EDDN/EDDB link importer.
+
+        Refactored DB flow:
+          - No dialect-specific logic in the plugin.
+          - Preflight uses TradeDB.reloadCache() (which centralizes sanity via lifecycle.ensure_fresh_db).
+          - For '--clean' → do a single full rebuild with the RareItem dance.
+          - Otherwise, if static CSVs changed → incrementally import only those tables (no drop/recreate).
+          - Listings import and .prices regeneration unchanged.
+        """
+        import os
+        from pathlib import Path
+        from tradedangerous import cache
+
         self.tdenv.ignoreUnknown = True
+        self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
 
-        # Create the /eddb folder for downloading the source files if it doesn't exist.
-        try:
-            Path(str(self.dataPath)).mkdir()
-        except FileExistsError:
-            pass
-
-        # Run 'listings' by default:
-        # If no options, or if only 'force', and/or 'skipvend',
-        # have been passed, enable 'listings'.
+        # Enable 'listings' by default unless other explicit options are present
         default = True
         for option in self.options:
             if option not in ('force', 'skipvend', 'purge'):
@@ -348,78 +355,45 @@ class ImportPlugin(plugins.ImportPluginBase):
         if default:
             self.options["listings"] = True
 
-        # Detect a fresh database that requires a clean build
-        if self.tdb.engine.dialect.name == "sqlite":
-            sqlite_path = self.tdb.engine.url.database
-            if sqlite_path and not Path(sqlite_path).exists():
-                self.options["clean"] = True
-        else:
-            if lifecycle.is_empty(self.tdb.engine):
-                self.options["clean"] = True
-
+        # -----------------------------
+        # Optional CLEAN: prepare inputs
+        # -----------------------------
         if self.getOption("clean"):
-            # Rebuild the tables from scratch. Must be done on first run of plugin.
-            # Can be done at anytime with the "clean" option.
+            # Remove CSVs so downloads become the new source of truth
             for name in [
-                "Category",
-                "Item",
-                "RareItem",
-                "Ship",
-                "ShipVendor",
-                "Station",
-                "System",
-                "Upgrade",
-                "UpgradeVendor",
-                "FDevShipyard",
-                "FDevOutfitting",
+                "Category", "Item", "RareItem",
+                "Ship", "ShipVendor",
+                "Station", "System",
+                "Upgrade", "UpgradeVendor",
+                "FDevShipyard", "FDevOutfitting",
             ]:
-                file = self.tdb.dataPath / Path(name + ".csv")
+                f = self.tdb.dataPath / f"{name}.csv"
                 try:
-                    os.remove(str(file))
+                    os.remove(str(f))
                 except FileNotFoundError:
                     pass
 
-            # Backend-specific cleanup
-            if self.tdb.engine.dialect.name == "sqlite":
-                try:
-                    os.remove(str(self.tdb.dataPath / "TradeDangerous.db"))
-                except FileNotFoundError:
-                    pass
-
+            # Remove .prices (will be regenerated later)
             try:
                 os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
 
-            # Because this is a clean run, temporarily rename RareItem.csv.
-            ri_path = self.tdb.dataPath / Path("RareItem.csv")
-            rib_path = ri_path.with_suffix(".tmp")
-            if ri_path.exists():
-                if rib_path.exists():
-                    rib_path.unlink()
-                ri_path.rename(rib_path)
+            # Stash RareItem.csv so a full rebuild doesn't hit FK issues
+            self._ri_path = self.tdb.dataPath / "RareItem.csv"
+            self._rib_path = self._ri_path.with_suffix(".tmp")
+            if self._ri_path.exists():
+                if self._rib_path.exists():
+                    self._rib_path.unlink()
+                self._ri_path.rename(self._rib_path)
 
-            # Reset schema using lifecycle + rebuild cache
-            lifecycle.ensure_fresh_db(
-                backend=self.tdb.engine.dialect.name,
-                engine=self.tdb.engine,
-                data_dir=self.tdb.dataPath,
-                metadata=SA.Base.metadata,
-                mode="force",
-            )
-
-            self.tdb.reloadCache()
-
-            # Now it's safe to move RareItems back.
-            if ri_path.exists():
-                ri_path.unlink()
-            if rib_path.exists():
-                rib_path.rename(ri_path)
-
+            # Full update after downloads
             self.options["all"] = True
             self.options["force"] = True
 
-        # Select which options will be updated
+        # --------------------------------
+        # Option cascade (unchanged logic)
+        # --------------------------------
         if self.getOption("listings"):
             self.options["item"] = True
             self.options["station"] = True
@@ -460,52 +434,164 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["shipvend"] = False
             self.options["upvend"] = False
 
-        # Download required files and update tables.
-        buildCache = False
+        # ---------------------------------------------
+        # Downloads — track which static CSVs changed
+        # ---------------------------------------------
+        changed = {
+            "System": False,
+            "Station": False,
+            "Category": False,
+            "Item": False,
+            "RareItem": False,
+            "Ship": False,
+            "ShipVendor": False,
+            "Upgrade": False,
+            "UpgradeVendor": False,
+            "FDevShipyard": False,
+            "FDevOutfitting": False,
+        }
+
+        # EDCD mirrors
         if self.getOption("upgrade"):
             if self.downloadFile(self.upgradesPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
-                buildCache = True
+                changed["Upgrade"] = True
+                changed["FDevOutfitting"] = True
 
         if self.getOption("ship"):
             if self.downloadFile(self.shipPath) or self.getOption("force"):
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
-                buildCache = True
+                changed["Ship"] = True
+                changed["FDevShipyard"] = True
 
+        # Core static tables
         if self.getOption("rare"):
             if self.downloadFile(self.rareItemPath) or self.getOption("force"):
-                buildCache = True
+                changed["RareItem"] = True
 
         if self.getOption("shipvend"):
             if self.downloadFile(self.shipVendorPath) or self.getOption("force"):
-                buildCache = True
+                changed["ShipVendor"] = True
 
         if self.getOption("upvend"):
             if self.downloadFile(self.upgradeVendorPath) or self.getOption("force"):
-                buildCache = True
+                changed["UpgradeVendor"] = True
 
         if self.getOption("system"):
             if self.downloadFile(self.sysPath) or self.getOption("force"):
-                buildCache = True
+                changed["System"] = True
 
         if self.getOption("station"):
             if self.downloadFile(self.stationsPath) or self.getOption("force"):
-                buildCache = True
+                changed["Station"] = True
 
         if self.getOption("item"):
             if self.downloadFile(self.commoditiesPath) or self.getOption("force"):
                 self.downloadFile(self.categoriesPath)
-                buildCache = True
+                changed["Item"] = True
+                changed["Category"] = True
 
-        # Rebuild cache with updated info if any static tables changed
-        if buildCache:
-            self.tdb.close()
+        # -------------------------------------------------------------
+        # Preflight sanity: ensure minimal DB via reloadCache() BUT
+        # wrap with the RareItem dance so a rebuild can't trip FKs.
+        # (Harmless if no rebuild is needed; essential if it is.)
+        # -------------------------------------------------------------
+        ri_path = getattr(self, "_ri_path", self.tdb.dataPath / "RareItem.csv")
+        rib_path = getattr(self, "_rib_path", ri_path.with_suffix(".tmp"))
+        rareitem_stashed = False
+        try:
+            if ri_path.exists():
+                # If we stashed during --clean, it's already moved;
+                # otherwise, stash defensively before potential rebuild.
+                if not rib_path.exists() and not self.getOption("clean"):
+                    ri_path.rename(rib_path)
+                    rareitem_stashed = True
+
+            # This may no-op or may call buildCache() internally
             self.tdb.reloadCache()
+        finally:
+            # Always restore after preflight
+            if rib_path.exists() and (self.getOption("clean") or rareitem_stashed):
+                if ri_path.exists():
+                    ri_path.unlink()
+                rib_path.rename(ri_path)
+
+        # -----------------------------------------------------
+        # Rebuild or Incremental Import?
+        #  - If --clean → full rebuild (single call to buildCache)
+        #  - Else if any static CSV changed → incremental import
+        # -----------------------------------------------------
+        if self.getOption("clean"):
+            # Full rebuild with RareItem already restored
             self.tdb.close()
+            cache.buildCache(self.tdb, self.tdenv)
+            self.tdb.close()
+        else:
+            # Incremental import of only changed tables (no schema drop)
+            # Respect FK order; import RareItem last among core.
+            IMPORT_ORDER = [
+                "System",
+                "Station",
+                "Category",
+                "Item",
+                "RareItem",
+                "Ship",
+                "ShipVendor",
+                "Upgrade",
+                "UpgradeVendor",
+                "FDevShipyard",
+                "FDevOutfitting",
+            ]
+            PATHS = {
+                "System":        self.sysPath,
+                "Station":       self.stationsPath,
+                "Category":      self.categoriesPath,
+                "Item":          self.commoditiesPath,
+                "RareItem":      self.rareItemPath,
+                "Ship":          self.shipPath,
+                "ShipVendor":    self.shipVendorPath,
+                "Upgrade":       self.upgradesPath,
+                "UpgradeVendor": self.upgradeVendorPath,
+                "FDevShipyard":  self.FDevShipyardPath,
+                "FDevOutfitting":self.FDevOutfittingPath,
+            }
+
+            any_changed = any(changed.values())
+            if any_changed:
+                with self.tdb.Session() as session:
+                    for table_name in IMPORT_ORDER:
+                        if not changed.get(table_name):
+                            continue
+                        import_path = Path(PATHS[table_name])
+                        try:
+                            cache.processImportFile(
+                                self.tdenv,
+                                session,
+                                import_path,
+                                table_name,
+                                line_callback=None,
+                                call_args=None,
+                            )
+                            session.commit()
+                            self.tdenv.DEBUG0("Incremental import OK: {}", table_name)
+                        except FileNotFoundError:
+                            self.tdenv.NOTE("{} missing; skipped incremental import", import_path)
+                        except StopIteration:
+                            self.tdenv.NOTE("{} exists but is empty; skipped incremental import", import_path)
+                        except Exception as e:
+                            self.tdenv.WARN("Incremental import failed for {}: {}", table_name, e)
+                            session.rollback()
+                            # escalate to a full rebuild for safety
+                            self.tdenv.NOTE("Escalating to full rebuild due to import failure.")
+                            self.tdb.close()
+                            cache.buildCache(self.tdb, self.tdenv)
+                            self.tdb.close()
+                            break
 
         if self.getOption("purge"):
             self.purgeSystems()
 
+        # Listings import (prices)
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
@@ -517,6 +603,4 @@ class ImportPlugin(plugins.ImportPluginBase):
             cache.regeneratePricesFile(self.tdb, self.tdenv)
 
         self.tdenv.NOTE("Import completed.")
-
-        # TD doesn't need to do anything, tell it to just quit.
         return False

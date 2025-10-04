@@ -720,67 +720,42 @@ class TradeDB:
     
     def reloadCache(self):
         """
-        Ensure DB is present, non-empty, and minimally populated.
-        CSVs/SQL are only used when DB is absent, empty, or unpopulated.
-        Uses ORM models for backend-agnostic checks (SQLite, MariaDB, etc).
+        Ensure DB is present and minimally populated using the central policy.
+
+        Delegates sanity checks to lifecycle.ensure_fresh_db (seconds-only checks):
+          - core tables exist (System, Station, Category, Item, StationItem)
+          - each has a primary key
+          - seed rows exist (Category > 0, System > 0)
+          - cheap connectivity probe
+
+        If checks fail (or lifecycle decides to force), it will call buildCache(self, self.tdenv)
+        to reset/populate via the authoritative path. Otherwise it is a no-op.
         """
-        from tradedangerous.db.lifecycle import is_empty
+        from tradedangerous.db.lifecycle import ensure_fresh_db
 
         self.tdenv.DEBUG0("reloadCache: engine URL = {}", str(self.engine.url))
 
-        def _is_minimally_populated(engine, tdenv) -> bool:
-            """
-            Returns True if the DB contains data in key core tables
-            (System, Station, Item). Otherwise False.
-            Uses ORM models so it is fully backend-agnostic.
-            """
-            core_models = (SA_System, SA_Station, SA_Item)
-            SessionFactory = get_session_factory(engine)
-
-            with SessionFactory() as s:
-                for model in core_models:
-                    try:
-                        count = s.execute(
-                            select(func.count()).select_from(model)
-                        ).scalar_one()
-                        tdenv.DEBUG0(
-                            "reloadCache: {} has {} rows",
-                            model.__tablename__,
-                            count,
-                        )
-                        if count == 0:
-                            return False
-                    except Exception as e:
-                        tdenv.DEBUG0(
-                            "reloadCache: failed to query %s: %s",
-                            model.__tablename__,
-                            e,
-                        )
-                        return False
-            return True
-
-        empty = is_empty(self.engine)
-        populated = False
         try:
-            populated = _is_minimally_populated(self.engine, self.tdenv)
+            summary = ensure_fresh_db(
+                backend=self.engine.dialect.name,
+                engine=self.engine,
+                data_dir=self.dataPath,
+                metadata=None,
+                mode="auto",
+                tdb=self,
+                tdenv=self.tdenv,
+            )
+            action = summary.get("action", "kept")
+            reason = summary.get("reason")
+            if reason:
+                self.tdenv.DEBUG0("reloadCache: ensure_fresh_db → {} (reason: {})", action, reason)
+            else:
+                self.tdenv.DEBUG0("reloadCache: ensure_fresh_db → {}", action)
         except Exception as e:
-            self.tdenv.DEBUG0(
-                "reloadCache: _is_minimally_populated raised %s", e
-            )
-
-        self.tdenv.DEBUG0(
-            "reloadCache: is_empty={}, minimally_populated={}",
-            empty,
-            populated,
-        )
-
-        if empty or not populated:
-            self.tdenv.DEBUG0("Rebuilding DB Cache (missing/empty core tables)")
+            self.tdenv.WARN("reloadCache: ensure_fresh_db failed: {}", e)
+            self.tdenv.DEBUG0("reloadCache: Falling back to buildCache()")
+            from tradedangerous import cache
             cache.buildCache(self, self.tdenv)
-        else:
-            self.tdenv.DEBUG0(
-                "DB already populated; skipping CSV/sql mtime checks"
-            )
 
 
     
