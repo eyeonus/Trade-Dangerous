@@ -32,30 +32,6 @@ def is_empty(engine: Engine) -> bool:
     return len(list(_user_tables(engine))) == 0
 
 
-def rotate_sqlite_db(
-    data_dir: Path,
-    filename: str = "TradeDangerous.db",
-    old_name: str = "TradeDangerous.old",
-) -> Path:
-    """Rename the SQLite DB file to .old (idempotent). Safe if file missing.
-    If the target .old already exists it is replaced.
-    """
-    src = (data_dir / filename).resolve()
-    dst = (data_dir / old_name).resolve()
-    if not src.exists():
-        return dst
-    try:
-        if dst.exists():
-            dst.unlink()
-        src.rename(dst)
-    except OSError:
-        # As a last resort on cross-device moves, copy then unlink
-        import shutil
-        shutil.copy2(src, dst)
-        src.unlink()
-    return dst
-
-
 # --------------------------------------------------------------------
 # (Re)creation helpers — prefer explicit paths; discovery is fallback
 # --------------------------------------------------------------------
@@ -101,23 +77,80 @@ def _create_sqlite_from_legacy(engine: Engine, sql_path: Optional[Path] = None) 
 # --------------------------------------------------------------------
 
 def reset_sqlite(engine: Engine, db_path: Path, sql_path: Optional[Path] = None) -> None:
-    """Reset the SQLite schema by rotating the DB file and recreating from legacy SQL."""
-    # Rotate the existing DB file (if present) and ensure directory exists
-    if db_path.exists():
-        backup = db_path.with_suffix(".old")
-        if backup.exists():
-            backup.unlink()
-        db_path.rename(backup)
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    """
+    Reset the SQLite schema by rotating the DB file and recreating from legacy SQL.
 
-    # Recreate schema using the provided canonical SQL file (or fallback discovery)
+    Steps:
+      1) Dispose the SQLAlchemy engine to release pooled sqlite file handles.
+      2) Rotate the on-disk database file to a .old sibling (idempotent; cross-device safe).
+      3) Ensure the target directory exists.
+      4) Recreate the schema using the provided canonical SQL file (or fallback discovery).
+
+    Notes:
+      - Rotation naming preserves your historic convention:
+            TradeDangerous.db  →  TradeDangerous.old
+      - If no DB file exists, rotation is a no-op.
+    """
+    # 1) Release any open file handles held by the connection pool
+    try:
+        engine.dispose()
+    except Exception:
+        pass  # best-effort
+
+    # 2) Rotate DB → .old (idempotent, cross-device safe)
+    db_path = db_path.resolve()
+    old_path = db_path.with_suffix(".old")
+    try:
+        if db_path.exists():
+            try:
+                if old_path.exists():
+                    old_path.unlink()
+            except Exception:
+                # If removal of old backup fails, continue and let rename/copy raise if necessary
+                pass
+
+            try:
+                db_path.rename(old_path)
+            except OSError:
+                # Cross-device or locked: copy then unlink
+                import shutil
+                shutil.copy2(db_path, old_path)
+                try:
+                    db_path.unlink()
+                except Exception:
+                    # If unlink fails, leave both; schema recreate will still run on db_path
+                    pass
+    except Exception:
+        # Rotation shouldn't prevent schema recreation; continue
+        pass
+
+    # 3) Make sure parent directory exists
+    try:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+
+    # 4) Recreate schema from canonical SQL
     _create_sqlite_from_legacy(engine, sql_path=sql_path)
 
-
 def reset_mariadb(engine: Engine, metadata: MetaData) -> None:
-    """Drop all tables and recreate using ORM metadata (MariaDB/InnoDB)."""
-    metadata.drop_all(bind=engine)
-    metadata.create_all(bind=engine)
+    """
+    Drop all tables and recreate using ORM metadata (MariaDB/MySQL),
+    with FOREIGN_KEY_CHECKS disabled during the operation.
+
+    This avoids FK-ordering issues and makes resets deterministic.
+    """
+    # Use a transactional connection for the whole reset
+    with engine.begin() as conn:
+        # Disable FK checks for the duration of drop/create
+        conn.execute(text("SET FOREIGN_KEY_CHECKS=0"))
+        try:
+            metadata.drop_all(bind=conn)
+            metadata.create_all(bind=conn)
+        finally:
+            # Always restore FK checks
+            conn.execute(text("SET FOREIGN_KEY_CHECKS=1"))
+
 
 
 # --------------------------------------------------------------------

@@ -194,13 +194,22 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def importListings(self, listings_file):
         """
-        Updates the market data (AKA the StationItem table) using listings_file
-        Writes directly to the database via SQLAlchemy.
+        Updates the market data (StationItem) using `listings_file`.
+
+        Rules:
+          - If a row doesn't exist in DB → insert (copy CSV exactly).
+          - If it exists → update only when CSV.modified > DB.modified.
+          - If CSV.modified <= DB.modified → do nothing (no field changes).
         """
-        from tradedangerous.db.utils import get_import_batch_size
+        from tradedangerous.db.utils import (
+            get_import_batch_size,
+            begin_bulk_mode,
+            end_bulk_mode,
+            get_upsert_fn,
+        )
 
         listings_path = Path(self.dataPath, listings_file).absolute()
-        from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
+        from_live = int(listings_path != Path(self.dataPath, self.listingsPath).absolute())
 
         self.tdenv.NOTE("Checking listings")
         total = _count_listing_entries(self.tdenv, listings_path)
@@ -210,18 +219,16 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         self.tdenv.NOTE(
             "Processing market data from {}: Start time = {}. Live = {}",
-            listings_file, self.now(), from_live
+            listings_file, self.now(), bool(from_live)
         )
 
         Session = self.tdb.Session
 
-        # Fetch all the item and station IDs
+        # Prefetch item/station IDs for early filtering
         with Session.begin() as session:
             item_lookup = _make_item_id_lookup(self.tdenv, session)
             station_lookup = _make_station_id_lookup(self.tdenv, session)
-            last_station_update_times = _collect_station_modified_times(self.tdenv, session)
 
-        cur_station = None
         is_debug = self.tdenv.debug > 0
         self.tdenv.DEBUG0("Processing entries...")
 
@@ -229,92 +236,80 @@ class ImportPlugin(plugins.ImportPluginBase):
              listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
              Session() as session:
 
-            max_transaction_items = get_import_batch_size(session)
-            transaction_items = 0
+            token = begin_bulk_mode(session, profile="eddblink", phase="incremental")
+            try:
+                commit_batch = get_import_batch_size(session, profile="eddblink")
+                execute_batch = commit_batch or 10000  # cap statement size even if single final commit
 
-            for listing in csv.DictReader(fh):
-                prog.increment(1)
+                # Upsert: keys + guarded fields (including from_live), guarded by 'modified'
+                table = SA.StationItem.__table__
+                key_cols = ("station_id", "item_id")
+                update_cols = (
+                    "demand_price", "demand_units", "demand_level",
+                    "supply_price", "supply_units", "supply_level",
+                    "from_live",
+                )
+                upsert = get_upsert_fn(
+                    session,
+                    table,
+                    key_cols=key_cols,
+                    update_cols=update_cols,
+                    modified_col="modified",
+                    always_update=(),   # IMPORTANT: no unconditional updates
+                )
 
-                station_id = int(listing['station_id'])
-                if station_id not in station_lookup:
-                    continue
+                batch_rows = []
+                since_commit = 0
 
-                listing_time = int(listing['collected_at'])
-                dt_listing_time = datetime.datetime.utcfromtimestamp(listing_time)
-
-                if station_id != cur_station:
-                    if max_transaction_items and transaction_items >= max_transaction_items:
-                        session.commit()
-                        session.begin()
-                        transaction_items = 0
-                    cur_station, skip_station = station_id, False
-
-                    last_modified: int = int(last_station_update_times.get(station_id, 0))
-                    if last_modified:
-                        if listing_time == last_modified and not from_live:
-                            if is_debug:
-                                self.tdenv.DEBUG1(
-                                    f"Marking {cur_station} as no longer 'live' "
-                                    f"(old={last_modified}, listing={listing_time})."
-                                )
-                            session.query(SA.StationItem).filter_by(station_id=cur_station).update(
-                                {"from_live": 0}
-                            )
-                            transaction_items += 1
-                            skip_station = True
+                for listing in csv.DictReader(fh):
+                    prog.increment(1)
+                    try:
+                        station_id = int(listing["station_id"])
+                        if station_id not in station_lookup:
                             continue
 
-                        if listing_time <= last_modified:
-                            skip_station = True
-                            continue
+                        item_id = int(listing["commodity_id"])
+                        if item_id not in item_lookup:
+                            continue  # skip rare items (not in Item table)
 
-                        if is_debug:
-                            self.tdenv.DEBUG1(
-                                f"Deleting old listing data for {cur_station} "
-                                f"(old={last_modified}, listing={listing_time})."
-                            )
-                        session.query(SA.StationItem).filter_by(station_id=cur_station).delete()
-                        transaction_items += 1
-                        last_station_update_times[station_id] = listing_time
+                        listing_time = int(listing["collected_at"])
+                        dt_listing_time = datetime.datetime.utcfromtimestamp(listing_time)
 
-                if skip_station:
-                    continue
+                        row = {
+                            "station_id": station_id,
+                            "item_id": item_id,
+                            "modified": dt_listing_time,   # guard column
+                            "from_live": from_live,        # copied exactly when updating/inserting
+                            "demand_price": int(listing["sell_price"]),
+                            "demand_units": int(listing["demand"]),
+                            "demand_level": int(listing.get("demand_bracket") or "-1"),
+                            "supply_price": int(listing["buy_price"]),
+                            "supply_units": int(listing["supply"]),
+                            "supply_level": int(listing.get("supply_bracket") or "-1"),
+                        }
+                        batch_rows.append(row)
+                        since_commit += 1
 
-                item_id = int(listing['commodity_id'])
-                if item_id not in item_lookup:
-                    continue  # skip rare items
+                        if len(batch_rows) >= execute_batch:
+                            upsert(batch_rows)
+                            batch_rows.clear()
 
-                demand_price = int(listing['sell_price'])
-                demand_units = int(listing['demand'])
-                demand_level = int(listing.get('demand_bracket') or '-1')
-                supply_price = int(listing['buy_price'])
-                supply_units = int(listing['supply'])
-                supply_level = int(listing.get('supply_bracket') or '-1')
+                        if commit_batch and since_commit >= commit_batch:
+                            session.commit()
+                            since_commit = 0
 
-                if is_debug:
-                    self.tdenv.DEBUG1(f"Inserting new listing data for {station_id}.")
+                    except Exception as e:  # pylint: disable=broad-exception-caught
+                        self.tdenv.WARN("Bad listing row (skipped): {}  error: {}", listing, e)
+                        continue
 
-                session.add(SA.StationItem(
-                    station_id=station_id,
-                    item_id=item_id,
-                    modified=dt_listing_time,
-                    from_live=int(from_live),
-                    demand_price=demand_price,
-                    demand_units=demand_units,
-                    demand_level=demand_level,
-                    supply_price=supply_price,
-                    supply_units=supply_units,
-                    supply_level=supply_level,
-                ))
-                transaction_items += 1
+                if batch_rows:
+                    upsert(batch_rows)
+                    batch_rows.clear()
 
-                if max_transaction_items and transaction_items >= max_transaction_items:
-                    session.commit()
-                    session.begin()
-                    transaction_items = 0
+                session.commit()
 
-            # commit tail
-            session.commit()
+            finally:
+                end_bulk_mode(session, token)
 
         with pbar.Progress(1, 40, prefix="Saving"):
             pass
@@ -326,7 +321,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         session.execute(text("VACUUM"))
 
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
-
 
 
     def run(self):
@@ -341,8 +335,11 @@ class ImportPlugin(plugins.ImportPluginBase):
           - Listings import and .prices regeneration unchanged.
         """
         import os
+        import time
         from pathlib import Path
         from tradedangerous import cache
+        # bulk-mode helpers for the incremental static import session
+        from tradedangerous.db.utils import begin_bulk_mode, end_bulk_mode
 
         self.tdenv.ignoreUnknown = True
         self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
@@ -492,17 +489,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                 changed["Category"] = True
 
         # -------------------------------------------------------------
-        # Preflight sanity: ensure minimal DB via reloadCache() BUT
-        # wrap with the RareItem dance so a rebuild can't trip FKs.
-        # (Harmless if no rebuild is needed; essential if it is.)
+        # Preflight sanity (user-visible): make the pause explicit
         # -------------------------------------------------------------
         ri_path = getattr(self, "_ri_path", self.tdb.dataPath / "RareItem.csv")
         rib_path = getattr(self, "_rib_path", ri_path.with_suffix(".tmp"))
         rareitem_stashed = False
+        self.tdenv.NOTE("Preflight: verifying database (this can take a while on first run)...")
+        t0 = time.monotonic()
         try:
             if ri_path.exists():
-                # If we stashed during --clean, it's already moved;
-                # otherwise, stash defensively before potential rebuild.
                 if not rib_path.exists() and not self.getOption("clean"):
                     ri_path.rename(rib_path)
                     rareitem_stashed = True
@@ -510,25 +505,24 @@ class ImportPlugin(plugins.ImportPluginBase):
             # This may no-op or may call buildCache() internally
             self.tdb.reloadCache()
         finally:
-            # Always restore after preflight
             if rib_path.exists() and (self.getOption("clean") or rareitem_stashed):
                 if ri_path.exists():
                     ri_path.unlink()
                 rib_path.rename(ri_path)
+            t1 = time.monotonic()
+            self.tdenv.NOTE("Preflight complete in {:.1f}s.", (t1 - t0))
 
         # -----------------------------------------------------
         # Rebuild or Incremental Import?
-        #  - If --clean → full rebuild (single call to buildCache)
-        #  - Else if any static CSV changed → incremental import
         # -----------------------------------------------------
         if self.getOption("clean"):
-            # Full rebuild with RareItem already restored
+            self.tdenv.NOTE("Performing full rebuild...")
             self.tdb.close()
             cache.buildCache(self.tdb, self.tdenv)
             self.tdb.close()
+            self.tdenv.NOTE("Full rebuild complete.")
         else:
             # Incremental import of only changed tables (no schema drop)
-            # Respect FK order; import RareItem last among core.
             IMPORT_ORDER = [
                 "System",
                 "Station",
@@ -542,51 +536,43 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "FDevShipyard",
                 "FDevOutfitting",
             ]
-            PATHS = {
-                "System":        self.sysPath,
-                "Station":       self.stationsPath,
-                "Category":      self.categoriesPath,
-                "Item":          self.commoditiesPath,
-                "RareItem":      self.rareItemPath,
-                "Ship":          self.shipPath,
-                "ShipVendor":    self.shipVendorPath,
-                "Upgrade":       self.upgradesPath,
-                "UpgradeVendor": self.upgradeVendorPath,
-                "FDevShipyard":  self.FDevShipyardPath,
-                "FDevOutfitting":self.FDevOutfittingPath,
-            }
 
             any_changed = any(changed.values())
             if any_changed:
+                self.tdenv.NOTE("Incremental import starting ({} tables changed).", sum(1 for v in changed.values() if v))
                 with self.tdb.Session() as session:
-                    for table_name in IMPORT_ORDER:
-                        if not changed.get(table_name):
-                            continue
-                        import_path = Path(PATHS[table_name])
-                        try:
-                            cache.processImportFile(
-                                self.tdenv,
-                                session,
-                                import_path,
-                                table_name,
-                                line_callback=None,
-                                call_args=None,
-                            )
-                            session.commit()
-                            self.tdenv.DEBUG0("Incremental import OK: {}", table_name)
-                        except FileNotFoundError:
-                            self.tdenv.NOTE("{} missing; skipped incremental import", import_path)
-                        except StopIteration:
-                            self.tdenv.NOTE("{} exists but is empty; skipped incremental import", import_path)
-                        except Exception as e:
-                            self.tdenv.WARN("Incremental import failed for {}: {}", table_name, e)
-                            session.rollback()
-                            # escalate to a full rebuild for safety
-                            self.tdenv.NOTE("Escalating to full rebuild due to import failure.")
-                            self.tdb.close()
-                            cache.buildCache(self.tdb, self.tdenv)
-                            self.tdb.close()
-                            break
+                    token = begin_bulk_mode(session, profile="eddblink", phase="incremental")
+                    try:
+                        for table_name in IMPORT_ORDER:
+                            if not changed.get(table_name):
+                                continue
+                            import_path = (self.tdb.dataPath / f"{table_name}.csv").resolve()
+                            try:
+                                cache.processImportFile(
+                                    self.tdenv,
+                                    session,
+                                    import_path,
+                                    table_name,
+                                    line_callback=None,
+                                    call_args=None,
+                                )
+                                session.commit()
+                                self.tdenv.DEBUG0("Incremental import OK: {} ({})", table_name, import_path)
+                            except FileNotFoundError:
+                                self.tdenv.NOTE("{} missing; skipped incremental import ({})", table_name, import_path)
+                            except StopIteration:
+                                self.tdenv.NOTE("{} exists but is empty; skipped incremental import ({})", table_name, import_path)
+                            except Exception as e:
+                                self.tdenv.WARN("Incremental import failed for {}: {} ({})", table_name, e, import_path)
+                                session.rollback()
+                                self.tdenv.NOTE("Escalating to full rebuild due to import failure.")
+                                self.tdb.close()
+                                cache.buildCache(self.tdb, self.tdenv)
+                                self.tdb.close()
+                                break
+                    finally:
+                        end_bulk_mode(session, token)
+                self.tdenv.NOTE("Incremental import finished.")
 
         if self.getOption("purge"):
             self.purgeSystems()

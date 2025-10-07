@@ -12,13 +12,198 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Optional, Iterable, Mapping, Sequence
+from typing import Optional, Iterable, Mapping, Sequence, Literal, Callable, Dict, Any
 import re
 
-from sqlalchemy import Table, text, func
+from sqlalchemy import Table, text, func, and_, bindparam
+from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
+
+# --------------------------------------------------------
+# eddblink helpers
+# --------------------------------------------------------
+
+def begin_bulk_mode(
+    session: Session,
+    *,
+    profile: str = "default",
+    phase: Literal["rebuild", "incremental"] = "incremental",
+) -> Dict[str, Any]:
+    """
+    Apply connection-local settings to speed up bulk operations.
+    Returns an opaque token for symmetry with end_bulk_mode (currently a no-op).
+
+    - SQLite: ensure WAL, temp_store, cache; set synchronous=OFF for raw speed.
+    - MySQL/MariaDB: apply per-session import tunings (reduced fsync, lower waits).
+
+    Notes:
+      * Settings are connection-scoped and reset when the connection is returned
+        to the pool or closed.
+      * This is generic and safe for any plugin invoking long-running bulk writes.
+    """
+    token: Dict[str, Any] = {"dialect": None, "profile": profile, "phase": phase}
+
+    try:
+        dialect = session.get_bind().dialect.name.lower()
+    except Exception:
+        return token  # best-effort, no-op if we can't detect
+
+    token["dialect"] = dialect
+
+    if dialect == "sqlite":
+        try:
+            conn = session.connection()
+            # Speed-first defaults (align with schema PRAGMAs).
+            conn.execute(text("PRAGMA journal_mode=WAL"))
+            conn.execute(text("PRAGMA synchronous=OFF"))
+            conn.execute(text("PRAGMA temp_store=MEMORY"))
+            # Negative cache_size is KiB; -65536 ≈ 64 MiB
+            conn.execute(text("PRAGMA cache_size=-65536"))
+            # File-level; harmless to set each time.
+            conn.execute(text("PRAGMA auto_vacuum=INCREMENTAL"))
+        except Exception:
+            # Best-effort; keep going if PRAGMA adjustment fails.
+            pass
+        return token
+
+    if dialect in ("mysql", "mariadb"):
+        try:
+            mysql_set_bulk_session(session)
+        except Exception:
+            pass
+        return token
+
+    # Other dialects: nothing applied
+    return token
+
+
+def end_bulk_mode(session: Session, token: Dict[str, Any] | None = None) -> None:
+    """
+    Placeholder symmetry for begin_bulk_mode. Currently a no-op because we only
+    *set* per-session tunings that naturally revert when the connection returns
+    to the pool. Kept for future extensibility.
+    """
+    return
+
+
+def get_upsert_fn(
+    session: Session,
+    table: Table,
+    *,
+    key_cols: Sequence[str],
+    update_cols: Sequence[str],
+    modified_col: Optional[str] = None,
+    always_update: Sequence[str] = (),
+) -> Callable[[Iterable[Mapping[str, object]]], None]:
+    """
+    Return a callable that performs a batched upsert into `table` using the
+    fastest dialect-specific path available (SQLAlchemy Core).
+
+    - If `modified_col` is provided:
+        * SQLite → INSERT .. ON CONFLICT DO UPDATE with WHERE guard using modified
+        * MySQL  → INSERT .. ON DUPLICATE KEY UPDATE with IF(guard, inserted, table)
+      Only the columns listed in `update_cols` are guarded by `modified_col`.
+
+    - Columns listed in `always_update` are synchronized unconditionally even
+      when modified timestamps are equal. This is implemented as a small,
+      portable second-pass UPDATE keyed by `key_cols`.
+
+    Usage example:
+        upsert = get_upsert_fn(
+            session,
+            SA.StationItem.__table__,
+            key_cols=("station_id","item_id"),
+            update_cols=("demand_price","demand_units","demand_level",
+                         "supply_price","supply_units","supply_level","from_live"),
+            modified_col="modified",
+            always_update=("from_live",),  # force-sync live flag even if modified equal
+        )
+        upsert(batch_of_row_dicts)
+    """
+    try:
+        dialect = session.get_bind().dialect.name.lower()
+    except Exception:
+        dialect = "unknown"
+
+    def _primary_upsert(rows: Iterable[Mapping[str, object]]) -> None:
+        batch = list(rows)
+        if not batch:
+            return
+
+        if modified_col:
+            if dialect == "sqlite":
+                sqlite_upsert_modified(
+                    session,
+                    table,
+                    batch,
+                    key_cols=key_cols,
+                    modified_col=modified_col,
+                    update_cols=update_cols,
+                )
+            elif dialect in ("mysql", "mariadb"):
+                mysql_upsert_modified(
+                    session,
+                    table,
+                    batch,
+                    key_cols=key_cols,
+                    modified_col=modified_col,
+                    update_cols=update_cols,
+                )
+            else:
+                # Fallback: simple upsert without guard
+                if dialect == "sqlite":
+                    sqlite_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
+                elif dialect in ("mysql", "mariadb"):
+                    mysql_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
+                else:
+                    raise RuntimeError(f"Unsupported dialect for modified upsert: {dialect}")
+        else:
+            if dialect == "sqlite":
+                sqlite_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
+            elif dialect in ("mysql", "mariadb"):
+                mysql_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
+            else:
+                raise RuntimeError(f"Unsupported dialect for simple upsert: {dialect}")
+
+    def _always_update_pass(rows: Iterable[Mapping[str, object]]) -> None:
+        if not always_update:
+            return
+        batch = list(rows)
+        if not batch:
+            return
+
+        # UPDATE table SET c1=:c1, ... WHERE k1=:__key__k1 AND k2=:__key__k2
+        where_clause = and_(*[table.c[k] == bindparam(f"__key__{k}") for k in key_cols])
+        upd = table.update().where(where_clause).values({c: bindparam(c) for c in always_update})
+
+        params: list[Dict[str, object]] = []
+        for row in batch:
+            # Only issue an UPDATE if at least one always_update value is present
+            p: Dict[str, object] = {}
+            for k in key_cols:
+                p[f"__key__{k}"] = row[k]
+            present = False
+            for c in always_update:
+                if c in row:
+                    p[c] = row[c]
+                    present = True
+            if present:
+                params.append(p)
+
+        if params:
+            session.execute(upd, params)
+
+    def _upsert(rows: Iterable[Mapping[str, object]]) -> None:
+        batch = list(rows)
+        if not batch:
+            return
+        _primary_upsert(batch)
+        _always_update_pass(batch)
+
+    return _upsert
+
 
 # -----------------------------------------------------------------------------
 # spansh helpers (db specific upserts)
@@ -117,7 +302,30 @@ def sqlite_upsert_simple(
 
     session.execute(stmt, rows)
 
-
+def mysql_set_bulk_session(session: Session) -> None:
+    """
+    Per-session tuning for bulk imports (MariaDB/MySQL).
+    Session-scoped, resets when the connection closes/recycles.
+    Conservative defaults for import workloads.
+    """
+    conn = session.connection()
+    # Reduce fsyncs; lose up to ~1s of transactions on power loss (import-safe).
+    conn.execute(text("SET SESSION innodb_flush_log_at_trx_commit=2"))
+    # Amortize binlog fsync if binlog is enabled.
+    conn.execute(text("SET SESSION sync_binlog=0"))
+    # Reader-friendly concurrency and shorter lock waits.
+    conn.execute(text("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED"))
+    conn.execute(text("SET SESSION innodb_lock_wait_timeout=10"))
+    # Optional micro-wins on constraint checking (safe for our import order).
+    conn.execute(text("SET SESSION foreign_key_checks=0"))
+    conn.execute(text("SET SESSION unique_checks=0"))
+    # If permitted, skipping binlog on this session can be a big win (DEV ONLY).
+    try:
+        conn.execute(text("SET SESSION sql_log_bin=0"))
+    except Exception:
+        # Not always allowed; silently ignore.
+        pass
+        
 def mysql_upsert_modified(
     session: Session,
     table: Table,
