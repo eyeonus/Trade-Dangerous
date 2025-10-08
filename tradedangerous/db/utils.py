@@ -418,10 +418,15 @@ def get_unique_columns(session, table_name: str) -> list[str]:
     if dialect == "sqlite":
         conn = session.connection().connection
         cur = conn.cursor()
-        uniques = []
-        for idxRow in cur.execute(f"PRAGMA index_list('{table_name}')"):
-            if idxRow[2]:  # 'unique' flag
-                for unqRow in conn.execute(f"PRAGMA index_info('{idxRow[1]}')"):
+        uniques: list[str] = []
+        # Pre-escape table name for PRAGMA
+        esc_table = table_name.replace("'", "''")
+        for idxRow in cur.execute(f"PRAGMA index_list('{esc_table}')"):
+            # idxRow: (seq, name, unique, origin, partial) — unique is at index 2
+            if idxRow[2]:  # 'unique' flag is truthy for UNIQUE indexes
+                idx_name = idxRow[1]
+                esc_idx = idx_name.replace("'", "''")
+                for unqRow in conn.execute(f"PRAGMA index_info('{esc_idx}')"):
                     col = unqRow[2]
                     if col not in uniques:
                         uniques.append(col)
@@ -455,6 +460,8 @@ def get_unique_columns(session, table_name: str) -> list[str]:
         return list(set(cols))
 
 
+
+
 def get_foreign_keys(session, table_name: str) -> list[dict]:
     """
     Return list of foreign key mappings:
@@ -471,8 +478,10 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
     if dialect == "sqlite":
         conn = session.connection().connection
         cur = conn.cursor()
-        fkeys = []
-        for row in cur.execute(f"PRAGMA foreign_key_list('{table_name}')"):
+        fkeys: list[dict] = []
+        esc_table = table_name.replace("'", "''")
+        for row in cur.execute(f"PRAGMA foreign_key_list('{esc_table}')"):
+            # row: (id, seq, table, from, to, on_update, on_delete, match)
             fkeys.append({
                 "table": row[2],
                 "from": row[3],
@@ -496,7 +505,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
     else:
         # Fallback: use SQLAlchemy inspector
         insp = session.get_bind().inspect(session.get_bind())
-        fkeys = []
+        fkeys: list[dict] = []
         try:
             for fk in insp.get_foreign_keys(table_name) or []:
                 if not fk.get("referred_table") or not fk.get("constrained_columns"):
@@ -509,6 +518,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
         except Exception:
             pass
         return fkeys
+
 
 
 # -----------------------------------------------------------------------------
