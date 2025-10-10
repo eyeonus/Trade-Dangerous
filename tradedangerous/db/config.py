@@ -14,7 +14,7 @@ DEFAULTS: Dict[str, Dict[str, Any]] = {
         "driver": "mariadbconnector",  # or 'pymysql'
         "charset": "utf8mb4",
     },
-    "sqlite": {"sqlite_filename": "trade.sqlite3"},
+    "sqlite": {"sqlite_filename": "TradeDangerous.db"},
     "paths": {"data_dir": "./data", "tmp_dir": "./tmp"},
     "engine": {
         "pool_size": 10,
