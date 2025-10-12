@@ -22,4 +22,5 @@ __all__ = [
     "make_engine_from_config",
     "get_session_factory",
     "healthcheck",
+    "ensure_fresh_db",
 ]
