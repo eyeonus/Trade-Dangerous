@@ -66,6 +66,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         "maxage": "Skip service sections older than <days> (float), evaluated per service",
         "pricesonly": "Skip import/exports; regenerate TradeDangerous.prices only (for testing).",
         "force_baseline": "If set, overwrite service blocks to Spansh baseline (from_live=0) and delete any extras.",
+        "skip_stationitems": "Skip exporting StationItem.csv (large). Env: TD_SKIP_STATIONITEM_EXPORT=1",
     }
 
     # ------------------------------

@@ -256,51 +256,75 @@ def ensure_fresh_db(
     *,
     tdb=None,
     tdenv=None,
+    rebuild: bool = True,
 ) -> Dict[str, str]:
     """
     Ensure a *sane, populated* database exists (seconds-only checks).
 
-      - T0: connectivity
-      - T1: required core tables exist
-      - T2: each core table has a PK
-      - T4: seed rows exist in Category and System
+      Checks:
+        - T0: connectivity
+        - T1/T2: core tables exist and have PKs
+        - T4: seed rows exist in Category and System
 
     Actions:
-      - mode == "force"                 → rebuild via buildCache(...)
-      - mode == "auto" and not sane    → rebuild via buildCache(...)
-      - else                           → kept
+      - mode == "force"                      → rebuild via buildCache(...) (if rebuild=True)
+      - mode == "auto" and not sane         → rebuild via buildCache(...) (if rebuild=True)
+      - not sane and rebuild == False       → action = "needs_rebuild" (NEVER rebuild)
+      - sane and mode != "force"            → action = "kept"
 
-    NOTE: To rebuild/populate, we need `tdb` and `tdenv` so we can call buildCache.
-          If missing in a rebuild-required branch, a ValueError is raised.
+    Returns a summary dict including:
+      - backend, mode, action, sane (Y/N), and optional reason.
+
+    NOTE:
+      - When a rebuild is required but rebuild=True and (tdb/tdenv) are missing,
+        a ValueError is raised (preserves current semantics).
+      - When rebuild=False, the function NEVER calls buildCache and never raises
+        for missing tdb/tdenv. It simply reports the status.
     """
     summary: Dict[str, str] = {
         "backend": (backend or engine.dialect.name).lower(),
         "mode": mode,
         "action": "kept",
+        "sane": "Y",
     }
 
     # T0: cheap connectivity
     if not _connectivity_ok(engine):
         summary["reason"] = "connectivity-failed"
+        summary["sane"] = "N"
         if mode == "auto":
             mode = "force"
 
     # T1+T2: structure; T4: seeds
-    structure_ok, struct_problems = _core_tables_and_pks_ok(engine)
-    seeds_ok, seed_problems = (False, []) if not structure_ok else _seed_counts_ok(engine)
-    sane = structure_ok and seeds_ok
-    if not sane:
-        summary["reason"] = "; ".join(struct_problems + seed_problems) or "not-sane"
+    if summary["sane"] == "Y":
+        structure_ok, struct_problems = _core_tables_and_pks_ok(engine)
+        if not structure_ok:
+            summary["sane"] = "N"
+            summary["reason"] = "; ".join(struct_problems) or "structure-invalid"
+        else:
+            seeds_ok, seed_problems = _seed_counts_ok(engine)
+            if not seeds_ok:
+                summary["sane"] = "N"
+                reason = "; ".join(seed_problems) or "seeds-missing"
+                summary["reason"] = f"{summary.get('reason','')}; {reason}".strip("; ").strip()
 
+    sane = (summary["sane"] == "Y")
     must_rebuild = (mode == "force") or (not sane)
+
+    # If nothing to do, return immediately.
     if not must_rebuild:
         summary["action"] = "kept"
         return summary
 
+    # Caller explicitly requested no rebuild: report and exit.
+    if not rebuild:
+        summary["action"] = "needs_rebuild"
+        return summary
+
+    # From here on, behavior matches the original: rebuild via buildCache.
     if tdb is None or tdenv is None:
         raise ValueError("ensure_fresh_db needs `tdb` and `tdenv` to rebuild via buildCache")
 
-    # Rebuild/populate using the authoritative path.
     from tradedangerous.cache import buildCache
 
     buildCache(tdb, tdenv)
