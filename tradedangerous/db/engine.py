@@ -11,34 +11,71 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import OperationalError
 
-from .paths import resolve_data_dir, resolve_tmp_dir
+from .paths import resolve_data_dir, resolve_tmp_dir, resolve_db_config_path
 
-# ---------- config normalization ----------
+# ---------- config normalization & helpers ----------
+
+def _ensure_default_config_file(target_path: Path | None) -> Path | None:
+    """
+    If *target_path* is provided and no file exists there, write a minimal db_config.ini
+    built from in-code DEFAULTS. Returns the path if created, else None.
+    """
+    if not target_path:
+        return None
+    if target_path.exists():
+        return target_path
+    # Build from DEFAULTS
+    from .config import DEFAULTS  # typed defaults live here
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    cp = configparser.ConfigParser()
+    for section, mapping in DEFAULTS.items():
+        cp[section] = {}
+        if isinstance(mapping, Mapping):
+            for k, v in mapping.items():
+                cp[section][k] = str(v)
+    with target_path.open("w", encoding="utf-8") as fh:
+        cp.write(fh)
+    return target_path
+
 
 def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.PathLike) -> Dict[str, Dict[str, Any]]:
+    """
+    Normalise configuration input into a dict-of-sections.
+
+    Accepted inputs:
+      * dict-like mapping → returned as {section: {key: value}}
+      * ConfigParser       → converted to nested dict (sections overlay DEFAULT section)
+      * str/Path           → if file exists, read it; if missing, fall back to load_config()
+
+    NOTE:
+    - We do NOT raise on a missing path; we delegate to load_config() to honour the
+      documented resolution order (ENV → CWD → DEFAULTS).
+    """
     if isinstance(cfg, (str, os.PathLike)):
         p = Path(cfg)
-        cp = configparser.ConfigParser()
-        with p.open("r", encoding="utf-8") as fh:
-            cp.read_file(fh)
-        return _cfg_to_dict(cp)
+        if p.exists():
+            cp = configparser.ConfigParser()
+            with p.open("r", encoding="utf-8") as fh:
+                cp.read_file(fh)
+            return _cfg_to_dict(cp)
+        # Missing provided path → use canonical loader with fallbacks
+        from .config import load_config
+        return load_config(None)
 
     if isinstance(cfg, configparser.ConfigParser):
         out: Dict[str, Dict[str, Any]] = {}
-        # DEFAULT items first
         defaults = dict(cfg.defaults())
-        # each section overlays defaults
         for sec in cfg.sections():
             d = dict(defaults)
             d.update({k: v for k, v in cfg.items(sec)})
             out[sec] = d
-        # common sections that callers expect to exist
         for sec in ("database", "engine", "sqlite", "mariadb", "paths"):
             out.setdefault(sec, dict(defaults))
         return out
 
     # Already a dict-like mapping of sections
     return {k: dict(v) if isinstance(v, Mapping) else dict() for k, v in cfg.items()}  # type: ignore[arg-type]
+
 
 def _get(cfg: Dict[str, Any], section: str, key: str, default=None):
     if section in cfg and key in cfg[section]:
@@ -95,12 +132,29 @@ def _make_sqlite_url(cfg: Dict[str, Any]) -> str:
 
 # ---------- Engine construction ----------
 
-def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str, Any] | str | os.PathLike) -> Engine:
+def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str, Any] | str | os.PathLike | None = None) -> Engine:
     """
     Build a SQLAlchemy Engine for either MariaDB or SQLite.
-    Accepts: ConfigParser, dict-like {section:{k:v}}, or path to INI file.
+
+    Accepts: ConfigParser, dict-like {section:{k:v}}, path to INI file, or None.
+    First-run behaviour:
+      - If a path is provided but missing, or if no path is provided and no config is found,
+        a default db_config.ini is CREATED in the resolved default location (CWD unless TD_DB_CONFIG
+        points elsewhere), then loaded.
     """
-    cfg = _cfg_to_dict(cfg_or_path)
+    ini_target: Path | None = None
+
+    # If caller gave a specific path, prefer to materialise a default file there.
+    if isinstance(cfg_or_path, (str, os.PathLike)):
+        ini_target = Path(cfg_or_path)
+        _ensure_default_config_file(ini_target)
+    else:
+        # No specific path: create (if missing) at the standard location
+        # (CWD/db_config.ini by default, or the file pointed to by TD_DB_CONFIG).
+        ini_target = resolve_db_config_path("db_config.ini")
+        _ensure_default_config_file(ini_target)
+
+    cfg = _cfg_to_dict(cfg_or_path if cfg_or_path is not None else str(ini_target))
 
     # Ensure dirs exist (used by various parts of the app)
     _ = resolve_data_dir(cfg)
@@ -137,7 +191,6 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
             connect_args={"check_same_thread": False},
         )
 
-        # Apply PRAGMAs on every new connection
         @event.listens_for(engine, "connect")
         def _set_sqlite_pragmas(dbapi_conn, _):
             cur = dbapi_conn.cursor()
@@ -154,7 +207,6 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
     except Exception:
         pass
     return engine
-
 # ---------- Session factory ----------
 
 def get_session_factory(engine: Engine):
