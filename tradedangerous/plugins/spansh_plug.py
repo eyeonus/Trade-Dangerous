@@ -54,7 +54,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     pluginInfo = {
         "name": "spansh",
         "author": "TD Team",
-        "version": "2.0",
+        "version": "2.1",
         "minimum-tb-version": "1.76",
         "description": "Imports Spansh galaxy dump and refreshes cache artefacts.",
     }
@@ -67,6 +67,21 @@ class ImportPlugin(plugins.ImportPluginBase):
         "pricesonly": "Skip import/exports; regenerate TradeDangerous.prices only (for testing).",
         "force_baseline": "If set, overwrite service blocks to Spansh baseline (from_live=0) and delete any extras.",
         "skip_stationitems": "Skip exporting StationItem.csv (large). Env: TD_SKIP_STATIONITEM_EXPORT=1",
+        "progress_compact": "Use shorter one-line import status (or set env TD_PROGRESS_COMPACT=1).",
+        # --- EDCD sourcing (hardcoded URLs; can be disabled or overridden) ---
+        "no_edcd": "Disable EDCD preloads (categories, FDev tables) and EDCD rares import.",
+        "edcd_commodity": "Override URL or local path for EDCD commodity.csv.",
+        "edcd_outfitting": "Override URL or local path for EDCD outfitting.csv.",
+        "edcd_shipyard": "Override URL or local path for EDCD shipyard.csv.",
+        "edcd_rares": "Override URL or local path for EDCD rare_commodity.csv.",
+    }
+
+    # Hardcoded EDCD sources (raw GitHub)
+    EDCD_URLS = {
+        "commodity": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/commodity.csv",
+        "outfitting": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/outfitting.csv",
+        "shipyard": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv",
+        "rares": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/rare_commodity.csv",
     }
 
     # ------------------------------
@@ -101,6 +116,211 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # Station type mapping
         self._station_type_map = self._build_station_type_map()
+
+    # --------------------------------------
+    # EDCD Import Functions
+    # --------------------------------------
+
+    # ---------- Download from EDCD ----------       
+    def _acquire_edcd_files(self) -> Dict[str, Optional[Path]]:
+        """
+        Download EDCD CSVs to tmp/ with conditional caching (HEAD Last-Modified respected).
+        Returns dict: {commodity, outfitting, shipyard, rares} -> Path or None.
+        Disabled entirely by -O no_edcd=1.
+        """
+        if self.getOption("no_edcd"):
+            return {"commodity": None, "outfitting": None, "shipyard": None, "rares": None}
+
+        out: Dict[str, Optional[Path]] = {}
+        for key, url in self.EDCD_URLS.items():
+            target = self.tmp_dir / f"edcd_{key}.csv"
+            label  = f"EDCD {key}.csv"
+            try:
+                out[key] = self._download_with_cache(url, target, label=label)
+            except CleanExit:
+                out[key] = target if target.exists() else None
+            except Exception:
+                out[key] = target if target.exists() else None
+        return out
+
+    # ---------- EDCD: Categories (add-only) ----------
+    def _edcd_import_categories_add_only(self, session: Session, tables: Dict[str, Table], commodity_csv: Path) -> int:
+        """
+        Add missing Category rows from EDCD commodity.csv (unique by name, case-insensitive).
+        Never deletes or re-IDs existing categories. Returns number inserted.
+        """
+        import csv
+        t_cat = tables["Category"]
+        existing = { (str(n) or "").strip().lower()
+                     for (n,) in session.execute(select(t_cat.c.name)).all() if n is not None }
+
+        with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
+            reader = csv.DictReader(fh)
+            # column name is 'category' in EDCD commodity.csv
+            cat_key = None
+            for h in (reader.fieldnames or []):
+                if h and str(h).strip().lower() == "category":
+                    cat_key = h; break
+            if cat_key is None:
+                raise CleanExit(f"EDCD commodity.csv missing 'category' column: {commodity_csv}")
+
+            pending, seen = [], set()
+            for row in reader:
+                name = (row.get(cat_key) or "").strip()
+                if not name:
+                    continue
+                lk = name.lower()
+                if lk in existing or lk in seen:
+                    continue
+                seen.add(lk)
+                pending.append({"name": name})
+
+        if not pending:
+            return 0
+
+        if db_utils.is_sqlite(session):
+            db_utils.sqlite_upsert_simple(session, t_cat, rows=pending, key_cols=("name",), update_cols=())
+            return len(pending)
+        if db_utils.is_mysql(session):
+            db_utils.mysql_upsert_simple(session, t_cat, rows=pending, key_cols=("name",), update_cols=())
+            return len(pending)
+
+        for r in pending:
+            if session.execute(select(t_cat.c.category_id).where(t_cat.c.name == r["name"])).first() is None:
+                session.execute(insert(t_cat).values(**r))
+        return len(pending)
+
+
+    # ---------- EDCD: FDev tables (direct load) ----------
+    def _edcd_import_table_direct(self, session: Session, table: Table, csv_path: Path) -> int:
+        """
+        Upsert CSV rows into a table whose columns match CSV headers.
+        Primary key used as upsert key. Returns approx rows written.
+        """
+        import csv
+        pk_cols = tuple(c.name for c in table.primary_key.columns)
+        if not pk_cols:
+            raise CleanExit(f"Table {table.name} has no primary key; cannot upsert from EDCD")
+
+        with open(csv_path, "r", encoding="utf-8", newline="") as fh:
+            reader = csv.DictReader(fh)
+            cols = [c for c in (reader.fieldnames or []) if c in table.c]
+            if not cols:
+                return 0
+            rows = [{k: row.get(k) for k in cols} for row in reader]
+
+        if not rows:
+            return 0
+
+        upd_cols = tuple(c for c in cols if c not in pk_cols)
+        if db_utils.is_sqlite(session):
+            db_utils.sqlite_upsert_simple(session, table, rows=rows, key_cols=pk_cols, update_cols=upd_cols)
+            return len(rows)
+        if db_utils.is_mysql(session):
+            db_utils.mysql_upsert_simple(session, table, rows=rows, key_cols=pk_cols, update_cols=upd_cols)
+            return len(rows)
+
+        for r in rows:
+            cond = and_(*[getattr(table.c, k) == r[k] for k in pk_cols])
+            ext = session.execute(select(*[getattr(table.c, k) for k in pk_cols]).where(cond)).first()
+            if ext is None:
+                session.execute(insert(table).values(**r))
+            elif upd_cols:
+                session.execute(update(table).where(cond).values(**{k: r[k] for k in upd_cols}))
+        return len(rows)
+
+    def _edcd_import_fdev_catalogs(self, session: Session, tables: Dict[str, Table], *, outfitting_csv: Path, shipyard_csv: Path) -> Tuple[int, int]:
+        u = self._edcd_import_table_direct(session, tables["FDevOutfitting"], outfitting_csv)
+        s = self._edcd_import_table_direct(session, tables["FDevShipyard"],   shipyard_csv)
+        return (u, s)
+
+    # ---------- EDCD: Rares (DB-filtered) ----------
+    def _import_rareitems_edcd(self, rares_csv: Path) -> None:
+        """
+        Import RareItem from EDCD rare_commodity.csv, filtered to (system, station) present in DB.
+        Clears the table first (same as template behavior).
+        """
+        import csv
+        from sqlalchemy import text
+        sess = None
+        try:
+            sess = self._open_session()
+            tables = self._reflect_tables(sess.get_bind())
+            t_system, t_station, t_rare = tables["System"], tables["Station"], tables["RareItem"]
+
+            present = set()
+            for sys_name, stn_name in sess.execute(
+                select(t_system.c.name, t_station.c.name).where(t_station.c.system_id == t_system.c.system_id)
+            ).all():
+                if sys_name and stn_name:
+                    present.add((str(sys_name).strip().lower(), str(stn_name).strip().lower()))
+
+            kept = skipped = 0
+            out_rows = []
+            with open(rares_csv, "r", encoding="utf-8", newline="") as fh:
+                reader = csv.DictReader(fh)
+                # EDCD header names
+                fn = reader.fieldnames or []
+                def idx(name: str) -> Optional[str]:
+                    for h in fn:
+                        if h and h.strip().lower() == name:
+                            return h
+                    return None
+                k_name    = idx("name")
+                k_system  = idx("system")
+                k_station = idx("station")
+                if not (k_name and k_system and k_station):
+                    raise CleanExit(f"rare_commodity.csv missing a required column: {rares_csv}")
+
+                for row in reader:
+                    sysn = (row.get(k_system) or "").strip()
+                    stnn = (row.get(k_station) or "").strip()
+                    if not sysn or not stnn:
+                        skipped += 1; continue
+                    if (sysn.lower(), stnn.lower()) in present:
+                        out_rows.append({
+                            "name": (row.get(k_name) or "").strip(),
+                            "system": sysn,
+                            "station": stnn,
+                        })
+                        kept += 1
+                    else:
+                        skipped += 1
+
+            # Clear then upsert by name
+            try:
+                sess.execute(text('DELETE FROM "RareItem"'))
+            except Exception:
+                sess.execute(text("DELETE FROM RareItem"))
+
+            if out_rows:
+                if db_utils.is_sqlite(sess):
+                    db_utils.sqlite_upsert_simple(sess, t_rare, rows=out_rows, key_cols=("name",),
+                                                  update_cols=tuple(k for k in out_rows[0].keys() if k != "name"))
+                elif db_utils.is_mysql(sess):
+                    db_utils.mysql_upsert_simple(sess, t_rare, rows=out_rows, key_cols=("name",),
+                                                 update_cols=tuple(k for k in out_rows[0].keys() if k != "name"))
+                else:
+                    for r in out_rows:
+                        ex = sess.execute(select(t_rare.c.name).where(t_rare.c.name == r["name"])).first()
+                        if ex is None:
+                            sess.execute(insert(t_rare).values(**r))
+                        else:
+                            sess.execute(update(t_rare).where(t_rare.c.name == r["name"]).values(
+                                **{k: v for k, v in r.items() if k != "name"}
+                            ))
+            sess.commit()
+            if skipped:
+                self._warn(f"RareItem (EDCD): imported {kept} rows; skipped {skipped} (system/station not present).")
+        except Exception as e:
+            if sess is not None:
+                try: sess.rollback()
+                except Exception: pass
+            raise CleanExit(f"RareItem (EDCD) import failed: {e!r}")
+        finally:
+            if sess is not None:
+                try: sess.close()
+                except Exception: pass
 
     # --------------------------------------
     # Comparison Helpers
@@ -526,15 +746,14 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Lifecycle hooks
     # ------------------------------
+
     def run(self) -> bool:
         """
-        Full orchestrator: acquisition → bootstrap → buildcache → import → rares → export.
-        Returning False stops the import command's default flow (prevents
-        tdb.reloadCache() and any early RareItem processing).
+        Full orchestrator: acquisition → bootstrap → EDCD preload → import → rares → export.
+        Returns False to keep default flow suppressed.
         """
         started = time.time()
-        
-        # prices-only fast path
+
         if self.getOption("pricesonly"):
             try:
                 self._print("Regenerating TradeDangerous.prices …")
@@ -545,70 +764,78 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return False
             return False
 
-        # Acquire source
+        # Acquire Spansh JSON
         try:
             source_path = self._acquire_source()
         except CleanExit as ce:
-            self._warn(str(ce))
-            return False
+            self._warn(str(ce)); return False
         except Exception as e:
-            self._error(f"Acquisition failed: {e!r}")
-            return False
+            self._error(f"Acquisition failed: {e!r}"); return False
 
-        # Bootstrap DB
+        # Bootstrap DB (protect RareItem.csv name swap during bootstrap)
         ri_path = Path(self.tdb.dataPath, "RareItem.csv")
         rib_path = ri_path.with_suffix(".tmp")
         try:
             if ri_path.exists():
-                if rib_path.exists():
-                    rib_path.unlink()
+                if rib_path.exists(): rib_path.unlink()
                 ri_path.rename(rib_path)
 
             backend = getattr(self.tdb.engine.dialect, "name", None) or "unknown"
             data_dir = Path(getattr(self.tdenv, "dataDir", getattr(self.tdb, "dataDir", "data")))
             metadata = getattr(self.tdb, "metadata", None)
-
             summary = ensure_fresh_db(
-                backend=backend,
-                engine=self.tdb.engine,
-                data_dir=data_dir,
-                metadata=metadata,
-                mode="auto",
-                tdb=self.tdb,
-                tdenv=self.tdenv,
+                backend=backend, engine=self.tdb.engine,
+                data_dir=data_dir, metadata=metadata,
+                mode="auto", tdb=self.tdb, tdenv=self.tdenv,
             )
-            self._print(f"DB bootstrap: action={summary.get('action')} reason={summary.get('reason', 'ok')} backend={summary.get('backend')}")
+            self._print(f"DB bootstrap: action={summary.get('action')} reason={summary.get('reason','ok')} backend={summary.get('backend')}")
         except Exception as e:
             self._error(f"Database bootstrap failed: {e!r}")
             return False
         finally:
             if rib_path.exists():
-                if ri_path.exists():
-                    ri_path.unlink()
+                if ri_path.exists(): ri_path.unlink()
                 rib_path.rename(ri_path)
 
-        # Session + batch
+        # Session + batch + reflection
         try:
             self.session = self._open_session()
             self.batch_size = self._resolve_batch_size()
-        except Exception as e:
-            self._error(f"Failed to open DB session: {e!r}")
-            return False
-
-        # Reflect + categories
-        try:
             tables = self._reflect_tables(self.session.get_bind())
         except Exception as e:
-            self._error(f"Failed to reflect tables: {e!r}")
+            self._error(f"Failed to open/reflect DB session: {e!r}")
             return False
 
+        # -------- EDCD preloads (hardcoded URLs; can be disabled) --------
+        edcd = self._acquire_edcd_files()
+        try:
+            if edcd.get("commodity"):
+                added = self._edcd_import_categories_add_only(self.session, tables, edcd["commodity"])
+                if added:
+                    self._print(f"EDCD categories: added {added} new categories")
+                self.session.commit()
+        except Exception as e:
+            self._warn(f"EDCD categories skipped due to error: {e!r}")
+
+        try:
+            if edcd.get("outfitting") and edcd.get("shipyard"):
+                u, s = self._edcd_import_fdev_catalogs(self.session, tables,
+                                                       outfitting_csv=edcd["outfitting"],
+                                                       shipyard_csv=edcd["shipyard"])
+                if (u + s) > 0:
+                    self._print(f"EDCD FDev: Outfitting upserts={u:,}  Shipyard upserts={s:,}")
+                self.session.commit()
+        except Exception as e:
+            self._warn(f"EDCD FDev catalogs skipped due to error: {e!r}")
+
+        # Load categories (may have grown)
         try:
             categories = self._load_categories(self.session, tables)
         except Exception as e:
             self._error(f"Failed to load categories: {e!r}")
             return False
 
-        # Import Spansh
+        # -------- Import Spansh JSON --------
         try:
             if self._debug_level < 1:
                 self._print("This will take at least several minutes...")
@@ -616,7 +843,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._print("Importing spansh data")
             stats = self._import_stream(source_path, categories, tables)
             self._end_live_status()
-            # Summarise by *stations* (evaluated = kept + writes)
             mk_e = stats.get("market_writes", 0) + stats.get("market_stations", 0)
             of_e = stats.get("outfit_writes", 0) + stats.get("outfit_stations", 0)
             sh_e = stats.get("ship_writes", 0) + stats.get("ship_stations", 0)
@@ -627,13 +853,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f"kept: markets≈{stats.get('market_stations',0):,} outfitters≈{stats.get('outfit_stations',0):,} shipyards≈{stats.get('ship_stations',0):,}"
             )
         except CleanExit as ce:
-            self._warn(str(ce))
-            self._safe_close_session()
-            return False
+            self._warn(str(ce)); self._safe_close_session(); return False
         except Exception as e:
-            self._error(f"Import failed: {e!r}")
-            self._safe_close_session()
-            return False
+            self._error(f"Import failed: {e!r}"); self._safe_close_session(); return False
 
         # Enforce Item.ui_order
         try:
@@ -642,42 +864,38 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._print(f"ui_order enforced in {time.time()-t0:.2f}s")
         except Exception as e:
             self._error(f"ui_order enforcement failed: {e!r}")
-            self._safe_close_session()
-            return False
+            self._safe_close_session(); return False
 
         # Final commit for import phase
         try:
             self.session.commit()
         except Exception as e:
             self._warn(f"Commit failed at end of import; rolling back. Cause: {e!r}")
-            self.session.rollback()
-            self._safe_close_session()
-            return False
+            self.session.rollback(); self._safe_close_session(); return False
 
         self._safe_close_session()
 
-        # RareItems
+        # -------- Rares (prefer EDCD; fallback to template) --------
         try:
             t0 = time.time()
-            self._import_rareitems()
+            if edcd.get("rares"):
+                self._import_rareitems_edcd(edcd["rares"])
+            else:
+                self._import_rareitems()
             self._print(f"Rares imported in {time.time()-t0:.2f}s")
         except CleanExit as ce:
-            self._warn(str(ce))
-            return False
+            self._warn(str(ce)); return False
         except Exception as e:
-            self._error(f"RareItem import failed: {e!r}")
-            return False
+            self._error(f"RareItem import failed: {e!r}"); return False
 
-        # Export + prices
+        # -------- Export (uses your parallel exporter already present) --------
         try:
             t0 = time.time()
             self._export_cache()
             self._print(f"Cache export completed in {time.time()-t0:.2f}s")
         except Exception as e:
-            self._error(f"Export failed: {e!r}")
-            return False
+            self._error(f"Export failed: {e!r}"); return False
 
-        # Final summary
         elapsed = self._format_hms(time.time() - started)
         self._print(f"{elapsed}  Done")
         return False
@@ -690,6 +908,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Acquisition (url/file/stdin)
     # ------------------------------
+
     def _acquire_source(self) -> Path:
         """Return a readable filesystem path to the JSON source (tmp/)."""
         url = self.getOption("url")
@@ -709,9 +928,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not url:
             url = DEFAULT_URL
 
-        return self._download_with_cache(url, cache_path)
+        # Pass a friendly label so progress says “Spansh dump”
+        return self._download_with_cache(url, cache_path, label="Spansh dump")
 
-    def _download_with_cache(self, url: str, cache_path: Path) -> Path:
+    def _download_with_cache(self, url: str, cache_path: Path, *, label: str = "download") -> Path:
         """Conditional download with HEAD Last-Modified and atomic .part."""
         import urllib.request
         from email.utils import parsedate_to_datetime
@@ -732,10 +952,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if cache_path.exists() and remote_lm:
             local_mtime = datetime.fromtimestamp(cache_path.stat().st_mtime, tz=timezone.utc).replace(tzinfo=None)
             if local_mtime >= remote_lm:
-                self._print("Remote not newer; using cached file")
+                self._print(f"Remote not newer; using cached {label}")
                 return cache_path
 
-        self._print(f"Downloading Spansh dump from {url} …")
+        self._print(f"Downloading {label} from {url} …")
         part = cache_path.with_suffix(cache_path.suffix + ".part")
         if part.exists():
             try:
@@ -761,7 +981,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         break
                     fh.write(data)
                     downloaded += len(data)
-                    self._download_progress(downloaded, total, start)
+                    self._download_progress(downloaded, total, start, label=label)
 
             part.replace(cache_path)
 
@@ -787,12 +1007,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                     part.unlink()
             except Exception:
                 pass
-            raise CleanExit(f"Download failed or timed out; skipping run ({e!r})")
+            raise CleanExit(f"Download failed or timed out for {label}; skipping run ({e!r})")
 
-        self._print(f'Download complete, saved to "{cache_path}"')
+        self._print(f'Download complete: {label} → "{cache_path}"')
         return cache_path
-
-    def _download_progress(self, downloaded: int, total: Optional[int], start_ts: float) -> None:
+        
+    def _download_progress(self, downloaded: int, total: Optional[int], start_ts: float, *, label: str = "download") -> None:
         now = time.time()
         if now - self._last_progress_time < 0.5 and self._debug_level < 1:
             return
@@ -801,9 +1021,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         rate = downloaded / max(now - start_ts, 1e-9)
         if total:
             pct = (downloaded / total) * 100.0
-            msg = f"Downloading Spansh: {self._fmt_bytes(downloaded)} / {self._fmt_bytes(total)} ({pct:5.1f}%)  {self._fmt_bytes(rate)}/s"
+            msg = f"{label}: {self._fmt_bytes(downloaded)} / {self._fmt_bytes(total)} ({pct:5.1f}%)  {self._fmt_bytes(rate)}/s"
         else:
-            msg = f"Downloading Spansh: {self._fmt_bytes(downloaded)} read  {self._fmt_bytes(rate)}/s"
+            msg = f"{label}: {self._fmt_bytes(downloaded)} read  {self._fmt_bytes(rate)}/s"
         self._live_status(msg)
 
     def _parse_progress(self, consumed_bytes: int, start_ts: float, *, min_interval: float = 0.5) -> None:
@@ -1780,6 +2000,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             "Ship",
             "Upgrade",
             "RareItem",
+            "FDevOutfitting",
+            "FDevShipyard",
         ]
         if skip_stationitems:
             tables = [t for t in tables if t != "StationItem"]
@@ -1985,54 +2207,74 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _progress_line(self, stats: Dict[str, int]) -> None:
         """
         Single-line live status while importing.
-        Shows bytes/rate, total systems/stations, and *per-station* service writes/kept.
+
+        Modes:
+          - default (verbose-ish): current rich line
+          - compact: shorter, log-friendly line (enable with -O progress_compact=1 or TD_PROGRESS_COMPACT=1)
         """
         now = time.time()
-        # Slightly slower cadence at low verbosity to reduce stderr churn
-        min_interval = 0.75 if self._debug_level < 1 else 0.25
-        if now - self._last_progress_time < min_interval:
+        if now - self._last_progress_time < (0.5 if self._debug_level < 1 else 0.2):
             return
         self._last_progress_time = now
-
         self._started_importing = True
+
+        compact = bool(self.getOption("progress_compact")) or (os.getenv("TD_PROGRESS_COMPACT", "0") == "1")
+
         parse_bytes = getattr(self, "_parse_bytes", 0)
         parse_rate  = getattr(self, "_parse_rate", 0.0)
-        systems  = stats.get("systems", 0)
-        stations = stats.get("stations", 0)
-        writes_m = stats.get("market_writes", 0)
-        writes_o = stats.get("outfit_writes", 0)
-        writes_s = stats.get("ship_writes", 0)
-        kept_m = stats.get("market_stations", 0)
-        kept_o = stats.get("outfit_stations", 0)
-        kept_s = stats.get("ship_stations", 0)
+        systems     = stats.get("systems", 0)
+        stations    = stats.get("stations", 0)
 
-        msg = (
-            f"Importing…  {self._fmt_bytes(parse_bytes)} read  {self._fmt_bytes(parse_rate)}/s  "
-            f"systems: {systems:,}  stations: {stations:,}  "
-            f"writes(stations): mkt={writes_m:,} outf={writes_o:,} shp={writes_s:,}  "
-            f"kept: mkt≈{kept_m:,} outf≈{kept_o:,} shp≈{kept_s:,}"
-        )
+        wm = stats.get("market_writes", 0)
+        wo = stats.get("outfit_writes", 0)
+        ws = stats.get("ship_writes", 0)
+
+        km = stats.get("market_stations", 0)
+        ko = stats.get("outfit_stations", 0)
+        ks = stats.get("ship_stations", 0)
+
+        if compact:
+            # Compact, log-friendly (no emojis, minimal labels, short units)
+            # Example:
+            # Imp… 715MiB 2.5MiB/s sys=1,739 stn=4,664 w=4,062/1,694/1,373 k≈4,565/1,694/1
+            msg = (
+                f"Imp… {self._fmt_bytes(parse_bytes)} {self._fmt_bytes(parse_rate)}/s "
+                f"sys={systems:,} stn={stations:,} "
+                f"w={wm:,}/{wo:,}/{ws:,} "
+                f"k≈{km:,}/{ko:,}/{ks:,}"
+            )
+        else:
+            # Existing richer line
+            msg = (
+                f"Importing…  {self._fmt_bytes(parse_bytes)} read  {self._fmt_bytes(parse_rate)}/s  "
+                f"systems: {systems:,}  stations: {stations:,}  "
+                f"writes(stations): mkt={wm:,} outf={wo:,} shp={ws:,}  "
+                f"kept: mkt≈{km:,} outf≈{ko:,} shp≈{ks:,}"
+            )
+
         self._live_status(msg)
+
 
 
     def _live_line(self, msg: str) -> None:
         self._live_status(msg)
 
     def _live_status(self, msg: str) -> None:
-        try:
-            import shutil
-            width = shutil.get_terminal_size(fallback=(120, 20)).columns
-            if width and width > 4:
-                msg = msg[: width - 2]
-        except Exception:
-            pass
-
-        s = f"\x1b[2K\r{msg}"
+        """
+        Live status line for TTY; plain prints for non-TTY.
+        IMPORTANT: only truncate when TTY so logs are not cut off.
+        """
         try:
             if self._is_tty:
+                import shutil
+                width = shutil.get_terminal_size(fallback=(120, 20)).columns
+                if width and width > 4:
+                    msg = msg[: width - 2]
+                s = f"\x1b[2K\r{msg}"
                 sys.stderr.write(s)
                 sys.stderr.flush()
             else:
+                # Non-TTY: emit full line, no truncation, no control codes.
                 self._print(msg)
         except Exception:
             self._print(msg)
