@@ -20,6 +20,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.sql.elements import ClauseElement
 
 # --------------------------------------------------------
 # eddblink helpers
@@ -522,9 +523,38 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
 
 
 # -----------------------------------------------------------------------------
-# Timestamp parsing
+# Timestamp Helpers
 # -----------------------------------------------------------------------------
 
+def age_in_days(session, column: ClauseElement) -> ClauseElement:
+    """
+    Return a dialect-safe SQLAlchemy expression that yields the age of `column`
+    (a DATETIME/TIMESTAMP) in **whole days** relative to the database's current date.
+
+    Dialect mappings:
+      * SQLite    →  julianday(CURRENT_DATE) - julianday(column)
+      * MySQL/MariaDB → TIMESTAMPDIFF(DAY, column, CURRENT_DATE())
+      * Others    →  DATE(NOW()) - DATE(column)   (best-effort integer days)
+
+    Notes:
+      - Designed for use in aggregates (e.g., func.avg(age_in_days(...))).
+      - Leaves NULL handling to the caller (filter or COALESCE as needed).
+    """
+    engine = session.get_bind()
+    dialect = engine.dialect.name.lower()
+
+    if dialect == "sqlite":
+        # julianday() returns a fractional day difference (FLOAT).
+        return func.julianday(func.current_date()) - func.julianday(column)
+
+    if dialect in ("mysql", "mariadb"):
+        # TIMESTAMPDIFF returns an integer number of DAY boundaries crossed.
+        # Use CURRENT_DATE() to avoid time-of-day skew.
+        return func.timestampdiff(text("DAY"), column, func.current_date())
+
+    # Fallback (e.g., PostgreSQL, etc.): integer days between dates
+    # DATE(NOW()) - DATE(column) yields an integer in many SQL dialects.
+    return func.date(func.now()) - func.date(column)
 
 def parse_ts(value) -> Optional[datetime]:
     """
