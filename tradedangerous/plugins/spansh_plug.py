@@ -22,6 +22,7 @@ import sys
 import time
 import ijson
 import shutil
+import csv
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Iterable
@@ -34,7 +35,7 @@ from ..db import utils as db_utils
 from ..db.lifecycle import ensure_fresh_db
 
 # SQLAlchemy
-from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_
+from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -124,43 +125,78 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ---------- Download from EDCD ----------       
     def _acquire_edcd_files(self) -> Dict[str, Optional[Path]]:
         """
-        Download EDCD CSVs to tmp/ with conditional caching (HEAD Last-Modified respected).
-        Returns dict: {commodity, outfitting, shipyard, rares} -> Path or None.
-        Disabled entirely by -O no_edcd=1.
+        Download (or resolve) EDCD CSVs to tmp/ with conditional caching.
+        Honors -O no_edcd=1 and per-file overrides:
+          - edcd_commodity, edcd_outfitting, edcd_shipyard, edcd_rares
+        Each override may be a local path or an http(s) URL.
+        Returns dict: {commodity,outfitting,shipyard,rares} -> Path or None.
         """
+        def _resolve_one(opt_key: str, default_url: str, basename: str) -> Optional[Path]:
+            override = self.getOption(opt_key)
+            target = self.tmp_dir / f"edcd_{basename}.csv"
+            label = f"EDCD {basename}.csv"
+
+            # Explicit disable via empty override
+            if override is not None and str(override).strip() == "":
+                return None
+
+            # Local path override
+            if override and ("://" not in override):
+                p = Path(override)
+                if not p.exists():
+                    cwd = getattr(self.tdenv, "cwDir", None)
+                    if cwd:
+                        p = Path(cwd, override)
+                if p.exists() and p.is_file():
+                    return p.resolve()
+                override = None  # fall back to URL
+
+            # URL (override or default)
+            url = override or default_url
+            try:
+                return self._download_with_cache(url, target, label=label)
+            except CleanExit:
+                return target if target.exists() else None
+            except Exception:
+                return target if target.exists() else None
+
         if self.getOption("no_edcd"):
             return {"commodity": None, "outfitting": None, "shipyard": None, "rares": None}
 
-        out: Dict[str, Optional[Path]] = {}
-        for key, url in self.EDCD_URLS.items():
-            target = self.tmp_dir / f"edcd_{key}.csv"
-            label  = f"EDCD {key}.csv"
-            try:
-                out[key] = self._download_with_cache(url, target, label=label)
-            except CleanExit:
-                out[key] = target if target.exists() else None
-            except Exception:
-                out[key] = target if target.exists() else None
-        return out
+        return {
+            "commodity": _resolve_one("edcd_commodity", self.EDCD_URLS["commodity"], "commodity"),
+            "outfitting": _resolve_one("edcd_outfitting", self.EDCD_URLS["outfitting"], "outfitting"),
+            "shipyard":  _resolve_one("edcd_shipyard",  self.EDCD_URLS["shipyard"],  "shipyard"),
+            "rares":     _resolve_one("edcd_rares",     self.EDCD_URLS["rares"],     "rare_commodity"),
+        }
+
 
     # ---------- EDCD: Categories (add-only) ----------
-    def _edcd_import_categories_add_only(self, session: Session, tables: Dict[str, Table], commodity_csv: Path) -> int:
+    def _edcd_import_categories_add_only(
+        self,
+        session: Session,
+        tables: Dict[str, Table],
+        commodity_csv: Path,
+    ) -> int:
         """
         Add missing Category rows from EDCD commodity.csv (unique by name, case-insensitive).
         Never deletes or re-IDs existing categories. Returns number inserted.
         """
-        import csv
+
         t_cat = tables["Category"]
-        existing = { (str(n) or "").strip().lower()
-                     for (n,) in session.execute(select(t_cat.c.name)).all() if n is not None }
+        existing = {
+            (str(n) or "").strip().lower()
+            for (n,) in session.execute(select(t_cat.c.name)).all()
+            if n is not None
+        }
 
         with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
-            # column name is 'category' in EDCD commodity.csv
             cat_key = None
             for h in (reader.fieldnames or []):
                 if h and str(h).strip().lower() == "category":
-                    cat_key = h; break
+                    cat_key = h
+                    break
             if cat_key is None:
                 raise CleanExit(f"EDCD commodity.csv missing 'category' column: {commodity_csv}")
 
@@ -185,23 +221,50 @@ class ImportPlugin(plugins.ImportPluginBase):
             db_utils.mysql_upsert_simple(session, t_cat, rows=pending, key_cols=("name",), update_cols=())
             return len(pending)
 
+        # Generic backend
         for r in pending:
-            if session.execute(select(t_cat.c.category_id).where(t_cat.c.name == r["name"])).first() is None:
+            cond = (t_cat.c.name == r["name"])
+            exists = session.execute(select(t_cat.c.name).where(cond)).first()
+            if exists is None:
                 session.execute(insert(t_cat).values(**r))
         return len(pending)
+
 
 
     # ---------- EDCD: FDev tables (direct load) ----------
     def _edcd_import_table_direct(self, session: Session, table: Table, csv_path: Path) -> int:
         """
         Upsert CSV rows into a table whose columns match CSV headers.
-        Primary key used as upsert key. Returns approx rows written.
+        Prefers the table's primary key; if absent, falls back to a single-column
+        UNIQUE key (e.g. 'id' in FDev tables). Returns approx rows written.
         """
-        import csv
-        pk_cols = tuple(c.name for c in table.primary_key.columns)
-        if not pk_cols:
-            raise CleanExit(f"Table {table.name} has no primary key; cannot upsert from EDCD")
 
+        # --- choose key columns for upsert ---
+        pk_cols = tuple(c.name for c in table.primary_key.columns)
+        key_cols: tuple[str, ...] = pk_cols
+
+        if not key_cols:
+            # Common case for EDCD FDev tables: UNIQUE(id) but no PK
+            if "id" in table.c:
+                key_cols = ("id",)
+            else:
+                # Try to discover a single-column UNIQUE constraint via reflection
+                try:
+                    uniq_single = []
+                    for cons in getattr(table, "constraints", set()):
+                        if isinstance(cons, UniqueConstraint):
+                            cols = tuple(col.name for col in cons.columns)
+                            if len(cols) == 1:
+                                uniq_single.append(cols[0])
+                    if uniq_single:
+                        key_cols = (uniq_single[0],)
+                except Exception:
+                    pass
+
+        if not key_cols:
+            raise CleanExit(f"Table {table.name} has neither a primary key nor a single-column UNIQUE key; cannot upsert from EDCD")
+
+        # --- read CSV ---
         with open(csv_path, "r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
             cols = [c for c in (reader.fieldnames or []) if c in table.c]
@@ -212,82 +275,172 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not rows:
             return 0
 
-        upd_cols = tuple(c for c in cols if c not in pk_cols)
+        # --- perform upsert using chosen key columns ---
+        upd_cols = tuple(c for c in cols if c not in key_cols)
+
         if db_utils.is_sqlite(session):
-            db_utils.sqlite_upsert_simple(session, table, rows=rows, key_cols=pk_cols, update_cols=upd_cols)
-            return len(rows)
-        if db_utils.is_mysql(session):
-            db_utils.mysql_upsert_simple(session, table, rows=rows, key_cols=pk_cols, update_cols=upd_cols)
+            db_utils.sqlite_upsert_simple(session, table, rows=rows, key_cols=key_cols, update_cols=upd_cols)
             return len(rows)
 
+        if db_utils.is_mysql(session):
+            db_utils.mysql_upsert_simple(session, table, rows=rows, key_cols=key_cols, update_cols=upd_cols)
+            return len(rows)
+
+        # Generic backend (read-then-insert/update)
         for r in rows:
-            cond = and_(*[getattr(table.c, k) == r[k] for k in pk_cols])
-            ext = session.execute(select(*[getattr(table.c, k) for k in pk_cols]).where(cond)).first()
+            cond = and_(*[getattr(table.c, k) == r[k] for k in key_cols])
+            ext = session.execute(select(*[getattr(table.c, k) for k in key_cols]).where(cond)).first()
             if ext is None:
                 session.execute(insert(table).values(**r))
             elif upd_cols:
                 session.execute(update(table).where(cond).values(**{k: r[k] for k in upd_cols}))
         return len(rows)
-
+        
     def _edcd_import_fdev_catalogs(self, session: Session, tables: Dict[str, Table], *, outfitting_csv: Path, shipyard_csv: Path) -> Tuple[int, int]:
         u = self._edcd_import_table_direct(session, tables["FDevOutfitting"], outfitting_csv)
         s = self._edcd_import_table_direct(session, tables["FDevShipyard"],   shipyard_csv)
         return (u, s)
 
     # ---------- EDCD: Rares (DB-filtered) ----------
-    def _import_rareitems_edcd(self, rares_csv: Path) -> None:
+    def _import_rareitems_edcd(self, rares_csv: Path, commodity_csv: Optional[Path] = None) -> None:
         """
-        Import RareItem from EDCD rare_commodity.csv, filtered to (system, station) present in DB.
-        Clears the table first (same as template behavior).
+        Import RareItem from EDCD rare_commodity.csv into TD schema:
+          - Map (system, station) strings to Station.station_id (with light normalization).
+          - Map rare 'name' -> Category via EDCD commodity.csv, then DB Category table.
+          - Clear table, then upsert by UNIQUE(name). Logs detailed counts.
         """
         import csv
         from sqlalchemy import text
+
+        # ---- minimal but robust normalizer for name matching ----
+        def _norm(s: Optional[str]) -> str:
+            if s is None:
+                return ""
+            s = s.strip().strip("'").strip('"')            # drop outer quotes
+            s = s.replace("’", "'").replace("‘", "'")      # unify curly → straight apostrophes
+            s = s.replace("–", "-").replace("—", "-")      # unify dashes
+            s = " ".join(s.split())                        # collapse whitespace
+            return s.casefold()                            # case-insensitive
+
+        # Case-insensitive header resolver that tolerates underscores/spaces.
+        def _kwant(fieldnames, *aliases) -> Optional[str]:
+            if not fieldnames:
+                return None
+            canon = {}
+            for h in fieldnames:
+                if not h:
+                    continue
+                k = h.strip().lower().replace("_", "").replace(" ", "")
+                canon[k] = h
+            for a in aliases:
+                k = a.strip().lower().replace("_", "").replace(" ", "")
+                if k in canon:
+                    return canon[k]
+            return None
+
         sess = None
         try:
             sess = self._open_session()
             tables = self._reflect_tables(sess.get_bind())
-            t_system, t_station, t_rare = tables["System"], tables["Station"], tables["RareItem"]
+            t_sys, t_stn, t_cat, t_rare = tables["System"], tables["Station"], tables["Category"], tables["RareItem"]
 
-            present = set()
-            for sys_name, stn_name in sess.execute(
-                select(t_system.c.name, t_station.c.name).where(t_station.c.system_id == t_system.c.system_id)
+            # 1) Build (system, station) -> station_id map
+            stn_map: Dict[tuple[str, str], int] = {}
+            for sid, sys_name, stn_name in sess.execute(
+                select(t_stn.c.station_id, t_sys.c.name, t_stn.c.name)
+                .where(t_stn.c.system_id == t_sys.c.system_id)
             ).all():
                 if sys_name and stn_name:
-                    present.add((str(sys_name).strip().lower(), str(stn_name).strip().lower()))
+                    stn_map[(_norm(sys_name), _norm(stn_name))] = int(sid)
 
+            # 2) DB Category name -> id
+            cat_id_by_name = {
+                _norm(n): int(cid)
+                for cid, n in sess.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
+                if n is not None
+            }
+
+            # 3) From EDCD commodity.csv, map rare product name -> category id
+            name_to_catid: Dict[str, int] = {}
+            if commodity_csv is None:
+                # Prefer cached EDCD dict (set by the caller) to avoid re-downloads
+                edcd_cached = getattr(self, "_cached_edcd_files", None)
+                if edcd_cached and edcd_cached.get("commodity"):
+                    commodity_csv = edcd_cached["commodity"]
+                else:
+                    files = self._acquire_edcd_files()
+                    commodity_csv = files.get("commodity")
+
+            if commodity_csv and Path(commodity_csv).exists():
+                with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
+                    reader = csv.DictReader(fh)
+                    k_name = _kwant(reader.fieldnames, "name", "commodity", "commodityname", "product")
+                    k_cat  = _kwant(reader.fieldnames, "category", "categoryname")
+                    if k_name and k_cat:
+                        for row in reader:
+                            n = _norm(row.get(k_name))
+                            c = _norm(row.get(k_cat))
+                            if n and c:
+                                cid = cat_id_by_name.get(c)
+                                if cid is not None:
+                                    name_to_catid[n] = cid
+
+            # 4) Parse rares and stage rows
             kept = skipped = 0
-            out_rows = []
+            skipped_no_station = 0
+            skipped_no_category = 0
+            out_rows: list[dict] = []
+
             with open(rares_csv, "r", encoding="utf-8", newline="") as fh:
                 reader = csv.DictReader(fh)
-                # EDCD header names
-                fn = reader.fieldnames or []
-                def idx(name: str) -> Optional[str]:
-                    for h in fn:
-                        if h and h.strip().lower() == name:
-                            return h
-                    return None
-                k_name    = idx("name")
-                k_system  = idx("system")
-                k_station = idx("station")
+                # Accept a variety of header variants commonly seen in the EDCD file
+                k_name = _kwant(reader.fieldnames, "name", "commodity", "commodityname", "product")
+                k_system = _kwant(reader.fieldnames, "system", "systemname")
+                k_station = _kwant(reader.fieldnames, "station", "stationname")
                 if not (k_name and k_system and k_station):
-                    raise CleanExit(f"rare_commodity.csv missing a required column: {rares_csv}")
+                    got = ", ".join(reader.fieldnames or [])
+                    raise CleanExit(
+                        f"rare_commodity.csv missing required columns (need name, system, station). "
+                        f"Headers seen: [{got}]  File: {rares_csv}"
+                    )
 
                 for row in reader:
-                    sysn = (row.get(k_system) or "").strip()
-                    stnn = (row.get(k_station) or "").strip()
-                    if not sysn or not stnn:
-                        skipped += 1; continue
-                    if (sysn.lower(), stnn.lower()) in present:
-                        out_rows.append({
-                            "name": (row.get(k_name) or "").strip(),
-                            "system": sysn,
-                            "station": stnn,
-                        })
-                        kept += 1
-                    else:
-                        skipped += 1
+                    rn_raw = row.get(k_name)
+                    sys_raw = row.get(k_system)
+                    stn_raw = row.get(k_station)
 
-            # Clear then upsert by name
+                    rn = _norm(rn_raw)
+                    sysn = _norm(sys_raw)
+                    stnn = _norm(stn_raw)
+
+                    if not rn or not sysn or not stnn:
+                        skipped += 1
+                        continue
+
+                    sid = stn_map.get((sysn, stnn))
+                    if sid is None:
+                        skipped += 1; skipped_no_station += 1
+                        if getattr(self, "verbose", 0) and self.verbose >= 2:
+                            self._warn(f"Rares skip: station not found → {sys_raw} / {stn_raw} / {rn_raw}")
+                        continue
+
+                    cid = name_to_catid.get(rn)
+                    if cid is None:
+                        skipped += 1; skipped_no_category += 1
+                        if getattr(self, "verbose", 0) and self.verbose >= 2:
+                            self._warn(f"Rares skip: category not found → product={rn_raw}")
+                        continue
+
+                    out_rows.append({
+                        "name": rn_raw,           # store original-cased product name
+                        "station_id": sid,
+                        "category_id": cid,
+                        "cost": None,
+                        "max_allocation": None,
+                    })
+                    kept += 1
+
+            # 5) Clear then upsert by UNIQUE(name)
             try:
                 sess.execute(text('DELETE FROM "RareItem"'))
             except Exception:
@@ -295,32 +448,44 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             if out_rows:
                 if db_utils.is_sqlite(sess):
-                    db_utils.sqlite_upsert_simple(sess, t_rare, rows=out_rows, key_cols=("name",),
-                                                  update_cols=tuple(k for k in out_rows[0].keys() if k != "name"))
+                    db_utils.sqlite_upsert_simple(
+                        sess, t_rare, rows=out_rows, key_cols=("name",),
+                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
+                    )
                 elif db_utils.is_mysql(sess):
-                    db_utils.mysql_upsert_simple(sess, t_rare, rows=out_rows, key_cols=("name",),
-                                                 update_cols=tuple(k for k in out_rows[0].keys() if k != "name"))
+                    db_utils.mysql_upsert_simple(
+                        sess, t_rare, rows=out_rows, key_cols=("name",),
+                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
+                    )
                 else:
                     for r in out_rows:
                         ex = sess.execute(select(t_rare.c.name).where(t_rare.c.name == r["name"])).first()
                         if ex is None:
                             sess.execute(insert(t_rare).values(**r))
                         else:
-                            sess.execute(update(t_rare).where(t_rare.c.name == r["name"]).values(
-                                **{k: v for k, v in r.items() if k != "name"}
-                            ))
+                            sess.execute(
+                                update(t_rare).where(t_rare.c.name == r["name"])
+                                .values({k: v for k in r.keys() if k != "name"})
+                            )
             sess.commit()
+
+            # 6) Always print summary
+            msg = f"EDCD Rares: imported={kept:,}  skipped={skipped:,}"
             if skipped:
-                self._warn(f"RareItem (EDCD): imported {kept} rows; skipped {skipped} (system/station not present).")
+                msg += f"  (no_station={skipped_no_station:,}, no_category={skipped_no_category:,})"
+            self._print(msg)
+
         except Exception as e:
             if sess is not None:
                 try: sess.rollback()
                 except Exception: pass
-            raise CleanExit(f"RareItem (EDCD) import failed: {e!r}")
+            raise CleanExit(f"RareItem import failed: {e!r}")
         finally:
             if sess is not None:
                 try: sess.close()
                 except Exception: pass
+
+
 
     # --------------------------------------
     # Comparison Helpers
@@ -1115,6 +1280,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         names = [
             "System", "Station", "Item", "Category", "StationItem",
             "Ship", "ShipVendor", "Upgrade", "UpgradeVendor",
+            "FDevOutfitting", "FDevShipyard", "RareItem",
         ]
         return {n: Table(n, meta, autoload_with=engine) for n in names}
 
@@ -1845,132 +2011,227 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Rares import (via cache.processImportFile)
     # ------------------------------
-    def _import_rareitems(self) -> None:
+    def _import_rareitems_edcd(self, rares_csv: Path, commodity_csv: Optional[Path] = None) -> None:
         """
-        Import RareItem.csv filtered by DB existence of (system, station).
-        Implementation detail: table is cleared before import to avoid UNIQUE(name) conflicts.
-        """
-        import csv
-        from sqlalchemy import text
+        EDCD rares → TD.RareItem
 
-        # Locate template
-        rare_src = None
-        if getattr(self.tdenv, "templateDir", None):
-            candidate = Path(self.tdenv.templateDir) / "RareItem.csv"
-            if candidate.exists():
-                rare_src = candidate
-        if rare_src is None:
-            rare_src = (Path(__file__).resolve().parents[1] / "templates" / "RareItem.csv")
-        if not rare_src.exists():
-            raise CleanExit(f"RareItem.csv not found at {rare_src}")
+        Supports CSV shapes:
+          A) name, system, station
+          B) id, symbol, market_id, category, name  (FDevIDs canonical)
+
+        Shape B maps: station_id = int(market_id), category by name.
+        Clears RareItem then upserts by UNIQUE(name). Writes a CSV of skipped rows to tmp/.
+        """
+
+        def _norm(s: Optional[str]) -> str:
+            if s is None: return ""
+            s = s.strip().strip("'").strip('"')
+            s = s.replace("’", "'").replace("‘", "'")
+            s = s.replace("–", "-").replace("—", "-")
+            s = " ".join(s.split())
+            return s.casefold()
+
+        def _kwant(fieldnames, *aliases) -> Optional[str]:
+            if not fieldnames: return None
+            canon = {}
+            for h in fieldnames or []:
+                if not h: continue
+                k = h.strip().lower().replace("_", "").replace(" ", "")
+                canon[k] = h
+            for a in aliases:
+                k = a.strip().lower().replace("_", "").replace(" ", "")
+                if k in canon: return canon[k]
+            return None
 
         sess = None
-        tmp_csv = None
         try:
             sess = self._open_session()
             tables = self._reflect_tables(sess.get_bind())
-            t_station, t_system = tables["Station"], tables["System"]
+            t_sys, t_stn, t_cat, t_rare = tables["System"], tables["Station"], tables["Category"], tables["RareItem"]
 
-            # Build existence set from DB (case/whitespace-insensitive)
-            pairs = set()
-            for sys_name, st_name in sess.execute(
-                select(t_system.c.name, t_station.c.name).where(t_station.c.system_id == t_system.c.system_id)
-            ):
-                if sys_name and st_name:
-                    pairs.add((str(sys_name).strip().lower(), str(st_name).strip().lower()))
+            # Build lookups for Shape A
+            stn_by_names: Dict[tuple[str, str], int] = {}
+            for sid, sys_name, stn_name in sess.execute(
+                select(t_stn.c.station_id, t_sys.c.name, t_stn.c.name).where(t_stn.c.system_id == t_sys.c.system_id)
+            ).all():
+                if sys_name and stn_name:
+                    stn_by_names[(_norm(sys_name), _norm(stn_name))] = int(sid)
 
-            # Prepare output
-            tmp_csv = self.tmp_dir / "RareItem.filtered.csv"
+            # Category name -> id (from DB)
+            cat_id_by_name = {
+                _norm(n): int(cid)
+                for cid, n in sess.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
+                if n is not None
+            }
+
             kept = skipped = 0
+            skipped_no_station = 0
+            skipped_no_category = 0
+            out_rows: list[dict] = []
+            skipped_rows: list[dict] = []   # <-- record details
 
-            with open(rare_src, "r", encoding="utf-8", newline="") as fin, \
-                 open(tmp_csv, "w", encoding="utf-8", newline="") as fout:
+            with open(rares_csv, "r", encoding="utf-8", newline="") as fh:
+                reader = csv.DictReader(fh)
+                hdr = [h for h in (reader.fieldnames or []) if h]
+                hdr_canon = [h.lower().replace("_", "").replace(" ", "") for h in hdr]
 
-                lines = fin.readlines()
-                if not lines:
-                    raise CleanExit(f"RareItem.csv is empty: {rare_src}")
+                has_market_shape = all(x in hdr_canon for x in ["id", "symbol", "marketid", "category", "name"])
+                has_name_shape   = all(x in hdr_canon for x in ["name", "system", "station"])
 
-                header_line = lines[0]
-                fout.write(header_line)
+                if not (has_market_shape or has_name_shape):
+                    raise CleanExit(
+                        "rare_commodity.csv headers not recognized. "
+                        f"Seen headers: {', '.join(reader.fieldnames or [])}. File: {rares_csv}"
+                    )
 
-                # Determine column indexes robustly
-                reader = csv.reader([header_line])
-                headers = next(reader, [])
-                h_norm = [(h or "").strip().lower() for h in headers]
+                if has_market_shape:
+                    # FDevIDs: station_id = int(market_id)
+                    k_name   = _kwant(reader.fieldnames, "name")
+                    k_market = _kwant(reader.fieldnames, "market_id", "marketid")
+                    k_cat    = _kwant(reader.fieldnames, "category", "categoryname")
 
-                def find_col_idx(kind: str) -> int:
-                    # 'kind' is 'system' or 'station'
-                    for i, h in enumerate(h_norm):
-                        if "name@" in h and kind in h:
-                            return i
-                    for i, h in enumerate(h_norm):
-                        if kind in h:
-                            return i
-                    return -1
+                    for row in reader:
+                        rn_raw = row.get(k_name)
+                        mk_raw = row.get(k_market)
+                        cat_raw= row.get(k_cat)
 
-                idx_sys = find_col_idx("system")
-                idx_stn = find_col_idx("station")
-
-                if idx_sys < 0 or idx_stn < 0:
-                    # Unexpected header — pass through unchanged
-                    for line in lines[1:]:
-                        fout.write(line)
-                        kept = -1  # unknown
-                    skipped = 0
-                else:
-                    for line in lines[1:]:
-                        if not line.strip():
-                            continue
                         try:
-                            row = next(csv.reader([line]))
-                        except Exception:
-                            skipped += 1
+                            station_id = int(mk_raw) if mk_raw is not None else None
+                        except (TypeError, ValueError):
+                            station_id = None
+
+                        # validate station exists
+                        if station_id is None or sess.execute(
+                            select(t_stn.c.station_id).where(t_stn.c.station_id == station_id)
+                        ).first() is None:
+                            skipped += 1; skipped_no_station += 1
+                            skipped_rows.append({"reason":"no_station","name":rn_raw,"market_id":mk_raw,"category":cat_raw})
                             continue
 
-                        sys_name = (row[idx_sys] if idx_sys < len(row) else "").strip().strip("'\"").strip().lower()
-                        stn_name = (row[idx_stn] if idx_stn < len(row) else "").strip().strip("'\"").strip().lower()
+                        cid = cat_id_by_name.get(_norm(cat_raw))
+                        if cid is None:
+                            skipped += 1; skipped_no_category += 1
+                            skipped_rows.append({"reason":"no_category","name":rn_raw,"market_id":mk_raw,"category":cat_raw})
+                            continue
 
-                        if sys_name and stn_name and (sys_name, stn_name) in pairs:
-                            fout.write(line)
-                            kept += 1
-                        else:
+                        out_rows.append({
+                            "name": rn_raw,
+                            "station_id": station_id,
+                            "category_id": cid,
+                            "cost": None,
+                            "max_allocation": None,
+                        })
+                        kept += 1
+
+                else:
+                    # Legacy/community: need commodity.csv to map product -> category
+                    import csv as _csv
+                    name_to_catid: Dict[str, int] = {}
+                    if commodity_csv is None:
+                        files = self._acquire_edcd_files()
+                        commodity_csv = files.get("commodity")
+                    if commodity_csv and Path(commodity_csv).exists():
+                        with open(commodity_csv, "r", encoding="utf-8", newline="") as fh2:
+                            rd2 = _csv.DictReader(fh2)
+                            k2_name = _kwant(rd2.fieldnames, "name","commodity","commodityname","product")
+                            k2_cat  = _kwant(rd2.fieldnames, "category","categoryname")
+                            if k2_name and k2_cat:
+                                for r2 in rd2:
+                                    n = _norm(r2.get(k2_name)); c = _norm(r2.get(k2_cat))
+                                    if n and c:
+                                        cid = cat_id_by_name.get(c)
+                                        if cid is not None:
+                                            name_to_catid[n] = cid
+
+                    k_name    = _kwant(reader.fieldnames, "name","commodity","commodityname","product")
+                    k_system  = _kwant(reader.fieldnames, "system","systemname")
+                    k_station = _kwant(reader.fieldnames, "station","stationname")
+
+                    for row in reader:
+                        rn_raw  = row.get(k_name)
+                        sys_raw = row.get(k_system)
+                        stn_raw = row.get(k_station)
+                        rn = _norm(rn_raw); sysn = _norm(sys_raw); stnn = _norm(stn_raw)
+
+                        if not rn or not sysn or not stnn:
                             skipped += 1
+                            skipped_rows.append({"reason":"missing_fields","name":rn_raw,"system":sys_raw,"station":stn_raw})
+                            continue
 
-            # Clear RareItem before import to avoid UNIQUE(name) conflicts
+                        station_id = stn_by_names.get((sysn, stnn))
+                        if station_id is None:
+                            skipped += 1; skipped_no_station += 1
+                            skipped_rows.append({"reason":"no_station","name":rn_raw,"system":sys_raw,"station":stn_raw})
+                            continue
+
+                        cid = name_to_catid.get(rn)
+                        if cid is None:
+                            skipped += 1; skipped_no_category += 1
+                            skipped_rows.append({"reason":"no_category","name":rn_raw,"system":sys_raw,"station":stn_raw})
+                            continue
+
+                        out_rows.append({
+                            "name": rn_raw,
+                            "station_id": station_id,
+                            "category_id": cid,
+                            "cost": None,
+                            "max_allocation": None,
+                        })
+                        kept += 1
+
+            # Clear → upsert
             try:
                 sess.execute(text('DELETE FROM "RareItem"'))
-                sess.commit()
             except Exception:
-                sess.rollback()
-                # Try unquoted name for MySQL/MariaDB
                 sess.execute(text("DELETE FROM RareItem"))
-                sess.commit()
 
-            # Hand the filtered file to the existing importer
-            cache.processImportFile(self.tdenv, sess, tmp_csv, "RareItem")
+            if out_rows:
+                if db_utils.is_sqlite(sess):
+                    db_utils.sqlite_upsert_simple(
+                        sess, t_rare, rows=out_rows, key_cols=("name",),
+                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
+                    )
+                elif db_utils.is_mysql(sess):
+                    db_utils.mysql_upsert_simple(
+                        sess, t_rare, rows=out_rows, key_cols=("name",),
+                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
+                    )
+                else:
+                    for r in out_rows:
+                        ex = sess.execute(select(t_rare.c.name).where(t_rare.c.name == r["name"])).first()
+                        if ex is None:
+                            sess.execute(insert(t_rare).values(**r))
+                        else:
+                            sess.execute(
+                                update(t_rare).where(t_rare.c.name == r["name"])
+                                .values({k: r[k] for k in r.keys() if k != "name"})
+                            )
             sess.commit()
 
-            if kept >= 0 and skipped > 0:
-                self._warn(f"RareItem: imported {kept} rows; skipped {skipped} (system/station not present in DB).")
+            # Write a CSV with skipped details
+            if skipped_rows:
+                outp = self.tmp_dir / "edcd_rares_skipped.csv"
+                keys = sorted({k for r in skipped_rows for k in r.keys()})
+                with open(outp, "w", encoding="utf-8", newline="") as fh:
+                    w = csv.DictWriter(fh, fieldnames=keys)
+                    w.writeheader(); w.writerows(skipped_rows)
+                self._print(f"EDCD Rares: imported={kept:,}  skipped={skipped:,}  "
+                            f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,})  "
+                            f"→ details: {outp}")
+            else:
+                self._print(f"EDCD Rares: imported={kept:,}  skipped={skipped:,}  "
+                            f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,})")
 
         except Exception as e:
             if sess is not None:
-                try:
-                    sess.rollback()
-                except Exception:
-                    pass
+                try: sess.rollback()
+                except Exception: pass
             raise CleanExit(f"RareItem import failed: {e!r}")
         finally:
             if sess is not None:
-                try:
-                    sess.close()
-                except Exception:
-                    pass
-            try:
-                if tmp_csv and tmp_csv.exists():
-                    tmp_csv.unlink()
-            except Exception:
-                pass
+                try: sess.close()
+                except Exception: pass
+
 
     # ------------------------------
     # Export / cache refresh
