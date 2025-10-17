@@ -214,6 +214,17 @@ class Route:
             colorize("blue", self.lastStation.name()),
         )
 
+    def detail(self, tdenv):
+        """
+        Legacy helper used by run_cmd.render().
+        Renders this route using cmdenv/tdenv display settings.
+        """
+        colorize = getattr(tdenv, "colorize", lambda *_: "{}".format)
+        detail = getattr(tdenv, "detail", 0) or 0
+        goalSystem = getattr(tdenv, "goalSystem", None)
+        credits = getattr(tdenv, "credits", 0) or 0
+        return self.render(colorize, tdenv, detail=detail, goalSystem=goalSystem, credits=credits)
+
     def render(self, colorize, tdenv, detail=0, goalSystem=None, credits=0):
         """
         Produce a formatted string representation of this route.
@@ -508,23 +519,92 @@ class TradeCalc:
 
         # --------------------------------------------------------------
         # Prepare query against StationItem (ORM, replaces raw SQL)
+        # Limit front-load to stations reachable from the chosen origins
+        # under the same constraints run_cmd will use for hops.
         # --------------------------------------------------------------
         demand = self.stationsBuying = defaultdict(list)
         supply = self.stationsSelling = defaultdict(list)
         dmdCount, supCount = 0, 0
         now = int(time.time())
 
+        # --- build a restricted set of candidate stations (small front load) ---
+        candidate_station_ids: set[int] = set()
+
+        # Find starting points from env (systems or stations).
+        # Fallbacks: if not provided, do NOT explode — just leave the set empty
+        # and we’ll skip the restriction (behavior matches current but we still
+        # benefit from maxAge/itemFilter below).
+        orig_systems = list(getattr(tdenv, "origSystems", []) or [])
+        orig_stations = list(getattr(tdenv, "origStations", []) or [])
+
+        # If we only got systems, include all stations in those systems as starting docks.
+        if orig_systems and not orig_stations:
+            for sysobj in orig_systems:
+                candidate_station_ids.update(getattr(stn, "ID", None) for stn in getattr(sysobj, "stations", ()) if getattr(stn, "ID", None))
+
+        # If we have explicit origin stations, include them.
+        if orig_stations:
+            candidate_station_ids.update(getattr(stn, "ID", None) for stn in orig_stations if getattr(stn, "ID", None))
+
+        # Expand to reachable stations using the same constraints used for hops.
+        # This mirrors tradedb.getDestinations() and keeps the front-load small.
+        if candidate_station_ids:
+            maxJumpsPer = tdenv.maxJumpsPer
+            maxLyPer = tdenv.maxLyPer
+            avoidPlaces = getattr(tdenv, "avoidPlaces", None) or ()
+            maxPadSize = tdenv.padSize
+            noPlanet = tdenv.noPlanet
+            planetary = tdenv.planetary
+            fleet = tdenv.fleet
+            odyssey = tdenv.odyssey
+            maxLsFromStar = tdenv.maxLs or 0
+
+            getDestinations = tdb.getDestinations
+
+            # For each origin station (or the stations we gathered from origin systems),
+            # add every reachable station’s ID into the candidate set.
+            origin_iter = list(orig_stations)
+            if not origin_iter and orig_systems:
+                # choose one station per origin system if none explicitly selected
+                for sysobj in orig_systems:
+                    for stn in getattr(sysobj, "stations", ()):
+                        origin_iter.append(stn)
+                        break  # just one starting dock per system
+
+            for start_stn in origin_iter:
+                for dest in getDestinations(
+                    start_stn,
+                    maxJumps=maxJumpsPer,
+                    maxLyPer=maxLyPer,
+                    avoidPlaces=avoidPlaces,
+                    maxPadSize=maxPadSize,
+                    maxLsFromStar=maxLsFromStar,
+                    noPlanet=noPlanet,
+                    planetary=planetary,
+                    fleet=fleet,
+                    odyssey=odyssey,
+                ):
+                    if dest.station and getattr(dest.station, "ID", None):
+                        candidate_station_ids.add(dest.station.ID)
+
         with tdb.Session() as session:
             stmt = select(StationItem)
+
+            # Age filter (if set)
             if tdenv.maxAge:
                 maxDays = datetime.timedelta(days=tdenv.maxAge)
                 cutoff = datetime.datetime.now() - maxDays
                 stmt = stmt.where(StationItem.modified >= cutoff)
 
+            # Item filter (if set)
             if itemFilter:
                 stmt = stmt.where(StationItem.item_id.in_(itemFilter))
 
-            tdenv.DEBUG1("TradeCalc loading StationItem values")
+            # Station reachability filter (only if we actually built a candidate set)
+            if candidate_station_ids:
+                stmt = stmt.where(StationItem.station_id.in_(candidate_station_ids))
+
+            tdenv.DEBUG1("TradeCalc front-load: limiting StationItem query to %d stations", len(candidate_station_ids) or 0)
             tdenv.DEBUG2("sqlalchemy stmt: {}", stmt)
 
             for row in session.execute(stmt).scalars():
@@ -861,9 +941,13 @@ class TradeCalc:
                 startCr = credits + int(route.gainCr * safetyMargin)
 
                 srcSelling = getSelling(srcStation.ID, None)
+                if not srcSelling:
+                    tdenv.DEBUG1("Nothing sold at source - next.")
+                    continue
+
                 srcSelling = tuple(values for values in srcSelling if values[1] <= startCr)
                 if not srcSelling:
-                    tdenv.DEBUG1("Nothing sold/affordable - next.")
+                    tdenv.DEBUG1("Nothing affordable - next.")
                     continue
 
                 if goalSystem:

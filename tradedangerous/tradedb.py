@@ -81,6 +81,7 @@ from .db.orm_models import (
     System, Station, Item, Category, Ship, Upgrade, RareItem,
     StationItem, ShipVendor, UpgradeVendor, Added, ExportControl, StationItemStaging
 )
+from .db.utils import age_in_days
 
 # --------------------------------------------------------------------
 # SQLAlchemy ORM imports (aliased to avoid clashing with legacy wrappers).
@@ -1224,80 +1225,80 @@ class TradeDB:
         """ Iterate through the list of stations. """
         yield from self.stationByID.values()
     
-def _loadStations(self):
-    """
-    Populate the Station list using SQLAlchemy.
-    Station constructor automatically adds itself to the System object.
-    CAUTION: Will orphan previously loaded objects.
-    """
-    # NOTE: Requires: from tradedangerous.db.utils import age_in_days
-    stationByID = {}
-    systemByID = self.systemByID
-    self.tradingStationCount = 0
+    def _loadStations(self):
+        """
+        Populate the Station list using SQLAlchemy.
+        Station constructor automatically adds itself to the System object.
+        CAUTION: Will orphan previously loaded objects.
+        """
+        # NOTE: Requires module-level import:
+        #   from tradedangerous.db.utils import age_in_days
+        stationByID = {}
+        systemByID = self.systemByID
+        self.tradingStationCount = 0
 
-    # Fleet Carriers are station type 24.
-    # Odyssey settlements are station type 25.
-    # Assume type 0 (Unknown) are also Fleet Carriers.
-    types = {'fleet-carrier': [24, 0], 'odyssey': [25]}
+        # Fleet Carriers are station type 24.
+        # Odyssey settlements are station type 25.
+        # Assume type 0 (Unknown) are also Fleet Carriers.
+        types = {'fleet-carrier': [24, 0], 'odyssey': [25]}
 
-    with self.Session() as session:
-        # Query all stations
-        rows = session.query(
-            SA_Station.station_id,
-            SA_Station.system_id,
-            SA_Station.name,
-            SA_Station.ls_from_star,
-            SA_Station.market,
-            SA_Station.blackmarket,
-            SA_Station.shipyard,
-            SA_Station.max_pad_size,
-            SA_Station.outfitting,
-            SA_Station.rearm,
-            SA_Station.refuel,
-            SA_Station.repair,
-            SA_Station.planetary,
-            SA_Station.type_id,
-        )
-
-        for (
-            ID, systemID, name,
-            lsFromStar, market, blackMarket, shipyard,
-            maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
-        ) in rows:
-            isFleet   = 'Y' if int(type_id) in types['fleet-carrier'] else 'N'
-            isOdyssey = 'Y' if int(type_id) in types['odyssey'] else 'N'
-            station = Station(
-                ID, systemByID[systemID], name,
+        with self.Session() as session:
+            # Query all stations
+            rows = session.query(
+                SA_Station.station_id,
+                SA_Station.system_id,
+                SA_Station.name,
+                SA_Station.ls_from_star,
+                SA_Station.market,
+                SA_Station.blackmarket,
+                SA_Station.shipyard,
+                SA_Station.max_pad_size,
+                SA_Station.outfitting,
+                SA_Station.rearm,
+                SA_Station.refuel,
+                SA_Station.repair,
+                SA_Station.planetary,
+                SA_Station.type_id,
+            )
+            for (
+                ID, systemID, name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair,
-                planetary, isFleet, isOdyssey,
-                0, None,
+                maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
+            ) in rows:
+                isFleet   = 'Y' if int(type_id) in types['fleet-carrier'] else 'N'
+                isOdyssey = 'Y' if int(type_id) in types['odyssey'] else 'N'
+                station = Station(
+                    ID, systemByID[systemID], name,
+                    lsFromStar, market, blackMarket, shipyard,
+                    maxPadSize, outfitting, rearm, refuel, repair,
+                    planetary, isFleet, isOdyssey,
+                    0, None,
+                )
+                stationByID[ID] = station
+
+            # Trading station info
+            tradingCount = 0
+            rows = (
+                session.query(
+                    SA_StationItem.station_id,
+                    func.count().label("item_count"),
+                    # Dialect-safe average age in **days**
+                    func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
+                )
+                .group_by(SA_StationItem.station_id)
+                .having(func.count() > 0)
             )
-            stationByID[ID] = station
 
-        # Trading station info
-        tradingCount = 0
-        rows = (
-            session.query(
-                SA_StationItem.station_id,
-                func.count().label("item_count"),
-                # Dialect-safe average age in **days**
-                func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
-            )
-            .group_by(SA_StationItem.station_id)
-            .having(func.count() > 0)
-        )
+            for ID, itemCount, dataAge in rows:
+                station = stationByID[ID]
+                station.itemCount = itemCount
+                station.dataAge = dataAge
+                tradingCount += 1
 
-        for ID, itemCount, dataAge in rows:
-            station = stationByID[ID]
-            station.itemCount = itemCount
-            station.dataAge = dataAge
-            tradingCount += 1
-
-    self.stationByID = stationByID
-    self.tradingStationCount = tradingCount
-    self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
-    self.stellarGrid = None
+        self.stationByID = stationByID
+        self.tradingStationCount = tradingCount
+        self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
+        self.stellarGrid = None
 
 
     
