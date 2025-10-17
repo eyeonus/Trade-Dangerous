@@ -8,6 +8,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.schema import MetaData
 
+from tradedangerous.cache import buildCache
 
 # --------------------------------------------------------------------
 # Utilities
@@ -324,8 +325,6 @@ def ensure_fresh_db(
     # From here on, behavior matches the original: rebuild via buildCache.
     if tdb is None or tdenv is None:
         raise ValueError("ensure_fresh_db needs `tdb` and `tdenv` to rebuild via buildCache")
-
-    from tradedangerous.cache import buildCache
 
     buildCache(tdb, tdenv)
     summary["action"] = "rebuilt"
