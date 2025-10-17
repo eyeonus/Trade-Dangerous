@@ -489,6 +489,14 @@ class TradeCalc:
     def __init__(self, tdb, tdenv=None, fit=None, items=None):
         """
         Constructs the TradeCalc object and loads sell/buy data.
+
+        RAM remediation (per brief):
+        - Preload via SQLAlchemy Core/Engine tuples (no ORM entities, no Session).
+        - Select only the 9 legacy columns needed for the two maps.
+        - Apply ONLY age cutoff + optional item filter.
+        - No station reachability gating here.
+        - Build stationsSelling/Buying with legacy keep rules & tuple shapes.
+        - Compute ageS in Python from parse_ts(modified).
         """
         if not tdenv:
             tdenv = tdb.tdenv
@@ -501,9 +509,7 @@ class TradeCalc:
         minSupply = self.tdenv.supply or 0
         minDemand = self.tdenv.demand or 0
 
-        # --------------------------------------------------------------
-        # Build item filter (avoidItems + specific items)
-        # --------------------------------------------------------------
+        # ---------- Build optional item filter (avoidItems + specific items) ----------
         itemFilter = None
         if tdenv.avoidItems or items:
             avoidItemIDs = {item.ID for item in tdenv.avoidItems}
@@ -517,120 +523,87 @@ class TradeCalc:
                 raise TradeException("No items to load.")
             itemFilter = loadIDs
 
-        # --------------------------------------------------------------
-        # Prepare query against StationItem (ORM, replaces raw SQL)
-        # Limit front-load to stations reachable from the chosen origins
-        # under the same constraints run_cmd will use for hops.
-        # --------------------------------------------------------------
+        # ---------- Maps and counters ----------
         demand = self.stationsBuying = defaultdict(list)
         supply = self.stationsSelling = defaultdict(list)
-        dmdCount, supCount = 0, 0
-        now = int(time.time())
+        dmdCount = supCount = 0
+        nowS = int(time.time())
 
-        # --- build a restricted set of candidate stations (small front load) ---
-        candidate_station_ids: set[int] = set()
+        # ---------- Core/Engine path (NO Session; NO ORM entities) ----------
+        # 9 legacy columns, in the precise order we consume below.
+        columns = (
+            "station_id, item_id, "
+            "demand_price, demand_units, demand_level, "
+            "supply_price, supply_units, supply_level, "
+            "modified"
+        )
 
-        # Find starting points from env (systems or stations).
-        # Fallbacks: if not provided, do NOT explode — just leave the set empty
-        # and we’ll skip the restriction (behavior matches current but we still
-        # benefit from maxAge/itemFilter below).
-        orig_systems = list(getattr(tdenv, "origSystems", []) or [])
-        orig_stations = list(getattr(tdenv, "origStations", []) or [])
+        # Dialect-specific age cutoff expression for SQL-side filtering only.
+        # (Python still computes ageS via parse_ts for tuple construction.)
+        where_clauses = []
+        params = {}
 
-        # If we only got systems, include all stations in those systems as starting docks.
-        if orig_systems and not orig_stations:
-            for sysobj in orig_systems:
-                candidate_station_ids.update(getattr(stn, "ID", None) for stn in getattr(sysobj, "stations", ()) if getattr(stn, "ID", None))
+        if tdenv.maxAge:
+            cutoffS = nowS - (tdenv.maxAge * 60 * 60)
+            if tdb.engine.dialect.name == "sqlite":
+                where_clauses.append("CAST(strftime('%s', modified) AS INTEGER) >= :cutoffS")
+            else:
+                # MariaDB/MySQL (UNIX_TIMESTAMP); other backends that support it will work too.
+                where_clauses.append("UNIX_TIMESTAMP(modified) >= :cutoffS")
+            params["cutoffS"] = cutoffS
 
-        # If we have explicit origin stations, include them.
-        if orig_stations:
-            candidate_station_ids.update(getattr(stn, "ID", None) for stn in orig_stations if getattr(stn, "ID", None))
+        if itemFilter:
+            # Use a bound list parameter. We’ll expand into the query with :item_ids
+            where_clauses.append("item_id IN :item_ids")
+            params["item_ids"] = tuple(itemFilter)
 
-        # Expand to reachable stations using the same constraints used for hops.
-        # This mirrors tradedb.getDestinations() and keeps the front-load small.
-        if candidate_station_ids:
-            maxJumpsPer = tdenv.maxJumpsPer
-            maxLyPer = tdenv.maxLyPer
-            avoidPlaces = getattr(tdenv, "avoidPlaces", None) or ()
-            maxPadSize = tdenv.padSize
-            noPlanet = tdenv.noPlanet
-            planetary = tdenv.planetary
-            fleet = tdenv.fleet
-            odyssey = tdenv.odyssey
-            maxLsFromStar = tdenv.maxLs or 0
+        sql = f"SELECT {columns} FROM StationItem"
+        if where_clauses:
+            sql += " WHERE " + " AND ".join(where_clauses)
 
-            getDestinations = tdb.getDestinations
+        # Execute via Engine.connect(); iterate the Result directly (no .all()).
+        from sqlalchemy import text as _sa_text
+        with tdb.engine.connect() as conn:
+            result = conn.execute(_sa_text(sql), params)
 
-            # For each origin station (or the stations we gathered from origin systems),
-            # add every reachable station’s ID into the candidate set.
-            origin_iter = list(orig_stations)
-            if not origin_iter and orig_systems:
-                # choose one station per origin system if none explicitly selected
-                for sysobj in orig_systems:
-                    for stn in getattr(sysobj, "stations", ()):
-                        origin_iter.append(stn)
-                        break  # just one starting dock per system
+            for (
+                stnID,
+                itmID,
+                d_price, d_units, d_level,
+                s_price, s_units, s_level,
+                modified,
+            ) in result:
+                # Compute legacy ageS from modified using parse_ts(...)
+                mod_dt = parse_ts(modified)
+                if not mod_dt:
+                    # Keep behaviour explicit; bad timestamps are exceptional.
+                    raise BadTimestampError(tdb, stnID, itmID, modified)
+                ageS = nowS - int(mod_dt.timestamp())
 
-            for start_stn in origin_iter:
-                for dest in getDestinations(
-                    start_stn,
-                    maxJumps=maxJumpsPer,
-                    maxLyPer=maxLyPer,
-                    avoidPlaces=avoidPlaces,
-                    maxPadSize=maxPadSize,
-                    maxLsFromStar=maxLsFromStar,
-                    noPlanet=noPlanet,
-                    planetary=planetary,
-                    fleet=fleet,
-                    odyssey=odyssey,
-                ):
-                    if dest.station and getattr(dest.station, "ID", None):
-                        candidate_station_ids.add(dest.station.ID)
+                # ------ Legacy keep rules & tuple shapes ------
 
-        with tdb.Session() as session:
-            stmt = select(StationItem)
-
-            # Age filter (if set)
-            if tdenv.maxAge:
-                maxDays = datetime.timedelta(days=tdenv.maxAge)
-                cutoff = datetime.datetime.now() - maxDays
-                stmt = stmt.where(StationItem.modified >= cutoff)
-
-            # Item filter (if set)
-            if itemFilter:
-                stmt = stmt.where(StationItem.item_id.in_(itemFilter))
-
-            # Station reachability filter (only if we actually built a candidate set)
-            if candidate_station_ids:
-                stmt = stmt.where(StationItem.station_id.in_(candidate_station_ids))
-
-            tdenv.DEBUG1("TradeCalc front-load: limiting StationItem query to %d stations", len(candidate_station_ids) or 0)
-            tdenv.DEBUG2("sqlalchemy stmt: {}", stmt)
-
-            for row in session.execute(stmt).scalars():
-                stnID = row.station_id
-                itmID = row.item_id
-
-                modified_dt = parse_ts(row.modified)
-                if not modified_dt:
-                    raise BadTimestampError(self.tdb, stnID, itmID, row.modified)
-                ageS = now - int(modified_dt.timestamp())
-
-                if row.demand_price > 0:
-                    if not minDemand or row.demand_units >= minDemand:
+                # Buying map (demand side)
+                if d_price and d_price > 0 and d_units:
+                    if not minDemand or d_units >= minDemand:
                         demand[stnID].append(
-                            (itmID, row.demand_price, row.demand_units, row.demand_level, ageS)
+                            (itmID, d_price, d_units, d_level, ageS)
                         )
                         dmdCount += 1
 
-                if row.supply_price > 0 and row.supply_units:
-                    if not minSupply or row.supply_units >= minSupply:
+                # Selling map (supply side)
+                if s_price and s_price > 0 and s_units:
+                    if not minSupply or s_units >= minSupply:
                         supply[stnID].append(
-                            (itmID, row.supply_price, row.supply_units, row.supply_level, ageS)
+                            (itmID, s_price, s_units, s_level, ageS)
                         )
                         supCount += 1
 
-        tdenv.DEBUG0(f"Loaded {dmdCount} buys, {supCount} sells")
+        tdenv.DEBUG1(
+            "Preload used Engine/Core (no ORM identity map). Rows kept: buys={}, sells={}",
+            dmdCount, supCount,
+        )
+
+
 
     # ------------------------------------------------------------------
     # Cargo fitting algorithms
@@ -639,6 +612,8 @@ class TradeCalc:
     def bruteForceFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
         Brute-force generation of all possible combinations of items.
+        This is provided to make it easy to validate the results of future
+        variants or optimizations of the fit algorithm.
         """
 
         def _fitCombos(offset, cr, cap, level=1):
@@ -687,10 +662,25 @@ class TradeCalc:
 
     def fastFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
-        Knapsack-like recursive load fitter.
+            Best load calculator using a recursive knapsack-like
+            algorithm to find multiple loads and return the best.
+            [eyeonus] Left in for the masochists, as this becomes
+            horribly slow at stations with many items for sale.
+            As in iooks-like-the-program-has-frozen slow.
         """
 
         def _fitCombos(offset, cr, cap):
+            """
+                Starting from offset, consider a scenario where we
+                would purchase the maximum number of each item
+                given the cr+cap limitations. Then, assuming that
+                load, solve for the remaining cr+cap from the next
+                value of offset.
+                
+                The "best fit" is not always the most profitable,
+                so we yield all the results and leave the caller
+                to determine which is actually most profitable.
+            """
             bestGainCr = -1
             bestItem = None
             bestQty = 0
@@ -762,9 +752,26 @@ class TradeCalc:
 
         return _fitCombos(0, credits, capacity)
 
+
+    # Mark's test run, to spare searching back through the forum posts for it.
+    # python trade.py run --fr="Orang/Bessel Gateway" --cap=720 --cr=11b --ly=24.73 --empty=37.61 --pad=L --hops=2 --jum=3 --loop --summary -vv --progress
+
     def simpleFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
-        Greedy load fitter (default).
+        Simplistic load calculator:
+        (The item list is sorted with highest profit margin items in front.)
+        Step 1: Fill hold with as much of item1 as possible based on the limiting
+                factors of hold size, supply amount, and available credits.
+        
+        Step 2: If there is space in the hold and money available, repeat Step 1
+                with item2, item3, etc. until either the hold is filled
+                or the commander is too poor to buy more.
+        
+        When amount of credits isn't a limiting factor, this should produce
+        the most profitable route ~99.7% of the time, and still be very
+        close to the most profitable the rest of the time.
+        (Very close = not enough less profit that anyone should care,
+        especially since this thing doesn't suffer slowdowns like fastFit.)
         """
 
         n = 0
@@ -1008,18 +1015,67 @@ class TradeCalc:
                     trade = fitFunction(items, startCr, capacity, maxUnits)
 
                     multiplier = 1.0
+                    # Calculate total K-lightseconds supercruise time.
+                    # This will amortize for the start/end stations
                     dstSys = dest.system
                     if goalSystem and dstSys is not goalSystem:
                         dstGoalDist = goalDistTo(dstSys)
+                        # Biggest reward for shortening distance to goal
                         score = 5000 * origGoalDist / dstGoalDist
+                        # bias towards bigger reductions
                         score += 50 * srcGoalDist / dstGoalDist
+                        # discourage moving back towards origin
                         if dstSys is not origSystem:
                             score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                        # Gain per unit pays a small part
                         score += (trade.gainCr / trade.units) / 25
                     else:
                         score = trade.gainCr
 
                     if lsPenalty:
+                        # [kfsone] Only want 1dp
+                        
+                        cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                        # Produce a curve that favors distances under 1kls
+                        # positively, starts to penalize distances over 1k,
+                        # and after 4kls starts to penalize aggressively
+                        # http://goo.gl/Otj2XP
+                        
+                        # [eyeonus] As aadler pointed out, this goes into negative
+                        # numbers, which causes problems.
+                        # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                        # penalty *= lsPenalty
+                        # multiplier *= (1 - penalty)
+                        
+                        # [eyeonus]:
+                        # (Keep in mind all this ignores values of x<0.)
+                        # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
+                        # ranges between 0.5 and 0 with a drop around x=1,
+                        # which makes it great for giving a boost to distances < 1Kls.
+                        #
+                        # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
+                        # ranges between 0 and -0.5 with a drop around x=4,
+                        # making it great for penalizing distances > 4Kls.
+                        #
+                        # The curve: (-1+1/(x+1)^((x+1)/4))/2
+                        # ranges between 0 and -0.5 in a smooth arc,
+                        # which will be used for making distances
+                        # closer to 4Kls get a slightly higher penalty
+                        # then distances closer to 1Kls.
+                        #
+                        # Adding the three together creates a doubly-kinked curve
+                        # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
+                        # which closely matches ksfone's intention without going into
+                        # negative numbers and causing problems when we add it to
+                        # the multiplier variable. ( 1 + -1 = 0 )
+                        #
+                        # You can see a graph of the formula here:
+                        # https://goo.gl/sn1PqQ
+                        # NOTE: The black curve is at a penalty of 0%,
+                        # the red curve at a penalty of 100%, with intermediates at
+                        # 25%, 50%, and 75%.
+                        # The other colored lines show the penalty curves individually
+                        # and the teal composite of all three.
                         def sigmoid(x):
                             return x / (1 + abs(x))
 
@@ -1036,12 +1092,15 @@ class TradeCalc:
 
                     dstID = dstStation.ID
                     try:
+                        # See if there is already a candidate for this destination
                         btd = bestToDest[dstID]
                     except KeyError:
+                        # No existing candidate, we win by default
                         pass
                     else:
                         bestRoute = btd[1]
                         bestScore = btd[5]
+                        # Check if it is a better option than we just produced
                         bestTradeScore = bestRoute.score + bestScore
                         newTradeScore = route.score + score
                         if bestTradeScore > newTradeScore:
