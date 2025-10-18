@@ -4,6 +4,8 @@ from .parsing import (
     ParseArgument, MutuallyExclusiveGroup,
 )
 from ..formatting import RowFormat
+from sqlalchemy import select, table, column
+from sqlalchemy.orm import Session
 
 
 ######################################################################
@@ -50,35 +52,63 @@ def render_units(units, level):
 
 
 def run(results, cmdenv, tdb):
+    # Lazy import to avoid any import-time tangles elsewhere.
+    from tradedangerous.db.utils import age_in_days
+
     origin = cmdenv.startStation
     if not origin.itemCount:
         raise CommandLineError(
             "No trade data available for {}".format(origin.name())
         )
-    
+
     buying, selling = cmdenv.buying, cmdenv.selling
-    
+
     results.summary = ResultRow()
     results.summary.origin = origin
     results.summary.buying = cmdenv.buying
     results.summary.selling = cmdenv.selling
-    
+
+    # Precompute averages (unchanged)
     tdb.getAverageSelling()
     tdb.getAverageBuying()
-    cur = tdb.query("""
-        SELECT  item_id,
-                demand_price, demand_units, demand_level,
-                supply_price, supply_units, supply_level,
-                JULIANDAY('now') - JULIANDAY(modified)
-          FROM  StationItem
-         WHERE  station_id = ?
-    """, [origin.ID])
-    
-    for row in cur:
-        it = iter(row)
+
+    # --- Backend-neutral query using SQLAlchemy Core + age_in_days ---
+    si = table(
+        "StationItem",
+        column("item_id"),
+        column("station_id"),
+        column("demand_price"),
+        column("demand_units"),
+        column("demand_level"),
+        column("supply_price"),
+        column("supply_units"),
+        column("supply_level"),
+        column("modified"),
+    )
+
+    # Build session bound to current engine (needed by age_in_days)
+    session = Session(bind=tdb.engine)
+
+    stmt = (
+        select(
+            si.c.item_id,
+            si.c.demand_price, si.c.demand_units, si.c.demand_level,
+            si.c.supply_price, si.c.supply_units, si.c.supply_level,
+            age_in_days(session, si.c.modified).label("age_days"),
+        )
+        .where(si.c.station_id == origin.ID)
+    )
+
+    rows = session.execute(stmt).fetchall()
+    session.close()
+
+    for r in rows:
+        it = iter(r)
         item = tdb.itemByID[next(it)]
+
         row = ResultRow()
         row.item = item
+
         row.buyCr = int(next(it) or 0)
         row.avgBuy = tdb.avgBuying.get(item.ID, 0)
         units, level = int(next(it) or 0), int(next(it) or 0)
@@ -89,6 +119,7 @@ def run(results, cmdenv, tdb):
             hasBuy = (row.buyCr or units or level)
         else:
             hasBuy = False
+
         row.sellCr = int(next(it) or 0)
         row.avgSell = tdb.avgSelling.get(item.ID, 0)
         units, level = int(next(it) or 0), int(next(it) or 0)
@@ -99,17 +130,19 @@ def run(results, cmdenv, tdb):
             hasSell = (row.sellCr or units or level)
         else:
             hasSell = False
-        row.age = float(next(it) or 0)
-        
+
+        age_days = next(it)
+        row.age = float(age_days or 0.0)
+
         if hasBuy or hasSell:
             results.rows.append(row)
-    
+
     if not results.rows:
         raise CommandLineError("No items found")
-    
+
     results.rows.sort(key=lambda row: row.item.dbname)
     results.rows.sort(key=lambda row: row.item.category.dbname)
-    
+
     return results
 
 #######################################################################
