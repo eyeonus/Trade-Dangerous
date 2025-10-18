@@ -33,6 +33,8 @@ body:
       label: Logs / output
       description: Paste relevant logs, error messages, or tracebacks. Please try to use fenced code blocks.
       render: shell
+    validations:
+      require: true
   - type: textarea
     id: env
     attributes:
