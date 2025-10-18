@@ -116,25 +116,13 @@ switches = [
 
 
 def run(results, cmdenv, tdb):
-    # --- Deprecation banner (visible, but non-fatal) ---
-    try:
-        banner = (
-            "\n"
-            "=== DEPRECATION NOTICE ============================================\n"
-            "The legacy '.prices' import is deprecated.\n"
-            "Use a supported plugin instead:\n"
-            "  • trade import -P spansh\n"
-            "  • trade import -P eddblink\n"
-            "Solo/offline: TradeDangerous DB-Update for EDMC → https://github.com/bgol/UpdateTD\n"
-            "===================================================================\n"
-        )
-        # Prefer cmdenv.NOTE if available for consistent formatting
-        cmdenv.NOTE("{}", banner)
-    except Exception:
-        # Fallback to a plain print if NOTE isn’t available in this context
-        print(banner, file=sys.stderr)
+    """
+    Dispatch import work:
+      • If a plugin (-P) is specified: load it and run it (no deprecation banner).
+      • Otherwise: proceed with legacy .prices/.url flow and show a deprecation notice.
+    """
 
-    # If we're using a plugin, initialize that first.
+    # --- Plugin path (preferred; no banner) ---
     if cmdenv.plug:
         if cmdenv.pluginOptions:
             cmdenv.pluginOptions = chain.from_iterable(
@@ -144,65 +132,83 @@ def run(results, cmdenv, tdb):
             pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
         except plugins.PluginException as e:
             raise CommandLineError("Plugin Error: " + str(e))
-        
-        # Initialize the plugin
+
         plugin = pluginClass(tdb, cmdenv)
-        
-        # Run the plugin. If it returns False, then it did everything
-        # that needs doing and we can stop now.
-        # If it returns True, it is returning control to the module.
+
+        # If plugin returns False, it fully handled the run → stop here.
         if not plugin.run():
             return None
-    
+
+        # If plugin returns True, it’s handing control back to legacy flow below.
+        # Fall through intentionally (still no banner, as user invoked a plugin).
+
+    # --- Legacy .prices path (deprecated; show banner once) ---
+    # Only warn when the user is *not* using a plugin. Keep functionality intact.
+    if not cmdenv.plug:
+        print(
+            "NOTE:\n"
+            "=== DEPRECATION NOTICE ============================================\n"
+            "The legacy '.prices' import is deprecated.\n"
+            "Use a supported plugin instead:\n"
+            "  • trade import -P spansh\n"
+            "  • trade import -P eddblink\n"
+            "Solo/offline: TradeDangerous DB-Update for EDMC → https://github.com/bgol/UpdateTD\n"
+            "===================================================================\n"
+        )
+
+    # Refresh/close any cached handles before file ops (kept from original)
     tdb.reloadCache()
     tdb.close()
-    
+
+    # Treat a bare http(s) string in 'filename' as a URL
     if cmdenv.filename:
         if re.match(r"^https?://", cmdenv.filename, re.IGNORECASE):
             cmdenv.url, cmdenv.filename = cmdenv.filename, None
-    
+
+    # Optional download step
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
         if cmdenv.download:
             return None
-    
-    # If the filename specified was "-" or None, then go ahead
-    # and present the user with an open file dialog.
+
+    # No filename? If Tk is available, prompt user (legacy behavior)
+    fh = None
     if not cmdenv.filename and hasTkInter:
         tk = tkinter.Tk()
         tk.withdraw()
         filetypes = (
-                ("TradeDangerous '.prices' Files", "*.prices"),
-                ("All Files", "*.*"),
-                )
+            ("TradeDangerous '.prices' Files", "*.prices"),
+            ("All Files", "*.*"),
+        )
         filename = tkfd.askopenfilename(
-                    title = "Select the file to import",
-                    initialfile = "TradeDangerous.prices",
-                    filetypes = filetypes,
-                    initialdir = '.',
-                )
+            title="Select the file to import",
+            initialfile="TradeDangerous.prices",
+            filetypes=filetypes,
+            initialdir='.',
+        )
         if not filename:
             raise SystemExit("Aborted")
         cmdenv.filename = filename
-    
-    # check the file exists.
+
+    # Validate path or use stdin
     if cmdenv.filename != "-":
-        fh = None
         filePath = Path(cmdenv.filename)
         if not filePath.is_file():
-            raise CommandLineError("File not found: {}".format(
-                        str(filePath)
-                    ))
+            raise CommandLineError(f"File not found: {str(filePath)}")
     else:
         filePath = "stdin"
         fh = sys.stdin
-    
+
+    # If a plugin was also involved and wants to finish with default flow,
+    # honour that (unchanged behavior).
     if cmdenv.plug:
+        # Plugins returning True above chose to hand control back.
+        # finish() may return False to suppress default regeneration.
         if not plugin.finish():
             cache.regeneratePricesFile()
             return None
-    
-    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh = fh, reset = cmdenv.reset)
-    
+
+    # Legacy .prices import
+    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
     return None

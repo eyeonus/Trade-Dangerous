@@ -1056,7 +1056,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # -------- Export (uses your parallel exporter already present) --------
         try:
             t0 = time.time()
-            self._export_cache()
+            self._export_and_mirror()
             self._print(f"Cache export completed in {time.time()-t0:.2f}s")
         except Exception as e:
             self._error(f"Export failed: {e!r}"); return False
@@ -2312,6 +2312,47 @@ class ImportPlugin(plugins.ImportPluginBase):
             _regen_prices()
 
         self._print("Cache export completed.")
+        
+    def _mirror_csv_exports(self) -> None:
+        """
+        If TD_CSV is set, mirror all CSVs emitted into tdenv.dataDir to TD_CSV.
+        Avoids running csvexport twice (Spansh already produced the CSVs).
+        """
+        import os
+        from pathlib import Path
+        import shutil
+        src_dir = Path(self.tdenv.dataDir).resolve()
+        dst_env = os.environ.get("TD_CSV")
+        if not dst_env:
+            return
+        dst_dir = Path(dst_env).expanduser().resolve()
+        try:
+            dst_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            self._warn(f"TD_CSV mirror: unable to create destination {dst_dir}: {e!r}")
+            return
+
+        copied = 0
+        for src in src_dir.glob("*.csv"):
+            try:
+                shutil.copy2(src, dst_dir / src.name)
+                copied += 1
+            except Exception as e:
+                self._warn(f"TD_CSV mirror: failed to copy {src.name}: {e!r}")
+
+        self._print(f"TD_CSV mirror: copied {copied} csv file(s) → {dst_dir}")
+
+    def _export_and_mirror(self) -> None:
+        """
+        Run the normal cache/CSV export, then mirror CSVs to TD_CSV if set.
+        Use this in place of a direct _export_cache() call.
+        """
+        import time
+        t0 = time.time()
+        self._export_cache()  # existing exporter (unchanged)
+        self._print(f"Cache export completed in {time.time()-t0:.2f}s")
+        self._mirror_csv_exports()
+        
     # ------------------------------
     # Categories cache
     # ------------------------------
