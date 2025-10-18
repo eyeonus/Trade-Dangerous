@@ -1,3 +1,15 @@
+# tradedangerous/commands/import_cmd.py
+# DEPRECATED: The legacy “.prices” import path is deprecated.
+# Prefer supported import plugins:
+#   - trade import -P spansh      (authoritative bulk dump)
+#   - trade import -P eddblink    (server listings pipeline)
+# Solo / offline players: use the TradeDangerous DB-Update plugin for EDMC:
+#   https://github.com/bgol/UpdateTD
+#
+# This module remains available for compatibility with old “.prices” files,
+# but the format is being phased out and may be removed in a future release.
+
+
 from .exceptions import CommandLineError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from itertools import chain
@@ -104,6 +116,24 @@ switches = [
 
 
 def run(results, cmdenv, tdb):
+    # --- Deprecation banner (visible, but non-fatal) ---
+    try:
+        banner = (
+            "\n"
+            "=== DEPRECATION NOTICE ============================================\n"
+            "The legacy '.prices' import is deprecated.\n"
+            "Use a supported plugin instead:\n"
+            "  • trade import -P spansh\n"
+            "  • trade import -P eddblink\n"
+            "Solo/offline: TradeDangerous DB-Update for EDMC → https://github.com/bgol/UpdateTD\n"
+            "===================================================================\n"
+        )
+        # Prefer cmdenv.NOTE if available for consistent formatting
+        cmdenv.NOTE("{}", banner)
+    except Exception:
+        # Fallback to a plain print if NOTE isn’t available in this context
+        print(banner, file=sys.stderr)
+
     # If we're using a plugin, initialize that first.
     if cmdenv.plug:
         if cmdenv.pluginOptions:
