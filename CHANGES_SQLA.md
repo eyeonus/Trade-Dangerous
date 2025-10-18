@@ -57,6 +57,47 @@ Wrappers remain in place for API compatibility; a potential Pass 2 could streaml
 All database interactions flow through SQLAlchemy’s engine and ORM.  
 Wrappers guarantee API compatibility with existing code.
 
+---
+
+## tradecalc.py — SQLAlchemy migration & preload contract restoration
+
+### Summary
+- **Preload rewritten to SQLAlchemy Core (tuples only).**
+  The front-load no longer iterates ORM entities or opens a `Session`. It executes a Core SQL text against the engine and streams rows directly, selecting **only the 9 legacy columns** required to build the in-memory maps. This avoids ORM identity-map growth and restores the legacy memory profile.
+
+- **Station reachability gating removed from preload.**
+  The candidate-station `IN (…)` filter added during refactor was deleted. Preload now applies **only** age and optional item filters, matching legacy; reachability and other suitability checks run later.
+
+- **Legacy tuple shapes and keep rules preserved.**
+  - `stationsSelling[station_id]` → `(item_id, supply_price, supply_units, supply_level, ageS)` when `supply_price > 0` and `supply_units > 0` and (if configured) `supply_units >= tdenv.supply`.
+  - `stationsBuying[station_id]` → `(item_id, demand_price, demand_units, demand_level, ageS)` when `demand_price > 0` and (if configured) `demand_units >= tdenv.demand`.
+  Field order is unchanged.
+
+- **Age semantics match legacy.**
+  `ageS` is computed in Python from `parse_ts(modified).timestamp()` (seconds since epoch). A dialect cutoff is applied **only** to reduce scan size when `tdenv.maxAge` is set (`strftime('%s', modified)` on SQLite; `UNIX_TIMESTAMP(modified)` on MySQL/MariaDB).
+
+### Removed / avoided
+- No ORM `Session` in the preload path (no identity-map participation).
+- No `.all()` materialisation; iterate the DB `Result` directly.
+- No eager relationship loads or joins to `Station`/`System` during preload.
+- No station/system gating (reachability, pad size, planetary, etc.) in preload; those remain in later suitability logic.
+
+### Unchanged
+- Route building, scoring, and cargo-fit algorithms (`simpleFit`, `fastFit`, `bruteForceFit`).
+- Public methods used by `run_cmd.py` (`getTrades`, `getBestHops`), and text/summary renderers.
+- Error signalling (`BadTimestampError`, `NoHopsError`).
+
+### Operational notes
+- **Logging:** preload emits a DEBUG line: *“Preload used Engine/Core (no ORM identity map)”* plus kept row counts for buys/sells.
+- **Cutoff helper:** SQL-side age cutoff uses a tiny dialect switch; canonical `ageS` is always computed in Python via `parse_ts`.
+
+### Rationale
+Legacy front-load pulled station-item rows with **only age/item filtering**, then built the two maps; suitability (including reachability) ran afterwards. The refactor regressed by gating on candidate stations before preload, which could empty the maps and trigger origin-empty failures. This change restores the contract and eliminates ORM-map memory bloat by using Core tuples.
+
+### Status
+`tradecalc.py` now honours the legacy preload contract while using SQLAlchemy safely: **Core for preload, ORM for nothing in that path**. Peak RSS is dominated by the two Python dicts (as in legacy); routing remains correct.
+
+---
 
 # TradeDangerous Refactor — `prices.py`
 
