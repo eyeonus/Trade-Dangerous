@@ -1,0 +1,38 @@
+# .github/ISSUE_TEMPLATE/bug_report.yml
+name: Bug report
+description: Report a reproducible problem in the TD V2 fork
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Clear description of the bug and expected behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Exact steps/commands, dataset, config, and branch if relevant.
+      render: markdown
+    validations:
+      required: true
+  - type: dropdown
+    id: db
+    attributes:
+      label: Backend
+      options:
+        - SQLite
+        - MariaDB
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / output
+      description: Paste relevant logs, error messages, or tracebacks. Please try to use fenced code blocks.
+      render: shell
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Python version, how installed, and any notable config.
