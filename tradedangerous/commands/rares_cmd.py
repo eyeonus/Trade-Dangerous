@@ -92,39 +92,7 @@ def run(results, cmdenv, tdb):
     """
     Fetch all the data needed to display the results of a "rares"
     command. Does not actually print anything.
-    
-    Command execution is broken into two steps:
-        1. cmd.run(results, cmdenv, tdb)
-            Gather all the data required but generate no output,
-        2. cmd.render(results, cmdenv, tdb)
-            Print output to the user.
-    
-    This separation of concerns allows modularity; you can write
-    a command that calls another command to fetch data for you
-    and knowing it doesn't generate any output. Then you can
-    process the data and return it and let the command parser
-    decide when to turn it into output.
-    
-    It also opens a future door to commands that can present
-    their data in a GUI as well as the command line by having
-    a custom render() function.
-    
-    Parameters:
-        results
-            An object to be populated and returned
-        cmdenv
-            A CommandEnv object populated with the parameters
-            for the command.
-        tdb
-            A TradeDB object to query against.
-    
-    Returns:
-        None
-            End execution without any output
-        results
-            Proceed to "render" with the output.
     """
-    
     # Lookup the system we're currently in.
     start = cmdenv.nearSystem
     # Hoist the padSize, noPlanet and planetary parameter for convenience
@@ -134,140 +102,184 @@ def run(results, cmdenv, tdb):
     fleet = cmdenv.fleet
     odyssey = cmdenv.odyssey
     # How far we're want to cast our net.
-    maxLy = float(cmdenv.maxLyPer or 0.)
-    
+    maxLy = float(cmdenv.maxLyPer or 0.0)
+
     if cmdenv.illegal:
         wantIllegality = 'Y'
     elif cmdenv.legal:
         wantIllegality = 'N'
     else:
         wantIllegality = 'YN?'
-    
+
     awaySystems = set()
     if cmdenv.away or cmdenv.awayFrom:
         if not cmdenv.away or not cmdenv.awayFrom:
-            raise CommandLineError(
-                "Invalid --away/--from usage. See --help"
-            )
+            raise CommandLineError("Invalid --away/--from usage. See --help")
         minAwayDist = cmdenv.away
         for sysName in cmdenv.awayFrom:
             system = tdb.lookupPlace(sysName).system
             awaySystems.add(system)
-    
+
     # Start to build up the results data.
     results.summary = ResultRow()
     results.summary.near = start
     results.summary.ly = maxLy
     results.summary.awaySystems = awaySystems
-    
+
     distCheckFn = start.distanceTo
-    
+
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
         if rare.illegal not in wantIllegality:
             continue
-        if padSize:       # do we care about pad size?
-            if not rare.station.checkPadSize(padSize):
-                continue
-        if planetary:     # do we care about planetary?
-            if not rare.station.checkPlanetary(planetary):
-                continue
-        if fleet:         # do we care about fleet carrier?
-            if not rare.station.checkFleet(fleet):
-                continue
-        if odyssey:         # do we care about Odyssey?
-            if not rare.station.checkOdyssey(odyssey):
-                continue
-        if noPlanet and rare.station.planetary != 'N':
+        stn = rare.station
+        if padSize and not stn.checkPadSize(padSize):
             continue
-        rareSys = rare.station.system
-        # Find the un-sqrt'd distance to the system.
+        if planetary and not stn.checkPlanetary(planetary):
+            continue
+        if fleet and not stn.checkFleet(fleet):
+            continue
+        if odyssey and not stn.checkOdyssey(odyssey):
+            continue
+        if noPlanet and stn.planetary != 'N':
+            continue
+
+        rareSys = stn.system
         dist = distCheckFn(rareSys)
-        if maxLy > 0. and dist > maxLy:
+        if maxLy > 0.0 and dist > maxLy:
             continue
-        
+
         if awaySystems:
             awayCheck = rareSys.distanceTo
             if any(awayCheck(away) < minAwayDist for away in awaySystems):
                 continue
-        
-        # Create a row for this item
+
         row = ResultRow()
         row.rare = rare
+        row.station = stn            # <-- IMPORTANT: used by render()
         row.dist = dist
         results.rows.append(row)
-    
+
     # Was anything matched?
-    if not results:
+    if not results.rows:
         print("No matches found.")
         return None
-    
+
+    # Sort safely even if rare.costCr is None (treat None as 0)
+    price_key = lambda row: (row.rare.costCr or 0)
+
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
-        results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
+        results.rows.sort(key=price_key, reverse=True)
     else:
-        results.rows.sort(key=lambda row: row.rare.costCr, reverse=True)
+        results.rows.sort(key=price_key, reverse=True)
         results.rows.sort(key=lambda row: row.dist)
-    
+
     if cmdenv.reverse:
         results.rows.reverse()
-    
+
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
-    
+
     return results
+
+
+
 
 #######################################################################
 ## Transform result set into output
 
 def render(results, cmdenv, tdb):
     """
-    If the "run" command returned a result set and we are running
-    from the command line, this function will be called to generate
-    the output of the command.
+    Render output for 'rares' with robust None-handling.
+    Keeps existing column order/labels.
     """
-    
-    if not results.rows:
-        raise CommandLineError("No items found.")
-    
-    # Calculate the longest station and rareitem name in our list.
-    longestStnNameLen = max_len(results.rows, key=lambda row: row.rare.station.name())
-    longestRareNameLen = max_len(results.rows, key=lambda row: row.rare.name(cmdenv.detail))
-    
-    # Use the formatting system to describe what our
-    # output rows are going to look at (see formatting.py)
+    from ..formatting import RowFormat, max_len
+
+    rows = results.rows
+    if not rows:
+        return
+
+    # Helpers to coalesce possibly-missing attributes
+    def _cost(row):
+        try:
+            v = row.rare.costCr
+            return int(v) if v is not None else 0
+        except Exception:
+            return 0
+
+    def _rare_name(row):
+        try:
+            n = row.rare.name()
+            return n or "?"
+        except Exception:
+            return "?"
+
+    def _alloc(row):
+        val = getattr(row.rare, "allocation", None)
+        return str(val) if val not in (None, "") else "?"
+
+    def _rare_illegal(row):
+        val = getattr(row.rare, "illegal", None)
+        return val if val in ("Y", "N", "?") else "?"
+
+    def _stn_ls(row):
+        try:
+            v = row.station.distFromStar()
+            return v if v is not None else "?"
+        except Exception:
+            return "?"
+
+    def _dist(row):
+        try:
+            return float(getattr(row, "dist", 0.0) or 0.0)
+        except Exception:
+            return 0.0
+
+    def _stn_bm(row):
+        key = getattr(row.station, "blackMarket", "?")
+        return TradeDB.marketStates.get(key, key or "?")
+
+    def _pad(row):
+        key = getattr(row.station, "maxPadSize", "?")
+        return TradeDB.padSizes.get(key, key or "?")
+
+    def _plt(row):
+        key = getattr(row.station, "planetary", "?")
+        return TradeDB.planetStates.get(key, key or "?")
+
+    def _flc(row):
+        key = getattr(row.station, "fleet", "?")
+        return TradeDB.fleetStates.get(key, key or "?")
+
+    def _ody(row):
+        key = getattr(row.station, "odyssey", "?")
+        return TradeDB.odysseyStates.get(key, key or "?")
+
+    # Column widths based on safe key functions
+    max_stn = max_len(rows, key=lambda r: r.station.name())
+    max_rare = max_len(rows, key=lambda r: _rare_name(r))
+
     rowFmt = RowFormat()
-    rowFmt.addColumn('Station', '<', longestStnNameLen,
-            key=lambda row: row.rare.station.name())
-    rowFmt.addColumn('Rare', '<', longestRareNameLen,
-            key=lambda row: row.rare.name(cmdenv.detail))
-    rowFmt.addColumn('Cost', '>', 10, 'n',
-            key=lambda row: row.rare.costCr)
-    rowFmt.addColumn('DistLy', '>', 6, '.2f',
-            key=lambda row: row.dist)
-    rowFmt.addColumn('Alloc', '>', 6, 'n',
-            key=lambda row: row.rare.maxAlloc)
-    rowFmt.addColumn('B/mkt', '>', 4,
-            key=lambda row: TradeDB.marketStates[row.rare.illegal])
-    rowFmt.addColumn("StnLs", '>', 10,
-            key=lambda row: row.rare.station.distFromStar())
-    rowFmt.addColumn('B/mkt', '>', 4,
-            key=lambda row: TradeDB.marketStates[row.rare.station.blackMarket])
-    rowFmt.addColumn("Pad", '>', '3',
-            key=lambda row: TradeDB.padSizes[row.rare.station.maxPadSize])
-    rowFmt.addColumn("Plt", '>', '3',
-            key=lambda row: TradeDB.planetStates[row.rare.station.planetary])
-    rowFmt.addColumn("Flc", '>', '3',
-            key=lambda row: TradeDB.fleetStates[row.rare.station.fleet])
-    rowFmt.addColumn("Ody", '>', '3',
-            key=lambda row: TradeDB.odysseyStates[row.rare.station.odyssey])
-    
-    # Print a heading summary if the user didn't use '-q'
+    rowFmt.addColumn('Station', '<', max_stn, key=lambda r: r.station.name())
+    rowFmt.addColumn('Rare', '<', max_rare, key=lambda r: _rare_name(r))
+    rowFmt.addColumn('Cost', '>', 10, 'n', key=lambda r: _cost(r))
+    rowFmt.addColumn('DistLy', '>', 6, '.2f', key=lambda r: _dist(r))
+    rowFmt.addColumn('Alloc', '>', 5, key=lambda r: _alloc(r))
+    # First B/mkt: rare legality flag (Y/N/?)
+    rowFmt.addColumn('B/mkt', '>', 4, key=lambda r: _rare_illegal(r))
+    rowFmt.addColumn('StnLs', '>', 10, key=lambda r: _stn_ls(r))
+    # Second B/mkt: station black market availability via mapping
+    rowFmt.addColumn('B/mkt', '>', 4, key=lambda r: _stn_bm(r))
+    rowFmt.addColumn('Pad', '>', 3, key=lambda r: _pad(r))
+    rowFmt.addColumn('Plt', '>', 3, key=lambda r: _plt(r))
+    rowFmt.addColumn('Flc', '>', 3, key=lambda r: _flc(r))
+    rowFmt.addColumn('Ody', '>', 3, key=lambda r: _ody(r))
+
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-    
-    # Print out our results.
-    for row in results.rows:
+
+    for row in rows:
         print(rowFmt.format(row))
