@@ -131,12 +131,9 @@ class System(Base):
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
-
     added_id: Mapped[int | None] = mapped_column(
         ForeignKey("Added.added_id", onupdate="CASCADE", ondelete="CASCADE")
     )
-
-    # keep last-write timestamp semantics
     modified: Mapped[str] = mapped_column(
         DateTime6(),
         server_default=now6(),
@@ -145,14 +142,14 @@ class System(Base):
     )
 
     # Relationships
-    stations: Mapped[list["Station"]] = relationship(
-        back_populates="system", cascade="all, delete-orphan"
-    )
+    added: Mapped[Optional["Added"]] = relationship(back_populates="systems")
+    stations: Mapped[list["Station"]] = relationship(back_populates="system", cascade="all, delete-orphan")
 
     __table_args__ = (
-        UniqueConstraint("name", name="uq_system_name"),
+        Index("idx_system_by_pos", "pos_x", "pos_y", "pos_z", "system_id"),
         Index("idx_system_by_name", "name"),
     )
+
 
 
 
@@ -162,7 +159,7 @@ class Station(Base):
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
 
-    # ⬇️ WIDENED: FK now explicitly BigInteger to match System.system_id
+    # type widened; cascade semantics unchanged (DELETE only)
     system_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("System.system_id", ondelete="CASCADE"),
@@ -182,12 +179,7 @@ class Station(Base):
     planetary: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
 
     type_id: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
-    modified: Mapped[str] = mapped_column(
-        DateTime6(),
-        server_default=now6(),
-        onupdate=now6(),
-        nullable=False,
-    )
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
 
     # Relationships
     system: Mapped["System"] = relationship(back_populates="stations")
@@ -199,6 +191,7 @@ class Station(Base):
         Index("idx_station_by_system", "system_id"),
         Index("idx_station_by_name", "name"),
     )
+
 
 
 
@@ -219,7 +212,10 @@ class Item(Base):
 
     item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    category_id: Mapped[int] = mapped_column(ForeignKey("Category.category_id", ondelete="CASCADE"), nullable=False)
+    category_id: Mapped[int] = mapped_column(
+        ForeignKey("Category.category_id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+    )
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     avg_price: Mapped[int | None] = mapped_column(Integer)
     fdev_id: Mapped[int | None] = mapped_column(Integer)
@@ -234,17 +230,18 @@ class Item(Base):
     )
 
 
+
 class StationItem(Base):
     __tablename__ = "StationItem"
 
-    # ⬇️ WIDENED: FK now explicitly BigInteger to match Station.station_id
     station_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
     item_id: Mapped[int] = mapped_column(
-        ForeignKey("Item.item_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+        ForeignKey("Item.item_id", ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True,
     )
     demand_price: Mapped[int] = mapped_column(Integer, nullable=False)
     demand_units: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -252,26 +249,20 @@ class StationItem(Base):
     supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(
-        DateTime6(),
-        server_default=now6(),
-        onupdate=now6(),
-        nullable=False,
-    )
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
     # Relationships
     station: Mapped["Station"] = relationship(back_populates="items")
     item: Mapped["Item"] = relationship(back_populates="stations")
 
     __table_args__ = (
-        # Recent-changes composite (SQLite canonical)
         Index("si_mod_stn_itm", "modified", "station_id", "item_id"),
-        # Price-side indexes (SQLite: partial indexes)
         Index("si_itm_dmdpr", "item_id", "demand_price", sqlite_where=text("demand_price > 0")),
         Index("si_itm_suppr", "item_id", "supply_price", sqlite_where=text("supply_price > 0")),
-        # SQLite physical layout hint
         {"sqlite_with_rowid": False},
     )
+
 
 
 
@@ -290,29 +281,21 @@ class ShipVendor(Base):
     __tablename__ = "ShipVendor"
 
     ship_id: Mapped[int] = mapped_column(
-        ForeignKey("Ship.ship_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+        ForeignKey("Ship.ship_id", ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True,
     )
-
-    # ⬇️ WIDENED: FK now explicitly BigInteger to match Station.station_id
     station_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
-
-    modified: Mapped[str] = mapped_column(
-        DateTime6(),
-        server_default=now6(),
-        onupdate=now6(),
-        nullable=False,
-    )
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
 
     # Relationships
     ship: Mapped["Ship"] = relationship(back_populates="vendors")
     station: Mapped["Station"] = relationship(back_populates="ship_vendors")
 
     __table_args__ = (Index("idx_shipvendor_by_station", "station_id"),)
-
 
 
 class Upgrade(Base):
@@ -332,22 +315,15 @@ class UpgradeVendor(Base):
     __tablename__ = "UpgradeVendor"
 
     upgrade_id: Mapped[int] = mapped_column(
-        ForeignKey("Upgrade.upgrade_id", ondelete="CASCADE", onupdate="CASCADE"), primary_key=True
+        ForeignKey("Upgrade.upgrade_id", ondelete="CASCADE", onupdate="CASCADE"),
+        primary_key=True,
     )
-
-    # ⬇️ WIDENED: FK now explicitly BigInteger to match Station.station_id
     station_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         primary_key=True,
     )
-
-    modified: Mapped[str] = mapped_column(
-        DateTime6(),
-        server_default=now6(),
-        onupdate=now6(),
-        nullable=False,
-    )
+    modified: Mapped[str] = mapped_column(DateTime6(), nullable=False, server_default=now6(), onupdate=now6())
 
     # Relationships
     upgrade: Mapped["Upgrade"] = relationship(back_populates="vendors")
@@ -356,21 +332,17 @@ class UpgradeVendor(Base):
     __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),)
 
 
-
 class RareItem(Base):
     __tablename__ = "RareItem"
 
     rare_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-
-    # ⬇️ WIDENED: FK now explicitly BigInteger to match Station.station_id
     station_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
         nullable=False,
     )
-
     category_id: Mapped[int] = mapped_column(
-        ForeignKey("Category.category_id", ondelete="CASCADE", onupdate="CASCADE"),
+        ForeignKey("Category.category_id", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
     )
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
@@ -380,6 +352,7 @@ class RareItem(Base):
     suppressed: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
 
     __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
+
 
 
 
@@ -443,9 +416,7 @@ class StationItemStaging(Base):
     """
     __tablename__ = "StationItem_staging"
 
-    # ⬇️ WIDENED: mirror production widths
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-
     item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     demand_price: Mapped[int] = mapped_column(Integer, nullable=False)
     demand_units: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -453,18 +424,11 @@ class StationItemStaging(Base):
     supply_price: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_units: Mapped[int] = mapped_column(Integer, nullable=False)
     supply_level: Mapped[int] = mapped_column(Integer, nullable=False)
-    modified: Mapped[str] = mapped_column(
-        DateTime6(),
-        server_default=now6(),
-        onupdate=now6(),
-        nullable=False,
-    )
+    modified: Mapped[str] = mapped_column(DateTime6(), server_default=now6(), onupdate=now6(), nullable=False)
+    from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
-    __table_args__ = (
-        # Staging gets same composite as live
-        Index("sistaging_mod_stn_itm", "modified", "station_id", "item_id"),
-        {"sqlite_with_rowid": False},
-    )
+    __table_args__ = (Index("idx_sistaging_stn_itm", "station_id", "item_id"),)
+
 
 
 
