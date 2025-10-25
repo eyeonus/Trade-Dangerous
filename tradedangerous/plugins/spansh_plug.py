@@ -19,13 +19,17 @@ from __future__ import annotations
 import io
 import os
 import sys
+import traceback
 import time
-import ijson
+import json # Used for debug tracing 
+import ijson # Used for main stream
 import shutil
 import csv
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 
 # Framework modules
 from .. import plugins, cache, csvexport  # provided by project
@@ -36,7 +40,7 @@ from ..db.lifecycle import ensure_fresh_db
 from ..db.locks import station_advisory_lock
 
 # SQLAlchemy
-from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, text
+from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, text, UniqueConstraint
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -76,6 +80,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         "edcd_outfitting": "Override URL or local path for EDCD outfitting.csv.",
         "edcd_shipyard": "Override URL or local path for EDCD shipyard.csv.",
         "edcd_rares": "Override URL or local path for EDCD rare_commodity.csv.",
+        # --- Extra Debug Options
+        "only_system": "Process only the system with this name or id64; still stream the real file.",
+        "debug_trace": "Emit compact JSONL decision logs to tmp/spansh_trace.jsonl (1 line per decision).",
     }
 
     # Hardcoded EDCD sources (raw GitHub)
@@ -89,6 +96,9 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Construction & plumbing
     # ------------------------------
+    # ------------------------------
+    # Construction & plumbing (REPLACEMENT)
+    # ------------------------------
     def __init__(self, tdb, cmdenv):
         super().__init__(tdb, cmdenv)
         self.tdb = tdb
@@ -98,7 +108,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Paths (data/tmp) from env/config; fall back defensively
         self.data_dir = Path(getattr(self.tdenv, "dataDir", getattr(self.tdb, "dataDir", "data"))).resolve()
         self.tmp_dir = Path(getattr(self.tdenv, "tmpDir", getattr(self.tdb, "tmpDir", "tmp"))).resolve()
-        # Ensure directories exist without relying on helper order
         for p in (self.data_dir, self.tmp_dir):
             try:
                 p.mkdir(parents=True, exist_ok=True)
@@ -116,8 +125,73 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Progress state
         self._last_progress_time = 0.0
 
-        # Station type mapping
+        # Station type mapping (existing helper in this module)
         self._station_type_map = self._build_station_type_map()
+
+        # Debug trace option
+        self.debug_trace = str(self.getOption("debug_trace") or "0").strip().lower() not in ("0", "", "false", "no")
+        self._trace_fp = None
+
+    # --------------------------------------
+    # Small tracing helper 
+    # --------------------------------------
+    def _trace(self, **evt) -> None:
+        """
+        Lightweight debug tracer. Writes one compact JSON line per call
+        into tmp/spansh_trace.jsonl when -O debug_trace=1 is set.
+        Has no side-effects on existing logic if disabled.
+        """
+        if not getattr(self, "debug_trace", False):
+            return
+        try:
+            import json
+            # lazily open file handle if not yet opened
+            if not hasattr(self, "_trace_fp") or self._trace_fp is None:
+                tmp = getattr(self, "tmp_dir", Path("tmp"))
+                tmp.mkdir(parents=True, exist_ok=True)
+                self._trace_fp = (tmp / "spansh_trace.jsonl").open("a", encoding="utf-8")
+
+            # sanitize datetimes
+            for k, v in list(evt.items()):
+                if hasattr(v, "isoformat"):
+                    evt[k] = v.isoformat()
+
+            self._trace_fp.write(json.dumps(evt, ensure_ascii=False) + "\n")
+            self._trace_fp.flush()
+        except Exception:
+            pass  # never break main flow
+
+    # --- TD shim: seed 'Added' from templates (idempotent) ---
+    def _seed_added_from_templates(self, session) -> None:
+        """
+        Seed the legacy 'Added' table from the packaged CSV:
+            tradedangerous/templates/Added.csv
+
+        DB-agnostic; uses cache.processImportFile. No reliance on any templatesDir.
+        """
+        from importlib.resources import files, as_file
+        from tradedangerous.cache import processImportFile
+
+        # Obtain a Traversable for the packaged resource and materialize to a real path
+        res = files("tradedangerous").joinpath("templates", "Added.csv")
+        with as_file(res) as csv_path:
+            if not csv_path.exists():
+                # Graceful failure so schedulers can retry
+                raise CleanExit(f"Packaged Added.csv not found: {csv_path}")
+            try:
+                processImportFile(
+                    tdenv=self.tdenv,
+                    session=session,
+                    importPath=csv_path,
+                    tableName="Added",
+                )
+            except Exception as e:
+                # Keep diagnostics, but avoid hard process exit
+                self._warn("Seeding 'Added' from templates failed; continuing without it.")
+                self._warn(f"{type(e).__name__}: {e}")
+                traceback.print_exc()
+                raise CleanExit("Failed to seed 'Added' table from templates.")
+
 
     # --------------------------------------
     # EDCD Import Functions
@@ -242,7 +316,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         Prefers the table's primary key; if absent, falls back to a single-column
         UNIQUE key (e.g. 'id' in FDev tables). Returns approx rows written.
         """
-
         # --- choose key columns for upsert ---
         pk_cols = tuple(c.name for c in table.primary_key.columns)
         key_cols: tuple[str, ...] = pk_cols
@@ -279,6 +352,25 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not rows:
             return 0
 
+        # --- table-specific sanitation (fixes ck_fdo_mount / ck_fdo_guidance) ---
+        if table.name == "FDevOutfitting":
+            allowed_mount = {"Fixed", "Gimballed", "Turreted"}
+            allowed_guid  = {"Dumbfire", "Seeker", "Swarm"}
+
+            def _norm(val, allowed):
+                if val is None:
+                    return None
+                s = str(val).strip()
+                if not s or s not in allowed:
+                    return None
+                return s
+
+            for r in rows:
+                if "mount" in r:
+                    r["mount"] = _norm(r["mount"], allowed_mount)
+                if "guidance" in r:
+                    r["guidance"] = _norm(r["guidance"], allowed_guid)
+
         # --- perform upsert using chosen key columns ---
         upd_cols = tuple(c for c in cols if c not in key_cols)
 
@@ -304,192 +396,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         u = self._edcd_import_table_direct(session, tables["FDevOutfitting"], outfitting_csv)
         s = self._edcd_import_table_direct(session, tables["FDevShipyard"],   shipyard_csv)
         return (u, s)
-
-    # ---------- EDCD: Rares (DB-filtered) ----------
-    def _import_rareitems_edcd(self, rares_csv: Path, commodity_csv: Optional[Path] = None) -> None:
-        """
-        Import RareItem from EDCD rare_commodity.csv into TD schema:
-          - Map (system, station) strings to Station.station_id (with light normalization).
-          - Map rare 'name' -> Category via EDCD commodity.csv, then DB Category table.
-          - Clear table, then upsert by UNIQUE(name). Logs detailed counts.
-        """
-        import csv
-        from sqlalchemy import text
-
-        # ---- minimal but robust normalizer for name matching ----
-        def _norm(s: Optional[str]) -> str:
-            if s is None:
-                return ""
-            s = s.strip().strip("'").strip('"')            # drop outer quotes
-            s = s.replace("’", "'").replace("‘", "'")      # unify curly → straight apostrophes
-            s = s.replace("–", "-").replace("—", "-")      # unify dashes
-            s = " ".join(s.split())                        # collapse whitespace
-            return s.casefold()                            # case-insensitive
-
-        # Case-insensitive header resolver that tolerates underscores/spaces.
-        def _kwant(fieldnames, *aliases) -> Optional[str]:
-            if not fieldnames:
-                return None
-            canon = {}
-            for h in fieldnames:
-                if not h:
-                    continue
-                k = h.strip().lower().replace("_", "").replace(" ", "")
-                canon[k] = h
-            for a in aliases:
-                k = a.strip().lower().replace("_", "").replace(" ", "")
-                if k in canon:
-                    return canon[k]
-            return None
-
-        sess = None
-        try:
-            sess = self._open_session()
-            tables = self._reflect_tables(sess.get_bind())
-            t_sys, t_stn, t_cat, t_rare = tables["System"], tables["Station"], tables["Category"], tables["RareItem"]
-
-            # 1) Build (system, station) -> station_id map
-            stn_map: Dict[tuple[str, str], int] = {}
-            for sid, sys_name, stn_name in sess.execute(
-                select(t_stn.c.station_id, t_sys.c.name, t_stn.c.name)
-                .where(t_stn.c.system_id == t_sys.c.system_id)
-            ).all():
-                if sys_name and stn_name:
-                    stn_map[(_norm(sys_name), _norm(stn_name))] = int(sid)
-
-            # 2) DB Category name -> id
-            cat_id_by_name = {
-                _norm(n): int(cid)
-                for cid, n in sess.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
-                if n is not None
-            }
-
-            # 3) From EDCD commodity.csv, map rare product name -> category id
-            name_to_catid: Dict[str, int] = {}
-            if commodity_csv is None:
-                # Prefer cached EDCD dict (set by the caller) to avoid re-downloads
-                edcd_cached = getattr(self, "_cached_edcd_files", None)
-                if edcd_cached and edcd_cached.get("commodity"):
-                    commodity_csv = edcd_cached["commodity"]
-                else:
-                    files = self._acquire_edcd_files()
-                    commodity_csv = files.get("commodity")
-
-            if commodity_csv and Path(commodity_csv).exists():
-                with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
-                    reader = csv.DictReader(fh)
-                    k_name = _kwant(reader.fieldnames, "name", "commodity", "commodityname", "product")
-                    k_cat  = _kwant(reader.fieldnames, "category", "categoryname")
-                    if k_name and k_cat:
-                        for row in reader:
-                            n = _norm(row.get(k_name))
-                            c = _norm(row.get(k_cat))
-                            if n and c:
-                                cid = cat_id_by_name.get(c)
-                                if cid is not None:
-                                    name_to_catid[n] = cid
-
-            # 4) Parse rares and stage rows
-            kept = skipped = 0
-            skipped_no_station = 0
-            skipped_no_category = 0
-            out_rows: list[dict] = []
-
-            with open(rares_csv, "r", encoding="utf-8", newline="") as fh:
-                reader = csv.DictReader(fh)
-                # Accept a variety of header variants commonly seen in the EDCD file
-                k_name = _kwant(reader.fieldnames, "name", "commodity", "commodityname", "product")
-                k_system = _kwant(reader.fieldnames, "system", "systemname")
-                k_station = _kwant(reader.fieldnames, "station", "stationname")
-                if not (k_name and k_system and k_station):
-                    got = ", ".join(reader.fieldnames or [])
-                    raise CleanExit(
-                        f"rare_commodity.csv missing required columns (need name, system, station). "
-                        f"Headers seen: [{got}]  File: {rares_csv}"
-                    )
-
-                for row in reader:
-                    rn_raw = row.get(k_name)
-                    sys_raw = row.get(k_system)
-                    stn_raw = row.get(k_station)
-
-                    rn = _norm(rn_raw)
-                    sysn = _norm(sys_raw)
-                    stnn = _norm(stn_raw)
-
-                    if not rn or not sysn or not stnn:
-                        skipped += 1
-                        continue
-
-                    sid = stn_map.get((sysn, stnn))
-                    if sid is None:
-                        skipped += 1; skipped_no_station += 1
-                        if getattr(self, "verbose", 0) and self.verbose >= 2:
-                            self._warn(f"Rares skip: station not found → {sys_raw} / {stn_raw} / {rn_raw}")
-                        continue
-
-                    cid = name_to_catid.get(rn)
-                    if cid is None:
-                        skipped += 1; skipped_no_category += 1
-                        if getattr(self, "verbose", 0) and self.verbose >= 2:
-                            self._warn(f"Rares skip: category not found → product={rn_raw}")
-                        continue
-
-                    out_rows.append({
-                        "name": rn_raw,           # store original-cased product name
-                        "station_id": sid,
-                        "category_id": cid,
-                        "cost": None,
-                        "max_allocation": None,
-                    })
-                    kept += 1
-
-            # 5) Clear then upsert by UNIQUE(name)
-            try:
-                sess.execute(text('DELETE FROM "RareItem"'))
-            except Exception:
-                sess.execute(text("DELETE FROM RareItem"))
-
-            if out_rows:
-                if db_utils.is_sqlite(sess):
-                    db_utils.sqlite_upsert_simple(
-                        sess, t_rare, rows=out_rows, key_cols=("name",),
-                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
-                    )
-                elif db_utils.is_mysql(sess):
-                    db_utils.mysql_upsert_simple(
-                        sess, t_rare, rows=out_rows, key_cols=("name",),
-                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
-                    )
-                else:
-                    for r in out_rows:
-                        ex = sess.execute(select(t_rare.c.name).where(t_rare.c.name == r["name"])).first()
-                        if ex is None:
-                            sess.execute(insert(t_rare).values(**r))
-                        else:
-                            sess.execute(
-                                update(t_rare).where(t_rare.c.name == r["name"])
-                                .values({k: v for k in r.keys() if k != "name"})
-                            )
-            sess.commit()
-
-            # 6) Always print summary
-            msg = f"EDCD Rares: imported={kept:,}  skipped={skipped:,}"
-            if skipped:
-                msg += f"  (no_station={skipped_no_station:,}, no_category={skipped_no_category:,})"
-            self._print(msg)
-
-        except Exception as e:
-            if sess is not None:
-                try: sess.rollback()
-                except Exception: pass
-            raise CleanExit(f"RareItem import failed: {e!r}")
-        finally:
-            if sess is not None:
-                try: sess.close()
-                except Exception: pass
-
-
 
     # --------------------------------------
     # Comparison Helpers
@@ -932,32 +838,45 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception as e:
             self._error(f"Acquisition failed: {e!r}"); return False
 
-        # Bootstrap DB (protect RareItem.csv name swap during bootstrap)
-        ri_path = Path(self.tdb.dataPath, "RareItem.csv")
-        rib_path = ri_path.with_suffix(".tmp")
+        # -------- Bootstrap DB (no cache rebuild here) --------
         try:
-            if ri_path.exists():
-                if rib_path.exists(): rib_path.unlink()
-                ri_path.rename(rib_path)
-
-            backend = getattr(self.tdb.engine.dialect, "name", None) or "unknown"
+            backend  = self.tdb.engine.dialect.name.lower()
             data_dir = Path(getattr(self.tdenv, "dataDir", getattr(self.tdb, "dataDir", "data")))
             metadata = getattr(self.tdb, "metadata", None)
+
             summary = ensure_fresh_db(
-                backend=backend, engine=self.tdb.engine,
-                data_dir=data_dir, metadata=metadata,
-                mode="auto", tdb=self.tdb, tdenv=self.tdenv,
+                backend=backend,
+                engine=self.tdb.engine,
+                data_dir=data_dir,
+                metadata=metadata,
+                mode="auto",
+                tdb=self.tdb,
+                tdenv=self.tdenv,
+                rebuild=False,   # do not run buildCache here
             )
-            self._print(f"DB bootstrap: action={summary.get('action')} reason={summary.get('reason','ok')} backend={summary.get('backend')}")
+            self._print(
+                f"DB bootstrap: action={summary.get('action','kept')} "
+                f"reason={summary.get('reason','ok')} backend={summary.get('backend')}"
+            )
+
+            # No valid DB? Create full schema now (SQLite from canonical SQL; MariaDB via ORM)
+            if summary.get("action") == "needs_rebuild":
+                from tradedangerous.db.lifecycle import reset_db
+                db_path = Path(self.tdb.engine.url.database or (data_dir / "TradeDangerous.db"))  # SQLite only
+                self._print("No valid DB detected — creating full schema…")
+                reset_db(self.tdb.engine, db_path=db_path)
+
+                # Seed 'Added' once on a fresh schema
+                self.session = self._open_session()
+                self._seed_added_from_templates(self.session)
+                self.session.commit()
+                self._safe_close_session()
+
         except Exception as e:
             self._error(f"Database bootstrap failed: {e!r}")
             return False
-        finally:
-            if rib_path.exists():
-                if ri_path.exists(): ri_path.unlink()
-                rib_path.rename(ri_path)
 
-        # Session + batch + reflection
+        # -------- Session + batch + reflection --------
         try:
             self.session = self._open_session()
             self.batch_size = self._resolve_batch_size()
@@ -968,27 +887,34 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # -------- EDCD preloads (hardcoded URLs; can be disabled) --------
         edcd = self._acquire_edcd_files()
+
+        # Categories (add-only) — COMMIT immediately so they persist even if later phases fail.
         try:
             if edcd.get("commodity"):
                 added = self._edcd_import_categories_add_only(self.session, tables, edcd["commodity"])
                 if added:
                     self._print(f"EDCD categories: added {added} new categories")
                 self.session.commit()
+        except CleanExit as ce:
+            self._warn(str(ce)); return False
         except Exception as e:
             self._warn(f"EDCD categories skipped due to error: {e!r}")
 
+        # FDev catalogs (outfitting, shipyard) — COMMIT immediately as well.
         try:
             if edcd.get("outfitting") and edcd.get("shipyard"):
-                u, s = self._edcd_import_fdev_catalogs(self.session, tables,
-                                                       outfitting_csv=edcd["outfitting"],
-                                                       shipyard_csv=edcd["shipyard"])
+                u, s = self._edcd_import_fdev_catalogs(
+                    self.session, tables,
+                    outfitting_csv=edcd["outfitting"],
+                    shipyard_csv=edcd["shipyard"],
+                )
                 if (u + s) > 0:
                     self._print(f"EDCD FDev: Outfitting upserts={u:,}  Shipyard upserts={s:,}")
                 self.session.commit()
         except Exception as e:
             self._warn(f"EDCD FDev catalogs skipped due to error: {e!r}")
 
-        # Load categories (may have grown)
+        # Load categories (may have grown) before Spansh import
         try:
             categories = self._load_categories(self.session, tables)
         except Exception as e:
@@ -998,11 +924,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         # -------- Import Spansh JSON --------
         try:
             if self._debug_level < 1:
-                self._print("This will take at least several minutes...")
+                self._print("This will take at least several minutes.")
                 self._print("You can increase verbosity (-v) to get a sense of progress")
             self._print("Importing spansh data")
             stats = self._import_stream(source_path, categories, tables)
             self._end_live_status()
+
             mk_e = stats.get("market_writes", 0) + stats.get("market_stations", 0)
             of_e = stats.get("outfit_writes", 0) + stats.get("outfit_stations", 0)
             sh_e = stats.get("ship_writes", 0) + stats.get("ship_stations", 0)
@@ -1050,15 +977,14 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # -------- Export (uses your parallel exporter already present) --------
         try:
-            t0 = time.time()
-            self._export_and_mirror()
-            self._print(f"Cache export completed in {time.time()-t0:.2f}s")
+            self._export_and_mirror()  # timing + final print handled inside
         except Exception as e:
             self._error(f"Export failed: {e!r}"); return False
 
         elapsed = self._format_hms(time.time() - started)
         self._print(f"{elapsed}  Done")
         return False
+
 
 
     def finish(self) -> bool:
@@ -1125,7 +1051,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         req = urllib.request.Request(url, method="GET")
         connect_timeout = 30
-        read_timeout = 60
         chunk = 8 * 1024 * 1024  # 8 MiB
 
         try:
@@ -1154,7 +1079,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 pass
             if lm_header:
                 try:
-                    from email.utils import parsedate_to_datetime
                     got_lm = parsedate_to_datetime(lm_header).astimezone(timezone.utc).replace(tzinfo=None)
                     ts = got_lm.replace(tzinfo=timezone.utc).timestamp()
                     os.utime(cache_path, (ts, ts))
@@ -1185,33 +1109,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         else:
             msg = f"{label}: {self._fmt_bytes(downloaded)} read  {self._fmt_bytes(rate)}/s"
         self._live_status(msg)
-
-    def _parse_progress(self, consumed_bytes: int, start_ts: float, *, min_interval: float = 0.5) -> None:
-        """
-        Update parse progress (bytes + rate). Standalone heartbeat until importing begins.
-        """
-        now = time.time()
-        if now - self._last_progress_time < min_interval:
-            elapsed = max(now - start_ts, 1e-9)
-            self._parse_bytes = consumed_bytes
-            self._parse_rate = consumed_bytes / elapsed
-            return
-        self._last_progress_time = now
-
-        if not hasattr(self, "_parse_bytes"):
-            self._parse_bytes = 0
-        if not hasattr(self, "_parse_rate"):
-            self._parse_rate = 0.0
-        if not hasattr(self, "_started_importing"):
-            self._started_importing = False
-
-        elapsed = max(now - start_ts, 1e-9)
-        self._parse_bytes = consumed_bytes
-        self._parse_rate = consumed_bytes / elapsed
-
-        if not self._started_importing:
-            msg = f"Parsing Spansh: {self._fmt_bytes(self._parse_bytes)} read  {self._fmt_bytes(self._parse_rate)}/s"
-            self._live_status(msg)
 
     def _write_stream_to_file(self, stream: io.BufferedReader, dest: Path) -> None:
         part = dest.with_suffix(dest.suffix + ".part")
@@ -1285,6 +1182,12 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _import_stream(self, source_path: Path, categories: Dict[str, int], tables: Dict[str, Table]) -> Dict[str, int]:
         """
         Streaming importer with service-level maxage gating (FK-safe), using per-row rules.
+
+        FIXES:
+        - Batch commits now honor utils.get_import_batch_size() across *all* parent/child ops.
+        - System/Station increments are counted in stats and batch_ops.
+        - Commit checks occur before each station is processed (outside advisory lock scope),
+          reducing long transactions and making Ctrl-C loss less likely.
         """
         batch_ops = 0
         stats = {
@@ -1293,6 +1196,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             "market_writes": 0, "outfit_writes": 0, "ship_writes": 0,
             "commodities": 0,
         }
+
+        # NEW: initialize parse metrics for _progress_line(); iterator keeps these updated
+        self._parse_bytes = 0
+        self._parse_rate = 0.0
 
         maxage_days = float(self.getOption("maxage")) if self.getOption("maxage") else None
         maxage_td = timedelta(days=maxage_days) if maxage_days is not None else None
@@ -1329,6 +1236,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         self._warn(f"Skipping malformed system object at index {sys_idx}")
                     continue
 
+                self._trace(phase="system", decision="consider", name=sys_name, id64=sys_id64)
+
+                # Collect stations (top-level + body-embedded)
                 stations: List[Dict[str, Any]] = []
                 if isinstance(system_obj.get("stations"), list):
                     stations.extend(system_obj["stations"])
@@ -1340,132 +1250,116 @@ class ImportPlugin(plugins.ImportPluginBase):
                             if isinstance(stl, list):
                                 stations.extend(stl)
 
-                def station_fresh_any(st: Dict[str, Any]) -> bool:
-                    raw_services = st.get("services") or []
-                    if not isinstance(raw_services, list):
-                        return False
-                    svcset = {s.strip().lower() for s in raw_services if isinstance(s, str)}
-                    has_market = "market" in svcset
-                    has_outfit = "outfitting" in svcset
-                    has_ship = "shipyard" in svcset
-                    if not (has_market or has_outfit or has_ship):
-                        return False
-                    mkt_ts = svc_ts(st, "market") if has_market else None
-                    outf_ts = svc_ts(st, "outfitting") if has_outfit else None
-                    ship_ts = svc_ts(st, "shipyard") if has_ship else None
-                    return any(recent(t) for t in (mkt_ts, outf_ts, ship_ts))
+                # --- System upsert ---
+                t_system = tables["System"]
+                x = coords.get("x"); y = coords.get("y"); z = coords.get("z")
+                sys_modified = self._parse_ts(system_obj.get("updateTime"))
+                self._upsert_system(t_system, int(sys_id64), str(sys_name), x, y, z, sys_modified)
 
-                if maxage_td is not None and not any(station_fresh_any(st) for st in stations):
-                    continue
-
-                # Upsert System
-                x, y, z = coords.get("x"), coords.get("y"), coords.get("z")
-                sys_date = self._parse_ts(system_obj.get("date"))
-                self._upsert_system(tables["System"], sys_id64, sys_name, x, y, z, sys_date)
+                # Count system progress and participate in batching
                 stats["systems"] += 1
                 batch_ops += 1
 
-                imported_station_modifieds: List[datetime] = []
+                imported_station_modifieds: list[datetime] = []
 
-                # Stations
                 for st in stations:
-                    station_id = st.get("id")
-                    st_name = st.get("name")
-                    if station_id is None or st_name is None:
+                    # Periodic commit BEFORE processing the next station (outside any advisory locks)
+                    if (self.batch_size is not None) and (batch_ops >= self.batch_size):
+                        try:
+                            self.session.commit()
+                            batch_ops = 0
+                        except Exception as e:
+                            self._warn(f"Batch commit failed; rolling back. Cause: {e!r}")
+                            self.session.rollback()
+
+                    name = st.get("name")
+                    sid = st.get("id")
+                    if not isinstance(name, str) or sid is None:
                         continue
-                    try:
-                        seen_station_ids.add(int(station_id))
-                    except Exception:
-                        pass
+                    station_id = int(sid)
+                    seen_station_ids.add(station_id)
+                    stats["stations"] += 1
+                    # Count at least one op per station so batching still progresses even if no vendor writes occur
+                    batch_ops += 1
 
-                    raw_services = st.get("services") or []
-                    if not isinstance(raw_services, list):
-                        continue
-                    services = {s.strip().lower(): s for s in raw_services if isinstance(s, str)}
+                    # NEW: drive live progress from here (throttled inside _progress_line)
+                    self._progress_line(stats)
 
-                    has_market = "market" in services
-                    has_outfit = "outfitting" in services
-                    has_ship = "shipyard" in services
-                    if not (has_market or has_outfit or has_ship):
-                        continue
-
-                    ship_ts = svc_ts(st, "shipyard") if has_ship else None
-                    outf_ts = svc_ts(st, "outfitting") if has_outfit else None
-                    mkt_ts = svc_ts(st, "market") if has_market else None
-
-                    ship_fresh = recent(ship_ts)
+                    # Flags/timestamps
+                    has_market = bool(st.get("hasMarket") or ("market" in st))
+                    has_outfit = bool(st.get("hasOutfitting") or ("outfitting" in st))
+                    has_ship   = bool(st.get("hasShipyard") or ("shipyard" in st))
+                    mkt_ts  = svc_ts(st, "market")
+                    outf_ts = svc_ts(st, "outfitting")
+                    ship_ts = svc_ts(st, "shipyard")
+                    mkt_fresh  = recent(mkt_ts)
                     outf_fresh = recent(outf_ts)
-                    mkt_fresh = recent(mkt_ts)
+                    ship_fresh = recent(ship_ts)
 
-                    if not (ship_fresh or outf_fresh or mkt_fresh):
-                        continue
-
-                    # Station fields
-                    dist = st.get("distanceToArrival")
-                    ls_from_star = int(round(dist)) if isinstance(dist, (int, float)) else 999999
-                    type_name = st.get("type")
-                    landing = st.get("landingPads") or {}
-                    type_id, planetary = self._map_station_type(type_name)
-                    max_pad = self._derive_pad_size(landing)
-
-                    svcset = set(services.keys())
-                    has_rearm = ("restock" in svcset) or ("rearm" in svcset)
-                    has_blackmkt = ("black market" in svcset) or ("blackmarket" in svcset)
-                    has_refuel = "refuel" in svcset
-                    has_repair = "repair" in svcset
-
+                    # Station upsert (idempotent)
+                    t_station = tables["Station"]
+                    type_id, planetary = self._map_station_type(st.get("type"))
+                    pads = st.get("landingPads") or {}
+                    max_pad = self._derive_pad_size(pads)
                     sflags = {
                         "market": "Y" if has_market else "N",
-                        "blackmarket": "Y" if has_blackmkt else "N",
+                        "blackmarket": "?" if st.get("hasBlackmarket") is None else ("Y" if st.get("hasBlackmarket") else "N"),
                         "shipyard": "Y" if has_ship else "N",
                         "outfitting": "Y" if has_outfit else "N",
-                        "rearm": "Y" if has_rearm else "N",
-                        "refuel": "Y" if has_refuel else "N",
-                        "repair": "Y" if has_repair else "N",
-                        "planetary": "Y" if planetary else "N",
+                        "rearm": "?" if st.get("hasRearm") is None else ("Y" if st.get("hasRearm") else "N"),
+                        "refuel": "?" if st.get("hasRefuel") is None else ("Y" if st.get("hasRefuel") else "N"),
+                        "repair": "?" if st.get("hasRepair") is None else ("Y" if st.get("hasRepair") else "N"),
                     }
+                    st_modified = self._parse_ts(st.get("updateTime"))
+                    if st_modified:
+                        imported_station_modifieds.append(st_modified)
 
-                    st_effective_mod = max(
-                        [t for t, ok in ((mkt_ts, mkt_fresh), (outf_ts, outf_fresh), (ship_ts, ship_fresh)) if ok and t is not None],
-                        default=None
-                    )
+                    ls_from_star_val = st.get("distanceToArrival", 0)
+                    try:
+                        if ls_from_star_val is None:
+                            ls_from_star_val = 0
+                        else:
+                            ls_from_star_val = int(float(ls_from_star_val))
+                            if ls_from_star_val < 0:
+                                ls_from_star_val = 0
+                    except Exception:
+                        ls_from_star_val = 0
 
                     self._upsert_station(
-                        tables["Station"],
-                        station_id, sys_id64, st_name, ls_from_star,
-                        max_pad, type_id, planetary, sflags, st_effective_mod
+                        t_station, station_id=int(station_id), system_id=int(sys_id64), name=name,
+                        ls_from_star=ls_from_star_val, max_pad=max_pad,
+                        type_id=int(type_id), planetary=planetary, sflags=sflags, modified=st_modified
                     )
-                    stats["stations"] += 1
-                    batch_ops += 1
-                    if st_effective_mod is not None:
-                        imported_station_modifieds.append(st_effective_mod)
 
-                    # Shipyard
+                    # ----------------------------
+                    # Ship vendor
+                    # ----------------------------
                     if has_ship and ship_fresh:
                         ships = (st.get("shipyard") or {}).get("ships") or []
                         if isinstance(ships, list) and ships:
                             if force_baseline:
-                                wrote = self._upsert_shipyard(tables, station_id, ships, ship_ts)
-                                _, _, delc = self._apply_vendor_block_per_rules(
-                                    tables["ShipVendor"], station_id,
-                                    (s.get("shipId") for s in ships if isinstance(s, dict)),
+                                wrote, _, delc = self._apply_vendor_block_per_rules(
+                                    tables["ShipVendor"], station_id, (s.get("shipId") for s in ships if isinstance(s, dict)),
                                     ship_ts, id_col="ship_id",
                                 )
                                 if wrote or delc:
                                     stats["ship_writes"] += 1
-                                batch_ops += (wrote + delc)
+                                    batch_ops += (wrote + delc)
+                                stats["ship_stations"] += 1
                             else:
                                 wrote, delc = self._sync_vendor_block_fast(
                                     tables, station_id=station_id, entries=ships, ts_sp=ship_ts, kind="ship"
                                 )
                                 if wrote or delc:
                                     stats["ship_writes"] += 1
+                                    batch_ops += (wrote + delc)
                                 stats["ship_stations"] += 1
-                                batch_ops += (wrote + delc)
                         else:
                             stats["ship_stations"] += 1
 
-                    # Outfitting
+                    # ----------------------------
+                    # Outfitting vendor
+                    # ----------------------------
                     if has_outfit and outf_fresh:
                         modules = (st.get("outfitting") or {}).get("modules") or []
                         if isinstance(modules, list) and modules:
@@ -1478,47 +1372,57 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 )
                                 if wrote or delc:
                                     stats["outfit_writes"] += 1
-                                batch_ops += (wrote + delc)
+                                    batch_ops += (wrote + delc)
+                                stats["outfit_stations"] += 1
                             else:
                                 wrote, delc = self._sync_vendor_block_fast(
                                     tables, station_id=station_id, entries=modules, ts_sp=outf_ts, kind="module"
                                 )
                                 if wrote or delc:
                                     stats["outfit_writes"] += 1
+                                    batch_ops += (wrote + delc)
                                 stats["outfit_stations"] += 1
-                                batch_ops += (wrote + delc)
                         else:
                             stats["outfit_stations"] += 1
 
-                    # MARKET (advisory lock around the per-station write)
+                    # ----------------------------
+                    # Market (commit check already happened before this station)
+                    # ----------------------------
                     if has_market and mkt_fresh:
                         commodities = (st.get("market") or {}).get("commodities") or []
                         if isinstance(commodities, list) and commodities:
-                            # Acquire per-station lock (NO-OP on SQLite); skip station if not acquired
                             from ..db.locks import station_advisory_lock
+                            # The advisory lock context pins lock + DML to the same connection/txn.
                             with station_advisory_lock(self.session, station_id, timeout_seconds=0.2, max_retries=4) as got:
                                 if not got:
                                     # Could not acquire; try this station on a later pass
                                     continue
 
+                                self._trace(phase="market", decision="process",
+                                            station_id=station_id, commodities=len(commodities))
+
                                 if force_baseline:
-                                    # Overwrite all + delete extras (from_live=0 in helper)
-                                    wrote_i, wrote_si = self._upsert_market(tables, categories, station_id, commodities, mkt_ts)
+                                    wrote_i, wrote_si = self._upsert_market(
+                                        tables, categories, station_id, commodities, mkt_ts
+                                    )
                                     # Remove any extras unconditionally (baseline reset)
                                     t_si = tables["StationItem"]
                                     keep_ids = {
                                         int(co.get("commodityId"))
-                                        for co in commodities if isinstance(co, dict) and co.get("commodityId") is not None
+                                        for co in commodities
+                                        if isinstance(co, dict) and co.get("commodityId") is not None
                                     }
                                     if keep_ids:
                                         self.session.execute(
-                                            t_si.delete().where(and_(t_si.c.station_id == station_id, ~t_si.c.item_id.in_(keep_ids)))
+                                            t_si.delete().where(
+                                                and_(t_si.c.station_id == station_id, ~t_si.c.item_id.in_(keep_ids))
+                                            )
                                         )
                                     stats["commodities"] += wrote_si
                                     if wrote_si or wrote_i:
                                         stats["market_writes"] += 1
+                                        batch_ops += (wrote_i + wrote_si)
                                     stats["market_stations"] += 1
-                                    batch_ops += (wrote_i + wrote_si)
                                 else:
                                     wrote_links, delc = self._sync_market_block_fast(
                                         tables, categories,
@@ -1528,40 +1432,29 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     )
                                     if wrote_links or delc:
                                         stats["market_writes"] += 1
+                                        batch_ops += (wrote_links + delc)
                                     stats["market_stations"] += 1
-                                    batch_ops += (wrote_links + delc)
                         else:
-                            # Market service present and fresh but no commodities array
                             stats["market_stations"] += 1
 
-                    # Progress & batching
-                    self._progress_line(stats)
-                    if (self.batch_size is not None) and self.batch_size > 0 and (batch_ops >= self.batch_size):
-                        t0 = time.time()
-                        try:
-                            self.session.commit()
-                        except Exception as e:
-                            self.session.rollback()
-                            raise CleanExit(f"Commit failed; rolled back. Cause: {e!r}")
-                        finally:
-                            batch_ops = 0
-                        if self._debug_level >= 3:
-                            self._print(f"commit: {self.batch_size} ops in {time.time() - t0:.2f}s")
-
-                # Finalize system.modified
-                sys_modified_final = max(imported_station_modifieds) if imported_station_modifieds else sys_date
-                self._upsert_system(tables["System"], sys_id64, sys_name, x, y, z, sys_modified_final)
-
-        # Absent-station cleanup
+        # Baseline absent-station cleanup (global, after full stream)
+        # We only remove baseline content (from_live=0 for markets; vendor links)
+        # and only where modified <= json_ts, so anything newer (e.g. live/ZMQ) is preserved.
         try:
-            dm, du, ds = self._cleanup_absent_stations(tables, seen_station_ids, json_ts)
-            if self._debug_level >= 2:
-                self._print(f"Cleanup (absent stations): market_del={dm:,} outfit_del={du:,} ship_del={ds:,}")
+            if force_baseline and seen_station_ids:
+                m_del, u_del, s_del = self._cleanup_absent_stations(
+                    tables,
+                    present_station_ids=seen_station_ids,
+                    json_ts=json_ts,
+                )
+                if (m_del + u_del + s_del) > 0 and self._debug_level >= 1:
+                    self._print(
+                        f"Baseline cleanup: markets={m_del:,}  upgrades={u_del:,}  ships={s_del:,}"
+                    )
         except Exception as e:
             self._warn(f"Absent-station cleanup skipped due to error: {e!r}")
 
         return stats
-
 
 
     # ------------------------------
@@ -2126,7 +2019,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
                 else:
                     # Legacy/community: need commodity.csv to map product -> category
-                    import csv as _csv
                     name_to_catid: Dict[str, int] = {}
                     if commodity_csv is None:
                         files = self._acquire_edcd_files()
@@ -2239,7 +2131,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     def _export_cache(self) -> None:
         """Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating."""
-        from concurrent.futures import ThreadPoolExecutor, as_completed
 
         # Option/env gate for StationItem export (large file)
         def _opt_true(val: Optional[str]) -> bool:
@@ -2319,9 +2210,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         If TD_CSV is set, mirror all CSVs emitted into tdenv.dataDir to TD_CSV.
         Avoids running csvexport twice (Spansh already produced the CSVs).
         """
-        import os
-        from pathlib import Path
-        import shutil
         src_dir = Path(self.tdenv.dataDir).resolve()
         dst_env = os.environ.get("TD_CSV")
         if not dst_env:
@@ -2392,6 +2280,8 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _iter_top_level_json_array(self, fh: io.BufferedReader) -> Generator[Dict[str, Any], None, None]:
         """
         High-performance streaming reader for a huge top-level JSON array of systems.
+        NOTE: As of 2025-10, we removed _parse_progress(). This iterator now
+        maintains byte/rate metrics only; rendering is handled by _progress_line().
         """
         start_ts = time.time()
         last_tick_systems = 0
@@ -2401,19 +2291,28 @@ class ImportPlugin(plugins.ImportPluginBase):
         for idx, obj in enumerate(it, 1):
             if (idx - last_tick_systems) >= TICK_EVERY:
                 last_tick_systems = idx
+                # Update parse metrics (no printing here)
                 try:
-                    self._parse_progress(fh.tell(), start_ts)
+                    pos = fh.tell()
+                    elapsed = max(time.time() - start_ts, 1e-9)
+                    self._parse_bytes = pos
+                    self._parse_rate = pos / elapsed
                 except Exception:
                     pass
             yield obj
 
+        # Final metric update at EOF
         try:
-            self._parse_progress(fh.tell(), start_ts)
+            pos = fh.tell()
+            elapsed = max(time.time() - start_ts, 1e-9)
+            self._parse_bytes = pos
+            self._parse_rate = pos / elapsed
         except Exception:
             pass
 
         if self._is_tty:
             self._live_status("")
+
 
     # ------------------------------
     # Mapping / derivations / misc
@@ -2512,7 +2411,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Single-line live status while importing.
 
         Modes:
-          - default (verbose-ish): current rich line
+          - default (verbose-ish): rich long line
           - compact: shorter, log-friendly line (enable with -O progress_compact=1 or TD_PROGRESS_COMPACT=1)
         """
         now = time.time()
@@ -2521,7 +2420,15 @@ class ImportPlugin(plugins.ImportPluginBase):
         self._last_progress_time = now
         self._started_importing = True
 
-        compact = bool(self.getOption("progress_compact")) or (os.getenv("TD_PROGRESS_COMPACT", "0") == "1")
+        # Determine compact mode (CLI overrides env; default is rich/False)
+        # Truthy whitelist: 1, true, yes, on, y (case-insensitive)
+        _opt = self.getOption("progress_compact")
+        if _opt is not None:
+            _val = str(_opt).strip().lower()
+        else:
+            _env = os.getenv("TD_PROGRESS_COMPACT")
+            _val = "" if _env is None else str(_env).strip().lower()
+        compact = _val in {"1", "true", "yes", "on", "y"}
 
         parse_bytes = getattr(self, "_parse_bytes", 0)
         parse_rate  = getattr(self, "_parse_rate", 0.0)
@@ -2537,27 +2444,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         ks = stats.get("ship_stations", 0)
 
         if compact:
-            # Compact, log-friendly (no emojis, minimal labels, short units)
-            # Example:
-            # Imp… 715MiB 2.5MiB/s sys=1,739 stn=4,664 w=4,062/1,694/1,373 k≈4,565/1,694/1
+            # Compact, log-friendly (newline prints)
             msg = (
-                f"Imp… {self._fmt_bytes(parse_bytes)} {self._fmt_bytes(parse_rate)}/s "
-                f"sys={systems:,} stn={stations:,} "
-                f"w={wm:,}/{wo:,}/{ws:,} "
-                f"k≈{km:,}/{ko:,}/{ks:,}"
+                f"Importing…  {parse_bytes/1048576:.1f} MiB read  {parse_rate/1048576:.1f} MiB/s  "
+                f"systems:{systems:,}  stations:{stations:,}  "
+                f"checked m/o/s:{km:,}/{ko:,}/{ks:,}  written m/o/s:{wm:,}/{wo:,}/{ws:,}"
             )
-        else:
-            # Existing richer line
-            msg = (
-                f"Importing…  {self._fmt_bytes(parse_bytes)} read  {self._fmt_bytes(parse_rate)}/s  "
-                f"systems: {systems:,}  stations: {stations:,}  "
-                f"writes(stations): mkt={wm:,} outf={wo:,} shp={ws:,}  "
-                f"kept: mkt≈{km:,} outf≈{ko:,} shp≈{ks:,}"
-            )
+            self._print(msg)
+            return
 
+        # Rich/long line (TTY-optimized; truncated only on TTY)
+        msg = (
+            f"Importing…  {parse_bytes/1048576:.1f} MiB read  {parse_rate/1048576:.1f} MiB/s  "
+            f"[Parsed - Systems: {systems:,} Stations: {stations:,}]  "
+            f"Checked(stations): mkt={km:,} outf={ko:,} shp={ks:,}  "
+            f"Written(stations): mkt={wm:,} outf={wo:,} shp={ws:,}"
+
+        )
         self._live_status(msg)
-
-
 
     def _live_line(self, msg: str) -> None:
         self._live_status(msg)
@@ -2612,7 +2516,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception:
             pass
         self.session = None
-
 
 # -----------------------------------------------------------------------------
 # Exceptions
