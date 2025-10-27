@@ -217,12 +217,35 @@ class Route:
         """
         Legacy helper used by run_cmd.render().
         Renders this route using cmdenv/tdenv display settings.
+
+        Honors TD_NO_COLOR and tdenv.noColor to disable ANSI color codes.
         """
-        colorize = getattr(tdenv, "colorize", lambda *_: "{}".format)
-        detail = getattr(tdenv, "detail", 0) or 0
+        import os
+
+        # TD_NO_COLOR disables color if set to anything truthy (except 0/false/no/off/"")
+        env_val = os.getenv("TD_NO_COLOR", "")
+        env_no_color = bool(env_val) and env_val.strip().lower() not in ("0", "", "false", "no", "off")
+
+        no_color = env_no_color or bool(getattr(tdenv, "noColor", False))
+
+        if no_color:
+            def colorize(_c, s):
+                return s
+        else:
+            _cz = getattr(tdenv, "colorize", None)
+            if callable(_cz):
+                def colorize(c, s):
+                    return _cz(c, s)
+            else:
+                def colorize(_c, s):
+                    return s
+
+        detail = int(getattr(tdenv, "detail", 0) or 0)
         goalSystem = getattr(tdenv, "goalSystem", None)
-        credits = getattr(tdenv, "credits", 0) or 0
+        credits = int(getattr(tdenv, "credits", 0) or 0)
+
         return self.render(colorize, tdenv, detail=detail, goalSystem=goalSystem, credits=credits)
+
 
     def render(self, colorize, tdenv, detail=0, goalSystem=None, credits=0):
         """
@@ -1085,11 +1108,17 @@ class TradeCalc:
                 trade = fitFunction(items, startCr, capacity, maxUnits)
 
                 multiplier = 1.0
+                # Calculate total K-lightseconds supercruise time.
+                # This will amortize for the start/end stations
                 dstSys = dest.system
                 if goalSystem and dstSys is not goalSystem:
+                    # Biggest reward for shortening distance to goal
                     dstGoalDist = goalDistTo(dstSys)
+                    # bias towards bigger reductions
                     score = 5000 * origGoalDist / dstGoalDist
+                    # discourage moving back towards origin
                     score += 50 * srcGoalDist / dstGoalDist
+                    # Gain per unit pays a small part
                     if dstSys is not origSystem:
                         score += 10 * (origDistTo(dstSys) - srcOrigDist)
                     score += (trade.gainCr / trade.units) / 25
@@ -1097,8 +1126,49 @@ class TradeCalc:
                     score = trade.gainCr
 
                 if lsPenalty:
+                    
                     def sigmoid(x):
+                        # [eyeonus]:
+                        # (Keep in mind all this ignores values of x<0.)
+                        # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
+                        # ranges between 0.5 and 0 with a drop around x=1,
+                        # which makes it great for giving a boost to distances < 1Kls.
+                        #
+                        # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
+                        # ranges between 0 and -0.5 with a drop around x=4,
+                        # making it great for penalizing distances > 4Kls.
+                        #
+                        # The curve: (-1+1/(x+1)^((x+1)/4))/2
+                        # ranges between 0 and -0.5 in a smooth arc,
+                        # which will be used for making distances
+                        # closer to 4Kls get a slightly higher penalty
+                        # then distances closer to 1Kls.
+                        #
+                        # Adding the three together creates a doubly-kinked curve
+                        # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
+                        # which closely matches ksfone's intention without going into
+                        # negative numbers and causing problems when we add it to
+                        # the multiplier variable. ( 1 + -1 = 0 )
+                        #
+                        # You can see a graph of the formula here:
+                        # https://goo.gl/sn1PqQ
+                        # NOTE: The black curve is at a penalty of 0%,
+                        # the red curve at a penalty of 100%, with intermediates at
+                        # 25%, 50%, and 75%.
+                        # The other colored lines show the penalty curves individually
+                        # and the teal composite of all three.
                         return x / (1 + abs(x))
+                    # [kfsone] Only want 1dp
+                    # Produce a curve that favors distances under 1kls
+                    # positively, starts to penalize distances over 1k,
+                    # and after 4kls starts to penalize aggressively
+                    # http://goo.gl/Otj2XP
+                        
+                    # [eyeonus] As aadler pointed out, this goes into negative
+                    # numbers, which causes problems.
+                    # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
+                    # penalty *= lsPenalty
+                    # multiplier *= (1 - penalty)
                     cruiseKls = int(dstStation.lsFromStar / 100) / 10
                     boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
                     drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
