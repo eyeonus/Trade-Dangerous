@@ -11,6 +11,7 @@ from ..tradecalc import TradeCalc, Route, NoHopsError
 
 import math
 import sys
+import time
 
 
 ######################################################################
@@ -385,68 +386,77 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
     Find all the stations you could reach if you made a given
     number of jumps away from the origin list.
     """
-    
+
     assert jumps
-    
+
     maxLyPer = cmdenv.emptyLyPer or cmdenv.maxLyPer
     avoidPlaces = cmdenv.avoidPlaces
     cmdenv.DEBUG0(
-            "expanding {} reach from {} by {} jumps at {}ly per jump",
-                srcName,
-                origin.name(),
-                jumps,
-                maxLyPer,
+        "expanding {} reach from {} by {} jumps at {}ly per jump",
+        srcName,
+        origin.name(),
+        jumps,
+        maxLyPer,
     )
-    
+
+    # Preserve original behavior: --to uses stationsSelling, --from uses stationsBuying
     if srcName == "--to":
         tradingList = calc.stationsSelling
     elif srcName == "--from":
         tradingList = calc.stationsBuying
     else:
         raise Exception("Unknown src")
-    
+
+    # Ensure O(1) membership checks regardless of the underlying container type.
+    trading_ids = tradingList if isinstance(tradingList, set) else set(tradingList)
+
     stations = set()
     origins, avoid = set((origin,)), set(place for place in avoidPlaces)
-    
+
     for jump in range(jumps):
         if not origins:
             break
-        cmdenv.DEBUG1(
-            "Ring {}: {}",
-            jump,
-            [sys.dbname for sys in origins]
-        )
+        if getattr(cmdenv, "debug", False):
+            cmdenv.DEBUG1(
+                "Ring {}: {}",
+                jump,
+                [sys.dbname for sys in origins]
+            )
         thisJump, origins = origins, set()
         for system in thisJump:
             avoid.add(system)
             for stn in system.stations or ():
-                if stn.ID not in tradingList:
-                    cmdenv.DEBUG2(
-                        "X {}/{} not in trading list",
-                        stn.system.dbname, stn.dbname,
-                    )
+                if stn.ID not in trading_ids:
+                    if getattr(cmdenv, "debug", False):
+                        cmdenv.DEBUG2(
+                            "X {}/{} not in trading list",
+                            stn.system.dbname, stn.dbname,
+                        )
                     continue
                 if not checkStationSuitability(cmdenv, calc, stn):
+                    if getattr(cmdenv, "debug", False):
+                        cmdenv.DEBUG2(
+                            "X {}/{} was not suitable",
+                            stn.system.dbname, stn.dbname,
+                        )
+                    continue
+                if getattr(cmdenv, "debug", False):
                     cmdenv.DEBUG2(
-                        "X {}/{} was not suitable",
+                        "- {}/{} meets requirements",
                         stn.system.dbname, stn.dbname,
                     )
-                    continue
-                cmdenv.DEBUG2(
-                    "- {}/{} meets requirements",
-                    stn.system.dbname, stn.dbname,
-                )
                 stations.add(stn)
             for dest, dist in tdb.genSystemsInRange(system, maxLyPer):
                 if dest not in avoid:
                     origins.add(dest)
-    
-    cmdenv.DEBUG0(
+
+    if getattr(cmdenv, "debug", False):
+        cmdenv.DEBUG0(
             "Expanded {} stations: {}",
             srcName,
             [stn.name() for stn in stations]
-    )
-    
+        )
+
     if not stations:
         if not cmdenv.emptyLyPer:
             extra = (
@@ -465,12 +475,11 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
                 extra,
             )
         )
-    
+
     stations = list(stations)
     stations.sort(key=lambda stn: stn.ID)
-    
-    return stations
 
+    return stations
 
 def checkForEmptyStationList(category, focusPlace, stationList, jumps):
     if stationList:
@@ -665,41 +674,45 @@ def checkStationSuitability(cmdenv, calc, station, src = None):
 def filterStationSet(src, cmdenv, calc, stnList):
     if not stnList:
         return stnList
-    cmdenv.DEBUG0(
-        "filtering {} station list: {}",
-        src,
-        ",".join(station.name() for station in stnList),
+    if getattr(cmdenv, "debug", False):
+        cmdenv.DEBUG0(
+            "filtering {} station list: {}",
+            src,
+            ",".join(station.name() for station in stnList),
         )
     stnList = tuple(
         place for place in stnList
         if isinstance(place, System) or checkStationSuitability(cmdenv, calc, place, src)
     )
     if not stnList:
+        # Preserve original message formatting (no behavior change)
         raise CommandLineError("No {src} station met your criteria.")
     return stnList
 
-
 def checkOrigins(tdb, cmdenv, calc):
+    # Compute eligibility once: stations must both sell and buy (same as suitability with src=None).
+    eligible_ids = set(calc.stationsSelling) & set(calc.stationsBuying)
+
     if cmdenv.origPlace:
         if cmdenv.startJumps and cmdenv.startJumps > 0:
             cmdenv.origins = expandForJumps(
-                    tdb, cmdenv, calc,
-                    cmdenv.origPlace.system,
-                    cmdenv.startJumps,
-                    "--from", "starting",
+                tdb, cmdenv, calc,
+                cmdenv.origPlace.system,
+                cmdenv.startJumps,
+                "--from", "starting",
             )
             cmdenv.origPlace = None
         elif isinstance(cmdenv.origPlace, System):
             cmdenv.DEBUG0("origPlace: System: {}", cmdenv.origPlace.name())
             if not cmdenv.origPlace.stations:
                 raise CommandLineError(
-                        "No stations at --from system, {}"
-                            .format(cmdenv.origPlace.name())
-                        )
+                    "No stations at --from system, {}"
+                    .format(cmdenv.origPlace.name())
+                )
             cmdenv.origins = tuple(
                 station
                 for station in cmdenv.origPlace.stations
-                if checkStationSuitability(cmdenv, calc, station)
+                if station.ID in eligible_ids and checkStationSuitability(cmdenv, calc, station)
             )
         else:
             cmdenv.DEBUG0("origPlace: Station: {}", cmdenv.origPlace.name())
@@ -707,8 +720,8 @@ def checkOrigins(tdb, cmdenv, calc):
             cmdenv.origins = (cmdenv.origPlace,)
             cmdenv.startStation = cmdenv.origPlace
         checkForEmptyStationList(
-                "--from", cmdenv.origPlace,
-                cmdenv.origins, cmdenv.startJumps
+            "--from", cmdenv.origPlace,
+            cmdenv.origins, cmdenv.startJumps
         )
     else:
         if cmdenv.startJumps:
@@ -717,21 +730,41 @@ def checkOrigins(tdb, cmdenv, calc):
         cmdenv.origins = tuple(
             station
             for station in tdb.stationByID.values()
-            if checkStationSuitability(cmdenv, calc, station)
+            if station.ID in eligible_ids and checkStationSuitability(cmdenv, calc, station)
         )
-    
+
     if not cmdenv.startJumps and isinstance(cmdenv.origPlace, System):
         cmdenv.origins = filterStationSet(
             '--from', cmdenv, calc, cmdenv.origins
         )
-    
+
     cmdenv.origSystems = tuple(set(
         stn.system for stn in cmdenv.origins
     ))
 
-
 def checkDestinations(tdb, cmdenv, calc):
     cmdenv.destinations = None
+    showProgress = bool(getattr(cmdenv, "progress", False))
+    hb_interval = 0.5
+    last_hb = 0.0
+    spinner = ("|", "/", "-", "\\")
+    spin_i = 0
+
+    def heartbeat(seen, kept):
+        nonlocal last_hb, spin_i
+        if not showProgress:
+            return
+        now = time.time()
+        if (now - last_hb) < hb_interval:
+            return
+        last_hb = now
+        s = spinner[spin_i]
+        spin_i = (spin_i + 1) % len(spinner)
+        sys.stdout.write(
+            f"\r{s} Scanning stations…  examined {seen:n}  kept {kept:n}"
+        )
+        sys.stdout.flush()
+
     if cmdenv.destPlace:
         if cmdenv.endJumps and cmdenv.endJumps > 0:
             cmdenv.destinations = expandForJumps(
@@ -747,11 +780,17 @@ def checkDestinations(tdb, cmdenv, calc):
             cmdenv.destinations = (cmdenv.destPlace,)
         else:
             cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
-            cmdenv.destinations = tuple(
-                station
-                for station in cmdenv.destPlace.stations
-                if checkStationSuitability(cmdenv, calc, station)
-            )
+            # Iterate with heartbeat instead of tuple-comprehension
+            dests, seen, kept = [], 0, 0
+            for station in cmdenv.destPlace.stations:
+                seen += 1
+                if checkStationSuitability(cmdenv, calc, station):
+                    dests.append(station)
+                    kept += 1
+                heartbeat(seen, kept)
+            cmdenv.destinations = tuple(dests)
+            if showProgress:
+                sys.stdout.write("\n"); sys.stdout.flush()
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps
@@ -763,28 +802,38 @@ def checkDestinations(tdb, cmdenv, calc):
         if cmdenv.goalSystem:
             dest = tdb.lookupPlace(cmdenv.goalSystem)
             cmdenv.goalSystem = dest.system
-        
+
         if cmdenv.origPlace and cmdenv.maxJumpsPer == 0:
             stationSrc = chain.from_iterable(
                 system.stations for system in cmdenv.origSystems
             )
         else:
             stationSrc = tdb.stationByID.values()
-        
-        cmdenv.destinations = tuple(
-            station
-            for station in stationSrc
-            if checkStationSuitability(cmdenv, calc, station)
-        )
-    
+
+        # Pre-filter by eligibility to skip obviously ineligible stations
+        eligible_ids = set(calc.stationsSelling) & set(calc.stationsBuying)
+
+        # Iterate with heartbeat
+        dests, seen, kept = [], 0, 0
+        for station in stationSrc:
+            seen += 1
+            if station.ID in eligible_ids and checkStationSuitability(cmdenv, calc, station):
+                dests.append(station)
+                kept += 1
+            heartbeat(seen, kept)
+        cmdenv.destinations = tuple(dests)
+        if showProgress:
+            sys.stdout.write("\n"); sys.stdout.flush()
+
     if not cmdenv.endJumps and isinstance(cmdenv.destPlace, System):
         cmdenv.destinations = filterStationSet(
             '--to', cmdenv, calc, cmdenv.destinations
         )
-    
+
     cmdenv.destSystems = tuple(set(
         stn.system for stn in cmdenv.destinations
     ))
+
 
 
 def validateRunArguments(tdb, cmdenv, calc):
@@ -1140,6 +1189,9 @@ def run(results, cmdenv, tdb):
     
     if tdb.tradingCount == 0:
         raise NoDataError("Database does not contain any profitable trades.")
+
+    # Always show a friendly heads-up before heavy work begins.
+    print("Searching for quality trades. This may take a few minutes. Please be patient.", flush=True)
     
     # Instantiate the calculator object
     calc = TradeCalc(tdb, cmdenv)

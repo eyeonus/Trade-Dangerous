@@ -54,7 +54,6 @@ import time
 from sqlalchemy import select
 
 from .tradeexcept import TradeException
-from .misc import progress as pbar
 
 # ORM models (SQLAlchemy)
 from tradedangerous.db.orm_models import StationItem, Station, System, Item
@@ -529,8 +528,30 @@ class TradeCalc:
         dmdCount = supCount = 0
         nowS = int(time.time())
 
+        # ---------- Progress heartbeat (only with --progress) ----------
+        showProgress = bool(getattr(tdenv, "progress", False))
+        hb_interval = 0.5
+        last_hb = 0.0
+        spinner = ("|", "/", "-", "\\")
+        spin_i = 0
+        rows_seen = 0
+
+        def heartbeat():
+            nonlocal last_hb, spin_i
+            if not showProgress:
+                return
+            now = time.time()
+            if (now - last_hb) < hb_interval:
+                return
+            last_hb = now
+            s = spinner[spin_i]
+            spin_i = (spin_i + 1) % len(spinner)
+            sys.stdout.write(
+                f"\r{s} Scanning market data… rows {rows_seen:n}  kept: buys {dmdCount:n}, sells {supCount:n}"
+            )
+            sys.stdout.flush()
+
         # ---------- Core/Engine path (NO Session; NO ORM entities) ----------
-        # 9 legacy columns, in the precise order we consume below.
         columns = (
             "station_id, item_id, "
             "demand_price, demand_units, demand_level, "
@@ -538,8 +559,6 @@ class TradeCalc:
             "modified"
         )
 
-        # Dialect-specific age cutoff expression for SQL-side filtering only.
-        # (Python still computes ageS via parse_ts for tuple construction.)
         where_clauses = []
         params = {}
 
@@ -548,12 +567,10 @@ class TradeCalc:
             if tdb.engine.dialect.name == "sqlite":
                 where_clauses.append("CAST(strftime('%s', modified) AS INTEGER) >= :cutoffS")
             else:
-                # MariaDB/MySQL (UNIX_TIMESTAMP); other backends that support it will work too.
                 where_clauses.append("UNIX_TIMESTAMP(modified) >= :cutoffS")
             params["cutoffS"] = cutoffS
 
         if itemFilter:
-            # Use a bound list parameter. We’ll expand into the query with :item_ids
             where_clauses.append("item_id IN :item_ids")
             params["item_ids"] = tuple(itemFilter)
 
@@ -561,7 +578,6 @@ class TradeCalc:
         if where_clauses:
             sql += " WHERE " + " AND ".join(where_clauses)
 
-        # Execute via Engine.connect(); iterate the Result directly (no .all()).
         from sqlalchemy import text as _sa_text
         with tdb.engine.connect() as conn:
             result = conn.execute(_sa_text(sql), params)
@@ -573,36 +589,47 @@ class TradeCalc:
                 s_price, s_units, s_level,
                 modified,
             ) in result:
+                rows_seen += 1
                 # Compute legacy ageS from modified using parse_ts(...)
                 mod_dt = parse_ts(modified)
                 if not mod_dt:
-                    # Keep behaviour explicit; bad timestamps are exceptional.
+                    # Finish the line before raising.
+                    if showProgress:
+                        sys.stdout.write("\n"); sys.stdout.flush()
                     raise BadTimestampError(tdb, stnID, itmID, modified)
                 ageS = nowS - int(mod_dt.timestamp())
-
-                # ------ Legacy keep rules & tuple shapes ------
 
                 # Buying map (demand side)
                 if d_price and d_price > 0 and d_units:
                     if not minDemand or d_units >= minDemand:
-                        demand[stnID].append(
-                            (itmID, d_price, d_units, d_level, ageS)
-                        )
+                        demand[stnID].append((itmID, d_price, d_units, d_level, ageS))
                         dmdCount += 1
 
                 # Selling map (supply side)
                 if s_price and s_price > 0 and s_units:
                     if not minSupply or s_units >= minSupply:
-                        supply[stnID].append(
-                            (itmID, s_price, s_units, s_level, ageS)
-                        )
+                        supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
                         supCount += 1
+
+                heartbeat()
+
+        # Complete heartbeat line neatly.
+        if showProgress:
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+
+        # --------- One-time station-ID sets for O(1) membership tests ----------
+        self._buying_ids = set(self.stationsBuying.keys())
+        self._selling_ids = set(self.stationsSelling.keys())
+        self.eligible_station_ids = self._buying_ids & self._selling_ids
+
+        # --------- Tiny caches valid for the lifetime of this TradeCalc ----------
+        self._dst_buy_map = {}
 
         tdenv.DEBUG1(
             "Preload used Engine/Core (no ORM identity map). Rows kept: buys={}, sells={}",
             dmdCount, supCount,
         )
-
 
 
     # ------------------------------------------------------------------
@@ -820,46 +847,51 @@ class TradeCalc:
         if not dstBuying:
             return None
 
-        trading = []
-        itemIdx = self.tdb.itemByID
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
         maxGainCr = max(minGainCr, self.tdenv.maxGainPerTon or sys.maxsize)
-        getBuy = {buy[0]: buy for buy in dstBuying}.get
-        addTrade = trading.append
+
+        # ---- per-destination buy map cache (item_id -> buy tuple) ----
+        buy_map = self._dst_buy_map.get(dstStation.ID)
+        if buy_map is None:
+            # list -> dict once, re-used across many src comparisons
+            buy_map = {buy[0]: buy for buy in dstBuying}
+            self._dst_buy_map[dstStation.ID] = buy_map
+        getBuy = buy_map.get
+
+        itemIdx = self.tdb.itemByID
+        trading = []
+        append_trade = trading.append
 
         for sell in srcSelling:
-            buy = getBuy(sell[0], None)
-            if buy:
-                gainCr = buy[1] - sell[1]
-                if minGainCr <= gainCr <= maxGainCr:
-                    addTrade(
-                        Trade(
-                            itemIdx[sell[0]],
-                            sell[1],
-                            gainCr,
-                            sell[2],
-                            sell[3],
-                            buy[2],
-                            buy[3],
-                            sell[4],
-                            buy[4],
-                        )
+            buy = getBuy(sell[0])
+            if not buy:
+                continue
+            gainCr = buy[1] - sell[1]
+            if minGainCr <= gainCr <= maxGainCr:
+                append_trade(
+                    Trade(
+                        itemIdx[sell[0]],
+                        sell[1],
+                        gainCr,
+                        sell[2],
+                        sell[3],
+                        buy[2],
+                        buy[3],
+                        sell[4],
+                        buy[4],
                     )
+                )
 
-        trading.sort(key=lambda trade: trade.costCr)
-        trading.sort(key=lambda trade: trade.gainCr, reverse=True)
+        # Same final ordering as two successive sorts:
+        # primary: gainCr desc, tiebreak: costCr asc
+        trading.sort(key=lambda t: (-t.gainCr, t.costCr))
 
         return trading
 
     def getBestHops(self, routes, restrictTo=None):
         """
         Given a list of routes, try all available next hops from each route.
-
-        Store the results by destination so that we pick the
-        best route-to-point for each destination at each step.
-
-        If we have two routes: A->B->D, A->C->D and A->B->D produces
-        more profit, there's no point continuing the A->C->D path.
+        Keeps only the best candidate per destination station for this hop.
         """
 
         tdb = self.tdb
@@ -880,6 +912,8 @@ class TradeCalc:
         fitFunction = self.defaultFit
         capacity = tdenv.capacity
         maxUnits = getattr(tdenv, "limit") or capacity
+
+        buying_ids = self._buying_ids
 
         bestToDest = {}
         safetyMargin = 1.0 - tdenv.margin
@@ -902,6 +936,32 @@ class TradeCalc:
                 elif isinstance(place, System) and place.stations:
                     restrictStations.update(place.stations)
 
+        # -----------------------
+        # Spinner (stderr; only with --progress)
+        # -----------------------
+        heartbeat_enabled = bool(getattr(tdenv, "progress", False))
+        hb_interval = 0.5
+        last_hb = 0.0
+        spinner = ("|", "/", "-", "\\")
+        spin_i = 0
+        total_origins = len(routes)
+        best_seen_score = -1  # hop-global best hop score, nearest int
+
+        def heartbeat(origin_idx, dests_checked):
+            nonlocal last_hb, spin_i
+            if not heartbeat_enabled:
+                return
+            now = time.time()
+            if now - last_hb < hb_interval:
+                return
+            last_hb = now
+            s = spinner[spin_i]
+            spin_i = (spin_i + 1) % len(spinner)
+            sys.stderr.write(
+                f"\r{s} origin {origin_idx}/{total_origins}  destinations checked: {dests_checked:n}  best score: {max(0, best_seen_score):n}"
+            )
+            sys.stderr.flush()
+
         if tdenv.direct:
             if goalSystem and not restrictTo:
                 restrictTo = (goalSystem,)
@@ -913,18 +973,24 @@ class TradeCalc:
                     if stn not in avoidPlaces and stn.system not in avoidPlaces
                 )
 
-            def station_iterator(srcStation):
+            def station_iterator(srcStation, origin_idx):
                 srcSys = srcStation.system
                 srcDist = srcSys.distanceTo
+                dests_seen = 0
                 for stn in restrictStations:
                     stnSys = stn.system
+                    if stn.ID not in buying_ids:
+                        continue
+                    dests_seen += 1
+                    heartbeat(origin_idx, dests_seen)
                     yield Destination(stnSys, stn, (srcSys, stnSys), srcDist(stnSys))
 
         else:
             getDestinations = tdb.getDestinations
 
-            def station_iterator(srcStation):
-                yield from getDestinations(
+            def station_iterator(srcStation, origin_idx):
+                dests_seen = 0
+                for d in getDestinations(
                     srcStation,
                     maxJumps=maxJumpsPer,
                     maxLyPer=maxLyPer,
@@ -935,189 +1001,151 @@ class TradeCalc:
                     planetary=planetary,
                     fleet=fleet,
                     odyssey=odyssey,
-                )
+                ):
+                    dests_seen += 1
+                    heartbeat(origin_idx, dests_seen)
+                    if d.station.ID in buying_ids:
+                        yield d
 
-        with pbar.Progress(max_value=len(routes), width=25, show=tdenv.progress) as prog:
-            connections = 0
-            getSelling = self.stationsSelling.get
-            for route_no, route in enumerate(routes):
-                prog.increment(progress=route_no)
-                tdenv.DEBUG1("Route = {}", route.text(lambda x, y: y))
+        connections = 0
+        getSelling = self.stationsSelling.get
 
-                srcStation = route.lastStation
-                startCr = credits + int(route.gainCr * safetyMargin)
+        for route_no, route in enumerate(routes):
+            tdenv.DEBUG1("Route = {}", route.text(lambda x, y: y))
 
-                srcSelling = getSelling(srcStation.ID, None)
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing sold at source - next.")
-                    continue
+            srcStation = route.lastStation
+            startCr = credits + int(route.gainCr * safetyMargin)
 
-                srcSelling = tuple(values for values in srcSelling if values[1] <= startCr)
-                if not srcSelling:
-                    tdenv.DEBUG1("Nothing affordable - next.")
-                    continue
+            srcSelling = getSelling(srcStation.ID, None)
+            if not srcSelling:
+                tdenv.DEBUG1("Nothing sold at source - next.")
+                heartbeat(route_no + 1, 0)
+                continue
 
-                if goalSystem:
-                    origSystem = route.firstSystem
-                    srcSystem = srcStation.system
-                    srcDistTo = srcSystem.distanceTo
-                    goalDistTo = goalSystem.distanceTo
-                    origDistTo = origSystem.distanceTo
-                    srcGoalDist = srcDistTo(goalSystem)
-                    srcOrigDist = srcDistTo(origSystem)
-                    origGoalDist = origDistTo(goalSystem)
+            srcSelling = tuple(values for values in srcSelling if values[1] <= startCr)
+            if not srcSelling:
+                tdenv.DEBUG1("Nothing affordable - next.")
+                heartbeat(route_no + 1, 0)
+                continue
 
-                if unique:
-                    uniquePath = route.route
-                elif loopInt:
-                    pos_from_end = 0 - loopInt
-                    uniquePath = route.route[pos_from_end:-1]
+            if goalSystem:
+                origSystem = route.firstSystem
+                srcSystem = srcStation.system
+                srcDistTo = srcSystem.distanceTo
+                goalDistTo = goalSystem.distanceTo
+                origDistTo = origSystem.distanceTo
+                srcGoalDist = srcDistTo(goalSystem)
+                srcOrigDist = srcDistTo(origSystem)
+                origGoalDist = origDistTo(goalSystem)
 
-                stations = (
-                    d
-                    for d in station_iterator(srcStation)
-                    if (d.station != srcStation)
-                    and (d.station.blackMarket == "Y" if reqBlackMarket else True)
-                    and (d.station not in uniquePath if uniquePath else True)
-                    and (d.station in restrictStations if restrictStations else True)
-                    and (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True)
-                    and (
-                        (
-                            (d.system is not srcSystem)
-                            if bool(tdenv.unique)
-                            else (d.system is goalSystem or d.distLy < srcGoalDist)
-                        )
-                        if goalSystem
-                        else True
+            if unique:
+                uniquePath = route.route
+            elif loopInt:
+                pos_from_end = 0 - loopInt
+                uniquePath = route.route[pos_from_end:-1]
+
+            stations = (
+                d
+                for d in station_iterator(srcStation, route_no + 1)
+                if (d.station != srcStation)
+                and (d.station.blackMarket == "Y" if reqBlackMarket else True)
+                and (d.station not in uniquePath if uniquePath else True)
+                and (d.station in restrictStations if restrictStations else True)
+                and (d.station.dataAge and d.station.dataAge <= maxAge if maxAge else True)
+                and (
+                    (
+                        (d.system is not srcSystem)
+                        if bool(tdenv.unique)
+                        else (d.system is goalSystem or d.distLy < srcGoalDist)
                     )
+                    if goalSystem
+                    else True
                 )
+            )
 
-                if tdenv.debug >= 1:
-
-                    def annotate(dest):
-                        tdenv.DEBUG1(
-                            "destSys {}, destStn {}, jumps {}, distLy {}",
-                            dest.system.dbname,
-                            dest.station.dbname,
-                            "->".join(jump.text() for jump in dest.via),
-                            dest.distLy,
-                        )
-                        return True
-
-                    stations = (d for d in stations if annotate(d))
-
-                for dest in stations:
-                    dstStation = dest.station
-                    connections += 1
-                    items = self.getTrades(srcStation, dstStation, srcSelling)
-                    if not items:
-                        continue
-                    trade = fitFunction(items, startCr, capacity, maxUnits)
-
-                    multiplier = 1.0
-                    # Calculate total K-lightseconds supercruise time.
-                    # This will amortize for the start/end stations
-                    dstSys = dest.system
-                    if goalSystem and dstSys is not goalSystem:
-                        dstGoalDist = goalDistTo(dstSys)
-                        # Biggest reward for shortening distance to goal
-                        score = 5000 * origGoalDist / dstGoalDist
-                        # bias towards bigger reductions
-                        score += 50 * srcGoalDist / dstGoalDist
-                        # discourage moving back towards origin
-                        if dstSys is not origSystem:
-                            score += 10 * (origDistTo(dstSys) - srcOrigDist)
-                        # Gain per unit pays a small part
-                        score += (trade.gainCr / trade.units) / 25
-                    else:
-                        score = trade.gainCr
-
-                    if lsPenalty:
-                        # [kfsone] Only want 1dp
-                        
-                        cruiseKls = int(dstStation.lsFromStar / 100) / 10
-                        # Produce a curve that favors distances under 1kls
-                        # positively, starts to penalize distances over 1k,
-                        # and after 4kls starts to penalize aggressively
-                        # http://goo.gl/Otj2XP
-                        
-                        # [eyeonus] As aadler pointed out, this goes into negative
-                        # numbers, which causes problems.
-                        # penalty = ((cruiseKls ** 2) - cruiseKls) / 3
-                        # penalty *= lsPenalty
-                        # multiplier *= (1 - penalty)
-                        
-                        # [eyeonus]:
-                        # (Keep in mind all this ignores values of x<0.)
-                        # The sigmoid: (1-(25(x-1))/(1+abs(25(x-1))))/4
-                        # ranges between 0.5 and 0 with a drop around x=1,
-                        # which makes it great for giving a boost to distances < 1Kls.
-                        #
-                        # The sigmoid: (-1-(50(x-4))/(1+abs(50(x-4))))/4
-                        # ranges between 0 and -0.5 with a drop around x=4,
-                        # making it great for penalizing distances > 4Kls.
-                        #
-                        # The curve: (-1+1/(x+1)^((x+1)/4))/2
-                        # ranges between 0 and -0.5 in a smooth arc,
-                        # which will be used for making distances
-                        # closer to 4Kls get a slightly higher penalty
-                        # then distances closer to 1Kls.
-                        #
-                        # Adding the three together creates a doubly-kinked curve
-                        # that ranges from ~0.5 to -1.0, with drops around x=1 and x=4,
-                        # which closely matches ksfone's intention without going into
-                        # negative numbers and causing problems when we add it to
-                        # the multiplier variable. ( 1 + -1 = 0 )
-                        #
-                        # You can see a graph of the formula here:
-                        # https://goo.gl/sn1PqQ
-                        # NOTE: The black curve is at a penalty of 0%,
-                        # the red curve at a penalty of 100%, with intermediates at
-                        # 25%, 50%, and 75%.
-                        # The other colored lines show the penalty curves individually
-                        # and the teal composite of all three.
-                        def sigmoid(x):
-                            return x / (1 + abs(x))
-
-                        cruiseKls = int(dstStation.lsFromStar / 100) / 10
-                        boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
-                        drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
-                        try:
-                            penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
-                        except OverflowError:
-                            penalty = -0.5
-                        multiplier += (penalty + boost + drop) * lsPenalty
-
-                    score *= multiplier
-
-                    dstID = dstStation.ID
-                    try:
-                        # See if there is already a candidate for this destination
-                        btd = bestToDest[dstID]
-                    except KeyError:
-                        # No existing candidate, we win by default
-                        pass
-                    else:
-                        bestRoute = btd[1]
-                        bestScore = btd[5]
-                        # Check if it is a better option than we just produced
-                        bestTradeScore = bestRoute.score + bestScore
-                        newTradeScore = route.score + score
-                        if bestTradeScore > newTradeScore:
-                            continue
-                        if bestTradeScore == newTradeScore:
-                            bestLy = btd[4]
-                            if bestLy <= dest.distLy:
-                                continue
-
-                    bestToDest[dstID] = (
-                        dstStation,
-                        route,
-                        trade,
-                        dest.via,
+            if tdenv.debug >= 1:
+                def annotate(dest):
+                    tdenv.DEBUG1(
+                        "destSys {}, destStn {}, jumps {}, distLy {}",
+                        dest.system.dbname,
+                        dest.station.dbname,
+                        "->".join(jump.text() for jump in dest.via),
                         dest.distLy,
-                        score,
                     )
+                    return True
+                stations = (d for d in stations if annotate(d))
+
+            for dest in stations:
+                dstStation = dest.station
+                connections += 1
+
+                items = self.getTrades(srcStation, dstStation, srcSelling)
+                if not items:
+                    continue
+                trade = fitFunction(items, startCr, capacity, maxUnits)
+
+                multiplier = 1.0
+                dstSys = dest.system
+                if goalSystem and dstSys is not goalSystem:
+                    dstGoalDist = goalDistTo(dstSys)
+                    score = 5000 * origGoalDist / dstGoalDist
+                    score += 50 * srcGoalDist / dstGoalDist
+                    if dstSys is not origSystem:
+                        score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                    score += (trade.gainCr / trade.units) / 25
+                else:
+                    score = trade.gainCr
+
+                if lsPenalty:
+                    def sigmoid(x):
+                        return x / (1 + abs(x))
+                    cruiseKls = int(dstStation.lsFromStar / 100) / 10
+                    boost = (1 - sigmoid(25 * (cruiseKls - 1))) / 4
+                    drop = (-1 - sigmoid(50 * (cruiseKls - 4))) / 4
+                    try:
+                        penalty = (-1 + 1 / (cruiseKls + 1) ** ((cruiseKls + 1) / 4)) / 2
+                    except OverflowError:
+                        penalty = -0.5
+                    multiplier += (penalty + boost + drop) * lsPenalty
+
+                score *= multiplier
+
+                # update hop-global best score (nearest int)
+                try:
+                    si = int(round(score))
+                except Exception:
+                    si = int(score)
+                if si > best_seen_score:
+                    best_seen_score = si
+
+                dstID = dstStation.ID
+                try:
+                    btd = bestToDest[dstID]
+                except KeyError:
+                    pass
+                else:
+                    bestRoute = btd[1]
+                    bestScore = btd[5]
+                    bestTradeScore = bestRoute.score + bestScore
+                    newTradeScore = route.score + score
+                    if bestTradeScore > newTradeScore:
+                        continue
+                    if bestTradeScore == newTradeScore:
+                        bestLy = btd[4]
+                        if bestLy <= dest.distLy:
+                            continue
+
+                bestToDest[dstID] = (
+                    dstStation,
+                    route,
+                    trade,
+                    dest.via,
+                    dest.distLy,
+                    score,
+                )
+
+        if heartbeat_enabled:
+            sys.stderr.write("\n"); sys.stderr.flush()
 
         if connections == 0:
             raise NoHopsError("No destinations could be reached within the constraints.")
