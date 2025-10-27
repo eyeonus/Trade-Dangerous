@@ -415,18 +415,17 @@ python -m trade import -P spansh -O pricesonly=1
 # TradeDangerous Refactor — `commands/run_cmd.py`
 
 ## Overview
-The **routing command** (`run_cmd.py`) remains functionally equivalent to the legacy implementation. It **does not perform any DB I/O** and has **no direct dependency on SQLAlchemy**. Its contract is unchanged: it consumes the two in-memory price maps built by `TradeCalc` (`stationsBuying`/`stationsSelling`) and applies route/suitability rules on top. See `checkStationSuitability` which still gates by membership in those maps, exactly as before. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1}
-
+The **routing command** (`run_cmd.py`) remains functionally equivalent to the legacy implementation. It **does not perform any DB I/O** and has **no direct dependency on SQLAlchemy**. Its contract is unchanged: it consumes the two in-memory price maps built by `TradeCalc` (`stationsBuying`/`stationsSelling`) and applies route/suitability rules on top. See `checkStationSuitability` which still gates by membership in those maps, exactly as before. 
 ---
 
 ## sqlite3 Removal
-- **None required here.** This module never opened a SQLite connection in the legacy code and continues to avoid any direct database access after the refactor. It delegates all price data concerns to `TradeCalc`. The price maps it reads are now populated by `TradeCalc`’s **Core/Engine preload** (no ORM identity map participation). :contentReference[oaicite:2]{index=2}
+- **None required here.** This module never opened a SQLite connection in the legacy code and continues to avoid any direct database access after the refactor. It delegates all price data concerns to `TradeCalc`. The price maps it reads are now populated by `TradeCalc`’s **Core/Engine preload** (no ORM identity map participation). 
 
 ---
 
 ## Behaviour (unchanged)
 - **Suitability checks**:  
-  - Requires that `--from` stations have selling data (`station.ID in calc.stationsSelling`) and `--to` stations have buying data (`station.ID in calc.stationsBuying`). Error paths/messages unchanged. :contentReference[oaicite:3]{index=3}
+  - Requires that `--from` stations have selling data (`station.ID in calc.stationsSelling`) and `--to` stations have buying data (`station.ID in calc.stationsBuying`). Error paths/messages unchanged. 
 - **Expansion by jumps / trading list**:  
   - Station reachability expansion uses the same trading lists (buying for `--from`, selling for `--to`) when walking ring expansions. :contentReference[oaicite:4]{index=4}
 - **CLI options & parsing**:  
@@ -440,7 +439,7 @@ The **routing command** (`run_cmd.py`) remains functionally equivalent to the le
 - **Input contract**: `TradeCalc` must preload wide station-item rows and expose:
   - `calc.stationsBuying[station_id] -> [(item_id, price, units, level, ageS), ...]`
   - `calc.stationsSelling[station_id] -> [(item_id, price, units, level, ageS), ...]`
-- **Source of truth**: These maps are now built via SQLAlchemy **Core** with an explicit column projection and Python-computed `ageS`, but that change is **internal to `tradecalc.py`** and invisible to `run_cmd.py`. :contentReference[oaicite:7]{index=7}
+- **Source of truth**: These maps are now built via SQLAlchemy **Core** with an explicit column projection and Python-computed `ageS`, but that change is **internal to `tradecalc.py`** and invisible to `run_cmd.py`. 
 
 ---
 
@@ -451,4 +450,5 @@ The **routing command** (`run_cmd.py`) remains functionally equivalent to the le
 
 ## Status
 - `run_cmd.py` remains **DB-agnostic** and **stateless** with respect to SQLAlchemy.  
-- All suitability/routing logic matches the legacy version; the only dependency is on the in-memory price maps provided by `TradeCalc`’s refactored preload. :contentReference[oaicite:8]{index=8} :contentReference[oaicite:9]{index=9}
+- All suitability/routing logic matches the legacy version; the only dependency is on the in-memory price maps provided by `TradeCalc`’s refactored preload. 
+
