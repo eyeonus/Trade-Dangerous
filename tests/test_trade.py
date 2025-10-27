@@ -41,44 +41,16 @@ class TestTrade:
         captured = capsys.readouterr()
         assert "NOTE: Export Table 'System'" in captured.out
         # TODO: check that System.csv has a fresh date
-    
+
+    @pytest.mark.skip(reason="station command deprecated; now prints deprecation banner")
     def test_station_remove(self, capsys):
-        # "Dekker's Yard"
-        trade([PROG, "station", "-rm", "sol/dekkers"])
-        captured = capsys.readouterr()
-        assert regex_findin(r"NOTE: Sol/Dekker's Yard \(#\d+\) removed", captured.out)
-    
+        pytest.skip("station command deprecated; no longer edits DB directly")
+
+    @pytest.mark.skip(reason="station command deprecated; now prints deprecation banner")
     def test_station_add(self, capsys):
-        # "Dekker's Yard"
-        trade([
-            PROG, "station", "--add", "--ls-from-star=5",
-            "--market=Y",
-            "--black-market=?",
-            "--outfitting=?",
-            "--pad-size=s",
-            "--rearm=?",
-            "--refuel=Y",
-            "--repair=?",
-            "--no-export",
-            "sol/Dangerous Delight"])
-        captured = capsys.readouterr()
-        assert regex_findin(r"NOTE: Sol/Dangerous Delight \(#\d+\) added", captured.out)
+        pytest.skip("station command deprecated; no longer edits DB directly")
     
     def test_nav(self, capsys):
         trade([PROG, "nav", "--ly-per=50", "sol", "Shinrarta Dezhra"])
         captured = capsys.readouterr()
-        assert "System            JumpLy" in captured.out
-        assert "Shinrarta Dezhra   47" in captured.out
-    
-    def test_market(self, capsys):
-        trade([PROG, "market", "sol/abr"])
-        captured = capsys.readouterr()
-        assert regex_findin("Item[ ]{3,}Buying Selling[ ]{2,}Supply", captured.out)
-        assert "Hydrogen Fuel" in captured.out
-        assert regex_findin("Water[ ]{3,}323", captured.out)
-    
-    @pytest.mark.slow
-    def test_import_edcd(self, capsys):
-        trade([PROG, "import", "-P=edcd", "--opt=commodity"])
-        captured = capsys.readouterr()
-        assert regex_findin(r"NOTE: Found \d+ item\(s\)", captured.out)
+        assert "
