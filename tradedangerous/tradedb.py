@@ -675,6 +675,23 @@ class TradeDB:
             self.reloadCache()
             self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
 
+    # ------------------------------------------------------------------
+    # Legacy compatibility dataPath shim
+    # ------------------------------------------------------------------
+    @property
+    def dataDir(self):
+        """
+        Legacy alias for self.dataPath (removed in SQLAlchemy refactor).
+        Falls back to './data' if configuration not yet loaded.
+        """
+        # Try the modern attribute first
+        if hasattr(self, "dataPath") and self.dataPath:
+            return self.dataPath
+        # If we have an environment object, use its dataDir
+        if hasattr(self, "tdenv") and getattr(self.tdenv, "dataDir", None):
+            return self.tdenv.dataDir
+        # Final fallback (first run, pre-bootstrap)
+        return Path("./data")
     
     @staticmethod
     def calculateDistance2(lx, ly, lz, rx, ry, rz):
