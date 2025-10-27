@@ -19,9 +19,11 @@ class TestBootstrapPlugins:
     
     def test_import_plugins_edmc_batch(self):
         from tradedangerous.plugins import edmc_batch_plug
-    
+
+    @pytest.mark.skip(reason="journal_plug plugin has been deprecated and archived")
     def test_import_plugins_journal(self):
-        from tradedangerous.plugins import journal_plug
-    
+        pytest.skip("journal_plug plugin is deprecated and archived")
+
+    @pytest.mark.skip(reason="netlog_plug plugin has been deprecated and archived")
     def test_import_plugins_netlog(self):
-        from tradedangerous.plugins import netlog_plug
+        pytest.skip("netlog_plug plugin is deprecated and archived")
