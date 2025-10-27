@@ -548,16 +548,49 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 continue
                             import_path = (self.tdb.dataPath / f"{table_name}.csv").resolve()
                             try:
-                                cache.processImportFile(
-                                    self.tdenv,
-                                    session,
-                                    import_path,
-                                    table_name,
-                                    line_callback=None,
-                                    call_args=None,
-                                )
+                                # Determine a cheap per-table total (header-aware) for display only.
+                                try:
+                                    total = max(file_line_count(import_path) - 1, 0)
+                                except Exception:
+                                    total = 0
+
+                                prefix = f"Processing {table_name}"
+                                # Mirror listings-style progress: single-line if TTY, periodic otherwise.
+                                with pbar.Progress(total or 1, 40, prefix=prefix, style=pbar.LongRunningCountBar) as prog:
+
+                                    def _cb(stats=None, **kwargs):
+                                        """
+                                        Liberal progress callback used by cache.processImportFile.
+                                        Accepts either:
+                                          - int                    → increment by that many rows
+                                          - dict with keys inc/rows/count → increment by that value
+                                          - anything else          → default increment of 1
+                                        """
+                                        inc = 1
+                                        if isinstance(stats, int):
+                                            inc = max(int(stats), 1)
+                                        elif isinstance(stats, dict):
+                                            for k in ("inc", "rows", "count"):
+                                                if k in stats:
+                                                    try:
+                                                        inc = max(int(stats[k]), 1)
+                                                        break
+                                                    except Exception:
+                                                        pass
+                                        prog.increment(inc)
+
+                                    cache.processImportFile(
+                                        self.tdenv,
+                                        session,
+                                        import_path,
+                                        table_name,
+                                        line_callback=_cb,
+                                        call_args={"table": table_name, "total": total},
+                                    )
+
                                 session.commit()
                                 self.tdenv.DEBUG0("Incremental import OK: {} ({})", table_name, import_path)
+
                             except FileNotFoundError:
                                 self.tdenv.NOTE("{} missing; skipped incremental import ({})", table_name, import_path)
                             except StopIteration:
@@ -573,6 +606,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     finally:
                         end_bulk_mode(session, token)
                 self.tdenv.NOTE("Incremental import finished.")
+
 
         if self.getOption("purge"):
             self.purgeSystems()
