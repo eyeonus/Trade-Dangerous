@@ -693,19 +693,6 @@ class TradeDB:
         # Final fallback (first run, pre-bootstrap)
         return Path("./data")
 
-    # ------------------------------------------------------------------
-    # Legacy compatibility
-    # ------------------------------------------------------------------
-    def get_bind(self):
-        """
-        Legacy shim for SQLAlchemy session.bind access.
-        Returns the engine bound to this TradeDB.
-        Used by csvexport and other pre-refactor code paths.
-        """
-        if hasattr(self, "session") and hasattr(self.session, "get_bind"):
-            return self.session.get_bind()
-        return getattr(self, "engine", None)
-
     
     @staticmethod
     def calculateDistance2(lx, ly, lz, rx, ry, rz):

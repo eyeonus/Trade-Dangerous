@@ -97,42 +97,54 @@ def buildFKeyStmt(session, tableName, key):
 # Code
 ######################################################################
 
-def exportTableToFile(session, tdenv, tableName, csvPath=None):
+def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
     """
-    Generate the csv file for tableName in csvPath.
+    Generate the CSV file for tableName in csvPath.
     Returns (lineCount, exportPath).
 
     Behaviour:
     - Prefix unique columns with "unq:".
     - Foreign keys are exported as "<col>@<joinTable>.<uniqueCol>".
-      The join replaces the FK ID with the unique column from the
-      referenced table (typically "name").
     - Datetime-like values for 'modified' columns are exported as
       "YYYY-MM-DD HH:MM:SS" (no microseconds).
+
+    Compatible with either:
+      * a SQLAlchemy Session
+      * a TradeDB wrapper exposing .engine
     """
+    from sqlalchemy.orm import Session
+
+    # --- Resolve a SQLAlchemy session ---
+    if hasattr(tdb_or_session, "engine"):
+        # Likely a TradeDB instance
+        engine = tdb_or_session.engine
+        session = Session(engine)
+    elif hasattr(tdb_or_session, "get_bind"):
+        # Already a Session
+        session = tdb_or_session
+    else:
+        raise TradeException(
+            f"Unsupported DB object passed to exportTableToFile: {type(tdb_or_session)}"
+        )
+
     csvPath = csvPath or Path(tdenv.csvDir)
     if not Path(csvPath).is_dir():
         raise TradeException(f"Save location '{csvPath}' not found.")
 
     uniquePfx = "unq:"
-
     exportPath = (Path(csvPath) / Path(tableName)).with_suffix(".csv")
     tdenv.DEBUG0(f"Export Table '{tableName}' to '{exportPath}'")
 
     def _fmt_ts(val):
-        # Avoid importing datetime: accept any object with strftime
         if hasattr(val, "strftime"):
             try:
                 return val.strftime("%Y-%m-%d %H:%M:%S")
             except Exception:
                 pass
-        # SQLite often returns strings; trim microseconds if present
         if isinstance(val, str):
             s = val
-            # Normalise possible ISO-ish 'T' separator
             if len(s) >= 19 and s[10] == "T":
                 s = s[:10] + " " + s[11:]
-            # If it looks like 'YYYY-MM-DD HH:MM:SS[.ffffff][Z|+..]'
             if len(s) >= 19 and s[4] == "-" and s[7] == "-" and s[10] == " " and s[13] == ":" and s[16] == ":":
                 return s[:19]
         return val
@@ -161,58 +173,36 @@ def exportTableToFile(session, tdenv, tableName, csvPath=None):
         stmtColumn = []
         stmtTable = [tableName]
         stmtOrder = []
-        # Track which selected columns are 'modified' (needs timestamp formatting)
         is_modified_col = []
 
         for col in inspector.get_columns(tableName):
             col_name = col["name"]
-
-            # FK handling
             fk = next((fk for fk in fk_list if fk["from"] == col_name), None)
             if fk:
                 joinTable = fk["table"]
                 joinColumn = fk["to"]
-
-                # Determine which column to export from joinTable
                 join_unique_cols = db_utils.get_unique_columns(session, joinTable)
                 if not join_unique_cols:
                     raise TradeException(
                         f"No unique column found in referenced table '{joinTable}'"
                     )
                 export_col = join_unique_cols[0]
-
-                # mark unique if this FK col itself is unique
                 csvPfx = uniquePfx if col_name in unique_cols else ""
-
-                # header reflects join (no '!' marker)
                 csvHead.append(f"{csvPfx}{col_name}@{joinTable}.{export_col}")
-
-                # SELECT joinTable.export_col
                 stmtColumn.append(f"{joinTable}.{export_col}")
                 is_modified_col.append(export_col == "modified")
-
-                # JOIN clause
                 nullable = bool(col.get("nullable", True))
-                if nullable:
-                    stmtTable.append(
-                        f"LEFT OUTER JOIN {joinTable} "
-                        f"ON {tableName}.{col_name} = {joinTable}.{joinColumn}"
-                    )
-                else:
-                    stmtTable.append(
-                        f"INNER JOIN {joinTable} "
-                        f"ON {tableName}.{col_name} = {joinTable}.{joinColumn}"
-                    )
-
+                join_type = "LEFT OUTER JOIN" if nullable else "INNER JOIN"
+                stmtTable.append(
+                    f"{join_type} {joinTable} ON {tableName}.{col_name} = {joinTable}.{joinColumn}"
+                )
                 stmtOrder.append(f"{joinTable}.{export_col}")
-
             else:
                 if col_name in unique_cols:
                     csvHead.append(uniquePfx + col_name)
                     stmtOrder.append(f"{tableName}.{col_name}")
                 else:
                     csvHead.append(col_name)
-
                 stmtColumn.append(f"{tableName}.{col_name}")
                 is_modified_col.append(col_name == "modified")
 
@@ -221,13 +211,10 @@ def exportTableToFile(session, tdenv, tableName, csvPath=None):
             sqlStmt += f" ORDER BY {','.join(stmtOrder)}"
         tdenv.DEBUG1(f"SQL: {sqlStmt}")
 
-        # header row
         exportFile.write(f"{','.join(csvHead)}\n")
 
-        # data rows
         for row in session.execute(text(sqlStmt)):
             lineCount += 1
-            # Apply legacy timestamp formatting only to columns flagged as 'modified'
             row_out = [
                 _fmt_ts(val) if is_modified_col[i] else val
                 for i, val in enumerate(row)
@@ -236,5 +223,9 @@ def exportTableToFile(session, tdenv, tableName, csvPath=None):
             exportOut.writerow(row_out)
 
         tdenv.DEBUG1(f"{lineCount} {tableName}s exported")
+
+    # Close session if we created it
+    if hasattr(tdb_or_session, "engine"):
+        session.close()
 
     return lineCount, exportPath
