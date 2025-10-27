@@ -53,4 +53,18 @@ class TestTrade:
     def test_nav(self, capsys):
         trade([PROG, "nav", "--ly-per=50", "sol", "Shinrarta Dezhra"])
         captured = capsys.readouterr()
-        assert "
+        assert "System            JumpLy" in captured.out
+        assert "Shinrarta Dezhra   47" in captured.out
+    
+    def test_market(self, capsys):
+        trade([PROG, "market", "sol/abr"])
+        captured = capsys.readouterr()
+        assert regex_findin("Item[ ]{3,}Buying Selling[ ]{2,}Supply", captured.out)
+        assert "Hydrogen Fuel" in captured.out
+        assert regex_findin("Water[ ]{3,}323", captured.out)
+    
+    @pytest.mark.slow
+    def test_import_edcd(self, capsys):
+        trade([PROG, "import", "-P=edcd", "--opt=commodity"])
+        captured = capsys.readouterr()
+        assert regex_findin(r"NOTE: Found \d+ item\(s\)", captured.out)
