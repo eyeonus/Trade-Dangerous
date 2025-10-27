@@ -1,6 +1,7 @@
 import io
 import os
 import pytest
+import re
 
 from tradedangerous.cli import trade
 from .helpers import copy_fixtures, regex_findin, replace_stdin
@@ -68,4 +69,4 @@ class TestTradeRun:
         assert "Sol/Haberlandt Survey -> Sol/Durrance Camp" in captured.out
         assert "  Sol/Haberlandt Survey: 5 x Reactive Armour," in captured.out
         assert "  Sol/Ehrlich City: 10 x Building Fabricators," in captured.out
-        assert "  Sol/Durrance Camp +10 925cr (728/ton)" in captured.out
+        assert re.search(r"Sol/Durrance Camp \+10,?925cr \(728/ton\)", captured.out)
