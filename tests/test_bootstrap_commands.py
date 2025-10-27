@@ -1,3 +1,4 @@
+import pytest
 import unittest
 
 
@@ -46,6 +47,7 @@ class TestBootstrapCommands(unittest.TestCase):
     
     def test_import_update_cmd(self):
         from tradedangerous.commands import update_cmd
-    
+
+    @pytest.mark.skip(reason="update_gui command has been deprecated and archived")
     def test_import_update_gui(self):
-        from tradedangerous.commands import update_gui
+        pytest.skip("update_gui command is deprecated and archived")

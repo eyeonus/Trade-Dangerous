@@ -1,5 +1,3 @@
-import sqlite3
-
 from .exceptions import (
     CommandLineError, FleetCarrierError, OdysseyError,
     PadSizeError, PlanetaryError,

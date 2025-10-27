@@ -8,6 +8,7 @@ from .parsing import (
     AvoidPlacesArgument, BlackMarketSwitch, FleetCarrierArgument, MutuallyExclusiveGroup,
     NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument, PlanetaryArgument,
 )
+from sqlalchemy import text
 
 # TODO: Add UPGRADE_MODE
 ITEM_MODE = "Item"
@@ -176,52 +177,57 @@ def get_lookup_list(cmdenv, tdb):
 
 
 def sql_query(cmdenv, tdb, queries, mode):
-    # Constraints
-    idList = ','.join(str(ID) for ID in queries.keys())
+    """
+    Backend-portable query builder.
+    - Uses named binds (':param') instead of SQLite '?'.
+    - Materializes rows eagerly to avoid closed-cursor issues.
+    - Preserves return shapes:
+        * Ship:   (ship_id, station_id, cost, 1)
+        * Item:   (item_id, station_id, supply_price, supply_units)
+    """
+    ids = list(queries.keys())
+
+    # Build a stable, named-parameter IN(...) list
+    params = {}
+    placeholders = []
+    for i, val in enumerate(ids):
+        key = f"id{i}"
+        placeholders.append(f":{key}")
+        params[key] = val
+    id_list_sql = ",".join(placeholders)
+
     if mode is SHIP_MODE:
-        tables = "ShipVendor AS s INNER JOIN Ship AS sh USING (ship_id)"
-        constraints = ["(ship_id IN ({}))".format(idList)]
-        columns = [
-            's.ship_id',
-            's.station_id',
-            'sh.cost',
-            '1',
-            ]
-        bindValues = []
+        columns = "s.ship_id, s.station_id, sh.cost, 1"
+        tables = "ShipVendor AS s JOIN Ship AS sh ON sh.ship_id = s.ship_id"
+        constraints = [f"(s.ship_id IN ({id_list_sql}))"]
     else:
+        columns = "s.item_id, s.station_id, s.supply_price, s.supply_units"
         tables = "StationItem AS s"
-        columns = [
-            's.item_id',
-            's.station_id',
-            's.supply_price',
-            's.supply_units',
-        ]
         constraints = [
-            "(s.item_id IN ({}))".format(idList),
-            "(s.supply_price > 0)",
+            f"(s.item_id IN ({id_list_sql}))",
+            "(s.supply_price > 0)",  # preserves index intent across backends
         ]
-        bindValues = []
-    
-    # Additional constraints in ITEM_MODE
-    if mode is ITEM_MODE:
         if cmdenv.supply:
-            constraints.append("(supply_units >= ?)")
-            bindValues.append(cmdenv.supply)
+            constraints.append("(s.supply_units >= :supply)")
+            params["supply"] = cmdenv.supply
         if cmdenv.lt:
-            constraints.append("(supply_price < ?)")
-            bindValues.append(cmdenv.lt)
+            constraints.append("(s.supply_price < :lt)")
+            params["lt"] = cmdenv.lt
         if cmdenv.gt:
-            constraints.append("(supply_price > ?)")
-            bindValues.append(cmdenv.gt)
-    
-    whereClause = ' AND '.join(constraints)
-    stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
-        columns = ','.join(columns),
-        tables = tables,
-        where = whereClause
-    )
-    cmdenv.DEBUG0('SQL: {}', stmt)
-    return tdb.query(stmt, bindValues)
+            constraints.append("(s.supply_price > :gt)")
+            params["gt"] = cmdenv.gt
+
+    where_clause = " AND ".join(constraints)
+    stmt = f"SELECT DISTINCT {columns} FROM {tables} WHERE {where_clause}"
+    cmdenv.DEBUG0('SQL: {} ; params={}', stmt, params)
+
+    # Eagerly fetch to avoid closed cursor when iterating later.
+    with tdb.engine.connect() as conn:
+        result = conn.execute(text(stmt), params)
+        rows = result.fetchall()
+    return rows
+
+
 
 ######################################################################
 # Perform query and populate result set
@@ -256,14 +262,17 @@ def run(results, cmdenv, tdb):
         if mode is SHIP_MODE:
             results.summary.avg = first.cost
         else:
-            avgPrice = tdb.query("""
-                SELECT AVG(si.supply_price)
-                  FROM StationItem AS si
-                 WHERE si.item_id = ? AND si.supply_price > 0
-            """, [first.ID]).fetchone()[0]
-            if not avgPrice:
-                avgPrice = 0
-            results.summary.avg = int(avgPrice)
+            # Portable AVG with named bind; eager scalar fetch
+            with tdb.engine.connect() as conn:
+                avg_val = conn.execute(
+                    text("""
+                        SELECT AVG(si.supply_price) AS avg_price
+                          FROM StationItem AS si
+                         WHERE si.item_id = :item_id AND si.supply_price > 0
+                    """),
+                    {"item_id": first.ID},
+                ).scalar()
+            results.summary.avg = int(avg_val or 0)
     
     # System-based search
     nearSystem = cmdenv.nearSystem
@@ -359,6 +368,8 @@ def run(results, cmdenv, tdb):
         results.rows = results.rows[:limit]
     
     return results
+
+
 
 #######################################################################
 # # Transform result set into output

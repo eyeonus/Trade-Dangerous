@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions / support (not bugs)
+  - url: https://forums.frontier.co.uk/threads/trade-dangerous-est-2015-power-users-highly-configurable-trade-optimizer.441509/
+  - name: Project docs
+  - url: https://github.com/eyeonus/Trade-Dangerous/wiki
+  - about: Note - V1 docs only. Update needed (volunteers?)

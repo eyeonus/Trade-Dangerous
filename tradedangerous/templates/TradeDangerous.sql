@@ -44,7 +44,7 @@ CREATE TABLE Added
 
 CREATE TABLE System
  (
-   system_id INTEGER PRIMARY KEY,
+   system_id BIGINT PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
@@ -63,9 +63,9 @@ CREATE INDEX idx_system_by_pos ON System (pos_x, pos_y, pos_z, system_id);
 
 CREATE TABLE Station
  (
-   station_id INTEGER PRIMARY KEY,
+   station_id BIGINT PRIMARY KEY,
    name VARCHAR(40) COLLATE nocase,
-   system_id INTEGER NOT NULL,
+   system_id BIGINT NOT NULL,
    ls_from_star INTEGER NOT NULL DEFAULT 0
        CHECK (ls_from_star >= 0),
    blackmarket TEXT(1) NOT NULL DEFAULT '?'
@@ -111,7 +111,7 @@ CREATE TABLE Ship
 CREATE TABLE ShipVendor
  (
    ship_id INTEGER NOT NULL,
-   station_id INTEGER NOT NULL,
+   station_id BIGINT NOT NULL,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
    PRIMARY KEY (ship_id, station_id),
@@ -141,7 +141,7 @@ CREATE TABLE Upgrade
 CREATE TABLE UpgradeVendor
  (
    upgrade_id INTEGER NOT NULL,
-   station_id INTEGER NOT NULL,
+   station_id BIGINT NOT NULL,
    modified DATETIME NOT NULL,
 
    PRIMARY KEY (upgrade_id, station_id),
@@ -209,7 +209,7 @@ CREATE TABLE Item
 
 CREATE TABLE StationItem
  (
-  station_id INTEGER NOT NULL,
+  station_id BIGINT NOT NULL,
   item_id INTEGER NOT NULL,
   demand_price INT NOT NULL,
   demand_units INT NOT NULL,

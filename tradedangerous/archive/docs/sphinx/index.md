@@ -8,7 +8,9 @@ Copyright (C) Oliver "kfsone" Smith, July 2014
 
 Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
 
-Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
+Copyright (C) Stefan 'Tromador' Morrell 2025
+
+Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
 
 _REQUIRES PYTHON 3.8.19 OR HIGHER._
 

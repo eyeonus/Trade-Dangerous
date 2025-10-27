@@ -53,16 +53,46 @@ switches = [
 
 
 def run(results, cmdenv, tdb: TradeDB):
-    # Check that the file doesn't already exist.
-    if not cmdenv.force:
-        if tdb.dbPath.exists():
-            raise CommandLineError(
-                f"SQLite3 database '{tdb.dbFilename}' already exists.\n"
-                "Either remove the file first or use the '-f' option.")
-    
+    """
+    BRUTE-FORCE rebuild of the cache/database.
+
+    Semantics preserved:
+      - If DB exists and --force not given => error
+      - SQL file must exist
+      - Performs a full destructive rebuild
+
+    Implementation change:
+      - Delegates to tradedangerous.db.lifecycle.ensure_fresh_db with mode='force'
+        so all backend-specific checks and rebuild steps run via the central path.
+    """
+    # Deprecation note: keep short and visible but non-fatal.
+    print("NOTE: 'buildcache' is deprecated. Prefer 'update' or importer plugins. "
+          "Proceeding with a forced rebuild via db.lifecycle.ensure_fresh_db().")
+
+    # Honor legacy safety: require --force to overwrite an existing DB file.
+    if not cmdenv.force and tdb.dbPath.exists():
+        raise CommandLineError(
+            f"SQLite3 database '{tdb.dbFilename}' already exists.\n"
+            "Either remove the file first or use the '-f/--force' option."
+        )
+
+    # Ensure the SQL source exists (buildCache ultimately relies on this path).
     if not tdb.sqlPath.exists():
         raise CommandLineError(f"SQL File does not exist: {tdb.sqlFilename}")
-    
-    buildCache(tdb, cmdenv)
-    
+
+    # Force a rebuild through the lifecycle helper (works for both backends).
+    from tradedangerous.db.lifecycle import ensure_fresh_db
+
+    ensure_fresh_db(
+        backend=tdb.engine.dialect.name if getattr(tdb, "engine", None) else "sqlite",
+        engine=getattr(tdb, "engine", None),
+        data_dir=tdb.dataPath,
+        metadata=None,
+        mode="force",
+        tdb=tdb,
+        tdenv=cmdenv,
+        rebuild=True,
+    )
+
     return None
+

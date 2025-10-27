@@ -1,6 +1,4 @@
-from commands.commandenv import ResultRow
-from commands.parsing import *
-from formatting import RowFormat, ColumnFormat
+from __future__ import annotations
 
 ######################################################################
 # Parser config
@@ -8,25 +6,23 @@ from formatting import RowFormat, ColumnFormat
 help = 'Describe your command briefly here for the top-level --help.'
 name = 'TEMPLATE'       # name of your .py file excluding the _cmd
 epilog = None           # text to print at the bottom of --help
-wantsTradeDB = True     # Should we try to load the cache at startup?
-usesTradeData = True    # Will we be needing trading data?
-arguments = [
-    #ParseArgument('near', help='System to start from', type=str),
-]
-switches = [
-    #ParseArgument('--ly-per',
-    #       help='Maximum light years per jump.',
-    #       dest='maxLyPer',
-    #       metavar='N.NN',
-    #       type=float,
-    #   ),
-]
 
-######################################################################
-# Helpers
+# Whether this command needs a TradeDB instance
+wantsTradeDB = True
+usesTradeData = False
 
-######################################################################
-# Perform query and populate result set
+# Parser wiring (keep tuples for consistency with loader)
+from .parsing import ParseArgument  # import specific helpers as needed
+arguments = (
+    ParseArgument("name", help="Example positional(s).", type=str, nargs="*"),
+)
+switches = (
+    ParseArgument("--flag", help="Example flag.", action="store_true", default=False),
+)
+
+# Runtime API
+from .commandenv import ResultRow
+from ..formatting import RowFormat, ColumnFormat  # use package-relative imports
 
 def run(results, cmdenv, tdb):
     """
@@ -44,11 +40,9 @@ def run(results, cmdenv, tdb):
     """
     
     ### TODO: Implement
-    
+    row = ResultRow(example="ok")
+    results.rows.append(row)
     return results
-
-######################################################################
-# Transform result set into output
 
 def render(results, cmdenv, tdb):
     """
@@ -57,5 +51,10 @@ def render(results, cmdenv, tdb):
     
     This is where you should generate any output from your command.
     """
-    
-    ### TODO: Implement
+    fmt = RowFormat()
+    fmt.addColumn("Example", "<", 10, key=lambda r: getattr(r, "example", ""))
+    if not cmdenv.quiet:
+        hdr, ul = fmt.heading()
+        print(hdr, ul, sep="\n")
+    for row in results.rows:
+        print(fmt.format(row))

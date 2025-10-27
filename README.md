@@ -4,9 +4,10 @@
 TradeDangerous  
 Copyright (C) Oliver "kfsone" Smith, July 2014  
 Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017  
-Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2021
+Copyright (C) Stefan 'Tromador' Morrell 2025  
+Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025  
 
-REQUIRES PYTHON 3.8 OR HIGHER.
+REQUIRES PYTHON 3.10 OR HIGHER.
 
 ----------
 

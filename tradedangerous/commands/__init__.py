@@ -101,12 +101,6 @@ class CommandIndex:
         # Figure out the pre-indentation
         cmdFmt = '  {:<12s}  '
         cmdFmtLen = len(cmdFmt.format(''))
-        # Generate a formatter which will produce nicely formatted text
-        # that wraps at column 78 but puts continuation text one character
-        # indented from where the previous text started, e.g
-        #   cmd1    Cmd1 help text stuff
-        #            continued cmd1 text
-        #   cmd2    Cmd2 help text
         tw = TextWrapper(
                 subsequent_indent = ' ' * (cmdFmtLen + 1),
                 width = 78,
@@ -117,14 +111,12 @@ class CommandIndex:
                 break_on_hyphens = True,
                 )
         
-        # List each command with its help text
         lastCmdName = None
         for cmdName, cmd in sorted(commandIndex.items()):
             tw.initial_indent = cmdFmt.format(cmdName)
             text += tw.fill(cmd.help) + "\n"
             lastCmdName = cmdName
         
-        # Epilog
         text += (
             "\n"
             "For additional help on a specific command, such as '{cmd}' use\n"
@@ -139,10 +131,6 @@ class CommandIndex:
                     "TradeDangerous provides a set of trade database "
                     "facilities for Elite:Dangerous.", self.usage(argv))
         
-        # ## TODO: Break this model up a bit more so that
-        # ## we just try and import the command you specify,
-        # ## and only worry about an index when that fails or
-        # ## the user requests usage.
         cmdName, cmdModule = argv[1].casefold(), None
         try:
             cmdModule = commandIndex[cmdName]
@@ -172,7 +160,6 @@ class CommandIndex:
             cmdModule = candidates[0][1]
         
         class ArgParser(argparse.ArgumentParser):
-            
             def error(self, message):
                 raise exceptions.CommandLineError(message, self.format_usage())
         
@@ -244,9 +231,14 @@ class CommandIndex:
         fromfilePath = _findFromFile(cmdModule.name)
         if fromfilePath:
             argv.insert(2, '{}{}'.format(fromfile_prefix, fromfilePath))
-        properties = parser.parse_args(argv[1:])
         
-        parsed = CommandEnv(properties, argv, cmdModule)
+        # Parse argv; optionally swallow unknown args/switches if the module allows it.
+        accept_unknown = getattr(cmdModule, 'acceptUnknown', False)
+        if accept_unknown:
+            properties, _unknown = parser.parse_known_args(argv[1:])
+        else:
+            properties = parser.parse_args(argv[1:])
+        
+        parsed = CommandEnv(vars(properties), argv, cmdModule)
         parsed.DEBUG0("Command line was: {}", argv)
-        
         return parsed

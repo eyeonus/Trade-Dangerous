@@ -7,6 +7,7 @@ from .parsing import (
 )
 from ..tradedb import TradeDB, System, Station
 from ..formatting import RowFormat
+from sqlalchemy import text
 
 
 ######################################################################
@@ -81,6 +82,14 @@ switches = [
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb: TradeDB):
+    """
+    Backend-neutral implementation:
+      - Use SQLAlchemy text() with NAMED binds (':param') instead of '?'.
+      - Eagerly materialize rows via engine.connect().execute(...).fetchall()
+        to avoid closed-cursor errors when iterating later.
+      - Preserve all existing filters, sorting, and output fields.
+    """
+
     if cmdenv.lt and cmdenv.gt:
         if cmdenv.lt <= cmdenv.gt:
             raise CommandLineError("--gt must be lower than --lt")
@@ -96,37 +105,54 @@ def run(results, cmdenv, tdb: TradeDB):
     results.summary.avoidSystems = avoidSystems
     results.summary.avoidStations = avoidStations
     
+    # Detail: average demand price for this item (portable named bind)
     if cmdenv.detail:
-        avgPrice = tdb.query("""
-            SELECT AVG(si.demand_price)
-              FROM StationItem AS si
-             WHERE si.item_id = ? AND si.demand_price > 0
-        """, [item.ID]).fetchone()[0]
-        results.summary.avg = int(avgPrice)
+        with tdb.engine.connect() as conn:
+            avg_val = conn.execute(
+                text("""
+                    SELECT AVG(si.demand_price)
+                      FROM StationItem AS si
+                     WHERE si.item_id = :item_id AND si.demand_price > 0
+                """),
+                {"item_id": item.ID},
+            ).scalar()
+        results.summary.avg = int(avg_val or 0)
     
-    # Constraints
-    tables = "StationItem AS si"
-    constraints = [
-        "(item_id = {} AND demand_price > 0)".format(item.ID),
-    ]
-    columns = [
-        'si.station_id',
-        'si.demand_price',
-        'si.demand_units',
-    ]
-    bindValues = []
-    
+    # Build the main query with named binds
+    columns = "si.station_id, si.demand_price, si.demand_units"
+    where = ["si.item_id = :item_id", "si.demand_price > 0"]
+    params = {"item_id": item.ID}
+
     if cmdenv.demand:
-        constraints.append("(demand_units >= ?)")
-        bindValues.append(cmdenv.demand)
-    
+        where.append("si.demand_units >= :demand")
+        params["demand"] = cmdenv.demand
     if cmdenv.lt:
-        constraints.append("(demand_price < ?)")
-        bindValues.append(cmdenv.lt)
+        where.append("si.demand_price < :lt")
+        params["lt"] = cmdenv.lt
     if cmdenv.gt:
-        constraints.append("(demand_price > ?)")
-        bindValues.append(cmdenv.gt)
+        where.append("si.demand_price > :gt")
+        params["gt"] = cmdenv.gt
+
+    stmt = f"""
+        SELECT DISTINCT {columns}
+          FROM StationItem AS si
+         WHERE {' AND '.join(where)}
+    """
+    cmdenv.DEBUG0('SQL: {} ; params={}', stmt, params)
+
+    # Execute and eagerly fetch rows
+    with tdb.engine.connect() as conn:
+        cur_rows = conn.execute(text(stmt), params).fetchall()
     
+    stationByID = tdb.stationByID
+    padSize = cmdenv.padSize
+    planetary = cmdenv.planetary
+    fleet = cmdenv.fleet
+    odyssey = cmdenv.odyssey
+    wantNoPlanet = cmdenv.noPlanet
+    wantBlackMarket = cmdenv.blackMarket
+
+    # System-based search
     nearSystem = cmdenv.nearSystem
     if nearSystem:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
@@ -136,24 +162,7 @@ def run(results, cmdenv, tdb: TradeDB):
     else:
         distanceFn = None
     
-    whereClause = ' AND '.join(constraints)
-    stmt = """SELECT DISTINCT {columns} FROM {tables} WHERE {where}""".format(
-        columns=','.join(columns),
-        tables=tables,
-        where=whereClause
-    )
-    cmdenv.DEBUG0('SQL: {}', stmt)
-    cur = tdb.query(stmt, bindValues)
-    
-    stationByID = tdb.stationByID
-    padSize = cmdenv.padSize
-    planetary = cmdenv.planetary
-    fleet = cmdenv.fleet
-    odyssey = cmdenv.odyssey
-    wantNoPlanet = cmdenv.noPlanet
-    wantBlackMarket = cmdenv.blackMarket
-    
-    for (stationID, priceCr, demand) in cur:
+    for (stationID, priceCr, demand) in cur_rows:
         station = stationByID[stationID]
         if padSize and not station.checkPadSize(padSize):
             continue
@@ -186,8 +195,6 @@ def run(results, cmdenv, tdb: TradeDB):
         row.demand = demand
         row.age = station.itemDataAgeStr
         results.rows.append(row)
-    
-    cur.close()
     
     if not results.rows:
         raise NoDataError("No available items found")

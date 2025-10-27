@@ -1,7 +1,8 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Jonathan 'eyeonus' Jones 2018, 2019
+# Copyright (C) Stefan 'Tromador' Morrell 2025
+# Copyright (C) Jonathan 'eyeonus' Jones 2018-2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
@@ -23,19 +24,30 @@
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import datetime, date
 import csv
 import os
 import re
-import sqlite3
 import sys
 import typing
 
+
 from functools import partial as partial_fn
+from sqlalchemy import func, Integer, Float, DateTime
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import Session
+from sqlalchemy.types import DateTime as SA_DateTime
+from tradedangerous.db import make_engine_from_config, get_session_factory
+from tradedangerous.db import orm_models as SA
+from tradedangerous.db import lifecycle
+from tradedangerous.db.utils import parse_ts, get_import_batch_size
+
 from .fs import file_line_count
 from .tradeexcept import TradeException
 from tradedangerous.misc.progress import Progress, CountingBar
 from . import corrections, utils
 from . import prices
+
 
 
 # For mypy/pylint type checking
@@ -233,6 +245,52 @@ class SupplyError(BuildCacheBaseException):
 ######################################################################
 # Helpers
 
+# --- tiny FK lookup caches (per import run) ---
+_fk_cache_system = {}
+_fk_cache_station = {}
+_fk_cache_category = {}
+_fk_cache_added = {}
+
+def _get_system_id(session, system_name):
+    if system_name in _fk_cache_system:
+        return _fk_cache_system[system_name]
+    rid = session.query(SA.System.system_id).filter(SA.System.name == system_name).scalar()
+    if rid is None:
+        raise ValueError(f"Unknown System name: {system_name}")
+    _fk_cache_system[system_name] = rid
+    return rid
+
+def _get_station_id(session, system_id, station_name):
+    key = (system_id, station_name)
+    if key in _fk_cache_station:
+        return _fk_cache_station[key]
+    rid = (
+        session.query(SA.Station.station_id)
+        .filter(SA.Station.system_id == system_id, SA.Station.name == station_name)
+        .scalar()
+    )
+    if rid is None:
+        raise ValueError(f"Unknown Station '{station_name}' in system_id={system_id}")
+    _fk_cache_station[key] = rid
+    return rid
+
+def _get_category_id(session, cat_name):
+    if cat_name in _fk_cache_category:
+        return _fk_cache_category[cat_name]
+    rid = session.query(SA.Category.category_id).filter(SA.Category.name == cat_name).scalar()
+    if rid is None:
+        raise ValueError(f"Unknown Category name: {cat_name}")
+    _fk_cache_category[cat_name] = rid
+    return rid
+
+def _get_added_id(session, added_name):
+    if added_name in _fk_cache_added:
+        return _fk_cache_added[added_name]
+    rid = session.query(SA.Added.added_id).filter(SA.Added.name == added_name).scalar()
+    if rid is None:
+        raise ValueError(f"Unknown Added name: {added_name}")
+    _fk_cache_added[added_name] = rid
+    return rid
 
 # supply/demand levels are one of '?' for unknown, 'L', 'M' or 'H'
 # for low, medium, or high. We turn these into integer values for
@@ -299,33 +357,38 @@ def parseSupply(pricesFile: Path, lineNo: int, category: str, reading: str) -> t
 ######################################################################
 
 
-def getSystemByNameIndex(cur: sqlite3.Cursor) -> dict[str, int]:
-    """ Build station index in STAR/Station notation """
-    cur.execute("""
-            SELECT system_id, UPPER(system.name)
-              FROM System
-        """)
-    return { name: ID for (ID, name) in cur }
+def getSystemByNameIndex(session: Session) -> dict[str, int]:
+    """Build system index by uppercase name → system_id."""
+    rows = (
+        session.query(SA.System.system_id, func.upper(SA.System.name))
+        .all()
+    )
+    return {name: ID for (ID, name) in rows}
 
 
-def getStationByNameIndex(cur: sqlite3.Cursor) -> dict[str, int]:
-    """ Build station index in STAR/Station notation """
-    cur.execute("""
-            SELECT station_id,
-                    system.name || '/' || station.name
-              FROM System
-                   INNER JOIN Station
-                      USING (system_id)
-        """)
-    return { name.upper(): ID for (ID, name) in cur }
+def getStationByNameIndex(session: Session) -> dict[str, int]:
+    """Build station index in STAR/Station notation → station_id."""
+    rows = (
+        session.query(
+            SA.Station.station_id,
+            (SA.System.name + "/" + SA.Station.name)
+        )
+        .join(SA.System, SA.Station.system_id == SA.System.system_id)
+        .all()
+    )
+    # normalise case like original
+    return {name.upper(): ID for (ID, name) in rows}
 
 
-def getItemByNameIndex(cur: sqlite3.Cursor) -> dict[str, int]:
-    """
-        Generate item name index.
-    """
-    cur.execute("SELECT item_id, UPPER(name) FROM item")
-    return { name: itemID for (itemID, name) in cur }
+
+def getItemByNameIndex(session: Session) -> dict[str, int]:
+    """Generate item name index (uppercase item name → item_id)."""
+    rows = (
+        session.query(SA.Item.item_id, func.upper(SA.Item.name))
+        .all()
+    )
+    return {name: itemID for (itemID, name) in rows}
+
 
 
 # The return type of process prices is complicated, should probably have been a type
@@ -349,28 +412,33 @@ if typing.TYPE_CHECKING:
     ZeroItems = list[tuple[int, int]]   # stationID, itemID
 
 
-def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defaultZero: bool) -> tuple[ProcessedStationIds, ProcessedItems, ZeroItems, int, int, int, int]:
+def processPrices(
+    tdenv: TradeEnv,
+    priceFile: Path,
+    session: Session,
+    defaultZero: bool
+) -> tuple[ProcessedStationIds, ProcessedItems, ZeroItems, int, int, int, int]:
     """
-        Yields SQL for populating the database with prices
-        by reading the file handle for price lines.
-        
-        :param tdenv:       The environment we're working in
-        :param priceFile:   File to read
-        :param db:          SQLite3 database to write to
-        :param defaultZero: Whether to create default zero-availability/-demand records for data that's not present
-                            (if this is a partial update, you don't want this to be False)
+    Populate the database with prices by reading the given file.
+
+    :param tdenv:       The environment we're working in
+    :param priceFile:   File to read
+    :param session:     Active SQLAlchemy session
+    :param defaultZero: Whether to create default zero-availability/-demand
+                        records for missing data. For partial updates,
+                        set False.
     """
-    
+
     DEBUG0, DEBUG1 = tdenv.DEBUG0, tdenv.DEBUG1
     DEBUG0("Processing prices file: {}", priceFile)
-    
-    cur = db.cursor()
+
     ignoreUnknown = tdenv.ignoreUnknown
     quiet = tdenv.quiet
     merging = tdenv.mergeImport
-    
-    systemByName = getSystemByNameIndex(cur)
-    stationByName = getStationByNameIndex(cur)
+
+    # build lookup indexes from DB
+    systemByName = getSystemByNameIndex(session)
+    stationByName = getStationByNameIndex(session)
     stationByName.update(
         (sys, ID)
         for sys, ID in corrections.stations.items()
@@ -382,12 +450,12 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
         for stn, alt in corrections.stations.items()
         if isinstance(alt, str)
     }
-    
-    itemByName = getItemByNameIndex(cur)
-    
+
+    itemByName = getItemByNameIndex(session)
+
     defaultUnits = -1 if not defaultZero else 0
     defaultLevel = -1 if not defaultZero else 0
-    
+
     stationID = None
     facility = None
     processedStations = {}
@@ -396,35 +464,37 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
     stationItemDates = {}
     DELETED = corrections.DELETED
     items, zeros = [], []
-    
+
     lineNo, localAdd = 0, 0
+
     if not ignoreUnknown:
         def ignoreOrWarn(error: Exception) -> None:
             raise error
-    
     elif not quiet:
-        ignoreOrWarn = tdenv.WARN
+        def ignoreOrWarn(error: Exception) -> None:
+            # Ensure exceptions are stringified before passing to WARN
+            tdenv.WARN(str(error))
     
     def changeStation(matches: re.Match) -> None:
         nonlocal facility, stationID
         nonlocal processedStations, processedItems, localAdd
         nonlocal stationItemDates
-        
+
         # ## Change current station
         stationItemDates = {}
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
         corrected = False
         facility = f'{systemName}/{stationName}'
-        
-        # Make sure it's valid.
+
         stationID = DELETED
-        newID = stationByName.get(facility, -1)  # why -1 and not None?
+        newID = stationByName.get(facility, -1)
         DEBUG0("Selected station: {}, ID={}", facility, newID)
+
         if newID is DELETED:
             DEBUG1("DELETED Station: {}", facility)
             return
-        
+
         if newID < 0:
             if utils.checkForOcrDerp(tdenv, systemName, stationName):
                 return
@@ -436,81 +506,81 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
             if altName:
                 DEBUG1("SYSTEM '{}' renamed '{}'", systemName, altName)
                 systemName, facility = altName, "/".join((altName, stationName))
-            
-            systemID = systemByName.get(systemName, -1)  # why -1 and not None?
+
+            systemID = systemByName.get(systemName, -1)
             if systemID < 0:
                 ignoreOrWarn(
                     UnknownSystemError(priceFile, lineNo, facility)
                 )
                 return
-            
+
             altStation = stnCorrections.get(facility)
             if altStation:
                 if altStation is DELETED:
                     DEBUG1("DELETED Station: {}", facility)
                     return
-                
+
                 DEBUG1("Station '{}' renamed '{}'", facility, altStation)
                 stationName = altStation.upper()
                 facility = f'{systemName}/{stationName}'
-            
+
             newID = stationByName.get(facility, -1)
             if newID is DELETED:
                 DEBUG1("Renamed station DELETED: {}", facility)
                 return
-        
+
         if newID < 0:
             if not ignoreUnknown:
-                DEBUG0(f'Key value: "{list(stationByName.keys())[list(stationByName.values()).index(128893178)]}"')
                 ignoreOrWarn(
                     UnknownStationError(priceFile, lineNo, facility)
                 )
                 return
+
             name = utils.titleFixup(stationName)
-            inscur = db.cursor()
-            inscur.execute("""
-                INSERT INTO Station (
-                    system_id, name,
-                    ls_from_star,
-                    blackmarket,
-                    max_pad_size,
-                    market,
-                    shipyard,
-                    modified
-                ) VALUES (
-                    ?, ?, 0, '?', '?', '?', '?',
-                    DATETIME('now')
-                )
-            """, [systemID, name])
-            newID = inscur.lastrowid
+            # ORM insert: placeholder station
+            station = SA.Station(
+                system_id=systemID,
+                name=name,
+                ls_from_star=0,
+                blackmarket='?',
+                max_pad_size='?',
+                market='?',
+                shipyard='?',
+            )
+            session.add(station)
+            session.flush()  # assign station_id
+            newID = station.station_id
+
             stationByName[facility] = newID
             tdenv.NOTE(
                 "Added local station placeholder for {} (#{})", facility, newID
             )
             localAdd += 1
+
         elif newID in processedStations:
-            # Check for duplicates
             if not corrected:
                 raise MultipleStationEntriesError(
                     priceFile, lineNo, facility,
                     processedStations[newID]
                 )
-        
+
         stationID = newID
         processedSystems.add(systemName)
         processedStations[stationID] = lineNo
         processedItems = {}
+
+        # ORM query: load existing item → modified map
+        rows = (
+            session.query(SA.StationItem.item_id, SA.StationItem.modified)
+            .filter(SA.StationItem.station_id == stationID)
+            .all()
+        )
+        stationItemDates = dict(rows)
         
-        cur = db.execute("""
-            SELECT item_id, modified
-              FROM StationItem
-             WHERE station_id = ?
-        """, [stationID])
-        stationItemDates = dict(cur)
-    
     addItem, addZero = items.append, zeros.append
     getItemID = itemByName.get
-    newItems, updtItems, ignItems = 0, 0, 0
+    newItems, updtItems, ignItems = 0, 0, 0   # <-- put this back
+
     
     def processItemLine(matches):
         nonlocal newItems, updtItems, ignItems
@@ -649,88 +719,96 @@ def processPrices(tdenv: TradeEnv, priceFile: Path, db: sqlite3.Connection, defa
 ######################################################################
 
 
-def processPricesFile(tdenv: TradeEnv, db: sqlite3.Connection, pricesPath: Path, pricesFh: Optional[TextIO] = None, defaultZero: bool = False) -> None:
+def processPricesFile(
+    tdenv: "TradeEnv",
+    session: Session,
+    pricesPath: Path,
+    pricesFh: Optional[typing.TextIO] = None,
+    defaultZero: bool = False,
+) -> None:
+    """
+    Process a .prices file and import data into the DB via ORM.
+    """
+
     tdenv.DEBUG0("Processing Prices file '{}'", pricesPath)
-    
-    with (pricesFh or pricesPath.open('r', encoding='utf-8')) as fh:
-        stations, items, zeros, newItems, updtItems, ignItems, numSys = processPrices(
-            tdenv, fh, db, defaultZero
-        )
-    
+
+    with (pricesFh or pricesPath.open("r", encoding="utf-8")) as fh:
+        (
+            stations,
+            items,
+            zeros,
+            newItems,
+            updtItems,
+            ignItems,
+            numSys,
+        ) = processPrices(tdenv, fh, session, defaultZero)
+
     if not tdenv.mergeImport:
-        db.executemany("""
-            DELETE FROM StationItem
-             WHERE station_id = ?
-        """, stations)
+        # Delete all StationItems for these stations
+        session.query(SA.StationItem).filter(
+            SA.StationItem.station_id.in_([sid for (sid,) in stations])
+        ).delete(synchronize_session=False)
+
     if zeros:
-        db.executemany("""
-            DELETE FROM StationItem
-             WHERE station_id = ?
-               AND item_id = ?
-        """, zeros)
+        session.query(SA.StationItem).filter(
+            tuple_(SA.StationItem.station_id, SA.StationItem.item_id).in_(zeros)
+        ).delete(synchronize_session=False)
     removedItems = len(zeros)
-    
+
     if items:
         for item in items:
-            try:
-                db.execute("""
-                    INSERT OR REPLACE INTO StationItem (
-                        station_id, item_id, modified,
-                        demand_price, demand_units, demand_level,
-                        supply_price, supply_units, supply_level
-                    ) VALUES (
-                        ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
-                        ?, ?, ?,
-                        ?, ?, ?
-                    )
-                """, item)
-            except sqlite3.IntegrityError as e:
-                print(e)
-                print(item)
-                raise e
-        # db.executemany("""
-        #     INSERT OR REPLACE INTO StationItem (
-        #         station_id, item_id, modified,
-        #         demand_price, demand_units, demand_level,
-        #         supply_price, supply_units, supply_level
-        #     ) VALUES (
-        #         ?, ?, IFNULL(?, CURRENT_TIMESTAMP),
-        #         ?, ?, ?,
-        #         ?, ?, ?
-        #     )
-        # """, items)
-    
+            (
+                station_id,
+                item_id,
+                modified,
+                demand_price,
+                demand_units,
+                demand_level,
+                supply_price,
+                supply_units,
+                supply_level,
+            ) = item
+            obj = SA.StationItem(
+                station_id=station_id,
+                item_id=item_id,
+                modified=modified or None,
+                demand_price=demand_price,
+                demand_units=demand_units,
+                demand_level=demand_level,
+                supply_price=supply_price,
+                supply_units=supply_units,
+                supply_level=supply_level,
+            )
+            session.merge(obj)
+
     tdenv.DEBUG0("Marking populated stations as having a market")
-    db.execute(
-        "UPDATE Station SET market = 'Y'"
-        " WHERE EXISTS"
-            " (SELECT station_id FROM StationItem"
-              " WHERE StationItem.station_id = Station.station_id"
-             ")"
-    )
-    
-    tdenv.DEBUG0('Committing...')
-    db.commit()
-    db.close()
-    
-    changes = " and ".join("{} {}".format(v, k) for k, v in {
-        "new": newItems,
-        "updated": updtItems,
-        "removed": removedItems,
-    }.items() if v) or "0"
-    
+    session.query(SA.Station).filter(
+        SA.Station.station_id.in_([sid for (sid,) in stations])
+    ).update({SA.Station.market: "Y"}, synchronize_session=False)
+
+    changes = " and ".join(
+        f"{v} {k}"
+        for k, v in {
+            "new": newItems,
+            "updated": updtItems,
+            "removed": removedItems,
+        }.items()
+        if v
+    ) or "0"
+
     tdenv.NOTE(
         "Import complete: "
-            "{:s} items "
-            "over {:n} stations "
-            "in {:n} systems",
-                changes,
-                len(stations),
-                numSys,
+        "{:s} items "
+        "over {:n} stations "
+        "in {:n} systems",
+        changes,
+        len(stations),
+        numSys,
     )
-    
+
     if ignItems:
         tdenv.NOTE("Ignored {} items with old data", ignItems)
+
 
 
 ######################################################################
@@ -780,303 +858,397 @@ def deprecationCheckItem(importPath, lineNo, line):
     )
 
 
-def processImportFile(tdenv, db, importPath, tableName, *, line_callback: Optional[Callable] = None, call_args: Optional[dict] = None):
-    tdenv.DEBUG0(
-        "Processing import file '{}' for table '{}'",
-        str(importPath), tableName
-    )
+# --- main importer ---
+def processImportFile(
+    tdenv,
+    session,
+    importPath,
+    tableName,
+    *,
+    line_callback: Optional[Callable] = None,
+    call_args: Optional[dict] = None,
+):
+    """
+    Import a CSV file into the given table.
+
+    - RareItem.csv:
+        Skips FK marker columns:
+          * !name@System.system_id
+          * name@Station.station_id
+          * name@Category.category_id
+        Looks up system_id (transient), station_id, category_id via cached helpers.
+        NOTE: system_id is NOT a RareItem column and is not passed to the model.
+
+    - System.csv:
+        Skips 'name@Added.added_id' from active columns; resolves Added by name,
+        defaulting to "EDSM" when blank.
+
+    - All tables:
+        Uses parse_ts() for datetimes.
+        Enforces unq: unique headers.
+        Commits per tradedangerous.db.utils.get_import_batch_size(session).
+    """
+
+    tdenv.DEBUG0("Processing import file '{}' for table '{}'", str(importPath), tableName)
+
     call_args = call_args or {}
     if line_callback:
         line_callback = partial_fn(line_callback, **call_args)
-    
-    fkeySelectStr = (
-        "("
-        " SELECT {newValue}"
-        " FROM {table}"
-        " WHERE {stmt}"
-        ")"
-    )
+
     uniquePfx = "unq:"
     uniqueLen = len(uniquePfx)
-    ignorePfx = "!"
-    
-    with importPath.open('r', encoding='utf-8') as importFile:
-        csvin = csv.reader(
-            importFile, delimiter=',', quotechar="'", doublequote=True
-        )
-        # first line must be the column names
+
+    # Backend-aware batch policy (SQLite=None→single commit; MariaDB defaults to 50k; env override respected)
+    max_transaction_items = get_import_batch_size(session, profile="csv")  # from tradedangerous.db.utils
+    transaction_items = 0
+
+    with importPath.open("r", encoding="utf-8") as importFile:
+        csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
+
+        # header
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
-        
-        # split up columns and values
-        # this is necessary because the insert might use a foreign key
-        bindColumns = []
-        bindValues = []
-        joinHelper = []
-        uniqueIndexes = []
-        for (cIndex, cName) in enumerate(columnDefs):
-            colName, _, srcKey = cName.partition('@')
-            # is this a unique index?
+
+        activeColumns: list[str] = []        # headers that map directly to ORM fields
+        kept_indices: list[int] = []         # original header indices that we KEEP (aligns values)
+        uniqueIndexes: list[int] = []        # indexes into activeColumns (post-skip)
+        fk_col_indices: dict[str, int] = {}  # special FK headers → their original indices
+
+        # --- preprocess header ---
+        for cIndex, cName in enumerate(columnDefs):
+            colName, _, srcKey = cName.partition("@")
+
+            # --- System.csv ---
+            if tableName == "System":
+                if cName == "name":
+                    srcKey = ""  # plain field
+                elif cName == "name@Added.added_id":
+                    # We'll resolve Added by name separately; skip from active columns.
+                    fk_col_indices["added"] = cIndex
+                    continue  # do NOT keep this header/value
+
+            # --- RareItem.csv (skip FK headers; remember positions) ---
+            if tableName == "RareItem":
+                if cName == "!name@System.system_id":
+                    fk_col_indices["system"] = cIndex
+                    continue  # do NOT keep this header/value
+                if cName == "name@Station.station_id":
+                    fk_col_indices["station"] = cIndex
+                    continue  # do NOT keep this header/value
+                if cName == "name@Category.category_id":
+                    fk_col_indices["category"] = cIndex
+                    continue  # do NOT keep this header/value
+
+            # unique index marker (e.g., "unq:name")
             if colName.startswith(uniquePfx):
-                uniqueIndexes.append(cIndex)
+                uniqueIndexes.append(len(activeColumns))
                 colName = colName[uniqueLen:]
-            if not srcKey:
-                # no foreign key, straight insert
-                bindColumns.append(colName)
-                bindValues.append('?')
-                continue
-            
-            queryTab, _, queryCol = srcKey.partition('.')
-            if colName.startswith(ignorePfx):
-                # this column is only used to resolve an FK
-                assert srcKey
-                colName = colName[len(ignorePfx):]
-                joinHelper.append((colName, queryTab, queryCol))
-                continue
-            
-            # foreign key, we need to make a select
-            joinTable = [ queryTab ]
-            joinStmt = []
-            for nextCol, nextTab, nextJoin in joinHelper:
-                joinTable.append(
-                    "INNER JOIN {} USING({})".format(nextTab, nextJoin)
-                )
-                joinStmt.append(
-                    "{}.{} = ?".format(nextTab, nextCol)
-                )
-            joinHelper = []
-            joinStmt.append("{}.{} = ?".format(queryTab, colName))
-            bindColumns.append(queryCol)
-            bindValues.append(
-                fkeySelectStr.format(
-                    newValue = srcKey,
-                    table = " ".join(joinTable),
-                    stmt = " AND ".join(joinStmt),
-                )
-            )
-        # now we can make the sql statement
-        sql_stmt = """
-            INSERT OR REPLACE INTO {table} ({columns}) VALUES({values})
-        """.format(
-            table=tableName,
-            columns=','.join(bindColumns),
-            values=','.join(bindValues)
-        )
-        tdenv.DEBUG0("SQL-Statement: {}", sql_stmt)
-        
-        # Check if there is a deprecation check for this table.
-        deprecationFn = getattr(
-            sys.modules[__name__],
-            "deprecationCheck" + tableName,
-            None
-        )
-        
-        # import the data
+
+            # keep normal columns and remember their source index
+            activeColumns.append(colName)
+            kept_indices.append(cIndex)
+
+        # optional deprecation checker
+        deprecationFn = getattr(sys.modules[__name__], "deprecationCheck" + tableName, None)
+
         importCount = 0
         uniqueIndex = {}
-        
+
         for linein in csvin:
             if line_callback:
                 line_callback()
             if not linein:
                 continue
             lineNo = csvin.line_num
-            if len(linein) == columnCount:
-                tdenv.DEBUG1("       Values: {}", ', '.join(linein))
-                if deprecationFn:
-                    try:
-                        deprecationFn(importPath, lineNo, linein)
-                    except (DeprecatedKeyError, DeletedKeyError) as e:
-                        if not tdenv.ignoreUnknown:
-                            raise e
-                        e.category = "WARNING"
-                        tdenv.NOTE("{}", e)
-                        continue
-                if uniqueIndexes:
-                    # Need to construct the actual unique index key as
-                    # something less likely to collide with manmade
-                    # values when it's a compound.
-                    keyValues = [
-                        str(linein[col]).upper()
-                        for col in uniqueIndexes
-                    ]
-                    key = ":!:".join(keyValues)
-                    prevLineNo = uniqueIndex.get(key, 0)
-                    if prevLineNo:
-                        # Make a human-readable key
-                        key = "/".join(keyValues)
-                        raise DuplicateKeyError(
-                            importPath, lineNo,
-                            "entry", key,
-                            prevLineNo
-                        )
-                    uniqueIndex[key] = lineNo
-                
-                try:
-                    db.execute(sql_stmt, linein)
-                    importCount += 1
-                except Exception as e:  # pylint: disable=broad-exception-caught
-                    tdenv.WARN(
-                        "*** INTERNAL ERROR: {err}\n"
-                        "CSV File: {file}:{line}\n"
-                        "SQL Query: {query}\n"
-                        "Params: {params}\n"
-                        .format(
-                            err = str(e),
-                            file = str(importPath),
-                            line = lineNo,
-                            query = sql_stmt.strip(),
-                            params = linein
-                        )
-                    )
-                    pass
-            else:
-                tdenv.NOTE(
-                        "Wrong number of columns ({}:{}): {}",
-                            importPath,
-                            lineNo,
-                            ', '.join(linein)
-                )
-        db.commit()
-        tdenv.DEBUG0("{count} {table}s imported",
-                            count = importCount,
-                            table = tableName)
 
-######################################################################
+            if len(linein) != columnCount:
+                tdenv.NOTE(
+                    "Wrong number of columns ({}:{}): {}",
+                    importPath,
+                    lineNo,
+                    ", ".join(linein),
+                )
+                continue
+
+            tdenv.DEBUG1("       Values: {}", ", ".join(linein))
+
+            # deprecation checks
+            if deprecationFn:
+                try:
+                    deprecationFn(importPath, lineNo, linein)
+                except (DeprecatedKeyError, DeletedKeyError) as e:
+                    if not tdenv.ignoreUnknown:
+                        raise e
+                    e.category = "WARNING"
+                    tdenv.NOTE("{}", e)
+                    continue
+
+            # Build values aligned to activeColumns (skip the FK columns we excluded)
+            activeValues = [linein[i] for i in kept_indices]
+
+            # unique index enforcement over activeColumns
+            if uniqueIndexes:
+                keyValues = [str(activeValues[i]).upper() for i in uniqueIndexes]
+                key = ":!:".join(keyValues)
+                prevLineNo = uniqueIndex.get(key, 0)
+                if prevLineNo:
+                    key_disp = "/".join(keyValues)
+                    raise DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
+                uniqueIndex[key] = lineNo
+
+            try:
+                # Base rowdict from non-FK columns only
+                rowdict = dict(zip(activeColumns, activeValues))
+
+                # --- RareItem foreign key lookups ---
+                if tableName == "RareItem":
+                    # Resolve system (transient; only for station lookup)
+                    sys_id = None
+                    if "system" in fk_col_indices:
+                        sys_name = linein[fk_col_indices["system"]]
+                        try:
+                            sys_id = _get_system_id(session, sys_name)
+                        except ValueError:
+                            tdenv.WARN("Unknown System '{}' in {}", sys_name, importPath)
+
+                    # Station (requires system context)
+                    if "station" in fk_col_indices:
+                        stn_name = linein[fk_col_indices["station"]]
+                        if sys_id is not None:
+                            try:
+                                rowdict["station_id"] = _get_station_id(session, sys_id, stn_name)
+                            except ValueError:
+                                tdenv.WARN("Unknown Station '{}' in {}", stn_name, importPath)
+                        else:
+                            tdenv.WARN("Station lookup skipped (no system_id) for '{}'", stn_name)
+
+                    # Category
+                    if "category" in fk_col_indices:
+                        cat_name = linein[fk_col_indices["category"]]
+                        try:
+                            rowdict["category_id"] = _get_category_id(session, cat_name)
+                        except ValueError:
+                            tdenv.WARN("Unknown Category '{}' in {}", cat_name, importPath)
+
+                # --- System foreign key lookup (Added), default "EDSM" if blank ---
+                if tableName == "System" and "added" in fk_col_indices:
+                    added_val = linein[fk_col_indices["added"]] or "EDSM"
+                    try:
+                        rowdict["added_id"] = _get_added_id(session, added_val)
+                    except ValueError:
+                        rowdict["added_id"] = None
+                        tdenv.WARN("Unknown Added value '{}' in {}", added_val, importPath)
+
+                # --- type coercion ---
+                for key, val in list(rowdict.items()):
+                    if val in ("", None):
+                        rowdict[key] = None
+                        continue
+                    # ints
+                    if key.endswith("_id") or key.endswith("ID") or key in ("cost", "max_allocation"):
+                        try:
+                            rowdict[key] = int(val)
+                        except ValueError:
+                            rowdict[key] = None
+                    # floats
+                    elif key in ("pos_x", "pos_y", "pos_z", "ls_from_star"):
+                        try:
+                            rowdict[key] = float(val)
+                        except ValueError:
+                            rowdict[key] = None
+                    # datetimes
+                    elif "time" in key or key == "modified":
+                        parsed = parse_ts(val)
+                        if parsed:
+                            rowdict[key] = parsed
+                        else:
+                            tdenv.WARN(
+                                "Unparsable datetime in {} line {} col {}: {}",
+                                importPath,
+                                lineNo,
+                                key,
+                                val,
+                            )
+                            rowdict[key] = None
+                    # strings (incl. TriState flags) left as-is
+
+                # reserved word remaps
+                if tableName == "Upgrade" and "class" in rowdict:
+                    rowdict["class_"] = rowdict.pop("class")
+                if tableName == "FDevOutfitting" and "class" in rowdict:
+                    rowdict["class_"] = rowdict.pop("class")
+
+                # ensure we never pass system_id to RareItem (not a column)
+                if tableName == "RareItem" and "system_id" in rowdict:
+                    rowdict.pop("system_id", None)
+
+                Model = getattr(SA, tableName)
+                obj = Model(**rowdict)
+                session.merge(obj)
+                importCount += 1
+
+                # batched commit (only if enabled for this backend)
+                if max_transaction_items:
+                    transaction_items += 1
+                    if transaction_items >= max_transaction_items:
+                        session.commit()
+                        session.begin()
+                        transaction_items = 0
+
+            except Exception as e:
+                tdenv.WARN(
+                    "*** INTERNAL ERROR: {err}\n"
+                    "CSV File: {file}:{line}\n"
+                    "Table: {table}\n"
+                    "Params: {params}\n".format(
+                        err=str(e),
+                        file=str(importPath),
+                        line=lineNo,
+                        table=tableName,
+                        params=rowdict if "rowdict" in locals() else linein,
+                    )
+                )
+                session.rollback()
+
+        session.commit()
+        tdenv.DEBUG0("{count} {table}s imported", count=importCount, table=tableName)
 
 
 def buildCache(tdb, tdenv):
     """
-    Rebuilds the SQlite database from source files.
-    
+    Rebuilds the database from source files.
+
     TD's data is either "stable" - information that rarely changes like Ship
     details, star systems etc - and "volatile" - pricing information, etc.
-    
+
     The stable data starts out in data/TradeDangerous.sql while other data
     is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
-    
-    We load both sets of data into an SQLite database, after which we can
+
+    We load both sets of data into a database, after which we can
     avoid the text-processing overhead by simply checking if the text files
     are newer than the database.
     """
-    
+
     tdenv.NOTE(
         "Rebuilding cache file: this may take a few moments.",
         stderr=True,
     )
-    
+
     dbPath = tdb.dbPath
     sqlPath = tdb.sqlPath
     pricesPath = tdb.pricesPath
-    
-    # Create an in-memory database to populate with our data.
-    tempPath = dbPath.with_suffix(".new")
-    backupPath = dbPath.with_suffix(".old")
-    
-    if tempPath.exists():
-        tempPath.unlink()
-    
-    tempDB = sqlite3.connect(str(tempPath))
-    tempDB.execute("PRAGMA foreign_keys=ON")
-    # Read the SQL script so we are ready to populate structure, etc.
-    tdenv.DEBUG0("Executing SQL Script '{}' from '{}'", sqlPath, os.getcwd())
-    with sqlPath.open('r', encoding = 'utf-8') as sqlFile:
-        sqlScript = sqlFile.read()
-        tempDB.executescript(sqlScript)
-    
-    # import standard tables
-    with Progress(max_value=len(tdb.importTables) + 1, prefix="Importing", width=25, style=CountingBar) as prog:
-        for importName, importTable in tdb.importTables:
-            import_path = Path(importName)
-            import_lines = file_line_count(import_path, missing_ok=True)
-            with prog.sub_task(max_value=import_lines, description=importTable) as child:
-                prog.increment(value=1)
-                call_args = {'task': child, 'advance': 1}
-                try:
-                    processImportFile(tdenv, tempDB, import_path, importTable, line_callback=prog.update_task, call_args=call_args)
-                except FileNotFoundError:
-                    tdenv.DEBUG0(
-                        "WARNING: processImportFile found no {} file", importName
-                    )
-                except StopIteration:
-                    tdenv.NOTE(
-                        "{} exists but is empty. "
-                        "Remove it or add the column definition line.",
-                        importName
-                    )
-        prog.increment(1)
-        
-        with prog.sub_task(description="Save DB"):
-            tempDB.commit()
-    
-    # Parse the prices file
-    if pricesPath.exists():
-        with Progress(max_value=None, width=25, prefix="Processing prices file"):
-            processPricesFile(tdenv, tempDB, pricesPath)
-    else:
-        tdenv.NOTE(
-                "Missing \"{}\" file - no price data.",
-                    pricesPath,
-                    stderr=True,
-        )
-        tempDB.close()
-    
+    engine = tdb.engine
+
+    # --- Step 1: reset schema BEFORE opening a session/transaction ---
+    # Single unified call; no dialect branching here.
+    lifecycle.reset_db(engine, db_path=dbPath)
+
+    # --- Step 2: open a new session for rebuild work ---
+    with tdb.Session() as session:
+        # Import standard tables on a plain session with progress
+        with Progress(
+            max_value=len(tdb.importTables) + 1,
+            prefix="Importing",
+            width=25,
+            style=CountingBar,
+        ) as prog:
+            for importName, importTable in tdb.importTables:
+                import_path = Path(importName)
+                import_lines = file_line_count(import_path, missing_ok=True)
+                with prog.sub_task(
+                    max_value=import_lines, description=importTable
+                ) as child:
+                    prog.increment(value=1)
+                    call_args = {"task": child, "advance": 1}
+                    try:
+                        processImportFile(
+                            tdenv,
+                            session,
+                            import_path,
+                            importTable,
+                            line_callback=prog.update_task,
+                            call_args=call_args,
+                        )
+                        # safety commit after each file
+                        session.commit()
+                    except FileNotFoundError:
+                        tdenv.DEBUG0(
+                            "WARNING: processImportFile found no {} file", importName
+                        )
+                    except StopIteration:
+                        tdenv.NOTE(
+                            "{} exists but is empty. "
+                            "Remove it or add the column definition line.",
+                            importName,
+                        )
+            prog.increment(1)
+
+            with prog.sub_task(description="Save DB"):
+                session.commit()
+
+        # --- Step 3: parse the prices file (still plain session) ---
+        if pricesPath.exists():
+            with Progress(max_value=None, width=25, prefix="Processing prices file"):
+                processPricesFile(tdenv, session, pricesPath)
+        else:
+            tdenv.NOTE(
+                f'Missing "{pricesPath}" file - no price data.',
+                stderr=True,
+            )
+
     tdb.close()
-    
-    tdenv.DEBUG0("Swapping out db files")
-    
-    if dbPath.exists():
-        if backupPath.exists():
-            backupPath.unlink()
-        dbPath.rename(backupPath)
-    tempPath.rename(dbPath)
-    
     tdenv.DEBUG0("Finished")
+
 
 ######################################################################
 
 
 def regeneratePricesFile(tdb, tdenv):
+    """
+    Regenerate the .prices file from the current DB contents.
+    Uses the ORM session rather than raw sqlite.
+    """
     tdenv.DEBUG0("Regenerating .prices file")
-    
-    with tdb.pricesPath.open("w", encoding = 'utf-8') as pricesFile:
-        prices.dumpPrices(
-                tdb.dbFilename,
+
+    with tdb.Session() as session:
+        with tdb.pricesPath.open("w", encoding="utf-8") as pricesFile:
+            prices.dumpPrices(
+                session,
                 prices.Element.full,
-                file = pricesFile,
-                debug = tdenv.debug)
-    
-    # Update the DB file so we don't regenerate it.
-    os.utime(tdb.dbFilename)
+                file=pricesFile,
+                debug=tdenv.debug,
+            )
+
+    # Only touch the DB file on SQLite — MariaDB has no dbPath
+    if tdb.engine.dialect.name == "sqlite" and tdb.dbPath and os.path.exists(tdb.dbPath):
+        os.utime(tdb.dbPath)
 
 ######################################################################
 
 
-def importDataFromFile(tdb, tdenv, path, pricesFh = None, reset = False):
+def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     """
-        Import price data from a file on a per-station basis,
-        that is when a new station is encountered, delete any
-        existing records for that station in the database.
+    Import price data from a file on a per-station basis,
+    that is when a new station is encountered, delete any
+    existing records for that station in the database.
     """
-    
+
     if not pricesFh and not path.exists():
-        raise TradeException("No such file: {}".format(
-                    str(path)
-                ))
-    
+        raise TradeException(f"No such file: {path}")
+
     if reset:
         tdenv.DEBUG0("Resetting price data")
-        with tdb.getDB() as db:
-            db.execute("DELETE FROM StationItem")
-            db.commit()
-    
-    tdenv.DEBUG0("Importing data from {}".format(str(path)))
-    processPricesFile(tdenv,
-            db = tdb.getDB(),
-            pricesPath = path,
-            pricesFh = pricesFh,
+        with tdb.Session.begin() as session:
+            session.query(SA.StationItem).delete()
+
+    tdenv.DEBUG0(f"Importing data from {path}")
+    processPricesFile(
+        tdenv,
+        db=tdb.getDB(),      # still used for the incremental parsing logic
+        pricesPath=path,
+        pricesFh=pricesFh,
     )
-    
-    # If everything worked, we may need to re-build the prices file.
+
+    # If everything worked, regenerate the canonical prices file if this wasn’t the main one
     if path != tdb.pricesPath:
         regeneratePricesFile(tdb, tdenv)

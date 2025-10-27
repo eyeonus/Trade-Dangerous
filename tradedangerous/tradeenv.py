@@ -258,8 +258,18 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         if key == "WARN":
             
             def _WARN_ENABLED(outText, *args, stderr: bool = False, **kwargs):
+                try:
+                    # Try to apply .format if args/kwargs are supplied
+                    if args or kwargs:
+                        msg = str(outText).format(*args, **kwargs)
+                    else:
+                        msg = str(outText)
+                except Exception:
+                    # Fallback: dump raw message + args/kwargs repr
+                    msg = f"{outText} {args!r} {kwargs!r}"
+
                 self.uprint(
-                    f"{self.theme.warn}{self.theme.WARNING}: {str(outText).format(*args, **kwargs)}",
+                    f"{self.theme.warn}{self.theme.WARNING}: {msg}",
                     stderr=stderr,
                 )
             
@@ -269,6 +279,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             noteFn = _WARN_DISABLED if self.quiet > 1 else _WARN_ENABLED
             setattr(self, key, noteFn)
             return noteFn
+
         
         return None
     
