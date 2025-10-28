@@ -660,11 +660,14 @@ class TradeDB:
 
         # --- Engine bootstrap ---
         from .db import make_engine_from_config, get_session_factory
+        from .db.paths import resolve_data_dir
         import os
 
-        cfg = getattr(tdenv, "dbConfig", None)
-        if not cfg:
-            cfg = os.environ.get("TD_DB_CONFIG", "db_config.ini")
+        # Determine user's real invocation directory, not venv/bin
+        user_cwd = Path(os.getenv("PWD", Path.cwd()))
+        data_dir = user_cwd / "data"
+
+        cfg = os.environ.get("TD_DB_CONFIG") or str(data_dir / "db_config.ini")
 
         self.engine = make_engine_from_config(cfg)
         self.Session = get_session_factory(self.engine)

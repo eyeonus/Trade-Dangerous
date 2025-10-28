@@ -26,6 +26,18 @@ DEFAULTS: Dict[str, Dict[str, Any]] = {
         "connect_timeout": 10,
     },
 }
+# --- Runtime default path correction ----------------------------------------
+# Convert relative defaults ("./data", "./tmp") into absolute paths under the
+# current working directory. This prevents first-run installs from resolving
+# relative to the package install directory or venv when no db_config.ini exists.
+try:
+    _cwd = Path.cwd()
+    DEFAULTS["paths"]["data_dir"] = str((_cwd / "data").resolve())
+    DEFAULTS["paths"]["tmp_dir"]  = str((_cwd / "tmp").resolve())
+except Exception:
+    # Best effort; fall back to shipped defaults if CWD is inaccessible
+    pass
+# ---------------------------------------------------------------------------
 
 # Hardened parser: allow inline comments and disable interpolation
 CFG_KW = dict(inline_comment_prefixes=(";", "#"), interpolation=None)
