@@ -29,7 +29,14 @@ exec(open("tradedangerous/version.py").read())  # pylint: disable=W0122
 setup(
     name=package,
     version=__version__,  # pylint: disable=E0602
-    install_requires=["requests", "appJar", "ijson", "rich"],
+    install_requires=[
+    "requests",
+    "appJar",
+    "ijson>=3.1",
+    "rich==13.7.1",
+    "importlib-metadata>=1",
+    "sqlalchemy>=2.0,<3.0",
+    ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
     packages=[
