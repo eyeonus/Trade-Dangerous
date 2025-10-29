@@ -1266,7 +1266,7 @@ def buildCache(tdb, tdenv):
     """
     
     tdenv.NOTE(
-        "Rebuilding cache file: this may take a few moments.",
+        "(Re)building database: this may take a few moments.",
         stderr=True,
     )
     
@@ -1334,7 +1334,7 @@ def buildCache(tdb, tdenv):
     
     tdb.close()
     tdenv.NOTE(
-        "Finished rebuilding.",
+        "Database build completed.",
         stderr=True,
     )
 
