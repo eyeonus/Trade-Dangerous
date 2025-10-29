@@ -33,7 +33,7 @@ import typing
 
 
 from functools import partial as partial_fn
-from sqlalchemy import func, Integer, Float, DateTime
+from sqlalchemy import func, Integer, Float, DateTime, tuple_
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.types import DateTime as SA_DateTime
@@ -756,25 +756,27 @@ def processPricesFile(
             SA.StationItem.station_id.in_([sid for (sid,) in stations])
         ).delete(synchronize_session=False)
 
+    # Remove zeroed pairs
+    removedItems = 0
     if zeros:
         session.query(SA.StationItem).filter(
             tuple_(SA.StationItem.station_id, SA.StationItem.item_id).in_(zeros)
         ).delete(synchronize_session=False)
-    removedItems = len(zeros)
+        removedItems = len(zeros)
 
+    # Upsert items
     if items:
-        for item in items:
-            (
-                station_id,
-                item_id,
-                modified,
-                demand_price,
-                demand_units,
-                demand_level,
-                supply_price,
-                supply_units,
-                supply_level,
-            ) = item
+        for (
+            station_id,
+            item_id,
+            modified,
+            demand_price,
+            demand_units,
+            demand_level,
+            supply_price,
+            supply_units,
+            supply_level,
+        ) in items:
             obj = SA.StationItem(
                 station_id=station_id,
                 item_id=item_id,
@@ -815,6 +817,7 @@ def processPricesFile(
 
     if ignItems:
         tdenv.NOTE("Ignored {} items with old data", ignItems)
+
 
 
 
@@ -878,22 +881,9 @@ def processImportFile(
     """
     Import a CSV file into the given table.
 
-    - RareItem.csv:
-        Skips FK marker columns:
-          * !name@System.system_id
-          * name@Station.station_id
-          * name@Category.category_id
-        Looks up system_id (transient), station_id, category_id via cached helpers.
-        NOTE: system_id is NOT a RareItem column and is not passed to the model.
-
-    - System.csv:
-        Skips 'name@Added.added_id' from active columns; resolves Added by name,
-        defaulting to "EDSM" when blank.
-
-    - All tables:
-        Uses parse_ts() for datetimes.
-        Enforces unq: unique headers.
-        Commits per tradedangerous.db.utils.get_import_batch_size(session).
+    Applies header parsing, uniqueness checks, foreign key lookups,
+    in-row deprecation correction (warnings only at -vv via DEBUG1), and upserts via SQLAlchemy ORM.
+    Commits in batches for large datasets.
     """
 
     tdenv.DEBUG0("Processing import file '{}' for table '{}'", str(importPath), tableName)
@@ -902,121 +892,258 @@ def processImportFile(
     if line_callback:
         line_callback = partial_fn(line_callback, **call_args)
 
-    uniquePfx = "unq:"
-    uniqueLen = len(uniquePfx)
+    # --- batch size config from environment or fallback ---
+    env_batch = os.environ.get("TD_LISTINGS_BATCH")
+    if env_batch:
+        try:
+            max_transaction_items = int(env_batch)
+        except ValueError:
+            tdenv.WARN("Invalid TD_LISTINGS_BATCH value %r, falling back to defaults.", env_batch)
+            max_transaction_items = None
+    else:
+        max_transaction_items = None
 
-    # Backend-aware batch policy (SQLite=None→single commit; MariaDB defaults to 50k; env override respected)
-    max_transaction_items = get_import_batch_size(session, profile="csv")  # from tradedangerous.db.utils
-    transaction_items = 0
+    if max_transaction_items is None:
+        if session.bind.dialect.name in ("mysql", "mariadb"):
+            max_transaction_items = 50 * 1024
+        else:
+            max_transaction_items = 250 * 1024
+
+    transaction_items = 0  # track how many rows inserted before committing
 
     with importPath.open("r", encoding="utf-8") as importFile:
         csvin = csv.reader(importFile, delimiter=",", quotechar="'", doublequote=True)
 
-        # header
+        # Read header row
         columnDefs = next(csvin)
         columnCount = len(columnDefs)
 
-        activeColumns: list[str] = []        # headers that map directly to ORM fields
-        kept_indices: list[int] = []         # original header indices that we KEEP (aligns values)
-        uniqueIndexes: list[int] = []        # indexes into activeColumns (post-skip)
-        fk_col_indices: dict[str, int] = {}  # special FK headers → their original indices
+        # --- Process headers: extract column names, track indices ---
+        activeColumns: list[str] = []   # Final columns we'll use (after "unq:" stripping)
+        kept_indices: list[int] = []    # Indices into CSV rows we keep (aligned to activeColumns)
+        uniqueIndexes: list[int] = []   # Indexes (into activeColumns) of unique keys
+        fk_col_indices: dict[str, int] = {}  # Special handling for FK resolution
 
-        # --- preprocess header ---
+        uniquePfx = "unq:"
+        uniqueLen = len(uniquePfx)
+
+        # map of header (without "unq:") -> original CSV index, for correction by name
+        header_index: dict[str, int] = {}
+
         for cIndex, cName in enumerate(columnDefs):
             colName, _, srcKey = cName.partition("@")
+            baseName = colName[uniqueLen:] if colName.startswith(uniquePfx) else colName
+            header_index[baseName] = cIndex
 
-            # --- System.csv ---
+            # Special-case: System-added
             if tableName == "System":
                 if cName == "name":
-                    srcKey = ""  # plain field
+                    srcKey = ""
                 elif cName == "name@Added.added_id":
-                    # We'll resolve Added by name separately; skip from active columns.
                     fk_col_indices["added"] = cIndex
-                    continue  # do NOT keep this header/value
+                    continue
 
-            # --- RareItem.csv (skip FK headers; remember positions) ---
+            # Foreign key columns for RareItem
             if tableName == "RareItem":
                 if cName == "!name@System.system_id":
                     fk_col_indices["system"] = cIndex
-                    continue  # do NOT keep this header/value
+                    continue
                 if cName == "name@Station.station_id":
                     fk_col_indices["station"] = cIndex
-                    continue  # do NOT keep this header/value
+                    continue
                 if cName == "name@Category.category_id":
                     fk_col_indices["category"] = cIndex
-                    continue  # do NOT keep this header/value
+                    continue
 
-            # unique index marker (e.g., "unq:name")
+            # Handle unique constraint tracking
             if colName.startswith(uniquePfx):
                 uniqueIndexes.append(len(activeColumns))
-                colName = colName[uniqueLen:]
+                colName = baseName
 
-            # keep normal columns and remember their source index
             activeColumns.append(colName)
             kept_indices.append(cIndex)
 
-        # optional deprecation checker
-        deprecationFn = getattr(sys.modules[__name__], "deprecationCheck" + tableName, None)
-
         importCount = 0
-        uniqueIndex = {}
+        uniqueIndex: dict[str, int] = {}
 
+        # helpers for correction + visibility-gated warning
+        DELETED = corrections.DELETED
+
+        def _warn(line_no: int, msg: str) -> None:
+            # Gate deprecation chatter to -vv (DEBUG1)
+            tdenv.DEBUG1("{}:{} WARNING {}", importPath, line_no, msg)
+
+        def _apply_row_corrections(table_name: str, row: list[str], line_no: int) -> bool:
+            """
+            Returns True if the row should be skipped (deleted in tolerant mode), False otherwise.
+            Mutates 'row' in place with corrected values.
+            """
+            try:
+                if table_name == "System":
+                    idx = header_index.get("name")
+                    if idx is not None:
+                        orig = row[idx]
+                        corr = corrections.correctSystem(orig)
+                        if corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'System "{orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "System", orig)
+                        if corr != orig:
+                            _warn(line_no, f'System "{orig}" is deprecated and should be replaced with "{corr}".')
+                            row[idx] = corr
+
+                elif table_name == "Station":
+                    s_idx = header_index.get("system")
+                    n_idx = header_index.get("name")
+                    if s_idx is not None and n_idx is not None:
+                        s_orig = row[s_idx]
+                        s_corr = corrections.correctSystem(s_orig)
+                        if s_corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'System "{s_orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "System", s_orig)
+                        if s_corr != s_orig:
+                            _warn(line_no, f'System "{s_orig}" is deprecated and should be replaced with "{s_corr}".')
+                            row[s_idx] = s_corr
+                        n_orig = row[n_idx]
+                        n_corr = corrections.correctStation(s_corr, n_orig)
+                        if n_corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'Station "{n_orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "Station", n_orig)
+                        if n_corr != n_orig:
+                            _warn(line_no, f'Station "{n_orig}" is deprecated and should be replaced with "{n_corr}".')
+                            row[n_idx] = n_corr
+
+                elif table_name == "Category":
+                    idx = header_index.get("name")
+                    if idx is not None:
+                        orig = row[idx]
+                        corr = corrections.correctCategory(orig)
+                        if corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'Category "{orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "Category", orig)
+                        if corr != orig:
+                            _warn(line_no, f'Category "{orig}" is deprecated and should be replaced with "{corr}".')
+                            row[idx] = corr
+
+                elif table_name == "Item":
+                    cat_idx = header_index.get("category")
+                    name_idx = header_index.get("name")
+                    if cat_idx is not None:
+                        c_orig = row[cat_idx]
+                        c_corr = corrections.correctCategory(c_orig)
+                        if c_corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "Category", c_orig)
+                        if c_corr != c_orig:
+                            _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
+                            row[cat_idx] = c_corr
+                    if name_idx is not None:
+                        i_orig = row[name_idx]
+                        i_corr = corrections.correctItem(i_orig)
+                        if i_corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'Item "{i_orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "Item", i_orig)
+                        if i_corr != i_orig:
+                            _warn(line_no, f'Item "{i_orig}" is deprecated and should be replaced with "{i_corr}".')
+                            row[name_idx] = i_corr
+
+                # RareItem: we only correct category (FK lookup uses names) to improve hit rate.
+                elif table_name == "RareItem":
+                    cat_idx = header_index.get("category")
+                    if cat_idx is not None:
+                        c_orig = row[cat_idx]
+                        c_corr = corrections.correctCategory(c_orig)
+                        if c_corr is DELETED:
+                            if tdenv.ignoreUnknown:
+                                _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
+                                return True
+                            raise DeletedKeyError(importPath, line_no, "Category", c_orig)
+                        if c_corr != c_orig:
+                            _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
+                            row[cat_idx] = c_corr
+
+            except BuildCacheBaseException:
+                # strict mode path bubbles up; caller will handle
+                raise
+            return False  # do not skip
+
+        # --- Read data lines ---
         for linein in csvin:
             if line_callback:
                 line_callback()
             if not linein:
                 continue
+
             lineNo = csvin.line_num
 
             if len(linein) != columnCount:
-                tdenv.NOTE(
-                    "Wrong number of columns ({}:{}): {}",
-                    importPath,
-                    lineNo,
-                    ", ".join(linein),
-                )
+                tdenv.NOTE("Wrong number of columns ({}:{}): {}", importPath, lineNo, ", ".join(linein))
                 continue
 
             tdenv.DEBUG1("       Values: {}", ", ".join(linein))
 
-            # deprecation checks
-            if deprecationFn:
-                try:
-                    deprecationFn(importPath, lineNo, linein)
-                except DeletedKeyError as e:
-                    if not tdenv.ignoreUnknown:
-                        raise e
-                    e.category = "WARNING"
-                    tdenv.NOTE("{}", e)
+            # --- Apply corrections BEFORE uniqueness; may skip if deleted in tolerant mode
+            try:
+                if _apply_row_corrections(tableName, linein, lineNo):
                     continue
-                except DeprecatedKeyError as e:
-                    if not tdenv.ignoreUnknown:
-                        raise e
-                    e.category = "WARNING"
-                    tdenv.NOTE("{}", e)
-                    # Do NOT skip — correction is available
+            except DeletedKeyError:
+                if not tdenv.ignoreUnknown:
+                    # strict: fail hard
+                    raise
+                # tolerant: already warned in _apply_row_corrections; skip row
+                continue
 
-
-            # Build values aligned to activeColumns (skip the FK columns we excluded)
+            # Extract and clean values to use (from corrected line)
             activeValues = [linein[i] for i in kept_indices]
 
-            # unique index enforcement over activeColumns
-            if uniqueIndexes:
-                keyValues = [str(activeValues[i]).upper() for i in uniqueIndexes]
-                key = ":!:".join(keyValues)
-                prevLineNo = uniqueIndex.get(key, 0)
-                if prevLineNo:
-                    key_disp = "/".join(keyValues)
-                    raise DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
-                uniqueIndex[key] = lineNo
+            # --- Uniqueness check (after correction) ---
+            try:
+                if uniqueIndexes:
+                    keyValues = [str(activeValues[i]).upper() for i in uniqueIndexes]
+                    key = ":!:".join(keyValues)
+                    prevLineNo = uniqueIndex.get(key, 0)
+                    if prevLineNo:
+                        key_disp = "/".join(keyValues)
+                        if tdenv.ignoreUnknown:
+                            e = DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
+                            e.category = "WARNING"
+                            tdenv.NOTE("{}", e)
+                            continue
+                        raise DuplicateKeyError(importPath, lineNo, "entry", key_disp, prevLineNo)
+                    uniqueIndex[key] = lineNo
+            except Exception as e:
+                # Keep processing the file, don’t tear down the loop
+                tdenv.WARN(
+                    "*** INTERNAL ERROR: {err}\n"
+                    "CSV File: {file}:{line}\n"
+                    "Table: {table}\n"
+                    "Params: {params}\n".format(
+                        err=str(e),
+                        file=str(importPath),
+                        line=lineNo,
+                        table=tableName,
+                        params=linein,
+                    )
+                )
+                session.rollback()
+                continue
 
             try:
-                # Base rowdict from non-FK columns only
                 rowdict = dict(zip(activeColumns, activeValues))
 
-                # --- RareItem foreign key lookups ---
+                # Foreign key lookups — RareItem
                 if tableName == "RareItem":
-                    # Resolve system (transient; only for station lookup)
                     sys_id = None
                     if "system" in fk_col_indices:
                         sys_name = linein[fk_col_indices["system"]]
@@ -1025,7 +1152,6 @@ def processImportFile(
                         except ValueError:
                             tdenv.WARN("Unknown System '{}' in {}", sys_name, importPath)
 
-                    # Station (requires system context)
                     if "station" in fk_col_indices:
                         stn_name = linein[fk_col_indices["station"]]
                         if sys_id is not None:
@@ -1036,7 +1162,6 @@ def processImportFile(
                         else:
                             tdenv.WARN("Station lookup skipped (no system_id) for '{}'", stn_name)
 
-                    # Category
                     if "category" in fk_col_indices:
                         cat_name = linein[fk_col_indices["category"]]
                         try:
@@ -1044,7 +1169,7 @@ def processImportFile(
                         except ValueError:
                             tdenv.WARN("Unknown Category '{}' in {}", cat_name, importPath)
 
-                # --- System foreign key lookup (Added), default "EDSM" if blank ---
+                # Foreign key lookups — System.added
                 if tableName == "System" and "added" in fk_col_indices:
                     added_val = linein[fk_col_indices["added"]] or "EDSM"
                     try:
@@ -1053,24 +1178,21 @@ def processImportFile(
                         rowdict["added_id"] = None
                         tdenv.WARN("Unknown Added value '{}' in {}", added_val, importPath)
 
-                # --- type coercion ---
+                # --- Type coercion for common types ---
                 for key, val in list(rowdict.items()):
                     if val in ("", None):
                         rowdict[key] = None
                         continue
-                    # ints
                     if key.endswith("_id") or key.endswith("ID") or key in ("cost", "max_allocation"):
                         try:
                             rowdict[key] = int(val)
                         except ValueError:
                             rowdict[key] = None
-                    # floats
                     elif key in ("pos_x", "pos_y", "pos_z", "ls_from_star"):
                         try:
                             rowdict[key] = float(val)
                         except ValueError:
                             rowdict[key] = None
-                    # datetimes
                     elif "time" in key or key == "modified":
                         parsed = parse_ts(val)
                         if parsed:
@@ -1084,24 +1206,22 @@ def processImportFile(
                                 val,
                             )
                             rowdict[key] = None
-                    # strings (incl. TriState flags) left as-is
 
-                # reserved word remaps
+                # Special handling for SQL reserved word `class`
                 if tableName == "Upgrade" and "class" in rowdict:
                     rowdict["class_"] = rowdict.pop("class")
                 if tableName == "FDevOutfitting" and "class" in rowdict:
                     rowdict["class_"] = rowdict.pop("class")
-
-                # ensure we never pass system_id to RareItem (not a column)
                 if tableName == "RareItem" and "system_id" in rowdict:
                     rowdict.pop("system_id", None)
 
+                # ORM insert/merge
                 Model = getattr(SA, tableName)
                 obj = Model(**rowdict)
                 session.merge(obj)
                 importCount += 1
 
-                # batched commit (only if enabled for this backend)
+                # Batch commit
                 if max_transaction_items:
                     transaction_items += 1
                     if transaction_items >= max_transaction_items:
@@ -1110,6 +1230,7 @@ def processImportFile(
                         transaction_items = 0
 
             except Exception as e:
+                # Log all import errors — but keep going
                 tdenv.WARN(
                     "*** INTERNAL ERROR: {err}\n"
                     "CSV File: {file}:{line}\n"
@@ -1124,94 +1245,10 @@ def processImportFile(
                 )
                 session.rollback()
 
+        # Final commit after file done
         session.commit()
         tdenv.DEBUG0("{count} {table}s imported", count=importCount, table=tableName)
 
-
-def buildCache(tdb, tdenv):
-    """
-    Rebuilds the database from source files.
-
-    TD's data is either "stable" - information that rarely changes like Ship
-    details, star systems etc - and "volatile" - pricing information, etc.
-
-    The stable data starts out in data/TradeDangerous.sql while other data
-    is stored in custom-formatted text files, e.g. ./TradeDangerous.prices.
-
-    We load both sets of data into a database, after which we can
-    avoid the text-processing overhead by simply checking if the text files
-    are newer than the database.
-    """
-
-    tdenv.NOTE(
-        "Rebuilding cache file: this may take a few moments.",
-        stderr=True,
-    )
-
-    dbPath = tdb.dbPath
-    sqlPath = tdb.sqlPath
-    pricesPath = tdb.pricesPath
-    engine = tdb.engine
-
-    # --- Step 1: reset schema BEFORE opening a session/transaction ---
-    # Single unified call; no dialect branching here.
-    lifecycle.reset_db(engine, db_path=dbPath)
-
-    # --- Step 2: open a new session for rebuild work ---
-    with tdb.Session() as session:
-        # Import standard tables on a plain session with progress
-        with Progress(
-            max_value=len(tdb.importTables) + 1,
-            prefix="Importing",
-            width=25,
-            style=CountingBar,
-        ) as prog:
-            for importName, importTable in tdb.importTables:
-                import_path = Path(importName)
-                import_lines = file_line_count(import_path, missing_ok=True)
-                with prog.sub_task(
-                    max_value=import_lines, description=importTable
-                ) as child:
-                    prog.increment(value=1)
-                    call_args = {"task": child, "advance": 1}
-                    try:
-                        processImportFile(
-                            tdenv,
-                            session,
-                            import_path,
-                            importTable,
-                            line_callback=prog.update_task,
-                            call_args=call_args,
-                        )
-                        # safety commit after each file
-                        session.commit()
-                    except FileNotFoundError:
-                        tdenv.DEBUG0(
-                            "WARNING: processImportFile found no {} file", importName
-                        )
-                    except StopIteration:
-                        tdenv.NOTE(
-                            "{} exists but is empty. "
-                            "Remove it or add the column definition line.",
-                            importName,
-                        )
-            prog.increment(1)
-
-            with prog.sub_task(description="Save DB"):
-                session.commit()
-
-        # --- Step 3: parse the prices file (still plain session) ---
-        if pricesPath.exists():
-            with Progress(max_value=None, width=25, prefix="Processing prices file"):
-                processPricesFile(tdenv, session, pricesPath)
-        else:
-            tdenv.NOTE(
-                f'Missing "{pricesPath}" file - no price data.',
-                stderr=True,
-            )
-
-    tdb.close()
-    tdenv.DEBUG0("Finished")
 
 
 ######################################################################
