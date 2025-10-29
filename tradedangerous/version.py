@@ -12,5 +12,5 @@
 """just keeper of current version"""
 
 # TODO: remember to update tests when version changes
-__version__ = '12.0.6'
+__version__ = '12.0.7'
 
