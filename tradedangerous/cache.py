@@ -586,23 +586,30 @@ def processPrices(
         nonlocal newItems, updtItems, ignItems
         itemName, modified = matches.group('item', 'time')
         itemName = itemName.upper()
-        
+
         # Look up the item ID.
         itemID = getItemID(itemName, -1)
         if itemID < 0:
             oldName = itemName
             itemName = corrections.correctItem(itemName)
-            if itemName == DELETED:
+
+            # Silently skip DELETED items
+            if itemName == corrections.DELETED:
                 DEBUG1("DELETED {}", oldName)
                 return
+
+            # Retry with corrected name
             itemName = itemName.upper()
             itemID = getItemID(itemName, -1)
+
             if itemID < 0:
                 ignoreOrWarn(
                     UnknownItemError(priceFile, lineNo, itemName)
                 )
                 return
+
             DEBUG1("Renamed {} -> {}", oldName, itemName)
+
         
         lastModified = stationItemDates.get(itemID, None)
         if lastModified and merging:
@@ -976,12 +983,19 @@ def processImportFile(
             if deprecationFn:
                 try:
                     deprecationFn(importPath, lineNo, linein)
-                except (DeprecatedKeyError, DeletedKeyError) as e:
+                except DeletedKeyError as e:
                     if not tdenv.ignoreUnknown:
                         raise e
                     e.category = "WARNING"
                     tdenv.NOTE("{}", e)
                     continue
+                except DeprecatedKeyError as e:
+                    if not tdenv.ignoreUnknown:
+                        raise e
+                    e.category = "WARNING"
+                    tdenv.NOTE("{}", e)
+                    # Do NOT skip — correction is available
+
 
             # Build values aligned to activeColumns (skip the FK columns we excluded)
             activeValues = [linein[i] for i in kept_indices]
