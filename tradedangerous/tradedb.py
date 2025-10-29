@@ -577,8 +577,8 @@ class TradeDB:
     defaultDB = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
     defaultSQL = 'TradeDangerous.sql'
-    # File containing text description of prices
-    defaultPrices = 'TradeDangerous.prices'
+    # # File containing text description of prices
+    # defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencies!
     defaultTables = (

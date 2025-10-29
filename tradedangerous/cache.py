@@ -16,10 +16,8 @@
 #   ships, etc
 #   data/TradeDangerous.prices contains a description of the price
 #   database that is intended to be easily editable and commitable to
-#   a source repository.
+#   a source repository. -- DEPRECATED [eyeonus]
 #
-#  TODO: Split prices into per-system or per-station files so that
-#  we can tell how old data for a specific system is.
 
 from __future__ import annotations
 
@@ -1323,17 +1321,17 @@ def buildCache(tdb, tdenv):
             
             with prog.sub_task(description="Save DB"):
                 session.commit()
-
-        # --- Step 3: parse the prices file (still plain session) ---
-        if pricesPath.exists():
-            with Progress(max_value=None, width=25, prefix="Processing prices file"):
-                processPricesFile(tdenv, session, pricesPath)
-        else:
-            tdenv.NOTE(
-                f'Missing "{pricesPath}" file - no price data.',
-                stderr=True,
-            )
-
+        
+        # # --- Step 3: parse the prices file (still plain session) ---
+        # if pricesPath.exists():
+        #     with Progress(max_value=None, width=25, prefix="Processing prices file"):
+        #         processPricesFile(tdenv, session, pricesPath)
+        # else:
+        #     tdenv.NOTE(
+        #         f'Missing "{pricesPath}" file - no price data.',
+        #         stderr=True,
+        #     )
+    
     tdb.close()
     tdenv.DEBUG0("Finished")
 
@@ -1342,24 +1340,25 @@ def buildCache(tdb, tdenv):
 
 
 def regeneratePricesFile(tdb, tdenv):
-    """
-    Regenerate the .prices file from the current DB contents.
-    Uses the ORM session rather than raw sqlite.
-    """
-    tdenv.DEBUG0("Regenerating .prices file")
-
-    with tdb.Session() as session:
-        with tdb.pricesPath.open("w", encoding="utf-8") as pricesFile:
-            prices.dumpPrices(
-                session,
-                prices.Element.full,
-                file=pricesFile,
-                debug=tdenv.debug,
-            )
-
-    # Only touch the DB file on SQLite — MariaDB has no dbPath
-    if tdb.engine.dialect.name == "sqlite" and tdb.dbPath and os.path.exists(tdb.dbPath):
-        os.utime(tdb.dbPath)
+    return
+    # """
+    # Regenerate the .prices file from the current DB contents.
+    # Uses the ORM session rather than raw sqlite.
+    # """
+    # tdenv.DEBUG0("Regenerating .prices file")
+    # 
+    # with tdb.Session() as session:
+    #     with tdb.pricesPath.open("w", encoding="utf-8") as pricesFile:
+    #         prices.dumpPrices(
+    #             session,
+    #             prices.Element.full,
+    #             file=pricesFile,
+    #             debug=tdenv.debug,
+    #         )
+    # 
+    # # Only touch the DB file on SQLite — MariaDB has no dbPath
+    # if tdb.engine.dialect.name == "sqlite" and tdb.dbPath and os.path.exists(tdb.dbPath):
+    #     os.utime(tdb.dbPath)
 
 ######################################################################
 
@@ -1386,7 +1385,7 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
         pricesPath=path,
         pricesFh=pricesFh,
     )
-
-    # If everything worked, regenerate the canonical prices file if this wasn’t the main one
-    if path != tdb.pricesPath:
-        regeneratePricesFile(tdb, tdenv)
+    
+    # # If everything worked, regenerate the canonical prices file if this wasn’t the main one
+    # if path != tdb.pricesPath:
+    #     regeneratePricesFile(tdb, tdenv)
