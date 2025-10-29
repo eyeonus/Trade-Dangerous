@@ -129,7 +129,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.pricesPath = Path("listings.prices")
     
     def now(self):
-        return datetime.datetime.now()
+        return datetime.datetime.now().strftime('%H:%M:%S')
     
     def downloadFile(self, path):
         """
@@ -216,7 +216,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             return
         
         self.tdenv.NOTE(
-            "Processing market data from {}: Start time = {}. Live = {}",
+            "Processing market data from {}: Start time = {}, Live = {}",
             listings_file, self.now(), from_live
         )
         
