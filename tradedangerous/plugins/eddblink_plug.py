@@ -274,10 +274,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                         dt_listing_time = datetime.datetime.utcfromtimestamp(listing_time)
                         
                         row = {
-                            "station_id": station_id,
-                            "item_id": item_id,
-                            "modified": dt_listing_time,   # guard column
-                            "from_live": from_live,        # copied exactly when updating/inserting
+                            "station_id":   station_id,
+                            "item_id":      item_id,
+                            "modified":     dt_listing_time,   # guard column
+                            "from_live":    int(from_live),        # copied exactly when updating/inserting
                             "demand_price": int(listing["sell_price"]),
                             "demand_units": int(listing["demand"]),
                             "demand_level": int(listing.get("demand_bracket") or "-1"),
@@ -394,6 +394,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             self.options["all"] = True
             self.options["force"] = True
+        
         
         # Select which options will be updated
         if self.getOption("listings"):
