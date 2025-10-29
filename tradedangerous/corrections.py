@@ -27,7 +27,7 @@ items = {
     'SALVAGEABLE WRECKAGE': 'Wreckage Components',
     'POLITICAL PRISONER': 'Political Prisoners',
     'HOSTAGE': 'Hostages',
-    "VOID OPAL": "Void Opals",
+    "VOID OPALS": "Void Opal",
 }
 
 def correctSystem(oldName):
