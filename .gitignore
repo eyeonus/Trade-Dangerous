@@ -22,6 +22,7 @@ dist/
 htmlcov/
 .tox/
 .nox/
+test-data/
 
 # --- Logs / dumps ---
 *.log
@@ -47,3 +48,4 @@ tools/*
 /data/
 repo_files.txt
 tradedangerous/db/config.ini
+tmp/
