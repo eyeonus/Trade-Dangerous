@@ -73,13 +73,13 @@ def run(results, cmdenv, tdb):
     """
     from .commandenv import ResultRow
     from tradedangerous.db.utils import age_in_days
-
+    
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
-
+    
     results.summary = ResultRow()
     results.limit = cmdenv.limit
-
+    
     # SQLAlchemy lightweight table defs
     si = table(
         "StationItem",
@@ -100,13 +100,13 @@ def run(results, cmdenv, tdb):
         column("pos_y"),
         column("pos_z"),
     )
-
+    
     # Build session bound to current engine (age_in_days needs the session)
     session = Session(bind=tdb.engine)
-
+    
     # Base SELECT: station_id, ls_from_star, age_days
     age_expr = age_in_days(session, func.max(si.c.modified)).label("age_days")
-
+    
     # Optional near-system distance²
     nearSys = cmdenv.nearSystem
     join_sys = False
@@ -117,7 +117,7 @@ def run(results, cmdenv, tdb):
         dist2_expr = (dx * dx + dy * dy + dz * dz).label("d2")
     else:
         dist2_expr = literal(0.0).label("d2")
-
+    
     stmt = (
         select(
             si.c.station_id,
@@ -133,7 +133,7 @@ def run(results, cmdenv, tdb):
         .group_by(si.c.station_id, stn.c.ls_from_star, dist2_expr)
         .order_by(age_expr.desc())
     )
-
+    
     # Bounding box for near (keeps scan small, mirrors original)
     if nearSys:
         maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
@@ -145,15 +145,15 @@ def run(results, cmdenv, tdb):
         )
         # Radius filter: HAVING dist2 <= maxLy^2
         stmt = stmt.having(dist2_expr <= (maxLy * maxLy))
-
+    
     # Min-age filter (apply to aggregated age of MAX(modified))
     if cmdenv.minAge:
         stmt = stmt.having(age_expr >= float(cmdenv.minAge))
-
+    
     # Execute and materialize rows
     rows = session.execute(stmt).fetchall()
     session.close()
-
+    
     # Downstream filters (unchanged)
     padSize = cmdenv.padSize
     planetary = cmdenv.planetary
@@ -161,7 +161,7 @@ def run(results, cmdenv, tdb):
     odyssey = cmdenv.odyssey
     noPlanet = cmdenv.noPlanet
     mls = cmdenv.maxLs
-
+    
     for (stnID, age, ls, dist2) in rows:
         cmdenv.DEBUG2("{}:{}:{}", stnID, age, ls)
         row = ResultRow()
@@ -169,7 +169,7 @@ def run(results, cmdenv, tdb):
         row.age = float(age or 0.0)
         row.ls = "{:n}".format(ls) if ls else "?"
         row.dist = (float(dist2) ** 0.5) if dist2 else 0.0
-
+        
         if padSize and not row.station.checkPadSize(padSize):
             continue
         if planetary and not row.station.checkPlanetary(planetary):
@@ -182,9 +182,9 @@ def run(results, cmdenv, tdb):
             continue
         if mls and row.station.lsFromStar > mls:
             continue
-
+        
         results.rows.append(row)
-
+    
     # Route optimization and limiting (unchanged)
     if cmdenv.route and len(results.rows) > 1:
         def walk(start_idx, dist):
@@ -201,7 +201,7 @@ def run(results, cmdenv, tdb):
                 path.append(nearest)
                 dist += distFn(nearest.station.system)
             return (path, dist)
-
+        
         if cmdenv.near:
             bestPath = walk(0, results.rows[0].dist)
         else:
@@ -211,10 +211,10 @@ def run(results, cmdenv, tdb):
                 if candidate[1] < bestPath[1]:
                     bestPath = candidate
         results.rows[:] = bestPath[0]
-
+    
     if cmdenv.limit:
         results.rows[:] = results.rows[:cmdenv.limit]
-
+    
     return results
 
 

@@ -41,12 +41,12 @@ def _ensure_default_config_file(target_path: Path | None) -> Path | None:
 def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.PathLike) -> Dict[str, Dict[str, Any]]:
     """
     Normalise configuration input into a dict-of-sections.
-
+    
     Accepted inputs:
       * dict-like mapping → returned as {section: {key: value}}
       * ConfigParser       → converted to nested dict (sections overlay DEFAULT section)
       * str/Path           → if file exists, read it; if missing, fall back to load_config()
-
+    
     NOTE:
     - We do NOT raise on a missing path; we delegate to load_config() to honour the
       documented resolution order (ENV → CWD → DEFAULTS).
@@ -61,7 +61,7 @@ def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.P
         # Missing provided path → use canonical loader with fallbacks
         from .config import load_config
         return load_config(None)
-
+    
     if isinstance(cfg, configparser.ConfigParser):
         out: Dict[str, Dict[str, Any]] = {}
         defaults = dict(cfg.defaults())
@@ -72,7 +72,7 @@ def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.P
         for sec in ("database", "engine", "sqlite", "mariadb", "paths"):
             out.setdefault(sec, dict(defaults))
         return out
-
+    
     # Already a dict-like mapping of sections
     return {k: dict(v) if isinstance(v, Mapping) else dict() for k, v in cfg.items()}  # type: ignore[arg-type]
 
@@ -135,7 +135,7 @@ def _make_sqlite_url(cfg: Dict[str, Any]) -> str:
 def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str, Any] | str | os.PathLike | None = None) -> Engine:
     """
     Build a SQLAlchemy Engine for either MariaDB or SQLite.
-
+    
     Accepts: ConfigParser, dict-like {section:{k:v}}, path to INI file, or None.
     First-run behaviour:
       - If a path is provided but missing, or if no path is provided and no config is found,
@@ -143,7 +143,7 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
         points elsewhere), then loaded.
     """
     ini_target: Path | None = None
-
+    
     # If caller gave a specific path, prefer to materialise a default file there.
     if isinstance(cfg_or_path, (str, os.PathLike)):
         ini_target = Path(cfg_or_path)
@@ -153,17 +153,17 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
         # (CWD/db_config.ini by default, or the file pointed to by TD_DB_CONFIG).
         ini_target = resolve_db_config_path("db_config.ini")
         _ensure_default_config_file(ini_target)
-
+    
     cfg = _cfg_to_dict(cfg_or_path if cfg_or_path is not None else str(ini_target))
-
+    
     # Ensure dirs exist (used by various parts of the app)
     _ = resolve_data_dir(cfg)
     _ = resolve_tmp_dir(cfg)
-
+    
     backend = str(_get(cfg, "database", "backend", "sqlite")).strip().lower()
     echo = bool(_get_bool(cfg, "engine", "echo", False))
     isolation = _get(cfg, "engine", "isolation_level", None)
-
+    
     if backend == "mariadb":
         url = _make_mariadb_url(cfg)
         connect_timeout = _get_int(cfg, "engine", "connect_timeout", 10) or 10
@@ -190,7 +190,7 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
             poolclass=NullPool,
             connect_args={"check_same_thread": False},
         )
-
+        
         @event.listens_for(engine, "connect")
         def _set_sqlite_pragmas(dbapi_conn, _):
             cur = dbapi_conn.cursor()
@@ -201,7 +201,7 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
             cur.close()
     else:
         raise ValueError(f"Unsupported backend: {backend}")
-
+    
     try:
         engine._td_redacted_url = _redact(str(url))  # type: ignore[attr-defined]
     except Exception:

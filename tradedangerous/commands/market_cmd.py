@@ -54,24 +54,24 @@ def render_units(units, level):
 def run(results, cmdenv, tdb):
     # Lazy import to avoid any import-time tangles elsewhere.
     from tradedangerous.db.utils import age_in_days
-
+    
     origin = cmdenv.startStation
     if not origin.itemCount:
         raise CommandLineError(
             "No trade data available for {}".format(origin.name())
         )
-
+    
     buying, selling = cmdenv.buying, cmdenv.selling
-
+    
     results.summary = ResultRow()
     results.summary.origin = origin
     results.summary.buying = cmdenv.buying
     results.summary.selling = cmdenv.selling
-
+    
     # Precompute averages (unchanged)
     tdb.getAverageSelling()
     tdb.getAverageBuying()
-
+    
     # --- Backend-neutral query using SQLAlchemy Core + age_in_days ---
     si = table(
         "StationItem",
@@ -85,10 +85,10 @@ def run(results, cmdenv, tdb):
         column("supply_level"),
         column("modified"),
     )
-
+    
     # Build session bound to current engine (needed by age_in_days)
     session = Session(bind=tdb.engine)
-
+    
     stmt = (
         select(
             si.c.item_id,
@@ -98,17 +98,17 @@ def run(results, cmdenv, tdb):
         )
         .where(si.c.station_id == origin.ID)
     )
-
+    
     rows = session.execute(stmt).fetchall()
     session.close()
-
+    
     for r in rows:
         it = iter(r)
         item = tdb.itemByID[next(it)]
-
+        
         row = ResultRow()
         row.item = item
-
+        
         row.buyCr = int(next(it) or 0)
         row.avgBuy = tdb.avgBuying.get(item.ID, 0)
         units, level = int(next(it) or 0), int(next(it) or 0)
@@ -119,7 +119,7 @@ def run(results, cmdenv, tdb):
             hasBuy = (row.buyCr or units or level)
         else:
             hasBuy = False
-
+        
         row.sellCr = int(next(it) or 0)
         row.avgSell = tdb.avgSelling.get(item.ID, 0)
         units, level = int(next(it) or 0), int(next(it) or 0)
@@ -130,19 +130,19 @@ def run(results, cmdenv, tdb):
             hasSell = (row.sellCr or units or level)
         else:
             hasSell = False
-
+        
         age_days = next(it)
         row.age = float(age_days or 0.0)
-
+        
         if hasBuy or hasSell:
             results.rows.append(row)
-
+    
     if not results.rows:
         raise CommandLineError("No items found")
-
+    
     results.rows.sort(key=lambda row: row.item.dbname)
     results.rows.sort(key=lambda row: row.item.category.dbname)
-
+    
     return results
 
 #######################################################################

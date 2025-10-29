@@ -32,7 +32,7 @@ def get_adapter_if_enabled(cfg_path: Optional[str] = None) -> "TradeDBReadAdapte
     backend = (cfg.get("database", "backend", fallback="sqlite") or "sqlite").strip().lower()
     if backend == "sqlite":
         return None
-
+    
     # Engine is created lazily via the property below to honour "no side-effects at import".
     return TradeDBReadAdapter(cfg_path)
 
@@ -50,7 +50,7 @@ class TradeDBReadAdapter:
         self._cfg_path = cfg_path
         self._engine: Optional[Engine] = None
         self._Session = None  # sessionmaker
-
+    
     # Lazy engine/session factory (no import-time work)
     @property
     def Session(self):
@@ -59,15 +59,15 @@ class TradeDBReadAdapter:
             self._engine = engine
             self._Session = get_session_factory(engine)
         return self._Session
-
+    
     @contextmanager
     def session(self) -> Generator[Session, None, None]:
         Session = self.Session
         with Session() as s:
             yield s
-
+    
     # ---- Reads mapped to ORM ------------------------------------------------
-
+    
     def list_system_rows(self) -> Iterable[Tuple[int, str, float, float, float, Optional[int]]]:
         """
         Shape matches legacy _loadSystems SELECT:
@@ -86,7 +86,7 @@ class TradeDBReadAdapter:
             )
             for r in rows:
                 yield (r.system_id, r.name, r.pos_x, r.pos_y, r.pos_z, r.added_id)
-
+    
     def system_by_name(self, name_ci: str) -> Optional[Tuple[int, str, float, float, float, Optional[int]]]:
         """
         Case-insensitive name match for System.
@@ -100,7 +100,7 @@ class TradeDBReadAdapter:
             if not row:
                 return None
             return (row.system_id, row.name, row.pos_x, row.pos_y, row.pos_z, row.added_id)
-
+    
     def station_by_system_and_name(
         self, system_id: int, station_name_ci: str
     ) -> Optional[Tuple[int, int, str, int, str, str, str, str, str, str, str, str, str, int]]:
@@ -151,7 +151,7 @@ class TradeDBReadAdapter:
                 r.planetary,
                 r.type_id,
             )
-
+    
     def average_selling(self) -> Dict[int, int]:
         """
         {item_id: avg_supply_price>0}
@@ -170,7 +170,7 @@ class TradeDBReadAdapter:
                 .group_by(Item.item_id)
             )
             return {int(item_id): int(avg_cr) for (item_id, avg_cr) in rows}
-
+    
     def average_buying(self) -> Dict[int, int]:
         """
         {item_id: avg_demand_price>0}

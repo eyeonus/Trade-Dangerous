@@ -103,14 +103,14 @@ def run(results, cmdenv, tdb):
     odyssey = cmdenv.odyssey
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.0)
-
+    
     if cmdenv.illegal:
         wantIllegality = 'Y'
     elif cmdenv.legal:
         wantIllegality = 'N'
     else:
         wantIllegality = 'YN?'
-
+    
     awaySystems = set()
     if cmdenv.away or cmdenv.awayFrom:
         if not cmdenv.away or not cmdenv.awayFrom:
@@ -119,15 +119,15 @@ def run(results, cmdenv, tdb):
         for sysName in cmdenv.awayFrom:
             system = tdb.lookupPlace(sysName).system
             awaySystems.add(system)
-
+    
     # Start to build up the results data.
     results.summary = ResultRow()
     results.summary.near = start
     results.summary.ly = maxLy
     results.summary.awaySystems = awaySystems
-
+    
     distCheckFn = start.distanceTo
-
+    
     # Look through the rares list.
     for rare in tdb.rareItemByID.values():
         if rare.illegal not in wantIllegality:
@@ -143,45 +143,45 @@ def run(results, cmdenv, tdb):
             continue
         if noPlanet and stn.planetary != 'N':
             continue
-
+        
         rareSys = stn.system
         dist = distCheckFn(rareSys)
         if maxLy > 0.0 and dist > maxLy:
             continue
-
+        
         if awaySystems:
             awayCheck = rareSys.distanceTo
             if any(awayCheck(away) < minAwayDist for away in awaySystems):
                 continue
-
+        
         row = ResultRow()
         row.rare = rare
         row.station = stn            # <-- IMPORTANT: used by render()
         row.dist = dist
         results.rows.append(row)
-
+    
     # Was anything matched?
     if not results.rows:
         print("No matches found.")
         return None
-
+    
     # Sort safely even if rare.costCr is None (treat None as 0)
     price_key = lambda row: (row.rare.costCr or 0)
-
+    
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
         results.rows.sort(key=price_key, reverse=True)
     else:
         results.rows.sort(key=price_key, reverse=True)
         results.rows.sort(key=lambda row: row.dist)
-
+    
     if cmdenv.reverse:
         results.rows.reverse()
-
+    
     limit = cmdenv.limit or 0
     if limit > 0:
         results.rows = results.rows[:limit]
-
+    
     return results
 
 
@@ -196,11 +196,11 @@ def render(results, cmdenv, tdb):
     Keeps existing column order/labels.
     """
     from ..formatting import RowFormat, max_len
-
+    
     rows = results.rows
     if not rows:
         return
-
+    
     # Helpers to coalesce possibly-missing attributes
     def _cost(row):
         try:
@@ -208,59 +208,59 @@ def render(results, cmdenv, tdb):
             return int(v) if v is not None else 0
         except Exception:
             return 0
-
+    
     def _rare_name(row):
         try:
             n = row.rare.name()
             return n or "?"
         except Exception:
             return "?"
-
+    
     def _alloc(row):
         val = getattr(row.rare, "allocation", None)
         return str(val) if val not in (None, "") else "?"
-
+    
     def _rare_illegal(row):
         val = getattr(row.rare, "illegal", None)
         return val if val in ("Y", "N", "?") else "?"
-
+    
     def _stn_ls(row):
         try:
             v = row.station.distFromStar()
             return v if v is not None else "?"
         except Exception:
             return "?"
-
+    
     def _dist(row):
         try:
             return float(getattr(row, "dist", 0.0) or 0.0)
         except Exception:
             return 0.0
-
+    
     def _stn_bm(row):
         key = getattr(row.station, "blackMarket", "?")
         return TradeDB.marketStates.get(key, key or "?")
-
+    
     def _pad(row):
         key = getattr(row.station, "maxPadSize", "?")
         return TradeDB.padSizes.get(key, key or "?")
-
+    
     def _plt(row):
         key = getattr(row.station, "planetary", "?")
         return TradeDB.planetStates.get(key, key or "?")
-
+    
     def _flc(row):
         key = getattr(row.station, "fleet", "?")
         return TradeDB.fleetStates.get(key, key or "?")
-
+    
     def _ody(row):
         key = getattr(row.station, "odyssey", "?")
         return TradeDB.odysseyStates.get(key, key or "?")
-
+    
     # Column widths based on safe key functions
     max_stn = max_len(rows, key=lambda r: r.station.name())
     max_rare = max_len(rows, key=lambda r: _rare_name(r))
-
+    
     rowFmt = RowFormat()
     rowFmt.addColumn('Station', '<', max_stn, key=lambda r: r.station.name())
     rowFmt.addColumn('Rare', '<', max_rare, key=lambda r: _rare_name(r))
@@ -276,10 +276,10 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn('Plt', '>', 3, key=lambda r: _plt(r))
     rowFmt.addColumn('Flc', '>', 3, key=lambda r: _flc(r))
     rowFmt.addColumn('Ody', '>', 3, key=lambda r: _ody(r))
-
+    
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in rows:
         print(rowFmt.format(row))

@@ -41,11 +41,11 @@ class TestTrade:
         captured = capsys.readouterr()
         assert "NOTE: Export Table 'System'" in captured.out
         # TODO: check that System.csv has a fresh date
-
+    
     @pytest.mark.skip(reason="station command deprecated; now prints deprecation banner")
     def test_station_remove(self, capsys):
         pytest.skip("station command deprecated; no longer edits DB directly")
-
+    
     @pytest.mark.skip(reason="station command deprecated; now prints deprecation banner")
     def test_station_add(self, capsys):
         pytest.skip("station command deprecated; no longer edits DB directly")

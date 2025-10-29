@@ -69,14 +69,14 @@ def buildFKeyStmt(session, tableName, key):
     """
     Resolve the FK constraint against the UNIQUE index of the
     referenced table.
-
+    
     Multicolumn UNIQUEs are allowed, but only the last column
     may be treated as a single-column join target.
     """
     unqIndex = getUniqueIndex(session, key["table"])
     keyList = getFKeyList(session, key["table"])
     keyStmt = []
-
+    
     for colName in unqIndex:
         # If this unique column is itself a foreign key, recurse
         keyKey = search_keyList(keyList, colName)
@@ -89,7 +89,7 @@ def buildFKeyStmt(session, tableName, key):
                 "joinTable": key["table"],
                 "joinColumn": key["to"],
             })
-
+    
     return keyStmt
 
 
@@ -101,19 +101,19 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
     """
     Generate the CSV file for tableName in csvPath.
     Returns (lineCount, exportPath).
-
+    
     Behaviour:
     - Prefix unique columns with "unq:".
     - Foreign keys are exported as "<col>@<joinTable>.<uniqueCol>".
     - Datetime-like values for 'modified' columns are exported as
       "YYYY-MM-DD HH:MM:SS" (no microseconds).
-
+    
     Compatible with either:
       * a SQLAlchemy Session
       * a TradeDB wrapper exposing .engine
     """
     from sqlalchemy.orm import Session
-
+    
     # --- Resolve a SQLAlchemy session ---
     if hasattr(tdb_or_session, "engine"):
         # Likely a TradeDB instance
@@ -126,15 +126,15 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
         raise TradeException(
             f"Unsupported DB object passed to exportTableToFile: {type(tdb_or_session)}"
         )
-
+    
     csvPath = csvPath or Path(tdenv.csvDir)
     if not Path(csvPath).is_dir():
         raise TradeException(f"Save location '{csvPath}' not found.")
-
+    
     uniquePfx = "unq:"
     exportPath = (Path(csvPath) / Path(tableName)).with_suffix(".csv")
     tdenv.DEBUG0(f"Export Table '{tableName}' to '{exportPath}'")
-
+    
     def _fmt_ts(val):
         if hasattr(val, "strftime"):
             try:
@@ -148,7 +148,7 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
             if len(s) >= 19 and s[4] == "-" and s[7] == "-" and s[10] == " " and s[13] == ":" and s[16] == ":":
                 return s[:19]
         return val
-
+    
     lineCount = 0
     with exportPath.open("w", encoding="utf-8", newline="\n") as exportFile:
         exportOut = csv.writer(
@@ -159,22 +159,22 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
             quoting=csv.QUOTE_NONNUMERIC,
             lineterminator="\n",
         )
-
+        
         bind = session.get_bind()
         inspector = inspect(bind)
-
+        
         try:
             unique_cols = db_utils.get_unique_columns(session, tableName)
             fk_list = db_utils.get_foreign_keys(session, tableName)
         except Exception as e:
             raise TradeException(f"Failed to introspect table '{tableName}': {e!r}")
-
+        
         csvHead = []
         stmtColumn = []
         stmtTable = [tableName]
         stmtOrder = []
         is_modified_col = []
-
+        
         for col in inspector.get_columns(tableName):
             col_name = col["name"]
             fk = next((fk for fk in fk_list if fk["from"] == col_name), None)
@@ -205,14 +205,14 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
                     csvHead.append(col_name)
                 stmtColumn.append(f"{tableName}.{col_name}")
                 is_modified_col.append(col_name == "modified")
-
+        
         sqlStmt = f"SELECT {','.join(stmtColumn)} FROM {' '.join(stmtTable)}"
         if stmtOrder:
             sqlStmt += f" ORDER BY {','.join(stmtOrder)}"
         tdenv.DEBUG1(f"SQL: {sqlStmt}")
-
+        
         exportFile.write(f"{','.join(csvHead)}\n")
-
+        
         for row in session.execute(text(sqlStmt)):
             lineCount += 1
             row_out = [
@@ -221,11 +221,11 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
             ]
             tdenv.DEBUG2(f"{lineCount}: {row_out}")
             exportOut.writerow(row_out)
-
+        
         tdenv.DEBUG1(f"{lineCount} {tableName}s exported")
-
+    
     # Close session if we created it
     if hasattr(tdb_or_session, "engine"):
         session.close()
-
+    
     return lineCount, exportPath

@@ -612,36 +612,36 @@ class TradeDB:
         self.engine = None
         self.Session = None
         self.tradingCount = None
-
+        
         # Environment
         tdenv = tdenv or TradeEnv(debug=(debug or 0))
         self.tdenv = tdenv
-
+        
         # --- Path setup (unchanged) ---
         self.templatePath = Path(tdenv.templateDir).resolve()
         self.dataPath = dataPath = fs.ensurefolder(tdenv.dataDir)
         self.csvPath = fs.ensurefolder(tdenv.csvDir)
-
+        
         fs.copy_if_newer(self.templatePath / "Added.csv",       self.csvPath / "Added.csv")
         fs.copy_if_newer(self.templatePath / "RareItem.csv",    self.csvPath / "RareItem.csv")
         fs.copy_if_newer(self.templatePath / "Category.csv",    self.csvPath / "Category.csv")
         fs.copy_if_newer(self.templatePath / "TradeDangerous.sql", self.dataPath / "TradeDangerous.sql")
-
+        
         self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
-        pricePath   = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
-        self.pricesPath = dataPath / pricePath
-
+        # pricePath   = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
+        # self.pricesPath = dataPath / pricePath
+        
         self.importTables = [
             (str(self.csvPath / Path(fn)), tn)
             for fn, tn in TradeDB.defaultTables
         ]
         self.importPaths = {tn: tp for tp, tn in self.importTables}
-
+        
         self.dbFilename     = str(self.dbPath)
         self.sqlFilename    = str(self.sqlPath)
-        self.pricesFilename = str(self.pricesPath)
-
+        # self.pricesFilename = str(self.pricesPath)
+        
         # --- Cache attributes (unchanged) ---
         self.avgSelling, self.avgBuying = None, None
         self.tradingStationCount = 0
@@ -657,18 +657,18 @@ class TradeDB:
         self.itemByFDevID   = None
         self.rareItemByID   = None
         self.rareItemByName = None
-
+        
         # --- Engine bootstrap ---
         from .db import make_engine_from_config, get_session_factory
         from .db.paths import resolve_data_dir
         import os
-
+        
         # Determine user's real invocation directory, not venv/bin
         user_cwd = Path(os.getenv("PWD", Path.cwd()))
         data_dir = user_cwd / "data"
-
+        
         cfg = os.environ.get("TD_DB_CONFIG") or str(data_dir / "db_config.ini")
-
+        
         self.engine = make_engine_from_config(cfg)
         self.Session = get_session_factory(self.engine)
 
@@ -677,7 +677,7 @@ class TradeDB:
         if load:
             self.reloadCache()
             self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
-
+    
     # ------------------------------------------------------------------
     # Legacy compatibility dataPath shim
     # ------------------------------------------------------------------
@@ -695,7 +695,7 @@ class TradeDB:
             return self.tdenv.dataDir
         # Final fallback (first run, pre-bootstrap)
         return Path("./data")
-
+    
     
     @staticmethod
     def calculateDistance2(lx, ly, lz, rx, ry, rz):
@@ -723,7 +723,7 @@ class TradeDB:
         if not self.engine:
             raise TradeException("Database engine not initialised")
         return self.Session()
-
+    
     def query(self, sql: str, *params):
         """
         Execute a SQL statement via the SQLAlchemy engine and return the result cursor.
@@ -731,32 +731,32 @@ class TradeDB:
         from sqlalchemy import text
         with self.engine.connect() as conn:
             return conn.execute(text(sql), params)
-
+    
     def queryColumn(self, sql: str, *params):
         """
         Execute a SQL statement and return the first column of the first row.
         """
         result = self.query(sql, *params).first()
         return result[0] if result else None
-
+    
     
     def reloadCache(self):
         """
         Ensure DB is present and minimally populated using the central policy.
-
+        
         Delegates sanity checks to lifecycle.ensure_fresh_db (seconds-only checks):
           - core tables exist (System, Station, Category, Item, StationItem)
           - each has a primary key
           - seed rows exist (Category > 0, System > 0)
           - cheap connectivity probe
-
+        
         If checks fail (or lifecycle decides to force), it will call buildCache(self, self.tdenv)
         to reset/populate via the authoritative path. Otherwise it is a no-op.
         """
         from tradedangerous.db.lifecycle import ensure_fresh_db
-
+        
         self.tdenv.DEBUG0("reloadCache: engine URL = {}", str(self.engine.url))
-
+        
         try:
             summary = ensure_fresh_db(
                 backend=self.engine.dialect.name,
@@ -794,7 +794,7 @@ class TradeDB:
                 addedByID[row.added_id] = row.name
         self.addedByID = addedByID
         self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
-
+    
     
     def lookupAdded(self, name):
         name = name.lower()
@@ -835,10 +835,10 @@ class TradeDB:
                 )
                 systemByID[row.system_id] = system
                 systemByName[row.name.upper()] = system
-
+        
         self.systemByID, self.systemByName = systemByID, systemByName
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
-
+    
     
     def lookupSystem(self, key):
         """
@@ -879,21 +879,21 @@ class TradeDB:
                 session.commit()
             else:
                 session.flush()
-
+            
             ID = orm_system.system_id
-
+        
         # Maintain legacy wrapper + caches (added_id always None now)
         system = System(ID, name.upper(), x, y, z, None)
         self.systemByID[ID] = system
         self.systemByName[system.dbname] = system
-
+        
         self.tdenv.NOTE(
             "Added new system #{}: {} [{},{},{}]",
             ID, name, x, y, z
         )
         self.stellarGrid = None
         return system
-
+    
     
     def updateLocalSystem(
             self, system,
@@ -906,27 +906,27 @@ class TradeDB:
         """
         oldname = system.dbname
         dbname = name.upper()
-
+        
         if not force:
             if (oldname == dbname and
                 system.posX == x and
                 system.posY == y and
                 system.posZ == z):
                 return False
-
+        
         del self.systemByName[oldname]
-
+        
         with self.Session() as session:
             # Find Added row for added_id
             added_row = session.query(Added).filter(Added.name == added).first()
             if not added_row:
                 raise TradeException(f"Added entry not found: {added}")
-
+            
             # Load ORM System row
             orm_system = session.get(SA_System, system.ID)
             if not orm_system:
                 raise TradeException(f"System ID not found: {system.ID}")
-
+            
             # Apply updates
             orm_system.name = dbname
             orm_system.pos_x = x
@@ -934,27 +934,27 @@ class TradeDB:
             orm_system.pos_z = z
             orm_system.added_id = added_row.added_id
             orm_system.modified = None if modified == 'now' else modified
-
+            
             if commit:
                 session.commit()
             else:
                 session.flush()
-
+        
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}, {}, {}, {}, {}, {}",
             oldname, system.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
             dbname, x, y, z, added, modified,
         )
-
+        
         # Update wrapper caches
         system.name = dbname
         system.posX, system.posY, system.posZ = x, y, z
         system.addedID = added_row.added_id
         self.systemByName[dbname] = system
-
+        
         return True
-
+    
     
     def removeLocalSystem(
             self, system,
@@ -965,7 +965,7 @@ class TradeDB:
         for stn in self.stations():
             if stn.system == system:
                 self.removeLocalStation(stn, commit=False)
-
+        
         with self.Session() as session:
             orm_system = session.get(SA_System, system.ID)
             if orm_system:
@@ -974,20 +974,20 @@ class TradeDB:
                     session.commit()
                 else:
                     session.flush()
-
+        
         # Update caches
         del self.systemByName[system.dbname]
         del self.systemByID[system.ID]
-
+        
         self.tdenv.NOTE(
             "{} (#{}) deleted from {}",
             system.name, system.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
         )
-
+        
         system.dbname = "DELETED " + system.dbname
         del system
-
+    
     
     def __buildStellarGrid(self):
         """
@@ -1257,12 +1257,12 @@ class TradeDB:
         stationByID = {}
         systemByID = self.systemByID
         self.tradingStationCount = 0
-
+        
         # Fleet Carriers are station type 24.
         # Odyssey settlements are station type 25.
         # Assume type 0 (Unknown) are also Fleet Carriers.
         types = {'fleet-carrier': [24, 0], 'odyssey': [25]}
-
+        
         with self.Session() as session:
             # Query all stations
             rows = session.query(
@@ -1296,7 +1296,7 @@ class TradeDB:
                     0, None,
                 )
                 stationByID[ID] = station
-
+            
             # Trading station info
             tradingCount = 0
             rows = (
@@ -1309,13 +1309,13 @@ class TradeDB:
                 .group_by(SA_StationItem.station_id)
                 .having(func.count() > 0)
             )
-
+            
             for ID, itemCount, dataAge in rows:
                 station = stationByID[ID]
                 station.itemCount = itemCount
                 station.dataAge = dataAge
                 tradingCount += 1
-
+        
         self.stationByID = stationByID
         self.tradingStationCount = tradingCount
         self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
@@ -1366,14 +1366,14 @@ class TradeDB:
         assert planetary in "?YN"
         assert fleet in "?YN"
         assert odyssey in "?YN"
-
+        
         # Type mapping
         type_id = 0
         if fleet == 'Y':
             type_id = 24
         if odyssey == 'Y':
             type_id = 25
-
+        
         with self.Session() as session:
             orm_station = SA_Station(
                 name=name,
@@ -1397,7 +1397,7 @@ class TradeDB:
             else:
                 session.flush()
             ID = orm_station.station_id
-
+        
         # Legacy wrapper object
         station = Station(
             ID, system, name,
@@ -1417,7 +1417,7 @@ class TradeDB:
             dataAge=0,
         )
         self.stationByID[ID] = station
-
+        
         self.tdenv.NOTE(
             "{} (#{}) added to {}: "
             "ls={}, mkt={}, bm={}, yard={}, pad={}, "
@@ -1454,23 +1454,23 @@ class TradeDB:
         Alter the properties of a station in-memory and in the DB using SQLAlchemy.
         """
         changes = []
-
+        
         def _changed(label, old, new):
             changes.append(f"{label}('{old}'=>'{new}')")
-
+        
         # Mutate wrapper + record changes
         if name is not None:
             if force or name.upper() != station.dbname.upper():
                 _changed("name", station.dbname, name)
                 station.dbname = name
-
+        
         if lsFromStar is not None:
             assert lsFromStar >= 0
             if lsFromStar != station.lsFromStar:
                 if lsFromStar > 0 or force:
                     _changed("ls", station.lsFromStar, lsFromStar)
                     station.lsFromStar = lsFromStar
-
+        
         def _check_setting(label, attr_name, newValue, allowed):
             if newValue is not None:
                 newValue = newValue.upper()
@@ -1479,7 +1479,7 @@ class TradeDB:
                 if newValue != oldValue and (force or newValue != '?'):
                     _changed(label, oldValue, newValue)
                     setattr(station, attr_name, newValue)
-
+        
         _check_setting("pad", "maxPadSize", maxPadSize, TradeDB.padSizes)
         _check_setting("mkt", "market", market, TradeDB.marketStates)
         _check_setting("blk", "blackMarket", blackMarket, TradeDB.marketStates)
@@ -1491,15 +1491,15 @@ class TradeDB:
         _check_setting("plt", "planetary", planetary, TradeDB.planetStates)
         _check_setting("flc", "fleet", fleet, TradeDB.fleetStates)
         _check_setting("ody", "odyssey", odyssey, TradeDB.odysseyStates)
-
+        
         if not changes:
             return False
-
+        
         with self.Session() as session:
             orm_station = session.get(SA_Station, station.ID)
             if not orm_station:
                 raise TradeException(f"Station ID not found: {station.ID}")
-
+            
             orm_station.name         = station.dbname
             orm_station.system_id    = station.system.ID
             orm_station.ls_from_star = station.lsFromStar
@@ -1517,19 +1517,19 @@ class TradeDB:
                 25 if station.odyssey == 'Y' else 0
             )
             orm_station.modified     = None if modified == 'now' else modified
-
+            
             if commit:
                 session.commit()
             else:
                 session.flush()
-
+        
         self.tdenv.NOTE(
             "{} (#{}) updated in {}: {}",
             station.name(), station.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
             ", ".join(changes)
         )
-
+        
         return True
     
     def removeLocalStation(self, station, commit=True):
@@ -1541,11 +1541,11 @@ class TradeDB:
         system = station.system
         if station in system.stations:
             system.stations.remove(station)
-
+        
         # Remove from ID lookup cache
         if station.ID in self.stationByID:
             del self.stationByID[station.ID]
-
+        
         # Delete from DB
         with self.Session() as session:
             orm_station = session.get(SA_Station, station.ID)
@@ -1555,13 +1555,13 @@ class TradeDB:
                     session.commit()
                 else:
                     session.flush()
-
+        
         self.tdenv.NOTE(
             "{} (#{}) deleted from {}",
             station.name(), station.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
         )
-
+        
         station.dbname = "DELETED " + station.dbname
         del station
     
@@ -1914,9 +1914,9 @@ class TradeDB:
                 row.ship_id: Ship(row.ship_id, row.name, row.cost, stations=[])
                 for row in rows
             }
-
+        
         self.tdenv.DEBUG1("Loaded {} Ships", len(self.shipByID))
-
+    
     
     def lookupShip(self, name):
         """
@@ -1994,11 +1994,11 @@ class TradeDB:
                 if fdevID:
                     itemByFDevID[fdevID] = item
                 category.items.append(item)
-
+        
         self.itemByID = itemByID
         self.itemByName = itemByName
         self.itemByFDevID = itemByFDevID
-
+        
         self.tdenv.DEBUG1("Loaded {:n} Items", len(self.itemByID))
     
     def lookupItem(self, name):
@@ -2017,7 +2017,7 @@ class TradeDB:
         """
         if not self.avgSelling:
             self.avgSelling = {itemID: 0 for itemID in self.itemByID}
-
+            
             with self.Session() as session:
                 rows = (
                     session.query(
@@ -2034,16 +2034,16 @@ class TradeDB:
                 )
                 for ID, cr in rows:
                     self.avgSelling[ID] = int(cr)
-
+        
         return self.avgSelling
-
+    
     def getAverageBuying(self):
         """
         Query the database for average buying prices of all items using SQLAlchemy.
         """
         if not self.avgBuying:
             self.avgBuying = {itemID: 0 for itemID in self.itemByID}
-
+            
             with self.Session() as session:
                 rows = (
                     session.query(
@@ -2060,9 +2060,9 @@ class TradeDB:
                 )
                 for ID, cr in rows:
                     self.avgBuying[ID] = int(cr)
-
+        
         return self.avgBuying
-
+    
     
     ############################################################
     # Rare Items
@@ -2073,7 +2073,7 @@ class TradeDB:
         """
         rareItemByID, rareItemByName = {}, {}
         stationByID = self.stationByID
-
+        
         with self.Session() as session:
             rows = session.query(
                 SA_RareItem.rare_id,
@@ -2098,12 +2098,12 @@ class TradeDB:
                 )
                 rareItemByID[ID] = rare
                 rareItemByName[name] = rare
-
+        
         self.rareItemByID  = rareItemByID
         self.rareItemByName = rareItemByName
-
+        
         self.tdenv.DEBUG1("Loaded {:n} RareItems", len(rareItemByID))
-
+    
     
     ############################################################
     # Price data.

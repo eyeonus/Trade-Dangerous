@@ -121,7 +121,7 @@ def run(results, cmdenv, tdb):
       • If a plugin (-P) is specified: load it and run it (no deprecation banner).
       • Otherwise: proceed with legacy .prices/.url flow and show a deprecation notice.
     """
-
+    
     # --- Plugin path (preferred; no banner) ---
     if cmdenv.plug:
         if cmdenv.pluginOptions:
@@ -132,16 +132,16 @@ def run(results, cmdenv, tdb):
             pluginClass = plugins.load(cmdenv.plug, "ImportPlugin")
         except plugins.PluginException as e:
             raise CommandLineError("Plugin Error: " + str(e))
-
+        
         plugin = pluginClass(tdb, cmdenv)
-
+        
         # If plugin returns False, it fully handled the run → stop here.
         if not plugin.run():
             return None
-
+        
         # If plugin returns True, it’s handing control back to legacy flow below.
         # Fall through intentionally (still no banner, as user invoked a plugin).
-
+    
     # --- Legacy .prices path (deprecated; show banner once) ---
     # Only warn when the user is *not* using a plugin. Keep functionality intact.
     if not cmdenv.plug:
@@ -155,23 +155,23 @@ def run(results, cmdenv, tdb):
             "Solo/offline: TradeDangerous DB-Update for EDMC → https://github.com/bgol/UpdateTD\n"
             "===================================================================\n"
         )
-
+    
     # Refresh/close any cached handles before file ops (kept from original)
     tdb.reloadCache()
     tdb.close()
-
+    
     # Treat a bare http(s) string in 'filename' as a URL
     if cmdenv.filename:
         if re.match(r"^https?://", cmdenv.filename, re.IGNORECASE):
             cmdenv.url, cmdenv.filename = cmdenv.filename, None
-
+    
     # Optional download step
     if cmdenv.url:
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
         if cmdenv.download:
             return None
-
+    
     # No filename? If Tk is available, prompt user (legacy behavior)
     fh = None
     if not cmdenv.filename and hasTkInter:
@@ -190,7 +190,7 @@ def run(results, cmdenv, tdb):
         if not filename:
             raise SystemExit("Aborted")
         cmdenv.filename = filename
-
+    
     # Validate path or use stdin
     if cmdenv.filename != "-":
         filePath = Path(cmdenv.filename)
@@ -199,7 +199,7 @@ def run(results, cmdenv, tdb):
     else:
         filePath = "stdin"
         fh = sys.stdin
-
+    
     # If a plugin was also involved and wants to finish with default flow,
     # honour that (unchanged behavior).
     if cmdenv.plug:
@@ -208,7 +208,7 @@ def run(results, cmdenv, tdb):
         if not plugin.finish():
             cache.regeneratePricesFile()
             return None
-
+    
     # Legacy .prices import
     cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
     return None

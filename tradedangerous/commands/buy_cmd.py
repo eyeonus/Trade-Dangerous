@@ -186,7 +186,7 @@ def sql_query(cmdenv, tdb, queries, mode):
         * Item:   (item_id, station_id, supply_price, supply_units)
     """
     ids = list(queries.keys())
-
+    
     # Build a stable, named-parameter IN(...) list
     params = {}
     placeholders = []
@@ -195,7 +195,7 @@ def sql_query(cmdenv, tdb, queries, mode):
         placeholders.append(f":{key}")
         params[key] = val
     id_list_sql = ",".join(placeholders)
-
+    
     if mode is SHIP_MODE:
         columns = "s.ship_id, s.station_id, sh.cost, 1"
         tables = "ShipVendor AS s JOIN Ship AS sh ON sh.ship_id = s.ship_id"
@@ -216,11 +216,11 @@ def sql_query(cmdenv, tdb, queries, mode):
         if cmdenv.gt:
             constraints.append("(s.supply_price > :gt)")
             params["gt"] = cmdenv.gt
-
+    
     where_clause = " AND ".join(constraints)
     stmt = f"SELECT DISTINCT {columns} FROM {tables} WHERE {where_clause}"
     cmdenv.DEBUG0('SQL: {} ; params={}', stmt, params)
-
+    
     # Eagerly fetch to avoid closed cursor when iterating later.
     with tdb.engine.connect() as conn:
         result = conn.execute(text(stmt), params)

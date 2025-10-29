@@ -27,7 +27,7 @@ class TestTradeRun:
         assert "Sol/Abraham Lincoln: 10 x Hydrogen Fuel," in captured.out
         assert "Sol/Burnell Station: 2 x Silver," in captured.out
         assert "560cr (213/ton)" in captured.out
-
+    
     @pytest.mark.slow
     def test_run2(self, capsys):
         os.environ["TD_NO_COLOR"] = "1"
@@ -39,7 +39,7 @@ class TestTradeRun:
         ])
         captured = capsys.readouterr()
         assert regex_findin(r"=> est [\d\s,]+cr total", captured.out)
-
+    
     @pytest.mark.slow
     def test_run3(self, capsys):
         """Testing --checklist"""
@@ -55,7 +55,7 @@ class TestTradeRun:
         captured = capsys.readouterr()
         assert "BEGINNING CHECKLIST FOR Sol/Abraham Lincoln -> LHS 449/Fisher Point" in captured.out
         assert "35 : Sell 212 x Polymers" in captured.out
-
+    
     def test_run4(self, capsys):
         os.environ["TD_NO_COLOR"] = "1"
         trade([

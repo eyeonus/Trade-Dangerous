@@ -267,7 +267,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
                 except Exception:
                     # Fallback: dump raw message + args/kwargs repr
                     msg = f"{outText} {args!r} {kwargs!r}"
-
+                
                 self.uprint(
                     f"{self.theme.warn}{self.theme.WARNING}: {msg}",
                     stderr=stderr,
@@ -279,7 +279,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             noteFn = _WARN_DISABLED if self.quiet > 1 else _WARN_ENABLED
             setattr(self, key, noteFn)
             return noteFn
-
+        
         
         return None
     

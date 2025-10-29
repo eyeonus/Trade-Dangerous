@@ -85,16 +85,16 @@ def load_config(path: str | Path | None = None) -> Dict[str, Any]:
         except Exception:
             # If anything goes wrong resolving the env, fall back to defaults below
             pass
-
+        
         # Fall back to local file in CWD
         if cfg_path is None:
             p = Path.cwd() / "db_config.ini"
             if p.exists():
                 cfg_path = p
-
+    
     # start with defaults
     result: Dict[str, Any] = {k: (v.copy() if isinstance(v, dict) else v) for k, v in DEFAULTS.items()}
-
+    
     if cfg_path:
         parser = configparser.ConfigParser(**CFG_KW)
         with cfg_path.open("r", encoding="utf-8") as fh:
@@ -103,5 +103,5 @@ def load_config(path: str | Path | None = None) -> Dict[str, Any]:
             result.setdefault(section, {})
             for key, val in parser.items(section):
                 result[section][key] = val
-
+    
     return _coerce_types(result)

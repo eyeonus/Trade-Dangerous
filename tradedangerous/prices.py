@@ -40,39 +40,39 @@ def dumpPrices(
     If stationID is not None, only the specified station is dumped.
     If file is not None, outputs to the given file handle.
     """
-
+    
     withTimes = elementMask & Element.timestamp
     getBlanks = elementMask & Element.blanks
-
+    
     # ORM queries to build lookup dicts
     systems = dict(
         session.query(SA.System.system_id, SA.System.name).all()
     )
-
+    
     stations = {
         ID: [name, systems.get(sysID)]
         for ID, name, sysID in session.query(
             SA.Station.station_id, SA.Station.name, SA.Station.system_id
         ).all()
     }
-
+    
     categories = dict(
         session.query(SA.Category.category_id, SA.Category.name).all()
     )
-
+    
     items = {
         ID: [name, catID, categories[catID]]
         for ID, name, catID in session.query(
             SA.Item.item_id, SA.Item.name, SA.Item.category_id
         ).all()
     }
-
+    
     # find longest item name (for formatting)
     longestName = max(items.values(), key=lambda ent: len(ent[0]))
     longestNameLen = len(longestName[0])
-
+    
     defaultDemandVal = 0 if defaultZero else -1
-
+    
     # Build the main query
     q = (
         session.query(
@@ -97,19 +97,19 @@ def dumpPrices(
         .join(SA.System, SA.System.system_id == SA.Station.system_id)
         .order_by(SA.Station.station_id, SA.Category.name, SA.Item.ui_order)
     )
-
+    
     if stationID:
         q = q.filter(SA.StationItem.station_id == stationID)
-
+    
     # Set up output
     if not file:
         file = sys.stdout
-
+    
     if stationID:
         stationSet = str(stations[stationID])
     else:
         stationSet = "ALL Systems/Stations"
-
+    
     file.write(
         "# TradeDangerous prices for {}\n"
         "\n"
@@ -127,11 +127,11 @@ def dumpPrices(
         "the file is loaded.\n"
         "\n".format(stationSet)
     )
-
+    
     levelDesc = "?0LMH"
     maxCrWidth = 7
     levelWidth = 9
-
+    
     outFmt = (
         "      {{:<{width}}}"
         " {{:>{crwidth}}}"
@@ -153,11 +153,11 @@ def dumpPrices(
         "Timestamp",
     )
     file.write('#' + header[1:])
-
+    
     naIQL = "-"
     unkIQL = "?"
     defIQL = "?" if not defaultZero else "-"
-
+    
     # Main loop — stream results instead of preloading
     output = ""
     lastStn, lastCat = None, None
@@ -175,17 +175,17 @@ def dumpPrices(
             raise TradeException(
                 f"Station {station} (ID {stnID}) is linked to a system with no name."
             )
-
+        
         if stnID != lastStn:
             file.write(output)
             output = f"\n\n@ {system.upper()}/{station}\n"
             lastStn = stnID
             lastCat = None
-
+        
         if catID != lastCat:
             output += f"   + {category}\n"
             lastCat = catID
-
+        
         demandCr = row.demand_price or 0
         supplyCr = row.supply_price or 0
         demandUnits = row.demand_units or defaultDemandVal
@@ -206,8 +206,8 @@ def dumpPrices(
                 else (f"{demandUnits if demandUnits >= 0 else '?'}{levelDesc[demandLevel+1]}")
             )
             supplyStr = naIQL
-
+        
         modified = row.modified or ""
         output += outFmt.format(item, demandCr, supplyCr, demandStr, supplyStr, modified)
-
+    
     file.write(output)

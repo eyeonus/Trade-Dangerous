@@ -71,7 +71,7 @@ def ensure_dir(pathlike: os.PathLike | str) -> Path:
 
 def resolve_data_dir(cfg: Any = None) -> Path:
     """Resolve the persistent data directory.
-
+    
     Precedence: TD_DATA env > cfg[paths|database].data_dir > ./data
     Always creates the directory.
     """
@@ -81,7 +81,7 @@ def resolve_data_dir(cfg: Any = None) -> Path:
 
 def resolve_tmp_dir(cfg: Any = None) -> Path:
     """Resolve the temporary directory.
-
+    
     Precedence: TD_TMP env > cfg[paths|database].tmp_dir > ./tmp
     Always creates the directory.
     """
@@ -91,7 +91,7 @@ def resolve_tmp_dir(cfg: Any = None) -> Path:
 
 def get_sqlite_db_path(cfg: Any = None) -> Path:
     """Return full path to the SQLite DB file (does not create the file).
-
+    
     Data dir is resolved via resolve_data_dir(cfg). Filename comes from:
     cfg[sqlite].sqlite_filename or cfg[database].sqlite_filename or legacy default 'TradeDangerous.db'.
     """

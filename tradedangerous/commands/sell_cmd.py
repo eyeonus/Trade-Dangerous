@@ -89,7 +89,7 @@ def run(results, cmdenv, tdb: TradeDB):
         to avoid closed-cursor errors when iterating later.
       - Preserve all existing filters, sorting, and output fields.
     """
-
+    
     if cmdenv.lt and cmdenv.gt:
         if cmdenv.lt <= cmdenv.gt:
             raise CommandLineError("--gt must be lower than --lt")
@@ -122,7 +122,7 @@ def run(results, cmdenv, tdb: TradeDB):
     columns = "si.station_id, si.demand_price, si.demand_units"
     where = ["si.item_id = :item_id", "si.demand_price > 0"]
     params = {"item_id": item.ID}
-
+    
     if cmdenv.demand:
         where.append("si.demand_units >= :demand")
         params["demand"] = cmdenv.demand
@@ -132,14 +132,14 @@ def run(results, cmdenv, tdb: TradeDB):
     if cmdenv.gt:
         where.append("si.demand_price > :gt")
         params["gt"] = cmdenv.gt
-
+    
     stmt = f"""
         SELECT DISTINCT {columns}
           FROM StationItem AS si
          WHERE {' AND '.join(where)}
     """
     cmdenv.DEBUG0('SQL: {} ; params={}', stmt, params)
-
+    
     # Execute and eagerly fetch rows
     with tdb.engine.connect() as conn:
         cur_rows = conn.execute(text(stmt), params).fetchall()
@@ -151,7 +151,7 @@ def run(results, cmdenv, tdb: TradeDB):
     odyssey = cmdenv.odyssey
     wantNoPlanet = cmdenv.noPlanet
     wantBlackMarket = cmdenv.blackMarket
-
+    
     # System-based search
     nearSystem = cmdenv.nearSystem
     if nearSystem:
