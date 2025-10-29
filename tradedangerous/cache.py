@@ -1333,7 +1333,10 @@ def buildCache(tdb, tdenv):
         #     )
     
     tdb.close()
-    tdenv.DEBUG0("Finished")
+    tdenv.NOTE(
+        "Finished rebuilding.",
+        stderr=True,
+    )
 
 
 ######################################################################
