@@ -374,24 +374,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
-            
-            # Stash RareItem.csv so a full rebuild doesn't hit FK issues
-            ri_path = self.tdb.dataPath / Path("RareItem.csv")
-            rib_path = ri_path.with_suffix(".tmp")
-            if ri_path.exists():
-                if rib_path.exists():
-                    rib_path.unlink()
-                ri_path.rename(rib_path)
-            
-            self.tdb.close()
-            self.tdb.reloadCache()
-            self.tdb.close()
-            
-            if ri_path.exists():
-                ri_path.unlink()
-            if rib_path.exists():
-                rib_path.rename(ri_path)
-            
+                        
             self.options["all"] = True
             self.options["force"] = True
         
