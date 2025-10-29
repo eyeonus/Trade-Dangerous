@@ -2025,7 +2025,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         commodity_csv = files.get("commodity")
                     if commodity_csv and Path(commodity_csv).exists():
                         with open(commodity_csv, "r", encoding="utf-8", newline="") as fh2:
-                            rd2 = _csv.DictReader(fh2)
+                            rd2 = csv.DictReader(fh2)
                             k2_name = _kwant(rd2.fieldnames, "name","commodity","commodityname","product")
                             k2_cat  = _kwant(rd2.fieldnames, "category","categoryname")
                             if k2_name and k2_cat:
