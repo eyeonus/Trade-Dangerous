@@ -586,7 +586,7 @@ class TradeCalc:
         params = {}
 
         if tdenv.maxAge:
-            cutoffS = nowS - (tdenv.maxAge * 60 * 60)
+            cutoffS = nowS - (tdenv.maxAge * 60 * 60 * 24)
             if tdb.engine.dialect.name == "sqlite":
                 where_clauses.append("CAST(strftime('%s', modified) AS INTEGER) >= :cutoffS")
             else:
