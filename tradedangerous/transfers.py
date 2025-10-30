@@ -26,18 +26,29 @@ if typing.TYPE_CHECKING:
 class HTTP404(TradeException):
     pass
 
-def makeUnit(value):
+
+def makeUnit(value: float) -> str:
+    num, unit = split_unit(value)
+    return f"{num}{unit}"
+
+
+def split_unit(value: float) -> tuple[str, str]:
     """
-    Convert a value in bytes into a Kb, Mb, Gb etc.
+    Split a byte size into a (number_str, unit_str) tuple.
+    Used when you need to colour or format the numeric part separately.
+
+    Example:
+        >>> split_unit(30200000)
+        ('28.8', 'MB')
     """
-    
-    units = [ 'B ', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB' ]
-    unitSize = int(value)
-    for unit in units:
-        if unitSize <= 640:
-            return "{:>5.01f}{}".format(unitSize, unit)
-        unitSize /= 1024
-    return None
+    units = ["B", "KB", "MB", "GB", "TB"]
+    n = float(value)
+    i = 0
+    while n >= 1024.0 and i < len(units) - 1:
+        n /= 1024.0
+        i += 1
+    num_str = f"{n:.1f}" if i > 0 else f"{int(n)}"
+    return num_str, units[i]
 
 
 def get_filename_from_url(url: str) -> str:
@@ -128,11 +139,13 @@ def download(
     
     if not tdenv.quiet:
         elapsed = (time.time() - started) or 1
+        num1, unit1 = split_unit(fetched)
+        num2, unit2 = split_unit(fetched / elapsed)
         tdenv.NOTE(
-            "Downloaded {} of {}ed data {}/s",
-            makeUnit(fetched), encoding,
-            makeUnit(fetched / elapsed)
+            f"Downloaded [cyan]{num1}[/]{unit1} of {encoding}ed data "
+            f"[cyan]{num2}[/]{unit2}/s"
         )
+
     
     fs.ensurefolder(actPath.parent)
     
