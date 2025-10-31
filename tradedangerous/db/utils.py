@@ -264,7 +264,7 @@ def sqlite_upsert_modified(
     set_map[modified_col] = getattr(excluded, modified_col)
 
     # WHERE guard: only update if incoming is newer (or DB NULL)
-    where_guard = (getattr(excluded, modified_col) > getattr(table.c, modified_col)) | (
+    where_guard = (getattr(excluded, modified_col) >= getattr(table.c, modified_col)) | (
         getattr(table.c, modified_col).is_(None)
     )
 
@@ -348,7 +348,7 @@ def mysql_upsert_modified(
     inserted = ins.inserted  # alias to VALUES()/INSERTED
 
     # Guard: newer incoming timestamp or DB is NULL
-    guard = (inserted[modified_col] > table.c[modified_col]) | (table.c[modified_col].is_(None))
+    guard = (inserted[modified_col] >= table.c[modified_col]) | (table.c[modified_col].is_(None))
 
     # For each update col, write: IF(guard, inserted.col, table.col)
     set_map = {
@@ -545,7 +545,7 @@ def age_in_days(session, column: ClauseElement) -> ClauseElement:
 
     if dialect == "sqlite":
         # julianday() returns a fractional day difference (FLOAT).
-        return func.julianday(func.current_date()) - func.julianday(column)
+        return func.julianday() - func.julianday(column)
 
     if dialect in ("mysql", "mariadb"):
         # TIMESTAMPDIFF returns an integer number of DAY boundaries crossed.
