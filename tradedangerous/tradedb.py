@@ -591,6 +591,7 @@ class TradeDB:
         ('UpgradeVendor.csv', 'UpgradeVendor'),
         ('Category.csv', 'Category'),
         ('Item.csv', 'Item'),
+        ('StationItem.csv', 'StationItem'),
         ('RareItem.csv', 'RareItem'),
         ('FDevShipyard.csv', 'FDevShipyard'),
         ('FDevOutfitting.csv', 'FDevOutfitting'),
