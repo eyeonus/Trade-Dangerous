@@ -570,7 +570,7 @@ class TradeCalc:
             s = spinner[spin_i]
             spin_i = (spin_i + 1) % len(spinner)
             sys.stdout.write(
-                f"\r{s} Scanning market data… rows {rows_seen:n}  kept: buys {dmdCount:n}, sells {supCount:n}"
+                f"\r\x1b[2K{s} Scanning market data… rows {rows_seen:n}  kept: buys {dmdCount:n}, sells {supCount:n}"
             )
             sys.stdout.flush()
 
@@ -981,7 +981,7 @@ class TradeCalc:
             s = spinner[spin_i]
             spin_i = (spin_i + 1) % len(spinner)
             sys.stderr.write(
-                f"\r{s} origin {origin_idx}/{total_origins}  destinations checked: {dests_checked:n}  best score: {max(0, best_seen_score):n}"
+                f"\r\x1b[2K{s} origin {origin_idx}/{total_origins}  destinations checked: {dests_checked:n}  best score: {max(0, best_seen_score):n}"
             )
             sys.stderr.flush()
 
