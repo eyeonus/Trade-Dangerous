@@ -399,11 +399,11 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
         maxLyPer,
     )
     
-    # Preserve original behavior: --to uses stationsSelling, --from uses stationsBuying
+    # Correct behaviour: destinations (--to) require buying data; origins (--from) require selling data.
     if srcName == "--to":
-        tradingList = calc.stationsSelling
-    elif srcName == "--from":
         tradingList = calc.stationsBuying
+    elif srcName == "--from":
+        tradingList = calc.stationsSelling
     else:
         raise Exception("Unknown src")
     
@@ -433,7 +433,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
                             stn.system.dbname, stn.dbname,
                         )
                     continue
-                if not checkStationSuitability(cmdenv, calc, stn):
+                if not checkStationSuitability(cmdenv, calc, stn, srcName):
                     if getattr(cmdenv, "debug", False):
                         cmdenv.DEBUG2(
                             "X {}/{} was not suitable",
@@ -480,6 +480,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
     stations.sort(key=lambda stn: stn.ID)
     
     return stations
+
 
 def checkForEmptyStationList(category, focusPlace, stationList, jumps):
     if stationList:
@@ -776,15 +777,20 @@ def checkDestinations(tdb, cmdenv, calc):
             cmdenv.destPlace = None
         elif isinstance(cmdenv.destPlace, Station):
             cmdenv.DEBUG0("destPlace: Station: {}", cmdenv.destPlace.name())
+            # Single-station --to: hard fail if unsuitable.
             checkStationSuitability(cmdenv, calc, cmdenv.destPlace, '--to')
             cmdenv.destinations = (cmdenv.destPlace,)
         else:
             cmdenv.DEBUG0("destPlace: System: {}", cmdenv.destPlace.name())
-            # Iterate with heartbeat instead of tuple-comprehension
+            # System --to: examine all stations, keeping only those that pass --to suitability.
             dests, seen, kept = [], 0, 0
             for station in cmdenv.destPlace.stations:
                 seen += 1
-                if checkStationSuitability(cmdenv, calc, station):
+                try:
+                    ok = checkStationSuitability(cmdenv, calc, station, '--to')
+                except (CommandLineError, NoDataError):
+                    ok = False
+                if ok:
                     dests.append(station)
                     kept += 1
                 heartbeat(seen, kept)
@@ -810,10 +816,8 @@ def checkDestinations(tdb, cmdenv, calc):
         else:
             stationSrc = tdb.stationByID.values()
         
-        # Pre-filter by eligibility to skip obviously ineligible stations
         eligible_ids = set(calc.stationsSelling) & set(calc.stationsBuying)
         
-        # Iterate with heartbeat
         dests, seen, kept = [], 0, 0
         for station in stationSrc:
             seen += 1
@@ -833,7 +837,6 @@ def checkDestinations(tdb, cmdenv, calc):
     cmdenv.destSystems = tuple(set(
         stn.system for stn in cmdenv.destinations
     ))
-
 
 
 def validateRunArguments(tdb, cmdenv, calc):
