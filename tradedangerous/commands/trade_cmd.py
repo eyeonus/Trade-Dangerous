@@ -1,3 +1,4 @@
+# tradedangerous/commands/trade_cmd.py
 from .exceptions import CommandLineError
 from .parsing import ParseArgument
 from ..tradecalc import TradeCalc
@@ -30,32 +31,34 @@ switches = [
 
 def run(results, cmdenv, tdb):
     from .commandenv import ResultRow
-    
-    calc = TradeCalc(tdb, cmdenv)
-    
+
+    # IMPORTANT: resolve stations BEFORE constructing TradeCalc
     lhs = cmdenv.startStation
     rhs = cmdenv.stopStation
-    
+
     if lhs == rhs:
         raise CommandLineError("Must specify two different stations.")
-    
+
+    # NEW: restrict preload strictly to these two station IDs
+    calc = TradeCalc(tdb, cmdenv, restrict_station_ids=(lhs.ID, rhs.ID))
+
     results.summary = ResultRow()
     results.summary.fromStation = lhs
     results.summary.toStation = rhs
-    
+
     trades = calc.getTrades(lhs, rhs)
     if not trades:
         raise CommandLineError("No profitable trades {} -> {}".format(
             lhs.name(), rhs.name()
         ))
-    
+
     if cmdenv.detail > 1:
         tdb.getAverageSelling()
         tdb.getAverageBuying()
-    
+
     for item in trades:
         results.rows.append(item)
-    
+
     return results
 
 #######################################################################
@@ -63,7 +66,7 @@ def run(results, cmdenv, tdb):
 
 def render(results, cmdenv, tdb):
     longestNameLen = max_len(results.rows, key=lambda row: row.item.name(cmdenv.detail))
-    
+
     rowFmt = RowFormat()
     rowFmt.addColumn('Item', '<', longestNameLen,
             key=lambda row: row.item.name(cmdenv.detail))
@@ -81,7 +84,7 @@ def render(results, cmdenv, tdb):
         rowFmt.addColumn('AvgBuy', '>', 10,
             key=lambda row: tdb.avgBuying.get(row.item.ID, 0)
         )
-    
+
     if cmdenv.detail:
         rowFmt.addColumn('Supply', '>', 10,
             key=lambda row: '{:n}'.format(row.supply) if row.supply >= 0 else '?')
@@ -91,10 +94,10 @@ def render(results, cmdenv, tdb):
             key=lambda row: (row.srcAge / 86400))
         rowFmt.addColumn('DstAge', '>', 8, '.2f',
             key=lambda row: (row.dstAge / 86400))
-    
+
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-    
+
     for row in results.rows:
         print(rowFmt.format(row))

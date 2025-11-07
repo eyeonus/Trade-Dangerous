@@ -508,18 +508,11 @@ class TradeCalc:
     Container for accessing trade calculations with common properties.
     """
 
-    def __init__(self, tdb, tdenv=None, fit=None, items=None):
+    def __init__(self, tdb, tdenv=None, fit=None, items=None, restrict_station_ids=None):
         """
         Constructs the TradeCalc object and loads sell/buy data.
-
-        RAM remediation (per brief):
-        - Preload via SQLAlchemy Core/Engine tuples (no ORM entities, no Session).
-        - Select only the 9 legacy columns needed for the two maps.
-        - Apply ONLY age cutoff + optional item filter.
-        - No station reachability gating here.
-        - Build stationsSelling/Buying with legacy keep rules & tuple shapes.
-        - Compute ageS in Python from parse_ts(modified).
         """
+        
         if not tdenv:
             tdenv = tdb.tdenv
         self.tdb = tdb
@@ -527,6 +520,8 @@ class TradeCalc:
         self.defaultFit = fit or self.simpleFit
         if "BRUTE_FIT" in os.environ:
             self.defaultFit = self.bruteForceFit
+
+        self._restrict_station_ids = tuple(restrict_station_ids) if restrict_station_ids else None
 
         minSupply = self.tdenv.supply or 0
         minDemand = self.tdenv.demand or 0
@@ -585,6 +580,7 @@ class TradeCalc:
         where_clauses = []
         params = {}
 
+        # Age cutoff (if provided in env)
         if tdenv.maxAge:
             cutoffS = nowS - (tdenv.maxAge * 60 * 60 * 24)
             if tdb.engine.dialect.name == "sqlite":
@@ -593,9 +589,23 @@ class TradeCalc:
                 where_clauses.append("UNIX_TIMESTAMP(modified) >= :cutoffS")
             params["cutoffS"] = cutoffS
 
+        # Optional item filter — enumerate placeholders (SQLAlchemy text() won't expand tuples)
         if itemFilter:
-            where_clauses.append("item_id IN :item_ids")
-            params["item_ids"] = tuple(itemFilter)
+            iid_placeholders = []
+            for i, iid in enumerate(itemFilter):
+                key = f"iid{i}"
+                params[key] = int(iid)
+                iid_placeholders.append(":" + key)
+            where_clauses.append(f"item_id IN ({', '.join(iid_placeholders)})")
+
+        # Optional station restriction for ultra-light preload
+        if self._restrict_station_ids:
+            sid_placeholders = []
+            for i, sid in enumerate(self._restrict_station_ids):
+                key = f"sid{i}"
+                params[key] = int(sid)
+                sid_placeholders.append(":" + key)
+            where_clauses.append(f"station_id IN ({', '.join(sid_placeholders)})")
 
         sql = f"SELECT {columns} FROM StationItem"
         if where_clauses:
@@ -613,10 +623,9 @@ class TradeCalc:
                 modified,
             ) in result:
                 rows_seen += 1
-                # Compute legacy ageS from modified using parse_ts(...)
+                # Compute legacy ageS from modified using parse_ts(.)
                 mod_dt = parse_ts(modified)
                 if not mod_dt:
-                    # Finish the line before raising.
                     if showProgress:
                         sys.stdout.write("\n"); sys.stdout.flush()
                     raise BadTimestampError(tdb, stnID, itmID, modified)
@@ -636,23 +645,21 @@ class TradeCalc:
 
                 heartbeat()
 
-        # Complete heartbeat line neatly.
         if showProgress:
             sys.stdout.write("\n")
             sys.stdout.flush()
 
-        # --------- One-time station-ID sets for O(1) membership tests ----------
         self._buying_ids = set(self.stationsBuying.keys())
         self._selling_ids = set(self.stationsSelling.keys())
         self.eligible_station_ids = self._buying_ids & self._selling_ids
 
-        # --------- Tiny caches valid for the lifetime of this TradeCalc ----------
         self._dst_buy_map = {}
 
         tdenv.DEBUG1(
             "Preload used Engine/Core (no ORM identity map). Rows kept: buys={}, sells={}",
             dmdCount, supCount,
         )
+
 
 
     # ------------------------------------------------------------------
