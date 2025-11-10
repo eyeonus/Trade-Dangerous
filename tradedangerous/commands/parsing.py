@@ -31,8 +31,8 @@ class CreditParser(int):
     
     def __new__(cls, val, **kwargs):
         if isinstance(val, str):
-            if val[-1] in CreditParser.suffixes:
-                val = int(float(val[:-1]) * CreditParser.suffixes[val[-1]])
+            if val[-1].lower() in CreditParser.suffixes:
+                val = int(float(val[:-1]) * CreditParser.suffixes[val[-1].lower()])
         return super().__new__(cls, val, **kwargs)
 
 
