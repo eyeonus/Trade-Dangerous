@@ -433,7 +433,7 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
                             stn.system.dbname, stn.dbname,
                         )
                     continue
-                if not checkStationSuitability(cmdenv, calc, stn, srcName):
+                if not checkStationSuitability(cmdenv, calc, stn):
                     if getattr(cmdenv, "debug", False):
                         cmdenv.DEBUG2(
                             "X {}/{} was not suitable",
