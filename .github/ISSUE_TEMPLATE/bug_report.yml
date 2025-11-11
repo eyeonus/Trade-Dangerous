@@ -3,6 +3,10 @@ name: Bug report
 description: Report a reproducible problem in the TD V2 fork
 labels: [bug]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` before submitting a report.
   - type: textarea
     id: what-happened
     attributes:
@@ -27,6 +31,11 @@ body:
         - MariaDB
     validations:
       required: true
+  - type: markdown
+    attributes:
+      value: |
+        Please append `-vvvwww` to the original `trade` command and provide the output below.
+        For larger logs (20+ lines) please paste the upload to [gist](https://gist.github.com/) and provide a link to the gist here.
   - type: textarea
     id: logs
     attributes:
