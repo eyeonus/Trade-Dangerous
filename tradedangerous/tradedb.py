@@ -1262,7 +1262,10 @@ class TradeDB:
         # Fleet Carriers are station type 24.
         # Odyssey settlements are station type 25.
         # Assume type 0 (Unknown) are also Fleet Carriers.
-        types = {'fleet-carrier': [24, 0], 'odyssey': [25]}
+        carrier_types = (24, 0)
+        odyssey_type  = 25
+        cached_system = None
+        cached_system_id = None
         
         with self.Session() as session:
             # Query all stations
@@ -1287,16 +1290,18 @@ class TradeDB:
                 lsFromStar, market, blackMarket, shipyard,
                 maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
             ) in rows:
-                isFleet   = 'Y' if int(type_id) in types['fleet-carrier'] else 'N'
-                isOdyssey = 'Y' if int(type_id) in types['odyssey'] else 'N'
-                station = Station(
-                    ID, systemByID[systemID], name,
+                isFleet   = 'Y' if type_id in carrier_types else 'N'
+                isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
+                if systemID != cached_system_id:
+                    cached_system_id = systemID
+                    cached_system = systemByID[cached_system_id]
+                stationByID[ID] = Station(
+                    ID, cached_system, name,
                     lsFromStar, market, blackMarket, shipyard,
                     maxPadSize, outfitting, rearm, refuel, repair,
                     planetary, isFleet, isOdyssey,
                     0, None,
                 )
-                stationByID[ID] = station
             
             # Trading station info
             tradingCount = 0
