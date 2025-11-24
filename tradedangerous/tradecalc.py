@@ -556,8 +556,6 @@ class TradeCalc:
 
         def heartbeat():
             nonlocal last_hb, spin_i
-            if not showProgress:
-                return
             now = time.time()
             if (now - last_hb) < hb_interval:
                 return
@@ -634,15 +632,18 @@ class TradeCalc:
                 # Buying map (demand side)
                 if d_price and d_price > 0:
                     if not minDemand or (d_units or 0) >= minDemand:
-                        demand[stnID].append((itmID, d_price, d_units or 0, d_level, ageS))
+                        demand[stnID] += [(itmID, d_price, d_units or 0, d_level, ageS)]
                         dmdCount += 1
 
                 # Selling map (supply side)
                 if s_price and s_price > 0 and s_units:
                     if not minSupply or s_units >= minSupply:
-                        supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
+                        supply[stnID] += [(itmID, s_price, s_units, s_level, ageS)]
                         supCount += 1
 
+                # Calling 'time.time()' is *very* expensive, so only do it every 256 rows,
+                # but the == 1 means that we'll do it for the very first row too.
+                if showProgress and (rows_seen & 255) == 1:  # fast modulo 256
                 heartbeat()
 
         if showProgress:
@@ -982,8 +983,6 @@ class TradeCalc:
     
         def heartbeat(origin_idx, dests_checked):
             nonlocal last_hb, spin_i
-            if not heartbeat_enabled:
-                return
             now = time.time()
             if now - last_hb < hb_interval:
                 return
@@ -1025,7 +1024,8 @@ class TradeCalc:
                     if stn.ID not in buying_ids:
                         continue
                     dests_seen += 1
-                    heartbeat(origin_idx, dests_seen)
+                    if heartbeat_enabled and (dests_seen & 31) == 1:    # fast modulo 32
+                        heartbeat(origin_idx, dests_seen)
                     yield Destination(stnSys, stn, (srcSys, stnSys), srcDist(stnSys))
     
         else:
@@ -1046,7 +1046,8 @@ class TradeCalc:
                     odyssey=odyssey,
                 ):
                     dests_seen += 1
-                    heartbeat(origin_idx, dests_seen)
+                    if heartbeat_enabled and (dests_seen & 31) == 1:    # fast modulo 32
+                        heartbeat(origin_idx, dests_seen)
                     if d.station.ID in buying_ids:
                         yield d
     
@@ -1062,13 +1063,15 @@ class TradeCalc:
             srcSelling = getSelling(srcStation.ID, None)
             if not srcSelling:
                 tdenv.DEBUG1("Nothing sold at source - next.")
-                heartbeat(route_no + 1, 0)
+                if heartbeat_enabled:
+                    heartbeat(route_no + 1, 0)
                 continue
     
             srcSelling = tuple(values for values in srcSelling if values[1] <= startCr)
             if not srcSelling:
                 tdenv.DEBUG1("Nothing affordable - next.")
-                heartbeat(route_no + 1, 0)
+                if heartbeat_enabled:
+                    heartbeat(route_no + 1, 0)
                 continue
     
             if goalSystem:
