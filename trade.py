@@ -38,7 +38,7 @@ from tradedangerous import cli
 import sys
 
 def main(argv = None):
-    cli.main(sys.argv)
+    cli.main(argv or sys.argv)
 
 if __name__ == "__main__":
     cli.main(sys.argv)
