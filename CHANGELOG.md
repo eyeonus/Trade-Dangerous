@@ -1,6 +1,13 @@
 # CHANGELOG
 
+### Chore
 
+* chore: trade.py's main was not correctly honoring the argv parameter
+
+### Fix
+
+* fix: Reduced a large performance overhead from station loading
+* fix: Reduced small progress-related overheads from trade calculations
 
 ## v11.5.3 (2025-01-30)
 
