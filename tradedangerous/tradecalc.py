@@ -644,7 +644,7 @@ class TradeCalc:
                 # Calling 'time.time()' is *very* expensive, so only do it every 256 rows,
                 # but the == 1 means that we'll do it for the very first row too.
                 if showProgress and (rows_seen & 255) == 1:  # fast modulo 256
-                heartbeat()
+                    heartbeat()
 
         if showProgress:
             sys.stdout.write("\n")
