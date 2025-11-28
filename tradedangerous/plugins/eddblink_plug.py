@@ -456,6 +456,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(self.commoditiesPath) or self.getOption("force"):
                 self.downloadFile(self.categoriesPath)
                 buildCache = True
+
+        modified = buildCache
         
         # Remake the .db files with the updated info.
         if buildCache:
@@ -465,17 +467,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self.getOption("purge"):
             self.purgeSystems()
+            modified = True
         
         # Listings import (prices)
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or self.getOption("force"):
                 self.importListings(self.listingsPath)
+                modified = True
             if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
+                modified = True
         
         # if self.getOption("listings"):
         #     self.tdenv.NOTE("Regenerating .prices file.")
         #     cache.regeneratePricesFile(self.tdb, self.tdenv)
         
         self.tdenv.NOTE("Import completed.")
+
+        if modified:
+            self.tdb.removePersist()
+
         return False

@@ -131,11 +131,12 @@ if typing.TYPE_CHECKING:
 # Ultimately it just needs to be something that tells us we can't
 # reasonably reconstitute the same data when running this version
 # against that file.
-PERSIST_FORMAT = 1
+PERSIST_FORMAT = 2
 
 # Names for the fields in the persist header.
 PERSIST_FORMAT_FIELD = "fmtv"
 PERSIST_TIMESTAMP_FIELD = "dbts"
+PERSIST_SIZE_FIELD = "dbsz"
 
 
 ######################################################################
@@ -2143,6 +2144,11 @@ class TradeDB:
         if (old_db_timestamp := header.get(PERSIST_TIMESTAMP_FIELD)) != cur_db_timestamp:
             self.tdenv.DEBUG0("persist data is stale by timestamp: cur={}, file={}", cur_db_timestamp, old_db_timestamp)
             return False
+        cur_db_size = self.dbPath.stat().st_size
+        if (old_db_size := header.get(PERSIST_SIZE_FIELD)) != cur_db_size:
+            self.tdenv.DEBUG0("persist data is stale by size: cur={}, file={}", cur_db_size, old_db_size)
+            return False
+        self.tdenv.DEBUG1("persist data not expired by time (cur={}, file={}) or size (cur={}, file={})", cur_db_timestamp, old_db_timestamp, cur_db_size, old_db_size)
         
         data = pickle.load(jar)
         eof_marker = pickle.load(jar)
@@ -2175,15 +2181,17 @@ class TradeDB:
             raise e from e
         
         try:
-            cur_db_timestamp = self.dbPath.stat().st_mtime
+            stat = self.dbPath.stat()
         except FileNotFoundError:
             # Can't persist what we don't have
             self.tdenv.DEBUG0("unable to persist: the db file is dead, Dave")
             return False
+        cur_db_timestamp, cur_db_size = stat.st_mtime, stat.st_size
         
         header = {
             PERSIST_FORMAT_FIELD: PERSIST_FORMAT,
-            PERSIST_TIMESTAMP_FIELD: cur_db_timestamp
+            PERSIST_TIMESTAMP_FIELD: cur_db_timestamp,
+            PERSIST_SIZE_FIELD: cur_db_size,
         }
         data = {
             "system":   (self.systemByID, self.systemByName),
