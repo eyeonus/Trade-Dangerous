@@ -9,6 +9,7 @@
 # This module remains available for compatibility with old “.prices” files,
 # but the format is being phased out and may be removed in a future release.
 
+from __future__ import annotations
 
 from .exceptions import CommandLineError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
@@ -18,6 +19,7 @@ from pathlib import Path
 from .. import cache, plugins, transfers
 import re
 import sys
+import typing
 
 try:
     import tkinter
@@ -25,6 +27,11 @@ try:
     hasTkInter = True
 except ImportError:
     hasTkInter = False
+    
+if typing.TYPE_CHECKING:
+    from ..tradedb import TradeDB
+    from ..tradeenv import TradeEnv
+
 
 ######################################################################
 # Parser config
@@ -115,7 +122,7 @@ switches = [
 # Perform query and populate result set
 
 
-def run(results, cmdenv, tdb):
+def run(results, cmdenv: TradeEnv, tdb: TradeDB):
     """
     Dispatch import work:
       • If a plugin (-P) is specified: load it and run it (no deprecation banner).

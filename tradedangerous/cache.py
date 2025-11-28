@@ -22,11 +22,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from datetime import datetime, date
 import csv
 import os
 import re
-import sys
 import typing
 
 
@@ -50,7 +48,7 @@ from . import prices
 
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
-    from typing import Any, Callable, Optional, TextIO  # noqa
+    from typing import Any, Callable, Optional, TextIO
     
     from .tradeenv import TradeEnv
 
@@ -728,7 +726,7 @@ def processPricesFile(
     tdenv: "TradeEnv",
     session: Session,
     pricesPath: Path,
-    pricesFh: Optional[typing.TextIO] = None,
+    pricesFh: Optional[TextIO] = None,
     defaultZero: bool = False,
 ) -> None:
     """
