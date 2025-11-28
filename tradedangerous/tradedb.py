@@ -53,13 +53,14 @@ Simplistic use might be:
 from __future__ import annotations
 
 from collections import namedtuple
-from contextlib import closing
 from functools import lru_cache
 from math import sqrt as math_sqrt
 from pathlib import Path
+from typing import NamedTuple
 import heapq
 import itertools
 import locale
+import os
 import re
 import sys
 import typing
@@ -68,21 +69,24 @@ from .tradeenv import TradeEnv
 from .tradeexcept import TradeException
 from . import cache, fs
 
-if typing.TYPE_CHECKING:
-    from typing import Generator
-    from typing import Optional, Union
-
-
 locale.setlocale(locale.LC_ALL, '')
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from .db import make_engine_from_config, get_session_factory, healthcheck
 from .db.orm_models import (
-    System, Station, Item, Category, Ship, Upgrade, RareItem,
-    StationItem, ShipVendor, UpgradeVendor, Added, ExportControl, StationItemStaging
-)
+    # System, Station, Item, Category, Ship,
+    Added,
+    ExportControl,
+    RareItem,
+    ShipVendor,
+    StationItem,
+    StationItemStaging,
+    Upgrade,
+    UpgradeVendor,
+)  # noqa: F401  pylint: disable=unused-import
+from .db.paths import resolve_data_dir
 from .db.utils import age_in_days
 
 # --------------------------------------------------------------------
@@ -115,6 +119,10 @@ from .db.orm_models import (
 )
 
 
+if typing.TYPE_CHECKING:
+    from typing import Any, Callable, Generator, Optional
+
+
 ######################################################################
 # Classes
 
@@ -124,12 +132,12 @@ class AmbiguityError(TradeException):
         Attributes:
             lookupType - description of what was being queried,
             searchKey  - the key given to the search routine,
-            anyMatch - list of anyMatch
+            anyMatch   - list of items which were found to match, if any
             key        - retrieve the display string for a candidate
     """
     def __init__(
-            self, lookupType, searchKey, anyMatch, key=lambda item: item
-            ):
+            self, lookupType: str, searchKey: str, anyMatch: list[Any], key: Callable[[Any], str] = lambda item: item
+            ) -> None:
         self.lookupType = lookupType
         self.searchKey = searchKey
         self.anyMatch = anyMatch
@@ -148,6 +156,7 @@ class AmbiguityError(TradeException):
             opportunities += " or " + key(anyMatch[-1])
         return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
 
+
 class SystemNotStationError(TradeException):
     """
         Raised when a station lookup matched a System but
@@ -159,13 +168,13 @@ class SystemNotStationError(TradeException):
 ######################################################################
 
 
-def make_stellar_grid_key(x: float, y: float, z: float) -> int:
+def make_stellar_grid_key(x: float, y: float, z: float) -> tuple[int, int, int]:
     """
     The Stellar Grid is a map of systems based on their Stellar
     co-ordinates rounded down to 32lys. This makes it much easier
     to find stars within rectangular volumes.
     """
-    return (int(x) >> 5, int(y) >> 5, int(z) >> 5)
+    return int(x) >> 5, int(y) >> 5, int(z) >> 5
 
 
 class System:
@@ -190,12 +199,12 @@ class System:
             self.systems = []
             self.probed_ly = 0.
     
-    def __init__(self, ID, dbname, posX, posY, posZ, addedID) -> None:
+    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int|None) -> None:
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
         self.addedID = addedID or 0
-        self.stations = ()
+        self.stations: list['Station'] = []
         self._rangeCache = None
     
     @property
@@ -246,15 +255,17 @@ class System:
 
 ######################################################################
 
-class Destination(namedtuple('Destination', [
-        'system', 'station', 'via', 'distLy'
-        ])):
-    pass
+class Destination(NamedTuple):
+    system: 'System'
+    station: 'Station'
+    via: list['System']
+    distLy: float
 
-class DestinationNode(namedtuple('DestinationNode', [
-        'system', 'via', 'distLy'
-        ])):
-    pass
+
+class DestinationNode(NamedTuple):
+    system: 'System'
+    via: list['System']
+    distLy: float
 
 class Station:
     """
@@ -271,12 +282,12 @@ class Station:
     )
     
     def __init__(
-            self, ID, system, dbname,
-            lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair, planetary, fleet, odyssey,
-            itemCount=0, dataAge=None,
+            self, ID: int, system: 'System', dbname: str,
+            lsFromStar: float, market: str, blackMarket: str, shipyard: str, maxPadSize: str,
+            outfitting: str, rearm: str, refuel: str, repair: str, planetary: str, fleet: str, odyssey: str,
+            itemCount: int = 0, dataAge: float | int | None = None,
             ):
-        self.ID, self.system, self.dbname = ID, system, dbname
+        self.ID, self.system, self.dbname = ID, system, dbname  # type: ignore
         self.lsFromStar = int(lsFromStar)
         self.market = market if itemCount == 0 else 'Y'
         self.blackMarket = blackMarket
@@ -291,12 +302,12 @@ class Station:
         self.odyssey = odyssey
         self.itemCount = itemCount
         self.dataAge = dataAge
-        system.stations = system.stations + (self,)
+        system.stations += [self]
     
     def name(self, detail: int = 0) -> str:  # pylint: disable=unused-argument
         return f"{self.system.dbname}/{self.dbname}"
     
-    def checkPadSize(self, maxPadSize):
+    def checkPadSize(self, maxPadSize: str) -> bool:
         """
         Tests if the Station's max pad size matches one of the
         values in 'maxPadSize'.
@@ -324,7 +335,7 @@ class Station:
         """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
     
-    def checkPlanetary(self, planetary):
+    def checkPlanetary(self, planetary: str) -> bool:
         """
         Tests if the Station's planetary matches one of the
         values in 'planetary'.
@@ -352,14 +363,14 @@ class Station:
         """
         return (not planetary or self.planetary in planetary)
     
-    def checkFleet(self, fleet):
+    def checkFleet(self, fleet: str) -> bool:
         """
         Same as checkPlanetary, but for fleet carriers.
         """
         return (not fleet or self.fleet in fleet)
 
 
-    def checkOdyssey(self, odyssey):
+    def checkOdyssey(self, odyssey: str) -> bool:
         """
         Same as checkPlanetary, but for Odyssey.
         """
@@ -412,9 +423,7 @@ class Station:
 ######################################################################
 
 
-class Ship(namedtuple('Ship', (
-        'ID', 'dbname', 'cost', 'stations'
-        ))):
+class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
     """
     Ship description.
     
@@ -425,15 +434,13 @@ class Ship(namedtuple('Ship', (
         stations    -- List of Stations ship is sold at.
     """
     
-    def name(self, detail=0):   # pylint: disable=unused-argument
+    def name(self, _detail: int = 0) -> str:
         return self.dbname
 
 ######################################################################
 
 
-class Category(namedtuple('Category', (
-        'ID', 'dbname', 'items'
-        ))):
+class Category(namedtuple('Category', ('ID', 'dbname', 'items'))):
     """
     Item Category
     
@@ -453,7 +460,7 @@ class Category(namedtuple('Category', (
             Returns the display name for this Category.
     """
     
-    def name(self, detail=0):   # pylint: disable=unused-argument
+    def name(self, _detail: int = 0) -> str:
         return self.dbname.upper()
 
 ######################################################################
@@ -473,7 +480,7 @@ class Item:
     """
     __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID')
     
-    def __init__(self, ID, dbname, category, fullname, avgPrice=None, fdevID=None):
+    def __init__(self, ID: int, dbname: str, category: 'Category', fullname: str, avgPrice: int | None = None, fdevID: int | None = None) -> None:
         self.ID = ID
         self.dbname = dbname
         self.category = category
@@ -481,33 +488,9 @@ class Item:
         self.avgPrice = avgPrice
         self.fdevID   = fdevID
     
-    def name(self, detail=0):
+    def name(self, detail: int = 0):
         return self.fullname if detail > 0 else self.dbname
 
-######################################################################
-
-
-class RareItem(namedtuple('RareItem', (
-        'ID', 'station', 'dbname', 'costCr', 'maxAlloc', 'illegal',
-        'suppressed', 'category', 'fullname',
-        ))):
-    """
-    Describes a RareItem from the database.
-    
-    Attributes:
-        ID         -- Database ID,
-        station    -- Which Station this is bought from,
-        dbname     -- The name are presented in the database,
-        costCr     -- Buying price.
-        maxAlloc   -- How many the player can carry at a time,
-        illegal    -- If the item may be considered illegal,
-        suppressed -- The item is suppressed.
-        category   -- Reference to the category.
-        fullname   -- Combined category/dbname.
-    """
-    
-    def name(self, detail=0):
-        return self.fullname if detail > 0 else self.dbname
 
 ######################################################################
 
@@ -523,7 +506,7 @@ class Trade(namedtuple('Trade', (
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
     """
-    def name(self, detail=0):
+    def name(self, detail: int = 0) -> str:
         return self.item.name(detail=detail)
 
 ######################################################################
@@ -607,10 +590,10 @@ class TradeDB:
     
     def __init__(
             self,
-            tdenv=None,
-            load=True,
-            debug=None,
-            ):
+            tdenv: TradeEnv = None,
+            load:  bool     = True,
+            debug: int|None = None,
+            ) -> None:
         # --- SQLAlchemy engine/session (replaces sqlite3.Connection) ---
         self.engine = None
         self.Session = None
@@ -658,9 +641,6 @@ class TradeDB:
         self.itemByFDevID   = None
         
         # --- Engine bootstrap ---
-        from .db import make_engine_from_config, get_session_factory
-        from .db.paths import resolve_data_dir
-        import os
         
         # Determine user's real invocation directory, not venv/bin
         user_cwd = Path(os.getenv("PWD", Path.cwd()))
@@ -681,7 +661,7 @@ class TradeDB:
     # Legacy compatibility dataPath shim
     # ------------------------------------------------------------------
     @property
-    def dataDir(self):
+    def dataDir(self) -> Path:
         """
         Legacy alias for self.dataPath (removed in SQLAlchemy refactor).
         Falls back to './data' if configuration not yet loaded.
@@ -697,17 +677,27 @@ class TradeDB:
     
     
     @staticmethod
-    def calculateDistance2(lx, ly, lz, rx, ry, rz):
-        """
-        Returns the distance in ly between two points.
+    def calculateDistance2(lx: float, ly: float, lz: float, rx: float, ry: float, rz: float) -> float:
+        """ calculateDistance2 returns the *square* (^2) of the euclidean
+            distance between two 3d coordinates. This is an optimization
+            for when you need to compare many coordinate pairs but do
+            not actually need to retain the distance value.
+
+            That is:
+                distance**2 <=> calculateDistance2(x,y,z, u,v,w)
+            always returns the same results as
+                distance    <=> calculateDistance (x,y,z, u,v,w)
+            but is cheaper.
         """
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return (dx * dx) + (dy * dy) + (dz * dz)
     
     @staticmethod
-    def calculateDistance(lx, ly, lz, rx, ry, rz):
+    def calculateDistance(lx: float, ly: float, lz: float, rx: float, ry: float, rz: float) -> float:
         """
-        Returns the distance in ly between two points.
+        calculateDistance returns the euclidean distance in ly between two points.
+        @note When you are testing many pairs without retaining the calculated value
+        beyond the comparison, consider using calculateDistance2 instead.
         """
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return math_sqrt((dx * dx) + (dy * dy) + (dz * dz))
@@ -727,7 +717,6 @@ class TradeDB:
         """
         Execute a SQL statement via the SQLAlchemy engine and return the result cursor.
         """
-        from sqlalchemy import text
         with self.engine.connect() as conn:
             return conn.execute(text(sql), params)
     
@@ -739,7 +728,7 @@ class TradeDB:
         return result[0] if result else None
     
     
-    def reloadCache(self):
+    def reloadCache(self) -> None:
         """
         Ensure DB is present and minimally populated using the central policy.
         
@@ -775,7 +764,6 @@ class TradeDB:
         except Exception as e:
             self.tdenv.WARN("reloadCache: ensure_fresh_db failed: {}", e)
             self.tdenv.DEBUG0("reloadCache: Falling back to buildCache()")
-            from tradedangerous import cache
             cache.buildCache(self, self.tdenv)
 
 
@@ -795,11 +783,11 @@ class TradeDB:
     # Star system data.
     
     # TODO: Defer to SA_System as much as possible
-    def systems(self):
+    def systems(self) -> Generator['System', Any, None]:
         """ Iterate through the list of systems. """
         yield from self.systemByID.values()
     
-    def _loadSystems(self):
+    def _loadSystems(self) -> None:
         """
         Initial load of the list of systems via SQLAlchemy.
         CAUTION: Will orphan previously loaded objects.
@@ -829,7 +817,7 @@ class TradeDB:
         self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
     
     
-    def lookupSystem(self, key):
+    def lookupSystem(self, key: str) -> System | None:
         """
         Look up a System object by it's name.
         """
@@ -848,7 +836,7 @@ class TradeDB:
             x, y, z,
             modified='now',
             commit=True,
-            ):
+            ) -> System:
         """
         Add a system to the local cache and memory copy using SQLAlchemy.
         Note: 'added' field has been deprecated and is no longer populated.
@@ -889,7 +877,7 @@ class TradeDB:
             name, x, y, z, added="Local", modified='now',
             force=False,
             commit=True,
-            ):
+            ) -> bool:
         """
         Update an entry for a local system using SQLAlchemy.
         """
@@ -907,7 +895,7 @@ class TradeDB:
         
         with self.Session() as session:
             # Find Added row for added_id
-            added_row = session.query(Added).filter(Added.name == added).first()
+            added_row = session.query(SA_Added).filter(SA_Added.name == added).first()
             if not added_row:
                 raise TradeException(f"Added entry not found: {added}")
             
@@ -978,7 +966,7 @@ class TradeDB:
         del system
     
     
-    def __buildStellarGrid(self):
+    def __buildStellarGrid(self) -> None:
         """
         Divides the galaxy into a fixed-sized grid allowing us to
         aggregate small numbers of stars by locality.
@@ -992,7 +980,7 @@ class TradeDB:
                 grid = stellarGrid[key] = []
             grid.append(system)
     
-    def genStellarGrid(self, system, ly):
+    def genStellarGrid(self, system: 'System', ly: float):
         """
         Yields Systems within a given radius of a specified System.
         
@@ -1041,7 +1029,7 @@ class TradeDB:
                         if candidate is not system:
                             yield candidate, math_sqrt(distSq)
     
-    def genSystemsInRange(self, system, ly, includeSelf=False):
+    def genSystemsInRange(self, system: 'System', ly: float, includeSelf: bool = False)-> Generator[tuple[System, float], Any, None]:
         """
         Yields Systems within a given radius of a specified System.
         Results are sorted by distance and cached for subsequent
@@ -2156,7 +2144,7 @@ class TradeDB:
 ######################################################################
 # Assorted helpers
 
-def describeAge(ageInSeconds: Union[float, int]) -> str:
+def describeAge(ageInSeconds: float | int) -> str:
     """
     Turns an age (in seconds) into a text representation.
     """
