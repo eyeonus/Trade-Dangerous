@@ -54,6 +54,7 @@ from __future__ import annotations
 
 from collections import namedtuple
 from contextlib import closing
+from functools import lru_cache
 from math import sqrt as math_sqrt
 from pathlib import Path
 import heapq
@@ -75,6 +76,7 @@ if typing.TYPE_CHECKING:
 locale.setlocale(locale.LC_ALL, '')
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
 from .db import make_engine_from_config, get_session_factory, healthcheck
 from .db.orm_models import (
@@ -646,12 +648,10 @@ class TradeDB:
         # --- Cache attributes (unchanged) ---
         self.avgSelling, self.avgBuying = None, None
         self.tradingStationCount = 0
-        self.addedByID      = None
         self.systemByID     = None
         self.systemByName   = None
         self.stellarGrid    = None
         self.stationByID    = None
-        self.shipByID       = None
         self.categoryByID   = None
         self.itemByID       = None
         self.itemByName     = None
@@ -781,30 +781,20 @@ class TradeDB:
 
     
     ############################################################
-    # Load "added" data.
-    
-    def _loadAdded(self):
-        """
-        Loads the Added table as a simple dictionary.
-        """
-        addedByID = {}
-        with self.Session() as session:
-            for row in session.query(Added.added_id, Added.name):
-                addedByID[row.added_id] = row.name
-        self.addedByID = addedByID
-        self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
-    
+    # [deprecated] "added" data.
     
     def lookupAdded(self, name):
-        name = name.lower()
-        for ID, added in self.addedByID.items():
-            if added.lower() == name:
-                return ID
-        raise KeyError(name)
+        stmt = select(SA_Added.added_id).where(SA_Added.name == name)
+        with self.Session() as session:
+            try:
+                return session.execute(stmt).scalar_one()
+            except NoResultFound:
+                raise KeyError(name) from None
     
     ############################################################
     # Star system data.
     
+    # TODO: Defer to SA_System as much as possible
     def systems(self):
         """ Iterate through the list of systems. """
         yield from self.systemByID.values()
@@ -1899,41 +1889,24 @@ class TradeDB:
     ############################################################
     # Ship data.
     
-    def ships(self):
-        """ Iterate through the list of ships. """
-        yield from self.shipByID.values()
-    
-    def _loadShips(self):
-        """
-        Populate the Ship list using SQLAlchemy.
-        CAUTION: Will orphan previously loaded objects.
-        """
-        with self.Session() as session:
-            rows = session.query(
-                SA_Ship.ship_id,
-                SA_Ship.name,
-                SA_Ship.cost,
-            )
-            self.shipByID = {
-                row.ship_id: Ship(row.ship_id, row.name, row.cost, stations=[])
-                for row in rows
-            }
-        
-        self.tdenv.DEBUG1("Loaded {} Ships", len(self.shipByID))
-    
-    
+    @lru_cache
     def lookupShip(self, name):
-        """
-        Look up a ship by name
-        """
-        return TradeDB.listSearch(
-            "Ship", name, self.shipByID.values(),
-            key=lambda ship: ship.dbname
-        )
+        """ Look up a ship by name. """
+        stmt = select(SA_Ship.ship_id, SA_Ship.name, SA_Ship.cost)   \
+                   .where(Ship.name == name)
+        with self.Session() as session:
+            try:
+                row = session.execute(stmt).scalar_one()
+                return Ship(row.ship_id, row.name, row.cost, stations=[])
+            except NoResultFound:
+                raise LookupError(f"Error: '{name}' doesn't match any Ship") from None
     
     ############################################################
     # Item data.
     
+    # TODO: Defer to SA_Category directly; requires migrating
+    # all item references to the SA_Item table too (since then
+    # the database relationship handles inheritance anyway)
     def categories(self):
         """
         Iterate through the list of categories.
@@ -1968,6 +1941,7 @@ class TradeDB:
             key=lambda cat: cat.dbname
         )
     
+    # TODO: Defer to SA_Item directly.
     def items(self):
         """ Iterate through the list of items. """
         yield from self.itemByID.values()
@@ -2092,10 +2066,8 @@ class TradeDB:
 
 
         
-        self._loadAdded()
         self._loadSystems()
         self._loadStations()
-        self._loadShips()
         self._loadCategories()
         self._loadItems()
         
