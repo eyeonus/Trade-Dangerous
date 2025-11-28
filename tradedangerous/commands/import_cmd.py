@@ -166,6 +166,7 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
     # Refresh/close any cached handles before file ops (kept from original)
     tdb.reloadCache()
     tdb.close()
+    tdb.removePerist()
     
     # Treat a bare http(s) string in 'filename' as a URL
     if cmdenv.filename:

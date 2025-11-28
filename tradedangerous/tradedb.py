@@ -61,8 +61,10 @@ import heapq
 import itertools
 import locale
 import os
+import pickle
 import re
 import sys
+import time
 import typing
 
 from .tradeenv import TradeEnv
@@ -74,7 +76,8 @@ locale.setlocale(locale.LC_ALL, '')
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Session
-from .db import make_engine_from_config, get_session_factory, healthcheck
+from .db import make_engine_from_config, get_session_factory
+from .db.lifecycle import ensure_fresh_db
 from .db.orm_models import (
     # System, Station, Item, Category, Ship,
     Added,
@@ -121,6 +124,18 @@ from .db.orm_models import (
 
 if typing.TYPE_CHECKING:
     from typing import Any, Callable, Generator, Optional
+
+
+# We should probably just use the trade-dangerous version number
+# otherwise this is a value that someone has to keep changing.
+# Ultimately it just needs to be something that tells us we can't
+# reasonably reconstitute the same data when running this version
+# against that file.
+PERSIST_FORMAT = 1
+
+# Names for the fields in the persist header.
+PERSIST_FORMAT_FIELD = "fmtv"
+PERSIST_TIMESTAMP_FIELD = "dbts"
 
 
 ######################################################################
@@ -559,9 +574,12 @@ class TradeDB:
     trimTrans = str.maketrans('', '', ' \'')
     
     # The DB cache
-    defaultDB = 'TradeDangerous.db'
+    defaultDB: str = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
-    defaultSQL = 'TradeDangerous.sql'
+    defaultSQL: str = 'TradeDangerous.sql'
+    # The file we persist to. NOT INTENDED TO BE PERMANENT.
+    # We should do the pickling into the database or something.
+    persistFile: str = 'TradeDB.pj'  # "pickle jar"
     # # File containing text description of prices
     # defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
@@ -590,9 +608,9 @@ class TradeDB:
     
     def __init__(
             self,
-            tdenv: TradeEnv = None,
-            load:  bool     = True,
-            debug: int|None = None,
+            tdenv: TradeEnv | None = None,
+            load:  bool            = True,
+            debug: int | None      = None,
             ) -> None:
         # --- SQLAlchemy engine/session (replaces sqlite3.Connection) ---
         self.engine = None
@@ -617,6 +635,10 @@ class TradeDB:
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         # pricePath   = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         # self.pricesPath = dataPath / pricePath
+        
+        # If the database has been deleted, that invalidates any persist file.
+        if not self.dbPath:
+            self.removePersist()
         
         self.importTables = [
             (str(self.csvPath / Path(fn)), tn)
@@ -740,10 +762,10 @@ class TradeDB:
         
         If checks fail (or lifecycle decides to force), it will call buildCache(self, self.tdenv)
         to reset/populate via the authoritative path. Otherwise it is a no-op.
-        """
-        from tradedangerous.db.lifecycle import ensure_fresh_db
-        
         self.tdenv.DEBUG0("reloadCache: engine URL = {}", str(self.engine.url))
+        """
+        
+        kept = False
         
         try:
             summary = ensure_fresh_db(
@@ -756,6 +778,8 @@ class TradeDB:
                 tdenv=self.tdenv,
             )
             action = summary.get("action", "kept")
+            if action == "kept":
+                kept = True
             reason = summary.get("reason")
             if reason:
                 self.tdenv.DEBUG0("reloadCache: ensure_fresh_db → {} (reason: {})", action, reason)
@@ -765,8 +789,9 @@ class TradeDB:
             self.tdenv.WARN("reloadCache: ensure_fresh_db failed: {}", e)
             self.tdenv.DEBUG0("reloadCache: Falling back to buildCache()")
             cache.buildCache(self, self.tdenv)
-
-
+        
+        if not kept:
+            self.removePersist()
     
     ############################################################
     # [deprecated] "added" data.
@@ -792,7 +817,8 @@ class TradeDB:
         Initial load of the list of systems via SQLAlchemy.
         CAUTION: Will orphan previously loaded objects.
         """
-        systemByID, systemByName = {}, {}
+        systemByID = {}
+        started = time.time()
         with self.Session() as session:
             for row in session.query(
                 SA_System.system_id,
@@ -802,7 +828,7 @@ class TradeDB:
                 SA_System.pos_z,
                 SA_System.added_id,
             ):
-                system = System(
+                systemByID[row.system_id] = System(
                     row.system_id,
                     row.name,
                     row.pos_x,
@@ -810,11 +836,10 @@ class TradeDB:
                     row.pos_z,
                     row.added_id,
                 )
-                systemByID[row.system_id] = system
-                systemByName[row.name.upper()] = system
         
-        self.systemByID, self.systemByName = systemByID, systemByName
-        self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
+        self.systemByID = systemByID
+        self.systemByName = {s.dbname.upper(): s for s in systemByID.values()}
+        self.tdenv.DEBUG1("Loaded {:n} Systems in {:.3f}s", len(systemByID), time.time() - started)
     
     
     def lookupSystem(self, key: str) -> System | None:
@@ -829,6 +854,7 @@ class TradeDB:
         return TradeDB.listSearch(
             "System", key, self.systems(), key=lambda system: system.dbname
         )
+    
     
     def addLocalSystem(
             self,
@@ -1243,6 +1269,7 @@ class TradeDB:
         cached_system = None
         cached_system_id = None
         
+        started = time.time()
         with self.Session() as session:
             # Query all stations
             rows = session.query(
@@ -1261,46 +1288,47 @@ class TradeDB:
                 SA_Station.planetary,
                 SA_Station.type_id,
             )
-            for (
-                ID, systemID, name,
+
+        for (
+            ID, systemID, name,
+            lsFromStar, market, blackMarket, shipyard,
+            maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
+        ) in rows:
+            isFleet   = 'Y' if type_id in carrier_types else 'N'
+            isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
+            if systemID != cached_system_id:
+                cached_system_id = systemID
+                cached_system = systemByID[cached_system_id]
+            stationByID[ID] = Station(
+                ID, cached_system, name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
-            ) in rows:
-                isFleet   = 'Y' if type_id in carrier_types else 'N'
-                isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
-                if systemID != cached_system_id:
-                    cached_system_id = systemID
-                    cached_system = systemByID[cached_system_id]
-                stationByID[ID] = Station(
-                    ID, cached_system, name,
-                    lsFromStar, market, blackMarket, shipyard,
-                    maxPadSize, outfitting, rearm, refuel, repair,
-                    planetary, isFleet, isOdyssey,
-                    0, None,
-                )
-            
-            # Trading station info
-            tradingCount = 0
-            rows = (
-                session.query(
-                    SA_StationItem.station_id,
-                    func.count().label("item_count"),
-                    # Dialect-safe average age in **days**
-                    func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
-                )
-                .group_by(SA_StationItem.station_id)
-                .having(func.count() > 0)
+                maxPadSize, outfitting, rearm, refuel, repair,
+                planetary, isFleet, isOdyssey,
+                0, None,
             )
-            
-            for ID, itemCount, dataAge in rows:
-                station = stationByID[ID]
-                station.itemCount = itemCount
-                station.dataAge = dataAge
-                tradingCount += 1
+        
+        # Trading station info
+        tradingCount = 0
+        rows = (
+            session.query(
+                SA_StationItem.station_id,
+                func.count().label("item_count"),
+                # Dialect-safe average age in **days**
+                func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
+            )
+            .group_by(SA_StationItem.station_id)
+            .having(func.count() > 0)
+        )
+        
+        for ID, itemCount, dataAge in rows:
+            station = stationByID[ID]
+            station.itemCount = itemCount
+            station.dataAge = dataAge
+            tradingCount += 1
         
         self.stationByID = stationByID
         self.tradingStationCount = tradingCount
-        self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
+        self.tdenv.DEBUG1("Loaded {:n} Stations in {:.3f}s", len(stationByID), (time.time() - started) * 1000)
         self.stellarGrid = None
 
 
@@ -2052,17 +2080,128 @@ class TradeDB:
         
         self.tdenv.DEBUG1("Loading data")
 
+        # Try and restore the data from the previous load.
+        if not self.readPersist():
+            started = time.time()
+            self._loadSystems()
+            self._loadStations()
+            self._loadCategories()
+            self._loadItems()
+            self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)
 
-        
-        self._loadSystems()
-        self._loadStations()
-        self._loadCategories()
-        self._loadItems()
+            started = time.time()
+            self.writePersist()
+            self.tdenv.DEBUG1("Data persist took {:.3f}s", time.time() - started)
         
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
         msll = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
         self.maxSystemLinkLy = msll
+
+    def getPersistPath(self) -> Path:
+        """ getPersistPath returns the filepath of the file used to store a snapshot
+            of a previously constructed TradeDB object.
+            kfsone: I felt "trade.pickle" would draw confused attention,
+                    so I went with "pj" for 'pickle jar' because it actually
+                    contains two pickles, not just one. """
+        return Path(self.dataPath, TradeDB.persistFile)
+
+    def readPersist(self) -> bool:
+        """ readPersist will attempt to reconstitute the members of TradeDB
+            that were persisted to disk from a previous session. """
+        jarPath = self.getPersistPath()
+        started = time.time()
+        try:
+            with open(jarPath, "rb") as jar:
+                if self._readPickleFrom(jar):
+                    self.tdenv.DEBUG0("Persist load took {:.3f}s", time.time() - started)
+                    return True
+        except FileNotFoundError as e:
+            self.tdenv.DEBUG0("No persistence file to restore: {}: {}", jarPath, e)
+        except pickle.UnpicklingError as e:
+            self.tdenv.DEBUG0("Error restoring persistence data: {}: {}", jarPath, e)
+        except PermissionError as e:
+            self.tdenv.WARN("Unable to reconstitute TradeDB persistence: {}: {}", jarPath, e)
+        except EOFError as e:
+            self.tdenv.WARN("Persistence data appears truncated or corrupt, discarding it: {}: {}", jarPath, e)
+            self.removePersist()
+            self.tdenv.WARN("If this problem keeps happening, please report an issue")
+        return False
+
+    def _readPickleFrom(self, jar: typing.BinaryIO) -> bool:
+        """ Inner implementation that performs the reading from the pickle. """
+        # We pickle a header and then we pickle data.
+        header = pickle.load(jar)
+        if (header_fmt := header.get(PERSIST_FORMAT_FIELD)) != PERSIST_FORMAT:
+            self.tdenv.DEBUG0("persist format mismatch: cur={}, file={}", PERSIST_FORMAT, header_fmt)
+            return False
+
+        # Find when the current database was last modified; if the file doesn't exist,
+        # the caller will see this as a file-not-found exception voiding the read.
+        cur_db_timestamp = self.dbPath.stat().st_mtime
+        # Compare with the timestamp of the previous save.
+        if (old_db_timestamp := header.get(PERSIST_TIMESTAMP_FIELD)) != cur_db_timestamp:
+            self.tdenv.DEBUG0("persist data is stale by timestamp: cur={}, file={}", cur_db_timestamp, old_db_timestamp)
+            return False
+
+        data = pickle.load(jar)
+        eof_marker = pickle.load(jar)
+        if eof_marker != "fin":
+            raise EOFError("missing eof marker in persistence data")
+
+        # We have to repopulate some fields rather than pickle them
+        self.systemByID, self.systemByName = data["system"]
+        self.stationByID, self.tradingStationCount = data["station"]
+        self.categoryByID = data["category"]
+        self.itemByName = data["item"]
+        self.itemByID = {i.ID: i for i in data["item"].values()}
+        self.itemByFDevID = {i.fdevID: i for i in data["item"].values()}
+        
+        return True
+
+    def writePersist(self) -> bool:
+        """ Attempt to restore a snapshotted previous version of our data
+            as long as all the stars align. """
+        # Remove the file if it's already there.
+        jarPath = self.getPersistPath()
+        try:
+            jarPath.unlink(missing_ok=True)
+        except PermissionError as e:
+            if not self.tdenv.persist:
+                # user indicated they don't want to care about persist.
+                return False
+            if jarPath.exists():
+                raise TradeException("Unable to remove old persistence data, the file is inaccssible or open by another program")
+            raise e from e
+
+        try:
+            cur_db_timestamp = self.dbPath.stat().st_mtime
+        except FileNotFoundError:
+            # Can't persist what we don't have
+            self.tdenv.DEBUG0("unable to persist: the db file is dead, Dave")
+            return False
+
+        header = {
+            PERSIST_FORMAT_FIELD: PERSIST_FORMAT,
+            PERSIST_TIMESTAMP_FIELD: cur_db_timestamp
+        }
+        data = {
+            "system":   (self.systemByID, self.systemByName),
+            "station":  (self.stationByID, self.tradingStationCount),
+            "category": self.categoryByID,
+            "item":     self.itemByName,
+        }
+        
+        with jarPath.open("wb") as jar:
+            pickle.dump(header, jar)
+            pickle.dump(data, jar)
+            pickle.dump("fin", jar)  # EOF marker incase user kills process mid-write.
+        
+        return True
+
+    def removePersist(self):
+        self.getPersistPath().unlink(missing_ok=True)
+            
     
     ############################################################
     # General purpose static methods.
