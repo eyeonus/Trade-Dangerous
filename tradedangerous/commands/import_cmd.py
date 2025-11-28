@@ -27,7 +27,7 @@ try:
     hasTkInter = True
 except ImportError:
     hasTkInter = False
-    
+
 if typing.TYPE_CHECKING:
     from ..tradedb import TradeDB
     from ..tradeenv import TradeEnv

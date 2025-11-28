@@ -704,7 +704,7 @@ class TradeDB:
             distance between two 3d coordinates. This is an optimization
             for when you need to compare many coordinate pairs but do
             not actually need to retain the distance value.
-
+            
             That is:
                 distance**2 <=> calculateDistance2(x,y,z, u,v,w)
             always returns the same results as
@@ -1288,7 +1288,7 @@ class TradeDB:
                 SA_Station.planetary,
                 SA_Station.type_id,
             )
-
+        
         for (
             ID, systemID, name,
             lsFromStar, market, blackMarket, shipyard,
@@ -2079,7 +2079,7 @@ class TradeDB:
         """
         
         self.tdenv.DEBUG1("Loading data")
-
+        
         # Try and restore the data from the previous load.
         if not self.readPersist():
             started = time.time()
@@ -2088,7 +2088,7 @@ class TradeDB:
             self._loadCategories()
             self._loadItems()
             self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)
-
+            
             started = time.time()
             self.writePersist()
             self.tdenv.DEBUG1("Data persist took {:.3f}s", time.time() - started)
@@ -2097,7 +2097,7 @@ class TradeDB:
         # the maximum "link" between any two stars.
         msll = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
         self.maxSystemLinkLy = msll
-
+    
     def getPersistPath(self) -> Path:
         """ getPersistPath returns the filepath of the file used to store a snapshot
             of a previously constructed TradeDB object.
@@ -2105,7 +2105,7 @@ class TradeDB:
                     so I went with "pj" for 'pickle jar' because it actually
                     contains two pickles, not just one. """
         return Path(self.dataPath, TradeDB.persistFile)
-
+    
     def readPersist(self) -> bool:
         """ readPersist will attempt to reconstitute the members of TradeDB
             that were persisted to disk from a previous session. """
@@ -2127,7 +2127,7 @@ class TradeDB:
             self.removePersist()
             self.tdenv.WARN("If this problem keeps happening, please report an issue")
         return False
-
+    
     def _readPickleFrom(self, jar: typing.BinaryIO) -> bool:
         """ Inner implementation that performs the reading from the pickle. """
         # We pickle a header and then we pickle data.
@@ -2135,7 +2135,7 @@ class TradeDB:
         if (header_fmt := header.get(PERSIST_FORMAT_FIELD)) != PERSIST_FORMAT:
             self.tdenv.DEBUG0("persist format mismatch: cur={}, file={}", PERSIST_FORMAT, header_fmt)
             return False
-
+        
         # Find when the current database was last modified; if the file doesn't exist,
         # the caller will see this as a file-not-found exception voiding the read.
         cur_db_timestamp = self.dbPath.stat().st_mtime
@@ -2143,12 +2143,12 @@ class TradeDB:
         if (old_db_timestamp := header.get(PERSIST_TIMESTAMP_FIELD)) != cur_db_timestamp:
             self.tdenv.DEBUG0("persist data is stale by timestamp: cur={}, file={}", cur_db_timestamp, old_db_timestamp)
             return False
-
+        
         data = pickle.load(jar)
         eof_marker = pickle.load(jar)
         if eof_marker != "fin":
             raise EOFError("missing eof marker in persistence data")
-
+        
         # We have to repopulate some fields rather than pickle them
         self.systemByID, self.systemByName = data["system"]
         self.stationByID, self.tradingStationCount = data["station"]
@@ -2158,7 +2158,7 @@ class TradeDB:
         self.itemByFDevID = {i.fdevID: i for i in data["item"].values()}
         
         return True
-
+    
     def writePersist(self) -> bool:
         """ Attempt to restore a snapshotted previous version of our data
             as long as all the stars align. """
@@ -2173,14 +2173,14 @@ class TradeDB:
             if jarPath.exists():
                 raise TradeException("Unable to remove old persistence data, the file is inaccssible or open by another program")
             raise e from e
-
+        
         try:
             cur_db_timestamp = self.dbPath.stat().st_mtime
         except FileNotFoundError:
             # Can't persist what we don't have
             self.tdenv.DEBUG0("unable to persist: the db file is dead, Dave")
             return False
-
+        
         header = {
             PERSIST_FORMAT_FIELD: PERSIST_FORMAT,
             PERSIST_TIMESTAMP_FIELD: cur_db_timestamp
@@ -2198,10 +2198,10 @@ class TradeDB:
             pickle.dump("fin", jar)  # EOF marker incase user kills process mid-write.
         
         return True
-
+    
     def removePersist(self):
         self.getPersistPath().unlink(missing_ok=True)
-            
+    
     
     ############################################################
     # General purpose static methods.
