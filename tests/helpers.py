@@ -84,7 +84,6 @@ def copy_fixtures(toDir=None):
     
     fs.copyallfiles(tdenv.templateDir, tdenv.dataDir)
     fs.copyallfiles(Path(_ROOT, 'fixtures'), tdenv.dataDir)
-    fs.ensureflag(Path(tdenv.dataDir, '.tddata'))
     touch(Path(tdenv.dataDir, 'TradeDangerous.db'))
     print("copy fixtures done")
 

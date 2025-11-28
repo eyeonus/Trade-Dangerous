@@ -25,19 +25,6 @@ class TestFS:
         fs.copy(src, dst)
         assert dst.exists() and dst.is_file()
     
-    def test_ensureflag(self, tdenv):
-        self.result = False
-        flagfile = fs.pathify(tdenv.tmpDir, 'flagtest')
-        if flagfile.exists():
-            flagfile.unlink()
-        
-        def action():
-            self.result = True
-        
-        flag = fs.ensureflag(flagfile, action)
-        assert self.result is True
-        assert flag is not None
-    
     def test_copyallfiles(self, tdenv):
         setup_module()
         fs.copyallfiles(tdenv.templateDir, tdenv.tmpDir)

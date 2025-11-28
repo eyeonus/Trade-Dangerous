@@ -72,26 +72,6 @@ def touch(filename: Pathlike) -> Path:
     path.touch(exist_ok=True)
     return path
 
-def ensureflag(flagfile: Pathlike, action: callable) -> None:
-    """Checks if flagfile exist and IF NOT the action function
-    will be executed. The flagfile will be 'touched' at the end
-    
-    Parameters
-    ----------
-    flagfile : string
-        path to the file used as flag
-    action : callable
-        this will be called if the flagfile doesn't exist
-    
-    Returns
-    -------
-    Path(flagfile)
-    """
-    flagPath = pathify(flagfile)
-    if not flagPath.exists() and callable(action):
-        action()
-    return touch(flagPath)
-
 def ensurefolder(folder: Pathlike) -> Path:
     """Creates the folder if it doesn't exist
     
