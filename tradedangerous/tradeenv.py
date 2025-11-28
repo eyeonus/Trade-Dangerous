@@ -181,6 +181,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         'quiet': 0,
         'color': False,
         'theme': BaseColorTheme(),
+        'persist': bool(os.environ.get('TD_PERSIST', '1')),  # Use the 'persistence' mechanimsm
         'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
         'csvDir': os.environ.get('TD_CSV') or os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
         'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
