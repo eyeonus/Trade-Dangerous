@@ -16,11 +16,11 @@ from typing import Optional, Iterable, Mapping, Sequence, Literal, Callable, Dic
 import re
 
 from sqlalchemy import Table, text, func, and_, bindparam
-from sqlalchemy.engine import Connection
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.sql.elements import ClauseElement
+
 
 # --------------------------------------------------------
 # eddblink helpers
@@ -31,7 +31,7 @@ def begin_bulk_mode(
     *,
     profile: str = "default",
     phase: Literal["rebuild", "incremental"] = "incremental",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Apply connection-local settings to speed up bulk operations.
     Returns an opaque token for symmetry with end_bulk_mode (currently a no-op).
@@ -44,7 +44,7 @@ def begin_bulk_mode(
         to the pool or closed.
       * This is generic and safe for any plugin invoking long-running bulk writes.
     """
-    token: Dict[str, Any] = {"dialect": None, "profile": profile, "phase": phase}
+    token: dict[str, Any] = {"dialect": None, "profile": profile, "phase": phase}
 
     try:
         dialect = session.get_bind().dialect.name.lower()
@@ -526,7 +526,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
 # Timestamp Helpers
 # -----------------------------------------------------------------------------
 
-def age_in_days(session, column: ClauseElement) -> ClauseElement:
+def age_in_days(session: Session, column: ClauseElement) -> ClauseElement:
     """
     Return a dialect-safe SQLAlchemy expression that yields the age of `column`
     (a DATETIME/TIMESTAMP) in **whole days** relative to the database's current date.
