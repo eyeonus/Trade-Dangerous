@@ -13,7 +13,7 @@
 """
 Provides the primary classes used within TradeDangerous:
 
-TradeDB, System, Station, Ship, Item, RareItem and Trade.
+TradeDB, System, Station, Ship, Item, and Trade.
 
 These classes are primarily for describing the database.
 
@@ -656,8 +656,6 @@ class TradeDB:
         self.itemByID       = None
         self.itemByName     = None
         self.itemByFDevID   = None
-        self.rareItemByID   = None
-        self.rareItemByName = None
         
         # --- Engine bootstrap ---
         from .db import make_engine_from_config, get_session_factory
@@ -2071,47 +2069,6 @@ class TradeDB:
     
     
     ############################################################
-    # Rare Items
-    
-    def _loadRareItems(self):
-        """
-        Populate the RareItem list using SQLAlchemy.
-        """
-        rareItemByID, rareItemByName = {}, {}
-        stationByID = self.stationByID
-        
-        with self.Session() as session:
-            rows = session.query(
-                SA_RareItem.rare_id,
-                SA_RareItem.station_id,
-                SA_RareItem.category_id,
-                SA_RareItem.name,
-                SA_RareItem.cost,
-                SA_RareItem.max_allocation,
-                SA_RareItem.illegal,
-                SA_RareItem.suppressed,
-            )
-            for (
-                ID, stnID, catID, name,
-                cost, maxAlloc, illegal, suppressed
-            ) in rows:
-                station  = stationByID[stnID]
-                category = self.categoryByID[catID]
-                rare = RareItem(
-                    ID, station, name,
-                    cost, maxAlloc, illegal, suppressed,
-                    category, f"{category.dbname}/{name}"
-                )
-                rareItemByID[ID] = rare
-                rareItemByName[name] = rare
-        
-        self.rareItemByID  = rareItemByID
-        self.rareItemByName = rareItemByName
-        
-        self.tdenv.DEBUG1("Loaded {:n} RareItems", len(rareItemByID))
-    
-    
-    ############################################################
     # Price data.
     
     def close(self):
@@ -2141,7 +2098,6 @@ class TradeDB:
         self._loadShips()
         self._loadCategories()
         self._loadItems()
-        self._loadRareItems()
         
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
