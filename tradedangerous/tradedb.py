@@ -1,16 +1,16 @@
-# --------------------------------------------------------------------
-# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-# Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Stefan 'Tromador' Morrell 2025
-# Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
-#
-# You are free to use, redistribute, or even print and eat a copy of
-# this software so long as you include this copyright notice.
-# I guarantee there is at least one bug neither of us knew about.
-# --------------------------------------------------------------------
-# TradeDangerous :: Modules :: Database Module
-
 """
+Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
+Copyright (C) Stefan 'Tromador' Morrell 2025
+Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
+
+You are free to use, redistribute, or even print and eat a copy of
+this software so long as you include this copyright notice.
+
+I guarantee there is at least one bug neither of us knew about. -- Oliver
+--------------------------------------------------------------------
+TradeDangerous :: Modules :: Database Module
+
 Provides the primary classes used within TradeDangerous:
 
 TradeDB, System, Station, Ship, Item, and Trade.
@@ -71,26 +71,11 @@ from .tradeenv import TradeEnv
 from .tradeexcept import TradeException
 from . import cache, fs
 
-locale.setlocale(locale.LC_ALL, '')
-
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import Session
-from .db import make_engine_from_config, get_session_factory
-from .db.lifecycle import ensure_fresh_db
-from .db.orm_models import (
-    # System, Station, Item, Category, Ship,
-    Added,
-    ExportControl,
-    RareItem,
-    ShipVendor,
-    StationItem,
-    StationItemStaging,
-    Upgrade,
-    UpgradeVendor,
-)  # noqa: F401  pylint: disable=unused-import
-from .db.paths import resolve_data_dir
-from .db.utils import age_in_days
+from .db import make_engine_from_config, get_session_factory  # type: ignore
+from .db.lifecycle import ensure_fresh_db  # type: ignore
+from .db.utils import age_in_days  # type: ignore
 
 # --------------------------------------------------------------------
 # SQLAlchemy ORM imports (aliased to avoid clashing with legacy wrappers).
@@ -105,21 +90,24 @@ from .db.utils import age_in_days
 # entirely, and code updated to use ORM models directly.
 # --------------------------------------------------------------------
 
-from .db.orm_models import (
-    Added           as SA_Added,
-    System          as SA_System,
-    Station         as SA_Station,
-    Item            as SA_Item,
-    Category        as SA_Category,
-    StationItem     as SA_StationItem,
-    RareItem        as SA_RareItem,
-    Ship            as SA_Ship,
-    ShipVendor      as SA_ShipVendor,
-    Upgrade         as SA_Upgrade,
-    UpgradeVendor   as SA_UpgradeVendor,
-    ExportControl   as SA_ExportControl,
+from .db.orm_models import (  # noqa: F401  # pylint: disable=unused-import
+    Added              as SA_Added,
+    System             as SA_System,
+    Station            as SA_Station,
+    Item               as SA_Item,
+    Category           as SA_Category,
+    StationItem        as SA_StationItem,
+    RareItem           as SA_RareItem,
+    Ship               as SA_Ship,
+    ShipVendor         as SA_ShipVendor,
+    Upgrade            as SA_Upgrade,
+    UpgradeVendor      as SA_UpgradeVendor,
+    ExportControl      as SA_ExportControl,
     StationItemStaging as SA_StationItemStaging,
 )
+
+
+locale.setlocale(locale.LC_ALL, '')
 
 
 if typing.TYPE_CHECKING:
@@ -2062,12 +2050,15 @@ class TradeDB:
     ############################################################
     # Price data.
     
-    def close(self):
+    def close(self, *, final: bool = False) -> None:
+        if self.Session and final:
+            del self.Session
         if self.engine:
             self.engine.dispose()
+        if final:
+            engine, self.engine = self.engine, None
+            del engine
         # Keep engine + Session references so reloadCache/buildCache can reuse them
-
-
     
     def load(self, maxSystemLinkLy=None):
         """

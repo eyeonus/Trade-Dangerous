@@ -29,20 +29,16 @@ import typing
 
 
 from functools import partial as partial_fn
-from sqlalchemy import func, Integer, Float, DateTime, tuple_
-from sqlalchemy import inspect as sa_inspect
+from sqlalchemy import func, tuple_
 from sqlalchemy.orm import Session
-from sqlalchemy.types import DateTime as SA_DateTime
-from tradedangerous.db import make_engine_from_config, get_session_factory
 from tradedangerous.db import orm_models as SA
 from tradedangerous.db import lifecycle
-from tradedangerous.db.utils import parse_ts, get_import_batch_size
+from tradedangerous.db.utils import parse_ts
 
 from .fs import file_line_count
 from .tradeexcept import TradeException
 from tradedangerous.misc.progress import Progress, CountingBar
 from . import corrections, utils
-from . import prices
 
 
 
@@ -50,6 +46,7 @@ from . import prices
 if typing.TYPE_CHECKING:
     from typing import Any, Callable, Optional, TextIO
     
+    from .tradedb import TradeDB
     from .tradeenv import TradeEnv
 
 
@@ -128,7 +125,7 @@ class BuildCacheBaseException(TradeException):
         error       Description of the error
     """
     
-    def __init__(self, fromFile: Path, lineNo: int, error: str = None) -> None:
+    def __init__(self, fromFile: Path, lineNo: int, error: str | None = None) -> None:
         self.fileName = fromFile.name
         self.lineNo = lineNo
         self.category = "ERROR"
@@ -1248,7 +1245,7 @@ def processImportFile(
 
 
 
-def buildCache(tdb, tdenv):
+def buildCache(tdb: TradeDB, tdenv: TradeEnv):
     """
     Rebuilds the database from source files.
     
@@ -1340,7 +1337,7 @@ def buildCache(tdb, tdenv):
 ######################################################################
 
 
-def regeneratePricesFile(tdb, tdenv):
+def regeneratePricesFile(tdb: TradeDB, tdenv: TradeEnv) -> None:
     return
     # """
     # Regenerate the .prices file from the current DB contents.
