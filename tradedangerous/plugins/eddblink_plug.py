@@ -4,18 +4,20 @@ https://elite.tromador.com/ to update the Database.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from ..fs import file_line_count
-from .. import plugins, cache, transfers
-from ..misc import progress as pbar
-from ..plugins import PluginException
-
 import csv
 import datetime
 import os
 import requests
+import time
 import typing
+
+from ..fs import file_line_count
+from .. import plugins, cache, transfers
+from ..misc import progress as pbar
+from ..plugins import PluginException
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, delete, select, exists, text
@@ -31,6 +33,14 @@ BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 
 class DecodingError(PluginException):
     pass
+
+
+@contextmanager
+def bench(label: str, tdenv: TradeEnv):
+    started = time.time()
+    with pbar.Progress(1, 40, prefix=label):
+        yield
+    tdenv.NOTE("{} done ({:.3f}s)", label, time.time() - started)
 
 
 def _count_listing_entries(tdenv: TradeEnv, listings: Path) -> int:
@@ -312,12 +322,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         # with pbar.Progress(1, 40, prefix="Saving"):
         #     pass
         
-        if self.getOption("optimize"):
-            with pbar.Progress(1, 40, prefix="Optimizing"):
-                if self.tdb.engine.dialect.name == "sqlite":
-                    with Session.begin() as session:
-                        session.execute(text("VACUUM"))
-        
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
     def run(self):
@@ -461,6 +465,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         if buildCache:
             self.tdb.close()
             self.tdb.reloadCache()
+            if self.tdb.engine.dialect.name == "sqlite":
+                # kfsone: see https://sqlite.org/pragma.html#pragma_optimize
+                self.tdb.Session().execute(text("PRAGMA optimize=0x10002"))
             self.tdb.close()
         
         if self.getOption("purge"):
@@ -476,6 +483,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         # if self.getOption("listings"):
         #     self.tdenv.NOTE("Regenerating .prices file.")
         #     cache.regeneratePricesFile(self.tdb, self.tdenv)
-        
+
+        if self.tdb.engine.dialect.name == "sqlite":
+            with self.tdb.Session.begin() as session:
+                if self.getOption("optimize"):
+                    with bench("Vacuum and optimize", self.tdenv):
+                        session.execute(text("VACUUM"))
+                        # This is a very aggressive analyze/optimize pass
+                        session.execute(text("ANALYZE"))
+                else:
+                    with bench("DB Tuning", self.tdenv):
+                        session.execute(text("PRAGMA optimize"))
+                    self.tdenv.INFO("Use --opt=optimize periodically for better query performance")
+    
         self.tdenv.NOTE("Import completed.")
         return False
