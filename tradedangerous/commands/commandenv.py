@@ -65,6 +65,11 @@ class CommandEnv(TradeEnv):
             os.chdir(self.cwd)
     
     def run(self, tdb):
+        # Quick syntax check before we waste time loading data
+        fast_validator = getattr(self._cmd, "validateRunArgumentsFast", None)
+        if fast_validator:
+            fast_validator(self)
+        self.checkAvoids()
         """
             Set the current database context for this env and check that
             the properties we have are valid.
@@ -82,7 +87,6 @@ class CommandEnv(TradeEnv):
         
         self.checkMFD()
         self.checkFromToNear()
-        self.checkAvoids()
         self.checkVias()
         self.checkPadSize()
         self.checkPlanetary()

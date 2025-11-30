@@ -265,6 +265,27 @@ switches = [
 ######################################################################
 # Helpers
 
+# Do some basic syntax validation before we waste time loading data.
+def validateRunArgumentsFast(cmdenv):
+    """
+    Fast-fail argument checks that should run BEFORE any database
+    access or TradeCalc construction.
+    """
+    # --towards requires --from
+    if cmdenv.goalSystem and not cmdenv.origPlace:
+        raise CommandLineError("--towards requires --from")
+
+    # --start-jumps requires --from
+    if cmdenv.startJumps and not cmdenv.origPlace:
+        raise CommandLineError("--start-jumps requires --from")
+
+    # --end-jumps requires --to
+    if cmdenv.endJumps and not cmdenv.destPlace:
+        raise CommandLineError("--end-jumps requires --to")
+
+    # --shorten only valid with --to
+    if cmdenv.shorten and not cmdenv.destPlace:
+        raise CommandLineError("--shorten only works with --to.")
 
 class Checklist:
     """
