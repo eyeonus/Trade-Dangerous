@@ -272,15 +272,15 @@ def validateRunArgumentsFast(cmdenv):
     access or TradeCalc construction.
     """
     # --towards requires --from
-    if cmdenv.goalSystem and not cmdenv.origPlace:
+    if cmdenv.goalSystem and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--towards requires --from")
 
     # --start-jumps requires --from
-    if cmdenv.startJumps and not cmdenv.origPlace:
+    if cmdenv.startJumps and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--start-jumps requires --from")
 
     # --end-jumps requires --to
-    if cmdenv.endJumps and not cmdenv.destPlace:
+    if cmdenv.endJumps and not getattr(cmdenv, "ending", None):
         raise CommandLineError("--end-jumps requires --to")
 
     # --shorten only valid with --to
