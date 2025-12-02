@@ -6,11 +6,6 @@ from __future__ import annotations
 
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from ..fs import file_line_count
-from .. import plugins, cache, transfers
-from ..misc import progress as pbar
-from ..plugins import PluginException
-
 import csv
 import datetime
 import os
@@ -19,11 +14,19 @@ import typing
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, delete, select, exists, text
-from ..db import orm_models as SA, lifecycle
+
+from tradedangerous import plugins, transfers
+from tradedangerous.db import orm_models as SA, lifecycle
+from tradedangerous.db.utils import (
+    begin_bulk_mode, end_bulk_mode,
+    get_import_batch_size, get_upsert_fn,
+)
+from tradedangerous.fs import file_line_count
+from tradedangerous.misc import progress as pbar
+from tradedangerous.plugins import PluginException
 
 if typing.TYPE_CHECKING:
-    from typing import Optional
-    from ..tradeenv import TradeEnv
+    from tradedangerous.tradeenv import TradeEnv
 
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
@@ -199,13 +202,6 @@ class ImportPlugin(plugins.ImportPluginBase):
           - If it exists → update only when CSV.modified > DB.modified.
           - If CSV.modified <= DB.modified → do nothing (no field changes).
         """
-        from tradedangerous.db.utils import (
-            get_import_batch_size,
-            begin_bulk_mode,
-            end_bulk_mode,
-            get_upsert_fn,
-        )
-        
         listings_path = Path(self.dataPath, listings_file).absolute()
         from_live = listings_path != Path(self.dataPath, self.listingsPath).absolute()
         
@@ -259,38 +255,54 @@ class ImportPlugin(plugins.ImportPluginBase):
                 batch_rows = []
                 since_commit = 0
                 
-                for listing in csv.DictReader(fh):
+                # optimize away millions of lookups
+                def bump_progress():
                     prog.increment(1)
+                
+                from_timestamp = datetime.datetime.fromtimestamp
+                utc = datetime.timezone.utc
+                from_live_val = int(from_live)
+                
+                # Columns:
+                #
+                #   id, station_id, commodity_id, supply, supply_bracket, buy_price, sell_price, demand, demand_bracket, collected_at
+                #   0   1           2             3       4               5          6           7       8               9
+                reader = iter(csv.reader(fh))
+                headers = next(reader)
+                assert headers[:10] == ["id","station_id","commodity_id","supply","supply_bracket","buy_price","sell_price","demand","demand_bracket","collected_at"], "unrecognized listings csv format"
+                
+                for listing in reader:
+                    bump_progress()
                     try:
-                        station_id = int(listing["station_id"])
+                        station_id = int(listing[1])
                         if station_id not in station_lookup:
                             continue
                         
-                        item_id = int(listing["commodity_id"])
+                        item_id = int(listing[2])
                         if item_id not in item_lookup:
                             continue  # skip rare items (not in Item table)
                         
-                        listing_time = int(listing["collected_at"])
-                        dt_listing_time = datetime.datetime.utcfromtimestamp(listing_time)
+                        listing_time = int(listing[9])
+                        dt_listing_time = from_timestamp(listing_time, utc)
                         
                         row = {
                             "station_id":   station_id,
                             "item_id":      item_id,
                             "modified":     dt_listing_time,   # guard column
-                            "from_live":    int(from_live),        # copied exactly when updating/inserting
-                            "demand_price": int(listing["sell_price"]),
-                            "demand_units": int(listing["demand"]),
-                            "demand_level": int(listing.get("demand_bracket") or "-1"),
-                            "supply_price": int(listing["buy_price"]),
-                            "supply_units": int(listing["supply"]),
-                            "supply_level": int(listing.get("supply_bracket") or "-1"),
+                            "from_live":    from_live_val,     # copied exactly when updating/inserting
+                            "supply_units": int(listing[3]),
+                            "supply_level": int(listing[4]),
+                            "supply_price": int(listing[5]),
+                            "demand_price": int(listing[6]),
+                            "demand_units": int(listing[7]),
+                            "demand_level": int(listing[8]),
                         }
-                        batch_rows.append(row)
+                        batch_rows += [row]
                         since_commit += 1
                         
                         if len(batch_rows) >= execute_batch:
                             upsert(batch_rows)
-                            batch_rows.clear()
+                            batch_rows[:] = []  # in-place clear without lookup
                         
                         if commit_batch and since_commit >= commit_batch:
                             session.commit()
@@ -302,7 +314,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 if batch_rows:
                     upsert(batch_rows)
-                    batch_rows.clear()
+                    batch_rows[:] = []  # in-place clear
                 
                 session.commit()
             
@@ -331,13 +343,6 @@ class ImportPlugin(plugins.ImportPluginBase):
           - Otherwise, if static CSVs changed → incrementally import only those tables (no drop/recreate).
           - Listings import and .prices regeneration unchanged.
         """
-        import os
-        import time
-        from pathlib import Path
-        from tradedangerous import cache
-        # bulk-mode helpers for the incremental static import session
-        from tradedangerous.db.utils import begin_bulk_mode, end_bulk_mode
-        
         self.tdenv.ignoreUnknown = True
         self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
         
@@ -350,8 +355,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["listings"] = True
         
         # Check if database already exists and enable `clean` if not.
-        from tradedangerous.db.lifecycle import is_empty
-        if is_empty(self.tdb.engine):
+        if lifecycle.is_empty(self.tdb.engine):
             self.options["clean"] = True
         
         if self.getOption("clean"):
@@ -374,7 +378,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
-                        
+            
             self.options["all"] = True
             self.options["force"] = True
         
@@ -456,7 +460,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(self.commoditiesPath) or self.getOption("force"):
                 self.downloadFile(self.categoriesPath)
                 buildCache = True
-
+        
         modified = buildCache
         
         # Remake the .db files with the updated info.
@@ -483,8 +487,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         #     cache.regeneratePricesFile(self.tdb, self.tdenv)
         
         self.tdenv.NOTE("Import completed.")
-
+        
         if modified:
             self.tdb.removePersist()
-
+        
         return False
