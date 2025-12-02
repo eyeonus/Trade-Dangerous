@@ -18,6 +18,13 @@ while taking into account the profits you make along the route
 The price data in TradeDangerous is either manually entered or crowd-sourced
 from a website such as [Tromador's Trading Dangerously](http://elite.ripz.org "Tromador's Trading Dangerously"), often using a plugin such as the included eddblink.
 """
-from .version import *          # noqa: F401, F403
+from .tradecalc import TradeCalc
+from .tradedb import TradeDB
+from .tradeenv import TradeEnv
+from .version import __version__
 
-from .tradeenv import TradeEnv  # noqa: F401
+
+# Export this as top-level symbnols so they can be imported with e.g.
+#  import tradedangerous.TradeDB
+# rather than forcing everyone to go thru the exacting modules for these.
+__all__ = ['__version__', 'TradeCalc', 'TradeDB', 'TradeEnv']
