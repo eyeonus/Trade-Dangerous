@@ -158,6 +158,22 @@ if str(sys.stdout.encoding).upper() != 'UTF-8':
 else:
     Utf8SafeConsoleIOMixin = BaseConsoleIOMixin
 
+ENV_DEFAULTS: dict[str, Any] = {
+        'debug': 0,
+        'detail': 0,
+        'quiet': 0,
+        'color': False,
+        'theme': BaseColorTheme(),
+        'persist': bool(os.environ.get('TD_PERSIST', '1')),  # Use the 'persistence' mechanimsm
+        'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
+        'csvDir': os.environ.get('TD_CSV') or os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
+        'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
+        'templateDir': os.path.join(_ROOT, 'templates'),
+        'cwDir': os.getcwd(),
+        'console': CONSOLE,
+        'stderr':  STDERR,
+    }
+
 
 class TradeEnv(Utf8SafeConsoleIOMixin):
     """
@@ -175,27 +191,21 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         Use "NOTE" to print remarks which can be disabled with -q.
     """
     
-    defaults = {
-        'debug': 0,
-        'detail': 0,
-        'quiet': 0,
-        'color': False,
-        'theme': BaseColorTheme(),
-        'persist': bool(os.environ.get('TD_PERSIST', '1')),  # Use the 'persistence' mechanimsm
-        'dataDir': os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
-        'csvDir': os.environ.get('TD_CSV') or os.environ.get('TD_DATA') or os.path.join(os.getcwd(), 'data'),
-        'tmpDir': os.environ.get('TD_TMP') or os.path.join(os.getcwd(), 'tmp'),
-        'templateDir': os.path.join(_ROOT, 'templates'),
-        'cwDir': os.getcwd(),
-        'console': CONSOLE,
-        'stderr':  STDERR,
-    }
+    debug: int
+    detail: int
+    color: bool
+    persist: bool
+    dataDir: str
+    csvDir: str
+    tmpDir: str
+    templateDir: str
+    cwDir: str
     
     encoding = sys.stdout.encoding
     
-    def __init__(self, properties: Optional[Union[argparse.Namespace, dict]] = None, **kwargs) -> None:
+    def __init__(self, properties: dict[str, typing.Any] | argparse.Namespace | None = None, **kwargs) -> None:
         # Inject the defaults into ourselves in a dict-like way
-        self.__dict__.update(self.defaults)
+        self.__dict__.update(ENV_DEFAULTS)
         
         # If properties is a namespace, extract the dictionary; otherwise use it as-is
         if properties and hasattr(properties, '__dict__'):  # which arparse.Namespace has
