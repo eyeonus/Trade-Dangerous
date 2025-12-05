@@ -119,7 +119,7 @@ if typing.TYPE_CHECKING:
 # Ultimately it just needs to be something that tells us we can't
 # reasonably reconstitute the same data when running this version
 # against that file.
-PERSIST_FORMAT = 2
+PERSIST_FORMAT = 3
 
 # Names for the fields in the persist header.
 PERSIST_FORMAT_FIELD = "fmtv"
@@ -133,34 +133,87 @@ PERSIST_SIZE_FIELD = "dbsz"
 class AmbiguityError(TradeException):
     """
         Raised when a search key could match multiple entities.
+
         Attributes:
             lookupType - description of what was being queried,
             searchKey  - the key given to the search routine,
             anyMatch   - list of items which were found to match, if any
             key        - retrieve the display string for a candidate
     """
-    def __init__(
-            self, lookupType: str, searchKey: str, anyMatch: list[Any], key: Callable[[Any], str] = lambda item: item
-            ) -> None:
+    def __init__(self, lookupType, searchKey, anyMatch, key=None):
+        """
+        Args:
+            lookupType
+                A string identifying what type of lookup is matching,
+                e.g. 'Item' or 'System'. This is used in the error
+                message to help the user understand what they were
+                looking for.
+            searchKey
+                The search key the user provided, e.g. "sol"
+            anyMatch
+                A list of any values that matched the key.
+            key
+                A callable which, given a candidate object from anyMatch,
+                returns a display string for that candidate.
+        """
+        if key is None:
+            key = lambda candidate: candidate
         self.lookupType = lookupType
         self.searchKey = searchKey
         self.anyMatch = anyMatch
         self.key = key
-    
+
     def __str__(self):
         anyMatch, key = self.anyMatch, self.key
+
+        # ------------------------------------------------------------------
+        # Special-case: system name collisions where we passed in
+        # (index, System) pairs from TradeDB.lookupSystem.
+        # ------------------------------------------------------------------
+        if (
+            self.lookupType == "System"
+            and anyMatch
+            and isinstance(anyMatch[0], tuple)
+            and len(anyMatch[0]) >= 2
+        ):
+            lines = [
+                f'System name "{self.searchKey}" refers to more than one distinct system.',
+                "",
+                'Select the one you intended using "@N":',
+                "",
+            ]
+            for index, system in anyMatch:
+                # Be tolerant in case the contents are not exactly (int, System)
+                try:
+                    name = system.dbname
+                    x, y, z = system.posX, system.posY, system.posZ
+                    lines.append(
+                        f"    {name}@{index} — ({x:.1f}, {y:.1f}, {z:.1f})"
+                    )
+                except Exception:
+                    # Fallback to the provided key() formatter
+                    lines.append(f"    {key((index, system))}")
+            lines.append("")
+            lines.append("(Index numbers are ordered by Galactic X coordinate.)")
+            return "\n".join(lines)
+
+        # ------------------------------------------------------------------
+        # Generic ambiguity formatting used everywhere else
+        # ------------------------------------------------------------------
+        if not anyMatch:
+            return f'{self.lookupType} "{self.searchKey}" could match nothing.'
+
         if len(anyMatch) > 10:
-            opportunities = ", ".join([
-                key(c) for c in anyMatch[:10]
-            ] + ["..."])
+            opportunities = ", ".join([key(c) for c in anyMatch[:10]] + ["." ])
+        elif len(anyMatch) == 1:
+            opportunities = key(anyMatch[0])
         else:
-            opportunities = ", ".join(
-                key(c) for c in anyMatch[0:-1]
-            )
+            opportunities = ", ".join(key(c) for c in anyMatch[:-1])
             opportunities += " or " + key(anyMatch[-1])
+
         return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
 
-
+    
 class SystemNotStationError(TradeException):
     """
         Raised when a station lookup matched a System but
@@ -713,6 +766,31 @@ class TradeDB:
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return math_sqrt((dx * dx) + (dy * dy) + (dz * dz))
     
+    @staticmethod
+    def _split_system_index(name: str) -> tuple[str, int | None]:
+        """
+        Split a trailing '@N' suffix from a system name, if present.
+
+        Examples:
+            'Lorionis-SOC 13@2' -> ('Lorionis-SOC 13', 2)
+            'Shinrarta Dezhra'  -> ('Shinrarta Dezhra', None)
+            '@SOL'              -> ('@SOL', None)  # leading @ is a different annotation
+
+        Returns:
+            (base_name, index) where index is 1-based, or None if no valid suffix.
+        """
+        # Ignore a leading '@' which is used as an explicit system/station annotation
+        at = name.rfind('@')
+        if at <= 0:
+            return name, None
+
+        idx_str = name[at + 1 :]
+        if not idx_str or not idx_str.isdigit():
+            return name, None
+
+        base = name[:at]
+        return base, int(idx_str)
+
     ############################################################
     # Access to the underlying database.
     
@@ -806,7 +884,8 @@ class TradeDB:
         Initial load of the list of systems via SQLAlchemy.
         CAUTION: Will orphan previously loaded objects.
         """
-        systemByID = {}
+        systemByID: dict[int, System] = {}
+        systemByName: dict[str, list['System']] = {}
         started = time.time()
         with self.Session() as session:
             for row in session.query(
@@ -817,7 +896,7 @@ class TradeDB:
                 SA_System.pos_z,
                 SA_System.added_id,
             ):
-                systemByID[row.system_id] = System(
+                system = System(
                     row.system_id,
                     row.name,
                     row.pos_x,
@@ -825,25 +904,90 @@ class TradeDB:
                     row.pos_z,
                     row.added_id,
                 )
-        
+                systemByID[row.system_id] = system
+                key = system.dbname.upper()
+                bucket = systemByName.get(key)
+                if bucket is None:
+                    systemByName[key] = [system]
+                else:
+                    bucket.append(system)
+
+        # Ensure deterministic ordering for duplicate-name groups:
+        # sort by posX, then posY, posZ, ID so @1 is lowest X, stable.
+        for systems in systemByName.values():
+            systems.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
+
         self.systemByID = systemByID
-        self.systemByName = {s.dbname.upper(): s for s in systemByID.values()}
-        self.tdenv.DEBUG1("Loaded {:n} Systems in {:.3f}s", len(systemByID), time.time() - started)
-    
-    
-    def lookupSystem(self, key: str) -> System | None:
-        """
-        Look up a System object by it's name.
-        """
-        if isinstance(key, System):
-            return key
-        if isinstance(key, Station):
-            return key.system
-        
-        return TradeDB.listSearch(
-            "System", key, self.systems(), key=lambda system: system.dbname
+        self.systemByName = systemByName
+        self.tdenv.DEBUG1(
+            "Loaded {:n} Systems in {:.3f}s",
+            len(systemByID),
+            time.time() - started,
         )
     
+    
+    def lookupSystem(self, name):
+        """
+        Lookup a system by name, with optional @N suffix to disambiguate
+        collisions on dbname.
+
+        Examples:
+            'Lorionis-SOC 13'   → AmbiguityError listing @1/@2
+            'Lorionis-SOC 13@1' → first matching system
+            'Lorionis-SOC 13@3' → TradeException explaining valid @N range
+        """
+        base_name, index = self._split_system_index(name)
+        base_key = base_name.upper()
+
+        try:
+            systems_list = self.systemByName[base_key]
+        except KeyError:
+            # Fall back to the original partial-match behaviour: search all
+            # systems by their dbname and return a single System instance.
+            return TradeDB.listSearch(
+                "System",
+                name,
+                self.systems(),
+                key=lambda system: system.dbname,
+            )
+
+        # No explicit index: either unique, or a collision we need to surface
+        if index is None:
+            if len(systems_list) == 1:
+                return systems_list[0]
+            if len(systems_list) > 1:
+                # Multiple systems share the same dbname; present them with @N + coords.
+                anyMatch = [
+                    (i + 1, system)
+                    for i, system in enumerate(systems_list)
+                ]
+                raise AmbiguityError(
+                    "System",
+                    base_name,
+                    anyMatch,
+                    key=lambda entry: (
+                        f"{entry[1].dbname}@{entry[0]} — "
+                        f"({entry[1].posX:.1f}, {entry[1].posY:.1f}, {entry[1].posZ:.1f})"
+                    ),
+                )
+            raise LookupError(f'Error: "{name}" doesn\'t match any known System')
+
+        # Explicit @N index given
+        if 1 <= index <= len(systems_list):
+            return systems_list[index - 1]
+
+        # Index out of range: explain what is valid and show the options
+        count = len(systems_list)
+        header = f'System "{base_name}" has {count} matching entries (@1..@{count}).'
+        invalid_line = f'"{base_name}@{index}" is not a valid index.'
+        lines = [header, invalid_line, "", "Use one of the available forms:", ""]
+        for idx, system in enumerate(systems_list, start=1):
+            lines.append(
+                f"    {system.dbname}@{idx} — "
+                f"({system.posX:.1f}, {system.posY:.1f}, {system.posZ:.1f})"
+            )
+        message = "\n".join(lines)
+        raise TradeException(message)
     
     def addLocalSystem(
             self,
@@ -877,13 +1021,20 @@ class TradeDB:
         # Maintain legacy wrapper + caches (added_id always None now)
         system = System(ID, name.upper(), x, y, z, None)
         self.systemByID[ID] = system
-        self.systemByName[system.dbname] = system
+
+        key = system.dbname.upper()
+        bucket = self.systemByName.get(key)
+        if bucket is None:
+            self.systemByName[key] = [system]
+        else:
+            bucket.append(system)
+            bucket.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
         
         self.tdenv.NOTE(
             "Added new system #{}: {} [{},{},{}]",
             ID, name, x, y, z
         )
-        self.stellarGrid = None
+        
         return system
     
     
@@ -906,7 +1057,15 @@ class TradeDB:
                 system.posZ == z):
                 return False
         
-        del self.systemByName[oldname]
+        # Remove from old name bucket (if present)
+        old_key = oldname.upper()
+        bucket = self.systemByName.get(old_key)
+        if bucket is not None:
+            bucket = [s for s in bucket if s is not system]
+            if bucket:
+                self.systemByName[old_key] = bucket
+            else:
+                del self.systemByName[old_key]
         
         with self.Session() as session:
             # Find Added row for added_id
@@ -940,10 +1099,18 @@ class TradeDB:
         )
         
         # Update wrapper caches
-        system.name = dbname
+        system.dbname = dbname
         system.posX, system.posY, system.posZ = x, y, z
         system.addedID = added_row.added_id
-        self.systemByName[dbname] = system
+
+        # Add to new name bucket
+        new_key = dbname.upper()
+        bucket = self.systemByName.get(new_key)
+        if bucket is None:
+            self.systemByName[new_key] = [system]
+        else:
+            bucket.append(system)
+            bucket.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
         
         return True
     
@@ -967,13 +1134,20 @@ class TradeDB:
                 else:
                     session.flush()
         
-        # Update caches
-        del self.systemByName[system.dbname]
+        # Update caches: remove from name bucket and ID map
+        key = system.dbname.upper()
+        bucket = self.systemByName.get(key)
+        if bucket is not None:
+            bucket = [s for s in bucket if s is not system]
+            if bucket:
+                self.systemByName[key] = bucket
+            else:
+                del self.systemByName[key]
         del self.systemByID[system.ID]
         
         self.tdenv.NOTE(
             "{} (#{}) deleted from {}",
-            system.name, system.ID,
+            system.dbname, system.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
         )
         
@@ -1319,8 +1493,6 @@ class TradeDB:
         self.tradingStationCount = tradingCount
         self.tdenv.DEBUG1("Loaded {:n} Stations in {:.3f}s", len(stationByID), (time.time() - started) * 1000)
         self.stellarGrid = None
-
-
     
     def addLocalStation(
             self,
@@ -1585,32 +1757,200 @@ class TradeDB:
             system/station
             @system/station
         """
-        
+        # Pass-through for already-resolved objects
         if isinstance(name, (System, Station)):
             return name
-        
-        slashPos = name.find('/')
-        if slashPos < 0:
-            slashPos = name.find('\\')
-        nameOff = 1 if name.startswith('@') else 0
-        if slashPos > nameOff:
-            # Slash indicates it's, e.g., AULIN/ENTERPRISE
-            sysName = name[nameOff:slashPos].upper()
-            stnName = name[slashPos+1:]
-        elif slashPos == nameOff:
-            sysName, stnName = None, name[nameOff+1:]
-        elif nameOff:
-            # It's explicitly a station
-            sysName, stnName = name[nameOff:].upper(), None
+
+        if not isinstance(name, str):
+            raise TypeError(
+                f"lookupPlace expects str/System/Station, got {type(name)!r}"
+            )
+
+        # ------------------------------------------------------------------
+        # Fast path: queries that look like "just a system name"
+        #
+        # This path is where the new name-collision behaviour lives so that
+        # lookupPlace honours:
+        #   - multiple systems with the same name, and
+        #   - the "@N" index notation (e.g. "Lorionis-SOC 13@2").
+        #
+        # We exclude:
+        #   - leading "/" (explicit station)
+        #   - any "/" or "\\" inside the string (system/station combos)
+        # ------------------------------------------------------------------
+        if not name.startswith("/") and "/" not in name and "\\" not in name:
+            sys_key = name[1:] if name.startswith("@") else name
+            try:
+                return self.lookupSystem(sys_key)
+            except AmbiguityError:
+                # lookupSystem already produces the rich "@N" hint text for
+                # ambiguous system names; preserve it unchanged.
+                raise
+            except TradeException:
+                # e.g. "System@999" out of range – message is already correct.
+                raise
+            except LookupError:
+                # Not a system (or no reasonable system match) – fall back to
+                # the generic place logic below to search stations as well.
+                pass
+
+        # ------------------------------------------------------------------
+        # Legacy combined system/station matching
+        # ------------------------------------------------------------------
+
+        # Determine whether the user specified a system, a station, or both.
+        slash_pos = name.find("/")
+        if slash_pos < 0:
+            slash_pos = name.find("\\")  # support old "sys\stn" syntax too
+
+        # Leading '@' indicates "this is a system name"
+        name_off = 1 if name.startswith("@") else 0
+
+        if slash_pos > name_off:
+            # "sys/station" or "@sys/station"
+            sys_name = name[name_off:slash_pos].upper()
+            stn_name = name[slash_pos + 1 :]
+        elif slash_pos == name_off:
+            # "/station" — explicit station, no system
+            sys_name, stn_name = None, name[name_off + 1 :]
+        elif name_off:
+            # "@system" — explicit system, no station
+            sys_name, stn_name = name[name_off:].upper(), None
         else:
-            # It could be either, use the name for both.
-            stnName = name[nameOff:]
-            sysName = stnName.upper()
-        
-        exactMatch = []
-        closeMatch = []
-        wordMatch = []
-        anyMatch = []
+            # Bare name: treat as both potential system and station.
+            stn_name = name
+            sys_name = stn_name.upper()
+
+        exact_match = []
+        close_match = []
+        word_match = []
+        any_match = []
+
+        def _lookup(token, candidates):
+            """Populate the match lists for the given search token."""
+            norm_trans = TradeDB.normalizeTrans
+            trim_trans = TradeDB.trimTrans
+
+            token_norm = token.translate(norm_trans)
+            token_trim = token_norm.translate(trim_trans)
+
+            token_len = len(token)
+            token_norm_len = len(token_norm)
+            token_trim_len = len(token_trim)
+
+            for place in candidates:
+                place_name = place.dbname
+                place_norm = place_name.translate(norm_trans)
+                place_norm_len = len(place_norm)
+
+                # If the trimmed needle is longer than the target, it can't match
+                if token_trim_len > place_norm_len:
+                    continue
+
+                # 1) Exact name + normalization match
+                if len(place_name) == token_len and place_norm == token_norm:
+                    exact_match.append(place)
+                    continue
+
+                # 2) Same normalized length and contents -> "close" match
+                if place_norm_len == token_norm_len and place_norm == token_norm:
+                    close_match.append(place)
+                    continue
+
+                # 3) Substring of the normalized name, with word-boundary checks
+                if token_norm_len < place_norm_len:
+                    pos = place_norm.find(token_norm)
+                    if pos == 0:
+                        # At the start of the name
+                        if place_norm[token_norm_len:token_norm_len + 1] == " ":
+                            word_match.append(place)
+                        else:
+                            any_match.append(place)
+                        continue
+
+                    if pos > 0:
+                        before = place_norm[pos - 1:pos]
+                        after = place_norm[pos + token_norm_len:pos + token_norm_len + 1]
+                        if before == " " and after == " ":
+                            word_match.append(place)
+                        else:
+                            any_match.append(place)
+                        continue
+
+                # 4) Compare with whitespace and punctuation stripped
+                place_trim = place_norm.translate(trim_trans)
+                place_trim_len = len(place_trim)
+                if place_trim_len == place_norm_len:
+                    # Normalization didn't change anything; nothing new to learn
+                    continue
+
+                # A fully-trimmed exact match is still "close"
+                if place_trim_len == token_trim_len and place_trim == token_trim:
+                    close_match.append(place)
+                    continue
+
+                # Otherwise, any occurrence inside the trimmed name is "any"
+                if token_trim and place_trim.find(token_trim) >= 0:
+                    any_match.append(place)
+
+        # First, resolve the system side if we have one.
+        if sys_name:
+            systems_bucket = self.systemByName.get(sys_name)
+            if systems_bucket:
+                # In older caches, systemByName held a single System; in the
+                # new collision-aware form it holds a list[System].
+                if isinstance(systems_bucket, System):
+                    exact_match.append(systems_bucket)
+                else:
+                    # Assume it's an iterable of System instances.
+                    exact_match.extend(systems_bucket)
+            else:
+                _lookup(sys_name, self.systemByID.values())
+
+        # Now resolve the station side, if requested.
+        if stn_name:
+            # If both system and station were provided (sys/station form), we
+            # try to narrow the station search to the systems we just matched.
+            if slash_pos > name_off + 1 and (exact_match or close_match or word_match or any_match):
+                station_candidates = []
+                for system in itertools.chain(
+                    exact_match, close_match, word_match, any_match
+                ):
+                    station_candidates.extend(system.stations)
+
+                # Reset the match tiers; from here on they refer to stations.
+                exact_match = []
+                close_match = []
+                word_match = []
+                any_match = []
+            else:
+                # No usable system context: search all stations.
+                station_candidates = self.stationByID.values()
+
+            _lookup(stn_name, station_candidates)
+
+        # Consult the match tiers in order; any single-element tier is a winner.
+        for tier in (exact_match, close_match, word_match, any_match):
+            if len(tier) == 1:
+                return tier[0]
+
+        # No matches at all
+        if not (exact_match or close_match or word_match or any_match):
+            # NOTE: Historically this was a TradeException; it was changed to
+            # LookupError so callers can distinguish "nothing matched" from
+            # "ambiguous".
+            raise LookupError(f"Unrecognized place: {name}")
+
+        # Multiple matches – ambiguous. For mixed system/station cases we keep
+        # the original "System/Station" label; pure system ambiguities should
+        # already have been caught by lookupSystem above.
+        raise AmbiguityError(
+            "System/Station",
+            name,
+            exact_match + close_match + word_match + any_match,
+            key=lambda place: place.name(),
+        )
+
         
         def lookup(name, candidates):
             """ Search candidates for the given name """
@@ -1673,15 +2013,20 @@ class TradeDB:
                 if len(placeNameTrimmed) == nameTrimmedLen:
                     if placeNameTrimmed == nameTrimmed:
                         closeMatch.append(place)
-                    continue
-                if placeNameTrimmed.find(nameTrimmed) >= 0:
-                    anyMatch.append(place)
+                        continue
+                elif placeNameTrimmedLen > nameTrimmedLen:
+                    if placeNameTrimmed.find(nameTrimmed) >= 0:
+                        anyMatch.append(place)
+                        continue
+                # Skip smaller names
         
         if sysName:
-            try:
-                system = self.systemByName[sysName]
-                exactMatch = [system]
-            except KeyError:
+            systems = self.systemByName.get(sysName)
+            if systems:
+                # For now, treat the first system as the exact match.
+                # Proper duplicate-name disambiguation comes in the next step.
+                exactMatch = [systems[0]]
+            else:
                 lookup(sysName, self.systemByID.values())
         
         if stnName:

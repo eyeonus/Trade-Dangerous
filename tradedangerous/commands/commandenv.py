@@ -141,11 +141,29 @@ class CommandEnv(TradeEnv):
                         ))
             if len(place.stations) > 1:
                 raise AmbiguityError(
-                        label, key, place.stations,
-                        key = lambda key: key.name()
+                    label,
+                    key,
+                    place.stations,
+                    key=lambda st: (
+                        f"{st.text()} — "
+                        f"({st.system.posX:.1f}, {st.system.posY:.1f}, {st.system.posZ:.1f})"
+                    ),
                 )
             
             return place.stations[0]
+        
+        def lookupPlace(label, fieldName):
+            key = getattr(self, fieldName, None)
+            if key:
+                return self.tdb.lookupPlace(key)
+            return None
+        
+        self.startStation = check('origin station', 'origin', True)
+        self.stopStation = check('destination station', 'dest', True)
+        self.origPlace = lookupPlace('origin', 'starting')
+        self.destPlace = lookupPlace('destination', 'ending')
+        self.nearSystem = check('system', 'near', False)
+
         
         def lookupPlace(label, fieldName):
             key = getattr(self, fieldName, None)
