@@ -928,22 +928,32 @@ class TradeDB:
     
     def lookupSystem(self, name):
         """
-        Lookup a system by name, with optional @N suffix to disambiguate
-        collisions on dbname.
-
-        Examples:
-            'Lorionis-SOC 13'   → AmbiguityError listing @1/@2
-            'Lorionis-SOC 13@1' → first matching system
-            'Lorionis-SOC 13@3' → TradeException explaining valid @N range
+        Lookup a system by name or return a System object unchanged.
+        Accepts:
+            - System instance  → returned directly
+            - Station instance → return station.system
+            - str              → resolve by name, with @N disambiguation
         """
+
+        # NEW: accept already-resolved objects
+        if isinstance(name, System):
+            return name
+        if isinstance(name, Station):
+            return name.system
+
+        if not isinstance(name, str):
+            raise TypeError(
+                f"lookupSystem expects str/System/Station, got {type(name)!r}"
+            )
+
+        # From here on, name is guaranteed a string.
         base_name, index = self._split_system_index(name)
         base_key = base_name.upper()
 
         try:
             systems_list = self.systemByName[base_key]
         except KeyError:
-            # Fall back to the original partial-match behaviour: search all
-            # systems by their dbname and return a single System instance.
+            # Fall back to original partial-match behaviour.
             return TradeDB.listSearch(
                 "System",
                 name,
@@ -951,12 +961,11 @@ class TradeDB:
                 key=lambda system: system.dbname,
             )
 
-        # No explicit index: either unique, or a collision we need to surface
+        # No explicit index
         if index is None:
             if len(systems_list) == 1:
                 return systems_list[0]
             if len(systems_list) > 1:
-                # Multiple systems share the same dbname; present them with @N + coords.
                 anyMatch = [
                     (i + 1, system)
                     for i, system in enumerate(systems_list)
@@ -972,11 +981,11 @@ class TradeDB:
                 )
             raise LookupError(f'Error: "{name}" doesn\'t match any known System')
 
-        # Explicit @N index given
+        # Explicit @N index
         if 1 <= index <= len(systems_list):
             return systems_list[index - 1]
 
-        # Index out of range: explain what is valid and show the options
+        # Out-of-range index
         count = len(systems_list)
         header = f'System "{base_name}" has {count} matching entries (@1..@{count}).'
         invalid_line = f'"{base_name}@{index}" is not a valid index.'
@@ -988,6 +997,7 @@ class TradeDB:
             )
         message = "\n".join(lines)
         raise TradeException(message)
+
     
     def addLocalSystem(
             self,
