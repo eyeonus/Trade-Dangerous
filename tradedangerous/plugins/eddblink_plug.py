@@ -10,6 +10,7 @@ import csv
 import datetime
 import os
 import requests
+import time
 import typing
 
 from sqlalchemy.orm import Session
@@ -108,6 +109,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'purge':        "Remove any empty systems that previously had fleet carriers.",
         'optimize':     "Optimize ('vacuum') database after processing.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
+        '7days':        "Ignore data more than 7 days old during import, and expire old records after import.",
     }
     
     def __init__(self, tdb, tdenv):
@@ -262,6 +264,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 from_timestamp = datetime.datetime.fromtimestamp
                 utc = datetime.timezone.utc
                 from_live_val = int(from_live)
+                week_in_seconds = 7 * 24 * 60 * 60
+                time_cutoff = 0 if not self.getOption("7days") else time.time() - week_in_seconds
                 
                 # Columns:
                 #
@@ -283,6 +287,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                             continue  # skip rare items (not in Item table)
                         
                         listing_time = int(listing[9])
+                        if listing_time < time_cutoff:
+                            continue
                         dt_listing_time = from_timestamp(listing_time, utc)
                         
                         row = {
@@ -324,10 +330,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         # with pbar.Progress(1, 40, prefix="Saving"):
         #     pass
         
+        if self.getOption("7days"):
+            with pbar.Progress(1, 40, prefix="Expiring") as prog, Session.begin() as session:
+                prog.increment(1)
+                session.execute(text("DELETE FROM StationItem WHERE modified < datetime('now', '-7 days')"))
+        
         if self.getOption("optimize"):
             with pbar.Progress(1, 40, prefix="Optimizing"):
                 if self.tdb.engine.dialect.name == "sqlite":
                     with Session.begin() as session:
+                        prog.increment(1)
                         session.execute(text("VACUUM"))
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
