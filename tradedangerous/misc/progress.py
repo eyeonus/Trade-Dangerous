@@ -40,6 +40,13 @@ class LongRunningCountBar(BarStyle):
         super().__init__(width, prefix, add_columns=my_columns)
 
 
+class ElapsedBar(BarStyle):
+    """ Creates a progress bar that is just showing something will take time. """
+    def __init__(self, width: int=10, prefix: Optional[str] = None):
+        my_columns = [TimeElapsedColumn()]
+        super().__init__(width, prefix, add_columns=my_columns)
+
+
 class TransferBar(BarStyle):
     """ Creates a progress bar representing a data transfer, which shows the amount of
         data transferred, speed, and estimated time remaining. """
@@ -58,6 +65,7 @@ class Progress:
                  width: Optional[int] = None,
                  start: float = 0,
                  prefix: Optional[str] = None,
+                 label: Optional[str] = None,
                  *,
                  style: Optional[Type[BarStyle]] = None,
                  show: bool = True,
@@ -80,6 +88,7 @@ class Progress:
         self.max_value = 0 if max_value is None else max(max_value, start)
         self.value = start
         self.prefix = prefix or ""
+        self.label = label or "Working..."
         self.width = width or 25
         # The 'Progress' itself is a view for displaying the progress of tasks. So we construct it
         # and then create a task for our job.
@@ -92,7 +101,7 @@ class Progress:
         )
         
         # Now we add an actual task to track progress on.
-        self.task = self.progress.add_task("Working...", total=max_value, start=True)
+        self.task = self.progress.add_task(self.label, total=max_value, start=True)
         if self.value:
             self.progress.update(self.task, advance=self.value)
         
@@ -142,11 +151,11 @@ class Progress:
         
         if self.value >= self.max_value:  # Did we go past the end? Increase the end.
             self.max_value += value * 2
-            self.progress.update(self.task, description=self.prefix, total=self.max_value)
+            self.progress.update(self.task, description=self.prefix or self.label, total=self.max_value)
             bump = True
         
         if bump and self.max_value > 0:
-            self.progress.update(self.task, description=self.prefix, completed=self.value)
+            self.progress.update(self.task, description=self.prefix or self.label, completed=self.value)
     
     def clear(self) -> None:
         """ Remove the current progress bar, if any. """

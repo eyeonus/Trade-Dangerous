@@ -46,7 +46,7 @@ class DecodingError(PluginException):
 @contextmanager
 def bench(label: str, tdenv: TradeEnv):
     started = time.time()
-    with pbar.Progress(1, 40, prefix=label):
+    with pbar.Progress(0, 40, label=label, style=pbar.ElapsedBar) as prog:
         yield
     tdenv.NOTE("{} done ({:.3f}s)", label, time.time() - started)
 
@@ -242,7 +242,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         is_debug = self.tdenv.debug > 0
         self.tdenv.DEBUG0("Processing entries...")
         
-        with pbar.Progress(total, 40, prefix="Processing", style=pbar.LongRunningCountBar) as prog, \
+        with pbar.Progress(total, 40, label="Processing", style=pbar.LongRunningCountBar) as prog, \
                listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
                Session() as session:
             
@@ -272,8 +272,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 since_commit = 0
                 
                 # optimize away millions of lookups
+                increment = prog.increment
                 def bump_progress():
-                    prog.increment(1)
+                    increment(1)
                 
                 from_timestamp = datetime.datetime.fromtimestamp
                 utc = datetime.timezone.utc
@@ -345,15 +346,20 @@ class ImportPlugin(plugins.ImportPluginBase):
         #     pass
         
         if self.getOption("7days"):
-            with pbar.Progress(1, 40, prefix="Expiring") as prog, Session.begin() as session:
-                prog.increment(1)
-                session.execute(text("DELETE FROM StationItem WHERE modified < datetime('now', '-7 days')"))
+            # This is a gimmick for first-time pruning: instead of trying to delete
+            # years of old data, do it a piece at a time. It gives the progress bar
+            # some movement.
+            expirations = [360, 330, 300, 270, 240, 210, 180, 150, 120, 90, 60, 30, 21, 14, 7]
+            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, \
+                    Session.begin() as session:
+                for expiration in expirations:
+                    session.execute(text("DELETE FROM StationItem WHERE modified < datetime('now', '-7 days')"))
+                    prog.increment(1)
         
         if self.getOption("optimize"):
-            with pbar.Progress(1, 40, prefix="Optimizing") as prog:
+            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog:
                 if self.tdb.engine.dialect.name == "sqlite":
                     with Session.begin() as session:
-                        prog.increment(1)
                         session.execute(text("VACUUM"))
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
