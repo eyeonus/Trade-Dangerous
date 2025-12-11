@@ -1,6 +1,12 @@
+from __future__ import annotations
 from textwrap import TextWrapper
-
 import importlib
+import typing
+
+
+if typing.TYPE_CHECKING:
+    from tradedangerous import TradeDB, TradeEnv
+
 
 parent_name = '.'.join(__name__.split('.')[:-1])
 
@@ -25,7 +31,7 @@ class PluginBase:
             # your implementation here
     """
     
-    def __init__(self, tdb, tdenv):
+    def __init__(self, tdb: TradeDB, tdenv: TradeEnv) -> None:
         """
         Parameters:
             tdb
@@ -35,14 +41,11 @@ class PluginBase:
         """
         self.tdb = tdb
         self.tdenv = tdenv
+        self.options: dict[str, typing.Any] = {}
         
-        self.options = {}
-        try:
-            pluginOptions = self.pluginOptions
-        except AttributeError:
-            pluginOptions = {}
+        pluginOptions: dict[str, typing.Any] = getattr(self, "pluginOptions", {})
         
-        for opt in tdenv.pluginOptions or []:
+        for opt in tdenv.pluginOptions or {}:
             equals = opt.find('=')
             if equals < 0:
                 key, value = opt, True
@@ -83,37 +86,31 @@ class PluginBase:
                 break_on_hyphens=True,
         )
         
+        assert self.__doc__, "Plugin class requires a docstring to define usage()"
         text = tw.fill(self.__doc__.strip()) + "\n\n"
         
-        try:
-            options = self.pluginOptions
-        except AttributeError:
+        options = getattr(self, "pluginOptions", None)
+        if not options:
             return text + "This plugin does not support any options.\n"
         
         tw.subsequent_indent=' ' * 24
         text += "Options supported by this plugin:\n"
         for opt in sorted(options.keys()):
-            text += "--opt={:<12}  ".format(opt)
+            text += f"--opt={opt:<12}  "
             text += tw.fill(options[opt].strip()) + "\n"
         text += "\n"
         text += "You can also chain options together, e.g.:\n"
-        text += "  --opt={}\n".format(",".join(list(options.keys())[:3]))
+        text += f"  --opt={','.join(list(options.keys())[:3])}\n"
         
         return text
 
 
-    def getOption(self, key):
-        """
-        Case-sensitive plugin-option lookup.
-        """
-        lkey = key.lower()
-        try:
-            return self.options[lkey]
-        except KeyError:
-            return None
+    def getOption(self, key: str) -> typing.Any:
+        """ Case-sensitive plugin-option lookup. """
+        return self.options.get(key.lower(), None)
 
 
-    def run(self):
+    def run(self) -> bool:
         """
         Plugin must implement: Execute the plugin's logic.
         
@@ -126,10 +123,10 @@ class PluginBase:
         Return False if you have completed work and the calling
         module can finish.
         """
-        raise Exception("Plugin did not implement run()")
+        raise NotImplementedError()
 
 
-    def finish(self):
+    def finish(self) -> bool:
         """
         Plugin may need to implement: Called after all preparation
         work has been done by the sub-command invoking the plugin.
@@ -138,8 +135,7 @@ class PluginBase:
         Returning True will allow the sub-command to finish its
         normal workflow after you return.
         """
-        raise Warning("Plugin did not implement finish()")
-        return True
+        raise NotImplementedError()
 
 
 class ImportPluginBase(PluginBase):
@@ -180,7 +176,7 @@ class ImportPluginBase(PluginBase):
     
     defaultImportFile = "import.prices"
     
-    def __init__(self, tdb, tdenv):
+    def __init__(self, tdb: TradeDB, tdenv: TradeEnv) -> None:
         """
         Parameters:
             tdb
@@ -191,7 +187,7 @@ class ImportPluginBase(PluginBase):
         super().__init__(tdb, tdenv)
 
 
-    def run(self):
+    def run(self) -> bool:
         """
         Plugin Must Implement:
         
@@ -206,10 +202,10 @@ class ImportPluginBase(PluginBase):
             to reach the call to "finish()",
             False or None to early out after your return.
         """
-        raise PluginException("Not implemented")
+        raise NotImplementedError()
 
 
-    def finish(self):
+    def finish(self) -> bool:
         """
         Plugin Must Implement:
         
@@ -223,30 +219,25 @@ class ImportPluginBase(PluginBase):
             try to import the .prices data,
             False or None to early out after your return.
         """
-        self.tdenv.WARN("Plugin did not implement finish()")
-        return True
+        raise NotImplementedError()
 
 
-def load(pluginName, typeName):
+def load(pluginName: str, typeName: str):
     """
     Attempt to load a plugin and find the specified plugin
     class within it.
     """
     
     # Check if a file matching this name exists.
-    moduleName = __name__+".{}_plug".format(pluginName.lower())
+    moduleName = f"{__name__}.{pluginName.lower()}_plug"
     try:
         importedModule = importlib.import_module(moduleName)
     except ImportError as e:
-        raise PluginException("Unable to load plugin '{}': {}".format(
-                pluginName, str(e),
-        ))
+        raise PluginException(f"Unable to load plugin '{pluginName}': {e}") from e
     
     pluginClass = getattr(importedModule, typeName, None)
     if not pluginClass:
-        raise PluginException("{} plugin does not provide a {}.".format(
-                pluginName, typeName,
-        ))
+        raise PluginException(f"{pluginName} plugin does not provide a {typeName}.")
     
     return pluginClass
 

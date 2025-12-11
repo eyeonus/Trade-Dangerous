@@ -1,4 +1,7 @@
+import gc
 import pytest
+import typing
+
 from .helpers import tdenv, touch
 from tradedangerous.tradedb import TradeDB
 
@@ -8,11 +11,14 @@ from tradedangerous.tradedb import TradeDB
 #     copy_fixtures(tdenv.dataDir)
 
 @pytest.fixture(scope="module")
-def tdb() -> TradeDB:
-    tdb = TradeDB()
-    yield tdb
+def tdb() -> typing.Generator[TradeDB, None, None]:
+    instance = TradeDB()
+    yield instance
     # closing tdb when done with it
-    tdb.close()
+    instance.close(final=True)
+    del instance
+    # Make sure we aren't holding on to any handles
+    gc.collect()
 
 
 @pytest.fixture(scope="module")

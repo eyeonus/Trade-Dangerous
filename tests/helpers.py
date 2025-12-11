@@ -1,75 +1,41 @@
-import sys
-import os
-import re
-from io import StringIO
 from pathlib import Path
 from contextlib import contextmanager
+import gc
+import os
+import re
+import shutil
+import sys
+import typing
 
-from tradedangerous.tradedb import TradeDB
 from tradedangerous import fs, TradeEnv
-
-__all__ = ['tdenv', 'captured_output', 'is_initialized']
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
 _DEBUG = 5
 tdenv = TradeEnv(debug=_DEBUG)
 
 @contextmanager
-def captured_output():
-    new_out, new_err = StringIO(), StringIO()
-    old_out, old_err = sys.stdout, sys.stderr
-    try:
-        sys.stdout, sys.stderr = new_out, new_err
-        yield sys.stdout, sys.stderr
-    finally:
-        sys.stdout, sys.stderr = old_out, old_err
-
-@contextmanager
-def replace_stdin(target):
-    orig = sys.stdin
+def replace_stdin(target: typing.TextIO):  
+    orig: typing.TextIO = sys.stdin
     sys.stdin = target
     yield
     sys.stdin = orig
 
 
-def tdfactory():
-    """Generates a usable environment with debug
-    Returns
-    -------
-    [TradeEnv, TradeDB]
-        list with instances of TradeEnv and TradeDB
-    """
-    return [TradeDB(tdenv=tdenv, load=True, debug=_DEBUG), tdenv]
+def empty_path(p: Path) -> None:
+    """Deletes a directory tree including files"""
+    # The way we wind down TradeDB and SQLAlchemy may sometimes
+    # result in a lingering reference to the database that is waiting
+    # to be garbage collected. Force one here.
+    gc.collect()  # Ensure we're not holding onto any files
 
-
-def file_exists(filename):
-    return Path(filename).is_file()
-
-def is_initialized():
-    return Path(tdenv.dataDir, 'TradeDangerous.db').is_file()
-
-def empty_path(p):
-    """Deletes a directory tree including files
-    """
     if p.exists() and p.is_dir():
-        # print("cleaning up", p)
-        for entry in p.glob('*'):
-            if entry.is_file():
-                # print("removing file", entry)
-                entry.unlink()
-            elif entry.is_dir() and entry != p:
-                empty_path(entry)
-        # print("removing directory", entry)
-        p.rmdir()
+        shutil.rmtree(p)
     elif p.is_file():
-        # print("removing file p", entry)
         p.unlink()
 
 
-def remove_fixtures(toDir=None):
-    if not toDir:
-        toDir = tdenv.dataDir
-    toPath = Path(toDir)
+def remove_fixtures(toDir: str | Path | None = None) -> None:
+    toPath = Path(toDir or tdenv.dataDir)
     empty_path(toPath)
 
 
@@ -84,12 +50,11 @@ def copy_fixtures(toDir=None):
     
     fs.copyallfiles(tdenv.templateDir, tdenv.dataDir)
     fs.copyallfiles(Path(_ROOT, 'fixtures'), tdenv.dataDir)
-    fs.ensureflag(Path(tdenv.dataDir, '.tddata'))
     touch(Path(tdenv.dataDir, 'TradeDangerous.db'))
     print("copy fixtures done")
 
 
-def touch(*args):
+def touch(*args: str | Path) -> Path:
     filename = Path(*args)
     return fs.touch(filename)
 

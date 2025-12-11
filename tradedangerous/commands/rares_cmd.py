@@ -5,7 +5,9 @@ from .parsing import (
     PlanetaryArgument, FleetCarrierArgument, OdysseyArgument,
 )
 from ..formatting import RowFormat, max_len
-from ..tradedb import TradeDB
+from ..tradedb import TradeDB, select, SA_Category, SA_RareItem, SA_Station
+
+import time
 
 
 ######################################################################
@@ -104,13 +106,6 @@ def run(results, cmdenv, tdb):
     # How far we're want to cast our net.
     maxLy = float(cmdenv.maxLyPer or 0.0)
     
-    if cmdenv.illegal:
-        wantIllegality = 'Y'
-    elif cmdenv.legal:
-        wantIllegality = 'N'
-    else:
-        wantIllegality = 'YN?'
-    
     awaySystems = set()
     if cmdenv.away or cmdenv.awayFrom:
         if not cmdenv.away or not cmdenv.awayFrom:
@@ -129,10 +124,29 @@ def run(results, cmdenv, tdb):
     distCheckFn = start.distanceTo
     
     # Look through the rares list.
-    for rare in tdb.rareItemByID.values():
-        if rare.illegal not in wantIllegality:
-            continue
-        stn = rare.station
+    stmt = select(
+        SA_RareItem.rare_id,
+        SA_RareItem.station_id,
+        SA_RareItem.name,
+        SA_RareItem.cost,
+        SA_RareItem.max_allocation,
+        SA_RareItem.illegal,
+        SA_RareItem.suppressed,
+        SA_Category.name
+    ).join(SA_Category)
+    if cmdenv.illegal or cmdenv.legal:
+       stmt = stmt.where(SA_RareItem.illegal == ('Y' if cmdenv.legal else 'N'))
+    if noPlanet:
+        stmt = stmt.join(SA_Station).where(SA_Station.planetary != 'Y')
+    
+    awaySystems = set()
+
+    started = time.time()
+    with tdb.Session() as session:
+        rows = session.execute(stmt).all()
+
+    for rare in rows:
+        stn = tdb.stationByID[rare.station_id]
         if padSize and not stn.checkPadSize(padSize):
             continue
         if planetary and not stn.checkPlanetary(planetary):
@@ -140,8 +154,6 @@ def run(results, cmdenv, tdb):
         if fleet and not stn.checkFleet(fleet):
             continue
         if odyssey and not stn.checkOdyssey(odyssey):
-            continue
-        if noPlanet and stn.planetary != 'N':
             continue
         
         rareSys = stn.system
@@ -159,6 +171,8 @@ def run(results, cmdenv, tdb):
         row.station = stn            # <-- IMPORTANT: used by render()
         row.dist = dist
         results.rows.append(row)
+        
+    cmdenv.DEBUG0("Found {:n} rares in {:.3f}s", len(results.rows), time.time() - started)
     
     # Was anything matched?
     if not results.rows:
@@ -166,7 +180,7 @@ def run(results, cmdenv, tdb):
         return None
     
     # Sort safely even if rare.costCr is None (treat None as 0)
-    price_key = lambda row: (row.rare.costCr or 0)
+    price_key = lambda row: (row.rare.cost or 0)
     
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
@@ -204,24 +218,24 @@ def render(results, cmdenv, tdb):
     # Helpers to coalesce possibly-missing attributes
     def _cost(row):
         try:
-            v = row.rare.costCr
+            v = row.rare.cost
             return int(v) if v is not None else 0
         except Exception:
             return 0
     
     def _rare_name(row):
         try:
-            n = row.rare.name()
+            n = row.rare.name
             return n or "?"
         except Exception:
             return "?"
     
     def _alloc(row):
-        val = getattr(row.rare, "allocation", None)
+        val = row.rare.max_allocation
         return str(val) if val not in (None, "") else "?"
     
     def _rare_illegal(row):
-        val = getattr(row.rare, "illegal", None)
+        val = row.rare.illegal
         return val if val in ("Y", "N", "?") else "?"
     
     def _stn_ls(row):

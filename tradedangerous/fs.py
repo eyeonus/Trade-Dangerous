@@ -1,17 +1,28 @@
 """This module should handle filesystem related operations
 """
-from shutil import copy as shcopy
 from os import makedirs, PathLike
 from pathlib import Path
+from shutil import copy as shcopy
+import typing
 
 __all__ = ['copy', 'copyallfiles', 'touch', 'ensurefolder', 'file_line_count']
 
-def pathify(*args):
+Pathlike: typing.TypeAlias = Path | str
+
+
+def pathify(*args: str | Path) -> Path:
+    """ pathify will ensure a Path given input(s) that can be
+        either a single Path/str, or components to form one.
+        e.g.
+            pathify("C:/temp") -> Path("c:/temp")
+            pathify("C":", "temp") -> Path("C:/temp")
+            pathify("C:", Path("temp")) -> Path("C:/temp")
+    """
     if len(args) > 1 or not isinstance(args[0], Path):
         return Path(*args)
     return args[0]
 
-def copy(src, dst):
+def copy(src: PathLike, dst: PathLike) -> Path:
     """
     copy src to dst
     takes string or Path object as input
@@ -23,7 +34,8 @@ def copy(src, dst):
     shcopy(str(srcPath), str(dstPath))
     return dstPath
 
-def copy_if_newer(src, dst):
+
+def copy_if_newer(src: Pathlike, dst: Pathlike) -> Path:
     """
     copy src to dst if src is newer
     takes string or Path object as input
@@ -36,10 +48,10 @@ def copy_if_newer(src, dst):
     if dstPath.exists() and dstPath.stat().st_mtime >= srcPath.stat().st_mtime:
         return srcPath
     
-    shcopy(str(srcPath), str(dstPath))
+    shcopy(srcPath, dstPath)    # kfs: python 3.10 don't need us to strify these
     return dstPath
 
-def copyallfiles(srcdir, dstdir):
+def copyallfiles(srcdir: Pathlike, dstdir: Pathlike) -> None:
     """
     Copies all files in srcdir to dstdir
     """
@@ -50,7 +62,7 @@ def copyallfiles(srcdir, dstdir):
         if p.is_file():
             copy(p, dstPath / p.name)
 
-def touch(filename):
+def touch(filename: Pathlike) -> Path:
     """
     Creates file if it doesn't exist.
     Always modifies utime.
@@ -60,27 +72,7 @@ def touch(filename):
     path.touch(exist_ok=True)
     return path
 
-def ensureflag(flagfile, action=None):
-    """Checks if flagfile exist and IF NOT the action function
-    will be executed. The flagfile will be 'touched' at the end
-    
-    Parameters
-    ----------
-    flagfile : string
-        path to the file used as flag
-    action : callable
-        this will be called if the flagfile doesn't exist
-    
-    Returns
-    -------
-    Path(flagfile)
-    """
-    flagPath = pathify(flagfile)
-    if not flagPath.exists() and callable(action):
-        action()
-    return touch(flagPath)
-
-def ensurefolder(folder):
+def ensurefolder(folder: Pathlike) -> Path:
     """Creates the folder if it doesn't exist
     
     Parameters
@@ -101,7 +93,7 @@ def ensurefolder(folder):
     return folderPath.resolve()
 
 
-def file_line_count(from_file: PathLike, buf_size: int = 128 * 1024, *, missing_ok: bool = False) -> int:
+def file_line_count(from_file: Pathlike, buf_size: int = 128 * 1024, *, missing_ok: bool = False) -> int:
     """ counts the number of newline characters in a given file. """
     if not isinstance(from_file, Path):
         from_file = Path(from_file)

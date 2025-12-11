@@ -1,19 +1,19 @@
-# --------------------------------------------------------------------
-# Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
-# Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Stefan 'Tromador' Morrell 2025
-# Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
-#
-# You are free to use, redistribute, or even print and eat a copy of
-# this software so long as you include this copyright notice.
-# I guarantee there is at least one bug neither of us knew about.
-# --------------------------------------------------------------------
-# TradeDangerous :: Modules :: Database Module
-
 """
+Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
+Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
+Copyright (C) Stefan 'Tromador' Morrell 2025
+Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
+
+You are free to use, redistribute, or even print and eat a copy of
+this software so long as you include this copyright notice.
+
+I guarantee there is at least one bug neither of us knew about. -- Oliver
+--------------------------------------------------------------------
+TradeDangerous :: Modules :: Database Module
+
 Provides the primary classes used within TradeDangerous:
 
-TradeDB, System, Station, Ship, Item, RareItem and Trade.
+TradeDB, System, Station, Ship, Item, and Trade.
 
 These classes are primarily for describing the database.
 
@@ -53,35 +53,29 @@ Simplistic use might be:
 from __future__ import annotations
 
 from collections import namedtuple
-from contextlib import closing
+from functools import lru_cache
 from math import sqrt as math_sqrt
 from pathlib import Path
+from typing import NamedTuple
 import heapq
 import itertools
 import locale
+import os
+import pickle
 import re
 import sys
+import time
 import typing
 
 from .tradeenv import TradeEnv
 from .tradeexcept import TradeException
 from . import cache, fs
 
-if typing.TYPE_CHECKING:
-    from typing import Generator
-    from typing import Optional, Union
-
-
-locale.setlocale(locale.LC_ALL, '')
-
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-from .db import make_engine_from_config, get_session_factory, healthcheck
-from .db.orm_models import (
-    System, Station, Item, Category, Ship, Upgrade, RareItem,
-    StationItem, ShipVendor, UpgradeVendor, Added, ExportControl, StationItemStaging
-)
-from .db.utils import age_in_days
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import NoResultFound
+from .db import make_engine_from_config, get_session_factory  # type: ignore
+from .db.lifecycle import ensure_fresh_db  # type: ignore
+from .db.utils import age_in_days  # type: ignore
 
 # --------------------------------------------------------------------
 # SQLAlchemy ORM imports (aliased to avoid clashing with legacy wrappers).
@@ -96,21 +90,41 @@ from .db.utils import age_in_days
 # entirely, and code updated to use ORM models directly.
 # --------------------------------------------------------------------
 
-from .db.orm_models import (
-    Added           as SA_Added,
-    System          as SA_System,
-    Station         as SA_Station,
-    Item            as SA_Item,
-    Category        as SA_Category,
-    StationItem     as SA_StationItem,
-    RareItem        as SA_RareItem,
-    Ship            as SA_Ship,
-    ShipVendor      as SA_ShipVendor,
-    Upgrade         as SA_Upgrade,
-    UpgradeVendor   as SA_UpgradeVendor,
-    ExportControl   as SA_ExportControl,
+from .db.orm_models import (  # noqa: F401  # pylint: disable=unused-import
+    Added              as SA_Added,
+    System             as SA_System,
+    Station            as SA_Station,
+    Item               as SA_Item,
+    Category           as SA_Category,
+    StationItem        as SA_StationItem,
+    RareItem           as SA_RareItem,
+    Ship               as SA_Ship,
+    ShipVendor         as SA_ShipVendor,
+    Upgrade            as SA_Upgrade,
+    UpgradeVendor      as SA_UpgradeVendor,
+    ExportControl      as SA_ExportControl,
     StationItemStaging as SA_StationItemStaging,
 )
+
+
+locale.setlocale(locale.LC_ALL, '')
+
+
+if typing.TYPE_CHECKING:
+    from typing import Any, Callable, Generator, Optional
+
+
+# We should probably just use the trade-dangerous version number
+# otherwise this is a value that someone has to keep changing.
+# Ultimately it just needs to be something that tells us we can't
+# reasonably reconstitute the same data when running this version
+# against that file.
+PERSIST_FORMAT = 3
+
+# Names for the fields in the persist header.
+PERSIST_FORMAT_FIELD = "fmtv"
+PERSIST_TIMESTAMP_FIELD = "dbts"
+PERSIST_SIZE_FIELD = "dbsz"
 
 
 ######################################################################
@@ -119,33 +133,87 @@ from .db.orm_models import (
 class AmbiguityError(TradeException):
     """
         Raised when a search key could match multiple entities.
+
         Attributes:
             lookupType - description of what was being queried,
             searchKey  - the key given to the search routine,
-            anyMatch - list of anyMatch
+            anyMatch   - list of items which were found to match, if any
             key        - retrieve the display string for a candidate
     """
-    def __init__(
-            self, lookupType, searchKey, anyMatch, key=lambda item: item
-            ):
+    def __init__(self, lookupType, searchKey, anyMatch, key=None):
+        """
+        Args:
+            lookupType
+                A string identifying what type of lookup is matching,
+                e.g. 'Item' or 'System'. This is used in the error
+                message to help the user understand what they were
+                looking for.
+            searchKey
+                The search key the user provided, e.g. "sol"
+            anyMatch
+                A list of any values that matched the key.
+            key
+                A callable which, given a candidate object from anyMatch,
+                returns a display string for that candidate.
+        """
+        if key is None:
+            key = lambda candidate: candidate
         self.lookupType = lookupType
         self.searchKey = searchKey
         self.anyMatch = anyMatch
         self.key = key
-    
+
     def __str__(self):
         anyMatch, key = self.anyMatch, self.key
+
+        # ------------------------------------------------------------------
+        # Special-case: system name collisions where we passed in
+        # (index, System) pairs from TradeDB.lookupSystem.
+        # ------------------------------------------------------------------
+        if (
+            self.lookupType == "System"
+            and anyMatch
+            and isinstance(anyMatch[0], tuple)
+            and len(anyMatch[0]) >= 2
+        ):
+            lines = [
+                f'System name "{self.searchKey}" refers to more than one distinct system.',
+                "",
+                'Select the one you intended using "@N":',
+                "",
+            ]
+            for index, system in anyMatch:
+                # Be tolerant in case the contents are not exactly (int, System)
+                try:
+                    name = system.dbname
+                    x, y, z = system.posX, system.posY, system.posZ
+                    lines.append(
+                        f"    {name}@{index} — ({x:.1f}, {y:.1f}, {z:.1f})"
+                    )
+                except Exception:
+                    # Fallback to the provided key() formatter
+                    lines.append(f"    {key((index, system))}")
+            lines.append("")
+            lines.append("(Index numbers are ordered by Galactic X coordinate.)")
+            return "\n".join(lines)
+
+        # ------------------------------------------------------------------
+        # Generic ambiguity formatting used everywhere else
+        # ------------------------------------------------------------------
+        if not anyMatch:
+            return f'{self.lookupType} "{self.searchKey}" could match nothing.'
+
         if len(anyMatch) > 10:
-            opportunities = ", ".join([
-                key(c) for c in anyMatch[:10]
-            ] + ["..."])
+            opportunities = ", ".join([key(c) for c in anyMatch[:10]] + ["." ])
+        elif len(anyMatch) == 1:
+            opportunities = key(anyMatch[0])
         else:
-            opportunities = ", ".join(
-                key(c) for c in anyMatch[0:-1]
-            )
+            opportunities = ", ".join(key(c) for c in anyMatch[:-1])
             opportunities += " or " + key(anyMatch[-1])
+
         return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
 
+    
 class SystemNotStationError(TradeException):
     """
         Raised when a station lookup matched a System but
@@ -157,13 +225,13 @@ class SystemNotStationError(TradeException):
 ######################################################################
 
 
-def make_stellar_grid_key(x: float, y: float, z: float) -> int:
+def make_stellar_grid_key(x: float, y: float, z: float) -> tuple[int, int, int]:
     """
     The Stellar Grid is a map of systems based on their Stellar
     co-ordinates rounded down to 32lys. This makes it much easier
     to find stars within rectangular volumes.
     """
-    return (int(x) >> 5, int(y) >> 5, int(z) >> 5)
+    return int(x) >> 5, int(y) >> 5, int(z) >> 5
 
 
 class System:
@@ -188,12 +256,12 @@ class System:
             self.systems = []
             self.probed_ly = 0.
     
-    def __init__(self, ID, dbname, posX, posY, posZ, addedID) -> None:
+    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int|None) -> None:
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
         self.addedID = addedID or 0
-        self.stations = ()
+        self.stations: list['Station'] = []
         self._rangeCache = None
     
     @property
@@ -244,15 +312,17 @@ class System:
 
 ######################################################################
 
-class Destination(namedtuple('Destination', [
-        'system', 'station', 'via', 'distLy'
-        ])):
-    pass
+class Destination(NamedTuple):
+    system: 'System'
+    station: 'Station'
+    via: list['System']
+    distLy: float
 
-class DestinationNode(namedtuple('DestinationNode', [
-        'system', 'via', 'distLy'
-        ])):
-    pass
+
+class DestinationNode(NamedTuple):
+    system: 'System'
+    via: list['System']
+    distLy: float
 
 class Station:
     """
@@ -269,12 +339,12 @@ class Station:
     )
     
     def __init__(
-            self, ID, system, dbname,
-            lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair, planetary, fleet, odyssey,
-            itemCount=0, dataAge=None,
+            self, ID: int, system: 'System', dbname: str,
+            lsFromStar: float, market: str, blackMarket: str, shipyard: str, maxPadSize: str,
+            outfitting: str, rearm: str, refuel: str, repair: str, planetary: str, fleet: str, odyssey: str,
+            itemCount: int = 0, dataAge: float | int | None = None,
             ):
-        self.ID, self.system, self.dbname = ID, system, dbname
+        self.ID, self.system, self.dbname = ID, system, dbname  # type: ignore
         self.lsFromStar = int(lsFromStar)
         self.market = market if itemCount == 0 else 'Y'
         self.blackMarket = blackMarket
@@ -289,12 +359,12 @@ class Station:
         self.odyssey = odyssey
         self.itemCount = itemCount
         self.dataAge = dataAge
-        system.stations = system.stations + (self,)
+        system.stations += [self]
     
     def name(self, detail: int = 0) -> str:  # pylint: disable=unused-argument
         return f"{self.system.dbname}/{self.dbname}"
     
-    def checkPadSize(self, maxPadSize):
+    def checkPadSize(self, maxPadSize: str) -> bool:
         """
         Tests if the Station's max pad size matches one of the
         values in 'maxPadSize'.
@@ -322,7 +392,7 @@ class Station:
         """
         return (not maxPadSize or self.maxPadSize in maxPadSize)
     
-    def checkPlanetary(self, planetary):
+    def checkPlanetary(self, planetary: str) -> bool:
         """
         Tests if the Station's planetary matches one of the
         values in 'planetary'.
@@ -350,14 +420,14 @@ class Station:
         """
         return (not planetary or self.planetary in planetary)
     
-    def checkFleet(self, fleet):
+    def checkFleet(self, fleet: str) -> bool:
         """
         Same as checkPlanetary, but for fleet carriers.
         """
         return (not fleet or self.fleet in fleet)
 
 
-    def checkOdyssey(self, odyssey):
+    def checkOdyssey(self, odyssey: str) -> bool:
         """
         Same as checkPlanetary, but for Odyssey.
         """
@@ -410,9 +480,7 @@ class Station:
 ######################################################################
 
 
-class Ship(namedtuple('Ship', (
-        'ID', 'dbname', 'cost', 'stations'
-        ))):
+class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
     """
     Ship description.
     
@@ -423,15 +491,13 @@ class Ship(namedtuple('Ship', (
         stations    -- List of Stations ship is sold at.
     """
     
-    def name(self, detail=0):   # pylint: disable=unused-argument
+    def name(self, _detail: int = 0) -> str:
         return self.dbname
 
 ######################################################################
 
 
-class Category(namedtuple('Category', (
-        'ID', 'dbname', 'items'
-        ))):
+class Category(namedtuple('Category', ('ID', 'dbname', 'items'))):
     """
     Item Category
     
@@ -451,7 +517,7 @@ class Category(namedtuple('Category', (
             Returns the display name for this Category.
     """
     
-    def name(self, detail=0):   # pylint: disable=unused-argument
+    def name(self, _detail: int = 0) -> str:
         return self.dbname.upper()
 
 ######################################################################
@@ -471,7 +537,7 @@ class Item:
     """
     __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID')
     
-    def __init__(self, ID, dbname, category, fullname, avgPrice=None, fdevID=None):
+    def __init__(self, ID: int, dbname: str, category: 'Category', fullname: str, avgPrice: int | None = None, fdevID: int | None = None) -> None:
         self.ID = ID
         self.dbname = dbname
         self.category = category
@@ -479,33 +545,9 @@ class Item:
         self.avgPrice = avgPrice
         self.fdevID   = fdevID
     
-    def name(self, detail=0):
+    def name(self, detail: int = 0):
         return self.fullname if detail > 0 else self.dbname
 
-######################################################################
-
-
-class RareItem(namedtuple('RareItem', (
-        'ID', 'station', 'dbname', 'costCr', 'maxAlloc', 'illegal',
-        'suppressed', 'category', 'fullname',
-        ))):
-    """
-    Describes a RareItem from the database.
-    
-    Attributes:
-        ID         -- Database ID,
-        station    -- Which Station this is bought from,
-        dbname     -- The name are presented in the database,
-        costCr     -- Buying price.
-        maxAlloc   -- How many the player can carry at a time,
-        illegal    -- If the item may be considered illegal,
-        suppressed -- The item is suppressed.
-        category   -- Reference to the category.
-        fullname   -- Combined category/dbname.
-    """
-    
-    def name(self, detail=0):
-        return self.fullname if detail > 0 else self.dbname
 
 ######################################################################
 
@@ -521,7 +563,7 @@ class Trade(namedtuple('Trade', (
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
     """
-    def name(self, detail=0):
+    def name(self, detail: int = 0) -> str:
         return self.item.name(detail=detail)
 
 ######################################################################
@@ -574,9 +616,12 @@ class TradeDB:
     trimTrans = str.maketrans('', '', ' \'')
     
     # The DB cache
-    defaultDB = 'TradeDangerous.db'
+    defaultDB: str = 'TradeDangerous.db'
     # File containing SQL to build the DB cache from
-    defaultSQL = 'TradeDangerous.sql'
+    defaultSQL: str = 'TradeDangerous.sql'
+    # The file we persist to. NOT INTENDED TO BE PERMANENT.
+    # We should do the pickling into the database or something.
+    persistFile: str = 'TradeDB.pj'  # "pickle jar"
     # # File containing text description of prices
     # defaultPrices = 'TradeDangerous.prices'
     # array containing standard tables, csvfilename and tablename
@@ -605,10 +650,10 @@ class TradeDB:
     
     def __init__(
             self,
-            tdenv=None,
-            load=True,
-            debug=None,
-            ):
+            tdenv: TradeEnv | None = None,
+            load:  bool            = True,
+            debug: int | None      = None,
+            ) -> None:
         # --- SQLAlchemy engine/session (replaces sqlite3.Connection) ---
         self.engine = None
         self.Session = None
@@ -633,6 +678,10 @@ class TradeDB:
         # pricePath   = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         # self.pricesPath = dataPath / pricePath
         
+        # If the database has been deleted, that invalidates any persist file.
+        if not self.dbPath:
+            self.removePersist()
+        
         self.importTables = [
             (str(self.csvPath / Path(fn)), tn)
             for fn, tn in TradeDB.defaultTables
@@ -646,23 +695,16 @@ class TradeDB:
         # --- Cache attributes (unchanged) ---
         self.avgSelling, self.avgBuying = None, None
         self.tradingStationCount = 0
-        self.addedByID      = None
         self.systemByID     = None
         self.systemByName   = None
         self.stellarGrid    = None
         self.stationByID    = None
-        self.shipByID       = None
         self.categoryByID   = None
         self.itemByID       = None
         self.itemByName     = None
         self.itemByFDevID   = None
-        self.rareItemByID   = None
-        self.rareItemByName = None
         
         # --- Engine bootstrap ---
-        from .db import make_engine_from_config, get_session_factory
-        from .db.paths import resolve_data_dir
-        import os
         
         # Determine user's real invocation directory, not venv/bin
         user_cwd = Path(os.getenv("PWD", Path.cwd()))
@@ -683,7 +725,7 @@ class TradeDB:
     # Legacy compatibility dataPath shim
     # ------------------------------------------------------------------
     @property
-    def dataDir(self):
+    def dataDir(self) -> Path:
         """
         Legacy alias for self.dataPath (removed in SQLAlchemy refactor).
         Falls back to './data' if configuration not yet loaded.
@@ -699,21 +741,56 @@ class TradeDB:
     
     
     @staticmethod
-    def calculateDistance2(lx, ly, lz, rx, ry, rz):
-        """
-        Returns the distance in ly between two points.
+    def calculateDistance2(lx: float, ly: float, lz: float, rx: float, ry: float, rz: float) -> float:
+        """ calculateDistance2 returns the *square* (^2) of the euclidean
+            distance between two 3d coordinates. This is an optimization
+            for when you need to compare many coordinate pairs but do
+            not actually need to retain the distance value.
+            
+            That is:
+                distance**2 <=> calculateDistance2(x,y,z, u,v,w)
+            always returns the same results as
+                distance    <=> calculateDistance (x,y,z, u,v,w)
+            but is cheaper.
         """
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return (dx * dx) + (dy * dy) + (dz * dz)
     
     @staticmethod
-    def calculateDistance(lx, ly, lz, rx, ry, rz):
+    def calculateDistance(lx: float, ly: float, lz: float, rx: float, ry: float, rz: float) -> float:
         """
-        Returns the distance in ly between two points.
+        calculateDistance returns the euclidean distance in ly between two points.
+        @note When you are testing many pairs without retaining the calculated value
+        beyond the comparison, consider using calculateDistance2 instead.
         """
         dx, dy, dz = lx - rx, ly - ry, lz - rz
         return math_sqrt((dx * dx) + (dy * dy) + (dz * dz))
     
+    @staticmethod
+    def _split_system_index(name: str) -> tuple[str, int | None]:
+        """
+        Split a trailing '@N' suffix from a system name, if present.
+
+        Examples:
+            'Lorionis-SOC 13@2' -> ('Lorionis-SOC 13', 2)
+            'Shinrarta Dezhra'  -> ('Shinrarta Dezhra', None)
+            '@SOL'              -> ('@SOL', None)  # leading @ is a different annotation
+
+        Returns:
+            (base_name, index) where index is 1-based, or None if no valid suffix.
+        """
+        # Ignore a leading '@' which is used as an explicit system/station annotation
+        at = name.rfind('@')
+        if at <= 0:
+            return name, None
+
+        idx_str = name[at + 1 :]
+        if not idx_str or not idx_str.isdigit():
+            return name, None
+
+        base = name[:at]
+        return base, int(idx_str)
+
     ############################################################
     # Access to the underlying database.
     
@@ -729,7 +806,6 @@ class TradeDB:
         """
         Execute a SQL statement via the SQLAlchemy engine and return the result cursor.
         """
-        from sqlalchemy import text
         with self.engine.connect() as conn:
             return conn.execute(text(sql), params)
     
@@ -741,7 +817,7 @@ class TradeDB:
         return result[0] if result else None
     
     
-    def reloadCache(self):
+    def reloadCache(self) -> None:
         """
         Ensure DB is present and minimally populated using the central policy.
         
@@ -753,10 +829,10 @@ class TradeDB:
         
         If checks fail (or lifecycle decides to force), it will call buildCache(self, self.tdenv)
         to reset/populate via the authoritative path. Otherwise it is a no-op.
-        """
-        from tradedangerous.db.lifecycle import ensure_fresh_db
-        
         self.tdenv.DEBUG0("reloadCache: engine URL = {}", str(self.engine.url))
+        """
+        
+        kept = False
         
         try:
             summary = ensure_fresh_db(
@@ -769,6 +845,8 @@ class TradeDB:
                 tdenv=self.tdenv,
             )
             action = summary.get("action", "kept")
+            if action == "kept":
+                kept = True
             reason = summary.get("reason")
             if reason:
                 self.tdenv.DEBUG0("reloadCache: ensure_fresh_db → {} (reason: {})", action, reason)
@@ -777,46 +855,38 @@ class TradeDB:
         except Exception as e:
             self.tdenv.WARN("reloadCache: ensure_fresh_db failed: {}", e)
             self.tdenv.DEBUG0("reloadCache: Falling back to buildCache()")
-            from tradedangerous import cache
             cache.buildCache(self, self.tdenv)
-
-
+        
+        if not kept:
+            self.removePersist()
     
     ############################################################
-    # Load "added" data.
-    
-    def _loadAdded(self):
-        """
-        Loads the Added table as a simple dictionary.
-        """
-        addedByID = {}
-        with self.Session() as session:
-            for row in session.query(Added.added_id, Added.name):
-                addedByID[row.added_id] = row.name
-        self.addedByID = addedByID
-        self.tdenv.DEBUG1("Loaded {:n} Addeds", len(addedByID))
-    
+    # [deprecated] "added" data.
     
     def lookupAdded(self, name):
-        name = name.lower()
-        for ID, added in self.addedByID.items():
-            if added.lower() == name:
-                return ID
-        raise KeyError(name)
+        stmt = select(SA_Added.added_id).where(SA_Added.name == name)
+        with self.Session() as session:
+            try:
+                return session.execute(stmt).scalar_one()
+            except NoResultFound:
+                raise KeyError(name) from None
     
     ############################################################
     # Star system data.
     
-    def systems(self):
+    # TODO: Defer to SA_System as much as possible
+    def systems(self) -> Generator['System', Any, None]:
         """ Iterate through the list of systems. """
         yield from self.systemByID.values()
     
-    def _loadSystems(self):
+    def _loadSystems(self) -> None:
         """
         Initial load of the list of systems via SQLAlchemy.
         CAUTION: Will orphan previously loaded objects.
         """
-        systemByID, systemByName = {}, {}
+        systemByID: dict[int, System] = {}
+        systemByName: dict[str, list['System']] = {}
+        started = time.time()
         with self.Session() as session:
             for row in session.query(
                 SA_System.system_id,
@@ -835,24 +905,99 @@ class TradeDB:
                     row.added_id,
                 )
                 systemByID[row.system_id] = system
-                systemByName[row.name.upper()] = system
-        
-        self.systemByID, self.systemByName = systemByID, systemByName
-        self.tdenv.DEBUG1("Loaded {:n} Systems", len(systemByID))
-    
-    
-    def lookupSystem(self, key):
-        """
-        Look up a System object by it's name.
-        """
-        if isinstance(key, System):
-            return key
-        if isinstance(key, Station):
-            return key.system
-        
-        return TradeDB.listSearch(
-            "System", key, self.systems(), key=lambda system: system.dbname
+                key = system.dbname.upper()
+                bucket = systemByName.get(key)
+                if bucket is None:
+                    systemByName[key] = [system]
+                else:
+                    bucket.append(system)
+
+        # Ensure deterministic ordering for duplicate-name groups:
+        # sort by posX, then posY, posZ, ID so @1 is lowest X, stable.
+        for systems in systemByName.values():
+            systems.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
+
+        self.systemByID = systemByID
+        self.systemByName = systemByName
+        self.tdenv.DEBUG1(
+            "Loaded {:n} Systems in {:.3f}s",
+            len(systemByID),
+            time.time() - started,
         )
+    
+    
+    def lookupSystem(self, name):
+        """
+        Lookup a system by name or return a System object unchanged.
+        Accepts:
+            - System instance  → returned directly
+            - Station instance → return station.system
+            - str              → resolve by name, with @N disambiguation
+        """
+
+        # NEW: accept already-resolved objects
+        if isinstance(name, System):
+            return name
+        if isinstance(name, Station):
+            return name.system
+
+        if not isinstance(name, str):
+            raise TypeError(
+                f"lookupSystem expects str/System/Station, got {type(name)!r}"
+            )
+
+        # From here on, name is guaranteed a string.
+        base_name, index = self._split_system_index(name)
+        base_key = base_name.upper()
+
+        try:
+            systems_list = self.systemByName[base_key]
+        except KeyError:
+            # Fall back to original partial-match behaviour.
+            return TradeDB.listSearch(
+                "System",
+                name,
+                self.systems(),
+                key=lambda system: system.dbname,
+            )
+
+        # No explicit index
+        if index is None:
+            if len(systems_list) == 1:
+                return systems_list[0]
+            if len(systems_list) > 1:
+                anyMatch = [
+                    (i + 1, system)
+                    for i, system in enumerate(systems_list)
+                ]
+                raise AmbiguityError(
+                    "System",
+                    base_name,
+                    anyMatch,
+                    key=lambda entry: (
+                        f"{entry[1].dbname}@{entry[0]} — "
+                        f"({entry[1].posX:.1f}, {entry[1].posY:.1f}, {entry[1].posZ:.1f})"
+                    ),
+                )
+            raise LookupError(f'Error: "{name}" doesn\'t match any known System')
+
+        # Explicit @N index
+        if 1 <= index <= len(systems_list):
+            return systems_list[index - 1]
+
+        # Out-of-range index
+        count = len(systems_list)
+        header = f'System "{base_name}" has {count} matching entries (@1..@{count}).'
+        invalid_line = f'"{base_name}@{index}" is not a valid index.'
+        lines = [header, invalid_line, "", "Use one of the available forms:", ""]
+        for idx, system in enumerate(systems_list, start=1):
+            lines.append(
+                f"    {system.dbname}@{idx} — "
+                f"({system.posX:.1f}, {system.posY:.1f}, {system.posZ:.1f})"
+            )
+        message = "\n".join(lines)
+        raise TradeException(message)
+
     
     def addLocalSystem(
             self,
@@ -860,7 +1005,7 @@ class TradeDB:
             x, y, z,
             modified='now',
             commit=True,
-            ):
+            ) -> System:
         """
         Add a system to the local cache and memory copy using SQLAlchemy.
         Note: 'added' field has been deprecated and is no longer populated.
@@ -886,13 +1031,20 @@ class TradeDB:
         # Maintain legacy wrapper + caches (added_id always None now)
         system = System(ID, name.upper(), x, y, z, None)
         self.systemByID[ID] = system
-        self.systemByName[system.dbname] = system
+
+        key = system.dbname.upper()
+        bucket = self.systemByName.get(key)
+        if bucket is None:
+            self.systemByName[key] = [system]
+        else:
+            bucket.append(system)
+            bucket.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
         
         self.tdenv.NOTE(
             "Added new system #{}: {} [{},{},{}]",
             ID, name, x, y, z
         )
-        self.stellarGrid = None
+        
         return system
     
     
@@ -901,7 +1053,7 @@ class TradeDB:
             name, x, y, z, added="Local", modified='now',
             force=False,
             commit=True,
-            ):
+            ) -> bool:
         """
         Update an entry for a local system using SQLAlchemy.
         """
@@ -915,11 +1067,19 @@ class TradeDB:
                 system.posZ == z):
                 return False
         
-        del self.systemByName[oldname]
+        # Remove from old name bucket (if present)
+        old_key = oldname.upper()
+        bucket = self.systemByName.get(old_key)
+        if bucket is not None:
+            bucket = [s for s in bucket if s is not system]
+            if bucket:
+                self.systemByName[old_key] = bucket
+            else:
+                del self.systemByName[old_key]
         
         with self.Session() as session:
             # Find Added row for added_id
-            added_row = session.query(Added).filter(Added.name == added).first()
+            added_row = session.query(SA_Added).filter(SA_Added.name == added).first()
             if not added_row:
                 raise TradeException(f"Added entry not found: {added}")
             
@@ -949,10 +1109,18 @@ class TradeDB:
         )
         
         # Update wrapper caches
-        system.name = dbname
+        system.dbname = dbname
         system.posX, system.posY, system.posZ = x, y, z
         system.addedID = added_row.added_id
-        self.systemByName[dbname] = system
+
+        # Add to new name bucket
+        new_key = dbname.upper()
+        bucket = self.systemByName.get(new_key)
+        if bucket is None:
+            self.systemByName[new_key] = [system]
+        else:
+            bucket.append(system)
+            bucket.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
         
         return True
     
@@ -976,13 +1144,20 @@ class TradeDB:
                 else:
                     session.flush()
         
-        # Update caches
-        del self.systemByName[system.dbname]
+        # Update caches: remove from name bucket and ID map
+        key = system.dbname.upper()
+        bucket = self.systemByName.get(key)
+        if bucket is not None:
+            bucket = [s for s in bucket if s is not system]
+            if bucket:
+                self.systemByName[key] = bucket
+            else:
+                del self.systemByName[key]
         del self.systemByID[system.ID]
         
         self.tdenv.NOTE(
             "{} (#{}) deleted from {}",
-            system.name, system.ID,
+            system.dbname, system.ID,
             self.dbPath if self.tdenv.detail > 1 else "local db",
         )
         
@@ -990,7 +1165,7 @@ class TradeDB:
         del system
     
     
-    def __buildStellarGrid(self):
+    def __buildStellarGrid(self) -> None:
         """
         Divides the galaxy into a fixed-sized grid allowing us to
         aggregate small numbers of stars by locality.
@@ -1004,7 +1179,7 @@ class TradeDB:
                 grid = stellarGrid[key] = []
             grid.append(system)
     
-    def genStellarGrid(self, system, ly):
+    def genStellarGrid(self, system: 'System', ly: float):
         """
         Yields Systems within a given radius of a specified System.
         
@@ -1053,7 +1228,7 @@ class TradeDB:
                         if candidate is not system:
                             yield candidate, math_sqrt(distSq)
     
-    def genSystemsInRange(self, system, ly, includeSelf=False):
+    def genSystemsInRange(self, system: 'System', ly: float, includeSelf: bool = False)-> Generator[tuple[System, float], Any, None]:
         """
         Yields Systems within a given radius of a specified System.
         Results are sorted by distance and cached for subsequent
@@ -1267,6 +1442,7 @@ class TradeDB:
         cached_system = None
         cached_system_id = None
         
+        started = time.time()
         with self.Session() as session:
             # Query all stations
             rows = session.query(
@@ -1285,49 +1461,48 @@ class TradeDB:
                 SA_Station.planetary,
                 SA_Station.type_id,
             )
-            for (
-                ID, systemID, name,
+        
+        for (
+            ID, systemID, name,
+            lsFromStar, market, blackMarket, shipyard,
+            maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
+        ) in rows:
+            isFleet   = 'Y' if type_id in carrier_types else 'N'
+            isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
+            if systemID != cached_system_id:
+                cached_system_id = systemID
+                cached_system = systemByID[cached_system_id]
+            stationByID[ID] = Station(
+                ID, cached_system, name,
                 lsFromStar, market, blackMarket, shipyard,
-                maxPadSize, outfitting, rearm, refuel, repair, planetary, type_id
-            ) in rows:
-                isFleet   = 'Y' if type_id in carrier_types else 'N'
-                isOdyssey = 'Y' if type_id == odyssey_type  else 'N'
-                if systemID != cached_system_id:
-                    cached_system_id = systemID
-                    cached_system = systemByID[cached_system_id]
-                stationByID[ID] = Station(
-                    ID, cached_system, name,
-                    lsFromStar, market, blackMarket, shipyard,
-                    maxPadSize, outfitting, rearm, refuel, repair,
-                    planetary, isFleet, isOdyssey,
-                    0, None,
-                )
-            
-            # Trading station info
-            tradingCount = 0
-            rows = (
-                session.query(
-                    SA_StationItem.station_id,
-                    func.count().label("item_count"),
-                    # Dialect-safe average age in **days**
-                    func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
-                )
-                .group_by(SA_StationItem.station_id)
-                .having(func.count() > 0)
+                maxPadSize, outfitting, rearm, refuel, repair,
+                planetary, isFleet, isOdyssey,
+                0, None,
             )
-            
-            for ID, itemCount, dataAge in rows:
-                station = stationByID[ID]
-                station.itemCount = itemCount
-                station.dataAge = dataAge
-                tradingCount += 1
+        
+        # Trading station info
+        tradingCount = 0
+        rows = (
+            session.query(
+                SA_StationItem.station_id,
+                func.count().label("item_count"),
+                # Dialect-safe average age in **days**
+                func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
+            )
+            .group_by(SA_StationItem.station_id)
+            .having(func.count() > 0)
+        )
+        
+        for ID, itemCount, dataAge in rows:
+            station = stationByID[ID]
+            station.itemCount = itemCount
+            station.dataAge = dataAge
+            tradingCount += 1
         
         self.stationByID = stationByID
         self.tradingStationCount = tradingCount
-        self.tdenv.DEBUG1("Loaded {:n} Stations", len(stationByID))
+        self.tdenv.DEBUG1("Loaded {:n} Stations in {:.3f}s", len(stationByID), (time.time() - started) * 1000)
         self.stellarGrid = None
-
-
     
     def addLocalStation(
             self,
@@ -1592,32 +1767,200 @@ class TradeDB:
             system/station
             @system/station
         """
-        
+        # Pass-through for already-resolved objects
         if isinstance(name, (System, Station)):
             return name
-        
-        slashPos = name.find('/')
-        if slashPos < 0:
-            slashPos = name.find('\\')
-        nameOff = 1 if name.startswith('@') else 0
-        if slashPos > nameOff:
-            # Slash indicates it's, e.g., AULIN/ENTERPRISE
-            sysName = name[nameOff:slashPos].upper()
-            stnName = name[slashPos+1:]
-        elif slashPos == nameOff:
-            sysName, stnName = None, name[nameOff+1:]
-        elif nameOff:
-            # It's explicitly a station
-            sysName, stnName = name[nameOff:].upper(), None
+
+        if not isinstance(name, str):
+            raise TypeError(
+                f"lookupPlace expects str/System/Station, got {type(name)!r}"
+            )
+
+        # ------------------------------------------------------------------
+        # Fast path: queries that look like "just a system name"
+        #
+        # This path is where the new name-collision behaviour lives so that
+        # lookupPlace honours:
+        #   - multiple systems with the same name, and
+        #   - the "@N" index notation (e.g. "Lorionis-SOC 13@2").
+        #
+        # We exclude:
+        #   - leading "/" (explicit station)
+        #   - any "/" or "\\" inside the string (system/station combos)
+        # ------------------------------------------------------------------
+        if not name.startswith("/") and "/" not in name and "\\" not in name:
+            sys_key = name[1:] if name.startswith("@") else name
+            try:
+                return self.lookupSystem(sys_key)
+            except AmbiguityError:
+                # lookupSystem already produces the rich "@N" hint text for
+                # ambiguous system names; preserve it unchanged.
+                raise
+            except TradeException:
+                # e.g. "System@999" out of range – message is already correct.
+                raise
+            except LookupError:
+                # Not a system (or no reasonable system match) – fall back to
+                # the generic place logic below to search stations as well.
+                pass
+
+        # ------------------------------------------------------------------
+        # Legacy combined system/station matching
+        # ------------------------------------------------------------------
+
+        # Determine whether the user specified a system, a station, or both.
+        slash_pos = name.find("/")
+        if slash_pos < 0:
+            slash_pos = name.find("\\")  # support old "sys\stn" syntax too
+
+        # Leading '@' indicates "this is a system name"
+        name_off = 1 if name.startswith("@") else 0
+
+        if slash_pos > name_off:
+            # "sys/station" or "@sys/station"
+            sys_name = name[name_off:slash_pos].upper()
+            stn_name = name[slash_pos + 1 :]
+        elif slash_pos == name_off:
+            # "/station" — explicit station, no system
+            sys_name, stn_name = None, name[name_off + 1 :]
+        elif name_off:
+            # "@system" — explicit system, no station
+            sys_name, stn_name = name[name_off:].upper(), None
         else:
-            # It could be either, use the name for both.
-            stnName = name[nameOff:]
-            sysName = stnName.upper()
-        
-        exactMatch = []
-        closeMatch = []
-        wordMatch = []
-        anyMatch = []
+            # Bare name: treat as both potential system and station.
+            stn_name = name
+            sys_name = stn_name.upper()
+
+        exact_match = []
+        close_match = []
+        word_match = []
+        any_match = []
+
+        def _lookup(token, candidates):
+            """Populate the match lists for the given search token."""
+            norm_trans = TradeDB.normalizeTrans
+            trim_trans = TradeDB.trimTrans
+
+            token_norm = token.translate(norm_trans)
+            token_trim = token_norm.translate(trim_trans)
+
+            token_len = len(token)
+            token_norm_len = len(token_norm)
+            token_trim_len = len(token_trim)
+
+            for place in candidates:
+                place_name = place.dbname
+                place_norm = place_name.translate(norm_trans)
+                place_norm_len = len(place_norm)
+
+                # If the trimmed needle is longer than the target, it can't match
+                if token_trim_len > place_norm_len:
+                    continue
+
+                # 1) Exact name + normalization match
+                if len(place_name) == token_len and place_norm == token_norm:
+                    exact_match.append(place)
+                    continue
+
+                # 2) Same normalized length and contents -> "close" match
+                if place_norm_len == token_norm_len and place_norm == token_norm:
+                    close_match.append(place)
+                    continue
+
+                # 3) Substring of the normalized name, with word-boundary checks
+                if token_norm_len < place_norm_len:
+                    pos = place_norm.find(token_norm)
+                    if pos == 0:
+                        # At the start of the name
+                        if place_norm[token_norm_len:token_norm_len + 1] == " ":
+                            word_match.append(place)
+                        else:
+                            any_match.append(place)
+                        continue
+
+                    if pos > 0:
+                        before = place_norm[pos - 1:pos]
+                        after = place_norm[pos + token_norm_len:pos + token_norm_len + 1]
+                        if before == " " and after == " ":
+                            word_match.append(place)
+                        else:
+                            any_match.append(place)
+                        continue
+
+                # 4) Compare with whitespace and punctuation stripped
+                place_trim = place_norm.translate(trim_trans)
+                place_trim_len = len(place_trim)
+                if place_trim_len == place_norm_len:
+                    # Normalization didn't change anything; nothing new to learn
+                    continue
+
+                # A fully-trimmed exact match is still "close"
+                if place_trim_len == token_trim_len and place_trim == token_trim:
+                    close_match.append(place)
+                    continue
+
+                # Otherwise, any occurrence inside the trimmed name is "any"
+                if token_trim and place_trim.find(token_trim) >= 0:
+                    any_match.append(place)
+
+        # First, resolve the system side if we have one.
+        if sys_name:
+            systems_bucket = self.systemByName.get(sys_name)
+            if systems_bucket:
+                # In older caches, systemByName held a single System; in the
+                # new collision-aware form it holds a list[System].
+                if isinstance(systems_bucket, System):
+                    exact_match.append(systems_bucket)
+                else:
+                    # Assume it's an iterable of System instances.
+                    exact_match.extend(systems_bucket)
+            else:
+                _lookup(sys_name, self.systemByID.values())
+
+        # Now resolve the station side, if requested.
+        if stn_name:
+            # If both system and station were provided (sys/station form), we
+            # try to narrow the station search to the systems we just matched.
+            if slash_pos > name_off + 1 and (exact_match or close_match or word_match or any_match):
+                station_candidates = []
+                for system in itertools.chain(
+                    exact_match, close_match, word_match, any_match
+                ):
+                    station_candidates.extend(system.stations)
+
+                # Reset the match tiers; from here on they refer to stations.
+                exact_match = []
+                close_match = []
+                word_match = []
+                any_match = []
+            else:
+                # No usable system context: search all stations.
+                station_candidates = self.stationByID.values()
+
+            _lookup(stn_name, station_candidates)
+
+        # Consult the match tiers in order; any single-element tier is a winner.
+        for tier in (exact_match, close_match, word_match, any_match):
+            if len(tier) == 1:
+                return tier[0]
+
+        # No matches at all
+        if not (exact_match or close_match or word_match or any_match):
+            # NOTE: Historically this was a TradeException; it was changed to
+            # LookupError so callers can distinguish "nothing matched" from
+            # "ambiguous".
+            raise LookupError(f"Unrecognized place: {name}")
+
+        # Multiple matches – ambiguous. For mixed system/station cases we keep
+        # the original "System/Station" label; pure system ambiguities should
+        # already have been caught by lookupSystem above.
+        raise AmbiguityError(
+            "System/Station",
+            name,
+            exact_match + close_match + word_match + any_match,
+            key=lambda place: place.name(),
+        )
+
         
         def lookup(name, candidates):
             """ Search candidates for the given name """
@@ -1680,15 +2023,20 @@ class TradeDB:
                 if len(placeNameTrimmed) == nameTrimmedLen:
                     if placeNameTrimmed == nameTrimmed:
                         closeMatch.append(place)
-                    continue
-                if placeNameTrimmed.find(nameTrimmed) >= 0:
-                    anyMatch.append(place)
+                        continue
+                elif placeNameTrimmedLen > nameTrimmedLen:
+                    if placeNameTrimmed.find(nameTrimmed) >= 0:
+                        anyMatch.append(place)
+                        continue
+                # Skip smaller names
         
         if sysName:
-            try:
-                system = self.systemByName[sysName]
-                exactMatch = [system]
-            except KeyError:
+            systems = self.systemByName.get(sysName)
+            if systems:
+                # For now, treat the first system as the exact match.
+                # Proper duplicate-name disambiguation comes in the next step.
+                exactMatch = [systems[0]]
+            else:
                 lookup(sysName, self.systemByID.values())
         
         if stnName:
@@ -1901,41 +2249,24 @@ class TradeDB:
     ############################################################
     # Ship data.
     
-    def ships(self):
-        """ Iterate through the list of ships. """
-        yield from self.shipByID.values()
-    
-    def _loadShips(self):
-        """
-        Populate the Ship list using SQLAlchemy.
-        CAUTION: Will orphan previously loaded objects.
-        """
-        with self.Session() as session:
-            rows = session.query(
-                SA_Ship.ship_id,
-                SA_Ship.name,
-                SA_Ship.cost,
-            )
-            self.shipByID = {
-                row.ship_id: Ship(row.ship_id, row.name, row.cost, stations=[])
-                for row in rows
-            }
-        
-        self.tdenv.DEBUG1("Loaded {} Ships", len(self.shipByID))
-    
-    
+    @lru_cache
     def lookupShip(self, name):
-        """
-        Look up a ship by name
-        """
-        return TradeDB.listSearch(
-            "Ship", name, self.shipByID.values(),
-            key=lambda ship: ship.dbname
-        )
+        """ Look up a ship by name. """
+        stmt = select(SA_Ship.ship_id, SA_Ship.name, SA_Ship.cost)   \
+                   .where(Ship.name == name)
+        with self.Session() as session:
+            try:
+                row = session.execute(stmt).scalar_one()
+                return Ship(row.ship_id, row.name, row.cost, stations=[])
+            except NoResultFound:
+                raise LookupError(f"Error: '{name}' doesn't match any Ship") from None
     
     ############################################################
     # Item data.
     
+    # TODO: Defer to SA_Category directly; requires migrating
+    # all item references to the SA_Item table too (since then
+    # the database relationship handles inheritance anyway)
     def categories(self):
         """
         Iterate through the list of categories.
@@ -1970,6 +2301,7 @@ class TradeDB:
             key=lambda cat: cat.dbname
         )
     
+    # TODO: Defer to SA_Item directly.
     def items(self):
         """ Iterate through the list of items. """
         yield from self.itemByID.values()
@@ -2071,55 +2403,17 @@ class TradeDB:
     
     
     ############################################################
-    # Rare Items
-    
-    def _loadRareItems(self):
-        """
-        Populate the RareItem list using SQLAlchemy.
-        """
-        rareItemByID, rareItemByName = {}, {}
-        stationByID = self.stationByID
-        
-        with self.Session() as session:
-            rows = session.query(
-                SA_RareItem.rare_id,
-                SA_RareItem.station_id,
-                SA_RareItem.category_id,
-                SA_RareItem.name,
-                SA_RareItem.cost,
-                SA_RareItem.max_allocation,
-                SA_RareItem.illegal,
-                SA_RareItem.suppressed,
-            )
-            for (
-                ID, stnID, catID, name,
-                cost, maxAlloc, illegal, suppressed
-            ) in rows:
-                station  = stationByID[stnID]
-                category = self.categoryByID[catID]
-                rare = RareItem(
-                    ID, station, name,
-                    cost, maxAlloc, illegal, suppressed,
-                    category, f"{category.dbname}/{name}"
-                )
-                rareItemByID[ID] = rare
-                rareItemByName[name] = rare
-        
-        self.rareItemByID  = rareItemByID
-        self.rareItemByName = rareItemByName
-        
-        self.tdenv.DEBUG1("Loaded {:n} RareItems", len(rareItemByID))
-    
-    
-    ############################################################
     # Price data.
     
-    def close(self):
+    def close(self, *, final: bool = False) -> None:
+        if self.Session and final:
+            del self.Session
         if self.engine:
             self.engine.dispose()
+        if final:
+            engine, self.engine = self.engine, None
+            del engine
         # Keep engine + Session references so reloadCache/buildCache can reuse them
-
-
     
     def load(self, maxSystemLinkLy=None):
         """
@@ -2132,21 +2426,136 @@ class TradeDB:
         """
         
         self.tdenv.DEBUG1("Loading data")
-
-
         
-        self._loadAdded()
-        self._loadSystems()
-        self._loadStations()
-        self._loadShips()
-        self._loadCategories()
-        self._loadItems()
-        self._loadRareItems()
+        # Try and restore the data from the previous load.
+        if not self.readPersist():
+            started = time.time()
+            self._loadSystems()
+            self._loadStations()
+            self._loadCategories()
+            self._loadItems()
+            self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)
+            
+            started = time.time()
+            self.writePersist()
+            self.tdenv.DEBUG1("Data persist took {:.3f}s", time.time() - started)
         
         # Calculate the maximum distance anyone can jump so we can constrain
         # the maximum "link" between any two stars.
         msll = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
         self.maxSystemLinkLy = msll
+    
+    def getPersistPath(self) -> Path:
+        """ getPersistPath returns the filepath of the file used to store a snapshot
+            of a previously constructed TradeDB object.
+            kfsone: I felt "trade.pickle" would draw confused attention,
+                    so I went with "pj" for 'pickle jar' because it actually
+                    contains two pickles, not just one. """
+        return Path(self.dataPath, TradeDB.persistFile)
+    
+    def readPersist(self) -> bool:
+        """ readPersist will attempt to reconstitute the members of TradeDB
+            that were persisted to disk from a previous session. """
+        jarPath = self.getPersistPath()
+        started = time.time()
+        try:
+            with open(jarPath, "rb") as jar:
+                if self._readPickleFrom(jar):
+                    self.tdenv.DEBUG0("Persist load took {:.3f}s", time.time() - started)
+                    return True
+        except FileNotFoundError as e:
+            self.tdenv.DEBUG0("No persistence file to restore: {}: {}", jarPath, e)
+        except pickle.UnpicklingError as e:
+            self.tdenv.DEBUG0("Error restoring persistence data: {}: {}", jarPath, e)
+        except PermissionError as e:
+            self.tdenv.WARN("Unable to reconstitute TradeDB persistence: {}: {}", jarPath, e)
+        except EOFError as e:
+            self.tdenv.WARN("Persistence data appears truncated or corrupt, discarding it: {}: {}", jarPath, e)
+            self.removePersist()
+            self.tdenv.WARN("If this problem keeps happening, please report an issue")
+        return False
+    
+    def _readPickleFrom(self, jar: typing.BinaryIO) -> bool:
+        """ Inner implementation that performs the reading from the pickle. """
+        # We pickle a header and then we pickle data.
+        header = pickle.load(jar)
+        if (header_fmt := header.get(PERSIST_FORMAT_FIELD)) != PERSIST_FORMAT:
+            self.tdenv.DEBUG0("persist format mismatch: cur={}, file={}", PERSIST_FORMAT, header_fmt)
+            return False
+        
+        # Find when the current database was last modified; if the file doesn't exist,
+        # the caller will see this as a file-not-found exception voiding the read.
+        cur_db_timestamp = self.dbPath.stat().st_mtime
+        # Compare with the timestamp of the previous save.
+        if (old_db_timestamp := header.get(PERSIST_TIMESTAMP_FIELD)) != cur_db_timestamp:
+            self.tdenv.DEBUG0("persist data is stale by timestamp: cur={}, file={}", cur_db_timestamp, old_db_timestamp)
+            return False
+        cur_db_size = self.dbPath.stat().st_size
+        if (old_db_size := header.get(PERSIST_SIZE_FIELD)) != cur_db_size:
+            self.tdenv.DEBUG0("persist data is stale by size: cur={}, file={}", cur_db_size, old_db_size)
+            return False
+        self.tdenv.DEBUG1("persist data not expired by time (cur={}, file={}) or size (cur={}, file={})", cur_db_timestamp, old_db_timestamp, cur_db_size, old_db_size)
+        
+        data = pickle.load(jar)
+        eof_marker = pickle.load(jar)
+        if eof_marker != "fin":
+            raise EOFError("missing eof marker in persistence data")
+        
+        # We have to repopulate some fields rather than pickle them
+        self.systemByID, self.systemByName = data["system"]
+        self.stationByID, self.tradingStationCount = data["station"]
+        self.categoryByID = data["category"]
+        self.itemByName = data["item"]
+        self.itemByID = {i.ID: i for i in data["item"].values()}
+        self.itemByFDevID = {i.fdevID: i for i in data["item"].values()}
+        
+        return True
+    
+    def writePersist(self) -> bool:
+        """ Attempt to restore a snapshotted previous version of our data
+            as long as all the stars align. """
+        # Remove the file if it's already there.
+        jarPath = self.getPersistPath()
+        try:
+            jarPath.unlink(missing_ok=True)
+        except PermissionError as e:
+            if not self.tdenv.persist:
+                # user indicated they don't want to care about persist.
+                return False
+            if jarPath.exists():
+                raise TradeException("Unable to remove old persistence data, the file is inaccssible or open by another program")
+            raise e from e
+        
+        try:
+            stat = self.dbPath.stat()
+        except FileNotFoundError:
+            # Can't persist what we don't have
+            self.tdenv.DEBUG0("unable to persist: the db file is dead, Dave")
+            return False
+        cur_db_timestamp, cur_db_size = stat.st_mtime, stat.st_size
+        
+        header = {
+            PERSIST_FORMAT_FIELD: PERSIST_FORMAT,
+            PERSIST_TIMESTAMP_FIELD: cur_db_timestamp,
+            PERSIST_SIZE_FIELD: cur_db_size,
+        }
+        data = {
+            "system":   (self.systemByID, self.systemByName),
+            "station":  (self.stationByID, self.tradingStationCount),
+            "category": self.categoryByID,
+            "item":     self.itemByName,
+        }
+        
+        with jarPath.open("wb") as jar:
+            pickle.dump(header, jar)
+            pickle.dump(data, jar)
+            pickle.dump("fin", jar)  # EOF marker incase user kills process mid-write.
+        
+        return True
+    
+    def removePersist(self):
+        self.getPersistPath().unlink(missing_ok=True)
+    
     
     ############################################################
     # General purpose static methods.
@@ -2228,7 +2637,7 @@ class TradeDB:
 ######################################################################
 # Assorted helpers
 
-def describeAge(ageInSeconds: Union[float, int]) -> str:
+def describeAge(ageInSeconds: float | int) -> str:
     """
     Turns an age (in seconds) into a text representation.
     """
