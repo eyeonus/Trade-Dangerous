@@ -350,7 +350,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 session.execute(text("DELETE FROM StationItem WHERE modified < datetime('now', '-7 days')"))
         
         if self.getOption("optimize"):
-            with pbar.Progress(1, 40, prefix="Optimizing"):
+            with pbar.Progress(1, 40, prefix="Optimizing") as prog:
                 if self.tdb.engine.dialect.name == "sqlite":
                     with Session.begin() as session:
                         prog.increment(1)
