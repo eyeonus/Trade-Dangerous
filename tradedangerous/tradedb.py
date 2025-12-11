@@ -68,7 +68,7 @@ import time
 import typing
 
 from .tradeenv import TradeEnv
-from .tradeexcept import TradeException
+from .tradeexcept import TradeException, AmbiguityError, SystemNotStationError
 from . import cache, fs
 
 from sqlalchemy import func, select, text
@@ -129,98 +129,6 @@ PERSIST_SIZE_FIELD = "dbsz"
 
 ######################################################################
 # Classes
-
-class AmbiguityError(TradeException):
-    """
-        Raised when a search key could match multiple entities.
-
-        Attributes:
-            lookupType - description of what was being queried,
-            searchKey  - the key given to the search routine,
-            anyMatch   - list of items which were found to match, if any
-            key        - retrieve the display string for a candidate
-    """
-    def __init__(self, lookupType, searchKey, anyMatch, key=None):
-        """
-        Args:
-            lookupType
-                A string identifying what type of lookup is matching,
-                e.g. 'Item' or 'System'. This is used in the error
-                message to help the user understand what they were
-                looking for.
-            searchKey
-                The search key the user provided, e.g. "sol"
-            anyMatch
-                A list of any values that matched the key.
-            key
-                A callable which, given a candidate object from anyMatch,
-                returns a display string for that candidate.
-        """
-        if key is None:
-            key = lambda candidate: candidate
-        self.lookupType = lookupType
-        self.searchKey = searchKey
-        self.anyMatch = anyMatch
-        self.key = key
-
-    def __str__(self):
-        anyMatch, key = self.anyMatch, self.key
-
-        # ------------------------------------------------------------------
-        # Special-case: system name collisions where we passed in
-        # (index, System) pairs from TradeDB.lookupSystem.
-        # ------------------------------------------------------------------
-        if (
-            self.lookupType == "System"
-            and anyMatch
-            and isinstance(anyMatch[0], tuple)
-            and len(anyMatch[0]) >= 2
-        ):
-            lines = [
-                f'System name "{self.searchKey}" refers to more than one distinct system.',
-                "",
-                'Select the one you intended using "@N":',
-                "",
-            ]
-            for index, system in anyMatch:
-                # Be tolerant in case the contents are not exactly (int, System)
-                try:
-                    name = system.dbname
-                    x, y, z = system.posX, system.posY, system.posZ
-                    lines.append(
-                        f"    {name}@{index} — ({x:.1f}, {y:.1f}, {z:.1f})"
-                    )
-                except Exception:
-                    # Fallback to the provided key() formatter
-                    lines.append(f"    {key((index, system))}")
-            lines.append("")
-            lines.append("(Index numbers are ordered by Galactic X coordinate.)")
-            return "\n".join(lines)
-
-        # ------------------------------------------------------------------
-        # Generic ambiguity formatting used everywhere else
-        # ------------------------------------------------------------------
-        if not anyMatch:
-            return f'{self.lookupType} "{self.searchKey}" could match nothing.'
-
-        if len(anyMatch) > 10:
-            opportunities = ", ".join([key(c) for c in anyMatch[:10]] + ["." ])
-        elif len(anyMatch) == 1:
-            opportunities = key(anyMatch[0])
-        else:
-            opportunities = ", ".join(key(c) for c in anyMatch[:-1])
-            opportunities += " or " + key(anyMatch[-1])
-
-        return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
-
-    
-class SystemNotStationError(TradeException):
-    """
-        Raised when a station lookup matched a System but
-        could not be automatically reduced to a Station.
-    """
-    pass  # pylint: disable=unnecessary-pass  # (it's not)
-
 
 ######################################################################
 

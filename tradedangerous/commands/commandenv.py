@@ -85,14 +85,16 @@ class CommandEnv(TradeEnv):
             finally:
                 db_change.unlink()
         
-        self.checkMFD()
-        self.checkFromToNear()
-        self.checkAvoids()
-        self.checkVias()
-        self.checkPadSize()
+        if self.wantsTradeDB:
+            self.checkFromToNear()
+            self.checkAvoids()
+            self.checkVias()
+
         self.checkPlanetary()
         self.checkFleet()
         self.checkOdyssey()
+        self.checkPadSize()
+        self.checkMFD()
         
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
@@ -112,6 +114,8 @@ class CommandEnv(TradeEnv):
         self.mfd = X52ProMFD()
     
     def checkFromToNear(self):
+        if not self.wantsTradeDB:
+            return
         
         def check(label, fieldName, wantStation):
             key = getattr(self, fieldName, None)

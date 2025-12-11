@@ -7,7 +7,7 @@ import configparser
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine, URL
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session  # type: ignore
 from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import OperationalError
 
@@ -209,7 +209,7 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
     return engine
 # ---------- Session factory ----------
 
-def get_session_factory(engine: Engine):
+def get_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False, autoflush=True)
 
 # ---------- Health helpers ----------
