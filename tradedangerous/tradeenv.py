@@ -46,6 +46,7 @@ class BaseColorTheme:
     # style, label
     debug, DEBUG    = dim,  "#"
     note,  NOTE     = bold, "NOTE"
+    info,  INFO     = "",   "INFO"
     warn,  WARNING  = "",   "WARNING"
     
     seq_first:  str = ""        # the first item in a sequence
@@ -73,6 +74,7 @@ class BasicRichColorTheme(BaseColorTheme):
     # style, label
     debug, DEBUG   = dim,  "#"
     note,  NOTE    = bold, "NOTE"
+    info,  INFO    = "",   "INFO"
     warn,  WARNING = "[orange3]", "WARNING"
     
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover
@@ -87,6 +89,7 @@ class RichColorTheme(BasicRichColorTheme):
     DEBUG = ":spider_web:"
     NOTE  = ":information_source:"
     WARNING = ":warning:"
+    INFO  = ":gear:"
     
     # e.g. First station
     seq_first = "[cyan]"
@@ -222,75 +225,50 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             install_rich_traces(console=STDERR, show_locals=True, extra_lines=2)
         
         self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
-    
+
+    @staticmethod
+    def __disabled_uprint(*args, **kwargs) -> None:
+        pass
+
     def __getattr__(self, key: str) -> Any:
         """ Return the default for attributes we don't have """
-        
         # The first time the DEBUG attribute is referenced, register a method for it.
-        if key.startswith("DEBUG"):
-            
-            # Self-assembling DEBUGN functions
-            def __DEBUG_ENABLED(outText, *args, **kwargs):
-                # Give debug output a less contrasted color.
-                self.console.print(f"{self.theme.debug}{self.theme.DEBUG}{outText.format(*args, **kwargs)}")
-            
-            def __DEBUG_DISABLED(*args, **kwargs):
-                pass
-            
-            # Tried to call a .DEBUG<N> function which hasn't
-            # been called before; create a stub.
-            debugLevel = int(key[5:])
-            if self.debug > debugLevel:
-                debugFn = __DEBUG_ENABLED
-            else:
-                debugFn = __DEBUG_DISABLED
-            setattr(self, key, debugFn)
-            return debugFn
-        
-        if key == "NOTE":
-            
-            def __NOTE_ENABLED(outText, *args, stderr: bool = False, **kwargs):
-                self.uprint(
-                    f"{self.theme.note}{self.theme.NOTE}: {str(outText).format(*args, **kwargs)}",
-                    stderr=stderr,
-                )
-            
-            def __NOTE_DISABLED(*args, **kwargs):
-                pass
-            
-            # Tried to call "NOTE" but it hasn't been called yet,
-            if not self.quiet:
-                noteFn = __NOTE_ENABLED
-            else:
-                noteFn = __NOTE_DISABLED
-            setattr(self, key, noteFn)
-            return noteFn
-        
-        if key == "WARN":
-            
-            def _WARN_ENABLED(outText, *args, stderr: bool = False, **kwargs):
+        disabled: bool = False
+        theme_prefix: str | None = None
+        theme_label:  str | None = None
+        match key:
+            case "WARN" if self.quiet > 1:
+                disabled = True
+            case "WARN":
+                theme_prefix, theme_label = self.theme.warn, self.theme.WARNING
+            case "NOTE" | "INFO" if self.quiet:
+                disabled = True
+            case "NOTE":
+                theme_prefix, theme_label = self.theme.note, self.theme.NOTE
+            case "INFO":
+                theme_prefix, theme_label = self.theme.info, self.theme.INFO
+            case _ if key.startswith("DEBUG") and self.debug <= int(key[5:]):
+                disabled = True
+            case _ if key.startswith("DEBUG"):
+                theme_prefix, theme_label = self.theme.debug, self.theme.DEBUG
+
+        # If there's no function but there's a theme, create a function
+        if disabled:
+            setattr(self, key, self.__disabled_uprint)
+            return self.__disabled_uprint
+
+        if theme_prefix is not None:
+            def __log_helper(outText, *args, stderr: bool = False, **kwargs):
                 try:
-                    # Try to apply .format if args/kwargs are supplied
-                    if args or kwargs:
-                        msg = str(outText).format(*args, **kwargs)
-                    else:
-                        msg = str(outText)
-                except Exception:
+                    msg = str(outText) if not (args or kwargs) else str(outText).format(*args, **kwargs)
+                except Exception:  # noqa  # bare exception
                     # Fallback: dump raw message + args/kwargs repr
                     msg = f"{outText} {args!r} {kwargs!r}"
                 
-                self.uprint(
-                    f"{self.theme.warn}{self.theme.WARNING}: {msg}",
-                    stderr=stderr,
-                )
-            
-            def _WARN_DISABLED(*args, **kwargs):
-                pass
-            
-            noteFn = _WARN_DISABLED if self.quiet > 1 else _WARN_ENABLED
-            setattr(self, key, noteFn)
-            return noteFn
-        
+                self.uprint(f"{theme_prefix}{theme_label}: {msg}", stderr=stderr)
+
+            setattr(self, key, __log_helper)
+            return __log_helper
         
         return None
     
