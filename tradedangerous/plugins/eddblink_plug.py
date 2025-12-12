@@ -124,6 +124,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'optimize':     "Optimize ('vacuum') database after processing.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
         '7days':        "Ignore data more than 7 days old during import, and expire old records after import.",
+        'bootstrap':    "Helper to 'do the right thing' and get you some data",
     }
     
     def __init__(self, tdb, tdenv):
@@ -304,6 +305,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if listing_time < time_cutoff:
                             continue
                         dt_listing_time = from_timestamp(listing_time, utc)
+
+                        if listing[5] == "0" and listing[6] == "0":
+                            continue
                         
                         row = {
                             "station_id":   station_id,
@@ -375,10 +379,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Enable 'listings' by default unless other explicit options are present
         default = True
         for option in self.options:
-            if option not in ('force', 'skipvend', 'purge'):
+            if option not in ('force', 'skipvend', 'purge', '7days'):
                 default = False
         if default:
             self.options["listings"] = True
+        
+        if self.getOption("bootstrap"):
+            self.tdenv.NOTE("[bold][blue]bootstrap: Greetings, Commander!")
+            self.tdenv.NOTE("[yellow]This first-time import might take several minutes or longer, it ensures your database is up to date with current EDDBLink System, Station, and Item tables as well as trade listings for the last 7 days.")
+            self.tdenv.NOTE("[yellow]You can run this same command later to import updates - which should be much faster, or `trade import -P eddblink -O 7days,skipvend`.")
+            self.tdenv.NOTE("[yellow]To contribute your own discoveries to market data, consider running the Elite Dangerous Market Connector while playing.")
+            for child in ["system", "station", "item", "listings", "skipvend", "7days"]:
+                self.options[child] = True
         
         # Check if database already exists and enable `clean` if not.
         if lifecycle.is_empty(self.tdb.engine):
@@ -407,8 +419,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             self.options["all"] = True
             self.options["force"] = True
-        
-        
+
         # Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True

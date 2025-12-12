@@ -1,6 +1,7 @@
 # tradedangerous/db/orm_models.py
 from __future__ import annotations
 
+import datetime
 from typing import Optional
 
 from sqlalchemy import (
@@ -43,7 +44,7 @@ def _default_now(element, compiler, **kw):
 
 
 class DateTime6(TypeDecorator):
-    """DATETIME that is DATETIME(6) on MySQL/MariaDB, generic DateTime elsewhere."""
+    """DATETIME that is DATETIME(6) on MySQL/MariaDB, generic DateTime elsewhere. Always UTC."""
     impl = DateTime
     cache_ok = True
     
@@ -51,7 +52,14 @@ class DateTime6(TypeDecorator):
         if dialect.name in ("mysql", "mariadb"):
             from sqlalchemy.dialects.mysql import DATETIME as _MYSQL_DATETIME
             return dialect.type_descriptor(_MYSQL_DATETIME(fsp=6))
-        return dialect.type_descriptor(DateTime())
+        return dialect.type_descriptor(DateTime(timezone=True))
+    
+    def process_result_value(self, value, dialect):
+        """Ensure all datetimes loaded from DB are UTC-aware."""
+        if value is not None and value.tzinfo is None:
+            # Database stored naive datetime; treat it as UTC
+            return value.replace(tzinfo=datetime.timezone.utc)
+        return value
 
 
 # ---------- Dialect Helpers --------
@@ -141,6 +149,9 @@ class System(Base):
         nullable=False,
     )
     
+    def dbname(self) -> str:
+        return f"{self.name.upper()}/"
+    
     # Relationships
     added: Mapped[Optional["Added"]] = relationship(back_populates="systems")
     stations: Mapped[list["Station"]] = relationship(back_populates="system", cascade="all, delete-orphan")
@@ -158,6 +169,9 @@ class Station(Base):
     
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
+    
+    def dbname(self) -> str:
+        return f"{self.system.name}/{self.name}"
     
     # type widened; cascade semantics unchanged (DELETE only)
     system_id: Mapped[int] = mapped_column(
@@ -216,6 +230,10 @@ class Item(Base):
         ForeignKey("Category.category_id", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
     )
+    def dbname(self, detail: int | bool = 0) -> str:
+        if detail:
+            return f"{self.category.name}/{self.name}"
+        return self.name
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     avg_price: Mapped[int | None] = mapped_column(Integer)
     fdev_id: Mapped[int | None] = mapped_column(Integer)
