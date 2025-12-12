@@ -1,6 +1,15 @@
 """
 tradeorm provides the TradeORM class which uses the sqlite3 database
 rather than trying to be its own database in its own right like TradeDB.
+
+Suggested use:
+
+    # TradeEnv is optional, it's for controlling environment settings
+    # builder-pattern style.
+    from tradedangerous import TradeEnv, TradeORM
+
+    tde = TradeEnv()  # debug settings, color, etc...
+    tdo = TradeORM(tde)  # if not supplied, it will make its own
 """
 from __future__ import annotations
 from pathlib import Path
@@ -63,14 +72,11 @@ class TradeORM:
         #
         # However: we also want them to be able to create transactions, etc
         # so we also make the session-factory available.
-        self.session_maker = get_session_factory(self.engine)
-        self.session = self.session_maker()
+        self.session = get_session_factory(self.engine)()
 
-    def __enter__(self) -> Session:
-        return self.session_maker().begin()
-
-    def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
-        pass
+    def commit(self):
+        """ Commit the current transaction state. """
+        return self.session.commit()
 
     def lookup_station(self, name: str) -> orm.Station | None:
         """ Use the database to lookup a station, which accepts a name that
