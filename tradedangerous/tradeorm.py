@@ -1,5 +1,5 @@
 """
-tradeorm provides the TradeORM class which uses the sqlite3 database
+tradeorm provides the TradeORM class which uses the application database
 rather than trying to be its own database in its own right like TradeDB.
 
 Suggested use:
