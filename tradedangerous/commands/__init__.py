@@ -26,6 +26,8 @@ from . import station_cmd
 from . import trade_cmd
 from . import update_cmd
 
+from tradedangerous import version
+
 commandIndex = {
     cmd[0:cmd.find('_cmd')]: getattr(thismodule, cmd)
     for cmd in thismodule.__dir__() if cmd.endswith("_cmd")
@@ -43,7 +45,7 @@ class HelpAction(argparse.Action):
     
     def __call__(self, parser, namespace, values, option_string = None):
         raise exceptions.UsageError(
-                "TradeDangerous help",
+                f"TradeDangerous v{version.__version__} help",
                 parser.format_help()
         )
 
@@ -74,7 +76,7 @@ def addArguments(group, options, required, topGroup = None):
 def _findFromFile(cmd, prefix = '.tdrc'):
     if cmd:
         # check the current directory, fall back to home
-        filename = '{}_{}'.format(prefix, cmd)
+        filename = f'{prefix}_{cmd}'
         for dirname in '.', os.path.expanduser('~'):
             cmdPath = pathlib.Path(dirname) / filename
             if cmdPath.exists():
@@ -119,9 +121,9 @@ class CommandIndex:
         
         text += (
             "\n"
-            "For additional help on a specific command, such as '{cmd}' use\n"
-            "  {prog} {cmd} -h"
-                .format(prog = argv[0], cmd = lastCmdName)
+            f"Version {version.__version__}\n"
+            f"For additional help on a specific command, such as '{lastCmdName}' use\n"
+            f"  {argv[0]} {lastCmdName} -h"
             )
         return text
     
@@ -144,16 +146,13 @@ class CommandIndex:
                     candidates.append([name, module])
             if not candidates:
                 raise exceptions.CommandLineError(
-                        "Unrecognized command, '{}'".format(cmdName),
+                        f"Unrecognized command, '{cmdName}'",
                         self.usage(argv)
                 )
             if len(candidates) > 1:
+                candidate_names = ', '.join(c[0] for c in candidates)
                 raise exceptions.CommandLineError(
-                        "Ambiguous command, '{}', "
-                        "could match: {}".format(
-                            cmdName,
-                            ', '.join(c[0] for c in candidates)
-                        ),
+                        f"Ambiguous command, '{cmdName}', could match: {candidate_names}",
                         self.usage(argv)
                 )
             argv[1] = cmdName = candidates[0][0]
@@ -164,11 +163,10 @@ class CommandIndex:
                 raise exceptions.CommandLineError(message, self.format_usage())
         
         parser = ArgParser(
-                    description = "TradeDangerous: " + cmdName,
+                    description = f"TradeDangerous v{version.__version__}: {cmdName}",
                     add_help = False,
-                    epilog = 'Use {prog} {cmd} -h for more help'.format(
-                            prog = argv[0], cmd = argv[1]
-                        ),
+                    allow_abbrev = True,
+                    epilog = f"Version {version.__version__}.\nUse {argv[0]} {argv[1]} -h for more help",
                     fromfile_prefix_chars = fromfile_prefix,
                 )
         parser.set_defaults(_editing = False)
@@ -230,7 +228,7 @@ class CommandIndex:
         
         fromfilePath = _findFromFile(cmdModule.name)
         if fromfilePath:
-            argv.insert(2, '{}{}'.format(fromfile_prefix, fromfilePath))
+            argv.insert(2, f'{fromfile_prefix}{fromfilePath}')
         
         # Parse argv; optionally swallow unknown args/switches if the module allows it.
         accept_unknown = getattr(cmdModule, 'acceptUnknown', False)
