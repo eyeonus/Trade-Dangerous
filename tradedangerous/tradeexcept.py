@@ -39,7 +39,7 @@ class MissingDB(TradeException):
     def __init__(self, dbpath: str | Path):
         super().__init__(
             f"{dbpath}: Data file(s) are missing, you must initialize the database first. "
-            "Consider using `trade import -Peddblink -Obootstrap` or if you are "
+            "Consider using `trade import -P eddblink -O bootstrap` or if you are "
             "managing data by hand, use the buildcache subcommand."
         )
 
