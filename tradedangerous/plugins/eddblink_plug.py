@@ -124,6 +124,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'optimize':     "Optimize ('vacuum') database after processing.",
         'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
         '7days':        "Ignore data more than 7 days old during import, and expire old records after import.",
+        'units':        "Treat listing entries with 0 units as having the corresponding supply/demand price treated as 0. This stops things like Tritium showing up where it's not available but someone was able to sell it.",
         'bootstrap':    "Helper to 'do the right thing' and get you some data",
     }
     
@@ -282,6 +283,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 from_live_val = int(from_live)
                 week_in_seconds = 7 * 24 * 60 * 60
                 time_cutoff = 0 if not self.getOption("7days") else time.time() - week_in_seconds
+                squelch_zero_units = self.getOption("units")
                 
                 # Columns:
                 #
@@ -294,6 +296,21 @@ class ImportPlugin(plugins.ImportPluginBase):
                 for listing in reader:
                     bump_progress()
                     try:
+                        if squelch_zero_units:
+                            if listing[3] == "0":
+                                listing[3] = listing[4] = listing[5] = "0"
+                            if listing[7] == "0":
+                                listing[6] = listing[7] = listing[8] = "0"
+                        
+                        # Do the cheapest skip-check first
+                        if listing[5] == "0" and listing[6] == "0":
+                            continue
+
+                        # Cheap numeric condition
+                        listing_time = int(listing[9])
+                        if listing_time < time_cutoff:
+                            continue
+
                         station_id = int(listing[1])
                         if station_id not in station_lookup:
                             continue
@@ -302,13 +319,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if item_id not in item_lookup:
                             continue  # skip rare items (not in Item table)
                         
-                        listing_time = int(listing[9])
-                        if listing_time < time_cutoff:
-                            continue
                         dt_listing_time = from_timestamp(listing_time, utc)
-
-                        if listing[5] == "0" and listing[6] == "0":
-                            continue
                         
                         row = {
                             "station_id":   station_id,
@@ -385,7 +396,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Enable 'listings' by default unless other explicit options are present
         default = True
         for option in self.options:
-            if option not in ('force', 'skipvend', 'purge', '7days'):
+            if option not in ('force', 'skipvend', 'purge', '7days', 'units'):
                 default = False
         if default:
             self.options["listings"] = True
