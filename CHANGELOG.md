@@ -1,4 +1,177 @@
-# CHANGELOG## 
+# CHANGELOG
+
+## v12.6.0 (2025-12-14)
+
+### Feature
+
+* feat: add `units` option to eddblink import
+
+  Adds a `-O units` option to the eddblink import plugin to handle listings
+  with inconsistent unit data. Some EDDB-derived listings report a valid
+  supply or demand price but a units value of zero (e.g. items appearing at
+  stations that clearly do not sell them).
+
+  When enabled, this option treats such entries as having zero effective
+  supply or demand (depending on the field), which suppresses listings that
+  are not actually present at a station.
+
+  Note: this may make it harder to identify buyers for certain rare or
+  inventory-only items (e.g. Guardian Orb), which will now only appear if
+  the item is present in inventory.  
+  ([`d095394`](https://github.com/eyeonus/Trade-Dangerous/commit/d09539440ca53bebf7200ecd0c64e17393936c72))
+
+## v12.5.1 (2025-12-12)
+
+### Fixes
+
+* fix: progress bars
+
+  Corrects progress bar behaviour.  
+  ([`d232951`](https://github.com/eyeonus/Trade-Dangerous/commit/d2329511880ac5bd9a0b72406e0572db610eed22))
+
+## v12.5.0 (2025-12-15)
+
+### Feature
+
+* feat: show Trade Dangerous version in help output
+
+  Adds the application version to the help output. 
+  ([`2976efd`](https://github.com/eyeonus/Trade-Dangerous/commit/2976efd2534af8384347125c500f95e76c85d86e))
+
+### Documentation
+
+* docs: update documentation to reflect application database usage. 
+  ([`8b44887`](https://github.com/eyeonus/Trade-Dangerous/commit/8b448870a2a4261155cb85d3476e9b577775ddf2))
+
+## v12.4.0 (2025-12-12)
+
+### Feature
+
+* feat: introduce `TradeORM` and migrate `trade` command to it
+
+  Introduces the `TradeORM` wrapper as an alternative to `TradeDB` for accessing
+  database-backed data, and migrates the `trade` subcommand to use it.
+
+  `TradeORM` provides:
+  - A wrapper around an existing SQLAlchemy session, rather than creating or
+    populating the database.
+  - Direct use of SQLAlchemy ORM models, enabling lazy loading and on-demand
+    access without preloading large tables.
+  - A clear separation between database access and database lifecycle.
+  - A foundation for transitioning additional subcommands away from `TradeDB`
+    over time.
+
+  As part of this migration:
+  - Commands can now access the database without implicitly creating or
+    populating it.
+  - ORM model helpers are consolidated in `orm_models.py`.
+  - The `trade` command’s output logic is updated to work cleanly with ORM data.
+
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+   [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+* feat: add bootstrap option to eddblink import plugin
+
+  Adds a `bootstrap` option to the eddblink import plugin to help new users get
+  started with a minimal but usable dataset.
+
+  Usage:
+
+trade import -Peddblink -Obootstrap
+
+This:
+- Populates `System`, `Station`, `Item`, and listings tables.
+- Produces an initial working dataset covering approximately seven days.
+- Prints a friendly greeting and guidance for next steps.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+* feat: support explicit “missing database” exception
+
+Introduces a dedicated exception and messaging for the case where no database
+exists. This supports the move to ORM-based access, where the database is no
+longer implicitly created, and provides clear guidance on how to initialise
+one when required.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+* feat: expand ORM model representations
+
+Improves string and debug representations of ORM models to make diagnostics,
+logging, and debugging clearer when working with ORM-backed commands.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+### Fix
+
+* fix: allow commands that do not use `TradeDB` to share common argument names
+
+Fixes an issue where subcommands marked as `wantsTradeDB = False` would still
+trigger `TradeDB` lookups when using common argument names (such as `origin`).
+This allows ORM-backed and non-TradeDB commands to coexist while continuing
+to use standard CLI parameters.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`f0531c7`](https://github.com/eyeonus/Trade-Dangerous/commit/f0531c7))
+
+* fix: correct MissingDB error text and argument handling
+
+Ensures the MissingDB error message uses the correct argument style and
+references a filename that actually exists.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`ab3f6f0`](https://github.com/eyeonus/Trade-Dangerous/commit/ab3f6f0))
+
+* fix: eliminate begin/session contextmanager approach in `TradeORM`
+
+Removes the exposed begin/session contextmanager pattern from `TradeORM`.
+`TradeORM` is now explicitly a wrapper *around* a session and its data, rather
+than a factory for creating or managing new sessions.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`7ca506b`](https://github.com/eyeonus/Trade-Dangerous/commit/7ca506b))
+
+* fix: reduce excessive row retrieval in ORM queries
+
+Refactors ORM queries that were retrieving more rows than necessary,
+improving performance and correctness.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+### Chore
+
+* chore: move exceptions into `tradeexcept`
+
+Consolidates common exceptions into `tradeexcept` to avoid importing
+`TradeDB` solely for error types. Existing imports via `.tradedb` remain
+supported for compatibility. Ambiguity handling is simplified, with a
+configurable global limit and improved formatting.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+* chore: trade command formatting and output cleanup
+
+Cleans up trade output formatting, including:
+- Printing units instead of level where appropriate.
+- Only showing units when `detail > 1`.
+- Showing age when `detail >= 1`.
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+* chore: internal cleanup
+
+Includes type hinting improvements, unused import removal, linter noise
+fixes, logging/debugging improvements for TradeORM, ambiguity handling
+cleanups, and whitespace normalisation (tabs vs spaces).
+
+([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+ [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
 
 ## v12.3.0 (2025-12-11)
 
