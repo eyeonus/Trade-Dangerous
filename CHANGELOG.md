@@ -1,4 +1,167 @@
-# CHANGELOG
+# CHANGELOG## 
+
+## v12.3.0 (2025-12-11)
+
+### Feature
+
+* feat: support disambiguating duplicate system names with `@N`
+
+  Adds explicit disambiguation support for systems that share the same name.
+  Previously, duplicate system names could be silently collapsed or resolved
+  unpredictably.
+
+  Changes include:
+  - Treat multiple systems with the same name as an ambiguity instead of a
+    single entry.
+  - Update system name lookup to support a 1→many mapping with deterministic
+    ordering.
+  - Allow `System Name@N` syntax to select a specific system by index.
+  - Improve ambiguity error messages to include coordinates and `@N` hints.
+  - Preserve existing behaviour for normal abbreviations (e.g. `james`).
+
+  Fixes #224.  
+  ([`2819024`](https://github.com/eyeonus/Trade-Dangerous/commit/28190241b6727707ac6bd2b2459fefc7f97475d1))
+
+* feat: improved logging and automatic SQLite tuning during imports
+
+  Enhances logging and database tuning behaviour, particularly around
+  eddblink imports:
+
+  - Introduce an explicit `INFO` log level (shown as a gear icon in colour mode).
+  - Streamline logger generation using a match-based implementation.
+  - Automatically request SQLite optimisation after imports using
+    `PRAGMA optimize` when SQLite reports potential benefit.
+  - When running eddblink with `--opt=optimize`, perform more aggressive
+    tuning (`VACUUM` + `ANALYZE`).
+  - Apply SQLite optimisation guidance when rebuilding caches.
+  - Add a `bench` decorator to time long-running operations and integrate
+    timing with progress bars.
+  - Move tuning into a dedicated phase so optimisation can be run even when
+    no data updates occur, allowing eddblink to be used purely for database
+    maintenance.
+
+  ([`915c7d8`](https://github.com/eyeonus/Trade-Dangerous/commit/915c7d8ddede53d20778eec85b3170df84f2b0d0))
+
+### Fix
+
+* fix: allow lookupSystem to accept System/Station objects again. 
+  ([`95a6d04`](https://github.com/eyeonus/Trade-Dangerous/commit/95a6d045154ba58a739f9d3b1335313797772906))
+
+## v12.2.0 (2025-12-07)
+
+### Feature
+
+* feat: add `7days` option to eddblink import plugin
+
+  Adds a `-O7days` option to the eddblink plugin to limit imports to data
+  collected within the last seven days. Older entries are pruned from
+  `StationItem`, reducing dataset size and improving the performance of
+  subsequent trade runs.  
+  ([`3d2943a`](https://github.com/eyeonus/Trade-Dangerous/commit/3d2943ab03201ceb4a2a201efb4a7f5dda8d8635))
+
+* feat: improve eddblink import performance
+
+  Improves performance of the eddblink importer by reducing per-row overhead,
+  optimising inner loops, and better leveraging bulk database operations.
+  Import behaviour is unchanged, but large imports complete faster with
+  reduced CPU overhead.  
+  ([`e8cf541`](https://github.com/eyeonus/Trade-Dangerous/commit/e8cf541b822f816765bacbd204f6a160775465f5))
+
+### Chore
+
+* chore: pythonic cleanup  
+  ([`44051e7`](https://github.com/eyeonus/Trade-Dangerous/commit/44051e755b4f7f6753ab8c9e9408346c499707cd))
+
+* chore: expose top-level objects from module
+
+  Exposes commonly used objects (including `TradeEnv`) at the package
+  top level for easier imports.  
+  ([`a9bd556`](https://github.com/eyeonus/Trade-Dangerous/commit/a9bd5563a8378addccbc663a3ec4924acc10beee))
+
+v12.1.1 (2025-12-01)
+
+### Feature
+
+* feat: persist `TradeDB` state between runs to reduce startup time
+
+  Introduces persistence of the post-load `TradeDB` state using Python’s
+  built-in object shelving (“pickle”) to avoid repeated startup costs.
+  The loaded `System`, `Station`, `Category`, and `Item` tables are cached
+  to disk and reused across runs, significantly reducing startup time
+  (observed improvements of ~8–15 seconds on older systems).
+
+  The persisted state is stored in `data/TradeDB.pj` (“pickle jar”) and is
+  automatically discarded and rebuilt if the database file changes or
+  during import operations, ensuring correctness is preserved.  
+  ([`5e11cfe`](https://github.com/eyeonus/Trade-Dangerous/commit/5e11cfeb39705557e7d99e98efe184ff12c6e966),
+   [`9263784`](https://github.com/eyeonus/Trade-Dangerous/commit/92637845d44447dc9907f54e8899101b6211b99f))
+
+### Fix
+
+* fix: restore unit test stability and ensure clean database shutdown
+
+  Fixes broken unit tests by forcing a clean shutdown of `TradeDB` /
+  SQLAlchemy objects that were no longer referenced but were still holding
+  active database file handles. This prevents file locking issues and
+  stabilises test teardown behaviour.
+
+  Additional dead code removal, minor reorganisation, and typing fixes were
+  performed while tracking down the underlying issue.  
+  ([`452a7cb`](https://github.com/eyeonus/Trade-Dangerous/commit/452a7cb87665c137124fdb6c9e132fe5a7c83a85))
+
+* fix: remove unused `ensureflag` helper and associated tests  
+  ([`7185d78`](https://github.com/eyeonus/Trade-Dangerous/commit/7185d78e2f5bf961117da7ed3fbceb9bdfa123b9))
+
+### Chore
+
+* chore: defer rarely-used tables to database access
+
+  Deprecates explicit loading of infrequently-used tables (such as `Added`
+  and `Ships`) and defers access to the database layer instead. This reduces
+  unnecessary load-time work and removes obstacles to treating `TradeDB`
+  as a thin layer over database access.  
+  ([`3b13b9c`](https://github.com/eyeonus/Trade-Dangerous/commit/3b13b9ccc8b4f7aefa5e9385e9f682bcf647e01f))
+
+* chore: typing, import cleanup, and internal maintenance
+
+  Adds and modernises type hints, moves imports to appropriate top-level
+  locations, removes unused or masked SQLAlchemy imports, and replaces
+  legacy in-memory types with their database-backed equivalents where
+  appropriate.  
+  ([`991c08c`](https://github.com/eyeonus/Trade-Dangerous/commit/991c08cf51d0d741b69985d2329db20710b55b1a))
+
+* chore: restore `checkAvoids()` placement after fast-validation refactor
+
+  Moves `checkAvoids()` back to its original location after an accidental
+  over-cut during fast-validation work. No behavioural change.  
+  ([`9c10375`](https://github.com/eyeonus/Trade-Dangerous/commit/9c10375e89df1b0f5528dce0945546767b41054e))
+
+* chore: type hints for `fs.py`  
+  ([`48b2bd4`](https://github.com/eyeonus/Trade-Dangerous/commit/48b2bd4f880e22e9bae29b65bbeef7b5e124737f))
+
+* chore: fix-indents  
+  ([`032fee0`](https://github.com/eyeonus/Trade-Dangerous/commit/032fee0dc4b478f370f106584dcaceb3e85208ea))
+
+
+## v12.1.0 (2025-11-30)
+
+### Feature
+
+* feat: add early validation for trade runs
+
+  Introduces fast-fail validation of basic trade run parameters before
+  expensive database loading occurs, allowing invalid invocations to be
+  rejected quickly and with clearer diagnostics.  
+  ([`95c024c`](https://github.com/eyeonus/Trade-Dangerous/commit/95c024c043b629f77b107a2dda2885dd274e9f87))
+
+### Fix
+
+* fix: validate against raw CLI flags during early fast-fail checks
+
+  Corrects early validation logic to use the original CLI flags
+  (e.g. starting/ending constraints) rather than DB-resolved fields, ensuring
+  fast-fail checks behave correctly before database access has occurred.  
+  ([`63cda00`](https://github.com/eyeonus/Trade-Dangerous/commit/63cda0071ce4f912727a5687fccab860a3ebf994))
 
 ## v12.0.18 (2025-11-25)
 
@@ -322,8 +485,6 @@
    [`e90ed5b`](https://github.com/eyeonus/Trade-Dangerous/commit/e90ed5b3a990a342330afb8adbc2cfa3990a825b),
    [`1385706`](https://github.com/eyeonus/Trade-Dangerous/commit/1385706ddf87c2fd49e47ac342de716c2e7be6aa))
 
----
-
 ### Refactor
 
 * refactor: migrate core modules to ORM and backend-neutral SQL
@@ -345,8 +506,6 @@
    [`3264132`](https://github.com/eyeonus/Trade-Dangerous/commit/32641324908b59833d5c9721eabb9eff2ce7014f),
    [`32386ee`](https://github.com/eyeonus/Trade-Dangerous/commit/32386eecf801b70f635dc8df03d19124a176ebca))
 
----
-
 ### Fix
 
 * fix: importer correctness, FK handling, and data integrity issues
@@ -365,8 +524,6 @@
   ([`babe6d7`](https://github.com/eyeonus/Trade-Dangerous/commit/babe6d701c03b979b9ecba39001cdc3aabb6f363),
    [`0dcc2c5`](https://github.com/eyeonus/Trade-Dangerous/commit/0dcc2c5bb59df89dc31b9788fec863c91af89ba5))
 
----
-
 ### Documentation
 
 * docs: update README and project documentation for v12
@@ -376,8 +533,6 @@
   ([`00b124c`](https://github.com/eyeonus/Trade-Dangerous/commit/00b124c1717b91ba944d1cd901cb690fff10b15b),
    [`7748478`](https://github.com/eyeonus/Trade-Dangerous/commit/7748478e4a19cfff9973b9c6c23b159167e2c1d6),
    [`84a56f2`](https://github.com/eyeonus/Trade-Dangerous/commit/84a56f2cb7a7674d357ca7b8681dbe7ab7c62a5f))
-
----
 
 ### Chore
 
