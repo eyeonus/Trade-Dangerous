@@ -1,13 +1,393 @@
 # CHANGELOG
 
-### Chore
-
-* chore: trade.py's main was not correctly honoring the argv parameter
+## v12.0.18 (2025-11-25)
 
 ### Fix
 
-* fix: Reduced a large performance overhead from station loading
-* fix: Reduced small progress-related overheads from trade calculations
+* fix: significantly reduce station loading overhead
+
+  Improves station loading performance by eliminating repeated uncached
+  lookups during station iteration. Previously, per-station logic repeatedly
+  performed dictionary lookups to resolve type IDs (including fleet-carrier
+  checks), resulting in substantial wasted work and slow iteration.  
+  ([`84b479e`](https://github.com/eyeonus/Trade-Dangerous/commit/84b479effbb37cd16d3a8f73ba38c8d3ba3d259e))
+
+* fix: reduce minor but pervasive trade calculation overheads
+
+  Removes several small but high-frequency sources of overhead in trade
+  calculations:
+  - Replace slower `list.append()` patterns with `list += […]` where applicable.
+  - Avoid unconditional heartbeat calls when progress reporting is disabled.
+  - Reduce calls to `time.time()` by invoking heartbeat logic intermittently
+    instead of per-station.
+
+  Collectively, these changes reduce CPU overhead in large trade runs.  
+  ([`a5a6015`](https://github.com/eyeonus/Trade-Dangerous/commit/a5a6015d0de531895a79a084f6da4bc5f541845d))
+
+* fix: honour explicit argv when invoking `main()`
+
+  Ensures that when `main()` is called with an explicit `argv`, that argument
+  vector is used instead of implicitly falling back to `sys.argv`.  
+  ([`25d46e2`](https://github.com/eyeonus/Trade-Dangerous/commit/25d46e24f3e6cfd49773d2a9c5bdd209d0cf8e0d))
+
+* fix: correct missing indentation  
+  ([`489761f`](https://github.com/eyeonus/Trade-Dangerous/commit/489761ff14645cb42a281bcd8e7cd8e5f5c4742c))
+
+### Chore
+
+* chore: update changelog  
+  ([`e0c0f5e`](https://github.com/eyeonus/Trade-Dangerous/commit/e0c0f5e31f3e844a1608306ca8843f253981afe1))
+
+## v12.0.17 (2025-11-11)
+
+### Fix
+
+* fix: prevent source station from being treated as a destination in jump expansion
+
+  Corrects logic in `expandForJumps` to ensure the source station is not
+  incorrectly considered as a candidate destination during jump expansion.  
+  ([`60a1884`](https://github.com/eyeonus/Trade-Dangerous/commit/60a1884206afb0c3cb3c4984477b86d60f3379ec))
+
+### Chore
+
+* chore: update bug report issue template  
+  ([`1f70a64`](https://github.com/eyeonus/Trade-Dangerous/commit/1f70a645f9a591df93daadb40be239145fb2a6d0))
+
+## v12.0.16 (2025-11-10)
+
+### Fix
+
+* fix: make credit parser case-insensitive
+
+  Ensures the credit parser handles input case-insensitively by normalising
+  values before parsing.  
+  ([`cd5373d`](https://github.com/eyeonus/Trade-Dangerous/commit/cd5373d4275f97fc259c7a2512a32078f30f4dda))
+
+## v12.0.15 (2025-11-07)
+
+### Fix
+
+* fix: significantly reduce `trade` command startup and memory overhead
+
+  Speeds up the `trade` subcommand by restricting station preloading to only
+  those stations relevant to the resolved origin and destination.
+
+  Key changes include:
+  - Resolve origin and destination **before** constructing `TradeCalc`,
+    avoiding unnecessary global station preloads.
+  - Add optional `restrict_station_ids` parameter to `TradeCalc.__init__`,
+    applying a targeted `WHERE station_id IN (…)` filter when provided.
+  - Fix `item_id IN (…)` filtering by explicitly enumerating placeholders,
+    ensuring the SQLAlchemy Core query path executes correctly.
+
+  Behaviour for all other subcommands is unchanged.
+
+  Observed improvement on a representative run:
+  - Elapsed time: ~90.7s → ~5.7s
+  - Max RSS: ~2.06 GB → ~0.61 GB
+
+  ([`186679f`](https://github.com/eyeonus/Trade-Dangerous/commit/186679f66247c2d9b4841b477009633e669b40c5))
+
+## v12.0.14 (2025-11-06)
+
+### Documentation
+
+* docs: restore detailed mathematical commentary in trade calculations
+
+  Restores extensive inline comments explaining trade-calculation mathematics
+  that were unintentionally removed.
+  ([`9b9fc85`](https://github.com/eyeonus/Trade-Dangerous/commit/9b9fc8574d726032dbdac2a8cdd8a0bacd082422))
+
+## v12.0.13 (2025-11-06)
+
+### Fix
+
+* fix: ensure trade routes correctly honour destination constraints
+
+  Corrects destination enumeration and filtering logic so trade runs reliably
+  reach the intended `--to` system or station, and so `--direct` behaves
+  sensibly when used without an explicit destination.
+
+  Key changes include:
+  - Use duck typing instead of ORM-specific checks so destination restriction
+    logic works consistently with both ORM and legacy objects.
+  - When `--direct` is used without `--to` / `--towards`, consider all eligible
+    destination stations instead of none.
+  - Correct inverted buy/sell station maps for `--from` and `--to`.
+  - For `--to SYSTEM`, scan all stations and skip unsuitable ones rather than
+    aborting on the first failure; retain strict behaviour for `--to STATION`.
+  - Make destination filtering tolerant for `--to` / `--from`, while keeping
+    `--via` strict to preserve explicit constraints.
+
+  Behavioural outcomes:
+  - Routes now consistently terminate at the requested destination when a
+    viable path exists.
+  - `--direct` produces sensible single-hop routes.
+  - Existing constraints (pad size, age, Odyssey, fleet carriers, etc.) remain
+    unchanged.
+
+  ([`e151391`](https://github.com/eyeonus/Trade-Dangerous/commit/e1513919a67f9de934b2fcdf23d3050503010d3e),
+   [`41a2fdd`](https://github.com/eyeonus/Trade-Dangerous/commit/41a2fdd11633acfab60bdf50e65aa65e76a05be9))
+
+## v12.0.12 (2025-11-06)
+
+### Fix
+
+* fix: improve progress output rendering during calculations
+
+  Ensures progress output overwrites the entire line when displaying
+  calculations with `--progress`, preventing partial or garbled output.  
+  ([`74017fa`](https://github.com/eyeonus/Trade-Dangerous/commit/74017faebf95a145fe31791a22eb8d71e1bfa8ad))
+  
+## v12.0.11 (2025-11-02)
+
+### Fix
+
+* fix: restore `StationItem.csv` support in database imports
+
+  Restores use of `StationItem.csv` during database imports to maintain
+  compatibility with third-party workflows that rely on non crowd-sourced
+  market data.
+  
+  ([`f713597`](https://github.com/eyeonus/Trade-Dangerous/commit/f713597f9cd84b49ce9301a3b48d79f13a2ade99))
+## v12.0.10 (2025-10-31)
+
+### Fix
+
+* fix: restore timing parity across database backends
+
+  Fixes timestamp handling in `utils.py` to ensure consistent age and update
+  calculations across SQLite and MySQL/MariaDB backends.
+
+  - Corrects SQLite age calculations by using `julianday()` instead of
+    `julianday(current_date)`, avoiding negative ages for same-day timestamps.
+  - Relaxes modified-time guards from `>` to `>=` to account for SQLite’s
+    whole-second timestamp truncation and prevent missed updates.
+
+  ([`5515e58`](https://github.com/eyeonus/Trade-Dangerous/commit/5515e58265f50f83fadfc0e4182fe4caf76f9961))
+
+## v12.0.9 (2025-10-30)
+
+### Fix
+
+* fix: correct trade calculation time limits for max-days constraint
+
+  Fixes time calculation logic in `tradecalc` when applying maximum-days
+  constraints, ensuring routes are evaluated against the intended limits.  
+  ([`cf99181`](https://github.com/eyeonus/Trade-Dangerous/commit/cf9918143e8d70264e2b50b7ad2b9c8491266464))
+
+## v12.0.8 (2025-10-30)
+
+### Fix
+
+* fix: correct byte-count formatting in output
+
+  Ensures byte counts display their decimal portion correctly when rendered,
+  improving accuracy and readability of formatted output.  
+  ([`b81e986`](https://github.com/eyeonus/Trade-Dangerous/commit/b81e986b346b0485662f3a3b822cbf268875132b))
+  
+## v12.0.7 (2025-10-29)
+
+### Fix
+
+* fix: correct typo in Spansh plugin
+
+  Fixes a minor typo in the Spansh plugin code.  
+  ([`cdacda9`](https://github.com/eyeonus/Trade-Dangerous/commit/cdacda9dddd4e5f75490ebcd3f3e4ff77db5b067))
+
+### Refactor
+
+* refactor: display start time without date component
+
+  Adjusts start-time handling to display only the time component rather than
+  a full date/time, improving clarity and consistency of output.  
+  ([`860a94f`](https://github.com/eyeonus/Trade-Dangerous/commit/860a94f7d6d45c4f40e4d8a4452919a61d671bc2))
+
+## v12.0.6 (2025-10-29)
+
+### Fix
+
+* fix: remove redundant EDDBlink behaviour and stale data artifacts
+
+  Removes redundant EDDBlink operations and deletes the obsolete
+  `TradeDangerous.prices` file. Also 'Void Opal'  
+  ([`f38a952`](https://github.com/eyeonus/Trade-Dangerous/commit/f38a952dab1246f371a42220f5e755abc01a4d3a),
+   [`893bcc4`](https://github.com/eyeonus/Trade-Dangerous/commit/893bcc4d9e7879237d381fe821743db687f9d7ab),
+   [`9fc52ac`](https://github.com/eyeonus/Trade-Dangerous/commit/9fc52acdeb99a387aed083817913c834def3a398))
+
+### Refactor
+
+* refactor: simplify and clarify database cache build flow
+
+  Removes unnecessary cache rebuild steps and improves clarity of database
+  build and completion messages, including explicit casting and logging tweaks.  
+  ([`1f4cd3d`](https://github.com/eyeonus/Trade-Dangerous/commit/1f4cd3d4df9a98fc1bf5dba396a1a975cbad054b),
+   [`1637811`](https://github.com/eyeonus/Trade-Dangerous/commit/16378112329e1373f3467569ca9b1ec8ce3c8f8e),
+   [`62efa45`](https://github.com/eyeonus/Trade-Dangerous/commit/62efa45ea7301adf25a2b00026b30523c05b9eda),
+   [`6746780`](https://github.com/eyeonus/Trade-Dangerous/commit/674678019b884c31da46eb4712094e4e2fbb1859))
+
+### Chore
+
+* chore: repository hygiene and tooling updates
+
+  Updates `.gitignore`, adds a fix-indent helper script, and applies minor
+  whitespace/style cleanups.  
+  ([`539b4e7`](https://github.com/eyeonus/Trade-Dangerous/commit/539b4e75ac5c8f4374c63035cb2bb58267568d71),
+   [`937b707`](https://github.com/eyeonus/Trade-Dangerous/commit/937b707a4992030d6de4dcd18fb93f80ac5f2683),
+   [`e43141e`](https://github.com/eyeonus/Trade-Dangerous/commit/e43141e0e605311892da9397ed5eb20d7 743ca81))
+
+## v12.0.5 (2025-10-29)
+
+### Fix
+
+* fix: stabilise cache rebuild logic
+
+  Prevents accidental overwriting of `buildCache` logic and addresses
+  deprecation handling issues in `cache.py` uncovered during refactoring.  
+  ([`2a3bcae`](https://github.com/eyeonus/Trade-Dangerous/commit/2a3bcaec0f3e388bb6c8d9dc276fd900461efa13),
+   [`58c17d9`](https://github.com/eyeonus/Trade-Dangerous/commit/58c17d94e55c4d9fcc6698a8ca732c447063e454))
+
+## v12.0.4 (2025-10-29)
+
+### Fix
+
+* fix: correct cache rebuild regression
+
+  Fixes a regression where corrections in `cache.py` were not being applied
+  during cache rebuilds.  
+  ([`66886c1`](https://github.com/eyeonus/Trade-Dangerous/commit/66886c18e2a1e6eb6666b63499fd4c8400be71a2))
+  
+## v12.0.3 (2025-10-28)
+
+### Fix
+
+* fix: add SQLAlchemy to runtime dependencies
+
+  Adds SQLAlchemy to `setup.py` to ensure the v12 ORM-based codebase installs
+  and runs correctly in fresh environments.  
+  ([`5182b0d`](https://github.com/eyeonus/Trade-Dangerous/commit/5182b0d703a662be990a2f004c35b80f0f5d935a))
+
+## v12.0.2 (2025-10-28)
+
+### Fix
+
+* fix: resolve `db_config.ini` and data paths relative to user working directory
+
+  Ensures configuration and data directories are resolved relative to the
+  user’s current working directory rather than the active virtual
+  environment, preventing incorrect path resolution in venv-based setups.  
+  ([`4dee702`](https://github.com/eyeonus/Trade-Dangerous/commit/4dee702d4982ead98be4051b1cf56d38b5981f92))
+
+## v12.0.1 (2025-10-27)
+
+### Fix
+
+* fix: update packaging metadata for v12
+
+  Updates `setup.py` to reflect the new package structure and supported Python
+  versions introduced with the v12 SQLAlchemy migration.  
+  ([`e3608cd`](https://github.com/eyeonus/Trade-Dangerous/commit/e3608cd4729fd2ef1da77dc09031efb1ccb6b0d7),
+   [`07f3248`](https://github.com/eyeonus/Trade-Dangerous/commit/07f3248574f2ff8cb0d8eefa37a84a1aae5c6d2e))
+
+## v12.0.0 (2025-10-27)
+
+### Feature
+
+* feat: migrate TradeDangerous to SQLAlchemy and backend-agnostic database engine
+
+  This release replaces the legacy `sqlite3` backend with a full SQLAlchemy
+  engine and ORM layer, enabling support for multiple database backends
+  (SQLite, MariaDB/MySQL) while preserving existing CLI behaviour and data
+  semantics. This is a foundational, breaking change for the project.  
+  ([`1a24983`](https://github.com/eyeonus/Trade-Dangerous/commit/1a2498355920b44b9e91251b81b96a60ba8b277a),
+   [`52580e1`](https://github.com/eyeonus/Trade-Dangerous/commit/52580e173e87f0a5a8d521e63427b33c7a3158a0),
+   [`81b2526`](https://github.com/eyeonus/Trade-Dangerous/commit/81b2526f6ef766b98748a020a7ecffd090f69225))
+
+* feat: establish new database lifecycle and rebuild policy
+
+  Introduces a single, authoritative database lifecycle flow, removing
+  backend-specific logic from callers and centralising sanity checks,
+  rebuild decisions, and incremental import handling. Database rebuilds are
+  now explicit and intentional.  
+  ([`5b7d04e`](https://github.com/eyeonus/Trade-Dangerous/commit/5b7d04ed0b9f850726f3bec86eb8d61a6267aaa2),
+   [`c608949`](https://github.com/eyeonus/Trade-Dangerous/commit/c608949aceafb4b2d05253030116621ce9cadabd),
+   [`9f92c55`](https://github.com/eyeonus/Trade-Dangerous/commit/9f92c551e44b3ee0cda500d43d3cc4de7cadb7c3))
+
+* feat: major Spansh importer rewrite and performance improvements
+
+  The Spansh import pipeline has been substantially rewritten for correctness,
+  performance, and maintainability, including bulk staging, improved FK
+  handling, parallel CSV export, and backend-agnostic schema alignment.  
+  ([`7b92aae`](https://github.com/eyeonus/Trade-Dangerous/commit/7b92aaeb1e9de8db790c01d175503ea0f46ba7bc),
+   [`e90ed5b`](https://github.com/eyeonus/Trade-Dangerous/commit/e90ed5b3a990a342330afb8adbc2cfa3990a825b),
+   [`1385706`](https://github.com/eyeonus/Trade-Dangerous/commit/1385706ddf87c2fd49e47ac342de716c2e7be6aa))
+
+---
+
+### Refactor
+
+* refactor: migrate core modules to ORM and backend-neutral SQL
+
+  Large-scale refactors across `TradeDB`, `TradeCalc`, command handling,
+  caching, and import/export code to remove SQLite-specific assumptions,
+  replace raw SQL with SQLAlchemy Core/ORM, and ensure consistent behaviour
+  across supported backends.  
+  ([`322981c`](https://github.com/eyeonus/Trade-Dangerous/commit/322981c448f81717c3eec4b4154a7f4eeac6b407),
+   [`4b58eeb`](https://github.com/eyeonus/Trade-Dangerous/commit/4b58eebd4f179ac7e355067b034ebc129ef0c4c6),
+   [`a33c358`](https://github.com/eyeonus/Trade-Dangerous/commit/a33c358efa04aa6ca5ad8416b25d5e3dad2fe957))
+
+* refactor: eddblink and CSV export pipeline for ORM compatibility
+
+  Refactors the eddblink importer and CSV export logic to operate via SQLAlchemy
+  sessions, improve FK safety, and ensure consistent export semantics across
+  backends.  
+  ([`4166c1f`](https://github.com/eyeonus/Trade-Dangerous/commit/4166c1fe9181fdc8e4b83ecccff7363f4e51c5d0),
+   [`3264132`](https://github.com/eyeonus/Trade-Dangerous/commit/32641324908b59833d5c9721eabb9eff2ce7014f),
+   [`32386ee`](https://github.com/eyeonus/Trade-Dangerous/commit/32386eecf801b70f635dc8df03d19124a176ebca))
+
+---
+
+### Fix
+
+* fix: importer correctness, FK handling, and data integrity issues
+
+  Fixes multiple correctness issues uncovered during the SQLAlchemy migration,
+  including missing cascades, FK ordering problems, timestamp handling, and
+  rare-item import edge cases.  
+  ([`7062e1a`](https://github.com/eyeonus/Trade-Dangerous/commit/7062e1a7139b167cc1f6ac7219406babaa304e2d),
+   [`bdcb0ed`](https://github.com/eyeonus/Trade-Dangerous/commit/bdcb0ed9107b3f6b30d0ad3b4d9dd91e292a0a09),
+   [`f0dc60e`](https://github.com/eyeonus/Trade-Dangerous/commit/f0dc60e5ca1a5d58d4b9a9df3f8a1e06823518fb))
+
+* fix: first-run configuration and backend startup failures
+
+  Prevents crashes on first run by materialising a default `db_config.ini`
+  from in-code defaults and improving backend diagnostics.  
+  ([`babe6d7`](https://github.com/eyeonus/Trade-Dangerous/commit/babe6d701c03b979b9ecba39001cdc3aabb6f363),
+   [`0dcc2c5`](https://github.com/eyeonus/Trade-Dangerous/commit/0dcc2c5bb59df89dc31b9788fec863c91af89ba5))
+
+---
+
+### Documentation
+
+* docs: update README and project documentation for v12
+
+  Updates project documentation to reflect the SQLAlchemy migration,
+  backend requirements, and removal of legacy services and tooling.  
+  ([`00b124c`](https://github.com/eyeonus/Trade-Dangerous/commit/00b124c1717b91ba944d1cd901cb690fff10b15b),
+   [`7748478`](https://github.com/eyeonus/Trade-Dangerous/commit/7748478e4a19cfff9973b9c6c23b159167e2c1d6),
+   [`84a56f2`](https://github.com/eyeonus/Trade-Dangerous/commit/84a56f2cb7a7674d357ca7b8681dbe7ab7c62a5f))
+
+---
+
+### Chore
+
+* chore: CI, workflow, and repository hygiene updates
+
+  Updates GitHub workflows, Python version support, and archives deprecated
+  tools, plugins, scripts, and documentation no longer supported post-v12.  
+  ([`c7160c0`](https://github.com/eyeonus/Trade-Dangerous/commit/c7160c0b7d38024d1f8dde39f4ed417cf823e523),
+   [`c08e063`](https://github.com/eyeonus/Trade-Dangerous/commit/c08e0634974cfb4ef9fe275d7b8187fddd35b87d),
+   [`e0d202f`](https://github.com/eyeonus/Trade-Dangerous/commit/e0d202fe46912feb842a6cbc76e81a3451627bd4))
 
 ## v11.5.3 (2025-01-30)
 
