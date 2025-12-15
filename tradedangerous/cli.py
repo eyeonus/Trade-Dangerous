@@ -92,7 +92,13 @@ def trade(argv):
     """
     cmdIndex = commands.CommandIndex()
     cmdenv = cmdIndex.parse(argv)
-    
+
+    # Phase A: preflight/fast validation (must run before any heavy TradeDB load)
+    preflight = getattr(cmdenv, "preflight", None)
+    if preflight:
+        preflight()
+
+    # Phase B: heavy init + execution
     tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
     if cmdenv.usesTradeData:
         tsc = tdb.tradingStationCount
@@ -116,12 +122,13 @@ def trade(argv):
                     tsc
                 )
             )
-    
+
     try:
         results = cmdenv.run(tdb)
     finally:
         # always close tdb
         tdb.close(final=True)
-    
+
     if results:
         results.render()
+

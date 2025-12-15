@@ -37,20 +37,21 @@ class CommandEnv(TradeEnv):
         Base class for a TradeDangerous sub-command which has auxilliary
         "environment" data in the form of command line options.
     """
-    
+
     def __init__(self, properties, argv, cmdModule):
         super().__init__(properties = properties)
         self.tdb = None
         self.mfd = None
         self.argv = argv or sys.argv
-        
+        self._preflight_done = False
+
         if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
-        
+
         self._cmd = cmdModule or getattr("__main__")
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
-        
+
         # We need to relocate to the working directory so that
         # we can load a TradeDB after this without things going
         # pear-shaped
@@ -63,13 +64,27 @@ class CommandEnv(TradeEnv):
                                 cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
-    
-    def run(self, tdb):
-        # Quick syntax check before we waste time loading data
+
+    def preflight(self):
+        """
+        Phase A: quick validation that must be able to short-circuit before any
+        heavy TradeDB(load=True) path is invoked.
+
+        Commands may optionally implement validateRunArgumentsFast(cmdenv).
+        """
+        if self._preflight_done:
+            return
+
+        self._preflight_done = True
+
         fast_validator = getattr(self._cmd, "validateRunArgumentsFast", None)
         if fast_validator:
             fast_validator(self)
-        
+
+    def run(self, tdb):
+        # Ensure fast validation is executed for non-CLI call paths too.
+        self.preflight()
+
         """
             Set the current database context for this env and check that
             the properties we have are valid.
@@ -84,7 +99,7 @@ class CommandEnv(TradeEnv):
                         self.tdb.getDB().execute(change)
             finally:
                 db_change.unlink()
-        
+
         if self.wantsTradeDB:
             self.checkFromToNear()
             self.checkAvoids()
@@ -95,7 +110,7 @@ class CommandEnv(TradeEnv):
         self.checkOdyssey()
         self.checkPadSize()
         self.checkMFD()
-        
+
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
     
