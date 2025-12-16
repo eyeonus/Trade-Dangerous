@@ -18,7 +18,7 @@ from rich.traceback import install as install_rich_traces
 
 if typing.TYPE_CHECKING:
     import argparse
-    from typing import Any, Optional, Union
+    from typing import Any
 
 
 _ROOT = os.path.abspath(os.path.dirname(__file__))
@@ -44,10 +44,10 @@ class BaseColorTheme:
     # blink:    NEVER = "don't you dare"
     
     # style, label
-    debug, DEBUG    = dim,  "#"
-    note,  NOTE     = bold, "NOTE"
-    info,  INFO     = "",   "INFO"
-    warn,  WARNING  = "",   "WARNING"
+    debug, DEBUG = dim,  "#"
+    note,  NOTE  = bold, "NOTE"
+    info,  INFO  = "",   "INFO"
+    warn,  WARN  = "",   "WARNING"
     
     seq_first:  str = ""        # the first item in a sequence
     seq_last:   str = ""        # the last item in a sequence
@@ -72,10 +72,10 @@ class BasicRichColorTheme(BaseColorTheme):
     italic    = "[italic]"
     
     # style, label
-    debug, DEBUG   = dim,  "#"
-    note,  NOTE    = bold, "NOTE"
-    info,  INFO    = "",   "INFO"
-    warn,  WARNING = "[orange3]", "WARNING"
+    debug, DEBUG = dim,  "#"
+    note,  NOTE  = bold, "NOTE"
+    info,  INFO  = "",   "INFO"
+    warn,  WARN  = "[orange3]", "WARNING"
     
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover
         style_attr = getattr(self, style, "")
@@ -88,7 +88,7 @@ class RichColorTheme(BasicRichColorTheme):
     """ Demonstrates how you might augment the rich theme with colors to be used fin e.g tradecal. """
     DEBUG = ":spider_web:"
     NOTE  = ":information_source:"
-    WARNING = ":warning:"
+    WARN  = ":warning:"
     INFO  = ":gear:"
     
     # e.g. First station
@@ -107,9 +107,9 @@ class BaseConsoleIOMixin:
     console: Console
     stderr:  Console
     theme:   BaseColorTheme
-    quiet:   bool
+    quiet:   int
     
-    def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
+    def uprint(self, *args: Any, stderr: bool = False, style: str | None = None, **kwargs: Any) -> None:
         """
             unicode-safe print via console or stderr, with 'rich' markup handling.
         """
@@ -119,7 +119,7 @@ class BaseConsoleIOMixin:
 
 class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
     """ Mixing for running output through rich with UTF8-translation smoothing. """
-    def uprint(self, *args, stderr: bool = False, style: str = None, **kwargs) -> None:
+    def uprint(self, *args: Any, stderr: bool = False, style: str | None = None, **kwargs: Any) -> None:
         """ unicode-handling print: when the stdout stream is not utf-8 supporting,
             we do a little extra io work to ensure users don't get confusing unicode
             errors. When the output stream *is* utf-8.
@@ -155,12 +155,6 @@ class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
             console.print(*components, style=style, **kwargs)
 
 
-# If the console doesn't support UTF8, use the more-complicated implementation.
-if str(sys.stdout.encoding).upper() != 'UTF-8':
-    Utf8SafeConsoleIOMixin = NonUtf8ConsoleIOMixin
-else:
-    Utf8SafeConsoleIOMixin = BaseConsoleIOMixin
-
 ENV_DEFAULTS: dict[str, Any] = {
         'debug': 0,
         'detail': 0,
@@ -176,6 +170,13 @@ ENV_DEFAULTS: dict[str, Any] = {
         'console': CONSOLE,
         'stderr':  STDERR,
     }
+
+
+# If the console doesn't support UTF8, use the more-complicated implementation.
+if str(sys.stdout.encoding).upper() != 'UTF-8':
+    Utf8SafeConsoleIOMixin = NonUtf8ConsoleIOMixin
+else:
+    Utf8SafeConsoleIOMixin = BaseConsoleIOMixin
 
 
 class TradeEnv(Utf8SafeConsoleIOMixin):
@@ -197,16 +198,19 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
     debug: int
     detail: int
     color: bool
+    theme: BaseColorTheme
     persist: bool
     dataDir: str
     csvDir: str
     tmpDir: str
     templateDir: str
     cwDir: str
+    console: Console
+    stderr: Console
     
     encoding = sys.stdout.encoding
     
-    def __init__(self, properties: dict[str, typing.Any] | argparse.Namespace | None = None, **kwargs) -> None:
+    def __init__(self, properties: dict[str, typing.Any] | argparse.Namespace | None = None, **kwargs: Any) -> None:
         # Inject the defaults into ourselves in a dict-like way
         self.__dict__.update(ENV_DEFAULTS)
         
@@ -227,7 +231,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
 
     @staticmethod
-    def __disabled_uprint(*args, **kwargs) -> None:
+    def __disabled_uprint(*args: Any, **kwargs: Any) -> None:
         pass
 
     def __getattr__(self, key: str) -> Any:
@@ -240,17 +244,19 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             case "WARN" if self.quiet > 1:
                 disabled = True
             case "WARN":
-                theme_prefix, theme_label = self.theme.warn, self.theme.WARNING
+                theme_prefix, theme_label = self.theme.warn, self.theme.WARN
             case "NOTE" | "INFO" if self.quiet:
                 disabled = True
             case "NOTE":
                 theme_prefix, theme_label = self.theme.note, self.theme.NOTE
             case "INFO":
                 theme_prefix, theme_label = self.theme.info, self.theme.INFO
-            case _ if key.startswith("DEBUG") and self.debug <= int(key[5:]):
+            case _ if key.startswith("DEBUG") and int(key[5:]) >= self.debug:
                 disabled = True
             case _ if key.startswith("DEBUG"):
-                theme_prefix, theme_label = self.theme.debug, self.theme.DEBUG
+                theme_prefix, theme_label = self.theme.debug, self.theme.DEBUG + key[5:]
+            case _:
+                pass
 
         # If there's no function but there's a theme, create a function
         if disabled:
@@ -258,10 +264,10 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             return self.__disabled_uprint
 
         if theme_prefix is not None:
-            def __log_helper(outText, *args, stderr: bool = False, **kwargs):
+            def __log_helper(outText: str, *args: Any, stderr: bool = False, **kwargs: Any):
                 try:
                     msg = str(outText) if not (args or kwargs) else str(outText).format(*args, **kwargs)
-                except Exception:  # noqa  # bare exception
+                except Exception:  # noqa  # pylint: disable=broad-except
                     # Fallback: dump raw message + args/kwargs repr
                     msg = f"{outText} {args!r} {kwargs!r}"
                 
@@ -272,7 +278,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         
         return None
     
-    def remove_file(self, *args) -> bool:
+    def remove_file(self, *args: str | Path) -> bool:
         """ Unlinks a file, as long as it exists, and logs the action at level 1. """
         path = Path(*args)
         if not path.exists():
@@ -281,7 +287,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         self.DEBUG1(":cross_mark: deleted {}", path)
         return True
     
-    def rename_file(self, *, old: os.PathLike, new: os.PathLike) -> bool:
+    def rename_file(self, *, old: str | Path, new: str | Path) -> bool:
         """
         If 'new' exists, deletes it, and then attempts to rename old -> new. If new is not specified,
         then '.old' is appended to the end of the old filename while retaining the original suffix.

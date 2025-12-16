@@ -1222,7 +1222,7 @@ def run(results, cmdenv, tdb):
     
     validateRunArguments(tdb, cmdenv, calc)
     
-    origPlace, viaSet = cmdenv.origPlace, cmdenv.viaSet
+    origPlace, viaSet = cmdenv.origPlace, set(cmdenv.viaSet)
     stopStations = cmdenv.destinations
     goalSystem = cmdenv.goalSystem
     maxLs = cmdenv.maxLs
