@@ -51,7 +51,7 @@ import re
 import sys
 import time
 
-from sqlalchemy import select
+from sqlalchemy import select, text as _sa_text
 
 from .tradeexcept import TradeException
 
@@ -220,8 +220,6 @@ class Route:
 
         Honors TD_NO_COLOR and tdenv.noColor to disable ANSI color codes.
         """
-        import os
-
         # TD_NO_COLOR disables color if set to anything truthy (except 0/false/no/off/"")
         env_val = os.getenv("TD_NO_COLOR", "")
         env_no_color = bool(env_val) and env_val.strip().lower() not in ("0", "", "false", "no", "off")
@@ -535,7 +533,7 @@ class TradeCalc:
             for item in loadItems:
                 ID = item if isinstance(item, int) else item.ID
                 if ID not in avoidItemIDs:
-                    loadIDs.append(ID)
+                    loadIDs += [ID]
             if not loadIDs:
                 raise TradeException("No items to load.")
             itemFilter = loadIDs
@@ -568,23 +566,74 @@ class TradeCalc:
             sys.stdout.flush()
 
         # ---------- Core/Engine path (NO Session; NO ORM entities) ----------
-        columns = (
-            "station_id, item_id, "
-            "demand_price, demand_units, demand_level, "
-            "supply_price, supply_units, supply_level, "
-            "modified"
-        )
+        # kfsone: future wishlist/todo:
+        # Limit the scope of the station probe by identifying systems
+        # worth looking at, we can probably calculate a "bubble" or ask
+        # the user to provide one, and only look at systems inside that
+        # bubble.
+        # 
+        # c.f.
+        # 
+        # command has "from", "ly-per", "empty-ly", hops, jumps, start-jumps, end-jumps.
+        # 
+        # center = (origin.pos_x, origin.pos_y, origin.pos_z)
+        # rounding_buffer = 0.1
+        # buffer = rounding_buffer + empty-ly * (start-hops + end_hops)
+        # max_trade_dist = hops * jumps * ly_per + rounding_buffer
+        # if destination and not via:  # via is not impossible but not doing it here
+        #   destination_dist = destination.get_distance(origin)
+        #   # reset the center to be inbetween the two points
+        #   cx = (origin.pos_x + destination.pos_x) / 2
+        #   cy = (origin.pos_y + destination.pos_y) / 2
+        #   cz = (origin.pos_z + destination.pos_z) / 2
+        #   center = (cx, cy, cz)
+        #   max_trade_dist = max(max_trade_dist, destination_dist)
+        # 
+        # # add a little extra padding (8 ly)
+        # bubble = 8.0 + max_trade_dist + buffer
+        # 
+        # ```
+        # WITH BubbleStation AS (
+        #   SELECT st.station_id,
+        #          (sy.pos_x - :x) * (sy.pos_x - :x) as dx2,
+        #          (sy.pos_y - :y) * (sy.pos_y - :y) as dy2,
+        #          (sy.pos_z - :z) * (sy.pos_z - :z) as dz2
+        #     FROM System sy
+        #          INNER JOIN Station ON st.system_id = sy.system_id
+        #    WHERE (dx2 + dy2 + dz2) < :radius2
+        # )
+        # SELECT si.station_id ...
+        # ...
+        #   JOIN BubbleStation b ON si.station_id = b.station_id
+        # ...
+        # ```
+        # 
+        # this would give us an automatic collapse of the region probed for prices;
+        # might still be quite a few rows, but a heck of a lot less for a lot of
+        # common queries/routes.
 
-        where_clauses = []
+        # Main table is StationItem AS si
+        columns = (
+            "si.station_id, si.item_id, "
+            "si.demand_price, si.demand_units, si.demand_level, "
+            "si.supply_price, si.supply_units, si.supply_level, "
+            "si.modified"
+        )
+        # Dictionary of {"<table> <alias>": (join_type, on condition)
+        # e.g. joins["Station st"] = ("INNER", "st.station_id = si.station_id")
+        joins: dict[str, tuple[str, str]] = {}
+        # any where conditions to add to the query (anded)
+        where_clauses: list[str] = []
+        # key: value such that you can use :key in the query
         params = {}
 
         # Age cutoff (if provided in env)
         if tdenv.maxAge:
             cutoffS = nowS - (tdenv.maxAge * 60 * 60 * 24)
             if tdb.engine.dialect.name == "sqlite":
-                where_clauses.append("CAST(strftime('%s', modified) AS INTEGER) >= :cutoffS")
+                where_clauses.append("CAST(strftime('%s', si.modified) AS INTEGER) >= :cutoffS")
             else:
-                where_clauses.append("UNIX_TIMESTAMP(modified) >= :cutoffS")
+                where_clauses.append("UNIX_TIMESTAMP(si.modified) >= :cutoffS")
             params["cutoffS"] = cutoffS
 
         # Optional item filter — enumerate placeholders (SQLAlchemy text() won't expand tuples)
@@ -594,7 +643,7 @@ class TradeCalc:
                 key = f"iid{i}"
                 params[key] = int(iid)
                 iid_placeholders.append(":" + key)
-            where_clauses.append(f"item_id IN ({', '.join(iid_placeholders)})")
+            where_clauses.append(f"si.item_id IN ({', '.join(iid_placeholders)})")
 
         # Optional station restriction for ultra-light preload
         if self._restrict_station_ids:
@@ -603,13 +652,41 @@ class TradeCalc:
                 key = f"sid{i}"
                 params[key] = int(sid)
                 sid_placeholders.append(":" + key)
-            where_clauses.append(f"station_id IN ({', '.join(sid_placeholders)})")
+            where_clauses.append(f"si.station_id IN ({', '.join(sid_placeholders)})")
 
-        sql = f"SELECT {columns} FROM StationItem"
+        if minDemand > 0:
+            where_clauses.append("si.demand_units > :demand")
+            params["demand"] = minDemand
+        if minSupply > 0:
+            where_clauses.append("si.supply_units > :supply")
+            params["supply"] = minSupply
+
+        join_station = False
+        if tdenv.planetary:
+            where_clauses.append("st.planetary = :planetary")
+            params["planetary"] = tdenv.planetary
+            join_station = True
+        if tdenv.fleet in ['Y', 'N']:
+            comparison = '==' if tdenv.fleet == 'Y' else '!='
+            where_clauses.append(f"st.type_id {comparison} :fleet")
+            params["fleet"] = 24
+            join_station = True
+        if tdenv.odyssey in ['Y', 'N']:
+            comparison = '==' if tdenv.odyssey == 'Y' else '!='
+            where_clauses.append(f"st.type_id {comparison} :odyssey")
+            params["odyssey"] = 25
+        
+        if join_station:
+            joins["Station st"] = "si.station_id = st.station_id"
+
+        sql = f"SELECT {columns} FROM StationItem si"
+        for join_table, join_using in joins.items():
+            sql += f" JOIN {join_table} ON {join_using}"
         if where_clauses:
             sql += " WHERE " + " AND ".join(where_clauses)
 
-        from sqlalchemy import text as _sa_text
+        tdenv.DEBUG1("query: {}", sql)
+        tdenv.DEBUG1("params: {}", params)
         with tdb.engine.connect() as conn:
             result = conn.execute(_sa_text(sql), params)
 
@@ -631,19 +708,17 @@ class TradeCalc:
 
                 # Buying map (demand side)
                 if d_price and d_price > 0:
-                    if not minDemand or (d_units or 0) >= minDemand:
-                        demand[stnID] += [(itmID, d_price, d_units or 0, d_level, ageS)]
-                        dmdCount += 1
+                    demand[stnID] += [(itmID, d_price, d_units or 0, d_level, ageS)]
+                    dmdCount += 1
 
                 # Selling map (supply side)
                 if s_price and s_price > 0 and s_units:
-                    if not minSupply or s_units >= minSupply:
-                        supply[stnID] += [(itmID, s_price, s_units, s_level, ageS)]
-                        supCount += 1
+                    supply[stnID] += [(itmID, s_price, s_units, s_level, ageS)]
+                    supCount += 1
 
-                # Calling 'time.time()' is *very* expensive, so only do it every 256 rows,
+                # Calling 'time.time()' is *very* expensive, so only do it every so many rows
                 # but the == 1 means that we'll do it for the very first row too.
-                if showProgress and (rows_seen & 255) == 1:  # fast modulo 256
+                if showProgress and (rows_seen & 15) == 1:  # fast modulo 16
                     heartbeat()
 
         if showProgress:
@@ -928,7 +1003,7 @@ class TradeCalc:
         tdb = self.tdb
         tdenv = self.tdenv
         avoidPlaces = getattr(tdenv, "avoidPlaces", None) or ()
-        assert not restrictTo or isinstance(restrictTo, set)
+        assert not restrictTo or isinstance(restrictTo, set), f"expected restrictTo to be a set, got: {restrictTo}"
         maxJumpsPer = tdenv.maxJumpsPer
         maxLyPer = tdenv.maxLyPer
         maxPadSize = tdenv.padSize
@@ -1024,9 +1099,10 @@ class TradeCalc:
                     if stn.ID not in buying_ids:
                         continue
                     dests_seen += 1
-                    if heartbeat_enabled and (dests_seen & 31) == 1:    # fast modulo 32
+                    if heartbeat_enabled and (dests_seen & 15) == 1:    # fast modulo 16
                         heartbeat(origin_idx, dests_seen)
                     yield Destination(stnSys, stn, (srcSys, stnSys), srcDist(stnSys))
+                heartbeat(origin_idx, dests_seen)
     
         else:
             getDestinations = tdb.getDestinations
@@ -1045,11 +1121,13 @@ class TradeCalc:
                     fleet=fleet,
                     odyssey=odyssey,
                 ):
+                    if d.station.ID not in buying_ids:
+                        continue
                     dests_seen += 1
-                    if heartbeat_enabled and (dests_seen & 31) == 1:    # fast modulo 32
+                    if heartbeat_enabled and (dests_seen & 15) == 1:    # fast modulo 16
                         heartbeat(origin_idx, dests_seen)
-                    if d.station.ID in buying_ids:
-                        yield d
+                    yield d
+                heartbeat(origin_idx, dests_seen)
     
         connections = 0
         getSelling = self.stationsSelling.get

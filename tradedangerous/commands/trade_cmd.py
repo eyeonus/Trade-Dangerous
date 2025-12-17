@@ -7,7 +7,7 @@ from tradedangerous import TradeORM
 from tradedangerous.db import orm_models as models
 from tradedangerous.formatting import RowFormat, max_len
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.orm import aliased
 
 ######################################################################
