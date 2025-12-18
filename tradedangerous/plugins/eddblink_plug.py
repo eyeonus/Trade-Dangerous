@@ -374,7 +374,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, \
                     Session.begin() as session:
                 for expiration in expirations:
-                    session.execute(text("DELETE FROM StationItem WHERE modified < datetime('now', '-7 days')"))
+                    session.execute(text(f"DELETE FROM StationItem WHERE modified < datetime('now', '-{expiration} days')"))
                     prog.increment(1)
         
         if self.getOption("optimize"):
@@ -574,3 +574,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.tdb.removePersist()
         
         return False
+
+    def finish(self):
+        raise RuntimeError("unexpected call to finish")
