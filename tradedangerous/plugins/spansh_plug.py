@@ -20,7 +20,6 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from importlib.resources import files as implib_files, as_file as implib_as_file
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Iterable
 import csv
 import json  # used for debug
 import io
@@ -29,6 +28,7 @@ import shutil
 import sys
 import time
 import traceback
+import typing
 
 # SQLAlchemy
 from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, text, UniqueConstraint
@@ -46,6 +46,11 @@ from tradedangerous.cache import processImportFile
 from tradedangerous.db import utils as db_utils
 from tradedangerous.db.lifecycle import ensure_fresh_db, reset_db
 from tradedangerous.db.locks import station_advisory_lock
+
+
+if typing.TYPE_CHECKING:
+    from typing import Any, Generator, Mapping, Optional, Iterable
+    from tradedangerous import TradeDB, TradeEnv
 
 
 DEFAULT_URL = "https://downloads.spansh.co.uk/galaxy_stations.json"
@@ -96,6 +101,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         "shipyard": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv",
         "rares": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/rare_commodity.csv",
     }
+
+    tdb: TradeDB
+    tdenv: TradeEnv
+    session: Session | None  # this means you have to check it's been set, though
+    batch_size: int | None
     
     # ------------------------------
     # Construction & plumbing (REPLACEMENT)
@@ -104,7 +114,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         super().__init__(tdb, cmdenv)
         self.tdb = tdb
         self.tdenv = cmdenv
-        self.session: Optional[Session] = None
+        self.session = None
         
         # Paths (data/tmp) from env/config; fall back defensively
         self.data_dir = Path(getattr(self.tdenv, "dataDir", getattr(self.tdb, "dataDir", "data"))).resolve()
@@ -116,7 +126,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 raise CleanExit(f"Failed to create directory {p}: {e!r}")
         
         # Batch size decided AFTER session is opened (see finish())
-        self.batch_size: Optional[int] = None
+        self.batch_size = None
         
         # Verbosity gates
         self._is_tty = sys.stderr.isatty() or sys.stdout.isatty()
@@ -192,7 +202,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # --------------------------------------
     # EDCD Import Functions
     #
-    def _acquire_edcd_files(self) -> Dict[str, Optional[Path]]:
+    def _acquire_edcd_files(self) -> dict[str, Path | None]:
         """
         Download (or resolve) EDCD CSVs to tmp/ with conditional caching.
         Honors -O no_edcd=1 and per-file overrides:
@@ -245,7 +255,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _edcd_import_categories_add_only(
             self,
             session: Session,
-            tables: Dict[str, Table],
+            tables: dict[str, Table],
             commodity_csv: Path,
         ) -> int:
         """
@@ -385,7 +395,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 session.execute(update(table).where(cond).values(**{k: r[k] for k in upd_cols}))
         return len(rows)
     
-    def _edcd_import_fdev_catalogs(self, session: Session, tables: Dict[str, Table], *, outfitting_csv: Path, shipyard_csv: Path) -> Tuple[int, int]:
+    def _edcd_import_fdev_catalogs(self, session: Session, tables: dict[str, Table], *, outfitting_csv: Path, shipyard_csv: Path) -> tuple[int, int]:
         u = self._edcd_import_table_direct(session, tables["FDevOutfitting"], outfitting_csv)
         s = self._edcd_import_table_direct(session, tables["FDevShipyard"],   shipyard_csv)
         return (u, s)
@@ -401,7 +411,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         ts_sp: datetime,
         *,
         id_col: str,
-    ) -> Tuple[int, int, int]:
+    ) -> tuple[int, int, int]:
         """
         Per-row rule for ShipVendor / UpgradeVendor:
           - If db.modified > ts_sp: leave row.
@@ -465,13 +475,13 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def _sync_vendor_block_fast(
             self,
-            tables: Dict[str, Table],
+            tables: dict[str, Table],
             *,
             station_id: int,
-            entries: List[Dict[str, Any]],
+            entries: list[dict[str, Any]],
             ts_sp: Optional[datetime],
             kind: str,  # "ship" or "module"
-        ) -> Tuple[int, int]:
+        ) -> tuple[int, int]:
         """
         Fast, set-based vendor sync for a single station and one service (shipyard/outfitting).
         
@@ -596,7 +606,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         return wrote, delc
     
-    def _cleanup_absent_stations(self, tables: Dict[str, Table], present_station_ids: set[int], json_ts: datetime) -> Tuple[int, int, int]:
+    def _cleanup_absent_stations(self, tables: dict[str, Table], present_station_ids: set[int], json_ts: datetime) -> tuple[int, int, int]:
         """
         After streaming, delete baseline rows for stations absent from the JSON
         if the JSON timestamp is >= row.modified. Never delete newer-than-JSON rows.
@@ -637,13 +647,13 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     def _sync_market_block_fast(
         self,
-        tables: Dict[str, Table],
-        categories: Dict[str, int],
+        tables: dict[str, Table],
+        categories: dict[str, int],
         *,
         station_id: int,
-        commodities: List[Dict[str, Any]],
+        commodities: list[dict[str, Any]],
         ts_sp: datetime,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """
         Fast, set-based market sync for one station.
         
@@ -651,8 +661,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         t_item, t_si = tables["Item"], tables["StationItem"]
         
-        item_rows: List[Dict[str, Any]] = []
-        link_rows: List[Dict[str, Any]] = []
+        item_rows: list[dict[str, Any]] = []
+        link_rows: list[dict[str, Any]] = []
         keep_ids: set[int] = set()
         
         for co in commodities:
@@ -1165,7 +1175,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         return sess
     
-    def _reflect_tables(self, engine: Engine) -> Dict[str, Table]:
+    def _reflect_tables(self, engine: Engine) -> dict[str, Table]:
         meta = MetaData()
         names = [
             "System", "Station", "Item", "Category", "StationItem",
@@ -1177,7 +1187,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Import (streaming JSON → upserts)
     # ------------------------------
-    def _import_stream(self, source_path: Path, categories: Dict[str, int], tables: Dict[str, Table]) -> Dict[str, int]:
+    def _import_stream(self, source_path: Path, categories: dict[str, int], tables: dict[str, Table]) -> dict[str, int]:
         """
         Streaming importer with service-level maxage gating (FK-safe), using per-row rules.
         
@@ -1218,7 +1228,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return True
             return (now_utc - ts) <= maxage_td
         
-        def svc_ts(st: Dict[str, Any], key: str) -> Optional[datetime]:
+        def svc_ts(st: dict[str, Any], key: str) -> Optional[datetime]:
             obj = st.get(key) or {}
             if not isinstance(obj, dict):
                 return None
@@ -1237,7 +1247,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self._trace(phase="system", decision="consider", name=sys_name, id64=sys_id64)
                 
                 # Collect stations (top-level + body-embedded)
-                stations: List[Dict[str, Any]] = []
+                stations: list[dict[str, Any]] = []
                 if isinstance(system_obj.get("stations"), list):
                     stations.extend(system_obj["stations"])
                 bodies = system_obj.get("bodies") or []
@@ -1548,7 +1558,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _upsert_station(
         self, t_station: Table, station_id: int, system_id: int, name: str,
         ls_from_star: Optional[float], max_pad: str, type_id: int, planetary: str,
-        sflags: Dict[str, str], modified: Optional[datetime],
+        sflags: dict[str, str], modified: Optional[datetime],
     ) -> None:
         """
         Upsert Station with timestamp guard.
@@ -1667,7 +1677,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 .values(**values)
             )
     
-    def _upsert_shipyard(self, tables: Dict[str, Table], station_id: int, ships: List[Dict[str, Any]], ts: datetime) -> int:
+    def _upsert_shipyard(self, tables: dict[str, Table], station_id: int, ships: list[dict[str, Any]], ts: datetime) -> int:
         t_ship, t_vendor = tables["Ship"], tables["ShipVendor"]
         ship_rows, vendor_rows = [], []
         
@@ -1721,7 +1731,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                             wrote += 1
         return wrote
     
-    def _upsert_outfitting(self, tables: Dict[str, Table], station_id: int, modules: List[Dict[str, Any]], ts: datetime) -> int:
+    def _upsert_outfitting(self, tables: dict[str, Table], station_id: int, modules: list[dict[str, Any]], ts: datetime) -> int:
         t_up, t_vendor = tables["Upgrade"], tables["UpgradeVendor"]
         up_rows, vendor_rows = [], []
         
@@ -1787,12 +1797,12 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     def _upsert_market(
         self,
-        tables: Dict[str, Table],
-        categories: Dict[str, int],
+        tables: dict[str, Table],
+        categories: dict[str, int],
         station_id: int,
-        commodities: List[Dict[str, Any]],
+        commodities: list[dict[str, Any]],
         ts: datetime,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         t_item, t_si = tables["Item"], tables["StationItem"]
         item_rows, link_rows = [], []
         wrote_items = 0
@@ -1889,7 +1899,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # UI ordering
     # ------------------------------
-    def _enforce_ui_order(self, session: Session, tables: Dict[str, Table]) -> None:
+    def _enforce_ui_order(self, session: Session, tables: dict[str, Table]) -> None:
         t_item, t_cat = tables["Item"], tables["Category"]
         cats = session.execute(select(t_cat.c.category_id)).all()
         for (cat_id,) in cats:
@@ -1950,7 +1960,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             t_sys, t_stn, t_cat, t_rare = tables["System"], tables["Station"], tables["Category"], tables["RareItem"]
             
             # Build lookups for Shape A
-            stn_by_names: Dict[tuple[str, str], int] = {}
+            stn_by_names: dict[tuple[str, str], int] = {}
             for sid, sys_name, stn_name in sess.execute(
                 select(t_stn.c.station_id, t_sys.c.name, t_stn.c.name).where(t_stn.c.system_id == t_sys.c.system_id)
             ).all():
@@ -2027,7 +2037,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 else:
                     # Legacy/community: need commodity.csv to map product -> category
-                    name_to_catid: Dict[str, int] = {}
+                    name_to_catid: dict[str, int] = {}
                     if commodity_csv is None:
                         files = self._acquire_edcd_files()
                         commodity_csv = files.get("commodity")
@@ -2262,7 +2272,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Categories cache
     #
-    def _load_categories(self, session: Session, tables: Dict[str, Table]) -> Dict[str, int]:
+    def _load_categories(self, session: Session, tables: dict[str, Table]) -> dict[str, int]:
         t_cat = tables["Category"]
         rows = session.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
         return {str(name).lower(): int(cid) for (cid, name) in rows}
@@ -2293,7 +2303,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Fallback to whatever was imported at module top
         return ijson.items(fh, prefix)
     
-    def _iter_top_level_json_array(self, fh: io.BufferedReader) -> Generator[Dict[str, Any], None, None]:
+    def _iter_top_level_json_array(self, fh: io.BufferedReader) -> Generator[dict[str, Any], None, None]:
         """
         High-performance streaming reader for a huge top-level JSON array of systems.
         NOTE: As of 2025-10, we removed _parse_progress(). This iterator now
@@ -2333,7 +2343,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # Mapping / derivations / misc
     #
     @staticmethod
-    def _build_station_type_map() -> Dict[Optional[str], Tuple[int, bool]]:
+    def _build_station_type_map() -> dict[Optional[str], tuple[int, bool]]:
         return {
             None: (0, False),
             "None": (0, False),
@@ -2349,7 +2359,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             "Settlement": (25, True),
         }
     
-    def _map_station_type(self, type_name: Optional[str]) -> Tuple[int, str]:
+    def _map_station_type(self, type_name: Optional[str]) -> tuple[int, str]:
         if isinstance(type_name, str):
             res = self._station_type_map.get(type_name)
             if res:
@@ -2421,7 +2431,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             i += 1
         return f"{int(n)} {units[i]}" if i == 0 else f"{n:.1f} {units[i]}"
     
-    def _progress_line(self, stats: Dict[str, int]) -> None:
+    def _progress_line(self, stats: dict[str, int]) -> None:
         """
         Single-line live status while importing.
         
