@@ -166,7 +166,7 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
             unique_cols = db_utils.get_unique_columns(session, tableName)
             fk_list = db_utils.get_foreign_keys(session, tableName)
         except Exception as e:
-            raise TradeException(f"Failed to introspect table '{tableName}': {e!r}")
+            raise TradeException(f"Failed to introspect table '{tableName}': {e!r}") from None
         
         csvHead = []
         stmtColumn = []

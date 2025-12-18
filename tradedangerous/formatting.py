@@ -8,7 +8,8 @@ import itertools
 import typing
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Callable, Optional  # noqa
+    from collections.abc import Callable
+    from typing import Any
 
 
 class ColumnFormat:
@@ -69,9 +70,9 @@ class ColumnFormat:
     name:       str                 # name of the column
     align:      str                 # format's alignment specifier
     width:      int                 # width specifier
-    qualifier:  Optional[str]       # optional format type specifier e.g. '.2f', 's', 'n'
-    pre:        Optional[str]       # prefix to the column
-    post:       Optional[str]       # postfix to the column
+    qualifier:  str | None          # optional format type specifier e.g. '.2f', 's', 'n'
+    pre:        str | None          # prefix to the column
+    post:       str | None          # postfix to the column
     key:        Callable            # function to retrieve the printable name of the item
     pred:       Callable            # predicate: return False to leave this column blank
     
@@ -135,14 +136,14 @@ class RowFormat:
     columns:        list[ColumnFormat]
     prefix:         str
     
-    def __init__(self, prefix: Optional[str] = None):
+    def __init__(self, prefix: str | None = None):
         self.columns = []
         self.prefix = prefix or ""
     
     def addColumn(self, *args, **kwargs) -> None:
         self.append(ColumnFormat(*args, **kwargs))
     
-    def append(self, column: ColumnFormat, after: Optional[str] = None) -> 'RowFormat':
+    def append(self, column: ColumnFormat, after: str | None = None) -> 'RowFormat':
         columns = self.columns
         if after:
             for idx, col in enumerate(columns, 1):
@@ -152,7 +153,7 @@ class RowFormat:
         columns.append(column)
         return self
     
-    def insert(self, pos: int, column: Optional[ColumnFormat]) -> None:
+    def insert(self, pos: int, column: ColumnFormat | None) -> None:
         if column is not None:
             self.columns.insert(pos, column)
     
@@ -166,7 +167,7 @@ class RowFormat:
         headline = f"{self}"
         return headline, '-' * len(headline)
     
-    def format(self, row_data: Optional[Any]) -> str:
+    def format(self, row_data: Any) -> str:
         return f"{self.prefix} {' '.join(col.format(row_data) for col in self.columns)}"
 
 def max_len(iterable, key=lambda item: item):

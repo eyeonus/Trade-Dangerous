@@ -15,9 +15,9 @@ import requests
 
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
     import os  # for PathLike
     from .tradeenv import TradeEnv
-    from typing import Callable, Optional, Union  # noqa
 
 
 ######################################################################
@@ -60,14 +60,14 @@ def download(
             tdenv:      TradeEnv,
             url:        str,
             localFile:  os.PathLike,
-            headers:    Optional[dict] = None,
+            headers:    dict | None = None,
             backup:     bool = False,
-            shebang:    Optional[Callable] = None,
+            shebang:    Callable | None = None,
             chunkSize:  int = 4096,
             timeout:    int = 30,
             *,
-            length:     Optional[Union[int, str]] = None,
-            session:    Optional[requests.Session] = None,
+            length:     int | str | None = None,
+            session:    requests.Session | None = None,
         ):
     """
     Fetch data from a URL and save the output
@@ -79,7 +79,7 @@ def download(
     :param headers:     dict() of additional HTTP headers to send
     :param shebang:     function to call on the first line
     """
-    tdenv.NOTE("Requesting {}".format(url))
+    tdenv.NOTE("Requesting {}", url)
     
     if isinstance(length, str):
         length = int(length)
@@ -119,7 +119,7 @@ def download(
     
     actPath = Path(localFile)
     fs.ensurefolder(tdenv.tmpDir)
-    tmpPath = Path(tdenv.tmpDir, "{}.dl".format(actPath.name))
+    tmpPath = Path(tdenv.tmpDir, f"{actPath.name}.dl")
     
     fetched = 0
     started = time.time()

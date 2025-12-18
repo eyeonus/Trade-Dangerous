@@ -49,7 +49,8 @@ from tradedangerous.db.locks import station_advisory_lock
 
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Generator, Mapping, Optional, Iterable
+    from collections.abc import Generator, Iterable, Mapping
+    from typing import Any, Optional
     from tradedangerous import TradeDB, TradeEnv
 
 
@@ -123,7 +124,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             try:
                 p.mkdir(parents=True, exist_ok=True)
             except Exception as e:
-                raise CleanExit(f"Failed to create directory {p}: {e!r}")
+                raise CleanExit(f"Failed to create directory {p}: {e!r}") from None
         
         # Batch size decided AFTER session is opened (see finish())
         self.batch_size = None
@@ -197,7 +198,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self._warn("Seeding 'Added' from templates failed; continuing without it.")
                 self._warn(f"{type(e).__name__}: {e}")
                 traceback.print_exc()
-                raise CleanExit("Failed to seed 'Added' table from templates.")
+                raise CleanExit("Failed to seed 'Added' table from templates.") from e  # ^ contradiction?
 
     # --------------------------------------
     # EDCD Import Functions
@@ -550,7 +551,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 )
             else:
                 for r in master_rows:
-                    cond = (getattr(t_master.c, key_name) == r[key_name])
+                    cond = bool(getattr(t_master.c, key_name) == r[key_name])
                     exists = self.session.execute(select(getattr(t_master.c, key_name)).where(cond)).first()
                     if exists is None:
                         self.session.execute(insert(t_master).values(**r))
@@ -1099,7 +1100,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     part.unlink()
             except Exception:
                 pass
-            raise CleanExit(f"Download failed or timed out for {label}; skipping run ({e!r})")
+            raise CleanExit(f"Download failed or timed out for {label}; skipping run ({e!r})") from None
         
         self._print(f'Download complete: {label} → "{cache_path}"')
         return cache_path
@@ -1143,7 +1144,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     part.unlink()
             except Exception:
                 pass
-            raise CleanExit(f"Failed to read stdin into tmp file: {e!r})")
+            raise CleanExit(f"Failed to read stdin into tmp file: {e!r})") from None
     
     # ------------------------------
     # DB session / reflection
@@ -2143,7 +2144,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     sess.rollback()
                 except Exception:
                     pass
-            raise CleanExit(f"RareItem import failed: {e!r}")
+            raise CleanExit(f"RareItem import failed: {e!r}") from e
         finally:
             if sess is not None:
                 try:
@@ -2151,12 +2152,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 except Exception:
                     pass
 
-
     # ------------------------------
     # Export / cache refresh
-    # ------------------------------
-    
-    
+    # 
     def _export_cache(self) -> None:
         """Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating."""
         
@@ -2303,7 +2301,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Fallback to whatever was imported at module top
         return ijson.items(fh, prefix)
     
-    def _iter_top_level_json_array(self, fh: io.BufferedReader) -> Generator[dict[str, Any], None, None]:
+    def _iter_top_level_json_array(self, fh: io.BufferedReader) -> Generator[dict[str, Any]]:
         """
         High-performance streaming reader for a huge top-level JSON array of systems.
         NOTE: As of 2025-10, we removed _parse_progress(). This iterator now

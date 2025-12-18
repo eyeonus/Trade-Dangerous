@@ -111,7 +111,8 @@ locale.setlocale(locale.LC_ALL, '')
 
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Generator, Optional
+    from collections.abc import Generator
+    from typing import Any, Optional
 
 
 # We should probably just use the trade-dangerous version number
@@ -1695,15 +1696,13 @@ class TradeDB:
         # ------------------------------------------------------------------
         if not name.startswith("/") and "/" not in name and "\\" not in name:
             sys_key = name[1:] if name.startswith("@") else name
+            # lookupSystem can throw various TradeExceptions, which we will forward
+            # or it can throw a LookupError which we want to discard, it just means
+            # that this lookup isn't ready yet.
             try:
                 return self.lookupSystem(sys_key)
-            except AmbiguityError:
-                # lookupSystem already produces the rich "@N" hint text for
-                # ambiguous system names; preserve it unchanged.
-                raise
-            except TradeException:
-                # e.g. "System@999" out of range – message is already correct.
-                raise
+            except TradeException as e:
+                raise e from e
             except LookupError:
                 # Not a system (or no reasonable system match) – fall back to
                 # the generic place logic below to search stations as well.
@@ -2309,7 +2308,8 @@ class TradeDB:
                 # user indicated they don't want to care about persist.
                 return False
             if jarPath.exists():
-                raise TradeException("Unable to remove old persistence data, the file is inaccssible or open by another program")
+                msg = "Unable to remove old persistence data, the file is inaccssible or open by another program"
+                raise TradeException(msg) from None
             raise e from e
         
         try:

@@ -44,7 +44,8 @@ from . import corrections, utils
 
 # For mypy/pylint type checking
 if typing.TYPE_CHECKING:
-    from typing import Any, Callable, Optional, TextIO
+    from collections.abc import Callable
+    from typing import Any, Optional, TextIO
     
     from .tradedb import TradeDB
     from .tradeenv import TradeEnv
@@ -970,104 +971,100 @@ def processImportFile(
             Returns True if the row should be skipped (deleted in tolerant mode), False otherwise.
             Mutates 'row' in place with corrected values.
             """
-            try:
-                if table_name == "System":
-                    idx = header_index.get("name")
-                    if idx is not None:
-                        orig = row[idx]
-                        corr = corrections.correctSystem(orig)
-                        if corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'System "{orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "System", orig)
-                        if corr != orig:
-                            _warn(line_no, f'System "{orig}" is deprecated and should be replaced with "{corr}".')
-                            row[idx] = corr
-                
-                elif table_name == "Station":
-                    s_idx = header_index.get("system")
-                    n_idx = header_index.get("name")
-                    if s_idx is not None and n_idx is not None:
-                        s_orig = row[s_idx]
-                        s_corr = corrections.correctSystem(s_orig)
-                        if s_corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'System "{s_orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "System", s_orig)
-                        if s_corr != s_orig:
-                            _warn(line_no, f'System "{s_orig}" is deprecated and should be replaced with "{s_corr}".')
-                            row[s_idx] = s_corr
-                        n_orig = row[n_idx]
-                        n_corr = corrections.correctStation(s_corr, n_orig)
-                        if n_corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'Station "{n_orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "Station", n_orig)
-                        if n_corr != n_orig:
-                            _warn(line_no, f'Station "{n_orig}" is deprecated and should be replaced with "{n_corr}".')
-                            row[n_idx] = n_corr
-                
-                elif table_name == "Category":
-                    idx = header_index.get("name")
-                    if idx is not None:
-                        orig = row[idx]
-                        corr = corrections.correctCategory(orig)
-                        if corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'Category "{orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "Category", orig)
-                        if corr != orig:
-                            _warn(line_no, f'Category "{orig}" is deprecated and should be replaced with "{corr}".')
-                            row[idx] = corr
-                
-                elif table_name == "Item":
-                    cat_idx = header_index.get("category")
-                    name_idx = header_index.get("name")
-                    if cat_idx is not None:
-                        c_orig = row[cat_idx]
-                        c_corr = corrections.correctCategory(c_orig)
-                        if c_corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "Category", c_orig)
-                        if c_corr != c_orig:
-                            _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
-                            row[cat_idx] = c_corr
-                    if name_idx is not None:
-                        i_orig = row[name_idx]
-                        i_corr = corrections.correctItem(i_orig)
-                        if i_corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'Item "{i_orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "Item", i_orig)
-                        if i_corr != i_orig:
-                            _warn(line_no, f'Item "{i_orig}" is deprecated and should be replaced with "{i_corr}".')
-                            row[name_idx] = i_corr
-                
-                # RareItem: we only correct category (FK lookup uses names) to improve hit rate.
-                elif table_name == "RareItem":
-                    cat_idx = header_index.get("category")
-                    if cat_idx is not None:
-                        c_orig = row[cat_idx]
-                        c_corr = corrections.correctCategory(c_orig)
-                        if c_corr is DELETED:
-                            if tdenv.ignoreUnknown:
-                                _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
-                                return True
-                            raise DeletedKeyError(importPath, line_no, "Category", c_orig)
-                        if c_corr != c_orig:
-                            _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
-                            row[cat_idx] = c_corr
+            if table_name == "System":
+                idx = header_index.get("name")
+                if idx is not None:
+                    orig = row[idx]
+                    corr = corrections.correctSystem(orig)
+                    if corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'System "{orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "System", orig)
+                    if corr != orig:
+                        _warn(line_no, f'System "{orig}" is deprecated and should be replaced with "{corr}".')
+                        row[idx] = corr
             
-            except BuildCacheBaseException:
-                # strict mode path bubbles up; caller will handle
-                raise
+            elif table_name == "Station":
+                s_idx = header_index.get("system")
+                n_idx = header_index.get("name")
+                if s_idx is not None and n_idx is not None:
+                    s_orig = row[s_idx]
+                    s_corr = corrections.correctSystem(s_orig)
+                    if s_corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'System "{s_orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "System", s_orig)
+                    if s_corr != s_orig:
+                        _warn(line_no, f'System "{s_orig}" is deprecated and should be replaced with "{s_corr}".')
+                        row[s_idx] = s_corr
+                    n_orig = row[n_idx]
+                    n_corr = corrections.correctStation(s_corr, n_orig)
+                    if n_corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'Station "{n_orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "Station", n_orig)
+                    if n_corr != n_orig:
+                        _warn(line_no, f'Station "{n_orig}" is deprecated and should be replaced with "{n_corr}".')
+                        row[n_idx] = n_corr
+            
+            elif table_name == "Category":
+                idx = header_index.get("name")
+                if idx is not None:
+                    orig = row[idx]
+                    corr = corrections.correctCategory(orig)
+                    if corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'Category "{orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "Category", orig)
+                    if corr != orig:
+                        _warn(line_no, f'Category "{orig}" is deprecated and should be replaced with "{corr}".')
+                        row[idx] = corr
+            
+            elif table_name == "Item":
+                cat_idx = header_index.get("category")
+                name_idx = header_index.get("name")
+                if cat_idx is not None:
+                    c_orig = row[cat_idx]
+                    c_corr = corrections.correctCategory(c_orig)
+                    if c_corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "Category", c_orig)
+                    if c_corr != c_orig:
+                        _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
+                        row[cat_idx] = c_corr
+                if name_idx is not None:
+                    i_orig = row[name_idx]
+                    i_corr = corrections.correctItem(i_orig)
+                    if i_corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'Item "{i_orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "Item", i_orig)
+                    if i_corr != i_orig:
+                        _warn(line_no, f'Item "{i_orig}" is deprecated and should be replaced with "{i_corr}".')
+                        row[name_idx] = i_corr
+            
+            # RareItem: we only correct category (FK lookup uses names) to improve hit rate.
+            elif table_name == "RareItem":
+                cat_idx = header_index.get("category")
+                if cat_idx is not None:
+                    c_orig = row[cat_idx]
+                    c_corr = corrections.correctCategory(c_orig)
+                    if c_corr is DELETED:
+                        if tdenv.ignoreUnknown:
+                            _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
+                            return True
+                        raise DeletedKeyError(importPath, line_no, "Category", c_orig)
+                    if c_corr != c_orig:
+                        _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
+                        row[cat_idx] = c_corr
+        
             return False  # do not skip
         
         # --- Read data lines ---
@@ -1089,10 +1086,10 @@ def processImportFile(
             try:
                 if _apply_row_corrections(tableName, linein, lineNo):
                     continue
-            except DeletedKeyError:
+            except DeletedKeyError as e:
                 if not tdenv.ignoreUnknown:
                     # strict: fail hard
-                    raise
+                    raise e from e
                 # tolerant: already warned in _apply_row_corrections; skip row
                 continue
             

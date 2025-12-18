@@ -1,3 +1,7 @@
+from __future__ import annotations
+from contextlib import contextmanager
+import typing
+
 from rich.progress import (
         Progress as RichProgress,
         TaskID,
@@ -6,9 +10,11 @@ from rich.progress import (
         TaskProgressColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn,
         TransferSpeedColumn
 )
-from contextlib import contextmanager
 
-from typing import Iterable, Optional, Union, Type  # noqa
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Optional, Type  # noqa
 
 
 class BarStyle:
@@ -67,7 +73,7 @@ class Progress:
                  prefix: Optional[str] = None,
                  label: Optional[str] = None,
                  *,
-                 style: Optional[Type[BarStyle]] = None,
+                 style: Optional[Type[BarStyle]] = None,  # pylint:disable=deprecated-typing-alias
                  show: bool = True,
                  ) -> None:
         """
@@ -183,6 +189,6 @@ class Progress:
         finally:
             self.progress.remove_task(task)
     
-    def update_task(self, task: TaskID, advance: Union[float, int], description: Optional[str] = None):
+    def update_task(self, task: TaskID, advance: float | int, description: Optional[str] = None):
         if self.show:
             self.progress.update(task, advance=advance, description=description)
