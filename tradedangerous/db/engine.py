@@ -1,9 +1,10 @@
 # tradedangerous/db/engine.py
 from __future__ import annotations
-import os, time
 from pathlib import Path
 from typing import Any, Dict, Mapping
 import configparser
+import os
+import time
 
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine, URL
@@ -11,7 +12,9 @@ from sqlalchemy.orm import sessionmaker, Session  # type: ignore
 from sqlalchemy.pool import NullPool
 from sqlalchemy.exc import OperationalError
 
+from .config import DEFAULTS, load_config
 from .paths import resolve_data_dir, resolve_tmp_dir, resolve_db_config_path
+
 
 # ---------- config normalization & helpers ----------
 
@@ -25,7 +28,6 @@ def _ensure_default_config_file(target_path: Path | None) -> Path | None:
     if target_path.exists():
         return target_path
     # Build from DEFAULTS
-    from .config import DEFAULTS  # typed defaults live here
     target_path.parent.mkdir(parents=True, exist_ok=True)
     cp = configparser.ConfigParser()
     for section, mapping in DEFAULTS.items():
@@ -59,7 +61,6 @@ def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.P
                 cp.read_file(fh)
             return _cfg_to_dict(cp)
         # Missing provided path → use canonical loader with fallbacks
-        from .config import load_config
         return load_config(None)
     
     if isinstance(cfg, configparser.ConfigParser):
@@ -84,11 +85,13 @@ def _get(cfg: Dict[str, Any], section: str, key: str, default=None):
         return cfg["database"][key]
     return default
 
+
 def _get_int(cfg: Dict[str, Any], section: str, key: str, default=None):
     try:
         return int(_get(cfg, section, key, default))
     except (TypeError, ValueError):
         return default
+
 
 def _get_bool(cfg: Dict[str, Any], section: str, key: str, default=None):
     v = _get(cfg, section, key, default)
@@ -97,6 +100,7 @@ def _get_bool(cfg: Dict[str, Any], section: str, key: str, default=None):
     if isinstance(v, str):
         return v.strip().lower() in {"1", "true", "yes", "on"}
     return default
+
 
 # ---------- URL builders ----------
 
@@ -123,12 +127,14 @@ def _make_mariadb_url(cfg: Dict[str, Any]) -> URL:
         query={"charset": str(_get(cfg, "mariadb", "charset", "utf8mb4"))},
     )
 
+
 def _make_sqlite_url(cfg: Dict[str, Any]) -> str:
     data_dir = resolve_data_dir(cfg)
     # Honour legacy filename
     filename = str(_get(cfg, "sqlite", "sqlite_filename", "TradeDangerous.db"))
     db_path = (data_dir / filename).resolve()
     return f"sqlite+pysqlite:///{db_path.as_posix()}"
+
 
 # ---------- Engine construction ----------
 
@@ -207,10 +213,13 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
     except Exception:
         pass
     return engine
+
+
 # ---------- Session factory ----------
 
 def get_session_factory(engine: Engine) -> sessionmaker[Session]:
     return sessionmaker(bind=engine, expire_on_commit=False, autoflush=True)
+
 
 # ---------- Health helpers ----------
 
@@ -229,6 +238,7 @@ def healthcheck(engine: Engine, retries: int = 0) -> bool:
             time.sleep(delay)
             delay *= 2
 
+
 def read_sqlite_pragmas(engine: Engine) -> Dict[str, Any]:
     """
     Return active PRAGMA values (SQLite only). Safe no-op for non-sqlite engines.
@@ -237,10 +247,13 @@ def read_sqlite_pragmas(engine: Engine) -> Dict[str, Any]:
     with engine.connect() as conn:
         if conn.dialect.name != "sqlite":
             return out
+        
         def one(q: str) -> Any:
             return conn.execute(text(q)).scalar()
+        
         out["foreign_keys"] = one("PRAGMA foreign_keys")
         out["synchronous"]  = one("PRAGMA synchronous")
         out["temp_store"]   = one("PRAGMA temp_store")
         out["auto_vacuum"]  = one("PRAGMA auto_vacuum")
+    
     return out

@@ -1,7 +1,6 @@
 from __future__ import annotations
 from .exceptions import CommandLineError
 from .parsing import ParseArgument
-from ..cache import buildCache
 from ..tradedb import TradeDB
 
 ######################################################################

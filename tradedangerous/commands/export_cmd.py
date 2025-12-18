@@ -88,7 +88,6 @@ def run(results, cmdenv, tdb):
         )
     
     # --- Determine export target directory (same behavior as before) ---
-    from pathlib import Path
     exportPath = Path(cmdenv.path) if cmdenv.path else Path(tdb.dataDir)
     if not exportPath.is_dir():
         raise CommandLineError("Save location '{}' not found.".format(str(exportPath)))

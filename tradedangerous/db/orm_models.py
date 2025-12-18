@@ -1,8 +1,8 @@
 # tradedangerous/db/orm_models.py
 from __future__ import annotations
 
-import datetime
 from typing import Optional
+import datetime
 
 from sqlalchemy import (
     MetaData,
@@ -19,7 +19,7 @@ from sqlalchemy import (
     Column,
     DateTime,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, object_session
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import TypeDecorator
@@ -99,6 +99,7 @@ metadata = MetaData(naming_convention=naming_convention)
 class Base(DeclarativeBase):
     metadata = metadata
 
+
 # ---------- Enums ----------
 TriState = Enum(
     "Y",
@@ -122,6 +123,9 @@ PadSize = Enum(
 
 # ---------- Core Domain ----------
 class Added(Base):
+    """ Added table was originally introduced to help identify whether things like
+        Systems represented data that was present in specific releases of the game,
+        such as pre-alpha, beta, etc. """
     __tablename__ = "Added"
     
     added_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -132,6 +136,8 @@ class Added(Base):
 
 
 class System(Base):
+    """ System represents the game's concept of a Star System or a group of bodies
+        orbiting a barycenter - or in game terms, things you can FSD jump between. """
     __tablename__ = "System"
     
     system_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -162,9 +168,8 @@ class System(Base):
     )
 
 
-
-
 class Station(Base):
+    """ Station represents a facility you can land/dock at and do things like trade, etc. """
     __tablename__ = "Station"
     
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -207,9 +212,8 @@ class Station(Base):
     )
 
 
-
-
 class Category(Base):
+    """ Category provides groupings used by tradeable commodities: Food, Minerals, ... """
     __tablename__ = "Category"
     
     category_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -222,6 +226,7 @@ class Category(Base):
 
 
 class Item(Base):
+    """ Item represents the types of in-game tradeable commodities. """
     __tablename__ = "Item"
     
     item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -230,10 +235,6 @@ class Item(Base):
         ForeignKey("Category.category_id", onupdate="CASCADE", ondelete="CASCADE"),
         nullable=False,
     )
-    def dbname(self, detail: int | bool = 0) -> str:
-        if detail:
-            return f"{self.category.name}/{self.name}"
-        return self.name
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     avg_price: Mapped[int | None] = mapped_column(Integer)
     fdev_id: Mapped[int | None] = mapped_column(Integer)
@@ -242,14 +243,33 @@ class Item(Base):
     category: Mapped["Category"] = relationship(back_populates="items")
     stations: Mapped[list["StationItem"]] = relationship(back_populates="item", cascade="all, delete-orphan")
     
+    # Helper fields
+    def dbname(self, detail: int | bool = 0) -> str:
+        if detail:
+            return f"{self.category.name}/{self.name}"
+        return self.name
+    
     __table_args__ = (
         Index("idx_item_by_fdevid", "fdev_id"),
         Index("idx_item_by_category", "category_id"),
     )
 
 
-
 class StationItem(Base):
+    """ StationItem represents the tradeability of a commodity (Item) at a particular
+        market facility (Station).
+
+        Originally data was manually input into a text-file designed to look like
+        the in-game Market screen where the 30-40 items available were listed
+        with side-by-side sell/buy prices. This visual equivalence made data-entry
+        efficient.
+
+        The collection of those forms made the ".prices" file, which was originally
+        Source of Truth for TradeDangerous.
+
+        The fact we have buying and selling prices adjacent to each other in this
+        table is a vestigial hangover of that early design. """
+    
     __tablename__ = "StationItem"
     
     station_id: Mapped[int] = mapped_column(
@@ -282,9 +302,8 @@ class StationItem(Base):
     )
 
 
-
-
 class Ship(Base):
+    """ Ship provides the fundamental classes of ships that the player can purchase in-game. """
     __tablename__ = "Ship"
     
     ship_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -296,6 +315,7 @@ class Ship(Base):
 
 
 class ShipVendor(Base):
+    """ ShipVendor is used to track where specific ships can be purchased. """
     __tablename__ = "ShipVendor"
     
     ship_id: Mapped[int] = mapped_column(
@@ -317,6 +337,8 @@ class ShipVendor(Base):
 
 
 class Upgrade(Base):
+    """ Upgrade represents what Frontier call 'Outfitting', components that can
+        be acquired to upgrade your instance of a ship. """
     __tablename__ = "Upgrade"
     
     upgrade_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -330,6 +352,8 @@ class Upgrade(Base):
 
 
 class UpgradeVendor(Base):
+    """ UpgradeVendor tracks all the locations where Outfitting upgrades can be
+        acquired in the game universe. """
     __tablename__ = "UpgradeVendor"
     
     upgrade_id: Mapped[int] = mapped_column(
@@ -350,7 +374,10 @@ class UpgradeVendor(Base):
     __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),)
 
 
-class RareItem(Base):
+class RareItem(Base):  # [[deprecated]]
+    """ RareItem is used to track specialized commodities that Frontier introduced during the
+        early days of the game.
+        @deprecated These are now just included in the standard Item catalog. """
     __tablename__ = "RareItem"
     
     rare_id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -372,9 +399,9 @@ class RareItem(Base):
     __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
 
 
-
-
 class FDevShipyard(Base):
+    """ FDevShipyard is a vestigial bridge between originally crowd-sourced ship information,
+        and the data that is now available thanks to frontier's journal logs. """
     __tablename__ = "FDevShipyard"
     
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
@@ -384,6 +411,8 @@ class FDevShipyard(Base):
 
 
 class FDevOutfitting(Base):
+    """ FDevOutfitting is a vestigial bridge between originally crowd-sourced outfitting (upgrade)
+        information and the data that has been auto-scraped from frontier's journal logs. """
     __tablename__ = "FDevOutfitting"
     
     id = Column(Integer, primary_key=True, unique=True, nullable=False)
@@ -446,8 +475,6 @@ class StationItemStaging(Base):
     from_live: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     
     __table_args__ = (Index("idx_sistaging_stn_itm", "station_id", "item_id"),)
-
-
 
 
 __all__ = [

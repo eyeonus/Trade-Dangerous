@@ -109,7 +109,6 @@ def run(results, cmdenv, tdb):
     
     # Optional near-system distance²
     nearSys = cmdenv.nearSystem
-    join_sys = False
     if nearSys:
         dx = (sys_tbl.c.pos_x - literal(nearSys.posX))
         dy = (sys_tbl.c.pos_y - literal(nearSys.posY))

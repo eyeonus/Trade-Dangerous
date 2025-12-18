@@ -111,7 +111,7 @@ locale.setlocale(locale.LC_ALL, '')
 
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Callable, Generator, Optional
+    from typing import Any, Generator, Optional
 
 
 # We should probably just use the trade-dangerous version number
@@ -164,7 +164,7 @@ class System:
             self.systems = []
             self.probed_ly = 0.
     
-    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int|None) -> None:
+    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int | None) -> None:
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
@@ -692,7 +692,7 @@ class TradeDB:
         if at <= 0:
             return name, None
 
-        idx_str = name[at + 1 :]
+        idx_str = name[at + 1:]
         if not idx_str or not idx_str.isdigit():
             return name, None
 
@@ -969,10 +969,7 @@ class TradeDB:
         dbname = name.upper()
         
         if not force:
-            if (oldname == dbname and
-                system.posX == x and
-                system.posY == y and
-                system.posZ == z):
+            if oldname == dbname and system.posX == x and system.posY == y and system.posZ == z:
                 return False
         
         # Remove from old name bucket (if present)
@@ -1727,10 +1724,10 @@ class TradeDB:
         if slash_pos > name_off:
             # "sys/station" or "@sys/station"
             sys_name = name[name_off:slash_pos].upper()
-            stn_name = name[slash_pos + 1 :]
+            stn_name = name[slash_pos + 1:]
         elif slash_pos == name_off:
             # "/station" — explicit station, no system
-            sys_name, stn_name = None, name[name_off + 1 :]
+            sys_name, stn_name = None, name[name_off + 1:]
         elif name_off:
             # "@system" — explicit system, no station
             sys_name, stn_name = name[name_off:].upper(), None
@@ -1869,130 +1866,6 @@ class TradeDB:
             key=lambda place: place.name(),
         )
 
-        
-        def lookup(name, candidates):
-            """ Search candidates for the given name """
-            
-            normTrans = TradeDB.normalizeTrans
-            trimTrans = TradeDB.trimTrans
-            
-            nameNorm = name.translate(normTrans)
-            nameTrimmed = nameNorm.translate(trimTrans)
-            
-            nameLen = len(name)
-            nameNormLen = len(nameNorm)
-            nameTrimmedLen = len(nameTrimmed)
-            
-            for place in candidates:
-                placeName = place.dbname
-                placeNameNorm = placeName.translate(normTrans)
-                placeNameNormLen = len(placeNameNorm)
-                
-                if nameTrimmedLen > placeNameNormLen:
-                    # The needle is bigger than this haystack.
-                    continue
-                
-                # If the lengths match, do a direct comparison.
-                if len(placeName) == nameLen:
-                    if placeNameNorm == nameNorm:
-                        exactMatch.append(place)
-                    continue
-                if placeNameNormLen == nameNormLen:
-                    if placeNameNorm == nameNorm:
-                        closeMatch.append(place)
-                    continue
-                
-                if nameNormLen < placeNameNormLen:
-                    subPos = placeNameNorm.find(nameNorm)
-                    if subPos == 0:
-                        if placeNameNorm[nameNormLen] == ' ':
-                            # first word
-                            wordMatch.append(place)
-                        else:
-                            anyMatch.append(place)
-                        continue
-                    
-                    if subPos > 0:
-                        if placeNameNorm[subPos] == ' ' and \
-                                placeNameNorm[subPos + nameNormLen] == ' ':
-                            wordMatch.append(place)
-                        else:
-                            anyMatch.append(place)
-                        continue
-                
-                # Lets drop whitespace and remaining punctuation...
-                placeNameTrimmed = placeNameNorm.translate(trimTrans)
-                placeNameTrimmedLen = len(placeNameTrimmed)
-                if placeNameTrimmedLen == placeNameNormLen:
-                    # No change
-                    continue
-                
-                # A match here is not exact but still fairly interesting
-                if len(placeNameTrimmed) == nameTrimmedLen:
-                    if placeNameTrimmed == nameTrimmed:
-                        closeMatch.append(place)
-                        continue
-                elif placeNameTrimmedLen > nameTrimmedLen:
-                    if placeNameTrimmed.find(nameTrimmed) >= 0:
-                        anyMatch.append(place)
-                        continue
-                # Skip smaller names
-        
-        if sysName:
-            systems = self.systemByName.get(sysName)
-            if systems:
-                # For now, treat the first system as the exact match.
-                # Proper duplicate-name disambiguation comes in the next step.
-                exactMatch = [systems[0]]
-            else:
-                lookup(sysName, self.systemByID.values())
-        
-        if stnName:
-            # Are we considering the name as a station?
-            # (we don't if they type, e,g '@aulin')
-            # compare against nameOff to allow '@/station'
-            if slashPos > nameOff + 1:
-                # "sys/station"; the user should have specified a system
-                # name and we should be able to narrow down which
-                # stations we compare against. Check first if there are
-                # any matches.
-                stationCandidates = []
-                for system in itertools.chain(
-                        exactMatch, closeMatch, wordMatch, anyMatch
-                        ):
-                    stationCandidates += system.stations
-                # Clear out the candidate lists
-                exactMatch = []
-                closeMatch = []
-                wordMatch = []
-                anyMatch = []
-            else:
-                # Consider against all station names
-                stationCandidates = self.stationByID.values()
-            lookup(stnName, stationCandidates)
-        
-        # consult the match sets in ranking order for a single
-        # match, which denotes a win at that tier. For example,
-        # if there is one exact match, we don't care how many
-        # close matches there were.
-        for matchSet in exactMatch, closeMatch, wordMatch, anyMatch:
-            if len(matchSet) == 1:
-                return matchSet[0]
-        
-        # Nothing matched
-        if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
-            # Note: this was a TradeException and may need to be again,
-            # but then we need to catch that error in commandenv
-            # when we process avoids
-            raise LookupError(f"Unrecognized place: {name}")
-        
-        # More than one match
-        raise AmbiguityError(
-            'System/Station', name,
-            exactMatch + closeMatch + wordMatch + anyMatch,
-            key=lambda place: place.name()
-        )
-    
     def lookupStation(self, name, system=None):
         """
         Look up a Station object by it's name or system.
@@ -2315,18 +2188,17 @@ class TradeDB:
         
         return self.avgBuying
     
-    
     ############################################################
     # Price data.
-    
+    #
     def close(self, *, final: bool = False) -> None:
         if self.Session and final:
             del self.Session
         if self.engine:
             self.engine.dispose()
         if final:
-            engine, self.engine = self.engine, None
-            del engine
+            del self.engine
+            self.engine = None
         # Keep engine + Session references so reloadCache/buildCache can reuse them
     
     def load(self, maxSystemLinkLy=None):
@@ -2470,10 +2342,9 @@ class TradeDB:
     def removePersist(self):
         self.getPersistPath().unlink(missing_ok=True)
     
-    
     ############################################################
     # General purpose static methods.
-    
+    #
     @staticmethod
     def listSearch(
             listType, lookup, values,

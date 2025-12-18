@@ -13,36 +13,40 @@
 #
 # DB/dialect specifics live in tradedangerous.db.utils (parse_ts, batch sizing, etc.)
 # -----------------------------------------------------------------------------
-
 from __future__ import annotations
 
-import io
-import os
-import sys
-import traceback
-import time
-import json # Used for debug tracing 
-import ijson # Used for main stream
-import shutil
-import csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
+from importlib.resources import files as implib_files, as_file as implib_as_file
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Iterable
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-
-# Framework modules
-from .. import plugins, cache, csvexport  # provided by project
-
-# DB helpers (dialect specifics live here)
-from ..db import utils as db_utils
-from ..db.lifecycle import ensure_fresh_db
-from ..db.locks import station_advisory_lock
+import csv
+import json  # used for debug
+import io
+import os
+import shutil
+import sys
+import time
+import traceback
 
 # SQLAlchemy
 from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, text, UniqueConstraint
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
+
+import ijson  # Used for main stream
+import urllib.request
+
+# Framework modules
+from tradedangerous import plugins, cache, csvexport  # provided by project
+from tradedangerous.cache import processImportFile
+
+# DB helpers (dialect specifics live here)
+from tradedangerous.db import utils as db_utils
+from tradedangerous.db.lifecycle import ensure_fresh_db, reset_db
+from tradedangerous.db.locks import station_advisory_lock
+
 
 DEFAULT_URL = "https://downloads.spansh.co.uk/galaxy_stations.json"
 
@@ -94,11 +98,8 @@ class ImportPlugin(plugins.ImportPluginBase):
     }
     
     # ------------------------------
-    # Construction & plumbing
-    # ------------------------------
-    # ------------------------------
     # Construction & plumbing (REPLACEMENT)
-    # ------------------------------
+    #
     def __init__(self, tdb, cmdenv):
         super().__init__(tdb, cmdenv)
         self.tdb = tdb
@@ -134,7 +135,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     # --------------------------------------
     # Small tracing helper 
-    # --------------------------------------
+    #
     def _trace(self, **evt) -> None:
         """
         Lightweight debug tracer. Writes one compact JSON line per call
@@ -144,7 +145,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not getattr(self, "debug_trace", False):
             return
         try:
-            import json
             # lazily open file handle if not yet opened
             if not hasattr(self, "_trace_fp") or self._trace_fp is None:
                 tmp = getattr(self, "tmp_dir", Path("tmp"))
@@ -169,12 +169,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         DB-agnostic; uses cache.processImportFile. No reliance on any templatesDir.
         """
-        from importlib.resources import files, as_file
-        from tradedangerous.cache import processImportFile
-        
         # Obtain a Traversable for the packaged resource and materialize to a real path
-        res = files("tradedangerous").joinpath("templates", "Added.csv")
-        with as_file(res) as csv_path:
+        res = implib_files("tradedangerous").joinpath("templates", "Added.csv")
+        with implib_as_file(res) as csv_path:
             if not csv_path.exists():
                 # Graceful failure so schedulers can retry
                 raise CleanExit(f"Packaged Added.csv not found: {csv_path}")
@@ -192,12 +189,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 traceback.print_exc()
                 raise CleanExit("Failed to seed 'Added' table from templates.")
 
-
     # --------------------------------------
     # EDCD Import Functions
-    # --------------------------------------
-    
-    # ---------- Download from EDCD ----------       
+    #
     def _acquire_edcd_files(self) -> Dict[str, Optional[Path]]:
         """
         Download (or resolve) EDCD CSVs to tmp/ with conditional caching.
@@ -206,6 +200,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Each override may be a local path or an http(s) URL.
         Returns dict: {commodity,outfitting,shipyard,rares} -> Path or None.
         """
+        
         def _resolve_one(opt_key: str, default_url: str, basename: str) -> Optional[Path]:
             override = self.getOption(opt_key)
             target = self.tmp_dir / f"edcd_{basename}.csv"
@@ -245,8 +240,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             "rares":     _resolve_one("edcd_rares",     self.EDCD_URLS["rares"],     "rare_commodity"),
         }
 
-
     # ---------- EDCD: Categories (add-only) ----------
+    #
     def _edcd_import_categories_add_only(
             self,
             session: Session,
@@ -306,10 +301,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         session.execute(insert(t_cat), to_add)
         return len(to_add)
 
-
-
-
     # ---------- EDCD: FDev tables (direct load) ----------
+    #
     def _edcd_import_table_direct(self, session: Session, table: Table, csv_path: Path) -> int:
         """
         Upsert CSV rows into a table whose columns match CSV headers.
@@ -399,8 +392,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     # --------------------------------------
     # Comparison Helpers
-    # --------------------------------------
-    
+    #
     def _apply_vendor_block_per_rules(
         self,
         t_vendor: Table,
@@ -449,7 +441,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     and_(
                         t_vendor.c.station_id == station_id,
                         getattr(t_vendor.c, id_col).in_(keep_ids),
-                        or_(t_vendor.c.modified == None, t_vendor.c.modified < ts_sp),
+                        or_(t_vendor.c.modified.is_(None), t_vendor.c.modified < ts_sp),
                     )
                 )
                 .values(modified=ts_sp)
@@ -463,14 +455,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 and_(
                     t_vendor.c.station_id == station_id,
                     ~getattr(t_vendor.c, id_col).in_(keep_ids) if keep_ids else True,
-                    or_(t_vendor.c.modified == None, t_vendor.c.modified <= ts_sp),
+                    or_(t_vendor.c.modified.is_(None), t_vendor.c.modified <= ts_sp),
                 )
             )
         )
         deletes = int(res.rowcount or 0)
         
         return inserts, updates, deletes
-
 
     def _sync_vendor_block_fast(
             self,
@@ -625,7 +616,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 and_(
                     t_si.c.station_id.in_(absent),
                     t_si.c.from_live == 0,
-                    or_(t_si.c.modified == None, t_si.c.modified <= json_ts),
+                    or_(t_si.c.modified.is_(None), t_si.c.modified <= json_ts),
                 )
             )
         ).rowcount or 0
@@ -633,12 +624,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Vendors: delete rows with modified <= json_ts
         del_u = self.session.execute(
             tables["UpgradeVendor"].delete().where(
-                and_(t_uv.c.station_id.in_(absent), or_(t_uv.c.modified == None, t_uv.c.modified <= json_ts))
+                and_(t_uv.c.station_id.in_(absent), or_(t_uv.c.modified.is_(None), t_uv.c.modified <= json_ts))
             )
         ).rowcount or 0
         del_s = self.session.execute(
             tables["ShipVendor"].delete().where(
-                and_(t_sv.c.station_id.in_(absent), or_(t_sv.c.modified == None, t_sv.c.modified <= json_ts))
+                and_(t_sv.c.station_id.in_(absent), or_(t_sv.c.modified.is_(None), t_sv.c.modified <= json_ts))
             )
         ).rowcount or 0
         
@@ -793,7 +784,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         base_where = and_(
             t_si.c.station_id == station_id,
             t_si.c.from_live == 0,
-            or_(t_si.c.modified == None, t_si.c.modified <= ts_sp),
+            or_(t_si.c.modified.is_(None), t_si.c.modified <= ts_sp),
         )
         if keep_ids:
             delete_stmt = t_si.delete().where(and_(base_where, ~t_si.c.item_id.in_(keep_ids)))
@@ -808,11 +799,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         return wrote, delc
 
-
     # ------------------------------
     # Lifecycle hooks
-    # ------------------------------
-    
+    #
     def run(self) -> bool:
         """
         Full orchestrator: acquisition → bootstrap → EDCD preload → import → rares → export.
@@ -834,9 +823,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         try:
             source_path = self._acquire_source()
         except CleanExit as ce:
-            self._warn(str(ce)); return False
+            self._warn(str(ce))
+            return False
         except Exception as e:
-            self._error(f"Acquisition failed: {e!r}"); return False
+            self._error(f"Acquisition failed: {e!r}")
+            return False
         
         # -------- Bootstrap DB (no cache rebuild here) --------
         try:
@@ -861,7 +852,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             # No valid DB? Create full schema now (SQLite from canonical SQL; MariaDB via ORM)
             if summary.get("action") == "needs_rebuild":
-                from tradedangerous.db.lifecycle import reset_db
                 db_path = Path(self.tdb.engine.url.database or (data_dir / "TradeDangerous.db"))  # SQLite only
                 self._print("No valid DB detected — creating full schema…")
                 reset_db(self.tdb.engine, db_path=db_path)
@@ -896,7 +886,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                     self._print(f"EDCD categories: added {added} new categories")
                 self.session.commit()
         except CleanExit as ce:
-            self._warn(str(ce)); return False
+            self._warn(str(ce))
+            return False
         except Exception as e:
             self._warn(f"EDCD categories skipped due to error: {e!r}")
         
@@ -940,9 +931,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f"kept: markets≈{stats.get('market_stations',0):,} outfitters≈{stats.get('outfit_stations',0):,} shipyards≈{stats.get('ship_stations',0):,}"
             )
         except CleanExit as ce:
-            self._warn(str(ce)); self._safe_close_session(); return False
+            self._warn(str(ce))
+            self._safe_close_session()
+            return False
         except Exception as e:
-            self._error(f"Import failed: {e!r}"); self._safe_close_session(); return False
+            self._error(f"Import failed: {e!r}")
+            self._safe_close_session()
+            return False
         
         # Enforce Item.ui_order
         try:
@@ -951,14 +946,17 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._print(f"ui_order enforced in {time.time()-t0:.2f}s")
         except Exception as e:
             self._error(f"ui_order enforcement failed: {e!r}")
-            self._safe_close_session(); return False
+            self._safe_close_session()
+            return False
         
         # Final commit for import phase
         try:
             self.session.commit()
         except Exception as e:
             self._warn(f"Commit failed at end of import; rolling back. Cause: {e!r}")
-            self.session.rollback(); self._safe_close_session(); return False
+            self.session.rollback()
+            self._safe_close_session()
+            return False
         
         self._safe_close_session()
         
@@ -971,15 +969,18 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self._import_rareitems()
             self._print(f"Rares imported in {time.time()-t0:.2f}s")
         except CleanExit as ce:
-            self._warn(str(ce)); return False
+            self._warn(str(ce))
+            return False
         except Exception as e:
-            self._error(f"RareItem import failed: {e!r}"); return False
+            self._error(f"RareItem import failed: {e!r}")
+            return False
         
         # -------- Export (uses your parallel exporter already present) --------
         try:
             self._export_and_mirror()  # timing + final print handled inside
         except Exception as e:
-            self._error(f"Export failed: {e!r}"); return False
+            self._error(f"Export failed: {e!r}")
+            return False
         
         elapsed = self._format_hms(time.time() - started)
         self._print(f"{elapsed}  Done")
@@ -1019,9 +1020,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     def _download_with_cache(self, url: str, cache_path: Path, *, label: str = "download") -> Path:
         """Conditional download with HEAD Last-Modified and atomic .part."""
-        import urllib.request
-        from email.utils import parsedate_to_datetime
-        
         remote_lm: Optional[datetime] = None
         try:
             req = urllib.request.Request(url, method="HEAD")
@@ -1252,7 +1250,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 # --- System upsert ---
                 t_system = tables["System"]
-                x = coords.get("x"); y = coords.get("y"); z = coords.get("z")
+                x, y, z = coords.get("x"), coords.get("y"), coords.get("z")
                 sys_modified = self._parse_ts(system_obj.get("updateTime"))
                 self._upsert_system(t_system, int(sys_id64), str(sys_name), x, y, z, sys_modified)
                 
@@ -1391,7 +1389,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                     if has_market and mkt_fresh:
                         commodities = (st.get("market") or {}).get("commodities") or []
                         if isinstance(commodities, list) and commodities:
-                            from ..db.locks import station_advisory_lock
                             # The advisory lock context pins lock + DML to the same connection/txn.
                             with station_advisory_lock(self.session, station_id, timeout_seconds=0.2, max_retries=4) as got:
                                 if not got:
@@ -1460,6 +1457,8 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Upsert helpers
     # ------------------------------
+
+
     def _upsert_system(
         self, t_system: Table, system_id: int, name: str,
         x: Optional[float], y: Optional[float], z: Optional[float],
@@ -1709,7 +1708,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         select(t_vendor.c.modified).where(and_(t_vendor.c.ship_id == r["ship_id"], t_vendor.c.station_id == r["station_id"]))
                     ).first()
                     if ven is None:
-                        self.session.execute(insert(t_vendor).values(**r)); wrote += 1
+                        self.session.execute(insert(t_vendor).values(**r))
+                        wrote += 1
                     else:
                         dbm = ven[0]
                         if dbm is None or r["modified"] > dbm:
@@ -1772,7 +1772,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         select(t_vendor.c.modified).where(and_(t_vendor.c.upgrade_id == r["upgrade_id"], t_vendor.c.station_id == r["station_id"]))
                     ).first()
                     if ven is None:
-                        self.session.execute(insert(t_vendor).values(**r)); wrote += 1
+                        self.session.execute(insert(t_vendor).values(**r))
+                        wrote += 1
                     else:
                         dbm = ven[0]
                         if dbm is None or r["modified"] > dbm:
@@ -1871,7 +1872,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                         select(t_si.c.modified).where(and_(t_si.c.station_id == r["station_id"], t_si.c.item_id == r["item_id"]))
                     ).first()
                     if si is None:
-                        self.session.execute(insert(t_si).values(**r)); wrote_links += 1
+                        self.session.execute(insert(t_si).values(**r))
+                        wrote_links += 1
                     else:
                         dbm = si[0]
                         if dbm is None or r["modified"] > dbm:
@@ -1918,7 +1920,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         
         def _norm(s: Optional[str]) -> str:
-            if s is None: return ""
+            if s is None:
+                return ""
             s = s.strip().strip("'").strip('"')
             s = s.replace("’", "'").replace("‘", "'")
             s = s.replace("–", "-").replace("—", "-")
@@ -1926,15 +1929,18 @@ class ImportPlugin(plugins.ImportPluginBase):
             return s.casefold()
         
         def _kwant(fieldnames, *aliases) -> Optional[str]:
-            if not fieldnames: return None
+            if not fieldnames:
+                return None
             canon = {}
             for h in fieldnames or []:
-                if not h: continue
+                if not h:
+                    continue
                 k = h.strip().lower().replace("_", "").replace(" ", "")
                 canon[k] = h
             for a in aliases:
                 k = a.strip().lower().replace("_", "").replace(" ", "")
-                if k in canon: return canon[k]
+                if k in canon:
+                    return canon[k]
             return None
         
         sess = None
@@ -1998,13 +2004,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if station_id is None or sess.execute(
                             select(t_stn.c.station_id).where(t_stn.c.station_id == station_id)
                         ).first() is None:
-                            skipped += 1; skipped_no_station += 1
+                            skipped += 1
+                            skipped_no_station += 1
                             skipped_rows.append({"reason":"no_station","name":rn_raw,"market_id":mk_raw,"category":cat_raw})
                             continue
                         
                         cid = cat_id_by_name.get(_norm(cat_raw))
                         if cid is None:
-                            skipped += 1; skipped_no_category += 1
+                            skipped += 1
+                            skipped_no_category += 1
                             skipped_rows.append({"reason":"no_category","name":rn_raw,"market_id":mk_raw,"category":cat_raw})
                             continue
                         
@@ -2030,7 +2038,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                             k2_cat  = _kwant(rd2.fieldnames, "category","categoryname")
                             if k2_name and k2_cat:
                                 for r2 in rd2:
-                                    n = _norm(r2.get(k2_name)); c = _norm(r2.get(k2_cat))
+                                    n = _norm(r2.get(k2_name))
+                                    c = _norm(r2.get(k2_cat))
                                     if n and c:
                                         cid = cat_id_by_name.get(c)
                                         if cid is not None:
@@ -2044,7 +2053,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         rn_raw  = row.get(k_name)
                         sys_raw = row.get(k_system)
                         stn_raw = row.get(k_station)
-                        rn = _norm(rn_raw); sysn = _norm(sys_raw); stnn = _norm(stn_raw)
+                        rn, sysn, stnn = _norm(rn_raw), _norm(sys_raw), _norm(stn_raw)
                         
                         if not rn or not sysn or not stnn:
                             skipped += 1
@@ -2053,13 +2062,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                         
                         station_id = stn_by_names.get((sysn, stnn))
                         if station_id is None:
-                            skipped += 1; skipped_no_station += 1
+                            skipped += 1
+                            skipped_no_station += 1
                             skipped_rows.append({"reason":"no_station","name":rn_raw,"system":sys_raw,"station":stn_raw})
                             continue
                         
                         cid = name_to_catid.get(rn)
                         if cid is None:
-                            skipped += 1; skipped_no_category += 1
+                            skipped += 1
+                            skipped_no_category += 1
                             skipped_rows.append({"reason":"no_category","name":rn_raw,"system":sys_raw,"station":stn_raw})
                             continue
                         
@@ -2107,7 +2118,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 keys = sorted({k for r in skipped_rows for k in r.keys()})
                 with open(outp, "w", encoding="utf-8", newline="") as fh:
                     w = csv.DictWriter(fh, fieldnames=keys)
-                    w.writeheader(); w.writerows(skipped_rows)
+                    w.writeheader()
+                    w.writerows(skipped_rows)
                 self._print(f"EDCD Rares: imported={kept:,}  skipped={skipped:,}  "
                             f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,})  "
                             f"→ details: {outp}")
@@ -2117,18 +2129,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         except Exception as e:
             if sess is not None:
-                try: sess.rollback()
-                except Exception: pass
+                try:
+                    sess.rollback()
+                except Exception:
+                    pass
             raise CleanExit(f"RareItem import failed: {e!r}")
         finally:
             if sess is not None:
-                try: sess.close()
-                except Exception: pass
+                try:
+                    sess.close()
+                except Exception:
+                    pass
 
 
     # ------------------------------
     # Export / cache refresh
     # ------------------------------
+    
+    
     def _export_cache(self) -> None:
         """Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating."""
         
@@ -2236,7 +2254,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         Run the normal cache/CSV export, then mirror CSVs to TD_CSV if set.
         Use this in place of a direct _export_cache() call.
         """
-        import time
         t0 = time.time()
         self._export_cache()  # existing exporter (unchanged)
         self._print(f"Cache export completed in {time.time()-t0:.2f}s")
@@ -2244,7 +2261,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     # ------------------------------
     # Categories cache
-    # ------------------------------
+    #
     def _load_categories(self, session: Session, tables: Dict[str, Table]) -> Dict[str, int]:
         t_cat = tables["Category"]
         rows = session.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
@@ -2252,8 +2269,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     # ------------------------------
     # Streaming JSON reader
-    # ------------------------------
-    
+    #
     def _ijson_items(self, fh: io.BufferedReader, prefix: str):
         """
         Use the fastest available ijson backend with clean fallback.
@@ -2313,10 +2329,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self._is_tty:
             self._live_status("")
 
-
     # ------------------------------
     # Mapping / derivations / misc
-    # ------------------------------
+    #
     @staticmethod
     def _build_station_type_map() -> Dict[Optional[str], Tuple[int, bool]]:
         return {
@@ -2473,7 +2488,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         try:
             if self._is_tty:
-                import shutil
                 width = shutil.get_terminal_size(fallback=(120, 20)).columns
                 if width and width > 4:
                     msg = msg[: width - 2]

@@ -1,6 +1,7 @@
 # tradedangerous/commands/trade_cmd.py
 import datetime
 
+from .commandenv import ResultRow
 from .exceptions import CommandLineError
 from .parsing import ParseArgument
 from tradedangerous import TradeORM
@@ -9,6 +10,7 @@ from tradedangerous.formatting import RowFormat, max_len
 
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
+
 
 ######################################################################
 # Parser config
@@ -63,8 +65,6 @@ def age(now: datetime, modified: datetime) -> float:
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    from .commandenv import ResultRow
-
     # IMPORTANT: resolve stations BEFORE constructing TradeCalc
     tdb = TradeORM(tdenv=cmdenv)
 
@@ -157,9 +157,9 @@ def render(results, cmdenv, tdb):
     #     )
     rowFmt.addColumn('Buying', '>', 10, 'n',
             key=lambda row: row["dem_price"])
-        # rowFmt.addColumn('AvgBuy', '>', 10,
-        #     key=lambda row: tdb.avgBuying.get(row.item.ID, 0)
-        # )
+    # rowFmt.addColumn('AvgBuy', '>', 10,
+    #     key=lambda row: tdb.avgBuying.get(row.item.ID, 0)
+    # )
 
     if cmdenv.detail > 1:
         rowFmt.addColumn('Supply', '>', 10,

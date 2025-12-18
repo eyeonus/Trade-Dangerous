@@ -285,6 +285,7 @@ def _get_added_id(session, added_name):
     _fk_cache_added[added_name] = rid
     return rid
 
+
 # supply/demand levels are one of '?' for unknown, 'L', 'M' or 'H'
 # for low, medium, or high. We turn these into integer values for
 # ordering convenience, and we include both upper and lower-case
@@ -373,7 +374,6 @@ def getStationByNameIndex(session: Session) -> dict[str, int]:
     return {name.upper(): ID for (ID, name) in rows}
 
 
-
 def getItemByNameIndex(session: Session) -> dict[str, int]:
     """Generate item name index (uppercase item name → item_id)."""
     rows = (
@@ -381,7 +381,6 @@ def getItemByNameIndex(session: Session) -> dict[str, int]:
         .all()
     )
     return {name: itemID for (itemID, name) in rows}
-
 
 
 # The return type of process prices is complicated, should probably have been a type
@@ -470,10 +469,10 @@ def processPrices(
     
     def changeStation(matches: re.Match) -> None:
         nonlocal facility, stationID
-        nonlocal processedStations, processedItems, localAdd
+        nonlocal processedItems, localAdd
         nonlocal stationItemDates
         
-        # ## Change current station
+        # Change current station
         stationItemDates = {}
         systemNameIn, stationNameIn = matches.group(1, 2)
         systemName, stationName = systemNameIn.upper(), stationNameIn.upper()
@@ -1265,10 +1264,7 @@ def buildCache(tdb: TradeDB, tdenv: TradeEnv):
         stderr=True,
     )
     
-    dbPath = tdb.dbPath
-    sqlPath = tdb.sqlPath
-    # pricesPath = tdb.pricesPath
-    engine = tdb.engine
+    dbPath, engine = tdb.dbPath, tdb.engine
     
     # --- Step 1: reset schema BEFORE opening a session/transaction ---
     # Single unified call; no dialect branching here.

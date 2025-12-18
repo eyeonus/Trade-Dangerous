@@ -42,7 +42,7 @@ class LongRunningCountBar(BarStyle):
 
 class ElapsedBar(BarStyle):
     """ Creates a progress bar that is just showing something will take time. """
-    def __init__(self, width: int=10, prefix: Optional[str] = None):
+    def __init__(self, width: int = 10, prefix: Optional[str] = None):
         my_columns = [TimeElapsedColumn()]
         super().__init__(width, prefix, add_columns=my_columns)
 

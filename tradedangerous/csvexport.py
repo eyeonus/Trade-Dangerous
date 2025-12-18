@@ -1,12 +1,12 @@
 from pathlib import Path
-from sqlalchemy import inspect, text
-from .tradeexcept import TradeException
+import csv
 
+from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
+
+from .tradeexcept import TradeException
 from .db import utils as db_utils
 
-
-import csv
-import os
 
 ######################################################################
 # TradeDangerous :: Modules :: CSV Exporter
@@ -112,7 +112,6 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
       * a SQLAlchemy Session
       * a TradeDB wrapper exposing .engine
     """
-    from sqlalchemy.orm import Session
     
     # --- Resolve a SQLAlchemy session ---
     if hasattr(tdb_or_session, "engine"):

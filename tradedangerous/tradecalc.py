@@ -44,7 +44,6 @@ Classes:
 # Imports
 
 from collections import defaultdict, namedtuple
-import datetime
 import locale
 import os
 import re
@@ -56,13 +55,13 @@ from sqlalchemy import select, text as _sa_text
 from .tradeexcept import TradeException
 
 # ORM models (SQLAlchemy)
-from tradedangerous.db.orm_models import StationItem, Station, System, Item
 from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
 
 # Legacy-style helpers (these remain expected by other modules)
 from .tradedb import Trade, Destination, describeAge
 
 locale.setlocale(locale.LC_ALL, '')
+
 
 ######################################################################
 # Exceptions
@@ -243,7 +242,6 @@ class Route:
         credits = int(getattr(tdenv, "credits", 0) or 0)
 
         return self.render(colorize, tdenv, detail=detail, goalSystem=goalSystem, credits=credits)
-
 
     def render(self, colorize, tdenv, detail=0, goalSystem=None, credits=0):
         """
@@ -500,7 +498,8 @@ class Route:
                 final=credits + ttlGainCr,
             )
         )
-       
+
+
 class TradeCalc:
     """
     Container for accessing trade calculations with common properties.
@@ -624,7 +623,8 @@ class TradeCalc:
                 mod_dt = parse_ts(modified)
                 if not mod_dt:
                     if showProgress:
-                        sys.stdout.write("\n"); sys.stdout.flush()
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
                     raise BadTimestampError(tdb, stnID, itmID, modified)
                 ageS = nowS - int(mod_dt.timestamp())
 
@@ -661,10 +661,10 @@ class TradeCalc:
         )
 
 
-
     # ------------------------------------------------------------------
     # Cargo fitting algorithms
     # ------------------------------------------------------------------
+
 
     def bruteForceFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
@@ -809,10 +809,8 @@ class TradeCalc:
 
         return _fitCombos(0, credits, capacity)
 
-
     # Mark's test run, to spare searching back through the forum posts for it.
     # python trade.py run --fr="Orang/Bessel Gateway" --cap=720 --cr=11b --ly=24.73 --empty=37.61 --pad=L --hops=2 --jum=3 --loop --summary -vv --progress
-
     def simpleFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
         Simplistic load calculator:
@@ -1241,7 +1239,8 @@ class TradeCalc:
                 )
     
         if heartbeat_enabled:
-            sys.stderr.write("\n"); sys.stderr.flush()
+            sys.stderr.write("\n")
+            sys.stderr.flush()
     
         if connections == 0:
             raise NoHopsError("No destinations could be reached within the constraints.")

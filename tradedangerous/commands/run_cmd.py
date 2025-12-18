@@ -817,7 +817,8 @@ def checkDestinations(tdb, cmdenv, calc):
                 heartbeat(seen, kept)
             cmdenv.destinations = tuple(dests)
             if showProgress:
-                sys.stdout.write("\n"); sys.stdout.flush()
+                sys.stdout.write("\n")
+                sys.stdout.flush()
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps
@@ -848,7 +849,8 @@ def checkDestinations(tdb, cmdenv, calc):
             heartbeat(seen, kept)
         cmdenv.destinations = tuple(dests)
         if showProgress:
-            sys.stdout.write("\n"); sys.stdout.flush()
+            sys.stdout.write("\n")
+            sys.stdout.flush()
     
     if not cmdenv.endJumps and isinstance(cmdenv.destPlace, System):
         cmdenv.destinations = filterStationSet(
