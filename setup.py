@@ -83,6 +83,8 @@ setup(
             "templates/Category.csv",
             "templates/RareItem.csv",
             "templates/database_changes.json",
+            "tradeenv.pyi",
+            "py.typed",
         ]
     },
     entry_points={
