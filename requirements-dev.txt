@@ -3,6 +3,7 @@
 tox
 flake8
 pytest
+pylint
 tox-gh-actions
 coverage
 
