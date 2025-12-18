@@ -2141,18 +2141,24 @@ class TradeDB:
                     for station in node.system.stations:
                         yield node, station
         
+        fleet = fleet or "YN?"
+        maxPadSize = maxPadSize or "SML?"
+        odyssey = odyssey or "YN?"
+        planetary = "N" if noPlanet else (planetary or "YN?")
+        
         path_iter = iter(
           (node, station) for (node, station) in path_iter_fn()
-          if (station.planetary == 'N' if noPlanet else True) and
-            (station not in avoidPlaces if avoidPlaces else True) and
-            (station.checkPadSize(maxPadSize) if maxPadSize else True) and
-            (station.checkPlanetary(planetary) if planetary else True) and
-            (station.checkFleet(fleet) if fleet else True) and
-            (station.checkOdyssey(odyssey) if odyssey else True) and
-            (station.lsFromStar > 0 and station.lsFromStar <= maxLsFromStar if maxLsFromStar else True)
+          if station.planetary in planetary and
+            station not in avoidPlaces and
+            station.maxPadSize in maxPadSize and
+            station.fleet in fleet and
+            station.odyssey in odyssey and
+            (not maxLsFromStar or 0 < station.lsFromStar <= maxLsFromStar)
         )
-        for node, stn in path_iter:
-            yield Destination(node.system, stn, node.via, node.distLy)
+        yield from (
+            Destination(node.system, stn, node.via, node.distLy)
+            for node, stn in path_iter
+        )
     
     ############################################################
     # Ship data.

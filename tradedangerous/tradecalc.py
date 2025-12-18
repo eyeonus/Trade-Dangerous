@@ -51,7 +51,7 @@ import re
 import sys
 import time
 
-from sqlalchemy import select
+from sqlalchemy import select, text as _sa_text
 
 from .tradeexcept import TradeException
 
@@ -220,8 +220,6 @@ class Route:
 
         Honors TD_NO_COLOR and tdenv.noColor to disable ANSI color codes.
         """
-        import os
-
         # TD_NO_COLOR disables color if set to anything truthy (except 0/false/no/off/"")
         env_val = os.getenv("TD_NO_COLOR", "")
         env_no_color = bool(env_val) and env_val.strip().lower() not in ("0", "", "false", "no", "off")
@@ -609,7 +607,8 @@ class TradeCalc:
         if where_clauses:
             sql += " WHERE " + " AND ".join(where_clauses)
 
-        from sqlalchemy import text as _sa_text
+        tdenv.DEBUG1("query: {}", sql)
+        tdenv.DEBUG1("params: {}", params)
         with tdb.engine.connect() as conn:
             result = conn.execute(_sa_text(sql), params)
 
@@ -632,18 +631,18 @@ class TradeCalc:
                 # Buying map (demand side)
                 if d_price and d_price > 0:
                     if not minDemand or (d_units or 0) >= minDemand:
-                        demand[stnID] += [(itmID, d_price, d_units or 0, d_level, ageS)]
+                        demand[stnID].append((itmID, d_price, d_units or 0, d_level, ageS))
                         dmdCount += 1
 
                 # Selling map (supply side)
                 if s_price and s_price > 0 and s_units:
                     if not minSupply or s_units >= minSupply:
-                        supply[stnID] += [(itmID, s_price, s_units, s_level, ageS)]
+                        supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
                         supCount += 1
 
-                # Calling 'time.time()' is *very* expensive, so only do it every 256 rows,
+                # Calling 'time.time()' is *very* expensive, so only do it every so many rows
                 # but the == 1 means that we'll do it for the very first row too.
-                if showProgress and (rows_seen & 255) == 1:  # fast modulo 256
+                if showProgress and (rows_seen & 15) == 1:  # fast modulo 16
                     heartbeat()
 
         if showProgress:
@@ -1024,9 +1023,11 @@ class TradeCalc:
                     if stn.ID not in buying_ids:
                         continue
                     dests_seen += 1
-                    if heartbeat_enabled and (dests_seen & 31) == 1:    # fast modulo 32
+                    if heartbeat_enabled and (dests_seen & 15) == 1:    # fast modulo 16
                         heartbeat(origin_idx, dests_seen)
                     yield Destination(stnSys, stn, (srcSys, stnSys), srcDist(stnSys))
+                if heartbeat_enabled:
+                    heartbeat(origin_idx, dests_seen)
     
         else:
             getDestinations = tdb.getDestinations
@@ -1045,11 +1046,14 @@ class TradeCalc:
                     fleet=fleet,
                     odyssey=odyssey,
                 ):
+                    if d.station.ID not in buying_ids:
+                        continue
                     dests_seen += 1
-                    if heartbeat_enabled and (dests_seen & 31) == 1:    # fast modulo 32
+                    if heartbeat_enabled and (dests_seen & 15) == 1:    # fast modulo 16
                         heartbeat(origin_idx, dests_seen)
-                    if d.station.ID in buying_ids:
-                        yield d
+                    yield d
+                if heartbeat_enabled:
+                    heartbeat(origin_idx, dests_seen)
     
         connections = 0
         getSelling = self.stationsSelling.get
@@ -1205,7 +1209,7 @@ class TradeCalc:
                 # update hop-global best score (nearest int)
                 try:
                     si = int(round(score))
-                except Exception:
+                except TypeError:
                     si = int(score)
                 if si > best_seen_score:
                     best_seen_score = si
@@ -1242,9 +1246,7 @@ class TradeCalc:
         if connections == 0:
             raise NoHopsError("No destinations could be reached within the constraints.")
     
-        result = []
-        for (dst, route, trade, jumps, _, score) in bestToDest.values():
-            result.append(route.plus(dst, trade, jumps, score))
-    
-        return result
-    
+        return [
+            route.plus(dst, trade, jumps, score)
+            for (dst, route, trade, jumps, _, score) in bestToDest.values()
+        ]
