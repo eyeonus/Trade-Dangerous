@@ -30,24 +30,26 @@
 # DEVELOPERS: If you are a programmer who wants TD to do something
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
-
+from __future__ import annotations
 import os
 import sys
 import traceback
 
-from . import commands
-from . import tradeexcept
 from .commands import exceptions
 from .plugins import PluginException
-
+from . import commands
 from . import tradedb
+from . import tradeexcept
 
 if "CPROF" in os.environ:
     import cProfile
+else:
+    cProfile = None  # type: ignore
 
 
-def main(argv = None):
-    if not argv:
+def main(argv: list[str] | None = None) -> int:
+    """ standard entry point, taking an optional argument list or defaulting to sys.argv. """
+    if argv is None:
         argv = sys.argv
     if sys.hexversion < 0x30813F0:
         raise SystemExit(
@@ -60,20 +62,20 @@ def main(argv = None):
     
     try:
         try:
-            if "CPROF" in os.environ:
+            if cProfile and "CPROF" in os.environ:
                 cProfile.run("trade(argv)")
-            else:
-                trade(argv)
+                return 0
+            return trade(argv)
         except PluginException as e:
             print("PLUGIN ERROR: {}".format(e))
             if 'EXCEPTIONS' in os.environ:
                 raise e
-            sys.exit(1)
+            return 1
         except tradeexcept.TradeException as e:
             print("%s: %s" % (argv[0], str(e)))
             if 'EXCEPTIONS' in os.environ:
                 raise e
-            sys.exit(1)
+            return 1
     except (UnicodeEncodeError, UnicodeDecodeError):
         print("-----------------------------------------------------------")
         print("ERROR: Unexpected unicode error in the wild!")

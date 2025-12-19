@@ -1,0 +1,112 @@
+# This workflow uses uv for dependency management, testing, and building.
+# It maintains parity with the original python-app.yml but leverages uv's speed and caching.
+
+name: Python application (uv)
+
+on:
+  push:
+    branches: [ release/v1 ]
+  pull_request:
+    branches: [ release/v1 ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      matrix:
+        os:
+          - Ubuntu
+          - Windows
+          - MacOS
+        py:
+          - "3.14"
+          - "3.13"
+          - "3.12"
+          - "3.11"
+          - "3.10"
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    
+    - name: Set up Python ${{ matrix.py }}
+      run: uv python install ${{ matrix.py }}
+
+    - name: Install dependencies
+      # Installs dev dependencies (including tox, tox-gh-actions) into the project environment
+      run: uv sync --frozen --group dev
+    
+    - name: Test with tox
+      # uv run tox will use the project environment where tox and tox-gh-actions are installed.
+      # tox-gh-actions will automatically filter the envlist based on the active python version.
+      env:
+        TOX_PARALLEL_NO_SPINNER: 1
+      run: uv run tox --parallel
+  
+  pypi-publish:
+    name: Upload release to PyPI
+    # Don't try to publish except when this is a push onto the main branch of the master repos.
+    if: github.repository == 'eyeonus/Trade-Dangerous' && github.event_name == 'push' && github.ref == 'refs/heads/release/v1'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      # Tell uv to read .python-version for the Python version to use.
+      UV_PYTHON_PREFERENCE: managed
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tradedangerous
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+          fetch-depth: 0
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    
+    - name: Install dependencies
+      # Installs publish dependencies (python-semantic-release, build)
+      # NOTE: Version of Python used determined by ".python-version" file.
+      run: uv sync --frozen --group publish
+    
+    - name: Configure git
+      run: |
+        git config --global user.name "semantic-release (via GitHub Actions)"
+        git config --global user.email "semantic-release@gh"
+    
+    - name: Python Semantic Release (Version)
+      id: release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Run semantic-release to bump version, update files, commit, and tag.
+        uv run semantic-release version
+        
+        # Check if a tag was created at HEAD to determine if a release occurred
+        if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
+          echo "released=true" >> $GITHUB_OUTPUT
+        else
+          echo "released=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Build artifacts
+      if: steps.release.outputs.released == 'true'
+      run: uv build
+    
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      if: steps.release.outputs.released == 'true'
+    
+    - name: Publish package distributions to GitHub Releases
+      if: steps.release.outputs.released == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Use semantic-release to publish to GitHub Releases (skipping PyPI as we used the action above)
+      run: uv run semantic-release publish --vcs-release --no-pypi
