@@ -54,7 +54,7 @@ from __future__ import annotations
 
 from collections import namedtuple
 from functools import lru_cache
-from math import sqrt as math_sqrt
+from math import floor as math_floor, sqrt as math_sqrt
 from pathlib import Path
 from typing import NamedTuple
 import heapq
@@ -126,7 +126,11 @@ def make_stellar_grid_key(x: float, y: float, z: float) -> tuple[int, int, int]:
     co-ordinates rounded down to 32lys. This makes it much easier
     to find stars within rectangular volumes.
     """
-    return int(x) >> 5, int(y) >> 5, int(z) >> 5
+    # Originally we used int(x) >> 5, but this caused bunching around negatives.
+    # int(0.1) == 0 but so does int(-0.1). We should probably create the
+    # per-system stellar grid keys once, in the database, and store those
+    # against the system.
+    return math_floor(x) >> 5, math_floor(y) >> 5, math_floor(z) >> 5
 
 
 class System:
@@ -607,14 +611,14 @@ class TradeDB:
         # --- Cache attributes (unchanged) ---
         self.avgSelling, self.avgBuying = None, None
         self.tradingStationCount = 0
-        self.systemByID     = None
-        self.systemByName   = None
-        self.stellarGrid    = None
-        self.stationByID    = None
-        self.categoryByID   = None
-        self.itemByID       = None
-        self.itemByName     = None
-        self.itemByFDevID   = None
+        self.systemByID: dict[int, System] | None = None
+        self.systemByName: dict[str, list[System]] | None = None
+        self.stellarGrid: dict[tuple[int, int, int], list[System]] | None = None
+        self.stationByID: dict[int, Station] | None = None
+        self.categoryByID: dict[int, Category] | None = None
+        self.itemByID: dict[int, Item] | None = None
+        self.itemByName: dict[str, Item] | None = None
+        self.itemByFDevID: dict[int, Item] | None = None
         
         # --- Engine bootstrap ---
         
@@ -790,7 +794,7 @@ class TradeDB:
         CAUTION: Will orphan previously loaded objects.
         """
         systemByID: dict[int, System] = {}
-        systemByName: dict[str, list['System']] = {}
+        systemByName: dict[str, list[System]] = {}
         started = time.time()
         with self.Session() as session:
             for row in session.query(
@@ -1072,14 +1076,16 @@ class TradeDB:
         Divides the galaxy into a fixed-sized grid allowing us to
         aggregate small numbers of stars by locality.
         """
-        stellarGrid = self.stellarGrid = {}
+        stellarGrid: dict[tuple[int, int, int], list[System]] = {}
+        if not self.systemByID:
+            raise RuntimeError("Stellar grid building requires systems to be pre-loaded")
         for system in self.systemByID.values():
             key = make_stellar_grid_key(system.posX, system.posY, system.posZ)
             try:
-                grid = stellarGrid[key]
+                stellarGrid[key].append(system)
             except KeyError:
-                grid = stellarGrid[key] = []
-            grid.append(system)
+                stellarGrid[key] = [system]
+        self.stellarGrid = stellarGrid
     
     def genStellarGrid(self, system: 'System', ly: float):
         """
