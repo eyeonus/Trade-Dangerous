@@ -128,8 +128,8 @@ class CommandIndex:
             )
         return text
     
-    def parse(self, argv: list[str] | None, fromfile_prefix: str = '+') -> CommandEnv:
-        if not argv or argv[1] == '--help' or argv[1] == '-h':
+    def parse(self, argv, fromfile_prefix = '+'):
+        if len(argv) <= 1 or argv[1] == '--help' or argv[1] == '-h':
             raise exceptions.UsageError(
                     "TradeDangerous provides a set of trade database "
                     "facilities for Elite:Dangerous.", self.usage(argv))
