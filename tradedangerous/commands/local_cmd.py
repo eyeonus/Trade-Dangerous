@@ -1,13 +1,15 @@
+from __future__ import annotations
+from itertools import chain
+
 from .commandenv import ResultRow
+from .exceptions import NoDataError
 from .parsing import (
     ParseArgument, PadSizeArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
     PlanetaryArgument, FleetCarrierArgument, OdysseyArgument, BlackMarketSwitch,
     ShipyardSwitch, OutfittingSwitch, RearmSwitch, RefuelSwitch, RepairSwitch,
 )
-from ..formatting import RowFormat, ColumnFormat, max_len
-from itertools import chain
-from ..tradedb import TradeDB
-from ..tradeexcept import TradeException
+from tradedangerous import TradeDB
+from tradedangerous.formatting import RowFormat, ColumnFormat, max_len
 
 
 ######################################################################
@@ -28,7 +30,7 @@ arguments = [
 switches = [
     ParseArgument('--ly',
             help='Maximum light years from system.',
-            dest='maxLyPer',
+            dest='ly',
             metavar='N.NN',
             type=float,
             default=None,
@@ -65,9 +67,8 @@ def run(results, cmdenv, tdb):
     tdb = cmdenv.tdb
     srcSystem = cmdenv.nearSystem
     
-    ly = cmdenv.maxLyPer
-    if ly is None:
-        ly = tdb.maxSystemLinkLy
+    # Allow the user to say '0' for system-only
+    ly = cmdenv.ly if cmdenv.ly is not None else cmdenv.maxSystemLinkLy
     
     results.summary = ResultRow()
     results.summary.near = srcSystem
@@ -145,17 +146,14 @@ def run(results, cmdenv, tdb):
     
     return results
 
-######################################################################
-# Transform result set into output
 
 def render(results, cmdenv, tdb):
+    """ render transforms a result set into output for the CLI. """
     if not results or not results.rows:
-        raise TradeException(
-            "No systems found within {}ly of {}."
-            .format(results.summary.ly, results.summary.near.name())
-        )
+        distance, origin = results.summary.ly, results.summary.near.name()
+        raise NoDataError(f"No suitable systems found within {distance}ly of {origin}.")
     
-    # Compare system names so we can tell
+    # Compare name lengths for formatting
     maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
     
     sysRowFmt = RowFormat().append(

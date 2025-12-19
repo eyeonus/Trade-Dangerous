@@ -26,6 +26,7 @@ from . import trade_cmd
 from . import update_cmd
 
 from tradedangerous import version
+from tradedangerous.tradeenv import ENV_DEFAULTS
 
 
 thismodule = sys.modules[__name__]
@@ -224,7 +225,7 @@ class CommandIndex:
         stdArgs.add_argument('--link-ly', '-L',
                     help = 'Maximum lightyears between systems to be considered linked.',
                     type = float,
-                    default = None, dest = 'maxSystemLinkLy',
+                    default = ENV_DEFAULTS['maxSystemLinkLy'], dest = 'maxSystemLinkLy',
                 )
         
         fromfilePath = _findFromFile(cmdModule.name)
