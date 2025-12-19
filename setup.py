@@ -11,7 +11,7 @@
 # --------------------------------------------------------------------
 """Setup for trade-dangerous"""
 import sys
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 try:
     from semantic_release import setup_hook
@@ -29,27 +29,8 @@ exec(open("tradedangerous/version.py").read())  # pylint: disable=W0122
 setup(
     name=package,
     version=__version__,  # pylint: disable=E0602
-    install_requires=[
-    "requests",
-    "appJar",
-    "ijson>=3.1",
-    "rich==13.7.1",
-    "importlib-metadata>=1",
-    "sqlalchemy>=2.0,<3.0",
-    "orjson>=3.11.5",
-    ],
-    setup_requires=["pytest-runner"],
-    tests_require=["pytest"],
-    packages=[
-        ".",
-        "tradedangerous",
-        "tradedangerous.commands",
-        "tradedangerous.mfd",
-        "tradedangerous.mfd.saitek",
-        "tradedangerous.misc",
-        "tradedangerous.plugins",
-        "tradedangerous.db",
-    ],
+    packages=find_packages(include=["tradedangerous", "tradedangerous.*"]),
+    py_modules=["trade", "tradegui"],
     url="https://github.com/eyeonus/Trade-Dangerous",
     project_urls={
         "Bug Tracker": "https://github.com/eyeonus/Trade-Dangerous/issues",
@@ -71,10 +52,9 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
-        "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
         "Operating System :: OS Independent",
     ],
-    license="MPL",
+    license="MPL-2.0",
     python_requires=">=3.10",
     test_suite="tests",
     package_data={
@@ -86,12 +66,6 @@ setup(
             "templates/database_changes.json",
             "tradeenv.pyi",
             "py.typed",
-        ]
-    },
-    entry_points={
-        "console_scripts": [
-            "trade=trade:main",
-            "tradegui=tradegui:main",
         ]
     },
     zip_safe=False,
