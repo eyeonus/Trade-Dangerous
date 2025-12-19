@@ -233,6 +233,7 @@ class DestinationNode(NamedTuple):
     via: list['System']
     distLy: float
 
+
 class Station:
     """
     Describes a station (trading or otherwise) in a system.
@@ -389,7 +390,7 @@ class Station:
 ######################################################################
 
 
-class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
+class Ship(NamedTuple):
     """
     Ship description.
     
@@ -399,6 +400,10 @@ class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
         cost        -- How many credits to buy
         stations    -- List of Stations ship is sold at.
     """
+    ID: int
+    dbname: str
+    cost: int
+    stations: list[Station]
     
     def name(self, _detail: int = 0) -> str:
         return self.dbname
@@ -406,7 +411,7 @@ class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
 ######################################################################
 
 
-class Category(namedtuple('Category', ('ID', 'dbname', 'items'))):
+class Category(NamedTuple):
     """
     Item Category
     
@@ -425,6 +430,9 @@ class Category(namedtuple('Category', ('ID', 'dbname', 'items'))):
         name()
             Returns the display name for this Category.
     """
+    ID: int
+    dbname: str
+    items: list['Item']
     
     def name(self, _detail: int = 0) -> str:
         return self.dbname.upper()
@@ -461,17 +469,21 @@ class Item:
 ######################################################################
 
 
-class Trade(namedtuple('Trade', (
-        'item',
-        'costCr', 'gainCr',
-        'supply', 'supplyLevel',
-        'demand', 'demandLevel',
-        'srcAge', 'dstAge'
-        ))):
+class Trade(NamedTuple):
     """
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
     """
+    item: Item
+    costCr: int
+    gainCr: int
+    supply: int
+    supplyLevel: int
+    demand: int
+    demandLevel: int
+    srcAge: float | None
+    dstAge: float | None
+
     def name(self, detail: int = 0) -> str:
         return self.item.name(detail=detail)
 
@@ -1156,9 +1168,9 @@ class TradeDB:
                     The distance in lightyears between system and candidate.
         """
         
-        cur_cache = system._rangeCache  # pylint: disable=protected-access
+        cur_cache = system._rangeCache  # pylint: disable=protected-access  # noqa: SLF001
         if not cur_cache:
-            cur_cache = system._rangeCache = System.RangeCache()
+            cur_cache = system._rangeCache = System.RangeCache()  # pylint: disable=protected-access  # noqa: SLF001
         cached_systems = cur_cache.systems
         
         if ly > cur_cache.probed_ly:
@@ -2140,7 +2152,7 @@ class TradeDB:
         Query the database for average selling prices of all items using SQLAlchemy.
         """
         if not self.avgSelling:
-            self.avgSelling = {itemID: 0 for itemID in self.itemByID}
+            self.avgSelling = dict.fromkeys(self.itemByID, 0)
             
             with self.Session() as session:
                 rows = (
@@ -2166,7 +2178,7 @@ class TradeDB:
         Query the database for average buying prices of all items using SQLAlchemy.
         """
         if not self.avgBuying:
-            self.avgBuying = {itemID: 0 for itemID in self.itemByID}
+            self.avgBuying = dict.fromkeys(self.itemByID, 0)
             
             with self.Session() as session:
                 rows = (
@@ -2363,9 +2375,7 @@ class TradeDB:
         "bread" and "water", but searching for "it" will return "It"
         because it provides an exact match of a key.
         """
-        
-        class ListSearchMatch(namedtuple('Match', ['key', 'value'])):
-            pass
+        ListSearchMatch = namedtuple('Match', ['key', 'value'])
         
         normTrans = TradeDB.normalizeTrans
         trimTrans = TradeDB.trimTrans

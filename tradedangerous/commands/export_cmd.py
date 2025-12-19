@@ -146,5 +146,5 @@ def run(results, cmdenv, tdb):
                 cmdenv.DEBUG0("Delete empty file {file}", file=filePath)
             except Exception as e:
                 cmdenv.DEBUG0("Failed to delete empty file {file}: {err}", file=filePath, err=e)
-    
-    return None
+
+    return False  # we've handled everything

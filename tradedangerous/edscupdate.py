@@ -527,7 +527,7 @@ def main():
             if ok.startswith('~'):
                 correction = float(ok[1:])
                 submit_distance(argv, name, correction)
-                if not name.upper() in extras:
+                if name.upper() not in extras:
                     add_to_extras(argv, name)
                 continue
             if ok.startswith('='):

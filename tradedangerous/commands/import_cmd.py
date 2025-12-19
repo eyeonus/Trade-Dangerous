@@ -144,7 +144,7 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
         
         # If plugin returns False, it fully handled the run → stop here.
         if not plugin.run():
-            return None
+            return False
         
         # If plugin returns True, it’s handing control back to legacy flow below.
         # Fall through intentionally (still no banner, as user invoked a plugin).
@@ -178,7 +178,7 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
         cmdenv.filename = cmdenv.filename or "import.prices"
         transfers.download(cmdenv, cmdenv.url, cmdenv.filename)
         if cmdenv.download:
-            return None
+            return False
     
     # No filename? If Tk is available, prompt user (legacy behavior)
     fh = None
@@ -215,8 +215,8 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
         # finish() may return False to suppress default regeneration.
         if not plugin.finish():
             cache.regeneratePricesFile()
-            return None
+            return False
     
     # Legacy .prices import
     cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
-    return None
+    return False

@@ -123,7 +123,7 @@ class PluginBase:
         Return False if you have completed work and the calling
         module can finish.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
     def finish(self) -> bool:
@@ -135,7 +135,7 @@ class PluginBase:
         Returning True will allow the sub-command to finish its
         normal workflow after you return.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class ImportPluginBase(PluginBase):
@@ -202,7 +202,7 @@ class ImportPluginBase(PluginBase):
             to reach the call to "finish()",
             False or None to early out after your return.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
     def finish(self) -> bool:
@@ -219,7 +219,7 @@ class ImportPluginBase(PluginBase):
             try to import the .prices data,
             False or None to early out after your return.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 def load(pluginName: str, typeName: str):

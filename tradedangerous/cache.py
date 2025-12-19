@@ -1337,7 +1337,7 @@ def regeneratePricesFile(tdb: TradeDB, tdenv: TradeEnv) -> None:
     # Uses the ORM session rather than raw sqlite.
     # """
     # tdenv.DEBUG0("Regenerating .prices file")
-    # 
+    #
     # with tdb.Session() as session:
     #     with tdb.pricesPath.open("w", encoding="utf-8") as pricesFile:
     #         prices.dumpPrices(
@@ -1346,7 +1346,7 @@ def regeneratePricesFile(tdb: TradeDB, tdenv: TradeEnv) -> None:
     #             file=pricesFile,
     #             debug=tdenv.debug,
     #         )
-    # 
+    #
     # # Only touch the DB file on SQLite — MariaDB has no dbPath
     # if tdb.engine.dialect.name == "sqlite" and tdb.dbPath and os.path.exists(tdb.dbPath):
     #     os.utime(tdb.dbPath)

@@ -9,7 +9,7 @@ class UsageError(TradeException):
         self.title, self.usage = title, usage
     
     def __str__(self):
-        return self.title + "\n\n" + self.usage
+        return f"{self.title}\n\n{self.usage}"
 
 
 class CommandLineError(TradeException):
@@ -23,9 +23,8 @@ class CommandLineError(TradeException):
     
     def __str__(self):
         if self.usage:
-            return "ERROR: {}\n\n{}".format(self.errorStr, self.usage)
-        else:
-            return "ERROR: {}".format(self.errorStr)
+            return f"ERROR: {self.errorStr}\n\n{self.usage}"
+        return f"ERROR: {self.errorStr}"
 
 
 class NoDataError(TradeException):
@@ -56,11 +55,10 @@ class PadSizeError(CommandLineError):
     """ Raised when an invalid pad-size option is given. """
     def __init__(self, value):
         super().__init__(
-            "Invalid --pad-size '{}': Use a combination of one or more "
+            f"Invalid --pad-size '{value}': Use a combination of one or more "
             "from 'S' for Small, 'M' for Medium, 'L' for Large or "
             "'?' for unknown, e.g. 'SML?' matches any pad size while "
             "'M?' matches medium or unknown or 'L' matches only large."
-            .format(value)
         )
 
 
@@ -68,11 +66,10 @@ class PlanetaryError(CommandLineError):
     """ Raised when an invalid planetary option is given. """
     def __init__(self, value):
         super().__init__(
-            "Invalid --planetary '{}': Use a combination of one or more "
+            f"Invalid --planetary '{value}': Use a combination of one or more "
             "from 'Y' for Yes, 'N' for No or '?' for unknown, "
             "e.g. 'YN?' matches any station while 'Y?' matches "
             "yes or unknown, or 'N' matches only non-planetary stations."
-            .format(value)
         )
 
 
@@ -80,20 +77,18 @@ class FleetCarrierError(CommandLineError):
     """ Raised when an invalid fleet-carrier option is given. """
     def __init__(self, value):
         super().__init__(
-            "Invalid --fleet-carrier '{}': Use a combination of one or more "
+            f"Invalid --fleet-carrier '{value}': Use a combination of one or more "
             "from 'Y' for Yes, 'N' for No or '?' for unknown, "
             "e.g. 'YN?' matches any station while 'Y?' matches "
             "yes or unknown, or 'N' matches only non-fleet-carrier stations."
-            .format(value)
         )
 
 class OdysseyError(CommandLineError):
     """ Raised when an invalid odyssey option is given. """
     def __init__(self, value):
         super().__init__(
-            "Invalid --odyssey '{}': Use a combination of one or more "
+            f"Invalid --odyssey '{value}': Use a combination of one or more "
             "from 'Y' for Yes, 'N' for No or '?' for unknown, "
             "e.g. 'YN?' matches any station while 'Y?' matches "
             "yes or unknown, or 'N' matches only non-odyssey stations."
-            .format(value)
         )

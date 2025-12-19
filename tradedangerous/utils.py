@@ -16,7 +16,7 @@ import re
 
 __all__ = ['titleFixup', 'checkForOcrDerp']
 
-ocrDerp = re.compile(r'''(
+ocrDerp = re.compile(r"""(
     ^.$ |
     LAN[O0]ING |
     [O0][O0]CK |
@@ -202,7 +202,7 @@ ocrDerp = re.compile(r'''(
     ^RTZEN |
     \bI?NAL$ |
     \b''I\b
-)''', flags=re.X)
+)""", flags=re.X)
 
 
 def titleFixup(text):

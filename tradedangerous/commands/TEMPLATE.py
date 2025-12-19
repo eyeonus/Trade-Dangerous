@@ -1,4 +1,14 @@
 from __future__ import annotations
+import typing
+
+from .commandenv import ResultRow
+from .parsing import ParseArgument  # import specific helpers as needed
+
+from tradedangerous.formatting import RowFormat
+
+if typing.TYPE_CHECKING:
+    from tradedangerous import TradeDB, TradeORM, CommandEnv, CommandResults
+
 
 ######################################################################
 # Parser config
@@ -12,7 +22,6 @@ wantsTradeDB = True
 usesTradeData = False
 
 # Parser wiring (keep tuples for consistency with loader)
-from .parsing import ParseArgument  # import specific helpers as needed
 arguments = (
     ParseArgument("name", help="Example positional(s).", type=str, nargs="*"),
 )
@@ -20,11 +29,15 @@ switches = (
     ParseArgument("--flag", help="Example flag.", action="store_true", default=False),
 )
 
-# Runtime API
-from .commandenv import ResultRow
-from ..formatting import RowFormat, ColumnFormat  # use package-relative imports
 
-def run(results, cmdenv, tdb):
+# Runtime API
+
+
+def run(
+        results: CommandResults,
+        cmdenv: CommandEnv,
+        tdb: TradeDB | TradeORM | None,     # choose one
+    ) -> CommandResults | bool | None:      # choose one
     """
     Implement code that validates arguments, collects and prepares
     any data you will need to generate your results for the user.
@@ -44,9 +57,10 @@ def run(results, cmdenv, tdb):
     results.rows.append(row)
     return results
 
-def render(results, cmdenv, tdb):
+
+def render(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB | TradeORM | None):
     """
-    If run() returns a non-None value, the trade.py code will then
+    If run() returns a truthy value, the trade.py code will then
     call the corresponding render() function.
     
     This is where you should generate any output from your command.

@@ -75,7 +75,7 @@ def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.P
         return out
     
     # Already a dict-like mapping of sections
-    return {k: dict(v) if isinstance(v, Mapping) else dict() for k, v in cfg.items()}  # type: ignore[arg-type]
+    return {k: dict(v) if isinstance(v, Mapping) else {} for k, v in cfg.items()}  # type: ignore[arg-type]
 
 
 def _get(cfg: Dict[str, Any], section: str, key: str, default=None):

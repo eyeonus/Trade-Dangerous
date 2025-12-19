@@ -6,7 +6,7 @@ from rich.progress import (
         Progress as RichProgress,
         TaskID,
         ProgressColumn,
-        BarColumn, DownloadColumn, MofNCompleteColumn, SpinnerColumn, 
+        BarColumn, DownloadColumn, MofNCompleteColumn, SpinnerColumn,
         TaskProgressColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn,
         TransferSpeedColumn
 )

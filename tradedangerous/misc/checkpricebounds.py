@@ -233,7 +233,7 @@ def main():
         '--ignore',
         help='Ignore items.',
         action='append',
-        default=list(),
+        default=[],
     )
     
     filters = parser.add_mutually_exclusive_group()

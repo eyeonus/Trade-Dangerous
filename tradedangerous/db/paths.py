@@ -110,3 +110,4 @@ def resolve_db_config_path(default_name: str = "db_config.ini") -> Path:
     cand = os.getenv("TD_DB_CONFIG") or default_name
     p = Path(cand).expanduser()
     return p if p.is_absolute() else (Path.cwd() / p)
+

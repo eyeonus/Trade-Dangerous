@@ -145,7 +145,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self._trace_fp = None
     
     # --------------------------------------
-    # Small tracing helper 
+    # Small tracing helper
     #
     def _trace(self, **evt) -> None:
         """
@@ -1224,7 +1224,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         def recent(ts: Optional[datetime]) -> bool:
             if ts is None:
-                return False if maxage_td is not None else True
+                return not maxage_td  # None -> True, otherwise False.
             if maxage_td is None:
                 return True
             return (now_utc - ts) <= maxage_td
@@ -1328,9 +1328,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         if ls_from_star_val is None:
                             ls_from_star_val = 0
                         else:
-                            ls_from_star_val = int(float(ls_from_star_val))
-                            if ls_from_star_val < 0:
-                                ls_from_star_val = 0
+                            ls_from_star_val = max(int(float(ls_from_star_val)), 0)
                     except Exception:
                         ls_from_star_val = 0
                     
@@ -1826,18 +1824,18 @@ class ImportPlugin(plugins.ImportPluginBase):
             buy = co.get("buyPrice")
             sell = co.get("sellPrice")
             
-            link_rows.append(dict(
-                station_id=station_id,
-                item_id=fdev_id,
-                demand_price=sell,
-                demand_units=demand,
-                demand_level=-1,
-                supply_price=buy,
-                supply_units=supply,
-                supply_level=-1,
-                from_live=0,
-                modified=ts,
-            ))
+            link_rows.append({
+                "station_id":   station_id,
+                "item_id":      fdev_id,
+                "demand_price": sell,
+                "demand_units": demand,
+                "demand_level": -1,
+                "supply_price": buy,
+                "supply_units": supply,
+                "supply_level": -1,
+                "from_live":    0,
+                "modified":     ts,
+            })
         
         if item_rows:
             if db_utils.is_sqlite(self.session):
@@ -2154,7 +2152,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     # ------------------------------
     # Export / cache refresh
-    # 
+    #
     def _export_cache(self) -> None:
         """Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating."""
         

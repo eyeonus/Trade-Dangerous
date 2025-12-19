@@ -43,22 +43,30 @@ Classes:
 ######################################################################
 # Imports
 
-from collections import defaultdict, namedtuple
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import NamedTuple
 import locale
 import os
 import re
 import sys
 import time
+import typing
 
-from sqlalchemy import select, text as _sa_text
+from sqlalchemy import text as _sa_text
 
+from .tradedb import Item
 from .tradeexcept import TradeException
+# Legacy-style helpers (these remain expected by other modules)
+from .tradedb import Trade, Destination, describeAge
 
 # ORM models (SQLAlchemy)
 from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
 
-# Legacy-style helpers (these remain expected by other modules)
-from .tradedb import Trade, Destination, describeAge
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable
+    from tradedangerous import TradeDB, TradeEnv
 
 locale.setlocale(locale.LC_ALL, '')
 
@@ -95,7 +103,7 @@ class NoHopsError(TradeException):
 # TradeLoad (namedtuple wrapper)
 
 
-class TradeLoad(namedtuple("TradeLoad", ("items", "gainCr", "costCr", "units"))):
+class TradeLoad(NamedTuple):
     """
     Describes the manifest of items to be exchanged in a trade.
 
@@ -105,6 +113,10 @@ class TradeLoad(namedtuple("TradeLoad", ("items", "gainCr", "costCr", "units")))
         costCr  : how much this load was bought for
         units   : total number of units across all items
     """
+    items: list[tuple[Item, int]]
+    gainCr: int
+    costCr: int
+    units: int
 
     def __bool__(self):
         return self.units > 0
@@ -505,7 +517,14 @@ class TradeCalc:
     Container for accessing trade calculations with common properties.
     """
 
-    def __init__(self, tdb, tdenv=None, fit=None, items=None, restrict_station_ids=None):
+    def __init__(
+                 self,
+                 tdb: TradeDB,
+                 tdenv: TradeEnv | None = None,
+                 fit: callable | None = None,
+                 items: list[Item] | None = None,
+                 restrict_station_ids: Iterable[int] = None
+                ):
         """
         Constructs the TradeCalc object and loads sell/buy data.
         """

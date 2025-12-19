@@ -1,0 +1,142 @@
+exclude = [
+	"**/.*",
+	"**/archive",
+	"**/__pycache__",
+	"data",
+	"docs",
+	"scripts",
+	"test-data",
+	"tests",
+	"tradedangerous/misc",
+	"tradedangerous/submit-distances.py",
+	"tradedangerous/gui.py",  # too many errors
+]
+include = [
+	"trade.py",
+	"tradedangerous/**/*.py",
+]
+
+line-length = 180
+indent-width = 4
+target-version = "py310"
+
+src = ["tradedangerous"]
+
+[format]
+# quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = true
+line-ending = "lf"
+
+[lint]
+select = [
+    # "UP",			# pyupgrade -- not yet
+    # "S",          # flake8-bandit <- security
+    "C4",           # flake8-comprehensions
+    # "G",          # flake8-logging-format
+
+    "ANN",          # annotations
+    "E", "W",       # pycodestyle
+    "F",            # pyflakes
+    "FA",           # flake8-future-annotations
+    "I",            # isort
+    "ICN",          # flake8-import-conventions
+    "ISC",          # flake8-implicit-str-concat
+    # "LOG",        # flake8-logging
+    "PL",           # pylint
+    "Q",            # flake8-quotes
+    "RET",          # flake8-return
+    "RSE",          # flake8-raise
+    "SLF",          # flake8-self
+    "SLOT",         # flake8-slots
+    "TID",          # flake8-tidy-imports
+    "YTT",          # flake8-2020
+
+    # Unlikely
+    #"ERA",         # eradicate
+    #"R",
+
+    # Unhelpful
+    #"FURB",
+]
+
+ignore = [
+	# Single vs double quotes. Especially as f-strings become prevalent, there are some
+	# unfortunate traps to fall into; standardizing your quotes can really help.
+	# However, I was all over the place when I was learning Python and that leached into TD.
+	# The convention is double quotes unless you need double-quotes inside the string.
+	# See [ruff.format.quote-style]
+	"Q000",		# TODO: double-vs-single quotes.
+
+	# Or Ruff can point out strings where you've used quoting that forces you to escape,
+	# and where switching quotes would simplify.
+	"Q003",		# TODO: Reduce escaping where possible,
+
+	# In Python 2.6, declaring an inline helper method (def f ...) was more expensive
+	# than a lambda definition (f = lambda ...). No-longer true, and the local function
+	# may be cheaper to call.
+	"E731",		# TODO: replace local lambdas with defs.
+
+	# Blank line contains whitespace, however this is the local convention.
+	"W293",		# blank linke contains whitespace
+
+	# Import ordering seems trivial, but it can have consequences, especially in testing
+	# where mocks/monkeypatching might happen. Make every effort possible to avoid
+	# inline imports, but until someone wants to do a full cleanup pass:
+	"F401",		# import not at top-level
+	"PLC0415",	# import not at top-level
+	"TID252",	# Prefer absolute imports over relative imports from parent modules
+				# commands/__init__.py: 'from .. import formatting' -> 'from tradedangerous import formatting'
+
+    # These ones need fixing to be disabled
+    "I001",     # TODO: unsorted import block
+    # "E501",     # line too long ... for now.
+    "ANN001",   # missing annotation
+    "ANN002",   # missing annotation for *args
+    "ANN003",   # missing annotation for **kwargs
+    "ANN201",   # missing return annotation
+    "ANN202",   # missing return annotation private method
+    "ANN401",   # complain about Any
+
+    # maybe?
+    "PLR0911",  # too many returns
+    "PLR0912",  # too many branches
+    "PLR2004",  # magic numbers
+    "PLR2044",  # empty comment
+    "PLW2901",  # overwriting for-expression: for x,y in ...: y = str(y)
+
+    # These are probably here for good,
+    # "E402",     # module import not at top of file, usually a smell
+    "RET504",   # unneccessary assignment before return
+    "RET506",   # elif after raise. it just looks better
+    "T201",     # we use print, deal with it
+    "PLR0913",  # too many args in function
+    "PLR0915",  # too many statements
+
+    "PLW0603",	# use of global discouraged
+
+]
+
+fixable = ["ALL"]
+unfixable = []
+
+dummy-variable-rgx = "^(_+[a-zA-z0-9_]*)$"
+
+
+[lint.per-file-ignores]
+
+
+[lint.flake8-annotations]
+ignore-fully-untyped = true
+mypy-init-return = true
+
+
+[lint.isort]
+case-sensitive = true
+section-order = ["future", "standard-library", "local-folder", "first-party", "third-party"]
+force-sort-within-sections = false
+from-first = true
+known-local-folder = ["tradedangerous"]
+force-to-top = ["tradedangerous"]
+known-third-party = ["psutil", "requests", "sqlalchemy", "ijson", "orjson", "rich", "yaml"]
+order-by-type = true

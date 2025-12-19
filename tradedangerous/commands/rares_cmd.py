@@ -180,7 +180,8 @@ def run(results, cmdenv, tdb):
         return None
     
     # Sort safely even if rare.costCr is None (treat None as 0)
-    price_key = lambda row: (row.rare.cost or 0)
+    def price_key(row):
+        return row.rare.cost or 0
     
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)

@@ -1,5 +1,5 @@
 """
-Import plugin that uses data files from 
+Import plugin that uses data files from
 https://elite.tromador.com/ to update the Database.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ import typing
 from sqlalchemy.orm import Session
 from sqlalchemy import func, delete, select, exists, text
 
-from tradedangerous import plugins, transfers
+from tradedangerous import plugins, transfers, TradeException
 from tradedangerous.db import orm_models as SA, lifecycle
 from tradedangerous.db.utils import (
     begin_bulk_mode, end_bulk_mode,
@@ -296,8 +296,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                     "sell_price", "demand", "demand_bracket",
                     "collected_at"
                 ]
-                assert headers[:10] == expect_headers, \
-                    "unrecognized listings csv format. expected {expected_headers}; got {headers}"
+                if headers[:10] != expect_headers:
+                    raise TradeException(
+                        f"incompatible csv field organization in {listings_path}. "
+                        f"expected {expect_headers}; got {headers}"
+                    )
                 
                 for listing in reader:
                     bump_progress()
@@ -576,4 +579,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         return False
 
     def finish(self):
-        raise RuntimeError("unexpected call to finish")
+        """ override the base class 'finish' method """
+        # We expect to return 'False' from run, so if this is called, something went horribly wrong;
+        # if this gets reached, someone added a bad return to run().
+        raise RuntimeError("internal error: eddblink plugin's finish() method was reached")
