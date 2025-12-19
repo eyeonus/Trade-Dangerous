@@ -8,7 +8,7 @@ import itertools
 import typing
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterable
     from typing import Any
 
 
@@ -135,10 +135,12 @@ class RowFormat:
     """
     columns:        list[ColumnFormat]
     prefix:         str
+    suffix:         str
     
-    def __init__(self, prefix: str | None = None):
+    def __init__(self, prefix: str | None = None, suffix: str | None = None) -> None:
         self.columns = []
         self.prefix = prefix or ""
+        self.suffix = suffix or ""
     
     def addColumn(self, *args, **kwargs) -> None:
         self.append(ColumnFormat(*args, **kwargs))
@@ -158,7 +160,7 @@ class RowFormat:
             self.columns.insert(pos, column)
     
     def __str__(self) -> str:
-        return f"{self.prefix} {' '.join(str(col) for col in self.columns)}"
+        return f"{self.prefix} {' '.join(str(col) for col in self.columns)}{self.suffix}"
     
     text = __str__  # alias
     
@@ -168,9 +170,12 @@ class RowFormat:
         return headline, '-' * len(headline)
     
     def format(self, row_data: Any) -> str:
-        return f"{self.prefix} {' '.join(col.format(row_data) for col in self.columns)}"
+        return f"{self.prefix} {' '.join(col.format(row_data) for col in self.columns)}{self.suffix}"
 
-def max_len(iterable, key=lambda item: item):
+
+def max_len(iterable: Iterable, key: Callable[[Any], str] = lambda item: item) -> int:
+    """ Helper that returns the maximum length of strings produced
+        by applying key() to the elements of the given iterable. """
     iterable, readahead = itertools.tee(iter(iterable))
     try:
         next(readahead)

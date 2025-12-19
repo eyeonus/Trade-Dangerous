@@ -57,27 +57,28 @@ ANSI_COLOR = {
 ANSI_CLEAR = f"{ANSI_CSI}{ANSI_COLOR['CLEAR']}{ANSI_COLOR_CMD}"
 
 
+class ResultRow:
+    """ ResultRow captures a data item returned by a command. It's really an abstract namespace. """
+    def __init__(self, **kwargs: typing.Any) -> None:
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
+
 class CommandResults:
     """ Encapsulates the results returned by running a command.  """
     cmdenv: 'CommandEnv'
-    summary: dict
-    rows: list['ResultRow']
+    summary: ResultRow
+    rows: list[ResultRow]
 
     def __init__(self, cmdenv: 'CommandEnv') -> None:
         self.cmdenv = cmdenv
-        self.summary, self.rows = {}, []
+        self.summary = ResultRow()
+        self.rows = []
     
     def render(self, cmdenv: 'CommandEnv | None' = None, tdb: TradeDB | TradeORM | None = None) -> None:
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
         cmdenv._cmd.render(self, cmdenv, tdb)
-
-
-class ResultRow:
-    """ ResultRow captures a data item returned by a command. It's really an abstract namespace. """
-    def __init__(self, **kwargs) -> None:
-        for k, v in kwargs.items():
-            setattr(self, k, v)
 
 
 class CommandEnv(TradeEnv):
@@ -96,7 +97,7 @@ class CommandEnv(TradeEnv):
         if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
 
-        self._cmd = cmdModule or getattr("__main__")
+        self._cmd = cmdModule
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
 
