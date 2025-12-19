@@ -138,8 +138,11 @@ class TradeORM:
             results = stmt.all()
             if len(results) == 1:
                 return results[0]
+
             stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name.like(f"%{stn_name}%"))
             results = stmt.all()
+            if not results:
+                raise TradeException(f"no station in {sys_name} matches '{stn_name}'")
             if len(results) > 1:
                 raise AmbiguityError("Station", stn_name, [s.name for s in results])
             return results[0]
