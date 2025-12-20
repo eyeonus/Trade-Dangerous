@@ -42,6 +42,12 @@ switches = [
         type = int,
         default = 0,
     ),
+    ParseArgument('--quantity', '--capacity',
+        help = "Multiply profit by this amount",
+        dest = "quantity",
+        type = int,
+        default = 1,
+    ),
 ]
 
 
@@ -147,30 +153,35 @@ def render(results, cmdenv, tdb):
     rowFmt = RowFormat()
     rowFmt.addColumn('Item', '<', longestNameLen,
             key=lambda row: row["item"])
-    rowFmt.addColumn('Profit', '>', 10, 'n',
+    rowFmt.addColumn('Profit', '>', 11, 'n',
             key=lambda row: row["gain"])
-    rowFmt.addColumn('Cost', '>', 10, 'n',
+    rowFmt.addColumn('Cost', '>', 11, 'n',
             key=lambda row: row["sup_price"])
     # if cmdenv.detail > 1:
     #     rowFmt.addColumn('AvgCost', '>', 10,
     #         key=lambda row: tdb.avgSelling.get(row.item.ID, 0)
     #     )
-    rowFmt.addColumn('Buying', '>', 10, 'n',
+    rowFmt.addColumn('Buying', '>', 11, 'n',
             key=lambda row: row["dem_price"])
         # rowFmt.addColumn('AvgBuy', '>', 10,
         #     key=lambda row: tdb.avgBuying.get(row.item.ID, 0)
         # )
 
     if cmdenv.detail > 1:
-        rowFmt.addColumn('Supply', '>', 10,
+        rowFmt.addColumn('Supply', '>', 11,
             key=lambda row: f'{row["sup_units"]:n}' if row["sup_units"] >= 0 else '?')
-        rowFmt.addColumn('Demand', '>', 10,
+        rowFmt.addColumn('Demand', '>', 11,
             key=lambda row: f'{row["dem_units"]:n}' if row["dem_units"] >= 0 else '?')
     if cmdenv.detail:
         rowFmt.addColumn('SrcAge', '>', 9, 's',
             key=lambda row: row["sup_age"])
         rowFmt.addColumn('DstAge', '>', 9, 's',
             key=lambda row: row["dem_age"])
+
+    # If they're using a quantity > 1, then add a "total" column
+    if (quantity := max(cmdenv.quantity, 0)) > 1:
+        rowFmt.addColumn('Total', '>', 11, 'n',
+            key=lambda row: row["gain"] * quantity)
 
     if not cmdenv.quiet:
         print(f"{len(results.rows)} trades found between {results.summary.fromStation.dbname()} and {results.summary.toStation.dbname()}.")
