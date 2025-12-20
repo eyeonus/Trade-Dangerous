@@ -582,4 +582,5 @@ class ImportPlugin(plugins.ImportPluginBase):
         """ override the base class 'finish' method """
         # We expect to return 'False' from run, so if this is called, something went horribly wrong;
         # if this gets reached, someone added a bad return to run().
-        raise RuntimeError("internal error: eddblink plugin's finish() method was reached")
+        self.tdenv.WARN("Internal error: plugin's finish() method was reached")
+        return False

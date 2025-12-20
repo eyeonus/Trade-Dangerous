@@ -1086,10 +1086,9 @@ def processImportFile(
             try:
                 if _apply_row_corrections(tableName, linein, lineNo):
                     continue
-            except DeletedKeyError as e:
+            except DeletedKeyError:
                 if not tdenv.ignoreUnknown:
-                    # strict: fail hard
-                    raise e from e
+                    raise  # strict, fail hard. resume the original fault with it's trace in-tact
                 # tolerant: already warned in _apply_row_corrections; skip row
                 continue
             

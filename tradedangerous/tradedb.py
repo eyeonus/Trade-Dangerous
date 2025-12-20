@@ -1713,8 +1713,6 @@ class TradeDB:
             # that this lookup isn't ready yet.
             try:
                 return self.lookupSystem(sys_key)
-            except TradeException as e:
-                raise e from e
             except LookupError:
                 # Not a system (or no reasonable system match) – fall back to
                 # the generic place logic below to search stations as well.
