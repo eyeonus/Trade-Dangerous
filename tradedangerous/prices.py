@@ -42,7 +42,6 @@ def dumpPrices(
     """
     
     withTimes = elementMask & Element.timestamp
-    getBlanks = elementMask & Element.blanks
     
     # ORM queries to build lookup dicts
     systems = dict(
@@ -163,7 +162,6 @@ def dumpPrices(
     lastStn, lastCat = None, None
     for row in q.yield_per(1000).execution_options(stream_results=True):
         stnID = row.station_id
-        itemID = row.item_id
         station = row.station_name
         system = row.system_name
         item = row.name

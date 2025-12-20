@@ -1,12 +1,12 @@
 from pathlib import Path
-from sqlalchemy import inspect, text
-from .tradeexcept import TradeException
+import csv
 
+from sqlalchemy import inspect, text
+from sqlalchemy.orm import Session
+
+from .tradeexcept import TradeException
 from .db import utils as db_utils
 
-
-import csv
-import os
 
 ######################################################################
 # TradeDangerous :: Modules :: CSV Exporter
@@ -112,7 +112,6 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
       * a SQLAlchemy Session
       * a TradeDB wrapper exposing .engine
     """
-    from sqlalchemy.orm import Session
     
     # --- Resolve a SQLAlchemy session ---
     if hasattr(tdb_or_session, "engine"):
@@ -135,18 +134,22 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
     exportPath = (Path(csvPath) / Path(tableName)).with_suffix(".csv")
     tdenv.DEBUG0(f"Export Table '{tableName}' to '{exportPath}'")
     
-    def _fmt_ts(val):
-        if hasattr(val, "strftime"):
+    def _fmt_ts(val) -> str:
+        if (formatter := getattr(val, "strftime", None)):
             try:
-                return val.strftime("%Y-%m-%d %H:%M:%S")
+                return formatter("%Y-%m-%d %H:%M:%S")
             except Exception:
                 pass
-        if isinstance(val, str):
-            s = val
-            if len(s) >= 19 and s[10] == "T":
-                s = s[:10] + " " + s[11:]
-            if len(s) >= 19 and s[4] == "-" and s[7] == "-" and s[10] == " " and s[13] == ":" and s[16] == ":":
-                return s[:19]
+
+        if isinstance(val, str) and len(val) >= 19:
+            if val[10] == "T":  # Indicates timezone awareness, and if no timezone, utc
+                val = f"{val[:10]} {val[11:]}"
+            # check the punctuation in  YYYY-MM-DD HH:mm:ss
+            #                               4  7  0  3  6
+            #                           0123 56 89 12 45 78
+            if val[4] == "-" and val[7] == "-" and val[10] == " " and val[13] == ":" and val[16] == ":":
+                return val[:19]
+
         return val
     
     lineCount = 0
@@ -167,7 +170,7 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
             unique_cols = db_utils.get_unique_columns(session, tableName)
             fk_list = db_utils.get_foreign_keys(session, tableName)
         except Exception as e:
-            raise TradeException(f"Failed to introspect table '{tableName}': {e!r}")
+            raise TradeException(f"Failed to introspect table '{tableName}': {e!r}") from None
         
         csvHead = []
         stmtColumn = []

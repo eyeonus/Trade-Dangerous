@@ -135,7 +135,7 @@ def run(results, cmdenv, tdb):
         SA_Category.name
     ).join(SA_Category)
     if cmdenv.illegal or cmdenv.legal:
-       stmt = stmt.where(SA_RareItem.illegal == ('Y' if cmdenv.legal else 'N'))
+        stmt = stmt.where(SA_RareItem.illegal == ('Y' if cmdenv.legal else 'N'))
     if noPlanet:
         stmt = stmt.join(SA_Station).where(SA_Station.planetary != 'Y')
     
@@ -180,7 +180,8 @@ def run(results, cmdenv, tdb):
         return None
     
     # Sort safely even if rare.costCr is None (treat None as 0)
-    price_key = lambda row: (row.rare.cost or 0)
+    def price_key(row):
+        return row.rare.cost or 0
     
     if cmdenv.sortByPrice:
         results.rows.sort(key=lambda row: row.dist)
@@ -209,8 +210,6 @@ def render(results, cmdenv, tdb):
     Render output for 'rares' with robust None-handling.
     Keeps existing column order/labels.
     """
-    from ..formatting import RowFormat, max_len
-    
     rows = results.rows
     if not rows:
         return

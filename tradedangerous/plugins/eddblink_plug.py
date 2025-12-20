@@ -1,5 +1,5 @@
 """
-Import plugin that uses data files from 
+Import plugin that uses data files from
 https://elite.tromador.com/ to update the Database.
 """
 from __future__ import annotations
@@ -14,15 +14,10 @@ import requests
 import time
 import typing
 
-from ..fs import file_line_count
-from .. import plugins, cache, transfers
-from ..misc import progress as pbar
-from ..plugins import PluginException
-
 from sqlalchemy.orm import Session
 from sqlalchemy import func, delete, select, exists, text
 
-from tradedangerous import plugins, transfers
+from tradedangerous import plugins, transfers, TradeException
 from tradedangerous.db import orm_models as SA, lifecycle
 from tradedangerous.db.utils import (
     begin_bulk_mode, end_bulk_mode,
@@ -35,6 +30,7 @@ from tradedangerous.plugins import PluginException
 if typing.TYPE_CHECKING:
     from tradedangerous.tradeenv import TradeEnv
 
+
 # Constants
 BASE_URL = os.environ.get('TD_SERVER') or "https://elite.tromador.com/files/"
 
@@ -46,7 +42,7 @@ class DecodingError(PluginException):
 @contextmanager
 def bench(label: str, tdenv: TradeEnv):
     started = time.time()
-    with pbar.Progress(0, 40, label=label, style=pbar.ElapsedBar) as prog:
+    with pbar.Progress(0, 40, label=label, style=pbar.ElapsedBar):
         yield
     tdenv.NOTE("{} done ({:.3f}s)", label, time.time() - started)
 
@@ -122,9 +118,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'purge':        "Remove any empty systems that previously had fleet carriers.",
         'optimize':     "Optimize ('vacuum') database after processing.",
-        'solo':         "Don't download crowd-sourced market data. (Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
+        'solo':         "Don't download crowd-sourced market data. "
+                        "(Implies '-O skipvend', supercedes '-O all', '-O clean', '-O listings'.)",
         '7days':        "Ignore data more than 7 days old during import, and expire old records after import.",
-        'units':        "Treat listing entries with 0 units as having the corresponding supply/demand price treated as 0. This stops things like Tritium showing up where it's not available but someone was able to sell it.",
+        'units':        "Treat listing entries with 0 units as having the corresponding supply/demand price treated "
+                        "as 0. This stops things like Tritium showing up where it's not available but someone was "
+                        "able to sell it.",
         'bootstrap':    "Helper to 'do the right thing' and get you some data",
     }
     
@@ -241,7 +240,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             item_lookup = _make_item_id_lookup(self.tdenv, session)
             station_lookup = _make_station_id_lookup(self.tdenv, session)
         
-        is_debug = self.tdenv.debug > 0
         self.tdenv.DEBUG0("Processing entries...")
         
         with pbar.Progress(total, 40, label="Processing", style=pbar.LongRunningCountBar) as prog, \
@@ -275,6 +273,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 # optimize away millions of lookups
                 increment = prog.increment
+
                 def bump_progress():
                     increment(1)
                 
@@ -291,7 +290,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                 #   0   1           2             3       4               5          6           7       8               9
                 reader = iter(csv.reader(fh))
                 headers = next(reader)
-                assert headers[:10] == ["id","station_id","commodity_id","supply","supply_bracket","buy_price","sell_price","demand","demand_bracket","collected_at"], "unrecognized listings csv format"
+                expect_headers = [
+                    "id", "station_id", "commodity_id",
+                    "supply", "supply_bracket", "buy_price",
+                    "sell_price", "demand", "demand_bracket",
+                    "collected_at"
+                ]
+                if headers[:10] != expect_headers:
+                    raise TradeException(
+                        f"incompatible csv field organization in {listings_path}. "
+                        f"expected {expect_headers}; got {headers}"
+                    )
                 
                 for listing in reader:
                     bump_progress()
@@ -368,7 +377,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, \
                     Session.begin() as session:
                 for expiration in expirations:
-                    session.execute(text("DELETE FROM StationItem WHERE modified < datetime('now', '-7 days')"))
+                    session.execute(text(f"DELETE FROM StationItem WHERE modified < datetime('now', '-{expiration} days')"))
                     prog.increment(1)
         
         if self.getOption("optimize"):
@@ -403,9 +412,16 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self.getOption("bootstrap"):
             self.tdenv.NOTE("[bold][blue]bootstrap: Greetings, Commander!")
-            self.tdenv.NOTE("[yellow]This first-time import might take several minutes or longer, it ensures your database is up to date with current EDDBLink System, Station, and Item tables as well as trade listings for the last 7 days.")
-            self.tdenv.NOTE("[yellow]You can run this same command later to import updates - which should be much faster, or `trade import -P eddblink -O 7days,skipvend`.")
-            self.tdenv.NOTE("[yellow]To contribute your own discoveries to market data, consider running the Elite Dangerous Market Connector while playing.")
+            self.tdenv.NOTE(
+                "[yellow]This first-time import might take several minutes or longer, "
+                "it ensures your database is up to date with current EDDBLink System, Station, and Item tables "
+                "as well as trade listings for the last 7 days.")
+            self.tdenv.NOTE(
+                "[yellow]You can run this same command later to import updates - which should be much faster, "
+                "or `trade import -P eddblink -O 7days,skipvend`.")
+            self.tdenv.NOTE(
+                "[yellow]To contribute your own discoveries to market data, consider running the "
+                "Elite Dangerous Market Connector while playing.")
             for child in ["system", "station", "item", "listings", "skipvend", "7days"]:
                 self.options[child] = True
         
@@ -560,4 +576,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         if modified:
             self.tdb.removePersist()
         
+        return False
+
+    def finish(self):
+        """ override the base class 'finish' method """
+        # We expect to return 'False' from run, so if this is called, something went horribly wrong;
+        # if this gets reached, someone added a bad return to run().
+        self.tdenv.WARN("Internal error: plugin's finish() method was reached")
         return False

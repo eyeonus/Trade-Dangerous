@@ -226,7 +226,7 @@ switches = [
         dest = 'x52pro',
     ),
     ParseArgument('--prune-score',
-        help = 'From the 3rd hop on, only consider routes which have at least this percentage of the current best route''s score.',
+        help = "From the 3rd hop on, only consider routes which have at least this percentage of the current best route's score.",
         dest = 'pruneScores',
         type = float,
         default = 0,
@@ -431,8 +431,9 @@ def expandForJumps(tdb, cmdenv, calc, origin, jumps, srcName, purpose):
     # Ensure O(1) membership checks regardless of the underlying container type.
     trading_ids = tradingList if isinstance(tradingList, set) else set(tradingList)
     
-    stations = set()
-    origins, avoid = set((origin,)), set(place for place in avoidPlaces)
+    stations: set[Station] = set()
+    origins:  set[System | Station] = {origin}
+    avoid:    set[System | Station] = set(avoidPlaces)
     
     for jump in range(jumps):
         if not origins:
@@ -817,7 +818,8 @@ def checkDestinations(tdb, cmdenv, calc):
                 heartbeat(seen, kept)
             cmdenv.destinations = tuple(dests)
             if showProgress:
-                sys.stdout.write("\n"); sys.stdout.flush()
+                sys.stdout.write("\n")
+                sys.stdout.flush()
         checkForEmptyStationList(
                 "--to", cmdenv.destPlace,
                 cmdenv.destinations, cmdenv.endJumps
@@ -848,7 +850,8 @@ def checkDestinations(tdb, cmdenv, calc):
             heartbeat(seen, kept)
         cmdenv.destinations = tuple(dests)
         if showProgress:
-            sys.stdout.write("\n"); sys.stdout.flush()
+            sys.stdout.write("\n")
+            sys.stdout.flush()
     
     if not cmdenv.endJumps and isinstance(cmdenv.destPlace, System):
         cmdenv.destinations = filterStationSet(

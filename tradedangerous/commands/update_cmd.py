@@ -33,7 +33,8 @@ arguments = (
     ),
 )
 # No switches; unknown switches will be ignored via acceptUnknown.
-switches = tuple()
+switches = (
+)
 
 
 def _banner() -> str:
@@ -57,9 +58,10 @@ def run(results, cmdenv, tdb=None):
         cmdenv.NOTE("{}", banner)
     except Exception:
         print(banner)
-    return None
+
+    return False  # all done
 
 
 def render(results, cmdenv, tdb=None):
     # No output beyond the banner emitted in run().
-    return
+    return False  # all done

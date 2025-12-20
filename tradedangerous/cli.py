@@ -94,8 +94,7 @@ def trade(argv):
     cmdenv = cmdIndex.parse(argv)
 
     # Phase A: preflight/fast validation (must run before any heavy TradeDB load)
-    preflight = getattr(cmdenv, "preflight", None)
-    if preflight:
+    if (preflight := getattr(cmdenv, "preflight", None)) and callable(preflight):
         preflight()
 
     # Phase B: heavy init + execution

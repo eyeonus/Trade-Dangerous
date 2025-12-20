@@ -6,7 +6,6 @@ import os
 import pathlib
 import sys
 
-thismodule = sys.modules[__name__]
 from . import exceptions
 from . import parsing
 
@@ -27,6 +26,9 @@ from . import trade_cmd
 from . import update_cmd
 
 from tradedangerous import version
+
+
+thismodule = sys.modules[__name__]
 
 commandIndex = {
     cmd[0:cmd.find('_cmd')]: getattr(thismodule, cmd)
@@ -66,11 +68,10 @@ def addArguments(group, options, required, topGroup = None):
             assert required not in option.kwargs
             if option.args[0][0] == '-':
                 group.add_argument(*(option.args), required = required, **(option.kwargs))
+            elif required:
+                group.add_argument(*(option.args), **(option.kwargs))
             else:
-                if required:
-                    group.add_argument(*(option.args), **(option.kwargs))
-                else:
-                    group.add_argument(*(option.args), nargs = '?', **(option.kwargs))
+                group.add_argument(*(option.args), nargs = '?', **(option.kwargs))
 
 
 def _findFromFile(cmd, prefix = '.tdrc'):

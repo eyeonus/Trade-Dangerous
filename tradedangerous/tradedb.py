@@ -111,7 +111,8 @@ locale.setlocale(locale.LC_ALL, '')
 
 
 if typing.TYPE_CHECKING:
-    from typing import Any, Callable, Generator, Optional
+    from collections.abc import Generator
+    from typing import Any, Optional
 
 
 # We should probably just use the trade-dangerous version number
@@ -164,7 +165,7 @@ class System:
             self.systems = []
             self.probed_ly = 0.
     
-    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int|None) -> None:
+    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int | None) -> None:
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
@@ -231,6 +232,7 @@ class DestinationNode(NamedTuple):
     system: 'System'
     via: list['System']
     distLy: float
+
 
 class Station:
     """
@@ -388,7 +390,7 @@ class Station:
 ######################################################################
 
 
-class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
+class Ship(NamedTuple):
     """
     Ship description.
     
@@ -398,6 +400,10 @@ class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
         cost        -- How many credits to buy
         stations    -- List of Stations ship is sold at.
     """
+    ID: int
+    dbname: str
+    cost: int
+    stations: list[Station]
     
     def name(self, _detail: int = 0) -> str:
         return self.dbname
@@ -405,7 +411,7 @@ class Ship(namedtuple('Ship', ('ID', 'dbname', 'cost', 'stations'))):
 ######################################################################
 
 
-class Category(namedtuple('Category', ('ID', 'dbname', 'items'))):
+class Category(NamedTuple):
     """
     Item Category
     
@@ -424,6 +430,9 @@ class Category(namedtuple('Category', ('ID', 'dbname', 'items'))):
         name()
             Returns the display name for this Category.
     """
+    ID: int
+    dbname: str
+    items: list['Item']
     
     def name(self, _detail: int = 0) -> str:
         return self.dbname.upper()
@@ -460,17 +469,21 @@ class Item:
 ######################################################################
 
 
-class Trade(namedtuple('Trade', (
-        'item',
-        'costCr', 'gainCr',
-        'supply', 'supplyLevel',
-        'demand', 'demandLevel',
-        'srcAge', 'dstAge'
-        ))):
+class Trade(NamedTuple):
     """
     Describes what it would cost and how much you would gain
     when selling an item between two specific stations.
     """
+    item: Item
+    costCr: int
+    gainCr: int
+    supply: int
+    supplyLevel: int
+    demand: int
+    demandLevel: int
+    srcAge: float | None
+    dstAge: float | None
+
     def name(self, detail: int = 0) -> str:
         return self.item.name(detail=detail)
 
@@ -692,7 +705,7 @@ class TradeDB:
         if at <= 0:
             return name, None
 
-        idx_str = name[at + 1 :]
+        idx_str = name[at + 1:]
         if not idx_str or not idx_str.isdigit():
             return name, None
 
@@ -969,10 +982,7 @@ class TradeDB:
         dbname = name.upper()
         
         if not force:
-            if (oldname == dbname and
-                system.posX == x and
-                system.posY == y and
-                system.posZ == z):
+            if oldname == dbname and system.posX == x and system.posY == y and system.posZ == z:
                 return False
         
         # Remove from old name bucket (if present)
@@ -1158,9 +1168,9 @@ class TradeDB:
                     The distance in lightyears between system and candidate.
         """
         
-        cur_cache = system._rangeCache  # pylint: disable=protected-access
+        cur_cache = system._rangeCache  # pylint: disable=protected-access  # noqa: SLF001
         if not cur_cache:
-            cur_cache = system._rangeCache = System.RangeCache()
+            cur_cache = system._rangeCache = System.RangeCache()  # pylint: disable=protected-access  # noqa: SLF001
         cached_systems = cur_cache.systems
         
         if ly > cur_cache.probed_ly:
@@ -1698,15 +1708,11 @@ class TradeDB:
         # ------------------------------------------------------------------
         if not name.startswith("/") and "/" not in name and "\\" not in name:
             sys_key = name[1:] if name.startswith("@") else name
+            # lookupSystem can throw various TradeExceptions, which we will forward
+            # or it can throw a LookupError which we want to discard, it just means
+            # that this lookup isn't ready yet.
             try:
                 return self.lookupSystem(sys_key)
-            except AmbiguityError:
-                # lookupSystem already produces the rich "@N" hint text for
-                # ambiguous system names; preserve it unchanged.
-                raise
-            except TradeException:
-                # e.g. "System@999" out of range – message is already correct.
-                raise
             except LookupError:
                 # Not a system (or no reasonable system match) – fall back to
                 # the generic place logic below to search stations as well.
@@ -1727,10 +1733,10 @@ class TradeDB:
         if slash_pos > name_off:
             # "sys/station" or "@sys/station"
             sys_name = name[name_off:slash_pos].upper()
-            stn_name = name[slash_pos + 1 :]
+            stn_name = name[slash_pos + 1:]
         elif slash_pos == name_off:
             # "/station" — explicit station, no system
-            sys_name, stn_name = None, name[name_off + 1 :]
+            sys_name, stn_name = None, name[name_off + 1:]
         elif name_off:
             # "@system" — explicit system, no station
             sys_name, stn_name = name[name_off:].upper(), None
@@ -1869,130 +1875,6 @@ class TradeDB:
             key=lambda place: place.name(),
         )
 
-        
-        def lookup(name, candidates):
-            """ Search candidates for the given name """
-            
-            normTrans = TradeDB.normalizeTrans
-            trimTrans = TradeDB.trimTrans
-            
-            nameNorm = name.translate(normTrans)
-            nameTrimmed = nameNorm.translate(trimTrans)
-            
-            nameLen = len(name)
-            nameNormLen = len(nameNorm)
-            nameTrimmedLen = len(nameTrimmed)
-            
-            for place in candidates:
-                placeName = place.dbname
-                placeNameNorm = placeName.translate(normTrans)
-                placeNameNormLen = len(placeNameNorm)
-                
-                if nameTrimmedLen > placeNameNormLen:
-                    # The needle is bigger than this haystack.
-                    continue
-                
-                # If the lengths match, do a direct comparison.
-                if len(placeName) == nameLen:
-                    if placeNameNorm == nameNorm:
-                        exactMatch.append(place)
-                    continue
-                if placeNameNormLen == nameNormLen:
-                    if placeNameNorm == nameNorm:
-                        closeMatch.append(place)
-                    continue
-                
-                if nameNormLen < placeNameNormLen:
-                    subPos = placeNameNorm.find(nameNorm)
-                    if subPos == 0:
-                        if placeNameNorm[nameNormLen] == ' ':
-                            # first word
-                            wordMatch.append(place)
-                        else:
-                            anyMatch.append(place)
-                        continue
-                    
-                    if subPos > 0:
-                        if placeNameNorm[subPos] == ' ' and \
-                                placeNameNorm[subPos + nameNormLen] == ' ':
-                            wordMatch.append(place)
-                        else:
-                            anyMatch.append(place)
-                        continue
-                
-                # Lets drop whitespace and remaining punctuation...
-                placeNameTrimmed = placeNameNorm.translate(trimTrans)
-                placeNameTrimmedLen = len(placeNameTrimmed)
-                if placeNameTrimmedLen == placeNameNormLen:
-                    # No change
-                    continue
-                
-                # A match here is not exact but still fairly interesting
-                if len(placeNameTrimmed) == nameTrimmedLen:
-                    if placeNameTrimmed == nameTrimmed:
-                        closeMatch.append(place)
-                        continue
-                elif placeNameTrimmedLen > nameTrimmedLen:
-                    if placeNameTrimmed.find(nameTrimmed) >= 0:
-                        anyMatch.append(place)
-                        continue
-                # Skip smaller names
-        
-        if sysName:
-            systems = self.systemByName.get(sysName)
-            if systems:
-                # For now, treat the first system as the exact match.
-                # Proper duplicate-name disambiguation comes in the next step.
-                exactMatch = [systems[0]]
-            else:
-                lookup(sysName, self.systemByID.values())
-        
-        if stnName:
-            # Are we considering the name as a station?
-            # (we don't if they type, e,g '@aulin')
-            # compare against nameOff to allow '@/station'
-            if slashPos > nameOff + 1:
-                # "sys/station"; the user should have specified a system
-                # name and we should be able to narrow down which
-                # stations we compare against. Check first if there are
-                # any matches.
-                stationCandidates = []
-                for system in itertools.chain(
-                        exactMatch, closeMatch, wordMatch, anyMatch
-                        ):
-                    stationCandidates += system.stations
-                # Clear out the candidate lists
-                exactMatch = []
-                closeMatch = []
-                wordMatch = []
-                anyMatch = []
-            else:
-                # Consider against all station names
-                stationCandidates = self.stationByID.values()
-            lookup(stnName, stationCandidates)
-        
-        # consult the match sets in ranking order for a single
-        # match, which denotes a win at that tier. For example,
-        # if there is one exact match, we don't care how many
-        # close matches there were.
-        for matchSet in exactMatch, closeMatch, wordMatch, anyMatch:
-            if len(matchSet) == 1:
-                return matchSet[0]
-        
-        # Nothing matched
-        if not any([exactMatch, closeMatch, wordMatch, anyMatch]):
-            # Note: this was a TradeException and may need to be again,
-            # but then we need to catch that error in commandenv
-            # when we process avoids
-            raise LookupError(f"Unrecognized place: {name}")
-        
-        # More than one match
-        raise AmbiguityError(
-            'System/Station', name,
-            exactMatch + closeMatch + wordMatch + anyMatch,
-            key=lambda place: place.name()
-        )
-    
     def lookupStation(self, name, system=None):
         """
         Look up a Station object by it's name or system.
@@ -2268,7 +2150,7 @@ class TradeDB:
         Query the database for average selling prices of all items using SQLAlchemy.
         """
         if not self.avgSelling:
-            self.avgSelling = {itemID: 0 for itemID in self.itemByID}
+            self.avgSelling = dict.fromkeys(self.itemByID, 0)
             
             with self.Session() as session:
                 rows = (
@@ -2294,7 +2176,7 @@ class TradeDB:
         Query the database for average buying prices of all items using SQLAlchemy.
         """
         if not self.avgBuying:
-            self.avgBuying = {itemID: 0 for itemID in self.itemByID}
+            self.avgBuying = dict.fromkeys(self.itemByID, 0)
             
             with self.Session() as session:
                 rows = (
@@ -2315,18 +2197,17 @@ class TradeDB:
         
         return self.avgBuying
     
-    
     ############################################################
     # Price data.
-    
+    #
     def close(self, *, final: bool = False) -> None:
         if self.Session and final:
             del self.Session
         if self.engine:
             self.engine.dispose()
         if final:
-            engine, self.engine = self.engine, None
-            del engine
+            del self.engine
+            self.engine = None
         # Keep engine + Session references so reloadCache/buildCache can reuse them
     
     def load(self, maxSystemLinkLy=None):
@@ -2437,7 +2318,8 @@ class TradeDB:
                 # user indicated they don't want to care about persist.
                 return False
             if jarPath.exists():
-                raise TradeException("Unable to remove old persistence data, the file is inaccssible or open by another program")
+                msg = "Unable to remove old persistence data, the file is inaccssible or open by another program"
+                raise TradeException(msg) from None
             raise e from e
         
         try:
@@ -2470,10 +2352,9 @@ class TradeDB:
     def removePersist(self):
         self.getPersistPath().unlink(missing_ok=True)
     
-    
     ############################################################
     # General purpose static methods.
-    
+    #
     @staticmethod
     def listSearch(
             listType, lookup, values,
@@ -2492,9 +2373,7 @@ class TradeDB:
         "bread" and "water", but searching for "it" will return "It"
         because it provides an exact match of a key.
         """
-        
-        class ListSearchMatch(namedtuple('Match', ['key', 'value'])):
-            pass
+        ListSearchMatch = namedtuple('Match', ['key', 'value'])
         
         normTrans = TradeDB.normalizeTrans
         trimTrans = TradeDB.trimTrans

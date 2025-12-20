@@ -1,10 +1,13 @@
+from .commandenv import ResultRow
 from .parsing import (
     AvoidPlacesArgument, FleetCarrierArgument, MutuallyExclusiveGroup,
     NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument,
     PlanetaryArgument,
 )
-from ..tradedb import System, Station, TradeDB
-from ..tradeexcept import TradeException
+
+from tradedangerous import TradeDB, TradeException
+from tradedangerous.tradedb import Station, System
+from tradedangerous.formatting import RowFormat, ColumnFormat
 
 
 ######################################################################
@@ -54,15 +57,13 @@ switches = [
 
 
 class NoRouteError(TradeException):
-    pass
+    """ Exception denoting specifically a route could not be found. """
 
 
 ######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
-    from .commandenv import ResultRow
-    
     srcSystem, dstSystem = cmdenv.origPlace, cmdenv.destPlace
     if isinstance(srcSystem, Station):
         srcSystem = srcSystem.system
@@ -160,11 +161,9 @@ def run(results, cmdenv, tdb):
 # Transform result set into output
 
 def render(results, cmdenv, tdb):
-    from ..formatting import RowFormat, ColumnFormat
-    
     if cmdenv.quiet > 1:
         print(','.join(row.system.name() for row in results.rows))
-        return
+        return False
     
     longestNamed = max(results.rows,
                     key=lambda row: len(row.system.name()))

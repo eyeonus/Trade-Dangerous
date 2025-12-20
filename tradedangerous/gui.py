@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 # --------------------------------------------------------------------
 # Copyright (C) Jonathan 'eyeonus' Jones 2018-2022
-#
+
 # You are free to use, redistribute, or even print and eat a copy of
 # this software so long as you include this copyright notice.
 # I guarantee there is at least one bug neither of us knew about.
 # --------------------------------------------------------------------
 # TradeDangerous :: GUI App :: Main Module
-# 
+
 # Where all the graphics happens. Uses TD CLI under the hood.
-# 
+
 # Current features:
 # ----------------
 # Drop-down list of all available TD commands
 # Fully populated list of all arguments and switches for each command
 # Automatic setting of default value for the above which have one
-# Procedural generation of all above for future proofing in the 
+# Procedural generation of all above for future proofing in the
 #   event of new import plugins, switches, arguments, commands(?)
 # RAM resident save-state: altered values retain new value while main
 #    window remains open
-# 
+
 # Planned features:
 # ----------------
 # Code overhaul to utilize tk directly rather than via appJar
@@ -126,7 +126,7 @@ def _configOptionBoxList(self, title, options, kind):
 #                found = True
 #        else:
 #            newOptions.append(item)
-#    
+
 #    options = newOptions
     
     # get the longest string length
@@ -187,14 +187,14 @@ gui.getOptionBox = getOptionBox
 # Plugins available to the 'import' command are stored here.
 # The list is populated by scanning the plugin folder directly,
 # so it updates automagically at start as plugins are added or removed.
-#
+
 # Any other command with available plugins must have a similar list.
 importPlugs = [ plug.name[0:plug.name.find('_plug.py')]
              for plug in os.scandir(sys.modules['tradedangerous.plugins'].__path__[0])
              if plug.name.endswith("_plug.py")
              ]
 
-widgets = dict()
+widgets = {}
 
 # All available commands
 Commands = ['help'] + [ cmd for cmd, module in sorted(commands.commandIndex.items()) ]
@@ -322,7 +322,7 @@ def buildArgDicts():
                         allArgs[cmd]['opt'][argGrp.args[0]] = {kwarg: argGrp.kwargs[kwarg] for kwarg in argGrp.kwargs}
                         allArgs[cmd]['opt'][argGrp.args[0]]['widget'] = chooseType(argGrp)
                         
-                        allArgs[cmd]['opt'][argGrp.args[0]]['excludes'] = [excl.args[0] for excl in arg.arguments 
+                        allArgs[cmd]['opt'][argGrp.args[0]]['excludes'] = [excl.args[0] for excl in arg.arguments
                                                                    if excl.args[0] != argGrp.args[0]]
                         if argGrp.args[0] == '--plug':
                             # Currently only the 'import' cmd has the '--plug' option,
@@ -956,40 +956,40 @@ def main(argv = None):
 #    window = Tk()
 #    window.title('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,))
 #    window.iconbitmap(resource_filename(__name__, "../tradedangerouscrest.ico"))
-#    
+
 #    widgets['Command'] = addWidget('combo', window, 3, 0, values = Commands, bind = updateCommandBox, 
 #                width = 10, state = 'readonly', height = len(Commands), default = Commands[0], columnspan = 4,
 #                justify = 'center', sticky = 'ew', tooltip = 'Trade Dangerous command to run.')
 #    widgets['req'] = addWidget('frame', window, 0, 1, width = 200, height = 175, columnspan = 10, sdir = 'v')
 #    widgets['opt'] = addWidget('frame', window, 0, 2, width = 200, height = 345, columnspan = 10, sdir = 'v')
-#    
+
 #    widgets['tabFrame'] = addWidget('tab', window, 10, 1, rowspan = 2, columnspan = 40, width = 560, height = 520)
 #    widgets [ 'helpPane'] = addWidget('stext', widgets['tabFrame'], width = 80, font = font.Font(family = 'Courier New', size=10),
 #              #'fixed', 'oemfixed', 'ansifixed', 'systemfixed', 'TkFixedFont'
 #              default = (0.0, cmdHelp['help']), state = 'disabled', tab = 'Help')
 #    widgets['outPane'] = addWidget('stext', widgets['tabFrame'], width = 80, state = 'disabled', tab = 'Output')
-#    
+
 #        makeWidget('--link-ly', allArgs['--link-ly'], sticky = 'w', width = 4, row = 3, column = 2)
-#        
+
 #        makeWidget('--quiet', allArgs['--quiet'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 46)
-#        
+
 #        makeWidget('--detail', allArgs['--detail'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 47)
-#        
+
 #        makeWidget('--debug', allArgs['--debug'], sticky = 'e', disabled = ':', width = 1, row = 3, column = 48)
-#        
+
 #        win.button('Run', runTD, tooltip = 'Execute the selected command.',
 #                   sticky = 'w', row = 3, column = 49)
-#        
+
 #        makeWidget('--cwd', allArgs['--cwd'], width = 4, row = 4, column = 0)
 #        with win.scrollPane('CWD', disabled = 'vertical', row = 4, column = 1, colspan = 49) as pane:
 #            pane.configure(width = 500, height = 20)
 #            win.label('cwd', argVals['--cwd'], sticky = 'w')
-#        
+
 #        makeWidget('--db', allArgs['--db'], width = 4, row = 5, column = 0)
 #        with win.scrollPane('DB', disabled = 'vertical', row = 5, column = 1, colspan = 49) as pane:
 #            pane.configure(width = 500, height = 20)
 #            win.label('db', argVals['--db'], sticky = 'w')
-#    
+
 #    window.mainloop()
     
     with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,), inPadding = 1) as win:

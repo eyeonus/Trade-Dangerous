@@ -34,7 +34,8 @@ arguments = (
     ),
 )
 # No switches; unknown switches will still be rejected by the global parser.
-switches = tuple()
+switches = (
+)
 
 
 def _banner() -> str:
@@ -59,7 +60,7 @@ def run(results, cmdenv, tdb=None):
         cmdenv.NOTE("{}", banner)
     except Exception:
         print(banner)
-    return None
+    return False  # Nothing to render
 
 
 def render(results, cmdenv, tdb=None):

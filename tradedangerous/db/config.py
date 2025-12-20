@@ -40,7 +40,7 @@ except Exception:
 # ---------------------------------------------------------------------------
 
 # Hardened parser: allow inline comments and disable interpolation
-CFG_KW = dict(inline_comment_prefixes=(";", "#"), interpolation=None)
+CFG_KW = {"inline_comment_prefixes": (";", "#"), "interpolation": None}
 
 def _parse_bool(s: str) -> bool:
     return str(s).strip().lower() in {"1", "true", "yes", "on"}

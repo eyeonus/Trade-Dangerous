@@ -26,8 +26,7 @@ class ImportPlugin(ImportPluginBase):
     def file_get_newer(self, a, b):
         if a.stat().st_mtime > b.stat().st_mtime:
             return a
-        else:
-            return b
+        return b
     
     """
     Returns a list of stations in a file

@@ -3,15 +3,17 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from typing import Dict, Generator, Iterable, Optional, Tuple
+import configparser
+import os
 
 from sqlalchemy import select, func
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 
 # Local engine + ORM (authoritative)
 from .engine import make_engine_from_config, get_session_factory  # uses env/CWD-resolved db_config.ini by default
 from .orm_models import System, Station, Item, StationItem  # canonical models
 from .paths import resolve_db_config_path
+
 
 # ---- Public factory ---------------------------------------------------------
 
@@ -21,7 +23,6 @@ def get_adapter_if_enabled(cfg_path: Optional[str] = None) -> "TradeDBReadAdapte
     - No engine/session created at import: construction is lazy.
     - This is called by tradedb.py (thin gate).
     """
-    import configparser, os
     if cfg_path is None:
         cfg_path = str(resolve_db_config_path())
     cfg = configparser.ConfigParser()

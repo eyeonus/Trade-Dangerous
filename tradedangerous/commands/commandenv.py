@@ -1,33 +1,47 @@
+from __future__ import annotations
+
+from pathlib import Path
+import os
+import sys
+import typing
+
+import ijson
+
 from .exceptions import (
     CommandLineError, FleetCarrierError, OdysseyError,
     PadSizeError, PlanetaryError,
 )
-from ..tradedb import AmbiguityError, Station
-from ..tradeenv import TradeEnv
 
-import os
-import pathlib
-import sys
+from tradedangerous import TradeEnv
+from tradedangerous.tradedb import AmbiguityError, Station
+
+
+if typing.TYPE_CHECKING:
+    from argparse import Namespace
+    from typing import Any, ModuleType
+    
+    from tradedangerous import TradeDB, TradeORM
 
 
 class CommandResults:
-    """
-        Encapsulates the results returned by running a command.
-    """
-    
-    def __init__(self, cmdenv):
+    """ Encapsulates the results returned by running a command.  """
+    cmdenv: 'CommandEnv'
+    summary: dict
+    rows: list['ResultRow']
+
+    def __init__(self, cmdenv: 'CommandEnv') -> None:
         self.cmdenv = cmdenv
         self.summary, self.rows = {}, []
     
-    def render(self, cmdenv = None, tdb = None):
+    def render(self, cmdenv: 'CommandEnv' = None, tdb: TradeDB | TradeORM | None = None) -> None:
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
         cmdenv._cmd.render(self, cmdenv, tdb)
 
 
 class ResultRow:
-    
-    def __init__(self, **kwargs):
+    """ ResultRow captures a data item returned by a command. It's really an abstract namespace. """
+    def __init__(self, **kwargs) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
@@ -37,9 +51,9 @@ class CommandEnv(TradeEnv):
         Base class for a TradeDangerous sub-command which has auxilliary
         "environment" data in the form of command line options.
     """
-
-    def __init__(self, properties, argv, cmdModule):
+    def __init__(self, properties: dict[str, Any] | Namespace | None, argv: list[str] | None, cmdModule: ModuleType | None) -> None:
         super().__init__(properties = properties)
+        
         self.tdb = None
         self.mfd = None
         self.argv = argv or sys.argv
@@ -56,12 +70,11 @@ class CommandEnv(TradeEnv):
         # we can load a TradeDB after this without things going
         # pear-shaped
         if not self.cwd and argv[0]:
-            cwdPath = pathlib.Path('.').resolve()
-            exePath = pathlib.Path(argv[0]).parent.resolve()
+            cwdPath = Path('.').resolve()
+            exePath = Path(argv[0]).parent.resolve()
             if cwdPath != exePath:
                 self.cwd = str(exePath)
-                self.DEBUG1("cwd at launch was: {}, changing to {} to match trade.py",
-                                cwdPath, self.cwd)
+                self.DEBUG1("cwd at launch was: {}, changing to {} to match trade.py", cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
 
@@ -81,24 +94,17 @@ class CommandEnv(TradeEnv):
         if fast_validator:
             fast_validator(self)
 
-    def run(self, tdb):
+    def run(self, tdb: TradeDB | TradeORM) -> CommandResults | bool | None:
+        """ Try and execute the business logic of the command. Query commands
+            will return a result set for us to render, whereas operational
+            commands will likely do their own rendering as they work. """
         # Ensure fast validation is executed for non-CLI call paths too.
         self.preflight()
 
-        """
-            Set the current database context for this env and check that
-            the properties we have are valid.
-        """
+        # Set the current database context for this env and check that
+        # the properties we have are valid.
         self.tdb = tdb
-        db_change = pathlib.Path(self.tdb.templatePath, 'database_changes.json')
-        if pathlib.Path.exists(db_change):
-            try:
-                import ijson
-                with open(db_change) as file:
-                    for change in ijson.items(file, 'item'):
-                        self.tdb.getDB().execute(change)
-            finally:
-                db_change.unlink()
+        update_database_schema(self.tdb)
 
         if self.wantsTradeDB:
             self.checkFromToNear()
@@ -114,7 +120,7 @@ class CommandEnv(TradeEnv):
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
     
-    def render(self, results):
+    def render(self, results: CommandResults) -> None:
         self._cmd.render(self, results, self, self.tdb)
     
     def checkMFD(self):
@@ -125,7 +131,10 @@ class CommandEnv(TradeEnv):
         except AttributeError:
             return
         
-        from ..mfd import X52ProMFD
+        # The x52 module throws some hard errors, so we really only want to
+        # import it as a last resort when the user has asked. We can't do a
+        # soft "try and import and tell the user later".
+        from tradedangerous.mfd import X52ProMFD  # noqa
         self.mfd = X52ProMFD()
     
     def checkFromToNear(self):
@@ -182,20 +191,7 @@ class CommandEnv(TradeEnv):
         self.origPlace = lookupPlace('origin', 'starting')
         self.destPlace = lookupPlace('destination', 'ending')
         self.nearSystem = check('system', 'near', False)
-
         
-        def lookupPlace(label, fieldName):
-            key = getattr(self, fieldName, None)
-            if key:
-                return self.tdb.lookupPlace(key)
-            return None
-        
-        self.startStation = check('origin station', 'origin', True)
-        self.stopStation = check('destination station', 'dest', True)
-        self.origPlace = lookupPlace('origin', 'starting')
-        self.destPlace = lookupPlace('destination', 'ending')
-        self.nearSystem = check('system', 'near', False)
-    
     def checkAvoids(self):
         """
             Process a list of avoidances.
@@ -259,7 +255,7 @@ class CommandEnv(TradeEnv):
         padSize = getattr(self, 'padSize', None)
         if not padSize:
             return
-        padSize = ''.join(sorted(list(set(padSize)))).upper()
+        padSize = ''.join(sorted(set(padSize))).upper()
         if padSize == '?LMS':
             self.padSize = None
             return
@@ -273,7 +269,7 @@ class CommandEnv(TradeEnv):
         planetary = getattr(self, 'planetary', None)
         if not planetary:
             return
-        planetary = ''.join(sorted(list(set(planetary)))).upper()
+        planetary = ''.join(sorted(set(planetary))).upper()
         if planetary == '?NY':
             self.planetary = None
             return
@@ -287,7 +283,7 @@ class CommandEnv(TradeEnv):
         fleet = getattr(self, 'fleet', None)
         if not fleet:
             return
-        fleet = ''.join(sorted(list(set(fleet)))).upper()
+        fleet = ''.join(sorted(set(fleet))).upper()
         for value in fleet:
             if value not in 'YN?':
                 raise FleetCarrierError(fleet)
@@ -300,7 +296,7 @@ class CommandEnv(TradeEnv):
         odyssey = getattr(self, 'odyssey', None)
         if not odyssey:
             return
-        odyssey = ''.join(sorted(list(set(odyssey)))).upper()
+        odyssey = ''.join(sorted(set(odyssey))).upper()
         for value in odyssey:
             if value not in 'YN?':
                 raise OdysseyError(odyssey)
@@ -336,3 +332,23 @@ class CommandEnv(TradeEnv):
             os.system('color')
         
         return "\033[{}m{}\033[00m" .format(colorMap.get(color, "00"), rawText)
+
+
+def update_database_schema(tdb: TradeDB | TradeORM) -> None:
+    """ Check if there are database changes to be made, and if so, execute them. """
+    # TODO: This should really be a function of the DB itself and not something
+    # the caller has to ask the database to do for it.
+    template_folder = getattr(tdb, "templatePath", None)
+    if not template_folder:
+        return
+    
+    db_change = Path(template_folder, "database_changes.json")
+    if not db_change.exists():
+        return
+    
+    try:
+        with db_change.open("r", encoding="utf-8") as file:
+            for change in ijson.items(file, 'item'):
+                tdb.getDB().execute(change)
+    finally:
+        db_change.unlink()

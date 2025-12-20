@@ -1,14 +1,20 @@
+from __future__ import annotations
+from contextlib import contextmanager
+import typing
+
 from rich.progress import (
         Progress as RichProgress,
         TaskID,
         ProgressColumn,
-        BarColumn, DownloadColumn, MofNCompleteColumn, SpinnerColumn, 
+        BarColumn, DownloadColumn, MofNCompleteColumn, SpinnerColumn,
         TaskProgressColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn,
         TransferSpeedColumn
 )
-from contextlib import contextmanager
 
-from typing import Iterable, Optional, Union, Type  # noqa
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable
+    from typing import Optional, Type  # noqa
 
 
 class BarStyle:
@@ -42,7 +48,7 @@ class LongRunningCountBar(BarStyle):
 
 class ElapsedBar(BarStyle):
     """ Creates a progress bar that is just showing something will take time. """
-    def __init__(self, width: int=10, prefix: Optional[str] = None):
+    def __init__(self, width: int = 10, prefix: Optional[str] = None):
         my_columns = [TimeElapsedColumn()]
         super().__init__(width, prefix, add_columns=my_columns)
 
@@ -67,7 +73,7 @@ class Progress:
                  prefix: Optional[str] = None,
                  label: Optional[str] = None,
                  *,
-                 style: Optional[Type[BarStyle]] = None,
+                 style: Optional[Type[BarStyle]] = None,  # pylint:disable=deprecated-typing-alias
                  show: bool = True,
                  ) -> None:
         """
@@ -183,6 +189,6 @@ class Progress:
         finally:
             self.progress.remove_task(task)
     
-    def update_task(self, task: TaskID, advance: Union[float, int], description: Optional[str] = None):
+    def update_task(self, task: TaskID, advance: float | int, description: Optional[str] = None):
         if self.show:
             self.progress.update(task, advance=advance, description=description)

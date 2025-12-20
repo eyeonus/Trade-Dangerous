@@ -27,7 +27,7 @@ class ImportPlugin(ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         
-        tdCategories = list()
+        tdCategories = []
         for catID, catTD in sorted(tdb.categories(), key=lambda x: x[1].dbname):
             tdCategories.append(catTD.dbname)
             if catTD.dbname not in self.edcdCategories:
@@ -138,21 +138,19 @@ class ImportPlugin(ImportPluginBase):
                         addItem += 1
                         commit = True
                 else:
-                    updValues = list()
-                    updColumns = list()
+                    updValues, updColumns = [], []
                     if itemEDCD.avgPrice and itemTD.avgPrice != itemEDCD.avgPrice:
                         updColumns.append('avg_price')
                         updValues.append(itemEDCD.avgPrice)
                     if not itemTD.fdevID:
                         updColumns.append('fdev_id')
                         updValues.append(itemEDCD.fdevID)
-                    else:
-                        if itemTD.fdevID != itemEDCD.fdevID:
-                            tdenv.WARN(
-                                "Item '{}' has different FDevID {} (TD) != {} (EDCD).",
-                                itemTD.fullname, itemTD.fdevID, itemEDCD.fdevID
-                            )
-                    if len(updColumns):
+                    elif itemTD.fdevID != itemEDCD.fdevID:
+                        tdenv.WARN(
+                            "Item '{}' has different FDevID {} (TD) != {} (EDCD).",
+                            itemTD.fullname, itemTD.fdevID, itemEDCD.fdevID
+                        )
+                    if updColumns:
                         tdenv.NOTE("Update Item '{}' {} {}",
                             itemTD.fullname, updColumns, updValues
                         )

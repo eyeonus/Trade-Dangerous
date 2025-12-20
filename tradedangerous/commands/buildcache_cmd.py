@@ -1,8 +1,14 @@
 from __future__ import annotations
+import typing
+
 from .exceptions import CommandLineError
 from .parsing import ParseArgument
-from ..cache import buildCache
-from ..tradedb import TradeDB
+
+from tradedangerous.db.lifecycle import ensure_fresh_db
+
+if typing.TYPE_CHECKING:
+    from tradedangerous import CommandEnv, CommandResults, TradeDB
+
 
 ######################################################################
 # Parser config
@@ -52,7 +58,7 @@ switches = [
 # Perform query and populate result set
 
 
-def run(results, cmdenv, tdb: TradeDB):
+def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB) -> bool:
     """
     BRUTE-FORCE rebuild of the cache/database.
     
@@ -81,8 +87,6 @@ def run(results, cmdenv, tdb: TradeDB):
         raise CommandLineError(f"SQL File does not exist: {tdb.sqlFilename}")
     
     # Force a rebuild through the lifecycle helper (works for both backends).
-    from tradedangerous.db.lifecycle import ensure_fresh_db
-    
     ensure_fresh_db(
         backend=tdb.engine.dialect.name if getattr(tdb, "engine", None) else "sqlite",
         engine=getattr(tdb, "engine", None),
@@ -93,6 +97,6 @@ def run(results, cmdenv, tdb: TradeDB):
         tdenv=cmdenv,
         rebuild=True,
     )
-    
-    return None
 
+    # We've done everything, there is no work for the caller to do.
+    return False

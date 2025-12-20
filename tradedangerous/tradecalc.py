@@ -43,26 +43,33 @@ Classes:
 ######################################################################
 # Imports
 
-from collections import defaultdict, namedtuple
-import datetime
+from __future__ import annotations
+
+from collections import defaultdict
+from typing import NamedTuple
 import locale
 import os
 import re
 import sys
 import time
+import typing
 
-from sqlalchemy import select, text as _sa_text
+from sqlalchemy import text as _sa_text
 
+from .tradedb import Item
 from .tradeexcept import TradeException
-
-# ORM models (SQLAlchemy)
-from tradedangerous.db.orm_models import StationItem, Station, System, Item
-from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
-
 # Legacy-style helpers (these remain expected by other modules)
 from .tradedb import Trade, Destination, describeAge
 
+# ORM models (SQLAlchemy)
+from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Iterable
+    from tradedangerous import TradeDB, TradeEnv
+
 locale.setlocale(locale.LC_ALL, '')
+
 
 ######################################################################
 # Exceptions
@@ -96,7 +103,7 @@ class NoHopsError(TradeException):
 # TradeLoad (namedtuple wrapper)
 
 
-class TradeLoad(namedtuple("TradeLoad", ("items", "gainCr", "costCr", "units"))):
+class TradeLoad(NamedTuple):
     """
     Describes the manifest of items to be exchanged in a trade.
 
@@ -106,6 +113,10 @@ class TradeLoad(namedtuple("TradeLoad", ("items", "gainCr", "costCr", "units")))
         costCr  : how much this load was bought for
         units   : total number of units across all items
     """
+    items: list[tuple[Item, int]]
+    gainCr: int
+    costCr: int
+    units: int
 
     def __bool__(self):
         return self.units > 0
@@ -243,7 +254,6 @@ class Route:
         credits = int(getattr(tdenv, "credits", 0) or 0)
 
         return self.render(colorize, tdenv, detail=detail, goalSystem=goalSystem, credits=credits)
-
 
     def render(self, colorize, tdenv, detail=0, goalSystem=None, credits=0):
         """
@@ -500,13 +510,21 @@ class Route:
                 final=credits + ttlGainCr,
             )
         )
-       
+
+
 class TradeCalc:
     """
     Container for accessing trade calculations with common properties.
     """
 
-    def __init__(self, tdb, tdenv=None, fit=None, items=None, restrict_station_ids=None):
+    def __init__(
+                 self,
+                 tdb: TradeDB,
+                 tdenv: TradeEnv | None = None,
+                 fit: callable | None = None,
+                 items: list[Item] | None = None,
+                 restrict_station_ids: Iterable[int] = None
+                ):
         """
         Constructs the TradeCalc object and loads sell/buy data.
         """
@@ -624,7 +642,8 @@ class TradeCalc:
                 mod_dt = parse_ts(modified)
                 if not mod_dt:
                     if showProgress:
-                        sys.stdout.write("\n"); sys.stdout.flush()
+                        sys.stdout.write("\n")
+                        sys.stdout.flush()
                     raise BadTimestampError(tdb, stnID, itmID, modified)
                 ageS = nowS - int(mod_dt.timestamp())
 
@@ -661,10 +680,10 @@ class TradeCalc:
         )
 
 
-
     # ------------------------------------------------------------------
     # Cargo fitting algorithms
     # ------------------------------------------------------------------
+
 
     def bruteForceFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
@@ -809,10 +828,8 @@ class TradeCalc:
 
         return _fitCombos(0, credits, capacity)
 
-
     # Mark's test run, to spare searching back through the forum posts for it.
     # python trade.py run --fr="Orang/Bessel Gateway" --cap=720 --cr=11b --ly=24.73 --empty=37.61 --pad=L --hops=2 --jum=3 --loop --summary -vv --progress
-
     def simpleFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
         """
         Simplistic load calculator:
@@ -1241,7 +1258,8 @@ class TradeCalc:
                 )
     
         if heartbeat_enabled:
-            sys.stderr.write("\n"); sys.stderr.flush()
+            sys.stderr.write("\n")
+            sys.stderr.flush()
     
         if connections == 0:
             raise NoHopsError("No destinations could be reached within the constraints.")
