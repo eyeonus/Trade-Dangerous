@@ -2320,7 +2320,8 @@ class TradeDB:
             if jarPath.exists():
                 msg = "Unable to remove old persistence data, the file is inaccssible or open by another program"
                 raise TradeException(msg) from None
-            raise e from e
+
+            raise TradeException(f"Unable to update persistence data: {e}")
         
         try:
             stat = self.dbPath.stat()
