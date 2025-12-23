@@ -1,3 +1,13 @@
+from __future__ import annotations
+from itertools import chain
+import math
+import sys
+import time
+import typing
+
+from tradedangerous.tradedb import describeAge, Station, System
+from tradedangerous.tradecalc import NoHopsError, Route, TradeCalc, UserAbortedRun
+
 from .commandenv import ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
@@ -5,13 +15,9 @@ from .parsing import (
     NoPlanetSwitch, OdysseyArgument, PadSizeArgument, ParseArgument,
     PlanetaryArgument,
 )
-from itertools import chain
-from ..tradedb import TradeDB, System, Station, describeAge
-from ..tradecalc import TradeCalc, Route, NoHopsError
 
-import math
-import sys
-import time
+if typing.TYPE_CHECKING:
+    from tradedangerous import TradeDB, TradeEnv
 
 
 ######################################################################
@@ -261,6 +267,7 @@ switches = [
         action = 'store_true',
     ),
 ]
+
 
 ######################################################################
 # Helpers
@@ -1303,7 +1310,7 @@ def run(results, cmdenv, tdb):
         if distancePruning:
             preCrop = len(routes)
             distLeft = maxHopDistLy * (numHops - hopNo)
-            routes = [rt for rt in routes if distancePruning(rt, distLeft)]
+            routes[:] = [rt for rt in routes if distancePruning(rt, distLeft)]
             if not routes:
                 if pickedRoutes:
                     break
@@ -1311,8 +1318,7 @@ def run(results, cmdenv, tdb):
                     "No routes are in-range of any end stations at the end of hop {}"
                     .format(hopNo)
                 )
-            pruned = preCrop - len(routes)
-            if pruned:
+            if (pruned := preCrop - len(routes)):
                 cmdenv.NOTE("Pruned {} origins too far from any end stations", pruned)
         
         if hopNo >= 1 and (cmdenv.maxRoutes or pruneMod):
@@ -1338,6 +1344,13 @@ def run(results, cmdenv, tdb):
         
         try:
             newRoutes = calc.getBestHops(routes, restrictTo = restrictTo)
+
+        except KeyboardInterrupt:
+            cmdenv.DEBUG0("** Keyboard Interrupt")
+            if hopNo == 0 or not pickedRoutes:
+                raise UserAbortedRun("before any routes calculated")
+            newRoutes = []
+
         except NoHopsError:
             if hopNo == 0 and len(cmdenv.origSystems) == 1:
                 raise NoDataError(
@@ -1351,50 +1364,38 @@ def run(results, cmdenv, tdb):
             raise NoDataError(
                 "No routes had reachable trading links at hop #{}".format(hopNo + 1)
             )
-        
+
+        if calc.aborted:
+            cmdenv.DEBUG0("** User Aborted")
+            if not newRoutes:
+                raise UserAbortedRun("unable to surface any routes [internal error]")
+            break
+
         if not newRoutes:
+            assert not calc.aborted, "internal error"
+            # First attempt to find a route is a special case because the current
+            # route list is the source.
+            if hopNo == 0:
+                no_routes_on_first_hop(cmdenv, calc)
+                # no return
+
+            # If we've already got some winners (e.g. on --shorten)
             if pickedRoutes:
                 break
+
             checkReachability(tdb, cmdenv)
-            if hopNo > 0:
-                if restrictTo and manualRestriction:
-                    results.summary.exception += routeFailedRestrictions(
-                        tdb, cmdenv, restrictTo, maxLs, hopNo
-                    )
-                    break
-                results.summary.exception += (
-                    "SORRY: Could not find profitable destinations "
-                    "beyond hop #{:n}\n"
-                    .format(hopNo + 1)
+
+            if restrictTo and manualRestriction:
+                results.summary.exception += routeFailedRestrictions(
+                    tdb, cmdenv, restrictTo, maxLs, hopNo
                 )
                 break
 
-            if cmdenv.origPlace and len(routes) == 1:
-                errText = (
-                    "No profitable buyers found for the goods at {}.\n"
-                    "\n"
-                    "You may want to try:\n"
-                    "  {} local \"{}\" --ly {} -vv --stations --trading"
-                    .format(
-                        routes[0].lastStation.name(),
-                        sys.argv[0], cmdenv.origPlace.system.name(),
-                        cmdenv.maxJumpsPer * cmdenv.maxLyPer,
-                    )
-                )
-                if isinstance(cmdenv.origPlace, Station):
-                    errText += (
-                        "\n"
-                        "or:\n"
-                        "  {} market \"{}\" --sell -vv"
-                        .format(
-                            sys.argv[0], cmdenv.origPlace.name(),
-                        )
-                    )
-                raise NoDataError(errText)
-            raise NoDataError("Unable to find any profitable buyers for first hop.")
-    
+            results.summary.exception += f"SORRY: Could not find profitable destinations beyond hop #{hopNo+1:n}\n"
+            break
+        
         routes[:] = newRoutes
-        if routes and goalSystem:
+        if goalSystem:
             # Promote the winning route to the top of the list
             # while leaving the remainder of the list intact
             routes.sort(
@@ -1405,6 +1406,9 @@ def run(results, cmdenv, tdb):
                 cmdenv.NOTE("Goal system reached!")
                 routes = routes[:1]
                 break
+        
+        if calc.aborted:
+            break
         
         if routePickPred:
             pickedRoutes.extend(
@@ -1423,9 +1427,11 @@ def run(results, cmdenv, tdb):
             route.score /= len(route.hops)
     
     if not routes:
+        if calc.aborted:
+            cmdenv.WARN("Internal Error: abort continued without routes, please report on github")
+            raise UserAbortedRun("before any routes found")
         raise NoDataError(
-            "No profitable trades matched your critera, "
-            "or price data along the route is missing."
+            "No profitable trades matched your critera, or price data along the route is missing."
         )
     
     if viaSet:
@@ -1435,20 +1441,64 @@ def run(results, cmdenv, tdb):
     
     routes.sort()
     results.data = routes
+
+    if calc.aborted:
+        results.summary.exception += str(UserAbortedRun("results may be incomplete or inaccurate")) + "\n"
     
     return results
+
+
+def no_routes_on_first_hop(cmdenv: TradeEnv, calc: TradeCalc) -> None:
+    """ handle the special case where run found no routes on the first hop. """
+    # Is it because you ctrl-c'd?
+    if calc.aborted:
+        raise UserAbortedRun("during first hop before any routes found")
+
+    if cmdenv.origPlace:
+        start_place = cmdenv.starting or "???"
+        start_system = cmdenv.origPlace.system.name()
+        max_ly = cmdenv.maxJumpsPer * cmdenv.maxLyPer
+        
+        errText = (
+            f"No profitable buyers found for the goods at {start_place}.\n"
+            "\n"
+            "You may want to try:\n"
+            f"  {sys.argv[0]} local \"{start_system}\" --ly {max_ly} -vv --stations --trading"
+        )
+        
+        # If they had specified a station, give them a little extra help.
+        if isinstance(cmdenv.origPlace, Station):
+            errText += (
+                "\n"
+                "or:\n"
+                f"  {sys.argv[0]} market \"{start_place}\" --sell -vv"
+            )
+    else:
+        errText = "Could not find any trade links in the galaxy with those criteria."
+    
+    raise NoDataError(errText)
+
 
 ######################################################################
 # Transform result set into output
 
 
 def render(results, cmdenv, tdb):
-    exception = results.summary.exception
-    if exception:
-        print('#' * 76)
-        print("\a{}".format(exception), end = "")
-        print('#' * 76)
-        print()
+    if (exception := results.summary.exception.strip()):
+        style = ""
+        lines = exception.split("\n")
+        max_line_len = max(len(line) for line in lines)
+        if cmdenv.color:
+            style = "yellow on grey15"  # yellow on a darkish background, so we're sure it's not on a light background
+            # Pad all the lines to the same length
+            exception = "\n".join(f"{line:{max_line_len}s}" for line in lines)
+
+        # TODO: should use a rich panel when --color is set
+        cmdenv.console.print('#' * max_line_len, style=style)
+        cmdenv.console.print(exception, style=style)
+        cmdenv.console.print('#' * max_line_len, style=style)
+        # Ring the console bell and add a blank line
+        cmdenv.console.print("\a")
     
     routes = results.data
     
