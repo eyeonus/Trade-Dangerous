@@ -218,11 +218,15 @@ class Route:
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
 
+    def debug_text(self, colorize) -> str:
+        lhs = colorize("cyan", self.firstStation.name())
+        rhs = colorize("blue", self.lastStation.name())
+        return f"{lhs} (#{self.firstStation.ID}) -> {rhs} (#{self.lastStation.ID})"
+
     def text(self, colorize) -> str:
-        return "%s -> %s" % (
-            colorize("cyan", self.firstStation.name()),
-            colorize("blue", self.lastStation.name()),
-        )
+        lhs = colorize("cyan", self.firstStation.name())
+        rhs = colorize("blue", self.lastStation.name())
+        return f"{lhs} -> {rhs}"
 
     def detail(self, tdenv):
         """
@@ -586,13 +590,13 @@ class TradeCalc:
         # ---------- Core/Engine path (NO Session; NO ORM entities) ----------
         columns = (
             "station_id, item_id, "
-            "demand_price, demand_units, demand_level, "
-            "supply_price, supply_units, supply_level, "
+            "CASE WHEN demand_units >= :mindemand THEN demand_price ELSE 0 END AS fx_demand_price, demand_units, demand_level, "
+            "CASE WHEN supply_units >= :minsupply THEN supply_price ELSE 0 END AS fx_supply_price, supply_units, supply_level, "
             "modified"
         )
 
-        where_clauses = []
-        params = {}
+        where_clauses = ["fx_demand_price > 0 OR fx_supply_price > 0"]
+        params = {"mindemand": minDemand or 1, "minsupply": minSupply or 1}
 
         # Age cutoff (if provided in env)
         if tdenv.maxAge:
@@ -649,15 +653,13 @@ class TradeCalc:
 
                 # Buying map (demand side)
                 if d_price and d_price > 0:
-                    if not minDemand or (d_units or 0) >= minDemand:
-                        demand[stnID].append((itmID, d_price, d_units or 0, d_level, ageS))
-                        dmdCount += 1
+                    demand[stnID].append((itmID, d_price, d_units or 0, d_level, ageS))
+                    dmdCount += 1
 
                 # Selling map (supply side)
-                if s_price and s_price > 0 and s_units:
-                    if not minSupply or s_units >= minSupply:
-                        supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
-                        supCount += 1
+                if s_price and s_price > 0:
+                    supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
+                    supCount += 1
 
                 # Calling 'time.time()' is *very* expensive, so only do it every so many rows
                 # but the == 1 means that we'll do it for the very first row too.
@@ -888,10 +890,12 @@ class TradeCalc:
         if not srcSelling:
             srcSelling = self.stationsSelling.get(srcStation.ID, None)
             if not srcSelling:
+                self.tdenv.DEBUG2("^- source not selling anything")
                 return None
 
         dstBuying = self.stationsBuying.get(dstStation.ID, None)
         if not dstBuying:
+            self.tdenv.DEBUG2("^- dest not buying anything")
             return None
 
         minGainCr = max(1, self.tdenv.minGainPerTon or 1)
@@ -1076,7 +1080,8 @@ class TradeCalc:
         getSelling = self.stationsSelling.get
     
         for route_no, route in enumerate(routes):
-            tdenv.DEBUG1("Route = {}", route.text(lambda x, y: y))
+            if tdenv.debug > 0:
+                tdenv.DEBUG1("Route = {}", route.debug_text(lambda x, y: y))
     
             srcStation = route.lastStation
             startCr = credits + int(route.gainCr * safetyMargin)
@@ -1139,8 +1144,8 @@ class TradeCalc:
                         "->".join(jump.text() for jump in dest.via),
                         dest.distLy,
                     )
-                    return True
-                stations = (d for d in stations if annotate(d))
+                    return dest
+                stations = (annotate(d) for d in stations)
     
             for dest in stations:
                 dstStation = dest.station

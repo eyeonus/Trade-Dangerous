@@ -172,6 +172,9 @@ class System:
         self.addedID = addedID or 0
         self.stations: list['Station'] = []
         self._rangeCache = None
+
+    def __repr__(self) -> str:
+        return f"<System ID={self.ID} dbname='{self.dbname}' pos=({self.posX},{self.posY},{self.posZ})>"
     
     @property
     def system(self) -> 'System':
@@ -270,6 +273,9 @@ class Station:
         self.itemCount = itemCount
         self.dataAge = dataAge
         system.stations += [self]
+
+    def __repr__(self) -> str:
+        return f"<Station ID={self.ID} dbname='{self.dbname}' system_id={self.system.ID} system='{self.system.dbname}'>"
     
     def name(self, detail: int = 0) -> str:  # pylint: disable=unused-argument
         return f"{self.system.dbname}/{self.dbname}"

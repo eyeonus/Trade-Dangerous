@@ -8,7 +8,13 @@ if typing.TYPE_CHECKING:
     from tradedangerous import TradeDB, TradeEnv
 
 
-parent_name = '.'.join(__name__.split('.')[:-1])
+__all__ = [
+    'PluginException',
+    'PluginBase',
+    'ImportPluginBase',
+    'load',
+]
+
 
 class PluginException(Exception):
     """
