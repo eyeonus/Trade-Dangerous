@@ -128,40 +128,42 @@ def station_advisory_lock(
     """
     Context manager to acquire/retry/release a per-station advisory lock.
 
-    Resilience improvement:
-      - If no transaction is active on the Session, this helper will OPEN ONE,
-        so the lock is taken on the same physical connection the ensuing DML uses.
-        In that case, it will COMMIT on normal exit, or ROLLBACK if an exception
-        bubbles out of the context block.
-      - If a transaction is already active, this helper does NOT touch txn
-        boundaries; caller remains responsible for commit/rollback.
+    Deadlock-safety requirement:
+      - Do NOT release the advisory lock before the station's writes are COMMITTED.
+      - Previously we only committed when this helper created the transaction.
+        If the Session already had an active transaction (SQLAlchemy autobegin),
+        the lock could be released while row locks were still pending commit.
 
-    Yields:
-        acquired (bool): True if acquired within retry policy;
-                         True immediately on unsupported dialects (NO-OP);
-                         False if not acquired on supported backends.
+    Behaviour:
+      - On MySQL/MariaDB: tries GET_LOCK() with bounded retries + exponential backoff.
+      - If acquired (got=True): COMMIT on normal exit BEFORE releasing the advisory lock,
+        regardless of whether this helper started the transaction.
+      - If NOT acquired (got=False) and this helper started the transaction: ROLLBACK to
+        avoid leaving an idle open transaction pinned to a connection.
+      - If an exception escapes the caller's block: ROLLBACK (best-effort) then re-raise.
+      - On unsupported dialects (e.g. SQLite): yields True and does nothing.
+
+    WARNING:
+      - Do not wrap this context manager inside an external transaction manager
+        (e.g. `with session.begin():`) because it may COMMIT inside that scope.
     """
     # Fast-path NO-OP for SQLite/unsupported dialects
     if not _is_lock_supported(session):
-        try:
-            yield True
-        finally:
-            pass
+        yield True
         return
 
-    # If we can still influence the next txn, prefer READ COMMITTED for shorter waits.
+    # Prefer READ COMMITTED to reduce lock contention (best-effort).
     _ensure_read_committed(session)
 
-    # Pin a connection if caller hasn't already begun a transaction.
     started_txn = False
     txn_ctx = None
     if not session.in_transaction():
+        # Pin lock + DML to the same connection by opening a txn.
         txn_ctx = session.begin()
         started_txn = True
 
     got = False
     try:
-        # Attempt with bounded retries + exponential backoff.
         attempt = 0
         while attempt < max_retries:
             if acquire_station_lock(session, station_id, timeout_seconds):
@@ -173,34 +175,32 @@ def station_advisory_lock(
         # Hand control to caller
         yield got
 
-        # If we created the transaction and no exception occurred, commit it.
-        if started_txn and got:
-            try:
+        if got:
+            # Commit while the advisory lock is still held.
+            if session.in_transaction():
                 session.commit()
-            except Exception:
-                # If commit fails, make sure to roll back so we don't leak an open txn.
+        else:
+            # If we opened a txn just to attempt locking, close it out cleanly.
+            if started_txn and session.in_transaction():
                 session.rollback()
-                raise
+
     except Exception:
-        # If we created the transaction and an exception escaped the block, roll it back.
-        if started_txn and session.in_transaction():
+        # Ensure we don't leak row locks / open txn on error.
+        if session.in_transaction():
             try:
                 session.rollback()
             except Exception:
-                # Swallow secondary rollback failures; original exception should propagate.
                 pass
         raise
+
     finally:
-        # Always release the advisory lock if we acquired it.
+        # Release advisory lock after commit/rollback decisions above.
         if got:
             try:
                 release_station_lock(session, station_id)
             except Exception:
-                # Lock releases are best-effort; don't mask user exceptions.
                 pass
 
-        # If we opened a txn context object (older SA versions), ensure it's closed.
-        # (Harmless if already committed/rolled back above.)
         if started_txn and txn_ctx is not None:
             try:
                 txn_ctx.close()
