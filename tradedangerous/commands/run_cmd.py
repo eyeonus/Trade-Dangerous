@@ -1319,11 +1319,11 @@ def run(results, cmdenv, tdb):
             routes.sort()
             if pruneMod and hopNo + 1 >= cmdenv.pruneHops and len(routes) > 10:
                 crop = int(len(routes) * pruneMod)
-                routes = routes[:-crop]
+                routes[:] = routes[:-crop]
                 cmdenv.NOTE("Pruned {} origins", crop)
             
             if cmdenv.maxRoutes and len(routes) > cmdenv.maxRoutes:
-                routes = routes[:cmdenv.maxRoutes]
+                routes[:] = routes[:cmdenv.maxRoutes]
         
         if cmdenv.progress:
             extra = ""
@@ -1368,31 +1368,32 @@ def run(results, cmdenv, tdb):
                     .format(hopNo + 1)
                 )
                 break
-            if hopNo == 0:
-                if cmdenv.origPlace and len(routes) == 1:
-                    errText = (
-                        "No profitable buyers found for the goods at {}.\n"
+
+            if cmdenv.origPlace and len(routes) == 1:
+                errText = (
+                    "No profitable buyers found for the goods at {}.\n"
+                    "\n"
+                    "You may want to try:\n"
+                    "  {} local \"{}\" --ly {} -vv --stations --trading"
+                    .format(
+                        routes[0].lastStation.name(),
+                        sys.argv[0], cmdenv.origPlace.system.name(),
+                        cmdenv.maxJumpsPer * cmdenv.maxLyPer,
+                    )
+                )
+                if isinstance(cmdenv.origPlace, Station):
+                    errText += (
                         "\n"
-                        "You may want to try:\n"
-                        "  {} local \"{}\" --ly {} -vv --stations --trading"
+                        "or:\n"
+                        "  {} market \"{}\" --sell -vv"
                         .format(
-                            routes[0].lastStation.name(),
-                            sys.argv[0], cmdenv.origPlace.system.name(),
-                            cmdenv.maxJumpsPer * cmdenv.maxLyPer,
+                            sys.argv[0], cmdenv.origPlace.name(),
                         )
                     )
-                    if isinstance(cmdenv.origPlace, Station):
-                        errText += (
-                            "\n"
-                            "or:\n"
-                            "  {} market \"{}\" --sell -vv"
-                            .format(
-                                sys.argv[0], cmdenv.origPlace.name(),
-                            )
-                        )
-                    raise NoDataError(errText)
-        
-        routes = newRoutes
+                raise NoDataError(errText)
+            raise NoDataError("Unable to find any profitable buyers for first hop.")
+    
+        routes[:] = newRoutes
         if routes and goalSystem:
             # Promote the winning route to the top of the list
             # while leaving the remainder of the list intact
