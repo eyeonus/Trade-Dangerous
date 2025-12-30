@@ -65,7 +65,7 @@ from .tradedb import Trade, Destination, describeAge
 from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
     from tradedangerous import TradeDB, TradeEnv
 
 locale.setlocale(locale.LC_ALL, '')
@@ -218,12 +218,12 @@ class Route:
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
 
-    def debug_text(self, colorize) -> str:
+    def debug_text(self, colorize: Callable[[str, str], str]) -> str:
         lhs = colorize("cyan", self.firstStation.name())
         rhs = colorize("blue", self.lastStation.name())
         return f"{lhs} (#{self.firstStation.ID}) -> {rhs} (#{self.lastStation.ID})"
 
-    def text(self, colorize) -> str:
+    def text(self, colorize: Callable[[str, str], str]) -> str:
         lhs = colorize("cyan", self.firstStation.name())
         rhs = colorize("blue", self.lastStation.name())
         return f"{lhs} -> {rhs}"
@@ -1080,7 +1080,7 @@ class TradeCalc:
         getSelling = self.stationsSelling.get
     
         for route_no, route in enumerate(routes):
-            if tdenv.debug > 0:
+            if tdenv.debug > 1:  # route.debug_text can be expensive, so avoid evaluating it
                 tdenv.DEBUG1("Route = {}", route.debug_text(lambda x, y: y))
     
             srcStation = route.lastStation
@@ -1135,7 +1135,10 @@ class TradeCalc:
                 )
             )
     
-            if tdenv.debug >= 1:
+            # Even when we don't log the line, we still have to produce the
+            # parameters, and building the route list could be expensive,
+            # so only pay the cost when we're actually logging.
+            if tdenv.debug > 1:
                 def annotate(dest):
                     tdenv.DEBUG1(
                         "destSys {}, destStn {}, jumps {}, distLy {}",

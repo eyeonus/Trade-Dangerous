@@ -23,6 +23,40 @@ if typing.TYPE_CHECKING:
     from tradedangerous import TradeDB, TradeORM
 
 
+# See: https://espterm.github.io/docs/VT100%20escape%20codes.html
+# or : https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
+#
+# ANSI-compliant "terminal" streams support changing the color (including boldness) of text
+# with 'Color Sequence' codes, consisting of an initializer (CS), one or more semicolon-separated (;)
+# parameters, and a command code.
+#
+# The CSI is ESC '[' where esc is 1b in hex or 033 in octal.
+# For color-changes, the command is 'm'.
+# To clear all color-code/effect changes, the sequence is : [escape, '[', '0', 'm'].
+#
+ANSI_CSI = "\033["
+ANSI_COLOR_CMD = "m" 
+ANSI_COLOR = {
+    "CLEAR": "0",
+    "red": "31",
+    "green": "32",
+    "yellow": "33",
+    "blue": "34",
+    "magenta": "35",
+    "cyan": "36",
+    "lightGray": "37",
+    "darkGray": "90",
+    "lightRed": "91",
+    "lightGreen": "92",
+    "lightYellow": "93",
+    "lightBlue": "94",
+    "lightMagenta": "95",
+    "lightCyan": "96",
+    "white": "97",
+}
+ANSI_CLEAR = f"{ANSI_CSI}{ANSI_COLOR['CLEAR']}{ANSI_COLOR_CMD}"
+
+
 class CommandResults:
     """ Encapsulates the results returned by running a command.  """
     cmdenv: 'CommandEnv'
@@ -78,7 +112,7 @@ class CommandEnv(TradeEnv):
         if self.cwd:
             os.chdir(self.cwd)
 
-    def preflight(self):
+    def preflight(self) -> None:
         """
         Phase A: quick validation that must be able to short-circuit before any
         heavy TradeDB(load=True) path is invoked.
@@ -123,7 +157,7 @@ class CommandEnv(TradeEnv):
     def render(self, results: CommandResults) -> None:
         self._cmd.render(self, results, self, self.tdb)
     
-    def checkMFD(self):
+    def checkMFD(self) -> None:
         self.mfd = None
         try:
             if not self.x52pro:
@@ -137,7 +171,7 @@ class CommandEnv(TradeEnv):
         from tradedangerous.mfd import X52ProMFD  # noqa
         self.mfd = X52ProMFD()
     
-    def checkFromToNear(self):
+    def checkFromToNear(self) -> None:
         if not self.wantsTradeDB:
             return
         
@@ -192,7 +226,7 @@ class CommandEnv(TradeEnv):
         self.destPlace = lookupPlace('destination', 'ending')
         self.nearSystem = check('system', 'near', False)
         
-    def checkAvoids(self):
+    def checkAvoids(self) -> None:
         """
             Process a list of avoidances.
         """
@@ -242,7 +276,7 @@ class CommandEnv(TradeEnv):
                     [ place.name() for place in avoidPlaces ],
         )
     
-    def checkVias(self):
+    def checkVias(self) -> None:
         """ Process a list of station names and build them into a list of waypoints. """
         viaPlaceNames = getattr(self, 'via', None)
         viaPlaces = self.viaPlaces = []
@@ -251,7 +285,7 @@ class CommandEnv(TradeEnv):
             for via in ",".join(viaPlaceNames).split(","):
                 viaPlaces.append(self.tdb.lookupPlace(via))
     
-    def checkPadSize(self):
+    def checkPadSize(self) -> None:
         padSize = getattr(self, 'padSize', None)
         if not padSize:
             return
@@ -265,7 +299,7 @@ class CommandEnv(TradeEnv):
                 raise PadSizeError(padSize)
         self.padSize = padSize
     
-    def checkPlanetary(self):
+    def checkPlanetary(self) -> None:
         planetary = getattr(self, 'planetary', None)
         if not planetary:
             return
@@ -279,7 +313,7 @@ class CommandEnv(TradeEnv):
                 raise PlanetaryError(planetary)
         self.planetary = planetary
     
-    def checkFleet(self):
+    def checkFleet(self) -> None:
         fleet = getattr(self, 'fleet', None)
         if not fleet:
             return
@@ -292,7 +326,7 @@ class CommandEnv(TradeEnv):
             return
         self.fleet = fleet = fleet.upper()
     
-    def checkOdyssey(self):
+    def checkOdyssey(self) -> None:
         odyssey = getattr(self, 'odyssey', None)
         if not odyssey:
             return
@@ -305,33 +339,16 @@ class CommandEnv(TradeEnv):
             return
         self.odyssey = odyssey.upper()
     
-    def colorize(self, color, rawText):
+    def colorize(self, color: str, raw_text: str) -> str:
         """
-        Set up some coloring for readability
+        Set up some coloring for readability.
+        TODO: Rich already does this, use it instead?
         """
-        colorMap = {
-            "red": "31",
-            "green": "32",
-            "yellow": "33",
-            "blue": "34",
-            "magenta": "35",
-            "cyan": "36",
-            "lightGray": "37",
-            "darkGray": "90",
-            "lightRed": "91",
-            "lightGreen": "92",
-            "lightYellow": "93",
-            "lightBlue": "94",
-            "lightMagenta": "95",
-            "lightCyan": "96",
-            "white": "97",
-        }
-        
-        # Needed in Windows for color output to work.
-        if os.name == 'nt':
-            os.system('color')
-        
-        return "\033[{}m{}\033[00m" .format(colorMap.get(color, "00"), rawText)
+        if (code := ANSI_COLOR.get(color)):
+            # Only do anything if there's a code for that.
+            return f"{ANSI_CSI}{code}{ANSI_COLOR_CMD}{raw_text}{ANSI_CLEAR}"
+        # Otherwise, keep it raw.
+        return raw_text
 
 
 def update_database_schema(tdb: TradeDB | TradeORM) -> None:
