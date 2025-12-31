@@ -21,12 +21,11 @@ from a website such as [Tromador's Trading Dangerously](http://elite.ripz.org "T
 from .tradecalc import TradeCalc
 from .tradedb import TradeDB
 from .tradeenv import TradeEnv
-from .tradeexcept import TradeException
+from .tradeexcept import SimpleAbort, TradeException
 from .tradeorm import TradeORM
 from .version import __version__
 
 from .commands.commandenv import CommandEnv, CommandResults
-
 
 # Export this as top-level symbnols so they can be imported with e.g.
 #  import tradedangerous.TradeDB
@@ -35,6 +34,7 @@ __all__ = [
     '__version__',
     'CommandEnv',
     'CommandResults',
+    'SimpleAbort',
     'TradeCalc',
     'TradeDB',
     'TradeEnv',

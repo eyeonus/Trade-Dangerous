@@ -124,6 +124,9 @@ def trade(argv):
 
     try:
         results = cmdenv.run(tdb)
+    except tradeexcept.SimpleAbort as e:
+        cmdenv.console.print(f"\n{e}\n", style="red")
+        sys.exit(1)
     finally:
         # always close tdb
         tdb.close(final=True)

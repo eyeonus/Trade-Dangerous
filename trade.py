@@ -35,7 +35,7 @@
 # to empower other programmers to do cool stuff.
 import sys
 
-from tradedangerous import cli
+from tradedangerous import cli, SimpleAbort
 
 
 def main(argv = None):
@@ -43,4 +43,7 @@ def main(argv = None):
 
 
 if __name__ == "__main__":
-    cli.main(sys.argv)
+    try:
+        cli.main(sys.argv)
+    except SimpleAbort as e:
+        print(str(e))

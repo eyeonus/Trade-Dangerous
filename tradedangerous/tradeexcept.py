@@ -16,6 +16,13 @@ if typing.TYPE_CHECKING:
 AMBIGUITY_LIMIT = 6
 
 
+class SimpleAbort(Exception):
+    """
+        SimpleAbort is Exception but can be caught and presented without
+        any kind of backtrace.
+    """
+
+
 class TradeException(Exception):
     """
         Distinguishes runtime logical errors (such as no data for what you
