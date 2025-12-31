@@ -723,6 +723,7 @@ def checkOrigins(tdb, cmdenv, calc):
     # Compute eligibility once: stations must both sell and buy (same as suitability with src=None).
     eligible_ids = set(calc.stationsSelling) & set(calc.stationsBuying)
     
+    setattr(cmdenv, "_origin", cmdenv.origPlace)  # store the original so we can overwrite it
     if cmdenv.origPlace:
         if cmdenv.startJumps and cmdenv.startJumps > 0:
             cmdenv.origins = expandForJumps(
@@ -1347,8 +1348,11 @@ def run(results, cmdenv, tdb):
 
         except KeyboardInterrupt:
             cmdenv.DEBUG0("** Keyboard Interrupt")
-            if hopNo == 0 or not pickedRoutes:
+            if hopNo == 0 or not routes:
                 raise UserAbortedRun("before any routes calculated")
+            # Until python 3.14 it's discouraged to break from an exception, so
+            # lets make sure we don't mistake there being anything to process.
+            calc.aborted = True
             newRoutes = []
 
         except NoHopsError:
@@ -1367,8 +1371,6 @@ def run(results, cmdenv, tdb):
 
         if calc.aborted:
             cmdenv.DEBUG0("** User Aborted")
-            if not newRoutes:
-                raise UserAbortedRun("unable to surface any routes [internal error]")
             break
 
         if not newRoutes:
@@ -1428,7 +1430,6 @@ def run(results, cmdenv, tdb):
     
     if not routes:
         if calc.aborted:
-            cmdenv.WARN("Internal Error: abort continued without routes, please report on github")
             raise UserAbortedRun("before any routes found")
         raise NoDataError(
             "No profitable trades matched your critera, or price data along the route is missing."
@@ -1454,27 +1455,35 @@ def no_routes_on_first_hop(cmdenv: TradeEnv, calc: TradeCalc) -> None:
     if calc.aborted:
         raise UserAbortedRun("during first hop before any routes found")
 
-    if cmdenv.origPlace:
-        start_place = cmdenv.starting or "???"
-        start_system = cmdenv.origPlace.system.name()
-        max_ly = cmdenv.maxJumpsPer * cmdenv.maxLyPer
+    # The raw name they provide with --from is stored as cmdenv.starting, and resolved
+    # to a System or Station in cmdenv.origPlace, however checkOrigins may set that to
+    # None if we're doing --start-jumps to indicate there's no "single" origin. So we
+    # saved a copy of it to cmdenv._origin.
+    start_place = getattr(cmdenv, "_origin")
+    if not start_place:
+        # Ok, we were doing some kind of open-ended galaxy wide query
+        raise NoDataError("Could not find any trade links in the galaxy with those criteria.")
+
+    # Find the system name - all "locations" have a system property including Systems.
+    start_system = start_place.system.name()
+
+    # How far did you say you were willing to go?
+    max_ly = cmdenv.maxJumpsPer * cmdenv.maxLyPer
         
-        errText = (
-            f"No profitable buyers found for the goods at {start_place}.\n"
+    errText = (
+        f"No suitable and profitable buyers found at/relative to {start_place}.\n"
+        "\n"
+        "You may want to try:\n"
+        f"  {sys.argv[0]} local \"{start_system}\" --ly {max_ly} -vv --stations --trading"
+    )
+        
+    # If they had specified a station, give them a little extra help.
+    if isinstance(start_place, Station):
+        errText += (
             "\n"
-            "You may want to try:\n"
-            f"  {sys.argv[0]} local \"{start_system}\" --ly {max_ly} -vv --stations --trading"
+            "or:\n"
+            f"  {sys.argv[0]} market \"{start_place}\" --sell -vv"
         )
-        
-        # If they had specified a station, give them a little extra help.
-        if isinstance(cmdenv.origPlace, Station):
-            errText += (
-                "\n"
-                "or:\n"
-                f"  {sys.argv[0]} market \"{start_place}\" --sell -vv"
-            )
-    else:
-        errText = "Could not find any trade links in the galaxy with those criteria."
     
     raise NoDataError(errText)
 
