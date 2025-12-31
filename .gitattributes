@@ -1,0 +1,27 @@
+# Determine based on system/settings
+*			text=auto
+
+# text, but let git decide the eol
+*.csv 		text
+*.ini		text
+*.rc		text
+
+# Files whose line-endings are correct, I mean lf.
+*.cfg		text eol=lf
+*.json		text eol=lf
+*.md  		text eol=lf
+*.ps1 		text eol=lf
+*.pl  		text eol=lf
+*.py  		text eol=lf
+*.pyi		text eol=lf
+*.sh  		text eol=lf
+*.toml		text eol=lf
+*.txt 		text eol=lf
+*.typed		text eol=lf
+
+# Ok, so Bill chose poorly, but Steve chose lfcr so ...
+*.bat 		text eol=crlf
+
+# Binary files
+*.ico 		-text
+*.pyd		-text
