@@ -26,6 +26,7 @@ help='Find potential trades between two given stations.'
 name='trade'
 epilog=None
 wantsTradeDB=False
+wantsTradeORM=True
 arguments = [
     ParseArgument(
         'origin',
@@ -179,8 +180,9 @@ def get_stations(cmdenv: CommandEnv, tdb: TradeORM) -> tuple[models.Station, mod
 
 ######################################################################
 # Perform query and populate result set
+# Return the result set to render or False.
 
-def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM | None) -> CommandResults:
+def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM | None = None) -> CommandResults | None:
     tdb = TradeORM(tdenv=cmdenv)
 
     # Did they specify --fill?

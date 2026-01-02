@@ -18,11 +18,18 @@ from sqlalchemy import (
     text,
     Column,
     DateTime,
+    or_,
+    case,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.types import TypeDecorator
+
+
+FLEET_CARRIER_TYPE = 24
+ODYSSEY_TYPE = 25
 
 
 # ---- Dialect-aware time utilities (moved before model usage) ----
@@ -155,6 +162,7 @@ class System(Base):
         nullable=False,
     )
     
+    @hybrid_property
     def dbname(self) -> str:
         return f"{self.name.upper()}/"
     
@@ -175,9 +183,38 @@ class Station(Base):
     station_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(CIString(128), nullable=False)
     
+    @hybrid_property
     def dbname(self) -> str:
         return f"{self.system.name}/{self.name}"
-    
+
+    @hybrid_property
+    def is_fleet_carrier(self) -> bool:
+        return self.type_id == FLEET_CARRIER_TYPE
+
+    @hybrid_property
+    def fleet_carrier(self) -> str:
+        return 'Y' if self.type_id == FLEET_CARRIER_TYPE else 'N'
+
+    @hybrid_property
+    def is_planetary(self) -> bool:
+        return self.planetary == 'Y' or self.type_id == ODYSSEY_TYPE
+
+    @is_planetary.expression
+    def is_planetary(cls):
+        return or_(cls.planetary == 'Y', cls.type_id == ODYSSEY_TYPE)
+
+    @hybrid_property
+    def is_odyssey_planetary(self) -> bool:
+        return self.type_id == ODYSSEY_TYPE
+
+    @hybrid_property
+    def odyssey(self) -> str:
+        return 'Y' if self.type_id == ODYSSEY_TYPE else 'N'
+
+    @odyssey.expression
+    def odyssey(cls):
+        return case((cls.type_id == ODYSSEY_TYPE, 'Y'), else_='N')
+
     # type widened; cascade semantics unchanged (DELETE only)
     system_id: Mapped[int] = mapped_column(
         BigInteger,

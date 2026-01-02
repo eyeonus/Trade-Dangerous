@@ -28,6 +28,23 @@ if typing.TYPE_CHECKING:
     from .db.engine import sessionmaker, Engine, Session  # type: ignore
 
 
+class NameNotFoundError(TradeException):
+    """ NameNotFoundError indicates that a string provided for a name lookup could not be matched. """
+
+
+TRISTATE_LABELS: dict[str, str] = {'?': 'Unk', 'Y': 'Yes', 'N': 'No'}
+
+MARKET_STATES:   dict[str, str] = TRISTATE_LABELS
+PLANET_STATES:   dict[str, str] = TRISTATE_LABELS
+FLEET_STATES:    dict[str, str] = TRISTATE_LABELS
+ODYSSEY_STATES:  dict[str, str] = TRISTATE_LABELS
+
+PADSIZE_LABELS:  dict[str, str] = {'?': 'Unk', 'S': 'Sml', 'M': 'Med', 'L': 'Lrg'}
+
+# A guard object we can use to determine you do not want 'default' behavior.
+_NO_DEFAULT = object()
+
+
 class TradeORM:
     DEFAULT_PATH = "data"
     DEFAULT_DB = "TradeDangerous.db"
@@ -78,24 +95,32 @@ class TradeORM:
         """ Commit the current transaction state. """
         return self.session.commit()
     
-    def lookup_station(self, name: str) -> orm.Station | None:
+    def lookup_station(self, name: str, default: orm.Station | None | object = _NO_DEFAULT) -> orm.Station | None:
         """ Use the database to lookup a station, which accepts a name that
             is either a unique station name (or partial of one), or in the
-            'system name/station name' component. If the station does not
-            match a unique station, raises an AmbiguityError
+            'system name/station name' component.
+            raises:
+              - AmbiguityError if the name can match multiple stations,
+              - ValueError if the name contains a '%',
+              - SystemNotStationError if the name matches a system
+              - NameNotFoundError if the name matches nothing and default is not specified,
+            returns:
+              - Matching station if a single match found,
+              - otherwise default if specified.
         """
         if "%" in name:
-            raise TradeException("wildcards ('%') are not supported in station names")
+            raise ValueError("wildcards ('%') are not supported in station names")
         if "/" not in name:
             if (station := self._station_lookup(name, exact=True, partial=False)):
                 return station
             if self._system_lookup(name, exact=True, partial=False):
                 raise SystemNotStationError(f'"{name}" is a system name, use "/{name}" if you meant it as a station')
             name = "/" + name
-        station: orm.Station | None = self.lookup_place(name)
+
+        station: orm.Station | None = self.lookup_place(name, default=default)
         return station
-    
-    def lookup_system(self, name: str) -> orm.System | None:
+
+    def lookup_system(self, name: str, default: orm.System | orm.Station | object | None = _NO_DEFAULT) -> orm.System | None:
         """ Use the database to lookup a system, which accepts a name that
             is either a unique system name (or partial of one), or in the
             'system name/station name' component. If the system does not
@@ -106,12 +131,12 @@ class TradeORM:
         system_name, _, _ = name.partition("/")
         if not system_name:
             raise TradeException(f"system name required for system lookup, got {name}")
-        result: orm.Station | orm.System | None = self.lookup_place(system_name)
+        result: orm.Station | orm.System | None = self.lookup_place(system_name, default=default)
         if isinstance(result, orm.Station):
-            return result.system
+            result = result.system
         return result
-    
-    def lookup_place(self, name: str) -> orm.Station | orm.System | None:
+
+    def lookup_place(self, name: str, default: orm.System | orm.Station | object | None = None) -> orm.Station | orm.System | object | None:
         """ Using a "[<system>]/[<station>]" style name, look up either a Station or a System."""
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in names")
@@ -129,7 +154,9 @@ class TradeORM:
         if sys_name:
             system = self._system_lookup(sys_name)
             if not system:
-                raise TradeException(f"unknown system: {sys_name}")
+                if default is not _NO_DEFAULT:
+                    return default
+                raise NameNotFoundError(f"unknown system: {sys_name}")
             if not stn_name:
                 return system
             
@@ -148,8 +175,10 @@ class TradeORM:
             return results[0]
         
         station = self._station_lookup(stn_name, exact=False)
-        return station
-    
+        if not station and default is not _NO_DEFAULT:
+            return station
+        raise NameNotFoundError(f"could not lookup place: {name}")
+
     def _system_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.System | None:
         """ Look up a model by exact name match. """
         assert exact or partial, "at least one of exact or partial must be True"
