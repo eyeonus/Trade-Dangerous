@@ -155,7 +155,7 @@ def run(results, cmdenv, tdb: TradeDB):
     # System-based search
     nearSystem = cmdenv.nearSystem
     if nearSystem:
-        maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
+        maxLy = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
         results.summary.near = nearSystem
         results.summary.ly = maxLy
         distanceFn = nearSystem.distanceTo

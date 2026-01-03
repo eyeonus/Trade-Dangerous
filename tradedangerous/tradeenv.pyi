@@ -64,10 +64,15 @@ class RichColorTheme(BasicRichColorTheme):
 
 
 class BaseConsoleIOMixin:
-    console: Console
-    stderr: Console
-    theme: BaseColorTheme
-    quiet: int
+    color:    bool
+    console:  Console
+    debug:    int
+    detail:   int
+    encoding: str
+    quiet:    int
+    stderr:   Console
+    theme:    BaseColorTheme
+    
     def uprint(self, *args: Any, stderr: bool = False, style: str | None = None, **kwargs: Any) -> None: ...
 
 
@@ -76,22 +81,15 @@ class NonUtf8ConsoleIOMixin(BaseConsoleIOMixin):
 
 
 class TradeEnv(BaseConsoleIOMixin):
-    debug: int
-    detail: int
-    color: bool
-    theme: BaseColorTheme
-    persist: bool
-    dataDir: str
     csvDir: str
-    tmpDir: str
-    templateDir: str
     cwDir: str
-    console: Console
-    stderr: Console
-    quiet: int
-    
-    encoding: str
-    
+    dataDir: str
+    maxSystemLinkLy: float
+    persist: bool
+    templateDir: str
+    theme: BaseColorTheme
+    tmpDir: str
+
     def __init__(self, properties: dict[str, Any] | argparse.Namespace | None = None, **kwargs: Any) -> None: ...
     
     # Dynamically-generated log methods with full type hints

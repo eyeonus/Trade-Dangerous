@@ -363,7 +363,7 @@ class ImportPlugin(ImportPluginBase):
         
         # Ensure the cache is built and reloaded.
         tdb.reloadCache()
-        tdb.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
+        tdb.load()
         
         self.download_fdevids()
         

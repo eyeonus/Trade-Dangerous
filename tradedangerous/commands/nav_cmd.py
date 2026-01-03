@@ -70,7 +70,7 @@ def run(results, cmdenv, tdb):
     if isinstance(dstSystem, Station):
         dstSystem = dstSystem.system
     
-    maxLyPer = cmdenv.maxLyPer or tdb.maxSystemLinkLy
+    maxLyPer = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
     
     cmdenv.DEBUG0("Route from {} to {} with max {}ly per jump.",
                     srcSystem.name(), dstSystem.name(), maxLyPer)

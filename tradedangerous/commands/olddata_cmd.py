@@ -135,7 +135,7 @@ def run(results, cmdenv, tdb):
     
     # Bounding box for near (keeps scan small, mirrors original)
     if nearSys:
-        maxLy = cmdenv.maxLyPer or tdb.maxSystemLinkLy
+        maxLy = cmdenv.maxLyPer or cmdenv.maxSystemLinkLy
         # Bounding box predicate
         stmt = stmt.where(
             sys_tbl.c.pos_x.between(nearSys.posX - maxLy, nearSys.posX + maxLy),

@@ -104,10 +104,14 @@ class RichColorTheme(BasicRichColorTheme):
 
 class BaseConsoleIOMixin:
     """ Base mixin for running output through rich. """
-    console: Console
-    stderr:  Console
-    theme:   BaseColorTheme
-    quiet:   int
+    color:    bool
+    console:  Console
+    debug:    int
+    detail:   int
+    encoding: str
+    quiet:    int
+    stderr:   Console
+    theme:    BaseColorTheme
     
     def uprint(self, *args: Any, stderr: bool = False, style: str | None = None, **kwargs: Any) -> None:
         """
@@ -169,6 +173,7 @@ ENV_DEFAULTS: dict[str, Any] = {
         'cwDir': os.getcwd(),
         'console': CONSOLE,
         'stderr':  STDERR,
+        'maxSystemLinkLy': 64.0,
     }
 
 
@@ -188,25 +193,21 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         To print debug lines, use DEBUG<N>, e.g. DEBUG0, which takes a format() string and parameters, e.g.
             DEBUG1("hello, {world}{}", "!", world="world")
         
-        is equivalent to:
-            if tdenv.debug >= 1:
-                print("#hello, {world}{}".format("!", world="world"))
+        is similar to:
+            arg0, arg1 = "!", "world"
+            if tdenv.debug > 1:
+                tdenv.console.print("# hello, {arg1}{}".format(arg0=arg0, arg1=arg1))
         
         Use "NOTE" to print remarks which can be disabled with -q.
     """
-    
-    debug: int
-    detail: int
-    color: bool
-    theme: BaseColorTheme
-    persist: bool
-    dataDir: str
     csvDir: str
-    tmpDir: str
-    templateDir: str
     cwDir: str
-    console: Console
-    stderr: Console
+    dataDir: str
+    maxSystemLinkLy: float
+    persist: bool
+    templateDir: str
+    theme: BaseColorTheme
+    tmpDir: str
     
     encoding = sys.stdout.encoding
     

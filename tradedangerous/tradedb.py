@@ -635,7 +635,7 @@ class TradeDB:
         # --- Initial load ---
         if load:
             self.reloadCache()
-            self.load(maxSystemLinkLy=tdenv.maxSystemLinkLy)
+            self.load()
     
     # ------------------------------------------------------------------
     # Legacy compatibility dataPath shim
@@ -1942,7 +1942,7 @@ class TradeDB:
         
         if maxJumps is None:
             maxJumps = sys.maxsize
-        maxLyPer = maxLyPer or self.maxSystemLinkLy
+        maxLyPer = maxLyPer or self.tdenv.maxSystemLinkLy
         if avoidPlaces is None:
             avoidPlaces = ()
         
@@ -2200,7 +2200,7 @@ class TradeDB:
             self.engine = None
         # Keep engine + Session references so reloadCache/buildCache can reuse them
     
-    def load(self, maxSystemLinkLy=None):
+    def load(self) -> None:
         """
             Populate/re-populate this instance of TradeDB with data.
             WARNING: This will orphan existing records you have
@@ -2219,10 +2219,9 @@ class TradeDB:
         self._loadItems()
         self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)
         
-        # Calculate the maximum distance anyone can jump so we can constrain
-        # the maximum "link" between any two stars.
-        msll = maxSystemLinkLy or self.tdenv.maxSystemLinkLy or 30
-        self.maxSystemLinkLy = msll
+    @property
+    def max_link_ly(self) -> float | int:
+        return self.tdenv.maxSystemLinkLy
     
     ############################################################
     # General purpose static methods.
