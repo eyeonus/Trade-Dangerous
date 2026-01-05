@@ -387,21 +387,69 @@ class ImportPlugin(plugins.ImportPluginBase):
                         session.execute(text("VACUUM"))
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
+
+    def _refresh_dump_tables(self, table_jobs: list[tuple[str, Path]]) -> None:
+        """Upsert-refresh (table_name, csv_path) jobs into the live ORM database,
+        with a proper row-count progress bar.
+        """
+        if not table_jobs:
+            return
+
+        # Local import to avoid plugin import-order headaches.
+        from tradedangerous import cache as td_cache
+
+        Session = self.tdb.Session
+        with Session() as session:
+            with pbar.Progress(
+                max_value=len(table_jobs) + 1,
+                prefix="Upserting",
+                width=25,
+                style=pbar.CountingBar,
+            ) as prog:
+                for table_name, import_path in table_jobs:
+                    import_lines = file_line_count(import_path, missing_ok=True)
+                    with prog.sub_task(
+                        max_value=import_lines,
+                        description=table_name,
+                    ) as child:
+                        prog.increment(value=1)
+                        call_args = {"task": child, "advance": 1}
+                        try:
+                            td_cache.processImportFile(
+                                self.tdenv,
+                                session,
+                                import_path,
+                                table_name,
+                                line_callback=prog.update_task,
+                                call_args=call_args,
+                            )
+                            session.commit()
+                        except FileNotFoundError:
+                            self.tdenv.WARN("Missing import file for {}: {}", table_name, import_path)
+                        except StopIteration:
+                            self.tdenv.NOTE(
+                                "{} exists but is empty. Remove it or add the column definition line.",
+                                import_path,
+                            )
+
+                prog.increment(1)
+
+
     
     def run(self):
         """
         EDDN/EDDB link importer.
-        
+
         Refactored DB flow:
           - No dialect-specific logic in the plugin.
           - Preflight uses TradeDB.reloadCache() (which centralizes sanity via lifecycle.ensure_fresh_db).
           - For '--clean' → do a single full rebuild with the RareItem dance.
-          - Otherwise, if static CSVs changed → incrementally import only those tables (no drop/recreate).
-          - Listings import and .prices regeneration unchanged.
+          - Otherwise, if static CSVs changed → upsert-refresh only those tables (no drop/recreate).
+          - Listings import unchanged.
         """
         self.tdenv.ignoreUnknown = True
         self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
-        
+
         # Enable 'listings' by default unless other explicit options are present
         default = True
         for option in self.options:
@@ -409,7 +457,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 default = False
         if default:
             self.options["listings"] = True
-        
+
         if self.getOption("bootstrap"):
             self.tdenv.NOTE("[bold][blue]bootstrap: Greetings, Commander!")
             self.tdenv.NOTE(
@@ -424,11 +472,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Elite Dangerous Market Connector while playing.")
             for child in ["system", "station", "item", "listings", "skipvend", "7days"]:
                 self.options[child] = True
-        
+
         # Check if database already exists and enable `clean` if not.
         if lifecycle.is_empty(self.tdb.engine):
             self.options["clean"] = True
-        
+
         if self.getOption("clean"):
             # Remove CSVs so downloads become the new source of truth
             for name in [
@@ -443,13 +491,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     os.remove(str(f))
                 except FileNotFoundError:
                     pass
-            
+
             # Remove .prices (DEPRECATED)
             try:
                 os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
-            
+
             self.options["all"] = True
             self.options["force"] = True
 
@@ -457,24 +505,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("listings"):
             self.options["item"] = True
             self.options["station"] = True
-        
+
         if self.getOption("shipvend"):
             self.options["ship"] = True
             self.options["station"] = True
-        
+
         if self.getOption("upvend"):
             self.options["upgrade"] = True
             self.options["station"] = True
-        
+
         if self.getOption("item"):
             self.options["station"] = True
-        
+
         if self.getOption("rare"):
             self.options["station"] = True
-        
+
         if self.getOption("station"):
             self.options["system"] = True
-        
+
         if self.getOption("all"):
             self.options["item"] = True
             self.options["rare"] = True
@@ -485,74 +533,126 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upgrade"] = True
             self.options["upvend"] = True
             self.options["listings"] = True
-        
+
         if self.getOption("solo"):
             self.options["listings"] = False
             self.options["skipvend"] = True
-        
+
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-        
-        # Download required files and update tables.
-        buildCache = False
+
+        # Download required files and decide which tables need upsert-refresh.
+        force = self.getOption("force")
+
+        upgrade_changed = False
+        ship_changed = False
+        rare_changed = False
+        shipvend_changed = False
+        upvend_changed = False
+        system_changed = False
+        station_changed = False
+        category_changed = False
+        item_changed = False
+
+        # FDev bridge CSVs are treated as "changed" when we re-download them.
+        fdev_shipyard_changed = False
+        fdev_outfitting_changed = False
+
         if self.getOption("upgrade"):
-            if self.downloadFile(self.upgradesPath) or self.getOption("force"):
+            upgrade_changed = self.downloadFile(self.upgradesPath) or force
+            if upgrade_changed:
                 transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
-                buildCache = True
-        
+                fdev_outfitting_changed = True
+
         if self.getOption("ship"):
-            if self.downloadFile(self.shipPath) or self.getOption("force"):
+            ship_changed = self.downloadFile(self.shipPath) or force
+            if ship_changed:
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
-                buildCache = True
-        
+                fdev_shipyard_changed = True
+
         if self.getOption("rare"):
-            if self.downloadFile(self.rareItemPath) or self.getOption("force"):
-                buildCache = True
-        
+            rare_changed = self.downloadFile(self.rareItemPath) or force
+
         if self.getOption("shipvend"):
-            if self.downloadFile(self.shipVendorPath) or self.getOption("force"):
-                buildCache = True
-        
+            shipvend_changed = self.downloadFile(self.shipVendorPath) or force
+
         if self.getOption("upvend"):
-            if self.downloadFile(self.upgradeVendorPath) or self.getOption("force"):
-                buildCache = True
-        
+            upvend_changed = self.downloadFile(self.upgradeVendorPath) or force
+
         if self.getOption("system"):
-            if self.downloadFile(self.sysPath) or self.getOption("force"):
-                buildCache = True
-        
+            system_changed = self.downloadFile(self.sysPath) or force
+
         if self.getOption("station"):
-            if self.downloadFile(self.stationsPath) or self.getOption("force"):
-                buildCache = True
-        
+            station_changed = self.downloadFile(self.stationsPath) or force
+
         if self.getOption("item"):
-            if self.downloadFile(self.commoditiesPath) or self.getOption("force"):
-                self.downloadFile(self.categoriesPath)
-                buildCache = True
-        
-        # Remake the .db files with the updated info.
-        if buildCache:
+            item_changed = self.downloadFile(self.commoditiesPath) or force
+            # Category can change independently; always check when item option is active.
+            category_changed = self.downloadFile(self.categoriesPath) or force
+
+        # If any of the non-listings tables changed, ensure DB is fresh and then upsert-refresh.
+        build_cache = any([
+            upgrade_changed, ship_changed, rare_changed,
+            shipvend_changed, upvend_changed,
+            system_changed, station_changed,
+            category_changed, item_changed,
+            fdev_shipyard_changed, fdev_outfitting_changed,
+        ])
+
+        if build_cache:
+            # Ensure schema exists and is sane (may rebuild on first run).
             self.tdb.close()
             self.tdb.reloadCache()
+
             if self.tdb.engine.dialect.name == "sqlite":
                 # kfsone: see https://sqlite.org/pragma.html#pragma_optimize
                 self.tdb.Session().execute(text("PRAGMA optimize=0x10002"))
+
+            # Upsert-refresh tables in dependency order.
+            jobs: list[tuple[str, Path]] = []
+
+            if system_changed:
+                jobs.append(("System", (self.tdb.dataPath / self.sysPath).resolve()))
+
+            if station_changed:
+                jobs.append(("Station", (self.tdb.dataPath / self.stationsPath).resolve()))
+
+            if category_changed or item_changed:
+                jobs.append(("Category", (self.tdb.dataPath / self.categoriesPath).resolve()))
+                jobs.append(("Item", (self.tdb.dataPath / self.commoditiesPath).resolve()))
+
+            if ship_changed:
+                jobs.append(("Ship", (self.tdb.dataPath / self.shipPath).resolve()))
+            if fdev_shipyard_changed:
+                jobs.append(("FDevShipyard", self.FDevShipyardPath.resolve()))
+
+            if upgrade_changed:
+                jobs.append(("Upgrade", (self.tdb.dataPath / self.upgradesPath).resolve()))
+            if fdev_outfitting_changed:
+                jobs.append(("FDevOutfitting", self.FDevOutfittingPath.resolve()))
+
+            if shipvend_changed:
+                jobs.append(("ShipVendor", (self.tdb.dataPath / self.shipVendorPath).resolve()))
+
+            if upvend_changed:
+                jobs.append(("UpgradeVendor", (self.tdb.dataPath / self.upgradeVendorPath).resolve()))
+
+            if rare_changed:
+                jobs.append(("RareItem", (self.tdb.dataPath / self.rareItemPath).resolve()))
+
+            self._refresh_dump_tables(jobs)
             self.tdb.close()
-        
+
         if self.getOption("purge"):
             self.purgeSystems()
-        
+
         # Listings import (prices)
         if self.getOption("listings"):
-            if self.downloadFile(self.listingsPath) or self.getOption("force"):
+            if self.downloadFile(self.listingsPath) or force:
                 self.importListings(self.listingsPath)
-            if self.downloadFile(self.liveListingsPath) or self.getOption("force"):
+            if self.downloadFile(self.liveListingsPath) or force:
                 self.importListings(self.liveListingsPath)
-        
-        # if self.getOption("listings"):
-        #     self.tdenv.NOTE("Regenerating .prices file.")
-        #     cache.regeneratePricesFile(self.tdb, self.tdenv)
 
         if self.tdb.engine.dialect.name == "sqlite":
             with self.tdb.Session.begin() as session:
@@ -565,9 +665,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                     with bench("DB Tuning", self.tdenv):
                         session.execute(text("PRAGMA optimize"))
                     self.tdenv.INFO("Use --opt=optimize periodically for better query performance")
-    
+
         self.tdenv.NOTE("Import completed.")
-        
+
         return False
 
     def finish(self):
