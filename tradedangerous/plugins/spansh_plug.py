@@ -388,9 +388,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         inserted += len(to_add)
         return inserted
 
-
     # ---------- EDCD: FDev tables (direct load) ----------
     #
+
     def _edcd_import_table_direct(self, session: Session, table: Table, csv_path: Path) -> int:
         """
         Upsert CSV rows into a table whose columns match CSV headers.
