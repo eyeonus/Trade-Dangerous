@@ -261,24 +261,87 @@ class ImportPlugin(plugins.ImportPluginBase):
         ) -> int:
         """
         Read EDCD commodity.csv, extract distinct category names, and add any
-        missing Category rows. No updates, no deletes. Cross-dialect safe.
-        
-        Returns: number of rows inserted.
+        missing Category rows. No updates, no deletes.
+
+        Deterministic + append-only behaviour:
+          - If Category is empty: seed the TD canonical categories with fixed IDs (1..16).
+          - If Category is non-empty: validate the canonical ID→name mapping; abort if drifted.
+          - Any new categories found in EDCD are appended with IDs > current max ID,
+            in deterministic (case-insensitive) name order.
+            
+            Yes, we shoulda done it alphabetical in the first place, but we didn't, so
+            here we are.
+
+        Returns: number of rows inserted (seed + appended).
         """
         t_cat = tables["Category"]
-        
-        # Load existing category names (case-insensitive) to avoid duplicates.
+
+        # TD canonical mapping — frozen IDs
+        canonical_by_id: dict[int, str] = {
+            1:  "Metals",
+            2:  "Minerals",
+            3:  "Chemicals",
+            4:  "Foods",
+            5:  "Textiles",
+            6:  "Industrial Materials",
+            7:  "Medicines",
+            8:  "Legal Drugs",
+            9:  "Machinery",
+            10: "Technology",
+            11: "Weapons",
+            12: "Consumer Items",
+            13: "Slavery",
+            14: "Waste",
+            15: "NonMarketable",
+            16: "Salvage",
+        }
+
+        inserted = 0
+
+        # Load existing categories
+        rows = session.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
+        existing_by_id: dict[int, str] = {
+            int(cid): (str(name) if name is not None else "")
+            for (cid, name) in rows
+        }
+
+        # Seed canonical set if empty
+        if not existing_by_id:
+            seed_rows = [
+                {"category_id": cid, "name": name}
+                for cid, name in sorted(canonical_by_id.items(), key=lambda kv: kv[0])
+            ]
+            session.execute(insert(t_cat), seed_rows)
+            inserted += len(seed_rows)
+            existing_by_id = {cid: name for cid, name in canonical_by_id.items()}
+
+        # Sanity guardrail: detect drift
+        else:
+            for cid, expected_name in canonical_by_id.items():
+                if cid not in existing_by_id:
+                    raise CleanExit(
+                        "Category ID drift detected: "
+                        f"missing canonical category_id={cid} (expected '{expected_name}'). "
+                        "Refusing to proceed."
+                    )
+                actual = (existing_by_id.get(cid) or "").strip()
+                if actual.lower() != expected_name.lower():
+                    raise CleanExit(
+                        "Category ID drift detected: "
+                        f"category_id={cid} expected '{expected_name}' but found '{actual}'. "
+                        "Refusing to proceed."
+                    )
+
         existing_lc = {
             (str(n) or "").strip().lower()
-            for (n,) in session.execute(select(t_cat.c.name)).all()
+            for n in existing_by_id.values()
             if n is not None
         }
-        
-        # Parse the CSV and collect unique category names.
+
+        # Parse EDCD commodity.csv and collect category spellings (case-insensitive)
         with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
-            
-            # Find the 'category' column (case-insensitive).
+
             cat_col = None
             for h in (reader.fieldnames or []):
                 if h and str(h).strip().lower() == "category":
@@ -286,10 +349,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     break
             if cat_col is None:
                 raise CleanExit(f"EDCD commodity.csv missing 'category' column: {commodity_csv}")
-            
-            seen_lc: set[str] = set()
-            to_add: list[dict] = []
-            
+
+            # lk -> set(spellings)
+            seen: dict[str, set[str]] = {}
+
             for row in reader:
                 raw = row.get(cat_col)
                 if not raw:
@@ -297,20 +360,34 @@ class ImportPlugin(plugins.ImportPluginBase):
                 name = str(raw).strip()
                 if not name:
                     continue
-                
+
                 lk = name.lower()
-                if lk in existing_lc or lk in seen_lc:
+                if lk in existing_lc:
                     continue
-                
-                seen_lc.add(lk)
-                to_add.append({"name": name})
-        
-        if not to_add:
-            return 0
-        
-        # Cross-dialect safe "add-only": bulk insert the missing names.
+
+                seen.setdefault(lk, set()).add(name)
+
+        if not seen:
+            return inserted
+
+        # Deterministic selection of display name per lk
+        def _choose_name(spellings: set[str]) -> str:
+            # stable across rebuilds even if EDCD row order changes
+            return min(spellings, key=lambda s: (s.casefold(), s))
+
+        new_names: list[str] = [_choose_name(seen[lk]) for lk in sorted(seen.keys())]
+
+        max_id = max(existing_by_id.keys(), default=0)
+        to_add = []
+        next_id = max_id + 1
+        for nm in new_names:
+            to_add.append({"category_id": next_id, "name": nm})
+            next_id += 1
+
         session.execute(insert(t_cat), to_add)
-        return len(to_add)
+        inserted += len(to_add)
+        return inserted
+
 
     # ---------- EDCD: FDev tables (direct load) ----------
     #
@@ -2154,18 +2231,33 @@ class ImportPlugin(plugins.ImportPluginBase):
     # Export / cache refresh
     #
     def _export_cache(self) -> None:
-        """Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating."""
-        
-        # Option/env gate for StationItem export (large file)
+        """
+        Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating.
+
+        IMPORTANT:
+          - CSV exports are written to tdenv.dataDir (private) so they remain authoritative.
+          - A separate mirror step publishes selected/all CSVs to TD_CSV (public).
+        """
+
         def _opt_true(val: Optional[str]) -> bool:
             if val is None:
                 return False
             if isinstance(val, str):
                 return val.strip().lower() in ("1", "true", "yes", "on", "y")
             return bool(val)
-        
-        skip_stationitems = _opt_true(self.getOption("skip_stationitems")) or _opt_true(os.environ.get("TD_SKIP_STATIONITEM_EXPORT"))
-        
+
+        skip_stationitems = (
+            _opt_true(self.getOption("skip_stationitems"))
+            or _opt_true(os.environ.get("TD_SKIP_STATIONITEM_EXPORT"))
+        )
+
+        # Export destination: always private dataDir
+        export_dir = Path(self.tdenv.dataDir).resolve()
+        try:
+            export_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            raise CleanExit(f"Export failed: unable to create export directory {export_dir}: {e!r}") from None
+
         # Heaviest tables first to maximize overlap
         tables = [
             "StationItem",
@@ -2173,6 +2265,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             "UpgradeVendor",
             "Station",
             "System",
+            "Category",          # <-- REQUIRED for correct downstream category mapping
             "Item",
             "Ship",
             "Upgrade",
@@ -2182,19 +2275,19 @@ class ImportPlugin(plugins.ImportPluginBase):
         ]
         if skip_stationitems:
             tables = [t for t in tables if t != "StationItem"]
-        
+
         # Worker count (env override allowed); +1 slot reserved for prices task
         try:
             workers = int(os.environ.get("TD_EXPORT_WORKERS", "4"))
         except ValueError:
             workers = 4
         workers = max(1, workers) + 1  # extra slot for the prices job
-        
+
         def _export_one(table_name: str) -> str:
             sess = None
             try:
                 sess = self._open_session()  # fresh session per worker
-                csvexport.exportTableToFile(sess, self.tdenv, table_name)
+                csvexport.exportTableToFile(sess, self.tdenv, table_name, csvPath=export_dir)
                 return f"{table_name}.csv"
             finally:
                 if sess is not None:
@@ -2202,18 +2295,18 @@ class ImportPlugin(plugins.ImportPluginBase):
                         sess.close()
                     except Exception:
                         pass
-        
+
         def _regen_prices() -> str:
             cache.regeneratePricesFile(self.tdb, self.tdenv)
             return "TradeDangerous.prices"
-        
-        self._print("Exporting to cache...")
+
+        self._print(f"Exporting cache CSVs to: {export_dir}")
         for t in tables:
             self._print(f"  - {t}.csv")
         if skip_stationitems:
             self._warn("Skipping StationItem.csv export (requested).")
         self._print("Regenerating TradeDangerous.prices …")
-        
+
         # Parallel export + prices regen, with conservative fallback
         try:
             with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -2226,25 +2319,33 @@ class ImportPlugin(plugins.ImportPluginBase):
             for t in tables:
                 _export_one(t)
             _regen_prices()
-        
+
         self._print("Cache export completed.")
     
     def _mirror_csv_exports(self) -> None:
         """
         If TD_CSV is set, mirror all CSVs emitted into tdenv.dataDir to TD_CSV.
-        Avoids running csvexport twice (Spansh already produced the CSVs).
+
+        This is a publish step:
+          - source: private exports in tdenv.dataDir (TD_DATA)
+          - dest:   public directory TD_CSV
         """
         src_dir = Path(self.tdenv.dataDir).resolve()
         dst_env = os.environ.get("TD_CSV")
         if not dst_env:
             return
         dst_dir = Path(dst_env).expanduser().resolve()
+
+        if src_dir == dst_dir:
+            # Nothing to do; already exporting directly into the public path
+            return
+
         try:
             dst_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
             self._warn(f"TD_CSV mirror: unable to create destination {dst_dir}: {e!r}")
             return
-        
+
         copied = 0
         for src in src_dir.glob("*.csv"):
             try:
@@ -2252,8 +2353,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 copied += 1
             except Exception as e:
                 self._warn(f"TD_CSV mirror: failed to copy {src.name}: {e!r}")
-        
+
         self._print(f"TD_CSV mirror: copied {copied} csv file(s) → {dst_dir}")
+
     
     def _export_and_mirror(self) -> None:
         """
