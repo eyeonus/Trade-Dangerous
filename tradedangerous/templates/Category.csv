@@ -1,17 +1,17 @@
 unq:category_id,name
-1,'Chemicals'
-2,'Consumer Items'
-3,'Legal Drugs'
-4,'Foods'
-5,'Industrial Materials'
-6,'Machinery'
-7,'Medicines'
-8,'Metals'
-9,'Minerals'
-10,'Slavery'
-11,'Technology'
-12,'Textiles'
-13,'Waste'
-14,'Weapons'
-15,'Unknown'
-16,'Salvage'
+1,Metals
+2,Minerals
+3,Chemicals
+4,Foods
+5,Textiles
+6,Industrial Materials
+7,Medicines
+8,Legal Drugs
+9,Machinery
+10,Technology
+11,Weapons
+12,Consumer Items
+13,Slavery
+14,Waste
+15,NonMarketable
+16,Salvage
