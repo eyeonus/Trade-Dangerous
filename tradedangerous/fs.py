@@ -51,6 +51,33 @@ def copy_if_newer(src: Pathlike, dst: Pathlike) -> Path:
     shcopy(srcPath, dstPath)    # kfs: python 3.10 don't need us to strify these
     return dstPath
 
+def copy_if_missing(src: Pathlike, dst: Pathlike) -> Path:
+    """
+    copy src to dst only if dst does not exist (or exists but is empty).
+
+    This is intended for bootstrap template files:
+      - never clobber an existing user/server CSV
+      - avoids "pip upgrade overwrote my downloaded files" behaviour
+
+    takes string or Path object as input
+    returns Path(dst) on success
+    returns Path(src) if dst already exists (and is non-empty)
+    raises FileNotFoundError if src does not exist
+    """
+    srcPath = pathify(src).resolve()
+    dstPath = pathify(dst)
+
+    if dstPath.exists():
+        try:
+            if dstPath.stat().st_size > 0:
+                return srcPath
+        except OSError:
+            # If we can't stat it for some reason, play safe and don't overwrite.
+            return srcPath
+
+    shcopy(srcPath, dstPath)
+    return dstPath
+
 def copyallfiles(srcdir: Pathlike, dstdir: Pathlike) -> None:
     """
     Copies all files in srcdir to dstdir

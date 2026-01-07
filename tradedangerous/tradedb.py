@@ -584,9 +584,10 @@ class TradeDB:
         self.dataPath = dataPath = fs.ensurefolder(tdenv.dataDir)
         self.csvPath = fs.ensurefolder(tdenv.csvDir)
         
-        fs.copy_if_newer(self.templatePath / "Added.csv",       self.csvPath / "Added.csv")
-        fs.copy_if_newer(self.templatePath / "RareItem.csv",    self.csvPath / "RareItem.csv")
-        fs.copy_if_newer(self.templatePath / "Category.csv",    self.csvPath / "Category.csv")
+        # Template bootstrap files: copy ONLY if missing (never overwrite on pip upgrade).
+        fs.copy_if_missing(self.templatePath / "Added.csv",       self.csvPath / "Added.csv")
+        fs.copy_if_missing(self.templatePath / "RareItem.csv",    self.csvPath / "RareItem.csv")
+        fs.copy_if_missing(self.templatePath / "Category.csv",    self.csvPath / "Category.csv")
         fs.copy_if_newer(self.templatePath / "TradeDangerous.sql", self.dataPath / "TradeDangerous.sql")
         
         self.dbPath = Path(tdenv.dbFilename or dataPath / TradeDB.defaultDB)
