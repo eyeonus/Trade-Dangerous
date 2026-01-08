@@ -150,49 +150,202 @@ class ImportPlugin(plugins.ImportPluginBase):
     
     def now(self):
         return datetime.datetime.now().strftime('%H:%M:%S')
-    
+
+    def _eddblink_state_path(self) -> Path:
+        """
+        Single sidecar state file stored in TD_DATA (tdb.dataPath).
+        This is the authoritative record of "downloaded from server" identity.
+        """
+        return (self.tdb.dataPath / "eddblink_state.json").resolve()
+
+    def _load_eddblink_state(self) -> dict:
+        import json
+
+        state_path = self._eddblink_state_path()
+        if not state_path.exists():
+            return {"version": 1, "files": {}}
+
+        try:
+            with state_path.open("r", encoding="utf-8") as fh:
+                state = json.load(fh)
+            if not isinstance(state, dict):
+                return {"version": 1, "files": {}}
+            state.setdefault("version", 1)
+            files = state.setdefault("files", {})
+            if not isinstance(files, dict):
+                state["files"] = {}
+            return state
+        except Exception:
+            # Corrupt/partial JSON shouldn't brick the importer; treat as "no state"
+            return {"version": 1, "files": {}}
+
+    def _save_eddblink_state(self, state: dict) -> None:
+        import json
+
+        state_path = self._eddblink_state_path()
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+
+        tmp_path = state_path.with_name(state_path.name + ".tmp")
+        with tmp_path.open("w", encoding="utf-8") as fh:
+            json.dump(state, fh, indent=2, sort_keys=True)
+            fh.write("\n")
+        tmp_path.replace(state_path)
+
+    def _file_sha256(self, path: Path) -> str:
+        import hashlib
+
+        h = hashlib.sha256()
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
+    def _sanity_check_category_root(self) -> None:
+        """
+        Category is foundational. If it's wrong, the DB is not trustworthy.
+        Minimal check: Category.category_id == 1 must be 'Metals' (case-insensitive).
+        """
+        rebuild_cmd = "trade import -P eddblink -O clean,skipvend"
+
+        Session = self.tdb.Session
+        try:
+            with Session() as session:
+                row = session.execute(
+                    select(SA.Category.category_id, SA.Category.name)
+                    .where(SA.Category.category_id == 1)
+                ).first()
+        except Exception as e:
+            raise PluginException(
+                "Category table check failed (missing schema or broken DB).\n"
+                "This DB is not usable; rebuild your local database with:\n"
+                f"    {rebuild_cmd}"
+            ) from e
+
+        if not row:
+            raise PluginException(
+                "Category table is missing/empty.\n"
+                "This DB is not usable; rebuild your local database with:\n"
+                f"    {rebuild_cmd}"
+            )
+
+        cid, name = row
+        got = (str(name) if name is not None else "").strip()
+        if got.lower() != "metals":
+            raise PluginException(
+                "Category table is corrupt: category_id=1 expected 'Metals'.\n"
+                f"Got: {got!r}\n"
+                "This DB is not trustworthy; rebuild your local database with:\n"
+                f"    {rebuild_cmd}"
+            )
+
+
     def downloadFile(self, path):
         """
-        Fetch the latest dumpfile from the website if newer than local copy.
+        Fetch the latest dumpfile from the website based on server identity,
+        not local mtime.
+
+        Proof-of-sync is stored in TD_DATA/eddblink_state.json.
+        If there's no state entry for a file, it is considered out-of-sync
+        (e.g. template-copied files) and will be downloaded.
         """
         if path not in (self.liveListingsPath, self.listingsPath):
             localPath = Path(self.tdb.dataPath, path)
         else:
             localPath = Path(self.dataPath, path)
-        
+
         url = BASE_URL + str(path)
-        
+        key = str(path)
+
         self.tdenv.NOTE("Checking for update to '{}'.", path)
-        # Use an HTTP Request header to obtain the Last-Modified and Content-Length headers.
-        # Also, tell the server to give us the un-compressed length of the file by saying
-        # that >this< request only wants text.
+
+        state = self._load_eddblink_state()
+        files_state = state.setdefault("files", {})
+        entry = files_state.get(key)
+
+        # Local integrity check against recorded state (detect template clobber / manual edits).
+        in_sync_locally = False
+        if entry and localPath.exists():
+            try:
+                st = localPath.stat()
+                if int(entry.get("size", -1)) == int(st.st_size):
+                    want_sha = entry.get("sha256")
+                    if want_sha:
+                        got_sha = self._file_sha256(localPath)
+                        if got_sha == want_sha:
+                            in_sync_locally = True
+                    else:
+                        in_sync_locally = True
+            except Exception:
+                in_sync_locally = False
+
+        # HEAD request for remote identity (ETag/Last-Modified)
         headers = {"User-Agent": "Trade-Dangerous", "Accept-Encoding": "identity"}
         try:
             response = requests.head(url, headers=headers, timeout=70)
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.tdenv.WARN("Problem with download:\n    URL: {}\n    Error: {}", url, str(e))
             return False
-        
-        last_modified = response.headers.get("last-modified")
-        dump_mod_time = parsedate_to_datetime(last_modified).timestamp()
-        
-        if Path.exists(localPath):
-            local_mod_time = localPath.stat().st_mtime
-            if local_mod_time >= dump_mod_time:
-                self.tdenv.DEBUG0("'{}': Dump is not more recent than Local.", path)
+
+        if not getattr(response, "ok", False):
+            self.tdenv.WARN("Problem with download:\n    URL: {}\n    HTTP: {}", url, getattr(response, "status_code", "?"))
+            return False
+
+        remote_etag = response.headers.get("etag")
+        remote_last_modified = response.headers.get("last-modified")
+        remote_length = response.headers.get("content-length")
+
+        dump_mod_time = None
+        if remote_last_modified:
+            try:
+                dump_mod_time = parsedate_to_datetime(remote_last_modified).timestamp()
+            except Exception:
+                dump_mod_time = None
+
+        # If we have a prior server-proven state AND local file matches that state,
+        # we can skip downloading when remote identity matches.
+        if entry and in_sync_locally:
+            # Prefer ETag when available; else fall back to Last-Modified.
+            if remote_etag and entry.get("etag") == remote_etag:
+                self.tdenv.DEBUG0("'{}': Remote ETag matches state; no download.", path)
                 return False
-        
-        # The server doesn't know the gzip'd length, and we won't see the gzip'd data,
-        # so we want the actual text-only length. Capture it here so we can tell the
-        # transfer mechanism how big the file is going to be.
-        length = response.headers.get("content-length")
-        
+            if (not remote_etag) and remote_last_modified and entry.get("last_modified") == remote_last_modified:
+                self.tdenv.DEBUG0("'{}': Remote Last-Modified matches state; no download.", path)
+                return False
+
+        # If state is missing, or local doesn't match recorded state, or remote identity differs -> download.
         self.tdenv.NOTE("Downloading file '{}'.", path)
-        transfers.download(self.tdenv, url, localPath, chunkSize=16384, length=length)
-        
-        # Change the timestamps on the file so they match the website
-        os.utime(localPath, (dump_mod_time, dump_mod_time))
-        
+        transfers.download(self.tdenv, url, localPath, chunkSize=16384, length=remote_length)
+
+        # Change timestamps on the file to match the server (human convenience only)
+        if dump_mod_time is not None:
+            try:
+                os.utime(localPath, (dump_mod_time, dump_mod_time))
+            except Exception:
+                pass
+
+        # Update sync state (stored in TD_DATA regardless of localPath location)
+        try:
+            st = localPath.stat()
+            new_entry = {
+                "url": url,
+                "local_path": str(localPath.resolve()),
+                "etag": remote_etag,
+                "last_modified": remote_last_modified,
+                "content_length": remote_length,
+                "downloaded_at": datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat(),
+                "size": int(st.st_size),
+            }
+
+            # Hash only the small “truth-critical” files (cheap + detects template clobber cleanly).
+            if key in ("Category.csv", "RareItem.csv", "Item.csv"):
+                new_entry["sha256"] = self._file_sha256(localPath)
+
+            files_state[key] = new_entry
+            self._save_eddblink_state(state)
+        except Exception:
+            # State failures must not make downloads fail.
+            pass
+
         return True
     
     def purgeSystems(self):
@@ -391,13 +544,16 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _refresh_dump_tables(self, table_jobs: list[tuple[str, Path]]) -> None:
         """Upsert-refresh (table_name, csv_path) jobs into the live ORM database,
         with a proper row-count progress bar.
+
+        Note: RareItem is rebuilt (wiped then re-imported) whenever it is refreshed.
+        This avoids UNIQUE(name) collisions caused by historical PK drift / template-era imports.
         """
         if not table_jobs:
             return
-        
+
         # Local import to avoid plugin import-order headaches.
         from tradedangerous import cache as td_cache
-        
+
         Session = self.tdb.Session
         with Session() as session:
             with pbar.Progress(
@@ -415,6 +571,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                         prog.increment(value=1)
                         call_args = {"task": child, "advance": 1}
                         try:
+                            # RareItem: rebuild contents on refresh to avoid uq_rareitem_name collisions
+                            # when existing DB has same names under different rare_id values.
+                            if table_name == "RareItem":
+                                session.execute(delete(SA.RareItem))
+
                             td_cache.processImportFile(
                                 self.tdenv,
                                 session,
@@ -431,15 +592,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 "{} exists but is empty. Remove it or add the column definition line.",
                                 import_path,
                             )
-                
+
                 prog.increment(1)
 
 
-    
     def run(self):
         """
         EDDN/EDDB link importer.
-        
+
         Refactored DB flow:
           - No dialect-specific logic in the plugin.
           - Preflight uses TradeDB.reloadCache() (which centralizes sanity via lifecycle.ensure_fresh_db).
@@ -449,7 +609,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         self.tdenv.ignoreUnknown = True
         self.tdb.dataPath.mkdir(parents=True, exist_ok=True)
-        
+
         # Enable 'listings' by default unless other explicit options are present
         default = True
         for option in self.options:
@@ -457,7 +617,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 default = False
         if default:
             self.options["listings"] = True
-        
+
         if self.getOption("bootstrap"):
             self.tdenv.NOTE("[bold][blue]bootstrap: Greetings, Commander!")
             self.tdenv.NOTE(
@@ -472,11 +632,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Elite Dangerous Market Connector while playing.")
             for child in ["system", "station", "item", "listings", "skipvend", "7days"]:
                 self.options[child] = True
-        
+
         # Check if database already exists and enable `clean` if not.
         if lifecycle.is_empty(self.tdb.engine):
             self.options["clean"] = True
-        
+
         if self.getOption("clean"):
             # Remove CSVs so downloads become the new source of truth
             for name in [
@@ -491,38 +651,48 @@ class ImportPlugin(plugins.ImportPluginBase):
                     os.remove(str(f))
                 except FileNotFoundError:
                     pass
-            
+
+            # Remove eddblink sync-state (sidecar) so templates never "win"
+            try:
+                os.remove(str(self._eddblink_state_path()))
+            except FileNotFoundError:
+                pass
+
             # Remove .prices (DEPRECATED)
             try:
                 os.remove(str(self.tdb.dataPath / "TradeDangerous.prices"))
             except FileNotFoundError:
                 pass
-            
+
             self.options["all"] = True
             self.options["force"] = True
-        
+        else:
+            # Category is foundational; if it's wrong, this DB is not trustworthy.
+            # Hard-fail and force rebuild rather than attempting to "refresh" it.
+            self._sanity_check_category_root()
+
         # Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True
             self.options["station"] = True
-        
+
         if self.getOption("shipvend"):
             self.options["ship"] = True
             self.options["station"] = True
-        
+
         if self.getOption("upvend"):
             self.options["upgrade"] = True
             self.options["station"] = True
-        
+
         if self.getOption("item"):
             self.options["station"] = True
-        
+
         if self.getOption("rare"):
             self.options["station"] = True
-        
+
         if self.getOption("station"):
             self.options["system"] = True
-        
+
         if self.getOption("all"):
             self.options["item"] = True
             self.options["rare"] = True
@@ -533,18 +703,18 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options["upgrade"] = True
             self.options["upvend"] = True
             self.options["listings"] = True
-        
+
         if self.getOption("solo"):
             self.options["listings"] = False
             self.options["skipvend"] = True
-        
+
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-        
+
         # Download required files and decide which tables need upsert-refresh.
         force = self.getOption("force")
-        
+
         upgrade_changed = False
         ship_changed = False
         rare_changed = False
@@ -554,43 +724,43 @@ class ImportPlugin(plugins.ImportPluginBase):
         station_changed = False
         category_changed = False
         item_changed = False
-        
+
         # FDev bridge CSVs are treated as "changed" when we re-download them.
         fdev_shipyard_changed = False
         fdev_outfitting_changed = False
-        
+
         if self.getOption("upgrade"):
             upgrade_changed = self.downloadFile(self.upgradesPath) or force
             if upgrade_changed:
                 transfers.download(self.tdenv, self.urlOutfitting, self.FDevOutfittingPath)
                 fdev_outfitting_changed = True
-        
+
         if self.getOption("ship"):
             ship_changed = self.downloadFile(self.shipPath) or force
             if ship_changed:
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
                 fdev_shipyard_changed = True
-        
+
         if self.getOption("rare"):
             rare_changed = self.downloadFile(self.rareItemPath) or force
-        
+
         if self.getOption("shipvend"):
             shipvend_changed = self.downloadFile(self.shipVendorPath) or force
-        
+
         if self.getOption("upvend"):
             upvend_changed = self.downloadFile(self.upgradeVendorPath) or force
-        
+
         if self.getOption("system"):
             system_changed = self.downloadFile(self.sysPath) or force
-        
+
         if self.getOption("station"):
             station_changed = self.downloadFile(self.stationsPath) or force
-        
+
         if self.getOption("item"):
             item_changed = self.downloadFile(self.commoditiesPath) or force
             # Category can change independently; always check when item option is active.
             category_changed = self.downloadFile(self.categoriesPath) or force
-        
+
         # If any of the non-listings tables changed, ensure DB is fresh and then upsert-refresh.
         build_cache = any([
             upgrade_changed, ship_changed, rare_changed,
@@ -599,61 +769,73 @@ class ImportPlugin(plugins.ImportPluginBase):
             category_changed, item_changed,
             fdev_shipyard_changed, fdev_outfitting_changed,
         ])
-        
+
         if build_cache:
-            # Ensure schema exists and is sane (may rebuild on first run).
-            self.tdb.close()
-            self.tdb.reloadCache()
-            
+            if self.getOption("clean"):
+                # "clean" must mean clean for all backends:
+                #   - sqlite  → rotate/recreate DB file
+                #   - mariadb → drop+recreate tables (NOT the database)
+                self.tdenv.NOTE("NOTE: --clean requested; resetting database schema.")
+                self.tdb.close()
+                lifecycle.reset_db(
+                    self.tdb.engine,
+                    db_path=self.tdb.dbPath,
+                    sql_path=self.tdb.sqlPath,
+                )
+            else:
+                # Ensure schema exists and is sane (may rebuild on first run).
+                self.tdb.close()
+                self.tdb.reloadCache()
+
             if self.tdb.engine.dialect.name == "sqlite":
                 # kfsone: see https://sqlite.org/pragma.html#pragma_optimize
                 self.tdb.Session().execute(text("PRAGMA optimize=0x10002"))
-            
+
             # Upsert-refresh tables in dependency order.
             jobs: list[tuple[str, Path]] = []
-            
+
             if system_changed:
                 jobs.append(("System", (self.tdb.dataPath / self.sysPath).resolve()))
-            
+
             if station_changed:
                 jobs.append(("Station", (self.tdb.dataPath / self.stationsPath).resolve()))
-            
+
             if category_changed or item_changed:
                 jobs.append(("Category", (self.tdb.dataPath / self.categoriesPath).resolve()))
                 jobs.append(("Item", (self.tdb.dataPath / self.commoditiesPath).resolve()))
-            
+
             if ship_changed:
                 jobs.append(("Ship", (self.tdb.dataPath / self.shipPath).resolve()))
             if fdev_shipyard_changed:
                 jobs.append(("FDevShipyard", self.FDevShipyardPath.resolve()))
-            
+
             if upgrade_changed:
                 jobs.append(("Upgrade", (self.tdb.dataPath / self.upgradesPath).resolve()))
             if fdev_outfitting_changed:
                 jobs.append(("FDevOutfitting", self.FDevOutfittingPath.resolve()))
-            
+
             if shipvend_changed:
                 jobs.append(("ShipVendor", (self.tdb.dataPath / self.shipVendorPath).resolve()))
-            
+
             if upvend_changed:
                 jobs.append(("UpgradeVendor", (self.tdb.dataPath / self.upgradeVendorPath).resolve()))
-            
+
             if rare_changed:
                 jobs.append(("RareItem", (self.tdb.dataPath / self.rareItemPath).resolve()))
-            
+
             self._refresh_dump_tables(jobs)
             self.tdb.close()
-        
+
         if self.getOption("purge"):
             self.purgeSystems()
-        
+
         # Listings import (prices)
         if self.getOption("listings"):
             if self.downloadFile(self.listingsPath) or force:
                 self.importListings(self.listingsPath)
             if self.downloadFile(self.liveListingsPath) or force:
                 self.importListings(self.liveListingsPath)
-        
+
         if self.tdb.engine.dialect.name == "sqlite":
             with self.tdb.Session.begin() as session:
                 if self.getOption("optimize"):
@@ -665,11 +847,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                     with bench("DB Tuning", self.tdenv):
                         session.execute(text("PRAGMA optimize"))
                     self.tdenv.INFO("Use --opt=optimize periodically for better query performance")
-        
+                    
         self.tdenv.NOTE("Import completed.")
         
         return False
-    
+
+
     def finish(self):
         """ override the base class 'finish' method """
         # We expect to return 'False' from run, so if this is called, something went horribly wrong;
