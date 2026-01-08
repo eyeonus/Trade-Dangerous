@@ -58,7 +58,7 @@ def run(results, cmdenv, tdb=None):
         cmdenv.NOTE("{}", banner)
     except Exception:
         print(banner)
-
+    
     return False  # all done
 
 

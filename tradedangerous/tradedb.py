@@ -162,7 +162,7 @@ class System:
         self.addedID = addedID or 0
         self.stations: list['Station'] = []
         self._rangeCache = None
-
+    
     def __repr__(self) -> str:
         return f"<System ID={self.ID} dbname='{self.dbname}' pos=({self.posX},{self.posY},{self.posZ})>"
     
@@ -264,7 +264,7 @@ class Station:
         self.itemCount = itemCount
         self.dataAge = dataAge
         system.stations += [self]
-
+    
     def __repr__(self) -> str:
         return f"<Station ID={self.ID} dbname='{self.dbname}' system_id={self.system.ID} system='{self.system.dbname}'>"
     
@@ -480,7 +480,7 @@ class Trade(NamedTuple):
     demandLevel: int
     srcAge: float | None
     dstAge: float | None
-
+    
     def name(self, detail: int = 0) -> str:
         return self.item.name(detail=detail)
 
@@ -594,7 +594,7 @@ class TradeDB:
         self.sqlPath = dataPath / Path(tdenv.sqlFilename or TradeDB.defaultSQL)
         # pricePath   = Path(tdenv.pricesFilename or TradeDB.defaultPrices)
         # self.pricesPath = dataPath / pricePath
-
+        
         # If the "pickle jar" file we used temporarily is present, delete it.
         persist_file = Path(self.dataPath, TradeDB.persistFile)
         persist_file.unlink(missing_ok=True)
@@ -687,12 +687,12 @@ class TradeDB:
     def _split_system_index(name: str) -> tuple[str, int | None]:
         """
         Split a trailing '@N' suffix from a system name, if present.
-
+        
         Examples:
             'Lorionis-SOC 13@2' -> ('Lorionis-SOC 13', 2)
             'Shinrarta Dezhra'  -> ('Shinrarta Dezhra', None)
             '@SOL'              -> ('@SOL', None)  # leading @ is a different annotation
-
+        
         Returns:
             (base_name, index) where index is 1-based, or None if no valid suffix.
         """
@@ -700,14 +700,14 @@ class TradeDB:
         at = name.rfind('@')
         if at <= 0:
             return name, None
-
+        
         idx_str = name[at + 1:]
         if not idx_str or not idx_str.isdigit():
             return name, None
-
+        
         base = name[:at]
         return base, int(idx_str)
-
+    
     ############################################################
     # Access to the underlying database.
     
@@ -769,7 +769,7 @@ class TradeDB:
             self.tdenv.WARN("reloadCache: ensure_fresh_db failed: {}", e)
             self.tdenv.DEBUG0("reloadCache: Falling back to buildCache()")
             cache.buildCache(self, self.tdenv)
-        
+    
     ############################################################
     # [deprecated] "added" data.
     
@@ -821,12 +821,12 @@ class TradeDB:
                     systemByName[key] = [system]
                 else:
                     bucket.append(system)
-
+        
         # Ensure deterministic ordering for duplicate-name groups:
         # sort by posX, then posY, posZ, ID so @1 is lowest X, stable.
         for systems in systemByName.values():
             systems.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
-
+        
         self.systemByID = systemByID
         self.systemByName = systemByName
         self.tdenv.DEBUG1(
@@ -844,22 +844,22 @@ class TradeDB:
             - Station instance → return station.system
             - str              → resolve by name, with @N disambiguation
         """
-
+        
         # NEW: accept already-resolved objects
         if isinstance(name, System):
             return name
         if isinstance(name, Station):
             return name.system
-
+        
         if not isinstance(name, str):
             raise TypeError(
                 f"lookupSystem expects str/System/Station, got {type(name)!r}"
             )
-
+        
         # From here on, name is guaranteed a string.
         base_name, index = self._split_system_index(name)
         base_key = base_name.upper()
-
+        
         try:
             systems_list = self.systemByName[base_key]
         except KeyError:
@@ -870,7 +870,7 @@ class TradeDB:
                 self.systems(),
                 key=lambda system: system.dbname,
             )
-
+        
         # No explicit index
         if index is None:
             if len(systems_list) == 1:
@@ -890,11 +890,11 @@ class TradeDB:
                     ),
                 )
             raise LookupError(f'Error: "{name}" doesn\'t match any known System')
-
+        
         # Explicit @N index
         if 1 <= index <= len(systems_list):
             return systems_list[index - 1]
-
+        
         # Out-of-range index
         count = len(systems_list)
         header = f'System "{base_name}" has {count} matching entries (@1..@{count}).'
@@ -907,7 +907,7 @@ class TradeDB:
             )
         message = "\n".join(lines)
         raise TradeException(message)
-
+    
     
     def addLocalSystem(
             self,
@@ -941,7 +941,7 @@ class TradeDB:
         # Maintain legacy wrapper + caches (added_id always None now)
         system = System(ID, name.upper(), x, y, z, None)
         self.systemByID[ID] = system
-
+        
         key = system.dbname.upper()
         bucket = self.systemByName.get(key)
         if bucket is None:
@@ -1019,7 +1019,7 @@ class TradeDB:
         system.dbname = dbname
         system.posX, system.posY, system.posZ = x, y, z
         system.addedID = added_row.added_id
-
+        
         # Add to new name bucket
         new_key = dbname.upper()
         bucket = self.systemByName.get(new_key)
@@ -1679,12 +1679,12 @@ class TradeDB:
         # Pass-through for already-resolved objects
         if isinstance(name, (System, Station)):
             return name
-
+        
         if not isinstance(name, str):
             raise TypeError(
                 f"lookupPlace expects str/System/Station, got {type(name)!r}"
             )
-
+        
         # ------------------------------------------------------------------
         # Fast path: queries that look like "just a system name"
         #
@@ -1708,19 +1708,19 @@ class TradeDB:
                 # Not a system (or no reasonable system match) – fall back to
                 # the generic place logic below to search stations as well.
                 pass
-
+        
         # ------------------------------------------------------------------
         # Legacy combined system/station matching
         # ------------------------------------------------------------------
-
+        
         # Determine whether the user specified a system, a station, or both.
         slash_pos = name.find("/")
         if slash_pos < 0:
             slash_pos = name.find("\\")  # support old "sys\stn" syntax too
-
+        
         # Leading '@' indicates "this is a system name"
         name_off = 1 if name.startswith("@") else 0
-
+        
         if slash_pos > name_off:
             # "sys/station" or "@sys/station"
             sys_name = name[name_off:slash_pos].upper()
@@ -1735,43 +1735,43 @@ class TradeDB:
             # Bare name: treat as both potential system and station.
             stn_name = name
             sys_name = stn_name.upper()
-
+        
         exact_match = []
         close_match = []
         word_match = []
         any_match = []
-
+        
         def _lookup(token, candidates):
             """Populate the match lists for the given search token."""
             norm_trans = TradeDB.normalizeTrans
             trim_trans = TradeDB.trimTrans
-
+            
             token_norm = token.translate(norm_trans)
             token_trim = token_norm.translate(trim_trans)
-
+            
             token_len = len(token)
             token_norm_len = len(token_norm)
             token_trim_len = len(token_trim)
-
+            
             for place in candidates:
                 place_name = place.dbname
                 place_norm = place_name.translate(norm_trans)
                 place_norm_len = len(place_norm)
-
+                
                 # If the trimmed needle is longer than the target, it can't match
                 if token_trim_len > place_norm_len:
                     continue
-
+                
                 # 1) Exact name + normalization match
                 if len(place_name) == token_len and place_norm == token_norm:
                     exact_match.append(place)
                     continue
-
+                
                 # 2) Same normalized length and contents -> "close" match
                 if place_norm_len == token_norm_len and place_norm == token_norm:
                     close_match.append(place)
                     continue
-
+                
                 # 3) Substring of the normalized name, with word-boundary checks
                 if token_norm_len < place_norm_len:
                     pos = place_norm.find(token_norm)
@@ -1782,7 +1782,7 @@ class TradeDB:
                         else:
                             any_match.append(place)
                         continue
-
+                    
                     if pos > 0:
                         before = place_norm[pos - 1:pos]
                         after = place_norm[pos + token_norm_len:pos + token_norm_len + 1]
@@ -1791,23 +1791,23 @@ class TradeDB:
                         else:
                             any_match.append(place)
                         continue
-
+                
                 # 4) Compare with whitespace and punctuation stripped
                 place_trim = place_norm.translate(trim_trans)
                 place_trim_len = len(place_trim)
                 if place_trim_len == place_norm_len:
                     # Normalization didn't change anything; nothing new to learn
                     continue
-
+                
                 # A fully-trimmed exact match is still "close"
                 if place_trim_len == token_trim_len and place_trim == token_trim:
                     close_match.append(place)
                     continue
-
+                
                 # Otherwise, any occurrence inside the trimmed name is "any"
                 if token_trim and place_trim.find(token_trim) >= 0:
                     any_match.append(place)
-
+        
         # First, resolve the system side if we have one.
         if sys_name:
             systems_bucket = self.systemByName.get(sys_name)
@@ -1821,7 +1821,7 @@ class TradeDB:
                     exact_match.extend(systems_bucket)
             else:
                 _lookup(sys_name, self.systemByID.values())
-
+        
         # Now resolve the station side, if requested.
         if stn_name:
             # If both system and station were provided (sys/station form), we
@@ -1832,7 +1832,7 @@ class TradeDB:
                     exact_match, close_match, word_match, any_match
                 ):
                     station_candidates.extend(system.stations)
-
+                
                 # Reset the match tiers; from here on they refer to stations.
                 exact_match = []
                 close_match = []
@@ -1841,21 +1841,21 @@ class TradeDB:
             else:
                 # No usable system context: search all stations.
                 station_candidates = self.stationByID.values()
-
+            
             _lookup(stn_name, station_candidates)
-
+        
         # Consult the match tiers in order; any single-element tier is a winner.
         for tier in (exact_match, close_match, word_match, any_match):
             if len(tier) == 1:
                 return tier[0]
-
+        
         # No matches at all
         if not (exact_match or close_match or word_match or any_match):
             # NOTE: Historically this was a TradeException; it was changed to
             # LookupError so callers can distinguish "nothing matched" from
             # "ambiguous".
             raise LookupError(f"Unrecognized place: {name}")
-
+        
         # Multiple matches – ambiguous. For mixed system/station cases we keep
         # the original "System/Station" label; pure system ambiguities should
         # already have been caught by lookupSystem above.
@@ -1865,7 +1865,7 @@ class TradeDB:
             exact_match + close_match + word_match + any_match,
             key=lambda place: place.name(),
         )
-
+    
     def lookupStation(self, name, system=None):
         """
         Look up a Station object by it's name or system.
@@ -2219,7 +2219,7 @@ class TradeDB:
         self._loadCategories()
         self._loadItems()
         self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)
-        
+    
     @property
     def max_link_ly(self) -> float | int:
         return self.tdenv.maxSystemLinkLy

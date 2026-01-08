@@ -69,7 +69,7 @@ class CommandResults:
     cmdenv: 'CommandEnv'
     summary: ResultRow
     rows: list[ResultRow]
-
+    
     def __init__(self, cmdenv: 'CommandEnv') -> None:
         self.cmdenv = cmdenv
         self.summary = ResultRow()
@@ -93,14 +93,14 @@ class CommandEnv(TradeEnv):
         self.mfd = None
         self.argv = argv or sys.argv
         self._preflight_done = False
-
+        
         if self.detail and self.quiet:
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
-
+        
         self._cmd = cmdModule
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
-
+        
         # We need to relocate to the working directory so that
         # we can load a TradeDB after this without things going
         # pear-shaped
@@ -112,46 +112,46 @@ class CommandEnv(TradeEnv):
                 self.DEBUG1("cwd at launch was: {}, changing to {} to match trade.py", cwdPath, self.cwd)
         if self.cwd:
             os.chdir(self.cwd)
-
+    
     def preflight(self) -> None:
         """
         Phase A: quick validation that must be able to short-circuit before any
         heavy TradeDB(load=True) path is invoked.
-
+        
         Commands may optionally implement validateRunArgumentsFast(cmdenv).
         """
         if self._preflight_done:
             return
-
+        
         self._preflight_done = True
-
+        
         fast_validator = getattr(self._cmd, "validateRunArgumentsFast", None)
         if fast_validator:
             fast_validator(self)
-
+    
     def run(self, tdb: TradeDB | TradeORM) -> CommandResults | bool | None:
         """ Try and execute the business logic of the command. Query commands
             will return a result set for us to render, whereas operational
             commands will likely do their own rendering as they work. """
         # Ensure fast validation is executed for non-CLI call paths too.
         self.preflight()
-
+        
         # Set the current database context for this env and check that
         # the properties we have are valid.
         self.tdb = tdb
         update_database_schema(self.tdb)
-
+        
         if self.wantsTradeDB:
             self.checkFromToNear()
             self.checkAvoids()
             self.checkVias()
-
+        
         self.checkPlanetary()
         self.checkFleet()
         self.checkOdyssey()
         self.checkPadSize()
         self.checkMFD()
-
+        
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
     
@@ -226,7 +226,7 @@ class CommandEnv(TradeEnv):
         self.origPlace = lookupPlace('origin', 'starting')
         self.destPlace = lookupPlace('destination', 'ending')
         self.nearSystem = check('system', 'near', False)
-        
+    
     def checkAvoids(self) -> None:
         """
             Process a list of avoidances.

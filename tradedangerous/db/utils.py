@@ -35,24 +35,24 @@ def begin_bulk_mode(
     """
     Apply connection-local settings to speed up bulk operations.
     Returns an opaque token for symmetry with end_bulk_mode (currently a no-op).
-
+    
     - SQLite: ensure WAL, temp_store, cache; set synchronous=OFF for raw speed.
     - MySQL/MariaDB: apply per-session import tunings (reduced fsync, lower waits).
-
+    
     Notes:
       * Settings are connection-scoped and reset when the connection is returned
         to the pool or closed.
       * This is generic and safe for any plugin invoking long-running bulk writes.
     """
     token: dict[str, Any] = {"dialect": None, "profile": profile, "phase": phase}
-
+    
     try:
         dialect = session.get_bind().dialect.name.lower()
     except Exception:
         return token  # best-effort, no-op if we can't detect
-
+    
     token["dialect"] = dialect
-
+    
     if dialect == "sqlite":
         try:
             conn = session.connection()
@@ -68,14 +68,14 @@ def begin_bulk_mode(
             # Best-effort; keep going if PRAGMA adjustment fails.
             pass
         return token
-
+    
     if dialect in ("mysql", "mariadb"):
         try:
             mysql_set_bulk_session(session)
         except Exception:
             pass
         return token
-
+    
     # Other dialects: nothing applied
     return token
 
@@ -101,16 +101,16 @@ def get_upsert_fn(
     """
     Return a callable that performs a batched upsert into `table` using the
     fastest dialect-specific path available (SQLAlchemy Core).
-
+    
     - If `modified_col` is provided:
         * SQLite → INSERT .. ON CONFLICT DO UPDATE with WHERE guard using modified
         * MySQL  → INSERT .. ON DUPLICATE KEY UPDATE with IF(guard, inserted, table)
       Only the columns listed in `update_cols` are guarded by `modified_col`.
-
+    
     - Columns listed in `always_update` are synchronized unconditionally even
       when modified timestamps are equal. This is implemented as a small,
       portable second-pass UPDATE keyed by `key_cols`.
-
+    
     Usage example:
         upsert = get_upsert_fn(
             session,
@@ -127,12 +127,12 @@ def get_upsert_fn(
         dialect = session.get_bind().dialect.name.lower()
     except Exception:
         dialect = "unknown"
-
+    
     def _primary_upsert(rows: Iterable[Mapping[str, object]]) -> None:
         batch = list(rows)
         if not batch:
             return
-
+        
         if modified_col:
             if dialect == "sqlite":
                 sqlite_upsert_modified(
@@ -167,18 +167,18 @@ def get_upsert_fn(
                 mysql_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
             else:
                 raise RuntimeError(f"Unsupported dialect for simple upsert: {dialect}")
-
+    
     def _always_update_pass(rows: Iterable[Mapping[str, object]]) -> None:
         if not always_update:
             return
         batch = list(rows)
         if not batch:
             return
-
+        
         # UPDATE table SET c1=:c1, ... WHERE k1=:__key__k1 AND k2=:__key__k2
         where_clause = and_(*[table.c[k] == bindparam(f"__key__{k}") for k in key_cols])
         upd = table.update().where(where_clause).values({c: bindparam(c) for c in always_update})
-
+        
         params: list[Dict[str, object]] = []
         for row in batch:
             # Only issue an UPDATE if at least one always_update value is present
@@ -192,17 +192,17 @@ def get_upsert_fn(
                     present = True
             if present:
                 params.append(p)
-
+        
         if params:
             session.execute(upd, params)
-
+    
     def _upsert(rows: Iterable[Mapping[str, object]]) -> None:
         batch = list(rows)
         if not batch:
             return
         _primary_upsert(batch)
         _always_update_pass(batch)
-
+    
     return _upsert
 
 
@@ -223,7 +223,7 @@ def is_mysql(session: Session) -> bool:
         return name in ("mysql", "mariadb")
     except Exception:
         return False
-        
+
 def sqlite_set_bulk_pragmas(session: Session) -> None:
     """
     Apply connection-local PRAGMAs to speed up bulk imports.
@@ -237,7 +237,7 @@ def sqlite_set_bulk_pragmas(session: Session) -> None:
     conn.execute(text("PRAGMA temp_store=MEMORY"))
     # Negative cache_size is KiB; -65536 ≈ 64 MiB page cache
     conn.execute(text("PRAGMA cache_size=-65536"))
-    
+
 def sqlite_upsert_modified(
     session: Session,
     table: Table,
@@ -255,25 +255,25 @@ def sqlite_upsert_modified(
     rows = list(rows)
     if not rows:
         return
-
+    
     stmt = sqlite_insert(table)
     excluded = stmt.excluded  # "excluded" namespace
-
+    
     # Build set_ mapping for update columns + modified
     set_map = {c: getattr(excluded, c) for c in update_cols}
     set_map[modified_col] = getattr(excluded, modified_col)
-
+    
     # WHERE guard: only update if incoming is newer (or DB NULL)
     where_guard = (getattr(excluded, modified_col) >= getattr(table.c, modified_col)) | (
         getattr(table.c, modified_col).is_(None)
     )
-
+    
     stmt = stmt.on_conflict_do_update(
         index_elements=list(key_cols),
         set_=set_map,
         where=where_guard,
     )
-
+    
     session.execute(stmt, rows)
 
 def sqlite_upsert_simple(
@@ -291,16 +291,16 @@ def sqlite_upsert_simple(
     rows = list(rows)
     if not rows:
         return
-
+    
     stmt = sqlite_insert(table)
     excluded = stmt.excluded
     set_map = {c: getattr(excluded, c) for c in update_cols}
-
+    
     stmt = stmt.on_conflict_do_update(
         index_elements=list(key_cols),
         set_=set_map,
     )
-
+    
     session.execute(stmt, rows)
 
 def mysql_set_bulk_session(session: Session) -> None:
@@ -326,7 +326,7 @@ def mysql_set_bulk_session(session: Session) -> None:
     except Exception:
         # Not always allowed; silently ignore.
         pass
-        
+
 def mysql_upsert_modified(
     session: Session,
     table: Table,
@@ -343,13 +343,13 @@ def mysql_upsert_modified(
     rows = list(rows)
     if not rows:
         return
-
+    
     ins = mysql_insert(table)
     inserted = ins.inserted  # alias to VALUES()/INSERTED
-
+    
     # Guard: newer incoming timestamp or DB is NULL
     guard = (inserted[modified_col] >= table.c[modified_col]) | (table.c[modified_col].is_(None))
-
+    
     # For each update col, write: IF(guard, inserted.col, table.col)
     set_map = {
         c: func.if_(guard, inserted[c], table.c[c])
@@ -357,7 +357,7 @@ def mysql_upsert_modified(
     }
     # Always compute modified with the same guard
     set_map[modified_col] = func.if_(guard, inserted[modified_col], table.c[modified_col])
-
+    
     stmt = ins.on_duplicate_key_update(**set_map)
     session.execute(stmt, rows)
 
@@ -377,12 +377,12 @@ def mysql_upsert_simple(
     rows = list(rows)
     if not rows:
         return
-
+    
     ins = mysql_insert(table)
     inserted = ins.inserted
-
+    
     set_map = {c: inserted[c] for c in update_cols}
-
+    
     stmt = ins.on_duplicate_key_update(**set_map)
     session.execute(stmt, rows)
 
@@ -415,7 +415,7 @@ def get_unique_columns(session, table_name: str) -> list[str]:
     """
     engine = session.get_bind()
     dialect = engine.dialect.name.lower()
-
+    
     if dialect == "sqlite":
         conn = session.connection().connection
         cur = conn.cursor()
@@ -432,7 +432,7 @@ def get_unique_columns(session, table_name: str) -> list[str]:
                     if col not in uniques:
                         uniques.append(col)
         return uniques
-
+    
     elif dialect in ("mysql", "mariadb"):
         sql = text("""
             SELECT DISTINCT COLUMN_NAME
@@ -443,7 +443,7 @@ def get_unique_columns(session, table_name: str) -> list[str]:
         """)
         rows = session.execute(sql, {"table": table_name}).fetchall()
         return [r[0] for r in rows]
-
+    
     else:
         # Fallback: try SQLAlchemy inspector
         insp = session.get_bind().inspect(session.get_bind())
@@ -467,7 +467,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
     """
     Return list of foreign key mappings:
       { "table": <ref_table>, "from": <local_col>, "to": <ref_col> }
-
+    
     Dialect-specific implementations:
       * SQLite → PRAGMA foreign_key_list
       * MariaDB/MySQL → INFORMATION_SCHEMA.KEY_COLUMN_USAGE
@@ -475,7 +475,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
     """
     engine = session.get_bind()
     dialect = engine.dialect.name.lower()
-
+    
     if dialect == "sqlite":
         conn = session.connection().connection
         cur = conn.cursor()
@@ -489,7 +489,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
                 "to": row[4],
             })
         return fkeys
-
+    
     elif dialect in ("mysql", "mariadb"):
         sql = text("""
             SELECT COLUMN_NAME AS `from`,
@@ -502,7 +502,7 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
         """)
         rows = session.execute(sql, {"table": table_name}).fetchall()
         return [{"table": r[1], "from": r[0], "to": r[2]} for r in rows]
-
+    
     else:
         # Fallback: use SQLAlchemy inspector
         insp = session.get_bind().inspect(session.get_bind())
@@ -530,28 +530,28 @@ def age_in_days(session: Session, column: ClauseElement) -> ClauseElement:
     """
     Return a dialect-safe SQLAlchemy expression that yields the age of `column`
     (a DATETIME/TIMESTAMP) in **whole days** relative to the database's current date.
-
+    
     Dialect mappings:
       * SQLite    →  julianday(CURRENT_DATE) - julianday(column)
       * MySQL/MariaDB → TIMESTAMPDIFF(DAY, column, CURRENT_DATE())
       * Others    →  DATE(NOW()) - DATE(column)   (best-effort integer days)
-
+    
     Notes:
       - Designed for use in aggregates (e.g., func.avg(age_in_days(...))).
       - Leaves NULL handling to the caller (filter or COALESCE as needed).
     """
     engine = session.get_bind()
     dialect = engine.dialect.name.lower()
-
+    
     if dialect == "sqlite":
         # julianday() returns a fractional day difference (FLOAT).
         return func.julianday() - func.julianday(column)
-
+    
     if dialect in ("mysql", "mariadb"):
         # TIMESTAMPDIFF returns an integer number of DAY boundaries crossed.
         # Use CURRENT_DATE() to avoid time-of-day skew.
         return func.timestampdiff(text("DAY"), column, func.current_date())
-
+    
     # Fallback (e.g., PostgreSQL, etc.): integer days between dates
     # DATE(NOW()) - DATE(column) yields an integer in many SQL dialects.
     return func.date(func.now()) - func.date(column)
@@ -559,7 +559,7 @@ def age_in_days(session: Session, column: ClauseElement) -> ClauseElement:
 def parse_ts(value) -> Optional[datetime]:
     """
     Parse timestamp values into UTC-naive datetime (microsecond=0).
-
+    
     Accepts:
       - None -> None
       - datetime (aware/naive)
@@ -568,7 +568,7 @@ def parse_ts(value) -> Optional[datetime]:
           * ISO-like with 'Z', '+HH', '+HHMM', or '+HH:MM'
           * Space-separated 'YYYY-MM-DD HH:MM:SS[ offset]'
           * Date-only 'YYYY-MM-DD'
-
+    
     Rules:
       - 'Z' -> '+00:00'
       - '+HHMM' -> '+HH:MM'
@@ -578,27 +578,27 @@ def parse_ts(value) -> Optional[datetime]:
     """
     if value is None:
         return None
-
+    
     # datetime input
     if isinstance(value, datetime):
         dt = value
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
         return dt.replace(microsecond=0)
-
+    
     # epoch seconds
     if isinstance(value, (int, float)):
         try:
             return datetime.utcfromtimestamp(float(value)).replace(microsecond=0)
         except Exception:
             return None
-
+    
     # string input
     if isinstance(value, str):
         s = value.strip()
         if not s:
             return None
-
+        
         # Normalise timezone notations
         if s.endswith("Z"):
             s = s[:-1] + "+00:00"
@@ -609,7 +609,7 @@ def parse_ts(value) -> Optional[datetime]:
         s = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", s)
         # +HH -> +HH:00   (ensure we didn't just match +HH:MM)
         s = re.sub(r"([+-]\d{2})(?!:\d{2})$", r"\1:00", s)
-
+        
         # Try ISO parse
         try:
             dt = datetime.fromisoformat(s)
@@ -618,14 +618,14 @@ def parse_ts(value) -> Optional[datetime]:
             return dt.replace(microsecond=0)
         except Exception:
             pass
-
+        
         # Legacy / naive formats (assume UTC)
         for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
                 return datetime.strptime(s, fmt).replace(microsecond=0)
             except Exception:
                 continue
-
+    
     return None
 
 # -----------------------------------------------------------------------------
@@ -634,7 +634,7 @@ def parse_ts(value) -> Optional[datetime]:
 def get_import_batch_size(session: Session, profile: str | None = None) -> int | None:
     """
     Return the recommended batch commit size for imports.
-
+    
     - Respects TD_LISTINGS_BATCH environment variable (int).
     - Defaults:
         * SQLite → None (commit once at end, no batching).
@@ -648,14 +648,14 @@ def get_import_batch_size(session: Session, profile: str | None = None) -> int |
         except ValueError:
             # fall through to backend defaults
             pass
-
+    
     dialect = session.bind.dialect.name
-
+    
     if dialect == "sqlite":
         return None
     if dialect in ("mysql", "mariadb"):
         return 50000
     if profile == "spansh":
         return 5000
-
+    
     return None

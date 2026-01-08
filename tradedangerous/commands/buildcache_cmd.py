@@ -97,6 +97,6 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeDB) -> bool:
         tdenv=cmdenv,
         rebuild=True,
     )
-
+    
     # We've done everything, there is no work for the caller to do.
     return False

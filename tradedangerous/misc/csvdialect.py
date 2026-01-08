@@ -12,28 +12,28 @@ class CSVDialect:
     Providing the correct defaults trims away a little inefficiency,
     but it may also protect us against any opinionated future
     changes to the python defaults.
-
+    
     In particular, the current approach causes the CSV parser to
     produce quoted strings with their quotes intact:
-
+        
         csv.reader("'hello'")
             -> "'hello'"
         csv.reader("'hello'", dialect=CSVDialect)
             -> "hello"
-
+    
     Use:
-
+        
         import csv
         from tradedangerous.misc.csvdialect import CSVDialect
-
+        
         old_style = csv.reader(open("data/System.csv", encoding="utf-8"))
         new_style = csv.reader(open("data/System.csv", encoding="utf-8"),
                                dialect=CSVDialect)
-            
+        
         print("headers:")
         print("- old:", next(old_style))
         print("- new:", next(new_style))  # no difference
-
+        
         for i, (old, new) in enumerate(zip(old_style, new_style)):
             print(f"{i}: ids={old[0]},{new[0]}; names={old[1]},{new[1]}")
             if i >= 5:

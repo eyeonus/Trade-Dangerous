@@ -36,7 +36,7 @@ def split_unit(value: float) -> tuple[str, str]:
     """
     Split a byte size into a (number_str, unit_str) tuple.
     Used when you need to colour or format the numeric part separately.
-
+    
     Example:
         >>> split_unit(30200000)
         ('28.8', 'MB')
@@ -145,7 +145,7 @@ def download(
             f"Downloaded [cyan]{num1}[/]{unit1} of {encoding}ed data "
             f"[cyan]{num2}[/]{unit2}/s"
         )
-
+    
     
     fs.ensurefolder(actPath.parent)
     

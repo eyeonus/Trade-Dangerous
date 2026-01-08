@@ -67,7 +67,7 @@ def age(now: datetime, modified: datetime) -> float:
 def run(results, cmdenv, tdb):
     # IMPORTANT: resolve stations BEFORE constructing TradeCalc
     tdb = TradeORM(tdenv=cmdenv)
-
+    
     lhs = tdb.lookup_station(cmdenv.origin)
     if not lhs:
         raise CommandLineError(f"Unknown origin station: {cmdenv.origin}")
@@ -76,7 +76,7 @@ def run(results, cmdenv, tdb):
     if not rhs:
         raise CommandLineError(f"Unknown destination station: {cmdenv.dest}")
     cmdenv.DEBUG0("to id..: system={}, station={}", rhs.system_id, rhs.station_id)
-
+    
     if lhs == rhs:
         raise CommandLineError("Must specify two different stations.")
     
@@ -109,16 +109,16 @@ def run(results, cmdenv, tdb):
     cmdenv.DEBUG0("Raw result count: {}", len(trades))
     if not trades:
         raise CommandLineError(f"No profitable trades {lhs.name} -> {rhs.name}")
-
+    
     results.summary = ResultRow(color=cmdenv.color)
     results.summary.fromStation = lhs
     results.summary.toStation = rhs
-
+    
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     
     if cmdenv.limit > 0:
         trades = trades[:cmdenv.limit]
-
+    
     for item, sup_price, sup_units, sup_level, dem_price, dem_units, dem_level, sup_age, dem_age in trades:
         gain = dem_price - sup_price
         if gain < cmdenv.minGainPerTon:
@@ -135,7 +135,7 @@ def run(results, cmdenv, tdb):
             "dem_age": age(now, dem_age),
             "gain": gain,
         })
-
+    
     return results
 
 #######################################################################
@@ -143,7 +143,7 @@ def run(results, cmdenv, tdb):
 
 def render(results, cmdenv, tdb):
     longestNameLen = max_len(results.rows, key=lambda row: row["item"])
-
+    
     rowFmt = RowFormat()
     rowFmt.addColumn('Item', '<', longestNameLen,
             key=lambda row: row["item"])
@@ -160,7 +160,7 @@ def render(results, cmdenv, tdb):
     # rowFmt.addColumn('AvgBuy', '>', 10,
     #     key=lambda row: tdb.avgBuying.get(row.item.ID, 0)
     # )
-
+    
     if cmdenv.detail > 1:
         rowFmt.addColumn('Supply', '>', 10,
             key=lambda row: f'{row["sup_units"]:n}' if row["sup_units"] >= 0 else '?')
@@ -171,11 +171,11 @@ def render(results, cmdenv, tdb):
             key=lambda row: row["sup_age"])
         rowFmt.addColumn('DstAge', '>', 9, 's',
             key=lambda row: row["dem_age"])
-
+    
     if not cmdenv.quiet:
         print(f"{len(results.rows)} trades found between {results.summary.fromStation.dbname()} and {results.summary.toStation.dbname()}.")
         heading, underline = rowFmt.heading()
         print(heading, underline, sep='\n')
-
+    
     for row in results.rows:
         print(rowFmt.format(row))

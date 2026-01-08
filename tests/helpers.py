@@ -27,7 +27,7 @@ def empty_path(p: Path) -> None:
     # result in a lingering reference to the database that is waiting
     # to be garbage collected. Force one here.
     gc.collect()  # Ensure we're not holding onto any files
-
+    
     if p.exists() and p.is_dir():
         shutil.rmtree(p)
     elif p.is_file():

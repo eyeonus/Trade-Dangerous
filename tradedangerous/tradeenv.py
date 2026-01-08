@@ -230,11 +230,11 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
             install_rich_traces(console=STDERR, show_locals=True, extra_lines=2)
         
         self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
-
+    
     @staticmethod
     def __disabled_uprint(*args: Any, **kwargs: Any) -> None:
         pass
-
+    
     def __getattr__(self, key: str) -> Any:
         """ Return the default for attributes we don't have """
         # The first time the DEBUG attribute is referenced, register a method for it.
@@ -258,12 +258,12 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
                 theme_prefix, theme_label = self.theme.debug, self.theme.DEBUG + key[5:]
             case _:
                 pass
-
+        
         # If there's no function but there's a theme, create a function
         if disabled:
             setattr(self, key, self.__disabled_uprint)
             return self.__disabled_uprint
-
+        
         if theme_prefix is not None:
             def __log_helper(outText: str, *args: Any, stderr: bool = False, **kwargs: Any):
                 try:
@@ -273,7 +273,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
                     msg = f"{outText} {args!r} {kwargs!r}"
                 
                 self.uprint(f"{theme_prefix}{theme_label}: {msg}", stderr=stderr)
-
+            
             setattr(self, key, __log_helper)
             return __log_helper
         

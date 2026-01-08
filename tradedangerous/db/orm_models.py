@@ -258,15 +258,15 @@ class Item(Base):
 class StationItem(Base):
     """ StationItem represents the tradeability of a commodity (Item) at a particular
         market facility (Station).
-
+        
         Originally data was manually input into a text-file designed to look like
         the in-game Market screen where the 30-40 items available were listed
         with side-by-side sell/buy prices. This visual equivalence made data-entry
         efficient.
-
+        
         The collection of those forms made the ".prices" file, which was originally
         Source of Truth for TradeDangerous.
-
+        
         The fact we have buying and selling prices adjacent to each other in this
         table is a vestigial hangover of that early design. """
     

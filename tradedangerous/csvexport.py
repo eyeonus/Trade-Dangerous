@@ -140,7 +140,7 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
                 return formatter("%Y-%m-%d %H:%M:%S")
             except Exception:
                 pass
-
+        
         if isinstance(val, str) and len(val) >= 19:
             if val[10] == "T":  # Indicates timezone awareness, and if no timezone, utc
                 val = f"{val[:10]} {val[11:]}"
@@ -149,7 +149,7 @@ def exportTableToFile(tdb_or_session, tdenv, tableName, csvPath=None):
             #                           0123 56 89 12 45 78
             if val[4] == "-" and val[7] == "-" and val[10] == " " and val[13] == ":" and val[16] == ":":
                 return val[:19]
-
+        
         return val
     
     lineCount = 0

@@ -1064,7 +1064,7 @@ def processImportFile(
                     if c_corr != c_orig:
                         _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
                         row[cat_idx] = c_corr
-        
+            
             return False  # do not skip
         
         # --- Read data lines ---

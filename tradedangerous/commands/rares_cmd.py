@@ -140,11 +140,11 @@ def run(results, cmdenv, tdb):
         stmt = stmt.join(SA_Station).where(SA_Station.planetary != 'Y')
     
     awaySystems = set()
-
+    
     started = time.time()
     with tdb.Session() as session:
         rows = session.execute(stmt).all()
-
+    
     for rare in rows:
         stn = tdb.stationByID[rare.station_id]
         if padSize and not stn.checkPadSize(padSize):
@@ -171,7 +171,7 @@ def run(results, cmdenv, tdb):
         row.station = stn            # <-- IMPORTANT: used by render()
         row.dist = dist
         results.rows.append(row)
-        
+    
     cmdenv.DEBUG0("Found {:n} rares in {:.3f}s", len(results.rows), time.time() - started)
     
     # Was anything matched?

@@ -39,7 +39,7 @@ class MissingDB(TradeException):
     """
         Reports that the database is missing in a scenario where it is
         required and not default-created for the user.
-
+        
         Ideally, this should describe to the user how to create the
         database, perhaps through a "bootstrap" subcommand.
     """
@@ -73,7 +73,7 @@ class AmbiguityError(TradeException):
     
     def __str__(self) -> str:
         anyMatch, key = self.anyMatch, self.key
-
+        
         # ------------------------------------------------------------------
         # Special-case: system name collisions where we passed in
         # (index, System) pairs from TradeDB.lookupSystem.
@@ -104,14 +104,14 @@ class AmbiguityError(TradeException):
             lines.append("")
             lines.append("(Index numbers are ordered by Galactic X coordinate.)")
             return "\n".join(lines)
-
+        
         # ------------------------------------------------------------------
         # Generic ambiguity formatting used everywhere else
         # ------------------------------------------------------------------
         if not anyMatch:
             # Not matching anything is not "ambiguous".
             raise RuntimeError('called AmbiguityError with no matches')
-
+        
         # Truncate the list of candidates so we don't show more than 10
         candidates = [key(c) for c in anyMatch[:AMBIGUITY_LIMIT]]
         if len(anyMatch) < 3:
@@ -122,7 +122,7 @@ class AmbiguityError(TradeException):
             else:
                 candidates[-1] = "or " + candidates[-1]  # oxford comma
             opportunities = ", ".join(candidates)
-
+        
         return f'{self.lookupType} "{self.searchKey}" could match {opportunities}'
 
 

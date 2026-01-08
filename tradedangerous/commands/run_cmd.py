@@ -281,15 +281,15 @@ def validateRunArgumentsFast(cmdenv):
     # --towards requires --from
     if cmdenv.goalSystem and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--towards requires --from")
-
+    
     # --start-jumps requires --from
     if cmdenv.startJumps and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--start-jumps requires --from")
-
+    
     # --end-jumps requires --to
     if cmdenv.endJumps and not getattr(cmdenv, "ending", None):
         raise CommandLineError("--end-jumps requires --to")
-
+    
     # --shorten only valid with --to
     if cmdenv.shorten and not cmdenv.destPlace:
         raise CommandLineError("--shorten only works with --to.")
@@ -1345,7 +1345,7 @@ def run(results, cmdenv, tdb):
         
         try:
             newRoutes = calc.getBestHops(routes, restrictTo = restrictTo)
-
+        
         except KeyboardInterrupt:
             cmdenv.DEBUG0("** Keyboard Interrupt")
             if hopNo == 0 or not routes:
@@ -1354,7 +1354,7 @@ def run(results, cmdenv, tdb):
             # lets make sure we don't mistake there being anything to process.
             calc.aborted = True
             newRoutes = []
-
+        
         except NoHopsError:
             if hopNo == 0 and len(cmdenv.origSystems) == 1:
                 raise NoDataError(
@@ -1368,11 +1368,11 @@ def run(results, cmdenv, tdb):
             raise NoDataError(
                 "No routes had reachable trading links at hop #{}".format(hopNo + 1)
             )
-
+        
         if calc.aborted:
             cmdenv.DEBUG0("** User Aborted")
             break
-
+        
         if not newRoutes:
             assert not calc.aborted, "internal error"
             # First attempt to find a route is a special case because the current
@@ -1380,19 +1380,19 @@ def run(results, cmdenv, tdb):
             if hopNo == 0:
                 no_routes_on_first_hop(cmdenv, calc)
                 # no return
-
+            
             # If we've already got some winners (e.g. on --shorten)
             if pickedRoutes:
                 break
-
+            
             checkReachability(tdb, cmdenv)
-
+            
             if restrictTo and manualRestriction:
                 results.summary.exception += routeFailedRestrictions(
                     tdb, cmdenv, restrictTo, maxLs, hopNo
                 )
                 break
-
+            
             results.summary.exception += f"SORRY: Could not find profitable destinations beyond hop #{hopNo+1:n}\n"
             break
         
@@ -1442,7 +1442,7 @@ def run(results, cmdenv, tdb):
     
     routes.sort()
     results.data = routes
-
+    
     if calc.aborted:
         results.summary.exception += str(UserAbortedRun("results may be incomplete or inaccurate")) + "\n"
     
@@ -1454,7 +1454,7 @@ def no_routes_on_first_hop(cmdenv: TradeEnv, calc: TradeCalc) -> None:
     # Is it because you ctrl-c'd?
     if calc.aborted:
         raise UserAbortedRun("during first hop before any routes found")
-
+    
     # The raw name they provide with --from is stored as cmdenv.starting, and resolved
     # to a System or Station in cmdenv.origPlace, however checkOrigins may set that to
     # None if we're doing --start-jumps to indicate there's no "single" origin. So we
@@ -1463,20 +1463,20 @@ def no_routes_on_first_hop(cmdenv: TradeEnv, calc: TradeCalc) -> None:
     if not start_place:
         # Ok, we were doing some kind of open-ended galaxy wide query
         raise NoDataError("Could not find any trade links in the galaxy with those criteria.")
-
+    
     # Find the system name - all "locations" have a system property including Systems.
     start_system = start_place.system.name()
-
+    
     # How far did you say you were willing to go?
     max_ly = cmdenv.maxJumpsPer * cmdenv.maxLyPer
-        
+    
     errText = (
         f"No suitable and profitable buyers found at/relative to {start_place}.\n"
         "\n"
         "You may want to try:\n"
         f"  {sys.argv[0]} local \"{start_system}\" --ly {max_ly} -vv --stations --trading"
     )
-        
+    
     # If they had specified a station, give them a little extra help.
     if isinstance(start_place, Station):
         errText += (
@@ -1501,7 +1501,7 @@ def render(results, cmdenv, tdb):
             style = "yellow on grey15"  # yellow on a darkish background, so we're sure it's not on a light background
             # Pad all the lines to the same length
             exception = "\n".join(f"{line:{max_line_len}s}" for line in lines)
-
+        
         # TODO: should use a rich panel when --color is set
         cmdenv.console.print('#' * max_line_len, style=style)
         cmdenv.console.print(exception, style=style)

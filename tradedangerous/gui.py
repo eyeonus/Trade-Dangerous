@@ -53,7 +53,7 @@ class TDWidget:
     """
     Tkinter widget wrapper supporting appJar-style context management.
     """
-
+    
     def __init__(self, name=None, widget_type='frame', parent=None, row=0, column=0,
                  rowspan=1, columnspan=1, sticky='nw', text='', values=None,
                  command=None, width=None, height=None, **kwargs):
@@ -61,10 +61,10 @@ class TDWidget:
         self.name = name
         self.widget_type = widget_type
         self.children = []
-
+        
         # Parent widget
         container = parent.widget if isinstance(parent, TDWidget) else parent
-
+        
         # Create underlying Tk widget
         if widget_type == 'frame':
             self.widget = tk.Frame(container, width=width, height=height)
@@ -88,44 +88,44 @@ class TDWidget:
             self.tabs = {}
         else:
             raise ValueError(f"Unknown widget_type: {widget_type}")
-
+        
         # Parent-child management
         self.parent = parent
         if parent and isinstance(parent, TDWidget):
             parent.children.append(self)
-
+        
         # Grid placement
         self.widget.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky=sticky)
         self.row, self.column = row, column
-
+    
     # --- Proxy methods ---
     def config(self, **kwargs):
         self.widget.config(**kwargs)
-
+    
     def set(self, value, callFunction=True):
         if hasattr(self, 'var'):
             self.var.set(value)
             if callFunction and self.widget_type == 'combo':
                 if hasattr(self.widget, 'event_generate'):
                     self.widget.event_generate("<<ComboboxSelected>>")
-
+    
     def get(self):
         if hasattr(self, 'var'):
             return self.var.get()
         return None
-
+    
     def add_child(self, child):
         self.children.append(child)
-
+    
     # --- Context manager support ---
     def __enter__(self):
         # Return self so "with TDWidget(...) as w:" works
         return self
-
+    
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Nothing special to clean up
         pass
-
+    
     # --- Notebook/tab support ---
     def tab(self, tab_name):
         """Create a new tab inside a notebook TDWidget"""
@@ -290,10 +290,10 @@ def optWindow():
     """
     # Create a new subwindow for plugin options
     sw = TDWidget.SubWindow("Plugin Options", modal=True)
-
+    
     # Clear any previous widgets
     sw.clear()
-
+    
     # Build dictionary of current option values
     optDict = {}
     currentOptStr = argVals.get('--option')
@@ -304,7 +304,7 @@ def optWindow():
                 optDict[key] = val
             elif option != '':
                 optDict[option] = True
-
+    
     # Check if a plugin is selected
     selectedPlug = sw.combo('--plug')
     if not selectedPlug:
@@ -316,11 +316,11 @@ def optWindow():
                 sw.entry(option, value=optDict.get(option, ''), label=True, sticky='ew', tooltip=tooltip)
             else:
                 sw.check(option, optDict.get(option, False), sticky='ew', tooltip=tooltip)
-
+    
     # Add Done and Cancel buttons
     sw.button("Done", setOpts)
     sw.button("Cancel", sw.hide)
-
+    
     # Display the subwindow
     sw.show()
 
@@ -351,7 +351,7 @@ def addWidget(widgetType, parent=None, cpos=0, rpos=0, **kwargs):
     """
     cspan = kwargs.pop('colspan', None)
     rspan = kwargs.pop('rowspan', None)
-
+    
     # Create widget based on type
     if widgetType == 'combo':
         widget = TDWidget.Combo(parent, values=kwargs.get('values'), textvariable=kwargs.get('textvariable'))
@@ -376,7 +376,7 @@ def addWidget(widgetType, parent=None, cpos=0, rpos=0, **kwargs):
                                textvariable=kwargs.get('textvariable'))
     else:  # default entry
         widget = TDWidget.Entry(parent, textvariable=kwargs.get('textvariable'))
-
+    
     # Set common attributes
     if 'font' in kwargs:
         widget.font = kwargs['font']
@@ -392,14 +392,14 @@ def addWidget(widgetType, parent=None, cpos=0, rpos=0, **kwargs):
         widget.state = kwargs['state']
     if 'default' in kwargs:
         widget.set(kwargs['default'])
-
+    
     # Place widget in grid
     widget.grid(column=cpos, row=rpos, columnspan=cspan, rowspan=rspan)
-
+    
     # Handle tabs
     if 'tab' in kwargs and hasattr(parent, 'add'):
         parent.add(widget, text=kwargs['tab'])
-
+    
     return widget
 
 def addWidgetFromArg(name, arg, parent):
@@ -407,11 +407,11 @@ def addWidgetFromArg(name, arg, parent):
     Creates a labeled TDWidget for an argument.
     """
     widgets[name] = TDWidget.Frame(parent)
-
+    
     kwargs = arg['widget'].copy()
     kwargs['textvariable'] = argVals[name]
     widgetType = kwargs.pop('type', None)
-
+    
     # Handle special types
     if widgetType == 'ticks':
         kwargs['height'] = len(kwargs['values'])
@@ -422,7 +422,7 @@ def addWidgetFromArg(name, arg, parent):
         pass
     elif widgetType == 'credits':
         pass
-
+    
     # Create label or button for non-check widgets
     if widgetType == 'check':
         kwargs['text'] = name
@@ -437,13 +437,13 @@ def addWidgetFromArg(name, arg, parent):
         kwargs['rpos'] = 0
         kwargs['cpos'] = 1
         kwargs['columnspan'] = 2
-
+    
     # Add the actual input widget
     addWidget(widgetType, parent=widgets[name], **kwargs)
-
+    
     # Place the container frame
     widgets[name].grid()
-
+    
     def makeWidgets(name, arg, sticky='ew', label=True, **kwargs):
         """
         Creates and places a TDWidget for the given argument, handling all types.
@@ -453,34 +453,34 @@ def addWidgetFromArg(name, arg, parent):
         kwargs['change'] = updArgs
         kwargs['tooltip'] = arg.get('help', '')
         kwargs['colspan'] = 1 if arg == allArgs.get(name) else 9
-
+        
         widgetDef = arg['widget']
-
+        
         # Button
         if widgetDef['type'] == 'button':
             kwargs.pop('change', None)
             kwargs.pop('label', None)
             kwargs.pop('colspan', None)
             TDWidget.Button(win, text=name, command=widgetDef.get('func'), **kwargs)
-
+        
         # Checkbutton
         elif widgetDef['type'] == 'check':
             TDWidget.Check(win, text=name, variable=argVals[name] or arg.get('default'), **kwargs)
-
+        
         # Spinbox
         elif widgetDef['type'] == 'spin':
             kwargs['item'] = argVals[name] or arg.get('default') or 0
             TDWidget.Spin(win, from_=-widgetDef.get('range', 0), to=widgetDef.get('range', 0), **kwargs)
-
+        
         # Combobox / ticks
         elif widgetDef['type'] == 'combo':
             kwargs['sticky'] = 'w'
             if widgetDef.get('sub'):
                 kwargs['kind'] = widgetDef['sub']
                 kwargs.pop('label', None)
-
+            
             combo = TDWidget.Combo(win, values=widgetDef.get('values', []), variable=argVals[name], **kwargs)
-
+            
             if not widgetDef.get('sub'):
                 argVals[name] = argVals[name] or arg.get('default') or '?'
                 combo.set(argVals[name])
@@ -488,18 +488,18 @@ def addWidgetFromArg(name, arg, parent):
                 if argVals[name]:
                     for val, vval in argVals[name].items():
                         combo.setOption(val, values=vval, callFunction=False)
-
+        
         # Option button + entry
         elif widgetDef['type'] == 'option':
             kwargs.pop('change', None)
             kwargs.pop('label', None)
             kwargs.pop('colspan', None)
             TDWidget.Button(win, text='optionButton', command=optionsWin, name='--option', **kwargs)
-
+            
             kwargs['sticky'] = sticky
             kwargs['change'] = updArgs
             TDWidget.Entry(win, textvariable=argVals[name] or arg.get('default'), row='p', column=1, colspan=9, **kwargs)
-
+        
         # Entry / numeric / credits
         elif widgetDef['type'] == 'entry':
             if widgetDef.get('sub') == 'credits':
@@ -507,7 +507,7 @@ def addWidgetFromArg(name, arg, parent):
                 pass
             elif widgetDef.get('sub'):
                 kwargs['kind'] = 'numeric'
-
+            
             TDWidget.Entry(win, textvariable=argVals[name] or arg.get('default'), **kwargs)
 
 
@@ -516,47 +516,47 @@ def updateCommandBox(args=None):
     Updates the argument panes when the selected command is changed using TDWidget.
     """
     cmd = widgets['Command'].get()
-
+    
     # Update help pane
     helpPane = widgets['helpPane']
     helpPane.config(state='normal')
     helpPane.delete(0.0, 'end')
     helpPane.insert(0.0, cmdHelp.get(cmd, ''))
     helpPane.config(state='disabled')
-
+    
     # Hide all currently displayed widgets in 'req' and 'opt'
     for child in widgets['req'].winfo_children():
         child.grid_forget()
     for child in widgets['opt'].winfo_children():
         child.grid_forget()
-
+    
     if cmd == 'help':
         return
-
+    
     # Prepend for 'station' command to avoid name conflicts
     prepend = f"{cmd}~" if cmd == 'station' else ''
-
+    
     # Handle required arguments
     if allArgs[cmd]['req']:
         if 'Required:' not in widgets:
             widgets['Required:'] = TDWidget.Label(widgets['req'], text='Required:', sticky='nw')
         else:
             widgets['Required:'].grid()
-
+        
         for i, key in enumerate(allArgs[cmd]['req'], start=1):
             fullKey = prepend + key
             if fullKey not in widgets:
                 addWidgetFromArg(fullKey, allArgs[cmd]['req'][key], widgets['req'])
             else:
                 widgets[fullKey].grid(column=0, row=i)
-
+    
     # Handle optional arguments
     if allArgs[cmd]['opt']:
         if 'Optional:' not in widgets:
             widgets['Optional:'] = TDWidget.Label(widgets['opt'], text='Optional:', sticky='nw')
         else:
             widgets['Optional:'].grid()
-
+        
         for i, key in enumerate(allArgs[cmd]['opt'], start=1):
             fullKey = prepend + key
             if fullKey not in widgets:
@@ -570,15 +570,15 @@ def main(argv=None):
     class IORedirector:
         def __init__(self, TEXT_INFO):
             self.TEXT_INFO = TEXT_INFO
-
+    
     class StdoutRedirector(IORedirector):
         def write(self, string):
             current = self.TEXT_INFO.cget('text').rsplit('\r', 1)[0]
             self.TEXT_INFO.config(text=current + string)
-
+        
         def flush(self):
             sys.__stdout__.flush()
-
+    
     def setOpts():
         """
         Sets the main window options entry to the checked values in the options window.
@@ -587,7 +587,7 @@ def main(argv=None):
         plug = argVals.get('--plug')
         plugOpts = allArgs['import']['opt']['--option']['options'].get(plug, {})
         argStr = ''
-
+        
         if plugOpts:
             for option, val in plugOpts.items():
                 w = sw.get(option)  # Retrieve the TDWidget by name
@@ -597,14 +597,14 @@ def main(argv=None):
                 else:
                     if w and isinstance(w, TDWidget.Checkbutton) and w.get():
                         argStr += f"{option},"
-
+            
             argStr = argStr.rstrip(',')
             if '--option' in widgets:
                 widgets['--option'].set(argStr)  # Update main window entry
-
+        
         if sw:
             sw.hide()
-
+    
     def optionsWin():
         """
         Opens a window listing all of the options for the currently selected plugin.
@@ -613,7 +613,7 @@ def main(argv=None):
         sw = TDWidget.SubWindow(title="Plugin Options", modal=True)
         widgets["Plugin Options"] = sw  # store reference for later access
         sw.clear()  # empty the container
-
+        
         optDict = {}
         current_opts = argVals.get('--option')
         if current_opts:
@@ -623,7 +623,7 @@ def main(argv=None):
                     optDict[key] = val
                 elif option != '':
                     optDict[option] = True
-
+        
         plug = argVals.get('--plug')
         if not plug:
             TDWidget.Label(sw, text="No import plugin chosen.", sticky='ew', colspan=10)
@@ -649,37 +649,37 @@ def main(argv=None):
                         colspan=10,
                         tooltip=tooltip
                     )
-
+        
         # Buttons
         TDWidget.Button(sw, text="Done", func=setOpts, column=8)
         TDWidget.Button(sw, text="Cancel", func=sw.hide, row='p', column=9)
-
+        
         sw.show()
-
+    
     def updArgs(name):
         """
         Updates the value of argVals[name] when the linked widget's value is changed in the window.
         """
-
+        
         def getWidget(name):
             """
             Returns the TDWidget instance for the given argument name.
             """
             return widgets.get(name)
-
+        
         # Clear dependent options if the plugin changed
         if name == '--plug' and argVals.get(name) != (w := getWidget(name)).get():
             option_widget = widgets.get('--option')
             if option_widget:
                 option_widget.set('')
-
+        
         # Update the stored value
         w = getWidget(name)
         if w:
             argVals[name] = w.get()
         else:
             argVals[name] = None
-
+        
         # Determine excluded arguments for this argument
         if allArgs.get(name):
             excluded = allArgs[name].get('excludes', [])
@@ -691,7 +691,7 @@ def main(argv=None):
                 argBase = allArgs[cmd]['opt']
             except KeyError:
                 excluded = []
-
+        
         # Reset any arguments excluded by this one if it has a value
         if excluded and argVals.get(name):
             for exclude in excluded:
@@ -699,28 +699,28 @@ def main(argv=None):
                 if not w:
                     continue
                 widgetType = argBase[exclude]['widget']['type']
-
+    
     def updCmd():
         """
         Updates the argument panes when the selected command is changed.
         """
         cmd = widgets['Command'].get()
-
+        
         # Update help text
         help_widget = widgets.get('helpPane')
         if help_widget:
             help_widget.set(cmdHelp.get(cmd, ''))
-
+        
         # Clear current argument frames
         for child in widgets['req'].winfo_children():
             child.grid_forget()
         for child in widgets['opt'].winfo_children():
             child.grid_forget()
-
+        
         # Nothing more to do for 'help' command
         if cmd == 'help':
             return
-
+        
         # Show required arguments
         req_frame = widgets['req']
         if allArgs[cmd]['req']:
@@ -729,7 +729,7 @@ def main(argv=None):
                 widgets['Required:'].grid(column=0, row=0, sticky='w')
             else:
                 widgets['Required:'].grid()
-
+            
             i = 1
             for key, arg in allArgs[cmd]['req'].items():
                 if key not in widgets:
@@ -737,34 +737,34 @@ def main(argv=None):
                 else:
                     widgets[key].grid(column=0, row=i)
                 i += 1
-
+        
         # Show optional arguments
         opt_frame = _
-
+    
     def runTD():
         """
         Executes the TD command selected in the GUI using TDWidget.
         """
-
+        
         from . import tradeexcept
-
+        
         def getVals(arg, argBase):
             curArg = argVals.get(arg)
             vals = []
-
+            
             # Skip default or empty values
             if curArg is not None and curArg != argBase[arg].get('default'):
                 if arg not in ['--detail', '--debug', '--quiet']:
                     vals.append(str(arg))
-
+                
                 widget_info = argBase[arg]['widget']
                 wtype = widget_info.get('type')
                 sub = widget_info.get('sub')
-
+                
                 if wtype == 'check':
                     # Checkbuttons already handled by presence in argVals
                     return vals
-
+                
                 if sub == 'ticks':
                     choices = ''
                     for choice, selected in curArg.items():
@@ -772,31 +772,31 @@ def main(argv=None):
                             choices += choice
                     vals.append(choices)
                     return vals
-
+                
                 if sub == 'credits':
                     # TODO: Handle 'credits' type
                     pass
-
+                
                 # Default behavior: append the current value
                 vals.append(str(curArg))
-
+            
             if not vals:
                 return None
-
+            
             return vals
-
+        
         def runTrade():
             # Disable the Run button while executing
             run_btn = widgets.get('Run')
             if run_btn:
                 run_btn.disable()
-
+            
             # Redirect stdout to the output Text widget
             output_widget = widgets.get('outputText')
             oldout = sys.stdout
             sys.stdout = StdoutRedirector(output_widget)
             print('TD command: "' + ' '.join(argv) + '"')
-
+            
             try:
                 try:
                     try:
@@ -826,36 +826,36 @@ def main(argv=None):
                     )
             except SystemExit as e:
                 print(e)
-
+            
             print("Execution complete.")
             # Restore stdout
             sys.stdout = oldout
             # Re-enable Run button
             if run_btn:
                 run_btn.enable()
-
+        
         # Switch to the Output tab
         tab_frame = widgets.get('tabFrame')
         if tab_frame:
             tab_frame.select_tab('Output')
-
+        
         # Build the argv list
         cmd = widgets['Command'].get()
         argv = ['trade', cmd]
-
+        
         if cmd != 'help':
             # Required args
             for arg in allArgs[cmd]['req']:
                 result = getVals(arg, allArgs[cmd]['req'])
                 if result:
                     argv += result if '-' in result[0] else result[1:]
-
+            
             # Optional args
             for arg in allArgs[cmd]['opt']:
                 result = getVals(arg, allArgs[cmd]['opt'])
                 if result:
                     argv += result
-
+            
             # Global args
             for arg in allArgs:
                 if arg in Commands:
@@ -863,14 +863,14 @@ def main(argv=None):
                 result = getVals(arg, allArgs)
                 if result:
                     argv += result
-
+        
         # Clear previous output
         if output_widget:
             output_widget.set('')
-
+        
         # Run trade in a separate thread
         threading.Thread(target=runTrade, name="TDThread", daemon=True).start()
-
+    
     def makeWidgets(name, arg, sticky='ew', label=True, **kwargs):
         """
         Creates and places a widget for the given argument using TDWidget.
@@ -880,10 +880,10 @@ def main(argv=None):
         kwargs['change'] = updArgs
         kwargs['tooltip'] = arg.get('help', '')
         kwargs['colspan'] = 1 if arg == allArgs.get(name) else 9
-
+        
         widget_info = arg['widget']
         wtype = widget_info['type']
-
+        
         if wtype == 'button':
             kwargs.pop('change', None)
             kwargs.pop('label', None)
@@ -894,7 +894,7 @@ def main(argv=None):
                 command=widget_info.get('func'),
                 **kwargs
             )
-
+        
         elif wtype == 'check':
             TDWidget(
                 name=name,
@@ -903,7 +903,7 @@ def main(argv=None):
                 text=name,
                 **kwargs
             )
-
+        
         elif wtype == 'spin':
             TDWidget(
                 name=name,
@@ -913,20 +913,20 @@ def main(argv=None):
                 max_value=widget_info.get('max', 100),
                 **kwargs
             )
-
+        
         elif wtype == 'combo':
             kwargs['sticky'] = 'w'
             if widget_info.get('sub'):
                 kwargs['kind'] = widget_info['sub']
                 kwargs.pop('label', None)
-
+            
             combo = TDWidget(
                 name=name,
                 widget_type='combo',
                 values=widget_info.get('values', []),
                 **kwargs
             )
-
+            
             if not widget_info.get('sub'):
                 if not isinstance(argVals.get(name), str):
                     argVals[name] = None
@@ -938,12 +938,12 @@ def main(argv=None):
                 if argVals.get(name):
                     for val, vval in argVals[name].items():
                         combo.set_option(val, values=vval, callFunction=False)
-
+        
         elif wtype == 'option':
             kwargs.pop('change', None)
             kwargs.pop('label', None)
             kwargs.pop('colspan', None)
-
+            
             # Option button opens the plugin options window
             TDWidget(
                 name='optionButton',
@@ -952,7 +952,7 @@ def main(argv=None):
                 option_name='--option',
                 **kwargs
             )
-
+            
             kwargs['sticky'] = sticky
             kwargs['change'] = updArgs
             TDWidget(
@@ -964,21 +964,21 @@ def main(argv=None):
                 colspan=9,
                 **kwargs
             )
-
+        
         elif wtype == 'entry':
             if widget_info.get('sub') == 'credits':
                 # TODO: Handle 'credits' type
                 pass
             elif widget_info.get('sub'):
                 kwargs['kind'] = 'numeric'
-
+            
             TDWidget(
                 name=name,
                 widget_type='entry',
                 values=argVals.get(name) or arg.get('default', ''),
                 **kwargs
             )
-
+    
     sys.argv = ['trade']
     if not argv:
         argv = sys.argv
@@ -993,73 +993,73 @@ def main(argv=None):
     
     
     buildArgDicts()
-
+    
     # --- Root window ---
     main_win = TDWidget(name='root', widget_type='frame')
     main_win.widget.master.title('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,))
-
+    
     # --- Command Combo ---
     widgets['Command'] = TDWidget(
         name='Command', widget_type='combo', parent=main_win,
         values=Commands, width=10, row=0, column=0, columnspan=5, sticky='ew',
         command=updCmd
     )
-
+    
     # --- Request / Optional Scroll Frames ---
     widgets['req'] = TDWidget('req', 'frame', parent=main_win, row=1, column=0, columnspan=10, sticky='nsew')
     widgets['req'].widget.config(width=200, height=75)
     widgets['opt'] = TDWidget('opt', 'frame', parent=main_win, row=2, column=0, columnspan=10, sticky='nsew')
     widgets['opt'].widget.config(width=200, height=345)
-
+    
     # --- Tabbed Frame ---
     tabFrame = TDWidget('tabFrame', 'notebook', parent=main_win, row=1, column=10, rowspan=2, columnspan=40, sticky='nsew')
-
+    
     # Help tab
     help_tab = TDWidget('helpTab', 'frame', parent=tabFrame)
     tabFrame.widget.add(help_tab.widget, text='Help')
     widgets['helpPane'] = TDWidget('helpPane', 'scrolledtext', parent=help_tab, row=0, column=0, width=80, height=25)
     widgets['helpPane'].set(cmdHelp['help'])
     widgets['helpPane'].widget.config(state='disabled', width=80)
-
+    
     # Output tab
     output_tab = TDWidget('outputTab', 'frame', parent=tabFrame)
     tabFrame.widget.add(output_tab.widget, text='Output')
     widgets['outPane'] = TDWidget('outPane', 'scrolledtext', parent=output_tab, row=0, column=0, width=80, height=25)
     widgets['outPane'].set('')
     widgets['outPane'].widget.config(state='disabled', width=80)
-
+    
     # --- Option Widgets ---
     makeWidgets('--link-ly', allArgs['--link-ly'], sticky='w', width=4, row=3, column=2)
     makeWidgets('--quiet', allArgs['--quiet'], sticky='e', disabled=':', width=1, row=3, column=46)
     makeWidgets('--detail', allArgs['--detail'], sticky='e', disabled=':', width=1, row=3, column=47)
     makeWidgets('--debug', allArgs['--debug'], sticky='e', disabled=':', width=1, row=3, column=48)
-
+    
     # --- Run Button ---
     TDWidget('Run', 'button', parent=main_win, text='Run', command=runTD, row=3, column=49, sticky='w')
-
+    
     # --- CWD ---
     makeWidgets('--cwd', allArgs['--cwd'], width=4, row=4, column=0)
     cwd_scroll = TDWidget('CWD', 'scrolledtext', parent=main_win, row=4, column=1, columnspan=49, width=70, height=1)
     cwd_scroll.set(argVals['--cwd'])
     cwd_scroll.widget.config(state='disabled')
     widgets['cwd'] = TDWidget('cwd', 'label', parent=main_win, text=argVals['--cwd'], sticky='w', row=4, column=1)
-
+    
     # --- DB ---
     makeWidgets('--db', allArgs['--db'], width=4, row=5, column=0)
     db_scroll = TDWidget('DB', 'scrolledtext', parent=main_win, row=5, column=1, columnspan=49, width=70, height=1)
     db_scroll.set(argVals['--db'])
     db_scroll.widget.config(state='disabled')
     widgets['db'] = TDWidget('db', 'label', parent=main_win, text=argVals['--db'], sticky='w', row=5, column=1)
-
+    
     # --- Configure row/column stretching for proper layout ---
     for i in range(50):
         main_win.widget.columnconfigure(i, weight=1)
     for i in range(6):
         main_win.widget.rowconfigure(i, weight=1)
-
+    
     # --- Show window ---
     main_win.widget.mainloop()
-
+    
     # with gui('Trade Dangerous GUI (Beta), TD v.%s' % (__version__,), inPadding=1) as win:
     #     win.setFont(size=8, family='Courier')
     #     win.combo('Command', Commands, change=updCmd, tooltip='Trade Dangerous command to run.',
