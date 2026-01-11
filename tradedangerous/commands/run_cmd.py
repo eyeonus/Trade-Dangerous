@@ -5,7 +5,7 @@ import sys
 import time
 import typing
 
-from tradedangerous.tradedb import describeAge, Station, System
+from tradedangerous.tradedb import describeAge, TradeDB, Station, System
 from tradedangerous.tradecalc import NoHopsError, Route, TradeCalc, UserAbortedRun
 
 from .commandenv import ResultRow
@@ -17,7 +17,7 @@ from .parsing import (
 )
 
 if typing.TYPE_CHECKING:
-    from tradedangerous import TradeDB, TradeEnv
+    from tradedangerous import TradeEnv
 
 
 ######################################################################
