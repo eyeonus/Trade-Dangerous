@@ -587,6 +587,8 @@ def require_game_data(
     """ Checks the game object has the data it needs to provide
         specific status fields, and if not raises an exception
         with user guidance. """
+    # Fields that we'll want to check aren't "None"
+    none_checks: set[str] = set()  # not to be confused with nun_chucks
 
     #### EVENTS
 
@@ -596,14 +598,18 @@ def require_game_data(
 
     if cargo or cargo_space:
         events.add(("Loadout",))    # The ship's load out, i.e its capacity
+        none_checks.add("cargo_space")
     if cargo or cargo_load:
         events.add(("Cargo",))      # The ship's cargo content, i.e cargo hold use
+        none_checks.add("cargo_load")
 
     if commander:
         events.add(("Commander", "LoadGame"))  # either will do
+        none_checks.add("commander")
 
     if credits:
         events.add(("Status",))
+        none_checks.add("credits")
 
     if location:
         events.add((
@@ -626,11 +632,18 @@ def require_game_data(
         if not game.json_data.get(JsonFiles.NAVROUTE, {}):
             missing.add("NavRoute data")
 
-    #### Status fields
+    #### None checks
 
-    for field in status_fields or []:
-        if getattr(game.get_status(), field, None) is None:
-            missing.add(f"'{field}' value")
+    # Now we'll check that there are meaningful values on fields the caller wants to access.
+    status: Status = game.get_status()
+
+    check_attrs = none_checks | set(status_fields or ())
+    for field in check_attrs:
+        try:
+            if getattr(status, field) is None:
+                missing.add(f"'{field}' value")
+        except AttributeError:
+            raise RuntimeError(f"Internal Error: Checking for unrecognized game-data field '{field}'")
 
     if missing:
         missing_things = sorted(missing)
