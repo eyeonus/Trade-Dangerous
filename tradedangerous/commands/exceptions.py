@@ -50,7 +50,7 @@ For more help, see the TradeDangerous Wiki:
     https://github.com/eyeonus/Trade-Dangerous/wiki
 """
 
-class GameDataError(TradeException)
+class GameDataError(TradeException):
     """
         Raised when imported or journal data is internally inconsistent
         or clearly invalid (e.g. cargo load exceeds cargo capacity).
