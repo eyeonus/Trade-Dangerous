@@ -36,6 +36,7 @@ setup(
     "rich==13.7.1",
     "importlib-metadata>=1",
     "sqlalchemy>=2.0,<3.0",
+    "orjson>=3.11.5",
     ],
     setup_requires=["pytest-runner"],
     tests_require=["pytest"],
