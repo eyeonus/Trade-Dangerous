@@ -33,16 +33,57 @@
 # DEVELOPERS: If you are a programmer who wants TD to do something
 # cool, please see the TradeDB and TradeCalc modules. TD is designed
 # to empower other programmers to do cool stuff.
+import os
 import sys
 
-from tradedangerous import cli, SimpleAbort
-
-
-def main(argv = None):
-    cli.main(argv or sys.argv)
+from tradedangerous.version import __version__ as TDVER
 
 
 if __name__ == "__main__":
+    # Import errors could put users outside their comfort zone; be supportive.
+    try:
+        # For testing
+        if os.environ.get("TD_FAIL_IMPORT"):
+            import tradedangerous.yaboono  # noqa   # pylint:disable=unused-import
+
+        from tradedangerous import cli, SimpleAbort
+
+    except ImportError as e:
+        sys.stderr.write(f"** {e.__class__.__name__}: {e}\n")
+        if sys.stderr.isatty():
+            sys.stderr.write("\x1b[1m")  # bold mode
+        sys.stderr.write(
+            "## You may need to install/update one or more dependency: ##\n"
+            "\n"
+            "    pip install --upgrade --user -r requirements.txt\n\n"
+        )
+
+        # if the variable 'VIRTUAL_ENV' is set, --user would break.
+        env = getattr(os, "environ", [])
+        if "VIRTUAL_ENV" in env:
+            sys.stderr.write("or\n\n    pip install --upgrade -r requirements.txt\n\n")
+        if "CONDA_EXE" in env:
+            sys.stderr.write("or\n\n    conda install --yes --file requirements.txt\n\n")
+        if "MAMBA_EXE" in env:
+            sys.stderr.write("or\n\n    mamba install --yes --file requirements.txt\n\n")
+
+        if sys.stderr.isatty():
+            sys.stderr.write("\x1b[0m")  # unbold mode
+        sys.stderr.write("(* exact command may vary if using package managers)\n")
+        sys.stderr.write(f"-- TradeDangerous v{TDVER}\n")
+
+        if 'EXCEPTIONS' in os.environ:
+            raise e  # raise it as it was
+
+        sys.exit(1)
+
+
+    # Back to business
+
+    
+    def main(argv = None):
+        cli.main(argv or sys.argv)
+
     try:
         cli.main(sys.argv)
     except SimpleAbort as e:
