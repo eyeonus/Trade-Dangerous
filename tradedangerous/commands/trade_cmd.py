@@ -4,7 +4,7 @@ import datetime
 import typing
 
 from .commandenv import ResultRow
-from .exceptions import CommandLineError, NoDataError
+from .exceptions import CommandLineError, NoDataError, GameDataError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from tradedangerous import TradeException, TradeORM
 from tradedangerous.db import orm_models as models
