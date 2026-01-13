@@ -266,6 +266,10 @@ def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM | None) -> Co
         # If they're doing --load but not --want_load, deduct the cargo occupancy
         if want_load and not full_load:
             cargo_space -= max(status.cargo_load, 0)
+            if cargo_space < 0:
+                raise GameDataError(
+                    "Game data is inconsistent (cargo load exceeds cargo capacity)."
+                )
             if cargo_space == 0:
                 raise CommandLineError("Cargo hold is full: use --full-load if you want to ignore current cargo occupancy")
         results.summary.cargo_space = max(cargo_space, 1)  # clamp to >= 1
