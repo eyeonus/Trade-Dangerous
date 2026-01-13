@@ -50,6 +50,31 @@ For more help, see the TradeDangerous Wiki:
     https://github.com/eyeonus/Trade-Dangerous/wiki
 """
 
+class GameDataError(TradeException)
+    """
+        Raised when imported or journal data is internally inconsistent
+        or clearly invalid (e.g. cargo load exceeds cargo capacity).
+
+        Attributes:
+            errorStr    A short description of the inconsistency.
+    """
+    def __init__(self, errorStr):
+        self.errorStr = errorStr
+
+    def __str__(self):
+        return f"""Error: {self.errorStr}
+Possible causes:
+- The journal data was incomplete or out of sync when read,
+- You recently changed ships or game state and journals are still updating,
+- The wrong journals or save files are being read (check your journal path),
+- Or the data on disk has been corrupted.
+
+Try again after the game has fully updated, or re-run the command with
+--full-load to ignore current cargo occupancy if appropriate.
+
+For more help, see the TradeDangerous Wiki:
+    https://github.com/eyeonus/Trade-Dangerous/wiki
+"""
 
 class PadSizeError(CommandLineError):
     """ Raised when an invalid pad-size option is given. """
