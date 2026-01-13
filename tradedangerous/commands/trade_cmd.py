@@ -70,7 +70,7 @@ switches = [
         type = int,
         default = 1,
     ),
-    ParseArgument('--reverse', '-R',
+    ParseArgument('--reverse', '-r',
         help = "Show the reverse trade: swaps origin and dest. This is a convenience for command-line golfers.",
         action = 'store_true',
     ),
