@@ -351,7 +351,8 @@ class EliteGame:
                 raise GameException(f"Invalid journal load value: {self.journal_load}")
         
         # Sanity check: zero means zero, ie don't load anything.
-        assert max_journals != 0, "zero max_journals escaped match"
+        if max_journals == 0:
+            raise RuntimeError("Internal error: zero max_journals escaped match")
         
         # Fetch the full list of files
         files = self.list_journals()
