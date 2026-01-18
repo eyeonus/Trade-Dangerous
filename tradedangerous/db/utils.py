@@ -559,7 +559,7 @@ def age_in_days(session: Session, column: ClauseElement) -> ClauseElement:
 def parse_ts(value) -> Optional[datetime]:
     """
     Parse timestamp values into UTC-naive datetime (microsecond=0).
-    
+
     Accepts:
       - None -> None
       - datetime (aware/naive)
@@ -568,7 +568,7 @@ def parse_ts(value) -> Optional[datetime]:
           * ISO-like with 'Z', '+HH', '+HHMM', or '+HH:MM'
           * Space-separated 'YYYY-MM-DD HH:MM:SS[ offset]'
           * Date-only 'YYYY-MM-DD'
-    
+
     Rules:
       - 'Z' -> '+00:00'
       - '+HHMM' -> '+HH:MM'
@@ -578,55 +578,99 @@ def parse_ts(value) -> Optional[datetime]:
     """
     if value is None:
         return None
-    
+
     # datetime input
     if isinstance(value, datetime):
         dt = value
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
         return dt.replace(microsecond=0)
-    
+
     # epoch seconds
     if isinstance(value, (int, float)):
         try:
             return datetime.utcfromtimestamp(float(value)).replace(microsecond=0)
-        except Exception:
+        except (ValueError, TypeError, OverflowError, OSError):
             return None
-    
+
     # string input
     if isinstance(value, str):
         s = value.strip()
         if not s:
             return None
-        
+
         # Normalise timezone notations
-        if s.endswith("Z"):
+        if s.endswith(("Z", "z")):
             s = s[:-1] + "+00:00"
-        # ' ' -> 'T' to please fromisoformat
+
+        # Replace the first space between date/time with 'T' (legacy form)
         if " " in s and "T" not in s:
             s = s.replace(" ", "T", 1)
-        # +HHMM -> +HH:MM
-        s = re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", s)
-        # +HH -> +HH:00   (ensure we didn't just match +HH:MM)
-        s = re.sub(r"([+-]\d{2})(?!:\d{2})$", r"\1:00", s)
-        
-        # Try ISO parse
+
+        # Remove any remaining spaces (commonly before the offset)
+        if "T" in s and " " in s:
+            s = s.replace(" ", "")
+
+        # Fast-path parse for the formats we actually see from upstream:
+        #   YYYY-MM-DD
+        #   YYYY-MM-DDTHH:MM:SS[.fff][Z|(+|-)HH[[:]MM]]
+        #
+        # We discard fractional seconds because we always return microsecond=0.
+        m = re.match(
+            r"^(?P<date>\d{4}-\d{2}-\d{2})"
+            r"(?:T(?P<time>\d{2}:\d{2}:\d{2})(?:\.(?P<frac>\d{1,6}))?)?"
+            r"(?:(?P<tz_sign>[+-])(?P<tz_hour>\d{2})(?::?(?P<tz_min>\d{2}))?)?$",
+            s,
+        )
+        if m:
+            date_s = m.group("date")
+            time_s = m.group("time")
+            tz_sign = m.group("tz_sign")
+            tz_hour = m.group("tz_hour")
+            tz_min = m.group("tz_min")
+
+            try:
+                if time_s:
+                    dt = datetime.strptime(f"{date_s}T{time_s}", "%Y-%m-%dT%H:%M:%S")
+                else:
+                    dt = datetime.strptime(date_s, "%Y-%m-%d")
+            except ValueError:
+                dt = None
+
+            if dt is not None:
+                if tz_sign and tz_hour:
+                    from datetime import timedelta  # local import to avoid module-level churn
+
+                    hours = int(tz_hour)
+                    mins = int(tz_min) if tz_min else 0
+
+                    # dt_local = dt_utc + offset  => dt_utc = dt_local - offset
+                    offset = timedelta(hours=hours, minutes=mins)
+                    if tz_sign == "+":
+                        dt = dt - offset
+                    else:
+                        dt = dt + offset
+
+                return dt.replace(microsecond=0)
+
+        # Fallback: try ISO parse (best-effort)
         try:
             dt = datetime.fromisoformat(s)
             if dt.tzinfo is not None:
                 dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
             return dt.replace(microsecond=0)
-        except Exception:
+        except (ValueError, TypeError):
             pass
-        
+
         # Legacy / naive formats (assume UTC)
         for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
                 return datetime.strptime(s, fmt).replace(microsecond=0)
-            except Exception:
+            except ValueError:
                 continue
-    
+
     return None
+
 
 # -----------------------------------------------------------------------------
 # Batch size calculation
