@@ -1,7 +1,7 @@
 import csv
 
 
-class CSVDialect:
+class CSVDialect(csv.Dialect):
     """
     Defines the TDCSVDialect class for fine-tuning CSV parsing.
     
