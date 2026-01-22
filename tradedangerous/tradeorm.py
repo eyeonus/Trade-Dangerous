@@ -22,6 +22,7 @@ from .db import (
     orm_models as orm,          # type: ignore  # so we can access models easily
     make_engine_from_config,    # type: ignore
     get_session_factory,        # type: ignore
+    search as db_search,
 )
 
 if typing.TYPE_CHECKING:
@@ -88,16 +89,20 @@ class TradeORM:
             'system name/station name' component. If the station does not
             match a unique station, raises an AmbiguityError
         """
-        if "%" in name:
-            raise TradeException("wildcards ('%') are not supported in station names")
-        if "/" not in name:
-            if (station := self._station_lookup(name, exact=True, partial=False)):
-                return station
-            if self._system_lookup(name, exact=True, partial=False):
-                raise SystemNotStationError(f'"{name}" is a system name, use "/{name}" if you meant it as a station')
-            name = "/" + name
-        station: orm.Station | None = self.lookup_place(name)
-        return station
+        if (fast_candidate := db_search.fast_find_sub(self.session, "Station", name, orm.Station, orm.System)):
+            if isinstance(fast_candidate, orm.Station):
+                return fast_candidate
+            if isinstance(fast_candidate, orm.System) and fast_candidate.name.lower() == name.lower():
+                raise TradeException(
+                    f"expected a station, '{name}' is a system."
+                    f" you can use '/{name}' to ignore the system match."
+                )
+
+        fuzzy_candidate = db_search.fuzzy_like(self.session, "Station", name, table=orm.Station, group_table=orm.System)
+        if isinstance(fuzzy_candidate, orm.Station):
+            return fuzzy_candidate
+
+        return None
     
     def lookup_system(self, name: str) -> orm.System | None:
         """ Use the database to lookup a system, which accepts a name that
@@ -105,86 +110,13 @@ class TradeORM:
             'system name/station name' component. If the system does not
             match a unique system, raises an AmbiguityError
         """
-        if "%" in name:
-            raise TradeException("wildcards ('%') are not supported in system names")
-        system_name, _, _ = name.partition("/")
-        if not system_name:
-            raise TradeException(f"system name required for system lookup, got {name}")
-        result: orm.Station | orm.System | None = self.lookup_place(system_name)
-        if isinstance(result, orm.Station):
-            return result.system
-        return result
+        if (system := db_search.fast_find(self.session, "System", name, table=orm.System)):
+            return system
+        return db_search.fuzzy_like(self.session, "System", name, table=orm.System, group_table=None)
     
     def lookup_place(self, name: str) -> orm.Station | orm.System | None:
         """ Using a "[<system>]/[<station>]" style name, look up either a Station or a System."""
-        if "%" in name:
-            raise TradeException("wildcards ('%') are not supported in names")
-        sys_name, slashed, stn_name = name.partition("/")
-        if not slashed:
-            if stn_name:
-                station: orm.Station | None = self._station_lookup(stn_name, exact=True, partial=False)
-                if station:
-                    return station
-            if sys_name:
-                system: orm.System | None = self._system_lookup(sys_name, exact=True, partial=False)
-                if system:
-                    return system
-        
-        if sys_name:
-            system = self._system_lookup(sys_name)
-            if not system:
-                raise TradeException(f"unknown system: {sys_name}")
-            if not stn_name:
-                return system
-            
-            # Now we match the list of station names for this system.
-            stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name == stn_name)
-            results = stmt.all()
-            if len(results) == 1:
-                return results[0]
+        if (candidate := db_search.fast_find_sub(self.session, "Place", name, orm.Station, orm.System)):
+            return candidate
 
-            stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name.like(f"%{stn_name}%"))
-            results = stmt.all()
-            if not results:
-                raise TradeException(f"no station in {sys_name} matches '{stn_name}'")
-            if len(results) > 1:
-                raise AmbiguityError("Station", stn_name, [s.name for s in results])
-            return results[0]
-        
-        station = self._station_lookup(stn_name, exact=False)
-        return station
-    
-    def _system_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.System | None:
-        """ Look up a model by exact name match. """
-        assert exact or partial, "at least one of exact or partial must be True"
-        results: list[orm.System] | None = None
-        if exact:
-            results = self.session.query(orm.System).filter(orm.System.name == name).all()
-            if len(results) == 1:
-                partial = False
-        if partial:
-            like_pattern = f"%{name}%"
-            results = self.session.query(orm.System).filter(orm.System.name.like(like_pattern)).all()
-        
-        if not results:
-            return None
-        if len(results) > 1:
-            raise AmbiguityError("System", name, results, key=lambda s: s.dbname())
-        return results[0]
-    
-    def _station_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.Station | None:
-        """ Look up a model by exact name match. """
-        assert exact or partial, "at least one of exact or partial must be True"
-        results: list[orm.Station] | None = None
-        if exact:
-            results = self.session.query(orm.Station).filter(orm.Station.name == name).all()
-            if len(results) == 1:
-                partial = False
-        if partial:
-            like_pattern = f"%{name}%"
-            results = self.session.query(orm.Station).filter(orm.Station.name.like(like_pattern)).all()
-        if not results:
-            return None
-        if len(results) > 1:
-            raise AmbiguityError("Station", name, results, key=lambda s: s.dbname())
-        return results[0]
+        return db_search.fuzzy_like(self.session, "Place", name, orm.Station, orm.System)

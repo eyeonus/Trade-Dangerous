@@ -25,6 +25,9 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.types import TypeDecorator
 
 
+NAME_LENGTH = 40  # Standard maximum length allowed for names by Elite.
+
+
 # ---- Dialect-aware time utilities (moved before model usage) ----
 class now6(expression.FunctionElement):
     """CURRENT_TIMESTAMP with microseconds on MySQL/MariaDB; plain CURRENT_TIMESTAMP elsewhere."""

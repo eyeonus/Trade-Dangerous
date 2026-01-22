@@ -50,4 +50,5 @@ tools/*
 repo_files.txt
 tradedangerous/db/config.ini
 tmp/
+# Allow notebook experiments in the root to be local.
 /*.ipynb
