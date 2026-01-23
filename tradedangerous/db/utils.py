@@ -11,15 +11,28 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
-from typing import Optional, Iterable, Mapping, Sequence, Literal, Callable, Dict, Any
 import re
+from datetime import datetime, timezone, timedelta
+from typing import Optional, Iterable, Mapping, Sequence, Literal, Callable, Dict, Any
 
 from sqlalchemy import Table, text, func, and_, bindparam
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.sql.elements import ClauseElement
+
+
+# --------------------------------------------------------
+# Module-level constants
+# --------------------------------------------------------
+
+# Pre-compiled regex for ISO-like datetime parsing
+# Matches: YYYY-MM-DD[T| ]HH:MM:SS[.fff][Z|(+|-)HH[[:]MM]]
+_DATETIME_PATTERN = re.compile(
+    r"^(?P<date>\d{4}-\d{2}-\d{2})"
+    r"(?:[T ](?P<time>\d{2}:\d{2}:\d{2})(?:\.(?P<frac>\d{1,6}))?)?"
+    r"(?:(?P<tz_sign>[+-])(?P<tz_hour>\d{2})(?::?(?P<tz_min>\d{2}))?)?$"
+)
 
 
 # --------------------------------------------------------
@@ -217,12 +230,14 @@ def is_sqlite(session: Session) -> bool:
     except Exception:
         return False
 
+
 def is_mysql(session: Session) -> bool:
     try:
         name = session.get_bind().dialect.name.lower()
         return name in ("mysql", "mariadb")
     except Exception:
         return False
+
 
 def sqlite_set_bulk_pragmas(session: Session) -> None:
     """
@@ -237,6 +252,7 @@ def sqlite_set_bulk_pragmas(session: Session) -> None:
     conn.execute(text("PRAGMA temp_store=MEMORY"))
     # Negative cache_size is KiB; -65536 ≈ 64 MiB page cache
     conn.execute(text("PRAGMA cache_size=-65536"))
+
 
 def sqlite_upsert_modified(
     session: Session,
@@ -276,6 +292,7 @@ def sqlite_upsert_modified(
     
     session.execute(stmt, rows)
 
+
 def sqlite_upsert_simple(
     session: Session,
     table: Table,
@@ -303,6 +320,7 @@ def sqlite_upsert_simple(
     
     session.execute(stmt, rows)
 
+
 def mysql_set_bulk_session(session: Session) -> None:
     """
     Per-session tuning for bulk imports (MariaDB/MySQL).
@@ -326,6 +344,7 @@ def mysql_set_bulk_session(session: Session) -> None:
     except Exception:
         # Not always allowed; silently ignore.
         pass
+
 
 def mysql_upsert_modified(
     session: Session,
@@ -385,6 +404,7 @@ def mysql_upsert_simple(
     
     stmt = ins.on_duplicate_key_update(**set_map)
     session.execute(stmt, rows)
+
 
 # -----------------------------------------------------------------------------
 # csvexport helpers (schema introspection)
@@ -461,8 +481,6 @@ def get_unique_columns(session, table_name: str) -> list[str]:
         return list(set(cols))
 
 
-
-
 def get_foreign_keys(session, table_name: str) -> list[dict]:
     """
     Return list of foreign key mappings:
@@ -521,7 +539,6 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
         return fkeys
 
 
-
 # -----------------------------------------------------------------------------
 # Timestamp Helpers
 # -----------------------------------------------------------------------------
@@ -556,7 +573,18 @@ def age_in_days(session: Session, column: ClauseElement) -> ClauseElement:
     # DATE(NOW()) - DATE(column) yields an integer in many SQL dialects.
     return func.date(func.now()) - func.date(column)
 
-def parse_ts(value) -> Optional[datetime]:
+
+def normalize_dt(dt: datetime) -> datetime:
+    """ normalizes a datetime object to a single standard, currently
+        that is a *naive* representation without microseconds. """
+    if dt.tzinfo:
+        if dt.tzinfo != timezone.utc:
+            dt = dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=None)
+    return dt.replace(microsecond=0)
+
+
+def parse_ts(value: datetime | int | float | str | Any) -> datetime | None:
     """
     Parse timestamp values into UTC-naive datetime (microsecond=0).
 
@@ -573,103 +601,91 @@ def parse_ts(value) -> Optional[datetime]:
       - 'Z' -> '+00:00'
       - '+HHMM' -> '+HH:MM'
       - '+HH' -> '+HH:00'
-      - single space between date/time -> replaced with 'T'
       - Aware datetimes -> converted to UTC then made naive
+      - Fractional seconds are discarded
     """
-    if value is None:
+    match value:
+        case None | bool():
+            return None
+        
+        case datetime() as dt:
+            return normalize_dt(dt)
+        
+        case int() | float():
+            # Epoch seconds (int or float)
+            try:
+                return normalize_dt(datetime.fromtimestamp(float(value), tz=timezone.utc))
+            except (ValueError, OverflowError, OSError):
+                return None
+        
+        case str():
+            return parse_ts_string(value)
+        
+        case _:
+            return None
+
+
+def parse_ts_string(value: str) -> datetime | None:
+    """
+    Parse ISO and near-ISO timestamp strings.
+    Assumes normalized to UTC if no timezone specified.
+    
+    Fast-path: fromisoformat() for standard ISO formats.
+    Fallback: regex validation + manual offset parsing for edge cases.
+    """
+    s = value.strip()
+    if not s:
+        return None
+    
+    # Single-pass normalization of common variants
+    # Handle: 'Z'/'z' -> '+00:00', space before offset, T vs space separator
+    if s[-1] in ('Z', 'z'):
+        s = s[:-1] + '+00:00'
+    
+    # Normalize spaces: T separator and optional space before offset
+    # "YYYY-MM-DD HH:MM:SS+HH:MM" or "YYYY-MM-DD HH:MM:SS +HH:MM"
+    if ' ' in s:
+        # Replace first space (date-time separator) with T if needed
+        if 'T' not in s:
+            s = s.replace(' ', 'T', 1)
+        # Remove trailing spaces before offset (e.g., "...SS +HH:MM" -> "...SS+HH:MM")
+        s = s.replace(' ', '')
+    
+    # Fast-path: Python 3.11+ fromisoformat is highly optimized
+    try:
+        dt = datetime.fromisoformat(s)
+        return normalize_dt(dt)
+    except ValueError:
+        pass
+    
+    # Fallback: regex for non-standard but parseable formats
+    # Validates structure before attempting strptime (reduces overhead)
+    m = _DATETIME_PATTERN.match(s)
+    if not m:
         return None
 
-    # datetime input
-    if isinstance(value, datetime):
-        dt = value
-        if dt.tzinfo is not None:
-            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-        return dt.replace(microsecond=0)
-
-    # epoch seconds
-    if isinstance(value, (int, float)):
-        try:
-            return datetime.utcfromtimestamp(float(value)).replace(microsecond=0)
-        except (ValueError, TypeError, OverflowError, OSError):
-            return None
-
-    # string input
-    if isinstance(value, str):
-        s = value.strip()
-        if not s:
-            return None
-
-        # Normalise timezone notations
-        if s.endswith(("Z", "z")):
-            s = s[:-1] + "+00:00"
-
-        # Replace the first space between date/time with 'T' (legacy form)
-        if " " in s and "T" not in s:
-            s = s.replace(" ", "T", 1)
-
-        # Remove any remaining spaces (commonly before the offset)
-        if "T" in s and " " in s:
-            s = s.replace(" ", "")
-
-        # Fast-path parse for the formats we actually see from upstream:
-        #   YYYY-MM-DD
-        #   YYYY-MM-DDTHH:MM:SS[.fff][Z|(+|-)HH[[:]MM]]
-        #
-        # We discard fractional seconds because we always return microsecond=0.
-        m = re.match(
-            r"^(?P<date>\d{4}-\d{2}-\d{2})"
-            r"(?:T(?P<time>\d{2}:\d{2}:\d{2})(?:\.(?P<frac>\d{1,6}))?)?"
-            r"(?:(?P<tz_sign>[+-])(?P<tz_hour>\d{2})(?::?(?P<tz_min>\d{2}))?)?$",
-            s,
+    date_str = m.group('date')
+    time_str = m.group('time')
+    
+    try:
+        dt = datetime.strptime(
+            f'{date_str}T{time_str}' if time_str else date_str,
+            '%Y-%m-%dT%H:%M:%S' if time_str else '%Y-%m-%d'
         )
-        if m:
-            date_s = m.group("date")
-            time_s = m.group("time")
-            tz_sign = m.group("tz_sign")
-            tz_hour = m.group("tz_hour")
-            tz_min = m.group("tz_min")
-
-            try:
-                if time_s:
-                    dt = datetime.strptime(f"{date_s}T{time_s}", "%Y-%m-%dT%H:%M:%S")
-                else:
-                    dt = datetime.strptime(date_s, "%Y-%m-%d")
-            except ValueError:
-                dt = None
-
-            if dt is not None:
-                if tz_sign and tz_hour:
-                    from datetime import timedelta  # local import to avoid module-level churn
-
-                    hours = int(tz_hour)
-                    mins = int(tz_min) if tz_min else 0
-
-                    # dt_local = dt_utc + offset  => dt_utc = dt_local - offset
-                    offset = timedelta(hours=hours, minutes=mins)
-                    if tz_sign == "+":
-                        dt = dt - offset
-                    else:
-                        dt = dt + offset
-
-                return dt.replace(microsecond=0)
-
-        # Fallback: try ISO parse (best-effort)
-        try:
-            dt = datetime.fromisoformat(s)
-            if dt.tzinfo is not None:
-                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-            return dt.replace(microsecond=0)
-        except (ValueError, TypeError):
-            pass
-
-        # Legacy / naive formats (assume UTC)
-        for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-            try:
-                return datetime.strptime(s, fmt).replace(microsecond=0)
-            except ValueError:
-                continue
-
-    return None
+    except ValueError:
+        return None
+    
+    # Apply timezone offset if present
+    tz_sign = m.group('tz_sign')
+    tz_hour = m.group('tz_hour')
+    if tz_sign and tz_hour:
+        hours = int(tz_hour)
+        mins = int(m.group('tz_min') or 0)
+        offset = timedelta(hours=hours, minutes=mins)
+        # Convert from local time with offset to UTC
+        dt = (dt - offset) if tz_sign == '+' else (dt + offset)
+    
+    return normalize_dt(dt)
 
 
 # -----------------------------------------------------------------------------
