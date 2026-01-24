@@ -1,29 +1,32 @@
 # This workflow uses uv for dependency management, testing, and building.
 # It maintains parity with the original python-app.yml but leverages uv's speed and caching.
 
-name: Python application (uv)
+name: Python application via uv
 
 on:
   push:
     branches: [ release/v1 ]
   pull_request:
     branches: [ release/v1 ]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Pre-release mode (alpha or rc)"
+        required: true
+        type: choice
+        options:
+          - alpha
+          - rc
+        default: alpha
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}-latest
     strategy:
+      fail-fast: false
       matrix:
-        os:
-          - Ubuntu
-          - Windows
-          - MacOS
-        py:
-          - "3.14"
-          - "3.13"
-          - "3.12"
-          - "3.11"
-          - "3.10"
+        os: [Ubuntu, Windows, MacOS]
+        py: ["3.14", "3.13", "3.12", "3.11", "3.10"]
     steps:
     - uses: actions/checkout@v4
     
@@ -48,13 +51,9 @@ jobs:
   
   pypi-publish:
     name: Upload release to PyPI
-    # Don't try to publish except when this is a push onto the main branch of the master repos.
-    if: github.repository == 'eyeonus/Trade-Dangerous' && github.event_name == 'push' && github.ref == 'refs/heads/release/v1'
+    if: github.repository == 'eyeonus/Trade-Dangerous' && ((github.event_name == 'push' && github.ref == 'refs/heads/release/v1') || github.event_name == 'workflow_dispatch')
     needs: test
     runs-on: ubuntu-latest
-    env:
-      # Tell uv to read .python-version for the Python version to use.
-      UV_PYTHON_PREFERENCE: managed
     environment:
       name: pypi
       url: https://pypi.org/p/tradedangerous
@@ -65,6 +64,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
           fetch-depth: 0
+          fetch-tags: true
     
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -81,13 +81,17 @@ jobs:
         git config --global user.name "semantic-release (via GitHub Actions)"
         git config --global user.email "semantic-release@gh"
     
-    - name: Python Semantic Release (Version)
+    - name: Semantic Release
       id: release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Run semantic-release to bump version, update files, commit, and tag.
-        uv run semantic-release version
+        # Use prerelease mode on manual dispatch; normal version on push
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          uv run semantic-release version --prerelease --as-prerelease --prerelease-token ${{ github.event.inputs.mode }}
+        else
+          uv run semantic-release version
+        fi
         
         # Check if a tag was created at HEAD to determine if a release occurred
         if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
