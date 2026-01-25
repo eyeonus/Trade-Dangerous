@@ -54,9 +54,8 @@ class EDSMQueryBase:
         
         try:
             data = res.json()
-        except:
+        except:  # noqa: E722
             data = None
-            pass
         
         if self.log:
             edsm_log(self.apiCall, res.url, self.params, data)

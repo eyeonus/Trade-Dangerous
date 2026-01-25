@@ -40,7 +40,7 @@ class PadSizeArgument(int):
     """
     argparse helper for --pad-size
     """
-    class PadSizeParser(str):
+    class PadSizeParser(str):  # noqa: SLOT000  # str is immutable
         def __new__(cls, val, **kwargs):
             if not isinstance(val, str):
                 raise PadSizeError(val)
@@ -132,7 +132,7 @@ class PlanetaryArgument(int):
     """
     argparse helper for --planetary
     """
-    class PlanetaryParser(str):
+    class PlanetaryParser(str):  # noqa: SLOT000  # str is immutable
         def __new__(cls, val, **kwargs):
             if not isinstance(val, str):
                 raise PlanetaryError(val)
@@ -159,7 +159,7 @@ class FleetCarrierArgument(int):
     """
     argparse helper for --fleet-carrier
     """
-    class FleetCarrierParser(str):
+    class FleetCarrierParser(str):  # noqa: SLOT000  # str is immutable
         def __new__(cls, val, **kwargs):
             if not isinstance(val, str):
                 raise FleetCarrierError(val)
@@ -185,7 +185,7 @@ class OdysseyArgument(int):
     """
     argparse helper for --odyssey
     """
-    class OdysseyParser(str):
+    class OdysseyParser(str):  # noqa: SLOT000  # str is immutable
         def __new__(cls, val, **kwargs):
             if not isinstance(val, str):
                 raise OdysseyError(val)

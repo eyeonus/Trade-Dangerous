@@ -78,7 +78,7 @@ class CommandResults:
     def render(self, cmdenv: 'CommandEnv' = None, tdb: TradeDB | TradeORM | None = None) -> None:
         cmdenv = cmdenv or self.cmdenv
         tdb = tdb or cmdenv.tdb
-        cmdenv._cmd.render(self, cmdenv, tdb)
+        cmdenv._cmd.render(self, cmdenv, tdb)  # type: ignore
 
 
 class CommandEnv(TradeEnv):

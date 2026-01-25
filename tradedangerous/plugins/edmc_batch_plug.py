@@ -1,8 +1,10 @@
 from pathlib import Path
 
-from .. import fs
-from ..commands.exceptions import CommandLineError
+from tradedangerous import fs
+from tradedangerous.commands.exceptions import CommandLineError
+
 from . import PluginException, ImportPluginBase
+
 
 class ImportPlugin(ImportPluginBase):
     """

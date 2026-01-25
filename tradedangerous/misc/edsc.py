@@ -91,10 +91,9 @@ class SubmissionError(Exception):
     pass
 
 
-class Status(namedtuple('Status', [
-        'source', 'code', 'msg', 'lhs', 'rhs'
-        ])):
-    pass
+# TODO: Convert to collections.abc.NamedTuple
+Status = namedtuple('Status', ['source', 'code', 'msg', 'lhs', 'rhs'])
+
 
 class StarSubmissionResult:
     """

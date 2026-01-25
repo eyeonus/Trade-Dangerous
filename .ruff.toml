@@ -6,14 +6,14 @@ exclude = [
 	"docs",
 	"scripts",
 	"test-data",
-	"tests",
-	"tradedangerous/misc",
 	"tradedangerous/submit-distances.py",
 	"tradedangerous/gui.py",  # too many errors
+	"tradedangerous/commands/TEMPLATE.py",
 ]
 include = [
 	"trade.py",
 	"tradedangerous/**/*.py",
+	"tests/**/*.py",
 ]
 
 line-length = 180
@@ -78,15 +78,18 @@ ignore = [
 	"E731",		# TODO: replace local lambdas with defs.
 
 	# Blank line contains whitespace, however this is the local convention.
-	"W293",		# blank linke contains whitespace
+	"W293",         # blank line contains whitespace
+
+	# Align with Flake8: trailing whitespace & missing final newline ignored.
+	"W291",         # trailing whitespace
+	"W292",         # no newline at end of file
 
 	# Import ordering seems trivial, but it can have consequences, especially in testing
 	# where mocks/monkeypatching might happen. Make every effort possible to avoid
 	# inline imports, but until someone wants to do a full cleanup pass:
-	"F401",		# import not at top-level
+	"F401",         # imported but unused
 	"PLC0415",	# import not at top-level
-	"TID252",	# Prefer absolute imports over relative imports from parent modules
-				# commands/__init__.py: 'from .. import formatting' -> 'from tradedangerous import formatting'
+	# TID252 handled per-file; see [lint.per-file-ignores]
 
     # These ones need fixing to be disabled
     "I001",     # TODO: unsorted import block
@@ -115,6 +118,8 @@ ignore = [
 
     "PLW0603",	# use of global discouraged
 
+	"W391",     # blank line at end of file
+
 ]
 
 fixable = ["ALL"]
@@ -124,6 +129,13 @@ dummy-variable-rgx = "^(_+[a-zA-z0-9_]*)$"
 
 
 [lint.per-file-ignores]
+
+"tests/test_bootstrap_commands.py" = ["F401"]
+"tests/test_bootstrap_plugins.py" = ["F401"]
+"tradedangerous/commands/__init__.py" = ["F401", "E402", "TID252"]
+"tradedangerous/commands/commandenv.py" = ["SLF001"]
+"tradedangerous/mfd/saitek/directoutput.py" = ["E501","E203","E401","E722","E265"]
+"tradedangerous/misc/diff-system-csvs.py" = ["E722"]  # (bare except)
 
 
 [lint.flake8-annotations]
@@ -138,5 +150,5 @@ force-sort-within-sections = false
 from-first = true
 known-local-folder = ["tradedangerous"]
 force-to-top = ["tradedangerous"]
-known-third-party = ["psutil", "requests", "sqlalchemy", "ijson", "orjson", "rich", "yaml"]
+known-third-party = ["psutil", "requests", "sqlalchemy", "ijson", "orjson", "rich", "yaml", "appJar", "pytest", "importlib_metadata"]
 order-by-type = true

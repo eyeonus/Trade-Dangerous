@@ -9,25 +9,28 @@
 # so you could do something like:
 #  $ diff-system-csvs.py oldSystem.csv newSystem.csv 2>corrections.txt
 
+from collections.abc import NamedTuple
+from pathlib import Path
+import csv
+import re
 import sys
+
 
 if len(sys.argv) != 3:
     raise SystemExit("Usage: {} <old file> <new file>".format(
                 sys.argv[0]
             ))
 
-import csv
-import re
-from pathlib import Path
-from collections import namedtuple
-
-class Loc(namedtuple('Loc', [ 'x', 'y', 'z' ])):
-    def __str__(self):
-        return "{},{},{}".format(self.x, self.y, self.z)
+class Loc(NamedTuple):
+    x: float
+    y: float
+    z: float
 
 
-class Item(namedtuple('Item', [ 'norm', 'name', 'loc' ])):
-    pass
+class Item(NamedTuple):
+    norm: str
+    name: str
+    loc: Loc
 
 
 normalizeRe = re.compile('[^A-Za-z0-9\' ]')
@@ -38,7 +41,7 @@ def readFile(filename):
     if not path.exists():
         raise SystemExit("File not found: {}".format(filename))
     
-    names, locs = dict(), dict()
+    names, locs = {}, {}
     
     with path.open("r", encoding="utf-8") as fh:
         csvin = csv.reader(fh, delimiter=',', quotechar='\'', doublequote=True)

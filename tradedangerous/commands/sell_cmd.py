@@ -1,3 +1,10 @@
+from __future__ import annotations
+
+from sqlalchemy import text
+
+from tradedangerous.tradedb import TradeDB, System, Station
+from tradedangerous.formatting import RowFormat
+
 from .commandenv import ResultRow
 from .exceptions import CommandLineError, NoDataError
 from .parsing import (
@@ -5,9 +12,6 @@ from .parsing import (
     MutuallyExclusiveGroup, NoPlanetSwitch, OdysseyArgument,
     PadSizeArgument, ParseArgument, PlanetaryArgument,
 )
-from ..tradedb import TradeDB, System, Station
-from ..formatting import RowFormat
-from sqlalchemy import text
 
 
 ######################################################################

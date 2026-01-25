@@ -313,7 +313,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             ]
             session.execute(insert(t_cat), seed_rows)
             inserted += len(seed_rows)
-            existing_by_id = {cid: name for cid, name in canonical_by_id.items()}
+            existing_by_id = canonical_by_id.copy()
 
         # Sanity guardrail: detect drift
         else:
@@ -2454,7 +2454,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if not csv_path.exists():
                     raise CleanExit(
                         f"RareItem.csv not found via importlib.resources or source tree: {csv_path}"
-                    )
+                    ) from None
                 processImportFile(
                     tdenv=self.tdenv,
                     session=sess,
@@ -2660,18 +2660,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         Order: yajl2_cffi → yajl2_c → yajl2 → python.
         """
         try:
-            from ijson.backends import yajl2_cffi as ijson_fast
-            return ijson_fast.items(fh, prefix)
+            from ijson.backends import yajl2_cffi as ijson_fast  # pylint: disable=import-outside-toplevel
+            return ijson_fast.items(fh, prefix)  # pylint: disable=no-member  # member gets hidden
         except Exception:
             pass
         try:
-            from ijson.backends import yajl2_c as ijson_fast  # ctypes wrapper
-            return ijson_fast.items(fh, prefix)
+            from ijson.backends import yajl2_c as ijson_fast  # pylint: disable=import-outside-toplevel  # ctypes wrapper
+            return ijson_fast.items(fh, prefix)  # pylint: disable=no-member  # member gets hidden
         except Exception:
             pass
         try:
-            from ijson.backends import yajl2 as ijson_fast
-            return ijson_fast.items(fh, prefix)
+            from ijson.backends import yajl2 as ijson_fast  # pylint: disable=import-outside-toplevel
+            return ijson_fast.items(fh, prefix)  # pylint: disable=no-member  # member gets hidden
         except Exception:
             pass
         # Fallback to whatever was imported at module top

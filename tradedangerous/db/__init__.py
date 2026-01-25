@@ -13,6 +13,7 @@ from .config import load_config
 from .paths import resolve_data_dir, resolve_tmp_dir, ensure_dir, resolve_db_config_path
 from .engine import make_engine_from_config, get_session_factory, healthcheck
 from .lifecycle import ensure_fresh_db
+from .orm_models import Category, Item, Station, System
 
 __all__ = [
     "load_config",
@@ -24,4 +25,6 @@ __all__ = [
     "get_session_factory",
     "healthcheck",
     "ensure_fresh_db",
+
+    "Category", "Item", "Station", "System",
 ]

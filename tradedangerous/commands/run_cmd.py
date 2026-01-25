@@ -769,9 +769,7 @@ def checkOrigins(tdb, cmdenv, calc):
             '--from', cmdenv, calc, cmdenv.origins
         )
     
-    cmdenv.origSystems = tuple(set(
-        stn.system for stn in cmdenv.origins
-    ))
+    cmdenv.origSystems = tuple({stn.system for stn in cmdenv.origins})
 
 def checkDestinations(tdb, cmdenv, calc):
     cmdenv.destinations = None
@@ -866,9 +864,7 @@ def checkDestinations(tdb, cmdenv, calc):
             '--to', cmdenv, calc, cmdenv.destinations
         )
     
-    cmdenv.destSystems = tuple(set(
-        stn.system for stn in cmdenv.destinations
-    ))
+    cmdenv.destSystems = tuple({stn.system for stn in cmdenv.destinations})
 
 
 def validateRunArguments(tdb, cmdenv, calc):

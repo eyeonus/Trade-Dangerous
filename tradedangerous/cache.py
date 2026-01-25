@@ -27,7 +27,6 @@ import os
 import re
 import typing
 
-
 from functools import partial as partial_fn
 from sqlalchemy import func, tuple_
 from sqlalchemy.orm import Session
@@ -37,9 +36,9 @@ from tradedangerous.db.utils import parse_ts
 
 from .fs import file_line_count
 from .tradeexcept import TradeException
-from tradedangerous.misc.progress import Progress, CountingBar
 from . import corrections, utils
 
+from tradedangerous.misc.progress import Progress, CountingBar
 
 
 # For mypy/pylint type checking
@@ -467,6 +466,9 @@ def processPrices(
         def ignoreOrWarn(error: Exception) -> None:
             # Ensure exceptions are stringified before passing to WARN
             tdenv.WARN(str(error))
+    else:
+        def ignoreOrWarn(error: Exception) -> None:
+            pass
     
     def changeStation(matches: re.Match) -> None:
         nonlocal facility, stationID
@@ -924,15 +926,13 @@ def processImportFile(
         header_index: dict[str, int] = {}
         
         for cIndex, cName in enumerate(columnDefs):
-            colName, _, srcKey = cName.partition("@")
+            colName, _, _ = cName.partition("@")  # column name, @, source key
             baseName = colName[uniqueLen:] if colName.startswith(uniquePfx) else colName
             header_index[baseName] = cIndex
             
             # Special-case: System-added
             if tableName == "System":
-                if cName == "name":
-                    srcKey = ""
-                elif cName == "name@Added.added_id":
+                if cName == "name@Added.added_id":
                     fk_col_indices["added"] = cIndex
                     continue
             
@@ -1371,7 +1371,7 @@ def importDataFromFile(tdb, tdenv, path, pricesFh=None, reset=False):
     tdenv.DEBUG0(f"Importing data from {path}")
     processPricesFile(
         tdenv,
-        db=tdb.getDB(),      # still used for the incremental parsing logic
+        session=tdb.Session(),
         pricesPath=path,
         pricesFh=pricesFh,
     )

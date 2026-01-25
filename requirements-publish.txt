@@ -1,7 +1,0 @@
--r requirements-dev.txt
-
-packaging>=20.0
-python-semantic-release
-build
-twine
-wheel

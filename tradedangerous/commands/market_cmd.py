@@ -1,11 +1,16 @@
+from __future__ import annotations
+
+from sqlalchemy import select, table, column
+from sqlalchemy.orm import Session
+
 from .commandenv import ResultRow
 from .exceptions import CommandLineError
 from .parsing import (
     ParseArgument, MutuallyExclusiveGroup,
 )
-from ..formatting import RowFormat
-from sqlalchemy import select, table, column
-from sqlalchemy.orm import Session
+
+from tradedangerous.formatting import RowFormat
+from tradedangerous.db.utils import age_in_days
 
 
 ######################################################################
@@ -52,9 +57,6 @@ def render_units(units, level):
 
 
 def run(results, cmdenv, tdb):
-    # Lazy import to avoid any import-time tangles elsewhere.
-    from tradedangerous.db.utils import age_in_days
-    
     origin = cmdenv.startStation
     if not origin.itemCount:
         raise CommandLineError(

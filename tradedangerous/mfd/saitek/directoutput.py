@@ -60,15 +60,14 @@ DirectOutput_CloseServer
 
 """
 
-from tradedangerous.mfd import MissingDeviceError
-
 import ctypes
 import ctypes.wintypes
 import logging
 import os
 import platform
-import sys
 import time
+
+from tradedangerous.mfd import MissingDeviceError
 
 S_OK = 0x00000000
 E_HANDLE = 0x80070006
@@ -194,8 +193,7 @@ class DirectOutput:
         logging.debug("DirectOutput.SetProfile({}, {})".format(device_handle, profile))
         if profile:
             return self.DirectOutputDLL.DirectOutput_SetProfile(ctypes.wintypes.HANDLE(device_handle), len(profile), ctypes.wintypes.LPWSTR(profile))
-        else:
-            return self.DirectOutputDLL.DirectOutput_SetProfile(ctypes.wintypes.HANDLE(device_handle), 0, 0)
+        return self.DirectOutputDLL.DirectOutput_SetProfile(ctypes.wintypes.HANDLE(device_handle), 0, 0)
     
     def AddPage(self, device_handle, page, name, active):
         """
@@ -370,7 +368,7 @@ class DirectOutputDevice:
         if not self.device_handle:
             logging.warning("No device handle")
             self.finish()
-            raise MissingDeviceError()
+            raise MissingDeviceError
         
         result = self.direct_output.RegisterSoftButtonCallback(self.device_handle, self.onSoftButton_closure)
         if result != S_OK:
@@ -669,10 +667,10 @@ if __name__ == '__main__':
     device.AddPage(1, "Other", False)
     device.AddPage(2, "Another", False)
     
-    while True:
-        try:
+    # This is used to catch Ctrl+C, calling finish method is *very* important to de-initalize device.
+    print("Device Ready: Hit Ctrl-C to end testing...")
+    try:
+        while True:
             time.sleep(1)
-        except:  # noqa: E722
-            # This is used to catch Ctrl+C, calling finish method is *very* important to de-initalize device.
-            device.finish()
-            sys.exit()
+    finally:
+        device.finish()

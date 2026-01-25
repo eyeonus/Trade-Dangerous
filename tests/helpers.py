@@ -66,6 +66,9 @@ class pytest_regex:
     
     def __eq__(self, actual):
         return bool(self._regex.match(actual))
+
+    def __hash__(self):
+        return hash(self._regex)
     
     def __repr__(self):
         return self._regex.pattern

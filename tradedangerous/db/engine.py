@@ -68,7 +68,7 @@ def _cfg_to_dict(cfg: configparser.ConfigParser | Mapping[str, Any] | str | os.P
         defaults = dict(cfg.defaults())
         for sec in cfg.sections():
             d = dict(defaults)
-            d.update({k: v for k, v in cfg.items(sec)})
+            d.update(dict(cfg.items(sec)))
             out[sec] = d
         for sec in ("database", "engine", "sqlite", "mariadb", "paths"):
             out.setdefault(sec, dict(defaults))
@@ -243,7 +243,7 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
                 socket = str(_get(cfg, "mariadb", "sock", "") or "").strip()
             if socket:
                 redacted = f"{redacted} (unix_socket={socket})"
-        engine._td_redacted_url = redacted  # type: ignore[attr-defined]
+        engine._td_redacted_url = redacted  # type: ignore[attr-defined]  # noqa: SLF001
     except Exception:
         pass
     return engine

@@ -43,7 +43,7 @@ def test_cli_trade_calls_preflight_before_tradedb(monkeypatch):
         
         def run(self, tdb):
             calls.append(("run", isinstance(tdb, DummyTDB)))
-            return None
+            return None  # noqa
     
     class DummyCmdIndex:
         def parse(self, argv):
@@ -80,7 +80,7 @@ def test_cli_trade_preflight_can_disable_db_load(monkeypatch):
             self.wantsTradeDB = False
         
         def run(self, tdb):
-            return None
+            return None  # noqa
     
     class DummyCmdIndex:
         def parse(self, argv):

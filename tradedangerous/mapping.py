@@ -81,7 +81,6 @@ class FDEVMappingBase:
             self.entries[wrong] = right
         else:
             self.tdenv.WARN("{}: {}".format(wrong, right))
-        return
     
     def mapUnknown(self):
         # override this and add unknown IDs in the derived class

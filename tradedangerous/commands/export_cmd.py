@@ -1,7 +1,10 @@
-from ..csvexport import exportTableToFile
+from pathlib import Path
+
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from .exceptions import CommandLineError
-from pathlib import Path
+
+from tradedangerous.csvexport import exportTableToFile
+
 
 ######################################################################
 # TradeDangerous :: Commands :: Export

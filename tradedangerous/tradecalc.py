@@ -14,7 +14,6 @@
 # to use SQLAlchemy ORM sessions. It retains the same API surface
 # expected by other modules (mimicking legacy behaviour), but
 # now queries ORM models instead of sqlite3 cursors.
-
 """
 TradeCalc provides a class for calculating trade loads, hops or
 routes, along with some amount of state.
@@ -39,6 +38,8 @@ Classes:
     TradeLoad
         Describe a cargo load to be carried on a hop.
 """
+
+# pylint: disable=redefined-builtin  # we use 'credits' occasionally
 
 ######################################################################
 # Imports
@@ -230,6 +231,9 @@ class Route:
     
     def __eq__(self, rhs):
         return self.score == rhs.score and len(self.jumps) == len(rhs.jumps)
+    
+    def __hash__(self):
+        return hash((self.route, self.hops, self.startCr, self.gainCr, self.jumps, self.score))
     
     def debug_text(self, colorize: Callable[[str, str], str]) -> str:
         lhs = colorize("cyan", self.firstStation.name())
@@ -1214,14 +1218,14 @@ class TradeCalc:
                     dstSys = dest.system
                     if goalSystem and dstSys is not goalSystem:
                         # Biggest reward for shortening distance to goal
-                        dstGoalDist = goalDistTo(dstSys)
+                        dstGoalDist = goalDistTo(dstSys)  # pylint: disable=possibly-used-before-assignment
                         # bias towards bigger reductions
-                        score = 5000 * origGoalDist / dstGoalDist
+                        score = 5000 * origGoalDist / dstGoalDist  # pylint: disable=possibly-used-before-assignment
                         # discourage moving back towards origin
                         score += 50 * srcGoalDist / dstGoalDist
                         # Gain per unit pays a small part
                         if dstSys is not origSystem:
-                            score += 10 * (origDistTo(dstSys) - srcOrigDist)
+                            score += 10 * (origDistTo(dstSys) - srcOrigDist)  # pylint: disable=possibly-used-before-assignment
                         score += (trade.gainCr / trade.units) / 25
                     else:
                         score = trade.gainCr
@@ -1254,8 +1258,7 @@ class TradeCalc:
                         si = int(round(score))
                     except TypeError:
                         si = int(score)
-                    if si > best_seen_score:
-                        best_seen_score = si
+                    best_seen_score = max(best_seen_score, si)
                     
                     dstID = dstStation.ID
                     try:

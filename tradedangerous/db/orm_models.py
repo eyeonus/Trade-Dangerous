@@ -77,12 +77,13 @@ class CIString(TypeDecorator):
         super().__init__(length=length, **kwargs)
     
     def load_dialect_impl(self, dialect):
-        if dialect.name == "sqlite":
-            return dialect.type_descriptor(String(self.impl.length, collation="NOCASE"))
-        elif dialect.name in ("mysql", "mariadb"):
-            return dialect.type_descriptor(String(self.impl.length, collation="utf8mb4_unicode_ci"))
-        else:
-            return dialect.type_descriptor(String(self.impl.length))
+        match dialect.name:
+            case "sqlite":
+                return dialect.type_descriptor(String(self.impl.length, collation="NOCASE"))
+            case "mysql" | "mariadb":
+                return dialect.type_descriptor(String(self.impl.length, collation="utf8mb4_unicode_ci"))
+            case _:
+                return dialect.type_descriptor(String(self.impl.length))
 
 
 # ---------- Naming & Base ----------

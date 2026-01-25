@@ -9,15 +9,17 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 import csv
 import datetime
+import hashlib
+import json
 import os
 import requests
 import time
 import typing
 
-from sqlalchemy.orm import Session
 from sqlalchemy import func, delete, select, exists, text
 
 from tradedangerous import plugins, transfers, TradeException
+from tradedangerous import cache as td_cache
 from tradedangerous.db import orm_models as SA, lifecycle
 from tradedangerous.db.utils import (
     begin_bulk_mode, end_bulk_mode,
@@ -28,6 +30,8 @@ from tradedangerous.misc import progress as pbar
 from tradedangerous.plugins import PluginException
 
 if typing.TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from tradedangerous.tradeenv import TradeEnv
 
 
@@ -159,8 +163,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         return (self.tdb.dataPath / "eddblink_state.json").resolve()
 
     def _load_eddblink_state(self) -> dict:
-        import json
-
         state_path = self._eddblink_state_path()
         if not state_path.exists():
             return {"version": 1, "files": {}}
@@ -180,8 +182,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             return {"version": 1, "files": {}}
 
     def _save_eddblink_state(self, state: dict) -> None:
-        import json
-
         state_path = self._eddblink_state_path()
         state_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -192,8 +192,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         tmp_path.replace(state_path)
 
     def _file_sha256(self, path: Path) -> str:
-        import hashlib
-
         h = hashlib.sha256()
         with path.open("rb") as fh:
             for chunk in iter(lambda: fh.read(1024 * 1024), b""):
@@ -207,9 +205,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         rebuild_cmd = "trade import -P eddblink -O clean,skipvend"
 
-        Session = self.tdb.Session
         try:
-            with Session() as session:
+            with self.tdb.Session() as session:
                 row = session.execute(
                     select(SA.Category.category_id, SA.Category.name)
                     .where(SA.Category.category_id == 1)
@@ -228,7 +225,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 f"    {rebuild_cmd}"
             )
 
-        cid, name = row
+        name = row[1]
         got = (str(name) if name is not None else "").strip()
         if got.lower() != "metals":
             raise PluginException(
@@ -355,8 +352,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         self.tdenv.NOTE("Purging Systems with no stations: Start time = {}", self.now())
         
-        Session = self.tdb.Session
-        with Session.begin() as session:
+        with self.tdb.Session.begin() as session:
             subq = select(SA.Station.system_id).where(SA.Station.system_id == SA.System.system_id)
             stmt = delete(SA.System).where(~exists(subq))
             session.execute(stmt)
@@ -386,10 +382,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             listings_file, self.now(), from_live
         )
         
-        Session = self.tdb.Session
-        
         # Prefetch item/station IDs for early filtering
-        with Session.begin() as session:
+        with self.tdb.Session() as session:
             item_lookup = _make_item_id_lookup(self.tdenv, session)
             station_lookup = _make_station_id_lookup(self.tdenv, session)
         
@@ -397,7 +391,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with pbar.Progress(total, 40, label="Processing", style=pbar.LongRunningCountBar) as prog, \
                listings_path.open("r", encoding="utf-8", errors="ignore") as fh, \
-               Session() as session:
+               self.tdb.Session() as session:
             
             token = begin_bulk_mode(session, profile="eddblink", phase="incremental")
             try:
@@ -527,17 +521,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             # years of old data, do it a piece at a time. It gives the progress bar
             # some movement.
             expirations = [360, 330, 300, 270, 240, 210, 180, 150, 120, 90, 60, 30, 21, 14, 7]
-            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, \
-                    Session.begin() as session:
+            with pbar.Progress(len(expirations) + 1, 40, 1, label="Expiring", style=pbar.LongRunningCountBar) as prog, self.tdb.Session.begin() as session:
                 for expiration in expirations:
                     session.execute(text(f"DELETE FROM StationItem WHERE modified < datetime('now', '-{expiration} days')"))
                     prog.increment(1)
         
         if self.getOption("optimize"):
-            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog:
+            with pbar.Progress(0, 40, label="Optimizing", style=pbar.ElapsedBar) as prog, self.tdb.Session.begin() as session:
                 if self.tdb.engine.dialect.name == "sqlite":
-                    with Session.begin() as session:
-                        session.execute(text("VACUUM"))
+                    session.execute(text("VACUUM"))
         
         self.tdenv.NOTE("Finished processing market data. End time = {}", self.now())
     
@@ -551,11 +543,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not table_jobs:
             return
 
-        # Local import to avoid plugin import-order headaches.
-        from tradedangerous import cache as td_cache
-
-        Session = self.tdb.Session
-        with Session() as session:
+        with self.tdb.Session() as session:
             with pbar.Progress(
                 max_value=len(table_jobs) + 1,
                 prefix="Upserting",
