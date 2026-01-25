@@ -1,9 +1,156 @@
+# ----------------------------------------------------------------------------
+[project]
+
+name = "tradedangerous"  # aligned with original setup.py name
+# Restrict to a range of python versions. ".python_version" file must meet this requirement.
+requires-python = ">=3.10"
+dynamic = ["version"]
+description = "Trade-Dangerous is a set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available."
+readme = "README.md"
+license = "MPL-2.0"
+license-files = ["LICENSE"]
+keywords = ["trade", "elite", "elite-dangerous"]
+authors = [
+    { name = "eyeonus", email = "eyeonus@gmail.com" },
+	{ name = "Stefan 'Tromador' Morrell" },
+	{ name = "Bernd Gollesch" },
+    { name = "Oliver 'kfsone' Smith", email = "oliver@kfs.org" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+
+# Default dependencies for running the tool itself.
+dependencies = [
+    "appJar",
+    "ijson>=3.1",
+    "importlib-metadata>=1",
+    "orjson>=3.11.5",
+    "requests",
+    "rich==13.7.1",
+    "sqlalchemy>=2.0,<3.0",
+]
+
+
+# ----------------------------------------------------------------------------
+[dependency-groups]
+
+# Additional, non-default depenency groups.
+
+# --dev requirements
+dev = [
+    "coverage",
+    "flake8",
+    "m2r",
+    "mistune<2.0.0",
+    "pylint",
+    "pytest",
+    "sphinx",
+    "tox",
+    "tox-gh-actions",
+    "tox-uv",
+    "uv>=0.9.21",
+]
+
+# For publishing to PyPI
+publish = [
+    "build",
+    "packaging>=20.0",
+    "python-semantic-release",
+    "twine",
+    "wheel",
+]
+
+
+# ----------------------------------------------------------------------------
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+# ----------------------------------------------------------------------------
+[project.scripts]
+trade = "trade:main"
+tradegui = "tradegui:main"
+
+
+# ----------------------------------------------------------------------------
+[project.urls]
+Homepage = "https://github.com/eyeonus/Trade-Dangerous"
+"Bug Tracker" = "https://github.com/eyeonus/Trade-Dangerous/issues"
+Documentation = "https://github.com/eyeonus/Trade-Dangerous/wiki"
+"Source Code" = "https://github.com/eyeonus/Trade-Dangerous"
+
+
+# ----------------------------------------------------------------------------
+[project.optional-dependencies]
+
+# If we want to use uv-based github actions, github will need to know about uv.
+build = ["uv ~= 0.9.21"]
+# If you want to use a better python repl
+dev-extras = ["ipython"]
+# If you want to get really fancy and use the research notebooks
+notebooks = ["jupyter>=1.1.1"]
+
+
+# ----------------------------------------------------------------------------
+[tool.setuptools]
+py-modules = ["trade", "tradegui"]
+
+[tool.setuptools.packages.find]
+include = ["tradedangerous", "tradedangerous.*"]
+exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+tradedangerous = [
+    "templates/TradeDangerous.sql",
+    "templates/Added.csv",
+    "templates/Category.csv",
+    "templates/RareItem.csv",
+    "templates/database_changes.json",
+    "tradeenv.pyi",
+    "py.typed",
+]
+
+
+# ----------------------------------------------------------------------------
+[tool.uv]
+
+# We're not, but I might figure out how to make it one some time.
+package = true
+
+
+# ----------------------------------------------------------------------------
+[tool.setuptools.dynamic]
+version = { attr = "tradedangerous.version.__version__" }
+
+
+# ----------------------------------------------------------------------------
+[tool.semantic_release]
+
+version_variables = [
+    "tradedangerous/version.py:__version__",
+]
+build_command = "uv build"
+commit_message = "python-semantic-release automatic version update"
+
+
+# ----------------------------------------------------------------------------
 [tool.semantic_release.branches.main]
+
+# How branches are structured
 match = "(main|master|release/v1)"
 prerelease_token = "rc"
 prerelease = false
 
-[tool.semantic_release]
-version_variables = [
-    "tradedangerous/version.py:__version__",
-]
+[tool.semantic_release.branches.dev]
+
+# Allow prereleases from release-candidate dev branches for build/release testing
+match = "rc/*"
+prerelease = true
+prerelease_token = "dev"

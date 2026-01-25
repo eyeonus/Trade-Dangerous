@@ -10,3 +10,5 @@ coverage
 Sphinx
 mistune<2.0.0
 m2r
+uv>=0.9.21
+tox-uv

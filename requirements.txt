@@ -1,8 +1,7 @@
-appJar
 requests
-ijson
+appJar
+ijson>=3.1
 rich==13.7.1
 importlib-metadata>=1
 SQLAlchemy>=2.0,<3.0
-ijson>=3.1
 orjson>=3.11.5
