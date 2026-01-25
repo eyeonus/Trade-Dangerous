@@ -102,7 +102,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         "shipyard": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv",
         "rares": "https://raw.githubusercontent.com/EDCD/FDevIDs/master/rare_commodity.csv",
     }
-    
+
     tdb: TradeDB
     tdenv: TradeEnv
     session: Session | None  # this means you have to check it's been set, though
@@ -199,7 +199,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self._warn(f"{type(e).__name__}: {e}")
                 traceback.print_exc()
                 raise CleanExit("Failed to seed 'Added' table from templates.") from e  # ^ contradiction?
-    
+
     # --------------------------------------
     # EDCD Import Functions
     #
@@ -250,7 +250,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             "shipyard":  _resolve_one("edcd_shipyard",  self.EDCD_URLS["shipyard"],  "shipyard"),
             "rares":     _resolve_one("edcd_rares",     self.EDCD_URLS["rares"],     "rare_commodity"),
         }
-    
+
     # ---------- EDCD: Categories (add-only) ----------
     #
     def _edcd_import_categories_add_only(
@@ -262,7 +262,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         Read EDCD commodity.csv, extract distinct category names, and add any
         missing Category rows. No updates, no deletes.
-        
+
         Deterministic + append-only behaviour:
           - If Category is empty: seed the TD canonical categories with fixed IDs (1..16).
           - If Category is non-empty: validate the canonical ID→name mapping; abort if drifted.
@@ -271,11 +271,11 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             Yes, we shoulda done it alphabetical in the first place, but we didn't, so
             here we are.
-        
+
         Returns: number of rows inserted (seed + appended).
         """
         t_cat = tables["Category"]
-        
+
         # TD canonical mapping — frozen IDs
         canonical_by_id: dict[int, str] = {
             1:  "Metals",
@@ -295,16 +295,16 @@ class ImportPlugin(plugins.ImportPluginBase):
             15: "NonMarketable",
             16: "Salvage",
         }
-        
+
         inserted = 0
-        
+
         # Load existing categories
         rows = session.execute(select(t_cat.c.category_id, t_cat.c.name)).all()
         existing_by_id: dict[int, str] = {
             int(cid): (str(name) if name is not None else "")
             for (cid, name) in rows
         }
-        
+
         # Seed canonical set if empty
         if not existing_by_id:
             seed_rows = [
@@ -314,7 +314,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             session.execute(insert(t_cat), seed_rows)
             inserted += len(seed_rows)
             existing_by_id = {cid: name for cid, name in canonical_by_id.items()}
-        
+
         # Sanity guardrail: detect drift
         else:
             for cid, expected_name in canonical_by_id.items():
@@ -331,17 +331,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                         f"category_id={cid} expected '{expected_name}' but found '{actual}'. "
                         "Refusing to proceed."
                     )
-        
+
         existing_lc = {
             (str(n) or "").strip().lower()
             for n in existing_by_id.values()
             if n is not None
         }
-        
+
         # Parse EDCD commodity.csv and collect category spellings (case-insensitive)
         with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
-            
+
             cat_col = None
             for h in (reader.fieldnames or []):
                 if h and str(h).strip().lower() == "category":
@@ -349,10 +349,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     break
             if cat_col is None:
                 raise CleanExit(f"EDCD commodity.csv missing 'category' column: {commodity_csv}")
-            
+
             # lk -> set(spellings)
             seen: dict[str, set[str]] = {}
-            
+
             for row in reader:
                 raw = row.get(cat_col)
                 if not raw:
@@ -360,37 +360,36 @@ class ImportPlugin(plugins.ImportPluginBase):
                 name = str(raw).strip()
                 if not name:
                     continue
-                
+
                 lk = name.lower()
                 if lk in existing_lc:
                     continue
-                
+
                 seen.setdefault(lk, set()).add(name)
-        
+
         if not seen:
             return inserted
-        
+
         # Deterministic selection of display name per lk
         def _choose_name(spellings: set[str]) -> str:
             # stable across rebuilds even if EDCD row order changes
             return min(spellings, key=lambda s: (s.casefold(), s))
-        
+
         new_names: list[str] = [_choose_name(seen[lk]) for lk in sorted(seen.keys())]
-        
+
         max_id = max(existing_by_id.keys(), default=0)
         to_add = []
         next_id = max_id + 1
         for nm in new_names:
             to_add.append({"category_id": next_id, "name": nm})
             next_id += 1
-        
+
         session.execute(insert(t_cat), to_add)
         inserted += len(to_add)
         return inserted
-    
+
     # ---------- EDCD: FDev tables (direct load) ----------
     #
-    
     def _edcd_import_table_direct(self, session: Session, table: Table, csv_path: Path) -> int:
         """
         Upsert CSV rows into a table whose columns match CSV headers.
@@ -550,7 +549,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         deletes = int(res.rowcount or 0)
         
         return inserts, updates, deletes
-    
+
     def _sync_vendor_block_fast(
             self,
             tables: dict[str, Table],
@@ -684,6 +683,201 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         return wrote, delc
     
+    def _sync_market_block_fast(
+        self,
+        tables: dict[str, Table],
+        categories: dict[str, int],
+        *,
+        station_id: int,
+        commodities: list[dict[str, Any]],
+        ts_sp: datetime,
+        upsert_items: bool = True,
+    ) -> tuple[int, int]:
+        """
+        Fast, set-based market sync for one station.
+
+        Returns: (number_of_inserts_or_updates_on_StationItem, deletions_count).
+
+        MP / deadlock note:
+          - We sort Item + StationItem upsert batches by item_id to enforce a stable lock order,
+            matching the listener's behaviour.
+
+        Concurrency note:
+          - When running concurrently with other writers, the caller may set upsert_items=False
+            and perform Item upserts outside the per-station advisory lock, so we don't hold the
+            station lock while waiting on global Item row locks.
+        """
+        t_item, t_si = tables["Item"], tables["StationItem"]
+
+        item_rows: list[dict[str, Any]] = []
+        link_rows: list[dict[str, Any]] = []
+        keep_ids: set[int] = set()
+
+        for co in commodities:
+            if not isinstance(co, dict):
+                continue
+            fdev_id = co.get("commodityId")
+            name = co.get("name")
+            cat_name = co.get("category")
+            if fdev_id is None or name is None or cat_name is None:
+                continue
+
+            cat_id = categories.get(str(cat_name).lower())
+            if cat_id is None:
+                raise CleanExit(f'Unknown commodity category "{cat_name}"')
+
+            iid = int(fdev_id)
+            keep_ids.add(iid)
+
+            item_rows.append({
+                "item_id": iid,
+                "name": name,
+                "category_id": int(cat_id),
+                "fdev_id": iid,
+                "ui_order": 0,
+            })
+
+            demand = co.get("demand")
+            supply = co.get("supply")
+            buy = co.get("buyPrice")
+            sell = co.get("sellPrice")
+
+            link_rows.append({
+                "station_id": int(station_id),
+                "item_id": iid,
+                "demand_price": sell,
+                "demand_units": demand,
+                "demand_level": -1,
+                "supply_price": buy,
+                "supply_units": supply,
+                "supply_level": -1,
+                "from_live": 0,
+                "modified": ts_sp,
+            })
+
+        # Stable ordering (reduces deadlock chance under concurrent writers)
+        if item_rows:
+            item_rows.sort(key=lambda r: int(r["item_id"]))
+        if link_rows:
+            link_rows.sort(key=lambda r: int(r["item_id"]))
+
+        # 1) Upsert Items (optional; can be done outside station lock by caller)
+        if upsert_items and item_rows:
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_simple(
+                    self.session, t_item, rows=item_rows,
+                    key_cols=("item_id",),
+                    update_cols=("name", "category_id", "fdev_id", "ui_order"),
+                )
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_simple(
+                    self.session, t_item, rows=item_rows,
+                    key_cols=("item_id",),
+                    update_cols=("name", "category_id", "fdev_id", "ui_order"),
+                )
+            else:
+                for r in item_rows:
+                    exists = self.session.execute(
+                        select(t_item.c.item_id).where(t_item.c.item_id == r["item_id"])
+                    ).first()
+                    if exists is None:
+                        self.session.execute(insert(t_item).values(**r))
+                    else:
+                        self.session.execute(
+                            update(t_item).where(t_item.c.item_id == r["item_id"]).values(
+                                name=r["name"],
+                                category_id=r["category_id"],
+                                fdev_id=r["fdev_id"],
+                                ui_order=r["ui_order"],
+                            )
+                        )
+        # 2) Compute effective inserts/updates for StationItem (pre-check modified), then upsert
+        wrote = 0
+        if link_rows:
+            existing = {
+                (int(r[0]), int(r[1])): (r[2] or None)
+                for r in self.session.execute(
+                    select(t_si.c.station_id, t_si.c.item_id, t_si.c.modified).where(
+                        and_(t_si.c.station_id == int(station_id), t_si.c.item_id.in_(keep_ids))
+                    )
+                ).all()
+            }
+            to_insert = {
+                (int(station_id), rid) for rid in keep_ids
+                if (int(station_id), rid) not in existing
+            }
+            to_update = {
+                (int(station_id), rid)
+                for rid, mod in ((rid, existing.get((int(station_id), rid))) for rid in keep_ids)
+                if (mod is None) or (ts_sp is not None and ts_sp > mod)
+            }
+            wrote = len(to_insert) + len(to_update)
+
+            if db_utils.is_sqlite(self.session):
+                db_utils.sqlite_upsert_modified(
+                    self.session, t_si, rows=link_rows,
+                    key_cols=("station_id", "item_id"),
+                    modified_col="modified",
+                    update_cols=(
+                        "demand_price", "demand_units", "demand_level",
+                        "supply_price", "supply_units", "supply_level",
+                        "from_live",
+                    ),
+                )
+            elif db_utils.is_mysql(self.session):
+                db_utils.mysql_upsert_modified(
+                    self.session, t_si, rows=link_rows,
+                    key_cols=("station_id", "item_id"),
+                    modified_col="modified",
+                    update_cols=(
+                        "demand_price", "demand_units", "demand_level",
+                        "supply_price", "supply_units", "supply_level",
+                        "from_live",
+                    ),
+                )
+            else:
+                for r in link_rows:
+                    row = self.session.execute(
+                        select(t_si.c.modified).where(and_(
+                            t_si.c.station_id == r["station_id"],
+                            t_si.c.item_id == r["item_id"],
+                        ))
+                    ).first()
+                    if row is None:
+                        self.session.execute(insert(t_si).values(**r))
+                    else:
+                        dbm = row[0]
+                        if dbm is None or r["modified"] > dbm:
+                            self.session.execute(
+                                update(t_si)
+                                .where(and_(
+                                    t_si.c.station_id == r["station_id"],
+                                    t_si.c.item_id == r["item_id"],
+                                ))
+                                .values(**r)
+                            )
+
+        # 3) Delete baseline rows missing from JSON, not newer than ts_sp
+        delc = 0
+        base_where = and_(
+            t_si.c.station_id == int(station_id),
+            t_si.c.from_live == 0,
+            or_(t_si.c.modified.is_(None), t_si.c.modified <= ts_sp),
+        )
+        if keep_ids:
+            delete_stmt = t_si.delete().where(and_(base_where, ~t_si.c.item_id.in_(keep_ids)))
+        else:
+            delete_stmt = t_si.delete().where(base_where)
+
+        res = self.session.execute(delete_stmt)
+        try:
+            delc = int(res.rowcount or 0)
+        except Exception:
+            delc = 0
+
+        return wrote, delc
+
+    
     def _cleanup_absent_stations(self, tables: dict[str, Table], present_station_ids: set[int], json_ts: datetime) -> tuple[int, int, int]:
         """
         After streaming, delete baseline rows for stations absent from the JSON
@@ -722,170 +916,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         ).rowcount or 0
         
         return (int(del_m), int(del_u), int(del_s))
-    
-    def _sync_market_block_fast(
-        self,
-        tables: dict[str, Table],
-        categories: dict[str, int],
-        *,
-        station_id: int,
-        commodities: list[dict[str, Any]],
-        ts_sp: datetime,
-    ) -> tuple[int, int]:
-        """
-        Fast, set-based market sync for one station.
-        
-        Returns: (number_of_inserts_or_updates_on_StationItem, deletions_count).
-        """
-        t_item, t_si = tables["Item"], tables["StationItem"]
-        
-        item_rows: list[dict[str, Any]] = []
-        link_rows: list[dict[str, Any]] = []
-        keep_ids: set[int] = set()
-        
-        for co in commodities:
-            if not isinstance(co, dict):
-                continue
-            fdev_id = co.get("commodityId")
-            name = co.get("name")
-            cat_name = co.get("category")
-            if fdev_id is None or name is None or cat_name is None:
-                continue
-            
-            cat_id = categories.get(str(cat_name).lower())
-            if cat_id is None:
-                raise CleanExit(f'Unknown commodity category "{cat_name}"')
-            
-            keep_ids.add(int(fdev_id))
-            item_rows.append({
-                "item_id": fdev_id,
-                "name": name,
-                "category_id": cat_id,
-                "fdev_id": fdev_id,
-                "ui_order": 0,
-            })
-            
-            demand = co.get("demand")
-            supply = co.get("supply")
-            buy = co.get("buyPrice")
-            sell = co.get("sellPrice")
-            
-            link_rows.append({
-                "station_id": station_id,
-                "item_id": fdev_id,
-                "demand_price": sell,
-                "demand_units": demand,
-                "demand_level": -1,
-                "supply_price": buy,
-                "supply_units": supply,
-                "supply_level": -1,
-                "from_live": 0,
-                "modified": ts_sp,
-            })
-        
-        # 1) Upsert Items (simple)
-        if item_rows:
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_simple(
-                    self.session, t_item, rows=item_rows,
-                    key_cols=("item_id",),
-                    update_cols=("name", "category_id", "fdev_id", "ui_order"),
-                )
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_simple(
-                    self.session, t_item, rows=item_rows,
-                    key_cols=("item_id",),
-                    update_cols=("name", "category_id", "fdev_id", "ui_order"),
-                )
-            else:
-                for r in item_rows:
-                    exists = self.session.execute(
-                        select(t_item.c.item_id).where(t_item.c.item_id == r["item_id"])
-                    ).first()
-                    if exists is None:
-                        self.session.execute(insert(t_item).values(**r))
-                    else:
-                        self.session.execute(
-                            update(t_item).where(t_item.c.item_id == r["item_id"]).values(
-                                name=r["name"], category_id=r["category_id"], fdev_id=r["fdev_id"], ui_order=r["ui_order"]
-                            )
-                        )
-        
-        # 2) Compute effective inserts/updates for StationItem (pre-check modified), then upsert
-        wrote = 0
-        if link_rows:
-            existing = {
-                (int(r[0]), int(r[1])): (r[2] or None)
-                for r in self.session.execute(
-                    select(t_si.c.station_id, t_si.c.item_id, t_si.c.modified).where(
-                        and_(t_si.c.station_id == station_id, t_si.c.item_id.in_(keep_ids))
-                    )
-                ).all()
-            }
-            to_insert = {
-                (station_id, rid) for rid in keep_ids
-                if (station_id, rid) not in existing
-            }
-            to_update = {
-                (station_id, rid) for rid, mod in ((rid, existing.get((station_id, rid))) for rid in keep_ids)
-                if (mod is None) or (ts_sp is not None and ts_sp > mod)
-            }
-            wrote = len(to_insert) + len(to_update)
-            
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_modified(
-                    self.session, t_si, rows=link_rows,
-                    key_cols=("station_id", "item_id"),
-                    modified_col="modified",
-                    update_cols=("demand_price", "demand_units", "demand_level",
-                                 "supply_price", "supply_units", "supply_level", "from_live"),
-                )
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_modified(
-                    self.session, t_si, rows=link_rows,
-                    key_cols=("station_id", "item_id"),
-                    modified_col="modified",
-                    update_cols=("demand_price", "demand_units", "demand_level",
-                                 "supply_price", "supply_units", "supply_level", "from_live"),
-                )
-            else:
-                for r in link_rows:
-                    row = self.session.execute(
-                        select(t_si.c.modified).where(and_(
-                            t_si.c.station_id == r["station_id"],
-                            t_si.c.item_id == r["item_id"],
-                        ))
-                    ).first()
-                    if row is None:
-                        self.session.execute(insert(t_si).values(**r))
-                    else:
-                        dbm = row[0]
-                        if dbm is None or r["modified"] > dbm:
-                            self.session.execute(
-                                update(t_si)
-                                .where(and_(t_si.c.station_id == r["station_id"], t_si.c.item_id == r["item_id"]))
-                                .values(**r)
-                            )
-        
-        # 3) Delete baseline rows missing from JSON, not newer than ts_sp
-        delc = 0
-        base_where = and_(
-            t_si.c.station_id == station_id,
-            t_si.c.from_live == 0,
-            or_(t_si.c.modified.is_(None), t_si.c.modified <= ts_sp),
-        )
-        if keep_ids:
-            delete_stmt = t_si.delete().where(and_(base_where, ~t_si.c.item_id.in_(keep_ids)))
-        else:
-            delete_stmt = t_si.delete().where(base_where)
-        
-        res = self.session.execute(delete_stmt)
-        try:
-            delc = int(res.rowcount or 0)
-        except Exception:
-            delc = 0
-        
-        return wrote, delc
     
     # ------------------------------
     # Lifecycle hooks
@@ -1265,15 +1295,21 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     # Import (streaming JSON → upserts)
     # ------------------------------
+    
     def _import_stream(self, source_path: Path, categories: dict[str, int], tables: dict[str, Table]) -> dict[str, int]:
         """
         Streaming importer with service-level maxage gating (FK-safe), using per-row rules.
         
-        FIXES:
-        - Batch commits now honor utils.get_import_batch_size() across *all* parent/child ops.
-        - System/Station increments are counted in stats and batch_ops.
-        - Commit checks occur before each station is processed (outside advisory lock scope),
-          reducing long transactions and making Ctrl-C loss less likely.
+        Concurrency/MP contract:
+        - All station-scoped DML (Station + vendors + market/StationItem) is executed under the
+          per-station advisory lock.
+        - A COMMIT occurs before the advisory lock is released, so no other process can acquire
+          the same station lock while row locks remain uncommitted.
+        - Item upserts are performed OUTSIDE the station advisory lock and committed before the
+          station lock is acquired. This prevents holding a station lock while waiting on global
+          Item row locks under concurrent writers.
+        - On SQLite/unsupported dialects the advisory lock is a NO-OP; we still commit per-station
+          to keep transaction scope bounded and behaviour consistent.
         """
         batch_ops = 0
         stats = {
@@ -1349,20 +1385,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 imported_station_modifieds: list[datetime] = []
                 
                 for st in stations:
-                    # Periodic commit BEFORE processing the next station (outside any advisory locks)
-                    if (self.batch_size is not None) and (batch_ops >= self.batch_size):
-                        try:
-                            self.session.commit()
-                            batch_ops = 0
-                        except Exception as e:
-                            self._warn(f"Batch commit failed; rolling back. Cause: {e!r}")
-                            self.session.rollback()
-                    
                     name = st.get("name")
                     sid = st.get("id")
                     if not isinstance(name, str) or sid is None:
                         continue
                     station_id = int(sid)
+                    
                     seen_station_ids.add(station_id)
                     stats["stations"] += 1
                     # Count at least one op per station so batching still progresses even if no vendor writes occur
@@ -1381,6 +1409,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                     mkt_fresh  = recent(mkt_ts)
                     outf_fresh = recent(outf_ts)
                     ship_fresh = recent(ship_ts)
+                    
+                    # Pre-extract market commodities once (used for optional Item upsert outside station lock + StationItem work inside)
+                    commodities = (st.get("market") or {}).get("commodities") or []
+                    if not isinstance(commodities, list):
+                        commodities = []
                     
                     # Station upsert (idempotent)
                     t_station = tables["Station"]
@@ -1409,116 +1442,228 @@ class ImportPlugin(plugins.ImportPluginBase):
                     except Exception:
                         ls_from_star_val = 0
                     
-                    self._upsert_station(
-                        t_station, station_id=int(station_id), system_id=int(sys_id64), name=name,
-                        ls_from_star=ls_from_star_val, max_pad=max_pad,
-                        type_id=int(type_id), planetary=planetary, sflags=sflags, modified=st_modified
-                    )
+                    # Ensure a clean txn boundary before any station work.
+                    try:
+                        if self.session.in_transaction():
+                            self.session.commit()
+                    except Exception:
+                        try:
+                            self.session.rollback()
+                        except Exception:
+                            pass
                     
-                    # ----------------------------
-                    # Ship vendor
-                    # ----------------------------
-                    if has_ship and ship_fresh:
-                        ships = (st.get("shipyard") or {}).get("ships") or []
-                        if isinstance(ships, list) and ships:
-                            if force_baseline:
-                                wrote, _, delc = self._apply_vendor_block_per_rules(
-                                    tables["ShipVendor"], station_id, (s.get("shipId") for s in ships if isinstance(s, dict)),
-                                    ship_ts, id_col="ship_id",
+                    # Pre-upsert Items for this station's market OUTSIDE the station lock, then commit.
+                    # This prevents holding the station advisory lock while waiting on global Item row locks.
+                    if has_market and mkt_fresh and commodities:
+                        t_item = tables["Item"]
+                        item_rows: list[dict[str, Any]] = []
+                        for co in commodities:
+                            if not isinstance(co, dict):
+                                continue
+                            fdev_id = co.get("commodityId")
+                            co_name = co.get("name")
+                            cat_name = co.get("category")
+                            if fdev_id is None or co_name is None or cat_name is None:
+                                continue
+                            
+                            cat_id = categories.get(str(cat_name).lower())
+                            if cat_id is None:
+                                raise CleanExit(f'Unknown commodity category "{cat_name}"')
+                            
+                            iid = int(fdev_id)
+                            item_rows.append({
+                                "item_id": iid,
+                                "name": co_name,
+                                "category_id": int(cat_id),
+                                "fdev_id": iid,
+                                "ui_order": 0,
+                            })
+                        
+                        if item_rows:
+                            item_rows.sort(key=lambda r: int(r["item_id"]))
+                            if db_utils.is_sqlite(self.session):
+                                db_utils.sqlite_upsert_simple(
+                                    self.session, t_item, rows=item_rows,
+                                    key_cols=("item_id",),
+                                    update_cols=("name", "category_id", "fdev_id", "ui_order"),
                                 )
-                                if wrote or delc:
-                                    stats["ship_writes"] += 1
-                                    batch_ops += (wrote + delc)
-                                stats["ship_stations"] += 1
+                            elif db_utils.is_mysql(self.session):
+                                db_utils.mysql_upsert_simple(
+                                    self.session, t_item, rows=item_rows,
+                                    key_cols=("item_id",),
+                                    update_cols=("name", "category_id", "fdev_id", "ui_order"),
+                                )
                             else:
-                                wrote, delc = self._sync_vendor_block_fast(
-                                    tables, station_id=station_id, entries=ships, ts_sp=ship_ts, kind="ship"
-                                )
-                                if wrote or delc:
-                                    stats["ship_writes"] += 1
-                                    batch_ops += (wrote + delc)
-                                stats["ship_stations"] += 1
-                        else:
-                            stats["ship_stations"] += 1
-                    
-                    # ----------------------------
-                    # Outfitting vendor
-                    # ----------------------------
-                    if has_outfit and outf_fresh:
-                        modules = (st.get("outfitting") or {}).get("modules") or []
-                        if isinstance(modules, list) and modules:
-                            if force_baseline:
-                                wrote = self._upsert_outfitting(tables, station_id, modules, outf_ts)
-                                _, _, delc = self._apply_vendor_block_per_rules(
-                                    tables["UpgradeVendor"], station_id,
-                                    (m.get("moduleId") for m in modules if isinstance(m, dict)),
-                                    outf_ts, id_col="upgrade_id",
-                                )
-                                if wrote or delc:
-                                    stats["outfit_writes"] += 1
-                                    batch_ops += (wrote + delc)
-                                stats["outfit_stations"] += 1
-                            else:
-                                wrote, delc = self._sync_vendor_block_fast(
-                                    tables, station_id=station_id, entries=modules, ts_sp=outf_ts, kind="module"
-                                )
-                                if wrote or delc:
-                                    stats["outfit_writes"] += 1
-                                    batch_ops += (wrote + delc)
-                                stats["outfit_stations"] += 1
-                        else:
-                            stats["outfit_stations"] += 1
-                    
-                    # ----------------------------
-                    # Market (commit check already happened before this station)
-                    # ----------------------------
-                    if has_market and mkt_fresh:
-                        commodities = (st.get("market") or {}).get("commodities") or []
-                        if isinstance(commodities, list) and commodities:
-                            # The advisory lock context pins lock + DML to the same connection/txn.
-                            with station_advisory_lock(self.session, station_id, timeout_seconds=0.2, max_retries=4) as got:
-                                if not got:
-                                    # Could not acquire; try this station on a later pass
-                                    continue
-                                
-                                self._trace(phase="market", decision="process",
-                                            station_id=station_id, commodities=len(commodities))
-                                
-                                if force_baseline:
-                                    wrote_i, wrote_si = self._upsert_market(
-                                        tables, categories, station_id, commodities, mkt_ts
-                                    )
-                                    # Remove any extras unconditionally (baseline reset)
-                                    t_si = tables["StationItem"]
-                                    keep_ids = {
-                                        int(co.get("commodityId"))
-                                        for co in commodities
-                                        if isinstance(co, dict) and co.get("commodityId") is not None
-                                    }
-                                    if keep_ids:
+                                for r in item_rows:
+                                    exists = self.session.execute(
+                                        select(t_item.c.item_id).where(t_item.c.item_id == int(r["item_id"]))
+                                    ).first()
+                                    if exists is None:
+                                        self.session.execute(insert(t_item).values(**r))
+                                    else:
                                         self.session.execute(
-                                            t_si.delete().where(
-                                                and_(t_si.c.station_id == station_id, ~t_si.c.item_id.in_(keep_ids))
+                                            update(t_item).where(t_item.c.item_id == r["item_id"]).values(
+                                                name=r["name"],
+                                                category_id=r["category_id"],
+                                                fdev_id=r["fdev_id"],
+                                                ui_order=r["ui_order"],
                                             )
                                         )
-                                    stats["commodities"] += wrote_si
-                                    if wrote_si or wrote_i:
-                                        stats["market_writes"] += 1
-                                        batch_ops += (wrote_i + wrote_si)
-                                    stats["market_stations"] += 1
-                                else:
-                                    wrote_links, delc = self._sync_market_block_fast(
-                                        tables, categories,
-                                        station_id=station_id,
-                                        commodities=commodities,
-                                        ts_sp=mkt_ts,
+                        
+                        # Commit Item work so Item row locks are released before station lock acquisition.
+                        try:
+                            if self.session.in_transaction():
+                                self.session.commit()
+                        except Exception as e:
+                            self._warn(f"Item upsert commit failed for station {station_id}; rolling back. Cause: {e!r}")
+                            try:
+                                self.session.rollback()
+                            except Exception:
+                                pass
+                            raise
+                    
+                    # Acquire the per-station advisory lock and execute ALL station-scoped DML within it.
+                    # For Spansh we wait rather than skipping stations; lock contention should be brief.
+                    wait_loops = 0
+                    while True:
+                        got_lock = False
+                        with station_advisory_lock(self.tdb.engine, station_id, timeout_seconds=5.0, max_retries=1) as lock_s:
+                            got_lock = lock_s is not None
+                            if got_lock:
+                                _prev_session = self.session
+                                self.session = lock_s
+                                
+                                try:
+                                    # --- Station upsert under station lock ---
+                                    self._upsert_station(
+                                        t_station, station_id=int(station_id), system_id=int(sys_id64), name=name,
+                                        ls_from_star=ls_from_star_val, max_pad=max_pad,
+                                        type_id=int(type_id), planetary=planetary, sflags=sflags, modified=st_modified
                                     )
-                                    if wrote_links or delc:
-                                        stats["market_writes"] += 1
-                                        batch_ops += (wrote_links + delc)
-                                    stats["market_stations"] += 1
-                        else:
-                            stats["market_stations"] += 1
+                                    
+                                    # ----------------------------
+                                    # Ship vendor (under station lock)
+                                    # ----------------------------
+                                    if has_ship and ship_fresh:
+                                        ships = (st.get("shipyard") or {}).get("ships") or []
+                                        if isinstance(ships, list) and ships:
+                                            if force_baseline:
+                                                wrote, _, delc = self._apply_vendor_block_per_rules(
+                                                    tables["ShipVendor"], station_id, (s.get("shipId") for s in ships if isinstance(s, dict)),
+                                                    ship_ts, id_col="ship_id",
+                                                )
+                                                if wrote or delc:
+                                                    stats["ship_writes"] += 1
+                                                    batch_ops += (wrote + delc)
+                                                stats["ship_stations"] += 1
+                                            else:
+                                                wrote, delc = self._sync_vendor_block_fast(
+                                                    tables, station_id=station_id, entries=ships, ts_sp=ship_ts, kind="ship"
+                                                )
+                                                if wrote or delc:
+                                                    stats["ship_writes"] += 1
+                                                    batch_ops += (wrote + delc)
+                                                stats["ship_stations"] += 1
+                                        else:
+                                            stats["ship_stations"] += 1
+                                    
+                                    # ----------------------------
+                                    # Outfitting vendor (under station lock)
+                                    # ----------------------------
+                                    if has_outfit and outf_fresh:
+                                        modules = (st.get("outfitting") or {}).get("modules") or []
+                                        if isinstance(modules, list) and modules:
+                                            if force_baseline:
+                                                wrote = self._upsert_outfitting(tables, station_id, modules, outf_ts)
+                                                _, _, delc = self._apply_vendor_block_per_rules(
+                                                    tables["UpgradeVendor"], station_id,
+                                                    (m.get("moduleId") for m in modules if isinstance(m, dict)),
+                                                    outf_ts, id_col="upgrade_id",
+                                                )
+                                                if wrote or delc:
+                                                    stats["outfit_writes"] += 1
+                                                    batch_ops += (wrote + delc)
+                                                stats["outfit_stations"] += 1
+                                            else:
+                                                wrote, delc = self._sync_vendor_block_fast(
+                                                    tables, station_id=station_id, entries=modules, ts_sp=outf_ts, kind="module"
+                                                )
+                                                if wrote or delc:
+                                                    stats["outfit_writes"] += 1
+                                                    batch_ops += (wrote + delc)
+                                                stats["outfit_stations"] += 1
+                                        else:
+                                            stats["outfit_stations"] += 1
+                                    
+                                    # ----------------------------
+                                    # Market (under station lock; Item upserts already committed outside lock)
+                                    # ----------------------------
+                                    if has_market and mkt_fresh:
+                                        if commodities:
+                                            self._trace(phase="market", decision="process",
+                                                        station_id=station_id, commodities=len(commodities))
+                                            
+                                            if force_baseline:
+                                                wrote_i, wrote_si = self._upsert_market(
+                                                    tables, categories, station_id, commodities, mkt_ts, upsert_items=False
+                                                )
+                                                # Remove any extras unconditionally (baseline reset)
+                                                t_si = tables["StationItem"]
+                                                keep_ids = {
+                                                    int(co.get("commodityId"))
+                                                    for co in commodities
+                                                    if isinstance(co, dict) and co.get("commodityId") is not None
+                                                }
+                                                if keep_ids:
+                                                    self.session.execute(
+                                                        t_si.delete().where(
+                                                            and_(t_si.c.station_id == station_id, ~t_si.c.item_id.in_(keep_ids))
+                                                        )
+                                                    )
+                                                stats["commodities"] += wrote_si
+                                                if wrote_si or wrote_i:
+                                                    stats["market_writes"] += 1
+                                                    batch_ops += (wrote_i + wrote_si)
+                                                stats["market_stations"] += 1
+                                            else:
+                                                wrote_links, delc = self._sync_market_block_fast(
+                                                    tables, categories,
+                                                    station_id=station_id,
+                                                    commodities=commodities,
+                                                    ts_sp=mkt_ts,
+                                                    upsert_items=False,
+                                                )
+                                                if wrote_links or delc:
+                                                    stats["market_writes"] += 1
+                                                    batch_ops += (wrote_links + delc)
+                                                stats["market_stations"] += 1
+                                        else:
+                                            stats["market_stations"] += 1
+                                    
+                                    # Explicit per-station commit for backend-agnostic bounded transaction scope.
+                                    try:
+                                        self.session.commit()
+                                    except Exception as e:
+                                        self._warn(f"Station {station_id} commit failed; rolling back. Cause: {e!r}")
+                                        try:
+                                            self.session.rollback()
+                                        except Exception:
+                                            pass
+                                        raise
+                                
+                                finally:
+                                    self.session = _prev_session
+                        
+                        if got_lock:
+                            break
+                        
+                        wait_loops += 1
+                        if self._debug_level >= 2 and (wait_loops == 1 or wait_loops % 10 == 0):
+                            self._warn(f"Station {station_id} busy; waiting for advisory lock...")
+                        # Avoid tight loop on MySQL/MariaDB when the station is busy.
+                        time.sleep(0.25)
+                    
+                    # end while True (station)
         
         # Baseline absent-station cleanup (global, after full stream)
         # We only remove baseline content (from_live=0 for markets; vendor links)
@@ -1538,8 +1683,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._warn(f"Absent-station cleanup skipped due to error: {e!r}")
         
         return stats
+    
 
-
+    
     # ------------------------------
     # Upsert helpers
     # ------------------------------
@@ -1878,29 +2024,30 @@ class ImportPlugin(plugins.ImportPluginBase):
         station_id: int,
         commodities: list[dict[str, Any]],
         ts: datetime,
+        upsert_items: bool = True,
     ) -> tuple[int, int]:
         t_item, t_si = tables["Item"], tables["StationItem"]
         item_rows, link_rows = [], []
         wrote_items = 0
-        
+
         for co in commodities:
             fdev_id = co.get("commodityId")
             name = co.get("name")
             cat_name = co.get("category")
             if fdev_id is None or name is None or cat_name is None:
                 continue
-            
+
             cat_id = categories.get(str(cat_name).lower())
             if cat_id is None:
                 raise CleanExit(f'Unknown commodity category "{cat_name}"')
-            
+
             item_rows.append({"item_id": fdev_id, "name": name, "category_id": cat_id, "fdev_id": fdev_id, "ui_order": 0})
-            
+
             demand = co.get("demand")
             supply = co.get("supply")
             buy = co.get("buyPrice")
             sell = co.get("sellPrice")
-            
+
             link_rows.append({
                 "station_id":   station_id,
                 "item_id":      fdev_id,
@@ -1913,8 +2060,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "from_live":    0,
                 "modified":     ts,
             })
-        
-        if item_rows:
+
+        if upsert_items and item_rows:
             if db_utils.is_sqlite(self.session):
                 db_utils.sqlite_upsert_simple(self.session, t_item, rows=item_rows, key_cols=("item_id",),
                                               update_cols=("name", "category_id", "fdev_id", "ui_order"))
@@ -1937,7 +2084,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     name=r["name"], category_id=r["category_id"]
                                 )
                             )
-        
+
         wrote_links = 0
         if link_rows:
             if db_utils.is_sqlite(self.session):
@@ -1969,7 +2116,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 .values(**r)
                             )
                             wrote_links += 1
-        
+
         return (wrote_items, wrote_links)
     
     # ------------------------------
@@ -1991,7 +2138,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 expected += 1
     
     # ------------------------------
-    # Rares import (via cache.processImportFile)
+    # Rares import, either from edcd, or via cache.processImportFile
     # ------------------------------
     def _import_rareitems_edcd(self, rares_csv: Path, commodity_csv: Optional[Path] = None) -> None:
         """
@@ -2226,38 +2373,103 @@ class ImportPlugin(plugins.ImportPluginBase):
                     sess.close()
                 except Exception:
                     pass
-    
+
+    def _import_rareitems(self) -> None:
+        """
+        Fallback rares import: use the packaged template CSV:
+            tradedangerous/templates/RareItem.csv
+
+        Uses cache.processImportFile() because RareItem CSV has special FK header
+        handling and correction rules (already well tested).
+
+        Called when EDCD rare_commodity.csv is unavailable/disabled.
+        """
+        sess: Session | None = None
+        try:
+            sess = self._open_session()
+
+            # Template is authoritative baseline: clear table first.
+            try:
+                sess.execute(text('DELETE FROM "RareItem"'))
+            except Exception:
+                sess.execute(text("DELETE FROM RareItem"))
+
+            # Prefer packaged resource (works for installed package).
+            try:
+                res = implib_files("tradedangerous").joinpath("templates", "RareItem.csv")
+                with implib_as_file(res) as p:
+                    csv_path = Path(p)
+                    if not csv_path.exists():
+                        raise FileNotFoundError(str(csv_path))
+                    processImportFile(
+                        tdenv=self.tdenv,
+                        session=sess,
+                        importPath=csv_path,
+                        tableName="RareItem",
+                    )
+            except FileNotFoundError:
+                # Fallback for editable/source-tree layouts where resources may not be packaged.
+                csv_path = Path(__file__).resolve().parents[1] / "templates" / "RareItem.csv"
+                if not csv_path.exists():
+                    raise CleanExit(
+                        f"RareItem.csv not found via importlib.resources or source tree: {csv_path}"
+                    )
+                processImportFile(
+                    tdenv=self.tdenv,
+                    session=sess,
+                    importPath=csv_path,
+                    tableName="RareItem",
+                )
+
+        except CleanExit:
+            raise
+        except Exception as e:
+            if sess is not None:
+                try:
+                    sess.rollback()
+                except Exception:
+                    pass
+            raise CleanExit(f"RareItem fallback import failed: {e!r}") from e
+        finally:
+            if sess is not None:
+                try:
+                    sess.close()
+                except Exception:
+                    pass
+
+
+
     # ------------------------------
     # Export / cache refresh
     #
     def _export_cache(self) -> None:
         """
         Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating.
-        
+
         IMPORTANT:
           - CSV exports are written to tdenv.dataDir (private) so they remain authoritative.
           - A separate mirror step publishes selected/all CSVs to TD_CSV (public).
         """
-        
+
         def _opt_true(val: Optional[str]) -> bool:
             if val is None:
                 return False
             if isinstance(val, str):
                 return val.strip().lower() in ("1", "true", "yes", "on", "y")
             return bool(val)
-        
+
         skip_stationitems = (
             _opt_true(self.getOption("skip_stationitems"))
             or _opt_true(os.environ.get("TD_SKIP_STATIONITEM_EXPORT"))
         )
-        
+
         # Export destination: always private dataDir
         export_dir = Path(self.tdenv.dataDir).resolve()
         try:
             export_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
             raise CleanExit(f"Export failed: unable to create export directory {export_dir}: {e!r}") from None
-        
+
         # Heaviest tables first to maximize overlap
         tables = [
             "StationItem",
@@ -2275,14 +2487,14 @@ class ImportPlugin(plugins.ImportPluginBase):
         ]
         if skip_stationitems:
             tables = [t for t in tables if t != "StationItem"]
-        
+
         # Worker count (env override allowed); +1 slot reserved for prices task
         try:
             workers = int(os.environ.get("TD_EXPORT_WORKERS", "4"))
         except ValueError:
             workers = 4
         workers = max(1, workers) + 1  # extra slot for the prices job
-        
+
         def _export_one(table_name: str) -> str:
             sess = None
             try:
@@ -2295,18 +2507,18 @@ class ImportPlugin(plugins.ImportPluginBase):
                         sess.close()
                     except Exception:
                         pass
-        
+
         def _regen_prices() -> str:
             cache.regeneratePricesFile(self.tdb, self.tdenv)
             return "TradeDangerous.prices"
-        
+
         self._print(f"Exporting cache CSVs to: {export_dir}")
         for t in tables:
             self._print(f"  - {t}.csv")
         if skip_stationitems:
             self._warn("Skipping StationItem.csv export (requested).")
         self._print("Regenerating TradeDangerous.prices …")
-        
+
         # Parallel export + prices regen, with conservative fallback
         try:
             with ThreadPoolExecutor(max_workers=workers) as ex:
@@ -2319,13 +2531,13 @@ class ImportPlugin(plugins.ImportPluginBase):
             for t in tables:
                 _export_one(t)
             _regen_prices()
-        
+
         self._print("Cache export completed.")
     
     def _mirror_csv_exports(self) -> None:
         """
         If TD_CSV is set, mirror all CSVs emitted into tdenv.dataDir to TD_CSV.
-        
+
         This is a publish step:
           - source: private exports in tdenv.dataDir (TD_DATA)
           - dest:   public directory TD_CSV
@@ -2335,17 +2547,17 @@ class ImportPlugin(plugins.ImportPluginBase):
         if not dst_env:
             return
         dst_dir = Path(dst_env).expanduser().resolve()
-        
+
         if src_dir == dst_dir:
             # Nothing to do; already exporting directly into the public path
             return
-        
+
         try:
             dst_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
             self._warn(f"TD_CSV mirror: unable to create destination {dst_dir}: {e!r}")
             return
-        
+
         copied = 0
         for src in src_dir.glob("*.csv"):
             try:
@@ -2353,9 +2565,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 copied += 1
             except Exception as e:
                 self._warn(f"TD_CSV mirror: failed to copy {src.name}: {e!r}")
-        
+
         self._print(f"TD_CSV mirror: copied {copied} csv file(s) → {dst_dir}")
-    
+
     
     def _export_and_mirror(self) -> None:
         """
@@ -2436,7 +2648,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         if self._is_tty:
             self._live_status("")
-    
+
     # ------------------------------
     # Mapping / derivations / misc
     #
