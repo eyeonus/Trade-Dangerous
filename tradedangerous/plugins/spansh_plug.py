@@ -993,6 +993,17 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._error(f"Failed to open/reflect DB session: {e!r}")
             return False
         
+        # Capture import-start timestamp (DB clock) for MP-safe from_live demotion
+        import_start_ts = None
+        try:
+            if db_utils.is_mysql(self.session):
+                import_start_ts = self.session.execute(text("SELECT CURRENT_TIMESTAMP(6)")).scalar()
+            else:
+                import_start_ts = self.session.execute(text("SELECT CURRENT_TIMESTAMP")).scalar()
+        except Exception as e:
+            self._warn(f"from_live: unable to capture import-start timestamp; demotion will be skipped: {e!r}")
+            import_start_ts = None
+        
         # -------- EDCD preloads (hardcoded URLs; can be disabled) --------
         edcd = self._acquire_edcd_files()
         
@@ -1067,6 +1078,21 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._safe_close_session()
             return False
         
+        # MP-safe from_live demotion: clear only rows older than import start
+        try:
+            if import_start_ts is not None:
+                t_si = tables.get("StationItem")
+                if t_si is not None:
+                    demoted = self.session.execute(
+                        update(t_si)
+                        .where(or_(t_si.c.modified.is_(None), t_si.c.modified < import_start_ts))
+                        .values(from_live=0)
+                    ).rowcount or 0
+                    if self._debug_level >= 1:
+                        self._print(f"from_live: demoted {int(demoted):,} row(s) (scoped)")
+        except Exception as e:
+            self._warn(f"from_live: scoped demotion skipped due to error: {e!r}")
+        
         # Final commit for import phase
         try:
             self.session.commit()
@@ -1103,7 +1129,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         elapsed = self._format_hms(time.time() - started)
         self._print(f"{elapsed}  Done")
         return False
-
 
     
     def finish(self) -> bool:
@@ -2436,12 +2461,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                     sess.close()
                 except Exception:
                     pass
-
-
-
     # ------------------------------
     # Export / cache refresh
     #
+    
     def _export_cache(self) -> None:
         """
         Export CSVs and regenerate TradeDangerous.prices — concurrently, with optional StationItem gating.
