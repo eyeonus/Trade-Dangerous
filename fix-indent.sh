@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -u
 
 usage() {
   cat <<'EOF'
@@ -23,23 +24,27 @@ Rules enforced:
 EOF
 }
 
+# If sourced, "exit" would kill the caller shell. Use safe_exit.
+safe_exit() {
+  local code="${1:-0}"
+  if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return "$code"
+  fi
+  exit "$code"
+}
+
 process_file() {
   local file="$1"
-  local tmp
+  local tmp dir
 
-  # Only operate on regular files
   [[ -f "$file" ]] || return 0
 
-  tmp="$(mktemp -- "${file}.fix_indent.XXXXXX")" || {
+  dir="$(dirname -- "$file")"
+  tmp="$(mktemp --tmpdir="$dir" ".fix_indent.XXXXXX")" || {
     echo "fix_indent: mktemp failed for: $file" >&2
     return 1
   }
 
-  # AWK filter:
-  # - Convert tabs to 4 spaces
-  # - Collapse blank runs to a single indented blank line (indent from next non-blank line)
-  # - Drop trailing blanks at EOF
-  # - Preserve CRLF if present
   awk '
     BEGIN { pending_blank = 0; use_crlf = 0 }
 
@@ -52,15 +57,16 @@ process_file() {
       s = $0
       if (sub(/\r$/, "", s)) use_crlf = 1
 
+      # Tabs are forbidden: replace with 4 spaces (everywhere)
       gsub(/\t/, "    ", s)
 
-      # whitespace-only line => treat as blank
+      # whitespace-only line => treat as blank (after tab expansion this is spaces-only)
       if (s ~ /^[ ]*$/) {
         pending_blank = 1
         next
       }
 
-      # if we have pending blanks, emit exactly one blank indented to this line
+      # If we have pending blanks, emit exactly one blank indented to this line
       if (pending_blank) {
         match(s, /^[ ]*/)
         emit(substr(s, RSTART, RLENGTH))
@@ -71,7 +77,7 @@ process_file() {
     }
 
     END {
-      # If file ends with blanks, emit nothing (no blank lines at/beyond EOF)
+      # Trailing blanks at EOF are dropped (no output here)
     }
   ' "$file" > "$tmp"
 
@@ -81,20 +87,22 @@ process_file() {
     return 1
   fi
 
-  # Avoid touching files that would be unchanged
   if cmp -s -- "$file" "$tmp"; then
     rm -f -- "$tmp"
     return 0
   fi
 
-  # Overwrite in place (preserves mode/owner; updates mtime)
-  if ! cat -- "$tmp" > "$file"; then
-    echo "fix_indent: write failed for: $file" >&2
+  # Preserve permissions where possible
+  chmod --reference="$file" "$tmp" 2>/dev/null || true
+  chown --reference="$file" "$tmp" 2>/dev/null || true
+
+  # Atomic replace
+  if ! mv -f -- "$tmp" "$file"; then
+    echo "fix_indent: replace failed for: $file" >&2
     rm -f -- "$tmp"
     return 1
   fi
 
-  rm -f -- "$tmp"
   return 0
 }
 
@@ -104,13 +112,13 @@ main() {
 
   if [[ $# -eq 0 ]]; then
     usage >&2
-    exit 2
+    safe_exit 2
   fi
 
   case "$1" in
     -h)
       usage
-      exit 0
+      safe_exit 0
       ;;
     -R)
       recursive=1
@@ -123,32 +131,30 @@ main() {
       fi
       if [[ $# -ne 0 ]]; then
         usage >&2
-        exit 2
+        safe_exit 2
       fi
       ;;
     -*)
       usage >&2
-      exit 2
+      safe_exit 2
       ;;
     *)
       if [[ $# -ne 1 ]]; then
         usage >&2
-        exit 2
+        safe_exit 2
       fi
       target="$1"
       ;;
   esac
 
   if [[ $recursive -eq 0 ]]; then
-    # Single file mode
-    process_file "$target" || exit $?
-    exit 0
+    process_file "$target" || safe_exit $?
+    safe_exit 0
   fi
 
-  # Recursive mode
   if [[ ! -e "$target" ]]; then
     echo "fix_indent: path not found: $target" >&2
-    exit 1
+    safe_exit 1
   fi
 
   local rc=0
@@ -156,7 +162,13 @@ main() {
     process_file "$f" || rc=1
   done < <(find "$target" -type f -name '*.py' -print0)
 
-  exit $rc
+  safe_exit "$rc"
 }
+
+# If someone sources it, don't run it implicitly; tell them what to do.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+  echo "fix_indent: don’t source this script. Run it: ./fix_indent [args]" >&2
+  return 2
+fi
 
 main "$@"
