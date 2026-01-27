@@ -8,6 +8,7 @@ DEFAULTS: Dict[str, Dict[str, Any]] = {
     "mariadb": {
         "host": "127.0.0.1",
         "port": 3306,
+        "socket": "",
         "user": "",
         "password": "",
         "name": "tradedangerous",
@@ -26,6 +27,7 @@ DEFAULTS: Dict[str, Dict[str, Any]] = {
         "connect_timeout": 10,
     },
 }
+
 # --- Runtime default path correction ----------------------------------------
 # Convert relative defaults ("./data", "./tmp") into absolute paths under the
 # current working directory. This prevents first-run installs from resolving

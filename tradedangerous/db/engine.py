@@ -177,6 +177,12 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
         max_overflow = _get_int(cfg, "engine", "max_overflow", 20) or 20
         pool_timeout = _get_int(cfg, "engine", "pool_timeout", 30) or 30
         pool_recycle = _get_int(cfg, "engine", "pool_recycle", 1800) or 1800
+
+        socket = str(_get(cfg, "mariadb", "socket", "") or "").strip()
+        connect_args: Dict[str, Any] = {"connect_timeout": connect_timeout}
+        if socket:
+            connect_args["unix_socket"] = socket
+
         engine = create_engine(
             url,
             echo=echo,
@@ -186,8 +192,9 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
             pool_timeout=pool_timeout,
             pool_recycle=pool_recycle,
             isolation_level=isolation or "READ COMMITTED",
-            connect_args={"connect_timeout": connect_timeout},
+            connect_args=connect_args,
         )
+
     elif backend == "sqlite":
         url = _make_sqlite_url(cfg)
         engine = create_engine(
