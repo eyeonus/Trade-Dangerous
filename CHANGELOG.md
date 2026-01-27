@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v12.11.1 (2026-01-27)
+
+### Bug Fixes
+
+- Report actual database connection mode in export command
+  ([`12ab024`](https://github.com/eyeonus/Trade-Dangerous/commit/12ab024515da74b310574a0fa769313224d970bc))
+
+Ensure database reporting reflects the real connection details used by the engine, including unix
+  socket connections, rather than blindly echoing host/port values.
+
+This keeps user-facing output accurate and avoids misleading connection diagnostics.
+
+chore: harden MariaDB config parsing and socket/TCP precedence
+
+Make the MariaDB configuration more tolerant of user error by prioritising unix socket configuration
+  when present and safely handling missing or empty host/port values.
+
+This prevents crashes from empty config stubs and ensures a single, well-defined connection mode is
+  selected.
+
+
 ## v12.11.0 (2026-01-27)
 
 ### Features
