@@ -2511,12 +2511,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         if skip_stationitems:
             tables = [t for t in tables if t != "StationItem"]
 
-        # Worker count (env override allowed); +1 slot reserved for prices task
+        # Worker count (env override allowed)
         try:
             workers = int(os.environ.get("TD_EXPORT_WORKERS", "4"))
         except ValueError:
             workers = 4
-        workers = max(1, workers) + 1  # extra slot for the prices job
+        workers = max(1, workers)
 
         def _export_one(table_name: str) -> str:
             sess = None
@@ -2531,29 +2531,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                     except Exception:
                         pass
 
-        def _regen_prices() -> str:
-            cache.regeneratePricesFile(self.tdb, self.tdenv)
-            return "TradeDangerous.prices"
-
         self._print(f"Exporting cache CSVs to: {export_dir}")
         for t in tables:
             self._print(f"  - {t}.csv")
         if skip_stationitems:
             self._warn("Skipping StationItem.csv export (requested).")
-        self._print("Regenerating TradeDangerous.prices …")
 
-        # Parallel export + prices regen, with conservative fallback
+        # Parallel export, with conservative fallback
         try:
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 futures = {ex.submit(_export_one, t): f"{t}.csv" for t in tables}
-                futures[ex.submit(_regen_prices)] = "TradeDangerous.prices"
                 for fut in as_completed(futures):
                     _ = fut.result()  # raise on any worker failure
         except Exception as e:
             self._warn(f"Parallel export encountered an error ({e!r}); falling back to serial.")
             for t in tables:
                 _export_one(t)
-            _regen_prices()
 
         self._print("Cache export completed.")
     
