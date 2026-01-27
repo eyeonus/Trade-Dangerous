@@ -1,6 +1,91 @@
 # CHANGELOG
 
 
+## v12.10.0 (2026-01-27)
+
+### Chores
+
+- Add 3.13 and 3.14 to versions we actually test
+  ([`8cfe000`](https://github.com/eyeonus/Trade-Dangerous/commit/8cfe00012255789d18fcfce3636014b6e66bd263))
+
+- Add benchmarking for parse_ts
+  ([`b5ba552`](https://github.com/eyeonus/Trade-Dangerous/commit/b5ba552e00cf60c99b2a94d7c82594fde5cbf80d))
+
+- Enhance fix-indent.sh with usage info and recursion
+  ([`f1878ae`](https://github.com/eyeonus/Trade-Dangerous/commit/f1878aefb21a7fe5627a9c52ee0eab3dccb85c5e))
+
+The script now provides usage instructions and supports recursive indentation fixing for Python
+  files.
+
+- **deps**: Bump urllib3 from 2.6.2 to 2.6.3
+  ([`3edb517`](https://github.com/eyeonus/Trade-Dangerous/commit/3edb517f4a4f3d28a42f8add33f01a0b8460ae05))
+
+Bumps [urllib3](https://github.com/urllib3/urllib3) from 2.6.2 to 2.6.3. - [Release
+  notes](https://github.com/urllib3/urllib3/releases) -
+  [Changelog](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) -
+  [Commits](https://github.com/urllib3/urllib3/compare/2.6.2...2.6.3)
+
+--- updated-dependencies: - dependency-name: urllib3 dependency-version: 2.6.3
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump virtualenv from 20.35.4 to 20.36.1
+  ([`86868d0`](https://github.com/eyeonus/Trade-Dangerous/commit/86868d0a5c906bfd6c1cd9f98e5e8fffb6ad084a))
+
+Bumps [virtualenv](https://github.com/pypa/virtualenv) from 20.35.4 to 20.36.1. - [Release
+  notes](https://github.com/pypa/virtualenv/releases) -
+  [Changelog](https://github.com/pypa/virtualenv/blob/main/docs/changelog.rst) -
+  [Commits](https://github.com/pypa/virtualenv/compare/20.35.4...20.36.1)
+
+--- updated-dependencies: - dependency-name: virtualenv dependency-version: 20.36.1
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump wheel from 0.45.1 to 0.46.2
+  ([`4de2128`](https://github.com/eyeonus/Trade-Dangerous/commit/4de21285a5fb6dc1e90d1ecca7e2b9889040ce5a))
+
+Bumps [wheel](https://github.com/pypa/wheel) from 0.45.1 to 0.46.2. - [Release
+  notes](https://github.com/pypa/wheel/releases) -
+  [Changelog](https://github.com/pypa/wheel/blob/main/docs/news.rst) -
+  [Commits](https://github.com/pypa/wheel/compare/0.45.1...0.46.2)
+
+--- updated-dependencies: - dependency-name: wheel dependency-version: 0.46.2
+
+dependency-type: direct:production ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+### Features
+
+- Optimize timestamp parsing during imports etc
+  ([`b1f134c`](https://github.com/eyeonus/Trade-Dangerous/commit/b1f134c35e30dda6708549f167be923462df0fce))
+
+style: fixup type hints etc,
+
+chore: separator out the string-specific parsing handler so that parse_ts is general
+
+benchmarks on 13th gen i7
+
+before: ``` $ python ./research/perf/bench_parse_ts.py Iteration 5,003 iters took 94.265s, bench
+  94.283s ex-best: 3.007ms, best: 3.046ms, avg: 18.815ms, worst: 166.830ms, ex-worst: 167.929ms,
+
+p10: 15.679ms, p25: 15.745ms, p50: 16.125ms, p90: 31.464ms, p99: 33.577ms, ```
+
+after: ``` $ python ./research/perf/bench_parse_ts.py Iteration 5,003 iters took 53.305s, bench
+  53.315s ex-best: 0.000ms, best: 0.000ms, avg: 10.652ms, worst: 27.355ms, ex-worst: 31.672ms,
+
+p10: 0.000ms, p25: 9.012ms, p50: 11.756ms, p90: 15.937ms, p99: 21.487ms, ```
+
+### Testing
+
+- Add unit tests for parse_ts
+  ([`008ffa4`](https://github.com/eyeonus/Trade-Dangerous/commit/008ffa46e95e13e826e29b0e4e6049418d161825))
+
+
 ## v12.9.0 (2026-01-25)
 
 ### Features
