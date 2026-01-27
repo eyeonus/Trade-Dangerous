@@ -95,7 +95,10 @@ def run(results, cmdenv, tdb):
     # --- Announce which DB we will read from, backend-aware ---
     try:
         dialect = tdb.engine.dialect.name
-        if dialect == "sqlite":
+        redacted = getattr(tdb.engine, "_td_redacted_url", None)
+        if redacted:
+            source_label = str(redacted)
+        elif dialect == "sqlite":
             source_label = f"SQLite file '{tdb.dbPath}'"
         else:
             # Hide password in DSN
@@ -103,6 +106,7 @@ def run(results, cmdenv, tdb):
     except Exception:
         source_label = str(getattr(tdb, "dbPath", "Unknown DB"))
     cmdenv.NOTE("Using database {}", source_label)
+
     
     # --- Enumerate tables using SQLAlchemy inspector (backend-neutral) ---
     from sqlalchemy import inspect

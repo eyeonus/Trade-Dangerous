@@ -117,15 +117,35 @@ def _redact(url: str) -> str:
 def _make_mariadb_url(cfg: Dict[str, Any]) -> URL:
     driver = str(_get(cfg, "mariadb", "driver", "mariadbconnector")).strip().lower()
     drivername = "mariadb+" + driver if driver == "mariadbconnector" else "mysql+" + driver
+
+    socket = str(_get(cfg, "mariadb", "socket", "") or "").strip()
+    if not socket:
+        socket = str(_get(cfg, "mariadb", "sock", "") or "").strip()
+
+    host = str(_get(cfg, "mariadb", "host", "127.0.0.1") or "").strip()
+    port = _get_int(cfg, "mariadb", "port", 3306)
+
+    # If unix socket is configured, prioritise it and ignore host/port entirely.
+    # (Also hardens against empty host/port stubs in config.ini.)
+    if socket:
+        host = ""
+        port = None
+    else:
+        if not host:
+            host = "127.0.0.1"
+        if port is None:
+            port = 3306
+
     return URL.create(
         drivername=drivername,
         username=str(_get(cfg, "mariadb", "user", "")),
         password=str(_get(cfg, "mariadb", "password", "")),
-        host=str(_get(cfg, "mariadb", "host", "127.0.0.1")),
-        port=int(_get(cfg, "mariadb", "port", 3306)),
+        host=host or None,
+        port=port,
         database=str(_get(cfg, "mariadb", "name", "tradedangerous")),
         query={"charset": str(_get(cfg, "mariadb", "charset", "utf8mb4"))},
     )
+
 
 
 def _make_sqlite_url(cfg: Dict[str, Any]) -> str:
@@ -216,11 +236,17 @@ def make_engine_from_config(cfg_or_path: configparser.ConfigParser | Mapping[str
         raise ValueError(f"Unsupported backend: {backend}")
     
     try:
-        engine._td_redacted_url = _redact(str(url))  # type: ignore[attr-defined]
+        redacted = _redact(str(url))
+        if backend == "mariadb":
+            socket = str(_get(cfg, "mariadb", "socket", "") or "").strip()
+            if not socket:
+                socket = str(_get(cfg, "mariadb", "sock", "") or "").strip()
+            if socket:
+                redacted = f"{redacted} (unix_socket={socket})"
+        engine._td_redacted_url = redacted  # type: ignore[attr-defined]
     except Exception:
         pass
     return engine
-
 
 # ---------- Session factory ----------
 
