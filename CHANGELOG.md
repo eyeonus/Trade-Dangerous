@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v12.10.1 (2026-01-27)
+
+### Bug Fixes
+
+- We no longer emit TradeDangerous.prices from this plugin
+  ([`a4257ac`](https://github.com/eyeonus/Trade-Dangerous/commit/a4257acc38f8b1d007fb17b9e3c14a15f6ff293a))
+
+As far as server goes, we've had this deprecated for a while and now we're getting rid. If something
+  needs it, the function in cache.py remains unchanged.
+
+
 ## v12.10.0 (2026-01-27)
 
 ### Chores
