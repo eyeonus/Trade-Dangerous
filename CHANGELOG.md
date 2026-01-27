@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v12.11.0 (2026-01-27)
+
+### Features
+
+- Unix sock support for mysql/mariadb backend
+  ([`0c60221`](https://github.com/eyeonus/Trade-Dangerous/commit/0c60221f34c2b057f28eee0a150aa88eafeb9cf6))
+
+Add support for connecting to MariaDB/MySQL via a Unix domain socket in addition to the existing TCP
+  host/port configuration.
+
+A new optional `socket` key is recognised in the [mariadb] config section. When present and
+  non-empty, the engine passes the socket path to the DBAPI (PyMySQL) via SQLAlchemy connect_args,
+  causing connections to use the local Unix socket instead of TCP.
+
+TCP behaviour is unchanged when `socket` is unset, allowing easy switching between connection styles
+  via config.ini without code changes.
+
+
 ## v12.10.1 (2026-01-27)
 
 ### Bug Fixes
