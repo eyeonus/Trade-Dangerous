@@ -2550,72 +2550,72 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         self._print("Cache export completed.")
     
-def _mirror_csv_exports(self) -> None:
-    """
-    If TD_CSV is set, mirror only the public CSV contract from tdenv.dataDir to TD_CSV.
-
-    This is a publish step:
-      - source: private exports in tdenv.dataDir (TD_DATA)
-      - dest:   public directory TD_CSV
-
-    IMPORTANT:
-      - We do NOT mirror every exported CSV (e.g. StationItem/large vendor tables).
-      - We do NOT delete anything from the destination; cleanup is a separate concern.
-    """
-    src_dir = Path(self.tdenv.dataDir).resolve()
-    dst_env = os.environ.get("TD_CSV")
-    if not dst_env:
-        return
-    dst_dir = Path(dst_env).expanduser().resolve()
-
-    if src_dir == dst_dir:
-        # Nothing to do; already exporting directly into the public path
-        return
-
-    try:
-        dst_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        self._warn(f"TD_CSV mirror: unable to create destination {dst_dir}: {e!r}")
-        return
-
-    # Public contract (served by eddblink + documented on the files index):
-    #   - Reference tables
-    #   - Listings + live listings
-    #   - Outfitting + vendor tables (optional in client, but real server dependencies)
-    public_csv = (
-        "Category.csv",
-        "Item.csv",
-        "RareItem.csv",
-        "Ship.csv",
-        "Station.csv",
-        "System.csv",
-        "listings.csv",
-        "listings-live.csv",
-        "Upgrade.csv",
-        "ShipVendor.csv",
-        "UpgradeVendor.csv",
-    )
-
-    copied = 0
-    missing = 0
+    def _mirror_csv_exports(self) -> None:
+        """
+        If TD_CSV is set, mirror only the public CSV contract from tdenv.dataDir to TD_CSV.
     
-    for name in public_csv:
-        src = src_dir / name
-        if not src.exists():
-            missing += 1
-            # Keep this as WARN: if you're publishing, missing files usually matters.
-            self._warn(f"TD_CSV mirror: source missing, not copied: {name}")
-            continue
+        This is a publish step:
+          - source: private exports in tdenv.dataDir (TD_DATA)
+          - dest:   public directory TD_CSV
+    
+        IMPORTANT:
+          - We do NOT mirror every exported CSV (e.g. StationItem/large vendor tables).
+          - We do NOT delete anything from the destination; cleanup is a separate concern.
+        """
+        src_dir = Path(self.tdenv.dataDir).resolve()
+        dst_env = os.environ.get("TD_CSV")
+        if not dst_env:
+            return
+        dst_dir = Path(dst_env).expanduser().resolve()
+    
+        if src_dir == dst_dir:
+            # Nothing to do; already exporting directly into the public path
+            return
+    
         try:
-            shutil.copy2(src, dst_dir / name)
-            copied += 1
+            dst_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            self._warn(f"TD_CSV mirror: failed to copy {name}: {e!r}")
-
-    if missing:
-        self._print(f"TD_CSV mirror: copied {copied} file(s), {missing} missing → {dst_dir}")
-    else:
-        self._print(f"TD_CSV mirror: copied {copied} file(s) → {dst_dir}")
+            self._warn(f"TD_CSV mirror: unable to create destination {dst_dir}: {e!r}")
+            return
+    
+        # Public contract (served by eddblink + documented on the files index):
+        #   - Reference tables
+        #   - Listings + live listings
+        #   - Outfitting + vendor tables (optional in client, but real server dependencies)
+        public_csv = (
+            "Category.csv",
+            "Item.csv",
+            "RareItem.csv",
+            "Ship.csv",
+            "Station.csv",
+            "System.csv",
+            "listings.csv",
+            "listings-live.csv",
+            "Upgrade.csv",
+            "ShipVendor.csv",
+            "UpgradeVendor.csv",
+        )
+    
+        copied = 0
+        missing = 0
+        
+        for name in public_csv:
+            src = src_dir / name
+            if not src.exists():
+                missing += 1
+                # Keep this as WARN: if you're publishing, missing files usually matters.
+                self._warn(f"TD_CSV mirror: source missing, not copied: {name}")
+                continue
+            try:
+                shutil.copy2(src, dst_dir / name)
+                copied += 1
+            except Exception as e:
+                self._warn(f"TD_CSV mirror: failed to copy {name}: {e!r}")
+    
+        if missing:
+            self._print(f"TD_CSV mirror: copied {copied} file(s), {missing} missing → {dst_dir}")
+        else:
+            self._print(f"TD_CSV mirror: copied {copied} file(s) → {dst_dir}")
     
     def _export_and_mirror(self) -> None:
         """
