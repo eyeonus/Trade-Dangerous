@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v12.11.3 (2026-01-28)
+
+### Bug Fixes
+
+- Correct the indentation in _mirror_csv_exports()
+  ([`0443c81`](https://github.com/eyeonus/Trade-Dangerous/commit/0443c8174dca736f7b3c541893463de7daef45ca))
+
+Be careful how you cut and paste, padawan.
+
+
 ## v12.11.2 (2026-01-28)
 
 ### Bug Fixes
