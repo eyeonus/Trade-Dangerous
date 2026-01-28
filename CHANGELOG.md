@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v12.11.2 (2026-01-28)
+
+### Bug Fixes
+
+- Correct excess mirroring on server
+  ([`21d2427`](https://github.com/eyeonus/Trade-Dangerous/commit/21d2427d1cfc33c946ee711a86c51e6d5139de46))
+
+We have been mirroring all of TD_DATA a lot of which is entirely unecessary. This ensures we only
+  mirror what eddblink needs to TD_CSV and nothing else.
+
+
 ## v12.11.1 (2026-01-27)
 
 ### Bug Fixes
