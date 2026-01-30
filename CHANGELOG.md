@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v12.11.5 (2026-01-30)
+
+### Bug Fixes
+
+- Press save then push, you numpty.
+  ([`10ce48f`](https://github.com/eyeonus/Trade-Dangerous/commit/10ce48f2b7fcdbbfb00c3aec23f70396244c663e))
+
+
 ## v12.11.4 (2026-01-30)
 
 ### Bug Fixes
