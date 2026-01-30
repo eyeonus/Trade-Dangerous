@@ -2701,6 +2701,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     # Mapping / derivations / misc
     #
     @staticmethod
+    @staticmethod
     def _build_station_type_map() -> dict[Optional[str], tuple[int, bool]]:
         return {
             None: (0, False),
@@ -2709,13 +2710,19 @@ class ImportPlugin(plugins.ImportPluginBase):
             "Coriolis Starport": (2, False),
             "Ocellus Starport": (3, False),
             "Orbis Starport": (4, False),
+            "Dodec Starport": (2, False),
             "Planetary Outpost": (11, True),
             "Planetary Port": (12, True),
+            "Dockable Planet Station": (12, True),
+            "Planetary Construction Depot": (25, True),
+            "Space Construction Depot": (1, False),
             "Mega ship": (13, False),
             "Asteroid base": (14, False),
             "Drake-Class Carrier": (24, False),
             "Settlement": (25, True),
+            "Surface Settlement": (25, True),
         }
+    
     
     def _map_station_type(self, type_name: Optional[str]) -> tuple[int, str]:
         if isinstance(type_name, str):
