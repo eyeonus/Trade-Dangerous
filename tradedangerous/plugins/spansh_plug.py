@@ -1425,6 +1425,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                     self._progress_line(stats)
                     
                     # Flags/timestamps
+                    services = st.get("services")
+                    if isinstance(services, list):
+                        services_set = {svc for svc in services if isinstance(svc, str)}
+                        blackmarket_flag = "Y" if "Black Market" in services_set else "N"
+                        rearm_flag = "Y" if "Restock" in services_set else "N"
+                        refuel_flag = "Y" if "Refuel" in services_set else "N"
+                        repair_flag = "Y" if "Repair" in services_set else "N"
+                    else:
+                        hb = st.get("hasBlackmarket")
+                        blackmarket_flag = "?" if hb is None else ("Y" if hb else "N")
+                        hr = st.get("hasRearm")
+                        rearm_flag = "?" if hr is None else ("Y" if hr else "N")
+                        hf = st.get("hasRefuel")
+                        refuel_flag = "?" if hf is None else ("Y" if hf else "N")
+                        hp = st.get("hasRepair")
+                        repair_flag = "?" if hp is None else ("Y" if hp else "N")
                     has_market = bool(st.get("hasMarket") or ("market" in st))
                     has_outfit = bool(st.get("hasOutfitting") or ("outfitting" in st))
                     has_ship   = bool(st.get("hasShipyard") or ("shipyard" in st))
@@ -1447,12 +1463,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                     max_pad = self._derive_pad_size(pads)
                     sflags = {
                         "market": "Y" if has_market else "N",
-                        "blackmarket": "?" if st.get("hasBlackmarket") is None else ("Y" if st.get("hasBlackmarket") else "N"),
+                        "blackmarket": blackmarket_flag,
                         "shipyard": "Y" if has_ship else "N",
                         "outfitting": "Y" if has_outfit else "N",
-                        "rearm": "?" if st.get("hasRearm") is None else ("Y" if st.get("hasRearm") else "N"),
-                        "refuel": "?" if st.get("hasRefuel") is None else ("Y" if st.get("hasRefuel") else "N"),
-                        "repair": "?" if st.get("hasRepair") is None else ("Y" if st.get("hasRepair") else "N"),
+                        "rearm": rearm_flag,
+                        "refuel": refuel_flag,
+                        "repair": repair_flag,
                     }
                     st_modified = self._parse_ts(st.get("updateTime"))
                     if st_modified:
