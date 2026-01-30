@@ -1400,7 +1400,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # --- System upsert ---
                 t_system = tables["System"]
                 x, y, z = coords.get("x"), coords.get("y"), coords.get("z")
-                sys_modified = self._parse_ts(system_obj.get("updateTime"))
+                sys_modified = self._parse_ts(system_obj.get("date") or system_obj.get("updateTime"))
                 self._upsert_system(t_system, int(sys_id64), str(sys_name), x, y, z, sys_modified)
                 
                 # Count system progress and participate in batching
