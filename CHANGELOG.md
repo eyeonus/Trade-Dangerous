@@ -1,6 +1,23 @@
 # CHANGELOG
 
 
+## v12.11.4 (2026-01-30)
+
+### Bug Fixes
+
+- Various fixes based on spansh schema release
+  ([`877f0b4`](https://github.com/eyeonus/Trade-Dangerous/commit/877f0b4fbc9df361d54628832852291b4532da84))
+
+- Update Spansh station-type mapping to cover newly documented station `type` values: - Dodec
+  Starport, Dockable Planet Station, Planetary/Space Construction Depots, Surface Settlement -
+  Prevents these from falling through to Unknown (type-id=0), which can be misinterpreted
+  downstream. - Derive station service flags from schema-backed `services[]`: -
+  blackmarket/refuel/repair/rearm now come from `services` (Black Market / Refuel / Repair /
+  Restock) - Retain legacy `hasX` fallback only when `services` is missing/non-list. - Use
+  schema-correct system timestamp: - `System.date` is now used for system `modified` (with
+  `updateTime` fallback for any legacy dumps).
+
+
 ## v12.11.3 (2026-01-28)
 
 ### Bug Fixes
