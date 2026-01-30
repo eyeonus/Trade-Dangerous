@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v12.11.6 (2026-01-30)
+
+### Bug Fixes
+
+- Really use services[] instead of hasX as primary source of truth
+  ([`2bcc45e`](https://github.com/eyeonus/Trade-Dangerous/commit/2bcc45ec4e37c757a211f81425f2104acb53c451))
+
+
 ## v12.11.5 (2026-01-30)
 
 ### Bug Fixes
