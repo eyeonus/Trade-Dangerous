@@ -1,13 +1,15 @@
+from __future__ import annotations
+import time
+
 from .commandenv import ResultRow
 from .exceptions import CommandLineError
 from .parsing import (
     PadSizeArgument, ParseArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
     PlanetaryArgument, FleetCarrierArgument, OdysseyArgument,
 )
-from ..formatting import RowFormat, max_len
-from ..tradedb import TradeDB, select, SA_Category, SA_RareItem, SA_Station
 
-import time
+from tradedangerous.formatting import RowFormat, max_len
+from tradedangerous.tradedb import TradeDB, select, SA_Category, SA_RareItem, SA_Station
 
 
 ######################################################################

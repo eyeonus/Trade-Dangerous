@@ -1,4 +1,4 @@
-from ..tradeexcept import TradeException
+from tradedangerous import TradeException
 
 
 ######################################################################

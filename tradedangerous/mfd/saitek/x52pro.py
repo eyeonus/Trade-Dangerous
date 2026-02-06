@@ -21,15 +21,14 @@ import time
 
 class X52Pro(DirectOutputDevice):
     class Page:
-        _lines = [ str(), str(), str() ]
-        _leds  = dict()
-        
         def __init__(self, device, page_id, name, active):
             self.device = device
             self.page_id = page_id
             self.name = name
             self.device.AddPage(self.page_id, name, 1 if active else 0)
             self.active = active
+            self._lines = [ "", "", "" ]
+            self._leds = {}
         
         def __del__(self, *args, **kwargs):
             try:

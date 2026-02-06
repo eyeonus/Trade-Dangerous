@@ -87,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
             "users may be able to use 'chcp.com 65001' to tell the console "
             "you want to support UTF-8 characters."
         )
+        return 1
 
 def trade(argv):
     """

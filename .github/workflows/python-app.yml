@@ -8,16 +8,6 @@ on:
     branches: [ release/v1 ]
   pull_request:
     branches: [ release/v1 ]
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: "Pre-release mode (alpha or rc)"
-        required: true
-        type: choice
-        options:
-          - alpha
-          - rc
-        default: alpha
 
 jobs:
   test:
@@ -26,7 +16,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [Ubuntu, Windows, MacOS]
-        py: ["3.14", "3.13", "3.12", "3.11", "3.10"]
     steps:
     - uses: actions/checkout@v4
     
@@ -35,19 +24,11 @@ jobs:
       with:
         enable-cache: true
     
-    - name: Set up Python ${{ matrix.py }}
-      run: uv python install ${{ matrix.py }}
-
-    - name: Install dependencies
-      # Installs dev dependencies (including tox, tox-gh-actions) into the project environment
-      run: uv sync --frozen --group dev
-    
     - name: Test with tox
-      # uv run tox will use the project environment where tox and tox-gh-actions are installed.
-      # tox-gh-actions will automatically filter the envlist based on the active python version.
+      # uv run with --group dev will automatically sync dev dependencies (including tox) and run
       env:
         TOX_PARALLEL_NO_SPINNER: 1
-      run: uv run tox --parallel
+      run: uv run --frozen --group dev tox --parallel
   
   pypi-publish:
     name: Upload release to PyPI

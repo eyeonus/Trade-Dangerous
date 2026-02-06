@@ -520,7 +520,7 @@ class TradeDB:
             Performs partial and ambiguity matching of a word from a list
             of potential values.
         
-        normalizedStr(text)
+        normalizedStr(what)
             Case and punctuation normalizes a string to make it easier
             to find approximate matches.
     """
@@ -624,7 +624,7 @@ class TradeDB:
         # --- Engine bootstrap ---
         
         # Determine user's real invocation directory, not venv/bin
-        user_cwd = Path(os.getenv("PWD", Path.cwd()))
+        user_cwd = Path.cwd()
         data_dir = user_cwd / "data"
         
         cfg = os.environ.get("TD_DB_CONFIG") or str(data_dir / "db_config.ini")
@@ -1394,12 +1394,12 @@ class TradeDB:
         rows = (
             session.query(
                 SA_StationItem.station_id,
-                func.count().label("item_count"),
+                func.count().label("item_count"),  # pylint: disable=not-callable
                 # Dialect-safe average age in **days**
                 func.avg(age_in_days(session, SA_StationItem.modified)).label("data_age_days"),
             )
             .group_by(SA_StationItem.station_id)
-            .having(func.count() > 0)
+            .having(func.count() > 0)  # pylint: disable=not-callable
         )
         
         for ID, itemCount, dataAge in rows:
@@ -2286,14 +2286,14 @@ class TradeDB:
         raise LookupError(f"Error: '{lookup}' doesn't match any {listType}")
     
     @staticmethod
-    def normalizedStr(text: str) -> str:
+    def normalizedStr(what: str) -> str:
         """
             Returns a case folded, sanitized version of 'str' suitable for
             performing simple and partial matches against. Removes various
             punctuation characters that don't contribute to name uniqueness.
             NOTE: No-longer removes whitespaces or apostrophes.
         """
-        return text.translate(
+        return what.translate(
             TradeDB.normalizeTrans
         ).translate(
             TradeDB.trimTrans

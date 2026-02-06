@@ -70,7 +70,8 @@ from collections import defaultdict
 from collections import namedtuple
 
 
-class MarketPrice(namedtuple('MarketPrice', [
+# TODO: convert to collections.abc.NamedTuple
+MarketPrice = namedtuple('MarketPrice', [
         'system',
         'station',
         'item',
@@ -82,8 +83,7 @@ class MarketPrice(namedtuple('MarketPrice', [
         'uploader',
         'software',
         'version',
-        ])):
-    pass
+])
 
 
 class Listener:

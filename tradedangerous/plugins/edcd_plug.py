@@ -1,9 +1,10 @@
 import csv
 import pathlib
 
-from .. import cache, transfers, csvexport
-from ..tradedb import Category, Item
+from tradedangerous import cache, transfers, csvexport
+from tradedangerous.tradedb import Category, Item
 from . import PluginException, ImportPluginBase
+
 
 class ImportPlugin(ImportPluginBase):
     """
@@ -37,13 +38,12 @@ class ImportPlugin(ImportPluginBase):
                 itemEDCD = self.edcdItems.get(itemTD.dbname, None)
                 if not itemEDCD:
                     tdenv.DEBUG0("Item '{}' not in EDCD", itemTD.fullname)
-                else:
-                    if catTD.dbname != itemEDCD.category.dbname:
-                        tdenv.WARN("Item '{}' has different category "
-                            "'{}' (TD) != '{}' (EDCD)",
-                            itemTD.dbname,
-                            catTD.dbname, itemEDCD.category.dbname
-                        )
+                elif catTD.dbname != itemEDCD.category.dbname:
+                    tdenv.WARN("Item '{}' has different category "
+                        "'{}' (TD) != '{}' (EDCD)",
+                        itemTD.dbname,
+                        catTD.dbname, itemEDCD.category.dbname
+                    )
         self.tdCategories = tdCategories
     
     def update_item_order(self, db):
@@ -221,11 +221,9 @@ class ImportPlugin(ImportPluginBase):
             
             def castToInteger(val):
                 try:
-                    val = int(val)
-                except:
-                    val = None
-                    pass
-                return val
+                    return int(val)
+                except (ValueError, TypeError):
+                    return None
             
             if notGood:
                 tdenv.NOTE("Import stopped.", checkMe, localPath)

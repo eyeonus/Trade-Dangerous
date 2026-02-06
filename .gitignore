@@ -35,6 +35,7 @@ test-data/
 .idea/
 *.sublime-project
 *.sublime-workspace
+.ipynb_checkpoints
 
 # --- OS junk ---
 .DS_Store
@@ -49,3 +50,4 @@ tools/*
 repo_files.txt
 tradedangerous/db/config.ini
 tmp/
+/*.ipynb

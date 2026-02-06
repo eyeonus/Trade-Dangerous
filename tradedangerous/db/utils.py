@@ -10,16 +10,22 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 import os
 import re
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Iterable, Mapping, Sequence, Literal, Callable, Dict, Any
+import typing
 
 from sqlalchemy import Table, text, func, and_, bindparam
-from sqlalchemy.orm import Session
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.sql.elements import ClauseElement
+
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Mapping, Sequence
+    from typing import Any, Literal, Optional
+
+    from sqlalchemy.orm import Session
 
 
 # --------------------------------------------------------
@@ -93,7 +99,7 @@ def begin_bulk_mode(
     return token
 
 
-def end_bulk_mode(session: Session, token: Dict[str, Any] | None = None) -> None:
+def end_bulk_mode(session: Session, token: dict[str, Any] | None = None) -> None:
     """
     Placeholder symmetry for begin_bulk_mode. Currently a no-op because we only
     *set* per-session tunings that naturally revert when the connection returns
@@ -146,8 +152,8 @@ def get_upsert_fn(
         if not batch:
             return
         
-        if modified_col:
-            if dialect == "sqlite":
+        match dialect:
+            case "sqlite" if modified_col:
                 sqlite_upsert_modified(
                     session,
                     table,
@@ -156,7 +162,10 @@ def get_upsert_fn(
                     modified_col=modified_col,
                     update_cols=update_cols,
                 )
-            elif dialect in ("mysql", "mariadb"):
+            case "sqlite":
+                sqlite_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
+
+            case "mysql" | "mariadb" if modified_col:
                 mysql_upsert_modified(
                     session,
                     table,
@@ -165,21 +174,11 @@ def get_upsert_fn(
                     modified_col=modified_col,
                     update_cols=update_cols,
                 )
-            else:
-                # Fallback: simple upsert without guard
-                if dialect == "sqlite":
-                    sqlite_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
-                elif dialect in ("mysql", "mariadb"):
-                    mysql_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
-                else:
-                    raise RuntimeError(f"Unsupported dialect for modified upsert: {dialect}")
-        else:
-            if dialect == "sqlite":
-                sqlite_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
-            elif dialect in ("mysql", "mariadb"):
+            case "mysql" | "mariadb":
                 mysql_upsert_simple(session, table, batch, key_cols=key_cols, update_cols=update_cols)
-            else:
-                raise RuntimeError(f"Unsupported dialect for simple upsert: {dialect}")
+
+            case _:
+                raise RuntimeError(f"Unsupported dialect for {'modified' if modified_col else 'simple'} upsert: {dialect}")
     
     def _always_update_pass(rows: Iterable[Mapping[str, object]]) -> None:
         if not always_update:
@@ -192,10 +191,10 @@ def get_upsert_fn(
         where_clause = and_(*[table.c[k] == bindparam(f"__key__{k}") for k in key_cols])
         upd = table.update().where(where_clause).values({c: bindparam(c) for c in always_update})
         
-        params: list[Dict[str, object]] = []
+        params: list[dict[str, object]] = []
         for row in batch:
             # Only issue an UPDATE if at least one always_update value is present
-            p: Dict[str, object] = {}
+            p: dict[str, object] = {}
             for k in key_cols:
                 p[f"__key__{k}"] = row[k]
             present = False
@@ -425,7 +424,7 @@ def mysql_upsert_simple(
 # correct CSV header reconstruction during exports.
 # -----------------------------------------------------------------------------
 
-def get_unique_columns(session, table_name: str) -> list[str]:
+def get_unique_columns(session: Session, table_name: str) -> list[str]:
     """
     Return a list of unique column names for a table.
     Dialect-specific implementations:
@@ -436,52 +435,53 @@ def get_unique_columns(session, table_name: str) -> list[str]:
     engine = session.get_bind()
     dialect = engine.dialect.name.lower()
     
-    if dialect == "sqlite":
-        conn = session.connection().connection
-        cur = conn.cursor()
-        uniques: list[str] = []
-        # Pre-escape table name for PRAGMA
-        esc_table = table_name.replace("'", "''")
-        for idxRow in cur.execute(f"PRAGMA index_list('{esc_table}')"):
-            # idxRow: (seq, name, unique, origin, partial) — unique is at index 2
-            if idxRow[2]:  # 'unique' flag is truthy for UNIQUE indexes
-                idx_name = idxRow[1]
-                esc_idx = idx_name.replace("'", "''")
-                for unqRow in conn.execute(f"PRAGMA index_info('{esc_idx}')"):
-                    col = unqRow[2]
-                    if col not in uniques:
-                        uniques.append(col)
-        return uniques
+    match dialect:
+        case "sqlite":
+            conn = session.connection().connection
+            cur = conn.cursor()
+            uniques: list[str] = []
+            # Pre-escape table name for PRAGMA
+            esc_table = table_name.replace("'", "''")
+            for idxRow in cur.execute(f"PRAGMA index_list('{esc_table}')"):
+                # idxRow: (seq, name, unique, origin, partial) — unique is at index 2
+                if idxRow[2]:  # 'unique' flag is truthy for UNIQUE indexes
+                    idx_name = idxRow[1]
+                    esc_idx = idx_name.replace("'", "''")
+                    for unqRow in conn.execute(f"PRAGMA index_info('{esc_idx}')"):
+                        col = unqRow[2]
+                        if col not in uniques:
+                            uniques.append(col)
+            return uniques
     
-    elif dialect in ("mysql", "mariadb"):
-        sql = text("""
-            SELECT DISTINCT COLUMN_NAME
-            FROM INFORMATION_SCHEMA.STATISTICS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = :table
-              AND NON_UNIQUE = 0
-        """)
-        rows = session.execute(sql, {"table": table_name}).fetchall()
-        return [r[0] for r in rows]
-    
-    else:
-        # Fallback: try SQLAlchemy inspector
-        insp = session.get_bind().inspect(session.get_bind())
-        cols = []
-        try:
-            pk = insp.get_pk_constraint(table_name) or {}
-            cols.extend(pk.get("constrained_columns", []))
-        except Exception:
-            pass
-        try:
-            for uc in insp.get_unique_constraints(table_name) or []:
-                cols.extend(uc.get("column_names", []))
-        except Exception:
-            pass
-        return list(set(cols))
+        case "mysql" | "mariadb":
+            sql = text("""
+                SELECT DISTINCT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = :table
+                AND NON_UNIQUE = 0
+            """)
+            rows = session.execute(sql, {"table": table_name}).fetchall()
+            return [r[0] for r in rows]
+
+        case _:
+            # Fallback: try SQLAlchemy inspector
+            insp = session.get_bind().inspect(session.get_bind())
+            cols = []
+            try:
+                pk = insp.get_pk_constraint(table_name) or {}
+                cols.extend(pk.get("constrained_columns", []))
+            except Exception:
+                pass
+            try:
+                for uc in insp.get_unique_constraints(table_name) or []:
+                    cols.extend(uc.get("column_names", []))
+            except Exception:
+                pass
+            return list(set(cols))  # dedupe and return as a list
 
 
-def get_foreign_keys(session, table_name: str) -> list[dict]:
+def get_foreign_keys(session: Session, table_name: str) -> list[dict[str, Any]]:
     """
     Return list of foreign key mappings:
       { "table": <ref_table>, "from": <local_col>, "to": <ref_col> }
@@ -494,49 +494,50 @@ def get_foreign_keys(session, table_name: str) -> list[dict]:
     engine = session.get_bind()
     dialect = engine.dialect.name.lower()
     
-    if dialect == "sqlite":
-        conn = session.connection().connection
-        cur = conn.cursor()
-        fkeys: list[dict] = []
-        esc_table = table_name.replace("'", "''")
-        for row in cur.execute(f"PRAGMA foreign_key_list('{esc_table}')"):
-            # row: (id, seq, table, from, to, on_update, on_delete, match)
-            fkeys.append({
-                "table": row[2],
-                "from": row[3],
-                "to": row[4],
-            })
-        return fkeys
-    
-    elif dialect in ("mysql", "mariadb"):
-        sql = text("""
-            SELECT COLUMN_NAME AS `from`,
-                   REFERENCED_TABLE_NAME AS `table`,
-                   REFERENCED_COLUMN_NAME AS `to`
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND TABLE_NAME = :table
-              AND REFERENCED_TABLE_NAME IS NOT NULL
-        """)
-        rows = session.execute(sql, {"table": table_name}).fetchall()
-        return [{"table": r[1], "from": r[0], "to": r[2]} for r in rows]
-    
-    else:
-        # Fallback: use SQLAlchemy inspector
-        insp = session.get_bind().inspect(session.get_bind())
-        fkeys: list[dict] = []
-        try:
-            for fk in insp.get_foreign_keys(table_name) or []:
-                if not fk.get("referred_table") or not fk.get("constrained_columns"):
-                    continue
+    match dialect:
+        case "sqlite":
+            conn = session.connection().connection
+            cur = conn.cursor()
+            fkeys: list[dict[str, Any]] = []
+            esc_table = table_name.replace("'", "''")
+            for row in cur.execute(f"PRAGMA foreign_key_list('{esc_table}')"):
+                # row: (id, seq, table, from, to, on_update, on_delete, match)
                 fkeys.append({
-                    "table": fk["referred_table"],
-                    "from": fk["constrained_columns"][0],
-                    "to": fk["referred_columns"][0],
+                    "table": row[2],
+                    "from": row[3],
+                    "to": row[4],
                 })
-        except Exception:
-            pass
-        return fkeys
+            return fkeys
+    
+        case "mysql" | "mariadb":
+            sql = text("""
+                SELECT COLUMN_NAME AS `from`,
+                    REFERENCED_TABLE_NAME AS `table`,
+                    REFERENCED_COLUMN_NAME AS `to`
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = :table
+                AND REFERENCED_TABLE_NAME IS NOT NULL
+            """)
+            rows = session.execute(sql, {"table": table_name}).fetchall()
+            return [{"table": r[1], "from": r[0], "to": r[2]} for r in rows]
+    
+        case _:
+            # Fallback: use SQLAlchemy inspector
+            insp = session.get_bind().inspect(session.get_bind())
+            fkeys: list[dict] = []
+            try:
+                for fk in insp.get_foreign_keys(table_name) or []:
+                    if not fk.get("referred_table") or not fk.get("constrained_columns"):
+                        continue
+                    fkeys.append({
+                        "table": fk["referred_table"],
+                        "from": fk["constrained_columns"][0],
+                        "to": fk["referred_columns"][0],
+                    })
+            except Exception:
+                pass
+            return fkeys
 
 
 # -----------------------------------------------------------------------------
@@ -709,13 +710,13 @@ def get_import_batch_size(session: Session, profile: str | None = None) -> int |
             # fall through to backend defaults
             pass
     
-    dialect = session.bind.dialect.name
-    
-    if dialect == "sqlite":
-        return None
-    if dialect in ("mysql", "mariadb"):
-        return 50000
-    if profile == "spansh":
-        return 5000
-    
-    return None
+    dialect = session.get_bind().dialect.name
+    match dialect:
+        case "sqlite":
+            return None
+        case "mysql" | "mariadb":
+            return 50000
+        case _ if profile == "spansh":
+            return 5000
+        case _:
+            return None

@@ -1,4 +1,19 @@
-# ----------------------------------------------------------------------------
+#
+# ============================================================================
+# pyproject.toml - Project Configuration & Build Settings
+# ============================================================================
+#
+# This file defines the complete project configuration using PEP 518/660
+# standards. It includes: project metadata, dependencies, build system,
+# tool configurations (linting, testing, coverage, versioning), and entry points.
+#
+
+
+# ============================================================================
+#
+# [project] - Core project metadata and dependencies
+#
+# ============================================================================
 [project]
 
 name = "tradedangerous"  # aligned with original setup.py name
@@ -37,12 +52,16 @@ dependencies = [
 ]
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [dependency-groups] - Optional dependency groups for development and publishing
+#
+# ============================================================================
 [dependency-groups]
 
-# Additional, non-default depenency groups.
+# Development: linting, testing, documentation, and release tooling.
+# These are not required for running Trade-Dangerous, only for contributors.
 
-# --dev requirements
 dev = [
     "coverage",
     "flake8",
@@ -50,6 +69,7 @@ dev = [
     "mistune<2.0.0",
     "pylint",
     "pytest",
+    "ruff",
     "sphinx",
     "tox",
     "tox-gh-actions",
@@ -57,7 +77,8 @@ dev = [
     "uv>=0.9.21",
 ]
 
-# For publishing to PyPI
+# Publishing: tools for building distributions and uploading to PyPI.
+
 publish = [
     "build",
     "packaging>=20.0",
@@ -67,46 +88,73 @@ publish = [
 ]
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [build-system] - PEP 517/518 build system requirements
+#
+# ============================================================================
 [build-system]
+
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [project.scripts] - Command-line entry points
+#
+# ============================================================================
 [project.scripts]
+
 trade = "trade:main"
 tradegui = "tradegui:main"
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [project.urls] - External links and resources
+#
+# ============================================================================
 [project.urls]
-Homepage = "https://github.com/eyeonus/Trade-Dangerous"
-"Bug Tracker" = "https://github.com/eyeonus/Trade-Dangerous/issues"
-Documentation = "https://github.com/eyeonus/Trade-Dangerous/wiki"
-"Source Code" = "https://github.com/eyeonus/Trade-Dangerous"
+
+"Homepage"      = "https://github.com/eyeonus/Trade-Dangerous"
+"Bug Tracker"   = "https://github.com/eyeonus/Trade-Dangerous/issues"
+"Documentation" = "https://github.com/eyeonus/Trade-Dangerous/wiki"
+"Source Code"   = "https://github.com/eyeonus/Trade-Dangerous"
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [project.optional-dependencies] - Extra dependency sets for specific use cases
+#
+# ============================================================================
 [project.optional-dependencies]
 
-# If we want to use uv-based github actions, github will need to know about uv.
-build = ["uv ~= 0.9.21"]
-# If you want to use a better python repl
-dev-extras = ["ipython"]
-# If you want to get really fancy and use the research notebooks
-notebooks = ["jupyter>=1.1.1"]
+build           = ["uv ~= 0.9.21"]
+dev-extras      = ["ipython"]
+notebooks       = ["jupyter>=1.1.1"]
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [tool.setuptools] - Packaging and distribution configuration
+#
+# ============================================================================
 [tool.setuptools]
+# Configure setuptools behavior for building and packaging the project.
+
 py-modules = ["trade", "tradegui"]
 
+
 [tool.setuptools.packages.find]
+# Discover packages automatically; include tradedangerous and all subpackages.
+# Exclude tests from distributed package (see note about test_*.py below).
 include = ["tradedangerous", "tradedangerous.*"]
 exclude = ["tests", "tests.*"]
 
+
 [tool.setuptools.package-data]
+# Include non-Python assets (templates, type hints, marker files).
 tradedangerous = [
     "templates/TradeDangerous.sql",
     "templates/Added.csv",
@@ -118,20 +166,36 @@ tradedangerous = [
 ]
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [tool.uv] - Python package manager (uv) configuration
+#
+# ============================================================================
 [tool.uv]
 
-# We're not, but I might figure out how to make it one some time.
+# Note: uv is not the primary package manager for this project.
+# package = true reserves this possibility
 package = true
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [tool.setuptools.dynamic] - Dynamic project metadata
+#
+# ============================================================================
 [tool.setuptools.dynamic]
+
+# Version is managed automatically by semantic-release via tradedangerous/version.py.
 version = { attr = "tradedangerous.version.__version__" }
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [tool.semantic_release] - Version management and automated releases
+#
+# ============================================================================
 [tool.semantic_release]
+# Automatically bump versions, create tags, and commit using semantic versioning.
 
 version_variables = [
     "tradedangerous/version.py:__version__",
@@ -140,17 +204,24 @@ build_command = "uv build"
 commit_message = "python-semantic-release automatic version update"
 
 
-# ----------------------------------------------------------------------------
+# ============================================================================
+#
+# [tool.semantic_release.branches.*] - Branch-specific versioning rules
+#
+# ============================================================================
 [tool.semantic_release.branches.main]
 
-# How branches are structured
+# Main release branch: semantic versions (e.g., 1.2.3) with RC pre-release tokens.
 match = "(main|master|release/v1)"
 prerelease_token = "rc"
 prerelease = false
 
+
 [tool.semantic_release.branches.dev]
 
-# Allow prereleases from release-candidate dev branches for build/release testing
+# Development branch: pre-release versions from release-candidate branches (e.g., 1.2.3-dev.1).
+# Used for internal testing before publishing stable releases.
 match = "rc/*"
 prerelease = true
 prerelease_token = "dev"
+

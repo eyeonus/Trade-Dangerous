@@ -11,26 +11,26 @@
 
 from __future__ import annotations
 
-from .exceptions import CommandLineError
-from .parsing import ParseArgument, MutuallyExclusiveGroup
 from itertools import chain
 from pathlib import Path
-
-from .. import cache, plugins, transfers
 import re
 import sys
 import typing
 
+from tradedangerous import cache, plugins, transfers
+
+from .exceptions import CommandLineError
+from .parsing import ParseArgument, MutuallyExclusiveGroup
+
 try:
-    import tkinter
+    import tkinter as tk
     import tkinter.filedialog as tkfd
     hasTkInter = True
 except ImportError:
     hasTkInter = False
 
 if typing.TYPE_CHECKING:
-    from ..tradedb import TradeDB
-    from ..tradeenv import TradeEnv
+    from tradedangerous import TradeDB, TradeEnv
 
 
 ######################################################################
@@ -182,14 +182,14 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
     
     # No filename? If Tk is available, prompt user (legacy behavior)
     fh = None
-    if not cmdenv.filename and hasTkInter:
-        tk = tkinter.Tk()
-        tk.withdraw()
+    if hasTkInter and not cmdenv.filename:
+        root = tk.Tk()  # type: ignore[reportPossiblyUnboundVariable]  # we checked hasTkInter
+        root.withdraw()
         filetypes = (
             ("TradeDangerous '.prices' Files", "*.prices"),
             ("All Files", "*.*"),
         )
-        filename = tkfd.askopenfilename(
+        filename = tkfd.askopenfilename(  # type: ignore[reportPossiblyUnboundVariable]  # checked hasTkInter
             title="Select the file to import",
             initialfile="TradeDangerous.prices",
             filetypes=filetypes,
