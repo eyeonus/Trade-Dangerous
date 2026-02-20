@@ -74,7 +74,7 @@ dev = [
     "tox",
     "tox-gh-actions",
     "tox-uv",
-    "uv>=0.9.21",
+    "uv>=0.9.26",
 ]
 
 # Publishing: tools for building distributions and uploading to PyPI.
@@ -130,9 +130,9 @@ tradegui = "tradegui:main"
 # ============================================================================
 [project.optional-dependencies]
 
-build           = ["uv ~= 0.9.21"]
+build           = ["uv~=0.9.26"]
 dev-extras      = ["ipython"]
-notebooks       = ["jupyter>=1.1.1"]
+notebooks       = ["jupyter>=1.1.1; python_version >= '3.9' and python_version < '3.14'"]
 
 
 # ============================================================================
