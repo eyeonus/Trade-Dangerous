@@ -65,17 +65,15 @@ dependencies = [
 dev = [
     "coverage",
     "flake8",
-    "m2r",
-    "mistune<2.0.0",
     "pylint",
     "pytest",
     "ruff",
-    "sphinx",
     "tox",
     "tox-gh-actions",
     "tox-uv",
     "uv>=0.9.26",
 ]
+
 
 # Publishing: tools for building distributions and uploading to PyPI.
 
@@ -132,7 +130,6 @@ tradegui = "tradegui:main"
 
 build           = ["uv~=0.9.26"]
 dev-extras      = ["ipython"]
-notebooks       = ["jupyter>=1.1.1; python_version >= '3.9' and python_version < '3.14'"]
 
 
 # ============================================================================
