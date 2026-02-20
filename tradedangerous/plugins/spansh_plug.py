@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
 from importlib.resources import files as implib_files, as_file as implib_as_file
 from pathlib import Path
 import csv
@@ -75,7 +74,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         "description": "Imports Spansh galaxy dump and refreshes cache artefacts.",
     }
     
-    # Correct option contract: dict name -> help text
     pluginOptions = {
         "url": "Remote URL to galaxy_stations.json (default if neither url nor file is given)",
         "file": "Local path to galaxy_stations.json; use '-' to read from stdin",
@@ -84,6 +82,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         "force_baseline": "If set, overwrite service blocks to Spansh baseline (from_live=0) and delete any extras.",
         "skip_stationitems": "Skip exporting StationItem.csv (large). Env: TD_SKIP_STATIONITEM_EXPORT=1",
         "progress_compact": "Use shorter one-line import status (or set env TD_PROGRESS_COMPACT=1).",
+        "listener_mode": "Listener/server mode: disable progress bars; emit [Spansh] log lines suitable for parallel output.",
+        "log_interval": "Listener/server mode: seconds between periodic import progress lines (default 30).",
         # --- EDCD sourcing (hardcoded URLs; can be disabled or overridden) ---
         "no_edcd": "Disable EDCD preloads (categories, FDev tables) and EDCD rares import.",
         "edcd_commodity": "Override URL or local path for EDCD commodity.csv.",
@@ -136,6 +136,22 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         # Progress state
         self._last_progress_time = 0.0
+        
+        # Listener/server mode: disable progress bars; use periodic [Spansh] logs
+        _opt = self.getOption("listener_mode")
+        _val = "" if _opt is None else str(_opt).strip().lower()
+        self._listener_mode = _val in {"1", "true", "yes", "on", "y"}
+        _ival = self.getOption("log_interval")
+        try:
+            self._listener_log_interval = int(_ival) if _ival is not None else 30
+        except Exception:
+            self._listener_log_interval = 30
+        if self._listener_log_interval < 1:
+            self._listener_log_interval = 1
+        self._listener_last_import_log = 0.0
+        
+        if self._listener_mode:
+            self._is_tty = False
         
         # Station type mapping (existing helper in this module)
         self._station_type_map = self._build_station_type_map()
@@ -313,7 +329,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             ]
             session.execute(insert(t_cat), seed_rows)
             inserted += len(seed_rows)
-            existing_by_id = canonical_by_id.copy()
+            existing_by_id = {cid: name for cid, name in canonical_by_id.items()}
 
         # Sanity guardrail: detect drift
         else:
@@ -751,7 +767,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "supply_price": buy,
                 "supply_units": supply,
                 "supply_level": -1,
-                "from_live": 0,
                 "modified": ts_sp,
             })
 
@@ -821,7 +836,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                     update_cols=(
                         "demand_price", "demand_units", "demand_level",
                         "supply_price", "supply_units", "supply_level",
-                        "from_live",
                     ),
                 )
             elif db_utils.is_mysql(self.session):
@@ -832,7 +846,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                     update_cols=(
                         "demand_price", "demand_units", "demand_level",
                         "supply_price", "supply_units", "supply_level",
-                        "from_live",
                     ),
                 )
             else:
@@ -993,18 +1006,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._error(f"Failed to open/reflect DB session: {e!r}")
             return False
         
-        # Capture import-start timestamp (DB clock) for MP-safe from_live demotion
-        import_start_ts = None
-        try:
-            if db_utils.is_mysql(self.session):
-                import_start_ts = self.session.execute(text("SELECT CURRENT_TIMESTAMP(6)")).scalar()
-            else:
-                import_start_ts = self.session.execute(text("SELECT CURRENT_TIMESTAMP")).scalar()
-        except Exception as e:
-            self._warn(f"from_live: unable to capture import-start timestamp; demotion will be skipped: {e!r}")
-            import_start_ts = None
-        
-        # -------- EDCD preloads (hardcoded URLs; can be disabled) --------
+        # -------- EDCD preloads (hardcoded URLs; can be disabled) ----
         edcd = self._acquire_edcd_files()
         
         # Categories (add-only) — COMMIT immediately so they persist even if later phases fail.
@@ -1078,21 +1080,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             self._safe_close_session()
             return False
         
-        # MP-safe from_live demotion: clear only rows older than import start
-        try:
-            if import_start_ts is not None:
-                t_si = tables.get("StationItem")
-                if t_si is not None:
-                    demoted = self.session.execute(
-                        update(t_si)
-                        .where(or_(t_si.c.modified.is_(None), t_si.c.modified < import_start_ts))
-                        .values(from_live=0)
-                    ).rowcount or 0
-                    if self._debug_level >= 1:
-                        self._print(f"from_live: demoted {int(demoted):,} row(s) (scoped)")
-        except Exception as e:
-            self._warn(f"from_live: scoped demotion skipped due to error: {e!r}")
-        
         # Final commit for import phase
         try:
             self.session.commit()
@@ -1161,95 +1148,82 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Pass a friendly label so progress says “Spansh dump”
         return self._download_with_cache(url, cache_path, label="Spansh dump")
     
-    def _download_with_cache(self, url: str, cache_path: Path, *, label: str = "download") -> Path:
-        """Conditional download with HEAD Last-Modified and atomic .part."""
-        remote_lm: Optional[datetime] = None
-        try:
-            req = urllib.request.Request(url, method="HEAD")
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                lm_header = resp.headers.get("Last-Modified")
-                if lm_header:
-                    try:
-                        remote_lm = parsedate_to_datetime(lm_header).astimezone(timezone.utc).replace(tzinfo=None)
-                    except Exception:
-                        remote_lm = None
-        except Exception:
-            pass
+    def _download_with_cache(self, url: str, label: str, cache_path: Path) -> Path:
+        """
+        Download URL to cache_path if remote is newer or cache is missing.
+        Returns the cache_path.
         
+        In verbose mode, prints basic download status and progress.
+        """
+        # If we have a cached file and remote is not newer, reuse it.
+        remote_lm = self._remote_last_modified(url)
         if cache_path.exists() and remote_lm:
-            local_mtime = datetime.fromtimestamp(cache_path.stat().st_mtime, tz=timezone.utc).replace(tzinfo=None)
+            try:
+                local_mtime = cache_path.stat().st_mtime
+            except OSError:
+                local_mtime = 0
+            
             if local_mtime >= remote_lm:
-                self._print(f"Remote not newer; using cached {label}")
+                if getattr(self, "_listener_mode", False):
+                    self._print(f"[Spansh] Download skip: cached {label}")
+                else:
+                    self._print(f"Remote not newer; using cached {label}")
                 return cache_path
         
-        self._print(f"Downloading {label} from {url} …")
-        part = cache_path.with_suffix(cache_path.suffix + ".part")
-        if part.exists():
-            try:
-                part.unlink()
-            except Exception:
-                pass
-        
-        req = urllib.request.Request(url, method="GET")
-        connect_timeout = 30
-        chunk = 8 * 1024 * 1024  # 8 MiB
+        if getattr(self, "_listener_mode", False):
+            url_disp = url.split("://", 1)[-1].split("?", 1)[0]
+            if len(url_disp) > 56:
+                url_disp = url_disp[:53] + "..."
+            self._print(f"[Spansh] Download start: {url_disp}")
+        else:
+            self._print(f"Downloading {label} from {url} …")
+        tmp_path = cache_path.with_suffix(cache_path.suffix + ".tmp")
+        downloaded = 0
         
         try:
-            with urllib.request.urlopen(req, timeout=connect_timeout) as resp, open(part, "wb") as fh:
-                total_hdr = resp.headers.get("Content-Length")
-                total = int(total_hdr) if total_hdr and total_hdr.isdigit() else None
-                downloaded = 0
+            req = urllib.request.Request(url, headers={"User-Agent": "TradeDangerous"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                total = int(resp.headers.get("Content-Length") or 0)
                 start = time.time()
                 
-                while True:
-                    data = resp.read(chunk)
-                    if not data:
-                        break
-                    fh.write(data)
-                    downloaded += len(data)
-                    self._download_progress(downloaded, total, start, label=label)
+                with tmp_path.open("wb") as out:
+                    while True:
+                        chunk = resp.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        out.write(chunk)
+                        downloaded += len(chunk)
+                        self._download_progress(label, downloaded, total, start)
             
-            part.replace(cache_path)
-            
-            # Set mtime to Last-Modified if present on GET
-            lm_header = None
+            tmp_path.replace(cache_path)
+        finally:
             try:
-                with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=10) as head2:
-                    lm_header = head2.headers.get("Last-Modified")
+                tmp_path.unlink(missing_ok=True)
             except Exception:
                 pass
-            if lm_header:
-                try:
-                    got_lm = parsedate_to_datetime(lm_header).astimezone(timezone.utc).replace(tzinfo=None)
-                    ts = got_lm.replace(tzinfo=timezone.utc).timestamp()
-                    os.utime(cache_path, (ts, ts))
-                except Exception:
-                    pass
         
-        except Exception as e:
-            try:
-                if part.exists():
-                    part.unlink()
-            except Exception:
-                pass
-            raise CleanExit(f"Download failed or timed out for {label}; skipping run ({e!r})") from None
-        
-        self._print(f'Download complete: {label} → "{cache_path}"')
+        if getattr(self, "_listener_mode", False):
+            elapsed = self._format_hms(time.time() - start)
+            self._print(f"[Spansh] Download done: {downloaded:,} bytes in {elapsed}")
+        else:
+            self._print(f'Download complete: {label} → "{cache_path}"')
         return cache_path
     
-    def _download_progress(self, downloaded: int, total: Optional[int], start_ts: float, *, label: str = "download") -> None:
+    def _download_progress(self, label: str, downloaded: int, total: int, start: float) -> None:
+        if getattr(self, "_listener_mode", False):
+            return
         now = time.time()
-        if now - self._last_progress_time < 0.5 and self._debug_level < 1:
+        if now - self._last_progress_time < (0.5 if self._debug_level < 1 else 0.2):
             return
         self._last_progress_time = now
         
-        rate = downloaded / max(now - start_ts, 1e-9)
+        # Very minimal progress line; we avoid big TQDM bars here.
+        rate = downloaded / max(now - start, 0.001)
         if total:
             pct = (downloaded / total) * 100.0
-            msg = f"{label}: {self._fmt_bytes(downloaded)} / {self._fmt_bytes(total)} ({pct:5.1f}%)  {self._fmt_bytes(rate)}/s"
+            self._live_status(f"{label}: {pct:5.1f}% {self._fmt_bytes(downloaded)}/{self._fmt_bytes(total)} @ {self._fmt_bytes(rate)}/s")
         else:
-            msg = f"{label}: {self._fmt_bytes(downloaded)} read  {self._fmt_bytes(rate)}/s"
-        self._live_status(msg)
+            self._live_status(f"{label}: {self._fmt_bytes(downloaded)} @ {self._fmt_bytes(rate)}/s")
     
     def _write_stream_to_file(self, stream: io.BufferedReader, dest: Path) -> None:
         part = dest.with_suffix(dest.suffix + ".part")
@@ -2098,7 +2072,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "supply_price": buy,
                 "supply_units": supply,
                 "supply_level": -1,
-                "from_live":    0,
                 "modified":     ts,
             })
 
@@ -2125,20 +2098,19 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     name=r["name"], category_id=r["category_id"]
                                 )
                             )
-
         wrote_links = 0
         if link_rows:
             if db_utils.is_sqlite(self.session):
                 db_utils.sqlite_upsert_modified(self.session, t_si, rows=link_rows,
                                                 key_cols=("station_id", "item_id"), modified_col="modified",
                                                 update_cols=("demand_price", "demand_units", "demand_level",
-                                                             "supply_price", "supply_units", "supply_level", "from_live"))
+                                                             "supply_price", "supply_units", "supply_level"))
                 wrote_links = len(link_rows)
             elif db_utils.is_mysql(self.session):
                 db_utils.mysql_upsert_modified(self.session, t_si, rows=link_rows,
                                                key_cols=("station_id", "item_id"), modified_col="modified",
                                                update_cols=("demand_price", "demand_units", "demand_level",
-                                                            "supply_price", "supply_units", "supply_level", "from_live"))
+                                                            "supply_price", "supply_units", "supply_level"))
                 wrote_links = len(link_rows)
             else:
                 for r in link_rows:
@@ -2454,7 +2426,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if not csv_path.exists():
                     raise CleanExit(
                         f"RareItem.csv not found via importlib.resources or source tree: {csv_path}"
-                    ) from None
+                    )
                 processImportFile(
                     tdenv=self.tdenv,
                     session=sess,
@@ -2660,18 +2632,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         Order: yajl2_cffi → yajl2_c → yajl2 → python.
         """
         try:
-            from ijson.backends import yajl2_cffi as ijson_fast  # pylint: disable=import-outside-toplevel
-            return ijson_fast.items(fh, prefix)  # pylint: disable=no-member  # member gets hidden
+            from ijson.backends import yajl2_cffi as ijson_fast
+            return ijson_fast.items(fh, prefix)
         except Exception:
             pass
         try:
-            from ijson.backends import yajl2_c as ijson_fast  # pylint: disable=import-outside-toplevel  # ctypes wrapper
-            return ijson_fast.items(fh, prefix)  # pylint: disable=no-member  # member gets hidden
+            from ijson.backends import yajl2_c as ijson_fast  # ctypes wrapper
+            return ijson_fast.items(fh, prefix)
         except Exception:
             pass
         try:
-            from ijson.backends import yajl2 as ijson_fast  # pylint: disable=import-outside-toplevel
-            return ijson_fast.items(fh, prefix)  # pylint: disable=no-member  # member gets hidden
+            from ijson.backends import yajl2 as ijson_fast
+            return ijson_fast.items(fh, prefix)
         except Exception:
             pass
         # Fallback to whatever was imported at module top
@@ -2821,6 +2793,48 @@ class ImportPlugin(plugins.ImportPluginBase):
           - compact: shorter, log-friendly line (enable with -O progress_compact=1 or TD_PROGRESS_COMPACT=1)
         """
         now = time.time()
+        if getattr(self, "_listener_mode", False):
+            interval = float(getattr(self, "_listener_log_interval", 30) or 30)
+            last = float(getattr(self, "_listener_last_import_log", 0.0) or 0.0)
+            if interval < 1:
+                interval = 1.0
+            if now - last < interval:
+                return
+            self._listener_last_import_log = now
+            self._started_importing = True
+            
+            def fmt_count(n: int) -> str:
+                n = int(n or 0)
+                if n >= 1_000_000:
+                    v = f"{n/1_000_000:.1f}M"
+                elif n >= 10_000:
+                    v = f"{n/1_000:.0f}k"
+                elif n >= 1_000:
+                    v = f"{n/1_000:.1f}k"
+                else:
+                    v = str(n)
+                return v.replace(".0", "")
+            
+            stations = stats.get("stations", 0)
+            km = stats.get("market_stations", 0)
+            wm = stats.get("market_writes", 0)
+            ko = stats.get("outfit_stations", 0)
+            wo = stats.get("outfit_writes", 0)
+            ks = stats.get("ship_stations", 0)
+            ws = stats.get("ship_writes", 0)
+            
+            msg = f"Import st {fmt_count(stations)} m {fmt_count(km)}/{fmt_count(wm)}"
+            extra = f" o {fmt_count(ko)}/{fmt_count(wo)}"
+            if len(f"[Spansh] {msg}{extra}") <= 80:
+                msg += extra
+            extra = f" s {fmt_count(ks)}/{fmt_count(ws)}"
+            if len(f"[Spansh] {msg}{extra}") <= 80:
+                msg += extra
+            full = f"[Spansh] {msg}"
+            if len(full) > 80:
+                full = full[:77] + "..."
+            self._print(full)
+            return
         if now - self._last_progress_time < (0.5 if self._debug_level < 1 else 0.2):
             return
         self._last_progress_time = now
@@ -2878,6 +2892,9 @@ class ImportPlugin(plugins.ImportPluginBase):
         IMPORTANT: only truncate when TTY so logs are not cut off.
         """
         try:
+            if getattr(self, "_listener_mode", False):
+                self._print(msg)
+                return
             if self._is_tty:
                 width = shutil.get_terminal_size(fallback=(120, 20)).columns
                 if width and width > 4:
