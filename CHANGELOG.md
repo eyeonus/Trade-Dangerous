@@ -1,6 +1,65 @@
 # CHANGELOG
 
 
+## v12.11.7 (2026-02-20)
+
+### Bug Fixes
+
+- Spansh Plugin for Listener
+  ([`06d22bd`](https://github.com/eyeonus/Trade-Dangerous/commit/06d22bdb909e2612c8fbcea313c5de04e07092df))
+
+Various necessary changes for compatibility/interoperability with the MP listener for TD server.
+
+### Build System
+
+- Complete pyproject.toml migration - remove setup.py/setup.cfg, consolidate configs
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
+
+refactor: Consistent line length setting for 180 characters
+
+refactor: standardize pyproject.toml formatting with PEP 518/660 compliance
+
+Single source of truth in pyproject.toml following PEP 517/518/621.
+
+- Update tox.ini testenv matrix for Python 3.10-3.14 support - Remove requirements files - Move
+  [tool.pytest.ini_options], [tool.coverage.*] to pyproject.toml - Delete legacy setup.py/setup.cfg
+  (all config now in pyproject.toml)
+
+chore: add dependabot rules to reduce noise (.github/dependabot.yml)
+
+chore: git ignore python notebook checkpoints and files-in-top-level
+
+chore: remove github workflow_dispatch path (was used to test transition)
+
+refactor: ruff detected issues
+
+chore: adapt ruff to our style, solve unaddressed issues
+
+this should bring ruff bleating more into alignment with our style, it addresses the various
+  warnings/issues that ruff otherwise pointed out, it continues to attempt to normalize import
+  ordering to reduce the ways we set ourselves up for import conflicts
+
+refactor: fixed/squelched current pylint issues
+
+This change does not activate pylint, so quality will decay.
+
+Consider increasing the files covered by pylint.
+
+chore: expose orm models from .db
+
+refactor: Session being exposed as a global allowed it to be misused
+
+fix: tdb Session being used incorrectly caused runtime errors
+
+chore: streamline workflow
+
+- reduces steps/moving parts in CI workflow, - increases test coverage to include ruff, pylint
+  [strike], and py 3.15 by default[/strike] - runs tox on a single runner-per-platform covering all
+  pythons in parallel
+
+not done: - [strike]adds python 3.15 to the environments,[/strike] pending PyO3 3.15 support
+
+
 ## v12.11.6 (2026-01-30)
 
 ### Bug Fixes
