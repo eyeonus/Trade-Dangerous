@@ -491,8 +491,8 @@ def processPrices(
             return
         
         if newID < 0:
-            if utils.checkForOcrDerp(tdenv, systemName, stationName):
-                return
+            assert not utils.checkForOcrDerp(tdenv, systemName, stationName)
+
             corrected = True
             altName = sysCorrections.get(systemName)
             if altName is DELETED:
