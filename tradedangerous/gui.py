@@ -33,10 +33,11 @@
 import os
 import sys
 import threading
-import tkinter as tk
 import traceback
 from pathlib import Path
-from tkinter import ttk, filedialog
+
+import tkinter as tk
+from tkinter import ttk, scrolledtext, filedialog
 
 from . import commands
 from . import plugins
@@ -45,96 +46,204 @@ from .commands import exceptions
 from .plugins import PluginException
 from .version import __version__
 
-
-import tkinter as tk
-from tkinter import ttk, scrolledtext
-
 class TDWidget:
     """
-    Tkinter widget wrapper supporting appJar-style context management.
+    Tkinter widget wrapper approximating appJar behaviour,
+    with support for scrollable frames.
     """
-    
-    def __init__(self, name=None, widget_type='frame', parent=None, row=0, column=0,
-                 rowspan=1, columnspan=1, sticky='nw', text='', values=None,
-                 command=None, width=None, height=None, **kwargs):
-        self.kwargs = kwargs
+
+    def __init__(self, name="TDWidget", widget_type="frame", parent=None,
+                 row=0, column=0, rowspan=1, columnspan=1, sticky="nw",
+                 min_val=0, max_val=100, command=None, change=None,
+                 width=0, height=0, value=None, values=None, label=None, **kwargs):
+
         self.name = name
         self.widget_type = widget_type
+        self.parent = parent
         self.children = []
-        
-        # Parent widget
+        self.command = command or change
+        self._value = value
+        label = label or self.name
+
+        # Determine container (parent widget)
         container = parent.widget if isinstance(parent, TDWidget) else parent
-        
-        # Create underlying Tk widget
-        if widget_type == 'frame':
+
+        # ----------------------------
+        # Widget Creation
+        # ----------------------------
+        if widget_type == "frame":
             self.widget = tk.Frame(container, width=width, height=height)
-        elif widget_type == 'label':
-            self.widget = tk.Label(container, text=text, width=width)
-        elif widget_type == 'button':
-            self.widget = tk.Button(container, text=text, command=command)
-        elif widget_type == 'entry':
-            self.var = tk.StringVar(value=text)
-            self.widget = tk.Entry(container, textvariable=self.var, width=width)
-        elif widget_type == 'combo':
-            self.var = tk.StringVar(value=text)
-            self.widget = ttk.Combobox(container, values=values or [], textvariable=self.var, width=width)
-        elif widget_type == 'spin':
-            self.var = tk.IntVar(value=text)
-            self.widget = tk.Spinbox(container, from_=0, to=values or 100, textvariable=self.var, width=width)
-        elif widget_type == 'scrolledtext':
+
+        elif widget_type == "scrollableframe":
+            # Outer frame
+            self.widget = tk.Frame(container, width=width, height=height)
+            # Canvas & scrollbar
+            self.canvas = tk.Canvas(self.widget, borderwidth=0)
+            self.scrollbar = tk.Scrollbar(self.widget, orient="vertical", command=self.canvas.yview)
+            self.inner = tk.Frame(self.canvas)
+            self.inner.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+            self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+            self.canvas.configure(yscrollcommand=self.scrollbar.set)
+            # Pack canvas and scrollbar
+            self.canvas.pack(side="left", fill="both", expand=True)
+            self.scrollbar.pack(side="right", fill="y")
+
+            # Proxy so children automatically use inner as parent
+            class _FrameProxy:
+                def __init__(proxy_self, outer_frame, inner_frame):
+                    proxy_self._outer = outer_frame
+                    proxy_self._inner = inner_frame
+
+                def __getattr__(proxy_self, name):
+                    # geometry management of the scrollableframe itself
+                    if name in ("grid", "pack", "place", "grid_configure", "pack_configure", "place_configure"):
+                        return getattr(proxy_self._outer, name)
+
+                    # children attach to inner frame
+                    return getattr(proxy_self._inner, name)
+
+            self.widget = _FrameProxy(self.widget, self.inner)
+        
+        elif widget_type == "label":
+            self.widget = tk.Label(container, text=label, width=width)
+
+        elif widget_type == "button":
+            self.widget = tk.Button(container, text=label, command=self.command, width=width)
+
+        elif widget_type == "entry":
+            self.widget = tk.Entry(container, width=width)
+            if value is not None:
+                self.widget.insert(0, value)
+
+        elif widget_type == "combo":
+            self.widget = ttk.Combobox(container, values=values or [], width=width)
+            if value is not None:
+                self.widget.set(value)
+            if command:
+                self.widget.bind("<<ComboboxSelected>>", self._on_command)
+
+        elif widget_type == "spin":
+            self.widget = tk.Spinbox(container, from_=min_val, to=max_val, width=width)
+            if value is not None:
+                self.widget.delete(0, "end")
+                self.widget.insert(0, value)
+
+        elif widget_type == "scrolledtext":
             self.widget = scrolledtext.ScrolledText(container, width=width, height=height)
-        elif widget_type == 'notebook':
+            if value is not None:
+                self.widget.insert("1.0", value)
+
+        elif widget_type == "notebook":
             self.widget = ttk.Notebook(container)
-            self.tabs = {}
+
+        elif widget_type == "check":
+            self._var = tk.BooleanVar(value=bool(value))
+            self.widget = tk.Checkbutton(container, text=label, variable=self._var, command=self.command)
+
         else:
             raise ValueError(f"Unknown widget_type: {widget_type}")
-        
-        # Parent-child management
-        self.parent = parent
-        if parent and isinstance(parent, TDWidget):
+
+        # ----------------------------
+        # Layout
+        # ----------------------------
+        if widget_type != "subwindow":
+            self.widget.grid(row=row, column=column, rowspan=rowspan,
+                             columnspan=columnspan, sticky=sticky)
+
+        # Register with parent TDWidget
+        if isinstance(parent, TDWidget):
             parent.children.append(self)
-        
-        # Grid placement
-        self.widget.grid(row=row, column=column, rowspan=rowspan, columnspan=columnspan, sticky=sticky)
-        self.row, self.column = row, column
-    
-    # --- Proxy methods ---
-    def config(self, **kwargs):
-        self.widget.config(**kwargs)
-    
-    def set(self, value, callFunction=True):
-        if hasattr(self, 'var'):
-            self.var.set(value)
-            if callFunction and self.widget_type == 'combo':
-                if hasattr(self.widget, 'event_generate'):
-                    self.widget.event_generate("<<ComboboxSelected>>")
-    
+
+    # -------------------------------
+    # Factory constructors
+    # -------------------------------
+    @classmethod
+    def Frame(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="frame", **kwargs)
+
+    @classmethod
+    def ScrollableFrame(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="scrollableframe", **kwargs)
+
+    @classmethod
+    def Label(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="label", **kwargs)
+
+    @classmethod
+    def Button(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="button", **kwargs)
+
+    @classmethod
+    def Entry(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="entry", **kwargs)
+
+    @classmethod
+    def Combo(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="combo", **kwargs)
+
+    @classmethod
+    def Spin(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="spin", **kwargs)
+
+    @classmethod
+    def Check(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="check", **kwargs)
+
+    @classmethod
+    def ScrolledText(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="scrolledtext", **kwargs)
+
+    @classmethod
+    def Notebook(cls, parent, **kwargs):
+        return cls(parent=parent, widget_type="notebook", **kwargs)
+
+    # -------------------------------
+    # Value helpers
+    # -------------------------------
     def get(self):
-        if hasattr(self, 'var'):
-            return self.var.get()
+        if self.widget_type == "entry":
+            return self.widget.get()
+        elif self.widget_type == "combo":
+            return self.widget.get()
+        elif self.widget_type == "spin":
+            return self.widget.get()
+        elif self.widget_type == "check":
+            return self._var.get()
+        elif self.widget_type == "scrolledtext":
+            return self.widget.get("1.0", "end").rstrip("\n")
+        elif self.widget_type == "label":
+            return self.widget.cget("text")
         return None
-    
-    def add_child(self, child):
-        self.children.append(child)
-    
-    # --- Context manager support ---
-    def __enter__(self):
-        # Return self so "with TDWidget(...) as w:" works
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        # Nothing special to clean up
-        pass
-    
-    # --- Notebook/tab support ---
-    def tab(self, tab_name):
-        """Create a new tab inside a notebook TDWidget"""
-        if self.widget_type != 'notebook':
-            raise RuntimeError("tab() can only be called on notebook widgets")
-        frame = tk.Frame(self.widget)
-        self.widget.add(frame, text=tab_name)
-        self.tabs[tab_name] = frame
-        return TDWidget(parent=self, widget_type='frame', row=0, column=0, columnspan=1, widget=frame)
+
+    def set(self, value, callFunction=True):
+        if self.widget_type == "entry":
+            self.widget.delete(0, "end")
+            self.widget.insert(0, value)
+        elif self.widget_type == "combo":
+            self.widget.set(value)
+        elif self.widget_type == "spin":
+            self.widget.delete(0, "end")
+            self.widget.insert(0, value)
+        elif self.widget_type == "check":
+            self._var.set(bool(value))
+        elif self.widget_type == "scrolledtext":
+            state = self.widget.cget("state")
+            self.widget.config(state='normal')
+            self.widget.delete("1.0", "end")
+            self.widget.insert("1.0", value)
+            self.widget.config(state=state)
+        elif self.widget_type == "label":
+            self.widget.config(text=value)
+
+        if callFunction and callable(self.command):
+            self.command()
+
+    def _on_command(self, event=None):
+        if callable(self.command):
+            self.command()
+
+    def __getattr__(self, item):
+        return getattr(self.widget, item)
 
 
 # Plugins available to the 'import' command are stored here.
@@ -360,15 +469,15 @@ def addWidget(widgetType, parent=None, cpos=0, rpos=0, **kwargs):
     elif widgetType == 'stext':
         widget = TDWidget.ScrolledText(parent, textvariable=kwargs.get('textvariable'))
     elif widgetType == 'button':
-        widget = TDWidget.Button(parent, text=kwargs.get('text'), command=kwargs.get('func'))
+        widget = TDWidget.Button(parent, label=kwargs.get('text'), command=kwargs.get('func'))
     elif widgetType == 'frame':
         widget = TDWidget.Frame(parent)
     elif widgetType == 'tab':
         widget = TDWidget.Tab(parent)
     elif widgetType == 'label':
-        widget = TDWidget.Label(parent, text=kwargs.get('text'))
+        widget = TDWidget.Label(parent, label=kwargs.get('text'))
     elif widgetType == 'check':
-        widget = TDWidget.Check(parent, text=kwargs.get('text'), variable=kwargs.get('textvariable'),
+        widget = TDWidget.Check(parent, label=kwargs.get('text'), variable=kwargs.get('textvariable'),
                                 onvalue=kwargs.get('onvalue', True), offvalue=kwargs.get('offvalue', False),
                                 command=kwargs.get('func'))
     elif widgetType == 'spin':
@@ -398,7 +507,7 @@ def addWidget(widgetType, parent=None, cpos=0, rpos=0, **kwargs):
     
     # Handle tabs
     if 'tab' in kwargs and hasattr(parent, 'add'):
-        parent.add(widget, text=kwargs['tab'])
+        parent.add(widget, label=kwargs['tab'])
     
     return widget
 
@@ -407,6 +516,8 @@ def addWidgetFromArg(name, arg, parent):
     Creates a labeled TDWidget for an argument.
     """
     widgets[name] = TDWidget.Frame(parent)
+    widgets[name].grid(sticky='nsew')  # make the frame fill its parent
+    widgets[name].grid_columnconfigure(1, weight=1)  # make column 1 expandable
     
     kwargs = arg['widget'].copy()
     kwargs['textvariable'] = argVals[name]
@@ -429,16 +540,19 @@ def addWidgetFromArg(name, arg, parent):
         kwargs['columnspan'] = 3
     else:
         if widgetType == 'option':
-            label = TDWidget.Button(widgets[name], text=name, command=kwargs.pop('func', None))
+            label = TDWidget.Option(widgets[name], label=name, command=kwargs.pop('func', None))
             widgetType = 'entry'
         else:
-            label = TDWidget.Label(widgets[name], text=name)
+            label = TDWidget.Label(widgets[name], label=name)
         label.grid(column=0, row=0)
         kwargs['rpos'] = 0
         kwargs['cpos'] = 1
         kwargs['columnspan'] = 2
     
     # Add the actual input widget
+    kwargs['sticky'] = 'nsew'
+    kwargs['weight'] = 1
+    kwargs['width'] = 1
     addWidget(widgetType, parent=widgets[name], **kwargs)
     
     # Place the container frame
@@ -448,29 +562,21 @@ def addWidgetFromArg(name, arg, parent):
         """
         Creates and places a TDWidget for the given argument, handling all types.
         """
-        kwargs['sticky'] = sticky
-        kwargs['label'] = label
-        kwargs['change'] = updArgs
-        kwargs['tooltip'] = arg.get('help', '')
-        kwargs['colspan'] = 1 if arg == allArgs.get(name) else 9
-        
+       
         widgetDef = arg['widget']
         
         # Button
         if widgetDef['type'] == 'button':
-            kwargs.pop('change', None)
-            kwargs.pop('label', None)
-            kwargs.pop('colspan', None)
-            TDWidget.Button(win, text=name, command=widgetDef.get('func'), **kwargs)
+            TDWidget.Button(parent, label=name, command=widgetDef.get('func'), **kwargs)
         
         # Checkbutton
         elif widgetDef['type'] == 'check':
-            TDWidget.Check(win, text=name, variable=argVals[name] or arg.get('default'), **kwargs)
+            TDWidget.Check(parent, label=name, variable=argVals[name] or arg.get('default'), **kwargs)
         
         # Spinbox
         elif widgetDef['type'] == 'spin':
             kwargs['item'] = argVals[name] or arg.get('default') or 0
-            TDWidget.Spin(win, from_=-widgetDef.get('range', 0), to=widgetDef.get('range', 0), **kwargs)
+            TDWidget.Spin(parent, from_=-widgetDef.get('range', 0), to=widgetDef.get('range', 0), **kwargs)
         
         # Combobox / ticks
         elif widgetDef['type'] == 'combo':
@@ -479,7 +585,7 @@ def addWidgetFromArg(name, arg, parent):
                 kwargs['kind'] = widgetDef['sub']
                 kwargs.pop('label', None)
             
-            combo = TDWidget.Combo(win, values=widgetDef.get('values', []), variable=argVals[name], **kwargs)
+            combo = TDWidget.Combo(parent, values=widgetDef.get('values', []), variable=argVals[name], **kwargs)
             
             if not widgetDef.get('sub'):
                 argVals[name] = argVals[name] or arg.get('default') or '?'
@@ -494,11 +600,11 @@ def addWidgetFromArg(name, arg, parent):
             kwargs.pop('change', None)
             kwargs.pop('label', None)
             kwargs.pop('colspan', None)
-            TDWidget.Button(win, text='optionButton', command=optionsWin, name='--option', **kwargs)
+            TDWidget.Button(parent, label='optionButton', command=optionsWin, name='--option', **kwargs)
             
             kwargs['sticky'] = sticky
             kwargs['change'] = updArgs
-            TDWidget.Entry(win, textvariable=argVals[name] or arg.get('default'), row='p', column=1, colspan=9, **kwargs)
+            TDWidget.Entry(parent, textvariable=argVals[name] or arg.get('default'), row='p', column=1, colspan=9, **kwargs)
         
         # Entry / numeric / credits
         elif widgetDef['type'] == 'entry':
@@ -508,7 +614,7 @@ def addWidgetFromArg(name, arg, parent):
             elif widgetDef.get('sub'):
                 kwargs['kind'] = 'numeric'
             
-            TDWidget.Entry(win, textvariable=argVals[name] or arg.get('default'), **kwargs)
+            TDWidget.Entry(parent, textvariable=argVals[name] or arg.get('default'), **kwargs)
 
 
 def updateCommandBox(args=None):
@@ -539,7 +645,7 @@ def updateCommandBox(args=None):
     # Handle required arguments
     if allArgs[cmd]['req']:
         if 'Required:' not in widgets:
-            widgets['Required:'] = TDWidget.Label(widgets['req'], text='Required:', sticky='nw')
+            widgets['Required:'] = TDWidget.Label(widgets['req'], label='Required:', sticky='nsew')
         else:
             widgets['Required:'].grid()
         
@@ -553,7 +659,7 @@ def updateCommandBox(args=None):
     # Handle optional arguments
     if allArgs[cmd]['opt']:
         if 'Optional:' not in widgets:
-            widgets['Optional:'] = TDWidget.Label(widgets['opt'], text='Optional:', sticky='nw')
+            widgets['Optional:'] = TDWidget.Label(widgets['opt'], label='Optional:', sticky='nsew')
         else:
             widgets['Optional:'].grid()
         
@@ -573,6 +679,8 @@ def main(argv=None):
     
     class StdoutRedirector(IORedirector):
         def write(self, string):
+            if self.TEXT_INFO is None:
+                return
             current = self.TEXT_INFO.cget('text').rsplit('\r', 1)[0]
             self.TEXT_INFO.config(text=current + string)
         
@@ -626,7 +734,7 @@ def main(argv=None):
         
         plug = argVals.get('--plug')
         if not plug:
-            TDWidget.Label(sw, text="No import plugin chosen.", sticky='ew', colspan=10)
+            TDWidget.Label(sw, label="No import plugin chosen.", sticky='ew', colspan=10)
         else:
             plugOpts = allArgs['import']['opt']['--option']['options'].get(plug, {})
             for option, tooltip in plugOpts.items():
@@ -651,8 +759,8 @@ def main(argv=None):
                     )
         
         # Buttons
-        TDWidget.Button(sw, text="Done", func=setOpts, column=8)
-        TDWidget.Button(sw, text="Cancel", func=sw.hide, row='p', column=9)
+        TDWidget.Button(sw, label="Done", func=setOpts, column=8)
+        TDWidget.Button(sw, label="Cancel", func=sw.hide, row='p', column=9)
         
         sw.show()
     
@@ -725,29 +833,34 @@ def main(argv=None):
         req_frame = widgets['req']
         if allArgs[cmd]['req']:
             if 'Required:' not in widgets:
-                widgets['Required:'] = TDWidget.Label(req_frame, text='Required:', sticky='w')
+                widgets['Required:'] = TDWidget.Label(req_frame, label='Required:', sticky='w')
                 widgets['Required:'].grid(column=0, row=0, sticky='w')
             else:
                 widgets['Required:'].grid()
-            
-            i = 1
-            for key, arg in allArgs[cmd]['req'].items():
-                if key not in widgets:
-                    addWidgetFromArg(key, arg, req_frame)
-                else:
-                    widgets[key].grid(column=0, row=i)
-                i += 1
-        
+
+            for i, (key, arg) in enumerate(allArgs[cmd].get('req', {}).items()):
+                addWidgetFromArg(key, arg, widgets['req'].widget)
+                widgets[key].grid(column=0, row=i+1)
+
         # Show optional arguments
-        opt_frame = _
-    
+        opt_frame = widgets['opt']
+        if allArgs[cmd]['opt']:
+            if 'Optional:' not in widgets:
+                widgets['Optional:'] = TDWidget.Label(opt_frame, label='Optional:', sticky='w')
+                widgets['Optional:'].grid(column=0, row=0, sticky='w')
+            else:
+                widgets['Optional:'].grid()
+
+            for i, (key, arg) in enumerate(allArgs[cmd].get('opt', {}).items()):
+                addWidgetFromArg(key, arg, widgets['opt'].widget)
+                widgets[key].grid(column=0, row=i+1)
+
     def runTD():
         """
         Executes the TD command selected in the GUI using TDWidget.
         """
         
         from . import tradeexcept
-        
         def getVals(arg, argBase):
             curArg = argVals.get(arg)
             vals = []
@@ -784,6 +897,8 @@ def main(argv=None):
                 return None
             
             return vals
+
+        output_widget = widgets.get('outputText')
         
         def runTrade():
             # Disable the Run button while executing
@@ -792,9 +907,8 @@ def main(argv=None):
                 run_btn.disable()
             
             # Redirect stdout to the output Text widget
-            output_widget = widgets.get('outputText')
             oldout = sys.stdout
-            sys.stdout = StdoutRedirector(output_widget)
+            # sys.stdout = StdoutRedirector(output_widget)
             print('TD command: "' + ' '.join(argv) + '"')
             
             try:
@@ -900,7 +1014,7 @@ def main(argv=None):
                 name=name,
                 widget_type='check',
                 values=argVals.get(name, arg.get('default', False)),
-                text=name,
+                label=name,
                 **kwargs
             )
         
@@ -1006,10 +1120,10 @@ def main(argv=None):
     )
     
     # --- Request / Optional Scroll Frames ---
-    widgets['req'] = TDWidget('req', 'frame', parent=main_win, row=1, column=0, columnspan=10, sticky='nsew')
-    widgets['req'].widget.config(width=200, height=75)
-    widgets['opt'] = TDWidget('opt', 'frame', parent=main_win, row=2, column=0, columnspan=10, sticky='nsew')
-    widgets['opt'].widget.config(width=200, height=345)
+    widgets['req'] = TDWidget('req', 'scrollableframe', parent=main_win, row=1, column=0, columnspan=10, sticky='nsew', weight=1)
+    widgets['req'].widget.config(width=10, height=75)
+    widgets['opt'] = TDWidget('opt', 'scrollableframe', parent=main_win, row=2, column=0, columnspan=10, sticky='nsew', weight=1)
+    widgets['opt'].widget.config(width=10, height=345)
     
     # --- Tabbed Frame ---
     tabFrame = TDWidget('tabFrame', 'notebook', parent=main_win, row=1, column=10, rowspan=2, columnspan=40, sticky='nsew')
@@ -1029,33 +1143,27 @@ def main(argv=None):
     widgets['outPane'].widget.config(state='disabled', width=80)
     
     # --- Option Widgets ---
-    makeWidgets('--link-ly', allArgs['--link-ly'], sticky='w', width=4, row=3, column=2)
-    makeWidgets('--quiet', allArgs['--quiet'], sticky='e', disabled=':', width=1, row=3, column=46)
-    makeWidgets('--detail', allArgs['--detail'], sticky='e', disabled=':', width=1, row=3, column=47)
-    makeWidgets('--debug', allArgs['--debug'], sticky='e', disabled=':', width=1, row=3, column=48)
+    makeWidgets('--link-ly', allArgs['--link-ly'], sticky='w', width=4, row=3, column=2, parent = main_win)
+    makeWidgets('--quiet', allArgs['--quiet'], sticky='e', disabled=':', width=1, row=3, column=46, parent = main_win)
+    makeWidgets('--detail', allArgs['--detail'], sticky='e', disabled=':', width=1, row=3, column=47, parent = main_win)
+    makeWidgets('--debug', allArgs['--debug'], sticky='e', disabled=':', width=1, row=3, column=48, parent = main_win)
     
     # --- Run Button ---
-    TDWidget('Run', 'button', parent=main_win, text='Run', command=runTD, row=3, column=49, sticky='w')
+    TDWidget('Run', 'button', parent=main_win, label='Run', command=runTD, row=3, column=49, sticky='w')
     
     # --- CWD ---
-    makeWidgets('--cwd', allArgs['--cwd'], width=4, row=4, column=0)
+    makeWidgets('--cwd', allArgs['--cwd'], width=4, row=4, column=0, parent = main_win)
     cwd_scroll = TDWidget('CWD', 'scrolledtext', parent=main_win, row=4, column=1, columnspan=49, width=70, height=1)
     cwd_scroll.set(argVals['--cwd'])
     cwd_scroll.widget.config(state='disabled')
-    widgets['cwd'] = TDWidget('cwd', 'label', parent=main_win, text=argVals['--cwd'], sticky='w', row=4, column=1)
+    widgets['cwd'] = TDWidget('cwd', 'label', parent=main_win, label=argVals['--cwd'], sticky='w', row=4, column=1)
     
     # --- DB ---
-    makeWidgets('--db', allArgs['--db'], width=4, row=5, column=0)
+    makeWidgets('--db', allArgs['--db'], width=4, row=5, column=0, parent = main_win)
     db_scroll = TDWidget('DB', 'scrolledtext', parent=main_win, row=5, column=1, columnspan=49, width=70, height=1)
     db_scroll.set(argVals['--db'])
     db_scroll.widget.config(state='disabled')
-    widgets['db'] = TDWidget('db', 'label', parent=main_win, text=argVals['--db'], sticky='w', row=5, column=1)
-    
-    # --- Configure row/column stretching for proper layout ---
-    for i in range(50):
-        main_win.widget.columnconfigure(i, weight=1)
-    for i in range(6):
-        main_win.widget.rowconfigure(i, weight=1)
+    widgets['db'] = TDWidget('db', 'label', parent=main_win, label=argVals['--db'], sticky='w', row=5, column=1)
     
     # --- Show window ---
     main_win.widget.mainloop()
