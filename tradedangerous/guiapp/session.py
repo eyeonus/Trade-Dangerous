@@ -1,0 +1,178 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+from .profiles import CommandDraft, GlobalSettings, GuiStore, ShipProfile
+
+
+class ExecutionStatus(str, Enum):
+    IDLE = 'idle'
+    RUNNING = 'running'
+    SUCCEEDED = 'succeeded'
+    FAILED = 'failed'
+
+
+@dataclass(slots=True)
+class WorkingGlobalState:
+    commander_name: str | None = None
+    credits: int | None = None
+    max_data_age_days: float | None = None
+
+    @classmethod
+    def from_saved(cls, settings: GlobalSettings) -> 'WorkingGlobalState':
+        return cls(
+            commander_name=settings.commander_name,
+            credits=settings.credits,
+            max_data_age_days=settings.max_data_age_days,
+        )
+
+    def as_saved(self) -> GlobalSettings:
+        return GlobalSettings(
+            commander_name=self.commander_name,
+            credits=self.credits,
+            max_data_age_days=self.max_data_age_days,
+        )
+
+
+@dataclass(slots=True)
+class WorkingShipProfileState:
+    profile_id: str | None = None
+    ship_name: str | None = None
+    capacity: int | None = None
+    reserved_capacity: int | None = None
+    jump_range_full_ly: float | None = None
+    jump_range_empty_ly: float | None = None
+    is_dirty: bool = False
+
+    @classmethod
+    def from_saved(cls, profile: ShipProfile) -> 'WorkingShipProfileState':
+        return cls(
+            profile_id=profile.profile_id,
+            ship_name=profile.ship_name,
+            capacity=profile.capacity,
+            reserved_capacity=profile.reserved_capacity,
+            jump_range_full_ly=profile.jump_range_full_ly,
+            jump_range_empty_ly=profile.jump_range_empty_ly,
+            is_dirty=False,
+        )
+
+    def as_saved(self) -> ShipProfile:
+        if self.profile_id is None:
+            raise ValueError('Working ship profile has no profile_id.')
+        return ShipProfile(
+            profile_id=self.profile_id,
+            ship_name=self.ship_name,
+            capacity=self.capacity,
+            reserved_capacity=self.reserved_capacity,
+            jump_range_full_ly=self.jump_range_full_ly,
+            jump_range_empty_ly=self.jump_range_empty_ly,
+        )
+
+    @property
+    def effective_capacity(self) -> int | None:
+        if self.capacity is None:
+            return None
+        if self.reserved_capacity is None:
+            return self.capacity
+        if self.reserved_capacity > self.capacity:
+            return None
+        return self.capacity - self.reserved_capacity
+
+
+@dataclass(slots=True)
+class ExecutionState:
+    status: ExecutionStatus = ExecutionStatus.IDLE
+    active_command: str | None = None
+    error_message: str | None = None
+    raw_output: str = ''
+    diagnostics_output: str = ''
+    structured_result: Any = None
+
+
+@dataclass(slots=True)
+class SessionState:
+    selected_command: str = 'run'
+    selected_profile_id: str | None = None
+    global_state: WorkingGlobalState = field(default_factory=WorkingGlobalState)
+    ship_state: WorkingShipProfileState = field(
+        default_factory=WorkingShipProfileState
+    )
+    draft: CommandDraft = field(default_factory=CommandDraft)
+    execution: ExecutionState = field(default_factory=ExecutionState)
+
+    @classmethod
+    def from_store(cls, store: GuiStore) -> 'SessionState':
+        store.ensure_defaults()
+        profile = store.require_profile(store.selected_profile_id)
+        return cls(
+            selected_command=store.selected_command,
+            selected_profile_id=store.selected_profile_id,
+            global_state=WorkingGlobalState.from_saved(store.global_settings),
+            ship_state=WorkingShipProfileState.from_saved(profile),
+            draft=store.get_or_create_draft(store.selected_command),
+        )
+
+    def set_command(self, store: GuiStore, command: str) -> None:
+        self.selected_command = command
+        store.selected_command = command
+        self.draft = store.get_or_create_draft(command)
+
+    def set_global_state(
+        self,
+        store: GuiStore,
+        *,
+        commander_name: str | None,
+        credits: int | None,
+        max_data_age_days: float | None,
+    ) -> None:
+        self.global_state = WorkingGlobalState(
+            commander_name=commander_name,
+            credits=credits,
+            max_data_age_days=max_data_age_days,
+        )
+        store.global_settings = self.global_state.as_saved()
+
+    def load_profile(self, store: GuiStore, profile_id: str) -> None:
+        profile = store.require_profile(profile_id)
+        self.selected_profile_id = profile.profile_id
+        store.selected_profile_id = profile.profile_id
+        self.ship_state = WorkingShipProfileState.from_saved(profile)
+
+    def save_ship_profile(self, store: GuiStore) -> None:
+        saved = self.ship_state.as_saved()
+        store.upsert_profile(saved)
+        self.selected_profile_id = saved.profile_id
+        self.ship_state.is_dirty = False
+
+    def revert_ship_profile(self, store: GuiStore) -> None:
+        profile = store.require_profile(self.selected_profile_id)
+        self.ship_state = WorkingShipProfileState.from_saved(profile)
+
+    def create_new_ship_profile(self, store: GuiStore) -> None:
+        base = self.ship_state.as_saved()
+        created = store.create_profile(base=base)
+        self.load_profile(store, created.profile_id)
+
+    def mark_ship_dirty(self) -> None:
+        self.ship_state.is_dirty = True
+
+    def set_execution(
+        self,
+        *,
+        status: ExecutionStatus,
+        active_command: str | None = None,
+        error_message: str | None = None,
+        raw_output: str = '',
+        diagnostics_output: str = '',
+        structured_result: Any = None,
+    ) -> None:
+        self.execution = ExecutionState(
+            status=status,
+            active_command=active_command,
+            error_message=error_message,
+            raw_output=raw_output,
+            diagnostics_output=diagnostics_output,
+            structured_result=structured_result,
+        )

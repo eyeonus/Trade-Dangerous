@@ -13,12 +13,12 @@
 # This is the main entry point into the native TD GUI.
 # tkinter is a requirement to use the GUI.
 
-from tradedangerous import gui
+from tradedangerous.guiapp import main as gui_main
 
 
 def main(argv = None):
-    gui.main()
+    return gui_main(argv)
 
 
 if __name__ == "__main__":
-    gui.main()
+    raise SystemExit(main())
