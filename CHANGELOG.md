@@ -1,6 +1,63 @@
 # CHANGELOG
 
 
+## v12.11.8 (2026-03-14)
+
+### Bug Fixes
+
+- `trade run` pre-validation
+  ([`11f9378`](https://github.com/eyeonus/Trade-Dangerous/commit/11f93785b2f1a3c0d4947ebbd9af01c7d0132a0b))
+
+This should now catch ALL missing or bad combinations of arguments before doing any heavy lifting
+  and this feed back to user immediately, instead of two minutes later.
+
+### Chores
+
+- Make notebooks python-version limited
+  ([`11a546e`](https://github.com/eyeonus/Trade-Dangerous/commit/11a546eeccb7776a99e531399899bc58e3bc0b38))
+
+dependabot has itself in a twist over an optional feature of an optional component of an optional
+  group, and the fix for the vulnerability in that component is not currently available as a binary
+  wheel for windows 64 bit. next step, if this doesn't appease dependabot, simply remove the
+  dependency; it was there as a convenience
+
+- Python dependency prune
+  ([`851b0dc`](https://github.com/eyeonus/Trade-Dangerous/commit/851b0dc1009ffeb42c923413900fbdbcb5d3b336))
+
+- removed the notebooks group entirely; uv add jupyter if you need command-line use of
+  jupyter/notebooks; - removed sphinx, mistune, and m2r dependencies (we're not using sphinx,
+  mistune and m2r were related to it)
+
+- **deps**: Bump cryptography from 46.0.3 to 46.0.5
+  ([#289](https://github.com/eyeonus/Trade-Dangerous/pull/289),
+  [`bb14de9`](https://github.com/eyeonus/Trade-Dangerous/commit/bb14de912bbbf928fac1d345f36c631e51c8ef14))
+
+Bumps [cryptography](https://github.com/pyca/cryptography) from 46.0.3 to 46.0.5. -
+  [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pyca/cryptography/compare/46.0.3...46.0.5)
+
+--- updated-dependencies: - dependency-name: cryptography dependency-version: 46.0.5
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Refactoring
+
+- Basic functionality
+  ([`186c867`](https://github.com/eyeonus/Trade-Dangerous/commit/186c867ec313e9db4aeab6287486a16cb56e4977))
+
+output redirection isn't working so it still goes to the console but all the things work now.
+
+- Remove tools and test_derp
+  ([`ca0f69a`](https://github.com/eyeonus/Trade-Dangerous/commit/ca0f69ace7f540b817af77d94ad9b8e735d18ead))
+
+- removed ocrDerp checking functionality (which would break on various extant system and station
+  names), - removed accompanying tests,
+
+
 ## v12.11.7 (2026-02-20)
 
 ### Bug Fixes
