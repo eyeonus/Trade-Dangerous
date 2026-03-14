@@ -1,6 +1,55 @@
 # CHANGELOG
 
 
+## v12.12.0 (2026-03-14)
+
+### Chores
+
+- **deps**: Bump orjson from 3.11.5 to 3.11.6
+  ([#292](https://github.com/eyeonus/Trade-Dangerous/pull/292),
+  [`6308f7f`](https://github.com/eyeonus/Trade-Dangerous/commit/6308f7f630a611ebbc8a5d56be9d3f2efa2eaf5b))
+
+Bumps [orjson](https://github.com/ijl/orjson) from 3.11.5 to 3.11.6. - [Release
+  notes](https://github.com/ijl/orjson/releases) -
+  [Changelog](https://github.com/ijl/orjson/blob/master/CHANGELOG.md) -
+  [Commits](https://github.com/ijl/orjson/compare/3.11.5...3.11.6)
+
+--- updated-dependencies: - dependency-name: orjson dependency-version: 3.11.6
+
+dependency-type: direct:production ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Features
+
+- Initial GUI Test release
+  ([`f3b41d4`](https://github.com/eyeonus/Trade-Dangerous/commit/f3b41d474df2fe23f6ae5230847c1f34e9b17334))
+
+GUI Test release. Based on NiceGUI interface
+
+Ensure your venv is up to date with new modules.
+
+Invoke with `tradegui.py` from command line.
+
+Limited functionality and nowhere near complete design. Any complaints about it "doesn't do that" or
+  "looks bad" will be treated with utter contempt. It's not finished!
+
+What is now in place: - launch GUI through the new `tradegui.py` entry path - saves state to
+  `tradegui_state.json` in datadir - supports multiple ship profiles - `trade run` implemented -
+  other commands NOT implemented - defaults to NiceGUI native mode
+
+Web application mode:
+
+You can mess with the json to make it be a web server app. I'm not telling you how right now, but if
+  you're that clever, you can work it out, it's not hard. However if you mess with json and break
+  it, you shoulda backed up.
+
+Outside of "I tried to make it be a web server and now it's broken" I am very open to any blatant
+  bugs in functionality you manage to surface.
+
+
 ## v12.11.8 (2026-03-14)
 
 ### Bug Fixes
