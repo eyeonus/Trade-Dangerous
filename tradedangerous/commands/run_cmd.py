@@ -278,6 +278,15 @@ def validateRunArgumentsFast(cmdenv):
     Fast-fail argument checks that should run BEFORE any database
     access or TradeCalc construction.
     """
+    if cmdenv.capacity is None:
+        raise CommandLineError("Missing '--capacity'")
+    
+    if cmdenv.credits is None:
+        raise CommandLineError("Missing '--credits'")
+    
+    if cmdenv.maxLyPer is None and not cmdenv.direct:
+        raise CommandLineError("Missing '--ly-per'")
+    
     # --towards requires --from
     if cmdenv.goalSystem and not getattr(cmdenv, "starting", None):
         raise CommandLineError("--towards requires --from")
@@ -291,8 +300,31 @@ def validateRunArgumentsFast(cmdenv):
         raise CommandLineError("--end-jumps requires --to")
     
     # --shorten only valid with --to
-    if cmdenv.shorten and not cmdenv.destPlace:
+    if cmdenv.shorten and not getattr(cmdenv, "ending", None):
         raise CommandLineError("--shorten only works with --to.")
+    
+    if cmdenv.loop and cmdenv.unique:
+        raise CommandLineError("Cannot use --unique and --loop together")
+    
+    if cmdenv.loop and cmdenv.direct:
+        raise CommandLineError("Cannot use --direct and --loop together")
+    
+    if (
+        cmdenv.limit is not None
+        and cmdenv.capacity is not None
+        and cmdenv.limit > cmdenv.capacity
+    ):
+        raise CommandLineError("'limit' must be <= capacity")
+    
+    if cmdenv.insurance:
+        arbitraryInsuranceBuffer = 42
+        if cmdenv.insurance >= (cmdenv.credits + arbitraryInsuranceBuffer):
+            raise CommandLineError("Insurance leaves no margin for trade")
+    
+    if cmdenv.loopInt is not None and cmdenv.loopInt < 2:
+        raise CommandLineError(
+            "--loop-int must be 2 or higher to have any effect. "
+        )
 
 class Checklist:
     """
