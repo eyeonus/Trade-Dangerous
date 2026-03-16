@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v12.13.0 (2026-03-16)
+
+### Bug Fixes
+
+- Pyproject.toml bare dotted key should be quoted
+  ([`6e1bfec`](https://github.com/eyeonus/Trade-Dangerous/commit/6e1bfec0ea8cb120e841ae52a09c2caaf1c252eb))
+
+### Features
+
+- Gui New functionality
+  ([`395a6f9`](https://github.com/eyeonus/Trade-Dangerous/commit/395a6f951bebca26e84f48916d88dea0ba592222))
+
+GUI: Added commands buy & sell Added import functionality (eddblink backend) Added basic settings &
+  POC theming.
+
+eddblink: Added code to support GUI import (does not affect CLI function) Removed `bootstrap`
+  command completely.
+
+
 ## v12.12.0 (2026-03-14)
 
 ### Chores
