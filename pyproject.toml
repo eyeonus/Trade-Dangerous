@@ -164,7 +164,7 @@ tradedangerous = [
     "py.typed",
 ]
 
-tradedangerous.guiapp = [
+"tradedangerous.guiapp" = [
     "themes.css",
 ]
 
