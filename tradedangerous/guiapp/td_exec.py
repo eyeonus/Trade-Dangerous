@@ -10,6 +10,8 @@ from rich.console import Console
 from tradedangerous import commands, tradedb, tradeexcept
 from tradedangerous.commands import exceptions as cmd_exceptions
 
+from .td_exec_run import build_run_argv
+from .td_exec_buysell import build_buy_argv, build_sell_argv
 
 @dataclass(slots=True)
 class GuiCommandRequest:
@@ -19,6 +21,7 @@ class GuiCommandRequest:
     context_overrides: dict[str, Any] = field(default_factory=dict)
     global_values: dict[str, Any] = field(default_factory=dict)
     ship_profile_values: dict[str, Any] = field(default_factory=dict)
+    import_monitor: Any = None
 
     def effective_context(self) -> dict[str, Any]:
         context: dict[str, Any] = {}
@@ -119,6 +122,12 @@ class TdExecutor:
 
         if request.command == 'run':
             return self._execute_run(request)
+        if request.command == 'buy':
+            return self._execute_buy(request)
+        if request.command == 'sell':
+            return self._execute_sell(request)
+        if request.command == 'import':
+            return self._execute_import(request)
 
         return GuiCommandResult(
             command=request.command,
@@ -127,79 +136,90 @@ class TdExecutor:
                 f"'{request.command}' is not wired into the TD adapter yet."
             ),
             diagnostics_output=(
-                'Only the run command is currently connected to the '
-                'in-process TD execution path.'
+                'Only the run, buy, sell, and import commands are currently '
+                'connected to the in-process TD execution path.'
             ),
         )
 
     def _execute_run(self, request: GuiCommandRequest) -> GuiCommandResult:
-        argv = self._build_run_argv(request)
-        return self._execute_td_command(request, argv)
-
-    def _build_run_argv(self, request: GuiCommandRequest) -> list[str]:
         resolved = request.resolved_values()
         context = request.effective_context()
-        argv = ['tradegui.py', 'run']
-
-        self._append_option(argv, '--capacity', self._effective_capacity(context))
-        self._append_option(argv, '--credits', resolved.get('credits'))
-        self._append_option(argv, '--ly-per', resolved.get('jump_range_full_ly'))
-        self._append_option(
-            argv,
-            '--empty-ly',
-            resolved.get('jump_range_empty_ly'),
+        argv = build_run_argv(
+            resolved=resolved,
+            context=context,
+            effective_capacity=self._effective_capacity(context),
+            append_option=self._append_option,
+            append_flag=self._append_flag,
         )
-        self._append_option(argv, '--age', resolved.get('max_data_age_days'))
+        return self._execute_td_command(request, argv)
 
-        self._append_option(argv, '--from', resolved.get('starting'))
-        self._append_option(argv, '--to', resolved.get('ending'))
-        self._append_option(argv, '--towards', resolved.get('goalSystem'))
-        self._append_option(argv, '--via', resolved.get('via'))
-        self._append_option(argv, '--avoid', resolved.get('avoid'))
-
-        self._append_flag(argv, '--loop', resolved.get('loop'))
-        self._append_flag(argv, '--direct', resolved.get('direct'))
-        self._append_option(argv, '--hops', resolved.get('hops'))
-        self._append_option(argv, '--jumps-per', resolved.get('maxJumpsPer'))
-        self._append_option(argv, '--start-jumps', resolved.get('startJumps'))
-        self._append_option(argv, '--end-jumps', resolved.get('endJumps'))
-        self._append_flag(argv, '--show-jumps', resolved.get('showJumps'))
-
-        self._append_option(argv, '--limit', resolved.get('limit'))
-        self._append_option(argv, '--pad-size', resolved.get('padSize'))
-        self._append_flag(argv, '--no-planet', resolved.get('noPlanet'))
-        self._append_option(argv, '--planetary', resolved.get('planetary'))
-        self._append_option(argv, '--fleet-carrier', resolved.get('fleet'))
-        self._append_option(argv, '--odyssey', resolved.get('odyssey'))
-        self._append_flag(argv, '--black-market', resolved.get('blackMarket'))
-
-        self._append_option(argv, '--ls-penalty', resolved.get('lsPenalty'))
-        self._append_option(argv, '--ls-max', resolved.get('maxLs'))
-        self._append_option(argv, '--gain-per-ton', resolved.get('minGainPerTon'))
-        self._append_option(
-            argv,
-            '--max-gain-per-ton',
-            resolved.get('maxGainPerTon'),
+    def _execute_buy(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._buy_sell_resolved_values(request)
+        context = request.effective_context()
+        argv = build_buy_argv(
+            resolved=resolved,
+            context=context,
+            effective_capacity=self._effective_capacity(context),
+            append_option=self._append_option,
+            append_flag=self._append_flag,
         )
+        return self._execute_td_command(request, argv)
 
-        self._append_flag(argv, '--unique', resolved.get('unique'))
-        self._append_option(argv, '--loop-interval', resolved.get('loopInt'))
-        self._append_option(argv, '--margin', resolved.get('margin'))
-        self._append_option(argv, '--insurance', resolved.get('insurance'))
+    def _execute_sell(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._buy_sell_resolved_values(request)
+        context = request.effective_context()
+        argv = build_sell_argv(
+            resolved=resolved,
+            context=context,
+            effective_capacity=self._effective_capacity(context),
+            append_option=self._append_option,
+            append_flag=self._append_flag,
+        )
+        return self._execute_td_command(request, argv)
 
-        self._append_option(argv, '--routes', resolved.get('routes'))
-        self._append_option(argv, '--max-routes', resolved.get('maxRoutes'))
-        self._append_flag(argv, '--checklist', resolved.get('checklist'))
-        self._append_flag(argv, '--x52-pro', resolved.get('x52pro'))
-        self._append_option(argv, '--prune-score', resolved.get('pruneScores'))
-        self._append_option(argv, '--prune-hops', resolved.get('pruneHops'))
+    def _execute_import(self, request: GuiCommandRequest) -> GuiCommandResult:
+        from .td_exec_import import build_import_argv, execute_import_command
 
-        self._append_flag(argv, '--progress', resolved.get('progress'))
-        self._append_option(argv, '--supply', resolved.get('supply'))
-        self._append_option(argv, '--demand', resolved.get('demand'))
-        self._append_flag(argv, '--summary', resolved.get('summary'))
-        self._append_flag(argv, '--shorten', resolved.get('shorten'))
-        return argv
+        resolved = _drop_blank_values(request.main_values)
+        argv = build_import_argv(
+            resolved=resolved,
+            append_option=self._append_option,
+        )
+        payload = execute_import_command(
+            request=request,
+            argv=argv,
+        )
+        return GuiCommandResult(
+            command=request.command,
+            ok=payload.ok,
+            error_message=payload.error_message,
+            raw_output=payload.raw_output,
+            diagnostics_output=payload.diagnostics_output,
+            structured_result=payload.structured_result,
+            argv_used=list(argv),
+        )
+    
+    @staticmethod
+    def _buy_sell_resolved_values(
+        request: GuiCommandRequest,
+    ) -> dict[str, Any]:
+        resolved = _drop_blank_values(request.global_values)
+        resolved.update(_drop_blank_values(request.main_values))
+        resolved.update(_drop_blank_values(request.advanced_values))
+        return resolved
+    
+    @staticmethod
+    def _split_search_terms(value: Any) -> list[str]:
+        if value in (None, ''):
+            return []
+
+        terms: list[str] = []
+        for line in str(value).splitlines():
+            for part in line.split(','):
+                cleaned = part.strip()
+                if cleaned:
+                    terms.append(cleaned)
+        return terms
 
     @staticmethod
     def _validate_optional_int(
@@ -257,6 +277,11 @@ class TdExecutor:
                     results = cmdenv.run(tdb)
                     if results:
                         structured_result = getattr(results, 'data', None)
+                        if structured_result is None:
+                            structured_result = {
+                                'summary': getattr(results, 'summary', None),
+                                'rows': list(getattr(results, 'rows', [])),
+                            }
                         cmdenv.console = render_console
                         cmdenv.stderr = render_console
                         with redirect_stdout(render_stream), redirect_stderr(

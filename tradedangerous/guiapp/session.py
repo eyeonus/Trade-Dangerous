@@ -89,6 +89,16 @@ class ExecutionState:
     raw_output: str = ''
     diagnostics_output: str = ''
     structured_result: Any = None
+    import_log_lines: list[str] = field(default_factory=list)
+    import_status_text: str = ''
+    import_parent_label: str | None = None
+    import_parent_value: int | None = None
+    import_parent_total: int | None = None
+    import_child_label: str | None = None
+    import_child_value: int | None = None
+    import_child_total: int | None = None
+    import_stop_requested: bool = False
+    import_stop_confirming: bool = False
 
 
 @dataclass(slots=True)
@@ -101,24 +111,40 @@ class SessionState:
     )
     draft: CommandDraft = field(default_factory=CommandDraft)
     execution: ExecutionState = field(default_factory=ExecutionState)
-
+    active_import_monitor: Any = None
+    
     @classmethod
     def from_store(cls, store: GuiStore) -> 'SessionState':
         store.ensure_defaults()
         profile = store.require_profile(store.selected_profile_id)
+        if store.selected_command == 'settings':
+            draft = CommandDraft()
+        else:
+            draft = store.get_or_create_draft(store.selected_command)
+            cls._normalize_command_draft(store.selected_command, draft)
         return cls(
             selected_command=store.selected_command,
             selected_profile_id=store.selected_profile_id,
             global_state=WorkingGlobalState.from_saved(store.global_settings),
             ship_state=WorkingShipProfileState.from_saved(profile),
-            draft=store.get_or_create_draft(store.selected_command),
+            draft=draft,
         )
-
+    
     def set_command(self, store: GuiStore, command: str) -> None:
         self.selected_command = command
         store.selected_command = command
+        if command == 'settings':
+            self.draft = CommandDraft()
+            return
         self.draft = store.get_or_create_draft(command)
-
+        self._normalize_command_draft(command, self.draft)
+    
+    @staticmethod
+    def _normalize_command_draft(command: str, draft: CommandDraft) -> None:
+        if command == 'import':
+            draft.main_values.pop('clean', None)
+            draft.main_values.pop('optimize', None)
+    
     def set_global_state(
         self,
         store: GuiStore,
@@ -167,6 +193,16 @@ class SessionState:
         raw_output: str = '',
         diagnostics_output: str = '',
         structured_result: Any = None,
+        import_log_lines: list[str] | None = None,
+        import_status_text: str = '',
+        import_parent_label: str | None = None,
+        import_parent_value: int | None = None,
+        import_parent_total: int | None = None,
+        import_child_label: str | None = None,
+        import_child_value: int | None = None,
+        import_child_total: int | None = None,
+        import_stop_requested: bool = False,
+        import_stop_confirming: bool = False,
     ) -> None:
         self.execution = ExecutionState(
             status=status,
@@ -175,4 +211,14 @@ class SessionState:
             raw_output=raw_output,
             diagnostics_output=diagnostics_output,
             structured_result=structured_result,
+            import_log_lines=list(import_log_lines or []),
+            import_status_text=import_status_text,
+            import_parent_label=import_parent_label,
+            import_parent_value=import_parent_value,
+            import_parent_total=import_parent_total,
+            import_child_label=import_child_label,
+            import_child_value=import_child_value,
+            import_child_total=import_child_total,
+            import_stop_requested=import_stop_requested,
+            import_stop_confirming=import_stop_confirming,
         )

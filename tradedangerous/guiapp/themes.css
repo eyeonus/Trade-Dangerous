@@ -1,0 +1,123 @@
+.td-theme-elite {
+    --q-primary: #f07b05;
+    --q-secondary: #f07b05;
+    --q-accent: #f07b05;
+    background: #000000;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-card,
+.td-theme-elite .q-menu,
+.td-theme-elite .q-dialog .q-card {
+    background: #000000;
+    color: #ffffff;
+    border: 1px solid #f07b05;
+    box-shadow: none;
+}
+
+.td-theme-elite .q-btn {
+    background: #f07b05;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-btn.q-btn--outline {
+    background: transparent;
+    color: #f07b05;
+    border: 1px solid #f07b05;
+}
+
+.td-theme-elite .q-btn-group > .q-btn {
+    background: #111111;
+    color: #ffffff;
+    border: 1px solid #f07b05;
+}
+
+.td-theme-elite .q-btn-group > .q-btn[aria-pressed='true'],
+.td-theme-elite .q-btn-group > .q-btn.q-btn--active,
+.td-theme-elite .q-btn-group > .q-btn.bg-primary {
+    background: #f07b05;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-item--active,
+.td-theme-elite .q-item.q-manual-focusable--focused,
+.td-theme-elite .q-item:hover {
+    background: #111111;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-checkbox__inner,
+.td-theme-elite .q-radio__inner,
+.td-theme-elite .q-toggle__inner {
+    color: #f07b05;
+}
+
+.td-theme-elite .q-field__control,
+.td-theme-elite .q-field--filled .q-field__control,
+.td-theme-elite .q-field--outlined .q-field__control {
+    background: #111111;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-field__control:before,
+.td-theme-elite .q-field__control:after {
+    border-color: #f07b05 !important;
+}
+
+.td-theme-elite .q-field__native,
+.td-theme-elite .q-field__input,
+.td-theme-elite .q-field__label,
+.td-theme-elite .q-field__bottom,
+.td-theme-elite .q-select__dropdown-icon,
+.td-theme-elite .q-checkbox__label,
+.td-theme-elite .q-toggle__label,
+.td-theme-elite .q-radio__label,
+.td-theme-elite .q-item__label,
+.td-theme-elite .text-gray-600,
+.td-theme-elite .text-gray-700 {
+    color: #ffffff !important;
+}
+
+.td-theme-elite .q-separator,
+.td-theme-elite hr,
+.td-theme-elite .q-splitter__separator {
+    background: #f07b05;
+}
+
+.td-theme-elite .q-expansion-item,
+.td-theme-elite .q-expansion-item .q-item,
+.td-theme-elite .q-expansion-item .q-card {
+    background: #000000;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-table,
+.td-theme-elite .q-table thead,
+.td-theme-elite .q-table tbody,
+.td-theme-elite .q-table tr,
+.td-theme-elite .q-table th,
+.td-theme-elite .q-table td {
+    background: #000000;
+    color: #ffffff;
+    border-color: #f07b05;
+}
+
+.td-theme-elite .q-table th,
+.td-theme-elite .q-table td {
+    border-bottom: 1px solid #f07b05;
+}
+
+.td-theme-elite .q-table__bottom,
+.td-theme-elite .q-table__top,
+.td-theme-elite .q-table__middle,
+.td-theme-elite .q-table__container {
+    background: #000000;
+    color: #ffffff;
+}
+
+.td-theme-elite .q-table__card {
+    background: #000000;
+    color: #ffffff;
+    border: 1px solid #f07b05;
+    box-shadow: none;
+}

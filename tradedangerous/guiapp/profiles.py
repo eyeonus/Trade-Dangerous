@@ -100,6 +100,7 @@ class GuiStore:
             selected_command='run',
             profiles=[default_profile],
             drafts={'run': CommandDraft()},
+            layout={'theme': 'elite'},
         )
 
     @classmethod
@@ -151,7 +152,10 @@ class GuiStore:
         if self.selected_command == '':
             self.selected_command = 'run'
 
-        if self.selected_command not in self.drafts:
+        if (
+            self.selected_command != 'settings'
+            and self.selected_command not in self.drafts
+        ):
             self.drafts[self.selected_command] = CommandDraft()
 
     def get_profile(self, profile_id: str | None) -> ShipProfile | None:

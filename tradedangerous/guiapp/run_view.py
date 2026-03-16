@@ -5,14 +5,7 @@ from typing import Any, Callable
 from nicegui import ui
 
 from .profiles import CommandDraft
-
-
-_TRI_STATE_OPTIONS = {
-    '': 'Any',
-    'Y': 'Yes only',
-    'N': 'No only',
-    '?': 'Unknown only',
-}
+from .shared_filter_view import build_shared_filter_section
 
 
 class RunWorkspace:
@@ -217,90 +210,37 @@ class RunWorkspace:
                 ).classes('w-40')
 
     def _build_filter_section(self) -> None:
-        with ui.card().classes('w-full'):
-            ui.label('Common Filters')
-
-            with ui.row().classes('w-full gap-3'):
-                ui.select(
-                    _TRI_STATE_OPTIONS,
-                    value=self._tri_state_value(
-                        self.draft.main_values,
-                        'planetary',
-                    ),
-                    label='Planetary',
-                    on_change=lambda event: self._set_tri_state(
-                        self.draft.main_values,
-                        'planetary',
-                        event.value,
-                    ),
-                ).classes('w-48')
-                ui.select(
-                    _TRI_STATE_OPTIONS,
-                    value=self._tri_state_value(
-                        self.draft.main_values,
-                        'fleet',
-                    ),
-                    label='Fleet Carrier',
-                    on_change=lambda event: self._set_tri_state(
-                        self.draft.main_values,
-                        'fleet',
-                        event.value,
-                    ),
-                ).classes('w-48')
-                ui.select(
-                    _TRI_STATE_OPTIONS,
-                    value=self._tri_state_value(
-                        self.draft.main_values,
-                        'odyssey',
-                    ),
-                    label='Odyssey',
-                    on_change=lambda event: self._set_tri_state(
-                        self.draft.main_values,
-                        'odyssey',
-                        event.value,
-                    ),
-                ).classes('w-48')
-                ui.checkbox(
-                    'Summary output',
-                    value=self._bool_value(self.draft.main_values, 'summary'),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.main_values,
-                        'summary',
-                        event.value,
-                    ),
-                )
-
-            with ui.row().classes('w-full items-center gap-4'):
-                ui.label('Pad sizes')
-                ui.checkbox(
-                    'S',
-                    value=self._pad_size_enabled('S'),
-                    on_change=lambda event: self._set_pad_size_flag(
-                        'S',
-                        event.value,
-                    ),
-                )
-                ui.checkbox(
-                    'M',
-                    value=self._pad_size_enabled('M'),
-                    on_change=lambda event: self._set_pad_size_flag(
-                        'M',
-                        event.value,
-                    ),
-                )
-                ui.checkbox(
-                    'L',
-                    value=self._pad_size_enabled('L'),
-                    on_change=lambda event: self._set_pad_size_flag(
-                        'L',
-                        event.value,
-                    ),
-                )
-
-            ui.label(
-                'All pad sizes checked means unrestricted. '
-                'The tri-state filters use Any / Yes / No / Unknown semantics.'
-            ).classes('text-sm text-gray-600')
+        def build_run_extra_filters() -> None:
+            ui.checkbox(
+                'Summary output',
+                value=self._bool_value(self.draft.main_values, 'summary'),
+                on_change=lambda event: self._set_bool(
+                    self.draft.main_values,
+                    'summary',
+                    event.value,
+                ),
+            )
+        
+        build_shared_filter_section(
+            get_bool=lambda key: self._bool_value(self.draft.main_values, key),
+            get_tri_state=lambda key: self._tri_state_value(
+                self.draft.main_values,
+                key,
+            ),
+            set_bool=lambda key, value: self._set_bool(
+                self.draft.main_values,
+                key,
+                value,
+            ),
+            set_tri_state=lambda key, value: self._set_tri_state(
+                self.draft.main_values,
+                key,
+                value,
+            ),
+            pad_size_enabled=self._pad_size_enabled,
+            set_pad_size_flag=self._set_pad_size_flag,
+            extra_builder=build_run_extra_filters,
+        )
 
     def _build_extended_dialog(self) -> ui.dialog:
         dialog = ui.dialog()

@@ -128,7 +128,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         'units':        "Treat listing entries with 0 units as having the corresponding supply/demand price treated "
                         "as 0. This stops things like Tritium showing up where it's not available but someone was "
                         "able to sell it.",
-        'bootstrap':    "Helper to 'do the right thing' and get you some data",
     }
     
     def __init__(self, tdb, tdenv):
@@ -152,6 +151,39 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.liveListingsPath = Path("listings-live.csv")
         self.pricesPath = Path("listings.prices")
     
+    def _import_monitor(self):
+        return getattr(self.tdenv, 'import_monitor', None)
+
+    def _set_import_status(self, text: str) -> None:
+        monitor = self._import_monitor()
+        if monitor is not None:
+            monitor.set_status(text)
+
+    def _set_import_parent_progress(
+        self,
+        label: str | None,
+        value: int | None,
+        total: int | None,
+    ) -> None:
+        monitor = self._import_monitor()
+        if monitor is not None:
+            monitor.set_parent_progress(label, value, total)
+
+    def _set_import_child_progress(
+        self,
+        label: str | None,
+        value: int | None,
+        total: int | None,
+    ) -> None:
+        monitor = self._import_monitor()
+        if monitor is not None:
+            monitor.set_child_progress(label, value, total)
+
+    def _check_import_stop(self) -> None:
+        monitor = self._import_monitor()
+        if monitor is not None and monitor.stop_requested():
+            raise TradeException("Import stopped by user.")
+
     def now(self):
         return datetime.datetime.now().strftime('%H:%M:%S')
 
@@ -417,12 +449,37 @@ class ImportPlugin(plugins.ImportPluginBase):
                 
                 batch_rows = []
                 since_commit = 0
+                processed_rows = 0
+                
+                # GUI-only: publish the active listings phase and clear any
+                # parent progress carried over from an earlier import phase.
+                # These calls are dormant for CLI use unless a GUI monitor exists.
+                self._set_import_status(
+                    f"Processing market data from {listings_file}..."
+                )
+                self._set_import_parent_progress(None, None, None)
+                self._set_import_child_progress(
+                    f"Processing {listings_file}",
+                    0,
+                    total,
+                )
                 
                 # optimize away millions of lookups
                 increment = prog.increment
                 
                 def bump_progress():
+                    nonlocal processed_rows
+                    # GUI-only: honour cooperative stop requests during the long
+                    # listings pass and mirror determinate row progress into the
+                    # NiceGUI import status strip.
+                    self._check_import_stop()
                     increment(1)
+                    processed_rows += 1
+                    self._set_import_child_progress(
+                        f"Processing {listings_file}",
+                        processed_rows,
+                        total,
+                    )
                 
                 from_timestamp = datetime.datetime.fromtimestamp
                 utc = datetime.timezone.utc
@@ -512,6 +569,9 @@ class ImportPlugin(plugins.ImportPluginBase):
             
             finally:
                 end_bulk_mode(session, token)
+                # GUI-only: clear determinate child progress at the end of this
+                # listings pass so the next phase can publish its own state cleanly.
+                self._set_import_child_progress(None, None, None)
         
         # with pbar.Progress(1, 40, prefix="Saving"):
         #     pass
@@ -550,12 +610,62 @@ class ImportPlugin(plugins.ImportPluginBase):
                 width=25,
                 style=pbar.CountingBar,
             ) as prog:
-                for table_name, import_path in table_jobs:
+                # GUI-only: publish the current import phase and initialise the
+                # parent/child progress state for the bespoke NiceGUI import pane.
+                # These helper calls are dormant for CLI use unless a GUI
+                # import_monitor has been attached to tdenv.
+                self._set_import_status("Upserting base data...")
+                self._set_import_parent_progress(
+                    "Upserting",
+                    0,
+                    len(table_jobs),
+                )
+                self._set_import_child_progress(None, None, None)
+                for index, (table_name, import_path) in enumerate(table_jobs, start=1):
+                    # GUI-only: allow a cooperative stop request from the GUI to
+                    # abort between table jobs. CLI behaviour is unchanged because
+                    # no monitor is present there.
+                    self._check_import_stop()
                     import_lines = file_line_count(import_path, missing_ok=True)
+                    processed_lines = 0
+
+                    def _line_callback(task, advance, description=None):
+                        nonlocal processed_lines
+                        # GUI-only: honour stop requests during a long table import.
+                        self._check_import_stop()
+                        prog.update_task(
+                            task,
+                            advance,
+                            description=description,
+                        )
+                        processed_lines += int(advance)
+                        # GUI-only: mirror child progress into the NiceGUI status
+                        # strip. This does not affect CLI output.
+                        self._set_import_child_progress(
+                            table_name,
+                            processed_lines,
+                            import_lines,
+                        )
+
                     with prog.sub_task(
                         max_value=import_lines,
                         description=table_name,
                     ) as child:
+                        # GUI-only: update the visible phase text and parent/child
+                        # counters for the active table.
+                        self._set_import_status(
+                            f"Upserting {table_name}..."
+                        )
+                        self._set_import_parent_progress(
+                            "Upserting",
+                            index - 1,
+                            len(table_jobs),
+                        )
+                        self._set_import_child_progress(
+                            table_name,
+                            0,
+                            import_lines,
+                        )
                         prog.increment(value=1)
                         call_args = {"task": child, "advance": 1}
                         try:
@@ -569,10 +679,17 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 session,
                                 import_path,
                                 table_name,
-                                line_callback=prog.update_task,
+                                line_callback=_line_callback,
                                 call_args=call_args,
                             )
                             session.commit()
+                            # GUI-only: mark the parent counter as having completed
+                            # this table once the import commits successfully.
+                            self._set_import_parent_progress(
+                                "Upserting",
+                                index,
+                                len(table_jobs),
+                            )
                         except FileNotFoundError:
                             self.tdenv.WARN("Missing import file for {}: {}", table_name, import_path)
                         except StopIteration:
@@ -582,6 +699,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                             )
 
                 prog.increment(1)
+                # GUI-only: clear the child progress once the upsert phase is done.
+                self._set_import_child_progress(None, None, None)
 
 
     def run(self):
@@ -605,21 +724,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 default = False
         if default:
             self.options["listings"] = True
-
-        if self.getOption("bootstrap"):
-            self.tdenv.NOTE("[bold][blue]bootstrap: Greetings, Commander!")
-            self.tdenv.NOTE(
-                "[yellow]This first-time import might take several minutes or longer, "
-                "it ensures your database is up to date with current EDDBLink System, Station, and Item tables "
-                "as well as trade listings for the last 7 days.")
-            self.tdenv.NOTE(
-                "[yellow]You can run this same command later to import updates - which should be much faster, "
-                "or `trade import -P eddblink -O 7days,skipvend`.")
-            self.tdenv.NOTE(
-                "[yellow]To contribute your own discoveries to market data, consider running the "
-                "Elite Dangerous Market Connector while playing.")
-            for child in ["system", "station", "item", "listings", "skipvend", "7days"]:
-                self.options[child] = True
 
         # Check if database already exists and enable `clean` if not.
         if lifecycle.is_empty(self.tdb.engine):

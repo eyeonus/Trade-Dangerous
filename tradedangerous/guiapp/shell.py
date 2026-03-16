@@ -1,18 +1,33 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from nicegui import run, ui
 
 from .profiles import GuiStore, save_gui_store
 from .run_view import RunWorkspace
+from .buy_sell_view import BuySellWorkspace
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdExecutor
 
 COMMAND_OPTIONS: dict[str, str] = {
     'run': 'Run',
-    'trade': 'Trade',
     'buy': 'Buy',
+    'sell': 'Sell',
+    'trade': 'Trade',
+    'local': 'Local',
+    'market': 'Market',
+    'nav': 'Nav',
+    'olddata': 'Old Data',
+    'rares': 'Rares',
+    'shipvendor': 'Ship Vendor',
+    'station': 'Station',
+    'update': 'Update',
+    'buildcache': 'Build Cache',
+    'export': 'Export',
+    'import': 'Import',
+    'settings': 'Settings',
 }
 
 
@@ -38,9 +53,19 @@ class AppShell:
         self.right_pane_toggle = None
         self.right_pane_host = None
         self.right_pane_view = 'setup'
+        self.root_container = None
+        self.body_query = None
 
     def build(self) -> None:
-        with ui.column().classes('w-full gap-2 p-4'):
+        ui.add_head_html(
+            f'<style>\n{self._theme_css_text()}\n</style>'
+        )
+
+        self.body_query = ui.query('body')
+        self.root_container = ui.column().classes(
+            'w-full gap-2 p-4 td-theme-default'
+        )
+        with self.root_container:
             self._build_top_bar()
             with ui.splitter(value=27).classes('w-full') as splitter:
                 with splitter.before:
@@ -48,7 +73,33 @@ class AppShell:
                 with splitter.after:
                     self._build_right_pane()
 
+        self._apply_theme()
         self._refresh_ui()
+
+    @staticmethod
+    def _theme_css_text() -> str:
+        return Path(__file__).with_name('themes.css').read_text(
+            encoding='utf-8',
+        )
+
+    def _apply_theme(self) -> None:
+        theme_class = f'td-theme-{self._selected_theme()}'
+
+        if self.root_container is not None:
+            self.root_container.classes(
+                remove='td-theme-default td-theme-elite',
+            )
+            self.root_container.classes(
+                add=theme_class,
+            )
+
+        if self.body_query is not None:
+            self.body_query.classes(
+                remove='td-theme-default td-theme-elite',
+            )
+            self.body_query.classes(
+                add=theme_class,
+            )
 
     def _build_top_bar(self) -> None:
         with ui.row().classes('w-full items-center gap-4'):
@@ -118,7 +169,7 @@ class AppShell:
         with ui.column().classes('w-full gap-2 pl-2'):
             self.right_pane_toggle = ui.toggle(
                 {
-                    'setup': 'Setup',
+                    'setup': 'Input',
                     'results': 'Results',
                     'diagnostics': 'Diagnostics',
                 },
@@ -187,6 +238,42 @@ class AppShell:
     def _on_run_draft_changed(self) -> None:
         save_gui_store(self.store)
 
+    def _selected_theme(self) -> str:
+        value = self.store.layout.get('theme')
+        if value in {'default', 'elite'}:
+            return str(value)
+        return 'default'
+
+    def _on_theme_changed(self, theme_name: str) -> None:
+        theme = str(theme_name)
+        if theme not in {'default', 'elite'}:
+            return
+        self.store.layout['theme'] = theme
+        save_gui_store(self.store)
+        self._apply_theme()
+        self._refresh_ui()
+
+    def _on_begin_import_stop_confirmation(self) -> None:
+        from .import_runtime import begin_import_stop_confirmation
+
+        if begin_import_stop_confirmation(session=self.session):
+            self._refresh_ui()
+
+    def _on_cancel_import_stop_confirmation(self) -> None:
+        from .import_runtime import cancel_import_stop_confirmation
+
+        if cancel_import_stop_confirmation(session=self.session):
+            self._refresh_ui()
+
+    def _on_request_import_stop(self) -> None:
+        from .import_runtime import request_import_stop
+
+        if request_import_stop(session=self.session):
+            self._refresh_ui()
+            return
+
+        ui.notify('No import is currently running.', color='warning')
+
     def _on_copy_from_profile(self) -> None:
         context = {
             'capacity': self.session.ship_state.effective_capacity,
@@ -206,6 +293,32 @@ class AppShell:
         self._refresh_ui()
 
     async def _on_execute_command(self) -> None:
+        from .import_runtime import (
+            build_import_request,
+            consume_one_shot_import_flags,
+            run_import_execution,
+        )
+
+        if self.session.selected_command == 'settings':
+            ui.notify(
+                'Settings is a GUI workspace and cannot be executed.',
+                color='warning',
+            )
+            return
+
+        if self.session.selected_command == 'import':
+            request = build_import_request(draft=self.session.draft)
+            if consume_one_shot_import_flags(draft=self.session.draft):
+                save_gui_store(self.store)
+                self._refresh_ui()
+            await run_import_execution(
+                session=self.session,
+                executor=self.executor,
+                request=request,
+                refresh_ui=self._refresh_ui,
+            )
+            return
+
         if not self._capture_global_inputs():
             return
         if not self._capture_ship_inputs():
@@ -264,7 +377,7 @@ class AppShell:
             structured_result=result.structured_result,
         )
         self._refresh_ui()
-
+        
     def _capture_global_inputs(self) -> bool:
         credits = self._parse_optional_int(self.credits_input.value, 'Credits')
         if credits is None and self._has_text(self.credits_input.value):
@@ -355,22 +468,68 @@ class AppShell:
                     on_copy_from_profile=self._on_copy_from_profile,
                 )
                 workspace.build()
+            elif self.session.selected_command in {'buy', 'sell'}:
+                workspace = BuySellWorkspace(
+                    self.session.selected_command,
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                    on_copy_from_profile=self._on_copy_from_profile,
+                )
+                workspace.build()
+            elif self.session.selected_command == 'settings':
+                from .settings_view import SettingsWorkspace
+
+                workspace = SettingsWorkspace(
+                    selected_theme=self._selected_theme(),
+                    on_theme_changed=self._on_theme_changed,
+                )
+                workspace.build()
             else:
                 ui.label(
                     f'{self.session.selected_command} workspace '
                     'is not wired yet.'
                 )
-
+    
     def _render_right_pane(self) -> None:
+        from .import_view import ImportWorkspace
         from .results_view import render_command_results
-
+        is_import = self.session.selected_command == 'import'
+        is_input_only = self.session.selected_command in {
+            'import',
+            'settings',
+        }
+        if is_input_only:
+            self.right_pane_view = 'setup'
+        self.right_pane_toggle.set_visibility(not is_input_only)
+    
+        if is_import:
+            workspace = getattr(self, 'import_workspace', None)
+            if workspace is None:
+                self.right_pane_host.clear()
+                with self.right_pane_host:
+                    workspace = ImportWorkspace(
+                        self.session.draft,
+                        self.session.execution,
+                        on_changed=self._on_run_draft_changed,
+                        on_execute=self._on_execute_command,
+                        on_arm_stop=self._on_begin_import_stop_confirmation,
+                        on_cancel_stop=self._on_cancel_import_stop_confirmation,
+                        on_stop=self._on_request_import_stop,
+                    )
+                    workspace.build()
+                    self.import_workspace = workspace
+            else:
+                workspace.refresh(self.session.execution)
+            return
+    
+        self.import_workspace = None
         self.right_pane_host.clear()
         with self.right_pane_host:
             if self.right_pane_view == 'setup':
                 self.workspace_host = ui.column().classes('w-full gap-3')
                 self._render_workspace()
                 return
-
             if self.right_pane_view == 'results':
                 if self.session.execution.error_message:
                     ui.label(
@@ -383,18 +542,17 @@ class AppShell:
                         self.session.execution.raw_output,
                     )
                 return
-
             ui.label(
                 self.session.execution.diagnostics_output
             ).classes('whitespace-pre-wrap')
-
+    
     def _refresh_ui(self) -> None:
         self._refreshing_ui = True
         try:
             self.command_select.value = self.session.selected_command
             self.profile_select.set_options(self._profile_options())
             self.profile_select.value = self.session.selected_profile_id
-
+    
             self.commander_name_input.value = self._display_text(
                 self.session.global_state.commander_name
             )
@@ -419,7 +577,7 @@ class AppShell:
             self.jump_range_empty_input.value = self._display_text(
                 self.session.ship_state.jump_range_empty_ly
             )
-
+    
             effective_capacity = self.session.ship_state.effective_capacity
             if effective_capacity is None:
                 effective_text = 'Effective Capacity:'
@@ -428,14 +586,20 @@ class AppShell:
                     f'Effective Capacity: {effective_capacity}'
                 )
             self.effective_capacity_label.text = effective_text
-
+    
             status = self.session.execution.status.value.capitalize()
             self.status_label.text = f'Status: {status}'
-
+    
             if self.right_pane_toggle.value != self.right_pane_view:
                 self.right_pane_toggle.value = self.right_pane_view
-
-            self._render_right_pane()
+    
+            if (
+                self.session.selected_command == 'import'
+                and getattr(self, 'import_workspace', None) is not None
+            ):
+                self.import_workspace.refresh(self.session.execution)
+            else:
+                self._render_right_pane()
         finally:
             self._refreshing_ui = False
     

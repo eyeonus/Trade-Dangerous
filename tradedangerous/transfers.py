@@ -124,8 +124,18 @@ def download(
     fetched = 0
     started = time.time()
     filename = get_filename_from_url(url)
+    # GUI-only: allow the NiceGUI import path to observe the current download
+    # status and request a cooperative stop. This remains dormant for CLI use
+    # because normal CLI runs do not attach an import_monitor to tdenv.
+    import_monitor = getattr(tdenv, 'import_monitor', None)
+    if import_monitor is not None:
+        import_monitor.set_status(f"Downloading {filename}...")
     with pbar.Progress(max_value=length, width=25, prefix=filename, style=pbar.CountingBar, show=not tdenv.quiet) as prog, tmpPath.open("wb") as fh:
         for data in req.iter_content(chunk_size=chunkSize):
+            # GUI-only: honour a stop request during long downloads. CLI behaviour
+            # is unchanged because no monitor is present there.
+            if import_monitor is not None and import_monitor.stop_requested():
+                raise TradeException("Import stopped by user.")
             fh.write(data)
             fetched += len(data)
             if shebang:

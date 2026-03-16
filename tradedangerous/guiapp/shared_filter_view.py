@@ -1,0 +1,93 @@
+from __future__ import annotations
+
+from typing import Any, Callable
+
+from nicegui import ui
+
+TRI_STATE_OPTIONS = {
+    '': 'Any',
+    'Y': 'Yes only',
+    'N': 'No only',
+    '?': 'Unknown only',
+}
+
+def build_shared_filter_section(
+    *,
+    get_bool: Callable[[str], bool],
+    get_tri_state: Callable[[str], str],
+    set_bool: Callable[[str, Any], None],
+    set_tri_state: Callable[[str, Any], None],
+    pad_size_enabled: Callable[[str], bool],
+    set_pad_size_flag: Callable[[str, Any], None],
+    extra_builder: Callable[[], None] | None = None,
+    post_builder: Callable[[], None] | None = None,
+) -> None:
+    with ui.card().classes('w-full'):
+        ui.label('Common Filters')
+
+        with ui.row().classes('w-full gap-3'):
+            ui.select(
+                TRI_STATE_OPTIONS,
+                value=get_tri_state('planetary'),
+                label='Planetary',
+                on_change=lambda event: set_tri_state(
+                    'planetary',
+                    event.value,
+                ),
+            ).classes('w-48')
+            ui.select(
+                TRI_STATE_OPTIONS,
+                value=get_tri_state('fleet'),
+                label='Fleet Carrier',
+                on_change=lambda event: set_tri_state(
+                    'fleet',
+                    event.value,
+                ),
+            ).classes('w-48')
+            ui.select(
+                TRI_STATE_OPTIONS,
+                value=get_tri_state('odyssey'),
+                label='Odyssey',
+                on_change=lambda event: set_tri_state(
+                    'odyssey',
+                    event.value,
+                ),
+            ).classes('w-48')
+
+            if extra_builder is not None:
+                extra_builder()
+
+        with ui.row().classes('w-full items-center gap-4'):
+            ui.label('Pad sizes')
+            ui.checkbox(
+                'S',
+                value=pad_size_enabled('S'),
+                on_change=lambda event: set_pad_size_flag(
+                    'S',
+                    event.value,
+                ),
+            )
+            ui.checkbox(
+                'M',
+                value=pad_size_enabled('M'),
+                on_change=lambda event: set_pad_size_flag(
+                    'M',
+                    event.value,
+                ),
+            )
+            ui.checkbox(
+                'L',
+                value=pad_size_enabled('L'),
+                on_change=lambda event: set_pad_size_flag(
+                    'L',
+                    event.value,
+                ),
+            )
+
+        if post_builder is not None:
+            post_builder()
+
+        ui.label(
+            'All pad sizes checked means unrestricted. '
+            'The tri-state filters use Any / Yes / No / Unknown semantics.'
+        ).classes('text-sm text-gray-600')
