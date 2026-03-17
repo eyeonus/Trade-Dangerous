@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v12.13.1 (2026-03-17)
+
+### Bug Fixes
+
+- Fix non-functioning --away and clean up misleading help
+  ([`9890f35`](https://github.com/eyeonus/Trade-Dangerous/commit/9890f35b332db291fa0917ceffc16cd132a4d3b8))
+
+### Documentation
+
+- Added (hopefully) useful comments to GUI code
+  ([`cc9ce01`](https://github.com/eyeonus/Trade-Dangerous/commit/cc9ce01df691f7c3e733f2b50f7eaf9e3f8cedbb))
+
+
 ## v12.13.0 (2026-03-16)
 
 ### Bug Fixes
