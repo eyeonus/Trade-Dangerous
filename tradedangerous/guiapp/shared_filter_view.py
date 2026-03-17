@@ -1,3 +1,5 @@
+"""Reusable filter widgets shared by multiple command workspaces."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -22,6 +24,8 @@ def build_shared_filter_section(
     extra_builder: Callable[[], None] | None = None,
     post_builder: Callable[[], None] | None = None,
 ) -> None:
+    """Render the common TD filter controls via caller-provided getters/setters."""
+
     with ui.card().classes('w-full'):
         ui.label('Common Filters')
 

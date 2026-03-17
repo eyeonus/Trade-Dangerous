@@ -1,3 +1,5 @@
+"""Buy/Sell workspace widgets and draft mutation helpers."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -9,6 +11,8 @@ from .shared_filter_view import build_shared_filter_section
 
 
 class BuySellWorkspace:
+    """Edit a `buy` or `sell` draft using the same field semantics as `run`."""
+
     def __init__(
         self,
         command: str,
@@ -147,6 +151,8 @@ class BuySellWorkspace:
                     ).classes('w-48')
 
     def _build_filter_section(self) -> None:
+        # Reuse the same tri-state and pad-size UI so command workspaces stay
+        # aligned on the shared TD filtering semantics.
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
             get_tri_state=lambda key: self._tri_state_value(
@@ -358,6 +364,8 @@ class BuySellWorkspace:
             return
 
         if isinstance(value, float):
+            # NiceGUI number inputs may hand back integral values as floats.
+            # Accept 5.0 for integer-only fields, but reject fractional input.
             if value.is_integer():
                 payload[key] = int(value)
                 self.on_changed()
@@ -401,6 +409,7 @@ class BuySellWorkspace:
     ) -> None:
         cleaned = str(value or '')
         if cleaned == '':
+            # Blank means "Any", which is represented by omitting the flag.
             payload.pop(key, None)
         else:
             payload[key] = cleaned
@@ -417,6 +426,7 @@ class BuySellWorkspace:
 
         ordered = ''.join(size for size in 'SML' if size in current)
         if ordered == 'SML':
+            # The CLI treats a missing pad-size option as unrestricted.
             self.draft.main_values.pop('padSize', None)
         else:
             self.draft.main_values['padSize'] = ordered

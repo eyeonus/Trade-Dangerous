@@ -1,3 +1,5 @@
+"""GUI-only settings workspace."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -11,6 +13,8 @@ THEME_OPTIONS: dict[str, str] = {
 
 
 class SettingsWorkspace:
+    """Render settings that affect the shell itself rather than TD commands."""
+
     def __init__(
         self,
         *,

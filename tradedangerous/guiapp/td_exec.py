@@ -1,3 +1,5 @@
+"""Execution adapter that translates GUI draft state into TD core calls."""
+
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
@@ -15,6 +17,8 @@ from .td_exec_buysell import build_buy_argv, build_sell_argv
 
 @dataclass(slots=True)
 class GuiCommandRequest:
+    """Self-contained execution payload assembled from GUI state."""
+
     command: str
     main_values: dict[str, Any] = field(default_factory=dict)
     advanced_values: dict[str, Any] = field(default_factory=dict)
@@ -25,6 +29,8 @@ class GuiCommandRequest:
 
     def effective_context(self) -> dict[str, Any]:
         context: dict[str, Any] = {}
+        # Later layers intentionally win: profile values override globals, and
+        # explicit per-command overrides take precedence over both.
         context.update(_drop_blank_values(self.global_values))
         context.update(_drop_blank_values(self.ship_profile_values))
         context.update(_drop_blank_values(self.context_overrides))
@@ -32,6 +38,8 @@ class GuiCommandRequest:
 
     def resolved_values(self) -> dict[str, Any]:
         resolved = self.effective_context()
+        # Main and advanced command fields are appended on top of inherited
+        # context so argv builders can read from a single merged mapping.
         resolved.update(_drop_blank_values(self.main_values))
         resolved.update(_drop_blank_values(self.advanced_values))
         return resolved
@@ -249,6 +257,8 @@ class TdExecutor:
 
         try:
             cmdenv = commands.CommandIndex().parse(list(argv))
+            # Keep diagnostic/preflight output separate from rendered command
+            # output so the right pane can show either view cleanly.
             diagnostics_console = Console(
                 file=diagnostics_stream,
                 force_terminal=False,
@@ -276,6 +286,8 @@ class TdExecutor:
                     self._check_trade_data(cmdenv, tdb)
                     results = cmdenv.run(tdb)
                     if results:
+                        # Preserve structured data for the GUI table renderer,
+                        # but also capture the normal text render for fallback.
                         structured_result = getattr(results, 'data', None)
                         if structured_result is None:
                             structured_result = {
@@ -387,6 +399,8 @@ class TdExecutor:
 
 
 def _drop_blank_values(payload: dict[str, Any]) -> dict[str, Any]:
+    """Drop fields that should behave like "unset" when translated to argv."""
+
     return {
         key: value
         for key, value in payload.items()

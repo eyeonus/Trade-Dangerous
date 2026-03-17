@@ -1,3 +1,5 @@
+"""Render structured TD command results into NiceGUI widgets."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -40,6 +42,8 @@ def _render_run_results(routes: list[Any]) -> None:
     )
 
     for route_index, route in enumerate(routes, start=1):
+        # Each stored jump path includes its endpoints, so subtract the repeated
+        # origin system from every segment when presenting a jump count.
         total_jumps = sum(max(0, len(jumps) - 1) for jumps in route.jumps)
 
         with ui.card().classes('w-full gap-3'):
@@ -175,6 +179,8 @@ def _looks_like_object_repr(text: str) -> bool:
 def _structured_payload(structured_result: Any) -> dict[str, Any]:
     if isinstance(structured_result, dict):
         return structured_result
+    # TD command adapters do not all return the same shape yet; normalise both
+    # dict-like and attribute-based payloads before rendering.
     return {
         'summary': getattr(structured_result, 'summary', None),
         'rows': list(getattr(structured_result, 'rows', [])),
@@ -185,6 +191,8 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
         return dict(row)
 
     if hasattr(row, '__dict__'):
+        # Treat simple result objects like lightweight records and skip private
+        # attributes that are not meaningful to the UI.
         return {
             key: value
             for key, value in vars(row).items()
@@ -210,6 +218,8 @@ def _named_result_value(value: Any) -> str | None:
     if not callable(name):
         return None
 
+    # TD model objects are inconsistent about whether name() expects a detail
+    # level argument, so tolerate both call styles for display purposes.
     try:
         return str(name(0))
     except TypeError:

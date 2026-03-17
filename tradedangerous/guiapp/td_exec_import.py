@@ -1,3 +1,5 @@
+"""Import-specific TD execution helpers and progress-aware console mirroring."""
+
 from __future__ import annotations
 
 from contextlib import redirect_stderr, redirect_stdout
@@ -11,6 +13,8 @@ from tradedangerous import commands, tradedb, tradeexcept
 from tradedangerous.commands import exceptions as cmd_exceptions
 
 EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
+    # Keep the option order stable so diagnostics and reproduced commands are
+    # easy to compare with the old CLI usage.
     'all',
     'skipvend',
     'clean',
@@ -42,6 +46,8 @@ class ImportExecutionPayload:
 
 
 class ImportLogConsole:
+    """Mirror Rich output into the import monitor one rendered line at a time."""
+
     def __init__(self, stream: io.StringIO, monitor: Any) -> None:
         self.stream = stream
         self.monitor = monitor
@@ -54,6 +60,8 @@ class ImportLogConsole:
 
     def print(self, *args: Any, **kwargs: Any) -> None:
         self.console.print(*args, **kwargs)
+        # Render through a plain in-memory console so the monitor receives the
+        # final text exactly as the user would see it, minus color codes.
         mirror = io.StringIO()
         Console(
             file=mirror,
@@ -72,6 +80,8 @@ def build_import_argv(
     resolved: dict[str, Any],
     append_option: Callable[[list[str], str, Any], None],
 ) -> list[str]:
+    """Map the import workspace draft onto the eddblink import command line."""
+
     argv = ['tradegui.py', 'import']
     append_option(argv, '-P', 'eddblink')
 
@@ -102,6 +112,8 @@ def execute_import_command(
         else:
             diagnostics_console = ImportLogConsole(diagnostics_stream, monitor)
             monitor.set_status('Preparing import...')
+            # ImportCommand uses this hook to publish progress callbacks from
+            # deep inside the TD import pipeline.
             cmdenv.import_monitor = monitor
         cmdenv.console = diagnostics_console
         cmdenv.stderr = diagnostics_console

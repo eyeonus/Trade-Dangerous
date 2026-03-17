@@ -1,3 +1,5 @@
+"""Top-level NiceGUI shell for the new Trade Dangerous GUI."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,20 +20,17 @@ COMMAND_OPTIONS: dict[str, str] = {
     'trade': 'Trade',
     'local': 'Local',
     'market': 'Market',
+    'rares': 'Rares',
     'nav': 'Nav',
     'olddata': 'Old Data',
-    'rares': 'Rares',
-    'shipvendor': 'Ship Vendor',
-    'station': 'Station',
-    'update': 'Update',
-    'buildcache': 'Build Cache',
-    'export': 'Export',
     'import': 'Import',
     'settings': 'Settings',
 }
 
 
 class AppShell:
+    """Own the long-lived widgets and coordinate session/store updates."""
+
     def __init__(self, store: GuiStore) -> None:
         self.store = store
         self.session = SessionState.from_store(store)
@@ -275,6 +274,8 @@ class AppShell:
         ui.notify('No import is currently running.', color='warning')
 
     def _on_copy_from_profile(self) -> None:
+        # Copy the effective cargo capacity rather than raw capacity so the
+        # draft sees the same usable tonnage that execution will later use.
         context = {
             'capacity': self.session.ship_state.effective_capacity,
             'jump_range_full_ly': self.session.ship_state.jump_range_full_ly,
@@ -307,6 +308,8 @@ class AppShell:
             return
 
         if self.session.selected_command == 'import':
+            # Import runs through a separate polling loop so progress can stream
+            # back into the session while the blocking worker is active.
             request = build_import_request(draft=self.session.draft)
             if consume_one_shot_import_flags(draft=self.session.draft):
                 save_gui_store(self.store)
@@ -324,6 +327,8 @@ class AppShell:
         if not self._capture_ship_inputs():
             return
 
+        # Drafts only store per-command fields. Snapshot the current left-pane
+        # commander and ship context so execution is self-contained.
         request = GuiCommandRequest(
             command=self.session.selected_command,
             main_values=dict(self.session.draft.main_values),
@@ -343,6 +348,8 @@ class AppShell:
             },
         )
 
+        # Clear the previous result immediately to avoid showing stale output
+        # while the worker thread is still spinning up.
         self.session.set_execution(
             status=ExecutionStatus.RUNNING,
             active_command=self.session.selected_command,
@@ -447,6 +454,8 @@ class AppShell:
             )
             return False
 
+        # Left-pane edits apply to the working session immediately, but the
+        # underlying profile is only updated when the user explicitly saves it.
         self.session.ship_state.ship_name = self._clean_text(
             self.ship_name_input.value
         )
@@ -504,6 +513,8 @@ class AppShell:
         self.right_pane_toggle.set_visibility(not is_input_only)
     
         if is_import:
+            # Import owns its entire pane because setup, live progress, and stop
+            # confirmation all live inside the same workspace component.
             workspace = getattr(self, 'import_workspace', None)
             if workspace is None:
                 self.right_pane_host.clear()
@@ -520,6 +531,8 @@ class AppShell:
                     workspace.build()
                     self.import_workspace = workspace
             else:
+                # Reuse the existing import workspace so its log/progress
+                # widgets keep their identity across frequent refreshes.
                 workspace.refresh(self.session.execution)
             return
     
@@ -547,6 +560,8 @@ class AppShell:
             ).classes('whitespace-pre-wrap')
     
     def _refresh_ui(self) -> None:
+        # Pushing values back into NiceGUI widgets can fire change handlers;
+        # suppress those callbacks while the shell is reflecting session state.
         self._refreshing_ui = True
         try:
             self.command_select.value = self.session.selected_command

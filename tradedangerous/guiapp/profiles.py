@@ -1,3 +1,5 @@
+"""Persistence helpers for GUI-only state stored outside the main TD config."""
+
 from __future__ import annotations
 
 import configparser
@@ -81,6 +83,8 @@ class CommandDraft:
 
 @dataclass(slots=True)
 class GuiStore:
+    """Persisted GUI state loaded from and saved to the JSON sidecar file."""
+
     schema_version: int = SCHEMA_VERSION
     selected_profile_id: str | None = None
     selected_command: str = 'run'
@@ -138,6 +142,8 @@ class GuiStore:
         }
 
     def ensure_defaults(self) -> None:
+        # State files may be missing pieces after upgrades or partial writes.
+        # Repair them in memory so the GUI can always boot into a usable state.
         if not self.profiles:
             default_store = self.default()
             self.selected_profile_id = default_store.selected_profile_id
@@ -232,12 +238,16 @@ def _read_db_config() -> configparser.ConfigParser | None:
 
 
 def resolve_gui_state_path() -> Path:
+    """Store GUI state alongside the normal Trade Dangerous data files."""
+
     cfg = _read_db_config()
     data_dir = resolve_data_dir(cfg)
     return data_dir / GUI_STATE_FILENAME
 
 
 def load_gui_store(path: Path | None = None) -> GuiStore:
+    """Load the persisted GUI store, or synthesize defaults on first run."""
+
     store_path = path or resolve_gui_state_path()
     if not store_path.exists():
         return GuiStore.default()
@@ -253,6 +263,8 @@ def load_gui_store(path: Path | None = None) -> GuiStore:
 
 
 def save_gui_store(store: GuiStore, path: Path | None = None) -> Path:
+    """Write the current GUI store back to disk and return the target path."""
+
     store_path = path or resolve_gui_state_path()
     store_path.parent.mkdir(parents=True, exist_ok=True)
     store_path.write_text(

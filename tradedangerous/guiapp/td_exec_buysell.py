@@ -1,3 +1,5 @@
+"""Translate the buy/sell workspace drafts into TD CLI arguments."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -11,6 +13,8 @@ def build_buy_argv(
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
 ) -> list[str]:
+    """Map the buy workspace draft onto the `tradegui.py buy` command line."""
+
     argv = ['tradegui.py', 'buy']
 
     for term in _split_search_terms(resolved.get('search')):
@@ -39,10 +43,13 @@ def build_sell_argv(
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
 ) -> list[str]:
+    """Map the sell workspace draft onto the `tradegui.py sell` command line."""
+
     argv = ['tradegui.py', 'sell']
 
     search_terms = _split_search_terms(resolved.get('search'))
     if search_terms:
+        # The underlying sell command accepts a single item search term.
         argv.append(search_terms[0])
 
     append_option(argv, '--demand', resolved.get('demand'))
@@ -67,6 +74,8 @@ def _append_buysell_search_options(
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
 ) -> None:
+    """Append the shared location/filter options used by buy and sell."""
+
     append_option(argv, '--near', resolved.get('near'))
     append_option(argv, ly_option, resolved.get('distance'))
     append_option(argv, '--limit', resolved.get('limit'))

@@ -1,3 +1,5 @@
+"""CLI entrypoint for the Trade Dangerous NiceGUI shell."""
+
 from __future__ import annotations
 
 import argparse

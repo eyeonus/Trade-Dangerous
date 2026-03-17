@@ -1,3 +1,5 @@
+"""Mutable session state for the GUI, separate from the persisted store."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -38,6 +40,11 @@ class WorkingGlobalState:
 
 @dataclass(slots=True)
 class WorkingShipProfileState:
+    """Editable copy of the selected ship profile.
+
+    `is_dirty` tracks unsaved left-pane edits and is never persisted.
+    """
+
     profile_id: str | None = None
     ship_name: str | None = None
     capacity: int | None = None
@@ -83,6 +90,8 @@ class WorkingShipProfileState:
 
 @dataclass(slots=True)
 class ExecutionState:
+    """Last command result plus import-specific live progress fields."""
+
     status: ExecutionStatus = ExecutionStatus.IDLE
     active_command: str | None = None
     error_message: str | None = None
@@ -103,6 +112,8 @@ class ExecutionState:
 
 @dataclass(slots=True)
 class SessionState:
+    """Live working state for a single GUI session."""
+
     selected_command: str = 'run'
     selected_profile_id: str | None = None
     global_state: WorkingGlobalState = field(default_factory=WorkingGlobalState)
@@ -111,6 +122,7 @@ class SessionState:
     )
     draft: CommandDraft = field(default_factory=CommandDraft)
     execution: ExecutionState = field(default_factory=ExecutionState)
+    # Live ImportMonitor while an import is running. This is transient UI state.
     active_import_monitor: Any = None
     
     @classmethod
@@ -118,8 +130,12 @@ class SessionState:
         store.ensure_defaults()
         profile = store.require_profile(store.selected_profile_id)
         if store.selected_command == 'settings':
+            # Settings is a GUI-only workspace, so it does not reuse a command
+            # draft intended for CLI-backed execution.
             draft = CommandDraft()
         else:
+            # SessionState is the mutable working copy. GuiStore remains the
+            # persisted snapshot on disk until explicit saves happen.
             draft = store.get_or_create_draft(store.selected_command)
             cls._normalize_command_draft(store.selected_command, draft)
         return cls(
@@ -142,6 +158,8 @@ class SessionState:
     @staticmethod
     def _normalize_command_draft(command: str, draft: CommandDraft) -> None:
         if command == 'import':
+            # These are one-shot import actions. Clear any stale copies so a
+            # future import does not silently repeat them.
             draft.main_values.pop('clean', None)
             draft.main_values.pop('optimize', None)
     
@@ -204,6 +222,8 @@ class SessionState:
         import_stop_requested: bool = False,
         import_stop_confirming: bool = False,
     ) -> None:
+        # Replace the whole execution object in one step so the right pane never
+        # renders a mixture of old and new command state.
         self.execution = ExecutionState(
             status=status,
             active_command=active_command,

@@ -1,3 +1,5 @@
+"""Runtime helpers for import progress polling and cooperative stop handling."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -54,6 +56,8 @@ class ImportMonitorProtocol(Protocol):
 
 
 class ImportMonitor:
+    """Thread-safe bridge for progress updates coming from the import worker."""
+
     def __init__(self) -> None:
         self._lock = Lock()
         self._state = ImportProgressState()
@@ -154,6 +158,9 @@ def _apply_snapshot_to_session(
     structured_result: Any,
     snapshot: ImportProgressState,
 ) -> None:
+    # ImportMonitor owns worker-side progress state. Copy a point-in-time
+    # snapshot into SessionState so the rest of the GUI can render it through
+    # the same execution object used for normal command results.
     session.set_execution(
         status=status,
         active_command=active_command,
@@ -170,6 +177,8 @@ def _apply_snapshot_to_session(
         import_child_value=snapshot.child_value,
         import_child_total=snapshot.child_total,
         import_stop_requested=snapshot.stop_requested,
+        # Stop confirmation is purely local UI state, so preserve the current
+        # shell value instead of expecting the worker monitor to track it.
         import_stop_confirming=session.execution.import_stop_confirming,
     )
 
@@ -200,6 +209,8 @@ async def run_import_execution(
     refresh_ui()
 
     try:
+        # `executor.execute()` is blocking and may run for minutes. Keep it off
+        # the event loop and poll the shared monitor for fresh snapshots.
         worker = asyncio.create_task(run.io_bound(executor.execute, request))
         while not worker.done():
             _apply_snapshot_to_session(
@@ -271,6 +282,8 @@ def request_import_stop(*, session: Any) -> bool:
         return False
 
     session.execution.import_stop_confirming = False
+    # This is a cooperative stop: the worker checks the flag between import
+    # steps, so the UI only promises that the request has been recorded.
     monitor.request_stop()
     snapshot = monitor.snapshot()
     _apply_snapshot_to_session(

@@ -1,3 +1,5 @@
+"""Import workspace widgets for long-running TD import operations."""
+
 from typing import Any, Callable
 from nicegui import ui
 from .profiles import CommandDraft
@@ -31,6 +33,8 @@ IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
 )
 
 class ImportWorkspace:
+    """Render import options plus live progress using the shared execution state."""
+
     def __init__(
         self,
         draft: CommandDraft,
@@ -67,6 +71,8 @@ class ImportWorkspace:
                 ui.button('Close', on_click=self.help_dialog.close)
     
         self.option_checkboxes = {}
+        # `refresh()` updates checkbox values from execution/session state.
+        # Suppress the resulting on_change events so refreshes stay read-only.
         self._syncing_checkboxes = False
     
         with ui.column().classes('w-full gap-2').style(
@@ -190,6 +196,8 @@ class ImportWorkspace:
             for key, checkbox in self.option_checkboxes.items():
                 checkbox.value = self._bool_value(key)
                 checkbox.update()
+                # Freeze the option set while an import is in flight so the
+                # saved draft continues to match the running command.
                 if running:
                     checkbox.disable()
                 else:
@@ -246,6 +254,7 @@ class ImportWorkspace:
         log_text = '\n'.join(execution.import_log_lines)
         if log_text:
             return log_text
+        # Fall back to buffered output for failures or non-streaming code paths.
         return '\n'.join(
             part for part in (
                 execution.diagnostics_output,

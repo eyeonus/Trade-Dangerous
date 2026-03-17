@@ -1,3 +1,5 @@
+"""Translate the run workspace draft into TD CLI arguments."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -11,6 +13,8 @@ def build_run_argv(
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
 ) -> list[str]:
+    """Map GUI field names onto the `tradegui.py run` command line."""
+
     argv = ['tradegui.py', 'run']
 
     append_option(argv, '--capacity', effective_capacity)

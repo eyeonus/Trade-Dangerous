@@ -1,3 +1,5 @@
+"""Run-command workspace widgets and draft mutation helpers."""
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -9,6 +11,8 @@ from .shared_filter_view import build_shared_filter_section
 
 
 class RunWorkspace:
+    """Edit a `run` command draft without knowing anything about persistence."""
+
     def __init__(
         self,
         draft: CommandDraft,
@@ -691,6 +695,8 @@ class RunWorkspace:
             return
 
         if isinstance(value, float):
+            # NiceGUI number inputs may hand back integral values as floats.
+            # Accept 5.0 for integer-only fields, but reject fractional input.
             if value.is_integer():
                 payload[key] = int(value)
                 self.on_changed()
@@ -734,6 +740,7 @@ class RunWorkspace:
     ) -> None:
         cleaned = str(value or '')
         if cleaned == '':
+            # Blank means "Any", which is represented by omitting the flag.
             payload.pop(key, None)
         else:
             payload[key] = cleaned
@@ -750,6 +757,7 @@ class RunWorkspace:
 
         ordered = ''.join(size for size in 'SML' if size in current)
         if ordered == 'SML':
+            # The CLI treats a missing pad-size option as unrestricted.
             self.draft.main_values.pop('padSize', None)
         else:
             self.draft.main_values['padSize'] = ordered
