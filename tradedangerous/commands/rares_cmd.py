@@ -66,7 +66,7 @@ switches = [
             default=False,
     ),
     ParseArgument('--away',
-            help='Require "--from" systems to be at least this far from primary system',
+            help='Only show rare vendors at least this many LY from --from.',
             metavar='LY',
             default=0,
             type=float,
@@ -82,7 +82,7 @@ switches = [
         )
     ),
     ParseArgument('--from',
-            help='Additional systems to range check candidates against, requires --away.',
+            help='System used as the distance reference for --away. May be repeated.',
             metavar='SYSTEMNAME',
             action='append',
             dest='awayFrom',
@@ -140,8 +140,6 @@ def run(results, cmdenv, tdb):
         stmt = stmt.where(SA_RareItem.illegal == ('Y' if cmdenv.legal else 'N'))
     if noPlanet:
         stmt = stmt.join(SA_Station).where(SA_Station.planetary != 'Y')
-    
-    awaySystems = set()
     
     started = time.time()
     with tdb.Session() as session:
