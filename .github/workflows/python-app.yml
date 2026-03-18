@@ -97,6 +97,8 @@ jobs:
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       if: steps.release.outputs.released == 'true'
+      with:
+        attestations: false
     
     - name: Publish package distributions to GitHub Releases
       if: steps.release.outputs.released == 'true'
