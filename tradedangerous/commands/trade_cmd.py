@@ -82,18 +82,18 @@ switches = [
 ]
 
 
-def age(now: datetime, modified: datetime) -> float:
-    """ Return age in hours between now and modified timestamp. """
+def age(now: datetime, modified: datetime) -> str:
+    """ Return age between now and modified timestamp as display text. """
     delta = (now - modified).total_seconds() / 60.0
     if delta < 90:
-        return f"{delta:.1f}M"
+        return f"{delta:.1f}min"
     delta /= 60.0
     if delta < 25:
-        return f"{delta:.1f}H"
-    delta /= 7.0
+        return f"{delta:.1f}hr"
+    delta /= 24.0
     if delta < 7:
-        return f"{delta:.1f}D"
-    return f"{int(delta):n}D"
+        return f"{delta:.1f}d"
+    return f"{int(delta):n}d"
 
 
 def apply_game_name_shortcut(cmdenv: CommandEnv, name: str) -> str:
