@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v12.13.4 (2026-03-18)
+
+### Bug Fixes
+
+- Added a comment, but need to trigger a release, so fix.
+  ([`d17841b`](https://github.com/eyeonus/Trade-Dangerous/commit/d17841b4b5c8dd1fdf46ec89a5987bae5939ccfe))
+
+### Chores
+
+- Fix regression not uploading from auto-trigger
+  ([`62d1114`](https://github.com/eyeonus/Trade-Dangerous/commit/62d1114279e22003b3c7a7ecc2097d17ba29d790))
+
+
 ## v12.13.3 (2026-03-18)
 
 ### Bug Fixes
