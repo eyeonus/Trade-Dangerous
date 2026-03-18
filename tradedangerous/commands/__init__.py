@@ -214,14 +214,6 @@ class CommandIndex:
                     help = 'Reduce level of detail in output.',
                     default = 0, required = False, action = 'count',
                 )
-        stdArgs.add_argument('--db',
-                    help = 'Specify location of the SQLite database.',
-                    default = None, dest = 'dbFilename', type = str,
-                )
-        stdArgs.add_argument('--cwd', '-C',
-                    help = 'Change the working directory file accesses are made from.',
-                    type = str, required = False,
-                )
         stdArgs.add_argument('--link-ly', '-L',
                     help = 'Maximum lightyears between systems to be considered linked.',
                     type = float,

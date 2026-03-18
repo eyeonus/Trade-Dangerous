@@ -45,19 +45,9 @@ class TradeORM:
         tdenv = tdenv or TradeEnv(debug=debug or 0)
         self.tdenv = tdenv
         
-        # Determine where the database should be
-        data_dir = tdenv.dataDir or TradeORM.DEFAULT_PATH
-        self.data_dir = Path(data_dir)
-        tdenv.DEBUG0("data_dir = {}", self.data_dir)
-        
-        # Determine the path to the file itself
+        # Determine the legacy/default SQLite path.
         db_path = tdenv.dbFilename or (self.data_dir / TradeORM.DEFAULT_DB)
-        self.db_path  = Path(db_path)
-        tdenv.DEBUG0("db_path = {}", self.db_path)
-        
-        # We need it to exist.
-        if not self.db_path.exists():
-            raise MissingDB(self.db_path)
+        self.db_path = Path(db_path)
         
         default_config = self.data_dir / TradeORM.DB_CONFIG_FILE
         db_config = os.environ.get(TradeORM.DB_CONFIG_VAR, default_config)
@@ -65,6 +55,18 @@ class TradeORM:
         
         # Make the database available.
         self.engine = make_engine_from_config(db_config)
+        backend = self.engine.dialect.name
+        tdenv.DEBUG0("db_backend = {}", backend)
+        
+        if backend == "sqlite":
+            sqlite_path = self.engine.url.database
+            if sqlite_path:
+                self.db_path = Path(sqlite_path)
+            tdenv.DEBUG0("db_path = {}", self.db_path)
+            if not self.db_path.exists():
+                raise MissingDB(self.db_path)
+        else:
+            tdenv.DEBUG0("db_path check skipped for backend {}", backend)
         
         # The user will expect objects (instances of models) that we return
         # to have the same lifetime as the TradeORM() instance, so we want

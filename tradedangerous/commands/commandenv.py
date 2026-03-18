@@ -100,18 +100,6 @@ class CommandEnv(TradeEnv):
         self._cmd = cmdModule
         self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
-        
-        # We need to relocate to the working directory so that
-        # we can load a TradeDB after this without things going
-        # pear-shaped
-        if not self.cwd and argv[0]:
-            cwdPath = Path('.').resolve()
-            exePath = Path(argv[0]).parent.resolve()
-            if cwdPath != exePath:
-                self.cwd = str(exePath)
-                self.DEBUG1("cwd at launch was: {}, changing to {} to match trade.py", cwdPath, self.cwd)
-        if self.cwd:
-            os.chdir(self.cwd)
     
     def preflight(self) -> None:
         """
