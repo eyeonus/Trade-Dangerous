@@ -46,7 +46,7 @@ class TradeORM:
         self.tdenv = tdenv
         
         # Determine the legacy/default SQLite path.
-        db_path = tdenv.dbFilename or (self.data_dir / TradeORM.DEFAULT_DB)
+        db_path = tdenv.dbFilename or (Path(data_dir) / TradeORM.DEFAULT_DB)
         self.db_path = Path(db_path)
         
         default_config = self.data_dir / TradeORM.DB_CONFIG_FILE
