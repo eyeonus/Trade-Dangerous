@@ -1,6 +1,29 @@
 # CHANGELOG
 
 
+## v12.13.3 (2026-03-18)
+
+### Bug Fixes
+
+- Remove legacy db/cwd CLI overrides and unblock TradeORM on MariaDB
+  ([`f565c7c`](https://github.com/eyeonus/Trade-Dangerous/commit/f565c7c868fc373dfffd9f55042170e674e04ecc))
+
+Drop the obsolete shared --db and --cwd command-line switches and remove the residual CommandEnv
+  working-directory override path.
+
+Also fix TradeORM initialisation so non-SQLite backends are no longer blocked by a bogus local
+  TradeDangerous.db existence check before the real configured backend is resolved.
+
+### Chores
+
+- Fix release workflow and document prerelease path
+  ([`365545b`](https://github.com/eyeonus/Trade-Dangerous/commit/365545bda3c981a51c454681fc43d81781807569))
+
+Prevent duplicate PyPI publish attempts when the branch lands on an already-tagged release commit.
+  Split stable auto-release on release/v1 from manual RC runs on rc/* branches, and add simple docs
+  for both paths.
+
+
 ## v12.13.2 (2026-03-18)
 
 ### Bug Fixes
