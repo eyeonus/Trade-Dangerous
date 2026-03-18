@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v12.13.5 (2026-03-18)
+
+### Bug Fixes
+
+- Use local data_dir when deriving TradeORM fallback db path
+  ([`1ac2066`](https://github.com/eyeonus/Trade-Dangerous/commit/1ac2066a44c0cf953ae9dca3b0a3d9e774e27b91))
+
+Correct the TradeORM constructor fallback path logic to use the already-available local data_dir
+  value instead of self.data_dir before that attribute exists.
+
+This fixes the AttributeError introduced while removing the bogus pre-engine SQLite file gate for
+  non-SQLite backends.
+
+### Chores
+
+- We don't need attestations. Maybe later.
+  ([`c38c482`](https://github.com/eyeonus/Trade-Dangerous/commit/c38c482d198b365cc755b02f8973e247e40c7628))
+
+
 ## v12.13.4 (2026-03-18)
 
 ### Bug Fixes
