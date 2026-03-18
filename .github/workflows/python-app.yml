@@ -6,7 +6,6 @@ name: Python application via uv
 on:
   push:
     branches: [ release/v1 ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ release/v1 ]
   workflow_dispatch:
@@ -39,11 +38,15 @@ jobs:
       run: uv run --frozen --group dev tox --parallel
   
   release:
-    name: Create release version and GitHub release
+    name: Create release version, publish to PyPI, and create GitHub release
     if: github.repository == 'eyeonus/Trade-Dangerous' && ((github.event_name == 'push' && github.ref == 'refs/heads/release/v1') || github.event_name == 'workflow_dispatch')
     needs: test
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tradedangerous
     permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
       contents: write
     steps:
     - uses: actions/checkout@v4
@@ -91,35 +94,16 @@ jobs:
       if: steps.release.outputs.released == 'true'
       run: uv build
     
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      if: steps.release.outputs.released == 'true'
+    
     - name: Publish package distributions to GitHub Releases
       if: steps.release.outputs.released == 'true'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Use semantic-release to publish to GitHub Releases only; PyPI upload is handled by the tag-triggered job.
+      # Use semantic-release to publish to GitHub Releases after the same-job PyPI upload.
       run: uv run semantic-release publish
-
-  pypi-publish:
-    name: Upload release to PyPI
-    if: github.repository == 'eyeonus/Trade-Dangerous' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: test
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/tradedangerous
-    permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        enable-cache: true
-    
-    - name: Install dependencies
-      # Installs publish dependencies (python-semantic-release, build)
-      # NOTE: Version of Python used determined by ".python-version" file.
-      run: uv sync --frozen --group publish
     
     - name: Build artifacts
       run: uv build
