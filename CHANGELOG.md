@@ -1,6 +1,32 @@
 # CHANGELOG
 
 
+## v12.13.2 (2026-03-18)
+
+### Bug Fixes
+
+- Trade_cmd.py - Poor quality output and maths error
+  ([`862c71b`](https://github.com/eyeonus/Trade-Dangerous/commit/862c71b6e9bc19989f3ea9a4169b1d22ad9821b9))
+
+Outputting minutes with capital M is misleading and suggests months. Changed age to show as min, hr,
+  d.
+
+There's 24 hours in a day, not 7. That's weeks.
+
+### Chores
+
+- Archive final legacy gui.py and remove live copy
+  ([`bfbe33e`](https://github.com/eyeonus/Trade-Dangerous/commit/bfbe33edd4584aff09b468eb56ac29e1ea96e377))
+
+- Merge both archive folders into one top-level archive
+  ([`c706497`](https://github.com/eyeonus/Trade-Dangerous/commit/c706497ce3d40cb2364d390646fca031d6153603))
+
+### Documentation
+
+- Update archive readme
+  ([`1985eb6`](https://github.com/eyeonus/Trade-Dangerous/commit/1985eb61bed023a399e7f1ffd9969bf486fabb0f))
+
+
 ## v12.13.1 (2026-03-17)
 
 ### Bug Fixes
