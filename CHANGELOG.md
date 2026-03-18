@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v12.13.6 (2026-03-18)
+
+### Bug Fixes
+
+- Fix TradeORM data_dir initialisation in __init__
+  ([`c5a31d6`](https://github.com/eyeonus/Trade-Dangerous/commit/c5a31d6287a545e7e4bf229f14e283741d620430))
+
+### Chores
+
+- Fix new bug causing attempted double uploads
+  ([`a17f1f3`](https://github.com/eyeonus/Trade-Dangerous/commit/a17f1f33b216eab91373ab7f9d129137206166d4))
+
+
 ## v12.13.5 (2026-03-18)
 
 ### Bug Fixes
