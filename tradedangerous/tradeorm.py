@@ -58,6 +58,7 @@ class TradeORM:
         backend = self.engine.dialect.name
         tdenv.DEBUG0("db_backend = {}", backend)
         
+        # Don't raise if we don't even need a db file.
         if backend == "sqlite":
             sqlite_path = self.engine.url.database
             if sqlite_path:
