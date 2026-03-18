@@ -6,8 +6,16 @@ name: Python application via uv
 on:
   push:
     branches: [ release/v1 ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ release/v1 ]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Prerelease token
+        required: true
+        default: rc
+        type: string
 
 jobs:
   test:
@@ -30,16 +38,12 @@ jobs:
         TOX_PARALLEL_NO_SPINNER: 1
       run: uv run --frozen --group dev tox --parallel
   
-  pypi-publish:
-    name: Upload release to PyPI
+  release:
+    name: Create release version and GitHub release
     if: github.repository == 'eyeonus/Trade-Dangerous' && ((github.event_name == 'push' && github.ref == 'refs/heads/release/v1') || github.event_name == 'workflow_dispatch')
     needs: test
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/tradedangerous
     permissions:
-      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
       contents: write
     steps:
     - uses: actions/checkout@v4
@@ -67,15 +71,17 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        before_head="$(git rev-parse HEAD)"
         # Use prerelease mode on manual dispatch; normal version on push
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           uv run semantic-release version --prerelease --as-prerelease --prerelease-token ${{ github.event.inputs.mode }}
         else
           uv run semantic-release version
         fi
-        
-        # Check if a tag was created at HEAD to determine if a release occurred
-        if git describe --exact-match --tags HEAD >/dev/null 2>&1; then
+        after_head="$(git rev-parse HEAD)"
+        after_tag="$(git tag --points-at HEAD)"
+        # Only publish if this run created a new release commit and tag
+        if [ "$before_head" != "$after_head" ] && [ -n "$after_tag" ]; then
           echo "released=true" >> $GITHUB_OUTPUT
         else
           echo "released=false" >> $GITHUB_OUTPUT
@@ -85,13 +91,38 @@ jobs:
       if: steps.release.outputs.released == 'true'
       run: uv build
     
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      if: steps.release.outputs.released == 'true'
-    
     - name: Publish package distributions to GitHub Releases
       if: steps.release.outputs.released == 'true'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Use semantic-release to publish to GitHub Releases (skipping PyPI as we used the action above)
+      # Use semantic-release to publish to GitHub Releases only; PyPI upload is handled by the tag-triggered job.
       run: uv run semantic-release publish
+
+  pypi-publish:
+    name: Upload release to PyPI
+    if: github.repository == 'eyeonus/Trade-Dangerous' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tradedangerous
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+    
+    - name: Install dependencies
+      # Installs publish dependencies (python-semantic-release, build)
+      # NOTE: Version of Python used determined by ".python-version" file.
+      run: uv sync --frozen --group publish
+    
+    - name: Build artifacts
+      run: uv build
+    
+    - name: Publish package distributions to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
