@@ -57,6 +57,8 @@ def render_units(units, level):
 
 
 def run(results, cmdenv, tdb):
+    from sqlalchemy import func
+    
     origin = cmdenv.startStation
     if not origin.itemCount:
         raise CommandLineError(
@@ -70,11 +72,6 @@ def run(results, cmdenv, tdb):
     results.summary.buying = cmdenv.buying
     results.summary.selling = cmdenv.selling
     
-    # Precompute averages (unchanged)
-    tdb.getAverageSelling()
-    tdb.getAverageBuying()
-    
-    # --- Backend-neutral query using SQLAlchemy Core + age_in_days ---
     si = table(
         "StationItem",
         column("item_id"),
@@ -88,7 +85,6 @@ def run(results, cmdenv, tdb):
         column("modified"),
     )
     
-    # Build session bound to current engine (needed by age_in_days)
     session = Session(bind=tdb.engine)
     
     stmt = (
@@ -102,39 +98,88 @@ def run(results, cmdenv, tdb):
     )
     
     rows = session.execute(stmt).fetchall()
+    avg_buying = {}
+    avg_selling = {}
+    visible_buy_ids = set()
+    visible_sell_ids = set()
+    
+    for r in rows:
+        item_id = int(r.item_id)
+        buy_cr = int(r.demand_price or 0)
+        buy_units = int(r.demand_units or 0)
+        buy_level = int(r.demand_level or 0)
+        sell_cr = int(r.supply_price or 0)
+        sell_units = int(r.supply_units or 0)
+        sell_level = int(r.supply_level or 0)
+        
+        has_buy = False if selling else (buy_cr or buy_units or buy_level)
+        has_sell = False if buying else (sell_cr or sell_units or sell_level)
+        
+        if has_buy:
+            visible_buy_ids.add(item_id)
+        if has_sell:
+            visible_sell_ids.add(item_id)
+    
+    if cmdenv.detail:
+        if visible_buy_ids:
+            avg_buy_stmt = (
+                select(
+                    si.c.item_id,
+                    func.avg(si.c.demand_price).label("avg_price"),
+                )
+                .where(
+                    si.c.demand_price > 0,
+                    si.c.item_id.in_(sorted(visible_buy_ids)),
+                )
+                .group_by(si.c.item_id)
+            )
+            avg_buying = {
+                int(item_id): int(avg_price or 0)
+                for item_id, avg_price in session.execute(avg_buy_stmt)
+            }
+        
+        if visible_sell_ids:
+            avg_sell_stmt = (
+                select(
+                    si.c.item_id,
+                    func.avg(si.c.supply_price).label("avg_price"),
+                )
+                .where(
+                    si.c.supply_price > 0,
+                    si.c.item_id.in_(sorted(visible_sell_ids)),
+                )
+                .group_by(si.c.item_id)
+            )
+            avg_selling = {
+                int(item_id): int(avg_price or 0)
+                for item_id, avg_price in session.execute(avg_sell_stmt)
+            }
+    
     session.close()
     
     for r in rows:
-        it = iter(r)
-        item = tdb.itemByID[next(it)]
+        item = tdb.itemByID[int(r.item_id)]
         
         row = ResultRow()
         row.item = item
         
-        row.buyCr = int(next(it) or 0)
-        row.avgBuy = tdb.avgBuying.get(item.ID, 0)
-        units, level = int(next(it) or 0), int(next(it) or 0)
+        row.buyCr = int(r.demand_price or 0)
+        row.avgBuy = avg_buying.get(item.ID, 0)
+        units, level = int(r.demand_units or 0), int(r.demand_level or 0)
         row.buyUnits = units
         row.buyLevel = level
         row.demand = render_units(units, level)
-        if not selling:
-            hasBuy = (row.buyCr or units or level)
-        else:
-            hasBuy = False
+        hasBuy = False if selling else (row.buyCr or units or level)
         
-        row.sellCr = int(next(it) or 0)
-        row.avgSell = tdb.avgSelling.get(item.ID, 0)
-        units, level = int(next(it) or 0), int(next(it) or 0)
+        row.sellCr = int(r.supply_price or 0)
+        row.avgSell = avg_selling.get(item.ID, 0)
+        units, level = int(r.supply_units or 0), int(r.supply_level or 0)
         row.sellUnits = units
         row.sellLevel = level
         row.supply = render_units(units, level)
-        if not buying:
-            hasSell = (row.sellCr or units or level)
-        else:
-            hasSell = False
+        hasSell = False if buying else (row.sellCr or units or level)
         
-        age_days = next(it)
-        row.age = float(age_days or 0.0)
+        row.age = float(r.age_days or 0.0)
         
         if hasBuy or hasSell:
             results.rows.append(row)
