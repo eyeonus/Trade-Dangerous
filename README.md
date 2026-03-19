@@ -2,7 +2,7 @@
 ----------
 
 TradeDangerous  
-Copyright (C) Oliver "kfsone" Smith, July 2014 - 2026
+Copyright (C) Oliver "kfsone" Smith, July 2014 - 2026  
 Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017  
 Copyright (C) Stefan 'Tromador' Morrell 2025 - 2026  
 Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025  
