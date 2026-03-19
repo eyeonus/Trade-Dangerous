@@ -1,6 +1,21 @@
 # CHANGELOG
 
 
+## v12.13.7 (2026-03-19)
+
+### Bug Fixes
+
+- Market_cmd.py average prices
+  ([`4d5bdf2`](https://github.com/eyeonus/Trade-Dangerous/commit/4d5bdf22be110fe7824d9cf700dc27f06365b1fd))
+
+Market was massively over querying and taking minutes to return results.
+
+We now only compute averages when we need to (--detail) and only for those items actually in the
+  market.
+
+Down to ~30s for results. Big improvement.
+
+
 ## v12.13.6 (2026-03-18)
 
 ### Bug Fixes
