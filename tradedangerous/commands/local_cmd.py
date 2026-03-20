@@ -51,6 +51,12 @@ switches = [
                  'a market.',
             action='store_true',
     ),
+    ParseArgument('--age', '--max-days-old', '-MD',
+            help='Maximum age (in days) of trade data to use.',
+            metavar='DAYS',
+            type=float,
+            dest='maxAge',
+    ),
     BlackMarketSwitch(),
     ShipyardSwitch(),
     OutfittingSwitch(),
@@ -89,6 +95,7 @@ def run(results, cmdenv, tdb):
     odyssey = cmdenv.odyssey
     wantNoPlanet = cmdenv.noPlanet
     wantTrading = cmdenv.trading
+    maxAge = cmdenv.maxAge
     wantShipYard = cmdenv.shipyard
     wantBlackMarket = cmdenv.blackMarket
     wantOutfitting = cmdenv.outfitting
@@ -101,6 +108,8 @@ def run(results, cmdenv, tdb):
             if wantNoPlanet and station.planetary != 'N':
                 continue
             if wantTrading and not station.isTrading:
+                continue
+            if maxAge and (station.dataAge or float("inf")) > maxAge:
                 continue
             if wantBlackMarket and station.blackMarket != 'Y':
                 continue
@@ -122,8 +131,7 @@ def run(results, cmdenv, tdb):
                 continue
             if wantRepair and station.repair != 'Y':
                 continue
-            yield station
-    
+            yield station    
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         if showStations or wantStations:
             stations = []
@@ -134,7 +142,7 @@ def run(results, cmdenv, tdb):
                         age=station.itemDataAgeStr,
                     )
                 )
-            if not stations and wantStations:
+            if not stations:
                 continue
         
         row = ResultRow()
