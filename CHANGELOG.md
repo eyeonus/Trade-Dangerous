@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v12.14.2 (2026-03-20)
+
+### Bug Fixes
+
+- Spansh_plug.py Regressions - download and stdin pathways
+  ([`71050ae`](https://github.com/eyeonus/Trade-Dangerous/commit/71050aed83338561d2494f2590fc33f2e93e56dc))
+
+No idea how long these have been broken. Listener uses file injection with -O=/the/spansh/file.json
+  which has been just fine. Now we can download or if necessary direct inject.
+
+
 ## v12.14.1 (2026-03-20)
 
 ### Bug Fixes
