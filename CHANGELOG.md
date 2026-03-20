@@ -1,6 +1,51 @@
 # CHANGELOG
 
 
+## v12.14.0 (2026-03-20)
+
+### Bug Fixes
+
+- Cli.py - repair CPROF profiling hook in main()
+  ([`97e74c7`](https://github.com/eyeonus/Trade-Dangerous/commit/97e74c79121b1f70623cac59a1bd7e85344f6542))
+
+### Chores
+
+- **deps**: Bump nicegui from 3.8.0 to 3.9.0
+  ([#293](https://github.com/eyeonus/Trade-Dangerous/pull/293),
+  [`06d75aa`](https://github.com/eyeonus/Trade-Dangerous/commit/06d75aaf1951100ff687c6f8d4b850f28b4710e1))
+
+Bumps [nicegui](https://github.com/zauberzeug/nicegui) from 3.8.0 to 3.9.0. - [Release
+  notes](https://github.com/zauberzeug/nicegui/releases) -
+  [Changelog](https://github.com/zauberzeug/nicegui/blob/main/release.dockerfile) -
+  [Commits](https://github.com/zauberzeug/nicegui/compare/v3.8.0...v3.9.0)
+
+--- updated-dependencies: - dependency-name: nicegui dependency-version: 3.9.0
+
+dependency-type: direct:production ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Documentation
+
+- Update copyright years in README.md
+  ([`397a084`](https://github.com/eyeonus/Trade-Dangerous/commit/397a08402e8d2d4e39566de085ed43915c1f6861))
+
+Belated update for 2026
+
+### Features
+
+- Local now honours --age
+  ([`a30ef0d`](https://github.com/eyeonus/Trade-Dangerous/commit/a30ef0d3901a31119e9d61ff03f3bf7737b89b09))
+
+With carriers and planetary and Odyssey, the output from local can get huge when using any detailed
+  output.
+
+This gives a useful lever to limit that output to only list more recently updated stations, rather
+  than pages of data.
+
+
 ## v12.13.7 (2026-03-19)
 
 ### Bug Fixes
