@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         try:
             if cProfile and "CPROF" in os.environ:
-                cProfile.run("trade(argv)")
+                cProfile.runctx("trade(argv)", globals(), locals())
                 return 0
             return trade(argv)
         except PluginException as e:
