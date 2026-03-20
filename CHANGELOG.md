@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v12.14.1 (2026-03-20)
+
+### Bug Fixes
+
+- Rare items cost now populates properly
+  ([`e156308`](https://github.com/eyeonus/Trade-Dangerous/commit/e156308a82e926c96f45439206bfab0eeac1908b))
+
+We still use EDCD to verify our rares list, but now also populate the cost field from market data,
+  as we always should have. This will propagate via eddblink to ensure `trade rares` will not show
+  zero cost for all items
+
+
 ## v12.14.0 (2026-03-20)
 
 ### Bug Fixes
