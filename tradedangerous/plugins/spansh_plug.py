@@ -1148,7 +1148,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         # Pass a friendly label so progress says “Spansh dump”
         return self._download_with_cache(url, cache_path, label="Spansh dump")
     
-    def _download_with_cache(self, url: str, label: str, cache_path: Path) -> Path:
+    def _download_with_cache(self, url: str, cache_path: Path, label: str) -> Path:
         """
         Download URL to cache_path if remote is newer or cache is missing.
         Returns the cache_path.
@@ -1156,7 +1156,22 @@ class ImportPlugin(plugins.ImportPluginBase):
         In verbose mode, prints basic download status and progress.
         """
         # If we have a cached file and remote is not newer, reuse it.
-        remote_lm = self._remote_last_modified(url)
+        remote_lm = None
+        try:
+            from email.utils import parsedate_to_datetime
+            
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "TradeDangerous", "Accept-Encoding": "identity"},
+                method="HEAD",
+            )
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                last_modified = resp.headers.get("Last-Modified")
+            if last_modified:
+                remote_lm = parsedate_to_datetime(last_modified).timestamp()
+        except Exception:
+            remote_lm = None
+        
         if cache_path.exists() and remote_lm:
             try:
                 local_mtime = cache_path.stat().st_mtime
@@ -1242,7 +1257,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         break
                     fh.write(buf)
                     written += len(buf)
-                    self._download_progress(written, None, start)
+                    self._download_progress("Spansh dump (stdin)", written, 0, start)
             part.replace(dest)
         except Exception as e:
             try:
