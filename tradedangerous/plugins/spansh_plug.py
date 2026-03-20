@@ -2329,35 +2329,69 @@ class ImportPlugin(plugins.ImportPluginBase):
                         })
                         kept += 1
             
-            # Clear → upsert
-            try:
-                sess.execute(text('DELETE FROM "RareItem"'))
-            except Exception:
-                sess.execute(text("DELETE FROM RareItem"))
-            
+            # Verify/add-only merge: preserve locally-maintained fields such as
+            # max_allocation for existing rares, while still updating EDCD-owned
+            # structure fields (station/category). Cost is live market data, so
+            # refresh it from current StationItem.supply_price on every import.
             if out_rows:
+                t_item = tables["Item"]
+                t_si = tables["StationItem"]
+                rare_station_ids = sorted({int(r["station_id"]) for r in out_rows})
+                cost_by_key: dict[tuple[int, str], int] = {}
+                if rare_station_ids:
+                    for station_id, item_name, supply_price in sess.execute(
+                        select(t_si.c.station_id, t_item.c.name, t_si.c.supply_price)
+                        .select_from(t_si.join(t_item, t_si.c.item_id == t_item.c.item_id))
+                        .where(
+                            and_(
+                                t_si.c.station_id.in_(rare_station_ids),
+                                t_si.c.supply_price > 0,
+                            )
+                        )
+                    ).all():
+                        if item_name is not None and supply_price is not None:
+                            cost_by_key[(int(station_id), _norm(str(item_name)))] = int(supply_price)
+                merge_rows = [
+                    {
+                        "name": r["name"],
+                        "station_id": r["station_id"],
+                        "category_id": r["category_id"],
+                        "cost": cost_by_key.get((int(r["station_id"]), _norm(str(r["name"])))),
+                    }
+                    for r in out_rows
+                ]
                 if db_utils.is_sqlite(sess):
                     db_utils.sqlite_upsert_simple(
-                        sess, t_rare, rows=out_rows, key_cols=("name",),
-                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
+                        sess,
+                        t_rare,
+                        rows=merge_rows,
+                        key_cols=("name",),
+                        update_cols=("station_id", "category_id", "cost"),
                     )
                 elif db_utils.is_mysql(sess):
                     db_utils.mysql_upsert_simple(
-                        sess, t_rare, rows=out_rows, key_cols=("name",),
-                        update_cols=tuple(k for k in out_rows[0].keys() if k != "name")
+                        sess,
+                        t_rare,
+                        rows=merge_rows,
+                        key_cols=("name",),
+                        update_cols=("station_id", "category_id", "cost"),
                     )
                 else:
-                    for r in out_rows:
+                    for r in merge_rows:
                         ex = sess.execute(select(t_rare.c.name).where(t_rare.c.name == r["name"])).first()
                         if ex is None:
                             sess.execute(insert(t_rare).values(**r))
                         else:
                             sess.execute(
-                                update(t_rare).where(t_rare.c.name == r["name"])
-                                .values({k: r[k] for k in r.keys() if k != "name"})
+                                update(t_rare)
+                                .where(t_rare.c.name == r["name"])
+                                .values(
+                                    station_id=r["station_id"],
+                                    category_id=r["category_id"],
+                                    cost=r["cost"],
+                                )
                             )
-            sess.commit()
-            
+            sess.commit()            
             # Write a CSV with skipped details
             if skipped_rows:
                 outp = self.tmp_dir / "edcd_rares_skipped.csv"
