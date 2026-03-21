@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v12.14.3 (2026-03-21)
+
+### Bug Fixes
+
+- Rares_cmd.py - Removed irrelevant columns for cleaner output.
+  ([`970c1c4`](https://github.com/eyeonus/Trade-Dangerous/commit/970c1c4402b5a570523e6edee22e74449a928e85))
+
+
 ## v12.14.2 (2026-03-20)
 
 ### Bug Fixes
