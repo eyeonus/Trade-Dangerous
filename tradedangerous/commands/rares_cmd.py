@@ -278,17 +278,11 @@ def render(results, cmdenv, tdb):
     rowFmt.addColumn('Station', '<', max_stn, key=lambda r: r.station.name())
     rowFmt.addColumn('Rare', '<', max_rare, key=lambda r: _rare_name(r))
     rowFmt.addColumn('Cost', '>', 10, 'n', key=lambda r: _cost(r))
-    rowFmt.addColumn('DistLy', '>', 6, '.2f', key=lambda r: _dist(r))
     rowFmt.addColumn('Alloc', '>', 5, key=lambda r: _alloc(r))
-    # First B/mkt: rare legality flag (Y/N/?)
-    rowFmt.addColumn('B/mkt', '>', 4, key=lambda r: _rare_illegal(r))
+    rowFmt.addColumn('DistLy', '>', 6, '.2f', key=lambda r: _dist(r))
     rowFmt.addColumn('StnLs', '>', 10, key=lambda r: _stn_ls(r))
-    # Second B/mkt: station black market availability via mapping
     rowFmt.addColumn('B/mkt', '>', 4, key=lambda r: _stn_bm(r))
     rowFmt.addColumn('Pad', '>', 3, key=lambda r: _pad(r))
-    rowFmt.addColumn('Plt', '>', 3, key=lambda r: _plt(r))
-    rowFmt.addColumn('Flc', '>', 3, key=lambda r: _flc(r))
-    rowFmt.addColumn('Ody', '>', 3, key=lambda r: _ody(r))
     
     if not cmdenv.quiet:
         heading, underline = rowFmt.heading()
