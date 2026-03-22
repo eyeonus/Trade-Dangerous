@@ -14,6 +14,10 @@ from tradedangerous.commands import exceptions as cmd_exceptions
 
 from .td_exec_run import build_run_argv
 from .td_exec_buysell import build_buy_argv, build_sell_argv
+from .td_exec_trade import build_trade_argv, validate_trade_request
+from .td_exec_market import build_market_argv, validate_market_request
+from .td_exec_local import build_local_argv, validate_local_request
+from .td_exec_rares import build_rares_argv, validate_rares_request
 
 @dataclass(slots=True)
 class GuiCommandRequest:
@@ -116,6 +120,35 @@ class TdExecutor:
             ):
                 errors.append('Run requires Jump Range (Full).')
 
+        if request.command == 'trade':
+            validate_trade_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_int=self._validate_optional_int,
+            )
+
+        if request.command == 'local':
+            validate_local_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_float=self._validate_optional_float,
+            )
+
+        if request.command == 'market':
+            validate_market_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+            )
+
+        if request.command == 'rares':
+            validate_rares_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_int=self._validate_optional_int,
+                validate_optional_float=self._validate_optional_float,
+                split_search_terms=self._split_search_terms,
+            )
+
         return errors
 
     def execute(self, request: GuiCommandRequest) -> GuiCommandResult:
@@ -134,6 +167,14 @@ class TdExecutor:
             return self._execute_buy(request)
         if request.command == 'sell':
             return self._execute_sell(request)
+        if request.command == 'trade':
+            return self._execute_trade(request)
+        if request.command == 'local':
+            return self._execute_local(request)
+        if request.command == 'market':
+            return self._execute_market(request)
+        if request.command == 'rares':
+            return self._execute_rares(request)
         if request.command == 'import':
             return self._execute_import(request)
 
@@ -144,8 +185,9 @@ class TdExecutor:
                 f"'{request.command}' is not wired into the TD adapter yet."
             ),
             diagnostics_output=(
-                'Only the run, buy, sell, and import commands are currently '
-                'connected to the in-process TD execution path.'
+                'Only the run, buy, sell, trade, local, market, rares, and '
+                'import commands are currently connected to the in-process '
+                'TD execution path.'
             ),
         )
 
@@ -162,7 +204,7 @@ class TdExecutor:
         return self._execute_td_command(request, argv)
 
     def _execute_buy(self, request: GuiCommandRequest) -> GuiCommandResult:
-        resolved = self._buy_sell_resolved_values(request)
+        resolved = self._global_command_resolved_values(request)
         context = request.effective_context()
         argv = build_buy_argv(
             resolved=resolved,
@@ -174,7 +216,7 @@ class TdExecutor:
         return self._execute_td_command(request, argv)
 
     def _execute_sell(self, request: GuiCommandRequest) -> GuiCommandResult:
-        resolved = self._buy_sell_resolved_values(request)
+        resolved = self._global_command_resolved_values(request)
         context = request.effective_context()
         argv = build_sell_argv(
             resolved=resolved,
@@ -182,6 +224,47 @@ class TdExecutor:
             effective_capacity=self._effective_capacity(context),
             append_option=self._append_option,
             append_flag=self._append_flag,
+        )
+        return self._execute_td_command(request, argv)
+
+    def _execute_trade(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._global_command_resolved_values(request)
+        argv = build_trade_argv(
+            resolved=resolved,
+            append_option=self._append_option,
+            append_flag=self._append_flag,
+        )
+        return self._execute_td_command(request, argv)
+
+    def _execute_local(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._global_command_resolved_values(request)
+        argv = build_local_argv(
+            resolved=resolved,
+            append_option=self._append_option,
+            append_flag=self._append_flag,
+        )
+        return self._execute_td_command(request, argv)
+
+    def _execute_market(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._global_command_resolved_values(request)
+        argv = build_market_argv(
+            resolved=resolved,
+            append_flag=self._append_flag,
+        )
+        result = self._execute_td_command(request, argv)
+        if isinstance(result.structured_result, dict):
+            payload = dict(result.structured_result)
+            payload['detail_level'] = int(resolved.get('detail') or 0)
+            result.structured_result = payload
+        return result
+
+    def _execute_rares(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._global_command_resolved_values(request)
+        argv = build_rares_argv(
+            resolved=resolved,
+            append_option=self._append_option,
+            append_flag=self._append_flag,
+            split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
 
@@ -208,7 +291,7 @@ class TdExecutor:
         )
     
     @staticmethod
-    def _buy_sell_resolved_values(
+    def _global_command_resolved_values(
         request: GuiCommandRequest,
     ) -> dict[str, Any]:
         resolved = _drop_blank_values(request.global_values)

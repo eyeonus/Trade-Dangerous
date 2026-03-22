@@ -10,6 +10,10 @@ from nicegui import run, ui
 from .profiles import GuiStore, save_gui_store
 from .run_view import RunWorkspace
 from .buy_sell_view import BuySellWorkspace
+from .trade_view import TradeWorkspace
+from .local_view import LocalWorkspace
+from .market_view import MarketWorkspace
+from .rares_view import RaresWorkspace
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdExecutor
 
@@ -486,6 +490,34 @@ class AppShell:
                     on_copy_from_profile=self._on_copy_from_profile,
                 )
                 workspace.build()
+            elif self.session.selected_command == 'trade':
+                workspace = TradeWorkspace(
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                )
+                workspace.build()
+            elif self.session.selected_command == 'local':
+                workspace = LocalWorkspace(
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                )
+                workspace.build()
+            elif self.session.selected_command == 'market':
+                workspace = MarketWorkspace(
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                )
+                workspace.build()
+            elif self.session.selected_command == 'rares':
+                workspace = RaresWorkspace(
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                )
+                workspace.build()
             elif self.session.selected_command == 'settings':
                 from .settings_view import SettingsWorkspace
 
@@ -498,8 +530,7 @@ class AppShell:
                 ui.label(
                     f'{self.session.selected_command} workspace '
                     'is not wired yet.'
-                )
-    
+                )    
     def _render_right_pane(self) -> None:
         from .import_view import ImportWorkspace
         from .results_view import render_command_results
