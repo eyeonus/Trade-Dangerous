@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v12.15.0 (2026-03-22)
+
+### Features
+
+- Added local, market, rares, trade to GUI.
+  ([`2bf42dd`](https://github.com/eyeonus/Trade-Dangerous/commit/2bf42dd35cfb00fab3a21b5be24077d650b2fb59))
+
+
 ## v12.14.4 (2026-03-22)
 
 ### Bug Fixes
