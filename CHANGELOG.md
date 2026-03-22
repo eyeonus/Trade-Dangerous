@@ -1,6 +1,24 @@
 # CHANGELOG
 
 
+## v12.14.4 (2026-03-22)
+
+### Bug Fixes
+
+- Correct nav station-interval routing and repair refuel-jumps failure
+  ([`820c041`](https://github.com/eyeonus/Trade-Dangerous/commit/820c041721caf67768b44da2ba18e99aa11ddf1c))
+
+Repair the nav route search when --refuel-jumps / stationInterval is active.
+
+- fix the hard failure caused by treating system.stations as a callable - correct station-interval
+  logic so the limit applies to the route search properly - track routing state by both system and
+  jumps-since-station when the interval constraint is enabled - leave normal getRoute() behaviour
+  unchanged when no station interval is requested
+
+This fixes false "No route found" results for valid constrained routes such as Zaonce -> Sol with
+  --ly 15 --refuel-jumps 3.
+
+
 ## v12.14.3 (2026-03-21)
 
 ### Bug Fixes
