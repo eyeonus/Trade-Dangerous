@@ -1,7 +1,7 @@
 """
 Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-Copyright (C) Stefan 'Tromador' Morrell 2025
+Copyright (C) Stefan 'Tromador' Morrell 2025, 2026
 Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025
 
 You are free to use, redistribute, or even print and eat a copy of
@@ -1259,6 +1259,11 @@ class TradeDB:
         distTo = float("inf")
         defaultDist = (None, distTo)
         getDist  = distances.get
+        if stationInterval:
+            stateDistances = {(origin, 0): (None, 0)}
+            stateDefaultDist = (None, distTo)
+            getStateDist = stateDistances.get
+            destState = None
         
         destID = dest.ID
         sysByID = self.systemByID
@@ -1266,59 +1271,82 @@ class TradeDB:
         maxPadSize = self.tdenv.padSize
         if not maxPadSize:
             def checkStations(system: System) -> bool:  # pylint: disable=function-redefined, missing-docstring
-                return bool(system.stations())
+                return bool(system.stations)
         else:
             def checkStations(system: System) -> bool:  # pylint: disable=function-redefined, missing-docstring
                 return any(stn for stn in system.stations if stn.checkPadSize(maxPadSize))
         
         while openSet:
             weight, curDist, curSysID, stnDist = heappop(openSet)
-            # If we reached 'goal' we've found the shortest path.
-            if curSysID == destID:
-                break
             if curDist >= distTo:
                 continue
             curSys = sysByID[curSysID]
             # A node might wind up multiple times on the open list,
             # so check if we've already found a shorter distance to
             # the system and if so, ignore it this time.
-            if curDist > distances[curSys][1]:
-                continue
-            
-            system_iter = iter(systemsInRange(curSys, maxJumpLy))
             if stationInterval:
-                if checkStations(curSys):
-                    stnDist = 0
-                else:
-                    stnDist += 1
-                    if stnDist >= stationInterval:
-                        system_iter = iter(
-                            v for v in system_iter if checkStations(v[0])
-                        )
+                if curDist > getStateDist((curSys, stnDist), stateDefaultDist)[1]:
+                    continue
+            elif curDist > distances[curSys][1]:
+                continue
+            # If we reached 'goal' we've found the shortest path.
+            if curSysID == destID:
+                if stationInterval:
+                    destState = (curSys, stnDist)
+                break
             
             distFn = curSys.distanceTo
-            for nSys, nDist in system_iter:
-                newDist = curDist + nDist
-                if getDist(nSys, defaultDist)[1] <= newDist:
+            for nSys, nDist in systemsInRange(curSys, maxJumpLy):
+                if getDist(nSys, defaultDist)[1] < 0:
                     continue
-                distances[nSys] = (curSys, newDist)
+                nextStnDist = stnDist
+                if stationInterval:
+                    if checkStations(nSys):
+                        nextStnDist = 0
+                    else:
+                        nextStnDist = stnDist + 1
+                        if nextStnDist >= stationInterval:
+                            continue
+                
+                newDist = curDist + nDist
+                if stationInterval:
+                    if getStateDist((nSys, nextStnDist), stateDefaultDist)[1] <= newDist:
+                        continue
+                    stateDistances[(nSys, nextStnDist)] = ((curSys, stnDist), newDist)
+                else:
+                    if getDist(nSys, defaultDist)[1] <= newDist:
+                        continue
+                    distances[nSys] = (curSys, newDist)
                 weight = distFn(nSys)
                 nID = nSys.ID
-                heappush(openSet, (newDist + weight, newDist, nID, stnDist))
+                heappush(openSet, (newDist + weight, newDist, nID, nextStnDist))
                 if nID == destID:
                     distTo = newDist
+                    if stationInterval:
+                        destState = (nSys, nextStnDist)
         
-        if dest not in distances:
+        if stationInterval:
+            if destState is None:
+                return None
+        elif dest not in distances:
             return None
         
         path = []
         
-        while True:
-            (prevSys, dist) = getDist(dest)
-            path.append((dest, dist))
-            if dest == origin:
-                break
-            dest = prevSys
+        if stationInterval:
+            while True:
+                (prevState, dist) = getStateDist(destState)
+                path.append((destState[0], dist))
+                if destState[0] == origin:
+                    break
+                destState = prevState
+        else:
+            while True:
+                (prevSys, dist) = getDist(dest)
+                path.append((dest, dist))
+                if dest == origin:
+                    break
+                dest = prevSys
         
         path.reverse()
         
