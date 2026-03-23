@@ -61,20 +61,39 @@ class AppShell:
 
     def build(self) -> None:
         ui.add_head_html(
-            f'<style>\n{self._theme_css_text()}\n</style>'
+            '<style>\n'
+            'html, body {\n'
+            '    margin: 0;\n'
+            '    height: 100%;\n'
+            '    overflow: hidden;\n'
+            '}\n'
+            f'{self._theme_css_text()}\n'
+            '</style>'
         )
 
         self.body_query = ui.query('body')
         self.root_container = ui.column().classes(
-            'w-full gap-2 p-4 td-theme-default'
+            'w-full h-screen min-h-0 gap-2 p-2 box-border overflow-hidden '
+            'td-theme-default'
         )
         with self.root_container:
             self._build_top_bar()
-            with ui.splitter(value=27).classes('w-full') as splitter:
+            with ui.splitter(value=27).classes(
+                'w-full min-h-0 flex-1 overflow-hidden'
+            ) as splitter:
                 with splitter.before:
-                    self._build_left_pane()
+                    with ui.column().classes(
+                        'w-full h-full min-h-0 overflow-auto'
+                    ):
+                        self._build_left_pane()
                 with splitter.after:
-                    self._build_right_pane()
+                    with ui.column().classes(
+                        'w-full h-full min-h-0 overflow-auto'
+                    ):
+                        self._build_right_pane()
+            ui.element('div').classes('w-full shrink-0').style(
+                'height: 0.75rem;'
+            )
 
         self._apply_theme()
         self._refresh_ui()
@@ -105,14 +124,27 @@ class AppShell:
             )
 
     def _build_top_bar(self) -> None:
-        with ui.row().classes('w-full items-center gap-4'):
-            self.command_select = ui.select(
-                COMMAND_OPTIONS,
-                value=self.session.selected_command,
-                label='Command',
-                on_change=self._on_command_changed,
-            ).classes('min-w-40')
-            self.status_label = ui.label('Status: Idle')
+        with ui.row().classes('w-full items-center gap-0'):
+            with ui.row().classes('items-center gap-4 pr-2 box-border').style(
+                'width: 27%; min-width: 23rem;'
+            ):
+                self.command_select = ui.select(
+                    COMMAND_OPTIONS,
+                    value=self.session.selected_command,
+                    label='Command',
+                    on_change=self._on_command_changed,
+                ).classes('min-w-40')
+                self.status_label = ui.label('Status: Idle')
+            with ui.row().classes('items-center gap-3 pl-2'):
+                self.right_pane_toggle = ui.toggle(
+                    {
+                        'setup': 'Input',
+                        'results': 'Results',
+                        'diagnostics': 'Diagnostics',
+                    },
+                    value=self.right_pane_view,
+                    on_change=self._on_right_pane_view_changed,
+                )
 
     def _build_left_pane(self) -> None:
         with ui.column().classes('w-full gap-3 pr-2 box-border').style(
@@ -167,19 +199,9 @@ class AppShell:
                 ui.button('New', on_click=self._on_new_profile)
                 ui.button('Save', on_click=self._on_save_profile)
                 ui.button('Revert', on_click=self._on_revert_profile)
-                
+
     def _build_right_pane(self) -> None:
-        with ui.column().classes('w-full gap-2 pl-2'):
-            self.right_pane_toggle = ui.toggle(
-                {
-                    'setup': 'Input',
-                    'results': 'Results',
-                    'diagnostics': 'Diagnostics',
-                },
-                value=self.right_pane_view,
-                on_change=self._on_right_pane_view_changed,
-            ).classes('self-start')
-            self.right_pane_host = ui.column().classes('w-full gap-3')
+        self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
 
     def _on_right_pane_view_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
@@ -568,7 +590,6 @@ class AppShell:
             return
     
         self.import_workspace = None
-        self.right_pane_host.clear()
         with self.right_pane_host:
             if self.right_pane_view == 'setup':
                 self.workspace_host = ui.column().classes('w-full gap-3')
