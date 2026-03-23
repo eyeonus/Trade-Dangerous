@@ -1,6 +1,17 @@
 # CHANGELOG
 
 
+## v12.15.1 (2026-03-23)
+
+### Bug Fixes
+
+- Gui - Design niggles.
+  ([`d9ddf0a`](https://github.com/eyeonus/Trade-Dangerous/commit/d9ddf0a414d35a9a6cea194acf5c401e770b7e9a))
+
+Removed a pile of unused whitespace in top bar. Corrected pane splitter which was making an
+  unecessary scrollbar appear
+
+
 ## v12.15.0 (2026-03-22)
 
 ### Features
