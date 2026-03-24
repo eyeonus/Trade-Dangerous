@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v12.15.3 (2026-03-24)
+
+### Bug Fixes
+
+- Add schema indexes for exact system and station resolution
+  ([`1bd9ba9`](https://github.com/eyeonus/Trade-Dangerous/commit/1bd9ba955071803e4f7c58ff0e01eff30d9a722f))
+
+Add idx_system_by_name to the SQLite schema and add idx_station_by_system_name to both the SQLite
+  schema and ORM metadata.
+
+This is an additive, non-breaking schema optimisation. Existing databases remain valid and continue
+  to work unchanged; newly built or reset databases pick up the new indexes automatically.
+
+We proved idx_station_by_system_name was worth including by testing on a live, populated SQLite
+  database. EXPLAIN QUERY PLAN showed exact WHERE system_id = ? AND name = ? lookups switching from
+  idx_station_by_system to a covering idx_station_by_system_name plan, and repeated timings showed a
+  material improvement across duplicate and unique station-name cases. The legacy join shape driven
+  from station name did not change plan, so the justification is specifically improved exact station
+  lookup once the system has already been resolved.
+
+
 ## v12.15.2 (2026-03-24)
 
 ### Bug Fixes
