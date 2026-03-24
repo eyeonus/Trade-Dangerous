@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v12.15.2 (2026-03-24)
+
+### Bug Fixes
+
+- Require --near for olddata --route and bound routeing by limit
+  ([`f8fe2f7`](https://github.com/eyeonus/Trade-Dangerous/commit/f8fe2f7ac5601b97e9a377c23454ecfdc65f39fb))
+
+Add fast preflight validation so olddata --route fails immediately unless --near is supplied,
+  avoiding expensive TradeDB loading before the error.
+
+Apply --limit before route ordering so the greedy route pass only runs over the bounded result set
+  instead of the full candidate list.
+
+
 ## v12.15.1 (2026-03-23)
 
 ### Bug Fixes
