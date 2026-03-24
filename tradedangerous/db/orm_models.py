@@ -210,6 +210,7 @@ class Station(Base):
     __table_args__ = (
         Index("idx_station_by_system", "system_id"),
         Index("idx_station_by_name", "name"),
+        Index("idx_station_by_system_name", "system_id", "name"),
     )
 
 

@@ -59,6 +59,7 @@ CREATE TABLE System
     ON DELETE CASCADE
  );
 CREATE INDEX idx_system_by_pos ON System (pos_x, pos_y, pos_z, system_id);
+CREATE INDEX idx_system_by_name ON System (name);
 
 
 CREATE TABLE Station
@@ -96,7 +97,7 @@ CREATE TABLE Station
  ) WITHOUT ROWID;
 CREATE INDEX idx_station_by_system ON Station (system_id);
 CREATE INDEX idx_station_by_name ON Station (name);
-
+CREATE INDEX idx_station_by_system_name ON Station (system_id, name);
 
 CREATE TABLE Ship
  (
