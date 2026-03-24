@@ -13,6 +13,8 @@ from tradedangerous import TradeDB, TradeException
 from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, ColumnFormat
 
+from .exceptions import CommandLineError
+
 
 ######################################################################
 # Parser config
@@ -41,7 +43,7 @@ switches = [
             type=float,
     ),
     ParseArgument('--route',
-            help='Sort to shortest path',
+            help='[Requires --near] Sort to shortest path',
             action='store_true',
     ),
     ParseArgument('--min-age',
@@ -64,6 +66,12 @@ switches = [
         default=0,
     ),
 ]
+
+
+def validateRunArgumentsFast(cmdenv):
+    if cmdenv.route and not cmdenv.near:
+        raise CommandLineError("--route requires --near")
+
 
 ######################################################################
 # Perform query and populate result set
@@ -187,35 +195,33 @@ def run(results, cmdenv, tdb):
         
         results.rows.append(row)
     
-    # Route optimization and limiting (unchanged)
-    if cmdenv.route and len(results.rows) > 1:
-        def walk(start_idx, dist):
-            rows_ = results.rows
-            startNode = rows_[start_idx]
-            openList = set(rows_)
-            path = [startNode]
-            openList.remove(startNode)
-            while len(path) < len(rows_):
-                lastNode = path[-1]
-                distFn = lastNode.station.system.distanceTo
-                nearest = min(openList, key=lambda r: distFn(r.station.system))
-                openList.remove(nearest)
-                path.append(nearest)
-                dist += distFn(nearest.station.system)
-            return (path, dist)
-        
-        if cmdenv.near:
-            bestPath = walk(0, results.rows[0].dist)
-        else:
-            bestPath = (results.rows, float("inf"))
-            for i in range(len(results.rows)):
-                candidate = walk(i, 0)
-                if candidate[1] < bestPath[1]:
-                    bestPath = candidate
-        results.rows[:] = bestPath[0]
-    
+    # Limit results first
     if cmdenv.limit:
         results.rows[:] = results.rows[:cmdenv.limit]
+    
+    # Route optimization over the bounded result set only.
+    if cmdenv.route:
+        if not cmdenv.near:
+            raise TradeException("--route requires --near")
+        
+        if len(results.rows) > 1:
+            def walk(start_idx, dist):
+                rows_ = results.rows
+                startNode = rows_[start_idx]
+                openList = set(rows_)
+                path = [startNode]
+                openList.remove(startNode)
+                while len(path) < len(rows_):
+                    lastNode = path[-1]
+                    distFn = lastNode.station.system.distanceTo
+                    nearest = min(openList, key=lambda r: distFn(r.station.system))
+                    openList.remove(nearest)
+                    path.append(nearest)
+                    dist += distFn(nearest.station.system)
+                return (path, dist)
+            
+            bestPath = walk(0, results.rows[0].dist)
+            results.rows[:] = bestPath[0]
     
     return results
 
