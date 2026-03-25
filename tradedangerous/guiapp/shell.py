@@ -75,6 +75,8 @@ class AppShell:
         self.body_query = None
 
     def build(self) -> None:
+        # Themes are pure CSS overrides loaded once into the page head; runtime
+        # theme switching only swaps classes on the body and root container.
         ui.add_head_html(
             '<style>\n'
             'html, body {\n'
@@ -312,9 +314,13 @@ class AppShell:
             self._refresh_ui()
 
     def _on_run_draft_changed(self) -> None:
+        # Draft widgets mutate the persisted draft objects directly, so this
+        # handler only needs to flush the latest snapshot to disk.
         save_gui_store(self.store)
 
     def _selected_theme(self) -> str:
+        # Layout is persisted as loose JSON, so tolerate stale or unknown
+        # values and fall back to the stock theme.
         value = self.store.layout.get('theme')
         if value in {'default', 'elite'}:
             return str(value)
@@ -533,6 +539,8 @@ class AppShell:
         return True
 
     def _render_workspace(self) -> None:
+        # Import keeps long-lived progress widgets and is rendered separately in
+        # `_render_right_pane`; every other workspace can be rebuilt cheaply.
         self.workspace_host.clear()
         with self.workspace_host:
             if self.session.selected_command == 'run':
@@ -645,6 +653,9 @@ class AppShell:
                 self.workspace_host = ui.column().classes('w-full gap-3')
                 self._render_workspace()
                 return
+            # Results and diagnostics belong to the command that produced them,
+            # so switching workspaces should not relabel another command's last
+            # output as if it came from the newly selected workspace.
             current_command_has_output = (
                 self.session.execution.active_command
                 == self.session.selected_command
@@ -735,6 +746,8 @@ class AppShell:
                 self.session.selected_command == 'import'
                 and getattr(self, 'import_workspace', None) is not None
             ):
+                # Refresh import in place so log scrollback and progress widgets
+                # keep their identity while background polling updates arrive.
                 self.import_workspace.refresh(self.session.execution)
             else:
                 self._render_right_pane()

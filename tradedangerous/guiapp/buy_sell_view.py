@@ -28,6 +28,8 @@ class BuySellWorkspace(DraftValueHelper):
 
     def build(self) -> None:
         action = 'Buy' if self.command == 'buy' else 'Sell'
+        # Keep the main pane focused on the common search inputs; the dialog
+        # carries the less-frequent CLI switches.
         extended_dialog = self._build_extended_dialog()
 
         with ui.column().classes('w-full gap-3'):
@@ -128,6 +130,8 @@ class BuySellWorkspace(DraftValueHelper):
         )
 
     def _build_extended_dialog(self) -> ui.dialog:
+        # Dialog-only switches land in advanced_values so the executor can layer
+        # them on top of the basic search fields without special cases.
         dialog = ui.dialog()
         with dialog:
             with ui.card().style('min-width: 64rem; max-width: 95vw;'):

@@ -1,3 +1,9 @@
+/* Default theme uses the stock NiceGUI/Quasar palette.
+   This file only defines the heavier Elite override set. */
+
+/* Elite mirrors the black/orange cockpit look.
+   NiceGUI sits on Quasar widgets, so the overrides target component classes
+   rather than custom app-specific elements. */
 .td-theme-elite {
     --q-primary: #f07b05;
     --q-secondary: #f07b05;
@@ -6,6 +12,7 @@
     color: #ffffff;
 }
 
+/* Cards, menus, and dialogs */
 .td-theme-elite .q-card,
 .td-theme-elite .q-menu,
 .td-theme-elite .q-dialog .q-card {
@@ -15,6 +22,7 @@
     box-shadow: none;
 }
 
+/* Buttons and grouped controls */
 .td-theme-elite .q-btn {
     background: #f07b05;
     color: #ffffff;
@@ -52,6 +60,7 @@
     color: #f07b05;
 }
 
+/* Form fields, labels, and separators */
 .td-theme-elite .q-field__control,
 .td-theme-elite .q-field--filled .q-field__control,
 .td-theme-elite .q-field--outlined .q-field__control {
@@ -84,6 +93,7 @@
     background: #f07b05;
 }
 
+/* Expansions and tables */
 .td-theme-elite .q-expansion-item,
 .td-theme-elite .q-expansion-item .q-item,
 .td-theme-elite .q-expansion-item .q-card {

@@ -12,6 +12,8 @@ from .shell import AppShell
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
+    """Expose the small launcher surface for native versus browser shells."""
+
     parser = argparse.ArgumentParser(prog='tradegui.py')
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
@@ -46,6 +48,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     @ui.page('/')
     def index() -> None:
+        # Build a fresh shell per client page so browser sessions do not share
+        # mutable SessionState, while still reading the same persisted GUI store.
         store = load_gui_store()
         shell = AppShell(store)
         shell.build()

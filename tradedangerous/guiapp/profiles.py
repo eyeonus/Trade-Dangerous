@@ -17,6 +17,8 @@ SCHEMA_VERSION = 1
 
 @dataclass(slots=True)
 class GlobalSettings:
+    """Persisted commander-wide defaults shown in the left pane."""
+
     commander_name: str | None = None
     credits: int | None = None
     max_data_age_days: float | None = None
@@ -36,6 +38,8 @@ class GlobalSettings:
 
 @dataclass(slots=True)
 class ShipProfile:
+    """Persisted ship baseline editable from the shell's profile section."""
+
     profile_id: str
     ship_name: str | None = None
     capacity: int | None = None
@@ -60,6 +64,13 @@ class ShipProfile:
 
 @dataclass(slots=True)
 class CommandDraft:
+    """Per-command GUI state split into main, advanced, and context fields.
+
+    `main_values` backs the always-visible controls, `advanced_values` stores
+    dialog-only options, and `context_overrides` stamps left-pane baselines into
+    commands such as `run`.
+    """
+
     main_values: dict[str, Any] = field(default_factory=dict)
     advanced_values: dict[str, Any] = field(default_factory=dict)
     context_overrides: dict[str, Any] = field(default_factory=dict)
@@ -95,6 +106,8 @@ class GuiStore:
 
     @classmethod
     def default(cls) -> 'GuiStore':
+        # Seed first-run state with one usable profile and a run draft so the
+        # shell never boots into an empty or half-configured workspace.
         default_profile = ShipProfile(
             profile_id='ship-1',
             ship_name='Ship 1',
@@ -217,6 +230,8 @@ class GuiStore:
 
 
 def make_profile_id(name: str | None, existing_ids: set[str]) -> str:
+    """Slugify a profile name and append a numeric suffix when needed."""
+
     base = re.sub(r'[^a-z0-9]+', '-', (name or 'ship').strip().lower())
     base = base.strip('-') or 'ship'
     candidate = base

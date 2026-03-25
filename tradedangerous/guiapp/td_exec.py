@@ -31,6 +31,9 @@ from .td_exec_commands import (
 )
 from .td_exec_import import build_import_argv, execute_import_command
 
+# TdExecutor owns three jobs: validate GUI input, translate it into argv via
+# `td_exec_commands`, and capture both diagnostics and rendered output for the
+# right pane.
 @dataclass(slots=True)
 class GuiCommandRequest:
     """Self-contained execution payload assembled from GUI state."""
@@ -63,6 +66,8 @@ class GuiCommandRequest:
 
 @dataclass(slots=True)
 class GuiCommandResult:
+    """Execution outcome mirrored directly into the session/right-pane UI."""
+
     command: str
     ok: bool
     error_message: str | None = None
@@ -329,6 +334,8 @@ class TdExecutor:
     def _global_command_resolved_values(
         request: GuiCommandRequest,
     ) -> dict[str, Any]:
+        # Non-run commands only inherit the commander-wide globals from the
+        # left pane; ship-specific context stays a run-only concern.
         resolved = _drop_blank_values(request.global_values)
         resolved.update(_drop_blank_values(request.main_values))
         resolved.update(_drop_blank_values(request.advanced_values))
@@ -339,6 +346,8 @@ class TdExecutor:
         if value in (None, ''):
             return []
 
+        # GUI textareas allow either commas or newlines; normalize both so the
+        # argv builders can treat multi-value fields consistently.
         terms: list[str] = []
         for line in str(value).splitlines():
             for part in line.split(','):
@@ -494,6 +503,8 @@ class TdExecutor:
 
     @staticmethod
     def _effective_capacity(context: dict[str, Any]) -> int | None:
+        # Match the shell's displayed effective capacity so validation, copied
+        # overrides, and execution all agree on the usable cargo space.
         capacity = context.get('capacity')
         reserved_capacity = context.get('reserved_capacity')
         if capacity is None:

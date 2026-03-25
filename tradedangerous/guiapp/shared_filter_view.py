@@ -13,6 +13,7 @@ TRI_STATE_OPTIONS = {
     '?': 'Unknown only',
 }
 
+
 def build_shared_filter_section(
     *,
     get_bool: Callable[[str], bool],
@@ -59,8 +60,12 @@ def build_shared_filter_section(
             ).classes('w-48')
 
             if extra_builder is not None:
+                # Some workspaces have one extra control that belongs beside the
+                # tri-state selectors rather than in a separate section.
                 extra_builder()
 
+        # Pad size is tracked as a compact bitset in drafts, but the UI keeps it
+        # as three checkboxes because that is far easier to sanity-check.
         with ui.row().classes('w-full items-center gap-4'):
             ui.label('Pad sizes')
             ui.checkbox(
@@ -89,6 +94,8 @@ def build_shared_filter_section(
             )
 
         if post_builder is not None:
+            # Local and similar commands append their own full-width filters
+            # after the shared TD station traits.
             post_builder()
 
         ui.label(

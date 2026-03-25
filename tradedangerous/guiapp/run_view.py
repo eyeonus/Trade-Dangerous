@@ -28,6 +28,8 @@ class RunWorkspace(DraftValueHelper):
         self.on_copy_from_profile = on_copy_from_profile
 
     def build(self) -> None:
+        # Keep the always-visible pane focused on route-shaping fields and the
+        # most common overrides; niche knobs live in the extended dialog.
         extended_dialog = self._build_extended_dialog()
 
         with ui.column().classes('w-full gap-3'):
@@ -215,6 +217,8 @@ class RunWorkspace(DraftValueHelper):
                 ).classes('w-40')
 
     def _build_filter_section(self) -> None:
+        # Summary changes how results are presented often enough to keep it in
+        # the main pane; the rest of the output flags stay in the dialog.
         def build_run_extra_filters() -> None:
             ui.checkbox(
                 'Summary output',
@@ -248,6 +252,8 @@ class RunWorkspace(DraftValueHelper):
         )
 
     def _build_extended_dialog(self) -> ui.dialog:
+        # Everything in this dialog writes to advanced_values so uncommon run
+        # switches stay distinct from the route and override fields above.
         dialog = ui.dialog()
         with dialog:
             with ui.card().style('min-width: 72rem; max-width: 95vw;'):
@@ -483,6 +489,8 @@ class RunWorkspace(DraftValueHelper):
                 ).classes('w-40')
 
             with ui.row().classes('w-full gap-3'):
+                # Mirror TD's implicit default of one route so the widget never
+                # suggests that zero is a meaningful starting value.
                 ui.number(
                     'Routes',
                     value=self._number_value(

@@ -27,6 +27,8 @@ class SettingsWorkspace:
         self.advanced_dialog = None
 
     def build(self) -> None:
+        # Keep the placeholder dialog wired in so this workspace can grow
+        # without changing the page structure or button affordance later.
         self.advanced_dialog = ui.dialog()
         with self.advanced_dialog:
             with ui.card().classes('gap-2').style(
@@ -44,6 +46,8 @@ class SettingsWorkspace:
                 ui.label(
                     'Basic GUI preferences for Trade Dangerous.'
                 ).classes('text-sm text-gray-600')
+                # Theme changes apply immediately to the live shell instead of
+                # waiting for an Execute-style action.
                 self.theme_select = ui.select(
                     THEME_OPTIONS,
                     value=self.selected_theme,

@@ -206,6 +206,8 @@ class LocalWorkspace(DraftValueHelper):
                 )
 
     def _build_filter_section(self) -> None:
+        # Shared filters cover the tri-state station traits and pad sizes.
+        # Local adds the simpler service-availability booleans underneath.
         def build_service_filters() -> None:
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox('Black market', value=self._bool_value(self.draft.main_values, 'blackMarket'), on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value))
@@ -418,6 +420,8 @@ class OldDataWorkspace(DraftValueHelper):
                 ui.button('Extended Options', on_click=dialog.open)
 
     def _build_search_section(self) -> None:
+        # Old Data keeps the everyday search inputs on the main pane; the dialog
+        # owns the less common result-limiting options.
         values = self.draft.main_values
         with ui.card().classes('w-full'):
             ui.label('Old Data Search')
@@ -443,6 +447,8 @@ class OldDataWorkspace(DraftValueHelper):
         )
 
     def _build_extended_dialog(self) -> ui.dialog:
+        # Limit and LS max are advanced-only knobs, so they live separately from
+        # the main near/distance/age search controls.
         values = self.draft.advanced_values
         dialog = ui.dialog()
         with dialog, ui.card().style('min-width: 48rem; max-width: 95vw;'):
@@ -498,6 +504,8 @@ class RaresWorkspace(DraftValueHelper):
         )
 
     def _build_extended_dialog(self) -> ui.dialog:
+        # Away-from expands into repeated CLI flags and is easy to mistype, so
+        # keep it out of the compact main pane and explain it in the dialog.
         dialog = ui.dialog()
         with dialog, ui.card().style('min-width: 56rem; max-width: 95vw;'):
             ui.label('Extended Options')

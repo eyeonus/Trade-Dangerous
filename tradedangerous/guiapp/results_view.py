@@ -15,12 +15,18 @@ _RUN_COLUMNS = [
     {'name': 'total', 'label': 'Total gain', 'field': 'total', 'align': 'right'},
 ]
 
+# Run is the only command that currently returns a nested route/hop payload.
+# The other command renderers mostly work with flattened summary/rows shapes.
 
 def render_command_results(
     command: str,
     structured_result: Any,
     raw_output: str,
 ) -> None:
+    """Render the best available result representation for a command."""
+
+    # Prefer structured renderers when the executor captured them; raw text is
+    # the fallback for unsupported payloads or legacy command paths.
     if command == 'run' and structured_result:
         if _is_run_route_payload(structured_result):
             _render_run_results(structured_result)
@@ -152,6 +158,7 @@ def _render_generic_structured_results(
     command: str,
     structured_result: Any,
 ) -> None:
+    """Render flat summary-plus-row payloads such as buy/sell results."""
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
@@ -721,6 +728,7 @@ def _render_market_results(structured_result: Any) -> None:
 
 
 def _human_result_summary(summary: Any) -> str | None:
+    """Return displayable summary text and suppress opaque object repr noise."""
     if summary is None:
         return None
 
@@ -749,6 +757,7 @@ def _looks_like_object_repr(text: str) -> bool:
 
 
 def _structured_payload(structured_result: Any) -> dict[str, Any]:
+    """Normalize TD result adapters onto the summary/rows mapping the UI expects."""
     if isinstance(structured_result, dict):
         return structured_result
     # TD command adapters do not all return the same shape yet; normalise both
@@ -759,6 +768,7 @@ def _structured_payload(structured_result: Any) -> dict[str, Any]:
     }
 
 def _row_to_dict(row: Any) -> dict[str, Any]:
+    """Convert result rows into plain mappings that tables can render uniformly."""
     if isinstance(row, dict):
         return dict(row)
 
@@ -786,6 +796,7 @@ def _format_result_value(value: Any) -> str:
     return str(value)
 
 def _named_result_value(value: Any) -> str | None:
+    """Best-effort extraction for TD model objects that expose a name helper."""
     name = getattr(value, 'name', None)
     if not callable(name):
         return None

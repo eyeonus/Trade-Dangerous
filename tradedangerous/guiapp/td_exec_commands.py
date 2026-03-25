@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+# This module is the final field-name-to-argv translation layer after the GUI
+# has merged inherited context, main inputs, and advanced dialog values.
 
 def build_run_argv(
     *,
@@ -162,6 +164,8 @@ def build_trade_argv(
 
     argv = ['tradegui.py', 'trade', origin, dest]
 
+    # The trade renderer expects the detailed row payload rather than the
+    # compact CLI summary, so the GUI forces detail mode here.
     append_flag(argv, '--detail', True)
     append_option(argv, '--gain-per-ton', resolved.get('minGainPerTon'))
     append_option(argv, '--limit', resolved.get('limit'))
@@ -212,6 +216,7 @@ def build_market_argv(
     mode = str(resolved.get('mode') or '').strip()
     append_flag(argv, '--buying', mode == 'buying')
     append_flag(argv, '--selling', mode == 'selling')
+    # Market tables rely on the full detail payload, including averages and age.
     argv.extend(['--detail', '--detail'])
 
     return argv
@@ -255,6 +260,8 @@ def build_local_argv(
     append_flag(argv, '--refuel', resolved.get('refuel'))
     append_flag(argv, '--repair', resolved.get('repair'))
 
+    # Local expansions show per-system station details, so request the richer
+    # payload shape even though the plain CLI can work with less detail.
     argv.extend(['--detail', '--detail'])
     return argv
 
@@ -290,6 +297,8 @@ def build_nav_argv(
     append_option(argv, '--fleet-carrier', resolved.get('fleet'))
     append_option(argv, '--odyssey', resolved.get('odyssey'))
 
+    # TD accepts repeated `--via`/`--avoid` flags, so split the GUI text areas
+    # into discrete argv entries instead of forwarding a raw comma block.
     for place in split_search_terms(resolved.get('via')):
         argv.extend(['--via', place])
 
@@ -297,6 +306,8 @@ def build_nav_argv(
         argv.extend(['--avoid', place])
 
     argv.append('--stations')
+    # Nav results render as hops with expandable station matches, which only
+    # exist when the command asks TD for station detail explicitly.
     argv.extend(['--detail', '--detail'])
     return argv
 
@@ -385,10 +396,13 @@ def build_rares_argv(
 
     away = resolved.get('away')
     away_from = split_search_terms(resolved.get('awayFrom'))
+    # `--away` is only meaningful when paired with one or more repeated
+    # `--from` anchors; validation enforces that both halves are supplied.
     append_option(argv, '--away', away)
     for system_name in away_from:
         argv.extend(['--from', system_name])
 
+    # Rares also renders best from the richer table payload.
     argv.extend(['--detail', '--detail'])
     return argv
 
