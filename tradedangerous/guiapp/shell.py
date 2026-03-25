@@ -546,7 +546,6 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
-                    on_copy_from_profile=self._on_copy_from_profile,
                 )
                 workspace.build()
             elif self.session.selected_command == 'trade':

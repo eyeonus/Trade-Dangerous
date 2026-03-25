@@ -8,7 +8,6 @@ from typing import Any, Callable
 def build_run_argv(
     *,
     resolved: dict[str, Any],
-    context: dict[str, Any],
     effective_capacity: int | None,
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],

@@ -8,16 +8,15 @@ from typing import Any, Callable
 def build_buy_argv(
     *,
     resolved: dict[str, Any],
-    context: dict[str, Any],
-    effective_capacity: int | None,
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
+    split_search_terms: Callable[[Any], list[str]],
 ) -> list[str]:
     """Map the buy workspace draft onto the `tradegui.py buy` command line."""
 
     argv = ['tradegui.py', 'buy']
 
-    for term in _split_search_terms(resolved.get('search')):
+    for term in split_search_terms(resolved.get('search')):
         argv.append(term)
 
     append_option(argv, '--supply', resolved.get('supply'))
@@ -38,16 +37,15 @@ def build_buy_argv(
 def build_sell_argv(
     *,
     resolved: dict[str, Any],
-    context: dict[str, Any],
-    effective_capacity: int | None,
     append_option: Callable[[list[str], str, Any], None],
     append_flag: Callable[[list[str], str, Any], None],
+    split_search_terms: Callable[[Any], list[str]],
 ) -> list[str]:
     """Map the sell workspace draft onto the `tradegui.py sell` command line."""
 
     argv = ['tradegui.py', 'sell']
 
-    search_terms = _split_search_terms(resolved.get('search'))
+    search_terms = split_search_terms(resolved.get('search'))
     if search_terms:
         # The underlying sell command accepts a single item search term.
         argv.append(search_terms[0])
@@ -91,15 +89,3 @@ def _append_buysell_search_options(
     if include_ls_max:
         append_option(argv, '--ls-max', resolved.get('maxLs'))
 
-
-def _split_search_terms(value: Any) -> list[str]:
-    if value in (None, ''):
-        return []
-
-    terms: list[str] = []
-    for line in str(value).splitlines():
-        for part in line.split(','):
-            cleaned = part.strip()
-            if cleaned:
-                terms.append(cleaned)
-    return terms

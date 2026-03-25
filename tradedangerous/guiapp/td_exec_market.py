@@ -36,7 +36,3 @@ def validate_market_request(
     mode = resolved.get('mode')
     if mode not in (None, '', 'buying', 'selling'):
         errors.append('Market side selection is invalid.')
-
-    detail = resolved.get('detail')
-    if detail not in (None, '', '1', '2'):
-        errors.append('Market detail selection is invalid.')

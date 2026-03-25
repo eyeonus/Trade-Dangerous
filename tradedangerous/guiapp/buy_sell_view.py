@@ -20,13 +20,11 @@ class BuySellWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
-        on_copy_from_profile: Callable[[], None],
     ) -> None:
         self.command = command
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-        self.on_copy_from_profile = on_copy_from_profile
 
     def build(self) -> None:
         action = 'Buy' if self.command == 'buy' else 'Sell'
@@ -105,50 +103,6 @@ class BuySellWorkspace(DraftValueHelper):
                         'Supply' if self.command == 'buy' else 'Demand',
                     ),
                 ).classes('w-40')
-
-    def _build_override_section(self, action: str) -> None:
-        with ui.card().classes('w-full'):
-            ui.label(f'{action} Overrides')
-            ui.label(
-                'These override inherited commander / ship baseline values '
-                'for this search only. Clear a field to return to inherited '
-                'behaviour.'
-            ).classes('text-sm text-gray-600')
-
-            with ui.row().classes('w-full gap-3'):
-                if self.command == 'buy':
-                    ui.number(
-                        'Capacity',
-                        value=self._number_value(
-                            self.draft.context_overrides,
-                            'capacity',
-                        ),
-                        min=0,
-                        step=1,
-                        precision=0,
-                        on_change=lambda event: self._set_int(
-                            self.draft.context_overrides,
-                            'capacity',
-                            event.value,
-                            'Capacity',
-                        ),
-                    ).classes('w-40')
-                    ui.number(
-                        'Credits',
-                        value=self._number_value(
-                            self.draft.context_overrides,
-                            'credits',
-                        ),
-                        min=0,
-                        step=1,
-                        precision=0,
-                        on_change=lambda event: self._set_int(
-                            self.draft.context_overrides,
-                            'credits',
-                            event.value,
-                            'Credits',
-                        ),
-                    ).classes('w-48')
 
     def _build_filter_section(self) -> None:
         # Reuse the same tri-state and pad-size UI so command workspaces stay

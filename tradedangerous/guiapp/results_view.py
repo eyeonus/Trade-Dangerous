@@ -55,7 +55,6 @@ def render_command_results(
 
     if raw_output:
         ui.label(raw_output).classes('font-mono text-sm whitespace-pre-wrap')
-        return(raw_output).classes('font-mono text-sm whitespace-pre-wrap')
         return
 
     ui.label('Nothing has been executed yet.')
@@ -131,6 +130,47 @@ def _render_run_results(routes: list[Any]) -> None:
                             ui.label(f'Jump path: {path}').classes(
                                 'text-sm text-gray-600'
                             )
+
+def _render_generic_structured_results(
+    command: str,
+    structured_result: Any,
+) -> None:
+    payload = _structured_payload(structured_result)
+    summary = payload.get('summary')
+    rows = payload.get('rows', [])
+
+    summary_text = _human_result_summary(summary)
+    if summary_text:
+        ui.label(summary_text).classes('text-sm text-gray-600')
+
+    if not rows:
+        ui.label(f'No {command} rows returned.').classes(
+            'text-sm text-gray-600'
+        )
+        return
+
+    table_rows = [_row_to_dict(row) for row in rows]
+    columns = [
+        {
+            'name': key,
+            'label': key.replace('_', ' ').title(),
+            'field': key,
+            'align': 'left',
+        }
+        for key in table_rows[0]
+    ]
+
+    for row in table_rows:
+        for key, value in row.items():
+            row[key] = _format_result_value(value)
+
+    ui.table(
+        columns=columns,
+        rows=table_rows,
+        row_key=next(iter(table_rows[0])),
+    ).classes('w-full')
+
+
 
 def _render_trade_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)

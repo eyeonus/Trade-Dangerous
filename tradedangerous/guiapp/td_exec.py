@@ -199,9 +199,9 @@ class TdExecutor:
                 f"'{request.command}' is not wired into the TD adapter yet."
             ),
             diagnostics_output=(
-                'Only the run, buy, sell, trade, local, olddata, market, '
-                'rares, and import commands are currently connected to the '
-                'in-process TD execution path.'
+                'Only the run, buy, sell, trade, local, nav, olddata, '
+                'market, rares, and import commands are currently connected '
+                'to the in-process TD execution path.'
             ),
         )
 
@@ -210,7 +210,6 @@ class TdExecutor:
         context = request.effective_context()
         argv = build_run_argv(
             resolved=resolved,
-            context=context,
             effective_capacity=self._effective_capacity(context),
             append_option=self._append_option,
             append_flag=self._append_flag,
@@ -219,25 +218,21 @@ class TdExecutor:
 
     def _execute_buy(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
-        context = request.effective_context()
         argv = build_buy_argv(
             resolved=resolved,
-            context=context,
-            effective_capacity=self._effective_capacity(context),
             append_option=self._append_option,
             append_flag=self._append_flag,
+            split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
 
     def _execute_sell(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
-        context = request.effective_context()
         argv = build_sell_argv(
             resolved=resolved,
-            context=context,
-            effective_capacity=self._effective_capacity(context),
             append_option=self._append_option,
             append_flag=self._append_flag,
+            split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
 
@@ -264,6 +259,7 @@ class TdExecutor:
         argv = build_olddata_argv(
             resolved=resolved,
             append_option=self._append_option,
+            append_flag=self._append_flag,
         )
         result = self._execute_td_command(request, argv)
         if isinstance(result.structured_result, dict):
@@ -278,12 +274,7 @@ class TdExecutor:
             resolved=resolved,
             append_flag=self._append_flag,
         )
-        result = self._execute_td_command(request, argv)
-        if isinstance(result.structured_result, dict):
-            payload = dict(result.structured_result)
-            payload['detail_level'] = int(resolved.get('detail') or 0)
-            result.structured_result = payload
-        return result
+        return self._execute_td_command(request, argv)
 
     def _execute_rares(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
