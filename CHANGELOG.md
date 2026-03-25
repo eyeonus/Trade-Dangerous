@@ -1,6 +1,40 @@
 # CHANGELOG
 
 
+## v12.16.0 (2026-03-25)
+
+### Bug Fixes
+
+- Gui Code cleanup.
+  ([`dcc160a`](https://github.com/eyeonus/Trade-Dangerous/commit/dcc160a4af41a07903e032f8cd35a52d9e3125e8))
+
+Various regressions crept in whilst wiring in one new command after another in repetitive style. All
+  fixed.
+
+Also some redundant code removed.
+
+Oh... and might as well make our logo part of the proper repo.
+
+- Olddata command files missing from repo
+  ([`21f881f`](https://github.com/eyeonus/Trade-Dangerous/commit/21f881f69c03b60f1f8c3a88b948b5f02c229bcf))
+
+I guess I forgot to commit these, my local copy happily working away, but it really does help if one
+  releases ALL the code for an application.
+
+### Features
+
+- Added the nav command - GUI work is done.
+  ([`a1843f1`](https://github.com/eyeonus/Trade-Dangerous/commit/a1843f1e4cd8e641b3755b508ebd83ed3327d02a))
+
+GUI is as functional as I intend for the time being.
+
+There are hooks in place for possible future expansion in settings and also it should be easy to
+  automate some input from E:D journal/api later.
+
+Also in this commit - some design niggles fixed wrt scrollbars misbehaving. I mean, I dunno if it's
+  design, the thing worked, but they were annoying me.
+
+
 ## v12.15.3 (2026-03-24)
 
 ### Bug Fixes
