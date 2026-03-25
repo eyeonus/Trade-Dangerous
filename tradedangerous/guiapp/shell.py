@@ -10,12 +10,14 @@ from nicegui import run, ui
 from .profiles import GuiStore, save_gui_store
 from .run_view import RunWorkspace
 from .buy_sell_view import BuySellWorkspace
-from .trade_view import TradeWorkspace
-from .local_view import LocalWorkspace
-from .market_view import MarketWorkspace
-from .rares_view import RaresWorkspace
-from .nav_view import NavWorkspace
-from .olddata_view import OldDataWorkspace
+from .command_views import (
+    LocalWorkspace,
+    MarketWorkspace,
+    NavWorkspace,
+    OldDataWorkspace,
+    RaresWorkspace,
+    TradeWorkspace,
+)
 from .settings_view import SettingsWorkspace
 from .import_runtime import (
     begin_import_stop_confirmation,
@@ -263,6 +265,7 @@ class AppShell:
         if value is None:
             return
         self.session.set_command(self.store, str(value))
+        self.right_pane_view = 'setup'
         save_gui_store(self.store)
         self._refresh_ui()
 
@@ -642,8 +645,20 @@ class AppShell:
                 self.workspace_host = ui.column().classes('w-full gap-3')
                 self._render_workspace()
                 return
+            current_command_has_output = (
+                self.session.execution.active_command
+                == self.session.selected_command
+            )
             if self.right_pane_view == 'results':
-                if self.session.execution.error_message:
+                if not current_command_has_output:
+                    command_label = COMMAND_OPTIONS.get(
+                        self.session.selected_command,
+                        str(self.session.selected_command).title(),
+                    ).lower()
+                    ui.label(
+                        f'No {command_label} results yet.'
+                    ).classes('text-sm text-gray-600')
+                elif self.session.execution.error_message:
                     ui.label(
                         self.session.execution.error_message
                     ).classes('text-negative whitespace-pre-wrap')
@@ -653,6 +668,15 @@ class AppShell:
                         self.session.execution.structured_result,
                         self.session.execution.raw_output,
                     )
+                return
+            if not current_command_has_output:
+                command_label = COMMAND_OPTIONS.get(
+                    self.session.selected_command,
+                    str(self.session.selected_command).title(),
+                ).lower()
+                ui.label(
+                    f'No {command_label} diagnostics yet.'
+                ).classes('text-sm text-gray-600')
                 return
             ui.label(
                 self.session.execution.diagnostics_output
@@ -763,3 +787,5 @@ class AppShell:
             ui.notify(f'{label} must be zero or greater.', color='negative')
             return None
         return parsed
+
+

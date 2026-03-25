@@ -22,8 +22,9 @@ def render_command_results(
     raw_output: str,
 ) -> None:
     if command == 'run' and structured_result:
-        _render_run_results(structured_result)
-        return
+        if _is_run_route_payload(structured_result):
+            _render_run_results(structured_result)
+            return
 
     if command in {'buy', 'sell'} and structured_result:
         _render_generic_structured_results(command, structured_result)
@@ -58,6 +59,22 @@ def render_command_results(
         return
 
     ui.label('Nothing has been executed yet.')
+
+
+def _is_run_route_payload(structured_result: Any) -> bool:
+    if not isinstance(structured_result, (list, tuple)):
+        return False
+
+    if not structured_result:
+        return False
+
+    return all(
+        hasattr(route, 'jumps')
+        and hasattr(route, 'hops')
+        and hasattr(route, 'route')
+        and hasattr(route, 'gainCr')
+        for route in structured_result
+    )
 
 
 def _render_run_results(routes: list[Any]) -> None:
