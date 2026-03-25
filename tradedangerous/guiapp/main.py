@@ -56,6 +56,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         port=args.port,
         reload=False,
         title='Trade Dangerous',
-        window_size=(1500, 950),
+        window_size=(1550, 1000),
     )
     return 0

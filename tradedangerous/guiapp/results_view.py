@@ -37,6 +37,14 @@ def render_command_results(
         _render_local_results(structured_result)
         return
 
+    if command == 'nav' and structured_result:
+        _render_nav_results(structured_result)
+        return
+
+    if command == 'olddata' and structured_result:
+        _render_olddata_results(structured_result)
+        return
+
     if command == 'market' and structured_result:
         _render_market_results(structured_result)
         return
@@ -288,6 +296,196 @@ def _render_local_results(structured_result: Any) -> None:
                 row_key='row_id',
             ).classes('w-full')
 
+
+def _render_nav_results(structured_result: Any) -> None:
+    payload = _structured_payload(structured_result)
+    summary = payload.get('summary')
+    rows = payload.get('rows', [])
+
+    from_name = _named_result_value(getattr(summary, 'fromSys', None))
+    to_name = _named_result_value(getattr(summary, 'toSys', None))
+    max_ly = getattr(summary, 'maxLy', None)
+
+    if from_name and to_name and max_ly is not None:
+        ui.label(
+            f'Route from {from_name} to {to_name} '
+            f'with max {float(max_ly):g} ly per jump.'
+        ).classes('text-sm text-gray-600')
+    elif rows:
+        ui.label(f'{len(rows)} nav hop(s) returned.').classes(
+            'text-sm text-gray-600'
+        )
+
+    ui.label(
+        'Expand a system to view the matching stations for that hop.'
+    ).classes('text-sm text-gray-600')
+
+    if not rows:
+        ui.label('No nav rows returned.').classes('text-sm text-gray-600')
+        return
+
+    def yes_no_unknown(value: Any) -> str:
+        return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '')
+
+    def pad_text(value: Any) -> str:
+        return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
+            str(value or ''),
+            '',
+        )
+
+    columns = [
+        {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
+        {'name': 'ls', 'label': 'StnLs', 'field': 'ls', 'align': 'right'},
+        {'name': 'age', 'label': 'Age/days', 'field': 'age', 'align': 'right'},
+        {'name': 'market', 'label': 'Mkt', 'field': 'market', 'align': 'right'},
+        {'name': 'black_market', 'label': 'BMk', 'field': 'black_market', 'align': 'right'},
+        {'name': 'shipyard', 'label': 'Shp', 'field': 'shipyard', 'align': 'right'},
+        {'name': 'outfitting', 'label': 'Out', 'field': 'outfitting', 'align': 'right'},
+        {'name': 'rearm', 'label': 'Arm', 'field': 'rearm', 'align': 'right'},
+        {'name': 'refuel', 'label': 'Ref', 'field': 'refuel', 'align': 'right'},
+        {'name': 'repair', 'label': 'Rep', 'field': 'repair', 'align': 'right'},
+        {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
+        {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
+        {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
+        {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+        {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
+    ]
+
+    for system_index, row in enumerate(rows, start=1):
+        values = _row_to_dict(row)
+        action = _format_result_value(values.get('action'))
+        system = values.get('system')
+        system_name = _named_result_value(system) or _format_result_value(system)
+        jump_ly = values.get('jumpLy')
+        total_ly = values.get('totalLy')
+        dir_ly = values.get('dirLy')
+        stations = list(values.get('stations') or [])
+
+        jump_text = '' if jump_ly is None else f'{float(jump_ly):.2f}'
+        total_text = '' if total_ly is None else f'{float(total_ly):.2f}'
+        dir_text = '' if dir_ly is None else f'{float(dir_ly):.2f}'
+
+        expansion = ui.expansion().classes('w-full')
+        with expansion.add_slot('header'):
+            with ui.row().classes('w-full items-center no-wrap'):
+                ui.label(
+                    f'{action}: {system_name} '
+                    f'(Jump {jump_text} ly, Total {total_text} ly, '
+                    f'Remaining {dir_text} ly) — {len(stations)} station(s)'
+                )
+                ui.space()
+                ui.label('click to expand').classes(
+                    'text-sm text-gray-500'
+                )
+        with expansion:
+            table_rows = []
+            for station_index, station_row in enumerate(stations, start=1):
+                station_values = _row_to_dict(station_row)
+                station = station_values.get('station')
+                dist_from_star = getattr(station, 'distFromStar', None)
+
+                table_rows.append(
+                    {
+                        'row_id': f'nav-{system_index}-{station_index}',
+                        'station': str(getattr(station, 'dbname', '') or ''),
+                        'ls': str(dist_from_star() if callable(dist_from_star) else ''),
+                        'age': _format_result_value(station_values.get('age')),
+                        'market': yes_no_unknown(getattr(station, 'market', None)),
+                        'black_market': yes_no_unknown(getattr(station, 'blackMarket', None)),
+                        'shipyard': yes_no_unknown(getattr(station, 'shipyard', None)),
+                        'outfitting': yes_no_unknown(getattr(station, 'outfitting', None)),
+                        'rearm': yes_no_unknown(getattr(station, 'rearm', None)),
+                        'refuel': yes_no_unknown(getattr(station, 'refuel', None)),
+                        'repair': yes_no_unknown(getattr(station, 'repair', None)),
+                        'pad': pad_text(getattr(station, 'maxPadSize', None)),
+                        'planetary': yes_no_unknown(getattr(station, 'planetary', None)),
+                        'fleet': yes_no_unknown(getattr(station, 'fleet', None)),
+                        'odyssey': yes_no_unknown(getattr(station, 'odyssey', None)),
+                        'items': _format_result_value(getattr(station, 'itemCount', None)),
+                    }
+                )
+
+            ui.table(
+                columns=columns,
+                rows=table_rows,
+                row_key='row_id',
+            ).classes('w-full')
+
+
+def _render_olddata_results(structured_result: Any) -> None:
+    payload = _structured_payload(structured_result)
+    rows = payload.get('rows', [])
+    near = str(payload.get('near') or '').strip()
+
+    if near:
+        ui.label(
+            f'{len(rows)} old-data station(s) returned near {near}.'
+        ).classes('text-sm text-gray-600')
+    elif rows:
+        ui.label(f'{len(rows)} old-data station(s) returned.').classes(
+            'text-sm text-gray-600'
+        )
+
+    if not rows:
+        ui.label('No old-data rows returned.').classes('text-sm text-gray-600')
+        return
+
+    def yes_no_unknown(value: Any) -> str:
+        return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '?')
+
+    def pad_text(value: Any) -> str:
+        return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
+            str(value or ''),
+            '?',
+        )
+
+    def station_text(value: Any) -> str:
+        return _named_result_value(value) or _format_result_value(value)
+
+    columns = [
+        {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
+    ]
+    if near:
+        columns.append(
+            {'name': 'dist', 'label': 'DistLy', 'field': 'dist', 'align': 'right'}
+        )
+    columns.extend(
+        [
+            {'name': 'age', 'label': 'Age/days', 'field': 'age', 'align': 'right'},
+            {'name': 'ls', 'label': 'StnLs', 'field': 'ls', 'align': 'right'},
+            {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
+            {'name': 'planetary', 'label': 'Plt', 'field': 'planetary', 'align': 'right'},
+            {'name': 'fleet', 'label': 'Flc', 'field': 'fleet', 'align': 'right'},
+            {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
+        ]
+    )
+
+    table_rows = []
+    for index, row in enumerate(rows, start=1):
+        values = _row_to_dict(row)
+        station = values.get('station')
+        dist_from_star = getattr(station, 'distFromStar', None)
+
+        table_row = {
+            'row_id': f'olddata-{index}',
+            'station': station_text(station),
+            'age': _format_result_value(values.get('age')),
+            'ls': str(dist_from_star() if callable(dist_from_star) else ''),
+            'pad': pad_text(getattr(station, 'maxPadSize', None)),
+            'planetary': yes_no_unknown(getattr(station, 'planetary', None)),
+            'fleet': yes_no_unknown(getattr(station, 'fleet', None)),
+            'odyssey': yes_no_unknown(getattr(station, 'odyssey', None)),
+        }
+        if near:
+            dist = values.get('dist')
+            table_row['dist'] = '' if dist in (None, '') else f'{float(dist):.2f}'
+        table_rows.append(table_row)
+
+    ui.table(
+        columns=columns,
+        rows=table_rows,
+        row_key='row_id',
+    ).classes('w-full')
 
 def _render_rares_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)

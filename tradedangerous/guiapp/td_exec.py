@@ -17,7 +17,10 @@ from .td_exec_buysell import build_buy_argv, build_sell_argv
 from .td_exec_trade import build_trade_argv, validate_trade_request
 from .td_exec_market import build_market_argv, validate_market_request
 from .td_exec_local import build_local_argv, validate_local_request
+from .td_exec_nav import build_nav_argv, validate_nav_request
+from .td_exec_olddata import build_olddata_argv, validate_olddata_request
 from .td_exec_rares import build_rares_argv, validate_rares_request
+from .td_exec_import import build_import_argv, execute_import_command
 
 @dataclass(slots=True)
 class GuiCommandRequest:
@@ -134,19 +137,26 @@ class TdExecutor:
                 validate_optional_float=self._validate_optional_float,
             )
 
+        if request.command == 'olddata':
+            validate_olddata_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_int=self._validate_optional_int,
+                validate_optional_float=self._validate_optional_float,
+            )
+
         if request.command == 'market':
             validate_market_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
             )
 
-        if request.command == 'rares':
-            validate_rares_request(
+        if request.command == 'nav':
+            validate_nav_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
                 validate_optional_int=self._validate_optional_int,
                 validate_optional_float=self._validate_optional_float,
-                split_search_terms=self._split_search_terms,
             )
 
         return errors
@@ -171,13 +181,17 @@ class TdExecutor:
             return self._execute_trade(request)
         if request.command == 'local':
             return self._execute_local(request)
+        if request.command == 'olddata':
+            return self._execute_olddata(request)
         if request.command == 'market':
             return self._execute_market(request)
         if request.command == 'rares':
             return self._execute_rares(request)
+        if request.command == 'nav':
+            return self._execute_nav(request)
         if request.command == 'import':
             return self._execute_import(request)
-
+        
         return GuiCommandResult(
             command=request.command,
             ok=False,
@@ -185,9 +199,9 @@ class TdExecutor:
                 f"'{request.command}' is not wired into the TD adapter yet."
             ),
             diagnostics_output=(
-                'Only the run, buy, sell, trade, local, market, rares, and '
-                'import commands are currently connected to the in-process '
-                'TD execution path.'
+                'Only the run, buy, sell, trade, local, olddata, market, '
+                'rares, and import commands are currently connected to the '
+                'in-process TD execution path.'
             ),
         )
 
@@ -245,6 +259,19 @@ class TdExecutor:
         )
         return self._execute_td_command(request, argv)
 
+    def _execute_olddata(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._global_command_resolved_values(request)
+        argv = build_olddata_argv(
+            resolved=resolved,
+            append_option=self._append_option,
+        )
+        result = self._execute_td_command(request, argv)
+        if isinstance(result.structured_result, dict):
+            payload = dict(result.structured_result)
+            payload['near'] = resolved.get('near')
+            result.structured_result = payload
+        return result
+
     def _execute_market(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_market_argv(
@@ -268,9 +295,17 @@ class TdExecutor:
         )
         return self._execute_td_command(request, argv)
 
-    def _execute_import(self, request: GuiCommandRequest) -> GuiCommandResult:
-        from .td_exec_import import build_import_argv, execute_import_command
+    def _execute_nav(self, request: GuiCommandRequest) -> GuiCommandResult:
+        resolved = self._global_command_resolved_values(request)
+        argv = build_nav_argv(
+            resolved=resolved,
+            append_option=self._append_option,
+            append_flag=self._append_flag,
+            split_search_terms=self._split_search_terms,
+        )
+        return self._execute_td_command(request, argv)
 
+    def _execute_import(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = _drop_blank_values(request.main_values)
         argv = build_import_argv(
             resolved=resolved,

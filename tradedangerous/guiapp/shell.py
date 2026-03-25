@@ -14,6 +14,19 @@ from .trade_view import TradeWorkspace
 from .local_view import LocalWorkspace
 from .market_view import MarketWorkspace
 from .rares_view import RaresWorkspace
+from .nav_view import NavWorkspace
+from .olddata_view import OldDataWorkspace
+from .settings_view import SettingsWorkspace
+from .import_runtime import (
+    begin_import_stop_confirmation,
+    cancel_import_stop_confirmation,
+    request_import_stop,
+    build_import_request,
+    consume_one_shot_import_flags,
+    run_import_execution,
+)
+from .import_view import ImportWorkspace
+from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdExecutor
 
@@ -83,12 +96,47 @@ class AppShell:
             ) as splitter:
                 with splitter.before:
                     with ui.column().classes(
-                        'w-full h-full min-h-0 overflow-auto'
+                        'w-full h-full min-h-0 pr-2 box-border overflow-hidden'
                     ):
-                        self._build_left_pane()
+                        with ui.scroll_area().classes(
+                            'w-full h-full min-h-0'
+                        ).props(
+                            'visible '
+                            ':vertical-thumb-style="{'
+                            "right: '2px', "
+                            "width: '12px', "
+                            "borderRadius: '6px', "
+                            "backgroundColor: 'rgba(240, 123, 5, 0.9)', "
+                            "opacity: 1"
+                            '}" '
+                            ':vertical-bar-style="{'
+                            "right: '2px', "
+                            "width: '12px', "
+                            "borderRadius: '6px', "
+                            "backgroundColor: 'rgba(255, 255, 255, 0.14)', "
+                            "opacity: 1"
+                            '}"'
+                        ):
+                            self._build_left_pane()
                 with splitter.after:
-                    with ui.column().classes(
-                        'w-full h-full min-h-0 overflow-auto'
+                    with ui.scroll_area().classes(
+                        'w-full h-full min-h-0'
+                    ).props(
+                        'visible '
+                        ':vertical-thumb-style="{'
+                        "right: '2px', "
+                        "width: '12px', "
+                        "borderRadius: '6px', "
+                        "backgroundColor: 'rgba(240, 123, 5, 0.9)', "
+                        "opacity: 1"
+                        '}" '
+                        ':vertical-bar-style="{'
+                        "right: '2px', "
+                        "width: '12px', "
+                        "borderRadius: '6px', "
+                        "backgroundColor: 'rgba(255, 255, 255, 0.14)', "
+                        "opacity: 1"
+                        '}"'
                     ):
                         self._build_right_pane()
             ui.element('div').classes('w-full shrink-0').style(
@@ -97,7 +145,7 @@ class AppShell:
 
         self._apply_theme()
         self._refresh_ui()
-
+        
     @staticmethod
     def _theme_css_text() -> str:
         return Path(__file__).with_name('themes.css').read_text(
@@ -277,22 +325,17 @@ class AppShell:
         save_gui_store(self.store)
         self._apply_theme()
         self._refresh_ui()
+        self._register_native_window_size_handler()
 
     def _on_begin_import_stop_confirmation(self) -> None:
-        from .import_runtime import begin_import_stop_confirmation
-
         if begin_import_stop_confirmation(session=self.session):
             self._refresh_ui()
 
     def _on_cancel_import_stop_confirmation(self) -> None:
-        from .import_runtime import cancel_import_stop_confirmation
-
         if cancel_import_stop_confirmation(session=self.session):
             self._refresh_ui()
 
     def _on_request_import_stop(self) -> None:
-        from .import_runtime import request_import_stop
-
         if request_import_stop(session=self.session):
             self._refresh_ui()
             return
@@ -320,12 +363,6 @@ class AppShell:
         self._refresh_ui()
 
     async def _on_execute_command(self) -> None:
-        from .import_runtime import (
-            build_import_request,
-            consume_one_shot_import_flags,
-            run_import_execution,
-        )
-
         if self.session.selected_command == 'settings':
             ui.notify(
                 'Settings is a GUI workspace and cannot be executed.',
@@ -540,9 +577,21 @@ class AppShell:
                     on_execute=self._on_execute_command,
                 )
                 workspace.build()
+            elif self.session.selected_command == 'nav':
+                workspace = NavWorkspace(
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                )
+                workspace.build()
+            elif self.session.selected_command == 'olddata':
+                workspace = OldDataWorkspace(
+                    self.session.draft,
+                    on_changed=self._on_run_draft_changed,
+                    on_execute=self._on_execute_command,
+                )
+                workspace.build()
             elif self.session.selected_command == 'settings':
-                from .settings_view import SettingsWorkspace
-
                 workspace = SettingsWorkspace(
                     selected_theme=self._selected_theme(),
                     on_theme_changed=self._on_theme_changed,
@@ -552,10 +601,8 @@ class AppShell:
                 ui.label(
                     f'{self.session.selected_command} workspace '
                     'is not wired yet.'
-                )    
+                ) 
     def _render_right_pane(self) -> None:
-        from .import_view import ImportWorkspace
-        from .results_view import render_command_results
         is_import = self.session.selected_command == 'import'
         is_input_only = self.session.selected_command in {
             'import',
@@ -590,6 +637,7 @@ class AppShell:
             return
     
         self.import_workspace = None
+        self.right_pane_host.clear()
         with self.right_pane_host:
             if self.right_pane_view == 'setup':
                 self.workspace_host = ui.column().classes('w-full gap-3')
