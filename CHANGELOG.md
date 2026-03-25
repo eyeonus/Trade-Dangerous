@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v12.17.0 (2026-03-25)
+
+### Features
+
+- Gui Files consolidated.
+  ([`8a4a59a`](https://github.com/eyeonus/Trade-Dangerous/commit/8a4a59a5dd71f8022ed67677045b3eb58305b0ab))
+
+All the messy crappy files consolidated into sensible modules.
+
+Couple of minor fixes surfacing during this process.
+
+Final release for GUI at this time.
+
+Note: I'm not a QA team and don't have the time, energy or will to attempt to test every possible
+  option for every command. I die a little inside just thinking about it. Especially as no doubt a
+  lot of commands will hardly ever be used. I will happily entertain any support tickets raised and
+  fix bugs as they arise, when reported.
+
+
 ## v12.16.0 (2026-03-25)
 
 ### Bug Fixes
