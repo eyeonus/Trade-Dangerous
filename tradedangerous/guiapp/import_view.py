@@ -34,7 +34,7 @@ IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
 
 class ImportWorkspace:
     """Render import options plus live progress using the shared execution state."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -53,7 +53,7 @@ class ImportWorkspace:
         self.on_arm_stop = on_arm_stop
         self.on_cancel_stop = on_cancel_stop
         self.on_stop = on_stop
-
+    
     def build(self) -> None:
         self.help_dialog = ui.dialog()
         with self.help_dialog:
@@ -69,12 +69,12 @@ class ImportWorkspace:
                                 'text-sm text-gray-700 whitespace-pre-wrap'
                             )
                 ui.button('Close', on_click=self.help_dialog.close)
-    
+        
         self.option_checkboxes = {}
         # `refresh()` updates checkbox values from execution/session state.
         # Suppress the resulting on_change events so refreshes stay read-only.
         self._syncing_checkboxes = False
-    
+        
         with ui.column().classes('w-full gap-2').style(
             'padding: 0.25rem 0.5rem 0.5rem 0.25rem;'
         ):
@@ -87,7 +87,7 @@ class ImportWorkspace:
                     'Stop',
                     on_click=self.on_arm_stop,
                 )
-    
+            
             with ui.card().classes('w-full gap-3'):
                 self._build_option_group(
                     'Options',
@@ -105,7 +105,7 @@ class ImportWorkspace:
                     False,
                     include_help=True,
                 )
-    
+            
             self.stop_confirm_card = ui.card().classes('w-full gap-2')
             with self.stop_confirm_card:
                 ui.label('Stop import?')
@@ -117,7 +117,7 @@ class ImportWorkspace:
                 with ui.row().classes('gap-2'):
                     ui.button('Cancel', on_click=self.on_cancel_stop)
                     ui.button('Confirm Stop', on_click=self.on_stop)
-    
+            
             with ui.card().classes('w-full gap-1'):
                 self.status_label = ui.label('')
                 self.parent_label = ui.label('').classes('text-sm text-gray-700')
@@ -128,7 +128,7 @@ class ImportWorkspace:
                 self.error_label = ui.label('').classes(
                     'text-negative whitespace-pre-wrap'
                 )
-    
+            
             with ui.card().classes('w-full p-3'):
                 with ui.column().classes('w-full').style(
                     'height: 24rem; overflow-y: auto;'
@@ -136,7 +136,7 @@ class ImportWorkspace:
                     self.log_label = ui.label('').classes(
                         'font-mono text-sm whitespace-pre-wrap'
                     )
-    
+        
         self.refresh(self.execution)
     
     def _build_option_group(
@@ -150,14 +150,14 @@ class ImportWorkspace:
             options[index:index + 4]
             for index in range(0, len(options), 4)
         ]
-    
+        
         with ui.row().classes('w-full items-stretch gap-4 no-wrap'):
             with ui.column().classes('min-w-36 self-stretch gap-0'):
                 ui.label(title).classes('text-base text-gray-700')
                 if include_help:
                     ui.space()
                     ui.button('Help', on_click=self.help_dialog.open)
-    
+            
             with ui.column().classes('w-full gap-y-2'):
                 for row_options in option_rows:
                     with ui.row().classes('w-full gap-x-6 items-center no-wrap'):
@@ -177,7 +177,7 @@ class ImportWorkspace:
     def _set_bool(self, key: str, value: Any) -> None:
         if self._syncing_checkboxes:
             return
-    
+        
         if value:
             self.draft.main_values[key] = True
         else:
@@ -190,7 +190,7 @@ class ImportWorkspace:
     def refresh(self, execution: ExecutionState) -> None:
         self.execution = execution
         running = execution.status == ExecutionStatus.RUNNING
-    
+        
         self._syncing_checkboxes = True
         try:
             for key, checkbox in self.option_checkboxes.items():
@@ -204,18 +204,18 @@ class ImportWorkspace:
                     checkbox.enable()
         finally:
             self._syncing_checkboxes = False
-    
+        
         if running:
             self.start_button.disable()
             self.stop_button.enable()
         else:
             self.start_button.enable()
             self.stop_button.disable()
-    
+        
         self.stop_confirm_card.set_visibility(
             running and execution.import_stop_confirming
         )
-    
+        
         self.status_label.text = execution.import_status_text or (
             f'Import status: {execution.status.value.capitalize()}'
         )

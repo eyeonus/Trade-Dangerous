@@ -12,7 +12,7 @@ from .shared_filter_view import build_shared_filter_section
 
 class BuySellWorkspace(DraftValueHelper):
     """Edit a `buy` or `sell` draft using the same field semantics as `run`."""
-
+    
     def __init__(
         self,
         command: str,
@@ -25,17 +25,17 @@ class BuySellWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         action = 'Buy' if self.command == 'buy' else 'Sell'
         # Keep the main pane focused on the common search inputs; the dialog
         # carries the less-frequent CLI switches.
         extended_dialog = self._build_extended_dialog()
-
+        
         with ui.column().classes('w-full gap-3'):
             self._build_search_section(action)
             self._build_filter_section()
-
+            
             with ui.row().classes('gap-2'):
                 ui.button('Extended Options', on_click=extended_dialog.open)
                 ui.button(f'Execute {action}', on_click=self.on_execute)
@@ -43,7 +43,7 @@ class BuySellWorkspace(DraftValueHelper):
     def _build_search_section(self, action: str) -> None:
         with ui.card().classes('w-full'):
             ui.label(f'{action} Search')
-
+            
             if self.command == 'buy':
                 ui.label(
                     'Enter one item name, or a comma-separated list.'
@@ -53,7 +53,7 @@ class BuySellWorkspace(DraftValueHelper):
                     'Sell searches a single item. '
                     'Use Near like the same kind of location anchor as Run From.'
                 ).classes('text-sm text-gray-600')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.input(
                     'Item search',
@@ -64,7 +64,7 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('min-w-96 flex-1')
-
+                
                 ui.input(
                     'Near',
                     value=self._text_value(self.draft.main_values, 'near'),
@@ -74,7 +74,7 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('min-w-80 flex-1')
-
+            
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
                     'Distance (ly)',
@@ -105,7 +105,7 @@ class BuySellWorkspace(DraftValueHelper):
                         'Supply' if self.command == 'buy' else 'Demand',
                     ),
                 ).classes('w-40')
-
+    
     def _build_filter_section(self) -> None:
         # Reuse the same tri-state and pad-size UI so command workspaces stay
         # aligned on the shared TD filtering semantics.
@@ -128,7 +128,7 @@ class BuySellWorkspace(DraftValueHelper):
             pad_size_enabled=self._pad_size_enabled,
             set_pad_size_flag=self._set_pad_size_flag,
         )
-
+    
     def _build_extended_dialog(self) -> ui.dialog:
         # Dialog-only switches land in advanced_values so the executor can layer
         # them on top of the basic search fields without special cases.
@@ -140,21 +140,21 @@ class BuySellWorkspace(DraftValueHelper):
                     'These are the less common Buy/Sell options. '
                     'Leave a field blank to omit it.'
                 ).classes('text-sm text-gray-600')
-
+                
                 with ui.column().classes('w-full gap-5'):
                     self._build_extended_constraint_section()
                     self._build_extended_station_section()
                     self._build_extended_output_section()
-
+                
                 with ui.row().classes('justify-end'):
                     ui.button('Close', on_click=dialog.close)
-
+        
         return dialog
-
+    
     def _build_extended_constraint_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Search constraints')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.number(
                     'Limit',
@@ -221,11 +221,11 @@ class BuySellWorkspace(DraftValueHelper):
                         'LT',
                     ),
                 ).classes('w-32')
-
+    
     def _build_extended_station_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Station constraints')
-
+            
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
                     'Space stations only',
@@ -251,11 +251,11 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 )
-
+    
     def _build_extended_output_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Sorting and output')
-
+            
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
                     'Sort by price',
@@ -269,7 +269,7 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 )
-
+                
                 if self.command == 'buy':
                     ui.checkbox(
                         'One stop',

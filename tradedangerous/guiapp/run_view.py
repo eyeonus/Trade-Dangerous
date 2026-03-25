@@ -10,10 +10,9 @@ from .profiles import CommandDraft
 from .shared_draft_helpers import DraftValueHelper
 from .shared_filter_view import build_shared_filter_section
 
-
 class RunWorkspace(DraftValueHelper):
     """Edit a `run` command draft without knowing anything about persistence."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -26,28 +25,28 @@ class RunWorkspace(DraftValueHelper):
         self.on_changed = on_changed
         self.on_execute = on_execute
         self.on_copy_from_profile = on_copy_from_profile
-
+    
     def build(self) -> None:
         # Keep the always-visible pane focused on route-shaping fields and the
         # most common overrides; niche knobs live in the extended dialog.
         extended_dialog = self._build_extended_dialog()
-
+        
         with ui.column().classes('w-full gap-3'):
             ui.label(
                 'Blank override fields inherit from the left pane. '
                 'Copy from profile stamps the current left-pane values '
                 'into local overrides.'
             ).classes('text-sm text-gray-600')
-
+            
             self._build_route_section()
             self._build_override_section()
             self._build_filter_section()
-
+            
             with ui.row().classes('gap-2'):
                 ui.button('Copy from profile', on_click=self.on_copy_from_profile)
                 ui.button('Extended Options', on_click=extended_dialog.open)
                 ui.button('Execute Run', on_click=self.on_execute)
-
+    
     def _build_route_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Route')
@@ -55,7 +54,7 @@ class RunWorkspace(DraftValueHelper):
                 'Use one of To, Towards, or Loop. '
                 'Use either Direct or Hops.'
             ).classes('text-sm text-gray-600')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.input(
                     'From',
@@ -84,7 +83,7 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('min-w-80 flex-1')
-
+            
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
                     'Hops',
@@ -151,7 +150,7 @@ class RunWorkspace(DraftValueHelper):
                 'These override ship/global baseline values for this run only. '
                 'Clear a field to return to inherited behaviour.'
             ).classes('text-sm text-gray-600')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.number(
                     'Capacity',
@@ -215,7 +214,7 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('w-40')
-
+    
     def _build_filter_section(self) -> None:
         # Summary changes how results are presented often enough to keep it in
         # the main pane; the rest of the output flags stay in the dialog.
@@ -250,7 +249,7 @@ class RunWorkspace(DraftValueHelper):
             set_pad_size_flag=self._set_pad_size_flag,
             extra_builder=build_run_extra_filters,
         )
-
+    
     def _build_extended_dialog(self) -> ui.dialog:
         # Everything in this dialog writes to advanced_values so uncommon run
         # switches stay distinct from the route and override fields above.
@@ -262,23 +261,23 @@ class RunWorkspace(DraftValueHelper):
                     'These are the less common run options. '
                     'Leave a field blank to omit it.'
                 ).classes('text-sm text-gray-600')
-
+                
                 with ui.column().classes('w-full gap-5'):
                     self._build_extended_routing_section()
                     self._build_extended_market_section()
                     self._build_extended_trade_section()
                     self._build_extended_search_section()
                     self._build_extended_output_section()
-
+                
                 with ui.row().classes('justify-end'):
                     ui.button('Close', on_click=dialog.close)
-
+        
         return dialog
-
+    
     def _build_extended_routing_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Routing and path constraints')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.input(
                     'Via',
@@ -298,7 +297,7 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('min-w-80 flex-1')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.number(
                     'Start jumps',
@@ -372,11 +371,11 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 )
-
+    
     def _build_extended_market_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Market and station constraints')
-
+            
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
                     'Space stations only',
@@ -402,11 +401,11 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 )
-
+    
     def _build_extended_trade_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Trade and profit constraints')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.number(
                     'Limit',
@@ -487,7 +486,7 @@ class RunWorkspace(DraftValueHelper):
                         'Insurance',
                     ),
                 ).classes('w-40')
-
+            
             with ui.row().classes('w-full gap-3'):
                 # Mirror TD's implicit default of one route so the widget never
                 # suggests that zero is a meaningful starting value.
@@ -570,11 +569,11 @@ class RunWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('w-32')
-
+    
     def _build_extended_search_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Search breadth and pruning')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.number(
                     'Max routes',
@@ -623,11 +622,11 @@ class RunWorkspace(DraftValueHelper):
                         'Prune hops',
                     ),
                 ).classes('w-40')
-
+    
     def _build_extended_output_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
             ui.label('Output and devices')
-
+            
             with ui.row().classes('w-full gap-4'):
                 ui.checkbox(
                     'Progress',

@@ -35,7 +35,6 @@ EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
     'listings',
 )
 
-
 @dataclass(slots=True)
 class ImportExecutionPayload:
     ok: bool
@@ -44,10 +43,9 @@ class ImportExecutionPayload:
     diagnostics_output: str = ''
     structured_result: Any = None
 
-
 class ImportLogConsole:
     """Mirror Rich output into the import monitor one rendered line at a time."""
-
+    
     def __init__(self, stream: io.StringIO, monitor: Any) -> None:
         self.stream = stream
         self.monitor = monitor
@@ -57,7 +55,7 @@ class ImportLogConsole:
             color_system=None,
             highlight=False,
         )
-
+    
     def print(self, *args: Any, **kwargs: Any) -> None:
         self.console.print(*args, **kwargs)
         # Render through a plain in-memory console so the monitor receives the
@@ -74,23 +72,21 @@ class ImportLogConsole:
             for line in text.splitlines():
                 self.monitor.append_log(line)
 
-
 def build_import_argv(
     *,
     resolved: dict[str, Any],
     append_option: Callable[[list[str], str, Any], None],
 ) -> list[str]:
     """Map the import workspace draft onto the eddblink import command line."""
-
+    
     argv = ['tradegui.py', 'import']
     append_option(argv, '-P', 'eddblink')
-
+    
     for option in EDDBLINK_OPTION_ORDER:
         if resolved.get(option):
             append_option(argv, '-O', option)
-
+    
     return argv
-
 
 def execute_import_command(
     *,
@@ -99,7 +95,7 @@ def execute_import_command(
 ) -> ImportExecutionPayload:
     diagnostics_stream = io.StringIO()
     monitor = getattr(request, 'import_monitor', None)
-
+    
     try:
         cmdenv = commands.CommandIndex().parse(list(argv))
         if monitor is None:
@@ -117,17 +113,17 @@ def execute_import_command(
             cmdenv.import_monitor = monitor
         cmdenv.console = diagnostics_console
         cmdenv.stderr = diagnostics_console
-
+        
         with redirect_stdout(diagnostics_stream), redirect_stderr(
             diagnostics_stream
         ):
             preflight = getattr(cmdenv, 'preflight', None)
             if preflight and callable(preflight):
                 preflight()
-
+            
             if monitor is not None:
                 monitor.set_status('Import running...')
-
+            
             tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
             try:
                 cmdenv.run(tdb)
@@ -154,7 +150,7 @@ def execute_import_command(
     finally:
         if monitor is not None:
             monitor.finish()
-
+    
     return ImportExecutionPayload(
         ok=True,
         diagnostics_output=diagnostics_stream.getvalue().strip(),

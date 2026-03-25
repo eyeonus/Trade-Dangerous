@@ -21,14 +21,13 @@ class ImportProgressState:
     stop_requested: bool = False
     finished: bool = False
 
-
 class ImportMonitorProtocol(Protocol):
     def append_log(self, line: str) -> None:
         ...
-
+    
     def set_status(self, text: str) -> None:
         ...
-
+    
     def set_parent_progress(
         self,
         label: str | None,
@@ -36,7 +35,7 @@ class ImportMonitorProtocol(Protocol):
         total: int | None,
     ) -> None:
         ...
-
+    
     def set_child_progress(
         self,
         label: str | None,
@@ -44,35 +43,34 @@ class ImportMonitorProtocol(Protocol):
         total: int | None,
     ) -> None:
         ...
-
+    
     def request_stop(self) -> None:
         ...
-
+    
     def finish(self) -> None:
         ...
-
+    
     def snapshot(self) -> ImportProgressState:
         ...
 
-
 class ImportMonitor:
     """Thread-safe bridge for progress updates coming from the import worker."""
-
+    
     def __init__(self) -> None:
         self._lock = Lock()
         self._state = ImportProgressState()
-
+    
     def append_log(self, line: str) -> None:
         text = str(line).rstrip()
         if not text:
             return
         with self._lock:
             self._state.log_lines.append(text)
-
+    
     def set_status(self, text: str) -> None:
         with self._lock:
             self._state.status_text = str(text)
-
+    
     def set_parent_progress(
         self,
         label: str | None,
@@ -83,7 +81,7 @@ class ImportMonitor:
             self._state.parent_label = label
             self._state.parent_value = value
             self._state.parent_total = total
-
+    
     def set_child_progress(
         self,
         label: str | None,
@@ -94,19 +92,19 @@ class ImportMonitor:
             self._state.child_label = label
             self._state.child_value = value
             self._state.child_total = total
-
+    
     def request_stop(self) -> None:
         with self._lock:
             self._state.stop_requested = True
-
+    
     def stop_requested(self) -> bool:
         with self._lock:
             return self._state.stop_requested
-
+    
     def finish(self) -> None:
         with self._lock:
             self._state.finished = True
-
+    
     def snapshot(self) -> ImportProgressState:
         with self._lock:
             return ImportProgressState(
@@ -122,10 +120,9 @@ class ImportMonitor:
                 finished=self._state.finished,
             )
 
-
 def build_import_request(*, draft: Any) -> Any:
     from .td_exec import GuiCommandRequest
-
+    
     return GuiCommandRequest(
         command='import',
         main_values=dict(draft.main_values),
@@ -136,16 +133,14 @@ def build_import_request(*, draft: Any) -> Any:
         import_monitor=ImportMonitor(),
     )
 
-
 def consume_one_shot_import_flags(*, draft: Any) -> bool:
     changed = False
-
+    
     for key in ('clean', 'optimize'):
         if draft.main_values.pop(key, None):
             changed = True
-
+    
     return changed
-
 
 def _apply_snapshot_to_session(
     *,
@@ -182,7 +177,6 @@ def _apply_snapshot_to_session(
         import_stop_confirming=session.execution.import_stop_confirming,
     )
 
-
 async def run_import_execution(
     *,
     session: Any,
@@ -191,9 +185,9 @@ async def run_import_execution(
     refresh_ui: Callable[[], None],
 ) -> None:
     import asyncio
-
+    
     from .session import ExecutionStatus
-
+    
     monitor = request.import_monitor
     session.active_import_monitor = monitor
     _apply_snapshot_to_session(
@@ -207,7 +201,7 @@ async def run_import_execution(
         snapshot=monitor.snapshot(),
     )
     refresh_ui()
-
+    
     try:
         # `executor.execute()` is blocking and may run for minutes. Keep it off
         # the event loop and poll the shared monitor for fresh snapshots.
@@ -225,7 +219,7 @@ async def run_import_execution(
             )
             refresh_ui()
             await asyncio.sleep(0.2)
-
+        
         try:
             result = await worker
         except Exception as exc:
@@ -241,7 +235,7 @@ async def run_import_execution(
             )
             refresh_ui()
             return
-
+        
         status = ExecutionStatus.SUCCEEDED if result.ok else ExecutionStatus.FAILED
         _apply_snapshot_to_session(
             session=session,
@@ -257,30 +251,27 @@ async def run_import_execution(
     finally:
         session.active_import_monitor = None
 
-
 def begin_import_stop_confirmation(*, session: Any) -> bool:
     monitor = getattr(session, 'active_import_monitor', None)
     if monitor is None:
         return False
-
+    
     session.execution.import_stop_confirming = True
     return True
-
 
 def cancel_import_stop_confirmation(*, session: Any) -> bool:
     monitor = getattr(session, 'active_import_monitor', None)
     if monitor is None:
         return False
-
+    
     session.execution.import_stop_confirming = False
     return True
-
 
 def request_import_stop(*, session: Any) -> bool:
     monitor = getattr(session, 'active_import_monitor', None)
     if monitor is None:
         return False
-
+    
     session.execution.import_stop_confirming = False
     # This is a cooperative stop: the worker checks the flag between import
     # steps, so the UI only promises that the request has been recorded.

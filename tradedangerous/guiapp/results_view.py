@@ -24,56 +24,55 @@ def render_command_results(
     raw_output: str,
 ) -> None:
     """Render the best available result representation for a command."""
-
+    
     # Prefer structured renderers when the executor captured them; raw text is
     # the fallback for unsupported payloads or legacy command paths.
     if command == 'run' and structured_result:
         if _is_run_route_payload(structured_result):
             _render_run_results(structured_result)
             return
-
+    
     if command in {'buy', 'sell'} and structured_result:
         _render_generic_structured_results(command, structured_result)
         return
-
+    
     if command == 'trade' and structured_result:
         _render_trade_results(structured_result)
         return
-
+    
     if command == 'local' and structured_result:
         _render_local_results(structured_result)
         return
-
+    
     if command == 'nav' and structured_result:
         _render_nav_results(structured_result)
         return
-
+    
     if command == 'olddata' and structured_result:
         _render_olddata_results(structured_result)
         return
-
+    
     if command == 'market' and structured_result:
         _render_market_results(structured_result)
         return
-
+    
     if command == 'rares' and structured_result:
         _render_rares_results(structured_result)
         return
-
+    
     if raw_output:
         ui.label(raw_output).classes('font-mono text-sm whitespace-pre-wrap')
         return
-
+    
     ui.label('Nothing has been executed yet.')
-
 
 def _is_run_route_payload(structured_result: Any) -> bool:
     if not isinstance(structured_result, (list, tuple)):
         return False
-
+    
     if not structured_result:
         return False
-
+    
     return all(
         hasattr(route, 'jumps')
         and hasattr(route, 'hops')
@@ -82,23 +81,22 @@ def _is_run_route_payload(structured_result: Any) -> bool:
         for route in structured_result
     )
 
-
 def _render_run_results(routes: list[Any]) -> None:
     ui.label(f'{len(routes)} route(s) returned').classes(
         'text-sm text-gray-600'
     )
-
+    
     for route_index, route in enumerate(routes, start=1):
         # Each stored jump path includes its endpoints, so subtract the repeated
         # origin system from every segment when presenting a jump count.
         total_jumps = sum(max(0, len(jumps) - 1) for jumps in route.jumps)
-
+        
         with ui.card().classes('w-full gap-3'):
             ui.label(
                 f'Route {route_index}: '
                 f'{route.firstStation.name()} → {route.lastStation.name()}'
             ).classes('text-lg')
-
+            
             with ui.row().classes('w-full gap-4 text-sm'):
                 ui.label(f'Gain: {route.gainCr:n} cr')
                 ui.label(f'Gain / ton: {int(route.gpt):n} cr')
@@ -108,11 +106,11 @@ def _render_run_results(routes: list[Any]) -> None:
                 ui.label(
                     f'Est. final credits: {route.startCr + route.gainCr:n} cr'
                 )
-
+            
             for hop_index, hop in enumerate(route.hops, start=1):
                 src_station = route.route[hop_index - 1]
                 dst_station = route.route[hop_index]
-
+                
                 with ui.expansion(
                     f'Hop {hop_index}: '
                     f'{src_station.name()} → {dst_station.name()}'
@@ -121,7 +119,7 @@ def _render_run_results(routes: list[Any]) -> None:
                         ui.label(f'Units: {hop.units:n}')
                         ui.label(f'Hop gain: {hop.gainCr:n} cr')
                         ui.label(f'Gain / ton: {int(hop.gpt):n} cr')
-
+                    
                     rows = [
                         {
                             'row_id': f'{route_index}-{hop_index}-{item_index}',
@@ -137,13 +135,13 @@ def _render_run_results(routes: list[Any]) -> None:
                             start=1,
                         )
                     ]
-
+                    
                     ui.table(
                         columns=_RUN_COLUMNS,
                         rows=rows,
                         row_key='row_id',
                     ).classes('w-full')
-
+                    
                     if hop_index - 1 < len(route.jumps):
                         path = ' → '.join(
                             system.name()
@@ -162,17 +160,17 @@ def _render_generic_structured_results(
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
-
+    
     summary_text = _human_result_summary(summary)
     if summary_text:
         ui.label(summary_text).classes('text-sm text-gray-600')
-
+    
     if not rows:
         ui.label(f'No {command} rows returned.').classes(
             'text-sm text-gray-600'
         )
         return
-
+    
     table_rows = [_row_to_dict(row) for row in rows]
     columns = [
         {
@@ -183,52 +181,50 @@ def _render_generic_structured_results(
         }
         for key in table_rows[0]
     ]
-
+    
     for row in table_rows:
         for key, value in row.items():
             row[key] = _format_result_value(value)
-
+    
     ui.table(
         columns=columns,
         rows=table_rows,
         row_key=next(iter(table_rows[0])),
     ).classes('w-full')
 
-
-
 def _render_trade_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
-
+    
     from_station = getattr(summary, 'fromStation', None)
     to_station = getattr(summary, 'toStation', None)
-
+    
     def station_name(value: Any) -> str | None:
         dbname = getattr(value, 'dbname', None)
         if callable(dbname):
             return str(dbname())
         return _named_result_value(value)
-
+    
     from_name = station_name(from_station)
     to_name = station_name(to_station)
-
+    
     if from_name and to_name:
         ui.label(
             f'{len(rows)} trades found between {from_name} and {to_name}.'
         ).classes('text-sm text-gray-600')
     elif rows:
         ui.label(f'{len(rows)} trades found.').classes('text-sm text-gray-600')
-
+    
     if not rows:
         ui.label('No trade rows returned.').classes('text-sm text-gray-600')
         return
-
+    
     def format_int(value: Any) -> str:
         if value is None:
             return ''
         return f'{int(value):n}'
-
+    
     table_rows = []
     for index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
@@ -243,7 +239,7 @@ def _render_trade_results(structured_result: Any) -> None:
                 'dst_age': _format_result_value(values.get('dem_age')),
             }
         )
-
+    
     ui.table(
         columns=[
             {'name': 'item', 'label': 'Item', 'field': 'item', 'align': 'left'},
@@ -257,16 +253,15 @@ def _render_trade_results(structured_result: Any) -> None:
         row_key='row_id',
     ).classes('w-full')
 
-
 def _render_local_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
-
+    
     near_name = _named_result_value(getattr(summary, 'near', None))
     ly = getattr(summary, 'ly', None)
     station_total = int(getattr(summary, 'stations', 0) or 0)
-
+    
     if near_name and ly is not None:
         ui.label(
             f'{len(rows)} system(s), {station_total} station(s) '
@@ -276,20 +271,20 @@ def _render_local_results(structured_result: Any) -> None:
         ui.label(f'{len(rows)} system(s) returned.').classes(
             'text-sm text-gray-600'
         )
-
+    
     if not rows:
         ui.label('No local rows returned.').classes('text-sm text-gray-600')
         return
-
+    
     def yes_no_unknown(value: Any) -> str:
         return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '')
-
+    
     def pad_text(value: Any) -> str:
         return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
             str(value or ''),
             '',
         )
-
+    
     columns = [
         {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
         {'name': 'ls', 'label': 'StnLs', 'field': 'ls', 'align': 'right'},
@@ -307,7 +302,7 @@ def _render_local_results(structured_result: Any) -> None:
         {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
         {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
     ]
-
+    
     for system_index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
         system = values.get('system')
@@ -315,7 +310,7 @@ def _render_local_results(structured_result: Any) -> None:
         dist = values.get('dist')
         dist_text = '' if dist is None else f'{float(dist):.2f}'
         stations = list(values.get('stations') or [])
-
+        
         expansion = ui.expansion().classes('w-full')
         with expansion.add_slot('header'):
             with ui.row().classes('w-full items-center no-wrap'):
@@ -332,7 +327,7 @@ def _render_local_results(structured_result: Any) -> None:
                 station_values = _row_to_dict(station_row)
                 station = station_values.get('station')
                 dist_from_star = getattr(station, 'distFromStar', None)
-
+                
                 table_rows.append(
                     {
                         'row_id': f'local-{system_index}-{station_index}',
@@ -353,23 +348,22 @@ def _render_local_results(structured_result: Any) -> None:
                         'items': _format_result_value(getattr(station, 'itemCount', None)),
                     }
                 )
-
+            
             ui.table(
                 columns=columns,
                 rows=table_rows,
                 row_key='row_id',
             ).classes('w-full')
 
-
 def _render_nav_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
-
+    
     from_name = _named_result_value(getattr(summary, 'fromSys', None))
     to_name = _named_result_value(getattr(summary, 'toSys', None))
     max_ly = getattr(summary, 'maxLy', None)
-
+    
     if from_name and to_name and max_ly is not None:
         ui.label(
             f'Route from {from_name} to {to_name} '
@@ -379,24 +373,24 @@ def _render_nav_results(structured_result: Any) -> None:
         ui.label(f'{len(rows)} nav hop(s) returned.').classes(
             'text-sm text-gray-600'
         )
-
+    
     ui.label(
         'Expand a system to view the matching stations for that hop.'
     ).classes('text-sm text-gray-600')
-
+    
     if not rows:
         ui.label('No nav rows returned.').classes('text-sm text-gray-600')
         return
-
+    
     def yes_no_unknown(value: Any) -> str:
         return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '')
-
+    
     def pad_text(value: Any) -> str:
         return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
             str(value or ''),
             '',
         )
-
+    
     columns = [
         {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
         {'name': 'ls', 'label': 'StnLs', 'field': 'ls', 'align': 'right'},
@@ -414,7 +408,7 @@ def _render_nav_results(structured_result: Any) -> None:
         {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
         {'name': 'items', 'label': 'Itms', 'field': 'items', 'align': 'right'},
     ]
-
+    
     for system_index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
         action = _format_result_value(values.get('action'))
@@ -424,11 +418,11 @@ def _render_nav_results(structured_result: Any) -> None:
         total_ly = values.get('totalLy')
         dir_ly = values.get('dirLy')
         stations = list(values.get('stations') or [])
-
+        
         jump_text = '' if jump_ly is None else f'{float(jump_ly):.2f}'
         total_text = '' if total_ly is None else f'{float(total_ly):.2f}'
         dir_text = '' if dir_ly is None else f'{float(dir_ly):.2f}'
-
+        
         expansion = ui.expansion().classes('w-full')
         with expansion.add_slot('header'):
             with ui.row().classes('w-full items-center no-wrap'):
@@ -447,7 +441,7 @@ def _render_nav_results(structured_result: Any) -> None:
                 station_values = _row_to_dict(station_row)
                 station = station_values.get('station')
                 dist_from_star = getattr(station, 'distFromStar', None)
-
+                
                 table_rows.append(
                     {
                         'row_id': f'nav-{system_index}-{station_index}',
@@ -468,19 +462,18 @@ def _render_nav_results(structured_result: Any) -> None:
                         'items': _format_result_value(getattr(station, 'itemCount', None)),
                     }
                 )
-
+            
             ui.table(
                 columns=columns,
                 rows=table_rows,
                 row_key='row_id',
             ).classes('w-full')
 
-
 def _render_olddata_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)
     rows = payload.get('rows', [])
     near = str(payload.get('near') or '').strip()
-
+    
     if near:
         ui.label(
             f'{len(rows)} old-data station(s) returned near {near}.'
@@ -489,23 +482,23 @@ def _render_olddata_results(structured_result: Any) -> None:
         ui.label(f'{len(rows)} old-data station(s) returned.').classes(
             'text-sm text-gray-600'
         )
-
+    
     if not rows:
         ui.label('No old-data rows returned.').classes('text-sm text-gray-600')
         return
-
+    
     def yes_no_unknown(value: Any) -> str:
         return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '?')
-
+    
     def pad_text(value: Any) -> str:
         return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
             str(value or ''),
             '?',
         )
-
+    
     def station_text(value: Any) -> str:
         return _named_result_value(value) or _format_result_value(value)
-
+    
     columns = [
         {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
     ]
@@ -523,13 +516,13 @@ def _render_olddata_results(structured_result: Any) -> None:
             {'name': 'odyssey', 'label': 'Ody', 'field': 'odyssey', 'align': 'right'},
         ]
     )
-
+    
     table_rows = []
     for index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
         station = values.get('station')
         dist_from_star = getattr(station, 'distFromStar', None)
-
+        
         table_row = {
             'row_id': f'olddata-{index}',
             'station': station_text(station),
@@ -544,7 +537,7 @@ def _render_olddata_results(structured_result: Any) -> None:
             dist = values.get('dist')
             table_row['dist'] = '' if dist in (None, '') else f'{float(dist):.2f}'
         table_rows.append(table_row)
-
+    
     ui.table(
         columns=columns,
         rows=table_rows,
@@ -557,7 +550,7 @@ def _render_rares_results(structured_result: Any) -> None:
     rows = payload.get('rows', [])
     near_name = _named_result_value(getattr(summary, 'near', None))
     ly = getattr(summary, 'ly', None)
-
+    
     if near_name and ly is not None:
         ui.label(
             f'{len(rows)} rare row(s) within {float(ly):g} ly of {near_name}.'
@@ -566,7 +559,7 @@ def _render_rares_results(structured_result: Any) -> None:
         ui.label(f'{len(rows)} rare row(s) returned.').classes(
             'text-sm text-gray-600'
         )
-
+    
     ui.label(
         'Costs for rares fluctuate and these are our best current estimates only.'
     ).classes('text-sm text-gray-600')
@@ -574,38 +567,38 @@ def _render_rares_results(structured_result: Any) -> None:
         'A zero cost means we have insufficient current data even to make an '
         'estimate.'
     ).classes('text-sm text-gray-600')
-
+    
     if not rows:
         ui.label('No rare rows returned.').classes('text-sm text-gray-600')
         return
-
+    
     def yes_no_unknown(value: Any) -> str:
         return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '?')
-
+    
     def pad_text(value: Any) -> str:
         return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
             str(value or ''),
             '?',
         )
-
+    
     def station_text(value: Any) -> str:
         return _named_result_value(value) or _format_result_value(value)
-
+    
     def rare_name(value: Any) -> str:
         return str(getattr(value, 'name', None) or '?')
-
+    
     def cost_text(value: Any) -> str:
         cost = getattr(value, 'cost', None)
         if cost is None:
             return '0'
         return f'{int(cost):n}'
-
+    
     def alloc_text(value: Any) -> str:
         allocation = getattr(value, 'max_allocation', None)
         if allocation in (None, ''):
             return '?'
         return str(allocation)
-
+    
     table_rows = []
     for index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
@@ -624,7 +617,7 @@ def _render_rares_results(structured_result: Any) -> None:
                 'pad': pad_text(getattr(station, 'maxPadSize', None)),
             }
         )
-
+    
     ui.table(
         columns=[
             {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
@@ -646,14 +639,14 @@ def _render_market_results(structured_result: Any) -> None:
     rows = payload.get('rows', [])
     origin = getattr(summary, 'origin', None)
     origin_name = _named_result_value(origin)
-
+    
     if getattr(summary, 'buying', False):
         mode_text = 'buying'
     elif getattr(summary, 'selling', False):
         mode_text = 'selling'
     else:
         mode_text = 'buying and selling'
-
+    
     if origin_name:
         ui.label(
             f'{len(rows)} market row(s) for {origin_name} ({mode_text}).'
@@ -662,24 +655,24 @@ def _render_market_results(structured_result: Any) -> None:
         ui.label(f'{len(rows)} market row(s) returned.').classes(
             'text-sm text-gray-600'
         )
-
+    
     ui.label(
         'Demand/Supply suffixes: H = high, M = medium, L = low, '
         '- = none, ? = unknown.'
     ).classes('text-sm text-gray-600')
-
+    
     if not rows:
         ui.label('No market rows returned.').classes('text-sm text-gray-600')
         return
-
+    
     buying_only = bool(getattr(summary, 'buying', False))
     selling_only = bool(getattr(summary, 'selling', False))
-
+    
     def format_price(value: Any) -> str:
         if value in (None, 0):
             return ''
         return f'{int(value):n}'
-
+    
     table_rows = []
     for index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
@@ -696,7 +689,7 @@ def _render_market_results(structured_result: Any) -> None:
                 'age': _format_result_value(values.get('age')),
             }
         )
-
+    
     columns = [
         {'name': 'item', 'label': 'Item', 'field': 'item', 'align': 'left'},
     ]
@@ -719,34 +712,32 @@ def _render_market_results(structured_result: Any) -> None:
     columns.append(
         {'name': 'age', 'label': 'Age/Days', 'field': 'age', 'align': 'right'}
     )
-
+    
     ui.table(
         columns=columns,
         rows=table_rows,
         row_key='row_id',
     ).classes('w-full')
 
-
 def _human_result_summary(summary: Any) -> str | None:
     """Return displayable summary text and suppress opaque object repr noise."""
     if summary is None:
         return None
-
+    
     if isinstance(summary, str):
         text = summary.strip()
         if not text or _looks_like_object_repr(text):
             return None
         return text
-
+    
     if isinstance(summary, (int, float)):
         return _format_result_value(summary)
-
+    
     named_value = _named_result_value(summary)
     if named_value:
         return named_value
-
+    
     return None
-
 
 def _looks_like_object_repr(text: str) -> bool:
     return (
@@ -754,7 +745,6 @@ def _looks_like_object_repr(text: str) -> bool:
         and ' object at 0x' in text
         and text.endswith('>')
     )
-
 
 def _structured_payload(structured_result: Any) -> dict[str, Any]:
     """Normalize TD result adapters onto the summary/rows mapping the UI expects."""
@@ -771,7 +761,7 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
     """Convert result rows into plain mappings that tables can render uniformly."""
     if isinstance(row, dict):
         return dict(row)
-
+    
     if hasattr(row, '__dict__'):
         # Treat simple result objects like lightweight records and skip private
         # attributes that are not meaningful to the UI.
@@ -788,7 +778,7 @@ def _format_result_value(value: Any) -> str:
         return ''
     if isinstance(value, float):
         return f'{value:g}'
-
+    
     named_value = _named_result_value(value)
     if named_value is not None:
         return named_value
@@ -800,7 +790,7 @@ def _named_result_value(value: Any) -> str | None:
     name = getattr(value, 'name', None)
     if not callable(name):
         return None
-
+    
     # TD model objects are inconsistent about whether name() expects a detail
     # level argument, so tolerate both call styles for display purposes.
     try:

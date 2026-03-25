@@ -13,7 +13,6 @@ TRI_STATE_OPTIONS = {
     '?': 'Unknown only',
 }
 
-
 def build_shared_filter_section(
     *,
     get_bool: Callable[[str], bool],
@@ -26,10 +25,10 @@ def build_shared_filter_section(
     post_builder: Callable[[], None] | None = None,
 ) -> None:
     """Render the common TD filter controls via caller-provided getters/setters."""
-
+    
     with ui.card().classes('w-full'):
         ui.label('Common Filters')
-
+        
         with ui.row().classes('w-full gap-3'):
             ui.select(
                 TRI_STATE_OPTIONS,
@@ -58,12 +57,12 @@ def build_shared_filter_section(
                     event.value,
                 ),
             ).classes('w-48')
-
+            
             if extra_builder is not None:
                 # Some workspaces have one extra control that belongs beside the
                 # tri-state selectors rather than in a separate section.
                 extra_builder()
-
+        
         # Pad size is tracked as a compact bitset in drafts, but the UI keeps it
         # as three checkboxes because that is far easier to sanity-check.
         with ui.row().classes('w-full items-center gap-4'):
@@ -92,12 +91,12 @@ def build_shared_filter_section(
                     event.value,
                 ),
             )
-
+        
         if post_builder is not None:
             # Local and similar commands append their own full-width filters
             # after the shared TD station traits.
             post_builder()
-
+        
         ui.label(
             'All pad sizes checked means unrestricted. '
             'The tri-state filters use Any / Yes / No / Unknown semantics.'

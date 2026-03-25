@@ -8,20 +8,18 @@ from typing import Any
 
 from .profiles import CommandDraft, GlobalSettings, GuiStore, ShipProfile
 
-
 class ExecutionStatus(str, Enum):
     IDLE = 'idle'
     RUNNING = 'running'
     SUCCEEDED = 'succeeded'
     FAILED = 'failed'
 
-
 @dataclass(slots=True)
 class WorkingGlobalState:
     commander_name: str | None = None
     credits: int | None = None
     max_data_age_days: float | None = None
-
+    
     @classmethod
     def from_saved(cls, settings: GlobalSettings) -> 'WorkingGlobalState':
         return cls(
@@ -29,7 +27,7 @@ class WorkingGlobalState:
             credits=settings.credits,
             max_data_age_days=settings.max_data_age_days,
         )
-
+    
     def as_saved(self) -> GlobalSettings:
         return GlobalSettings(
             commander_name=self.commander_name,
@@ -37,14 +35,13 @@ class WorkingGlobalState:
             max_data_age_days=self.max_data_age_days,
         )
 
-
 @dataclass(slots=True)
 class WorkingShipProfileState:
     """Editable copy of the selected ship profile.
-
+    
     `is_dirty` tracks unsaved left-pane edits and is never persisted.
     """
-
+    
     profile_id: str | None = None
     ship_name: str | None = None
     capacity: int | None = None
@@ -52,7 +49,7 @@ class WorkingShipProfileState:
     jump_range_full_ly: float | None = None
     jump_range_empty_ly: float | None = None
     is_dirty: bool = False
-
+    
     @classmethod
     def from_saved(cls, profile: ShipProfile) -> 'WorkingShipProfileState':
         return cls(
@@ -64,7 +61,7 @@ class WorkingShipProfileState:
             jump_range_empty_ly=profile.jump_range_empty_ly,
             is_dirty=False,
         )
-
+    
     def as_saved(self) -> ShipProfile:
         if self.profile_id is None:
             raise ValueError('Working ship profile has no profile_id.')
@@ -76,7 +73,7 @@ class WorkingShipProfileState:
             jump_range_full_ly=self.jump_range_full_ly,
             jump_range_empty_ly=self.jump_range_empty_ly,
         )
-
+    
     @property
     def effective_capacity(self) -> int | None:
         if self.capacity is None:
@@ -87,11 +84,10 @@ class WorkingShipProfileState:
             return None
         return self.capacity - self.reserved_capacity
 
-
 @dataclass(slots=True)
 class ExecutionState:
     """Last command result plus import-specific live progress fields."""
-
+    
     status: ExecutionStatus = ExecutionStatus.IDLE
     active_command: str | None = None
     error_message: str | None = None
@@ -109,11 +105,10 @@ class ExecutionState:
     import_stop_requested: bool = False
     import_stop_confirming: bool = False
 
-
 @dataclass(slots=True)
 class SessionState:
     """Live working state for a single GUI session."""
-
+    
     selected_command: str = 'run'
     selected_profile_id: str | None = None
     global_state: WorkingGlobalState = field(default_factory=WorkingGlobalState)
@@ -177,31 +172,31 @@ class SessionState:
             max_data_age_days=max_data_age_days,
         )
         store.global_settings = self.global_state.as_saved()
-
+    
     def load_profile(self, store: GuiStore, profile_id: str) -> None:
         profile = store.require_profile(profile_id)
         self.selected_profile_id = profile.profile_id
         store.selected_profile_id = profile.profile_id
         self.ship_state = WorkingShipProfileState.from_saved(profile)
-
+    
     def save_ship_profile(self, store: GuiStore) -> None:
         saved = self.ship_state.as_saved()
         store.upsert_profile(saved)
         self.selected_profile_id = saved.profile_id
         self.ship_state.is_dirty = False
-
+    
     def revert_ship_profile(self, store: GuiStore) -> None:
         profile = store.require_profile(self.selected_profile_id)
         self.ship_state = WorkingShipProfileState.from_saved(profile)
-
+    
     def create_new_ship_profile(self, store: GuiStore) -> None:
         base = self.ship_state.as_saved()
         created = store.create_profile(base=base)
         self.load_profile(store, created.profile_id)
-
+    
     def mark_ship_dirty(self) -> None:
         self.ship_state.is_dirty = True
-
+    
     def set_execution(
         self,
         *,

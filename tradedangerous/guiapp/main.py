@@ -10,10 +10,9 @@ from nicegui import ui
 from .profiles import load_gui_store
 from .shell import AppShell
 
-
 def build_arg_parser() -> argparse.ArgumentParser:
     """Expose the small launcher surface for native versus browser shells."""
-
+    
     parser = argparse.ArgumentParser(prog='tradegui.py')
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
@@ -42,10 +41,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-
+    
     @ui.page('/')
     def index() -> None:
         # Build a fresh shell per client page so browser sessions do not share
@@ -53,7 +51,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         store = load_gui_store()
         shell = AppShell(store)
         shell.build()
-
+    
     ui.run(
         host=args.host,
         native=args.native,

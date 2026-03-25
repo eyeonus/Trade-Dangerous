@@ -10,10 +10,9 @@ from .profiles import CommandDraft
 from .shared_draft_helpers import DraftValueHelper
 from .shared_filter_view import build_shared_filter_section
 
-
 class TradeWorkspace(DraftValueHelper):
     """Edit a `trade` draft using command-local fields only."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -24,22 +23,22 @@ class TradeWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         with ui.column().classes('w-full gap-3'):
             self._build_route_section()
             self._build_constraint_section()
-
+            
             with ui.row().classes('gap-2'):
                 ui.button('Execute Trade', on_click=self.on_execute)
-
+    
     def _build_route_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Trade Route')
             ui.label(
                 'Enter the station you buy from and the station you sell to.'
             ).classes('text-sm text-gray-600')
-
+            
             with ui.row().classes('w-full gap-3'):
                 ui.input(
                     'Origin',
@@ -59,11 +58,11 @@ class TradeWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('min-w-96 flex-1')
-
+    
     def _build_constraint_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Trade Constraints')
-
+            
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
                     'Gain / ton',
@@ -117,7 +116,7 @@ class TradeWorkspace(DraftValueHelper):
                         'Limit',
                     ),
                 ).classes('w-32')
-
+            
             with ui.row().classes('w-full items-center gap-4'):
                 ui.select(
                     {
@@ -144,10 +143,9 @@ class TradeWorkspace(DraftValueHelper):
                     ),
                 )
 
-
 class LocalWorkspace(DraftValueHelper):
     """Edit a `local` draft using command-local fields only."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -158,14 +156,14 @@ class LocalWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         with ui.column().classes('w-full gap-3'):
             self._build_search_section()
             self._build_filter_section()
             with ui.row().classes('gap-2'):
                 ui.button('Execute Local', on_click=self.on_execute)
-
+    
     def _build_search_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Local Search')
@@ -204,7 +202,7 @@ class LocalWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 )
-
+    
     def _build_filter_section(self) -> None:
         # Shared filters cover the tri-state station traits and pad sizes.
         # Local adds the simpler service-availability booleans underneath.
@@ -216,7 +214,7 @@ class LocalWorkspace(DraftValueHelper):
                 ui.checkbox('Rearm', value=self._bool_value(self.draft.main_values, 'rearm'), on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value))
                 ui.checkbox('Refuel', value=self._bool_value(self.draft.main_values, 'refuel'), on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value))
                 ui.checkbox('Repair', value=self._bool_value(self.draft.main_values, 'repair'), on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value))
-
+        
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
             get_tri_state=lambda key: self._tri_state_value(self.draft.main_values, key),
@@ -227,10 +225,9 @@ class LocalWorkspace(DraftValueHelper):
             post_builder=build_service_filters,
         )
 
-
 class MarketWorkspace(DraftValueHelper):
     """Edit a `market` draft using command-local fields only."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -241,14 +238,14 @@ class MarketWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         with ui.column().classes('w-full gap-3'):
             self._build_station_section()
             self._build_view_section()
             with ui.row().classes('gap-2'):
                 ui.button('Execute Market', on_click=self.on_execute)
-
+    
     def _build_station_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Market Station')
@@ -264,7 +261,7 @@ class MarketWorkspace(DraftValueHelper):
                     event.value,
                 ),
             ).classes('min-w-96 w-full')
-
+    
     def _build_view_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Market View')
@@ -287,10 +284,9 @@ class MarketWorkspace(DraftValueHelper):
                     ),
                 ).classes('w-64')
 
-
 class NavWorkspace(DraftValueHelper):
     """Edit a `nav` draft using command-local fields only."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -301,7 +297,7 @@ class NavWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         with ui.column().classes('w-full gap-3'):
             self._build_route_section()
@@ -309,7 +305,7 @@ class NavWorkspace(DraftValueHelper):
             self._build_filter_section()
             with ui.row().classes('gap-2'):
                 ui.button('Execute Nav', on_click=self.on_execute)
-
+    
     def _build_route_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Navigation Route')
@@ -348,7 +344,7 @@ class NavWorkspace(DraftValueHelper):
                         event.value,
                     ),
                 ).classes('w-40')
-
+    
     def _build_option_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Navigation Options')
@@ -384,7 +380,7 @@ class NavWorkspace(DraftValueHelper):
                         'Refuel jumps',
                     ),
                 ).classes('w-40')
-
+    
     def _build_filter_section(self) -> None:
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
@@ -395,10 +391,9 @@ class NavWorkspace(DraftValueHelper):
             set_pad_size_flag=self._set_pad_size_flag,
         )
 
-
 class OldDataWorkspace(DraftValueHelper):
     """Edit an `olddata` draft using command-local fields only."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -409,7 +404,7 @@ class OldDataWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         dialog = self._build_extended_dialog()
         with ui.column().classes('w-full gap-3'):
@@ -418,7 +413,7 @@ class OldDataWorkspace(DraftValueHelper):
             with ui.row().classes('gap-2'):
                 ui.button('Execute Old Data', on_click=self.on_execute)
                 ui.button('Extended Options', on_click=dialog.open)
-
+    
     def _build_search_section(self) -> None:
         # Old Data keeps the everyday search inputs on the main pane; the dialog
         # owns the less common result-limiting options.
@@ -434,7 +429,7 @@ class OldDataWorkspace(DraftValueHelper):
                 ui.number('Distance (ly)', value=self._number_value(values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'ly', event.value)).classes('w-40')
                 ui.number('Minimum age (days)', value=self._number_value(values, 'minAge'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'minAge', event.value)).classes('w-48')
                 ui.checkbox('Sort to shortest path', value=self._bool_value(values, 'route'), on_change=lambda event: self._set_bool(values, 'route', event.value))
-
+    
     def _build_filter_section(self) -> None:
         values = self.draft.main_values
         build_shared_filter_section(
@@ -445,7 +440,7 @@ class OldDataWorkspace(DraftValueHelper):
             pad_size_enabled=self._pad_size_enabled,
             set_pad_size_flag=self._set_pad_size_flag,
         )
-
+    
     def _build_extended_dialog(self) -> ui.dialog:
         # Limit and LS max are advanced-only knobs, so they live separately from
         # the main near/distance/age search controls.
@@ -461,10 +456,9 @@ class OldDataWorkspace(DraftValueHelper):
                 ui.label('Only include stations within this many ls of arrival.').classes('text-sm text-gray-600')
         return dialog
 
-
 class RaresWorkspace(DraftValueHelper):
     """Edit a `rares` draft using command-local fields only."""
-
+    
     def __init__(
         self,
         draft: CommandDraft,
@@ -475,7 +469,7 @@ class RaresWorkspace(DraftValueHelper):
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
-
+    
     def build(self) -> None:
         dialog = self._build_extended_dialog()
         with ui.column().classes('w-full gap-3'):
@@ -484,7 +478,7 @@ class RaresWorkspace(DraftValueHelper):
             with ui.row().classes('gap-2'):
                 ui.button('Execute Rares', on_click=self.on_execute)
                 ui.button('Extended Options', on_click=dialog.open)
-
+    
     def _build_search_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Rare Search')
@@ -492,7 +486,7 @@ class RaresWorkspace(DraftValueHelper):
             with ui.row().classes('w-full items-end gap-3'):
                 ui.input('Near', value=self._text_value(self.draft.main_values, 'near'), on_change=lambda event: self._set_text(self.draft.main_values, 'near', event.value)).classes('min-w-96 flex-1')
                 ui.number('Distance (ly)', value=self._number_value(self.draft.main_values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.main_values, 'ly', event.value)).classes('w-40')
-
+    
     def _build_filter_section(self) -> None:
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
@@ -502,7 +496,7 @@ class RaresWorkspace(DraftValueHelper):
             pad_size_enabled=self._pad_size_enabled,
             set_pad_size_flag=self._set_pad_size_flag,
         )
-
+    
     def _build_extended_dialog(self) -> ui.dialog:
         # Away-from expands into repeated CLI flags and is easy to mistype, so
         # keep it out of the compact main pane and explain it in the dialog.

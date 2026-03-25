@@ -11,10 +11,9 @@ THEME_OPTIONS: dict[str, str] = {
     'elite': 'Elite Dark',
 }
 
-
 class SettingsWorkspace:
     """Render settings that affect the shell itself rather than TD commands."""
-
+    
     def __init__(
         self,
         *,
@@ -25,7 +24,7 @@ class SettingsWorkspace:
         self.on_theme_changed = on_theme_changed
         self.theme_select = None
         self.advanced_dialog = None
-
+    
     def build(self) -> None:
         # Keep the placeholder dialog wired in so this workspace can grow
         # without changing the page structure or button affordance later.
@@ -39,7 +38,7 @@ class SettingsWorkspace:
                     'Advanced NiceGUI and network settings are not wired yet.'
                 ).classes('text-sm text-gray-700 whitespace-pre-wrap')
                 ui.button('Close', on_click=self.advanced_dialog.close)
-
+        
         with ui.column().classes('w-full gap-3'):
             with ui.card().classes('w-full gap-3'):
                 ui.label('Settings')
@@ -58,7 +57,7 @@ class SettingsWorkspace:
                     'Advanced Settings',
                     on_click=self.advanced_dialog.open,
                 )
-
+    
     def _on_theme_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
         if value is None:

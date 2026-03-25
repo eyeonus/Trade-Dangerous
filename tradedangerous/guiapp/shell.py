@@ -46,15 +46,14 @@ COMMAND_OPTIONS: dict[str, str] = {
     'settings': 'Settings',
 }
 
-
 class AppShell:
     """Own the long-lived widgets and coordinate session/store updates."""
-
+    
     def __init__(self, store: GuiStore) -> None:
         self.store = store
         self.session = SessionState.from_store(store)
         self.executor = TdExecutor()
-
+        
         self.command_select = None
         self.status_label = None
         self.profile_select = None
@@ -73,7 +72,7 @@ class AppShell:
         self.right_pane_view = 'setup'
         self.root_container = None
         self.body_query = None
-
+    
     def build(self) -> None:
         # Themes are pure CSS overrides loaded once into the page head; runtime
         # theme switching only swaps classes on the body and root container.
@@ -87,7 +86,7 @@ class AppShell:
             f'{self._theme_css_text()}\n'
             '</style>'
         )
-
+        
         self.body_query = ui.query('body')
         self.root_container = ui.column().classes(
             'w-full h-screen min-h-0 gap-2 p-2 box-border overflow-hidden '
@@ -146,19 +145,19 @@ class AppShell:
             ui.element('div').classes('w-full shrink-0').style(
                 'height: 0.75rem;'
             )
-
+        
         self._apply_theme()
         self._refresh_ui()
-        
+    
     @staticmethod
     def _theme_css_text() -> str:
         return Path(__file__).with_name('themes.css').read_text(
             encoding='utf-8',
         )
-
+    
     def _apply_theme(self) -> None:
         theme_class = f'td-theme-{self._selected_theme()}'
-
+        
         if self.root_container is not None:
             self.root_container.classes(
                 remove='td-theme-default td-theme-elite',
@@ -166,7 +165,7 @@ class AppShell:
             self.root_container.classes(
                 add=theme_class,
             )
-
+        
         if self.body_query is not None:
             self.body_query.classes(
                 remove='td-theme-default td-theme-elite',
@@ -174,7 +173,7 @@ class AppShell:
             self.body_query.classes(
                 add=theme_class,
             )
-
+    
     def _build_top_bar(self) -> None:
         with ui.row().classes('w-full items-center gap-0'):
             with ui.row().classes('items-center gap-4 pr-2 box-border').style(
@@ -197,7 +196,7 @@ class AppShell:
                     value=self.right_pane_view,
                     on_change=self._on_right_pane_view_changed,
                 )
-
+    
     def _build_left_pane(self) -> None:
         with ui.column().classes('w-full gap-3 pr-2 box-border').style(
             'min-width: 23rem;'
@@ -215,7 +214,7 @@ class AppShell:
                 'Max data age (days)',
                 on_change=self._on_global_changed,
             ).classes('w-full')
-
+            
             ui.separator()
             ui.label('Ship Profile')
             self.profile_select = ui.select(
@@ -245,23 +244,23 @@ class AppShell:
                 'Jump Range (Empty)',
                 on_change=self._on_ship_changed,
             ).classes('w-full')
-
+            
             ui.separator()
             with ui.row().classes('w-full gap-2'):
                 ui.button('New', on_click=self._on_new_profile)
                 ui.button('Save', on_click=self._on_save_profile)
                 ui.button('Revert', on_click=self._on_revert_profile)
-
+    
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
-
+    
     def _on_right_pane_view_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
         if value is None:
             return
         self.right_pane_view = str(value)
         self._refresh_ui()
-
+    
     def _on_command_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
         if value is None:
@@ -270,7 +269,7 @@ class AppShell:
         self.right_pane_view = 'setup'
         save_gui_store(self.store)
         self._refresh_ui()
-
+    
     def _on_profile_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
         if value is None:
@@ -278,14 +277,14 @@ class AppShell:
         self.session.load_profile(self.store, str(value))
         save_gui_store(self.store)
         self._refresh_ui()
-
+    
     def _on_new_profile(self) -> None:
         if not self._capture_ship_inputs():
             return
         self.session.create_new_ship_profile(self.store)
         save_gui_store(self.store)
         self._refresh_ui()
-
+    
     def _on_save_profile(self) -> None:
         if not self._capture_ship_inputs():
             return
@@ -293,12 +292,12 @@ class AppShell:
         save_gui_store(self.store)
         ui.notify('Ship profile saved.')
         self._refresh_ui()
-
+    
     def _on_revert_profile(self) -> None:
         self.session.revert_ship_profile(self.store)
         self._refresh_ui()
         ui.notify('Ship profile reverted.')
-
+    
     def _on_global_changed(self, _event: Any) -> None:
         if getattr(self, '_refreshing_ui', False):
             return
@@ -306,18 +305,18 @@ class AppShell:
             return
         save_gui_store(self.store)
         self._refresh_ui()
-
+    
     def _on_ship_changed(self, _event: Any) -> None:
         if getattr(self, '_refreshing_ui', False):
             return
         if self._capture_ship_inputs():
             self._refresh_ui()
-
+    
     def _on_run_draft_changed(self) -> None:
         # Draft widgets mutate the persisted draft objects directly, so this
         # handler only needs to flush the latest snapshot to disk.
         save_gui_store(self.store)
-
+    
     def _selected_theme(self) -> str:
         # Layout is persisted as loose JSON, so tolerate stale or unknown
         # values and fall back to the stock theme.
@@ -325,7 +324,7 @@ class AppShell:
         if value in {'default', 'elite'}:
             return str(value)
         return 'default'
-
+    
     def _on_theme_changed(self, theme_name: str) -> None:
         theme = str(theme_name)
         if theme not in {'default', 'elite'}:
@@ -335,22 +334,22 @@ class AppShell:
         self._apply_theme()
         self._refresh_ui()
         self._register_native_window_size_handler()
-
+    
     def _on_begin_import_stop_confirmation(self) -> None:
         if begin_import_stop_confirmation(session=self.session):
             self._refresh_ui()
-
+    
     def _on_cancel_import_stop_confirmation(self) -> None:
         if cancel_import_stop_confirmation(session=self.session):
             self._refresh_ui()
-
+    
     def _on_request_import_stop(self) -> None:
         if request_import_stop(session=self.session):
             self._refresh_ui()
             return
-
+        
         ui.notify('No import is currently running.', color='warning')
-
+    
     def _on_copy_from_profile(self) -> None:
         # Copy the effective cargo capacity rather than raw capacity so the
         # draft sees the same usable tonnage that execution will later use.
@@ -370,7 +369,7 @@ class AppShell:
         save_gui_store(self.store)
         ui.notify(f'Copied {len(copied)} profile values into draft overrides.')
         self._refresh_ui()
-
+    
     async def _on_execute_command(self) -> None:
         if self.session.selected_command == 'settings':
             ui.notify(
@@ -378,7 +377,7 @@ class AppShell:
                 color='warning',
             )
             return
-
+        
         if self.session.selected_command == 'import':
             # Import runs through a separate polling loop so progress can stream
             # back into the session while the blocking worker is active.
@@ -393,12 +392,12 @@ class AppShell:
                 refresh_ui=self._refresh_ui,
             )
             return
-
+        
         if not self._capture_global_inputs():
             return
         if not self._capture_ship_inputs():
             return
-
+        
         # Drafts only store per-command fields. Snapshot the current left-pane
         # commander and ship context so execution is self-contained.
         request = GuiCommandRequest(
@@ -419,7 +418,7 @@ class AppShell:
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
         )
-
+        
         # Clear the previous result immediately to avoid showing stale output
         # while the worker thread is still spinning up.
         self.session.set_execution(
@@ -431,7 +430,7 @@ class AppShell:
             structured_result=None,
         )
         self._refresh_ui()
-
+        
         try:
             result = await run.io_bound(self.executor.execute, request)
         except Exception as exc:
@@ -445,7 +444,7 @@ class AppShell:
             )
             self._refresh_ui()
             return
-
+        
         status = ExecutionStatus.SUCCEEDED if result.ok else ExecutionStatus.FAILED
         self.session.set_execution(
             status=status,
@@ -456,12 +455,12 @@ class AppShell:
             structured_result=result.structured_result,
         )
         self._refresh_ui()
-        
+    
     def _capture_global_inputs(self) -> bool:
         credits = self._parse_optional_int(self.credits_input.value, 'Credits')
         if credits is None and self._has_text(self.credits_input.value):
             return False
-
+        
         max_data_age_days = self._parse_optional_float(
             self.max_data_age_input.value,
             'Max data age',
@@ -471,7 +470,7 @@ class AppShell:
             and self._has_text(self.max_data_age_input.value)
         ):
             return False
-
+        
         self.session.set_global_state(
             self.store,
             commander_name=self._clean_text(self.commander_name_input.value),
@@ -479,12 +478,12 @@ class AppShell:
             max_data_age_days=max_data_age_days,
         )
         return True
-
+    
     def _capture_ship_inputs(self) -> bool:
         capacity = self._parse_optional_int(self.capacity_input.value, 'Capacity')
         if capacity is None and self._has_text(self.capacity_input.value):
             return False
-
+        
         reserved_capacity = self._parse_optional_int(
             self.reserved_capacity_input.value,
             'Reserved Capacity',
@@ -494,7 +493,7 @@ class AppShell:
             and self._has_text(self.reserved_capacity_input.value)
         ):
             return False
-
+        
         jump_range_full = self._parse_optional_float(
             self.jump_range_full_input.value,
             'Jump Range (Full)',
@@ -504,7 +503,7 @@ class AppShell:
             and self._has_text(self.jump_range_full_input.value)
         ):
             return False
-
+        
         jump_range_empty = self._parse_optional_float(
             self.jump_range_empty_input.value,
             'Jump Range (Empty)',
@@ -514,7 +513,7 @@ class AppShell:
             and self._has_text(self.jump_range_empty_input.value)
         ):
             return False
-
+        
         if (
             capacity is not None
             and reserved_capacity is not None
@@ -525,7 +524,7 @@ class AppShell:
                 color='negative',
             )
             return False
-
+        
         # Left-pane edits apply to the working session immediately, but the
         # underlying profile is only updated when the user explicitly saves it.
         self.session.ship_state.ship_name = self._clean_text(
@@ -537,7 +536,7 @@ class AppShell:
         self.session.ship_state.jump_range_empty_ly = jump_range_empty
         self.session.mark_ship_dirty()
         return True
-
+    
     def _render_workspace(self) -> None:
         # Import keeps long-lived progress widgets and is rendered separately in
         # `_render_right_pane`; every other workspace can be rebuilt cheaply.
@@ -621,7 +620,7 @@ class AppShell:
         if is_input_only:
             self.right_pane_view = 'setup'
         self.right_pane_toggle.set_visibility(not is_input_only)
-    
+        
         if is_import:
             # Import owns its entire pane because setup, live progress, and stop
             # confirmation all live inside the same workspace component.
@@ -645,7 +644,7 @@ class AppShell:
                 # widgets keep their identity across frequent refreshes.
                 workspace.refresh(self.session.execution)
             return
-    
+        
         self.import_workspace = None
         self.right_pane_host.clear()
         with self.right_pane_host:
@@ -701,7 +700,7 @@ class AppShell:
             self.command_select.value = self.session.selected_command
             self.profile_select.set_options(self._profile_options())
             self.profile_select.value = self.session.selected_profile_id
-    
+            
             self.commander_name_input.value = self._display_text(
                 self.session.global_state.commander_name
             )
@@ -726,7 +725,7 @@ class AppShell:
             self.jump_range_empty_input.value = self._display_text(
                 self.session.ship_state.jump_range_empty_ly
             )
-    
+            
             effective_capacity = self.session.ship_state.effective_capacity
             if effective_capacity is None:
                 effective_text = 'Effective Capacity:'
@@ -735,13 +734,13 @@ class AppShell:
                     f'Effective Capacity: {effective_capacity}'
                 )
             self.effective_capacity_label.text = effective_text
-    
+            
             status = self.session.execution.status.value.capitalize()
             self.status_label.text = f'Status: {status}'
-    
+            
             if self.right_pane_toggle.value != self.right_pane_view:
                 self.right_pane_toggle.value = self.right_pane_view
-    
+            
             if (
                 self.session.selected_command == 'import'
                 and getattr(self, 'import_workspace', None) is not None
@@ -759,20 +758,20 @@ class AppShell:
             profile.profile_id: profile.ship_name or profile.profile_id
             for profile in self.store.profiles
         }
-
+    
     @staticmethod
     def _display_text(value: Any) -> str:
         return '' if value is None else str(value)
-
+    
     @staticmethod
     def _clean_text(value: Any) -> str | None:
         text = str(value or '').strip()
         return text or None
-
+    
     @staticmethod
     def _has_text(value: Any) -> bool:
         return str(value or '').strip() != ''
-
+    
     def _parse_optional_int(self, value: Any, label: str) -> int | None:
         cleaned = self._clean_text(value)
         if cleaned is None:
@@ -786,7 +785,7 @@ class AppShell:
             ui.notify(f'{label} must be zero or greater.', color='negative')
             return None
         return parsed
-
+    
     def _parse_optional_float(self, value: Any, label: str) -> float | None:
         cleaned = self._clean_text(value)
         if cleaned is None:
@@ -800,5 +799,3 @@ class AppShell:
             ui.notify(f'{label} must be zero or greater.', color='negative')
             return None
         return parsed
-
-

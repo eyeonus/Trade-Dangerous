@@ -37,7 +37,7 @@ from .td_exec_import import build_import_argv, execute_import_command
 @dataclass(slots=True)
 class GuiCommandRequest:
     """Self-contained execution payload assembled from GUI state."""
-
+    
     command: str
     main_values: dict[str, Any] = field(default_factory=dict)
     advanced_values: dict[str, Any] = field(default_factory=dict)
@@ -45,7 +45,7 @@ class GuiCommandRequest:
     global_values: dict[str, Any] = field(default_factory=dict)
     ship_profile_values: dict[str, Any] = field(default_factory=dict)
     import_monitor: Any = None
-
+    
     def effective_context(self) -> dict[str, Any]:
         context: dict[str, Any] = {}
         # Later layers intentionally win: profile values override globals, and
@@ -54,7 +54,7 @@ class GuiCommandRequest:
         context.update(_drop_blank_values(self.ship_profile_values))
         context.update(_drop_blank_values(self.context_overrides))
         return context
-
+    
     def resolved_values(self) -> dict[str, Any]:
         resolved = self.effective_context()
         # Main and advanced command fields are appended on top of inherited
@@ -63,11 +63,10 @@ class GuiCommandRequest:
         resolved.update(_drop_blank_values(self.advanced_values))
         return resolved
 
-
 @dataclass(slots=True)
 class GuiCommandResult:
     """Execution outcome mirrored directly into the session/right-pane UI."""
-
+    
     command: str
     ok: bool
     error_message: str | None = None
@@ -76,19 +75,18 @@ class GuiCommandResult:
     structured_result: Any = None
     argv_used: list[str] = field(default_factory=list)
 
-
 class TdExecutor:
     """Thin execution boundary between NiceGUI and TD core.
-
+    
     The first scaffold keeps this intentionally small. It performs cheap,
     GUI-oriented sanity checks and reserves the authoritative command
     execution path for the next tranche.
     """
-
+    
     def validate_request(self, request: GuiCommandRequest) -> list[str]:
         errors: list[str] = []
         context = request.effective_context()
-
+        
         self._validate_optional_int(context, 'credits', minimum=0, errors=errors)
         self._validate_optional_int(context, 'capacity', minimum=0, errors=errors)
         self._validate_optional_int(
@@ -115,7 +113,7 @@ class TdExecutor:
             minimum=0.0,
             errors=errors,
         )
-
+        
         capacity = context.get('capacity')
         reserved_capacity = context.get('reserved_capacity')
         if (
@@ -124,7 +122,7 @@ class TdExecutor:
             and reserved_capacity > capacity
         ):
             errors.append('Reserved Capacity cannot exceed Capacity.')
-
+        
         if request.command == 'run':
             resolved = request.resolved_values()
             if self._effective_capacity(context) is None:
@@ -136,21 +134,21 @@ class TdExecutor:
                 and context.get('jump_range_full_ly') is None
             ):
                 errors.append('Run requires Jump Range (Full).')
-
+        
         if request.command == 'trade':
             validate_trade_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
                 validate_optional_int=self._validate_optional_int,
             )
-
+        
         if request.command == 'local':
             validate_local_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
                 validate_optional_float=self._validate_optional_float,
             )
-
+        
         if request.command == 'olddata':
             validate_olddata_request(
                 resolved=self._global_command_resolved_values(request),
@@ -158,13 +156,13 @@ class TdExecutor:
                 validate_optional_int=self._validate_optional_int,
                 validate_optional_float=self._validate_optional_float,
             )
-
+        
         if request.command == 'market':
             validate_market_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
             )
-
+        
         if request.command == 'nav':
             validate_nav_request(
                 resolved=self._global_command_resolved_values(request),
@@ -172,9 +170,9 @@ class TdExecutor:
                 validate_optional_int=self._validate_optional_int,
                 validate_optional_float=self._validate_optional_float,
             )
-
+        
         return errors
-
+    
     def execute(self, request: GuiCommandRequest) -> GuiCommandResult:
         errors = self.validate_request(request)
         if errors:
@@ -184,7 +182,7 @@ class TdExecutor:
                 error_message=errors[0],
                 diagnostics_output='\n'.join(errors),
             )
-
+        
         if request.command == 'run':
             return self._execute_run(request)
         if request.command == 'buy':
@@ -218,7 +216,7 @@ class TdExecutor:
                 'to the in-process TD execution path.'
             ),
         )
-
+    
     def _execute_run(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = request.resolved_values()
         context = request.effective_context()
@@ -229,7 +227,7 @@ class TdExecutor:
             append_flag=self._append_flag,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_buy(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_buy_argv(
@@ -239,7 +237,7 @@ class TdExecutor:
             split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_sell(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_sell_argv(
@@ -249,7 +247,7 @@ class TdExecutor:
             split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_trade(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_trade_argv(
@@ -258,7 +256,7 @@ class TdExecutor:
             append_flag=self._append_flag,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_local(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_local_argv(
@@ -267,7 +265,7 @@ class TdExecutor:
             append_flag=self._append_flag,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_olddata(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_olddata_argv(
@@ -281,7 +279,7 @@ class TdExecutor:
             payload['near'] = resolved.get('near')
             result.structured_result = payload
         return result
-
+    
     def _execute_market(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_market_argv(
@@ -289,7 +287,7 @@ class TdExecutor:
             append_flag=self._append_flag,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_rares(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_rares_argv(
@@ -299,7 +297,7 @@ class TdExecutor:
             split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_nav(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = self._global_command_resolved_values(request)
         argv = build_nav_argv(
@@ -309,7 +307,7 @@ class TdExecutor:
             split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
-
+    
     def _execute_import(self, request: GuiCommandRequest) -> GuiCommandResult:
         resolved = _drop_blank_values(request.main_values)
         argv = build_import_argv(
@@ -345,7 +343,7 @@ class TdExecutor:
     def _split_search_terms(value: Any) -> list[str]:
         if value in (None, ''):
             return []
-
+        
         # GUI textareas allow either commas or newlines; normalize both so the
         # argv builders can treat multi-value fields consistently.
         terms: list[str] = []
@@ -355,7 +353,7 @@ class TdExecutor:
                 if cleaned:
                     terms.append(cleaned)
         return terms
-
+    
     @staticmethod
     def _validate_optional_int(
         payload: dict[str, Any],
@@ -372,7 +370,7 @@ class TdExecutor:
             return
         if minimum is not None and value < minimum:
             errors.append(f'{key} must be {minimum} or greater.')
-
+    
     def _execute_td_command(
         self,
         request: GuiCommandRequest,
@@ -381,7 +379,7 @@ class TdExecutor:
         diagnostics_stream = io.StringIO()
         render_stream = io.StringIO()
         structured_result = None
-
+        
         try:
             cmdenv = commands.CommandIndex().parse(list(argv))
             # Keep diagnostic/preflight output separate from rendered command
@@ -400,14 +398,14 @@ class TdExecutor:
             )
             cmdenv.console = diagnostics_console
             cmdenv.stderr = diagnostics_console
-
+            
             with redirect_stdout(diagnostics_stream), redirect_stderr(
                 diagnostics_stream
             ):
                 preflight = getattr(cmdenv, 'preflight', None)
                 if preflight and callable(preflight):
                     preflight()
-
+                
                 tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
                 try:
                     self._check_trade_data(cmdenv, tdb)
@@ -435,7 +433,7 @@ class TdExecutor:
             return self._error_result(request.command, argv, str(exc))
         except Exception as exc:
             return self._error_result(request.command, argv, str(exc), repr(exc))
-
+        
         return GuiCommandResult(
             command=request.command,
             ok=True,
@@ -444,12 +442,12 @@ class TdExecutor:
             structured_result=structured_result,
             argv_used=argv,
         )
-
+    
     @staticmethod
     def _check_trade_data(cmdenv: Any, tdb: Any) -> None:
         if not cmdenv.usesTradeData:
             return
-
+        
         tsc = tdb.tradingStationCount
         if tsc == 0:
             raise cmd_exceptions.NoDataError(
@@ -467,7 +465,7 @@ class TdExecutor:
                 'stations. Please enter or import data for additional '
                 'stations.'.format(tsc)
             )
-
+    
     @staticmethod
     def _validate_optional_float(
         payload: dict[str, Any],
@@ -484,8 +482,7 @@ class TdExecutor:
             return
         if minimum is not None and float(value) < minimum:
             errors.append(f'{key} must be {minimum} or greater.')
-
-
+    
     @staticmethod
     def _error_result(
         command: str,
@@ -500,7 +497,7 @@ class TdExecutor:
             diagnostics_output=diagnostics_output or error_message,
             argv_used=argv,
         )
-
+    
     @staticmethod
     def _effective_capacity(context: dict[str, Any]) -> int | None:
         # Match the shell's displayed effective capacity so validation, copied
@@ -514,22 +511,21 @@ class TdExecutor:
         if reserved_capacity > capacity:
             return None
         return capacity - reserved_capacity
-
+    
     @staticmethod
     def _append_option(argv: list[str], option: str, value: Any) -> None:
         if value in (None, ''):
             return
         argv.extend([option, str(value)])
-
+    
     @staticmethod
     def _append_flag(argv: list[str], option: str, enabled: Any) -> None:
         if enabled:
             argv.append(option)
 
-
 def _drop_blank_values(payload: dict[str, Any]) -> dict[str, Any]:
     """Drop fields that should behave like "unset" when translated to argv."""
-
+    
     return {
         key: value
         for key, value in payload.items()
