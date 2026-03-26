@@ -41,12 +41,12 @@ classifiers = [
 ]
 
 # Default dependencies for running the tool itself.
-# Default dependencies for running the tool itself.
 dependencies = [
     "ijson>=3.1",
     "importlib-metadata>=1",
     "nicegui",
     "pywebview",
+    "pythonnet==3.1.0rc0; platform_system == 'Windows' and python_version >= '3.14' and python_version < '3.15'",
     "orjson>=3.11.5",
     "requests",
     "rich==13.7.1",
