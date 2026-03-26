@@ -1,6 +1,27 @@
 # CHANGELOG
 
 
+## v12.17.1 (2026-03-26)
+
+### Bug Fixes
+
+- Need pythonnet==3.1.0rc0 to support GUI in python 3.14
+  ([`9ce11e8`](https://github.com/eyeonus/Trade-Dangerous/commit/9ce11e80852822e490760b4cf263aa9d80a4e415))
+
+- Uv.lock also needs updating
+  ([`454f5eb`](https://github.com/eyeonus/Trade-Dangerous/commit/454f5eb7aa5b6bb7605360af01a31b64f2fa684f))
+
+### Chores
+
+- Fix indentation for GUI files. Hi eyeonus!
+  ([`8fe4309`](https://github.com/eyeonus/Trade-Dangerous/commit/8fe4309b6985d7283d0272e48f3ad55739f60b2b))
+
+### Documentation
+
+- Added basic commenting to all GUI modules.
+  ([`1506561`](https://github.com/eyeonus/Trade-Dangerous/commit/1506561e2d9c84edde7dd9098d6c73d2468f3f42))
+
+
 ## v12.17.0 (2026-03-25)
 
 ### Features
