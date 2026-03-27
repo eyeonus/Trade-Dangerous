@@ -142,7 +142,7 @@ dev-extras      = ["ipython"]
 [tool.setuptools]
 # Configure setuptools behavior for building and packaging the project.
 
-py-modules = ["trade", "tradegui", "tradebootstrap.py"]
+py-modules = ["trade", "tradegui", "tradebootstrap"]
 
 
 [tool.setuptools.packages.find]
