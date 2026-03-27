@@ -27,8 +27,8 @@ license-files = ["LICENSE"]
 keywords = ["trade", "elite", "elite-dangerous"]
 authors = [
     { name = "eyeonus", email = "eyeonus@gmail.com" },
-	{ name = "Stefan 'Tromador' Morrell" },
-	{ name = "Bernd Gollesch" },
+    { name = "Stefan 'Tromador' Morrell" },
+    { name = "Bernd Gollesch" },
     { name = "Oliver 'kfsone' Smith", email = "oliver@kfs.org" },
 ]
 classifiers = [
@@ -142,7 +142,7 @@ dev-extras      = ["ipython"]
 [tool.setuptools]
 # Configure setuptools behavior for building and packaging the project.
 
-py-modules = ["trade", "tradegui"]
+py-modules = ["trade", "tradegui", "tradebootstrap.py"]
 
 
 [tool.setuptools.packages.find]
