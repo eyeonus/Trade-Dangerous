@@ -1,6 +1,50 @@
 # CHANGELOG
 
 
+## v12.18.0 (2026-03-27)
+
+### Bug Fixes
+
+- Typo
+  ([`0fe5292`](https://github.com/eyeonus/Trade-Dangerous/commit/0fe529272a49f67ce83b557bd86be00c22a24a66))
+
+### Chores
+
+- **deps**: Bump requests from 2.32.5 to 2.33.0
+  ([#294](https://github.com/eyeonus/Trade-Dangerous/pull/294),
+  [`c2577d1`](https://github.com/eyeonus/Trade-Dangerous/commit/c2577d17f7934f5efe51ee7efe472371babe22a2))
+
+Bumps [requests](https://github.com/psf/requests) from 2.32.5 to 2.33.0. - [Release
+  notes](https://github.com/psf/requests/releases) -
+  [Changelog](https://github.com/psf/requests/blob/main/HISTORY.md) -
+  [Commits](https://github.com/psf/requests/compare/v2.32.5...v2.33.0)
+
+--- updated-dependencies: - dependency-name: requests dependency-version: 2.33.0
+
+dependency-type: direct:production ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Features
+
+- Add Windows packaged bootstrap, local app paths, and GUI crash logging
+  ([`ca056ba`](https://github.com/eyeonus/Trade-Dangerous/commit/ca056bafcf668c1ab268786b93d22cdd4108c8e7))
+
+For windows, we look for a regkey. If present, we assume packaged mode and set up our data/tmp/etc
+  in %LOCALAPPDATA%
+
+If regkey isn't present, or we can't even load the winreg module then either we're unpackaged, or
+  not even on windows and we use CWD for the base directory as normal
+
+If there is a regkey, but it's wrong, we bail and raise because something is broken.
+
+If we're in packaged mode then tradegui.py redirects errors to a logfile. We don't intend to show a
+  terminal in packaged mode. In unpackaged mode, tradegui.py sends errors to the calling CLI as
+  normal.
+
+
 ## v12.17.1 (2026-03-26)
 
 ### Bug Fixes
