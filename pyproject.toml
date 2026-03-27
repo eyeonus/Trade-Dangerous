@@ -45,6 +45,7 @@ dependencies = [
     "ijson>=3.1",
     "importlib-metadata>=1",
     "nicegui",
+    "pydantic-core==2.41.5; platform_system == 'Windows' and python_version >= '3.14' and python_version < '3.15'",
     "pywebview",
     "pythonnet==3.1.0rc0; platform_system == 'Windows' and python_version >= '3.14' and python_version < '3.15'",
     "orjson>=3.11.5",
