@@ -1,6 +1,36 @@
 # CHANGELOG
 
 
+## v12.18.1 (2026-03-28)
+
+### Bug Fixes
+
+- Pin pydantic-core in pyproject.toml
+  ([`640ce83`](https://github.com/eyeonus/Trade-Dangerous/commit/640ce83606259349883bfd8537418637f01210ae))
+
+A recent (27/03/2026) pydantic-core release broke a previously working Python 3.14 install path for
+  our GUI stack. Pinning to the last known-good version to restore sane source installs while
+  upstream catches up.
+
+### Chores
+
+- **deps**: Bump cryptography from 46.0.5 to 46.0.6
+  ([#296](https://github.com/eyeonus/Trade-Dangerous/pull/296),
+  [`83aa41b`](https://github.com/eyeonus/Trade-Dangerous/commit/83aa41b2f868ed2133a6a4e1071e9be767f2e68a))
+
+Bumps [cryptography](https://github.com/pyca/cryptography) from 46.0.5 to 46.0.6. -
+  [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pyca/cryptography/compare/46.0.5...46.0.6)
+
+--- updated-dependencies: - dependency-name: cryptography dependency-version: 46.0.6
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
 ## v12.18.0 (2026-03-27)
 
 ### Bug Fixes
