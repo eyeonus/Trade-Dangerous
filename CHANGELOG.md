@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v12.18.3 (2026-03-28)
+
+### Bug Fixes
+
+- Import screen default checkboxes
+  ([`4a79589`](https://github.com/eyeonus/Trade-Dangerous/commit/4a7958953e2441fbb4cc92900b51adea624565e8))
+
+To prevent inadvertent rerun of clean, or downloading vendor tables etc, the import screen is
+  supposed to clear some boxes and check others every time it's opened - this forces the user to
+  deliberately choose to change options that lead to a long arse import time.
+
+Apparently it wasn't happening. This sorts it out and adds a test to make sure it's sorted.
+
+
 ## v12.18.2 (2026-03-28)
 
 ### Bug Fixes
