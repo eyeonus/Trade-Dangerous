@@ -76,4 +76,8 @@ def main(argv = None):
 
 
 if __name__ == "__main__":
+    import multiprocessing
+    
+    # We need this to make the application freeze nicely.
+    multiprocessing.freeze_support()
     raise SystemExit(main())
