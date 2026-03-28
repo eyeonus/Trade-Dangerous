@@ -136,7 +136,7 @@ def build_import_request(*, draft: Any) -> Any:
 def consume_one_shot_import_flags(*, draft: Any) -> bool:
     changed = False
     
-    for key in ('clean', 'optimize'):
+    for key in ('clean', 'optimize', 'force'):
         if draft.main_values.pop(key, None):
             changed = True
     

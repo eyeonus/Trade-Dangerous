@@ -153,10 +153,12 @@ class SessionState:
     @staticmethod
     def _normalize_command_draft(command: str, draft: CommandDraft) -> None:
         if command == 'import':
-            # These are one-shot import actions. Clear any stale copies so a
-            # future import does not silently repeat them.
-            draft.main_values.pop('clean', None)
-            draft.main_values.pop('optimize', None)
+            # Import always opens in the safe fast-path mode unless the user
+            # explicitly opts into heavier work for the current visit.
+            draft.main_values['all'] = True
+            draft.main_values['skipvend'] = True
+            for key in ('clean', 'optimize', 'force'):
+                draft.main_values.pop(key, None)
     
     def set_global_state(
         self,

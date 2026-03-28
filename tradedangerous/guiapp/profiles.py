@@ -13,6 +13,24 @@ from tradedangerous.db.paths import resolve_data_dir, resolve_db_config_path
 
 GUI_STATE_FILENAME = 'tradegui_state.json'
 SCHEMA_VERSION = 1
+_IMPORT_TRANSIENT_FLAGS = frozenset({
+    'all',
+    'skipvend',
+    'clean',
+    'optimize',
+    'force',
+})
+
+
+def _serialize_command_draft(command: str, draft: 'CommandDraft') -> dict[str, Any]:
+    payload = draft.to_dict()
+    if command == 'import':
+        payload['main_values'] = {
+            key: value
+            for key, value in payload['main_values'].items()
+            if key not in _IMPORT_TRANSIENT_FLAGS
+        }
+    return payload
 
 @dataclass(slots=True)
 class GlobalSettings:
@@ -144,7 +162,7 @@ class GuiStore:
             'global': self.global_settings.to_dict(),
             'profiles': [profile.to_dict() for profile in self.profiles],
             'drafts': {
-                command: draft.to_dict()
+                command: _serialize_command_draft(command, draft)
                 for command, draft in self.drafts.items()
             },
             'layout': dict(self.layout),
