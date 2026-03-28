@@ -1,6 +1,23 @@
 # CHANGELOG
 
 
+## v12.18.2 (2026-03-28)
+
+### Bug Fixes
+
+- Add multiprocessing freeze support for GUI.
+  ([`94c0a09`](https://github.com/eyeonus/Trade-Dangerous/commit/94c0a0971542012c1655e8cdd64db9efd3950edf))
+
+Frozen apps that use multiprocessing indirectly through their own code or a library spawn a process
+  --multiprocessing-fork, and if your program does CLI parsing first, you get “unrecognized
+  arguments”
+
+Which is what happened.
+
+Fix is to add multiprocessing.freeze_support() to the top-level frozen entry path and do it before
+  your GUI app’s argparse handling.
+
+
 ## v12.18.1 (2026-03-28)
 
 ### Bug Fixes
