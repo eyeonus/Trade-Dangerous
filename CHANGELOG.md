@@ -1,6 +1,20 @@
 # CHANGELOG
 
 
+## v12.18.5 (2026-03-29)
+
+### Bug Fixes
+
+- Run GUI commands in killable subprocesses
+  ([`3c6898d`](https://github.com/eyeonus/Trade-Dangerous/commit/3c6898d8135407daa0474dba2e20dbdc619ab0e0))
+
+GUI Commands would blindly continue to completion even if user switched tools, potentially ending up
+  with multiple commands running at once.
+
+We now warn user when switching and if the switch is confirmed, kill any running command before
+  moving to the requested pane.
+
+
 ## v12.18.4 (2026-03-29)
 
 ### Bug Fixes
