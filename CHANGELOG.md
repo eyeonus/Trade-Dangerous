@@ -1,6 +1,14 @@
 # CHANGELOG
 
 
+## v12.18.4 (2026-03-29)
+
+### Bug Fixes
+
+- Add explanatory text to run output
+  ([`cb8d40d`](https://github.com/eyeonus/Trade-Dangerous/commit/cb8d40d5ee1d97c9aaefd9d21ceff40a9960bc1d))
+
+
 ## v12.18.3 (2026-03-28)
 
 ### Bug Fixes
