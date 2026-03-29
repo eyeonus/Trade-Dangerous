@@ -51,8 +51,14 @@ COMMAND_OPTIONS: dict[str, str] = {
 class AppShell:
     """Own the long-lived widgets and coordinate session/store updates."""
     
-    def __init__(self, store: GuiStore) -> None:
+    def __init__(
+        self,
+        store: GuiStore,
+        *,
+        window_close_state: Any | None = None,
+    ) -> None:
         self.store = store
+        self.window_close_state = window_close_state
         self.session = SessionState.from_store(store)
         self.executor = TdExecutor()
         self.active_command_process: TdCommandProcess | None = None
@@ -293,6 +299,26 @@ class AppShell:
     def _has_pending_command_process(self) -> bool:
         return self.active_command_process is not None
 
+    def _mark_window_close_worker(
+        self,
+        *,
+        kind: str,
+        command: str,
+        pid: int | None,
+    ) -> None:
+        if self.window_close_state is None:
+            return
+        self.window_close_state.mark_running(
+            kind=kind,
+            command=command,
+            pid=pid,
+        )
+
+    def _clear_window_close_worker(self) -> None:
+        if self.window_close_state is None:
+            return
+        self.window_close_state.clear()
+
     def _switch_command(self, command: str) -> None:
         self.session.set_command(self.store, command)
         self.right_pane_view = 'setup'
@@ -495,7 +521,8 @@ class AppShell:
             await run_import_execution(
                 session=self.session,
                 request=request,
-                refresh_ui=self._refresh_ui,
+                refresh_ui=self._refresh_ui_if_alive,
+                window_close_state=self.window_close_state,
             )
             return
 
@@ -563,6 +590,11 @@ class AppShell:
             return
 
         self.active_command_process = runner
+        self._mark_window_close_worker(
+            kind='command',
+            command=request.command,
+            pid=runner.pid,
+        )
         self.active_command_task = asyncio.create_task(
             self._monitor_command_process(request=request, runner=runner)
         )
@@ -606,9 +638,10 @@ class AppShell:
             runner.close()
             if self.active_command_process is runner:
                 self.active_command_process = None
+            self._clear_window_close_worker()
             if self.active_command_task is asyncio.current_task():
                 self.active_command_task = None
-            self._refresh_ui()
+            self._refresh_ui_if_alive()
     
     def _capture_global_inputs(self) -> bool:
         credits = self._parse_optional_int(self.credits_input.value, 'Credits')
@@ -846,6 +879,14 @@ class AppShell:
                 self.session.execution.diagnostics_output
             ).classes('whitespace-pre-wrap')
     
+    def _refresh_ui_if_alive(self) -> None:
+        try:
+            self._refresh_ui()
+        except RuntimeError as exc:
+            if 'has been deleted' in str(exc):
+                return
+            raise
+
     def _refresh_ui(self) -> None:
         # Pushing values back into NiceGUI widgets can fire change handlers;
         # suppress those callbacks while the shell is reflecting session state.

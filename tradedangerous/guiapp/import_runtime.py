@@ -207,6 +207,10 @@ class ImportCommandProcess:
     def termination_message(self) -> str | None:
         return self._termination_message
 
+    @property
+    def pid(self) -> int | None:
+        return self._process.pid
+
     def start(self) -> None:
         self._process.start()
 
@@ -364,6 +368,7 @@ async def run_import_execution(
     session: Any,
     request: Any,
     refresh_ui: Callable[[], None],
+    window_close_state: Any = None,
 ) -> None:
     from .session import ExecutionStatus
 
@@ -387,6 +392,12 @@ async def run_import_execution(
         return
 
     session.active_import_runner = runner
+    if window_close_state is not None:
+        window_close_state.mark_running(
+            kind='import',
+            command=request.command,
+            pid=runner.pid,
+        )
     _apply_snapshot_to_session(
         session=session,
         status=ExecutionStatus.RUNNING,
@@ -447,6 +458,8 @@ async def run_import_execution(
     finally:
         if session.active_import_runner is runner:
             session.active_import_runner = None
+        if window_close_state is not None:
+            window_close_state.clear()
         runner.close()
 
 

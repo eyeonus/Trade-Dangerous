@@ -105,6 +105,10 @@ class TdCommandProcess:
         self._process.start()
         self._child_conn.close()
 
+    @property
+    def pid(self) -> int | None:
+        return self._process.pid
+
     def is_active(self) -> bool:
         if self._result_consumed:
             return False
