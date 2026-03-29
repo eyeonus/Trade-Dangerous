@@ -110,20 +110,20 @@ class ImportWorkspace:
             with self.stop_confirm_card:
                 ui.label('Stop import?')
                 ui.label(
-                    'Stopping now may leave your local Trade Dangerous '
-                    'data incomplete. Run import again before using the '
-                    'app normally.'
+                    'Stopping import now may leave your local Trade Dangerous '
+                    'database inconsistent. Run import again before using '
+                    'the app normally.'
                 ).classes('text-sm text-gray-700 whitespace-pre-wrap')
                 with ui.row().classes('gap-2'):
                     ui.button('Cancel', on_click=self.on_cancel_stop)
-                    ui.button('Confirm Stop', on_click=self.on_stop)
+                    ui.button('Stop Import Anyway', on_click=self.on_stop)
             
             with ui.card().classes('w-full gap-1'):
                 self.status_label = ui.label('')
                 self.parent_label = ui.label('').classes('text-sm text-gray-700')
                 self.child_label = ui.label('').classes('text-sm text-gray-700')
                 self.stop_requested_label = ui.label(
-                    'Stop requested. Waiting for the current import step to halt.'
+                    'Stopping import...'
                 ).classes('text-warning')
                 self.error_label = ui.label('').classes(
                     'text-negative whitespace-pre-wrap'

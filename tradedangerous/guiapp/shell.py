@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Any
 
-from nicegui import run, ui
+from nicegui import ui
 
 from .profiles import GuiStore, save_gui_store
 from .run_view import RunWorkspace
@@ -21,16 +22,17 @@ from .command_views import (
 from .settings_view import SettingsWorkspace
 from .import_runtime import (
     begin_import_stop_confirmation,
-    cancel_import_stop_confirmation,
-    request_import_stop,
     build_import_request,
+    cancel_import_stop_confirmation,
     consume_one_shot_import_flags,
+    is_import_running,
+    request_import_stop,
     run_import_execution,
 )
 from .import_view import ImportWorkspace
 from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
-from .td_exec import GuiCommandRequest, TdExecutor
+from .td_exec import GuiCommandRequest, TdCommandProcess, TdExecutor
 
 COMMAND_OPTIONS: dict[str, str] = {
     'run': 'Run',
@@ -53,6 +55,8 @@ class AppShell:
         self.store = store
         self.session = SessionState.from_store(store)
         self.executor = TdExecutor()
+        self.active_command_process: TdCommandProcess | None = None
+        self.active_command_task: asyncio.Task | None = None
         
         self.command_select = None
         self.status_label = None
@@ -72,6 +76,8 @@ class AppShell:
         self.right_pane_view = 'setup'
         self.root_container = None
         self.body_query = None
+        self.command_switch_dialog = None
+        self.command_switch_message = None
     
     def build(self) -> None:
         # Themes are pure CSS overrides loaded once into the page head; runtime
@@ -87,6 +93,7 @@ class AppShell:
             '</style>'
         )
         
+        self._build_command_switch_dialog()
         self.body_query = ui.query('body')
         self.root_container = ui.column().classes(
             'w-full h-screen min-h-0 gap-2 p-2 box-border overflow-hidden '
@@ -253,6 +260,66 @@ class AppShell:
     
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
+
+    def _build_command_switch_dialog(self) -> None:
+        self.command_switch_dialog = ui.dialog().props('persistent')
+        with self.command_switch_dialog, ui.card().style(
+            'min-width: 30rem; max-width: 95vw;'
+        ).classes('gap-3'):
+            ui.label('Stop running command?').classes('text-lg')
+            self.command_switch_message = ui.label('').classes(
+                'whitespace-pre-wrap'
+            )
+            with ui.row().classes('w-full justify-end gap-2'):
+                ui.button(
+                    'Let It Finish',
+                    on_click=lambda: self.command_switch_dialog.submit(False),
+                )
+                ui.button(
+                    'Switch and Stop',
+                    on_click=lambda: self.command_switch_dialog.submit(True),
+                ).props('color=negative')
+
+    @staticmethod
+    def _command_label(command: str | None) -> str:
+        if not command:
+            return 'Command'
+        return COMMAND_OPTIONS.get(command, str(command).title())
+
+    def _command_process_is_busy(self) -> bool:
+        runner = self.active_command_process
+        return runner is not None and runner.is_active()
+
+    def _has_pending_command_process(self) -> bool:
+        return self.active_command_process is not None
+
+    def _switch_command(self, command: str) -> None:
+        self.session.set_command(self.store, command)
+        self.right_pane_view = 'setup'
+        save_gui_store(self.store)
+        self._refresh_ui()
+
+    def _restore_command_selection(self) -> None:
+        self._refreshing_ui = True
+        try:
+            self.command_select.value = self.session.selected_command
+        finally:
+            self._refreshing_ui = False
+
+    async def _confirm_stop_before_switch(self, message: str) -> bool:
+        if self.command_switch_message is None or self.command_switch_dialog is None:
+            return True
+        self.command_switch_message.text = message
+        return bool(await self.command_switch_dialog)
+
+    def _stop_active_command_for_switch(self, target_command: str) -> None:
+        runner = self.active_command_process
+        if runner is None:
+            return
+        runner.terminate(
+            f'{self._command_label(runner.command)} was stopped when '
+            f'switching to {self._command_label(target_command)}.'
+        )
     
     def _on_right_pane_view_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
@@ -261,14 +328,54 @@ class AppShell:
         self.right_pane_view = str(value)
         self._refresh_ui()
     
-    def _on_command_changed(self, event: Any) -> None:
+    async def _on_command_changed(self, event: Any) -> None:
+        if getattr(self, '_refreshing_ui', False):
+            return
+
         value = getattr(event, 'value', None)
         if value is None:
             return
-        self.session.set_command(self.store, str(value))
-        self.right_pane_view = 'setup'
-        save_gui_store(self.store)
-        self._refresh_ui()
+
+        new_command = str(value)
+        if new_command == self.session.selected_command:
+            return
+
+        if is_import_running(session=self.session):
+            confirmed = await self._confirm_stop_before_switch(
+                'Import is still running. Switching to '
+                f'{self._command_label(new_command)} will stop it '
+                'immediately and may leave your local Trade Dangerous '
+                'database inconsistent. Switch anyway?'
+            )
+            if not confirmed:
+                self._restore_command_selection()
+                return
+            request_import_stop(
+                session=self.session,
+                reason=(
+                    'Import was stopped when switching to '
+                    f'{self._command_label(new_command)}. Your local '
+                    'Trade Dangerous database may be inconsistent until '
+                    'import is run again.'
+                ),
+            )
+            self._switch_command(new_command)
+            return
+
+        if self._command_process_is_busy():
+            runner = self.active_command_process
+            message = (
+                f'{self._command_label(runner.command)} is still running. '
+                f'Switch to {self._command_label(new_command)} and stop it, '
+                'or let it finish?'
+            )
+            confirmed = await self._confirm_stop_before_switch(message)
+            if not confirmed:
+                self._restore_command_selection()
+                return
+            self._stop_active_command_for_switch(new_command)
+
+        self._switch_command(new_command)
     
     def _on_profile_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
@@ -377,27 +484,39 @@ class AppShell:
                 color='warning',
             )
             return
-        
+
         if self.session.selected_command == 'import':
-            # Import runs through a separate polling loop so progress can stream
-            # back into the session while the blocking worker is active.
+            # Import runs through a subprocess-backed polling loop so progress
+            # can stream back into the session while the worker stays killable.
             request = build_import_request(draft=self.session.draft)
             if consume_one_shot_import_flags(draft=self.session.draft):
                 save_gui_store(self.store)
                 self._refresh_ui()
             await run_import_execution(
                 session=self.session,
-                executor=self.executor,
                 request=request,
                 refresh_ui=self._refresh_ui,
             )
             return
-        
+
+        if self._has_pending_command_process():
+            active_command = None
+            if self.active_command_process is not None:
+                active_command = self.active_command_process.command
+            ui.notify(
+                (
+                    f'{self._command_label(active_command)} is already running. '
+                    'Let it finish or switch commands to stop it.'
+                ),
+                color='warning',
+            )
+            return
+
         if not self._capture_global_inputs():
             return
         if not self._capture_ship_inputs():
             return
-        
+
         # Drafts only store per-command fields. Snapshot the current left-pane
         # commander and ship context so execution is self-contained.
         request = GuiCommandRequest(
@@ -418,25 +537,23 @@ class AppShell:
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
         )
-        
-        # Clear the previous result immediately to avoid showing stale output
-        # while the worker thread is still spinning up.
+
         self.session.set_execution(
             status=ExecutionStatus.RUNNING,
-            active_command=self.session.selected_command,
+            active_command=request.command,
             error_message=None,
             raw_output='',
             diagnostics_output='',
             structured_result=None,
         )
         self._refresh_ui()
-        
+
         try:
-            result = await run.io_bound(self.executor.execute, request)
+            runner = TdCommandProcess.launch(request)
         except Exception as exc:
             self.session.set_execution(
                 status=ExecutionStatus.FAILED,
-                active_command=self.session.selected_command,
+                active_command=request.command,
                 error_message=str(exc),
                 raw_output='',
                 diagnostics_output=repr(exc),
@@ -444,17 +561,54 @@ class AppShell:
             )
             self._refresh_ui()
             return
-        
-        status = ExecutionStatus.SUCCEEDED if result.ok else ExecutionStatus.FAILED
-        self.session.set_execution(
-            status=status,
-            active_command=result.command,
-            error_message=result.error_message,
-            raw_output=result.raw_output,
-            diagnostics_output=result.diagnostics_output,
-            structured_result=result.structured_result,
+
+        self.active_command_process = runner
+        self.active_command_task = asyncio.create_task(
+            self._monitor_command_process(request=request, runner=runner)
         )
-        self._refresh_ui()
+
+    async def _monitor_command_process(
+        self,
+        *,
+        request: GuiCommandRequest,
+        runner: TdCommandProcess,
+    ) -> None:
+        result = None
+        try:
+            while result is None:
+                result = runner.poll_result()
+                if result is None:
+                    await asyncio.sleep(0.1)
+        except Exception as exc:
+            self.session.set_execution(
+                status=ExecutionStatus.FAILED,
+                active_command=request.command,
+                error_message=str(exc),
+                raw_output='',
+                diagnostics_output=repr(exc),
+                structured_result=None,
+            )
+        else:
+            status = (
+                ExecutionStatus.SUCCEEDED
+                if result.ok
+                else ExecutionStatus.FAILED
+            )
+            self.session.set_execution(
+                status=status,
+                active_command=result.command,
+                error_message=result.error_message,
+                raw_output=result.raw_output,
+                diagnostics_output=result.diagnostics_output,
+                structured_result=result.structured_result,
+            )
+        finally:
+            runner.close()
+            if self.active_command_process is runner:
+                self.active_command_process = None
+            if self.active_command_task is asyncio.current_task():
+                self.active_command_task = None
+            self._refresh_ui()
     
     def _capture_global_inputs(self) -> bool:
         credits = self._parse_optional_int(self.credits_input.value, 'Credits')

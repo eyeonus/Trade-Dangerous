@@ -1,12 +1,14 @@
-"""Runtime helpers for import progress polling and cooperative stop handling."""
+"""Runtime helpers for import progress streaming and killable subprocess execution."""
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass, field
+import multiprocessing
+from queue import Empty
 from threading import Lock
 from typing import Any, Callable, Protocol
 
-from nicegui import run
 
 @dataclass(slots=True)
 class ImportProgressState:
@@ -21,13 +23,14 @@ class ImportProgressState:
     stop_requested: bool = False
     finished: bool = False
 
+
 class ImportMonitorProtocol(Protocol):
     def append_log(self, line: str) -> None:
         ...
-    
+
     def set_status(self, text: str) -> None:
         ...
-    
+
     def set_parent_progress(
         self,
         label: str | None,
@@ -35,7 +38,7 @@ class ImportMonitorProtocol(Protocol):
         total: int | None,
     ) -> None:
         ...
-    
+
     def set_child_progress(
         self,
         label: str | None,
@@ -43,34 +46,38 @@ class ImportMonitorProtocol(Protocol):
         total: int | None,
     ) -> None:
         ...
-    
+
     def request_stop(self) -> None:
         ...
-    
+
+    def stop_requested(self) -> bool:
+        ...
+
     def finish(self) -> None:
         ...
-    
+
     def snapshot(self) -> ImportProgressState:
         ...
 
+
 class ImportMonitor:
-    """Thread-safe bridge for progress updates coming from the import worker."""
-    
+    """Thread-safe local progress store mirrored into the import pane."""
+
     def __init__(self) -> None:
         self._lock = Lock()
         self._state = ImportProgressState()
-    
+
     def append_log(self, line: str) -> None:
         text = str(line).rstrip()
         if not text:
             return
         with self._lock:
             self._state.log_lines.append(text)
-    
+
     def set_status(self, text: str) -> None:
         with self._lock:
             self._state.status_text = str(text)
-    
+
     def set_parent_progress(
         self,
         label: str | None,
@@ -81,7 +88,7 @@ class ImportMonitor:
             self._state.parent_label = label
             self._state.parent_value = value
             self._state.parent_total = total
-    
+
     def set_child_progress(
         self,
         label: str | None,
@@ -92,19 +99,19 @@ class ImportMonitor:
             self._state.child_label = label
             self._state.child_value = value
             self._state.child_total = total
-    
+
     def request_stop(self) -> None:
         with self._lock:
             self._state.stop_requested = True
-    
+
     def stop_requested(self) -> bool:
         with self._lock:
             return self._state.stop_requested
-    
+
     def finish(self) -> None:
         with self._lock:
             self._state.finished = True
-    
+
     def snapshot(self) -> ImportProgressState:
         with self._lock:
             return ImportProgressState(
@@ -120,9 +127,160 @@ class ImportMonitor:
                 finished=self._state.finished,
             )
 
+
+@dataclass(slots=True)
+class ImportWorkerMessage:
+    kind: str
+    payload: Any = None
+
+
+class ImportProcessMonitor:
+    """Child-process adapter that forwards import progress events to the GUI."""
+
+    def __init__(self, event_queue: Any) -> None:
+        self._event_queue = event_queue
+
+    def append_log(self, line: str) -> None:
+        text = str(line).rstrip()
+        if text:
+            self._send('log_line', text)
+
+    def set_status(self, text: str) -> None:
+        self._send('status_text', str(text))
+
+    def set_parent_progress(
+        self,
+        label: str | None,
+        value: int | None,
+        total: int | None,
+    ) -> None:
+        self._send('parent_progress', (label, value, total))
+
+    def set_child_progress(
+        self,
+        label: str | None,
+        value: int | None,
+        total: int | None,
+    ) -> None:
+        self._send('child_progress', (label, value, total))
+
+    def request_stop(self) -> None:
+        # Import termination is now handled by killing the subprocess directly.
+        return None
+
+    def stop_requested(self) -> bool:
+        return False
+
+    def finish(self) -> None:
+        self._send('finished')
+
+    def snapshot(self) -> ImportProgressState:
+        return ImportProgressState()
+
+    def _send(self, kind: str, payload: Any = None) -> None:
+        self._event_queue.put(ImportWorkerMessage(kind=kind, payload=payload))
+
+
+class ImportCommandProcess:
+    """Run import in a child process so stop/switch can terminate it immediately."""
+
+    def __init__(self, request: Any) -> None:
+        context = multiprocessing.get_context('spawn')
+        self.command = request.command
+        self._event_queue = context.Queue()
+        self._process = context.Process(
+            target=_execute_import_request_worker,
+            args=(request, self._event_queue),
+            name='td-gui-import',
+        )
+        self._result = None
+        self._result_consumed = False
+        self._termination_message: str | None = None
+
+    @classmethod
+    def launch(cls, request: Any) -> 'ImportCommandProcess':
+        runner = cls(request)
+        runner.start()
+        return runner
+
+    @property
+    def termination_message(self) -> str | None:
+        return self._termination_message
+
+    def start(self) -> None:
+        self._process.start()
+
+    def is_active(self) -> bool:
+        return not self._result_consumed and self._process.is_alive()
+
+    def poll(self) -> tuple[list[ImportWorkerMessage], Any | None]:
+        messages: list[ImportWorkerMessage] = []
+        while True:
+            try:
+                message = self._event_queue.get_nowait()
+            except Empty:
+                break
+            if message.kind == 'result':
+                self._result = message.payload
+            else:
+                messages.append(message)
+
+        if self._result_consumed:
+            return messages, None
+        if self._result is not None:
+            self._result_consumed = True
+            self._process.join(timeout=0.1)
+            return messages, self._result
+        if self._process.is_alive():
+            return messages, None
+
+        self._result_consumed = True
+        self._process.join(timeout=0.1)
+        return messages, self._build_process_exit_result()
+
+    def terminate(self, message: str) -> None:
+        if self._result_consumed:
+            return
+        self._termination_message = message
+        if self._process.is_alive():
+            self._process.terminate()
+            self._process.join(timeout=0.2)
+
+    def close(self) -> None:
+        self._event_queue.close()
+        self._event_queue.join_thread()
+        if hasattr(self._process, 'close'):
+            try:
+                self._process.close()
+            except ValueError:
+                pass
+
+    def _build_process_exit_result(self) -> Any:
+        from .td_exec import GuiCommandResult
+
+        if self._termination_message:
+            return GuiCommandResult(
+                command=self.command,
+                ok=False,
+                error_message=self._termination_message,
+                diagnostics_output=self._termination_message,
+            )
+
+        exit_code = self._process.exitcode
+        return GuiCommandResult(
+            command=self.command,
+            ok=False,
+            error_message='Import stopped before returning a result.',
+            diagnostics_output=(
+                'The import worker exited before returning a GUI result '
+                f'payload (exit code {exit_code}).'
+            ),
+        )
+
+
 def build_import_request(*, draft: Any) -> Any:
     from .td_exec import GuiCommandRequest
-    
+
     return GuiCommandRequest(
         command='import',
         main_values=dict(draft.main_values),
@@ -130,17 +288,18 @@ def build_import_request(*, draft: Any) -> Any:
         context_overrides=dict(draft.context_overrides),
         global_values={},
         ship_profile_values={},
-        import_monitor=ImportMonitor(),
     )
+
 
 def consume_one_shot_import_flags(*, draft: Any) -> bool:
     changed = False
-    
+
     for key in ('clean', 'optimize', 'force'):
         if draft.main_values.pop(key, None):
             changed = True
-    
+
     return changed
+
 
 def _apply_snapshot_to_session(
     *,
@@ -153,9 +312,8 @@ def _apply_snapshot_to_session(
     structured_result: Any,
     snapshot: ImportProgressState,
 ) -> None:
-    # ImportMonitor owns worker-side progress state. Copy a point-in-time
-    # snapshot into SessionState so the rest of the GUI can render it through
-    # the same execution object used for normal command results.
+    # Import progress is mirrored into the shared execution state so the right
+    # pane keeps one rendering path for both ordinary commands and import.
     session.set_execution(
         status=status,
         active_command=active_command,
@@ -173,23 +331,62 @@ def _apply_snapshot_to_session(
         import_child_total=snapshot.child_total,
         import_stop_requested=snapshot.stop_requested,
         # Stop confirmation is purely local UI state, so preserve the current
-        # shell value instead of expecting the worker monitor to track it.
+        # shell value instead of expecting the worker process to track it.
         import_stop_confirming=session.execution.import_stop_confirming,
     )
+
+
+def _apply_worker_message(
+    *,
+    monitor: ImportMonitor,
+    message: ImportWorkerMessage,
+) -> None:
+    if message.kind == 'log_line':
+        monitor.append_log(str(message.payload))
+        return
+    if message.kind == 'status_text':
+        monitor.set_status(str(message.payload))
+        return
+    if message.kind == 'parent_progress':
+        label, value, total = message.payload
+        monitor.set_parent_progress(label, value, total)
+        return
+    if message.kind == 'child_progress':
+        label, value, total = message.payload
+        monitor.set_child_progress(label, value, total)
+        return
+    if message.kind == 'finished':
+        monitor.finish()
+
 
 async def run_import_execution(
     *,
     session: Any,
-    executor: Any,
     request: Any,
     refresh_ui: Callable[[], None],
 ) -> None:
-    import asyncio
-    
     from .session import ExecutionStatus
-    
-    monitor = request.import_monitor
-    session.active_import_monitor = monitor
+
+    monitor = ImportMonitor()
+    monitor.set_status('Starting import...')
+
+    try:
+        runner = ImportCommandProcess.launch(request)
+    except Exception as exc:
+        _apply_snapshot_to_session(
+            session=session,
+            status=ExecutionStatus.FAILED,
+            active_command=request.command,
+            error_message=str(exc),
+            raw_output='',
+            diagnostics_output=repr(exc),
+            structured_result=None,
+            snapshot=monitor.snapshot(),
+        )
+        refresh_ui()
+        return
+
+    session.active_import_runner = runner
     _apply_snapshot_to_session(
         session=session,
         status=ExecutionStatus.RUNNING,
@@ -201,90 +398,113 @@ async def run_import_execution(
         snapshot=monitor.snapshot(),
     )
     refresh_ui()
-    
+
     try:
-        # `executor.execute()` is blocking and may run for minutes. Keep it off
-        # the event loop and poll the shared monitor for fresh snapshots.
-        worker = asyncio.create_task(run.io_bound(executor.execute, request))
-        while not worker.done():
+        result = None
+        while result is None:
+            messages, result = runner.poll()
+            for message in messages:
+                _apply_worker_message(monitor=monitor, message=message)
+
+            snapshot = monitor.snapshot()
+            if result is None:
+                if runner.termination_message is not None:
+                    snapshot.status_text = 'Stopping import...'
+                    snapshot.stop_requested = True
+                _apply_snapshot_to_session(
+                    session=session,
+                    status=ExecutionStatus.RUNNING,
+                    active_command=request.command,
+                    error_message=None,
+                    raw_output='',
+                    diagnostics_output='',
+                    structured_result=None,
+                    snapshot=snapshot,
+                )
+                refresh_ui()
+                await asyncio.sleep(0.1)
+                continue
+
+            if runner.termination_message is not None:
+                snapshot.status_text = 'Import stopped.'
+                snapshot.stop_requested = False
+            status = (
+                ExecutionStatus.SUCCEEDED
+                if result.ok
+                else ExecutionStatus.FAILED
+            )
             _apply_snapshot_to_session(
                 session=session,
-                status=ExecutionStatus.RUNNING,
-                active_command=request.command,
-                error_message=None,
-                raw_output='',
-                diagnostics_output='',
-                structured_result=None,
-                snapshot=monitor.snapshot(),
+                status=status,
+                active_command=result.command,
+                error_message=result.error_message,
+                raw_output=result.raw_output,
+                diagnostics_output=result.diagnostics_output,
+                structured_result=result.structured_result,
+                snapshot=snapshot,
             )
             refresh_ui()
-            await asyncio.sleep(0.2)
-        
-        try:
-            result = await worker
-        except Exception as exc:
-            _apply_snapshot_to_session(
-                session=session,
-                status=ExecutionStatus.FAILED,
-                active_command=request.command,
-                error_message=str(exc),
-                raw_output='',
-                diagnostics_output=repr(exc),
-                structured_result=None,
-                snapshot=monitor.snapshot(),
-            )
-            refresh_ui()
-            return
-        
-        status = ExecutionStatus.SUCCEEDED if result.ok else ExecutionStatus.FAILED
-        _apply_snapshot_to_session(
-            session=session,
-            status=status,
-            active_command=result.command,
-            error_message=result.error_message,
-            raw_output=result.raw_output,
-            diagnostics_output=result.diagnostics_output,
-            structured_result=result.structured_result,
-            snapshot=monitor.snapshot(),
-        )
-        refresh_ui()
     finally:
-        session.active_import_monitor = None
+        if session.active_import_runner is runner:
+            session.active_import_runner = None
+        runner.close()
+
+
+def is_import_running(*, session: Any) -> bool:
+    runner = getattr(session, 'active_import_runner', None)
+    return runner is not None and runner.is_active()
+
 
 def begin_import_stop_confirmation(*, session: Any) -> bool:
-    monitor = getattr(session, 'active_import_monitor', None)
-    if monitor is None:
+    if not is_import_running(session=session):
         return False
-    
+
     session.execution.import_stop_confirming = True
     return True
 
+
 def cancel_import_stop_confirmation(*, session: Any) -> bool:
-    monitor = getattr(session, 'active_import_monitor', None)
-    if monitor is None:
+    if not is_import_running(session=session):
         return False
-    
+
     session.execution.import_stop_confirming = False
     return True
 
-def request_import_stop(*, session: Any) -> bool:
-    monitor = getattr(session, 'active_import_monitor', None)
-    if monitor is None:
+
+def request_import_stop(
+    *,
+    session: Any,
+    reason: str | None = None,
+) -> bool:
+    runner = getattr(session, 'active_import_runner', None)
+    if runner is None or not runner.is_active():
         return False
-    
+
     session.execution.import_stop_confirming = False
-    # This is a cooperative stop: the worker checks the flag between import
-    # steps, so the UI only promises that the request has been recorded.
-    monitor.request_stop()
-    snapshot = monitor.snapshot()
-    _apply_snapshot_to_session(
-        session=session,
-        status=session.execution.status,
-        active_command=session.execution.active_command,
-        error_message=session.execution.error_message,
-        raw_output=session.execution.raw_output,
-        diagnostics_output=session.execution.diagnostics_output,
-        structured_result=session.execution.structured_result,
-        snapshot=snapshot,
+    session.execution.import_status_text = 'Stopping import...'
+    session.execution.import_stop_requested = True
+    runner.terminate(
+        reason
+        or (
+            'Import was stopped by user. Your local Trade Dangerous database '
+            'may be inconsistent until import is run again.'
+        )
     )
     return True
+
+
+def _execute_import_request_worker(request: Any, event_queue: Any) -> None:
+    from .td_exec import GuiCommandResult, TdExecutor
+
+    request.import_monitor = ImportProcessMonitor(event_queue)
+    try:
+        result = TdExecutor().execute(request)
+    except Exception as exc:
+        result = GuiCommandResult(
+            command=request.command,
+            ok=False,
+            error_message=str(exc),
+            diagnostics_output=repr(exc),
+        )
+
+    event_queue.put(ImportWorkerMessage(kind='result', payload=result))

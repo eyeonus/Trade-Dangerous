@@ -5,6 +5,8 @@ from __future__ import annotations
 from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass, field
 import io
+import multiprocessing
+from multiprocessing.connection import Connection
 from typing import Any
 
 from rich.console import Console
@@ -74,6 +76,141 @@ class GuiCommandResult:
     diagnostics_output: str = ''
     structured_result: Any = None
     argv_used: list[str] = field(default_factory=list)
+
+
+class TdCommandProcess:
+    """Run one ordinary TD command in a child process so it can be stopped."""
+
+    def __init__(self, request: GuiCommandRequest) -> None:
+        self.request = request
+        self.command = request.command
+        context = multiprocessing.get_context('spawn')
+        self._parent_conn, child_conn = context.Pipe(duplex=False)
+        self._child_conn = child_conn
+        self._process = context.Process(
+            target=_execute_request_worker,
+            args=(request, child_conn),
+            name=f'td-gui-{request.command}',
+        )
+        self._result_consumed = False
+        self._termination_message: str | None = None
+
+    @classmethod
+    def launch(cls, request: GuiCommandRequest) -> 'TdCommandProcess':
+        runner = cls(request)
+        runner.start()
+        return runner
+
+    def start(self) -> None:
+        self._process.start()
+        self._child_conn.close()
+
+    def is_active(self) -> bool:
+        if self._result_consumed:
+            return False
+        return self._process.is_alive() or self._parent_conn.poll()
+
+    def poll_result(self) -> GuiCommandResult | None:
+        if self._result_consumed:
+            return None
+        if self._parent_conn.poll():
+            try:
+                result = self._parent_conn.recv()
+            except EOFError:
+                result = self._build_process_exit_result()
+            self._result_consumed = True
+            self._process.join(timeout=0.1)
+            return result
+        if self._process.is_alive():
+            return None
+        self._result_consumed = True
+        self._process.join(timeout=0.1)
+        return self._build_process_exit_result()
+
+    def terminate(self, message: str) -> None:
+        if self._result_consumed:
+            return
+        self._termination_message = message
+        if self._process.is_alive():
+            self._process.terminate()
+            self._process.join(timeout=0.2)
+
+    def close(self) -> None:
+        self._parent_conn.close()
+        if hasattr(self._process, 'close'):
+            try:
+                self._process.close()
+            except ValueError:
+                pass
+
+    def _build_process_exit_result(self) -> GuiCommandResult:
+        if self._termination_message:
+            return GuiCommandResult(
+                command=self.command,
+                ok=False,
+                error_message=self._termination_message,
+                diagnostics_output=self._termination_message,
+            )
+
+        exit_code = self._process.exitcode
+        return GuiCommandResult(
+            command=self.command,
+            ok=False,
+            error_message=(
+                f'{self.command.title()} stopped before returning a result.'
+            ),
+            diagnostics_output=(
+                'The background command worker exited before returning a GUI '
+                f'result payload (exit code {exit_code}).'
+            ),
+        )
+
+
+def _execute_request_worker(
+    request: GuiCommandRequest,
+    result_conn: Connection,
+) -> None:
+    try:
+        result = TdExecutor().execute(request)
+        try:
+            result_conn.send(result)
+        except Exception as exc:
+            transport_note = (
+                'Structured GUI result could not be transported from the '
+                'background worker; raw text output has been preserved.\n'
+                f'{type(exc).__name__}: {exc}'
+            )
+            diagnostics = '\n\n'.join(
+                part
+                for part in (result.diagnostics_output, transport_note)
+                if part
+            )
+            result_conn.send(
+                GuiCommandResult(
+                    command=result.command,
+                    ok=result.ok,
+                    error_message=result.error_message,
+                    raw_output=result.raw_output,
+                    diagnostics_output=diagnostics,
+                    structured_result=None,
+                    argv_used=list(result.argv_used),
+                )
+            )
+    except Exception as exc:
+        try:
+            result_conn.send(
+                GuiCommandResult(
+                    command=request.command,
+                    ok=False,
+                    error_message=str(exc),
+                    diagnostics_output=repr(exc),
+                )
+            )
+        except Exception:
+            pass
+    finally:
+        result_conn.close()
+
 
 class TdExecutor:
     """Thin execution boundary between NiceGUI and TD core.

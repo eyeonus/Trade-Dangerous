@@ -117,8 +117,8 @@ class SessionState:
     )
     draft: CommandDraft = field(default_factory=CommandDraft)
     execution: ExecutionState = field(default_factory=ExecutionState)
-    # Live ImportMonitor while an import is running. This is transient UI state.
-    active_import_monitor: Any = None
+    # Live import worker handle while an import is running. This is transient UI state.
+    active_import_runner: Any = None
     
     @classmethod
     def from_store(cls, store: GuiStore) -> 'SessionState':
