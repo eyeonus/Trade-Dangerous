@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v12.18.6 (2026-03-29)
+
+### Bug Fixes
+
+- Warn and stop running GUI work when closing the native window
+  ([`3c80f60`](https://github.com/eyeonus/Trade-Dangerous/commit/3c80f605a66c3dfdb557fae3b924297d77fe30f6))
+
+Again when closing the GUI app, any command not completed would run to conclusion in background and
+  not return user to their command prompt without further intervention (e.g. control-c).
+
+This fix expands on the previous change to issue a warning when the user attempts to close the
+  window whilst a command is in progress and if necessary terminates the process properly so that
+  the user gts their prompt back in a timely manner and we've cleaned up after ourselves, not
+  leaving processes running in our wake.
+
+
 ## v12.18.5 (2026-03-29)
 
 ### Bug Fixes
