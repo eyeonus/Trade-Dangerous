@@ -111,10 +111,18 @@ def _render_run_results(routes: list[Any]) -> None:
                 src_station = route.route[hop_index - 1]
                 dst_station = route.route[hop_index]
                 
-                with ui.expansion(
-                    f'Hop {hop_index}: '
-                    f'{src_station.name()} → {dst_station.name()}'
-                ).classes('w-full'):
+                expansion = ui.expansion().classes('w-full')
+                with expansion.add_slot('header'):
+                    with ui.row().classes('w-full items-center no-wrap'):
+                        ui.label(
+                            f'Hop {hop_index}: '
+                            f'{src_station.name()} → {dst_station.name()}'
+                        )
+                        ui.space()
+                        ui.label('Expand for details').classes(
+                            'text-sm text-gray-500'
+                        )
+                with expansion:
                     with ui.row().classes('w-full gap-4 text-sm'):
                         ui.label(f'Units: {hop.units:n}')
                         ui.label(f'Hop gain: {hop.gainCr:n} cr')
