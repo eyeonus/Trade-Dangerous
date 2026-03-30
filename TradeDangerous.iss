@@ -25,8 +25,7 @@ Name: "{group}\Trade Dangerous"; Filename: "{app}\TradeDangerous.exe"; WorkingDi
 Name: "{commondesktop}\Trade Dangerous"; Filename: "{app}\TradeDangerous.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Registry]
-Root: HKLM; Subkey: "Software\TradeDangerous"; ValueType: string; ValueName: "InstallChannel"; ValueData: "packaged"; Flags: uninsdeletevalue
-Root: HKLM; Subkey: "Software\TradeDangerous"; Flags: uninsdeletekeyifempty
+Root: HKLM; Subkey: "Software\TradeDangerous"; ValueType: string; ValueName: "InstallChannel"; ValueData: "packaged"; Flags: uninsdeletekey
 
 [Code]
 function GetUserDataDir(Param: String): String;
