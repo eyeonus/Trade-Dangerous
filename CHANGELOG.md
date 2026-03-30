@@ -1,6 +1,22 @@
 # CHANGELOG
 
 
+## v12.18.7 (2026-03-30)
+
+### Bug Fixes
+
+- Restore structured GUI result rendering after multiprocessing transport regressions
+  ([`685a9a7`](https://github.com/eyeonus/Trade-Dangerous/commit/685a9a762cb4b09d2fb733e951a0e987705bf8d5))
+
+Move GUI command execution onto subprocess-safe result snapshots so structured outputs survive the
+  worker boundary, restore rich rendering for run/trade/market-style commands, strip ANSI from
+  fallback text, and document the native close/import process seams that were added for switch/exit
+  termination.
+
+Also includes: - docs: Make sure the multiprocessing path is well commented. - chore: Make sure the
+  indentation is how eyeonus likes it.
+
+
 ## v12.18.6 (2026-03-29)
 
 ### Bug Fixes
