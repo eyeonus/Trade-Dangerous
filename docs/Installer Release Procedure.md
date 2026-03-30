@@ -89,7 +89,11 @@ This may seem blindingly obvious, but to go through this procedure for every tin
 
 1. Install Inno Setup if it is not already present.
 
-   The simplest documented method is download from https://jrsoftware.org/isinfo.php and go with default install.
+   The simplest method is to open a cmd or powershell as admin then:
+
+   ```powershell
+   winget install --id JRSoftware.InnoSetup -e -s winget -i
+   ```
 
    This procedure assumes Inno Setup is then installed in its normal location and that the command-line compiler `ISCC.exe` is available there.
 
@@ -202,3 +206,44 @@ This may seem blindingly obvious, but to go through this procedure for every tin
 - The checked-in file `TradeDangerous.iss` is the authoritative installer recipe.
 - Do not rebuild the installer by hand from ad-hoc GUI clicks; use the checked-in script and the command-line compiler.
 - The installer is unsigned unless code signing is added later, so Windows UAC will show **Unknown publisher**. That is expected for an unsigned build.
+
+
+### Upload the Windows installer to the GitHub release
+
+1. Ensure the installer has already been built.
+
+   Expected output example:
+
+   ```text
+   Output\TradeDangerous-Setup-12.18.7.exe
+   ```
+
+2. If GitHub CLI (`gh`) is not already installed, install it.
+
+   Example:
+
+   ```powershell
+   winget install --id GitHub.cli -e
+   ```
+
+3. Authenticate GitHub CLI if needed.
+
+   ```powershell
+   gh auth login
+   ```
+
+4. Upload the installer to the existing GitHub release for the matching tag.
+
+   Example:
+
+   ```powershell
+   gh release upload v12.18.7 ".\Output\TradeDangerous-Setup-12.18.7.exe#Windows installer"
+   ```
+
+5. Confirm that the release now shows the installer as an additional asset.
+
+#### Notes
+
+- `gh` is a separate tool from `git`; `git release` is not the command for GitHub release asset upload. 
+- The `#Windows installer` part is an optional display label for the asset. If omitted, GitHub shows the filename instead. In PowerShell, quote the whole argument because `#` otherwise starts a comment. 
+- Existing release assets such as the wheel, sdist, and GitHub-generated source archives can remain in place; the installer is simply uploaded as an additional asset on the same release. GitHub releases automatically include zip and tar.gz source archives for the tagged repository snapshot.
