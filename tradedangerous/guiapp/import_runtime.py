@@ -181,10 +181,15 @@ class ImportProcessMonitor:
         self._event_queue.put(ImportWorkerMessage(kind=kind, payload=payload))
 
 
+# Import keeps its own process wrapper because it has an event queue as well as
+# a final result payload. Ordinary commands only need one result pipe; import
+# needs streaming progress events plus the same hard-stop semantics.
 class ImportCommandProcess:
     """Run import in a child process so stop/switch can terminate it immediately."""
 
     def __init__(self, request: Any) -> None:
+        # Match the ordinary command runner: explicit spawn keeps behaviour
+        # consistent on Windows, in frozen builds, and under NiceGUI native mode.
         context = multiprocessing.get_context('spawn')
         self.command = request.command
         self._event_queue = context.Queue()
@@ -217,6 +222,9 @@ class ImportCommandProcess:
     def is_active(self) -> bool:
         return not self._result_consumed and self._process.is_alive()
 
+    # Drain queued progress messages first, then surface the final GUI result
+    # once the worker sends it or exits. The parent never blocks on the queue;
+    # it stays in the asyncio poll loop so the import pane can keep refreshing.
     def poll(self) -> tuple[list[ImportWorkerMessage], Any | None]:
         messages: list[ImportWorkerMessage] = []
         while True:
@@ -363,6 +371,9 @@ def _apply_worker_message(
         monitor.finish()
 
 
+# Import execution mirrors the ordinary-command pattern at a higher level:
+# launch child process, poll it from asyncio, fold progress events into the
+# session snapshot, and let stop/close terminate the worker immediately.
 async def run_import_execution(
     *,
     session: Any,
@@ -413,6 +424,9 @@ async def run_import_execution(
     try:
         result = None
         while result is None:
+            # Import progress arrives as small event messages so the GUI can
+            # reassure the user that work is still happening without waiting
+            # for the final result payload.
             messages, result = runner.poll()
             for message in messages:
                 _apply_worker_message(monitor=monitor, message=message)
@@ -506,6 +520,9 @@ def request_import_stop(
     return True
 
 
+# Child-side import entry point. It attaches the process-backed monitor so deep
+# import code can emit progress/log updates without knowing anything about the
+# GUI, then returns the final GuiCommandResult through the same queue.
 def _execute_import_request_worker(request: Any, event_queue: Any) -> None:
     from .td_exec import GuiCommandResult, TdExecutor
 

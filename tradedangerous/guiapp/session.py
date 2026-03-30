@@ -93,6 +93,8 @@ class ExecutionState:
     error_message: str | None = None
     raw_output: str = ''
     diagnostics_output: str = ''
+    # Structured output for the right pane. This may now be either the original
+    # in-process adapter payload or a plain subprocess-safe snapshot.
     structured_result: Any = None
     import_log_lines: list[str] = field(default_factory=list)
     import_status_text: str = ''

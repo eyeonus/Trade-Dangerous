@@ -327,6 +327,9 @@ class AppShell:
 
     def _restore_command_selection(self) -> None:
         self._refreshing_ui = True
+        # Ordinary commands no longer run inside NiceGUI threads. Launch a
+        # dedicated child process so tool switch and native window close can
+        # stop work immediately without killing the whole GUI process.
         try:
             self.command_select.value = self.session.selected_command
         finally:
@@ -457,7 +460,10 @@ class AppShell:
         if value in {'default', 'elite'}:
             return str(value)
         return 'default'
-    
+
+    def _selected_launcher_port(self) -> int | None:
+        return self.store.launcher_port
+
     def _on_theme_changed(self, theme_name: str) -> None:
         theme = str(theme_name)
         if theme not in {'default', 'elite'}:
@@ -467,7 +473,11 @@ class AppShell:
         self._apply_theme()
         self._refresh_ui()
         self._register_native_window_size_handler()
-    
+
+    def _on_launcher_port_changed(self, port: int | None) -> None:
+        self.store.launcher_port = port
+        save_gui_store(self.store)
+
     def _on_begin_import_stop_confirmation(self) -> None:
         if begin_import_stop_confirmation(session=self.session):
             self._refresh_ui()
@@ -576,6 +586,9 @@ class AppShell:
         self._refresh_ui()
 
         try:
+            # Launch the ordinary command in its own child process. The GUI
+            # keeps only the request/result contract locally; all TD work now
+            # happens in the worker so switch/close can stop it cleanly.
             runner = TdCommandProcess.launch(request)
         except Exception as exc:
             self.session.set_execution(
@@ -599,6 +612,9 @@ class AppShell:
             self._monitor_command_process(request=request, runner=runner)
         )
 
+    # The shell polls one child process from asyncio rather than awaiting a
+    # thread-pool future. That keeps the UI responsive while still letting us
+    # deliver one final result snapshot or stop message into session state.
     async def _monitor_command_process(
         self,
         *,
@@ -790,7 +806,9 @@ class AppShell:
             elif self.session.selected_command == 'settings':
                 workspace = SettingsWorkspace(
                     selected_theme=self._selected_theme(),
+                    selected_launcher_port=self._selected_launcher_port(),
                     on_theme_changed=self._on_theme_changed,
+                    on_launcher_port_changed=self._on_launcher_port_changed,
                 )
                 workspace.build()
             else:
@@ -879,6 +897,9 @@ class AppShell:
                 self.session.execution.diagnostics_output
             ).classes('whitespace-pre-wrap')
     
+    # Native close can delete the NiceGUI client while background polling is
+    # still unwinding. Treat that specific case as shutdown noise, not a fresh
+    # UI error, so the worker cleanup path can finish quietly.
     def _refresh_ui_if_alive(self) -> None:
         try:
             self._refresh_ui()

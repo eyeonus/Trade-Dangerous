@@ -14,6 +14,37 @@ _RUN_COLUMNS = [
     {'name': 'gain', 'label': 'Gain / unit', 'field': 'gain', 'align': 'right'},
     {'name': 'total', 'label': 'Total gain', 'field': 'total', 'align': 'right'},
 ]
+def _field(value: Any, key: str, default: Any = None) -> Any:
+    if isinstance(value, dict):
+        return value.get(key, default)
+    return getattr(value, key, default)
+
+
+def _station_name(value: Any) -> str:
+    dbname = _field(value, 'dbname')
+    if callable(dbname):
+        try:
+            return str(dbname())
+        except TypeError:
+            pass
+    if dbname not in (None, ''):
+        return str(dbname)
+    named = _named_result_value(value)
+    if named is not None:
+        return named
+    return _format_result_value(value)
+
+
+def _station_ls_text(value: Any) -> str:
+    ls_text = _field(value, 'lsText')
+    if ls_text not in (None, ''):
+        return str(ls_text)
+    dist_from_star = _field(value, 'distFromStar')
+    if callable(dist_from_star):
+        return str(dist_from_star())
+    if dist_from_star not in (None, ''):
+        return str(dist_from_star)
+    return ''
 
 # Run is the only command that currently returns a nested route/hop payload.
 # The other command renderers mostly work with flattened summary/rows shapes.
@@ -69,15 +100,17 @@ def render_command_results(
 def _is_run_route_payload(structured_result: Any) -> bool:
     if not isinstance(structured_result, (list, tuple)):
         return False
-    
+
     if not structured_result:
         return False
-    
+
     return all(
-        hasattr(route, 'jumps')
-        and hasattr(route, 'hops')
-        and hasattr(route, 'route')
-        and hasattr(route, 'gainCr')
+        _field(route, 'hops') is not None
+        and (
+            _field(route, 'first_station') is not None
+            or _field(route, 'route') is not None
+            or _field(route, 'firstStation') is not None
+        )
         for route in structured_result
     )
 
@@ -85,80 +118,106 @@ def _render_run_results(routes: list[Any]) -> None:
     ui.label(f'{len(routes)} route(s) returned').classes(
         'text-sm text-gray-600'
     )
-    
+
     for route_index, route in enumerate(routes, start=1):
-        # Each stored jump path includes its endpoints, so subtract the repeated
-        # origin system from every segment when presenting a jump count.
-        total_jumps = sum(max(0, len(jumps) - 1) for jumps in route.jumps)
-        
+        hop_payloads = list(_field(route, 'hops', []) or [])
+        total_jumps = sum(
+            max(0, len(_field(hop, 'jump_path', []) or []) - 1)
+            for hop in hop_payloads
+        )
+
+        first_station = _field(route, 'first_station')
+        if first_station is None:
+            first_station = _named_result_value(_field(route, 'firstStation'))
+        last_station = _field(route, 'last_station')
+        if last_station is None:
+            last_station = _named_result_value(_field(route, 'lastStation'))
+
+        gain_cr = _field(route, 'gainCr', 0) or 0
+        start_cr = _field(route, 'startCr', 0) or 0
+        gpt = _field(route, 'gpt', 0) or 0
+        score = _field(route, 'score', 0) or 0
+
         with ui.card().classes('w-full gap-3'):
             ui.label(
-                f'Route {route_index}: '
-                f'{route.firstStation.name()} → {route.lastStation.name()}'
+                f'Route {route_index}: {first_station} -> {last_station}'
             ).classes('text-lg')
-            
+
             with ui.row().classes('w-full gap-4 text-sm'):
-                ui.label(f'Gain: {route.gainCr:n} cr')
-                ui.label(f'Gain / ton: {int(route.gpt):n} cr')
-                ui.label(f'Score: {route.score:.2f}')
-                ui.label(f'Hops: {len(route.hops)}')
+                ui.label(f'Gain: {int(gain_cr):n} cr')
+                ui.label(f'Gain / ton: {int(gpt):n} cr')
+                ui.label(f'Score: {float(score):.2f}')
+                ui.label(f'Hops: {len(hop_payloads)}')
                 ui.label(f'Jumps: {total_jumps}')
                 ui.label(
-                    f'Est. final credits: {route.startCr + route.gainCr:n} cr'
+                    f'Est. final credits: {int(start_cr) + int(gain_cr):n} cr'
                 )
-            
-            for hop_index, hop in enumerate(route.hops, start=1):
-                src_station = route.route[hop_index - 1]
-                dst_station = route.route[hop_index]
-                
+
+            route_points = list(_field(route, 'route', []) or [])
+            for hop_index, hop in enumerate(hop_payloads, start=1):
+                src_station = _field(hop, 'src_station')
+                dst_station = _field(hop, 'dst_station')
+                if src_station is None and hop_index - 1 < len(route_points):
+                    src_station = _named_result_value(route_points[hop_index - 1])
+                if dst_station is None and hop_index < len(route_points):
+                    dst_station = _named_result_value(route_points[hop_index])
+
                 expansion = ui.expansion().classes('w-full')
                 with expansion.add_slot('header'):
                     with ui.row().classes('w-full items-center no-wrap'):
                         ui.label(
-                            f'Hop {hop_index}: '
-                            f'{src_station.name()} → {dst_station.name()}'
+                            f'Hop {hop_index}: {src_station} -> {dst_station}'
                         )
                         ui.space()
                         ui.label('Expand for details').classes(
                             'text-sm text-gray-500'
                         )
                 with expansion:
+                    units = _field(hop, 'units', 0) or 0
+                    hop_gain = _field(hop, 'gainCr', 0) or 0
+                    hop_gpt = _field(hop, 'gpt', 0) or 0
                     with ui.row().classes('w-full gap-4 text-sm'):
-                        ui.label(f'Units: {hop.units:n}')
-                        ui.label(f'Hop gain: {hop.gainCr:n} cr')
-                        ui.label(f'Gain / ton: {int(hop.gpt):n} cr')
-                    
-                    rows = [
-                        {
-                            'row_id': f'{route_index}-{hop_index}-{item_index}',
-                            'commodity': trade.name(0),
-                            'qty': qty,
-                            'buy': f'{trade.costCr:n} cr',
-                            'sell': f'{trade.costCr + trade.gainCr:n} cr',
-                            'gain': f'{trade.gainCr:n} cr',
-                            'total': f'{trade.gainCr * qty:n} cr',
-                        }
-                        for item_index, (trade, qty) in enumerate(
-                            hop.items,
-                            start=1,
+                        ui.label(f'Units: {int(units):n}')
+                        ui.label(f'Hop gain: {int(hop_gain):n} cr')
+                        ui.label(f'Gain / ton: {int(hop_gpt):n} cr')
+
+                    rows = []
+                    for item_index, item in enumerate(
+                        list(_field(hop, 'items', []) or []),
+                        start=1,
+                    ):
+                        qty = _field(item, 'qty', 0) or 0
+                        buy = _field(item, 'buy')
+                        sell = _field(item, 'sell')
+                        gain = _field(item, 'gain')
+                        total = _field(item, 'total')
+                        rows.append(
+                            {
+                                'row_id': f'{route_index}-{hop_index}-{item_index}',
+                                'commodity': _field(item, 'commodity', ''),
+                                'qty': qty,
+                                'buy': '' if buy is None else f'{int(buy):n} cr',
+                                'sell': '' if sell is None else f'{int(sell):n} cr',
+                                'gain': '' if gain is None else f'{int(gain):n} cr',
+                                'total': '' if total is None else f'{int(total):n} cr',
+                            }
                         )
-                    ]
-                    
+
                     ui.table(
                         columns=_RUN_COLUMNS,
                         rows=rows,
                         row_key='row_id',
                     ).classes('w-full')
-                    
-                    if hop_index - 1 < len(route.jumps):
-                        path = ' → '.join(
-                            system.name()
-                            for system in route.jumps[hop_index - 1]
+
+                    path = ' -> '.join(
+                        str(system)
+                        for system in list(_field(hop, 'jump_path', []) or [])
+                        if system
+                    )
+                    if path:
+                        ui.label(f'Jump path: {path}').classes(
+                            'text-sm text-gray-600'
                         )
-                        if path:
-                            ui.label(f'Jump path: {path}').classes(
-                                'text-sm text-gray-600'
-                            )
 
 def _render_generic_structured_results(
     command: str,
@@ -205,13 +264,15 @@ def _render_trade_results(structured_result: Any) -> None:
     summary = payload.get('summary')
     rows = payload.get('rows', [])
     
-    from_station = getattr(summary, 'fromStation', None)
-    to_station = getattr(summary, 'toStation', None)
+    from_station = _field(summary, 'fromStation')
+    to_station = _field(summary, 'toStation')
     
     def station_name(value: Any) -> str | None:
-        dbname = getattr(value, 'dbname', None)
+        dbname = _field(value, 'dbname')
         if callable(dbname):
             return str(dbname())
+        if dbname not in (None, ''):
+            return str(dbname)
         return _named_result_value(value)
     
     from_name = station_name(from_station)
@@ -266,9 +327,9 @@ def _render_local_results(structured_result: Any) -> None:
     summary = payload.get('summary')
     rows = payload.get('rows', [])
     
-    near_name = _named_result_value(getattr(summary, 'near', None))
-    ly = getattr(summary, 'ly', None)
-    station_total = int(getattr(summary, 'stations', 0) or 0)
+    near_name = _named_result_value(_field(summary, 'near'))
+    ly = _field(summary, 'ly')
+    station_total = int(_field(summary, 'stations', 0) or 0)
     
     if near_name and ly is not None:
         ui.label(
@@ -334,26 +395,25 @@ def _render_local_results(structured_result: Any) -> None:
             for station_index, station_row in enumerate(stations, start=1):
                 station_values = _row_to_dict(station_row)
                 station = station_values.get('station')
-                dist_from_star = getattr(station, 'distFromStar', None)
-                
+
                 table_rows.append(
                     {
                         'row_id': f'local-{system_index}-{station_index}',
-                        'station': str(getattr(station, 'dbname', '') or ''),
-                        'ls': str(dist_from_star() if callable(dist_from_star) else ''),
+                        'station': _station_name(station),
+                        'ls': _station_ls_text(station),
                         'age': _format_result_value(station_values.get('age')),
-                        'market': yes_no_unknown(getattr(station, 'market', None)),
-                        'black_market': yes_no_unknown(getattr(station, 'blackMarket', None)),
-                        'shipyard': yes_no_unknown(getattr(station, 'shipyard', None)),
-                        'outfitting': yes_no_unknown(getattr(station, 'outfitting', None)),
-                        'rearm': yes_no_unknown(getattr(station, 'rearm', None)),
-                        'refuel': yes_no_unknown(getattr(station, 'refuel', None)),
-                        'repair': yes_no_unknown(getattr(station, 'repair', None)),
-                        'pad': pad_text(getattr(station, 'maxPadSize', None)),
-                        'planetary': yes_no_unknown(getattr(station, 'planetary', None)),
-                        'fleet': yes_no_unknown(getattr(station, 'fleet', None)),
-                        'odyssey': yes_no_unknown(getattr(station, 'odyssey', None)),
-                        'items': _format_result_value(getattr(station, 'itemCount', None)),
+                        'market': yes_no_unknown(_field(station, 'market')),
+                        'black_market': yes_no_unknown(_field(station, 'blackMarket')),
+                        'shipyard': yes_no_unknown(_field(station, 'shipyard')),
+                        'outfitting': yes_no_unknown(_field(station, 'outfitting')),
+                        'rearm': yes_no_unknown(_field(station, 'rearm')),
+                        'refuel': yes_no_unknown(_field(station, 'refuel')),
+                        'repair': yes_no_unknown(_field(station, 'repair')),
+                        'pad': pad_text(_field(station, 'maxPadSize')),
+                        'planetary': yes_no_unknown(_field(station, 'planetary')),
+                        'fleet': yes_no_unknown(_field(station, 'fleet')),
+                        'odyssey': yes_no_unknown(_field(station, 'odyssey')),
+                        'items': _format_result_value(_field(station, 'itemCount')),
                     }
                 )
             
@@ -368,9 +428,9 @@ def _render_nav_results(structured_result: Any) -> None:
     summary = payload.get('summary')
     rows = payload.get('rows', [])
     
-    from_name = _named_result_value(getattr(summary, 'fromSys', None))
-    to_name = _named_result_value(getattr(summary, 'toSys', None))
-    max_ly = getattr(summary, 'maxLy', None)
+    from_name = _named_result_value(_field(summary, 'fromSys'))
+    to_name = _named_result_value(_field(summary, 'toSys'))
+    max_ly = _field(summary, 'maxLy')
     
     if from_name and to_name and max_ly is not None:
         ui.label(
@@ -448,26 +508,25 @@ def _render_nav_results(structured_result: Any) -> None:
             for station_index, station_row in enumerate(stations, start=1):
                 station_values = _row_to_dict(station_row)
                 station = station_values.get('station')
-                dist_from_star = getattr(station, 'distFromStar', None)
-                
+
                 table_rows.append(
                     {
                         'row_id': f'nav-{system_index}-{station_index}',
-                        'station': str(getattr(station, 'dbname', '') or ''),
-                        'ls': str(dist_from_star() if callable(dist_from_star) else ''),
+                        'station': _station_name(station),
+                        'ls': _station_ls_text(station),
                         'age': _format_result_value(station_values.get('age')),
-                        'market': yes_no_unknown(getattr(station, 'market', None)),
-                        'black_market': yes_no_unknown(getattr(station, 'blackMarket', None)),
-                        'shipyard': yes_no_unknown(getattr(station, 'shipyard', None)),
-                        'outfitting': yes_no_unknown(getattr(station, 'outfitting', None)),
-                        'rearm': yes_no_unknown(getattr(station, 'rearm', None)),
-                        'refuel': yes_no_unknown(getattr(station, 'refuel', None)),
-                        'repair': yes_no_unknown(getattr(station, 'repair', None)),
-                        'pad': pad_text(getattr(station, 'maxPadSize', None)),
-                        'planetary': yes_no_unknown(getattr(station, 'planetary', None)),
-                        'fleet': yes_no_unknown(getattr(station, 'fleet', None)),
-                        'odyssey': yes_no_unknown(getattr(station, 'odyssey', None)),
-                        'items': _format_result_value(getattr(station, 'itemCount', None)),
+                        'market': yes_no_unknown(_field(station, 'market')),
+                        'black_market': yes_no_unknown(_field(station, 'blackMarket')),
+                        'shipyard': yes_no_unknown(_field(station, 'shipyard')),
+                        'outfitting': yes_no_unknown(_field(station, 'outfitting')),
+                        'rearm': yes_no_unknown(_field(station, 'rearm')),
+                        'refuel': yes_no_unknown(_field(station, 'refuel')),
+                        'repair': yes_no_unknown(_field(station, 'repair')),
+                        'pad': pad_text(_field(station, 'maxPadSize')),
+                        'planetary': yes_no_unknown(_field(station, 'planetary')),
+                        'fleet': yes_no_unknown(_field(station, 'fleet')),
+                        'odyssey': yes_no_unknown(_field(station, 'odyssey')),
+                        'items': _format_result_value(_field(station, 'itemCount')),
                     }
                 )
             
@@ -505,7 +564,7 @@ def _render_olddata_results(structured_result: Any) -> None:
         )
     
     def station_text(value: Any) -> str:
-        return _named_result_value(value) or _format_result_value(value)
+        return _station_name(value)
     
     columns = [
         {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
@@ -529,17 +588,16 @@ def _render_olddata_results(structured_result: Any) -> None:
     for index, row in enumerate(rows, start=1):
         values = _row_to_dict(row)
         station = values.get('station')
-        dist_from_star = getattr(station, 'distFromStar', None)
         
         table_row = {
             'row_id': f'olddata-{index}',
             'station': station_text(station),
             'age': _format_result_value(values.get('age')),
-            'ls': str(dist_from_star() if callable(dist_from_star) else ''),
-            'pad': pad_text(getattr(station, 'maxPadSize', None)),
-            'planetary': yes_no_unknown(getattr(station, 'planetary', None)),
-            'fleet': yes_no_unknown(getattr(station, 'fleet', None)),
-            'odyssey': yes_no_unknown(getattr(station, 'odyssey', None)),
+            'ls': _station_ls_text(station),
+            'pad': pad_text(_field(station, 'maxPadSize')),
+            'planetary': yes_no_unknown(_field(station, 'planetary')),
+            'fleet': yes_no_unknown(_field(station, 'fleet')),
+            'odyssey': yes_no_unknown(_field(station, 'odyssey')),
         }
         if near:
             dist = values.get('dist')
@@ -556,8 +614,8 @@ def _render_rares_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
-    near_name = _named_result_value(getattr(summary, 'near', None))
-    ly = getattr(summary, 'ly', None)
+    near_name = _named_result_value(_field(summary, 'near'))
+    ly = _field(summary, 'ly')
     
     if near_name and ly is not None:
         ui.label(
@@ -590,19 +648,24 @@ def _render_rares_results(structured_result: Any) -> None:
         )
     
     def station_text(value: Any) -> str:
-        return _named_result_value(value) or _format_result_value(value)
+        return _station_name(value)
     
     def rare_name(value: Any) -> str:
-        return str(getattr(value, 'name', None) or '?')
+        name = _field(value, 'name')
+        if callable(name):
+            return str(name())
+        if name in (None, ''):
+            return '?'
+        return str(name)
     
     def cost_text(value: Any) -> str:
-        cost = getattr(value, 'cost', None)
+        cost = _field(value, 'cost')
         if cost is None:
             return '0'
         return f'{int(cost):n}'
     
     def alloc_text(value: Any) -> str:
-        allocation = getattr(value, 'max_allocation', None)
+        allocation = _field(value, 'max_allocation')
         if allocation in (None, ''):
             return '?'
         return str(allocation)
@@ -620,9 +683,9 @@ def _render_rares_results(structured_result: Any) -> None:
                 'cost': cost_text(rare),
                 'alloc': alloc_text(rare),
                 'dist': _format_result_value(values.get('dist')),
-                'ls': _format_result_value(getattr(station, 'distFromStar', lambda: '')()),
-                'black_market': yes_no_unknown(getattr(station, 'blackMarket', None)),
-                'pad': pad_text(getattr(station, 'maxPadSize', None)),
+                'ls': _station_ls_text(station),
+                'black_market': yes_no_unknown(_field(station, 'blackMarket')),
+                'pad': pad_text(_field(station, 'maxPadSize')),
             }
         )
     
@@ -645,12 +708,12 @@ def _render_market_results(structured_result: Any) -> None:
     payload = _structured_payload(structured_result)
     summary = payload.get('summary')
     rows = payload.get('rows', [])
-    origin = getattr(summary, 'origin', None)
+    origin = _field(summary, 'origin')
     origin_name = _named_result_value(origin)
     
-    if getattr(summary, 'buying', False):
+    if _field(summary, 'buying', False):
         mode_text = 'buying'
-    elif getattr(summary, 'selling', False):
+    elif _field(summary, 'selling', False):
         mode_text = 'selling'
     else:
         mode_text = 'buying and selling'
@@ -673,8 +736,8 @@ def _render_market_results(structured_result: Any) -> None:
         ui.label('No market rows returned.').classes('text-sm text-gray-600')
         return
     
-    buying_only = bool(getattr(summary, 'buying', False))
-    selling_only = bool(getattr(summary, 'selling', False))
+    buying_only = bool(_field(summary, 'buying', False))
+    selling_only = bool(_field(summary, 'selling', False))
     
     def format_price(value: Any) -> str:
         if value in (None, 0):
@@ -754,6 +817,9 @@ def _looks_like_object_repr(text: str) -> bool:
         and text.endswith('>')
     )
 
+# Subprocess workers now return plain snapshot payloads instead of live TD
+# objects. Keep the renderer tolerant of both so transport changes stay local
+# to the execution boundary.
 def _structured_payload(structured_result: Any) -> dict[str, Any]:
     """Normalize TD result adapters onto the summary/rows mapping the UI expects."""
     if isinstance(structured_result, dict):
@@ -769,7 +835,11 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
     """Convert result rows into plain mappings that tables can render uniformly."""
     if isinstance(row, dict):
         return dict(row)
-    
+
+    mapping = getattr(row, '_mapping', None)
+    if mapping is not None:
+        return {str(key): value for key, value in mapping.items()}
+
     if hasattr(row, '__dict__'):
         # Treat simple result objects like lightweight records and skip private
         # attributes that are not meaningful to the UI.
@@ -778,7 +848,7 @@ def _row_to_dict(row: Any) -> dict[str, Any]:
             for key, value in vars(row).items()
             if not key.startswith('_')
         }
-    
+
     return {'value': row}
 
 def _format_result_value(value: Any) -> str:
@@ -793,15 +863,44 @@ def _format_result_value(value: Any) -> str:
     
     return str(value)
 
+# Result tables may now contain either original TD helper objects or the plain
+# dict snapshots produced for multiprocessing transport. Keep name extraction in
+# one place so command-specific renderers do not care which side produced them.
 def _named_result_value(value: Any) -> str | None:
-    """Best-effort extraction for TD model objects that expose a name helper."""
-    name = getattr(value, 'name', None)
-    if not callable(name):
+    """Best-effort extraction for TD model objects and GUI snapshots."""
+    if isinstance(value, dict):
+        for key in ('name', 'dbname', 'fullname', 'text'):
+            named = value.get(key)
+            if callable(named):
+                try:
+                    return str(named(0))
+                except TypeError:
+                    return str(named())
+            if named not in (None, ''):
+                return str(named)
         return None
-    
-    # TD model objects are inconsistent about whether name() expects a detail
-    # level argument, so tolerate both call styles for display purposes.
-    try:
-        return str(name(0))
-    except TypeError:
-        return str(name())
+
+    name = getattr(value, 'name', None)
+    if callable(name):
+        # TD model objects are inconsistent about whether name() expects a
+        # detail level argument, so tolerate both call styles.
+        try:
+            return str(name(0))
+        except TypeError:
+            return str(name())
+    if name not in (None, ''):
+        return str(name)
+
+    dbname = getattr(value, 'dbname', None)
+    if callable(dbname):
+        try:
+            return str(dbname())
+        except TypeError:
+            try:
+                return str(dbname(0))
+            except TypeError:
+                return str(dbname)
+    if dbname not in (None, ''):
+        return str(dbname)
+
+    return None

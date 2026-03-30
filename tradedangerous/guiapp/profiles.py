@@ -13,6 +13,8 @@ from tradedangerous.db.paths import resolve_data_dir, resolve_db_config_path
 
 GUI_STATE_FILENAME = 'tradegui_state.json'
 SCHEMA_VERSION = 1
+LAUNCHER_PORT_MIN = 8000
+LAUNCHER_PORT_MAX = 8999
 _IMPORT_TRANSIENT_FLAGS = frozenset({
     'all',
     'skipvend',
@@ -31,6 +33,18 @@ def _serialize_command_draft(command: str, draft: 'CommandDraft') -> dict[str, A
             if key not in _IMPORT_TRANSIENT_FLAGS
         }
     return payload
+
+
+def _coerce_launcher_port(value: Any) -> int | None:
+    if value in {None, ''}:
+        return None
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    if port < LAUNCHER_PORT_MIN or port > LAUNCHER_PORT_MAX:
+        return None
+    return port
 
 @dataclass(slots=True)
 class GlobalSettings:
@@ -111,6 +125,7 @@ class GuiStore:
     """Persisted GUI state loaded from and saved to the JSON sidecar file."""
     
     schema_version: int = SCHEMA_VERSION
+    launcher_port: int | None = None
     selected_profile_id: str | None = None
     selected_command: str = 'run'
     global_settings: GlobalSettings = field(default_factory=GlobalSettings)
@@ -138,6 +153,7 @@ class GuiStore:
     def from_dict(cls, data: dict[str, Any]) -> 'GuiStore':
         store = cls(
             schema_version=int(data.get('schema_version') or SCHEMA_VERSION),
+            launcher_port=_coerce_launcher_port(data.get('launcher_port')),
             selected_profile_id=data.get('selected_profile_id'),
             selected_command=data.get('selected_command') or 'run',
             global_settings=GlobalSettings.from_dict(data.get('global')),
@@ -157,6 +173,7 @@ class GuiStore:
     def to_dict(self) -> dict[str, Any]:
         return {
             'schema_version': self.schema_version,
+            'launcher_port': self.launcher_port,
             'selected_profile_id': self.selected_profile_id,
             'selected_command': self.selected_command,
             'global': self.global_settings.to_dict(),
