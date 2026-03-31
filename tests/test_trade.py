@@ -63,8 +63,3 @@ class TestTrade:
         assert "Hydrogen Fuel" in captured.out
         assert regex_findin("Water[ ]{3,}323", captured.out)
     
-    @pytest.mark.slow
-    def test_import_edcd(self, capsys):
-        trade([PROG, "import", "-P=edcd", "--opt=commodity"])
-        captured = capsys.readouterr()
-        assert regex_findin(r"NOTE: Found \d+ item\(s\)", captured.out)

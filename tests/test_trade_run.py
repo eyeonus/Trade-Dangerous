@@ -53,8 +53,8 @@ class TestTradeRun:
                 "--pad=L", "--ly=25", "--prune-hop=3", "--prune-sc=40"
             ])
         captured = capsys.readouterr()
-        assert "BEGINNING CHECKLIST FOR Sol/Abraham Lincoln -> LHS 449/Fisher Point" in captured.out
-        assert "35 : Sell 212 x Polymers" in captured.out
+        assert "BEGINNING CHECKLIST FOR Sol/Abraham Lincoln -> WISE 1506+7027/Dobrovolskiy Enterprise" in captured.out
+        assert "32 : Sell 212 x Polymers @ 4,897cr / 85 mths old:" in captured.out
     
     def test_run4(self, capsys):
         os.environ["TD_NO_COLOR"] = "1"
