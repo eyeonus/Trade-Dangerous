@@ -1,6 +1,30 @@
 # CHANGELOG
 
 
+## v12.18.11 (2026-04-01)
+
+### Bug Fixes
+
+- Edmc batch import against current import_cmd/TradeDB flow
+  ([`a83e847`](https://github.com/eyeonus/Trade-Dangerous/commit/a83e8472331dd8ce056f1483e2bd87c9c3f6b304))
+
+`edmc_batch` still relies on the legacy `.prices` import path, but that handoff had drifted out of
+  sync with the current codebase.
+
+Remove the stale `tdb.removePerist()` call from `import_cmd`, since the old persistence helper no
+  longer exists on `TradeDB`.
+
+While touching that path, make the reset flag lookup tolerant of both the real CLI attribute
+  (`resetAll`) and older/synthetic callers (`reset`) so the legacy importer continues to behave as
+  expected.
+
+Also bring `edmc_batch` up to the current import plugin contract by adding `finish()` and writing
+  the generated batch file with explicit UTF-8/LF handling so the merged `.prices` file is handed
+  off cleanly.
+
+This is a compatibility fix for the old EDMC batch plugin path only.
+
+
 ## v12.18.10 (2026-04-01)
 
 ### Bug Fixes
