@@ -26,6 +26,11 @@ import traceback
 from tradebootstrap import bootstrap_runtime
 
 
+# Keep one process-local handle to the packaged GUI runtime log so fallback
+# stdout/stderr writes all land in the same file for the lifetime of the app.
+_RUNTIME_LOG_STREAM = None
+
+
 def _write_crash_log(runtime: dict[str, object]) -> Path:
     logs_dir = runtime.get("logs_dir")
     if logs_dir is None:
@@ -48,6 +53,37 @@ def _write_crash_log(runtime: dict[str, object]) -> Path:
     return log_path
 
 
+def _ensure_packaged_runtime_log_stream(runtime: dict[str, object]) -> None:
+    global _RUNTIME_LOG_STREAM
+
+    # Only packaged GUI mode should ever call this helper. It provides a
+    # stable logfile for any fallback stdout/stderr writes when the frozen
+    # executable runs with no attached console window.
+    if _RUNTIME_LOG_STREAM is None or _RUNTIME_LOG_STREAM.closed:
+        logs_dir = runtime.get("logs_dir")
+        if logs_dir is None:
+            base_dir = Path(os.environ.get("LOCALAPPDATA") or Path.home())
+            logs_dir = base_dir / "TradeDangerous" / "logs"
+        logs_path = Path(logs_dir)
+        logs_path.mkdir(parents=True, exist_ok=True)
+        log_path = logs_path / "tradegui.log"
+        _RUNTIME_LOG_STREAM = log_path.open("a", encoding="utf-8", buffering=1)
+        _RUNTIME_LOG_STREAM.write(
+            f"\n[{datetime.now().isoformat()}] Trade Dangerous GUI startup\n"
+        )
+        _RUNTIME_LOG_STREAM.flush()
+
+    # PyInstaller windowed mode may leave stdout/stderr as None. Point either
+    # missing stream at the packaged runtime log so stray prints and rich
+    # console writes do not crash the GUI startup path.
+    if sys.stdout is None or getattr(sys.stdout, "closed", False):
+        sys.stdout = _RUNTIME_LOG_STREAM
+    if sys.stderr is None or getattr(sys.stderr, "closed", False):
+        sys.stderr = _RUNTIME_LOG_STREAM
+
+
+# This should only ever be called by packaged GUI, so safe to use direct windows call
+# but we fall back to plain text anyway.
 def _show_startup_error(log_path: Path) -> None:
     message = f"Trade Dangerous failed to start.\n\nCrash log: {log_path}"
     try:
@@ -61,6 +97,9 @@ def _show_startup_error(log_path: Path) -> None:
 def main(argv = None):
     runtime = bootstrap_runtime()
     if runtime.get("packaged_mode"):
+        # Packaged GUI launches without a terminal, so install the logfile-backed
+        # fallback streams before importing and starting the NiceGUI app.
+        _ensure_packaged_runtime_log_stream(runtime)
         try:
             from tradedangerous.guiapp.main import main as gui_main
 
