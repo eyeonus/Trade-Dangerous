@@ -68,9 +68,16 @@ class NativeWindowCloseState:
 
     def shutdown(self) -> None:
         if self._manager is not None:
-            self._manager.shutdown()
-            self._manager = None
-            self.shared = None
+            try:
+                # Native-mode shutdown can inject KeyboardInterrupt into the
+                # main thread while the multiprocessing manager is finalizing.
+                # Treat that as exit noise so packaged GUI shutdown stays clean.
+                self._manager.shutdown()
+            except KeyboardInterrupt:
+                pass
+            finally:
+                self._manager = None
+                self.shared = None
 
 
 def _command_label(command: str | None) -> str:
