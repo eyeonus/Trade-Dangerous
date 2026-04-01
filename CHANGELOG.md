@@ -1,6 +1,96 @@
 # CHANGELOG
 
 
+## v12.18.8 (2026-04-01)
+
+### Bug Fixes
+
+- All output now goes correctly to logfiles when packaged.
+  ([`5eeae48`](https://github.com/eyeonus/Trade-Dangerous/commit/5eeae487b9797f60dc9b2949408cfe6f90c3979f))
+
+This fixes STDOUT & STDERR still requiring a console instead of being directed to logfile.
+
+Additionally crash logs will now be captured to individually time stamped logfiles. Normal output
+  will go to the generic log.
+
+- Don't spawn a console window when we run TD from icon.
+  ([`e07186f`](https://github.com/eyeonus/Trade-Dangerous/commit/e07186fc77a872c8e4e25d30d97d9bbbf92983bb))
+
+- Frozen GUI import state lingering after worker completion
+  ([`4eab2e3`](https://github.com/eyeonus/Trade-Dangerous/commit/4eab2e34079779e27308360d7d396f4ddb9241b7))
+
+Treat GUI import worker 'finished' as semantic completion and clear native close-state promptly
+
+Although fine from CLI, intermittently, the GUI import routine could get itself stuck into the
+  belief that it had no completed even though it had.
+
+This change should harden this area of code and stop that from happening. I hope.
+
+Also added tests
+
+test_import_command_process_finished_message_stops_busy_state_without_losing_message Covers the case
+  where the worker has emitted finished but the child process has not fully died yet.
+
+test_run_import_execution_clears_native_close_state_on_finished_before_result Covers the
+  frozen/native warning race specifically.
+
+### Chores
+
+- Add Inno Setup Script file for installer packaging.
+  ([`b78c96b`](https://github.com/eyeonus/Trade-Dangerous/commit/b78c96b1e3ddc61def07473a9189c6b6f2fe42c7))
+
+- Add specs file for pyinstaller
+  ([`0944d65`](https://github.com/eyeonus/Trade-Dangerous/commit/0944d654fe3c2584c94d5b816bab0c191f45413e))
+
+- Correct iss file for proper registry cleanup
+  ([`81a43c2`](https://github.com/eyeonus/Trade-Dangerous/commit/81a43c2427a6433f354b1dba6a75a068214cde88))
+
+- New/updated test suite
+  ([`0c93586`](https://github.com/eyeonus/Trade-Dangerous/commit/0c93586a7ea6e20e0d8794ce59eb60b10755e596))
+
+Large collection of new tests based on existing TD behaviour as of 12.8.7
+
+Some existing tests retained, some updated, some deleted.
+
+None of these tests require a database.
+
+This is step 1. Next step will be to add db tests.
+
+This is to allow for a bit more confidence of not breaking functionality when doing the upcoming
+  efficiency work.
+
+- **deps**: Bump pygments from 2.19.2 to 2.20.0
+  ([#297](https://github.com/eyeonus/Trade-Dangerous/pull/297),
+  [`00d4884`](https://github.com/eyeonus/Trade-Dangerous/commit/00d48845f85f5ec9f4728e4b6eeed4bb5e845d2d))
+
+Bumps [pygments](https://github.com/pygments/pygments) from 2.19.2 to 2.20.0. - [Release
+  notes](https://github.com/pygments/pygments/releases) -
+  [Changelog](https://github.com/pygments/pygments/blob/master/CHANGES) -
+  [Commits](https://github.com/pygments/pygments/compare/2.19.2...2.20.0)
+
+--- updated-dependencies: - dependency-name: pygments dependency-version: 2.20.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Documentation
+
+- Added git release section to installer release procedure
+  ([`9d8c143`](https://github.com/eyeonus/Trade-Dangerous/commit/9d8c143df5949c784a5f597e5ff63677f688be14))
+
+- Added packaging section to installer procedure.
+  ([`75e5eb6`](https://github.com/eyeonus/Trade-Dangerous/commit/75e5eb6b9bd5c2199bd3eb3904647da23914292b))
+
+- Added release procedure for windows installer
+  ([`819b904`](https://github.com/eyeonus/Trade-Dangerous/commit/819b9047346ab63de669995ead418b98975ca87c))
+
+- More descriptive filename for gui packaging docs.
+  ([`70781a1`](https://github.com/eyeonus/Trade-Dangerous/commit/70781a16795d90d636e6f2c7e4ebef16a96bfef3))
+
+
 ## v12.18.7 (2026-03-30)
 
 ### Bug Fixes
