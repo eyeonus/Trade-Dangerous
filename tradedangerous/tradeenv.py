@@ -176,8 +176,16 @@ ENV_DEFAULTS: dict[str, Any] = {
     }
 
 
+def _get_stdout_encoding() -> str:
+    stream = sys.stdout
+    encoding = getattr(stream, 'encoding', None)
+    if encoding:
+        return str(encoding)
+    return 'utf-8'
+
+
 # If the console doesn't support UTF8, use the more-complicated implementation.
-if str(sys.stdout.encoding).upper() != 'UTF-8':
+if _get_stdout_encoding().upper() != 'UTF-8':
     Utf8SafeConsoleIOMixin = NonUtf8ConsoleIOMixin
 else:
     Utf8SafeConsoleIOMixin = BaseConsoleIOMixin
@@ -208,7 +216,7 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
     theme: BaseColorTheme
     tmpDir: str
     
-    encoding = sys.stdout.encoding
+    encoding = _get_stdout_encoding()
     
     def __init__(self, properties: dict[str, typing.Any] | argparse.Namespace | None = None, **kwargs: Any) -> None:
         # Inject the defaults into ourselves in a dict-like way
