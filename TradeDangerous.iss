@@ -3,11 +3,11 @@
 [Setup]
 AppId=TradeDangerous
 AppName=Trade Dangerous
-AppVersion=12.18.7
+AppVersion=12.18.9
 AppPublisher=Trade Dangerous Dev Team
 DefaultDirName={autopf}\TradeDangerous
 DefaultGroupName=Trade Dangerous
-OutputBaseFilename=TradeDangerous-Setup-12.18.7
+OutputBaseFilename=TradeDangerous-Setup-12.18.9
 SetupIconFile=tradedangerouscrest.ico
 UninstallDisplayIcon={app}\TradeDangerous.exe
 ArchitecturesAllowed=x64compatible
