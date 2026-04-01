@@ -198,6 +198,8 @@ class ImportCommandProcess:
             args=(request, self._event_queue),
             name='td-gui-import',
         )
+        self._pending_messages: list[ImportWorkerMessage] = []
+        self._finished = False
         self._result = None
         self._result_consumed = False
         self._termination_message: str | None = None
@@ -220,22 +222,21 @@ class ImportCommandProcess:
         self._process.start()
 
     def is_active(self) -> bool:
-        return not self._result_consumed and self._process.is_alive()
+        self._drain_messages()
+        return (
+            not self._result_consumed
+            and self._result is None
+            and not self._finished
+            and self._process.is_alive()
+        )
 
     # Drain queued progress messages first, then surface the final GUI result
     # once the worker sends it or exits. The parent never blocks on the queue;
     # it stays in the asyncio poll loop so the import pane can keep refreshing.
     def poll(self) -> tuple[list[ImportWorkerMessage], Any | None]:
-        messages: list[ImportWorkerMessage] = []
-        while True:
-            try:
-                message = self._event_queue.get_nowait()
-            except Empty:
-                break
-            if message.kind == 'result':
-                self._result = message.payload
-            else:
-                messages.append(message)
+        self._drain_messages()
+        messages = list(self._pending_messages)
+        self._pending_messages.clear()
 
         if self._result_consumed:
             return messages, None
@@ -249,6 +250,19 @@ class ImportCommandProcess:
         self._result_consumed = True
         self._process.join(timeout=0.1)
         return messages, self._build_process_exit_result()
+
+    def _drain_messages(self) -> None:
+        while True:
+            try:
+                message = self._event_queue.get_nowait()
+            except Empty:
+                break
+            if message.kind == 'result':
+                self._result = message.payload
+                continue
+            if message.kind == 'finished':
+                self._finished = True
+            self._pending_messages.append(message)
 
     def terminate(self, message: str) -> None:
         if self._result_consumed:
@@ -402,6 +416,15 @@ async def run_import_execution(
         refresh_ui()
         return
 
+    close_state_marked = False
+
+    def clear_window_close_state() -> None:
+        nonlocal close_state_marked
+        if not close_state_marked or window_close_state is None:
+            return
+        window_close_state.clear()
+        close_state_marked = False
+
     session.active_import_runner = runner
     if window_close_state is not None:
         window_close_state.mark_running(
@@ -409,6 +432,7 @@ async def run_import_execution(
             command=request.command,
             pid=runner.pid,
         )
+        close_state_marked = True
     _apply_snapshot_to_session(
         session=session,
         status=ExecutionStatus.RUNNING,
@@ -432,6 +456,8 @@ async def run_import_execution(
                 _apply_worker_message(monitor=monitor, message=message)
 
             snapshot = monitor.snapshot()
+            if snapshot.finished:
+                clear_window_close_state()
             if result is None:
                 if runner.termination_message is not None:
                     snapshot.status_text = 'Stopping import...'
@@ -450,6 +476,7 @@ async def run_import_execution(
                 await asyncio.sleep(0.1)
                 continue
 
+            clear_window_close_state()
             if runner.termination_message is not None:
                 snapshot.status_text = 'Import stopped.'
                 snapshot.stop_requested = False
@@ -472,8 +499,7 @@ async def run_import_execution(
     finally:
         if session.active_import_runner is runner:
             session.active_import_runner = None
-        if window_close_state is not None:
-            window_close_state.clear()
+        clear_window_close_state()
         runner.close()
 
 

@@ -1,6 +1,10 @@
+import asyncio
+from queue import Empty
 from types import SimpleNamespace
 
+import tradedangerous.guiapp.import_runtime as import_runtime
 from tradedangerous.guiapp.import_runtime import (
+    ImportCommandProcess,
     ImportMonitor,
     ImportWorkerMessage,
     _apply_worker_message,
@@ -8,9 +12,11 @@ from tradedangerous.guiapp.import_runtime import (
     build_import_request,
     cancel_import_stop_confirmation,
     request_import_stop,
+    run_import_execution,
 )
 from tradedangerous.guiapp.profiles import CommandDraft, GuiStore
-from tradedangerous.guiapp.session import SessionState
+from tradedangerous.guiapp.session import ExecutionStatus, SessionState
+from tradedangerous.guiapp.td_exec import GuiCommandResult
 
 
 class _Runner:
@@ -24,6 +30,59 @@ class _Runner:
     def terminate(self, message):
         self.messages.append(message)
         self.active = False
+
+
+class _Queue:
+    def __init__(self, *messages):
+        self._messages = list(messages)
+
+    def get_nowait(self):
+        if not self._messages:
+            raise Empty
+        return self._messages.pop(0)
+
+
+class _Process:
+    def __init__(self, *, alive):
+        self._alive = alive
+
+    def is_alive(self):
+        return self._alive
+
+    def join(self, timeout=None):
+        return None
+
+
+class _WindowCloseState:
+    def __init__(self):
+        self.history = []
+
+    def mark_running(self, *, kind, command, pid):
+        self.history.append(('mark_running', kind, command, pid))
+
+    def clear(self):
+        self.history.append(('clear',))
+
+
+class _ImportRunner:
+    def __init__(self):
+        self.command = 'import'
+        self.pid = 4321
+        self.termination_message = None
+        self._poll_count = 0
+
+    def poll(self):
+        self._poll_count += 1
+        if self._poll_count == 1:
+            return [ImportWorkerMessage(kind='finished')], None
+        return [], GuiCommandResult(
+            command='import',
+            ok=True,
+            diagnostics_output='NOTE: Import completed',
+        )
+
+    def close(self):
+        return None
 
 
 def test_build_import_request_copies_draft_fields():
@@ -81,3 +140,57 @@ def test_import_runtime_worker_message_updates_monitor_state():
     assert snapshot.child_value == 5
     assert snapshot.child_total == 10
     assert snapshot.finished is True
+
+
+def test_import_command_process_finished_message_stops_busy_state_without_losing_message():
+    runner = ImportCommandProcess.__new__(ImportCommandProcess)
+    runner.command = 'import'
+    runner._event_queue = _Queue(
+        ImportWorkerMessage(kind='finished'),
+    )
+    runner._process = _Process(alive=True)
+    runner._pending_messages = []
+    runner._finished = False
+    runner._result = None
+    runner._result_consumed = False
+    runner._termination_message = None
+
+    assert runner.is_active() is False
+
+    messages, result = runner.poll()
+
+    assert [message.kind for message in messages] == ['finished']
+    assert result is None
+
+
+def test_run_import_execution_clears_native_close_state_on_finished_before_result(
+    monkeypatch,
+):
+    session = SessionState.from_store(GuiStore.default())
+    runner = _ImportRunner()
+    window_close_state = _WindowCloseState()
+
+    async def _fake_sleep(_delay):
+        return None
+
+    monkeypatch.setattr(
+        import_runtime.ImportCommandProcess,
+        'launch',
+        classmethod(lambda cls, request: runner),
+    )
+    monkeypatch.setattr(import_runtime.asyncio, 'sleep', _fake_sleep)
+
+    asyncio.run(
+        run_import_execution(
+            session=session,
+            request=SimpleNamespace(command='import'),
+            refresh_ui=lambda: None,
+            window_close_state=window_close_state,
+        )
+    )
+
+    assert session.execution.status is ExecutionStatus.SUCCEEDED
+    assert window_close_state.history == [
+        ('mark_running', 'import', 'import', 4321),
+        ('clear',),
+    ]
