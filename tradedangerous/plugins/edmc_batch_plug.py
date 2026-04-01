@@ -82,12 +82,13 @@ class ImportPlugin(ImportPluginBase):
         if batchfile.exists():
             batchfile.unlink()
         # We now have a list of paths. Add all contents to a new file
-        temp_file = open(batchfile, "w")
-        
-        for f in path_list:
-            contents = f.read_text()
-            temp_file.writelines("# File: {}\n".format(f))
-            temp_file.write(contents)
+        with batchfile.open("w", encoding="utf-8", newline="\n") as temp_file:
+            for f in path_list:
+                contents = f.read_text(encoding="utf-8")
+                temp_file.write("# File: {}\n".format(f))
+                temp_file.write(contents)
+                if contents and not contents.endswith("\n"):
+                    temp_file.write("\n")
         
         # Set the file we're reading from to the temp file
         tdenv.filename = str(batchfile.absolute())
@@ -131,5 +132,8 @@ class ImportPlugin(ImportPluginBase):
         
         # Split into a path list, verify all paths are good.
         self.set_environment(self.sanitize_files(file_list))
+        return True
+
+    def finish(self) -> bool:
         return True
 

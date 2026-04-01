@@ -163,10 +163,10 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
             "===================================================================\n"
         )
     
-    # Refresh/close any cached handles before file ops (kept from original)
+    # Refresh/close any cached handles before file ops. The old pickle
+    # persistence layer is gone, so there is no persisted snapshot to remove.
     tdb.reloadCache()
     tdb.close()
-    tdb.removePerist()
     
     # Treat a bare http(s) string in 'filename' as a URL
     if cmdenv.filename:
@@ -218,5 +218,11 @@ def run(results, cmdenv: TradeEnv, tdb: TradeDB):
             return False
     
     # Legacy .prices import
-    cache.importDataFromFile(tdb, cmdenv, filePath, pricesFh=fh, reset=cmdenv.reset)
+    cache.importDataFromFile(
+        tdb,
+        cmdenv,
+        filePath,
+        pricesFh=fh,
+        reset=getattr(cmdenv, "resetAll", getattr(cmdenv, "reset", False)),
+    )
     return False
