@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v12.18.9 (2026-04-01)
+
+### Bug Fixes
+
+- Handle missing stdout encoding in frozen windowed builds
+  ([`d75af73`](https://github.com/eyeonus/Trade-Dangerous/commit/d75af737a7af8b86031500c35fd4a67a2339a752))
+
+PyInstaller windowed mode can leave sys.stdout as None, which caused tradeenv.py to crash at import
+  time when reading sys.stdout.encoding.
+
+This surfaced in the frozen NiceGUI app during multiprocessing spawn, where child-process imports
+  hit tradeenv before GUI-side stream redirection had been installed.
+
+Resolve the failure by centralising stdout encoding lookup behind a safe helper that falls back to
+  utf-8 when no stdout stream or encoding is available.
+
+This fixes the startup crash in packaged GUI builds without changing normal command-line behaviour.
+
+
 ## v12.18.8 (2026-04-01)
 
 ### Bug Fixes
