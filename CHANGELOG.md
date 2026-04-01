@@ -1,6 +1,18 @@
 # CHANGELOG
 
 
+## v12.18.10 (2026-04-01)
+
+### Bug Fixes
+
+- Stop the intermittent error box on exit from packaged GUI
+  ([`1da4ba8`](https://github.com/eyeonus/Trade-Dangerous/commit/1da4ba82aa39ad0176ebb5b13ffd48b4be5d9824))
+
+In NiceGUI Native-mode shutdown can inject KeyboardInterrupt into the main thread while the
+  multiprocessing manager is finalizing. Treat that as exit noise so packaged GUI shutdown stays
+  clean
+
+
 ## v12.18.9 (2026-04-01)
 
 ### Bug Fixes
@@ -18,6 +30,13 @@ Resolve the failure by centralising stdout encoding lookup behind a safe helper 
   utf-8 when no stdout stream or encoding is available.
 
 This fixes the startup crash in packaged GUI builds without changing normal command-line behaviour.
+
+### Chores
+
+- Follow your own damn procedure Trom
+  ([`bdd2372`](https://github.com/eyeonus/Trade-Dangerous/commit/bdd2372b3e439363df5d84440099221eba44b0f3))
+
+Updating inno setup spec file for latest version.
 
 
 ## v12.18.8 (2026-04-01)
