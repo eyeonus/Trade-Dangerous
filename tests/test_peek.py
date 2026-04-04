@@ -1,109 +1,79 @@
-import random
-
-import pytest
-
 from tradedangerous.tradedb import TradeDB, Station, System
-from .helpers import copy_fixtures
 
-ORIGIN = 'Shinrarta Dezhra'
-# tdb = None
 
-def setup_module():
-    copy_fixtures()
-
-def route_to_closest(tdb: TradeDB, origin, destinations, maxLy=15):
-    closest = min(destinations, key=lambda candidate: candidate.distanceTo(origin))
-    print("Closest:", closest.name(), closest.distanceTo(origin))
-    route = tdb.getRoute(origin, closest, maxLy)
-    if not route:
-        print("No route found.")
-    else:
-        print("Route:", ", ".join(system.name() for system, distance in route))
-    return route
-
-def should_skip() -> bool:
-    return False  # os.getenv("CI") != None
+ORIGIN_SYSTEM = 'Sol'
+ORIGIN_STATION = 'Abraham Lincoln'
+LOOKUP_STATION = 'Dunyach Enterprise'
+LOOKUP_STATION_SYSTEM = 'Ross 490'
+DIRECT_ROUTE_TARGETS = (
+    "Barnard's Star",
+    'Sirius',
+    'LHS 380',
+)
 
 
 class TestPeek:
     """
-    Tests based on https://github.com/eyeonus/Trade-Dangerous/wiki/Python-Quick-Peek
+    Deterministic smoke tests for the public TradeDB lookup and routing API.
     """
     
-    @pytest.mark.skipif(should_skip(), reason="does not work with CI")
-    def test_quick_origin(self, tdb: TradeDB):
-        # Look up a particular system
-        origin = tdb.lookupSystem(ORIGIN)
+    def test_lookup_system_and_station(self, tdb: TradeDB):
+        origin = tdb.lookupSystem(ORIGIN_SYSTEM)
         
-        assert 55.71875 == origin.posX
-        assert 17.59375 == origin.posY
-        assert 27.15625, origin.posZ
+        assert isinstance(origin, System)
+        assert (origin.posX, origin.posY, origin.posZ) == (0.0, 0.0, 0.0)
         
         stations = origin.stations
-        assert len(stations) == 5
-        for station in stations:
-            assert isinstance(station, Station)
+        assert stations
+        assert all(isinstance(station, Station) for station in stations)
         
-        # Look up a station
-        abe1 = tdb.lookupStation("Abraham Lincoln")
+        abe1 = tdb.lookupStation(ORIGIN_STATION)
+        abe2 = tdb.lookupStation(ORIGIN_STATION, origin)
+        
         assert isinstance(abe1, Station)
-
-
-        # Look up a station in a particular system
-        sol = tdb.lookupSystem("sol")
-        abe2 = tdb.lookupStation("Abraham Lincoln", sol)
-        
-        assert abe1 == abe2
+        assert abe1 is abe2
+        assert abe1.system is origin
+        assert abe1.name() == 'Sol/Abraham Lincoln'
+        assert abe1.maxPadSize == 'L'
+        assert abe1.market == 'Y'
     
-    @pytest.mark.skipif(should_skip(), reason="does not work with CI")
-    def test_quick_lookupPlace(self, tdb):
-        # Look up a system or station using the flexible naming mechanism
-        phoenix = tdb.lookupPlace("dunyach")
-        assert str(type(phoenix)) == "<class 'tradedangerous.tradedb.Station'>"  # tell me what type of thing "phoenix" is...
+    def test_lookup_place_variants(self, tdb: TradeDB):
+        sol = tdb.lookupPlace('@sol')
+        station = tdb.lookupPlace('dunyach')
+        abe = tdb.lookupPlace('sol/hamlinc')
+        abe_explicit = tdb.lookupPlace('@sol/abrahamlincoln')
         
-        sol = tdb.lookupPlace("@sol")
-        assert str(type(sol)) == "<class 'tradedangerous.tradedb.System'>"
+        assert isinstance(sol, System)
+        assert sol.dbname == ORIGIN_SYSTEM
         
-        lave = tdb.lookupPlace("stein")
-        assert isinstance(lave, System)
+        assert isinstance(station, Station)
+        assert station.dbname == LOOKUP_STATION
+        assert station.system.dbname == LOOKUP_STATION_SYSTEM
         
-        abe = tdb.lookupPlace("sol/hamlinc")
         assert isinstance(abe, Station)
+        assert abe is abe_explicit
+        assert abe.dbname == ORIGIN_STATION
+        assert abe.system.dbname == ORIGIN_SYSTEM
     
-    @pytest.mark.skipif(should_skip(), reason="does not work with CI")
-    def test_quick_five(self, tdb):
-        systemTable = tdb.systemByID.values()
-        visitMe = random.sample(list(systemTable), 5)
-        origin = tdb.lookupPlace(ORIGIN)
-        # Call distanceTo(origin) on every member of visitMe and
-        # then retrieve the one with the lowest distance.
-        closest = min(visitMe, key=lambda candidate: candidate.distanceTo(origin))
-        print("{start} -> {dest}: {dist:.2f} ly".format(
-            start=origin.name(), dest=closest.name(),
-            dist=origin.distanceTo(closest),
-        ))
-        route = tdb.getRoute(origin, closest, 15)
-        if not route:
-            print("Shame, couldn't find a route.")
-        else:
-            # Route is a list of Systems. Turn it into a list of
-            # System names...
-            routeNames = [system.name() for system, distance in route]
-            print("Route:", routeNames)
+    def test_get_route_returns_direct_hops_for_nearby_systems(self, tdb: TradeDB):
+        origin = tdb.lookupSystem(ORIGIN_SYSTEM)
+        origin_station = tdb.lookupStation(ORIGIN_STATION, origin)
         
-        route_to_closest(tdb, origin, visitMe)
-        route_to_closest(tdb, origin, visitMe, 20)
-        
-        # lets change origin
-        origin = tdb.lookupSystem("Toolfa")
-        route_to_closest(tdb, origin, visitMe)
-    
-    @pytest.mark.skipif(should_skip(), reason="does not work with CI")
-    def test_three_different(self, tdb):
-        # lets try a different route:
-        sol = tdb.lookupSystem("sol")
-        lhs = tdb.lookupSystem("lhs 380")
-        bhr = tdb.lookupSystem("bhritzameno")
-        
-        route_to_closest(tdb, sol, [lhs, bhr])
- 
+        for target_name in DIRECT_ROUTE_TARGETS:
+            target = tdb.lookupSystem(target_name)
+            
+            route_from_system = tdb.getRoute(origin, target, 15)
+            route_from_station = tdb.getRoute(origin_station, target, 15)
+            
+            assert route_from_system is not None
+            assert route_from_station is not None
+            assert [system.name() for system, _distance in route_from_system] == [
+                ORIGIN_SYSTEM,
+                target_name,
+            ]
+            assert [system.name() for system, _distance in route_from_station] == [
+                ORIGIN_SYSTEM,
+                target_name,
+            ]
+            assert route_from_system[0][1] == 0
+            assert route_from_system[-1][1] > 0
