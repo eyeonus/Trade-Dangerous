@@ -6,7 +6,7 @@ import pytest
 
 from tradedangerous.commands.exceptions import CommandLineError
 
-from .test_trade import isolated_trade_env, strip_ansi
+from .helpers import isolated_trade_env, strip_ansi
 
 PROG = "trade"
 
