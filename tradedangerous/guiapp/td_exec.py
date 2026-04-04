@@ -322,6 +322,15 @@ class TdExecutor:
                 validate_optional_float=self._validate_optional_float,
             )
         
+        if request.command == 'rares':
+            validate_rares_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_int=self._validate_optional_int,
+                validate_optional_float=self._validate_optional_float,
+                split_search_terms=self._split_search_terms,
+            )
+        
         return errors
     
     def execute(self, request: GuiCommandRequest) -> GuiCommandResult:
