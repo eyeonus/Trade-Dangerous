@@ -1,37 +1,48 @@
-unq:ship_id,name,cost,fdev_id
-1,'Adder',87810,128049267
-2,'Anaconda',146969450,128049363
-3,'Asp Explorer',6661150,128049303
-4,'Cobra Mk. III',349720,128049279
-5,'Diamondback Explorer',1894760,128671831
-6,'Diamondback Scout',564330,128671217
-7,'Eagle Mk. II',44800,128049255
-8,'Federal Assault Ship',19814210,128672145
-9,'Federal Dropship',14314210,128049321
-10,'Federal Gunship',35814210,128672152
-11,'Mamba',55867041,128915979
-12,'Hauler',52720,128049261
-13,'Imperial Clipper',22296860,128049315
-14,'Imperial Courier',2542930,128671223
-15,'Imperial Eagle',110830,128672138
-16,'Orca',48539900,128049327
-17,'Python',56978180,128049339
-18,'Sidewinder Mk. I',32000,128049249
-19,'Type-6 Transporter',1045950,128049285
-20,'Type-7 Transporter',17472260,128049297
-21,'Type-9 Heavy',76555840,128049333
-22,'Viper Mk. III',142930,128049273
-23,'Vulture',4925620,128049309
-24,'Asp Scout',3961150,128672276
-25,'Federal Corvette',187969450,128049369
-26,'Imperial Cutter',208969450,128049375
-27,'Keelback',3126150,128672269
-28,'Viper Mk. IV',437930,128672255
-29,'Cobra Mk. IV',747660,128672262
-30,'Beluga Liner',84532770,128049345
-31,'Dolphin',1337330,128049291
-32,'Type-10 Defender',121454652,128785619
-33,'Alliance Chieftain',19382252,128816574
-34,'Alliance Challenger',30472265,128816588
-35,'Krait Mk. II',45814205,128816567
-36,'Alliance Crusader',19382252,128816581
+unq:ship_id,name,cost
+128049249,'Sidewinder',''
+128049255,'Eagle',''
+128049261,'Hauler',''
+128049267,'Adder',''
+128049273,'Viper MkIII',''
+128049279,'Cobra MkIII',''
+128049285,'Type-6 Transporter',''
+128049291,'Dolphin',''
+128049297,'Type-7 Transporter',''
+128049303,'Asp Explorer',''
+128049309,'Vulture',''
+128049315,'Imperial Clipper',''
+128049321,'Federal Dropship',''
+128049327,'Orca',''
+128049333,'Type-9 Heavy',''
+128049339,'Python',''
+128049345,'Beluga Liner',''
+128049351,'Fer-de-Lance',''
+128049363,'Anaconda',''
+128049369,'Federal Corvette',''
+128049375,'Imperial Cutter',''
+128671217,'Diamondback Scout',''
+128671223,'Imperial Courier',''
+128671831,'Diamondback Explorer',''
+128672138,'Imperial Eagle',''
+128672145,'Federal Assault Ship',''
+128672152,'Federal Gunship',''
+128672255,'Viper MkIV',''
+128672262,'Cobra MkIV',''
+128672269,'Keelback',''
+128672276,'Asp Scout',''
+128785619,'Type-10 Defender',''
+128816567,'Krait MkII',''
+128816574,'Alliance Chieftain',''
+128816581,'Alliance Crusader',''
+128816588,'Alliance Challenger',''
+128839281,'Krait Phantom',''
+128915979,'Mamba',''
+129030464,'Python MkII',''
+129030534,'Type-8 Transporter',''
+129030680,'Mandalay',''
+129031229,'Cobra MkV',''
+129031320,'Corsair',''
+129034269,'Panther Clipper MkII',''
+129036130,'Type-11 Prospector',''
+129036569,'Caspian Explorer',''
+129039241,'Kestrel Mk II',''
