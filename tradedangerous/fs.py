@@ -85,7 +85,7 @@ def copyallfiles(srcdir: Pathlike, dstdir: Pathlike) -> None:
     srcPath = pathify(srcdir)
     dstPath = pathify(dstdir)
     
-    for p in srcPath.glob('*.*'):
+    for p in srcPath.iterdir():
         if p.is_file():
             copy(p, dstPath / p.name)
 
