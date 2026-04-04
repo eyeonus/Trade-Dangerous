@@ -1,4 +1,17 @@
+import gc
+
+import pytest
+
 from tradedangerous.tradedb import TradeDB, Station, System
+
+
+@pytest.fixture(scope="module")
+def tdb():
+    instance = TradeDB()
+    yield instance
+    instance.close(final=True)
+    del instance
+    gc.collect()
 
 
 ORIGIN_SYSTEM = 'Sol'
