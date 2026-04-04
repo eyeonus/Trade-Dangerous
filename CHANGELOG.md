@@ -1,6 +1,55 @@
 # CHANGELOG
 
 
+## v12.18.12 (2026-04-04)
+
+### Bug Fixes
+
+- Fs.py copy extensionless files in copyallfiles
+  ([`1df0f99`](https://github.com/eyeonus/Trade-Dangerous/commit/1df0f991fce9ca6718672d0b7e9fc99ad440066c))
+
+### Chores
+
+- Bring fixtures up to date & fix trade_test.py
+  ([`63e4130`](https://github.com/eyeonus/Trade-Dangerous/commit/63e4130f462aab6af0fb0b380d2cfbc80eb6ff60))
+
+Existing test fixtures were nearly a decade old, predating all manner of changes to data, systems
+  and well, a lot of water under a lot of bridges.
+
+This is a complete replacement. A full import was completed then `trade local` was run to get a
+  number of systems near Sol.
+
+All systems not in that list were deleted from the db, using FKey cascade to remove the associated
+  stations etc at the same time to leave a sane, but very reduced version of the galaxy.
+
+`trade export --all-tables` was then used to get a set of csv files matching the database.
+
+Rewrite tests/test_trade.py to run against a temporary fixture-backed TD_DATA/TD_TMP environment
+  instead of ambient repo state.
+
+The new tests exercise the real CLI for local, buy, sell, export, nav and market using the cropped
+  Sol-local fixture database, while checking semantic output rather than brittle spacing/alignment.
+  Export is also verified by asserting the CSV file is actually written.
+
+This removes the old destructive fixture setup/teardown pattern and makes the test module suitable
+  for normal fast-path execution.
+
+- Tests - remove cli module reloads and strengthen copyallfiles coverage
+  ([`2690798`](https://github.com/eyeonus/Trade-Dangerous/commit/26907982efe043cea0c8df8c1d800fb4b6307b92))
+
+- **deps**: Bump aiohttp from 3.13.3 to 3.13.4
+  ([#298](https://github.com/eyeonus/Trade-Dangerous/pull/298),
+  [`8936a7f`](https://github.com/eyeonus/Trade-Dangerous/commit/8936a7fc9e1918f3cc8013d8e623879c6d46655c))
+
+--- updated-dependencies: - dependency-name: aiohttp dependency-version: 3.13.4
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
 ## v12.18.11 (2026-04-01)
 
 ### Bug Fixes
