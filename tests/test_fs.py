@@ -22,11 +22,13 @@ class TestFS:
         dstdir.mkdir()
         (srcdir / 'Added.csv').write_text('a', encoding='utf-8')
         (srcdir / 'skip.me').write_text('b', encoding='utf-8')
+        (srcdir / 'README').write_text('c', encoding='utf-8')
 
         fs.copyallfiles(srcdir, dstdir)
 
         assert (dstdir / 'Added.csv').exists()
         assert (dstdir / 'skip.me').exists()
+        assert (dstdir / 'README').exists()
 
     def test_copy_if_missing_preserves_existing_file(self, tmp_path):
         src = tmp_path / 'src.txt'
