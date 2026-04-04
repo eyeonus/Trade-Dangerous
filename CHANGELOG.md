@@ -1,14 +1,29 @@
 # CHANGELOG
 
 
+## v12.18.13 (2026-04-04)
+
+
 ## v12.18.12 (2026-04-04)
 
 ### Bug Fixes
 
+- Add missing buy/sell validation helpers
+  ([`13b37f7`](https://github.com/eyeonus/Trade-Dangerous/commit/13b37f7e8a0be44428f22143eb44256bc4bea852))
+
+- Add preflight validation for rares
+  ([`cbda236`](https://github.com/eyeonus/Trade-Dangerous/commit/cbda236ee2743fb1a5c3089ec6d21ad1d08e6d84))
+
 - Fs.py copy extensionless files in copyallfiles
   ([`1df0f99`](https://github.com/eyeonus/Trade-Dangerous/commit/1df0f991fce9ca6718672d0b7e9fc99ad440066c))
 
+- Wire in dispatch for new buy/sell validation routines.
+  ([`0025502`](https://github.com/eyeonus/Trade-Dangerous/commit/00255023e5fc880d6fef40d1e0b945032142348d))
+
 ### Chores
+
+- Add tests for new validation
+  ([`19df694`](https://github.com/eyeonus/Trade-Dangerous/commit/19df6943d483f0816c4853c4b7af1cc1950ef3ad))
 
 - Bring fixtures up to date & fix trade_test.py
   ([`63e4130`](https://github.com/eyeonus/Trade-Dangerous/commit/63e4130f462aab6af0fb0b380d2cfbc80eb6ff60))
@@ -34,8 +49,23 @@ The new tests exercise the real CLI for local, buy, sell, export, nav and market
 This removes the old destructive fixture setup/teardown pattern and makes the test module suitable
   for normal fast-path execution.
 
+- Rewrite test_peek as deterministic fixture smoke coverage
+  ([`9c278dd`](https://github.com/eyeonus/Trade-Dangerous/commit/9c278dd4a9dbf7ec90568085e6260c1266b963a5))
+
+This retires a stale legacy test that was tied to old fixture assumptions, random sampling, and
+  non-CI-safe setup. The replacement keeps the useful public-API coverage for TradeDB lookups and
+  routing, but makes it explicit, stable, and suitable for current fixtures.
+
 - Tests - remove cli module reloads and strengthen copyallfiles coverage
   ([`2690798`](https://github.com/eyeonus/Trade-Dangerous/commit/26907982efe043cea0c8df8c1d800fb4b6307b92))
+
+- Tests - replace legacy trade run snapshots with isolated semantic integration coverage
+  ([`92e18d4`](https://github.com/eyeonus/Trade-Dangerous/commit/92e18d4b5ca01348c25f60011f5456f18f37f679))
+
+This drops the old fixture-copying, formatting-heavy trade run tests in favour of the same isolated
+  harness pattern used by the modern CLI tests. The replacement keeps real end-to-end coverage of
+  the core trading path, while making the assertions stable and targeted, including a controllable
+  --age check.
 
 - **deps**: Bump aiohttp from 3.13.3 to 3.13.4
   ([#298](https://github.com/eyeonus/Trade-Dangerous/pull/298),
