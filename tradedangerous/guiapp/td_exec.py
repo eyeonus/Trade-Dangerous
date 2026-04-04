@@ -292,6 +292,28 @@ class TdExecutor:
                 errors=errors,
                 validate_optional_int=self._validate_optional_int,
             )
+
+        if request.command == 'buy':
+            from .td_exec_commands import validate_buy_request
+
+            validate_buy_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_int=self._validate_optional_int,
+                validate_optional_float=self._validate_optional_float,
+                split_search_terms=self._split_search_terms,
+            )
+        
+        if request.command == 'sell':
+            from .td_exec_commands import validate_sell_request
+
+            validate_sell_request(
+                resolved=self._global_command_resolved_values(request),
+                errors=errors,
+                validate_optional_int=self._validate_optional_int,
+                validate_optional_float=self._validate_optional_float,
+                split_search_terms=self._split_search_terms,
+            )
         
         if request.command == 'local':
             validate_local_request(
