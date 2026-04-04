@@ -98,6 +98,40 @@ def build_buy_argv(
     )
     return argv
 
+def validate_buy_request(
+    *,
+    resolved: dict[str, Any],
+    errors: list[str],
+    validate_optional_int: Callable[..., None],
+    validate_optional_float: Callable[..., None],
+    split_search_terms: Callable[[Any], list[str]],
+) -> None:
+    search_terms = split_search_terms(resolved.get('search'))
+    if not search_terms:
+        errors.append('Buy requires Search.')
+    
+    validate_optional_int(resolved, 'supply', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'gt', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'lt', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'maxLs', minimum=0, errors=errors)
+    validate_optional_float(resolved, 'distance', minimum=0.0, errors=errors)
+    validate_optional_float(
+        resolved,
+        'max_data_age_days',
+        minimum=0.0,
+        errors=errors,
+    )
+    
+    near = str(resolved.get('near') or '').strip()
+    if resolved.get('distance') is not None and not near:
+        errors.append('Buy distance requires Near.')
+    
+    gt = resolved.get('gt')
+    lt = resolved.get('lt')
+    if isinstance(gt, int) and isinstance(lt, int) and lt <= gt:
+        errors.append('Buy --gt must be lower than --lt.')
+
 def build_sell_argv(
     *,
     resolved: dict[str, Any],
@@ -124,6 +158,41 @@ def build_sell_argv(
         append_flag=append_flag,
     )
     return argv
+
+def validate_sell_request(
+    *,
+    resolved: dict[str, Any],
+    errors: list[str],
+    validate_optional_int: Callable[..., None],
+    validate_optional_float: Callable[..., None],
+    split_search_terms: Callable[[Any], list[str]],
+) -> None:
+    search_terms = split_search_terms(resolved.get('search'))
+    if not search_terms:
+        errors.append('Sell requires Search.')
+    elif len(search_terms) > 1:
+        errors.append('Sell only accepts one search term.')
+    
+    validate_optional_int(resolved, 'demand', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'gt', minimum=0, errors=errors)
+    validate_optional_int(resolved, 'lt', minimum=0, errors=errors)
+    validate_optional_float(resolved, 'distance', minimum=0.0, errors=errors)
+    validate_optional_float(
+        resolved,
+        'max_data_age_days',
+        minimum=0.0,
+        errors=errors,
+    )
+    
+    near = str(resolved.get('near') or '').strip()
+    if resolved.get('distance') is not None and not near:
+        errors.append('Sell distance requires Near.')
+    
+    gt = resolved.get('gt')
+    lt = resolved.get('lt')
+    if isinstance(gt, int) and isinstance(lt, int) and lt <= gt:
+        errors.append('Sell --gt must be lower than --lt.')
 
 def _append_buysell_search_options(
     argv: list[str],
