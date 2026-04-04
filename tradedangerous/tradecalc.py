@@ -645,7 +645,7 @@ class TradeCalc:
             "modified"
         )
         
-        where_clauses = ["fx_demand_price > 0 OR fx_supply_price > 0"]
+        where_clauses = ["(fx_demand_price > 0 OR fx_supply_price > 0)"]
         params = {"mindemand": minDemand or 1, "minsupply": minSupply or 1}
         
         # Age cutoff (if provided in env)
