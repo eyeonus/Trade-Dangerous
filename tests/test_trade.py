@@ -9,7 +9,7 @@ from .helpers import isolated_trade_env, strip_ansi
 PROG = "trade"
 
 
-class TestTrade::
+class TestTrade:
     def test_local_help(self, isolated_trade_env):
         trade = isolated_trade_env["trade"]
         usage_error = isolated_trade_env["UsageError"]

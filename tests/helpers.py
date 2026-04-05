@@ -41,8 +41,7 @@ def _write_db_config(cfg_path: Path, data_dir: Path, tmp_dir: Path) -> None:
         cp.write(fh)
 
 
-@pytest.fixture()
-def isolated_trade_env(tmp_path, monkeypatch):
+def _build_isolated_trade_env(tmp_path, monkeypatch):
     tests_dir = Path(__file__).resolve().parent
     fixtures_dir = tests_dir / "fixtures"
 
@@ -76,7 +75,14 @@ def isolated_trade_env(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def isolated_tdb(isolated_trade_env):
+def isolated_trade_env(tmp_path, monkeypatch):
+    return _build_isolated_trade_env(tmp_path, monkeypatch)
+
+
+@pytest.fixture()
+def isolated_tdb(tmp_path, monkeypatch):
+    _build_isolated_trade_env(tmp_path, monkeypatch)
+
     import tradedangerous.tradedb as tradedb_module
 
     instance = tradedb_module.TradeDB()
@@ -84,7 +90,6 @@ def isolated_tdb(isolated_trade_env):
     instance.close(final=True)
     del instance
     gc.collect()
-
 
 @contextmanager
 def replace_stdin(target: typing.TextIO):  
