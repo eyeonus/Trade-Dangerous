@@ -1,6 +1,44 @@
 # CHANGELOG
 
 
+## v12.18.14 (2026-04-05)
+
+### Bug Fixes
+
+- Apply TradeCalc preload filters to both demand and supply rows
+  ([`8dda585`](https://github.com/eyeonus/Trade-Dangerous/commit/8dda5858531df88e79965563db73fe256ca823b4))
+
+The preload query in `TradeCalc` combined `OR` and `AND` conditions without grouping, so station and
+  age filters only constrained supply-side rows while demand-side rows leaked through globally.
+  Parenthesising the buy-or-sell clause restores the intended logic and makes `restrict_station_ids`
+  and `maxAge` apply consistently to both sides of the market data.
+
+### Chores
+
+- Conftest cleanup & test_peek
+  ([`431761f`](https://github.com/eyeonus/Trade-Dangerous/commit/431761ff099f28d0c79455b83a14fe378cd20158))
+
+Roll fixtures used exclusively by test_peek from conftest.py into test_peek.py
+
+conftest.py remains as a channel filter only
+
+- Roll isolated tdb function into helpers for later use
+  ([`d07f7ba`](https://github.com/eyeonus/Trade-Dangerous/commit/d07f7ba931ad7ce242772bfaa7a523009b2b9ba9))
+
+Used it three times and gonna use it more, so putting it into the helpers.py because calling common
+  functions is doing it right.
+
+- Test: add DB-adjacent coverage for TradeDB and TradeCalc
+  ([`c25d982`](https://github.com/eyeonus/Trade-Dangerous/commit/c25d982f0751396cd7723bc21b1cf469ecda039a))
+
+Add direct DB-backed tests for TradeDB lookup, price caching, routing, and TradeCalc preload/trade
+  selection behavior.
+
+Also centralize the isolated DB test helpers and tidy the remaining test fixture usage.
+
+Also various other fixes for bugs surfaced in the new test suite.
+
+
 ## v12.18.13 (2026-04-04)
 
 
