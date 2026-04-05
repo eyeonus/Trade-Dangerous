@@ -6,7 +6,6 @@ from tradedangerous.guiapp.td_exec import (
     _snapshot_structured_result,
 )
 
-
 class _FakeSystem:
     def __init__(self, name):
         self.dbname = name
@@ -14,10 +13,9 @@ class _FakeSystem:
         self.posY = 2.0
         self.posZ = 3.0
         self.stations = []
-
+    
     def name(self):
         return self.dbname
-
 
 class _FakeStation:
     def __init__(self, name, system):
@@ -36,23 +34,21 @@ class _FakeStation:
         self.fleet = 'N'
         self.odyssey = 'Y'
         self.itemCount = 3
-
+    
     def name(self, *_args):
         return f'{self.system.dbname}/{self.dbname}'
-
+    
     def distFromStar(self):
         return '42'
-
 
 class _FakeTrade:
     def __init__(self, name, cost, gain):
         self._name = name
         self.costCr = cost
         self.gainCr = gain
-
+    
     def name(self):
         return self._name
-
 
 class _FakeHop:
     def __init__(self, items, units, gain, gpt):
@@ -60,7 +56,6 @@ class _FakeHop:
         self.units = units
         self.gainCr = gain
         self.gpt = gpt
-
 
 class _FakeRoute:
     def __init__(self, route, hops, jumps):
@@ -74,7 +69,6 @@ class _FakeRoute:
         self.gpt = 45
         self.score = 12.5
 
-
 def test_td_exec_request_context_precedence():
     request = GuiCommandRequest(
         command='run',
@@ -84,7 +78,7 @@ def test_td_exec_request_context_precedence():
         main_values={'starting': 'Achenar', 'hops': 4},
         advanced_values={'hops': 6, 'routes': 2},
     )
-
+    
     assert request.effective_context() == {
         'credits': 1000,
         'capacity': 30,
@@ -100,10 +94,9 @@ def test_td_exec_request_context_precedence():
         'routes': 2,
     }
 
-
 def test_td_executor_validate_request_core_rules_per_command():
     executor = TdExecutor()
-
+    
     run_errors = executor.validate_request(GuiCommandRequest(command='run'))
     trade_errors = executor.validate_request(GuiCommandRequest(command='trade'))
     local_errors = executor.validate_request(GuiCommandRequest(command='local'))
@@ -112,7 +105,7 @@ def test_td_executor_validate_request_core_rules_per_command():
     olddata_errors = executor.validate_request(
         GuiCommandRequest(command='olddata', main_values={'route': True})
     )
-
+    
     assert 'Run requires Capacity.' in run_errors
     assert 'Run requires Credits.' in run_errors
     assert 'Run requires Jump Range (Full).' in run_errors
@@ -121,7 +114,6 @@ def test_td_executor_validate_request_core_rules_per_command():
     assert market_errors == ['Market requires Station.']
     assert nav_errors == ['Nav requires Start.', 'Nav requires End.']
     assert olddata_errors == ['Old Data route sorting requires Near.']
-
 
 def test_td_exec_snapshot_helpers_convert_live_objects_to_plain_data():
     origin_system = _FakeSystem('Sol')
@@ -135,9 +127,9 @@ def test_td_exec_snapshot_helpers_convert_live_objects_to_plain_data():
         hops=[hop],
         jumps=[[origin_system, dest_system]],
     )
-
+    
     snapshot = _snapshot_structured_result('run', [route])
-
+    
     assert snapshot == [{
         'first_station': 'Sol/Abraham Lincoln',
         'last_station': 'LHS 380/Fisher Point',

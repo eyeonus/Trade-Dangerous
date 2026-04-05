@@ -18,16 +18,13 @@ tdenv = TradeEnv(debug=_DEBUG)
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
-
 def strip_ansi(text: str) -> str:
     return ANSI_RE.sub("", text)
-
 
 def _copy_fixture_pack(src: Path, dst: Path) -> None:
     for entry in src.iterdir():
         if entry.is_file():
             shutil.copy2(entry, dst / entry.name)
-
 
 def _write_db_config(cfg_path: Path, data_dir: Path, tmp_dir: Path) -> None:
     cp = configparser.ConfigParser()
@@ -40,31 +37,30 @@ def _write_db_config(cfg_path: Path, data_dir: Path, tmp_dir: Path) -> None:
     with cfg_path.open("w", encoding="utf-8") as fh:
         cp.write(fh)
 
-
 def _build_isolated_trade_env(tmp_path, monkeypatch):
     tests_dir = Path(__file__).resolve().parent
     fixtures_dir = tests_dir / "fixtures"
-
+    
     data_dir = tmp_path / "data"
     tmp_dir = tmp_path / "tmp"
     export_dir = tmp_path / "export"
     data_dir.mkdir()
     tmp_dir.mkdir()
     export_dir.mkdir()
-
+    
     _copy_fixture_pack(fixtures_dir, data_dir)
-
+    
     cfg_path = data_dir / "db_config.ini"
     _write_db_config(cfg_path, data_dir, tmp_dir)
-
+    
     monkeypatch.setenv("TD_DATA", str(data_dir))
     monkeypatch.setenv("TD_CSV", str(data_dir))
     monkeypatch.setenv("TD_TMP", str(tmp_dir))
     monkeypatch.setenv("TD_DB_CONFIG", str(cfg_path))
-
+    
     import tradedangerous.cli as cli_module
     import tradedangerous.commands.exceptions as exceptions_module
-
+    
     return {
         "trade": cli_module.trade,
         "UsageError": exceptions_module.UsageError,
@@ -73,18 +69,16 @@ def _build_isolated_trade_env(tmp_path, monkeypatch):
         "export_dir": export_dir,
     }
 
-
 @pytest.fixture()
 def isolated_trade_env(tmp_path, monkeypatch):
     return _build_isolated_trade_env(tmp_path, monkeypatch)
 
-
 @pytest.fixture()
 def isolated_tdb(tmp_path, monkeypatch):
     _build_isolated_trade_env(tmp_path, monkeypatch)
-
+    
     import tradedangerous.tradedb as tradedb_module
-
+    
     instance = tradedb_module.TradeDB()
     yield instance
     instance.close(final=True)
@@ -98,7 +92,6 @@ def replace_stdin(target: typing.TextIO):
     yield
     sys.stdin = orig
 
-
 def empty_path(p: Path) -> None:
     """Deletes a directory tree including files"""
     # The way we wind down TradeDB and SQLAlchemy may sometimes
@@ -111,11 +104,9 @@ def empty_path(p: Path) -> None:
     elif p.is_file():
         p.unlink()
 
-
 def remove_fixtures(toDir: str | Path | None = None) -> None:
     toPath = Path(toDir or tdenv.dataDir)
     empty_path(toPath)
-
 
 def copy_fixtures(toDir=None):
     if not toDir:
@@ -131,7 +122,6 @@ def copy_fixtures(toDir=None):
     touch(Path(tdenv.dataDir, 'TradeDangerous.db'))
     print("copy fixtures done")
 
-
 def touch(*args: str | Path) -> Path:
     filename = Path(*args)
     return fs.touch(filename)
@@ -144,7 +134,7 @@ class pytest_regex:
     
     def __eq__(self, actual):
         return bool(self._regex.match(actual))
-
+    
     def __hash__(self):
         return hash(self._regex)
     

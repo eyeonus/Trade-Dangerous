@@ -17,13 +17,11 @@ from tradedangerous.guiapp.td_exec_commands import (
     validate_trade_request,
 )
 
-
 _APPEND_OPTION = TdExecutor._append_option
 _APPEND_FLAG = TdExecutor._append_flag
 _SPLIT = TdExecutor._split_search_terms
 _VALIDATE_INT = TdExecutor._validate_optional_int
 _VALIDATE_FLOAT = TdExecutor._validate_optional_float
-
 
 def test_build_run_argv_maps_expected_fields():
     argv = build_run_argv(
@@ -51,7 +49,7 @@ def test_build_run_argv_maps_expected_fields():
         append_option=_APPEND_OPTION,
         append_flag=_APPEND_FLAG,
     )
-
+    
     assert argv[:2] == ['tradegui.py', 'run']
     assert '--capacity' in argv and '36' in argv
     assert '--credits' in argv and '9000' in argv
@@ -63,7 +61,6 @@ def test_build_run_argv_maps_expected_fields():
     assert '--show-jumps' in argv
     assert '--summary' in argv
 
-
 def test_build_trade_argv_and_validate_trade_request():
     resolved = {
         'origin': 'Sol/Abraham Lincoln',
@@ -72,7 +69,7 @@ def test_build_trade_argv_and_validate_trade_request():
         'cargoMode': 'fill',
     }
     errors = []
-
+    
     argv = build_trade_argv(
         resolved=resolved,
         append_option=_APPEND_OPTION,
@@ -83,13 +80,12 @@ def test_build_trade_argv_and_validate_trade_request():
         errors=errors,
         validate_optional_int=_VALIDATE_INT,
     )
-
+    
     assert argv == [
         'tradegui.py', 'trade', 'Sol/Abraham Lincoln', 'Sol/Burnell Station',
         '--detail', '--gain-per-ton', '10', '--fill',
     ]
     assert errors == []
-
 
 def test_build_local_argv_and_validate_local_request():
     resolved = {
@@ -101,7 +97,7 @@ def test_build_local_argv_and_validate_local_request():
         'repair': True,
     }
     errors = []
-
+    
     argv = build_local_argv(
         resolved=resolved,
         append_option=_APPEND_OPTION,
@@ -112,13 +108,12 @@ def test_build_local_argv_and_validate_local_request():
         errors=errors,
         validate_optional_float=_VALIDATE_FLOAT,
     )
-
+    
     assert argv[:4] == ['tradegui.py', 'local', 'Sol', '--ly']
     assert '--trading' in argv
     assert '--repair' in argv
     assert argv[-2:] == ['--detail', '--detail']
     assert errors == []
-
 
 def test_build_nav_argv_and_validate_nav_request():
     resolved = {
@@ -130,7 +125,7 @@ def test_build_nav_argv_and_validate_nav_request():
         'avoid': 'D\nE',
     }
     errors = []
-
+    
     argv = build_nav_argv(
         resolved=resolved,
         append_option=_APPEND_OPTION,
@@ -143,14 +138,13 @@ def test_build_nav_argv_and_validate_nav_request():
         validate_optional_int=_VALIDATE_INT,
         validate_optional_float=_VALIDATE_FLOAT,
     )
-
+    
     assert argv[:3] == ['tradegui.py', 'nav', 'Sol']
     assert argv.count('--via') == 3
     assert argv.count('--avoid') == 2
     assert '--stations' in argv
     assert argv[-2:] == ['--detail', '--detail']
     assert errors == []
-
 
 def test_build_olddata_argv_and_validate_olddata_request():
     resolved = {
@@ -162,7 +156,7 @@ def test_build_olddata_argv_and_validate_olddata_request():
         'lsMax': 1000,
     }
     errors = []
-
+    
     argv = build_olddata_argv(
         resolved=resolved,
         append_option=_APPEND_OPTION,
@@ -174,7 +168,7 @@ def test_build_olddata_argv_and_validate_olddata_request():
         validate_optional_int=_VALIDATE_INT,
         validate_optional_float=_VALIDATE_FLOAT,
     )
-
+    
     assert argv == [
         'tradegui.py', 'olddata',
         '--near', 'Sol',
@@ -186,7 +180,6 @@ def test_build_olddata_argv_and_validate_olddata_request():
     ]
     assert errors == []
 
-
 def test_build_rares_argv_and_validate_rares_request():
     resolved = {
         'near': 'Leesti',
@@ -197,7 +190,7 @@ def test_build_rares_argv_and_validate_rares_request():
         'awayFrom': 'Sol, Lave',
     }
     errors = []
-
+    
     argv = build_rares_argv(
         resolved=resolved,
         append_option=_APPEND_OPTION,
@@ -211,7 +204,7 @@ def test_build_rares_argv_and_validate_rares_request():
         validate_optional_float=_VALIDATE_FLOAT,
         split_search_terms=_SPLIT,
     )
-
+    
     assert argv[:3] == ['tradegui.py', 'rares', 'Leesti']
     assert '--legal' in argv
     assert '--away' in argv and '100.0' in argv
@@ -219,13 +212,12 @@ def test_build_rares_argv_and_validate_rares_request():
     assert argv[-2:] == ['--detail', '--detail']
     assert errors == []
 
-
 def test_build_buy_sell_market_argv_and_validators():
     from tradedangerous.guiapp.td_exec_commands import (
         validate_buy_request,
         validate_sell_request,
     )
-
+    
     buy_resolved = {
         'search': 'hydrogen fuel, water',
         'supply': 100,
@@ -248,7 +240,7 @@ def test_build_buy_sell_market_argv_and_validators():
         validate_optional_float=_VALIDATE_FLOAT,
         split_search_terms=_SPLIT,
     )
-
+    
     sell_resolved = {
         'search': 'hydrogen fuel',
         'demand': 50,
@@ -270,7 +262,7 @@ def test_build_buy_sell_market_argv_and_validators():
         validate_optional_float=_VALIDATE_FLOAT,
         split_search_terms=_SPLIT,
     )
-
+    
     market_errors = []
     market_argv = build_market_argv(
         resolved={'origin': 'Sol/Abraham Lincoln', 'mode': 'buying'},
@@ -280,26 +272,25 @@ def test_build_buy_sell_market_argv_and_validators():
         resolved={'origin': 'Sol/Abraham Lincoln', 'mode': 'buying'},
         errors=market_errors,
     )
-
+    
     assert buy_argv[:4] == ['tradegui.py', 'buy', 'hydrogen fuel', 'water']
     assert '--one-stop' in buy_argv
     assert '--price-sort' in buy_argv
     assert buy_errors == []
-
+    
     assert sell_argv[:3] == ['tradegui.py', 'sell', 'hydrogen fuel']
     assert '--demand' in sell_argv and '50' in sell_argv
     assert sell_errors == []
-
+    
     assert market_argv == ['tradegui.py', 'market', 'Sol/Abraham Lincoln', '--buying', '--detail', '--detail']
     assert market_errors == []
-
 
 def test_validate_buy_sell_request_rejects_invalid_inputs():
     from tradedangerous.guiapp.td_exec_commands import (
         validate_buy_request,
         validate_sell_request,
     )
-
+    
     buy_errors = []
     validate_buy_request(
         resolved={
@@ -313,11 +304,11 @@ def test_validate_buy_sell_request_rejects_invalid_inputs():
         validate_optional_float=_VALIDATE_FLOAT,
         split_search_terms=_SPLIT,
     )
-
+    
     assert 'Buy requires Search.' in buy_errors
     assert 'Buy distance requires Near.' in buy_errors
     assert 'Buy --gt must be lower than --lt.' in buy_errors
-
+    
     sell_errors = []
     validate_sell_request(
         resolved={
@@ -331,7 +322,7 @@ def test_validate_buy_sell_request_rejects_invalid_inputs():
         validate_optional_float=_VALIDATE_FLOAT,
         split_search_terms=_SPLIT,
     )
-
+    
     assert 'Sell only accepts one search term.' in sell_errors
     assert 'Sell distance requires Near.' in sell_errors
     assert 'Sell --gt must be lower than --lt.' in sell_errors

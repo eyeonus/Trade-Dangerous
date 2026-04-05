@@ -2,7 +2,6 @@ import pytest
 
 from tradedangerous import cli
 
-
 def test_cli_trade_fast_validation_runs_before_tradedb_load(monkeypatch):
     class DummyEnv:
         wantsTradeDB = True
@@ -64,7 +63,6 @@ def test_cli_trade_calls_preflight_before_tradedb(monkeypatch):
     assert calls[1] == ("TradeDB", True)
     assert ("run", True) in calls
     assert ("close", True) in calls
-
 
 def test_cli_trade_preflight_can_disable_db_load(monkeypatch):
     class DummyTDB:

@@ -2,7 +2,6 @@ import pytest   # noqa: F401
 
 from tradedangerous import utils
 
-
 class TestUtils:    # should inherit from TestCase
     # TODO: Test 'von' etc.
     
