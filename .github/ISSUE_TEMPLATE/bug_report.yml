@@ -6,7 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` before submitting a report.
+        If using CLI, please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` before submitting a report.
+        If using GUI, please make sure you are using the latest available windows installer.
 
   - type: textarea
     id: what-happened
