@@ -19,6 +19,9 @@ class _FakeElement:
     def props(self, _value):
         return self
     
+    def tooltip(self, _value):
+        return self
+    
     def __enter__(self):
         return self
     

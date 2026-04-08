@@ -206,7 +206,8 @@ def test_build_rares_argv_and_validate_rares_request():
     )
     
     assert argv[:3] == ['tradegui.py', 'rares', 'Leesti']
-    assert '--legal' in argv
+    assert '--legal' not in argv
+    assert '--illegal' not in argv
     assert '--away' in argv and '100.0' in argv
     assert argv.count('--from') == 2
     assert argv[-2:] == ['--detail', '--detail']
