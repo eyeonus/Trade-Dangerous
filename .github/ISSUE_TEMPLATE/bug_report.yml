@@ -6,8 +6,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        If using CLI, please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` before submitting a report.
-        If using GUI, please make sure you are using the latest available windows installer.
+        If running from CLI, please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` before submitting a report.
+        If using installer for GUI, please make sure you are using the latest available.
 
   - type: textarea
     id: what-happened
@@ -45,7 +45,7 @@ body:
 
         CLI: Append `-vvvwww` to the original `trade` command and provide the output below. For larger logs (20+ lines), please upload them to [gist](https://gist.github.com/) and provide the gist link here.
 
-        GUI:Crash logs can be found in `%LOCALAPPDATA%\TradeDangerous\logs`. Please paste the contents of the relevant crash log.
+        GUI Installer:Crash logs can be found in `%LOCALAPPDATA%\TradeDangerous\logs`. Please paste the contents of the relevant crash log.
       render: shell
     validations:
       required: true
