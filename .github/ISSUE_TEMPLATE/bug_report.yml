@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` before submitting a report.
+        Please ensure your Trade Dangerous is up to date with `pip install --upgrade tradedangerous` or you are using the latest version of the Windows installer before submitting a report.
   - type: textarea
     id: what-happened
     attributes:
@@ -34,8 +34,11 @@ body:
   - type: markdown
     attributes:
       value: |
+        CLI:
         Please append `-vvvwww` to the original `trade` command and provide the output below.
         For larger logs (20+ lines) please paste the upload to [gist](https://gist.github.com/) and provide a link to the gist here.
+        GUI:
+        Crash logs can be found in %LOCALAPPDATA%\TradeDangerous\logs. Either quote the contents, or attach the complete file.
   - type: textarea
     id: logs
     attributes:
