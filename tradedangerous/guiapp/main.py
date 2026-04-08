@@ -26,14 +26,19 @@ _ORIGINAL_NATIVE_ACTIVATE: Callable[..., None] | None = None
 _NATIVE_WINDOW_CLOSE_SHARED_STATE: Any = None
 
 def _shutdown_debug_note(stage: str, *, server: Any = None) -> None:
-    parts = [f'[td-gui shutdown {time.strftime("%H:%M:%S")}]', stage]
-    if server is not None:
-        state = getattr(server, 'server_state', None)
-        if state is not None:
-            parts.append(f'connections={len(state.connections)}')
-            parts.append(f'tasks={len(state.tasks)}')
-        parts.append(f'should_exit={getattr(server, "should_exit", None)}')
-    print(' '.join(parts), file=sys.stderr, flush=True)
+    return
+# This was checking an intermittent fault that stopped happening the moment
+# we started looking for it. Leaving the code here in case, but for now, just 
+# dropping the function to a no-op.
+#
+#    parts = [f'[td-gui shutdown {time.strftime("%H:%M:%S")}]', stage]
+#    if server is not None:
+#        state = getattr(server, 'server_state', None)
+#        if state is not None:
+#            parts.append(f'connections={len(state.connections)}')
+#            parts.append(f'tasks={len(state.tasks)}')
+#        parts.append(f'should_exit={getattr(server, "should_exit", None)}')
+#    print(' '.join(parts), file=sys.stderr, flush=True)
 
 
 # NiceGUI native mode launches the pywebview window in a separate process.
