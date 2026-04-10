@@ -14,10 +14,9 @@ THEME_OPTIONS: dict[str, str] = {
 }
 DEFAULT_PORT = 8542
 
-
 class SettingsWorkspace:
     """Render settings that affect the shell itself rather than TD commands."""
-
+    
     def __init__(
         self,
         *,
@@ -33,7 +32,7 @@ class SettingsWorkspace:
         self.theme_select = None
         self.launcher_port_input = None
         self.advanced_dialog = None
-
+    
     def build(self) -> None:
         self.advanced_dialog = ui.dialog()
         with self.advanced_dialog:
@@ -57,7 +56,10 @@ class SettingsWorkspace:
                     placeholder=f'Use default ({DEFAULT_PORT})',
                     validation=self._validate_launcher_port,
                     on_change=self._on_launcher_port_changed,
-                ).props('clearable inputmode=numeric').classes('w-64')
+                ).props('clearable inputmode=numeric').classes('w-64').tooltip(
+                    'Set the local application port used on the next launch. '
+                    'Leave blank to try 8542 first.'
+                )
                 ui.label(
                     f'Leave this blank to try {DEFAULT_PORT} first. If '
                     f'{DEFAULT_PORT} is unavailable, Trade Dangerous will ask '
@@ -68,7 +70,7 @@ class SettingsWorkspace:
                     'them.'
                 ).classes('text-sm text-amber-700 whitespace-pre-wrap')
                 ui.button('Close', on_click=self.advanced_dialog.close)
-
+        
         with ui.column().classes('w-full gap-3'):
             with ui.card().classes('w-full gap-3'):
                 ui.label('Settings')
@@ -82,18 +84,21 @@ class SettingsWorkspace:
                     value=self.selected_theme,
                     label='Theme',
                     on_change=self._on_theme_changed,
-                ).classes('w-64')
+                ).classes('w-64').tooltip(
+                    'Choose the live GUI theme for this session and future '
+                    'launches.'
+                )
                 ui.button(
                     'Advanced Settings',
                     on_click=self.advanced_dialog.open,
                 )
-
+    
     def _on_theme_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
         if value is None:
             return
         self.on_theme_changed(str(value))
-
+    
     def _on_launcher_port_changed(self, event: Any) -> None:
         value = getattr(event, 'value', None)
         if value in {None, ''}:
@@ -110,7 +115,7 @@ class SettingsWorkspace:
         if port < LAUNCHER_PORT_MIN or port > LAUNCHER_PORT_MAX:
             return
         self.on_launcher_port_changed(port)
-
+    
     @staticmethod
     def _validate_launcher_port(value: Any) -> str | None:
         if value in {None, ''}:

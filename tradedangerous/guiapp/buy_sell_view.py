@@ -6,6 +6,7 @@ from typing import Callable
 
 from nicegui import ui
 
+from .autocomplete import build_system_autocomplete_input
 from .profiles import CommandDraft
 from .shared_draft_helpers import DraftValueHelper
 from .shared_filter_view import build_shared_filter_section
@@ -20,11 +21,13 @@ class BuySellWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
     ) -> None:
         self.command = command
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
     
     def build(self) -> None:
         action = 'Buy' if self.command == 'buy' else 'Sell'
@@ -63,17 +66,28 @@ class BuySellWorkspace(DraftValueHelper):
                         'search',
                         event.value,
                     ),
-                ).classes('min-w-96 flex-1')
+                ).classes('min-w-96 flex-1').tooltip(
+                    'Items or ships to look for. Enter one name or a '
+                    'comma-separated list.' if self.command == 'buy' else
+                    'Name of the item you want to sell. One item only.'
+                )
                 
-                ui.input(
-                    'Near',
+                build_system_autocomplete_input(
+                    label='Near',
                     value=self._text_value(self.draft.main_values, 'near'),
-                    on_change=lambda event: self._set_text(
+                    on_text_changed=lambda value: self._set_text(
                         self.draft.main_values,
                         'near',
-                        event.value,
+                        value,
                     ),
-                ).classes('min-w-80 flex-1')
+                    tooltip=(
+                        'Find sellers within jump range of this system.'
+                        if self.command == 'buy' else
+                        'Find buyers within jump range of this system.'
+                    ),
+                    suggest_systems=self.suggest_systems,
+                    input_classes='min-w-80 flex-1',
+                )
             
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
@@ -88,7 +102,12 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                         'Distance',
                     ),
-                ).classes('w-40')
+                ).classes('w-40').tooltip(
+                    'Requires Near. Systems within this range of Near.'
+                    if self.command == 'buy' else
+                    'Maximum light years per jump when searching buyers '
+                    'near the specified system.'
+                )
                 ui.number(
                     'Supply' if self.command == 'buy' else 'Demand',
                     value=self._number_value(
@@ -104,7 +123,12 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                         'Supply' if self.command == 'buy' else 'Demand',
                     ),
-                ).classes('w-40')
+                ).classes('w-40').tooltip(
+                    'Limit to stations known to have at least this much '
+                    'supply.' if self.command == 'buy' else
+                    'Limit to stations known to have at least this much '
+                    'demand.'
+                )
     
     def _build_filter_section(self) -> None:
         # Reuse the same tri-state and pad-size UI so command workspaces stay
@@ -171,7 +195,9 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                         'Limit',
                     ),
-                ).classes('w-32')
+                ).classes('w-32').tooltip(
+                    'Maximum number of results to list.'
+                )
                 if self.command == 'buy':
                     ui.number(
                         'LS max',
@@ -188,7 +214,10 @@ class BuySellWorkspace(DraftValueHelper):
                             event.value,
                             'LS max',
                         ),
-                    ).classes('w-40')
+                    ).classes('w-40').tooltip(
+                        'Only consider stations up to this many ls from '
+                        'their star.'
+                    )
                 ui.number(
                     'GT',
                     value=self._number_value(
@@ -204,7 +233,9 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                         'GT',
                     ),
-                ).classes('w-32')
+                ).classes('w-32').tooltip(
+                    'Limit to prices above Ncr.'
+                )
                 ui.number(
                     'LT',
                     value=self._number_value(
@@ -220,7 +251,9 @@ class BuySellWorkspace(DraftValueHelper):
                         event.value,
                         'LT',
                     ),
-                ).classes('w-32')
+                ).classes('w-32').tooltip(
+                    'Limit to prices below Ncr.'
+                )
     
     def _build_extended_station_section(self) -> None:
         with ui.column().classes('w-full gap-3'):
@@ -238,6 +271,8 @@ class BuySellWorkspace(DraftValueHelper):
                         'noPlanet',
                         event.value,
                     ),
+                ).tooltip(
+                    'Require stations to be in space.'
                 )
                 ui.checkbox(
                     'Black market only',
@@ -250,6 +285,8 @@ class BuySellWorkspace(DraftValueHelper):
                         'blackMarket',
                         event.value,
                     ),
+                ).tooltip(
+                    'Require stations known to have a black market.'
                 )
     
     def _build_extended_output_section(self) -> None:
@@ -268,6 +305,8 @@ class BuySellWorkspace(DraftValueHelper):
                         'sortByPrice',
                         event.value,
                     ),
+                ).tooltip(
+                    'When using Near, sort by price instead of distance.'
                 )
                 
                 if self.command == 'buy':
@@ -282,6 +321,8 @@ class BuySellWorkspace(DraftValueHelper):
                             'oneStop',
                             event.value,
                         ),
+                    ).tooltip(
+                        'Only list stations that carry all items listed.'
                     )
                     ui.checkbox(
                         'Sort by units',
@@ -294,4 +335,6 @@ class BuySellWorkspace(DraftValueHelper):
                             'sortByUnits',
                             event.value,
                         ),
+                    ).tooltip(
+                        'Sort by available units followed by price.'
                     )

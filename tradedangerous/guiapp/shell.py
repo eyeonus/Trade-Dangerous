@@ -33,6 +33,7 @@ from .import_view import ImportWorkspace
 from .results_view import render_command_results
 from .session import ExecutionStatus, SessionState
 from .td_exec import GuiCommandRequest, TdCommandProcess, TdExecutor
+from .gui_search import get_gui_search_service
 
 COMMAND_OPTIONS: dict[str, str] = {
     'run': 'Run',
@@ -57,10 +58,12 @@ class AppShell:
         *,
         window_close_state: Any | None = None,
     ) -> None:
+        
         self.store = store
         self.window_close_state = window_close_state
         self.session = SessionState.from_store(store)
         self.executor = TdExecutor()
+        self.search_service = get_gui_search_service()
         self.active_command_process: TdCommandProcess | None = None
         self.active_command_task: asyncio.Task | None = None
         
@@ -197,7 +200,9 @@ class AppShell:
                     value=self.session.selected_command,
                     label='Command',
                     on_change=self._on_command_changed,
-                ).classes('min-w-40')
+                ).classes('min-w-40').tooltip(
+                    'Select which Trade Dangerous command to use.'
+                )
                 self.status_label = ui.label('Status: Idle')
             with ui.row().classes('items-center gap-3 pl-2'):
                 self.right_pane_toggle = ui.toggle(
@@ -208,25 +213,35 @@ class AppShell:
                     },
                     value=self.right_pane_view,
                     on_change=self._on_right_pane_view_changed,
+                ).tooltip(
+                    'Show input dialog, recent results, or diagnostics '
+                    'for the selected command.'
                 )
     
     def _build_left_pane(self) -> None:
         with ui.column().classes('w-full gap-3 pr-2 box-border').style(
             'min-width: 23rem;'
         ):
-            ui.label('Commander Baseline')
+            ui.label('Commander Details')
             self.commander_name_input = ui.input(
                 'Commander Name',
                 on_change=self._on_global_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Commander Name (Remembered between sessions)'
+            )
             self.credits_input = ui.input(
                 'Credits',
                 on_change=self._on_global_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Credits (Remembered between sessions)'
+            )
             self.max_data_age_input = ui.input(
                 'Max data age (days)',
                 on_change=self._on_global_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Default age of data to use in queries. '
+                '(Remembered between sessions)'
+            )
             
             ui.separator()
             ui.label('Ship Profile')
@@ -235,28 +250,43 @@ class AppShell:
                 value=self.session.selected_profile_id,
                 label='Ship Profile',
                 on_change=self._on_profile_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Select the active ship profile.'
+            )
             self.ship_name_input = ui.input(
                 'Ship Name',
                 on_change=self._on_ship_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Display name for the selected ship profile.'
+            )
             self.capacity_input = ui.input(
                 'Capacity',
                 on_change=self._on_ship_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Maximum cargo space of selected ship.'
+            )
             self.reserved_capacity_input = ui.input(
                 'Reserved Capacity',
                 on_change=self._on_ship_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Cargo capacity to keep in reserve. Effective Capacity '
+                'is Capacity minus Reserved Capacity.'
+            )
             self.effective_capacity_label = ui.label('Effective Capacity:')
             self.jump_range_full_input = ui.input(
                 'Jump Range (Full)',
                 on_change=self._on_ship_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Stored laden jump-range baseline for the selected '
+                'ship profile.'
+            )
             self.jump_range_empty_input = ui.input(
                 'Jump Range (Empty)',
                 on_change=self._on_ship_changed,
-            ).classes('w-full')
+            ).classes('w-full').tooltip(
+                'Stored empty jump-range baseline for the selected '
+                'ship profile.'
+            )
             
             ui.separator()
             with ui.row().classes('w-full gap-2'):
@@ -266,7 +296,7 @@ class AppShell:
     
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
-
+    
     def _build_command_switch_dialog(self) -> None:
         self.command_switch_dialog = ui.dialog().props('persistent')
         with self.command_switch_dialog, ui.card().style(
@@ -285,20 +315,20 @@ class AppShell:
                     'Switch and Stop',
                     on_click=lambda: self.command_switch_dialog.submit(True),
                 ).props('color=negative')
-
+    
     @staticmethod
     def _command_label(command: str | None) -> str:
         if not command:
             return 'Command'
         return COMMAND_OPTIONS.get(command, str(command).title())
-
+    
     def _command_process_is_busy(self) -> bool:
         runner = self.active_command_process
         return runner is not None and runner.is_active()
-
+    
     def _has_pending_command_process(self) -> bool:
         return self.active_command_process is not None
-
+    
     def _mark_window_close_worker(
         self,
         *,
@@ -313,18 +343,18 @@ class AppShell:
             command=command,
             pid=pid,
         )
-
+    
     def _clear_window_close_worker(self) -> None:
         if self.window_close_state is None:
             return
         self.window_close_state.clear()
-
+    
     def _switch_command(self, command: str) -> None:
         self.session.set_command(self.store, command)
         self.right_pane_view = 'setup'
         save_gui_store(self.store)
         self._refresh_ui()
-
+    
     def _restore_command_selection(self) -> None:
         self._refreshing_ui = True
         # Ordinary commands no longer run inside NiceGUI threads. Launch a
@@ -334,13 +364,13 @@ class AppShell:
             self.command_select.value = self.session.selected_command
         finally:
             self._refreshing_ui = False
-
+    
     async def _confirm_stop_before_switch(self, message: str) -> bool:
         if self.command_switch_message is None or self.command_switch_dialog is None:
             return True
         self.command_switch_message.text = message
         return bool(await self.command_switch_dialog)
-
+    
     def _stop_active_command_for_switch(self, target_command: str) -> None:
         runner = self.active_command_process
         if runner is None:
@@ -360,15 +390,15 @@ class AppShell:
     async def _on_command_changed(self, event: Any) -> None:
         if getattr(self, '_refreshing_ui', False):
             return
-
+        
         value = getattr(event, 'value', None)
         if value is None:
             return
-
+        
         new_command = str(value)
         if new_command == self.session.selected_command:
             return
-
+        
         if is_import_running(session=self.session):
             confirmed = await self._confirm_stop_before_switch(
                 'Import is still running. Switching to '
@@ -390,7 +420,7 @@ class AppShell:
             )
             self._switch_command(new_command)
             return
-
+        
         if self._command_process_is_busy():
             runner = self.active_command_process
             message = (
@@ -403,7 +433,7 @@ class AppShell:
                 self._restore_command_selection()
                 return
             self._stop_active_command_for_switch(new_command)
-
+        
         self._switch_command(new_command)
     
     def _on_profile_changed(self, event: Any) -> None:
@@ -460,10 +490,10 @@ class AppShell:
         if value in {'default', 'elite'}:
             return str(value)
         return 'default'
-
+    
     def _selected_launcher_port(self) -> int | None:
         return self.store.launcher_port
-
+    
     def _on_theme_changed(self, theme_name: str) -> None:
         theme = str(theme_name)
         if theme not in {'default', 'elite'}:
@@ -473,11 +503,11 @@ class AppShell:
         self._apply_theme()
         self._refresh_ui()
         self._register_native_window_size_handler()
-
+    
     def _on_launcher_port_changed(self, port: int | None) -> None:
         self.store.launcher_port = port
         save_gui_store(self.store)
-
+    
     def _on_begin_import_stop_confirmation(self) -> None:
         if begin_import_stop_confirmation(session=self.session):
             self._refresh_ui()
@@ -520,7 +550,7 @@ class AppShell:
                 color='warning',
             )
             return
-
+        
         if self.session.selected_command == 'import':
             # Import runs through a subprocess-backed polling loop so progress
             # can stream back into the session while the worker stays killable.
@@ -535,7 +565,7 @@ class AppShell:
                 window_close_state=self.window_close_state,
             )
             return
-
+        
         if self._has_pending_command_process():
             active_command = None
             if self.active_command_process is not None:
@@ -548,12 +578,12 @@ class AppShell:
                 color='warning',
             )
             return
-
+        
         if not self._capture_global_inputs():
             return
         if not self._capture_ship_inputs():
             return
-
+        
         # Drafts only store per-command fields. Snapshot the current left-pane
         # commander and ship context so execution is self-contained.
         request = GuiCommandRequest(
@@ -574,7 +604,7 @@ class AppShell:
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
         )
-
+        
         self.session.set_execution(
             status=ExecutionStatus.RUNNING,
             active_command=request.command,
@@ -584,7 +614,7 @@ class AppShell:
             structured_result=None,
         )
         self._refresh_ui()
-
+        
         try:
             # Launch the ordinary command in its own child process. The GUI
             # keeps only the request/result contract locally; all TD work now
@@ -601,7 +631,7 @@ class AppShell:
             )
             self._refresh_ui()
             return
-
+        
         self.active_command_process = runner
         self._mark_window_close_worker(
             kind='command',
@@ -611,7 +641,7 @@ class AppShell:
         self.active_command_task = asyncio.create_task(
             self._monitor_command_process(request=request, runner=runner)
         )
-
+    
     # The shell polls one child process from asyncio rather than awaiting a
     # thread-pool future. That keeps the UI responsive while still letting us
     # deliver one final result snapshot or stop message into session state.
@@ -751,6 +781,16 @@ class AppShell:
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
                     on_copy_from_profile=self._on_copy_from_profile,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
+                    suggest_stations=lambda text, system_id=None: self.search_service.suggest_stations(
+                        text,
+                        limit=10,
+                        system_id=system_id,
+                    ),
+                    resolve_system=self.search_service.resolve_system,
                 )
                 workspace.build()
             elif self.session.selected_command in {'buy', 'sell'}:
@@ -759,6 +799,10 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command == 'trade':
@@ -766,6 +810,16 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
+                    suggest_stations=lambda text, system_id=None: self.search_service.suggest_stations(
+                        text,
+                        limit=10,
+                        system_id=system_id,
+                    ),
+                    resolve_system=self.search_service.resolve_system,
                 )
                 workspace.build()
             elif self.session.selected_command == 'local':
@@ -773,6 +827,10 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command == 'market':
@@ -780,6 +838,22 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
+                    suggest_stations=lambda text, system_id=None: (
+                        []
+                        if system_id is None
+                        else self.search_service.suggest_stations(
+                            text,
+                            limit=10,
+                            system_id=system_id,
+                        )
+                    ),
+                    resolve_system=lambda text: self.search_service.resolve_system(
+                        text,
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command == 'rares':
@@ -787,6 +861,10 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command == 'nav':
@@ -794,6 +872,10 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command == 'olddata':
@@ -801,6 +883,10 @@ class AppShell:
                     self.session.draft,
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
+                    suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
                 )
                 workspace.build()
             elif self.session.selected_command == 'settings':
@@ -907,7 +993,7 @@ class AppShell:
             if 'has been deleted' in str(exc):
                 return
             raise
-
+    
     def _refresh_ui(self) -> None:
         # Pushing values back into NiceGUI widgets can fire change handlers;
         # suppress those callbacks while the shell is reflecting session state.

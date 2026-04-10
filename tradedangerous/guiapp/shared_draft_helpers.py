@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 from nicegui import ui
 
@@ -103,6 +103,98 @@ class DraftValueHelper:
             self.draft.main_values['padSize'] = ordered
         
         self.on_changed()
+    
+    @staticmethod
+    def _split_station_pair_value(value: Any) -> tuple[str, str]:
+        text = str(value or '').strip()
+        if '/' not in text:
+            return text, ''
+        system_name, station_name = text.split('/', 1)
+        return system_name.strip(), station_name.strip()
+    
+    def _station_pair_values(
+        self,
+        payload: dict[str, Any],
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+    ) -> tuple[str, str]:
+        system_name = self._text_value(payload, system_key).strip()
+        station_name = self._text_value(payload, station_key).strip()
+        
+        if system_name or station_name:
+            return system_name, station_name
+        
+        return self._split_station_pair_value(payload.get(combined_key))
+    
+    def _sync_station_pair_value(
+        self,
+        payload: dict[str, Any],
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+    ) -> None:
+        system_name = self._text_value(payload, system_key).strip()
+        station_name = self._text_value(payload, station_key).strip()
+        
+        if system_name and station_name:
+            payload[combined_key] = f'{system_name}/{station_name}'
+        else:
+            payload.pop(combined_key, None)
+    
+    def _normalize_station_pair_value(
+        self,
+        payload: dict[str, Any],
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+    ) -> tuple[str, str]:
+        system_name = self._text_value(payload, system_key).strip()
+        station_name = self._text_value(payload, station_key).strip()
+        combined_system, combined_station = self._split_station_pair_value(
+            payload.get(combined_key)
+        )
+        
+        if not system_name and combined_system:
+            system_name = combined_system
+            payload[system_key] = combined_system
+        
+        if not station_name and combined_station:
+            station_name = combined_station
+            payload[station_key] = combined_station
+        
+        self._sync_station_pair_value(
+            payload,
+            system_key=system_key,
+            station_key=station_key,
+            combined_key=combined_key,
+        )
+        return system_name, station_name
+    
+    @staticmethod
+    def _resolve_suggestion_id(
+        text: str | None,
+        *,
+        resolver: Callable[[str], Any] | None,
+        id_attr: str,
+    ) -> int | None:
+        cleaned = str(text or '').strip()
+        if cleaned == '':
+            return None
+        if resolver is None:
+            return None
+        
+        suggestion = resolver(cleaned)
+        if suggestion is None:
+            return None
+        
+        value = getattr(suggestion, id_attr, None)
+        if value is None:
+            return None
+        return int(value)
     
     @staticmethod
     def _text_value(payload: dict[str, Any], key: str) -> str:

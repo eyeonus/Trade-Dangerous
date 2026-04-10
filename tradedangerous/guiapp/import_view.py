@@ -7,12 +7,12 @@ from .session import ExecutionState, ExecutionStatus
 
 IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
     ('All', 'Update everything with the latest dump files.'),
-    ('Clean', 'Erase the local database and rebuild it from empty.'),
+    ('Clean', 'Erase all data and rebuild it from scratch.'),
     (
         'Skip Vendors',
-        "Don't regenerate ship or upgrade vendor tables. Overrides All and Clean.",
+        "Don't regenerate ship or upgrade vendor tables. ",
     ),
-    ('Optimize', 'Optimise the database after processing.'),
+    ('Optimize', 'Optimise the database after processing (use this occasionally).'),
     (
         'Force',
         'Regenerate selected data even if the source file has not changed since the previous import.',
@@ -170,6 +170,16 @@ class ImportWorkspace:
                                     event.value,
                                 ),
                             ).classes('min-w-40')
+                            tooltip_text = next(
+                                (
+                                    text
+                                    for help_label, text in IMPORT_HELP_ROWS
+                                    if help_label == label
+                                ),
+                                '',
+                            )
+                            if tooltip_text:
+                                checkbox.tooltip(tooltip_text)
                             self.option_checkboxes[key] = checkbox
                             if running:
                                 checkbox.disable()

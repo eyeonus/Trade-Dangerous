@@ -445,9 +445,8 @@ def build_rares_argv(
     append_flag(argv, '--price-sort', resolved.get('sortByPrice'))
     append_flag(argv, '--reverse', resolved.get('reverse'))
     
-    legal_mode = str(resolved.get('legalMode') or '').strip()
-    append_flag(argv, '--legal', legal_mode == 'legal')
-    append_flag(argv, '--illegal', legal_mode == 'illegal')
+    # Legality filtering is intentionally omitted from the GUI rares flow
+    # because the current data is not trusted as a user-facing filter.
     
     away = resolved.get('away')
     away_from = split_search_terms(resolved.get('awayFrom'))
@@ -475,10 +474,6 @@ def validate_rares_request(
     validate_optional_float(resolved, 'ly', minimum=0.0, errors=errors)
     validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
     validate_optional_float(resolved, 'away', minimum=0.0, errors=errors)
-    
-    legal_mode = resolved.get('legalMode')
-    if legal_mode not in (None, '', 'legal', 'illegal'):
-        errors.append('Rares legality selection is invalid.')
     
     has_away = resolved.get('away') is not None
     has_away_from = bool(split_search_terms(resolved.get('awayFrom')))

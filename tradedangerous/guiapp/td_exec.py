@@ -78,14 +78,12 @@ class GuiCommandResult:
     structured_result: Any = None
     argv_used: list[str] = field(default_factory=list)
 
-
-
 # The GUI keeps one managed child process per ordinary command. The shell
 # polls this wrapper from asyncio so the app stays responsive, while tool
 # switch and native-close flows can still terminate the worker immediately.
 class TdCommandProcess:
     """Run one ordinary TD command in a child process so it can be stopped."""
-
+    
     def __init__(self, request: GuiCommandRequest) -> None:
         self.request = request
         self.command = request.command
@@ -101,26 +99,26 @@ class TdCommandProcess:
         )
         self._result_consumed = False
         self._termination_message: str | None = None
-
+    
     @classmethod
     def launch(cls, request: GuiCommandRequest) -> 'TdCommandProcess':
         runner = cls(request)
         runner.start()
         return runner
-
+    
     def start(self) -> None:
         self._process.start()
         self._child_conn.close()
-
+    
     @property
     def pid(self) -> int | None:
         return self._process.pid
-
+    
     def is_active(self) -> bool:
         if self._result_consumed:
             return False
         return self._process.is_alive() or self._parent_conn.poll()
-
+    
     def poll_result(self) -> GuiCommandResult | None:
         if self._result_consumed:
             return None
@@ -137,7 +135,7 @@ class TdCommandProcess:
         self._result_consumed = True
         self._process.join(timeout=0.1)
         return self._build_process_exit_result()
-
+    
     def terminate(self, message: str) -> None:
         if self._result_consumed:
             return
@@ -145,7 +143,7 @@ class TdCommandProcess:
         if self._process.is_alive():
             self._process.terminate()
             self._process.join(timeout=0.2)
-
+    
     def close(self) -> None:
         self._parent_conn.close()
         if hasattr(self._process, 'close'):
@@ -153,7 +151,7 @@ class TdCommandProcess:
                 self._process.close()
             except ValueError:
                 pass
-
+    
     def _build_process_exit_result(self) -> GuiCommandResult:
         if self._termination_message:
             return GuiCommandResult(
@@ -162,7 +160,7 @@ class TdCommandProcess:
                 error_message=self._termination_message,
                 diagnostics_output=self._termination_message,
             )
-
+        
         exit_code = self._process.exitcode
         return GuiCommandResult(
             command=self.command,
@@ -175,7 +173,6 @@ class TdCommandProcess:
                 f'result payload (exit code {exit_code}).'
             ),
         )
-
 
 def _execute_request_worker(
     request: GuiCommandRequest,
@@ -224,7 +221,6 @@ def _execute_request_worker(
             pass
     finally:
         result_conn.close()
-
 
 class TdExecutor:
     """Thin execution boundary between NiceGUI and TD core.
@@ -285,6 +281,11 @@ class TdExecutor:
                 and context.get('jump_range_full_ly') is None
             ):
                 errors.append('Run requires Jump Range (Full).')
+            
+            has_to = bool(str(resolved.get('ending') or '').strip())
+            has_towards = bool(str(resolved.get('goalSystem') or '').strip())
+            if has_to and has_towards:
+                errors.append('Run To and Towards are mutually exclusive.')
         
         if request.command == 'trade':
             validate_trade_request(
@@ -292,10 +293,10 @@ class TdExecutor:
                 errors=errors,
                 validate_optional_int=self._validate_optional_int,
             )
-
+        
         if request.command == 'buy':
             from .td_exec_commands import validate_buy_request
-
+            
             validate_buy_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
@@ -306,7 +307,7 @@ class TdExecutor:
         
         if request.command == 'sell':
             from .td_exec_commands import validate_sell_request
-
+            
             validate_sell_request(
                 resolved=self._global_command_resolved_values(request),
                 errors=errors,
@@ -680,11 +681,15 @@ class TdExecutor:
         error_message: str,
         diagnostics_output: str | None = None,
     ) -> GuiCommandResult:
+        cleaned_error = _strip_ansi(error_message)
+        cleaned_diagnostics = _strip_ansi(
+            diagnostics_output or error_message
+        )
         return GuiCommandResult(
             command=command,
             ok=False,
-            error_message=error_message,
-            diagnostics_output=diagnostics_output or error_message,
+            error_message=cleaned_error,
+            diagnostics_output=cleaned_diagnostics,
             argv_used=argv,
         )
     
@@ -717,12 +722,10 @@ class TdExecutor:
 # GUI sees fallback output so transport failures cannot leak escape sequences.
 _ANSI_ESCAPE_RE = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 
-
 def _strip_ansi(text: str) -> str:
     if not text:
         return text
     return _ANSI_ESCAPE_RE.sub('', text)
-
 
 # Child-process results must cross a multiprocessing pipe, so convert any TD
 # objects into plain Python data here rather than teaching the renderer or
@@ -734,21 +737,20 @@ def _snapshot_structured_result(command: str, structured_result: Any) -> Any:
         return _snapshot_run_routes(structured_result)
     return _snapshot_value(structured_result)
 
-
 # `run` is the one command whose GUI view depends on a nested object graph
 # (route -> hop -> trade items -> jump path). Snapshot that graph explicitly
 # so the existing rich renderer keeps its semantics without live objects.
 def _snapshot_run_routes(routes: Any) -> Any:
     if not isinstance(routes, (list, tuple)):
         return _snapshot_value(routes)
-
+    
     snapshots: list[dict[str, Any]] = []
     for route in routes:
         route_stations = list(getattr(route, 'route', ()) or ())
         route_hops = list(getattr(route, 'hops', ()) or ())
         route_jumps = list(getattr(route, 'jumps', ()) or ())
         hop_snapshots: list[dict[str, Any]] = []
-
+        
         for hop_index, hop in enumerate(route_hops):
             items: list[dict[str, Any]] = []
             for trade_item in getattr(hop, 'items', ()) or ():
@@ -772,14 +774,14 @@ def _snapshot_run_routes(routes: Any) -> Any:
                         'total': total,
                     }
                 )
-
+            
             src_station = None
             dst_station = None
             if hop_index < len(route_stations):
                 src_station = _named_display_value(route_stations[hop_index])
             if hop_index + 1 < len(route_stations):
                 dst_station = _named_display_value(route_stations[hop_index + 1])
-
+            
             jump_path: list[str] = []
             if hop_index < len(route_jumps):
                 jump_path = [
@@ -790,7 +792,7 @@ def _snapshot_run_routes(routes: Any) -> Any:
                     )
                     if name
                 ]
-
+            
             hop_snapshots.append(
                 {
                     'src_station': src_station,
@@ -802,7 +804,7 @@ def _snapshot_run_routes(routes: Any) -> Any:
                     'jump_path': jump_path,
                 }
             )
-
+        
         snapshots.append(
             {
                 'first_station': _named_display_value(getattr(route, 'firstStation', None)),
@@ -814,9 +816,8 @@ def _snapshot_run_routes(routes: Any) -> Any:
                 'hops': hop_snapshots,
             }
         )
-
+    
     return snapshots
-
 
 # Generic snapshot path for every non-import command other than `run`. This
 # intentionally prefers plain dict/list/scalar structures over cleverness so
@@ -824,55 +825,54 @@ def _snapshot_run_routes(routes: Any) -> Any:
 def _snapshot_value(value: Any) -> Any:
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
-
+    
     if isinstance(value, dict):
         return {
             str(key): _snapshot_value(item)
             for key, item in value.items()
         }
-
+    
     if isinstance(value, (list, tuple)):
         return [_snapshot_value(item) for item in value]
-
+    
     if isinstance(value, set):
         return [
             _snapshot_value(item)
             for item in sorted(value, key=str)
         ]
-
+    
     mapping = getattr(value, '_mapping', None)
     if mapping is not None:
         return {
             str(key): _snapshot_value(item)
             for key, item in mapping.items()
         }
-
+    
     if _is_result_row(value):
         return {
             key: _snapshot_value(item)
             for key, item in vars(value).items()
             if not key.startswith('_')
         }
-
+    
     if _looks_like_station(value):
         return _snapshot_station(value)
-
+    
     if _looks_like_system(value):
         return _snapshot_system(value)
-
+    
     named_value = _named_display_value(value)
     if named_value is not None:
         return {'name': named_value}
-
+    
     if hasattr(value, '__dict__'):
         return {
             key: _snapshot_value(item)
             for key, item in vars(value).items()
             if not key.startswith('_')
         }
-
+    
     return str(value)
-
 
 def _snapshot_station(station: Any) -> dict[str, Any]:
     return {
@@ -893,19 +893,17 @@ def _snapshot_station(station: Any) -> dict[str, Any]:
         'itemCount': _display_attr(station, 'itemCount', 'item_count'),
     }
 
-
 def _snapshot_system(system: Any) -> dict[str, Any]:
     return {
         'name': _named_display_value(system),
         'dbname': _display_attr(system, 'dbname'),
     }
 
-
 def _safe_station_ls_text(station: Any) -> str | None:
     dist_from_star = _callable_attr(station, 'distFromStar')
     if dist_from_star not in (None, ''):
         return str(dist_from_star)
-
+    
     ls_from_star = _display_attr(station, 'lsFromStar', 'ls_from_star')
     if ls_from_star in (None, ''):
         return None
@@ -913,10 +911,8 @@ def _safe_station_ls_text(station: Any) -> str | None:
         return '?'
     return str(ls_from_star)
 
-
 def _is_result_row(value: Any) -> bool:
     return value.__class__.__name__ == 'ResultRow'
-
 
 def _looks_like_station(value: Any) -> bool:
     return all(
@@ -930,7 +926,6 @@ def _looks_like_station(value: Any) -> bool:
         )
     )
 
-
 def _looks_like_system(value: Any) -> bool:
     return all(
         _has_any_attr(value, *attrs)
@@ -943,11 +938,10 @@ def _looks_like_system(value: Any) -> bool:
         )
     )
 
-
 def _named_display_value(value: Any) -> str | None:
     if value is None:
         return None
-
+    
     name_attr = getattr(value, 'name', None)
     if callable(name_attr):
         try:
@@ -956,13 +950,12 @@ def _named_display_value(value: Any) -> str | None:
             return str(name_attr())
     if name_attr not in (None, ''):
         return str(name_attr)
-
+    
     dbname = _display_attr(value, 'dbname')
     if dbname not in (None, ''):
         return str(dbname)
-
+    
     return None
-
 
 # Support both legacy TD objects and ORM models, which do not agree on whether
 # fields like `name`/`dbname` are plain attributes or helper methods.
@@ -983,7 +976,6 @@ def _display_attr(value: Any, *names: str) -> Any:
         return attr
     return None
 
-
 def _callable_attr(value: Any, *names: str) -> Any:
     for name in names:
         if not hasattr(value, name):
@@ -1002,7 +994,6 @@ def _callable_attr(value: Any, *names: str) -> Any:
                 except TypeError:
                     continue
     return None
-
 
 def _has_any_attr(value: Any, *names: str) -> bool:
     return any(hasattr(value, name) for name in names)

@@ -131,3 +131,19 @@
     border: 1px solid #f07b05;
     box-shadow: none;
 }
+
+.q-tooltip {
+    font-size: 0.95rem;
+    line-height: 1.35;
+    max-width: 28rem;
+    padding: 0.5rem 0.7rem;
+    background: #1a1a1a;
+    color: #f5f5f5;
+    border: 1px solid #444;
+}
+
+.td-theme-elite .q-tooltip {
+    background: #0b0b0b;
+    color: #ffffff;
+    border: 1px solid #f07b05;
+}

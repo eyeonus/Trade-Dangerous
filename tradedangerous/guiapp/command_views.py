@@ -1,11 +1,8 @@
-"""Command workspace widgets for the smaller GUI commands."""
-
-from __future__ import annotations
-
 from typing import Callable
 
 from nicegui import ui
 
+from .autocomplete import AutocompleteInput, build_system_autocomplete_input
 from .profiles import CommandDraft
 from .shared_draft_helpers import DraftValueHelper
 from .shared_filter_view import build_shared_filter_section
@@ -19,12 +16,21 @@ class TradeWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
+        suggest_stations: Callable[..., list[object]] | None = None,
+        resolve_system: Callable[[str], object | None] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
+        self.suggest_stations = suggest_stations
+        self.resolve_system = resolve_system
+        self.selected_origin_system_id: int | None = None
+        self.selected_dest_system_id: int | None = None
     
     def build(self) -> None:
+        self._normalize_trade_state()
         with ui.column().classes('w-full gap-3'):
             self._build_route_section()
             self._build_constraint_section()
@@ -32,32 +38,351 @@ class TradeWorkspace(DraftValueHelper):
             with ui.row().classes('gap-2'):
                 ui.button('Execute Trade', on_click=self.on_execute)
     
+    def _normalize_trade_state(self) -> None:
+        origin_system, _origin_station = self._normalize_station_pair_value(
+            self.draft.main_values,
+            system_key='originSystem',
+            station_key='originStation',
+            combined_key='origin',
+        )
+        dest_system, _dest_station = self._normalize_station_pair_value(
+            self.draft.main_values,
+            system_key='destSystem',
+            station_key='destStation',
+            combined_key='dest',
+        )
+        self.selected_origin_system_id = self._resolve_trade_system_id(
+            origin_system,
+        )
+        self.selected_dest_system_id = self._resolve_trade_system_id(
+            dest_system,
+        )
+    
+    def _resolve_trade_system_id(self, system_name: str | None) -> int | None:
+        return self._resolve_suggestion_id(
+            system_name,
+            resolver=self.resolve_system,
+            id_attr='system_id',
+        )
+    
+    def _trade_system_value(
+        self,
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+    ) -> str:
+        system_name, _station_name = self._station_pair_values(
+            self.draft.main_values,
+            system_key=system_key,
+            station_key=station_key,
+            combined_key=combined_key,
+        )
+        return system_name
+    
+    def _trade_station_value(
+        self,
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+    ) -> str:
+        _system_name, station_name = self._station_pair_values(
+            self.draft.main_values,
+            system_key=system_key,
+            station_key=station_key,
+            combined_key=combined_key,
+        )
+        return station_name
+    
+    def _set_trade_system_text(
+        self,
+        value: str,
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+        selected_attr: str,
+        station_autocomplete_attr: str,
+    ) -> None:
+        cleaned = str(value or '').strip()
+        current = self._trade_system_value(
+            system_key=system_key,
+            station_key=station_key,
+            combined_key=combined_key,
+        ).strip()
+        if cleaned == '':
+            self.draft.main_values.pop(system_key, None)
+            self.draft.main_values.pop(station_key, None)
+            self.draft.main_values.pop(combined_key, None)
+            setattr(self, selected_attr, None)
+            station_autocomplete = getattr(self, station_autocomplete_attr, None)
+            if station_autocomplete is not None:
+                station_autocomplete.clear()
+            self.on_changed()
+            return
+        self.draft.main_values[system_key] = cleaned
+        if cleaned != current:
+            self.draft.main_values.pop(station_key, None)
+            station_autocomplete = getattr(self, station_autocomplete_attr, None)
+            if station_autocomplete is not None:
+                station_autocomplete.clear()
+        setattr(self, selected_attr, self._resolve_trade_system_id(cleaned))
+        self._sync_station_pair_value(
+            self.draft.main_values,
+            system_key=system_key,
+            station_key=station_key,
+            combined_key=combined_key,
+        )
+        self.on_changed()
+    
+    def _set_trade_system_selected(
+        self,
+        suggestion: object,
+        *,
+        selected_attr: str,
+    ) -> None:
+        setattr(self, selected_attr, getattr(suggestion, 'system_id', None))
+    
+    def _set_trade_station_text(
+        self,
+        value: str,
+        *,
+        system_key: str,
+        station_key: str,
+        combined_key: str,
+    ) -> None:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            self.draft.main_values.pop(station_key, None)
+        else:
+            self.draft.main_values[station_key] = cleaned
+        self._sync_station_pair_value(
+            self.draft.main_values,
+            system_key=system_key,
+            station_key=station_key,
+            combined_key=combined_key,
+        )
+        self.on_changed()
+    
+    def _suggest_trade_stations(
+        self,
+        text: str,
+        *,
+        selected_attr: str,
+    ) -> list[object]:
+        if self.suggest_stations is None:
+            return []
+        system_id = getattr(self, selected_attr)
+        if system_id is None:
+            return []
+        try:
+            suggestions = self.suggest_stations(text, system_id)
+        except TypeError:
+            suggestions = self.suggest_stations(text)
+        relabeled: list[object] = []
+        for suggestion in suggestions:
+            station_name = getattr(suggestion, 'station_name', None)
+            if not station_name:
+                relabeled.append(suggestion)
+                continue
+            relabeled.append(
+                suggestion.__class__(
+                    key=getattr(suggestion, 'key'),
+                    kind=getattr(suggestion, 'kind'),
+                    value=getattr(suggestion, 'value'),
+                    label=str(station_name),
+                    system_id=getattr(suggestion, 'system_id'),
+                    system_name=getattr(suggestion, 'system_name'),
+                    station_id=getattr(suggestion, 'station_id'),
+                    station_name=getattr(suggestion, 'station_name'),
+                )
+            )
+        return relabeled
+    
     def _build_route_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Trade Route')
             ui.label(
-                'Enter the station you buy from and the station you sell to.'
+                'Select the origin system and station you buy from, then the '
+                'destination system and station you sell to.'
             ).classes('text-sm text-gray-600')
             
             with ui.row().classes('w-full gap-3'):
-                ui.input(
-                    'Origin',
-                    value=self._text_value(self.draft.main_values, 'origin'),
-                    on_change=lambda event: self._set_text(
-                        self.draft.main_values,
-                        'origin',
-                        event.value,
-                    ),
-                ).classes('min-w-96 flex-1')
-                ui.input(
-                    'Destination',
-                    value=self._text_value(self.draft.main_values, 'dest'),
-                    on_change=lambda event: self._set_text(
-                        self.draft.main_values,
-                        'dest',
-                        event.value,
-                    ),
-                ).classes('min-w-96 flex-1')
+                if self.suggest_systems is None:
+                    ui.input(
+                        'Origin System',
+                        value=self._trade_system_value(
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                        ),
+                        on_change=lambda event: self._set_trade_system_text(
+                            event.value,
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                            selected_attr='selected_origin_system_id',
+                            station_autocomplete_attr='origin_station_autocomplete',
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'System containing the station you are purchasing from.'
+                    )
+                else:
+                    AutocompleteInput(
+                        label='Origin System',
+                        value=self._trade_system_value(
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                        ),
+                        fetch_suggestions=self.suggest_systems,
+                        on_text_changed=lambda value: self._set_trade_system_text(
+                            value,
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                            selected_attr='selected_origin_system_id',
+                            station_autocomplete_attr='origin_station_autocomplete',
+                        ),
+                        on_selected=lambda suggestion: self._set_trade_system_selected(
+                            suggestion,
+                            selected_attr='selected_origin_system_id',
+                        ),
+                        tooltip='System containing the station you are purchasing from.',
+                        input_classes='min-w-80 flex-1',
+                    ).build()
+                
+                if self.suggest_stations is None:
+                    ui.input(
+                        'Origin Station',
+                        value=self._trade_station_value(
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                        ),
+                        on_change=lambda event: self._set_trade_station_text(
+                            event.value,
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'Station you are purchasing from.'
+                    )
+                else:
+                    self.origin_station_autocomplete = AutocompleteInput(
+                        label='Origin Station',
+                        value=self._trade_station_value(
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                        ),
+                        fetch_suggestions=lambda text: self._suggest_trade_stations(
+                            text,
+                            selected_attr='selected_origin_system_id',
+                        ),
+                        on_text_changed=lambda value: self._set_trade_station_text(
+                            value,
+                            system_key='originSystem',
+                            station_key='originStation',
+                            combined_key='origin',
+                        ),
+                        selection_text=lambda suggestion: str(
+                            getattr(suggestion, 'station_name', suggestion.value)
+                        ),
+                        tooltip='Station you are purchasing from.',
+                        input_classes='min-w-80 flex-1',
+                    )
+                    self.origin_station_autocomplete.build()
+            
+            with ui.row().classes('w-full gap-3'):
+                if self.suggest_systems is None:
+                    ui.input(
+                        'Destination System',
+                        value=self._trade_system_value(
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                        ),
+                        on_change=lambda event: self._set_trade_system_text(
+                            event.value,
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                            selected_attr='selected_dest_system_id',
+                            station_autocomplete_attr='dest_station_autocomplete',
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'System containing the station you are selling to.'
+                    )
+                else:
+                    AutocompleteInput(
+                        label='Destination System',
+                        value=self._trade_system_value(
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                        ),
+                        fetch_suggestions=self.suggest_systems,
+                        on_text_changed=lambda value: self._set_trade_system_text(
+                            value,
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                            selected_attr='selected_dest_system_id',
+                            station_autocomplete_attr='dest_station_autocomplete',
+                        ),
+                        on_selected=lambda suggestion: self._set_trade_system_selected(
+                            suggestion,
+                            selected_attr='selected_dest_system_id',
+                        ),
+                        tooltip='System containing the station you are selling to.',
+                        input_classes='min-w-80 flex-1',
+                    ).build()
+                
+                if self.suggest_stations is None:
+                    ui.input(
+                        'Destination Station',
+                        value=self._trade_station_value(
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                        ),
+                        on_change=lambda event: self._set_trade_station_text(
+                            event.value,
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'Station you are selling to.'
+                    )
+                else:
+                    self.dest_station_autocomplete = AutocompleteInput(
+                        label='Destination Station',
+                        value=self._trade_station_value(
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                        ),
+                        fetch_suggestions=lambda text: self._suggest_trade_stations(
+                            text,
+                            selected_attr='selected_dest_system_id',
+                        ),
+                        on_text_changed=lambda value: self._set_trade_station_text(
+                            value,
+                            system_key='destSystem',
+                            station_key='destStation',
+                            combined_key='dest',
+                        ),
+                        selection_text=lambda suggestion: str(
+                            getattr(suggestion, 'station_name', suggestion.value)
+                        ),
+                        tooltip='Station you are selling to.',
+                        input_classes='min-w-80 flex-1',
+                    )
+                    self.dest_station_autocomplete.build()
     
     def _build_constraint_section(self) -> None:
         with ui.card().classes('w-full'):
@@ -76,7 +401,9 @@ class TradeWorkspace(DraftValueHelper):
                         event.value,
                         'Gain / ton',
                     ),
-                ).classes('w-40')
+                ).classes('w-40').tooltip(
+                    'Specify the minimum gain per ton of cargo.'
+                )
                 ui.number(
                     'Supply',
                     value=self._number_value(self.draft.main_values, 'supply'),
@@ -89,7 +416,10 @@ class TradeWorkspace(DraftValueHelper):
                         event.value,
                         'Supply',
                     ),
-                ).classes('w-32')
+                ).classes('w-32').tooltip(
+                    'Requires at least this many units available at the '
+                    'seller.'
+                )
                 ui.number(
                     'Demand',
                     value=self._number_value(self.draft.main_values, 'demand'),
@@ -102,7 +432,9 @@ class TradeWorkspace(DraftValueHelper):
                         event.value,
                         'Demand',
                     ),
-                ).classes('w-32')
+                ).classes('w-32').tooltip(
+                    'Requires at least this many units of demand at the buyer.'
+                )
                 ui.number(
                     'Limit',
                     value=self._number_value(self.draft.main_values, 'limit'),
@@ -115,7 +447,9 @@ class TradeWorkspace(DraftValueHelper):
                         event.value,
                         'Limit',
                     ),
-                ).classes('w-32')
+                ).classes('w-32').tooltip(
+                    'Limit output to the first N results.'
+                )
             
             with ui.row().classes('w-full items-center gap-4'):
                 ui.select(
@@ -132,7 +466,11 @@ class TradeWorkspace(DraftValueHelper):
                         'cargoMode',
                         event.value,
                     ),
-                ).classes('w-64')
+                ).classes('w-64').tooltip(
+                    'Choose how cargo space is interpreted: default '
+                    'behavior, fill to capacity, load only free space, or '
+                    'full load from scratch.'
+                )
                 ui.checkbox(
                     'Reverse route',
                     value=self._bool_value(self.draft.main_values, 'reverse'),
@@ -141,6 +479,9 @@ class TradeWorkspace(DraftValueHelper):
                         'reverse',
                         event.value,
                     ),
+                ).tooltip(
+                    'Show the reverse trade by swapping origin and '
+                    'destination.'
                 )
 
 class LocalWorkspace(DraftValueHelper):
@@ -152,10 +493,12 @@ class LocalWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
     
     def build(self) -> None:
         with ui.column().classes('w-full gap-3'):
@@ -172,15 +515,17 @@ class LocalWorkspace(DraftValueHelper):
                 'Max data age is inherited from the left pane.'
             ).classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-end gap-3'):
-                ui.input(
-                    'Near',
+                _build_system_autocomplete_input(
+                    label='Near',
                     value=self._text_value(self.draft.main_values, 'near'),
-                    on_change=lambda event: self._set_text(
+                    on_text_changed=lambda value: self._set_text(
                         self.draft.main_values,
                         'near',
-                        event.value,
+                        value,
                     ),
-                ).classes('min-w-96 flex-1')
+                    tooltip='Name of the system to query from.',
+                    suggest_systems=self.suggest_systems,
+                )
                 ui.number(
                     'Distance (ly)',
                     value=self._number_value(self.draft.main_values, 'ly'),
@@ -192,7 +537,9 @@ class LocalWorkspace(DraftValueHelper):
                         'ly',
                         event.value,
                     ),
-                ).classes('w-40')
+                ).classes('w-40').tooltip(
+                    'Maximum light years from system.'
+                )
                 ui.checkbox(
                     'Trading only',
                     value=self._bool_value(self.draft.main_values, 'trading'),
@@ -201,6 +548,9 @@ class LocalWorkspace(DraftValueHelper):
                         'trading',
                         event.value,
                     ),
+                ).tooltip(
+                    'Limit stations to ones with price data or flagged as '
+                    'having a market.'
                 )
     
     def _build_filter_section(self) -> None:
@@ -208,12 +558,12 @@ class LocalWorkspace(DraftValueHelper):
         # Local adds the simpler service-availability booleans underneath.
         def build_service_filters() -> None:
             with ui.row().classes('w-full gap-4'):
-                ui.checkbox('Black market', value=self._bool_value(self.draft.main_values, 'blackMarket'), on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value))
-                ui.checkbox('Shipyard', value=self._bool_value(self.draft.main_values, 'shipyard'), on_change=lambda event: self._set_bool(self.draft.main_values, 'shipyard', event.value))
-                ui.checkbox('Outfitting', value=self._bool_value(self.draft.main_values, 'outfitting'), on_change=lambda event: self._set_bool(self.draft.main_values, 'outfitting', event.value))
-                ui.checkbox('Rearm', value=self._bool_value(self.draft.main_values, 'rearm'), on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value))
-                ui.checkbox('Refuel', value=self._bool_value(self.draft.main_values, 'refuel'), on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value))
-                ui.checkbox('Repair', value=self._bool_value(self.draft.main_values, 'repair'), on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value))
+                ui.checkbox('Black market', value=self._bool_value(self.draft.main_values, 'blackMarket'), on_change=lambda event: self._set_bool(self.draft.main_values, 'blackMarket', event.value)).tooltip('Require stations known to have a black market.')
+                ui.checkbox('Shipyard', value=self._bool_value(self.draft.main_values, 'shipyard'), on_change=lambda event: self._set_bool(self.draft.main_values, 'shipyard', event.value)).tooltip('Require stations known to have a Shipyard.')
+                ui.checkbox('Outfitting', value=self._bool_value(self.draft.main_values, 'outfitting'), on_change=lambda event: self._set_bool(self.draft.main_values, 'outfitting', event.value)).tooltip('Require stations known to have Outfitting.')
+                ui.checkbox('Rearm', value=self._bool_value(self.draft.main_values, 'rearm'), on_change=lambda event: self._set_bool(self.draft.main_values, 'rearm', event.value)).tooltip('Require stations known to sell munitions.')
+                ui.checkbox('Refuel', value=self._bool_value(self.draft.main_values, 'refuel'), on_change=lambda event: self._set_bool(self.draft.main_values, 'refuel', event.value)).tooltip('Require stations known to sell fuel.')
+                ui.checkbox('Repair', value=self._bool_value(self.draft.main_values, 'repair'), on_change=lambda event: self._set_bool(self.draft.main_values, 'repair', event.value)).tooltip('Require stations known to offer repairs.')
         
         build_shared_filter_section(
             get_bool=lambda key: self._bool_value(self.draft.main_values, key),
@@ -234,12 +584,20 @@ class MarketWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
+        suggest_stations: Callable[..., list[object]] | None = None,
+        resolve_system: Callable[[str], object | None] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
+        self.suggest_stations = suggest_stations
+        self.resolve_system = resolve_system
+        self.selected_system_id: int | None = None
     
     def build(self) -> None:
+        self._normalize_market_state()
         with ui.column().classes('w-full gap-3'):
             self._build_station_section()
             self._build_view_section()
@@ -250,17 +608,53 @@ class MarketWorkspace(DraftValueHelper):
         with ui.card().classes('w-full'):
             ui.label('Market Station')
             ui.label(
-                'Enter the station whose market data you want to inspect.'
+                'Select a system, then the station within that system.'
             ).classes('text-sm text-gray-600')
-            ui.input(
-                'Station',
-                value=self._text_value(self.draft.main_values, 'origin'),
-                on_change=lambda event: self._set_text(
-                    self.draft.main_values,
-                    'origin',
-                    event.value,
-                ),
-            ).classes('min-w-96 w-full')
+            with ui.row().classes('w-full gap-3'):
+                if self.suggest_systems is None:
+                    ui.input(
+                        'System',
+                        value=self._market_system_value(),
+                        on_change=lambda event: self._set_market_system_text(
+                            event.value,
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'System containing the station being queried.'
+                    )
+                else:
+                    AutocompleteInput(
+                        label='System',
+                        value=self._market_system_value(),
+                        fetch_suggestions=self.suggest_systems,
+                        on_text_changed=self._set_market_system_text,
+                        on_selected=self._set_market_system_selected,
+                        tooltip='System containing the station being queried.',
+                        input_classes='min-w-80 flex-1',
+                    ).build()
+                
+                if self.suggest_stations is None:
+                    ui.input(
+                        'Station',
+                        value=self._market_station_value(),
+                        on_change=lambda event: self._set_market_station_text(
+                            event.value,
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'Station within the selected system being queried.'
+                    )
+                else:
+                    self.station_autocomplete = AutocompleteInput(
+                        label='Station',
+                        value=self._market_station_value(),
+                        fetch_suggestions=self._suggest_market_stations,
+                        on_text_changed=self._set_market_station_text,
+                        selection_text=lambda suggestion: str(
+                            getattr(suggestion, 'station_name', suggestion.value)
+                        ),
+                        tooltip='Station within the selected system being queried.',
+                        input_classes='min-w-80 flex-1',
+                    )
+                    self.station_autocomplete.build()
     
     def _build_view_section(self) -> None:
         with ui.card().classes('w-full'):
@@ -282,7 +676,129 @@ class MarketWorkspace(DraftValueHelper):
                         'mode',
                         event.value,
                     ),
-                ).classes('w-64')
+                ).classes('w-64').tooltip(
+                    'Choose whether to show items the station is buying, '
+                    'selling, or both.'
+                )
+    
+    def _market_system_value(self) -> str:
+        current = self._text_value(self.draft.main_values, 'marketSystem')
+        if current:
+            return current
+        system_name, _station_name = self._split_market_origin()
+        return system_name
+    
+    def _market_station_value(self) -> str:
+        current = self._text_value(self.draft.main_values, 'marketStation')
+        if current:
+            return current
+        _system_name, station_name = self._split_market_origin()
+        return station_name
+    
+    def _split_market_origin(self) -> tuple[str, str]:
+        origin = self._text_value(self.draft.main_values, 'origin').strip()
+        if '/' not in origin:
+            return origin, ''
+        system_name, station_name = origin.split('/', 1)
+        return system_name.strip(), station_name.strip()
+    
+    def _normalize_market_state(self) -> None:
+        system_name, _station_name = self._normalize_station_pair_value(
+            self.draft.main_values,
+            system_key='marketSystem',
+            station_key='marketStation',
+            combined_key='origin',
+        )
+        self.selected_system_id = self._resolve_market_system_id(system_name)
+    
+    def _resolve_market_system_id(
+        self,
+        system_name: str | None = None,
+    ) -> int | None:
+        cleaned = (
+            self._market_system_value() if system_name is None else system_name
+        )
+        return self._resolve_suggestion_id(
+            cleaned,
+            resolver=self.resolve_system,
+            id_attr='system_id',
+        )
+    
+    def _set_market_system_text(self, value: str) -> None:
+        cleaned = str(value or '').strip()
+        current = self._market_system_value().strip()
+        if cleaned == '':
+            self.draft.main_values.pop('marketSystem', None)
+            self.draft.main_values.pop('marketStation', None)
+            self.draft.main_values.pop('origin', None)
+            self.selected_system_id = None
+            self.on_changed()
+            return
+        self.draft.main_values['marketSystem'] = cleaned
+        if cleaned != current:
+            self.draft.main_values.pop('marketStation', None)
+            station_autocomplete = getattr(self, 'station_autocomplete', None)
+            if station_autocomplete is not None:
+                station_autocomplete.clear()
+        self.selected_system_id = self._resolve_market_system_id(cleaned)
+        self._sync_market_origin()
+        self.on_changed()
+    
+    def _set_market_system_selected(self, suggestion: object) -> None:
+        self.selected_system_id = getattr(suggestion, 'system_id', None)
+    
+    def _set_market_station_text(self, value: str) -> None:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            self.draft.main_values.pop('marketStation', None)
+        else:
+            self.draft.main_values['marketStation'] = cleaned
+        self._sync_market_origin()
+        self.on_changed()
+    
+    def _sync_market_origin(self) -> None:
+        self._sync_station_pair_value(
+            self.draft.main_values,
+            system_key='marketSystem',
+            station_key='marketStation',
+            combined_key='origin',
+        )
+    
+    def _suggest_market_stations(self, text: str) -> list[object]:
+        if self.suggest_stations is None:
+            return []
+        
+        system_id = self.selected_system_id
+        if system_id is None:
+            system_id = self._resolve_market_system_id()
+            self.selected_system_id = system_id
+        if system_id is None:
+            return []
+        
+        try:
+            suggestions = self.suggest_stations(text, system_id)
+        except TypeError:
+            suggestions = self.suggest_stations(text)
+        
+        relabeled: list[object] = []
+        for suggestion in suggestions:
+            station_name = getattr(suggestion, 'station_name', None)
+            if not station_name:
+                relabeled.append(suggestion)
+                continue
+            relabeled.append(
+                suggestion.__class__(
+                    key=getattr(suggestion, 'key'),
+                    kind=getattr(suggestion, 'kind'),
+                    value=getattr(suggestion, 'value'),
+                    label=str(station_name),
+                    system_id=getattr(suggestion, 'system_id'),
+                    system_name=getattr(suggestion, 'system_name'),
+                    station_id=getattr(suggestion, 'station_id'),
+                    station_name=getattr(suggestion, 'station_name'),
+                )
+            )
+        return relabeled
 
 class NavWorkspace(DraftValueHelper):
     """Edit a `nav` draft using command-local fields only."""
@@ -293,10 +809,12 @@ class NavWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
     
     def build(self) -> None:
         with ui.column().classes('w-full gap-3'):
@@ -310,28 +828,31 @@ class NavWorkspace(DraftValueHelper):
         with ui.card().classes('w-full'):
             ui.label('Navigation Route')
             ui.label(
-                'Find a route between two places. '
-                'The GUI always requests detailed system and station results.'
+                'Find a route between two systems.'
             ).classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-end gap-3'):
-                ui.input(
-                    'Start',
+                build_system_autocomplete_input(
+                    label='Start',
                     value=self._text_value(self.draft.main_values, 'starting'),
-                    on_change=lambda event: self._set_text(
+                    on_text_changed=lambda value: self._set_text(
                         self.draft.main_values,
                         'starting',
-                        event.value,
+                        value,
                     ),
-                ).classes('min-w-96 flex-1')
-                ui.input(
-                    'End',
+                    tooltip='System to start from.',
+                    suggest_systems=self.suggest_systems,
+                )
+                build_system_autocomplete_input(
+                    label='End',
                     value=self._text_value(self.draft.main_values, 'ending'),
-                    on_change=lambda event: self._set_text(
+                    on_text_changed=lambda value: self._set_text(
                         self.draft.main_values,
                         'ending',
-                        event.value,
+                        value,
                     ),
-                ).classes('min-w-96 flex-1')
+                    tooltip='System to end at.',
+                    suggest_systems=self.suggest_systems,
+                )
                 ui.number(
                     'Max jump (ly)',
                     value=self._number_value(self.draft.main_values, 'lyPer'),
@@ -343,7 +864,9 @@ class NavWorkspace(DraftValueHelper):
                         'lyPer',
                         event.value,
                     ),
-                ).classes('w-40')
+                ).classes('w-40').tooltip(
+                    'Maximum light years per jump.'
+                )
     
     def _build_option_section(self) -> None:
         with ui.card().classes('w-full'):
@@ -357,7 +880,10 @@ class NavWorkspace(DraftValueHelper):
                         'via',
                         event.value,
                     ),
-                ).props('autogrow').classes('min-w-96 flex-1')
+                ).props('autogrow').classes('min-w-96 flex-1').tooltip(
+                    'Require specified systems or stations to be en-route, '
+                    'in order. Comma-separated.'
+                )
                 ui.textarea(
                     'Avoid',
                     value=self._text_value(self.draft.main_values, 'avoid'),
@@ -366,7 +892,10 @@ class NavWorkspace(DraftValueHelper):
                         'avoid',
                         event.value,
                     ),
-                ).props('autogrow').classes('min-w-96 flex-1')
+                ).props('autogrow').classes('min-w-96 flex-1').tooltip(
+                    'Exclude systems or stations from routing. '
+                    'Comma-separated; partial matches are allowed.'
+                )
                 ui.number(
                     'Refuel jumps',
                     value=self._number_value(self.draft.main_values, 'refuelJumps'),
@@ -379,7 +908,9 @@ class NavWorkspace(DraftValueHelper):
                         event.value,
                         'Refuel jumps',
                     ),
-                ).classes('w-40')
+                ).classes('w-40').tooltip(
+                    'Require a station after this many jumps.'
+                )
     
     def _build_filter_section(self) -> None:
         build_shared_filter_section(
@@ -400,10 +931,12 @@ class OldDataWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
     
     def build(self) -> None:
         dialog = self._build_extended_dialog()
@@ -424,11 +957,22 @@ class OldDataWorkspace(DraftValueHelper):
                 'Find stations with stale market data so you can revisit and '
                 'refresh them. Left-pane max data age is not used here.'
             ).classes('text-sm text-gray-600')
-            ui.input('Near', value=self._text_value(values, 'near'), on_change=lambda event: self._set_text(values, 'near', event.value)).classes('w-full')
+            build_system_autocomplete_input(
+                label='Near',
+                value=self._text_value(values, 'near'),
+                on_text_changed=lambda value: self._set_text(
+                    values,
+                    'near',
+                    value,
+                ),
+                tooltip='Limit old-data results to stations near this system.',
+                suggest_systems=self.suggest_systems,
+                input_classes='w-full',
+            )
             with ui.row().classes('w-full items-end gap-3'):
-                ui.number('Distance (ly)', value=self._number_value(values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'ly', event.value)).classes('w-40')
-                ui.number('Minimum age (days)', value=self._number_value(values, 'minAge'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'minAge', event.value)).classes('w-48')
-                ui.checkbox('Sort to shortest path', value=self._bool_value(values, 'route'), on_change=lambda event: self._set_bool(values, 'route', event.value))
+                ui.number('Distance (ly)', value=self._number_value(values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'ly', event.value)).classes('w-40').tooltip('When Near is set, only include systems within this range.')
+                ui.number('Minimum age (days)', value=self._number_value(values, 'minAge'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(values, 'minAge', event.value)).classes('w-48').tooltip('List data older than this number of days.')
+                ui.checkbox('Sort to shortest path', value=self._bool_value(values, 'route'), on_change=lambda event: self._set_bool(values, 'route', event.value)).tooltip('Requires Near. Sort results to the shortest path.')
     
     def _build_filter_section(self) -> None:
         values = self.draft.main_values
@@ -449,10 +993,10 @@ class OldDataWorkspace(DraftValueHelper):
         with dialog, ui.card().style('min-width: 48rem; max-width: 95vw;'):
             ui.label('Extended Options')
             with ui.row().classes('w-full items-center gap-3'):
-                ui.number('Limit', value=self._number_value(values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'limit', event.value, 'Limit')).classes('w-32')
+                ui.number('Limit', value=self._number_value(values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'limit', event.value, 'Limit')).classes('w-32').tooltip('Maximum number of results to show.')
                 ui.label('Maximum number of stations to return.').classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-center gap-3'):
-                ui.number('LS max', value=self._number_value(values, 'lsMax'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'lsMax', event.value, 'LS max')).classes('w-40')
+                ui.number('LS max', value=self._number_value(values, 'lsMax'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(values, 'lsMax', event.value, 'LS max')).classes('w-40').tooltip('Only consider stations up to this many ls from their star.')
                 ui.label('Only include stations within this many ls of arrival.').classes('text-sm text-gray-600')
         return dialog
 
@@ -465,10 +1009,12 @@ class RaresWorkspace(DraftValueHelper):
         *,
         on_changed: Callable[[], None],
         on_execute: Callable[[], None],
+        suggest_systems: Callable[[str], list[object]] | None = None,
     ) -> None:
         self.draft = draft
         self.on_changed = on_changed
         self.on_execute = on_execute
+        self.suggest_systems = suggest_systems
     
     def build(self) -> None:
         dialog = self._build_extended_dialog()
@@ -484,8 +1030,18 @@ class RaresWorkspace(DraftValueHelper):
             ui.label('Rare Search')
             ui.label('Find rare goods near a system. Full detail is always shown.').classes('text-sm text-gray-600')
             with ui.row().classes('w-full items-end gap-3'):
-                ui.input('Near', value=self._text_value(self.draft.main_values, 'near'), on_change=lambda event: self._set_text(self.draft.main_values, 'near', event.value)).classes('min-w-96 flex-1')
-                ui.number('Distance (ly)', value=self._number_value(self.draft.main_values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.main_values, 'ly', event.value)).classes('w-40')
+                _build_system_autocomplete_input(
+                    label='Near',
+                    value=self._text_value(self.draft.main_values, 'near'),
+                    on_text_changed=lambda value: self._set_text(
+                        self.draft.main_values,
+                        'near',
+                        value,
+                    ),
+                    tooltip='Your current system.',
+                    suggest_systems=self.suggest_systems,
+                )
+                ui.number('Distance (ly)', value=self._number_value(self.draft.main_values, 'ly'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.main_values, 'ly', event.value)).classes('w-40').tooltip('Maximum distance to search.')
     
     def _build_filter_section(self) -> None:
         build_shared_filter_section(
@@ -505,13 +1061,13 @@ class RaresWorkspace(DraftValueHelper):
             ui.label('Extended Options')
             ui.label('Leave fields blank to omit them. Away-from systems may be comma-separated or one per line.').classes('text-sm text-gray-600')
             with ui.row().classes('w-full gap-3'):
-                ui.number('Limit', value=self._number_value(self.draft.advanced_values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(self.draft.advanced_values, 'limit', event.value, 'Limit')).classes('w-32')
-                ui.select({'': 'Any', 'legal': 'Legal only', 'illegal': 'Illegal only'}, value=self._text_value(self.draft.advanced_values, 'legalMode'), label='Legality', on_change=lambda event: self._set_text(self.draft.advanced_values, 'legalMode', event.value)).classes('w-48')
-                ui.checkbox('Sort by price', value=self._bool_value(self.draft.advanced_values, 'sortByPrice'), on_change=lambda event: self._set_bool(self.draft.advanced_values, 'sortByPrice', event.value))
-                ui.checkbox('Reverse order', value=self._bool_value(self.draft.advanced_values, 'reverse'), on_change=lambda event: self._set_bool(self.draft.advanced_values, 'reverse', event.value))
+                ui.number('Limit', value=self._number_value(self.draft.advanced_values, 'limit'), min=0, step=1, precision=0, on_change=lambda event: self._set_int(self.draft.advanced_values, 'limit', event.value, 'Limit')).classes('w-32').tooltip('Maximum number of results to list.')
+                
+                ui.checkbox('Sort by price', value=self._bool_value(self.draft.advanced_values, 'sortByPrice'), on_change=lambda event: self._set_bool(self.draft.advanced_values, 'sortByPrice', event.value)).tooltip('Sort by price not distance.')
+                ui.checkbox('Reverse order', value=self._bool_value(self.draft.advanced_values, 'reverse'), on_change=lambda event: self._set_bool(self.draft.advanced_values, 'reverse', event.value)).tooltip('Reverse the list.')
             with ui.row().classes('w-full gap-3'):
-                ui.number('Away distance (ly)', value=self._number_value(self.draft.advanced_values, 'away'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.advanced_values, 'away', event.value)).classes('w-48')
-                ui.textarea('Away from systems', value=self._text_value(self.draft.advanced_values, 'awayFrom'), on_change=lambda event: self._set_text(self.draft.advanced_values, 'awayFrom', event.value)).classes('min-w-96 flex-1')
+                ui.number('Away distance (ly)', value=self._number_value(self.draft.advanced_values, 'away'), min=0, step=0.1, precision=2, on_change=lambda event: self._set_float(self.draft.advanced_values, 'away', event.value)).classes('w-48').tooltip('Only show rare vendors at least this many LY from the Away from systems.')
+                ui.textarea('Away from systems', value=self._text_value(self.draft.advanced_values, 'awayFrom'), on_change=lambda event: self._set_text(self.draft.advanced_values, 'awayFrom', event.value)).classes('min-w-96 flex-1').tooltip('Systems used as the distance reference for Away distance. Comma-separated.')
             with ui.row().classes('justify-end'):
                 ui.button('Close', on_click=dialog.close)
         return dialog

@@ -38,7 +38,10 @@ def build_shared_filter_section(
                     'planetary',
                     event.value,
                 ),
-            ).classes('w-48')
+            ).classes('w-48').tooltip(
+                'Filter by planetary status: Any, Yes only, No only, '
+                'or Unknown only.'
+            )
             ui.select(
                 TRI_STATE_OPTIONS,
                 value=get_tri_state('fleet'),
@@ -47,7 +50,10 @@ def build_shared_filter_section(
                     'fleet',
                     event.value,
                 ),
-            ).classes('w-48')
+            ).classes('w-48').tooltip(
+                'Filter by fleet-carrier status: Any, Yes only, No only, '
+                'or Unknown only.'
+            )
             ui.select(
                 TRI_STATE_OPTIONS,
                 value=get_tri_state('odyssey'),
@@ -56,7 +62,10 @@ def build_shared_filter_section(
                     'odyssey',
                     event.value,
                 ),
-            ).classes('w-48')
+            ).classes('w-48').tooltip(
+                'Filter by Odyssey status: Any, Yes only, No only, '
+                'or Unknown only.'
+            )
             
             if extra_builder is not None:
                 # Some workspaces have one extra control that belongs beside the
@@ -74,6 +83,9 @@ def build_shared_filter_section(
                     'S',
                     event.value,
                 ),
+            ).tooltip(
+                'Allow stations with small pads. All three pad-size boxes '
+                'checked means unrestricted.'
             )
             ui.checkbox(
                 'M',
@@ -82,6 +94,9 @@ def build_shared_filter_section(
                     'M',
                     event.value,
                 ),
+            ).tooltip(
+                'Allow stations with medium pads. All three pad-size boxes '
+                'checked means unrestricted.'
             )
             ui.checkbox(
                 'L',
@@ -90,6 +105,9 @@ def build_shared_filter_section(
                     'L',
                     event.value,
                 ),
+            ).tooltip(
+                'Allow stations with large pads. All three pad-size boxes '
+                'checked means unrestricted.'
             )
         
         if post_builder is not None:
