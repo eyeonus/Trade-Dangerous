@@ -18,7 +18,7 @@
 
 name = "tradedangerous"  # aligned with original setup.py name
 # Restrict to a range of python versions. ".python_version" file must meet this requirement.
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dynamic = ["version"]
 description = "Trade-Dangerous is a set of powerful trading tools for Elite Dangerous, organized around one of the most powerful trade run optimizers available."
 readme = "README.md"
@@ -45,7 +45,6 @@ dependencies = [
     "ijson>=3.1",
     "importlib-metadata>=1",
     "nicegui",
-    "pydantic-core==2.41.5; platform_system == 'Windows' and python_version >= '3.14' and python_version < '3.15'",
     "pywebview",
     "pythonnet==3.1.0rc0; platform_system == 'Windows' and python_version >= '3.14' and python_version < '3.15'",
     "orjson>=3.11.5",
