@@ -1,6 +1,33 @@
 # CHANGELOG
 
 
+## v12.19.1 (2026-04-10)
+
+### Bug Fixes
+
+- Cli.py Replace hexversion gate with sys.version_info check
+  ([`0b959d0`](https://github.com/eyeonus/Trade-Dangerous/commit/0b959d093556d85833e8aba4c9cf48a6e23b7af8))
+
+Hexversion is not 'at a glance' maintainable, if very precise. This is much easier to keep up with.
+
+Also changed to correct minimum version (was set to 3.8!)
+
+Also as I've made all the effort with module versions, added 3.14 as explicitly supported in
+  pyproject.toml
+
+### Chores
+
+- Minimum version 3.12
+  ([`68d3c3c`](https://github.com/eyeonus/Trade-Dangerous/commit/68d3c3c298c91547ad5e3d1f4ebd07bff451d034))
+
+Changed minimum required python version to 3.12
+
+Bad pydantic-core versions have been yanked, so pin removed from pyproject.toml, surplus to
+  requirements.
+
+uv.lock all synced up
+
+
 ## v12.19.0 (2026-04-10)
 
 ### Bug Fixes
