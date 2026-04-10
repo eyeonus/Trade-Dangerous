@@ -1,6 +1,44 @@
 # CHANGELOG
 
 
+## v12.20.0 (2026-04-10)
+
+### Features
+
+- Gui - Popout lists selection boxes.
+  ([`b1837d3`](https://github.com/eyeonus/Trade-Dangerous/commit/b1837d38dc8a5927770545243c7dab77abde4dcb))
+
+Workspaces nav, buy & sell
+
+via, avoid and item selections now pop out a list editor suitable for the required input.
+
+*Additional fixes*
+
+Blue buttons:
+
+All buttons in popouts were incorrectly blue even if Elite theme was selected. This has been
+  corrected. Buttons are now orange.
+
+Results stability
+
+A real bug existed in generic result rendering because table row identity was not stable/unique.
+  That was fixed by moving to stable synthetic row IDs. This stopped odd disappearing / unstable
+  result behaviour.
+
+Large result-set rendering bug
+
+Very large buy result sets could overwhelm the client-side table rendering path. Broad searches such
+  as large categories over large radii could cause heavy CPU load and then bounce the UI back to
+  input with cleared results. Pagination fixed that path. The app now survives deliberately absurd
+  searches, including roughly 31k-row result sets, without falling over.
+
+*Documentation fix*
+
+Various usage hints and other similar text in the GUI was very poorly written by the AI. Fixed a
+  load in this set of changes. Will continue to deal with them as and when I find/notice that kind
+  of thing.
+
+
 ## v12.19.1 (2026-04-10)
 
 ### Bug Fixes
