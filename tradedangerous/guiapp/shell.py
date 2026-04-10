@@ -14,11 +14,11 @@ from .buy_sell_view import BuySellWorkspace
 from .command_views import (
     LocalWorkspace,
     MarketWorkspace,
-    NavWorkspace,
     OldDataWorkspace,
     RaresWorkspace,
     TradeWorkspace,
 )
+from .nav_view import NavWorkspace
 from .settings_view import SettingsWorkspace
 from .import_runtime import (
     begin_import_stop_confirmation,
@@ -800,6 +800,14 @@ class AppShell:
                     on_changed=self._on_run_draft_changed,
                     on_execute=self._on_execute_command,
                     suggest_systems=lambda text: self.search_service.suggest_systems(
+                        text,
+                        limit=10,
+                    ),
+                    suggest_items=lambda text: self.search_service.suggest_items(
+                        text,
+                        limit=10,
+                    ),
+                    suggest_buy_search=lambda text: self.search_service.suggest_buy_search(
                         text,
                         limit=10,
                     ),

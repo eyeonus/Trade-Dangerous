@@ -7,7 +7,7 @@ from typing import Literal
 from sqlalchemy import func
 
 from tradedangerous.db import get_session_factory, make_engine_from_config
-from tradedangerous.db.orm_models import Station, System
+from tradedangerous.db.orm_models import Category, Item, Ship, Station, System
 from tradedangerous.db.paths import resolve_db_config_path
 
 @dataclass(frozen=True, slots=True)
@@ -15,7 +15,7 @@ class Suggestion:
     """Tiny autocomplete payload for GUI text fields."""
     
     key: str
-    kind: Literal['system', 'station']
+    kind: Literal['system', 'station', 'category', 'item', 'ship']
     value: str
     label: str
     system_id: int | None
@@ -134,6 +134,243 @@ class GuiSearchService:
             station_name=None,
         )
     
+    def suggest_items(
+        self,
+        text: str,
+        limit: int = 10,
+    ) -> list[Suggestion]:
+        query_text = self._clean_text(text)
+        bounded_limit = self._clean_limit(limit)
+        if not query_text or bounded_limit <= 0:
+            return []
+        
+        with self._session_factory() as session:
+            suggestions: list[Suggestion] = []
+            seen_item_ids: set[int] = set()
+            base_query = (
+                session.query(
+                    Item.item_id,
+                    Item.name.label('item_name'),
+                    Category.name.label('category_name'),
+                )
+                .join(Category, Item.category_id == Category.category_id)
+            )
+            
+            exact_rows = (
+                base_query
+                .filter(Item.name == query_text)
+                .order_by(
+                    Item.name,
+                    Category.name,
+                    Item.item_id,
+                )
+                .limit(bounded_limit)
+                .all()
+            )
+            self._append_item_rows(
+                suggestions=suggestions,
+                seen_item_ids=seen_item_ids,
+                rows=exact_rows,
+            )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                prefix_query = base_query.filter(Item.name.like(f'{query_text}%'))
+                if seen_item_ids:
+                    prefix_query = prefix_query.filter(
+                        ~Item.item_id.in_(seen_item_ids)
+                    )
+                prefix_rows = (
+                    prefix_query
+                    .order_by(
+                        func.length(Item.name),
+                        Item.name,
+                        Category.name,
+                        Item.item_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_item_rows(
+                    suggestions=suggestions,
+                    seen_item_ids=seen_item_ids,
+                    rows=prefix_rows,
+                )
+            
+            return suggestions
+    
+    def suggest_buy_search(
+        self,
+        text: str,
+        limit: int = 10,
+    ) -> list[Suggestion]:
+        query_text = self._clean_text(text)
+        bounded_limit = self._clean_limit(limit)
+        if not query_text or bounded_limit <= 0:
+            return []
+        
+        with self._session_factory() as session:
+            suggestions: list[Suggestion] = []
+            seen_category_ids: set[int] = set()
+            seen_item_ids: set[int] = set()
+            seen_ship_ids: set[int] = set()
+            
+            exact_category_rows = (
+                session.query(
+                    Category.category_id,
+                    Category.name.label('category_name'),
+                )
+                .filter(Category.name == query_text)
+                .order_by(
+                    Category.name,
+                    Category.category_id,
+                )
+                .limit(bounded_limit)
+                .all()
+            )
+            self._append_buy_category_rows(
+                suggestions=suggestions,
+                seen_category_ids=seen_category_ids,
+                rows=exact_category_rows,
+            )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                exact_item_rows = (
+                    session.query(
+                        Item.item_id,
+                        Item.name.label('item_name'),
+                        Category.name.label('category_name'),
+                    )
+                    .join(Category, Item.category_id == Category.category_id)
+                    .filter(Item.name == query_text)
+                    .order_by(
+                        Item.name,
+                        Category.name,
+                        Item.item_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_buy_item_rows(
+                    suggestions=suggestions,
+                    seen_item_ids=seen_item_ids,
+                    rows=exact_item_rows,
+                )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                exact_ship_rows = (
+                    session.query(
+                        Ship.ship_id,
+                        Ship.name.label('ship_name'),
+                    )
+                    .filter(Ship.name == query_text)
+                    .order_by(
+                        Ship.name,
+                        Ship.ship_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_buy_ship_rows(
+                    suggestions=suggestions,
+                    seen_ship_ids=seen_ship_ids,
+                    rows=exact_ship_rows,
+                )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                prefix_category_query = (
+                    session.query(
+                        Category.category_id,
+                        Category.name.label('category_name'),
+                    )
+                    .filter(Category.name.like(f'{query_text}%'))
+                )
+                if seen_category_ids:
+                    prefix_category_query = prefix_category_query.filter(
+                        ~Category.category_id.in_(seen_category_ids)
+                    )
+                prefix_category_rows = (
+                    prefix_category_query
+                    .order_by(
+                        func.length(Category.name),
+                        Category.name,
+                        Category.category_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_buy_category_rows(
+                    suggestions=suggestions,
+                    seen_category_ids=seen_category_ids,
+                    rows=prefix_category_rows,
+                )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                prefix_item_query = (
+                    session.query(
+                        Item.item_id,
+                        Item.name.label('item_name'),
+                        Category.name.label('category_name'),
+                    )
+                    .join(Category, Item.category_id == Category.category_id)
+                    .filter(Item.name.like(f'{query_text}%'))
+                )
+                if seen_item_ids:
+                    prefix_item_query = prefix_item_query.filter(
+                        ~Item.item_id.in_(seen_item_ids)
+                    )
+                prefix_item_rows = (
+                    prefix_item_query
+                    .order_by(
+                        func.length(Item.name),
+                        Item.name,
+                        Category.name,
+                        Item.item_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_buy_item_rows(
+                    suggestions=suggestions,
+                    seen_item_ids=seen_item_ids,
+                    rows=prefix_item_rows,
+                )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                prefix_ship_query = (
+                    session.query(
+                        Ship.ship_id,
+                        Ship.name.label('ship_name'),
+                    )
+                    .filter(Ship.name.like(f'{query_text}%'))
+                )
+                if seen_ship_ids:
+                    prefix_ship_query = prefix_ship_query.filter(
+                        ~Ship.ship_id.in_(seen_ship_ids)
+                    )
+                prefix_ship_rows = (
+                    prefix_ship_query
+                    .order_by(
+                        func.length(Ship.name),
+                        Ship.name,
+                        Ship.ship_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_buy_ship_rows(
+                    suggestions=suggestions,
+                    seen_ship_ids=seen_ship_ids,
+                    rows=prefix_ship_rows,
+                )
+            
+            return suggestions
+    
     def suggest_stations(
         self,
         text: str,
@@ -230,6 +467,131 @@ class GuiSearchService:
                 )
             )
             seen_system_ids.add(system_id)
+    
+    
+    @staticmethod
+    def _append_item_rows(
+        *,
+        suggestions: list[Suggestion],
+        seen_item_ids: set[int],
+        rows: list[object],
+    ) -> None:
+        for row in rows:
+            item_id = int(row.item_id)
+            if item_id in seen_item_ids:
+                continue
+            
+            item_name = str(row.item_name)
+            category_name = str(row.category_name)
+    @staticmethod
+    def _append_buy_category_rows(
+        *,
+        suggestions: list[Suggestion],
+        seen_category_ids: set[int],
+        rows: list[object],
+    ) -> None:
+        for row in rows:
+            category_id = int(row.category_id)
+            if category_id in seen_category_ids:
+                continue
+            
+            category_name = str(row.category_name)
+            suggestions.append(
+                Suggestion(
+                    key=f'category:{category_id}',
+                    kind='category',
+                    value=category_name,
+                    label=f'Category — {category_name}',
+                    system_id=None,
+                    system_name=None,
+                    station_id=None,
+                    station_name=None,
+                )
+            )
+            seen_category_ids.add(category_id)
+    
+    @staticmethod
+    def _append_buy_item_rows(
+        *,
+        suggestions: list[Suggestion],
+        seen_item_ids: set[int],
+        rows: list[object],
+    ) -> None:
+        for row in rows:
+            item_id = int(row.item_id)
+            if item_id in seen_item_ids:
+                continue
+            
+            item_name = str(row.item_name)
+            category_name = str(row.category_name)
+            suggestions.append(
+                Suggestion(
+                    key=f'item:{item_id}',
+                    kind='item',
+                    value=item_name,
+                    label=f'Item — {item_name} ({category_name})',
+                    system_id=None,
+                    system_name=None,
+                    station_id=None,
+                    station_name=None,
+                )
+            )
+            seen_item_ids.add(item_id)
+    
+    @staticmethod
+    def _append_buy_ship_rows(
+        *,
+        suggestions: list[Suggestion],
+        seen_ship_ids: set[int],
+        rows: list[object],
+    ) -> None:
+        for row in rows:
+            ship_id = int(row.ship_id)
+            if ship_id in seen_ship_ids:
+                continue
+            
+            ship_name = str(row.ship_name)
+            suggestions.append(
+                Suggestion(
+                    key=f'ship:{ship_id}',
+                    kind='ship',
+                    value=ship_name,
+                    label=f'Ship — {ship_name}',
+                    system_id=None,
+                    system_name=None,
+                    station_id=None,
+                    station_name=None,
+                )
+            )
+            seen_ship_ids.add(ship_id)
+    
+    @staticmethod
+    def _append_item_rows(
+        *,
+        suggestions: list[Suggestion],
+        seen_item_ids: set[int],
+        rows: list[object],
+    ) -> None:
+        for row in rows:
+            item_id = int(row.item_id)
+            if item_id in seen_item_ids:
+                continue
+            
+            item_name = str(row.item_name)
+            category_name = str(row.category_name)
+            suggestions.append(
+                Suggestion(
+                    key=f'item:{item_id}',
+                    kind='item',
+                    value=item_name,
+                    label=f'{item_name} — {category_name}',
+                    system_id=None,
+                    system_name=None,
+                    station_id=None,
+                    station_name=None,
+                )
+            )
+            seen_item_ids.add(item_id)
     
     @staticmethod
     def _append_station_rows(

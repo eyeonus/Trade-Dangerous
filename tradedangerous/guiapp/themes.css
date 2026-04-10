@@ -4,10 +4,11 @@
 /* Elite mirrors the black/orange cockpit look.
    NiceGUI sits on Quasar widgets, so the overrides target component classes
    rather than custom app-specific elements. */
+body.td-theme-elite,
 .td-theme-elite {
-    --q-primary: #f07b05;
-    --q-secondary: #f07b05;
-    --q-accent: #f07b05;
+    --q-primary: #f07b05 !important;
+    --q-secondary: #f07b05 !important;
+    --q-accent: #f07b05 !important;
     background: #000000;
     color: #ffffff;
 }
@@ -23,6 +24,14 @@
 }
 
 /* Buttons and grouped controls */
+.td-theme-elite .bg-primary {
+    background: #f07b05 !important;
+}
+
+.td-theme-elite .text-primary {
+    color: #f07b05 !important;
+}
+
 .td-theme-elite .q-btn {
     background: #f07b05;
     color: #ffffff;

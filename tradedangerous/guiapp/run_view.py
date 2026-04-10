@@ -227,7 +227,7 @@ class RunWorkspace(DraftValueHelper):
                 'Use either Direct or Hops.'
             ).classes('text-sm text-gray-600')
             
-            with ui.row().classes('w-full gap-3'):
+            with ui.grid(columns=3).classes('w-full gap-3'):
                 if self.suggest_systems is None:
                     ui.input(
                         'From System',
@@ -244,7 +244,7 @@ class RunWorkspace(DraftValueHelper):
                             selected_attr='selected_start_system_id',
                             station_autocomplete_attr='start_station_autocomplete',
                         ),
-                    ).classes('min-w-80 flex-1').tooltip(
+                    ).classes('min-w-0 w-full').tooltip(
                         'System containing your starting station.'
                     )
                 else:
@@ -269,7 +269,7 @@ class RunWorkspace(DraftValueHelper):
                             selected_attr='selected_start_system_id',
                         ),
                         tooltip='System containing your starting station.',
-                        input_classes='min-w-80 flex-1',
+                        input_classes='min-w-0 w-full',
                     ).build()
                 
                 if self.suggest_stations is None:
@@ -286,7 +286,7 @@ class RunWorkspace(DraftValueHelper):
                             station_key='startStation',
                             combined_key='starting',
                         ),
-                    ).classes('min-w-80 flex-1').tooltip(
+                    ).classes('min-w-0 w-full').tooltip(
                         'Station you are starting from.'
                     )
                 else:
@@ -311,11 +311,12 @@ class RunWorkspace(DraftValueHelper):
                             getattr(suggestion, 'station_name', suggestion.value)
                         ),
                         tooltip='Station you are starting from.',
-                        input_classes='min-w-80 flex-1',
+                        input_classes='min-w-0 w-full',
                     )
                     self.start_station_autocomplete.build()
-            
-            with ui.row().classes('w-full gap-3'):
+                
+                ui.element('div')
+                
                 if self.suggest_systems is None:
                     ui.input(
                         'To System',
@@ -332,7 +333,7 @@ class RunWorkspace(DraftValueHelper):
                             selected_attr='selected_end_system_id',
                             station_autocomplete_attr='end_station_autocomplete',
                         ),
-                    ).classes('min-w-80 flex-1').tooltip(
+                    ).classes('min-w-0 w-full').tooltip(
                         'System containing your destination station.'
                     )
                 else:
@@ -357,7 +358,7 @@ class RunWorkspace(DraftValueHelper):
                             selected_attr='selected_end_system_id',
                         ),
                         tooltip='System containing your destination station.',
-                        input_classes='min-w-80 flex-1',
+                        input_classes='min-w-0 w-full',
                     ).build()
                 
                 if self.suggest_stations is None:
@@ -374,7 +375,7 @@ class RunWorkspace(DraftValueHelper):
                             station_key='endStation',
                             combined_key='ending',
                         ),
-                    ).classes('min-w-80 flex-1').tooltip(
+                    ).classes('min-w-0 w-full').tooltip(
                         'Station you are heading to.'
                     )
                 else:
@@ -399,7 +400,7 @@ class RunWorkspace(DraftValueHelper):
                             getattr(suggestion, 'station_name', suggestion.value)
                         ),
                         tooltip='Station you are heading to.',
-                        input_classes='min-w-80 flex-1',
+                        input_classes='min-w-0 w-full',
                     )
                     self.end_station_autocomplete.build()
                 
@@ -416,9 +417,9 @@ class RunWorkspace(DraftValueHelper):
                         'towards this system.'
                     ),
                     suggest_systems=self.suggest_systems,
-                    input_classes='min-w-80 flex-1',
+                    input_classes='min-w-0 w-full',
                 )
-            
+                            
             with ui.row().classes('w-full items-end gap-3'):
                 ui.number(
                     'Hops',
