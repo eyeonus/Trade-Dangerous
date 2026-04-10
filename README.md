@@ -7,7 +7,7 @@ Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
 Copyright (C) Stefan 'Tromador' Morrell 2025 - 2026  
 Copyright (C) Jonathan 'eyeonus' Jones 2018 - 2025  
 
-REQUIRES PYTHON 3.10 OR HIGHER.
+REQUIRES PYTHON 3.12 OR HIGHER.
 
 ----------
 
