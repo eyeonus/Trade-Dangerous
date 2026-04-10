@@ -51,9 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     """ standard entry point, taking an optional argument list or defaulting to sys.argv. """
     if argv is None:
         argv = sys.argv
-    if sys.hexversion < 0x30813F0:
+    if sys.version_info < (3, 12):
         raise SystemExit(
-            "Sorry: TradeDangerous requires Python 3.8.19 or higher.\n"
+            "Sorry: TradeDangerous requires Python 3.12 or higher.\n"
             "For assistance, see:\n"
             "\tBug Tracker: https://github.com/eyeonus/Trade-Dangerous/issues\n"
             "\tDocumentation: https://github.com/eyeonus/Trade-Dangerous/wiki\n"
@@ -136,4 +136,3 @@ def trade(argv):
     
     if results:
         results.render()
-
