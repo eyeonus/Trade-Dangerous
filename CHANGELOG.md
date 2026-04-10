@@ -1,6 +1,85 @@
 # CHANGELOG
 
 
+## v12.19.0 (2026-04-10)
+
+### Bug Fixes
+
+- Remove the diagnostic output on gui close.
+  ([`7f2d07f`](https://github.com/eyeonus/Trade-Dangerous/commit/7f2d07f3b40bc81ff28373481be7382dcc782a83))
+
+The intermittent problem I was constantly getting hasn't appeared once since I actually started
+  trying to find the reason for it, so leaving the diagnostic message a noop for not
+
+### Chores
+
+- Add a couple more gui tests
+  ([`9def1a8`](https://github.com/eyeonus/Trade-Dangerous/commit/9def1a8feffaf31264e22d7ace69ff6c5a7e8ec8))
+
+- Fix indentation in new test suite
+  ([`f8dda44`](https://github.com/eyeonus/Trade-Dangerous/commit/f8dda44545a4f1d8c67d22292e53f7a09a19426b))
+
+- **deps**: Bump cryptography from 46.0.6 to 46.0.7
+  ([#301](https://github.com/eyeonus/Trade-Dangerous/pull/301),
+  [`6f83134`](https://github.com/eyeonus/Trade-Dangerous/commit/6f831343c07a874392a24c41514d03d76cb93c2d))
+
+Bumps [cryptography](https://github.com/pyca/cryptography) from 46.0.6 to 46.0.7. -
+  [Changelog](https://github.com/pyca/cryptography/blob/main/CHANGELOG.rst) -
+  [Commits](https://github.com/pyca/cryptography/compare/46.0.6...46.0.7)
+
+--- updated-dependencies: - dependency-name: cryptography dependency-version: 46.0.7
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump nicegui from 3.9.0 to 3.10.0
+  ([#300](https://github.com/eyeonus/Trade-Dangerous/pull/300),
+  [`30303b0`](https://github.com/eyeonus/Trade-Dangerous/commit/30303b0ffb7a3dacc63b90aaf252081a42b8074a))
+
+Bumps [nicegui](https://github.com/zauberzeug/nicegui) from 3.9.0 to 3.10.0. - [Release
+  notes](https://github.com/zauberzeug/nicegui/releases) -
+  [Changelog](https://github.com/zauberzeug/nicegui/blob/main/release.dockerfile) -
+  [Commits](https://github.com/zauberzeug/nicegui/compare/v3.9.0...v3.10.0)
+
+--- updated-dependencies: - dependency-name: nicegui dependency-version: 3.10.0
+
+dependency-type: direct:production ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Features
+
+- Autocomplete Dropdowns for GUI.
+  ([`95f5847`](https://github.com/eyeonus/Trade-Dangerous/commit/95f5847168885f5d828368b40947752d85e257e5))
+
+**Add GUI autocomplete dropdowns for system-only and system/station entry fields across the main
+  command workspaces.**
+
+- Wire system autocomplete into local, rares, buy, sell, olddata, nav, and run. - Split market,
+  trade, and run From/To style fields into system/station pairs while preserving the existing
+  CLI-facing combined values. - Recombine split GUI fields back into the existing command arguments
+  so saved drafts and execution continue to work unchanged. - Move the shared system-only
+  autocomplete builder into autocomplete.py for reuse across workspaces. - Adjust the run layout to
+  make room for split From and To fields without overcrowding the route section.
+
+**Additional fixes:**
+
+Improve run and shell user-facing copy to remove internal layout jargon and make the hints
+  friendlier. Add run preflight validation for mutually exclusive To and Towards inputs. Strip ANSI
+  escape sequences from failed-command diagnostics before showing them in the GUI. Correct
+  misleading nav help text so it reflects system-to-system routing rather than CLI implementation
+  details.
+
+**Additional chore:**
+
+Ensure indentation on all touched files
+
+
 ## v12.18.14 (2026-04-05)
 
 ### Bug Fixes
@@ -14,6 +93,9 @@ The preload query in `TradeCalc` combined `OR` and `AND` conditions without grou
   and `maxAge` apply consistently to both sides of the market data.
 
 ### Chores
+
+- Add tests for the ORM db path
+  ([`6d6f5e6`](https://github.com/eyeonus/Trade-Dangerous/commit/6d6f5e6a9dcbd285777ca9a834b0b78dc706d7b0))
 
 - Conftest cleanup & test_peek
   ([`431761f`](https://github.com/eyeonus/Trade-Dangerous/commit/431761ff099f28d0c79455b83a14fe378cd20158))
