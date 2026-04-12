@@ -2535,7 +2535,7 @@ dev = [
 publish = [
     { name = "build" },
     { name = "packaging", specifier = ">=20.0" },
-    { name = "python-semantic-release" },
+    { name = "python-semantic-release", specifier = ">=9.21.0,<10" },
     { name = "twine" },
     { name = "wheel" },
 ]
