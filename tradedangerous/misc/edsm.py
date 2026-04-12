@@ -49,7 +49,7 @@ class EDSMQueryBase:
             self.params[k] = v
     
     def fetch(self):
-        res = requests.get(self.url, self.params)
+        res = requests.get(self.url, self.params, timeout=10.0)
         self.status = res.status_code
         
         try:
