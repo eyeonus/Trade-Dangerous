@@ -76,12 +76,12 @@ dev = [
 ]
 
 
-# Publishing: tools for building distributions and uploading to PyPI.
+# Publishing: tools for building distributions and releasing packages.
 
 publish = [
     "build",
     "packaging>=20.0",
-    "python-semantic-release",
+    "python-semantic-release>=9.21.1,<10",
     "twine",
     "wheel",
 ]
@@ -197,13 +197,24 @@ version = { attr = "tradedangerous.version.__version__" }
 #
 # ============================================================================
 [tool.semantic_release]
-# Automatically bump versions, create tags, and commit using semantic versioning.
+# Explicit semantic-release policy for the stable release branch and manual
+# prerelease workflows. Workflow-side guardrails decide when publication happens.
 
 version_variables = [
     "tradedangerous/version.py:__version__",
 ]
 build_command = "uv build"
 commit_message = "python-semantic-release automatic version update"
+tag_format = "v{version}"
+commit_parser = "conventional"
+
+
+[tool.semantic_release.commit_parser_options]
+# Keep parser behaviour explicit rather than relying on defaults.
+minor_tags = ["feat"]
+patch_tags = ["fix", "perf"]
+parse_squash_commits = true
+ignore_merge_commits = true
 
 
 # ============================================================================
@@ -211,19 +222,9 @@ commit_message = "python-semantic-release automatic version update"
 # [tool.semantic_release.branches.*] - Branch-specific versioning rules
 #
 # ============================================================================
-[tool.semantic_release.branches.main]
+[tool.semantic_release.branches.release_v1]
 
-# Main release branch: semantic versions (e.g., 1.2.3) with RC pre-release tokens.
-match = "(main|master|release/v1)"
-prerelease_token = "rc"
+# Stable release branch: normal semantic versions are cut only from release/v1.
+match = "release/v1"
 prerelease = false
-
-
-[tool.semantic_release.branches.dev]
-
-# Development branch: pre-release versions from release-candidate branches (e.g., 1.2.3-dev.1).
-# Used for internal testing before publishing stable releases.
-match = "rc/*"
-prerelease = true
-prerelease_token = "dev"
-
+prerelease_token = "rc"
