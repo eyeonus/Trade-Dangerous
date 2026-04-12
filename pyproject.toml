@@ -81,7 +81,7 @@ dev = [
 publish = [
     "build",
     "packaging>=20.0",
-    "python-semantic-release>=9.21.1,<10",
+    "python-semantic-release>=9.21.0,<10",
     "twine",
     "wheel",
 ]
