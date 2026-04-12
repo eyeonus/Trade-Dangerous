@@ -1,13 +1,13 @@
-; Update AppVersion and OutputBaseFilename for each release.
+#include "TradeDangerous.version.iss.inc"
 
 [Setup]
 AppId=TradeDangerous
 AppName=Trade Dangerous
-AppVersion=12.18.9
+AppVersion={#TDVersion}
 AppPublisher=Trade Dangerous Dev Team
 DefaultDirName={autopf}\TradeDangerous
 DefaultGroupName=Trade Dangerous
-OutputBaseFilename=TradeDangerous-Setup-12.18.9
+OutputBaseFilename=TradeDangerous-Setup-{#TDVersion}
 SetupIconFile=tradedangerouscrest.ico
 UninstallDisplayIcon={app}\TradeDangerous.exe
 ArchitecturesAllowed=x64compatible

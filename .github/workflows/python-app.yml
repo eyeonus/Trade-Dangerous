@@ -1,6 +1,3 @@
-# This workflow uses uv for dependency management, testing, and building.
-# It maintains parity with the original python-app.yml but leverages uv's speed and caching.
-
 name: Python application via uv
 
 on:
@@ -24,23 +21,207 @@ jobs:
       matrix:
         os: [Ubuntu, Windows, MacOS]
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        enable-cache: true
-    
-    - name: Test with tox
-      # uv run with --group dev will automatically sync dev dependencies (including tox) and run
-      env:
-        TOX_PARALLEL_NO_SPINNER: 1
-      run: uv run --frozen --group dev tox --parallel
-  
-  release:
-    name: Create release version, publish to PyPI, and create GitHub release
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Test with tox
+        env:
+          TOX_PARALLEL_NO_SPINNER: 1
+        run: uv run --frozen --group dev tox --parallel
+
+  release_prepare:
+    name: Prepare release metadata and source tree
     if: github.repository == 'eyeonus/Trade-Dangerous' && ((github.event_name == 'push' && github.ref == 'refs/heads/release/v1') || github.event_name == 'workflow_dispatch')
     needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      release_sha: ${{ steps.release.outputs.release_sha }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      release_version: ${{ steps.release.outputs.release_version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install release dependencies
+        run: uv sync --frozen --no-dev --group publish
+
+      - name: Configure git
+        run: |
+          git config --global user.name "semantic-release (via GitHub Actions)"
+          git config --global user.email "semantic-release@gh"
+
+      - name: Semantic Release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          before_head="$(git rev-parse HEAD)"
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            uv run --frozen --no-sync semantic-release version --skip-build --prerelease --as-prerelease --prerelease-token "${{ github.event.inputs.mode }}"
+          else
+            uv run --frozen --no-sync semantic-release version --skip-build
+          fi
+
+          after_head="$(git rev-parse HEAD)"
+          after_tag="$(git tag --points-at HEAD | head -n 1 || true)"
+
+          if [ "$before_head" != "$after_head" ] && [ -n "$after_tag" ]; then
+            version="${after_tag#v}"
+
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "release_sha=$after_head" >> "$GITHUB_OUTPUT"
+            echo "release_tag=$after_tag" >> "$GITHUB_OUTPUT"
+            echo "release_version=$version" >> "$GITHUB_OUTPUT"
+
+            mkdir -p release-src
+            git archive --format=tar "$after_head" | tar -xf - -C release-src
+            printf '#define TDVersion "%s"\n' "$version" > release-src/TradeDangerous.version.iss.inc
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "release_sha=" >> "$GITHUB_OUTPUT"
+            echo "release_tag=" >> "$GITHUB_OUTPUT"
+            echo "release_version=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload prepared release source
+        if: steps.release.outputs.released == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-source-tree
+          path: release-src/
+          if-no-files-found: error
+          retention-days: 7
+
+  build_python_dist:
+    name: Build Python distributions
+    if: needs.release_prepare.outputs.released == 'true'
+    needs: release_prepare
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download prepared release source
+        uses: actions/download-artifact@v4
+        with:
+          name: release-source-tree
+          path: .
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install build dependencies
+        run: uv sync --frozen --no-dev --group publish
+
+      - name: Build Python distributions
+        run: uv build
+
+      - name: Upload Python distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  build_windows_installer:
+    name: Build Windows installer
+    if: needs.release_prepare.outputs.released == 'true'
+    needs: release_prepare
+    runs-on: windows-latest
+
+    steps:
+      - name: Download prepared release source
+        uses: actions/download-artifact@v4
+        with:
+          name: release-source-tree
+          path: .
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install freeze dependencies
+        shell: pwsh
+        run: |
+          uv sync --frozen --no-dev --group freeze
+
+      - name: Build Windows GUI bundle
+        shell: pwsh
+        run: |
+          uv run --frozen --no-sync pyinstaller --noconfirm --clean TradeDangerous.spec
+
+          if (-not (Test-Path ".\dist\TradeDangerous\TradeDangerous.exe")) {
+            throw "Frozen executable not found at dist\TradeDangerous\TradeDangerous.exe"
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        shell: pwsh
+        env:
+          TD_VERSION: ${{ needs.release_prepare.outputs.release_version }}
+        run: |
+          $isccCandidates = @(
+            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          )
+
+          $iscc = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+          if (-not $iscc) {
+            throw "ISCC.exe not found after installing Inno Setup."
+          }
+
+          & $iscc ".\TradeDangerous.iss"
+
+          if (-not (Test-Path ".\Output\TradeDangerous-Setup-$env:TD_VERSION.exe")) {
+            throw "Installer not found at Output\TradeDangerous-Setup-$env:TD_VERSION.exe"
+          }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: Output/TradeDangerous-Setup-${{ needs.release_prepare.outputs.release_version }}.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  publish_release:
+    name: Publish PyPI package and GitHub release assets
+    if: needs.release_prepare.outputs.released == 'true'
+    needs:
+      - release_prepare
+      - build_python_dist
+      - build_windows_installer
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -48,56 +229,48 @@ jobs:
     permissions:
       id-token: write
       contents: write
+
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        fetch-tags: true
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release_prepare.outputs.release_sha }}
+          fetch-depth: 0
+          fetch-tags: true
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-      with:
-        enable-cache: true
+      - name: Download Python distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist
 
-    - name: Install dependencies
-      run: uv sync --frozen --group publish
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: Output
 
-    - name: Configure git
-      run: |
-        git config --global user.name "semantic-release (via GitHub Actions)"
-        git config --global user.email "semantic-release@gh"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
-    - name: Semantic Release
-      id: release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        before_head="$(git rev-parse HEAD)"
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          uv run semantic-release version --prerelease --as-prerelease --prerelease-token "${{ github.event.inputs.mode }}"
-        else
-          uv run semantic-release version
-        fi
-        after_head="$(git rev-parse HEAD)"
-        after_tag="$(git tag --points-at HEAD)"
-        if [ "$before_head" != "$after_head" ] && [ -n "$after_tag" ]; then
-          echo "released=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "released=false" >> "$GITHUB_OUTPUT"
-        fi
+      - name: Install publish dependencies
+        run: uv sync --frozen --no-dev --group publish
 
-    - name: Build artifacts
-      if: steps.release.outputs.released == 'true'
-      run: uv build
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: false
 
-    - name: Publish package distributions to PyPI
-      if: steps.release.outputs.released == 'true'
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        attestations: false
+      - name: Publish package distributions to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run --frozen --no-sync semantic-release publish --tag "${{ needs.release_prepare.outputs.release_tag }}"
 
-    - name: Publish package distributions to GitHub Releases
-      if: steps.release.outputs.released == 'true'
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: uv run semantic-release publish
+      - name: Upload Windows installer to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.release_prepare.outputs.release_tag }}" \
+            "Output/TradeDangerous-Setup-${{ needs.release_prepare.outputs.release_version }}.exe#Windows installer" \
+            --clobber

@@ -74,6 +74,9 @@ dev = [
     "tox-uv",
     "uv>=0.9.26",
 ]
+freeze = [
+    "pyinstaller>=6.19.0",
+]
 
 
 # Publishing: tools for building distributions and uploading to PyPI.
