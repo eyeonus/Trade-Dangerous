@@ -1,73 +1,187 @@
 # Release workflow
 
-## 1) Stable automatic release path
+## Overview
 
-**Branch:** `release/v1`
+The release process is now split into three separate workflows with clear responsibilities:
 
-Push to `release/v1` as normal. The workflow runs automatically.
+- **`rehearsal.yml`** — manual-only safe sandbox for testing workflow changes
+- **`prerelease.yml`** — manual prerelease workflow for `alpha`, `beta`, or `rc`
+- **`release.yml`** — automatic stable release workflow on pushes to `release/v1`
 
-Semantic-release decides whether a new stable version should be cut from the commit messages:
-
-- `fix:` → patch release
-- `feat:` → minor release
-- `BREAKING CHANGE:` or `type!:` → major release
-- `chore:` → no release
-- `docs:` → no release
-- `refactor:` → no release unless marked as breaking
-
-### Examples
-
-- `fix: correct rare commodity distance filter` → next patch release
-- `feat: add shiny new function` → next minor release
-- `refactor!: move backend to SQLAlchemy` → next major release
-- `docs: update README` → no release
-- `chore: tidy CI workflow` → no release
-
-### Result
-
-If semantic-release decides a release is needed, it creates the new version/tag and the stable release is published.
+This separation exists to avoid testing release plumbing by accidentally exercising the real publish path.
 
 ---
 
-## 2) Manual release-candidate path
+## 1) Rehearsal workflow
 
-**Branch:** `rc/*` development branch  
-Examples:
+**Workflow:** `rehearsal.yml`  
+**Trigger:** manual only (`workflow_dispatch`)
 
-- `rc/gui-polish`
-- `rc/sqla-followup`
-- `rc/import-rework`
+Use this workflow when you want to validate workflow behaviour safely.
 
-Use this when work is **not ready for stable release** and you want a release candidate first.
+### What it does
 
-### How to trigger it
+- runs the full test matrix
+- can optionally build source and wheel artifacts
+- uploads build artifacts when requested
+
+### What it does not do
+
+- no semantic-release versioning
+- no git tags
+- no GitHub release creation
+- no PyPI publish
+
+### How to use it
 
 1. Open **GitHub → Actions**
-2. Open **Python application via uv**
+2. Open **Rehearsal via uv**
 3. Click **Run workflow**
-4. Choose the RC branch, for example `rc/gui-polish`
-5. Set `mode` to `rc`
-6. Click **Run workflow**
+4. Choose whether to enable **Build source and wheel artifacts for rehearsal only**
+5. Run the workflow
 
-### Result
+Use this as the first place to test workflow edits before trusting the prerelease or stable release paths.
 
-The workflow attempts a **prerelease / release candidate** from that RC branch.
+---
 
-Typical shape:
+## 2) Manual prerelease workflow
 
-- `12.13.3-rc.1`
-- `12.13.3-rc.2`
+**Workflow:** `prerelease.yml`  
+**Trigger:** manual only (`workflow_dispatch`)
 
-After testing is complete, merge the finished work to `release/v1` for the normal stable release path.
+Use this when you want to produce a real prerelease, or rehearse the prerelease path without publishing anything.
+
+### Available channels
+
+- `alpha`
+- `beta`
+- `rc`
+
+### Inputs
+
+- **Prerelease channel** — selects `alpha`, `beta`, or `rc`
+- **Rehearse versioning and build without publishing**
+  - checked = dry run only
+  - unchecked = live prerelease publish path
+- **Build and upload distribution artifacts**
+  - controls whether `uv build` runs and artifacts are uploaded
+
+### Safe dry-run path
+
+To test the prerelease workflow without publishing:
+
+1. Open **GitHub → Actions**
+2. Open **Manual prerelease publish**
+3. Click **Run workflow**
+4. Choose a channel, usually `rc`
+5. Leave **Rehearse versioning and build without publishing** checked
+6. Optionally leave **Build and upload distribution artifacts** checked
+7. Run the workflow
+
+Expected result:
+
+- the test matrix runs
+- the **Rehearse prerelease** job runs
+- the **Publish prerelease** job is skipped
+- no tag is created
+- nothing is uploaded to PyPI
+- no GitHub release is published
+
+### Live prerelease path
+
+To publish a real prerelease:
+
+1. Open **Manual prerelease publish**
+2. Choose `alpha`, `beta`, or `rc`
+3. **Uncheck** **Rehearse versioning and build without publishing**
+4. Run the workflow
+
+That path can publish a real prerelease to PyPI and GitHub Releases.
+
+---
+
+## 3) Stable automatic release workflow
+
+**Workflow:** `release.yml`  
+**Branch:** `release/v1`  
+**Trigger:** automatic on push to `release/v1`
+
+This is the only automatic publish path.
+
+### What it does
+
+- runs the full test matrix
+- runs semantic-release for a stable release decision
+- builds distributions when a release is actually created
+- publishes to PyPI and GitHub Releases only when a new release was cut
+
+If semantic-release determines that no release is needed, the publish steps are skipped.
+
+---
+
+## Commit message rules
+
+Trade Dangerous now uses the **Conventional Commits** parser explicitly.
+
+### Commits that trigger releases
+
+- `feat:` → **minor** release, a new feature or capability
+- `fix:` → **patch** release, a bug fix
+- `perf:` → **patch** release, a performance improvement
+- `BREAKING CHANGE:` footer or `type!:` → **major** release,  e.g. an incompatible API change
+
+### Commits that do not trigger a release by themselves
+
+These commit types are valid and useful, but they do not cause semantic-release to cut a version on their own:
+
+- `build:` changes that affect the build system or external dependencies
+- `chore:` routine maintenance or housekeeping
+- `ci:` changes to CI configuration files, workflows, or automation scripts
+- `docs:` documentation-only changes
+- `refactor:` code restructuring without changing behaviour
+- `style:` formatting or stylistic cleanup with no behavioural change
+- `test:` adding or changing tests without changing runtime behaviour
+
+They may still appear in the changelog for a release that was triggered by a releasable commit.
+
+### Squash commit evaluation
+
+Common squash-merge commit bodies are supported.
+
+That means a squash commit such as:
+
+```text
+feat(config): add new config option (#123)
+
+* refactor(config): change config loading
+* docs(configuration): document the new option
+```
+
+can contribute multiple categorized changelog entries while still taking its version bump from the releasable commit content.
+
+---
+
+## Examples
+
+- `fix: correct rare commodity distance filter` → next patch release
+- `perf: reduce route search overhead in tradecalc` → next patch release
+- `feat: add installer workflow plumbing` → next minor release
+- `refactor!: change release metadata handling` → next major release
+- `docs: update release workflow guide` → no release by itself
+- `ci: switch workflow actions to v6` → no release by itself
 
 ---
 
 ## Rule of thumb
 
+- Want to **test workflow behaviour safely**?  
+  Run **`rehearsal.yml`**.
+
+- Want to **test the prerelease path without publishing**?  
+  Run **`prerelease.yml`** with **Rehearse versioning and build without publishing** checked.
+
+- Want a **real prerelease**?  
+  Run **`prerelease.yml`** with the rehearse checkbox cleared and choose `alpha`, `beta`, or `rc`.
+
 - Want a **stable release**?  
-  Commit to `release/v1` using normal semantic-release commit messages.
-
-- Want a **release candidate first**?  
-  Work on an `rc/*` branch and trigger the workflow manually with `mode=rc`.
-
-- Do **not** put a `feat:` commit straight onto `release/v1` if you want RC testing first, because that branch is the stable auto-release line.
+  Push releasable commits to `release/v1` and let **`release.yml`** handle it automatically.
