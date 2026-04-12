@@ -1,45 +1,48 @@
-# This workflow uses uv for dependency management, testing, and building.
-# It maintains parity with the original python-app.yml but leverages uv's speed and caching.
+# Stable release workflow.
+# This workflow is the only automatic publishing path:
+# - runs on pushes to the stable release branch
+# - runs the test matrix first
+# - performs semantic-release versioning only for stable releases
+# - publishes to PyPI and GitHub Releases only when a new release was created
 
-name: Python application via uv
+name: Stable release publish
 
 on:
   push:
-    branches: [ release/v1 ]
-  pull_request:
-    branches: [ release/v1 ]
-  workflow_dispatch:
-    inputs:
-      mode:
-        description: Prerelease token
-        required: true
-        default: rc
-        type: string
+    branches: [release/v1]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}-latest
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [Ubuntu, Windows, MacOS]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install uv
       uses: astral-sh/setup-uv@v7
       with:
         enable-cache: true
-    
+
     - name: Test with tox
-      # uv run with --group dev will automatically sync dev dependencies (including tox) and run
       env:
         TOX_PARALLEL_NO_SPINNER: 1
       run: uv run --frozen --group dev tox --parallel
-  
+
   release:
-    name: Create release version, publish to PyPI, and create GitHub release
-    if: github.repository == 'eyeonus/Trade-Dangerous' && ((github.event_name == 'push' && github.ref == 'refs/heads/release/v1') || github.event_name == 'workflow_dispatch')
+    name: Create stable release version, publish to PyPI, and create GitHub release
+    if: github.repository == 'eyeonus/Trade-Dangerous'
     needs: test
     runs-on: ubuntu-latest
     environment:
@@ -48,6 +51,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+
     steps:
     - uses: actions/checkout@v4
       with:
@@ -59,7 +63,7 @@ jobs:
       with:
         enable-cache: true
 
-    - name: Install dependencies
+    - name: Install publish dependencies
       run: uv sync --frozen --group publish
 
     - name: Configure git
@@ -67,17 +71,13 @@ jobs:
         git config --global user.name "semantic-release (via GitHub Actions)"
         git config --global user.email "semantic-release@gh"
 
-    - name: Semantic Release
+    - name: Create stable release version
       id: release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         before_head="$(git rev-parse HEAD)"
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          uv run semantic-release version --prerelease --as-prerelease --prerelease-token "${{ github.event.inputs.mode }}"
-        else
-          uv run semantic-release version
-        fi
+        uv run semantic-release version
         after_head="$(git rev-parse HEAD)"
         after_tag="$(git tag --points-at HEAD)"
         if [ "$before_head" != "$after_head" ] && [ -n "$after_tag" ]; then

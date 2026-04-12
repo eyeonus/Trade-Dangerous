@@ -1,0 +1,79 @@
+# This workflow uses uv for dependency management, testing, and optional
+# rehearsal builds. It is intentionally side-effect free:
+# - no semantic-release versioning
+# - no tags
+# - no PyPI publish
+# - no GitHub release creation
+#
+# Stable releases and manual prereleases are handled by separate workflows.
+
+name: CI and rehearsal via uv
+
+on:
+  push:
+    branches: [release/v1]
+  pull_request:
+    branches: [release/v1]
+  workflow_dispatch:
+    inputs:
+      build_artifacts:
+        description: Build source and wheel artifacts for rehearsal only (no publish)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-rehearsal-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Test with tox
+      env:
+        TOX_PARALLEL_NO_SPINNER: 1
+      run: uv run --frozen --group dev tox --parallel
+
+  build:
+    name: Build release artifacts (no publish)
+    if: github.event_name == 'workflow_dispatch' && inputs.build_artifacts
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+
+    - name: Install publish dependencies
+      run: uv sync --frozen --group publish
+
+    - name: Build artifacts
+      run: uv build
+
+    - name: Upload rehearsal artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tradedangerous-dist-${{ github.run_number }}
+        path: dist/*
+        if-no-files-found: error
