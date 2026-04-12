@@ -1,6 +1,31 @@
 # CHANGELOG
 
 
+## v12.20.0-test.1 (2026-04-12)
+
+### Chores
+
+- Automate Windows installer release workflow
+  ([`3828fd4`](https://github.com/eyeonus/Trade-Dangerous/commit/3828fd4ce2243cf6dda7856f85848eace0cdaa21))
+
+- **deps-dev**: Bump uv from 0.9.30 to 0.11.6
+  ([#302](https://github.com/eyeonus/Trade-Dangerous/pull/302),
+  [`068fc03`](https://github.com/eyeonus/Trade-Dangerous/commit/068fc03d55670a3c9e4ff1c3bf6e02f4f4a567e3))
+
+Bumps [uv](https://github.com/astral-sh/uv) from 0.9.30 to 0.11.6. - [Release
+  notes](https://github.com/astral-sh/uv/releases) -
+  [Changelog](https://github.com/astral-sh/uv/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/uv/compare/0.9.30...0.11.6)
+
+--- updated-dependencies: - dependency-name: uv dependency-version: 0.11.6
+
+dependency-type: direct:development ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+
 ## v12.20.0 (2026-04-10)
 
 ### Features
