@@ -790,6 +790,10 @@ class AppShell:
                         limit=10,
                         system_id=system_id,
                     ),
+                    suggest_run_avoid=lambda text: self.search_service.suggest_run_avoid(
+                        text,
+                        limit=10,
+                    ),
                     resolve_system=self.search_service.resolve_system,
                 )
                 workspace.build()

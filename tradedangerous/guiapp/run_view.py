@@ -23,6 +23,7 @@ class RunWorkspace(DraftValueHelper):
         on_copy_from_profile: Callable[[], None],
         suggest_systems: Callable[[str], list[object]] | None = None,
         suggest_stations: Callable[..., list[object]] | None = None,
+        suggest_run_avoid: Callable[[str], list[object]] | None = None,
         resolve_system: Callable[[str], object | None] | None = None,
     ) -> None:
         self.draft = draft
@@ -31,14 +32,34 @@ class RunWorkspace(DraftValueHelper):
         self.on_copy_from_profile = on_copy_from_profile
         self.suggest_systems = suggest_systems
         self.suggest_stations = suggest_stations
+        self.suggest_run_avoid = suggest_run_avoid
         self.resolve_system = resolve_system
         self.selected_start_system_id: int | None = None
         self.selected_end_system_id: int | None = None
+        self.run_via_dialog = None
+        self.run_via_summary_label = None
+        self.run_via_list_host = None
+        self.run_via_system_input_control = None
+        self.run_via_station_input_control = None
+        self.run_via_candidate_system_text = ''
+        self.run_via_candidate_station_text = ''
+        self.run_via_selected_system_id: int | None = None
+        self.run_avoid_dialog = None
+        self.run_avoid_summary_label = None
+        self.run_avoid_list_host = None
+        self.run_avoid_value_input_control = None
+        self.run_avoid_station_input_control = None
+        self.run_avoid_candidate_value_text = ''
+        self.run_avoid_candidate_station_text = ''
+        self.run_avoid_candidate_kind: str | None = None
+        self.run_avoid_selected_system_id: int | None = None
     
     def build(self) -> None:
         self._normalize_run_state()
         # Keep the always-visible pane focused on route-shaping fields and the
         # most common overrides; niche knobs live in the extended dialog.
+        self.run_via_dialog = self._build_via_editor_dialog()
+        self.run_avoid_dialog = self._build_avoid_editor_dialog()
         extended_dialog = self._build_extended_dialog()
         
         with ui.column().classes('w-full gap-3'):
@@ -490,6 +511,614 @@ class RunWorkspace(DraftValueHelper):
                         'Only visit each station once in route.'
                     )
     
+    def _build_via_section(self, via_dialog: ui.dialog) -> None:
+        with ui.card().classes('w-full'):
+            ui.label('Via')
+            ui.label(
+                'Add required systems or system/station pairs that must appear '
+                'somewhere in the route.'
+            ).classes('text-sm text-gray-600')
+            with ui.row().classes('w-full items-end gap-3'):
+                with ui.column().classes('min-w-96 flex-1 gap-1'):
+                    self.run_via_summary_label = ui.label(
+                        self._run_via_summary()
+                    ).classes('text-sm text-gray-600')
+                ui.button('Edit Via...', on_click=via_dialog.open).tooltip(
+                    'Edit the list of required route waypoints.'
+                )
+    
+    def _build_via_editor_dialog(self) -> ui.dialog:
+        dialog = ui.dialog()
+        with dialog, ui.card().classes('gap-3').style(
+            'min-width: 56rem; max-width: 95vw; min-height: 34rem;'
+        ):
+            ui.label('Edit Via Waypoints')
+            ui.label(
+                'Add systems or system/station pairs that must appear in the route.'
+            ).classes('text-sm text-gray-600')
+            with ui.row().classes('w-full items-end gap-6 no-wrap'):
+                if self.suggest_systems is None:
+                    self.run_via_system_input_control = ui.input(
+                        'System',
+                        value=self.run_via_candidate_system_text,
+                        on_change=lambda event: self._set_run_via_candidate_system_text(
+                            event.value,
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'Add a required system waypoint.'
+                    )
+                else:
+                    self.run_via_system_input_control = AutocompleteInput(
+                        label='System',
+                        value=self.run_via_candidate_system_text,
+                        fetch_suggestions=self.suggest_systems,
+                        on_text_changed=self._set_run_via_candidate_system_text,
+                        on_selected=lambda suggestion: self._set_run_system_selected(
+                            suggestion,
+                            selected_attr='run_via_selected_system_id',
+                        ),
+                        tooltip='Add a required system waypoint.',
+                        input_classes='min-w-80 flex-1',
+                    )
+                    self.run_via_system_input_control.build()
+                self.run_via_station_input_control = AutocompleteInput(
+                    label='Station',
+                    value=self.run_via_candidate_station_text,
+                    fetch_suggestions=lambda text: self._suggest_run_stations(
+                        text,
+                        selected_attr='run_via_selected_system_id',
+                    ),
+                    on_text_changed=self._set_run_via_candidate_station_text,
+                    selection_text=lambda suggestion: str(
+                        getattr(suggestion, 'station_name', suggestion.value)
+                    ),
+                    tooltip='Optional station within the selected system.',
+                    input_classes='min-w-80 flex-1',
+                )
+                self.run_via_station_input_control.build()
+                ui.button('Add', on_click=self._on_add_run_via)
+            self.run_via_list_host = ui.column().classes('w-full gap-2')
+            self._refresh_run_via_list()
+            with ui.row().classes('w-full justify-end'):
+                ui.button('Close', on_click=dialog.close)
+        return dialog
+    
+    def _run_via_entries(self) -> list[str]:
+        entries: list[str] = []
+        raw = self._text_value(self.draft.advanced_values, 'via')
+        for line in raw.splitlines():
+            for part in line.split(','):
+                cleaned = part.strip()
+                if cleaned:
+                    entries.append(cleaned)
+        return entries
+    
+    def _set_run_via_entries(self, entries: list[str]) -> None:
+        cleaned_entries = [entry.strip() for entry in entries if entry.strip()]
+        if cleaned_entries:
+            self.draft.advanced_values['via'] = '\n'.join(cleaned_entries)
+        else:
+            self.draft.advanced_values.pop('via', None)
+        self.on_changed()
+        self._refresh_run_via_summary()
+        self._refresh_run_via_list()
+    
+    def _run_via_summary(self) -> str:
+        entries = self._run_via_entries()
+        if not entries:
+            return 'No via entries selected.'
+        preview = ', '.join(entries[:3])
+        if len(entries) > 3:
+            preview += ', ...'
+        noun = 'entry' if len(entries) == 1 else 'entries'
+        return f'{len(entries)} via {noun}: {preview}'
+    
+    def _set_run_via_candidate_system_text(self, value: str) -> None:
+        cleaned = str(value or '').strip()
+        if cleaned != self.run_via_candidate_system_text:
+            self._clear_run_via_station_candidate_text()
+        self.run_via_candidate_system_text = cleaned
+        self.run_via_selected_system_id = self._resolve_run_system_id(cleaned)
+    
+    def _set_run_via_candidate_station_text(self, value: str) -> None:
+        self.run_via_candidate_station_text = str(value or '').strip()
+
+
+    @staticmethod
+    def _control_target(control: Any) -> Any:
+        if control is None:
+            return None
+        return getattr(control, 'input', control)
+
+    def _set_control_value(self, control: Any, value: str) -> None:
+        if control is None:
+            return
+        set_text = getattr(control, 'set_text', None)
+        if callable(set_text):
+            set_text(value)
+            return
+        clear = getattr(control, 'clear', None)
+        if callable(clear) and value == '':
+            clear()
+            return
+        target = self._control_target(control)
+        if target is None:
+            return
+        set_value = getattr(target, 'set_value', None)
+        if callable(set_value):
+            set_value(value)
+            return
+        if hasattr(target, 'value'):
+            target.value = value
+
+    def _set_control_enabled(self, control: Any, enabled: bool) -> None:
+        target = self._control_target(control)
+        if target is None:
+            return
+        method_name = 'enable' if enabled else 'disable'
+        method = getattr(target, method_name, None)
+        if callable(method):
+            method()
+    
+    def _clear_run_via_candidate_text(
+        self,
+        *,
+        text_attr: str,
+        control_attr: str,
+    ) -> None:
+        setattr(self, text_attr, '')
+        self._set_control_value(
+            getattr(self, control_attr),
+            '',
+        )
+
+    def _clear_run_via_system_candidate_text(self) -> None:
+        self._clear_run_via_candidate_text(
+            text_attr='run_via_candidate_system_text',
+            control_attr='run_via_system_input_control',
+        )
+        self.run_via_selected_system_id = None
+    
+    def _clear_run_via_station_candidate_text(self) -> None:
+        self._clear_run_via_candidate_text(
+            text_attr='run_via_candidate_station_text',
+            control_attr='run_via_station_input_control',
+        )
+    
+    def _resolve_run_via_system_name(self, value: str) -> str | None:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            return None
+        resolved = self.resolve_system(cleaned) if self.resolve_system else None
+        if resolved is not None:
+            system_name = getattr(resolved, 'system_name', None) or getattr(
+                resolved,
+                'value',
+                None,
+            )
+            if system_name:
+                return str(system_name).strip()
+        if self.suggest_systems is None:
+            return cleaned
+        try:
+            suggestions = self.suggest_systems(cleaned)
+        except TypeError:
+            suggestions = []
+        for suggestion in suggestions:
+            system_name = getattr(suggestion, 'system_name', None)
+            if system_name is None:
+                system_name = getattr(suggestion, 'value', None)
+            if system_name is None:
+                system_name = getattr(suggestion, 'label', None)
+            if str(system_name or '').strip().casefold() == cleaned.casefold():
+                return str(system_name).strip()
+        return None
+    
+    def _resolve_run_via_station_name(self, value: str) -> str | None:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            return None
+        if self.suggest_stations is None:
+            return cleaned
+        suggestions = self._suggest_run_stations(
+            cleaned,
+            selected_attr='run_via_selected_system_id',
+        )
+        for suggestion in suggestions:
+            station_name = getattr(suggestion, 'station_name', None)
+            if station_name is None:
+                station_name = getattr(suggestion, 'value', None)
+            if station_name is None:
+                station_name = getattr(suggestion, 'label', None)
+            if str(station_name or '').strip().casefold() == cleaned.casefold():
+                return str(station_name).strip()
+        return None
+    
+    def _on_add_run_via(self) -> None:
+        system_name = self._resolve_run_via_system_name(
+            self.run_via_candidate_system_text
+        )
+        if system_name is None:
+            ui.notify(
+                'Choose a valid system for Via.',
+                color='warning',
+            )
+            return
+        station_text = self.run_via_candidate_station_text.strip()
+        station_name = self._resolve_run_via_station_name(station_text)
+        if station_text and station_name is None:
+            ui.notify(
+                'Choose a valid station for Via.',
+                color='warning',
+            )
+            return
+        entry = (
+            f'{system_name}/{station_name}'
+            if station_name else
+            system_name
+        )
+        entries = self._run_via_entries()
+        if any(existing.casefold() == entry.casefold() for existing in entries):
+            ui.notify(
+                f'{entry} is already in Via.',
+                color='warning',
+            )
+            return
+        entries.append(entry)
+        self._set_run_via_entries(entries)
+        self._clear_run_via_system_candidate_text()
+        self._clear_run_via_station_candidate_text()
+    
+    def _remove_run_via(self, index: int) -> None:
+        entries = self._run_via_entries()
+        if index < 0 or index >= len(entries):
+            return
+        entries.pop(index)
+        self._set_run_via_entries(entries)
+    
+    def _refresh_run_via_summary(self) -> None:
+        if self.run_via_summary_label is None:
+            return
+        self.run_via_summary_label.text = self._run_via_summary()
+    
+    def _refresh_run_via_list(self) -> None:
+        if self.run_via_list_host is None:
+            return
+        entries = self._run_via_entries()
+        self.run_via_list_host.clear()
+        with self.run_via_list_host:
+            if not entries:
+                ui.label('No via entries selected.').classes(
+                    'text-sm text-gray-600'
+                )
+                return
+            ui.label(
+                'Each entry must appear somewhere in the route.'
+            ).classes('text-sm text-gray-600')
+            for index, entry in enumerate(entries):
+                with ui.row().classes('w-full items-center gap-3 no-wrap'):
+                    ui.label(entry).classes('min-w-0 flex-1')
+                    ui.button(
+                        'Remove',
+                        on_click=lambda idx=index: self._remove_run_via(idx),
+                    ).props('outline dense')
+    
+    def _run_avoid_entries(self) -> list[str]:
+        entries: list[str] = []
+        raw = self._text_value(self.draft.advanced_values, 'avoid')
+        for line in raw.splitlines():
+            for part in line.split(','):
+                cleaned = part.strip()
+                if cleaned:
+                    entries.append(cleaned)
+        return entries
+    
+    def _set_run_avoid_entries(self, entries: list[str]) -> None:
+        cleaned_entries = [entry.strip() for entry in entries if entry.strip()]
+        if cleaned_entries:
+            self.draft.advanced_values['avoid'] = '\n'.join(cleaned_entries)
+        else:
+            self.draft.advanced_values.pop('avoid', None)
+        self.on_changed()
+        self._refresh_run_avoid_summary()
+        self._refresh_run_avoid_list()
+    
+    def _run_avoid_summary(self) -> str:
+        entries = self._run_avoid_entries()
+        if not entries:
+            return 'No avoid entries selected.'
+        preview = ', '.join(entries[:3])
+        if len(entries) > 3:
+            preview += ', ...'
+        noun = 'entry' if len(entries) == 1 else 'entries'
+        return f'{len(entries)} avoid {noun}: {preview}'
+    
+    def _classify_run_avoid_candidate(
+        self,
+        value: str,
+    ) -> tuple[str | None, int | None]:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            return None, None
+        if self.suggest_run_avoid is not None:
+            try:
+                suggestions = self.suggest_run_avoid(cleaned)
+            except TypeError:
+                suggestions = []
+            for suggestion in suggestions:
+                suggestion_value = str(
+                    getattr(suggestion, 'value', '') or ''
+                ).strip()
+                if suggestion_value.casefold() != cleaned.casefold():
+                    continue
+                kind = str(getattr(suggestion, 'kind', '') or '').strip()
+                if kind == 'item':
+                    return 'item', None
+                if kind == 'system':
+                    system_id = getattr(suggestion, 'system_id', None)
+                    return 'system', int(system_id) if system_id is not None else None
+        resolved = self.resolve_system(cleaned) if self.resolve_system else None
+        if resolved is not None:
+            system_id = getattr(resolved, 'system_id', None)
+            return 'system', int(system_id) if system_id is not None else None
+        return None, None
+    
+    def _set_run_avoid_candidate_value_text(self, value: str) -> None:
+        cleaned = str(value or '').strip()
+        if cleaned != self.run_avoid_candidate_value_text:
+            self._clear_run_avoid_station_candidate_text()
+        self.run_avoid_candidate_value_text = cleaned
+        candidate_kind, system_id = self._classify_run_avoid_candidate(cleaned)
+        self.run_avoid_candidate_kind = candidate_kind
+        self.run_avoid_selected_system_id = system_id
+        self._update_run_avoid_station_input_state()
+    
+    def _set_run_avoid_candidate_station_text(self, value: str) -> None:
+        self.run_avoid_candidate_station_text = str(value or '').strip()
+    
+    def _clear_run_avoid_candidate_text(
+        self,
+        *,
+        text_attr: str,
+        control_attr: str,
+    ) -> None:
+        setattr(self, text_attr, '')
+        self._set_control_value(
+            getattr(self, control_attr),
+            '',
+        )
+
+    def _clear_run_avoid_value_candidate_text(self) -> None:
+        self._clear_run_avoid_candidate_text(
+            text_attr='run_avoid_candidate_value_text',
+            control_attr='run_avoid_value_input_control',
+        )
+        self.run_avoid_candidate_kind = None
+        self.run_avoid_selected_system_id = None
+        self._update_run_avoid_station_input_state()
+    
+    def _clear_run_avoid_station_candidate_text(self) -> None:
+        self._clear_run_avoid_candidate_text(
+            text_attr='run_avoid_candidate_station_text',
+            control_attr='run_avoid_station_input_control',
+        )
+    
+    def _resolve_run_avoid_value_name(
+        self,
+        value: str,
+    ) -> tuple[str | None, str | None, int | None]:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            return None, None, None
+        if self.suggest_run_avoid is not None:
+            try:
+                suggestions = self.suggest_run_avoid(cleaned)
+            except TypeError:
+                suggestions = []
+            for suggestion in suggestions:
+                suggestion_value = str(
+                    getattr(suggestion, 'value', '') or ''
+                ).strip()
+                if suggestion_value.casefold() != cleaned.casefold():
+                    continue
+                kind = str(getattr(suggestion, 'kind', '') or '').strip()
+                if kind == 'item':
+                    return 'item', suggestion_value, None
+                if kind == 'system':
+                    system_id = getattr(suggestion, 'system_id', None)
+                    system_name = getattr(suggestion, 'system_name', None)
+                    return (
+                        'system',
+                        str(system_name or suggestion_value).strip(),
+                        int(system_id) if system_id is not None else None,
+                    )
+        resolved = self.resolve_system(cleaned) if self.resolve_system else None
+        if resolved is not None:
+            system_id = getattr(resolved, 'system_id', None)
+            system_name = getattr(resolved, 'system_name', None)
+            value_name = getattr(resolved, 'value', None)
+            return (
+                'system',
+                str(system_name or value_name or cleaned).strip(),
+                int(system_id) if system_id is not None else None,
+            )
+        return None, None, None
+    
+    def _resolve_run_avoid_station_name(self, value: str) -> str | None:
+        cleaned = str(value or '').strip()
+        if cleaned == '':
+            return None
+        if self.suggest_stations is None:
+            return cleaned
+        suggestions = self._suggest_run_stations(
+            cleaned,
+            selected_attr='run_avoid_selected_system_id',
+        )
+        for suggestion in suggestions:
+            station_name = getattr(suggestion, 'station_name', None)
+            if station_name is None:
+                station_name = getattr(suggestion, 'value', None)
+            if station_name is None:
+                station_name = getattr(suggestion, 'label', None)
+            if str(station_name or '').strip().casefold() == cleaned.casefold():
+                return str(station_name).strip()
+        return None
+    
+    def _refresh_run_avoid_summary(self) -> None:
+        if self.run_avoid_summary_label is None:
+            return
+        self.run_avoid_summary_label.text = self._run_avoid_summary()
+    
+    def _run_avoid_is_item_candidate(self) -> bool:
+        return self.run_avoid_candidate_kind == 'item'
+    
+    def _update_run_avoid_station_input_state(self) -> None:
+        control = self.run_avoid_station_input_control
+        if control is None:
+            return
+        should_enable = (
+            self.run_avoid_candidate_kind == 'system'
+            and self.run_avoid_selected_system_id is not None
+        )
+        if should_enable:
+            self._set_control_enabled(control, True)
+            return
+        self._clear_run_avoid_station_candidate_text()
+        self._set_control_enabled(control, False)
+
+    def _build_avoid_editor_dialog(self) -> ui.dialog:
+        dialog = ui.dialog()
+        with dialog, ui.card().classes('gap-3').style(
+            'min-width: 56rem; max-width: 95vw; min-height: 34rem;'
+        ):
+            ui.label('Edit Avoid Entries')
+            ui.label(
+                'Add systems, optional system/station pairs, or items to exclude.'
+            ).classes('text-sm text-gray-600')
+            with ui.row().classes('w-full items-end gap-6 no-wrap'):
+                if self.suggest_run_avoid is None:
+                    self.run_avoid_value_input_control = ui.input(
+                        'System or Item',
+                        value=self.run_avoid_candidate_value_text,
+                        on_change=lambda event: self._set_run_avoid_candidate_value_text(
+                            event.value,
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'Choose a system or item to avoid.'
+                    )
+                else:
+                    self.run_avoid_value_input_control = AutocompleteInput(
+                        label='System or Item',
+                        value=self.run_avoid_candidate_value_text,
+                        fetch_suggestions=self.suggest_run_avoid,
+                        on_text_changed=self._set_run_avoid_candidate_value_text,
+                        tooltip='Choose a system or item to avoid.',
+                        input_classes='min-w-80 flex-1',
+                    )
+                    self.run_avoid_value_input_control.build()
+                if self.suggest_stations is None:
+                    self.run_avoid_station_input_control = ui.input(
+                        'Station',
+                        value=self.run_avoid_candidate_station_text,
+                        on_change=lambda event: self._set_run_avoid_candidate_station_text(
+                            event.value,
+                        ),
+                    ).classes('min-w-80 flex-1').tooltip(
+                        'Optional station within the selected system.'
+                    )
+                else:
+                    self.run_avoid_station_input_control = AutocompleteInput(
+                        label='Station',
+                        value=self.run_avoid_candidate_station_text,
+                        fetch_suggestions=lambda text: self._suggest_run_stations(
+                            text,
+                            selected_attr='run_avoid_selected_system_id',
+                        ),
+                        on_text_changed=self._set_run_avoid_candidate_station_text,
+                        selection_text=lambda suggestion: str(
+                            getattr(suggestion, 'station_name', suggestion.value)
+                        ),
+                        tooltip='Optional station within the selected system.',
+                        input_classes='min-w-80 flex-1',
+                    )
+                    self.run_avoid_station_input_control.build()
+                ui.button('Add', on_click=self._on_add_run_avoid)
+            self.run_avoid_list_host = ui.column().classes('w-full gap-2')
+            self._refresh_run_avoid_list()
+            with ui.row().classes('w-full justify-end'):
+                ui.button('Close', on_click=dialog.close)
+        self._update_run_avoid_station_input_state()
+        return dialog
+    
+    def _on_add_run_avoid(self) -> None:
+        kind, value_name, system_id = self._resolve_run_avoid_value_name(
+            self.run_avoid_candidate_value_text
+        )
+        if kind is None or value_name is None:
+            ui.notify(
+                'Choose a valid system or item for Avoid.',
+                color='warning',
+            )
+            return
+        self.run_avoid_candidate_kind = kind
+        self.run_avoid_selected_system_id = system_id
+        if kind == 'item':
+            entry = value_name
+        else:
+            station_text = self.run_avoid_candidate_station_text.strip()
+            station_name = self._resolve_run_avoid_station_name(station_text)
+            if station_text and station_name is None:
+                ui.notify(
+                    'Choose a valid station for Avoid.',
+                    color='warning',
+                )
+                return
+            entry = (
+                f'{value_name}/{station_name}'
+                if station_name else
+                value_name
+            )
+        entries = self._run_avoid_entries()
+        if any(existing.casefold() == entry.casefold() for existing in entries):
+            ui.notify(
+                f'{entry} is already in Avoid.',
+                color='warning',
+            )
+            return
+        entries.append(entry)
+        self._set_run_avoid_entries(entries)
+        self._clear_run_avoid_value_candidate_text()
+        self._clear_run_avoid_station_candidate_text()
+    
+    def _remove_run_avoid(self, index: int) -> None:
+        entries = self._run_avoid_entries()
+        if index < 0 or index >= len(entries):
+            return
+        entries.pop(index)
+        self._set_run_avoid_entries(entries)
+    
+    def _refresh_run_avoid_list(self) -> None:
+        if self.run_avoid_list_host is None:
+            return
+        entries = self._run_avoid_entries()
+        self.run_avoid_list_host.clear()
+        with self.run_avoid_list_host:
+            if not entries:
+                ui.label('No avoid entries selected.').classes(
+                    'text-sm text-gray-600'
+                )
+                return
+            ui.label(
+                'Selected entries are excluded from trading.'
+            ).classes('text-sm text-gray-600')
+            for index, entry in enumerate(entries):
+                with ui.row().classes('w-full items-center gap-3 no-wrap'):
+                    ui.label(entry).classes('min-w-0 flex-1')
+                    ui.button(
+                        'Remove',
+                        on_click=lambda idx=index: self._remove_run_avoid(idx),
+                    ).props('outline dense')
+    
     def _build_override_section(self) -> None:
         with ui.card().classes('w-full'):
             ui.label('Run Overrides')
@@ -635,29 +1264,30 @@ class RunWorkspace(DraftValueHelper):
         with ui.column().classes('w-full gap-3'):
             ui.label('Routing and path constraints')
             
-            with ui.row().classes('w-full gap-3'):
-                ui.input(
-                    'Via',
-                    value=self._text_value(self.draft.advanced_values, 'via'),
-                    on_change=lambda event: self._set_text(
-                        self.draft.advanced_values,
-                        'via',
-                        event.value,
-                    ),
-                ).classes('min-w-80 flex-1').tooltip(
-                    'Require specified systems/stations to be en-route.'
+            with ui.row().classes('w-full items-end gap-3'):
+                with ui.column().classes('min-w-96 flex-1 gap-1'):
+                    ui.label('Via')
+                    self.run_via_summary_label = ui.label(
+                        self._run_via_summary()
+                    ).classes('text-sm text-gray-600')
+                ui.button(
+                    'Edit Via...',
+                    on_click=self.run_via_dialog.open,
+                ).tooltip(
+                    'Edit the list of required route waypoints.'
                 )
-                ui.input(
-                    'Avoid',
-                    value=self._text_value(self.draft.advanced_values, 'avoid'),
-                    on_change=lambda event: self._set_text(
-                        self.draft.advanced_values,
-                        'avoid',
-                        event.value,
-                    ),
-                ).classes('min-w-80 flex-1').tooltip(
-                    'Exclude an item, system or station from trading. '
-                    'Partial matches allowed.'
+            
+            with ui.row().classes('w-full items-end gap-3'):
+                with ui.column().classes('min-w-96 flex-1 gap-1'):
+                    ui.label('Avoid')
+                    self.run_avoid_summary_label = ui.label(
+                        self._run_avoid_summary()
+                    ).classes('text-sm text-gray-600')
+                ui.button(
+                    'Edit Avoid...',
+                    on_click=self.run_avoid_dialog.open,
+                ).tooltip(
+                    'Edit the list of excluded systems, stations, and items.'
                 )
             
             with ui.row().classes('w-full gap-3'):

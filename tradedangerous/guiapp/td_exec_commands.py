@@ -27,8 +27,22 @@ def build_run_argv(
     append_option(argv, '--from', resolved.get('starting'))
     append_option(argv, '--to', resolved.get('ending'))
     append_option(argv, '--towards', resolved.get('goalSystem'))
-    append_option(argv, '--via', resolved.get('via'))
-    append_option(argv, '--avoid', resolved.get('avoid'))
+    
+    via_value = resolved.get('via')
+    if via_value not in (None, ''):
+        for line in str(via_value).splitlines():
+            for part in line.split(','):
+                cleaned = part.strip()
+                if cleaned:
+                    argv.extend(['--via', cleaned])
+    
+    avoid_value = resolved.get('avoid')
+    if avoid_value not in (None, ''):
+        for line in str(avoid_value).splitlines():
+            for part in line.split(','):
+                cleaned = part.strip()
+                if cleaned:
+                    argv.extend(['--avoid', cleaned])
     
     append_flag(argv, '--loop', resolved.get('loop'))
     append_flag(argv, '--direct', resolved.get('direct'))

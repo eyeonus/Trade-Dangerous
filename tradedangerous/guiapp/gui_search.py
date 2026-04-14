@@ -370,6 +370,121 @@ class GuiSearchService:
                 )
             
             return suggestions
+            
+    def suggest_run_avoid(
+        self,
+        text: str,
+        limit: int = 10,
+    ) -> list[Suggestion]:
+        query_text = self._clean_text(text)
+        bounded_limit = self._clean_limit(limit)
+        if not query_text or bounded_limit <= 0:
+            return []
+        
+        with self._session_factory() as session:
+            suggestions: list[Suggestion] = []
+            seen_system_ids: set[int] = set()
+            seen_item_ids: set[int] = set()
+            
+            exact_system_rows = (
+                session.query(
+                    System.system_id,
+                    System.name,
+                )
+                .filter(System.name == query_text)
+                .order_by(
+                    System.name,
+                    System.system_id,
+                )
+                .limit(bounded_limit)
+                .all()
+            )
+            self._append_system_rows(
+                suggestions=suggestions,
+                seen_system_ids=seen_system_ids,
+                rows=exact_system_rows,
+            )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                exact_item_rows = (
+                    session.query(
+                        Item.item_id,
+                        Item.name.label('item_name'),
+                    )
+                    .filter(Item.name == query_text)
+                    .order_by(
+                        Item.name,
+                        Item.item_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_run_avoid_item_rows(
+                    suggestions=suggestions,
+                    seen_item_ids=seen_item_ids,
+                    rows=exact_item_rows,
+                )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                prefix_system_query = (
+                    session.query(
+                        System.system_id,
+                        System.name,
+                    )
+                    .filter(System.name.like(f'{query_text}%'))
+                )
+                if seen_system_ids:
+                    prefix_system_query = prefix_system_query.filter(
+                        ~System.system_id.in_(seen_system_ids)
+                    )
+                prefix_system_rows = (
+                    prefix_system_query
+                    .order_by(
+                        func.length(System.name),
+                        System.name,
+                        System.system_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_system_rows(
+                    suggestions=suggestions,
+                    seen_system_ids=seen_system_ids,
+                    rows=prefix_system_rows,
+                )
+            
+            remaining = bounded_limit - len(suggestions)
+            if remaining > 0:
+                prefix_item_query = (
+                    session.query(
+                        Item.item_id,
+                        Item.name.label('item_name'),
+                    )
+                    .filter(Item.name.like(f'{query_text}%'))
+                )
+                if seen_item_ids:
+                    prefix_item_query = prefix_item_query.filter(
+                        ~Item.item_id.in_(seen_item_ids)
+                    )
+                prefix_item_rows = (
+                    prefix_item_query
+                    .order_by(
+                        func.length(Item.name),
+                        Item.name,
+                        Item.item_id,
+                    )
+                    .limit(remaining)
+                    .all()
+                )
+                self._append_run_avoid_item_rows(
+                    suggestions=suggestions,
+                    seen_item_ids=seen_item_ids,
+                    rows=prefix_item_rows,
+                )
+            
+            return suggestions
     
     def suggest_stations(
         self,
@@ -470,20 +585,6 @@ class GuiSearchService:
     
     
     @staticmethod
-    def _append_item_rows(
-        *,
-        suggestions: list[Suggestion],
-        seen_item_ids: set[int],
-        rows: list[object],
-    ) -> None:
-        for row in rows:
-            item_id = int(row.item_id)
-            if item_id in seen_item_ids:
-                continue
-            
-            item_name = str(row.item_name)
-            category_name = str(row.category_name)
-    @staticmethod
     def _append_buy_category_rows(
         *,
         suggestions: list[Suggestion],
@@ -564,6 +665,33 @@ class GuiSearchService:
                 )
             )
             seen_ship_ids.add(ship_id)
+    
+    @staticmethod
+    def _append_run_avoid_item_rows(
+        *,
+        suggestions: list[Suggestion],
+        seen_item_ids: set[int],
+        rows: list[object],
+    ) -> None:
+        for row in rows:
+            item_id = int(row.item_id)
+            if item_id in seen_item_ids:
+                continue
+            
+            item_name = str(row.item_name)
+            suggestions.append(
+                Suggestion(
+                    key=f'item:{item_id}',
+                    kind='item',
+                    value=item_name,
+                    label=f'Item — {item_name}',
+                    system_id=None,
+                    system_name=None,
+                    station_id=None,
+                    station_name=None,
+                )
+            )
+            seen_item_ids.add(item_id)
     
     @staticmethod
     def _append_item_rows(
