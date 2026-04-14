@@ -1029,6 +1029,17 @@ class TradeCalc:
         
         goalSystem = tdenv.goalSystem
         uniquePath = None
+        viaSet = getattr(tdenv, "viaSet", None) or ()
+        def via_progress_key(route_stations):
+            if not viaSet:
+                return None
+            return frozenset(
+                place for place in viaSet
+                if any(
+                    station is place or station.system is place
+                    for station in route_stations
+                )
+            )
         
         # Build restriction set using duck typing to avoid class mismatches
         restrictStations = set()
@@ -1261,8 +1272,10 @@ class TradeCalc:
                     best_seen_score = max(best_seen_score, si)
                     
                     dstID = dstStation.ID
+                    candidateRoute = route.route + (dstStation,)
+                    destKey = (dstID, via_progress_key(candidateRoute))
                     try:
-                        btd = bestToDest[dstID]
+                        btd = bestToDest[destKey]
                     except KeyError:
                         pass
                     else:
@@ -1277,7 +1290,7 @@ class TradeCalc:
                             if bestLy <= dest.distLy:
                                 continue
                     
-                    bestToDest[dstID] = (
+                    bestToDest[destKey] = (
                         dstStation,
                         route,
                         trade,

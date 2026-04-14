@@ -1014,7 +1014,9 @@ def validateRunArguments(tdb, cmdenv, calc):
     avoidSet = set(cmdenv.avoidPlaces or ())
     viaSet = cmdenv.viaSet = set(cmdenv.viaPlaces)
     cmdenv.DEBUG0("Via: {}", viaSet)
-    cmdenv.viaSet = filterStationSet('--via', cmdenv, calc, cmdenv.viaSet)
+    viaSet = cmdenv.viaSet = set(
+        filterStationSet('--via', cmdenv, calc, cmdenv.viaSet)
+    )
     checkAnchorNotInVia(cmdenv.hops, "--from", cmdenv.origPlace, viaSet)
     checkAnchorNotInVia(cmdenv.hops, "--to", cmdenv.destPlace, viaSet)
     
