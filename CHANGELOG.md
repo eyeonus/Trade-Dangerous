@@ -1,6 +1,25 @@
 # CHANGELOG
 
 
+## v12.20.2 (2026-04-14)
+
+### Bug Fixes
+
+- --via route handling in run command
+  ([`090b664`](https://github.com/eyeonus/Trade-Dangerous/commit/090b664b6c6f8ca47e1b89e049aec30485eb78df))
+
+Keep filtered viaSet as a set so constrained --via runs do not crash on the restrictTo type
+  assertion, and preserve --via progress in getBestHops() so routes that have already satisfied via
+  requirements are not discarded during per-destination pruning. This fixes both the immediate
+  AssertionError in minimal 2-hop runs and the false “No routes were found which matched your 'via'
+  selections” failure on longer profitable routes.
+
+### Continuous Integration
+
+- Temporary workaround to re-enable push
+  ([`ae1618b`](https://github.com/eyeonus/Trade-Dangerous/commit/ae1618bc17dd7f1d4a5fbeb589f00964edaa6fe2))
+
+
 ## v12.20.1 (2026-04-14)
 
 ### Bug Fixes
