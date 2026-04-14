@@ -1,6 +1,16 @@
 # CHANGELOG
 
 
+## v12.21.0 (2026-04-14)
+
+### Features
+
+- Finish GUI run via/avoid wiring.
+  ([`d729d2c`](https://github.com/eyeonus/Trade-Dangerous/commit/d729d2cce7ad8c838d05a207a7e7aa1727f42e25))
+
+*fix: broken autocomplete search import path.
+
+
 ## v12.20.2 (2026-04-14)
 
 ### Bug Fixes
