@@ -1,6 +1,93 @@
 # CHANGELOG
 
 
+## v12.20.1 (2026-04-14)
+
+### Bug Fixes
+
+- Don't show a traceback over a spelling mistake.
+  ([`a229773`](https://github.com/eyeonus/Trade-Dangerous/commit/a229773988e0b258c184906538cfbf425670cb59))
+
+It's enough to show a simple error on a place name type/spelling mistake. We don't need to also emit
+  a whole traceback for an expected behaviour.
+
+### Build System
+
+- **deps**: Refresh uv.lock for semantic-release policy changes
+  ([`255d706`](https://github.com/eyeonus/Trade-Dangerous/commit/255d7069e23186c4ebfa26041c90cda1665c6017))
+
+Regenerate uv.lock to match the updated pyproject.toml release tooling configuration so locked
+  installs succeed again in CI.
+
+- **release**: Make semantic-release policy explicit in pyproject
+  ([`a65e02f`](https://github.com/eyeonus/Trade-Dangerous/commit/a65e02f585d3d611dea7b0fade32159e97d446bd))
+
+- **release**: Pin python-semantic-release to 9.21.0
+  ([`4b56558`](https://github.com/eyeonus/Trade-Dangerous/commit/4b56558f037c9684a09dd09fea1e71522d6fd357))
+
+Keep semantic-release on the current v9 patch level for now because 9.21.1 pulls in rich>=14.0,
+  which conflicts with the current project pin of rich==13.7.1.
+
+Note to self: Why is rich pinned to 13.7.1? Job for later.
+
+### Chores
+
+- **deps-dev**: Bump uv from 0.9.30 to 0.11.6
+  ([#302](https://github.com/eyeonus/Trade-Dangerous/pull/302),
+  [`068fc03`](https://github.com/eyeonus/Trade-Dangerous/commit/068fc03d55670a3c9e4ff1c3bf6e02f4f4a567e3))
+
+Bumps [uv](https://github.com/astral-sh/uv) from 0.9.30 to 0.11.6. - [Release
+  notes](https://github.com/astral-sh/uv/releases) -
+  [Changelog](https://github.com/astral-sh/uv/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/uv/compare/0.9.30...0.11.6)
+
+--- updated-dependencies: - dependency-name: uv dependency-version: 0.11.6
+
+dependency-type: direct:development ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Continuous Integration
+
+- **actions**: Update checkout and artifact actions to v6
+  ([`30575f1`](https://github.com/eyeonus/Trade-Dangerous/commit/30575f1a3daff6169325a563660e5ff9bf9298df))
+
+Update GitHub Actions workflow dependencies to the current v6 majors for checkout and artifact
+  upload.
+
+This removes the Node.js 20 deprecation warning path and aligns the workflow files with the current
+  runner runtime transition.
+
+- **release**: Make rehearsal workflow manual-only
+  ([`32d1539`](https://github.com/eyeonus/Trade-Dangerous/commit/32d153998ab0dc9894b863ee5acff8749e69e7df))
+
+Rename ci-rehearsal.yml to rehearsal.yml and restrict it to workflow_dispatch only.
+
+This keeps rehearsal as a safe sandbox for validating workflow changes without triggering it on
+  every push to release/v1.
+
+- **release**: Split legacy workflow into rehearsal, prerelease, and stable release
+  ([`0aca771`](https://github.com/eyeonus/Trade-Dangerous/commit/0aca771c758de2fd474e100a2949a68b2c0436e3))
+
+Replace the old mixed-role python-app workflow with three explicit workflows:
+
+ci-rehearsal.yml for safe test and rehearsal runs - prerelease.yml for constrained manual
+  prereleases - release.yml for automatic stable releases on release/v1
+
+This removes the legacy workflow that mixed testing, manual prerelease input, and publishing in one
+  file.
+
+### Documentation
+
+- Revise release workflow documentation to match new workflows
+  ([`06f3a03`](https://github.com/eyeonus/Trade-Dangerous/commit/06f3a03c69c132ec803eaca6ebfa32b44174bfbb))
+
+Updated the release workflow documentation to clarify the separation of workflows and their specific
+  purposes, including rehearsal, prerelease, and stable release paths.
+
+
 ## v12.20.0 (2026-04-10)
 
 ### Features
@@ -429,8 +516,9 @@ Move GUI command execution onto subprocess-safe result snapshots so structured o
   fallback text, and document the native close/import process seams that were added for switch/exit
   termination.
 
-Also includes: - docs: Make sure the multiprocessing path is well commented. - chore: Make sure the
-  indentation is how eyeonus likes it.
+Also includes: docs: Make sure the multiprocessing path is well commented.
+
+chore: Make sure the indentation is how eyeonus likes it.
 
 
 ## v12.18.6 (2026-03-29)
@@ -713,7 +801,7 @@ Removed a pile of unused whitespace in top bar. Corrected pane splitter which wa
 
 Repair the nav route search when --refuel-jumps / stationInterval is active.
 
-- fix the hard failure caused by treating system.stations as a callable - correct station-interval
+fix the hard failure caused by treating system.stations as a callable - correct station-interval
   logic so the limit applies to the route search properly - track routing state by both system and
   jumps-since-station when the interval constraint is enabled - leave normal getRoute() behaviour
   unchanged when no station interval is requested
@@ -1054,54 +1142,55 @@ output redirection isn't working so it still goes to the console but all the thi
 
 Various necessary changes for compatibility/interoperability with the MP listener for TD server.
 
+- Tdb Session being used incorrectly caused runtime errors
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
+
 ### Build System
 
 - Complete pyproject.toml migration - remove setup.py/setup.cfg, consolidate configs
   ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
 
-refactor: Consistent line length setting for 180 characters
+### Chores
 
-refactor: standardize pyproject.toml formatting with PEP 518/660 compliance
-
-Single source of truth in pyproject.toml following PEP 517/518/621.
-
-- Update tox.ini testenv matrix for Python 3.10-3.14 support - Remove requirements files - Move
-  [tool.pytest.ini_options], [tool.coverage.*] to pyproject.toml - Delete legacy setup.py/setup.cfg
-  (all config now in pyproject.toml)
-
-chore: add dependabot rules to reduce noise (.github/dependabot.yml)
-
-chore: git ignore python notebook checkpoints and files-in-top-level
-
-chore: remove github workflow_dispatch path (was used to test transition)
-
-refactor: ruff detected issues
-
-chore: adapt ruff to our style, solve unaddressed issues
+- Adapt ruff to our style, solve unaddressed issues
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
 
 this should bring ruff bleating more into alignment with our style, it addresses the various
   warnings/issues that ruff otherwise pointed out, it continues to attempt to normalize import
   ordering to reduce the ways we set ourselves up for import conflicts
 
-refactor: fixed/squelched current pylint issues
+- Add dependabot rules to reduce noise (.github/dependabot.yml)
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
 
-This change does not activate pylint, so quality will decay.
+- Expose orm models from .db
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
 
-Consider increasing the files covered by pylint.
-
-chore: expose orm models from .db
-
-refactor: Session being exposed as a global allowed it to be misused
-
-fix: tdb Session being used incorrectly caused runtime errors
-
-chore: streamline workflow
+- Streamline workflow
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
 
 - reduces steps/moving parts in CI workflow, - increases test coverage to include ruff, pylint
   [strike], and py 3.15 by default[/strike] - runs tox on a single runner-per-platform covering all
   pythons in parallel
 
 not done: - [strike]adds python 3.15 to the environments,[/strike] pending PyO3 3.15 support
+
+### Refactoring
+
+- Consistent line length setting for 180 characters
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
+
+- Fixed/squelched current pylint issues
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
+
+This change does not activate pylint, so quality will decay.
+
+Consider increasing the files covered by pylint.
+
+- Ruff detected issues
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
+
+- Session being exposed as a global allowed it to be misused
+  ([`2ac8d5b`](https://github.com/eyeonus/Trade-Dangerous/commit/2ac8d5b3b21ddccdd536662c37c7eafa71ae2116))
 
 
 ## v12.11.6 (2026-01-30)
@@ -1170,7 +1259,10 @@ Ensure database reporting reflects the real connection details used by the engin
 
 This keeps user-facing output accurate and avoids misleading connection diagnostics.
 
-chore: harden MariaDB config parsing and socket/TCP precedence
+### Chores
+
+- Harden MariaDB config parsing and socket/TCP precedence
+  ([`12ab024`](https://github.com/eyeonus/Trade-Dangerous/commit/12ab024515da74b310574a0fa769313224d970bc))
 
 Make the MariaDB configuration more tolerant of user error by prioritising unix socket configuration
   when present and safely handling missing or empty host/port values.
@@ -1266,26 +1358,15 @@ dependency-type: direct:production ...
 
 Signed-off-by: dependabot[bot] <support@github.com>
 
+### Code Style
+
+- Fixup type hints etc,
+  ([`b1f134c`](https://github.com/eyeonus/Trade-Dangerous/commit/b1f134c35e30dda6708549f167be923462df0fce))
+
 ### Features
 
 - Optimize timestamp parsing during imports etc
   ([`b1f134c`](https://github.com/eyeonus/Trade-Dangerous/commit/b1f134c35e30dda6708549f167be923462df0fce))
-
-style: fixup type hints etc,
-
-chore: separator out the string-specific parsing handler so that parse_ts is general
-
-benchmarks on 13th gen i7
-
-before: ``` $ python ./research/perf/bench_parse_ts.py Iteration 5,003 iters took 94.265s, bench
-  94.283s ex-best: 3.007ms, best: 3.046ms, avg: 18.815ms, worst: 166.830ms, ex-worst: 167.929ms,
-
-p10: 15.679ms, p25: 15.745ms, p50: 16.125ms, p90: 31.464ms, p99: 33.577ms, ```
-
-after: ``` $ python ./research/perf/bench_parse_ts.py Iteration 5,003 iters took 53.305s, bench
-  53.315s ex-best: 0.000ms, best: 0.000ms, avg: 10.652ms, worst: 27.355ms, ex-worst: 31.672ms,
-
-p10: 0.000ms, p25: 9.012ms, p50: 11.756ms, p90: 15.937ms, p99: 21.487ms, ```
 
 ### Testing
 
@@ -1294,6 +1375,14 @@ p10: 0.000ms, p25: 9.012ms, p50: 11.756ms, p90: 15.937ms, p99: 21.487ms, ```
 
 
 ## v12.9.0 (2026-01-25)
+
+### Chores
+
+- Fixed several deprecation warnings/etc during build,
+  ([`fa41e9e`](https://github.com/eyeonus/Trade-Dangerous/commit/fa41e9e6743f2bfa714d842ab33c45dd738d705f))
+
+- Refactor pyproject.toml, setup.cfg, setup.py with modern practices,
+  ([`fa41e9e`](https://github.com/eyeonus/Trade-Dangerous/commit/fa41e9e6743f2bfa714d842ab33c45dd738d705f))
 
 ### Features
 
@@ -1305,36 +1394,6 @@ This change modernizes the internal package management to center on pyproject.to
 
 Should not require any changes by developers or end users, but using something like mamba or uv will
   significantly reduce wait times when running things like tests/linters etc.
-
-chore: refactor pyproject.toml, setup.cfg, setup.py with modern practices,
-
-chore: tox testing is now uv-driven for speed and flexibility, - can test multiple python versions
-  even if not installed, chore: transition dependencies/etc into pyproject.toml following modern
-  python conventions,
-
-docs: add a runbook covering how you can leverage this with uv package manager,
-
-feat: use github uv tooling to build/distribute this change switches to the uv-based workflow
-  actions for building releases. leaving both in-place would lead to conflicts.
-
-chore: fixed several deprecation warnings/etc during build,
-
-chore: gets version number from version.py as before,
-
-docs: updated credits,
-
-to test:
-
-```sh python -m venv .setup-venv . ./.setup-venv/scripts/activate.ps1 python -m build --out-dir
-  setup-build deactivate ```
-
-and/or
-
-```sh uv build --out-dir uv-build ```
-
-Should be similar for other package managers.
-
-Follow on actions: - remove requirements files,
 
 
 ## v12.8.4 (2026-01-25)
@@ -1396,33 +1455,44 @@ No functional change, just makes python 3.12+ linters happier.
 
 ## v12.8.0 (2026-01-13)
 
-### Features
+### Code Style
 
-- Network log/Journal reading module tradegame.py
-  ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+- Various hinting/cleanup ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
   [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
-* Incorporate basic game log file reading
+* review feedback: additional None checks
 
-feat: add tradegame.py and EliteGame class for reading journal/network log - Designed to be
-  extensible with only minimal journal knowledge, - Uses `orjson` for super-fast parsing/load times,
-  - Crude understanding of cargo capacity, - Crude understanding of current system/station, -
-  Exposes journal/log file data as dictionaries without curation, - Default paths for Windows and
-  MacOS; use ELITE_JOURNAL_PATH environment var to set/override
+* Replace assertion with RuntimeError for max_journals
 
-feat: 'journal' import plugin
+If it needs to be a real guard, it needs to not be an assertion.
+
+* Add GameDataError for data inconsistency handling
+
+Introduced GameDataError exception to handle inconsistencies in imported or journal data.
+
+* Raise error for inconsistent cargo load
+
+Add error handling for negative cargo space after deduction.
+
+* Fix class definition for GameDataError
+
+* Add GameDataError exception to trade_cmd.py
+
+---------
+
+Co-authored-by: Stefan Morrell <38956076+Tromador@users.noreply.github.com>
+
+### Features
+
+- 'journal' import plugin ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+  [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
 `trade.py import -P journal` will import the last market prices you saw in-game if they are newer
   than the ones in the database.
 
-refactor: add non-tradedb methods for duration normalization
-
-feat: allow trade_cmd to read data from the game
-
-preliminary syntax: - When docked, "~" = current system/current station, - When not docked, use
-  "~/station name", - With a route selected, "~@" expands to target *system* name
-
-feat: add --fill, --load, --full-load to trade command
+- Add --fill, --load, --full-load to trade command
+  ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+  [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
 these (mutually-exclusive) options all require live game data access to read your cargo capacity and
   load.
@@ -1476,29 +1546,25 @@ However, if you are going to sell the 50 units already in your hold first, --ful
   ------------------------------------------------------------------------------------------ Total
   Units: 1,088. Total Profit: 20,107,303. ```
 
-style: various hinting/cleanup
+- Add tradegame.py and EliteGame class for reading journal/network log
+  ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+  [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
-* review feedback: additional None checks
+- Allow trade_cmd to read data from the game
+  ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+  [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
-* Replace assertion with RuntimeError for max_journals
+- Network log/Journal reading module tradegame.py
+  ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+  [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
-If it needs to be a real guard, it needs to not be an assertion.
+* Incorporate basic game log file reading
 
-* Add GameDataError for data inconsistency handling
+### Refactoring
 
-Introduced GameDataError exception to handle inconsistencies in imported or journal data.
-
-* Raise error for inconsistent cargo load
-
-Add error handling for negative cargo space after deduction.
-
-* Fix class definition for GameDataError
-
-* Add GameDataError exception to trade_cmd.py
-
----------
-
-Co-authored-by: Stefan Morrell <38956076+Tromador@users.noreply.github.com>
+- Add non-tradedb methods for duration normalization
+  ([#252](https://github.com/eyeonus/Trade-Dangerous/pull/252),
+  [`ab5a89b`](https://github.com/eyeonus/Trade-Dangerous/commit/ab5a89b6d3de2fc231027221afe75539d4b6ec0f))
 
 
 ## v12.7.6 (2026-01-11)
@@ -1616,6 +1682,14 @@ Fixes #268
 
 ### Chores
 
+- Get maxSystemLinkLy from tradeenv, not tradedb
+  ([`217c909`](https://github.com/eyeonus/Trade-Dangerous/commit/217c909bde588708c1a122bf0f89b49b054da5e0))
+
+review feedback
+
+- Make maxSystemLinkLy a formal property of TradeEnv
+  ([`217c909`](https://github.com/eyeonus/Trade-Dangerous/commit/217c909bde588708c1a122bf0f89b49b054da5e0))
+
 - Reseat max-link-ly into tradeenv
   ([`217c909`](https://github.com/eyeonus/Trade-Dangerous/commit/217c909bde588708c1a122bf0f89b49b054da5e0))
 
@@ -1625,12 +1699,6 @@ currently it's in tradedb which is not where it should be and would be an annoya
 This also gives it a new default of 64, and a default that's in the same place as other tradeenv
   parameters...
 
-chore: make maxSystemLinkLy a formal property of TradeEnv
-
-chore: get maxSystemLinkLy from tradeenv, not tradedb
-
-review feedback
-
 
 ## v12.7.1 (2026-01-03)
 
@@ -1639,23 +1707,22 @@ review feedback
 - (perf) stellar grid had off-by-1 clumping
   ([`ad60bb4`](https://github.com/eyeonus/Trade-Dangerous/commit/ad60bb44687811b3613efa0f0b0835b3b77a3fdf))
 
-chore: minor stellar grid tear-up optimization (~20ms)
-
-dev: adds an Ipython notebook containing my research on distance calculations, as at one time
-  "**0.5" was faster than "math.sqrt" but in current Python it seems that sqrt is, once again,
-  faster. chore: type hinting
-
 ### Chores
+
+- Add .gitattributes to define line endings for particular files,
+  ([`1fc3d76`](https://github.com/eyeonus/Trade-Dangerous/commit/1fc3d76bbaf757d56fa2fb9d6ac26dcab01d3c22))
 
 - Minor cleanup: type hinting, flake/ruff warnings
   ([`4414d7d`](https://github.com/eyeonus/Trade-Dangerous/commit/4414d7dcd268fe272cda86e8415a75171ca01aa8))
 
+- Minor stellar grid tear-up optimization (~20ms)
+  ([`ad60bb4`](https://github.com/eyeonus/Trade-Dangerous/commit/ad60bb44687811b3613efa0f0b0835b3b77a3fdf))
+
 - Normalize line endings
   ([`1fc3d76`](https://github.com/eyeonus/Trade-Dangerous/commit/1fc3d76bbaf757d56fa2fb9d6ac26dcab01d3c22))
 
-chore: add .gitattributes to define line endings for particular files,
-
-chore: normalize two files that had mixed line endings in them
+- Remove reference to the persist code ([#261](https://github.com/eyeonus/Trade-Dangerous/pull/261),
+  [`628c03c`](https://github.com/eyeonus/Trade-Dangerous/commit/628c03cec5d58edf27bd2a649d009fe92113791f))
 
 - Remove the 'persist' file code ([#261](https://github.com/eyeonus/Trade-Dangerous/pull/261),
   [`628c03c`](https://github.com/eyeonus/Trade-Dangerous/commit/628c03cec5d58edf27bd2a649d009fe92113791f))
@@ -1664,10 +1731,6 @@ Now that we routinely optimize the database during use, two things happen: 1- th
   cause the db filestamp to change *after* we write the pickle data, invalidating it, 2- the speed
   improvement of pickle vs load is small enough that we don't need this extra code in the way,
   already.
-
-chore: remove reference to the persist code
-
-review feedback: collapse the pickle stuff more completely
 
 - Type hinting
   ([`eed7c4f`](https://github.com/eyeonus/Trade-Dangerous/commit/eed7c4f119011f75e8ef1d42d79f2c5f3d1caab0))
@@ -1680,11 +1743,26 @@ review feedback: collapse the pickle stuff more completely
 
 ### Features
 
-- Make ctrl-c during trade run show the route as-calculated
+- Add SimpleAbort exception for tidying up "expected error" output
   ([#254](https://github.com/eyeonus/Trade-Dangerous/pull/254),
   [`666a56c`](https://github.com/eyeonus/Trade-Dangerous/commit/666a56c21a6fa6a4ecde5e8c38533f25a37c5eea))
 
-* feat: make ctrl-c during trade run show the route as-calculated
+SimpleAbort should only be intercepted at the top level of an application.
+
+incorporated feedback review
+
+- fixed typos, - one way to describe ctrl-c, an exception type, - leverage SimpleAbort and
+  UserAbortedRun, - allow Ctrl-C to be Ctrl-C if there are no results to preserve, it simplifies
+  logic a lot
+
+That's not the greatest user experience, but it's no worse than hitting ctrl-c already was, and has
+  the advantage that if you do it when there are results, you get *something* rather than nothing.
+
+* review feedback
+
+- Make ctrl-c during trade run show the route as-calculated
+  ([#254](https://github.com/eyeonus/Trade-Dangerous/pull/254),
+  [`666a56c`](https://github.com/eyeonus/Trade-Dangerous/commit/666a56c21a6fa6a4ecde5e8c38533f25a37c5eea))
 
 This feature allows you to interrupt a long running multi-hop route calculation without losing all
   that processing work...
@@ -1720,20 +1798,9 @@ Shinrarta Dezhra/Jameson Memorial -> Tionisla/Ing Ring (score: 68326125.735657) 
 
 review feedback
 
-- feat: add SimpleAbort exception for tidying up "expected error" output
-
-SimpleAbort should only be intercepted at the top level of an application.
-
-incorporated feedback review
-
-- fixed typos, - one way to describe ctrl-c, an exception type, - leverage SimpleAbort and
-  UserAbortedRun, - allow Ctrl-C to be Ctrl-C if there are no results to preserve, it simplifies
-  logic a lot
-
-That's not the greatest user experience, but it's no worse than hitting ctrl-c already was, and has
-  the advantage that if you do it when there are results, you get *something* rather than nothing.
-
-* review feedback
+- Make ctrl-c during trade run show the route as-calculated
+  ([#254](https://github.com/eyeonus/Trade-Dangerous/pull/254),
+  [`666a56c`](https://github.com/eyeonus/Trade-Dangerous/commit/666a56c21a6fa6a4ecde5e8c38533f25a37c5eea))
 
 
 ## v12.6.4 (2025-12-30)
@@ -1757,30 +1824,73 @@ That's not the greatest user experience, but it's no worse than hitting ctrl-c a
 
 I thought this logic was more complex, it's an unlink, there's no buried path here.
 
-- Tradecalc touch-up
+- Increase debug tracing of route calculation,
   ([`458dbe8`](https://github.com/eyeonus/Trade-Dangerous/commit/458dbe827a5de3aec565f6aa61773123ed6b9825))
 
-chore: increase debug tracing of route calculation,
-
-opt: trivial improvements to performance of route calculation
-
-feat: trade run --demand and --supply now reduce the amount of trade-rows viewed while calculating a
-  route (caveat: this can cause products to appear unavailable if used too aggressively, which it
-  did anyway, but I found the way it concluded that much faster made me think it wasn't working)
-
-chore: repr for TradeDB System and Station - I know, we're deprecating these, but that makes it even
-  more helpful to be able to *see* them in rich/debugging for now. fix: run: handle finding no
-  trades to route better - I was noticing an error/exception when no routes-with-trades were found
-  when using certain filters (--demand/--supply) or using an overly-aggressive --gpt (I may have
-  typoed 10000, no you typoed) - Also, using routes[:] acts as an in-place
-  truncate/crop/reassignment and reduces memory pressure a little. - This is mostly cosmetic, any
-  perf gains are negligible. chore: missing __all__ from plugins/__init__
+- Tradecalc touch-up
+  ([`458dbe8`](https://github.com/eyeonus/Trade-Dangerous/commit/458dbe827a5de3aec565f6aa61773123ed6b9825))
 
 - Update advisory locks for mp listener
   ([`1246520`](https://github.com/eyeonus/Trade-Dangerous/commit/1246520851995224c6c1f783a39df67508cd83e3))
 
 
 ## v12.6.3 (2025-12-20)
+
+### Bug Fixes
+
+- Eddblink expiration wasn't correctly incremental
+  ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+(caught by linter)
+
+### Chores
+
+- Comma separate envs? ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+- Linter issues and linter config so that flake8 is clean
+  ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+this also makes the pylint output a little less overwhelming and more meaningful
+
+- Reduce pylint errors, ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+- Resolve numerous linter errors and making pylint near-viable
+  ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+The remaining pylint issues mostly look like they deserve attention.
+
+To run everything: $ tox run
+
+To run everything all at once (much faster, more chaotic output until you're down to just errors) $
+  tox --parallel
+
+To run a single test suite, e.g. py311 or flake8 $ tox -e flake8 $ tox -e flake8,pylint $ tox -e
+  flake8,pylint --parallel
+
+* address review feedback and complete pass.
+
+- Review feedback ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+- Tidy up tox and improve usability ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+- removed linters from the default envlist, - added python 3.14, - removed older python versions, -
+  added python 3.14 to the github list, - added 'skip_install' so that it doesn't always forcibly
+  reinstall the requirements, - added pylint to the dev-requirements
+
+chore because: does not require a release.
+
+- Updated code to comply with flake8 requirements
+  ([#249](https://github.com/eyeonus/Trade-Dangerous/pull/249),
+  [`d682cbd`](https://github.com/eyeonus/Trade-Dangerous/commit/d682cbd4db56068c64605facad2eb78f5076b10c))
+
+This means that you can now run "tox -e flake8" and get no errors.
 
 
 ## v12.6.2 (2025-12-18)
@@ -1791,22 +1901,14 @@ chore: repr for TradeDB System and Station - I know, we're deprecating these, bu
   ([#248](https://github.com/eyeonus/Trade-Dangerous/pull/248),
   [`6425358`](https://github.com/eyeonus/Trade-Dangerous/commit/6425358653019200b081cce19e184a2d2341dcf4))
 
-chore: reduce IDE squiggles by providing type hints for TradeEnv (tradeenv.pyi)
-
-chore: optimized a couple of hot-path loop appends
-
-chore: remove some unused imports and moved some inline imports to top-of-file; lazy importing is
-  usually a smell
-
-chore: hoist invariant conditions out of path_iter in get destinations (why execute the same 'if'
-  for every row)
-
-chore: consistency/hinting pass on TradeEnv
-
 ### Chores
 
 - Add tradeenv.pyi and py.typed to package data
   ([`eb19090`](https://github.com/eyeonus/Trade-Dangerous/commit/eb19090eb69295ace544f3b0a78b240b21c5d666))
+
+- Reduce IDE squiggles by providing type hints for TradeEnv (tradeenv.pyi)
+  ([#248](https://github.com/eyeonus/Trade-Dangerous/pull/248),
+  [`6425358`](https://github.com/eyeonus/Trade-Dangerous/commit/6425358653019200b081cce19e184a2d2341dcf4))
 
 
 ## v12.6.1 (2025-12-15)
@@ -1847,16 +1949,18 @@ This has the knock-on effect of hiding lines that just arent' present at a stati
 
 ### Bug Fixes
 
-- Progress bars ([#242](https://github.com/eyeonus/Trade-Dangerous/pull/242),
+- 'working...' and bad progress bars ([#242](https://github.com/eyeonus/Trade-Dangerous/pull/242),
   [`d232951`](https://github.com/eyeonus/Trade-Dangerous/commit/d2329511880ac5bd9a0b72406e0572db610eed22))
-
-* fix: missing progress bar for optimize
-
-* fix: 'Working...' and bad progress bars
 
 - Adds ElapsedBar to progress bars, which is just a timer, - Adds a 'label=' field to ProgressBar
   constructor, which sets a label without waiting for a bump (default label=Working...), - Fixed
   eddblink progress bars that were just printing 'Working...'
+
+- Missing progress bar for optimize ([#242](https://github.com/eyeonus/Trade-Dangerous/pull/242),
+  [`d232951`](https://github.com/eyeonus/Trade-Dangerous/commit/d2329511880ac5bd9a0b72406e0572db610eed22))
+
+- Progress bars ([#242](https://github.com/eyeonus/Trade-Dangerous/pull/242),
+  [`d232951`](https://github.com/eyeonus/Trade-Dangerous/commit/d2329511880ac5bd9a0b72406e0572db610eed22))
 
 
 ## v12.5.0 (2025-12-12)
@@ -1878,6 +1982,121 @@ Fixes #220
 
 ## v12.4.0 (2025-12-12)
 
+### Bug Fixes
+
+- Commands that don't use tradedb still tried to
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+If a sub-command marked itself as wantsTradeDB = False, but it still used common names for arguments
+  like origin etc, the commandenv would try to do lookups using a tradedb that hadn't been
+  constructed.
+
+This change will support moving to commands that use the ORM and still use standard parameter names.
+
+- Eliminate begin/session contextmanager approach in TradeORM
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+It didn't make sense to expose a way to get a new session, either; TradeORM is a wrapper *around* a
+  session and its data
+
+- Missing db exception needs a filename that exists
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Missingdb text uses correct argument style
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Query was retrieving too many rows. refactored
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+### Chores
+
+- Fix ambiguity error ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Fix ambiguity error in orm systme lookup
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Fix linter noise in tradeexcept ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Fix trade formatting in trade subcommand
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Increase tradeorm logging/debugging ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Move exceptions to tradeexcept ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- avoids having to import TradeDB to access AmbiguityError or SystemNotStationError; - tradedb
+  imports them so they'll still be importable via .tradedb and not break anything, - reduced
+  ambiguty list to 6 instead of 10, - added a (modifiable) global with the limit (so you can change
+  it on the fly), - refactored AmbiguityError's str method to use Oxford commas and read a little
+  cleaner
+
+- Tabs vs spaces ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Trade command needs to print units not level
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Type hinting on get_session_factory ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Unused imports ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+### Features
+
+- Add bootstrap option to eddblink import plugin
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+Usage: trade import -Peddblink -Obootstrap This will get you started with a working 7-days worth of
+  listings dataset (currently has to download the full listings.csv as there is no 7-day version)
+  Populates System, Station, Item, and listings only.
+
+Prints a friendly greeting and some advice.
+
+might be worth having a 'bootstrap' subcommand alias that invokes it
+
+- Add TradeORM() object for orm wrapping
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Expand the representations of the orm models
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+- Missing database exception ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+To help migrate to using ORM instead of TradeDB, which means we'll no-longer be default-creating the
+  database all the time, so we need a way to say 'theres no db, but here is how you get one'
+
+- Modify 'trade' command to use tradeorm
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
+The TradeORM() wrapper provides an alternative means to accessing data from the database. - it does
+  not try to create/populate the database, only access it, - it uses the SQLAlchemy ORM models so
+  that on-the-fly caching/lazy loading is done for us, - the models are entirely provided by
+  SQLAlchemy and any helper methods should be implemented in orm_models.py, - commands can access
+  the database without the cost of pre-loading anything, - we should eventually transition all
+  sub-commands from TradeDB to TradeORM
+
+- Only show units when detail > 1, show age when detail >= 1
+  ([#240](https://github.com/eyeonus/Trade-Dangerous/pull/240),
+  [`6bea2e4`](https://github.com/eyeonus/Trade-Dangerous/commit/6bea2e4d05f60644e84cf6576ef68cc8319cd6ba))
+
 
 ## v12.3.0 (2025-12-11)
 
@@ -1890,17 +2109,13 @@ Fixes #220
   on py311 caused by _split_system_index assuming str - ensures lookupStation(..., system) paths
   work correctly
 
+- Treat multiple systems with the same name as an ambiguity instead of a single entry. Fixes #224
+  ([`2819024`](https://github.com/eyeonus/Trade-Dangerous/commit/28190241b6727707ac6bd2b2459fefc7f97475d1))
+
 ### Features
 
-- Improved logging, leaner code, automatic sqlite3 db tune on import
+- Automatic sqlite3 db tune on import
   ([`915c7d8`](https://github.com/eyeonus/Trade-Dangerous/commit/915c7d8ddede53d20778eec85b3170df84f2b0d0))
-
-* feat: improved logging, leaner code
-
--- add's 'INFO' level log (gear icon in color mode), -- streamlines the logger-generation code with
-  a match statement, and a simple function body implementation,
-
-* feat: automatic sqlite3 db tune on import
 
 - when an eddblink import finishes, ask sqlite to optimize the data if it believes there is value
   ('PRAGMA optimize') - when an eddblink --opt=optimize finishes, ask sqlite to vacuum AND optimize
@@ -1910,13 +2125,17 @@ Fixes #220
   are updates, - - this makes it possible to run the eddblink plugin solely to peform an optimize
   without any data updates
 
+- Improved logging, leaner code
+  ([`915c7d8`](https://github.com/eyeonus/Trade-Dangerous/commit/915c7d8ddede53d20778eec85b3170df84f2b0d0))
+
+-- add's 'INFO' level log (gear icon in color mode), -- streamlines the logger-generation code with
+  a match statement, and a simple function body implementation,
+
+- Improved logging, leaner code, automatic sqlite3 db tune on import
+  ([`915c7d8`](https://github.com/eyeonus/Trade-Dangerous/commit/915c7d8ddede53d20778eec85b3170df84f2b0d0))
+
 - Support disambiguating duplicate system names with @N
   ([`2819024`](https://github.com/eyeonus/Trade-Dangerous/commit/28190241b6727707ac6bd2b2459fefc7f97475d1))
-
-- fix: treat multiple systems with the same name as an ambiguity instead of a single entry. Fixes
-  #224 - change systemByName to support 1→many mapping with deterministic ordering - allow "System
-  Name@N" to select a specific system by index - add structured ambiguity messages with coordinates
-  and @N hints - preserve existing behaviour for normal abbreviations (e.g. "james")
 
 
 ## v12.2.0 (2025-12-07)
@@ -2543,6 +2762,11 @@ The entire galaxy_stations.json is too big and unwieldy to look at directly, so 
 
 ### Features
 
+- Add LongRunningCountBar to progress bars
+  ([`6f188a4`](https://github.com/eyeonus/Trade-Dangerous/commit/6f188a4a3c03eb5640c7fadc5aa408f731bbf5ea))
+
+Line CountingBar except it includes a TimeRemaining column (long running tasks seem to warrant this)
+
 - Better eddblink progress reporting
   ([`f3af244`](https://github.com/eyeonus/Trade-Dangerous/commit/f3af244d6940a2394b4b05725c412b1f1a0796da))
 
@@ -2704,9 +2928,12 @@ fixes #149
   ([#145](https://github.com/eyeonus/Trade-Dangerous/pull/145),
   [`dce2563`](https://github.com/eyeonus/Trade-Dangerous/commit/dce2563ac0dac7ebd6248802bb814ec89088c860))
 
-* chore: lint fixes
+- Lint fixes ([#145](https://github.com/eyeonus/Trade-Dangerous/pull/145),
+  [`dce2563`](https://github.com/eyeonus/Trade-Dangerous/commit/dce2563ac0dac7ebd6248802bb814ec89088c860))
 
-* chore: only try to publish from eyeonus repos
+- Only try to publish from eyeonus repos
+  ([#145](https://github.com/eyeonus/Trade-Dangerous/pull/145),
+  [`dce2563`](https://github.com/eyeonus/Trade-Dangerous/commit/dce2563ac0dac7ebd6248802bb814ec89088c860))
 
 fixes #134
 
@@ -2913,6 +3140,19 @@ revert: use the `newItemPriceRe` that works
 
 ### Bug Fixes
 
+- Ensure db gets closed before trying to rename it.
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Formatting needs __str__ methods
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+When I first created the 'str' methods, it was because I wanted a display name but repr and str both
+  confused me at the time; I've now renamed it text but apparently I forgot that in Py2.x def str()
+  worked like __str__...
+
+- Having the fdev_id listed as a unique column causes dump prices to break.
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
 - Improve compressed download progress bars
   ([`1801216`](https://github.com/eyeonus/Trade-Dangerous/commit/180121632b386bf5994dbf82ab81b11e155154c9))
 
@@ -2927,6 +3167,91 @@ Downloading the spansh galaxy data, for example, only transfers 1.5GB of data af
   ([`3687a6b`](https://github.com/eyeonus/Trade-Dangerous/commit/3687a6b689b0eead480213a20026e1e4225e8831))
 
 5 minutes was a bit long, 90s seems more reasonable tho it could probably go as low as 30.
+
+- Presentation was a bit wonky with doubled progress bars
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+---------
+
+Co-authored-by: eyeonus <eyeonus@panther>
+
+Co-authored-by: Jonathan Jones <eyeonus@gmail.com>
+
+- Use same supply/demand levels as before
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+### Chores
+
+- Appease the gods of pylint
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+pylint gives deeper code warnings than flake8 can, but is slower and more spammy.
+
+- Bump pylint score up to 9.63/10
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+fixed a few actual problems while I was at it.
+
+- Change terribly misnamed 'str' to 'text'
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Cleanup/performance tradedb.py
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+this eliminates some dead methods, and switches some of the math operations to their favored
+  modern-python/performant/64-bit versions
+
+specifically:
+
+%timeit 2 ** 2 94ns %timeit 2 * 2 24ns
+
+Also, when I originally feared math_sqrt vs ** it was probably because I didn't realize that
+  "math.sqrt" was having to lookup math and sqrt each time it was called, duh.
+
+- Fix all the tox warnings
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+This fixes all of the tox warnings that I haven't disabled, and several that I did.
+
+- Flake8 warnings
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Increase the line limit in the .editorconfig
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Move uprint into a mixin
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+tradeenv was already hard enough to read, but the utf8 wrapping of uprint made it worse, and less
+  pythonic.
+
+this change moves the io behavior into a base Mixin class, then provides the non-utf8 variant as an
+  optional override mixin. finally, we do a simple if on which one to use as the favored
+  implementation to mixin to TradeEnv.
+
+This should be far more readable to both humans and linters etc. At least, on my machine, PyCharm
+  no-longer catches fire. (* it's possible that it never caught fire and that I just ate an overly
+  hot chilli last night, but who are we to question the universe? not deflecting enough, well LOOK A
+  SQUIRREL)
+
+- Relax tox warnings by disabling spaces-after-:
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Remove vestigial numpy stuff that annoyed linters
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+I couldn't see any evidence of this code still being useful.
+
+- Tox/pylint: now we've appeased, lets ask for more
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+this will enable some more useful pylint warnings/messages, and also making it think a little harder
+  about others so they're more useful.
+
+### Code Style
+
+- Blank lines have same indent as following non-blank line
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
 
 ### Features
 
@@ -2958,60 +3283,8 @@ Users can manually perform a backup by running eddblink with the 'prices' option
 If any other options are specified, eg. `-O listings,prices`, eddblink will perform the backup after
   the import process has completed.
 
-- Multiple improvements from kfsone
+- Introduce theming in tradeenv
   ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
-
-* chore: increase the line limit in the .editorconfig
-
-* chore: relax tox warnings by disabling spaces-after-:
-
-* refactor: Cleanup pass on cache and spansh_plug
-
-- introduce type annotations, - Small performance considerations,
-
-* refactor: flake and pylint rules
-
-- ignore warnings that are overly opinionated for our needs, - tell pylint to quit complaining about
-  lines > 100
-
-* fix: ensure db gets closed before trying to rename it.
-
-* perf: modernize small performance factors in spansh
-
-- lookup systems and stations by id rather than name, - move several 'is it registered' tests out of
-  ensure_ methods so we can avoid calling the method if there is no work to do (calling a function
-  in python is expensive) - fix ingest_stream looking up body ids rather than system ids
-
-* chore: remove vestigial numpy stuff that annoyed linters
-
-I couldn't see any evidence of this code still being useful.
-
-* chore: move uprint into a mixin
-
-tradeenv was already hard enough to read, but the utf8 wrapping of uprint made it worse, and less
-  pythonic.
-
-this change moves the io behavior into a base Mixin class, then provides the non-utf8 variant as an
-  optional override mixin. finally, we do a simple if on which one to use as the favored
-  implementation to mixin to TradeEnv.
-
-This should be far more readable to both humans and linters etc. At least, on my machine, PyCharm
-  no-longer catches fire. (* it's possible that it never caught fire and that I just ate an overly
-  hot chilli last night, but who are we to question the universe? not deflecting enough, well LOOK A
-  SQUIRREL)
-
-* chore: appease the gods of pylint
-
-pylint gives deeper code warnings than flake8 can, but is slower and more spammy.
-
-* chore: change terribly misnamed 'str' to 'text'
-
-* chore: tox/pylint: now we've appeased, lets ask for more
-
-this will enable some more useful pylint warnings/messages, and also making it think a little harder
-  about others so they're more useful.
-
-* feat: introduce theming in tradeenv
 
 two fold reasoning: 1- so people can opt out of any kind of decoration if it becomes
   inconvenient/problematic, 2- localization and style
@@ -3024,80 +3297,8 @@ The demo-case included here is that when you use --color the word "NOTE" will be
   "information-source" emoji and the word "WARNING" will be replaced with a warning-symbol emoji,
   the '#' for bugs will be replaced with a bug emoji.
 
-* chore: cleanup/performance tradedb.py
-
-this eliminates some dead methods, and switches some of the math operations to their favored
-  modern-python/performant/64-bit versions
-
-specifically:
-
-%timeit 2 ** 2 94ns %timeit 2 * 2 24ns
-
-Also, when I originally feared math_sqrt vs ** it was probably because I didn't realize that
-  "math.sqrt" was having to lookup math and sqrt each time it was called, duh.
-
-* feat: spansh import presentation
-
-- Adds Progresser to spansh_plugin as an experimental ui presentation layer using rich, -- active
-  progress bars with timers that run asynchronously (so they shouldn't have a significant
-  performance overhead), -- opt-out to plain-text mode incase it needs turning off quickly, -
-  present statistics with the view to give you a sense of progress, - small perf tweaks
-
-* style: blank lines have same indent as following non-blank line
-
-* fix: Use same supply/demand levels as before
-
-* fix: having the fdev_id listed as a unique column causes dump prices to break.
-
-* refactor: tox was configured to give flake8 its own environment
-
-The idea is that flake8 is really fast, so you give it it's own environment and it comes back and
-  says "YA MADE A TYPO OLIVER YA DID IT AGAIN WHY YOU ALWAYS..." *cough*, sorry, anyway.
-
-I usually run tox one of two ways:
-
-``` tox -e flake8 # for a quick what-did-I-type-wrong check tox --parallel # run em all, but, like,
-  in parallel so I don't retire before you finish ```
-
-* test: flake8 appeasement
-
-turning on flake8 made linters very shouty
-
-* refactor: tox.ini
-
-flake8 now runs its own environment that is JUST flake8 so it's fast, it doesn't install the package
-  for itself; added lots of flake8 ignores for formatting issues I'm unclear on
-
-* chore: flake8 warnings
-
-added a lot more ignores and some file-specific ignores, but generally got it to a point where
-  flake8 becomes proper useful.
-
-* chore: fix all the tox warnings
-
-This fixes all of the tox warnings that I haven't disabled, and several that I did.
-
-* chore: bump pylint score up to 9.63/10
-
-fixed a few actual problems while I was at it.
-
-* fix: formatting needs __str__ methods
-
-When I first created the 'str' methods, it was because I wanted a display name but repr and str both
-  confused me at the time; I've now renamed it text but apparently I forgot that in Py2.x def str()
-  worked like __str__...
-
-* refactor: use ijson instead of simdjson to reduce memory use in big imports
-
-* refactor: logic reversal for plugin option handling
-
-* fix: presentation was a bit wonky with doubled progress bars
-
----------
-
-Co-authored-by: eyeonus <eyeonus@panther>
-
-Co-authored-by: Jonathan Jones <eyeonus@gmail.com>
+- Multiple improvements from kfsone
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
 
 - Multiple improvements from ksfone
   ([`31bcb4f`](https://github.com/eyeonus/Trade-Dangerous/commit/31bcb4f78e7e3d0daafb7eef2d69c84fd6762f87))
@@ -3107,6 +3308,72 @@ BREAKING CHANGE: semantic release thinks we're on 10.16.7 rather than 10.17.0, a
 
 - Multiple improvements from ksfone
   ([`c63e757`](https://github.com/eyeonus/Trade-Dangerous/commit/c63e7570f793849f151367e7e01f8a04c1baca5e))
+
+- Spansh import presentation
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Adds Progresser to spansh_plugin as an experimental ui presentation layer using rich, -- active
+  progress bars with timers that run asynchronously (so they shouldn't have a significant
+  performance overhead), -- opt-out to plain-text mode incase it needs turning off quickly, -
+  present statistics with the view to give you a sense of progress, - small perf tweaks
+
+### Performance Improvements
+
+- Modernize small performance factors in spansh
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- lookup systems and stations by id rather than name, - move several 'is it registered' tests out of
+  ensure_ methods so we can avoid calling the method if there is no work to do (calling a function
+  in python is expensive) fix ingest_stream looking up body ids rather than system ids
+
+### Refactoring
+
+- Cleanup pass on cache and spansh_plug
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- introduce type annotations, - Small performance considerations,
+
+- Flake and pylint rules
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- ignore warnings that are overly opinionated for our needs, - tell pylint to quit complaining about
+  lines > 100
+
+- Logic reversal for plugin option handling
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+- Tox was configured to give flake8 its own environment
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+The idea is that flake8 is really fast, so you give it it's own environment and it comes back and
+  says "YA MADE A TYPO OLIVER YA DID IT AGAIN WHY YOU ALWAYS..." *cough*, sorry, anyway.
+
+I usually run tox one of two ways:
+
+``` tox -e flake8 # for a quick what-did-I-type-wrong check tox --parallel # run em all, but, like,
+  in parallel so I don't retire before you finish ```
+
+- Tox.ini
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+flake8 now runs its own environment that is JUST flake8 so it's fast, it doesn't install the package
+  for itself; added lots of flake8 ignores for formatting issues I'm unclear on
+
+- Tox.ini
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+added a lot more ignores and some file-specific ignores, but generally got it to a point where
+  flake8 becomes proper useful.
+
+- Use ijson instead of simdjson to reduce memory use in big imports
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+### Testing
+
+- Flake8 appeasement
+  ([`7c60def`](https://github.com/eyeonus/Trade-Dangerous/commit/7c60def3c9465a44b368d624d00f78f03d48a9c9))
+
+turning on flake8 made linters very shouty
 
 ### Breaking Changes
 
@@ -3214,6 +3481,14 @@ Will automatically install rich module if needed when installing TD via pip
   [`79db6f1`](https://github.com/eyeonus/Trade-Dangerous/commit/79db6f1e7f3acad3e37c3913ba1311364723a55a))
 
 - Tox test environments needs to require the packages that tradedangerous is going to be depending
+  on ([#121](https://github.com/eyeonus/Trade-Dangerous/pull/121),
+  [`a7dba2f`](https://github.com/eyeonus/Trade-Dangerous/commit/a7dba2f6d8d25cbc600161d6039194ffb3788cc1))
+
+* qol: enable rich text
+
+Fix typo in markup for stack traces (dim vs out)
+
+- Tox test environments needs to require the packages that tradedangerous is going to be depending
   on ([#122](https://github.com/eyeonus/Trade-Dangerous/pull/122),
   [`1e15bbf`](https://github.com/eyeonus/Trade-Dangerous/commit/1e15bbf000c05bc57a57aea3a1e33192d038ae11))
 
@@ -3306,10 +3581,11 @@ Also don't increment number of systems if all stations in it were skipped.
 
 ### Bug Fixes
 
-- Correct commodity count
+- Close DB when finished with import
   ([`b5d17b6`](https://github.com/eyeonus/Trade-Dangerous/commit/b5d17b6f2418da5244840a27c7732febf1064dd5))
 
-fix: close DB when finished with import
+- Correct commodity count
+  ([`b5d17b6`](https://github.com/eyeonus/Trade-Dangerous/commit/b5d17b6f2418da5244840a27c7732febf1064dd5))
 
 
 ## v10.16.3 (2024-04-21)
@@ -3348,7 +3624,15 @@ fix: close DB when finished with import
 
 ## v10.16.0 (2024-04-21)
 
+### Bug Fixes
+
+- Strip trailing whitespace from system and station names, if any,
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
+
 ### Chores
+
+- Include `Categories.csv` in templates
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
 - Remove eddblink test
   ([`c0b14fd`](https://github.com/eyeonus/Trade-Dangerous/commit/c0b14fdeeef807634e95f080e14f86c2e130f9ad))
@@ -3358,22 +3642,22 @@ fix: close DB when finished with import
 - Spansh doesn't crash when run on new install
   ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
-feat: spansh imports directly to database, rather than creating a .prices file and then importing
-  that
+- Spansh imports directly to database, rather than creating a
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
-fix: strip trailing whitespace from system and station names, if any, when pulling from the source
+### Refactoring
 
-refactor: include station type for *all* stations, not just fleet carriers and odyssey settlements
+- Determine if station is planetary based on station type,
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
-refactor: determine if station is planetary based on station type, rather than assuming based on
-  format of source file
+- Eddblink now uses csv files from server instead of the old
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
-refactor: use id provided by source for systems and stations when inserting new into DB, search for
-  same by id instead of by name
+- Include station type for *all* stations, not just fleet
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
-refactor: eddblink now uses csv files from server instead of the old EDDB files that no longer exist
-
-chore: include `Categories.csv` in templates
+- Use id provided by source for systems and stations when
+  ([`bad945c`](https://github.com/eyeonus/Trade-Dangerous/commit/bad945c86fea3ccc74787f5fd5f972c9dc99f1fd))
 
 
 ## v10.15.2 (2024-04-19)
@@ -3386,19 +3670,25 @@ chore: include `Categories.csv` in templates
 - Fix formatting of station skip message
   ([`906227d`](https://github.com/eyeonus/Trade-Dangerous/commit/906227d74dda67fc4a51296372ea75eade95a8c8))
 
+- Make sure the cache is updated if a system, station, or commodity
+  ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
+
 - Maxage errors if not set
   ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
 
 `float(null)` doesn't work, obviously, make sure to only cast to float is maxage has been set. Also
   make sure maxage is set before doing the math to see if a station should be skipped.
 
-fix: Make sure the cache is updated if a system, station, or commodity was added to the DB.
+- Update the ui_order for commodities when a new one is added to the
+  ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
 
-fix: Use fdev_id as item_id when adding new commodity to the DB.
+- Use fdev_id as item_id when adding new commodity to the DB.
+  ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
 
-fix: Update the ui_order for commodities when a new one is added to the DB.
+### Refactoring
 
-refactor: Use a better method for removing spaces from a prices file.
+- Use a better method for removing spaces from a prices file.
+  ([`3d7e330`](https://github.com/eyeonus/Trade-Dangerous/commit/3d7e33033b274a49bec63c61ab317c8fcfb2d011))
 
 
 ## v10.15.0 (2024-04-17)
@@ -3551,12 +3841,13 @@ also include distance from star from stations
 - Plugin to ingest pricing data from https://downloads.spansh.co.uk/galaxy_stations.json
   ([`7dd32b5`](https://github.com/eyeonus/Trade-Dangerous/commit/7dd32b514d6aa88368e2648565410998005a02f1))
 
-* fix station name matching
+fix station name matching
 
 sqlite's `upper()` function doesn't support non-ascii characters, so letters like "ñ" do not get
   capitalised correctly. move that transform to the python side, which has full unicode support
 
-* feat: plugin to ingest pricing data from https://downloads.spansh.co.uk/galaxy_stations.json
+- Plugin to ingest pricing data from https://downloads.spansh.co.uk/galaxy_stations.json
+  ([`7dd32b5`](https://github.com/eyeonus/Trade-Dangerous/commit/7dd32b514d6aa88368e2648565410998005a02f1))
 
 
 ## v10.13.10 (2023-02-13)
@@ -3571,22 +3862,33 @@ sqlite's `upper()` function doesn't support non-ascii characters, so letters lik
 
 ### Bug Fixes
 
+- Close tdb and/or cursors ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
+  [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
+
+- Fix funky ssl for urllib on windows ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
+  [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
+
 - Make tox work on windows again ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
   [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
 
-* fix: fix funky ssl for urllib on windows
+### Chores
 
-* chore: re enable test for windows
+- Coverage is great to have when developing
+  ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
+  [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
+
+- Re enable test for windows ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
+  [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
 
 * tests: run tox differently
 
-* chore: coverage is great to have when developing
+### Code Style
 
-* style: cleanup and typing
+- Cleanup and typing ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
+  [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
 
-* fix: close tdb and/or cursors
-
-* style: remove debug print infor
+- Remove debug print infor ([#106](https://github.com/eyeonus/Trade-Dangerous/pull/106),
+  [`5309181`](https://github.com/eyeonus/Trade-Dangerous/commit/53091817c5274589b54ed41fe099ba68531fa1d1))
 
 * tests: add update_gui to bootstrap test
 
@@ -4176,8 +4478,6 @@ Just run "trade gui" and tell me what you think.
 Completely ignore fallback option wrt ships index, now will always try to download, only uses
   template on failure to open.
 
-refactor: Switch back to beta for the ships index. Better suited so says Trom. :)
-
 - Stop always using the template ship index when fallback enabled
   ([`54897cb`](https://github.com/eyeonus/Trade-Dangerous/commit/54897cb0e8ffb20c0fc6455f4bcdca482ff1f5ed))
 
@@ -4185,6 +4485,9 @@ Check to see if the attempt to download the ship index was successful, and if so
   template, even if the fallback option is enabled.
 
 ### Refactoring
+
+- Switch back to beta for the ships index. Better suited so says
+  ([`ab6e48e`](https://github.com/eyeonus/Trade-Dangerous/commit/ab6e48e5b3a1bca82a4b7a3d7c5962b9d3f77606))
 
 - Update ship index to not use the beta site.
   ([`49ce095`](https://github.com/eyeonus/Trade-Dangerous/commit/49ce095416be1e505307f3bac14b4b5867c38c13))
@@ -4475,17 +4778,6 @@ Blank lines should have whitespace to the same level as the line immediately fol
 - Automatically update Added.csv, RareItem.csv, TradeDangerous.sql
   ([`fe82c3a`](https://github.com/eyeonus/Trade-Dangerous/commit/fe82c3a503679bc63fdc1a95fd06849c377b89f4))
 
-refactor: restore whitespace to tradedb.py
-
-The template files may need updating, and if that is the case, any TD database will need their copy
-  updated as well.
-
-Since TD detects changes to the 'cache', any updates to these files will be integrated into TD the
-  next time it is run.
-
-Changes to the SQL will likely require doing a 'clean' run with the eddblink plugin as they are
-  often breaking changes.
-
 ### Refactoring
 
 - Remove template folder environment variable
@@ -4505,6 +4797,18 @@ It makes absolutely no sense to make it possible for the user to even accidental
 In summary: having this environment variable: usefulness: <=0
 
 potential harm: >0
+
+- Restore whitespace to tradedb.py
+  ([`fe82c3a`](https://github.com/eyeonus/Trade-Dangerous/commit/fe82c3a503679bc63fdc1a95fd06849c377b89f4))
+
+The template files may need updating, and if that is the case, any TD database will need their copy
+  updated as well.
+
+Since TD detects changes to the 'cache', any updates to these files will be integrated into TD the
+  next time it is run.
+
+Changes to the SQL will likely require doing a 'clean' run with the eddblink plugin as they are
+  often breaking changes.
 
 
 ## v10.0.3 (2019-02-13)
@@ -4566,6 +4870,19 @@ Thanks upstream.
 
 ### Chores
 
+- Add deploy stage for master branch
+  ([`489f721`](https://github.com/eyeonus/Trade-Dangerous/commit/489f721a566e1f0d5cd8752625050f19e68a4eb4))
+
+Add a deploy stage that only run after - ALL tests are ok - On master branch - only on one python
+  version (3.6)
+
+- Add sematic release
+  ([`489f721`](https://github.com/eyeonus/Trade-Dangerous/commit/489f721a566e1f0d5cd8752625050f19e68a4eb4))
+
+Add python-semantic-release to make life easier
+
+* add semantic-release to travis
+
 - Check value of $PYPI_USERNAME before and after publish
   ([`d619bfb`](https://github.com/eyeonus/Trade-Dangerous/commit/d619bfb78d982aa21d45a6de9bab395af4202429))
 
@@ -4613,8 +4930,23 @@ API now accessed as 'cli.trade', rather than 'trade.main'.
 
 ### Refactoring
 
+- Add py3.7 to version list, build lowest compat., init TD ver.
+  ([`489f721`](https://github.com/eyeonus/Trade-Dangerous/commit/489f721a566e1f0d5cd8752625050f19e68a4eb4))
+
+Lead developer is using 3.7, so obviously tests need to include that version.
+
+If we're only going to build for one python version, it should be the lowest compatible version.
+
+Last official version of TD was 7.4.0, back in 2016-01-29, so considering how much has changed since
+  then, should start at something more like 10.
+
+The .1 part of 10.0.1 is this specific refactor.
+
 - Don't publish until build works.
   ([`b5b2f88`](https://github.com/eyeonus/Trade-Dangerous/commit/b5b2f88e4048f05dc90caf9884806641de084718))
+
+- Include py3.7 in tox script as well.
+  ([`489f721`](https://github.com/eyeonus/Trade-Dangerous/commit/489f721a566e1f0d5cd8752625050f19e68a4eb4))
 
 ### Testing
 
