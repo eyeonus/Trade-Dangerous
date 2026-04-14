@@ -205,9 +205,15 @@ class CommandEnv(TradeEnv):
         
         def lookupPlace(label, fieldName):
             key = getattr(self, fieldName, None)
-            if key:
+            if not key:
+                return None
+            
+            try:
                 return self.tdb.lookupPlace(key)
-            return None
+            except LookupError:
+                raise CommandLineError(
+                        "Unrecognized {}: {}"
+                            .format(label, key))
         
         self.startStation = check('origin station', 'origin', True)
         self.stopStation = check('destination station', 'dest', True)
