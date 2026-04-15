@@ -1,6 +1,51 @@
 # CHANGELOG
 
 
+## v12.22.0 (2026-04-15)
+
+### Continuous Integration
+
+- Release automatic windows installer creation to live path.
+  ([`22500d8`](https://github.com/eyeonus/Trade-Dangerous/commit/22500d882044433090920948a195fc6d1b341838))
+
+After extensive testing with the rehearsal workflow, this will enable automatic creation and release
+  of new windows installers every time we cut a release to PyPI.
+
+Additionally upgraded python-release to v6 as Node 20 is deprecated and this correctly invokes Node
+  24
+
+- Test workflow for windows autorelease
+  ([`391e634`](https://github.com/eyeonus/Trade-Dangerous/commit/391e634fc592f9e45b177a4f926358524649269c))
+
+- Undo pypi workaround
+  ([`f413607`](https://github.com/eyeonus/Trade-Dangerous/commit/f413607f5355adb18d4738d4f5cef5fadbc3a221))
+
+- **rehearsal**: Fix inno setup install
+  ([`33388bb`](https://github.com/eyeonus/Trade-Dangerous/commit/33388bbf18512b09481640791f2e942dcca2e32a))
+
+- **rehearsal**: Fix Node 20 Warnings
+  ([`f72615b`](https://github.com/eyeonus/Trade-Dangerous/commit/f72615bdbbdf0ee1bcfe2722896c0211c5c83cbe))
+
+### Documentation
+
+- Document automatic release path
+  ([`6997a04`](https://github.com/eyeonus/Trade-Dangerous/commit/6997a044a4463347e9793716706ccff62d30d30b))
+
+### Features
+
+- **gui**: Give insurance the prominence it deserves
+  ([`20dbafc`](https://github.com/eyeonus/Trade-Dangerous/commit/20dbafca249fa4022738928f12583b0297a96a14))
+
+Rather than being hidden away in extended options, insurance is now added to the saved ship proile
+  and inherited by (or copied into) the `run` workspace. This allows per ship insurance to be set up
+  and unless overidden will be assumed to be a desired action.
+
+### Refactoring
+
+- Reduce duplication in run_view.py
+  ([`5aac428`](https://github.com/eyeonus/Trade-Dangerous/commit/5aac4284d26a5ca8b48d6e389260bb60d8e419b6))
+
+
 ## v12.21.0 (2026-04-14)
 
 ### Features
