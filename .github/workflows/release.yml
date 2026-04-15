@@ -4,6 +4,7 @@
 # - runs the test matrix first
 # - performs semantic-release versioning only for stable releases
 # - publishes to PyPI and GitHub Releases only when a new release was created
+# - builds and uploads the Windows installer only when a new release was created
 
 name: Stable release publish
 
@@ -25,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-2025, macos-latest]
 
     steps:
     - uses: actions/checkout@v6
@@ -51,6 +52,10 @@ jobs:
     permissions:
       id-token: write
       contents: write
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
 
     steps:
     - uses: actions/checkout@v6
@@ -79,25 +84,115 @@ jobs:
         before_head="$(git rev-parse HEAD)"
         uv run semantic-release version
         after_head="$(git rev-parse HEAD)"
-        after_tag="$(git tag --points-at HEAD)"
+        after_tag="$(git tag --points-at HEAD | head -n 1)"
         if [ "$before_head" != "$after_head" ] && [ -n "$after_tag" ]; then
           echo "released=true" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$after_tag" >> "$GITHUB_OUTPUT"
+          echo "version=${after_tag#v}" >> "$GITHUB_OUTPUT"
         else
           echo "released=false" >> "$GITHUB_OUTPUT"
+          echo "tag_name=" >> "$GITHUB_OUTPUT"
+          echo "version=" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Build artifacts
-      if: steps.release.outputs.released == 'true'
+      if: ${{ steps.release.outputs.released == 'true' }}
       run: uv build
 
     - name: Publish package distributions to PyPI
-      if: steps.release.outputs.released == 'true'
+      if: ${{ steps.release.outputs.released == 'true' }}
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         attestations: false
 
     - name: Publish package distributions to GitHub Releases
-      if: steps.release.outputs.released == 'true'
+      if: ${{ steps.release.outputs.released == 'true' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: uv run semantic-release publish
+
+  windows_installer:
+    name: Build and upload Windows installer
+    if: ${{ github.repository == 'eyeonus/Trade-Dangerous' && needs.release.outputs.released == 'true' }}
+    needs: release
+    runs-on: windows-2025
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        ref: ${{ needs.release.outputs.tag_name }}
+
+    - name: Set up Python from repo pin
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: '.python-version'
+
+    - name: Create freeze virtual environment
+      shell: pwsh
+      run: |
+        python -m venv .venv-freeze
+        .\.venv-freeze\Scripts\python.exe -m pip install --upgrade pip
+        .\.venv-freeze\Scripts\python.exe -m pip install .
+        .\.venv-freeze\Scripts\python.exe -m pip install pyinstaller
+
+    - name: Build frozen GUI bundle
+      shell: pwsh
+      run: |
+        .\.venv-freeze\Scripts\pyinstaller.exe --noconfirm --clean TradeDangerous.spec
+
+    - name: Verify frozen GUI bundle
+      shell: pwsh
+      run: |
+        if (-not (Test-Path 'dist\TradeDangerous\TradeDangerous.exe')) {
+          throw 'Frozen GUI bundle was not created at dist\TradeDangerous\TradeDangerous.exe'
+        }
+
+    - name: Resolve Inno Setup compiler
+      id: iscc
+      shell: pwsh
+      run: |
+        $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+        if ($cmd) {
+          "path=$($cmd.Source)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          exit 0
+        }
+
+        $candidates = @(
+          (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+          (Join-Path ${env:ProgramFiles} 'Inno Setup 6\ISCC.exe')
+        ) | Where-Object { $_ -and (Test-Path $_) }
+
+        if ($candidates.Count -eq 0) {
+          throw 'ISCC.exe was not found on the runner.'
+        }
+
+        "path=$($candidates[0])" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Build Windows installer
+      shell: pwsh
+      run: |
+        $version = '${{ needs.release.outputs.version }}'
+        $iscc = '${{ steps.iscc.outputs.path }}'
+        if (-not (Test-Path $iscc)) {
+          throw "ISCC.exe not found at $iscc"
+        }
+        & $iscc "/DTDVersion=$version" '.\TradeDangerous.iss'
+
+    - name: Verify Windows installer
+      shell: pwsh
+      run: |
+        $installer = "Output\TradeDangerous-Setup-${{ needs.release.outputs.version }}.exe"
+        if (-not (Test-Path $installer)) {
+          throw "Installer was not created at $installer"
+        }
+
+    - name: Upload Windows installer to GitHub release
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $tag = '${{ needs.release.outputs.tag_name }}'
+        $installer = "Output\TradeDangerous-Setup-${{ needs.release.outputs.version }}.exe"
+        gh release upload $tag "$installer#Windows installer"
