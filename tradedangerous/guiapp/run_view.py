@@ -1045,6 +1045,24 @@ class RunWorkspace(DraftValueHelper):
                     ),
                 ).classes('w-48').tooltip('Starting credits.')
                 ui.number(
+                    'Insurance',
+                    value=self._number_value(
+                        self.draft.context_overrides,
+                        'insurance',
+                    ),
+                    min=0,
+                    step=1,
+                    precision=0,
+                    on_change=lambda event: self._set_int(
+                        self.draft.context_overrides,
+                        'insurance',
+                        event.value,
+                        'Insurance',
+                    ),
+                ).classes('w-40').tooltip(
+                    'Reserve at least this many credits to cover insurance.'
+                )
+                ui.number(
                     'LY / jump',
                     value=self._number_value(
                         self.draft.context_overrides,
@@ -1357,24 +1375,6 @@ class RunWorkspace(DraftValueHelper):
                 ).classes('w-32').tooltip(
                     'Reduce gains on each hop to leave a margin for market '
                     'fluctuations.'
-                )
-                ui.number(
-                    'Insurance',
-                    value=self._number_value(
-                        self.draft.advanced_values,
-                        'insurance',
-                    ),
-                    min=0,
-                    step=1,
-                    precision=0,
-                    on_change=lambda event: self._set_int(
-                        self.draft.advanced_values,
-                        'insurance',
-                        event.value,
-                        'Insurance',
-                    ),
-                ).classes('w-40').tooltip(
-                    'Reserve at least this many credits to cover insurance.'
                 )
 
             with ui.row().classes('w-full gap-3'):

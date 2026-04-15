@@ -76,6 +76,7 @@ class AppShell:
         self.max_data_age_input = None
         self.capacity_input = None
         self.reserved_capacity_input = None
+        self.insurance_input = None
         self.effective_capacity_label = None
         self.jump_range_full_input = None
         self.jump_range_empty_input = None
@@ -259,20 +260,27 @@ class AppShell:
             ).classes('w-full').tooltip(
                 'Display name for the selected ship profile.'
             )
-            self.capacity_input = ui.input(
-                'Capacity',
-                on_change=self._on_ship_changed,
-            ).classes('w-full').tooltip(
-                'Maximum cargo space of selected ship.'
-            )
-            self.reserved_capacity_input = ui.input(
-                'Reserved Capacity',
-                on_change=self._on_ship_changed,
-            ).classes('w-full').tooltip(
-                'Cargo capacity to keep in reserve. Effective Capacity '
-                'is Capacity minus Reserved Capacity.'
-            )
+            with ui.row().classes('w-full gap-3 no-wrap'):
+                self.capacity_input = ui.input(
+                    'Capacity',
+                    on_change=self._on_ship_changed,
+                ).classes('min-w-0 flex-1').tooltip(
+                    'Maximum cargo space of selected ship.'
+                )
+                self.reserved_capacity_input = ui.input(
+                    'Reserved Capacity',
+                    on_change=self._on_ship_changed,
+                ).classes('min-w-0 flex-1').tooltip(
+                    'Cargo capacity to keep in reserve. Effective Capacity '
+                    'is Capacity minus Reserved Capacity.'
+                )
             self.effective_capacity_label = ui.label('Effective Capacity:')
+            self.insurance_input = ui.input(
+                'Insurance',
+                on_change=self._on_ship_changed,
+            ).classes('w-full').tooltip(
+                'Credits to keep in reserve for ship insurance rebuy.'
+            )
             self.jump_range_full_input = ui.input(
                 'Jump Range (Full)',
                 on_change=self._on_ship_changed,
@@ -292,8 +300,7 @@ class AppShell:
             with ui.row().classes('w-full gap-2'):
                 ui.button('New', on_click=self._on_new_profile)
                 ui.button('Save', on_click=self._on_save_profile)
-                ui.button('Revert', on_click=self._on_revert_profile)
-    
+                ui.button('Revert', on_click=self._on_revert_profile)    
     def _build_right_pane(self) -> None:
         self.right_pane_host = ui.column().classes('w-full gap-3 pl-2')
     
@@ -528,6 +535,7 @@ class AppShell:
         # draft sees the same usable tonnage that execution will later use.
         context = {
             'capacity': self.session.ship_state.effective_capacity,
+            'insurance': self.session.ship_state.insurance,
             'jump_range_full_ly': self.session.ship_state.jump_range_full_ly,
             'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             'credits': self.session.global_state.credits,
@@ -600,6 +608,7 @@ class AppShell:
                 'ship_name': self.session.ship_state.ship_name,
                 'capacity': self.session.ship_state.capacity,
                 'reserved_capacity': self.session.ship_state.reserved_capacity,
+                'insurance': self.session.ship_state.insurance,
                 'jump_range_full_ly': self.session.ship_state.jump_range_full_ly,
                 'jump_range_empty_ly': self.session.ship_state.jump_range_empty_ly,
             },
@@ -727,6 +736,16 @@ class AppShell:
         ):
             return False
         
+        insurance = self._parse_optional_int(
+            self.insurance_input.value,
+            'Insurance',
+        )
+        if (
+            insurance is None
+            and self._has_text(self.insurance_input.value)
+        ):
+            return False
+        
         jump_range_full = self._parse_optional_float(
             self.jump_range_full_input.value,
             'Jump Range (Full)',
@@ -765,6 +784,7 @@ class AppShell:
         )
         self.session.ship_state.capacity = capacity
         self.session.ship_state.reserved_capacity = reserved_capacity
+        self.session.ship_state.insurance = insurance
         self.session.ship_state.jump_range_full_ly = jump_range_full
         self.session.ship_state.jump_range_empty_ly = jump_range_empty
         self.session.mark_ship_dirty()
@@ -1032,6 +1052,9 @@ class AppShell:
             )
             self.reserved_capacity_input.value = self._display_text(
                 self.session.ship_state.reserved_capacity
+            )
+            self.insurance_input.value = self._display_text(
+                self.session.ship_state.insurance
             )
             self.jump_range_full_input.value = self._display_text(
                 self.session.ship_state.jump_range_full_ly

@@ -242,6 +242,12 @@ class TdExecutor:
             minimum=0,
             errors=errors,
         )
+        self._validate_optional_int(
+            context,
+            'insurance',
+            minimum=0,
+            errors=errors,
+        )
         self._validate_optional_float(
             context,
             'max_data_age_days',

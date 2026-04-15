@@ -46,6 +46,7 @@ class WorkingShipProfileState:
     ship_name: str | None = None
     capacity: int | None = None
     reserved_capacity: int | None = None
+    insurance: int | None = None
     jump_range_full_ly: float | None = None
     jump_range_empty_ly: float | None = None
     is_dirty: bool = False
@@ -57,6 +58,7 @@ class WorkingShipProfileState:
             ship_name=profile.ship_name,
             capacity=profile.capacity,
             reserved_capacity=profile.reserved_capacity,
+            insurance=profile.insurance,
             jump_range_full_ly=profile.jump_range_full_ly,
             jump_range_empty_ly=profile.jump_range_empty_ly,
             is_dirty=False,
@@ -70,6 +72,7 @@ class WorkingShipProfileState:
             ship_name=self.ship_name,
             capacity=self.capacity,
             reserved_capacity=self.reserved_capacity,
+            insurance=self.insurance,
             jump_range_full_ly=self.jump_range_full_ly,
             jump_range_empty_ly=self.jump_range_empty_ly,
         )

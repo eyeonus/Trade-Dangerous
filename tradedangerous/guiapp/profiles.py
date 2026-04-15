@@ -74,6 +74,7 @@ class ShipProfile:
     ship_name: str | None = None
     capacity: int | None = None
     reserved_capacity: int | None = None
+    insurance: int | None = None
     jump_range_full_ly: float | None = None
     jump_range_empty_ly: float | None = None
     
@@ -84,6 +85,7 @@ class ShipProfile:
             ship_name=data.get('ship_name'),
             capacity=data.get('capacity'),
             reserved_capacity=data.get('reserved_capacity'),
+            insurance=data.get('insurance'),
             jump_range_full_ly=data.get('jump_range_full_ly'),
             jump_range_empty_ly=data.get('jump_range_empty_ly'),
         )
@@ -207,6 +209,18 @@ class GuiStore:
             and self.selected_command not in self.drafts
         ):
             self.drafts[self.selected_command] = CommandDraft()
+        
+        run_draft = self.drafts.get('run')
+        if run_draft is not None:
+            # Temporary compatibility bridge for older GUI state files.
+            # Insurance used to live in run advanced_values; move it into
+            # context_overrides so it appears in the main Run Overrides area.
+            legacy_insurance = run_draft.advanced_values.pop('insurance', None)
+            if (
+                legacy_insurance not in (None, '')
+                and run_draft.context_overrides.get('insurance') in (None, '')
+            ):
+                run_draft.context_overrides['insurance'] = legacy_insurance
     
     def get_profile(self, profile_id: str | None) -> ShipProfile | None:
         if profile_id is None:
@@ -250,6 +264,7 @@ class GuiStore:
             ship_name=ship_name or (base.ship_name if base else profile_name),
             capacity=base.capacity if base else None,
             reserved_capacity=base.reserved_capacity if base else None,
+            insurance=base.insurance if base else None,
             jump_range_full_ly=base.jump_range_full_ly if base else None,
             jump_range_empty_ly=base.jump_range_empty_ly if base else None,
         )
