@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-2025, macos-latest]
 
     steps:
     - uses: actions/checkout@v6
@@ -71,7 +71,7 @@ jobs:
   windows_installer:
     name: Build Windows installer
     needs: test
-    runs-on: windows-latest
+    runs-on: windows-2025
 
     steps:
     - uses: actions/checkout@v6
@@ -113,16 +113,32 @@ jobs:
           throw 'Frozen GUI bundle was not created at dist\TradeDangerous\TradeDangerous.exe'
         }
 
-    - name: Install Inno Setup
+    - name: Resolve Inno Setup compiler
+      id: iscc
       shell: pwsh
       run: |
-        winget install --id JRSoftware.InnoSetup -e -s winget --accept-source-agreements --accept-package-agreements --disable-interactivity
+        $cmd = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+        if ($cmd) {
+          "path=$($cmd.Source)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          exit 0
+        }
+
+        $candidates = @(
+          (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+          (Join-Path ${env:ProgramFiles} 'Inno Setup 6\ISCC.exe')
+        ) | Where-Object { $_ -and (Test-Path $_) }
+
+        if ($candidates.Count -eq 0) {
+          throw 'ISCC.exe was not found on the runner.'
+        }
+
+        "path=$($candidates[0])" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
     - name: Build Windows installer
       shell: pwsh
       run: |
         $version = '${{ steps.version.outputs.version }}'
-        $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+        $iscc = '${{ steps.iscc.outputs.path }}'
         if (-not (Test-Path $iscc)) {
           throw "ISCC.exe not found at $iscc"
         }
