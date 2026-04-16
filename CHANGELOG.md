@@ -1,10 +1,8 @@
 # CHANGELOG
 
+<!-- version list -->
 
 ## v12.22.1 (2026-04-16)
-
-
-## v12.22.0 (2026-04-15)
 
 ### Bug Fixes
 
@@ -19,6 +17,8 @@ This can be done with the CLI, but the way I've got the GUI set up to auto clear
 So in the GUI, shipvend overrides skipvend, because skipvend is always set by default and just
   clicking shipvend is a much simpler solution for a GUI user who wants that part of the data,
   without the megalithic upgrade vendor data.
+
+## v12.22.0 (2026-04-15)
 
 ### Continuous Integration
 
