@@ -1438,7 +1438,11 @@ class TradeDB:
         
         self.stationByID = stationByID
         self.tradingStationCount = tradingCount
-        self.tdenv.DEBUG1("Loaded {:n} Stations in {:.3f}s", len(stationByID), (time.time() - started) * 1000)
+        self.tdenv.DEBUG1(
+            "Loaded {:n} Stations in {:.3f}s",
+            len(stationByID),
+            time.time() - started,
+        )
         self.stellarGrid = None
     
     def addLocalStation(
