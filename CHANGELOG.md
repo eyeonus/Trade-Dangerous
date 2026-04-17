@@ -1,5 +1,22 @@
 # CHANGELOG
 
+<!-- version list -->
+
+## v12.22.1 (2026-04-16)
+
+### Bug Fixes
+
+- Expose shipvend for import via GUI
+  ([`b618770`](https://github.com/eyeonus/Trade-Dangerous/commit/b618770898950b7dee60bab699f69d55eb1f3c19))
+
+This can be done with the CLI, but the way I've got the GUI set up to auto clear flags which cause
+  lengthy imports I've departed slightly from blindly following CLI syntax here. In fact I've done
+  this in various places where "it's a GUI, so we should do it like this" makes sense. It's the same
+  engine, but a different workflow.
+
+So in the GUI, shipvend overrides skipvend, because skipvend is always set by default and just
+  clicking shipvend is a much simpler solution for a GUI user who wants that part of the data,
+  without the megalithic upgrade vendor data.
 
 ## v12.22.0 (2026-04-15)
 

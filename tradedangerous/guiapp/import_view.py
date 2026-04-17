@@ -12,6 +12,11 @@ IMPORT_HELP_ROWS: tuple[tuple[str, str], ...] = (
         'Skip Vendors',
         "Don't regenerate ship or upgrade vendor tables. ",
     ),
+    (
+        'Ship Vendors',
+        'GUI-only mode: import ship vendor data without the upgrade vendor table. '
+        'Not available with Clean or Solo.',
+    ),
     ('Optimize', 'Optimise the database after processing (use this occasionally).'),
     (
         'Force',
@@ -94,6 +99,7 @@ class ImportWorkspace:
                     [
                         ('All', 'all'),
                         ('Skip Vendors', 'skipvend'),
+                        ('Ship Vendors', 'shipvend_mode'),
                         ('Clean', 'clean'),
                         ('Optimize', 'optimize'),
                         ('Force', 'force'),

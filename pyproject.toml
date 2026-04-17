@@ -209,6 +209,11 @@ tag_format = "v{version}"
 commit_parser = "conventional"
 
 
+[tool.semantic_release.changelog]
+mode = "update"
+insertion_flag = "<!-- version list -->"
+
+
 [tool.semantic_release.commit_parser_options]
 # Keep parser behaviour explicit rather than relying on defaults.
 minor_tags = ["feat"]
