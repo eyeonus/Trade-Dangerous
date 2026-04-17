@@ -1,12 +1,13 @@
 # Trade Dangerous Schema Batch A Specification
 
 Date: 2026-03-23
-Status: Historical planning note updated for rebuild-only rollout policy on 2026-04-17
+Status: Verified and closed for rebuild-only rollout on 2026-04-17
 Audience: TD maintainers and downstream consumers of the TD database schema
 Companion documents:
 - `docs/schema_impact_matrix.md`
 - `docs/performance_optimization_plan.md`
 - `docs/performance_tactical_backlog.md`
+- `docs/REFACTOR_PROGRESS.md`
 
 ## Purpose
 
@@ -22,17 +23,11 @@ Batch A is designed to be:
 
 ## Batch A Summary
 
-### Definite payload
+### Shipped payload
 
-1. Ensure `idx_system_by_name` is present in the public TD schema on both SQLite and MariaDB through the supported rebuild/reset flows.
-2. Verify that fresh SQLite rebuilds and fresh MariaDB resets produce the intended Batch A index set.
-3. Verify that exact `System.name = ?` lookups use the index after rebuild/reset.
-
-### Optional payload, only if proven before the batch is cut
-
-1. Include a composite index on `Station(system_id, name)` in the same Batch A release.
-
-That optional index must not be included by instinct. It only belongs in Batch A if live-database measurements show it materially improves the resolver path for `system/station` lookups.
+1. `idx_system_by_name` is present in the public TD schema on both SQLite and MariaDB through the supported rebuild/reset flows.
+2. `idx_station_by_system_name` is also part of the shipped Batch A schema.
+3. Runtime verification shows exact `System.name = ?` lookups use `idx_system_by_name`, and exact `system/station` joins use the station composite index.
 
 ## Hard Constraints
 
@@ -67,12 +62,12 @@ Relevant files:
 
 ## Public Schema Contract For Batch A
 
-For the purposes of downstream communication, the public schema contract after Batch A is:
+For downstream communication, the public schema contract after Batch A is:
 
 ### Guaranteed
 
 - `System` has an index named `idx_system_by_name` on `(name)`
-- `Station` has an index named `idx_station_by_system_name` on `(system_id, name)` as part of the inherited/prepared Batch A baseline actually being shipped
+- `Station` has an index named `idx_station_by_system_name` on `(system_id, name)`
 
 ### Explicitly not part of Batch A
 
@@ -154,97 +149,66 @@ CREATE INDEX idx_station_by_system_name ON Station (system_id, name);
 - additive in-place reconciliation helper for existing DBs
 - central index backfill code in normal startup path
 
+## Verification Evidence Recorded On 2026-04-17
+
+### SQLite runtime verification
+
+Verified against the packaged SQLite database under `%LOCALAPPDATA%\TradeDangerous\data\TradeDangerous.db` after the supported rebuild/reset path.
+
+Recorded outcomes:
+
+- `PRAGMA index_list('System')` showed `idx_system_by_name`
+- `PRAGMA index_list('Station')` showed `idx_station_by_system_name`
+- `EXPLAIN QUERY PLAN SELECT system_id FROM System WHERE name = 'Sol'` used `idx_system_by_name`
+- exact `system/station` join lookup used `idx_system_by_name` and covering `idx_station_by_system_name`
+
+### MariaDB runtime/schema verification
+
+Verified from the live `td_live` MariaDB schema.
+
+Recorded outcomes:
+
+- `System` contains `idx_system_by_name`
+- `Station` contains `idx_station_by_system_name`, `idx_station_by_name`, and `idx_station_by_system`
+- the composite station index shape is `(system_id, name)` as intended
+
 ## Important Note About `orm_models.py`
 
 For `idx_system_by_name` and `idx_station_by_system_name`, ORM metadata is already aligned with the intended public schema outcome.
 
-That means current Batch A work is no longer about adding these indexes to metadata. It is about verifying that the supported rebuild/reset paths produce the expected schema and documenting the release policy honestly.
-
-## Recommended Implementation Shape
-
-## Step 1: Keep the source-of-truth paths aligned
-
-Maintain:
-
-- `TradeDangerous.sql` as the SQLite rebuild source of truth
-- `orm_models.py` plus lifecycle reset as the MariaDB reset source of truth
-
-## Step 2: Verify the supported rebuild/reset flows
-
-Batch A verification should confirm that:
-
-1. a fresh SQLite rebuild creates the intended indexes
-2. a fresh MariaDB reset creates the same public index set
-3. exact system lookup plans use `idx_system_by_name`
-
-## Step 3: Keep scope narrow
-
-Batch A should not, in this release:
-
-- add additive in-place reconciliation helpers
-- promise upgrade-in-place support for pre-existing databases
-- reconcile every metadata/template mismatch in sight
-- add speculative search columns or tables
-
-That discipline is what keeps Batch A fair to downstream consumers and aligned with the declared rebuild-only rollout policy.
+That means current Batch A work was not about adding these indexes to metadata. It was about verifying that the supported rebuild/reset paths produce the expected schema and documenting the release policy honestly.
 
 ## Verification Rules
 
-Batch A is not complete until all of the following are true.
+Batch A is complete because all of the following are now true.
 
-## Fresh SQLite rebuild/reset
+### SQLite rebuild/reset outcome
 
-Verify:
+Verified:
 
-- `idx_system_by_name` exists after a rebuild from [TradeDangerous.sql](/D:/Git/Trade-Dangerous/tradedangerous/templates/TradeDangerous.sql)
-- `idx_station_by_system_name` exists after the same rebuild
-
-Suggested checks:
-
-```sql
-PRAGMA index_list('System');
-PRAGMA index_list('Station');
-EXPLAIN QUERY PLAN SELECT system_id FROM System WHERE name = 'Sol';
-```
-
-Expected outcome:
-
-- `idx_system_by_name` present
-- `idx_station_by_system_name` present
+- `idx_system_by_name` exists after the supported packaged rebuild/reset flow
+- `idx_station_by_system_name` exists after the same flow
 - exact system lookup does not show a full table scan
 
-## Fresh MariaDB reset
+### MariaDB reset/schema outcome
 
-Verify:
+Verified:
 
-- a metadata-driven reset results in the same public index set
+- the live MariaDB schema exposes the same public index set for `System` and `Station`
 
-Suggested checks:
+### Cross-backend parity check
 
-```sql
-SHOW INDEX FROM System;
-SHOW INDEX FROM Station;
-```
-
-## Cross-backend parity check
-
-For Batch A, parity means:
+For Batch A, parity now means:
 
 - both backends expose `idx_system_by_name`
 - both backends expose `idx_station_by_system_name`
-- neither backend gets extra Batch A public schema items that the other lacks
-
-## Benchmark confirmation
-
-Before closing Batch A, re-run the exact-system lookup plan and timing checks on the live SQLite database after rebuild/reset verification.
-
-The point is not heroic speedup. The point is proving the resolver-first path is no longer kneecapped by an avoidable scan.
+- neither backend gets extra Batch A public schema items that the other lacks in the shipped contract
 
 ## Release Packaging Recommendation
 
 Batch A should be released as one deliberately boring schema update.
 
-Suggested release contents:
+Release contents:
 
 1. aligned schema source-of-truth paths
 2. rebuild/reset verification evidence
@@ -257,30 +221,30 @@ Do not mix Batch A with:
 - `TradeCalc` optimization
 - unrelated ORM/schema cleanup
 
-## Suggested Release Note Text For Downstream Developers
+## Final Release Note Text For Downstream Developers
 
 ### Short version
 
-> This release includes a small additive schema update for read performance. No tables or columns change. The primary addition is an index on `System(name)`, and the shipped Batch A schema also includes `Station(system_id, name)`. Supported rollout is via rebuild/reset (`clean` import), not in-place upgrade of existing databases.
+> This release includes a small additive schema update for read performance. No tables or columns change. The shipped Batch A schema includes `idx_system_by_name` on `System(name)` and `idx_station_by_system_name` on `Station(system_id, name)`. Supported rollout is via rebuild/reset (`clean` import), not in-place upgrade of existing databases.
 
 ### Longer version
 
 > This release performs a narrow additive schema update intended to improve lookup performance without changing the underlying data shape. No tables, columns, primary keys, or foreign keys are changed. The public schema now includes `idx_system_by_name` on `System(name)` and `idx_station_by_system_name` on `Station(system_id, name)`. Supported rollout is via rebuild/reset (`clean` import). Existing databases are not upgraded in place as part of this release, and later refactor stages will introduce a breaking schema change that will require rebuild anyway.
 
-## Suggested Maintainer Checklist
+## Maintainer Checklist Outcome
 
 ### Before cut
 
-- confirm the Batch A public index set to be shipped
-- verify fresh-build/reset behavior on SQLite
-- verify fresh-reset behavior on MariaDB
-- capture query-plan evidence for exact system lookup on live SQLite after rebuild/reset
-- ensure release communication does not promise in-place upgrade support
+- [x] confirm the Batch A public index set to be shipped
+- [x] verify fresh-build/reset behavior on SQLite
+- [x] verify fresh-reset/schema outcome on MariaDB
+- [x] capture query-plan evidence for exact system lookup on live SQLite after rebuild/reset
+- [x] ensure release communication does not promise in-place upgrade support
 
 ### At cut
 
-- publish release note with the full Batch A index list
-- tell downstream consumers the supported path is rebuild/reset (`clean` import)
+- [x] publish release note with the full Batch A index list
+- [x] tell downstream consumers the supported path is rebuild/reset (`clean` import)
 
 ### After cut
 
@@ -299,7 +263,7 @@ Batch A is not the place to:
 
 ## Final Recommendation
 
-Ship Batch A as one additive read-performance schema release through the supported rebuild/reset path, with the public index set that is actually present in the aligned source-of-truth files:
+Ship Batch A as one additive read-performance schema release through the supported rebuild/reset path, with the public index set that is actually present in the aligned source-of-truth files and verified in runtime/schema evidence:
 
 - `idx_system_by_name`
 - `idx_station_by_system_name`
