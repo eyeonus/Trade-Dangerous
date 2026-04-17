@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[x]`
-- Checkpoint: `A — Instrumentation and production baselines`
-- Subtask: `A4 first live baseline capture`
+- Status: `[-]`
+- Checkpoint: `B — Schema Batch A: narrow additive index release`
+- Subtask: `B5 verify SQLite fresh-build/reset path`
 - Owner: `Stef + ChatGPT`
-- Started: `2026-04-16`
-- Goal: `completed — first live cold/warm SQLite baseline recorded in docs/PERF_NOTES.md`
+- Started: `2026-04-17`
+- Goal: `verify that the supported rebuild/reset flow produces the intended Batch A index set on SQLite, then mirror that verification on MariaDB`
 
 ### Current blocker
-- Status: `[x]`
-- Blocker: `No active blocker remains for checkpoint A; the first live cold/warm baseline was captured on 2026-04-17.`
-- Impact: `Checkpoint A acceptance criteria are now satisfied.`
-- Needed to unblock: `none`
+- Status: `[!]`
+- Blocker: `Formal fresh SQLite rebuild/reset verification has not yet been recorded for Batch A under the rebuild-only release policy.`
+- Impact: `Checkpoint B cannot be marked done until the supported rebuild/reset path is verified and written down.`
+- Needed to unblock: `run the supported clean rebuild/reset flow, inspect the recreated SQLite schema/indexes, and record the results`
 
 ### Last updated
 - Date: `2026-04-17`
-- By: `ChatGPT (with live cold/warm benchmark harness run by Stef)`
-- Session summary: `Recorded the first live cold/warm SQLite baseline for the validated checkpoint A corpus; confirmed all ten benchmark commands completed successfully under the instrumented local working tree; noted the Windows shell UTF-8 setup required to avoid console encoding failure during debug output.`
+- By: `ChatGPT (policy clarified by Stef)`
+- Session summary: `Closed checkpoint A durably in repo state, verified that fresh-build source-of-truth paths already contain the Batch A indexes, and corrected Chapter B scope to the actual rebuild-only rollout policy rather than in-place additive upgrade work.`
 
 ### Last known good rollback point
-- Commit: `cf27373`
-- Notes: `Latest committed docs baseline remains cf27373; the 2026-04-17 checkpoint A baseline capture is now reflected in the working tree and should be committed next.`
+- Commit: `85bd2e8`
+- Notes: `Checkpoint A instrumentation and docs are now durably pushed; Chapter B starts from this repo-visible state.`
 
 ---
 
@@ -84,6 +84,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] `is_rare` is convenience logic only, not stored schema
 - [x] Work happens directly on `Tromador/Trade-Dangerous:release/v1`
 - [x] No second refactor branch inside the fork unless later forced
+- [x] Batch A rollout is rebuild/reset only; in-place index reconciliation is not planned
 
 ---
 
@@ -150,14 +151,14 @@ Make expensive phases visible and measurable.
 ## Checkpoint B — Schema Batch A: narrow additive index release
 
 ### Goal
-Ship the first narrow additive read-performance schema batch.
+Ship the first narrow additive read-performance schema batch through the supported rebuild/reset paths.
 
 ### Acceptance criteria
-- `idx_system_by_name` exists on SQLite and MariaDB
-- existing DBs are upgraded in place where appropriate
-- fresh DB builds include the Batch A index
+- `idx_system_by_name` exists on SQLite and MariaDB after supported rebuild/reset flows
+- fresh DB builds/resets include the Batch A index set
 - Batch A scope remains narrow
 - optional station composite index is either proven and included, or explicitly deferred
+- release communication matches the rebuild-only policy honestly
 
 ### Tasks
 - [x] B1. Freeze Batch A scope
@@ -165,29 +166,29 @@ Ship the first narrow additive read-performance schema batch.
   - Evidence: `1bd9ba9`
 - [x] B2. Add Batch A index to fresh-build schema
   - Status note: `idx_system_by_name was already present in ORM metadata and was added to the SQLite schema in inherited preparatory work; idx_station_by_system_name is present in ORM metadata and SQLite schema.`
-  - Evidence: `1bd9ba9`; `tradedangerous/db/orm_models.py`
-- [ ] B3. Add narrow in-place reconciliation helper
-  - Status note: `Still pending. Existing DBs remain valid but this checkpoint has not yet added a dedicated reconciliation helper.`
+  - Evidence: `1bd9ba9`; `tradedangerous/db/orm_models.py`; `tradedangerous/templates/TradeDangerous.sql`
+- [~] B3. Add narrow in-place reconciliation helper
+  - Status note: `Not planned. Supported rollout is rebuild/reset via clean import, and later schema breakage makes additive in-place reconciliation unnecessary.`
+  - Evidence: `2026-04-17 policy clarification from Stef`
+- [~] B4. Wire reconciliation through central lifecycle path
+  - Status note: `Not planned for the same reason as B3.`
+  - Evidence: `2026-04-17 policy clarification from Stef`
+- [ ] B5. Verify SQLite fresh-build/reset path
+  - Status note: `Pending. Source inspection shows the canonical SQLite template already contains idx_system_by_name and idx_station_by_system_name, but formal rebuild/reset verification is not yet recorded.`
   - Evidence:
-- [ ] B4. Wire reconciliation through central lifecycle path
-  - Status note: `Still pending.`
-  - Evidence:
-- [ ] B5. Verify SQLite fresh-build and upgrade path
-  - Status note: `Live SQLite evidence confirms current indexed state, but formal fresh-build/upgrade verification for the checkpoint is not yet recorded.`
-  - Evidence:
-- [ ] B6. Verify MariaDB fresh-build and upgrade path
-  - Status note: `ORM metadata already includes the exact-lookup indexes, but formal fresh-build/upgrade verification for MariaDB is not yet recorded.`
+- [ ] B6. Verify MariaDB fresh-build/reset path
+  - Status note: `Pending. ORM metadata already includes the exact-lookup indexes, but formal reset verification for MariaDB is not yet recorded.`
   - Evidence:
 - [x] B7. Decide on optional composite station index
   - Status note: `Decision already made in inherited preparatory work: include idx_station_by_system_name because live SQLite plan/timing evidence justified it.`
   - Evidence: `1bd9ba9`; live SQLite probe on 2026-04-16
 - [ ] B8. Write release-note text for Batch A
-  - Status note: `Still pending.`
+  - Status note: `Pending. Release communication must reflect rebuild/reset support and must not promise in-place upgrade behavior.`
   - Evidence:
 
 ### Notes
 - `1bd9ba9` predates the formal refactor session but is part of the inherited baseline and must be treated as such.
-- Remaining Checkpoint B work is now primarily verification, reconciliation, and documentation alignment rather than proving the value of the two key lookup indexes from scratch.
+- Remaining Checkpoint B work is now verification and release/documentation alignment for the rebuild-only policy, not additive in-place reconciliation.
 
 ---
 
@@ -607,6 +608,11 @@ Record decisions that materially affect later work.
   - Decision: `Treat commit 1bd9ba9 as inherited pre-refactor groundwork. Do not plan idx_system_by_name or idx_station_by_system_name as if they still need first-time justification.`
   - Reason: `The current repo/runtime state already contains that work, and live SQLite query-plan evidence confirms active use of the indexes.`
   - Revisit trigger: `Only if fresh-build or upgrade verification shows schema drift or missing coverage.`
+- Date: `2026-04-17`
+  - Topic: `Batch A rollout policy`
+  - Decision: `Support rebuild/reset rollout only for Batch A. Do not implement or promise additive in-place reconciliation of existing databases.`
+  - Reason: `Users were already directed to use clean import/rebuild, and later refactor stages will introduce breaking schema changes that make long-lived additive upgrade support poor value.`
+  - Revisit trigger: `Only if a later release policy explicitly restores support for in-place schema upgrades.`
 
 ---
 
@@ -633,6 +639,12 @@ Record decisions that materially affect later work.
   - Severity: `Low`
   - Needed decision/input: `Force UTF-8 console/Python settings before rerunning the baseline harness on Windows`
   - Current workaround: `Use chcp 65001 plus PYTHONIOENCODING=utf-8 and PYTHONUTF8=1 for benchmark sessions`
+- Date: `2026-04-17`
+  - Blocker: `Formal fresh SQLite rebuild/reset verification for Batch A is not yet recorded`
+  - Checkpoint affected: `B`
+  - Severity: `Medium`
+  - Needed decision/input: `Run the supported rebuild/reset flow and inspect the recreated SQLite indexes/query plan`
+  - Current workaround: `Source inspection confirms the indexes are present in the template and ORM metadata, but runtime verification is still required before closing B`
 
 ---
 
