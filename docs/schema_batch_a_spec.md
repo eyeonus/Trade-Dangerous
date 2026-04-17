@@ -1,7 +1,7 @@
 # Trade Dangerous Schema Batch A Specification
 
 Date: 2026-03-23
-Status: Proposed implementation spec
+Status: Historical planning note updated for rebuild-only rollout policy on 2026-04-17
 Audience: TD maintainers and downstream consumers of the TD database schema
 Companion documents:
 - `docs/schema_impact_matrix.md`
@@ -24,13 +24,13 @@ Batch A is designed to be:
 
 ### Definite payload
 
-1. Add `idx_system_by_name` to the public TD schema on both SQLite and MariaDB.
-2. Ensure existing databases on both backends gain that index in place if it is missing.
-3. Verify that exact `System.name = ?` lookups use the index after rollout.
+1. Ensure `idx_system_by_name` is present in the public TD schema on both SQLite and MariaDB through the supported rebuild/reset flows.
+2. Verify that fresh SQLite rebuilds and fresh MariaDB resets produce the intended Batch A index set.
+3. Verify that exact `System.name = ?` lookups use the index after rebuild/reset.
 
 ### Optional payload, only if proven before the batch is cut
 
-1. Add a composite index on `Station(system_id, name)`.
+1. Include a composite index on `Station(system_id, name)` in the same Batch A release.
 
 That optional index must not be included by instinct. It only belongs in Batch A if live-database measurements show it materially improves the resolver path for `system/station` lookups.
 
@@ -52,10 +52,11 @@ In plain English: this is an additive index release, not a data-shape release.
 
 The performance roadmap depends on moving valid command resolution away from full `TradeDB` preload. That only makes sense if the database can answer exact name lookups cheaply.
 
-Right now the codebase shows a mismatch:
+Current repo/runtime reality is now:
 
 - ORM metadata already declares `idx_system_by_name`
-- the canonical SQLite schema template does not create it
+- the canonical SQLite schema template already creates it
+- the station composite index is already present in both ORM metadata and the SQLite template as inherited preparatory baseline
 
 Relevant files:
 
@@ -71,10 +72,7 @@ For the purposes of downstream communication, the public schema contract after B
 ### Guaranteed
 
 - `System` has an index named `idx_system_by_name` on `(name)`
-
-### Possibly included if measured and announced before release
-
-- `Station` has an index named `idx_station_by_system_name` on `(system_id, name)`
+- `Station` has an index named `idx_station_by_system_name` on `(system_id, name)` as part of the inherited/prepared Batch A baseline actually being shipped
 
 ### Explicitly not part of Batch A
 
@@ -84,6 +82,7 @@ For the purposes of downstream communication, the public schema contract after B
 - search helper tables
 - staging/export tables on SQLite
 - cosmetic index-name reconciliation unrelated to the resolver speed path
+- additive in-place upgrade of existing databases
 
 ## Backend Policy
 
@@ -92,8 +91,8 @@ Batch A is not a SQLite-only change and not a MariaDB-only change.
 The correct policy is:
 
 - one logical TD public schema
-- two creation/update paths
-- one index contract that both backends must satisfy
+- two source-of-truth creation/reset paths
+- one public index contract that both backends must satisfy after rebuild/reset
 
 ### SQLite
 
@@ -110,172 +109,109 @@ Source of truth for fresh resets:
 
 ### Existing databases
 
-Fresh-build parity is not enough. Existing live databases must also be reconciled in place.
+Existing databases are **not** upgraded in place under the current Batch A rollout policy.
 
-That means Batch A needs an additive index-upgrade path, not merely source-of-truth edits.
+Supported rollout is rebuild/reset via the clean import path already announced to users.
+
+That policy is acceptable here because later refactor stages will introduce a breaking schema change that will require rebuild anyway.
 
 ## Exact Batch A DDL
-
-## Required DDL
 
 ### SQLite
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_system_by_name ON System (name);
-```
-
-### MariaDB
-
-```sql
-CREATE INDEX idx_system_by_name ON System (name);
-```
-
-For MariaDB, the statement should only be executed after checking whether the index already exists.
-
-## Optional DDL, only if benchmark-proven before release
-
-### SQLite
-
-```sql
 CREATE INDEX IF NOT EXISTS idx_station_by_system_name ON Station (system_id, name);
 ```
 
-### MariaDB
+### MariaDB / ORM metadata outcome
+
+After metadata-driven reset, the resulting public schema must include:
 
 ```sql
+CREATE INDEX idx_system_by_name ON System (name);
 CREATE INDEX idx_station_by_system_name ON Station (system_id, name);
 ```
 
-This optional index must be announced as part of the same Batch A release if included. It must not be added later as an unadvertised straggler.
+## Files That Define Batch A Reality
 
-## Files To Touch For Batch A
-
-### Required
+### Required source-of-truth files
 
 1. [TradeDangerous.sql](/D:/Git/Trade-Dangerous/tradedangerous/templates/TradeDangerous.sql)
-   Add `idx_system_by_name` to the canonical SQLite schema.
+   Canonical SQLite rebuild schema.
 
-2. [lifecycle.py](/D:/Git/Trade-Dangerous/tradedangerous/db/lifecycle.py)
-   Add a schema reconciliation helper for additive public indexes on existing databases.
+2. [orm_models.py](/D:/Git/Trade-Dangerous/tradedangerous/db/orm_models.py)
+   Canonical ORM/metadata reset schema for MariaDB.
 
-3. [tradedb.py](/D:/Git/Trade-Dangerous/tradedangerous/tradedb.py)
-   Call the reconciliation helper during central DB refresh so both normal runs and import/update flows get the same behavior.
+3. [lifecycle.py](/D:/Git/Trade-Dangerous/tradedangerous/db/lifecycle.py)
+   Reset path used to recreate schema from the backend-specific source of truth.
 
-### Required only if optional composite index is approved before cut
+4. [tradedb.py](/D:/Git/Trade-Dangerous/tradedangerous/tradedb.py)
+   Central lifecycle entry that decides whether a DB is kept or rebuilt.
 
-4. [orm_models.py](/D:/Git/Trade-Dangerous/tradedangerous/db/orm_models.py)
-   Add `idx_station_by_system_name` to ORM metadata so MariaDB resets and metadata-driven paths stay aligned.
+### Not required for Batch A under current policy
 
-### Nice to have
-
-5. Tests or verification helpers under `tests/`
-   Add checks for expected indexes on both backends, or at least for SQLite plus a MariaDB smoke path if that environment exists.
+- additive in-place reconciliation helper for existing DBs
+- central index backfill code in normal startup path
 
 ## Important Note About `orm_models.py`
 
-For the definite `idx_system_by_name` item, ORM metadata already declares the index on `System`.
+For `idx_system_by_name` and `idx_station_by_system_name`, ORM metadata is already aligned with the intended public schema outcome.
 
-That means Batch A does not need to add it to `orm_models.py`; it needs to make the public schema contract and upgrade path match what the metadata already says.
-
-This is useful because it keeps Batch A smaller.
+That means current Batch A work is no longer about adding these indexes to metadata. It is about verifying that the supported rebuild/reset paths produce the expected schema and documenting the release policy honestly.
 
 ## Recommended Implementation Shape
 
-## Step 1: Define the public index set in code
+## Step 1: Keep the source-of-truth paths aligned
 
-Add one central helper in [lifecycle.py](/D:/Git/Trade-Dangerous/tradedangerous/db/lifecycle.py) that knows which additive public indexes must exist.
+Maintain:
 
-Suggested scope for Batch A:
+- `TradeDangerous.sql` as the SQLite rebuild source of truth
+- `orm_models.py` plus lifecycle reset as the MariaDB reset source of truth
 
-- always require `idx_system_by_name`
-- optionally require `idx_station_by_system_name` only if the batch decision says yes before release
+## Step 2: Verify the supported rebuild/reset flows
 
-Do not let this helper silently become a general "fix all schema drift" routine.
+Batch A verification should confirm that:
 
-## Step 2: Add the index to the canonical SQLite template
+1. a fresh SQLite rebuild creates the intended indexes
+2. a fresh MariaDB reset creates the same public index set
+3. exact system lookup plans use `idx_system_by_name`
 
-Update [TradeDangerous.sql](/D:/Git/Trade-Dangerous/tradedangerous/templates/TradeDangerous.sql) so fresh SQLite rebuilds include the index automatically.
+## Step 3: Keep scope narrow
 
-That keeps rebuilt databases and upgraded databases converging on the same state.
+Batch A should not, in this release:
 
-## Step 3: Add in-place reconciliation for existing databases
-
-The reconciliation helper should:
-
-1. inspect existing indexes on the relevant table
-2. create missing Batch A indexes if absent
-3. be idempotent
-4. log what it created versus what already existed
-
-### SQLite behavior
-
-Use inspector or `PRAGMA index_list`-style inspection and `CREATE INDEX IF NOT EXISTS`.
-
-### MariaDB behavior
-
-Use SQLAlchemy inspection or `SHOW INDEX`-equivalent inspection and only run `CREATE INDEX` when the index is absent.
-
-Do not assume an existing MariaDB database already has the index just because ORM metadata declares it.
-
-## Step 4: Call reconciliation from the central refresh path
-
-The safest integration point is the central DB lifecycle path used by normal runs and imports.
-
-That points to [tradedb.py](/D:/Git/Trade-Dangerous/tradedangerous/tradedb.py) after `ensure_fresh_db(...)` in `reloadCache()`.
-
-Reason:
-
-- one entry point
-- applies equally to CLI, GUI, import, and plugin-driven workflows that already converge there
-- avoids backend-specific drift being fixed in one path but not another
-
-## Step 5: Keep the helper narrowly scoped
-
-The helper should only reconcile Batch A public indexes.
-
-It should not, in this batch:
-
-- create `ExportControl`
-- create `StationItem_staging`
+- add additive in-place reconciliation helpers
+- promise upgrade-in-place support for pre-existing databases
 - reconcile every metadata/template mismatch in sight
 - add speculative search columns or tables
 
-That discipline is what keeps Batch A fair to downstream consumers.
+That discipline is what keeps Batch A fair to downstream consumers and aligned with the declared rebuild-only rollout policy.
 
 ## Verification Rules
 
 Batch A is not complete until all of the following are true.
 
-## Fresh SQLite rebuild
+## Fresh SQLite rebuild/reset
 
 Verify:
 
 - `idx_system_by_name` exists after a rebuild from [TradeDangerous.sql](/D:/Git/Trade-Dangerous/tradedangerous/templates/TradeDangerous.sql)
-
-Suggested check:
-
-```sql
-PRAGMA index_list('System');
-```
-
-## Existing SQLite database upgrade
-
-Verify:
-
-- a database missing `idx_system_by_name` gains it in place
-- no full destructive rebuild is required
+- `idx_station_by_system_name` exists after the same rebuild
 
 Suggested checks:
 
 ```sql
 PRAGMA index_list('System');
+PRAGMA index_list('Station');
 EXPLAIN QUERY PLAN SELECT system_id FROM System WHERE name = 'Sol';
 ```
 
 Expected outcome:
 
 - `idx_system_by_name` present
-- exact system lookup no longer shows a full table scan
+- `idx_station_by_system_name` present
+- exact system lookup does not show a full table scan
 
 ## Fresh MariaDB reset
 
@@ -283,30 +219,24 @@ Verify:
 
 - a metadata-driven reset results in the same public index set
 
-Suggested check:
+Suggested checks:
 
 ```sql
 SHOW INDEX FROM System;
+SHOW INDEX FROM Station;
 ```
-
-## Existing MariaDB database upgrade
-
-Verify:
-
-- a MariaDB database missing `idx_system_by_name` gains it in place
-- repeated runs do not attempt to recreate it
 
 ## Cross-backend parity check
 
 For Batch A, parity means:
 
 - both backends expose `idx_system_by_name`
-- if the optional composite index is approved, both expose that too
+- both backends expose `idx_station_by_system_name`
 - neither backend gets extra Batch A public schema items that the other lacks
 
 ## Benchmark confirmation
 
-Before closing Batch A, re-run the exact-system lookup plan and timing checks on the live SQLite database.
+Before closing Batch A, re-run the exact-system lookup plan and timing checks on the live SQLite database after rebuild/reset verification.
 
 The point is not heroic speedup. The point is proving the resolver-first path is no longer kneecapped by an avoidable scan.
 
@@ -316,10 +246,9 @@ Batch A should be released as one deliberately boring schema update.
 
 Suggested release contents:
 
-1. schema template update
-2. in-place index reconciliation code
-3. verification checks/tests
-4. release notes for downstream consumers
+1. aligned schema source-of-truth paths
+2. rebuild/reset verification evidence
+3. release notes for downstream consumers that explicitly describe rebuild/reset support
 
 Do not mix Batch A with:
 
@@ -332,28 +261,26 @@ Do not mix Batch A with:
 
 ### Short version
 
-> This release includes a small additive schema update for read performance. No tables or columns change. The primary addition is an index on `System(name)` to support faster name resolution. Existing databases are upgraded in place.
+> This release includes a small additive schema update for read performance. No tables or columns change. The primary addition is an index on `System(name)`, and the shipped Batch A schema also includes `Station(system_id, name)`. Supported rollout is via rebuild/reset (`clean` import), not in-place upgrade of existing databases.
 
 ### Longer version
 
-> This release performs a narrow additive schema update intended to improve lookup performance without changing the underlying data shape. No tables, columns, primary keys, or foreign keys are changed. The guaranteed addition is an index named `idx_system_by_name` on `System(name)`. Existing databases are upgraded in place. If any additional additive index is included in this release, it will be announced in the same release notes as part of the same schema batch rather than introduced piecemeal later.
+> This release performs a narrow additive schema update intended to improve lookup performance without changing the underlying data shape. No tables, columns, primary keys, or foreign keys are changed. The public schema now includes `idx_system_by_name` on `System(name)` and `idx_station_by_system_name` on `Station(system_id, name)`. Supported rollout is via rebuild/reset (`clean` import). Existing databases are not upgraded in place as part of this release, and later refactor stages will introduce a breaking schema change that will require rebuild anyway.
 
 ## Suggested Maintainer Checklist
 
 ### Before cut
 
-- confirm `idx_system_by_name` is the only guaranteed Batch A item
-- decide whether `idx_station_by_system_name` has enough evidence to join Batch A
-- update both source-of-truth paths as needed
-- add index reconciliation helper
-- verify fresh-build and in-place-upgrade behavior on SQLite
-- verify fresh-reset and in-place-upgrade behavior on MariaDB
-- capture before/after query plans for exact system lookup on live SQLite
+- confirm the Batch A public index set to be shipped
+- verify fresh-build/reset behavior on SQLite
+- verify fresh-reset behavior on MariaDB
+- capture query-plan evidence for exact system lookup on live SQLite after rebuild/reset
+- ensure release communication does not promise in-place upgrade support
 
 ### At cut
 
-- publish release note with full Batch A index list
-- tell downstream consumers this is the only planned early schema batch
+- publish release note with the full Batch A index list
+- tell downstream consumers the supported path is rebuild/reset (`clean` import)
 
 ### After cut
 
@@ -368,20 +295,20 @@ Batch A is not the place to:
 - rework import schema
 - change public data shape
 - make opportunistic schema tweaks one by one after release
+- add in-place upgrade logic for existing databases
 
 ## Final Recommendation
 
-Ship Batch A as one additive read-performance index release with exactly one guaranteed change:
+Ship Batch A as one additive read-performance schema release through the supported rebuild/reset path, with the public index set that is actually present in the aligned source-of-truth files:
 
 - `idx_system_by_name`
-
-Treat `Station(system_id, name)` as the one and only optional extra, and only include it if it is proven before the batch is cut.
+- `idx_station_by_system_name`
 
 Everything else stays out.
 
-That gives you the cleanest promise to downstream consumers:
+That gives downstream consumers the clearest truthful promise:
 
 - one early schema batch
-- minimal impact
-- no table-shape churn
+- minimal data-shape impact
+- rebuild/reset required rather than in-place upgrade
 - most of the real optimization work follows in code, not schema
