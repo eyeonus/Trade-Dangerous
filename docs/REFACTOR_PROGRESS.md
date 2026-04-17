@@ -1,4 +1,4 @@
-# REFRACTOR_PROGRESS.md
+# REFACTOR_PROGRESS.md
 ## Trade Dangerous modernization / performance refactor progress tracker
 
 Working repo:
@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[ ]`
-- Checkpoint:
-- Subtask:
-- Owner:
-- Started:
-- Goal:
+- Status: `[-]`
+- Checkpoint: `A — Instrumentation and production baselines`
+- Subtask: `A4 first live baseline capture`
+- Owner: `Stef + ChatGPT`
+- Started: `2026-04-16`
+- Goal: `record the first cold/warm live SQLite baseline using the validated checkpoint A benchmark corpus`
 
 ### Current blocker
-- Status: `[ ]`
-- Blocker:
-- Impact:
-- Needed to unblock:
+- Status: `[!]`
+- Blocker: `The first live baseline has not yet been recorded, even though the benchmark corpus is now validated.`
+- Impact: `Checkpoint A cannot be marked done until cold/warm timing evidence is written down.`
+- Needed to unblock: `run the validated corpus as cold and warm passes and record the results in docs/PERF_NOTES.md`
 
 ### Last updated
-- Date:
-- By:
-- Session summary:
+- Date: `2026-04-16`
+- By: `ChatGPT (with live DB probe and command validation run by Stef)`
+- Session summary: `Accepted in-session timing instrumentation for CLI, TradeDB, and TradeCalc; captured live SQLite query plans; validated the checkpoint A benchmark corpus against a live packaged SQLite DB refreshed via recent import; confirmed inherited preparatory index work via commit 1bd9ba9; aligned the project docs to the actual repo/runtime baseline.`
 
 ### Last known good rollback point
-- Commit:
-- Notes:
+- Commit: `cf27373`
+- Notes: `PERF_NOTES benchmark corpus and checkpoint A evidence update landed successfully; current tracker state now describes the repo as it stands after that docs commit.`
 
 ---
 
@@ -89,8 +89,8 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 
 ## 3. Checkpoint summary board
 
-- [ ] A — Instrumentation and production baselines
-- [ ] B — Schema Batch A: narrow additive index release
+- [-] A — Instrumentation and production baselines
+- [-] B — Schema Batch A: narrow additive index release
 - [ ] C — Legacy audit and prune map
 - [ ] D — Remove `Added`
 - [ ] E — Collapse `RareItem` into `Item`
@@ -123,24 +123,26 @@ Make expensive phases visible and measurable.
 - resolver candidate query plans are captured
 
 ### Tasks
-- [ ] A1. Add minimal timing helper
-  - Status note:
-  - Evidence:
-- [ ] A2. Instrument top-level command execution
-  - Status note:
-  - Evidence:
-- [ ] A3. Define benchmark command set
-  - Status note:
-  - Evidence:
+- [x] A1. Add minimal timing helper
+  - Status note: `TradeEnv.time_block added in-session and DEBUG-gated timing output now exists at the helper level.`
+  - Evidence: `tradedangerous/tradeenv.py` in-session accepted edit
+- [x] A2. Instrument top-level command execution
+  - Status note: `CLI parse/preflight/TradeDB/run/render/total timings were added in-session, and TradeDB/TradeCalc phase timing was extended enough to expose the main current costs.`
+  - Evidence: `tradedangerous/cli.py`, `tradedangerous/tradedb.py`, `tradedangerous/tradecalc.py` in-session accepted edits
+- [x] A3. Define benchmark command set
+  - Status note: `The non-run and run benchmark commands were validated against the live packaged SQLite database and are now fixed in PERF_NOTES for checkpoint A baseline capture.`
+  - Evidence: `docs/PERF_NOTES.md`; live command validation on 2026-04-16
 - [ ] A4. Capture first live baseline
-  - Status note:
+  - Status note: `Not yet recorded.`
   - Evidence:
-- [ ] A5. Capture resolver/query-plan notes
-  - Status note:
-  - Evidence:
+- [x] A5. Capture resolver/query-plan notes
+  - Status note: `Live SQLite query plans were captured for exact system lookup, exact station lookup, system/station join lookup, partial system, and partial station.`
+  - Evidence: `tools/checkpoint_a_probe.py` output on 2026-04-16
 
 ### Notes
--
+- `A5` evidence shows the current live SQLite DB is already using `idx_system_by_name`, `idx_station_by_name`, and `idx_station_by_system_name`.
+- This means some older planning assumptions are stale relative to the inherited repo/runtime baseline.
+- The benchmark corpus is now validated; the remaining Checkpoint A step is baseline capture.
 
 ---
 
@@ -157,33 +159,34 @@ Ship the first narrow additive read-performance schema batch.
 - optional station composite index is either proven and included, or explicitly deferred
 
 ### Tasks
-- [ ] B1. Freeze Batch A scope
-  - Status note:
-  - Evidence:
-- [ ] B2. Add Batch A index to fresh-build schema
-  - Status note:
-  - Evidence:
+- [x] B1. Freeze Batch A scope
+  - Status note: `Inherited baseline indicates Batch A scope is already narrow: idx_system_by_name plus the proven station composite index, with no wider additive schema batch evidenced.`
+  - Evidence: `1bd9ba9`
+- [x] B2. Add Batch A index to fresh-build schema
+  - Status note: `idx_system_by_name was already present in ORM metadata and was added to the SQLite schema in inherited preparatory work; idx_station_by_system_name is present in ORM metadata and SQLite schema.`
+  - Evidence: `1bd9ba9`; `tradedangerous/db/orm_models.py`
 - [ ] B3. Add narrow in-place reconciliation helper
-  - Status note:
+  - Status note: `Still pending. Existing DBs remain valid but this checkpoint has not yet added a dedicated reconciliation helper.`
   - Evidence:
 - [ ] B4. Wire reconciliation through central lifecycle path
-  - Status note:
+  - Status note: `Still pending.`
   - Evidence:
 - [ ] B5. Verify SQLite fresh-build and upgrade path
-  - Status note:
+  - Status note: `Live SQLite evidence confirms current indexed state, but formal fresh-build/upgrade verification for the checkpoint is not yet recorded.`
   - Evidence:
 - [ ] B6. Verify MariaDB fresh-build and upgrade path
-  - Status note:
+  - Status note: `ORM metadata already includes the exact-lookup indexes, but formal fresh-build/upgrade verification for MariaDB is not yet recorded.`
   - Evidence:
-- [ ] B7. Decide on optional composite station index
-  - Status note:
-  - Evidence:
+- [x] B7. Decide on optional composite station index
+  - Status note: `Decision already made in inherited preparatory work: include idx_station_by_system_name because live SQLite plan/timing evidence justified it.`
+  - Evidence: `1bd9ba9`; live SQLite probe on 2026-04-16
 - [ ] B8. Write release-note text for Batch A
-  - Status note:
+  - Status note: `Still pending.`
   - Evidence:
 
 ### Notes
--
+- `1bd9ba9` predates the formal refactor session but is part of the inherited baseline and must be treated as such.
+- Remaining Checkpoint B work is now primarily verification, reconciliation, and documentation alignment rather than proving the value of the two key lookup indexes from scratch.
 
 ---
 
@@ -598,11 +601,11 @@ Record decisions that materially affect later work.
 - Revisit trigger:
 
 ### Entries
-- Date:
-  - Topic:
-  - Decision:
-  - Reason:
-  - Revisit trigger:
+- Date: `2026-04-16`
+  - Topic: `Inherited exact-lookup index baseline`
+  - Decision: `Treat commit 1bd9ba9 as inherited pre-refactor groundwork. Do not plan idx_system_by_name or idx_station_by_system_name as if they still need first-time justification.`
+  - Reason: `The current repo/runtime state already contains that work, and live SQLite query-plan evidence confirms active use of the indexes.`
+  - Revisit trigger: `Only if fresh-build or upgrade verification shows schema drift or missing coverage.`
 
 ---
 
@@ -617,12 +620,12 @@ Record decisions that materially affect later work.
 - Current workaround:
 
 ### Entries
-- Date:
-  - Blocker:
-  - Checkpoint affected:
-  - Severity:
-  - Needed decision/input:
-  - Current workaround:
+- Date: `2026-04-16`
+  - Blocker: `First live cold/warm baseline not yet recorded`
+  - Checkpoint affected: `A`
+  - Severity: `Medium`
+  - Needed decision/input: `Run the validated benchmark corpus and write the results into PERF_NOTES`
+  - Current workaround: `Use the validated corpus immediately for baseline capture; no further command selection work is required before timing begins`
 
 ---
 
@@ -630,14 +633,14 @@ Record decisions that materially affect later work.
 
 Use this as the short “what is already definitely done” section for quick scanning.
 
-- [ ] Milestone:
-  - Date completed:
+- [x] Milestone: `Inherited schema/index groundwork for exact system and station resolution`
+  - Date completed: `2026-03-24`
+  - Commit: `1bd9ba9`
+  - Notes: `Added idx_system_by_name to the SQLite schema and idx_station_by_system_name to SQLite schema plus ORM metadata; live SQLite evidence at the time and again on 2026-04-16 justified the station composite index.`
+- [x] Milestone: `Checkpoint A benchmark corpus validated on live packaged SQLite`
+  - Date completed: `2026-04-16`
   - Commit:
-  - Notes:
-- [ ] Milestone:
-  - Date completed:
-  - Commit:
-  - Notes:
+  - Notes: `Validated local, market, buy, sell, nav, rares, trade, and short/typical/wide run command shapes against a recently refreshed live SQLite database.`
 
 ---
 
