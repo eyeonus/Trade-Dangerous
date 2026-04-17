@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
+- Status: `[x]`
 - Checkpoint: `B — Schema Batch A: narrow additive index release`
-- Subtask: `B5 verify SQLite fresh-build/reset path`
+- Subtask: `B8 release-note text and closeout`
 - Owner: `Stef + ChatGPT`
 - Started: `2026-04-17`
-- Goal: `verify that the supported rebuild/reset flow produces the intended Batch A index set on SQLite, then mirror that verification on MariaDB`
+- Goal: `completed — Batch A rebuild/reset verification recorded for SQLite and MariaDB, and release-note text aligned to the rebuild-only rollout policy`
 
 ### Current blocker
-- Status: `[!]`
-- Blocker: `Formal fresh SQLite rebuild/reset verification has not yet been recorded for Batch A under the rebuild-only release policy.`
-- Impact: `Checkpoint B cannot be marked done until the supported rebuild/reset path is verified and written down.`
-- Needed to unblock: `run the supported clean rebuild/reset flow, inspect the recreated SQLite schema/indexes, and record the results`
+- Status: `[x]`
+- Blocker: `No active blocker remains for checkpoint B.`
+- Impact: `Checkpoint B acceptance criteria are now satisfied.`
+- Needed to unblock: `none`
 
 ### Last updated
 - Date: `2026-04-17`
-- By: `ChatGPT (policy clarified by Stef)`
-- Session summary: `Closed checkpoint A durably in repo state, verified that fresh-build source-of-truth paths already contain the Batch A indexes, and corrected Chapter B scope to the actual rebuild-only rollout policy rather than in-place additive upgrade work.`
+- By: `ChatGPT (with runtime verification evidence provided by Stef)`
+- Session summary: `Verified the packaged SQLite rebuild/reset outcome with live PRAGMA and query-plan output, verified the live MariaDB schema contains the intended Batch A indexes, and finalized the rebuild-only release-note/documentation closeout for checkpoint B.`
 
 ### Last known good rollback point
-- Commit: `85bd2e8`
-- Notes: `Checkpoint A instrumentation and docs are now durably pushed; Chapter B starts from this repo-visible state.`
+- Commit: `238ce5e`
+- Notes: `Batch A spec and tracker policy-alignment commits landed successfully; checkpoint B verification closeout is now reflected in the working tree and should be committed next.`
 
 ---
 
@@ -91,7 +91,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 ## 3. Checkpoint summary board
 
 - [x] A — Instrumentation and production baselines
-- [-] B — Schema Batch A: narrow additive index release
+- [x] B — Schema Batch A: narrow additive index release
 - [ ] C — Legacy audit and prune map
 - [ ] D — Remove `Added`
 - [ ] E — Collapse `RareItem` into `Item`
@@ -173,22 +173,23 @@ Ship the first narrow additive read-performance schema batch through the support
 - [~] B4. Wire reconciliation through central lifecycle path
   - Status note: `Not planned for the same reason as B3.`
   - Evidence: `2026-04-17 policy clarification from Stef`
-- [ ] B5. Verify SQLite fresh-build/reset path
-  - Status note: `Pending. Source inspection shows the canonical SQLite template already contains idx_system_by_name and idx_station_by_system_name, but formal rebuild/reset verification is not yet recorded.`
-  - Evidence:
-- [ ] B6. Verify MariaDB fresh-build/reset path
-  - Status note: `Pending. ORM metadata already includes the exact-lookup indexes, but formal reset verification for MariaDB is not yet recorded.`
-  - Evidence:
+- [x] B5. Verify SQLite fresh-build/reset path
+  - Status note: `Verified on 2026-04-17 against the packaged SQLite database after the supported rebuild/reset flow. PRAGMA output showed idx_system_by_name and idx_station_by_system_name, and EXPLAIN QUERY PLAN used idx_system_by_name for exact system lookup plus covering idx_station_by_system_name for exact system/station join lookup.`
+  - Evidence: `packaged SQLite runtime output on 2026-04-17 using %LOCALAPPDATA%\TradeDangerous\data\TradeDangerous.db`
+- [x] B6. Verify MariaDB fresh-build/reset path
+  - Status note: `Verified in practice on 2026-04-17 from the live MariaDB td_live schema: System includes idx_system_by_name and Station includes idx_station_by_system_name, idx_station_by_name, and idx_station_by_system.`
+  - Evidence: `live MariaDB schema screenshots for td_live.System and td_live.Station on 2026-04-17`
 - [x] B7. Decide on optional composite station index
   - Status note: `Decision already made in inherited preparatory work: include idx_station_by_system_name because live SQLite plan/timing evidence justified it.`
   - Evidence: `1bd9ba9`; live SQLite probe on 2026-04-16
-- [ ] B8. Write release-note text for Batch A
-  - Status note: `Pending. Release communication must reflect rebuild/reset support and must not promise in-place upgrade behavior.`
-  - Evidence:
+- [x] B8. Write release-note text for Batch A
+  - Status note: `Release-note text finalized in the Batch A spec and aligned to the rebuild/reset-only rollout policy.`
+  - Evidence: `docs/schema_batch_a_spec.md`
 
 ### Notes
 - `1bd9ba9` predates the formal refactor session but is part of the inherited baseline and must be treated as such.
-- Remaining Checkpoint B work is now verification and release/documentation alignment for the rebuild-only policy, not additive in-place reconciliation.
+- Checkpoint B is now complete under the rebuild/reset-only rollout policy.
+- The remaining schema work in later checkpoints is expected to be breaking and rebuild-driven, not additive in-place upgrade work.
 
 ---
 
@@ -664,6 +665,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-17`
   - Commit:
   - Notes: `Recorded cold and warm timings for all ten benchmark commands from the validated corpus; successful Windows execution required UTF-8 console/Python settings for DEBUG output.`
+- [x] Milestone: `Checkpoint B rebuild/reset verification and release-note closeout`
+  - Date completed: `2026-04-17`
+  - Commit:
+  - Notes: `Verified packaged SQLite runtime index presence and query-plan usage after the supported rebuild/reset path, confirmed live MariaDB schema presence for the same Batch A indexes, and finalized release-note text for the rebuild-only rollout policy.`
 
 ---
 
