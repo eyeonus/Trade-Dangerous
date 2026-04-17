@@ -91,7 +91,7 @@ Notes:
 
 ## Live SQLite baselines
 
-Status: first baseline not yet recorded
+Status: first cold/warm baseline recorded on 2026-04-17
 
 For each baseline capture, record:
 
@@ -103,43 +103,48 @@ For each baseline capture, record:
 - memory notes if available
 - caveats
 
-### Baseline template
+### Baseline 2026-04-17 — live packaged SQLite — checkpoint A first capture
 
 #### Baseline ID
-Date:
-DB note:
-Command corpus version:
+Date: 2026-04-17
+DB note: live packaged SQLite database; benchmark executed from the instrumented local working tree on Windows after reboot
+Command corpus version: checkpoint A fixed corpus validated on 2026-04-16
 Notes:
+- Cold and warm timings were captured by a single successful post-reboot harness run.
+- A prior post-reboot attempt failed due to Windows console encoding, not command/runtime logic.
+- Warm timings are recorded as observed and are not uniformly faster than cold timings.
 
 ##### Cold timings
-- `local`:
-- `market`:
-- `buy`:
-- `sell`:
-- `nav`:
-- `rares`:
-- `trade`:
-- `run-short`:
-- `run-typical`:
-- `run-wide`:
+- `local`: 9.030s
+- `market`: 6.620s
+- `buy`: 6.790s
+- `sell`: 7.290s
+- `nav`: 7.390s
+- `rares`: 6.620s
+- `trade`: 0.750s
+- `run-short`: 26.370s
+- `run-typical`: 28.380s
+- `run-wide`: 32.760s
 
 ##### Warm timings
-- `local`:
-- `market`:
-- `buy`:
-- `sell`:
-- `nav`:
-- `rares`:
-- `trade`:
-- `run-short`:
-- `run-typical`:
-- `run-wide`:
+- `local`: 6.980s
+- `market`: 6.920s
+- `buy`: 7.100s
+- `sell`: 7.770s
+- `nav`: 8.180s
+- `rares`: 7.090s
+- `trade`: 0.860s
+- `run-short`: 28.890s
+- `run-typical`: 30.290s
+- `run-wide`: 30.720s
 
 ##### Memory notes
-- RSS after `TradeDB.load`:
-- RSS after `TradeCalc.__init__`:
-- Peak memory during `run`:
+- RSS after `TradeDB.load`: not captured
+- RSS after `TradeCalc.__init__`: not captured
+- Peak memory during `run`: not captured
 - Other notes:
+  - Successful Windows shell execution required UTF-8 console/Python settings (`chcp 65001`, `PYTHONIOENCODING=utf-8`, `PYTHONUTF8=1`) because DEBUG output included a Unicode arrow in `reloadCache` logging.
+  - Harness summary/logs were written under `tmp/checkpoint_a_baseline_20260417_143221/`.
 
 ## Query plans
 
@@ -228,6 +233,7 @@ Evidence now present:
 - top-level execution timings exist
 - benchmark command set is defined and validated on the live packaged SQLite DB
 - resolver candidate query plans are captured
+- first live cold/warm baseline is recorded in this document
 
 Still pending:
-- first live cold/warm baseline capture
+- none within checkpoint A baseline capture
