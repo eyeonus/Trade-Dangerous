@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
+- Status: `[x]`
 - Checkpoint: `A — Instrumentation and production baselines`
 - Subtask: `A4 first live baseline capture`
 - Owner: `Stef + ChatGPT`
 - Started: `2026-04-16`
-- Goal: `record the first cold/warm live SQLite baseline using the validated checkpoint A benchmark corpus`
+- Goal: `completed — first live cold/warm SQLite baseline recorded in docs/PERF_NOTES.md`
 
 ### Current blocker
-- Status: `[!]`
-- Blocker: `The first live baseline has not yet been recorded, even though the benchmark corpus is now validated.`
-- Impact: `Checkpoint A cannot be marked done until cold/warm timing evidence is written down.`
-- Needed to unblock: `run the validated corpus as cold and warm passes and record the results in docs/PERF_NOTES.md`
+- Status: `[x]`
+- Blocker: `No active blocker remains for checkpoint A; the first live cold/warm baseline was captured on 2026-04-17.`
+- Impact: `Checkpoint A acceptance criteria are now satisfied.`
+- Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-16`
-- By: `ChatGPT (with live DB probe and command validation run by Stef)`
-- Session summary: `Accepted in-session timing instrumentation for CLI, TradeDB, and TradeCalc; captured live SQLite query plans; validated the checkpoint A benchmark corpus against a live packaged SQLite DB refreshed via recent import; confirmed inherited preparatory index work via commit 1bd9ba9; aligned the project docs to the actual repo/runtime baseline.`
+- Date: `2026-04-17`
+- By: `ChatGPT (with live cold/warm benchmark harness run by Stef)`
+- Session summary: `Recorded the first live cold/warm SQLite baseline for the validated checkpoint A corpus; confirmed all ten benchmark commands completed successfully under the instrumented local working tree; noted the Windows shell UTF-8 setup required to avoid console encoding failure during debug output.`
 
 ### Last known good rollback point
 - Commit: `cf27373`
-- Notes: `PERF_NOTES benchmark corpus and checkpoint A evidence update landed successfully; current tracker state now describes the repo as it stands after that docs commit.`
+- Notes: `Latest committed docs baseline remains cf27373; the 2026-04-17 checkpoint A baseline capture is now reflected in the working tree and should be committed next.`
 
 ---
 
@@ -89,7 +89,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 
 ## 3. Checkpoint summary board
 
-- [-] A — Instrumentation and production baselines
+- [x] A — Instrumentation and production baselines
 - [-] B — Schema Batch A: narrow additive index release
 - [ ] C — Legacy audit and prune map
 - [ ] D — Remove `Added`
@@ -132,9 +132,9 @@ Make expensive phases visible and measurable.
 - [x] A3. Define benchmark command set
   - Status note: `The non-run and run benchmark commands were validated against the live packaged SQLite database and are now fixed in PERF_NOTES for checkpoint A baseline capture.`
   - Evidence: `docs/PERF_NOTES.md`; live command validation on 2026-04-16
-- [ ] A4. Capture first live baseline
-  - Status note: `Not yet recorded.`
-  - Evidence:
+- [x] A4. Capture first live baseline
+  - Status note: `First live cold/warm baseline captured on 2026-04-17 against the live packaged SQLite database using the validated corpus. All ten commands completed successfully.`
+  - Evidence: `docs/PERF_NOTES.md`; `tmp/checkpoint_a_baseline_20260417_143221/summary.csv`
 - [x] A5. Capture resolver/query-plan notes
   - Status note: `Live SQLite query plans were captured for exact system lookup, exact station lookup, system/station join lookup, partial system, and partial station.`
   - Evidence: `tools/checkpoint_a_probe.py` output on 2026-04-16
@@ -142,7 +142,8 @@ Make expensive phases visible and measurable.
 ### Notes
 - `A5` evidence shows the current live SQLite DB is already using `idx_system_by_name`, `idx_station_by_name`, and `idx_station_by_system_name`.
 - This means some older planning assumptions are stale relative to the inherited repo/runtime baseline.
-- The benchmark corpus is now validated; the remaining Checkpoint A step is baseline capture.
+- The benchmark corpus is now validated, and the first live cold/warm baseline was captured on 2026-04-17.
+- Memory notes were not captured during this first baseline and remain optional follow-up, not a checkpoint A blocker.
 
 ---
 
@@ -626,6 +627,12 @@ Record decisions that materially affect later work.
   - Severity: `Medium`
   - Needed decision/input: `Run the validated benchmark corpus and write the results into PERF_NOTES`
   - Current workaround: `Use the validated corpus immediately for baseline capture; no further command selection work is required before timing begins`
+- Date: `2026-04-17`
+  - Blocker: `Windows console encoding caused the first post-reboot benchmark attempt to fail when DEBUG output emitted a Unicode arrow`
+  - Checkpoint affected: `A`
+  - Severity: `Low`
+  - Needed decision/input: `Force UTF-8 console/Python settings before rerunning the baseline harness on Windows`
+  - Current workaround: `Use chcp 65001 plus PYTHONIOENCODING=utf-8 and PYTHONUTF8=1 for benchmark sessions`
 
 ---
 
@@ -641,6 +648,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-16`
   - Commit:
   - Notes: `Validated local, market, buy, sell, nav, rares, trade, and short/typical/wide run command shapes against a recently refreshed live SQLite database.`
+- [x] Milestone: `Checkpoint A first live cold/warm baseline captured`
+  - Date completed: `2026-04-17`
+  - Commit:
+  - Notes: `Recorded cold and warm timings for all ten benchmark commands from the validated corpus; successful Windows execution required UTF-8 console/Python settings for DEBUG output.`
 
 ---
 
