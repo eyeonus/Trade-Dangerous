@@ -584,6 +584,7 @@ class TradeCalc:
         
         if not tdenv:
             tdenv = tdb.tdenv
+        calc_init_started = time.perf_counter()
         self.tdb = tdb
         self.tdenv = tdenv
         self.aborted: bool = False
@@ -598,17 +599,18 @@ class TradeCalc:
         
         # ---------- Build optional item filter (avoidItems + specific items) ----------
         itemFilter = None
-        if tdenv.avoidItems or items:
-            avoidItemIDs = {item.ID for item in tdenv.avoidItems}
-            loadItems = items or tdb.itemByID.values()
-            loadIDs = []
-            for item in loadItems:
-                ID = item if isinstance(item, int) else item.ID
-                if ID not in avoidItemIDs:
-                    loadIDs.append(ID)
-            if not loadIDs:
-                raise TradeException("No items to load.")
-            itemFilter = loadIDs
+        with tdenv.time_block("TradeCalc.__init__.item_filter", level=0):
+            if tdenv.avoidItems or items:
+                avoidItemIDs = {item.ID for item in tdenv.avoidItems}
+                loadItems = items or tdb.itemByID.values()
+                loadIDs = []
+                for item in loadItems:
+                    ID = item if isinstance(item, int) else item.ID
+                    if ID not in avoidItemIDs:
+                        loadIDs.append(ID)
+                if not loadIDs:
+                    raise TradeException("No items to load.")
+                itemFilter = loadIDs
         
         # ---------- Maps and counters ----------
         demand = self.stationsBuying = defaultdict(list)
@@ -638,97 +640,104 @@ class TradeCalc:
             sys.stdout.flush()
         
         # ---------- Core/Engine path (NO Session; NO ORM entities) ----------
-        columns = (
-            "station_id, item_id, "
-            "CASE WHEN demand_units >= :mindemand THEN demand_price ELSE 0 END AS fx_demand_price, demand_units, demand_level, "
-            "CASE WHEN supply_units >= :minsupply THEN supply_price ELSE 0 END AS fx_supply_price, supply_units, supply_level, "
-            "modified"
-        )
-        
-        where_clauses = ["(fx_demand_price > 0 OR fx_supply_price > 0)"]
-        params = {"mindemand": minDemand or 1, "minsupply": minSupply or 1}
-        
-        # Age cutoff (if provided in env)
-        if tdenv.maxAge:
-            cutoffS = nowS - (tdenv.maxAge * 60 * 60 * 24)
-            if tdb.engine.dialect.name == "sqlite":
-                where_clauses.append("CAST(strftime('%s', modified) AS INTEGER) >= :cutoffS")
-            else:
-                where_clauses.append("UNIX_TIMESTAMP(modified) >= :cutoffS")
-            params["cutoffS"] = cutoffS
-        
-        # Optional item filter — enumerate placeholders (SQLAlchemy text() won't expand tuples)
-        if itemFilter:
-            iid_placeholders = []
-            for i, iid in enumerate(itemFilter):
-                key = f"iid{i}"
-                params[key] = int(iid)
-                iid_placeholders.append(":" + key)
-            where_clauses.append(f"item_id IN ({', '.join(iid_placeholders)})")
-        
-        # Optional station restriction for ultra-light preload
-        if self._restrict_station_ids:
-            sid_placeholders = []
-            for i, sid in enumerate(self._restrict_station_ids):
-                key = f"sid{i}"
-                params[key] = int(sid)
-                sid_placeholders.append(":" + key)
-            where_clauses.append(f"station_id IN ({', '.join(sid_placeholders)})")
-        
-        sql = f"SELECT {columns} FROM StationItem"
-        if where_clauses:
-            sql += " WHERE " + " AND ".join(where_clauses)
+        with tdenv.time_block("TradeCalc.__init__.query_prep", level=0):
+            columns = (
+                "station_id, item_id, "
+                "CASE WHEN demand_units >= :mindemand THEN demand_price ELSE 0 END AS fx_demand_price, demand_units, demand_level, "
+                "CASE WHEN supply_units >= :minsupply THEN supply_price ELSE 0 END AS fx_supply_price, supply_units, supply_level, "
+                "modified"
+            )
+            
+            where_clauses = ["(fx_demand_price > 0 OR fx_supply_price > 0)"]
+            params = {"mindemand": minDemand or 1, "minsupply": minSupply or 1}
+            
+            # Age cutoff (if provided in env)
+            if tdenv.maxAge:
+                cutoffS = nowS - (tdenv.maxAge * 60 * 60 * 24)
+                if tdb.engine.dialect.name == "sqlite":
+                    where_clauses.append("CAST(strftime('%s', modified) AS INTEGER) >= :cutoffS")
+                else:
+                    where_clauses.append("UNIX_TIMESTAMP(modified) >= :cutoffS")
+                params["cutoffS"] = cutoffS
+            
+            # Optional item filter — enumerate placeholders (SQLAlchemy text() won't expand tuples)
+            if itemFilter:
+                iid_placeholders = []
+                for i, iid in enumerate(itemFilter):
+                    key = f"iid{i}"
+                    params[key] = int(iid)
+                    iid_placeholders.append(":" + key)
+                where_clauses.append(f"item_id IN ({', '.join(iid_placeholders)})")
+            
+            # Optional station restriction for ultra-light preload
+            if self._restrict_station_ids:
+                sid_placeholders = []
+                for i, sid in enumerate(self._restrict_station_ids):
+                    key = f"sid{i}"
+                    params[key] = int(sid)
+                    sid_placeholders.append(":" + key)
+                where_clauses.append(f"station_id IN ({', '.join(sid_placeholders)})")
+            
+            sql = f"SELECT {columns} FROM StationItem"
+            if where_clauses:
+                sql += " WHERE " + " AND ".join(where_clauses)
         
         tdenv.DEBUG1("query: {}", sql)
         tdenv.DEBUG1("params: {}", params)
-        with tdb.engine.connect() as conn:
-            result = conn.execute(_sa_text(sql), params)
-            
-            for (
-                stnID,
-                itmID,
-                d_price, d_units, d_level,
-                s_price, s_units, s_level,
-                modified,
-            ) in result:
-                rows_seen += 1
-                # Compute legacy ageS from modified using parse_ts(.)
-                mod_dt = parse_ts(modified)
-                if not mod_dt:
-                    if showProgress:
-                        sys.stdout.write("\n")
-                        sys.stdout.flush()
-                    raise BadTimestampError(tdb, stnID, itmID, modified)
-                ageS = nowS - int(mod_dt.timestamp())
+        with tdenv.time_block("TradeCalc.__init__.row_scan", level=0):
+            with tdb.engine.connect() as conn:
+                result = conn.execute(_sa_text(sql), params)
                 
-                # Buying map (demand side)
-                if d_price and d_price > 0:
-                    demand[stnID].append((itmID, d_price, d_units or 0, d_level, ageS))
-                    dmdCount += 1
-                
-                # Selling map (supply side)
-                if s_price and s_price > 0:
-                    supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
-                    supCount += 1
-                
-                # Calling 'time.time()' is *very* expensive, so only do it every so many rows
-                # but the == 1 means that we'll do it for the very first row too.
-                if showProgress and (rows_seen & 15) == 1:  # fast modulo 16
-                    heartbeat()
+                for (
+                    stnID,
+                    itmID,
+                    d_price, d_units, d_level,
+                    s_price, s_units, s_level,
+                    modified,
+                ) in result:
+                    rows_seen += 1
+                    # Compute legacy ageS from modified using parse_ts(.)
+                    mod_dt = parse_ts(modified)
+                    if not mod_dt:
+                        if showProgress:
+                            sys.stdout.write("\n")
+                            sys.stdout.flush()
+                        raise BadTimestampError(tdb, stnID, itmID, modified)
+                    ageS = nowS - int(mod_dt.timestamp())
+                    
+                    # Buying map (demand side)
+                    if d_price and d_price > 0:
+                        demand[stnID].append((itmID, d_price, d_units or 0, d_level, ageS))
+                        dmdCount += 1
+                    
+                    # Selling map (supply side)
+                    if s_price and s_price > 0:
+                        supply[stnID].append((itmID, s_price, s_units, s_level, ageS))
+                        supCount += 1
+                    
+                    # Calling 'time.time()' is *very* expensive, so only do it every so many rows
+                    # but the == 1 means that we'll do it for the very first row too.
+                    if showProgress and (rows_seen & 15) == 1:  # fast modulo 16
+                        heartbeat()
         
         if showProgress:
             sys.stdout.write("\n")
             sys.stdout.flush()
         
-        self._buying_ids = set(self.stationsBuying.keys())
-        self._selling_ids = set(self.stationsSelling.keys())
-        self.eligible_station_ids = self._buying_ids & self._selling_ids
-        
-        self._dst_buy_map = {}
+        with tdenv.time_block("TradeCalc.__init__.finalize", level=0):
+            self._buying_ids = set(self.stationsBuying.keys())
+            self._selling_ids = set(self.stationsSelling.keys())
+            self.eligible_station_ids = self._buying_ids & self._selling_ids
+            
+            self._dst_buy_map = {}
         
         tdenv.DEBUG1(
             "Preload used Engine/Core (no ORM identity map). Rows kept: buys={}, sells={}",
             dmdCount, supCount,
+        )
+        tdenv.DEBUG0(
+            "TIMING TradeCalc.__init__: {:.3f}ms",
+            (time.perf_counter() - calc_init_started) * 1000.0,
         )
 
 
@@ -996,6 +1005,7 @@ class TradeCalc:
         """
         
         self.aborted = False
+        timing_started = time.perf_counter()
         tdb = self.tdb
         tdenv = self.tdenv
         avoidPlaces = getattr(tdenv, "avoidPlaces", None) or ()
@@ -1310,8 +1320,16 @@ class TradeCalc:
             sys.stderr.flush()
         
         if connections == 0:
+            tdenv.DEBUG0(
+                "TIMING TradeCalc.getBestHops: {:.3f}ms",
+                (time.perf_counter() - timing_started) * 1000.0,
+            )
             raise NoHopsError("No destinations could be reached within the constraints.")
         
+        tdenv.DEBUG0(
+            "TIMING TradeCalc.getBestHops: {:.3f}ms",
+            (time.perf_counter() - timing_started) * 1000.0,
+        )
         return [
             route.plus(dst, trade, jumps, score)
             for (dst, route, trade, jumps, _, score) in bestToDest.values()

@@ -93,46 +93,66 @@ def trade(argv):
     """
     This method represents the trade command.
     """
+    import time
+    
+    total_started = time.perf_counter()
+    parse_started = total_started
     cmdIndex = commands.CommandIndex()
     cmdenv = cmdIndex.parse(argv)
-    
-    # Phase A: preflight/fast validation (must run before any heavy TradeDB load)
-    if (preflight := getattr(cmdenv, "preflight", None)) and callable(preflight):
-        preflight()
-    
-    # Phase B: heavy init + execution
-    tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
-    if cmdenv.usesTradeData:
-        tsc = tdb.tradingStationCount
-        if tsc == 0:
-            raise exceptions.NoDataError(
-                "There is no trading data for ANY station in "
-                "the local database. Please enter or import "
-                "price data."
-            )
-        if tsc == 1:
-            raise exceptions.NoDataError(
-                "The local database only contains trading data "
-                "for one station. Please enter or import data "
-                "for additional stations."
-            )
-        if tsc < 8:
-            cmdenv.NOTE(
-                "The local database only contains trading data "
-                "for {} stations. Please enter or import data "
-                "for additional stations.".format(
-                    tsc
-                )
-            )
+    cmdenv.DEBUG0(
+        "TIMING parse: {:.3f}ms",
+        (time.perf_counter() - parse_started) * 1000.0,
+    )
     
     try:
-        results = cmdenv.run(tdb)
-    except tradeexcept.SimpleAbort as e:
-        cmdenv.console.print(f"\n{e}\n", style="red")
-        sys.exit(1)
+        # Phase A: preflight/fast validation (must run before any heavy TradeDB load)
+        with cmdenv.time_block("preflight", level=0):
+            if (preflight := getattr(cmdenv, "preflight", None)) and callable(preflight):
+                preflight()
+        
+        # Phase B: heavy init + execution
+        with cmdenv.time_block("TradeDB.__init__", level=0):
+            tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
+        
+        if cmdenv.usesTradeData:
+            tsc = tdb.tradingStationCount
+            if tsc == 0:
+                raise exceptions.NoDataError(
+                    "There is no trading data for ANY station in "
+                    "the local database. Please enter or import "
+                    "price data."
+                )
+            if tsc == 1:
+                raise exceptions.NoDataError(
+                    "The local database only contains trading data "
+                    "for one station. Please enter or import data "
+                    "for additional stations."
+                )
+            if tsc < 8:
+                cmdenv.NOTE(
+                    "The local database only contains trading data "
+                    "for {} stations. Please enter or import data "
+                    "for additional stations.".format(
+                        tsc
+                    )
+                )
+        
+        results = None
+        try:
+            with cmdenv.time_block("command_run", level=0):
+                results = cmdenv.run(tdb)
+        except tradeexcept.SimpleAbort as e:
+            cmdenv.console.print(f"\n{e}\n", style="red")
+            sys.exit(1)
+        finally:
+            # always close tdb
+            tdb.close(final=True)
+        
+        if results:
+            with cmdenv.time_block("render", level=0):
+                results.render()
     finally:
-        # always close tdb
-        tdb.close(final=True)
-    
-    if results:
-        results.render()
+        cmdenv.DEBUG0(
+            "TIMING total: {:.3f}ms",
+            (time.perf_counter() - total_started) * 1000.0,
+        )

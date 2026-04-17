@@ -2098,6 +2098,7 @@ class TradeDB:
         Populate the list of item categories using SQLAlchemy.
         CAUTION: Will orphan previously loaded objects.
         """
+        started = time.time()
         with self.Session() as session:
             rows = session.query(
                 SA_Category.category_id,
@@ -2108,7 +2109,11 @@ class TradeDB:
                 for row in rows
             }
         
-        self.tdenv.DEBUG1("Loaded {} Categories", len(self.categoryByID))
+        self.tdenv.DEBUG1(
+            "Loaded {:n} Categories in {:.3f}s",
+            len(self.categoryByID),
+            time.time() - started,
+        )
     
     def lookupCategory(self, name):
         """
@@ -2130,6 +2135,7 @@ class TradeDB:
         Populate the Item list using SQLAlchemy.
         CAUTION: Will orphan previously loaded objects.
         """
+        started = time.time()
         itemByID, itemByName, itemByFDevID = {}, {}, {}
         with self.Session() as session:
             rows = session.query(
@@ -2156,7 +2162,11 @@ class TradeDB:
         self.itemByName = itemByName
         self.itemByFDevID = itemByFDevID
         
-        self.tdenv.DEBUG1("Loaded {:n} Items", len(self.itemByID))
+        self.tdenv.DEBUG1(
+            "Loaded {:n} Items in {:.3f}s",
+            len(self.itemByID),
+            time.time() - started,
+        )
     
     def lookupItem(self, name):
         """

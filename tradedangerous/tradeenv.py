@@ -238,6 +238,37 @@ class TradeEnv(Utf8SafeConsoleIOMixin):
         
         self.theme = RichColorTheme() if self.__dict__['color'] else BasicRichColorTheme()
     
+    def time_block(self, label: str, level: int = 0):
+        """
+        Return a lightweight context manager that records elapsed time for a named
+        phase and emits it through DEBUG<level> when that debug level is enabled.
+        """
+        if int(getattr(self, "debug", 0) or 0) <= level:
+            class _NullTimingBlock:
+                def __enter__(self_nonlocal):
+                    return self_nonlocal
+                
+                def __exit__(self_nonlocal, exc_type, exc, tb):
+                    return False
+            
+            return _NullTimingBlock()
+        
+        import time
+        
+        logger = getattr(self, f"DEBUG{level}")
+        
+        class _TimingBlock:
+            def __enter__(self_nonlocal):
+                self_nonlocal.started = time.perf_counter()
+                return self_nonlocal
+            
+            def __exit__(self_nonlocal, exc_type, exc, tb):
+                elapsed_ms = (time.perf_counter() - self_nonlocal.started) * 1000.0
+                logger("TIMING {}: {:.3f}ms", label, elapsed_ms)
+                return False
+        
+        return _TimingBlock()
+    
     @staticmethod
     def __disabled_uprint(*args: Any, **kwargs: Any) -> None:
         pass
