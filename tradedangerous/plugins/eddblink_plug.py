@@ -16,7 +16,7 @@ import requests
 import time
 import typing
 
-from sqlalchemy import func, delete, select, exists, text
+from sqlalchemy import delete, select, exists, text
 
 from tradedangerous import plugins, transfers, TradeException
 from tradedangerous import cache as td_cache
@@ -81,23 +81,6 @@ def _make_station_id_lookup(tdenv: TradeEnv, session: Session) -> frozenset[int]
     tdenv.DEBUG0("Getting list of stations...")
     rows = session.query(SA.Station.station_id).all()
     return frozenset(r[0] for r in rows)
-
-
-def _collect_station_modified_times(tdenv: TradeEnv, session: Session) -> dict[int, int]:
-    """Helper: build a list of the last modified time for all stations by id (epoch seconds)."""
-    tdenv.DEBUG0("Getting last-update times for stations...")
-    rows = (
-        session.query(
-            SA.StationItem.station_id,
-            func.min(SA.StationItem.modified),
-        )
-        .group_by(SA.StationItem.station_id)
-        .all()
-    )
-    return {
-        station_id: int(modified.timestamp()) if modified else 0
-        for station_id, modified in rows
-    }
 
 
 class ImportPlugin(plugins.ImportPluginBase):

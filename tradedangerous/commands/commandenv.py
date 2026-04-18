@@ -143,9 +143,6 @@ class CommandEnv(TradeEnv):
         results = CommandResults(self)
         return self._cmd.run(results, self, tdb)
     
-    def render(self, results: CommandResults) -> None:
-        self._cmd.render(self, results, self, self.tdb)
-    
     def checkMFD(self) -> None:
         self.mfd = None
         try:

@@ -1929,60 +1929,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 .values(**values)
             )
     
-    def _upsert_shipyard(self, tables: dict[str, Table], station_id: int, ships: list[dict[str, Any]], ts: datetime) -> int:
-        t_ship, t_vendor = tables["Ship"], tables["ShipVendor"]
-        ship_rows, vendor_rows = [], []
-        
-        for sh in ships:
-            ship_id = sh.get("shipId")
-            name = sh.get("name")
-            if ship_id is None or name is None:
-                continue
-            ship_rows.append({"ship_id": ship_id, "name": name})
-            vendor_rows.append({"ship_id": ship_id, "station_id": station_id, "modified": ts})
-        
-        if ship_rows:
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_simple(self.session, t_ship, rows=ship_rows, key_cols=("ship_id",), update_cols=("name",))
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_simple(self.session, t_ship, rows=ship_rows, key_cols=("ship_id",), update_cols=("name",))
-            else:
-                for r in ship_rows:
-                    exists = self.session.execute(select(t_ship.c.name).where(t_ship.c.ship_id == r["ship_id"])).first()
-                    if exists is None:
-                        self.session.execute(insert(t_ship).values(**r))
-                    elif exists[0] != r["name"]:
-                        self.session.execute(update(t_ship).where(t_ship.c.ship_id == r["ship_id"]).values(name=r["name"]))
-        
-        wrote = 0
-        if vendor_rows:
-            if db_utils.is_sqlite(self.session):
-                db_utils.sqlite_upsert_modified(self.session, t_vendor, rows=vendor_rows,
-                                                key_cols=("ship_id", "station_id"), modified_col="modified", update_cols=())
-                wrote = len(vendor_rows)
-            elif db_utils.is_mysql(self.session):
-                db_utils.mysql_upsert_modified(self.session, t_vendor, rows=vendor_rows,
-                                               key_cols=("ship_id", "station_id"), modified_col="modified", update_cols=())
-                wrote = len(vendor_rows)
-            else:
-                for r in vendor_rows:
-                    ven = self.session.execute(
-                        select(t_vendor.c.modified).where(and_(t_vendor.c.ship_id == r["ship_id"], t_vendor.c.station_id == r["station_id"]))
-                    ).first()
-                    if ven is None:
-                        self.session.execute(insert(t_vendor).values(**r))
-                        wrote += 1
-                    else:
-                        dbm = ven[0]
-                        if dbm is None or r["modified"] > dbm:
-                            self.session.execute(
-                                update(t_vendor)
-                                .where(and_(t_vendor.c.ship_id == r["ship_id"], t_vendor.c.station_id == r["station_id"]))
-                                .values(modified=r["modified"])
-                            )
-                            wrote += 1
-        return wrote
-    
     def _upsert_outfitting(self, tables: dict[str, Table], station_id: int, modules: list[dict[str, Any]], ts: datetime) -> int:
         t_up, t_vendor = tables["Upgrade"], tables["UpgradeVendor"]
         up_rows, vendor_rows = [], []
@@ -2930,9 +2876,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             f"Written(stations): mkt={wm:,} outf={wo:,} shp={ws:,}"
         
         )
-        self._live_status(msg)
-    
-    def _live_line(self, msg: str) -> None:
         self._live_status(msg)
     
     def _live_status(self, msg: str) -> None:
