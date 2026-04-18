@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[x]`
-- Checkpoint: `B — Schema Batch A: narrow additive index release`
-- Subtask: `B8 release-note text and closeout`
-- Owner: `Stef + ChatGPT`
-- Started: `2026-04-17`
-- Goal: `completed — Batch A rebuild/reset verification recorded for SQLite and MariaDB, and release-note text aligned to the rebuild-only rollout policy`
+- Status: `[-]`
+- Checkpoint: `C — Legacy audit and prune map`
+- Subtask: `C1/C3/C4 bounded prune packet and audit-method tightening`
+- Owner: `Tromador + ChatGPT`
+- Started: `2026-04-18`
+- Goal: `in progress — Chapter C resumed after checkpoint B closeout; a false-positive dead-code removal was caught and reverted, the audit method was tightened to one-at-a-time repo-internal caller verification, and a first four-function orphaned-helper prune packet landed.`
 
 ### Current blocker
 - Status: `[x]`
-- Blocker: `No active blocker remains for checkpoint B.`
-- Impact: `Checkpoint B acceptance criteria are now satisfied.`
+- Blocker: `No active blocker remains for checkpoint C at this point.`
+- Impact: `Work can continue with the next bounded audit target.`
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-17`
-- By: `ChatGPT (with runtime verification evidence provided by Stef)`
-- Session summary: `Verified the packaged SQLite rebuild/reset outcome with live PRAGMA and query-plan output, verified the live MariaDB schema contains the intended Batch A indexes, and finalized the rebuild-only release-note/documentation closeout for checkpoint B.`
+- Date: `2026-04-18`
+- By: `ChatGPT (with runtime verification evidence and local commit work provided by Tromador)`
+- Session summary: `Resumed Chapter C, caught and reversed a false-positive removal of CommandEnv.colorize after proving it is still live via dynamic lookup, re-audited the remaining candidates one at a time, removed four orphaned helper methods in 0d8c165, split and closed the X52 issue separately in a0de3a3, cleaned up the run workspace in 4da6695, and landed the Rich/color-path follow-up in 1c12adf.`
 
 ### Last known good rollback point
-- Commit: `238ce5e`
-- Notes: `Batch A spec and tracker policy-alignment commits landed successfully; checkpoint B verification closeout is now reflected in the working tree and should be committed next.`
+- Commit: `0d8c165`
+- Notes: `First re-audited Chapter C prune packet landed: CommandEnv.render, spansh ImportPlugin._upsert_shipyard, spansh ImportPlugin._live_line, and eddblink _collect_station_modified_times removed. CommandEnv.colorize is explicitly excluded after false-positive correction.`
 
 ---
 
