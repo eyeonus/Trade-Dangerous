@@ -1147,7 +1147,6 @@ class RunWorkspace(DraftValueHelper):
                     self._build_extended_market_section()
                     self._build_extended_trade_section()
                     self._build_extended_search_section()
-                    self._build_extended_output_section()
 
                 with ui.row().classes('justify-end'):
                     ui.button('Close', on_click=dialog.close)
@@ -1534,46 +1533,3 @@ class RunWorkspace(DraftValueHelper):
                 ).classes('w-40').tooltip(
                     'Changes which hop Prune score takes effect from.'
                 )
-
-    def _build_extended_output_section(self) -> None:
-        with ui.column().classes('w-full gap-3'):
-            ui.label('Output and devices')
-
-            with ui.row().classes('w-full gap-4'):
-                ui.checkbox(
-                    'Progress',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'progress',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'progress',
-                        event.value,
-                    ),
-                ).tooltip('Show hop progress.')
-
-                ui.checkbox(
-                    'Checklist',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'checklist',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'checklist',
-                        event.value,
-                    ),
-                ).tooltip('Provide a checklist flow for the route.')
-                ui.checkbox(
-                    'X52 Pro',
-                    value=self._bool_value(
-                        self.draft.advanced_values,
-                        'x52pro',
-                    ),
-                    on_change=lambda event: self._set_bool(
-                        self.draft.advanced_values,
-                        'x52pro',
-                        event.value,
-                    ),
-                ).tooltip('Enable experimental X52 Pro MFD output.')
