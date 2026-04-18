@@ -50,7 +50,6 @@ from collections import defaultdict
 from typing import NamedTuple
 import locale
 import os
-import re
 import sys
 import time
 import typing
@@ -66,7 +65,7 @@ from .tradedb import Trade, Destination, describeAge
 from tradedangerous.db.utils import parse_ts  # replaces legacy strftime('%s', modified)
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
+    from collections.abc import Iterable
     from tradedangerous import TradeDB, TradeEnv
 
 locale.setlocale(locale.LC_ALL, '')
@@ -235,139 +234,61 @@ class Route:
     def __hash__(self):
         return hash((self.route, self.hops, self.startCr, self.gainCr, self.jumps, self.score))
     
-    def debug_text(self, colorize: Callable[[str, str], str]) -> str:
-        lhs = colorize("cyan", self.firstStation.name())
-        rhs = colorize("blue", self.lastStation.name())
-        return f"{lhs} (#{self.firstStation.ID}) -> {rhs} (#{self.lastStation.ID})"
+    def debug_text(self) -> str:
+        return (
+            f"{self.firstStation.name()} (#{self.firstStation.ID}) -> "
+            f"{self.lastStation.name()} (#{self.lastStation.ID})"
+        )
     
-    def text(self, colorize: Callable[[str, str], str]) -> str:
-        lhs = colorize("cyan", self.firstStation.name())
-        rhs = colorize("blue", self.lastStation.name())
-        return f"{lhs} -> {rhs}"
+    def text(self) -> str:
+        return f"{self.firstStation.name()} -> {self.lastStation.name()}"
     
     def detail(self, tdenv):
         """
-        Legacy helper used by run_cmd.render().
+        Rich-native helper used by run_cmd.render().
         Renders this route using cmdenv/tdenv display settings.
         
-        Honors TD_NO_COLOR and tdenv.noColor to disable ANSI color codes.
+        Honors TD_NO_COLOR and tdenv.noColor to disable Rich styling.
         """
-        # TD_NO_COLOR disables color if set to anything truthy (except 0/false/no/off/"")
         env_val = os.getenv("TD_NO_COLOR", "")
         env_no_color = bool(env_val) and env_val.strip().lower() not in ("0", "", "false", "no", "off")
-        
-        no_color = env_no_color or bool(getattr(tdenv, "noColor", False))
-        
-        if no_color:
-            def colorize(_c, s):
-                return s
-        else:
-            _cz = getattr(tdenv, "colorize", None)
-            if callable(_cz):
-                def colorize(c, s):
-                    return _cz(c, s)
-            else:
-                def colorize(_c, s):
-                    return s
+        no_color = (
+            env_no_color
+            or bool(getattr(tdenv, "noColor", False))
+            or not bool(getattr(tdenv, "color", False))
+        )
         
         detail = int(getattr(tdenv, "detail", 0) or 0)
         goalSystem = getattr(tdenv, "goalSystem", None)
         credits = int(getattr(tdenv, "credits", 0) or 0)
         
-        return self.render(colorize, tdenv, detail=detail, goalSystem=goalSystem, credits=credits)
+        return self.render(
+            tdenv,
+            detail=detail,
+            goalSystem=goalSystem,
+            credits=credits,
+            use_color=not no_color,
+        )
     
-    def render(self, colorize, tdenv, detail=0, goalSystem=None, credits=0):
+    def render(self, tdenv, detail=0, goalSystem=None, credits=0, use_color=True):
         """
-        Produce a formatted string representation of this route.
+        Produce a Rich Text representation of this route.
         """
+        from rich.text import Text
         
         def genSubValues():
             for hop in self.hops:
                 for tr, _ in hop[0]:
                     yield len(tr.name(detail))
         
-        longestNameLen = max(genSubValues(), default=0)
-        
-        text = self.text(colorize)
-        if detail >= 1:
-            text += f" (score: {self.score:f})"
-        text += "\n"
-        
-        jumpsFmt = "  Jump {jumps}\n"
-        cruiseFmt = "  Supercruise to {stn}\n"
-        distFmt = None
-        
-        if detail > 1:
-            if detail > 2:
-                text += self.summary() + "\n"
-                if tdenv.maxJumpsPer > 1:
-                    distFmt = "  Direct: {dist:0.2f}ly, Trip: {trav:0.2f}ly\n"
-            
-            hopFmt = (
-                "  Load from " + colorize("cyan", "{station}") + ":\n{purchases}"
-            )
-            hopStepFmt = (
-                colorize("lightYellow", "     {qty:>4}")
-                + " x "
-                + colorize("yellow", "{item:<{longestName}} ")
-                + "{eacost:>8n}cr vs {easell:>8n}cr, "
-                "{age}"
-            )
-            if detail > 2:
-                hopStepFmt += ", total: {ttlcost:>10n}cr"
-            hopStepFmt += "\n"
-            
-            if not tdenv.summary:
-                dockFmt = (
-                    "  Unload at "
-                    + colorize("lightBlue", "{station}")
-                    + " => Gain {gain:n}cr "
-                    "({tongain:n}cr/ton) => {credits:n}cr\n"
-                )
-            else:
-                jumpsFmt = re.sub("  ", "    ", jumpsFmt, re.M)
-                cruiseFmt = re.sub("  ", "    ", cruiseFmt, re.M)
-                if distFmt:
-                    distFmt = re.sub("  ", "    ", distFmt, re.M)
-                hopFmt = "\n" + hopFmt
-                dockFmt = "    Expect to gain {gain:n}cr ({tongain:n}cr/ton)\n"
-            
-            footer = "  " + "-" * 76 + "\n"
-            endFmt = (
-                "Finish at "
-                + colorize("blue", "{station} ")
-                + "gaining {gain:n}cr ({tongain:n}cr/ton) "
-                "=> est {credits:n}cr total\n"
-            )
-        
-        elif detail:
-            hopFmt = "  Load from " + colorize("cyan", "{station}") + ":{purchases}\n"
-            hopStepFmt = (
-                colorize("lightYellow", " {qty}")
-                + " x "
-                + colorize("yellow", "{item}")
-                + " (@{eacost}cr),"
-            )
-            footer = None
-            dockFmt = "  Dock at " + colorize("lightBlue", "{station}\n")
-            endFmt = (
-                "  Finish "
-                + colorize("blue", "{station} ")
-                + "+ {gain:n}cr ({tongain:n}cr/ton)"
-                "=> {credits:n}cr\n"
-            )
-        
-        else:
-            hopFmt = colorize("cyan", "  {station}:{purchases}\n")
-            hopStepFmt = (
-                colorize("lightYellow", " {qty}")
-                + " x "
-                + colorize("yellow", "{item}")
-                + ","
-            )
-            footer = None
-            dockFmt = None
-            endFmt = colorize("blue", "  {station}") + " +{gain:n}cr ({tongain:n}/ton)"
+        def style_for(attr_name):
+            if not use_color:
+                return None
+            theme = getattr(tdenv, "theme", None)
+            if not theme:
+                return None
+            style_name = getattr(theme, attr_name, "")
+            return style_name or None
         
         def jumpList(jumps):
             text, last = "", None
@@ -432,83 +353,191 @@ class Route:
             def goalDistance(station):
                 return ""
         
+        longestNameLen = max(genSubValues(), default=0)
+        output = Text()
+        output.append(self.firstStation.name(), style=style_for("text_seq_first"))
+        output.append(" -> ")
+        output.append(self.lastStation.name(), style=style_for("text_seq_last"))
+        if detail >= 1:
+            output.append(f" (score: {self.score:f})")
+        output.append("\n")
+        
+        if detail > 2:
+            output.append(self.summary())
+            output.append("\n")
+        
         gainCr = 0
         for i, hop in enumerate(self.hops):
             hopGainCr, hopTonnes = hop[1], 0
-            purchases = ""
+            hopItems = []
             for (trade, qty) in sorted(
                 hop[0],
                 key=lambda tradeOpt: tradeOpt[1] * tradeOpt[0].gainCr,
                 reverse=True,
             ):
                 if abs(trade.srcAge - trade.dstAge) <= (30 * 60):
-                    age = max(trade.srcAge, trade.dstAge)
-                    age = describeAge(age)
+                    age = describeAge(max(trade.srcAge, trade.dstAge))
                 else:
                     srcAge = describeAge(trade.srcAge)
                     dstAge = describeAge(trade.dstAge)
                     age = f"{srcAge} vs {dstAge}"
-                
-                purchases += hopStepFmt.format(
-                    qty=qty,
-                    item=trade.name(detail),
-                    eacost=trade.costCr,
-                    easell=trade.costCr + trade.gainCr,
-                    ttlcost=trade.costCr * qty,
-                    longestName=longestNameLen,
-                    age=age,
-                )
+                hopItems.append((trade, qty, age))
                 hopTonnes += qty
             
-            text += goalDistance(self.route[i])
-            text += hopFmt.format(station=decorateStation(self.route[i]), purchases=purchases)
+            output.append(goalDistance(self.route[i]))
             
-            if tdenv.showJumps and jumpsFmt and self.jumps[i]:
+            if detail > 1 and tdenv.summary:
+                output.append("\n")
+            
+            if detail > 1:
+                output.append("  Load from ")
+                output.append(
+                    decorateStation(self.route[i]),
+                    style=style_for("text_seq_first"),
+                )
+                output.append(":\n")
+                for trade, qty, age in hopItems:
+                    line = Text()
+                    line.append("     ")
+                    line.append(f"{qty:>4}", style=style_for("text_itm_units"))
+                    line.append(" x ")
+                    line.append(
+                        f"{trade.name(detail):<{longestNameLen}} ",
+                        style=style_for("text_itm_name"),
+                    )
+                    line.append(
+                        f"{trade.costCr:>8n}cr vs "
+                        f"{trade.costCr + trade.gainCr:>8n}cr, {age}"
+                    )
+                    if detail > 2:
+                        line.append(f", total: {trade.costCr * qty:>10n}cr")
+                    line.append("\n")
+                    output.append_text(line)
+            elif detail:
+                output.append("  Load from ")
+                output.append(
+                    decorateStation(self.route[i]),
+                    style=style_for("text_seq_first"),
+                )
+                output.append(":")
+                for trade, qty, _age in hopItems:
+                    output.append(" ")
+                    output.append(str(qty), style=style_for("text_itm_units"))
+                    output.append(" x ")
+                    output.append(
+                        trade.name(detail),
+                        style=style_for("text_itm_name"),
+                    )
+                    output.append(f" (@{trade.costCr}cr),")
+                output.append("\n")
+            else:
+                output.append("  ")
+                output.append(
+                    decorateStation(self.route[i]),
+                    style=style_for("text_seq_first"),
+                )
+                output.append(":")
+                for trade, qty, _age in hopItems:
+                    output.append(" ")
+                    output.append(str(qty), style=style_for("text_itm_units"))
+                    output.append(" x ")
+                    output.append(
+                        trade.name(detail),
+                        style=style_for("text_itm_name"),
+                    )
+                    output.append(",")
+                output.append("\n")
+            
+            if tdenv.showJumps and self.jumps[i]:
                 startStn = self.route[i]
                 endStn = self.route[i + 1]
                 if startStn.system is not endStn.system:
-                    fmt = jumpsFmt
                     travelled, jumps = jumpList(self.jumps[i])
+                    output.append(
+                        f"{'    ' if detail > 1 and tdenv.summary else '  '}Jump "
+                        f"{jumps}\n"
+                    )
                 else:
-                    fmt = cruiseFmt
-                    travelled, jumps = 0.0, f"{startStn.name()} >>> {endStn.name()}"
+                    travelled = 0.0
+                    output.append(
+                        f"{'    ' if detail > 1 and tdenv.summary else '  '}"
+                        f"Supercruise to {self.route[i + 1].dbname}\n"
+                    )
                 
-                text += fmt.format(
-                    jumps=jumps,
-                    gain=hopGainCr,
-                    tongain=hopGainCr / hopTonnes,
-                    credits=credits + gainCr + hopGainCr,
-                    stn=self.route[i + 1].dbname,
-                )
-                
-                if travelled and distFmt and len(self.jumps[i]) > 2:
-                    text += distFmt.format(
-                        dist=startStn.system.distanceTo(endStn.system), trav=travelled
+                if (
+                    detail > 2
+                    and tdenv.maxJumpsPer > 1
+                    and travelled
+                    and len(self.jumps[i]) > 2
+                ):
+                    output.append(
+                        f"{'    ' if tdenv.summary else '  '}Direct: "
+                        f"{startStn.system.distanceTo(endStn.system):0.2f}ly, "
+                        f"Trip: {travelled:0.2f}ly\n"
                     )
             
-            if dockFmt:
+            if detail > 1:
                 stn = self.route[i + 1]
-                text += dockFmt.format(
-                    station=decorateStation(stn),
-                    gain=hopGainCr,
-                    tongain=hopGainCr / hopTonnes,
-                    credits=credits + gainCr + hopGainCr,
+                if not tdenv.summary:
+                    output.append("  Unload at ")
+                    output.append(
+                        decorateStation(stn),
+                        style=style_for("text_route_unload"),
+                    )
+                    output.append(
+                        f" => Gain {hopGainCr:n}cr "
+                        f"({hopGainCr / hopTonnes:n}cr/ton) => "
+                        f"{credits + gainCr + hopGainCr:n}cr\n"
+                    )
+                else:
+                    output.append(
+                        f"    Expect to gain {hopGainCr:n}cr "
+                        f"({hopGainCr / hopTonnes:n}cr/ton)\n"
+                    )
+            elif detail:
+                output.append("  Dock at ")
+                output.append(
+                    decorateStation(self.route[i + 1]),
+                    style=style_for("text_route_unload"),
                 )
+                output.append("\n")
             
             gainCr += hopGainCr
         
         lastStation = self.lastStation
         if lastStation.system is not goalSystem:
-            text += goalDistance(lastStation)
-        text += footer or ""
-        text += endFmt.format(
-            station=decorateStation(lastStation),
-            gain=gainCr,
-            credits=credits + gainCr,
-            tongain=self.gpt,
-        )
+            output.append(goalDistance(lastStation))
         
-        return text
+        if detail > 1:
+            output.append("  " + "-" * 76 + "\n")
+            output.append("Finish at ")
+            output.append(
+                decorateStation(lastStation) + " ",
+                style=style_for("text_seq_last"),
+            )
+            output.append(
+                f"gaining {gainCr:n}cr ({self.gpt:n}cr/ton) "
+                f"=> est {credits + gainCr:n}cr total\n"
+            )
+        elif detail:
+            output.append("  Finish ")
+            output.append(
+                decorateStation(lastStation) + " ",
+                style=style_for("text_seq_last"),
+            )
+            output.append(
+                f"+ {gainCr:n}cr ({self.gpt:n}cr/ton)"
+                f"=> {credits + gainCr:n}cr\n"
+            )
+        else:
+            output.append("  ")
+            output.append(
+                decorateStation(lastStation),
+                style=style_for("text_seq_last"),
+            )
+            output.append(f" +{gainCr:n}cr ({self.gpt:n}/ton)")
+        
+        return output
     
     def summary(self):
         credits, hops, jumps = self.startCr, self.hops, self.jumps

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import os
 import sys
 import typing
 
@@ -21,41 +20,6 @@ if typing.TYPE_CHECKING:
     from typing import Any, ModuleType
     
     from tradedangerous import TradeDB, TradeORM
-
-
-# See: https://espterm.github.io/docs/VT100%20escape%20codes.html
-# or : https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
-#
-# ANSI-compliant "terminal" streams support changing the color (including boldness) of text
-# with 'Color Sequence' codes, consisting of an initializer (CS), one or more semicolon-separated (;)
-# parameters, and a command code.
-#
-# The CSI is ESC '[' where esc is 1b in hex or 033 in octal.
-# For color-changes, the command is 'm'.
-# To clear all color-code/effect changes, the sequence is : [escape, '[', '0', 'm'].
-#
-ANSI_CSI = "\033["
-ANSI_COLOR_CMD = "m" 
-ANSI_COLOR = {
-    "CLEAR": "0",
-    "red": "31",
-    "green": "32",
-    "yellow": "33",
-    "blue": "34",
-    "magenta": "35",
-    "cyan": "36",
-    "lightGray": "37",
-    "darkGray": "90",
-    "lightRed": "91",
-    "lightGreen": "92",
-    "lightYellow": "93",
-    "lightBlue": "94",
-    "lightMagenta": "95",
-    "lightCyan": "96",
-    "white": "97",
-}
-ANSI_CLEAR = f"{ANSI_CSI}{ANSI_COLOR['CLEAR']}{ANSI_COLOR_CMD}"
-
 
 class ResultRow:
     """ ResultRow captures a data item returned by a command. It's really an abstract namespace. """
@@ -331,18 +295,6 @@ class CommandEnv(TradeEnv):
             return
         self.odyssey = odyssey.upper()
     
-    def colorize(self, color: str, raw_text: str) -> str:
-        """
-        Set up some coloring for readability.
-        TODO: Rich already does this, use it instead?
-        """
-        if (code := ANSI_COLOR.get(color)):
-            # Only do anything if there's a code for that.
-            return f"{ANSI_CSI}{code}{ANSI_COLOR_CMD}{raw_text}{ANSI_CLEAR}"
-        # Otherwise, keep it raw.
-        return raw_text
-
-
 def update_database_schema(tdb: TradeDB | TradeORM) -> None:
     """ Check if there are database changes to be made, and if so, execute them. """
     # TODO: This should really be a function of the DB itself and not something

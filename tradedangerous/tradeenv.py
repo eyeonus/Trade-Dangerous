@@ -56,6 +56,13 @@ class BaseColorTheme:
     itm_name:   str = ""        # name of that unit
     itm_price:  str = ""        # how much does it cost?
     
+    # Rich Text styles used by structured renderers.
+    text_seq_first:     str = ""    # first station/system in a route
+    text_seq_last:      str = ""    # final station/system in a route
+    text_route_unload:  str = ""    # intermediate unload/dock station
+    text_itm_units:     str = ""    # quantity field in route/item tables
+    text_itm_name:      str = ""    # commodity/item name in route/item tables
+    
     def render(self, renderable: Any, style: str) -> str:  # pragma: no cover, pylint: disable=unused-argument
         """ Renders the given printable item with the given style; BaseColorTheme simply uses a string transformation. """
         if isinstance(renderable, str):
@@ -82,13 +89,12 @@ class BasicRichColorTheme(BaseColorTheme):
             return renderable if isinstance(renderable, str) else str(renderable)
         return f"{style_attr}{renderable}{self.CLOSE}"
 
-
 class RichColorTheme(BasicRichColorTheme):
     """ Demonstrates how you might augment the rich theme with colors to be used fin e.g tradecal. """
-    DEBUG = ":spider_web:"
-    NOTE  = ":information_source:"
-    WARN  = ":warning:"
-    INFO  = ":gear:"
+    DEBUG = "#"
+    NOTE  = "NOTE"
+    WARN  = "WARNING"
+    INFO  = "INFO"
     
     # e.g. First station
     seq_first = "[cyan]"
@@ -98,7 +104,13 @@ class RichColorTheme(BasicRichColorTheme):
     # Included as examples of how you might use this to manipulate tradecal output.
     itm_units = "[yellow3]"
     itm_name  = "[yellow]"
-    itm_price = "[bold]"
+    
+    # Rich Text styles used by the route/detail renderer.
+    text_seq_first = "cyan"
+    text_seq_last = "blue"
+    text_route_unload = "bright_blue"
+    text_itm_units = "yellow3"
+    text_itm_name = "yellow"
 
 
 class BaseConsoleIOMixin:

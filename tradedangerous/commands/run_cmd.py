@@ -368,7 +368,7 @@ class Checklist:
         gainCr = 0
         self.stepNo = 0
         
-        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.text(lambda x, y: y))
+        heading = "(i) BEGINNING CHECKLIST FOR {} (i)".format(route.text())
         print(heading, "\n", '-' * len(heading), "\n\n", sep = '')
         
         cmdenv = self.cmdenv
@@ -1545,7 +1545,7 @@ def render(results, cmdenv, tdb):
     routes = results.data
     
     for i in range(min(len(routes), cmdenv.routes)):
-        print(routes[i].detail(cmdenv))
+        cmdenv.console.print(routes[i].detail(cmdenv), highlight=False)
     
     # User wants to be guided through the route.
     if cmdenv.checklist:
