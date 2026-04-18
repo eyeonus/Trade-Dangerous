@@ -226,7 +226,7 @@ switches = [
         default = False,
     ),
     ParseArgument('--x52-pro',
-        help = 'Enable experimental X52 Pro MFD output.',
+        help = 'Enable experimental X52 Pro MFD output (requires --checklist).',
         action = 'store_true',
         default = False,
         dest = 'x52pro',
@@ -286,6 +286,9 @@ def validateRunArgumentsFast(cmdenv):
     
     if cmdenv.maxLyPer is None and not cmdenv.direct:
         raise CommandLineError("Missing '--ly-per'")
+    
+    if cmdenv.x52pro and not cmdenv.checklist:
+        raise CommandLineError("--x52-pro requires --checklist")
     
     # --towards requires --from
     if cmdenv.goalSystem and not getattr(cmdenv, "starting", None):
