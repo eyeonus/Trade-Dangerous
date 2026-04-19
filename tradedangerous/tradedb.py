@@ -190,21 +190,6 @@ class System:
         dx, dy, dz = self.posX - other.posX, self.posY - other.posY, self.posZ - other.posZ
         return math_sqrt(dx * dx + dy * dy + dz * dz)
     
-    def getStation(self, name: str) -> 'Optional[Station]':
-        """
-        Quick case-insensitive lookup of a station name within the
-        stations in this system.
-        
-        Returns:
-            Station() object if a match is found,
-            otherwise None.
-        """
-        name = name.upper()
-        for station in self.stations:
-            if station.name == name:
-                return station
-        return None
-    
     def name(self, detail: int = 0) -> str:     # pylint: disable=unused-argument
         """ Returns the display name for this System."""
         return self.dbname
@@ -658,22 +643,6 @@ class TradeDB:
     
     
     @staticmethod
-    def calculateDistance2(lx: float, ly: float, lz: float, rx: float, ry: float, rz: float) -> float:
-        """ calculateDistance2 returns the *square* (^2) of the euclidean
-            distance between two 3d coordinates. This is an optimization
-            for when you need to compare many coordinate pairs but do
-            not actually need to retain the distance value.
-            
-            That is:
-                distance**2 <=> calculateDistance2(x,y,z, u,v,w)
-            always returns the same results as
-                distance    <=> calculateDistance (x,y,z, u,v,w)
-            but is cheaper.
-        """
-        dx, dy, dz = lx - rx, ly - ry, lz - rz
-        return (dx * dx) + (dy * dy) + (dz * dz)
-    
-    @staticmethod
     def calculateDistance(lx: float, ly: float, lz: float, rx: float, ry: float, rz: float) -> float:
         """
         calculateDistance returns the euclidean distance in ly between two points.
@@ -725,13 +694,6 @@ class TradeDB:
         """
         with self.engine.connect() as conn:
             return conn.execute(text(sql), params)
-    
-    def queryColumn(self, sql: str, *params):
-        """
-        Execute a SQL statement and return the first column of the first row.
-        """
-        result = self.query(sql, *params).first()
-        return result[0] if result else None
     
     
     def reloadCache(self) -> None:
@@ -956,120 +918,6 @@ class TradeDB:
         )
         
         return system
-    
-    
-    def updateLocalSystem(
-            self, system,
-            name, x, y, z, added="Local", modified='now',
-            force=False,
-            commit=True,
-            ) -> bool:
-        """
-        Update an entry for a local system using SQLAlchemy.
-        """
-        oldname = system.dbname
-        dbname = name.upper()
-        
-        if not force:
-            if oldname == dbname and system.posX == x and system.posY == y and system.posZ == z:
-                return False
-        
-        # Remove from old name bucket (if present)
-        old_key = oldname.upper()
-        bucket = self.systemByName.get(old_key)
-        if bucket is not None:
-            bucket = [s for s in bucket if s is not system]
-            if bucket:
-                self.systemByName[old_key] = bucket
-            else:
-                del self.systemByName[old_key]
-        
-        with self.Session() as session:
-            # Find Added row for added_id
-            added_row = session.query(SA_Added).filter(SA_Added.name == added).first()
-            if not added_row:
-                raise TradeException(f"Added entry not found: {added}")
-            
-            # Load ORM System row
-            orm_system = session.get(SA_System, system.ID)
-            if not orm_system:
-                raise TradeException(f"System ID not found: {system.ID}")
-            
-            # Apply updates
-            orm_system.name = dbname
-            orm_system.pos_x = x
-            orm_system.pos_y = y
-            orm_system.pos_z = z
-            orm_system.added_id = added_row.added_id
-            orm_system.modified = None if modified == 'now' else modified
-            
-            if commit:
-                session.commit()
-            else:
-                session.flush()
-        
-        self.tdenv.NOTE(
-            "{} (#{}) updated in {}: {}, {}, {}, {}, {}, {}",
-            oldname, system.ID,
-            self.dbPath if self.tdenv.detail > 1 else "local db",
-            dbname, x, y, z, added, modified,
-        )
-        
-        # Update wrapper caches
-        system.dbname = dbname
-        system.posX, system.posY, system.posZ = x, y, z
-        system.addedID = added_row.added_id
-        
-        # Add to new name bucket
-        new_key = dbname.upper()
-        bucket = self.systemByName.get(new_key)
-        if bucket is None:
-            self.systemByName[new_key] = [system]
-        else:
-            bucket.append(system)
-            bucket.sort(key=lambda s: (s.posX, s.posY, s.posZ, s.ID))
-        
-        return True
-    
-    
-    def removeLocalSystem(
-            self, system,
-            commit=True,
-        ):
-        """Remove a system and its stations from the local DB using SQLAlchemy."""
-        # First remove stations attached to this system
-        for stn in self.stations():
-            if stn.system == system:
-                self.removeLocalStation(stn, commit=False)
-        
-        with self.Session() as session:
-            orm_system = session.get(SA_System, system.ID)
-            if orm_system:
-                session.delete(orm_system)
-                if commit:
-                    session.commit()
-                else:
-                    session.flush()
-        
-        # Update caches: remove from name bucket and ID map
-        key = system.dbname.upper()
-        bucket = self.systemByName.get(key)
-        if bucket is not None:
-            bucket = [s for s in bucket if s is not system]
-            if bucket:
-                self.systemByName[key] = bucket
-            else:
-                del self.systemByName[key]
-        del self.systemByID[system.ID]
-        
-        self.tdenv.NOTE(
-            "{} (#{}) deleted from {}",
-            system.dbname, system.ID,
-            self.dbPath if self.tdenv.detail > 1 else "local db",
-        )
-        
-        system.dbname = "DELETED " + system.dbname
-        del system
     
     
     def __buildStellarGrid(self) -> None:
@@ -1444,215 +1292,6 @@ class TradeDB:
             time.time() - started,
         )
         self.stellarGrid = None
-    
-    def addLocalStation(
-            self,
-            system,
-            name,
-            lsFromStar,
-            market,
-            blackMarket,
-            shipyard,
-            maxPadSize,
-            outfitting,
-            rearm,
-            refuel,
-            repair,
-            planetary,
-            fleet,
-            odyssey,
-            modified='now',
-            commit=True,
-            ):
-        """
-        Add a station to the local cache and memory copy using SQLAlchemy.
-        """
-        # Normalise/validate inputs
-        market      = market.upper()
-        blackMarket = blackMarket.upper()
-        shipyard    = shipyard.upper()
-        maxPadSize  = maxPadSize.upper()
-        outfitting  = outfitting.upper()
-        rearm       = rearm.upper()
-        refuel      = refuel.upper()
-        repair      = repair.upper()
-        planetary   = planetary.upper()
-        assert market in "?YN"
-        assert blackMarket in "?YN"
-        assert shipyard in "?YN"
-        assert maxPadSize in "?SML"
-        assert outfitting in "?YN"
-        assert rearm in "?YN"
-        assert refuel in "?YN"
-        assert repair in "?YN"
-        assert planetary in "?YN"
-        assert fleet in "?YN"
-        assert odyssey in "?YN"
-        
-        # Type mapping
-        type_id = 0
-        if fleet == 'Y':
-            type_id = 24
-        if odyssey == 'Y':
-            type_id = 25
-        
-        with self.Session() as session:
-            orm_station = SA_Station(
-                name=name,
-                system_id=system.ID,
-                ls_from_star=lsFromStar,
-                market=market,
-                blackmarket=blackMarket,
-                shipyard=shipyard,
-                max_pad_size=maxPadSize,
-                outfitting=outfitting,
-                rearm=rearm,
-                refuel=refuel,
-                repair=repair,
-                planetary=planetary,
-                type_id=type_id,
-                modified=None if modified == 'now' else modified,
-            )
-            session.add(orm_station)
-            if commit:
-                session.commit()
-            else:
-                session.flush()
-            ID = orm_station.station_id
-        
-        # Legacy wrapper object
-        station = Station(
-            ID, system, name,
-            lsFromStar=lsFromStar,
-            market=market,
-            blackMarket=blackMarket,
-            shipyard=shipyard,
-            maxPadSize=maxPadSize,
-            outfitting=outfitting,
-            rearm=rearm,
-            refuel=refuel,
-            repair=repair,
-            planetary=planetary,
-            fleet=fleet,
-            odyssey=odyssey,
-            itemCount=0,
-            dataAge=0,
-        )
-        self.stationByID[ID] = station
-        
-        self.tdenv.NOTE(
-            "{} (#{}) added to {}: "
-            "ls={}, mkt={}, bm={}, yard={}, pad={}, "
-            "out={}, arm={}, ref={}, rep={}, plt={}, "
-            "mod={}",
-            station.name(), station.ID,
-            self.dbPath if self.tdenv.detail > 1 else "local db",
-            lsFromStar, market, blackMarket, shipyard, maxPadSize,
-            outfitting, rearm, refuel, repair, planetary,
-            modified,
-        )
-        return station
-    
-    def updateLocalStation(
-            self, station,
-            name=None,
-            lsFromStar=None,
-            market=None,
-            blackMarket=None,
-            shipyard=None,
-            maxPadSize=None,
-            outfitting=None,
-            rearm=None,
-            refuel=None,
-            repair=None,
-            planetary=None,
-            fleet=None,
-            odyssey=None,
-            modified='now',
-            force=False,
-            commit=True,
-            ):
-        """
-        Alter the properties of a station in-memory and in the DB using SQLAlchemy.
-        """
-        changes = []
-        
-        def _changed(label, old, new):
-            changes.append(f"{label}('{old}'=>'{new}')")
-        
-        # Mutate wrapper + record changes
-        if name is not None:
-            if force or name.upper() != station.dbname.upper():
-                _changed("name", station.dbname, name)
-                station.dbname = name
-        
-        if lsFromStar is not None:
-            assert lsFromStar >= 0
-            if lsFromStar != station.lsFromStar:
-                if lsFromStar > 0 or force:
-                    _changed("ls", station.lsFromStar, lsFromStar)
-                    station.lsFromStar = lsFromStar
-        
-        def _check_setting(label, attr_name, newValue, allowed):
-            if newValue is not None:
-                newValue = newValue.upper()
-                assert newValue in allowed
-                oldValue = getattr(station, attr_name, '?')
-                if newValue != oldValue and (force or newValue != '?'):
-                    _changed(label, oldValue, newValue)
-                    setattr(station, attr_name, newValue)
-        
-        _check_setting("pad", "maxPadSize", maxPadSize, TradeDB.padSizes)
-        _check_setting("mkt", "market", market, TradeDB.marketStates)
-        _check_setting("blk", "blackMarket", blackMarket, TradeDB.marketStates)
-        _check_setting("shp", "shipyard", shipyard, TradeDB.marketStates)
-        _check_setting("out", "outfitting", outfitting, TradeDB.marketStates)
-        _check_setting("arm", "rearm", rearm, TradeDB.marketStates)
-        _check_setting("ref", "refuel", refuel, TradeDB.marketStates)
-        _check_setting("rep", "repair", repair, TradeDB.marketStates)
-        _check_setting("plt", "planetary", planetary, TradeDB.planetStates)
-        _check_setting("flc", "fleet", fleet, TradeDB.fleetStates)
-        _check_setting("ody", "odyssey", odyssey, TradeDB.odysseyStates)
-        
-        if not changes:
-            return False
-        
-        with self.Session() as session:
-            orm_station = session.get(SA_Station, station.ID)
-            if not orm_station:
-                raise TradeException(f"Station ID not found: {station.ID}")
-            
-            orm_station.name         = station.dbname
-            orm_station.system_id    = station.system.ID
-            orm_station.ls_from_star = station.lsFromStar
-            orm_station.market       = station.market
-            orm_station.blackmarket  = station.blackMarket
-            orm_station.shipyard     = station.shipyard
-            orm_station.max_pad_size = station.maxPadSize
-            orm_station.outfitting   = station.outfitting
-            orm_station.rearm        = station.rearm
-            orm_station.refuel       = station.refuel
-            orm_station.repair       = station.repair
-            orm_station.planetary    = station.planetary
-            orm_station.type_id      = (
-                24 if station.fleet == 'Y' else
-                25 if station.odyssey == 'Y' else 0
-            )
-            orm_station.modified     = None if modified == 'now' else modified
-            
-            if commit:
-                session.commit()
-            else:
-                session.flush()
-        
-        self.tdenv.NOTE(
-            "{} (#{}) updated in {}: {}",
-            station.name(), station.ID,
-            self.dbPath if self.tdenv.detail > 1 else "local db",
-            ", ".join(changes)
-        )
-        
-        return True
     
     def removeLocalStation(self, station, commit=True):
         """
@@ -2178,58 +1817,6 @@ class TradeDB:
             val=lambda kvTup: kvTup[1]
         )
     
-    def getAverageSelling(self):
-        """
-        Query the database for average selling prices of all items using SQLAlchemy.
-        """
-        if not self.avgSelling:
-            self.avgSelling = dict.fromkeys(self.itemByID, 0)
-            
-            with self.Session() as session:
-                rows = (
-                    session.query(
-                        SA_Item.item_id,
-                        func.ifnull(func.avg(SA_StationItem.supply_price), 0),
-                    )
-                    .outerjoin(
-                        SA_StationItem,
-                        (SA_Item.item_id == SA_StationItem.item_id) &
-                        (SA_StationItem.supply_price > 0),
-                    )
-                    .filter(SA_StationItem.supply_price > 0)
-                    .group_by(SA_Item.item_id)
-                )
-                for ID, cr in rows:
-                    self.avgSelling[ID] = int(cr)
-        
-        return self.avgSelling
-    
-    def getAverageBuying(self):
-        """
-        Query the database for average buying prices of all items using SQLAlchemy.
-        """
-        if not self.avgBuying:
-            self.avgBuying = dict.fromkeys(self.itemByID, 0)
-            
-            with self.Session() as session:
-                rows = (
-                    session.query(
-                        SA_Item.item_id,
-                        func.ifnull(func.avg(SA_StationItem.demand_price), 0),
-                    )
-                    .outerjoin(
-                        SA_StationItem,
-                        (SA_Item.item_id == SA_StationItem.item_id) &
-                        (SA_StationItem.demand_price > 0),
-                    )
-                    .filter(SA_StationItem.demand_price > 0)
-                    .group_by(SA_Item.item_id)
-                )
-                for ID, cr in rows:
-                    self.avgBuying[ID] = int(cr)
-        
-        return self.avgBuying
-    
     ############################################################
     # Price data.
     #
@@ -2261,10 +1848,6 @@ class TradeDB:
         self._loadCategories()
         self._loadItems()
         self.tdenv.DEBUG0("Data load took {:.3f}s", time.time() - started)
-    
-    @property
-    def max_link_ly(self) -> float | int:
-        return self.tdenv.maxSystemLinkLy
     
     ############################################################
     # General purpose static methods.

@@ -199,12 +199,6 @@ class Route:
         return self.route[-1].system
     
     @property
-    def avggpt(self):
-        if self.hops:
-            return sum(hop.gpt for hop in self.hops) // len(self.hops)
-        return 0
-    
-    @property
     def gpt(self):
         if self.hops:
             return (
@@ -823,98 +817,6 @@ class TradeCalc:
                 )
             
             return bestLoad
-        
-        return _fitCombos(0, credits, capacity)
-    
-    def fastFit(self, items, credits, capacity, maxUnits):  # pylint: disable=redefined-builtin
-        """
-            Best load calculator using a recursive knapsack-like
-            algorithm to find multiple loads and return the best.
-            [eyeonus] Left in for the masochists, as this becomes
-            horribly slow at stations with many items for sale.
-            As in iooks-like-the-program-has-frozen slow.
-        """
-        
-        def _fitCombos(offset, cr, cap):
-            """
-                Starting from offset, consider a scenario where we
-                would purchase the maximum number of each item
-                given the cr+cap limitations. Then, assuming that
-                load, solve for the remaining cr+cap from the next
-                value of offset.
-                
-                The "best fit" is not always the most profitable,
-                so we yield all the results and leave the caller
-                to determine which is actually most profitable.
-            """
-            bestGainCr = -1
-            bestItem = None
-            bestQty = 0
-            bestCostCr = 0
-            bestSub = None
-            
-            qtyCeil = min(maxUnits, cap)
-            
-            for iNo in range(offset, len(items)):
-                item = items[iNo]
-                itemCostCr = item.costCr
-                maxQty = min(qtyCeil, cr // itemCostCr)
-                
-                if maxQty <= 0:
-                    continue
-                
-                supply = item.supply
-                if supply <= 0:
-                    continue
-                
-                maxQty = min(maxQty, supply)
-                
-                itemGainCr = item.gainCr
-                if maxQty == cap:
-                    gain = itemGainCr * maxQty
-                    if gain > bestGainCr:
-                        cost = itemCostCr * maxQty
-                        bestGainCr = gain
-                        bestItem = item
-                        bestQty = maxQty
-                        bestCostCr = cost
-                        bestSub = None
-                    break
-                
-                loadCostCr = maxQty * itemCostCr
-                loadGainCr = maxQty * itemGainCr
-                if loadGainCr > bestGainCr:
-                    bestGainCr = loadGainCr
-                    bestCostCr = loadCostCr
-                    bestItem = item
-                    bestQty = maxQty
-                    bestSub = None
-                
-                crLeft, capLeft = cr - loadCostCr, cap - maxQty
-                if crLeft > 0 and capLeft > 0:
-                    subLoad = _fitCombos(iNo + 1, crLeft, capLeft)
-                    if subLoad is emptyLoad:
-                        continue
-                    ttlGain = loadGainCr + subLoad.gainCr
-                    if ttlGain < bestGainCr:
-                        continue
-                    ttlCost = loadCostCr + subLoad.costCr
-                    if ttlGain == bestGainCr and ttlCost >= bestCostCr:
-                        continue
-                    bestGainCr = ttlGain
-                    bestItem = item
-                    bestQty = maxQty
-                    bestCostCr = ttlCost
-                    bestSub = subLoad
-            
-            if not bestItem:
-                return emptyLoad
-            
-            bestLoad = ((bestItem, bestQty),)
-            if bestSub:
-                bestLoad = bestLoad + bestSub.items
-                bestQty += bestSub.units
-            return TradeLoad(bestLoad, bestGainCr, bestCostCr, bestQty)
         
         return _fitCombos(0, credits, capacity)
     
