@@ -827,42 +827,6 @@ def depCheck(importPath, lineNo, depType, key, correctKey):
     raise DeprecatedKeyError(importPath, lineNo, depType, key, correctKey)
 
 
-def deprecationCheckSystem(importPath, lineNo, line):
-    depCheck(
-        importPath, lineNo, 'System',
-        line[0], corrections.correctSystem(line[0]),
-    )
-
-
-def deprecationCheckStation(importPath, lineNo, line):
-    depCheck(
-        importPath, lineNo, 'System',
-        line[0], corrections.correctSystem(line[0]),
-    )
-    depCheck(
-        importPath, lineNo, 'Station',
-        line[1], corrections.correctStation(line[0], line[1]),
-    )
-
-
-def deprecationCheckCategory(importPath, lineNo, line):
-    depCheck(
-        importPath, lineNo, 'Category',
-        line[0], corrections.correctCategory(line[0]),
-    )
-
-
-def deprecationCheckItem(importPath, lineNo, line):
-    depCheck(
-        importPath, lineNo, 'Category',
-        line[0], corrections.correctCategory(line[0]),
-    )
-    depCheck(
-        importPath, lineNo, 'Item',
-        line[1], corrections.correctItem(line[1]),
-    )
-
-
 # --- main importer ---
 def processImportFile(
     tdenv,

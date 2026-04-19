@@ -55,15 +55,6 @@ def timedelta_to_age(delta: datetime.timedelta) -> str:
     """ timedelta_to_age returns an age representation of a datetime.timedelta. """
     return describe_age(delta.total_seconds())
 
-
-def notz_datetime_to_age(when: datetime.datetime) -> str:
-    """
-        notz_datetime_to_age returns an age representation of a non-tz-aware datetime.datetime.
-        @see datetime_to_age if you have timezone info in your datetime.
-    """
-    now = datetime.datetime.now()
-    return timedelta_to_age(now - when)
-
 def datetime_to_age(when: datetime.datetime) -> str:
     """
         datetime_to_age returns an age representation of a tz-aware datetime.datetime.
