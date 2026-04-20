@@ -7,6 +7,9 @@ Working repo:
 Working line:
 - `release/v1` on the fork
 
+Companion repo targets when server/export pipeline work is in scope:
+- `Tromador/TradeDangerous-listener`
+
 Purpose:
 - provide an immediate snapshot of what is done vs not done
 - let future agent sessions start with state, not archaeology
@@ -46,27 +49,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
-- Checkpoint: `D — Remove Added`
-- Subtask: `Remove Added from schema, runtime, import/build, packaging, and repo metadata`
+- Status: `[!]`
+- Checkpoint: `Next checkpoint not yet selected`
+- Subtask: `Checkpoint D closeout complete; choose the next chapter`
 - Owner: `Tromador + ChatGPT`
 - Started: `2026-04-20`
-- Goal: `Delete the obsolete Added table and all live repo-owned references without providing migration or old-schema compatibility handling.`
+- Goal: `Checkpoint D is complete. Next checkpoint selection is pending.`
 
 ### Current blocker
-- Status: `[!]`
-- Blocker: `Canonical System.csv source/header for Checkpoint D has not yet been confirmed in-session.`
-- Impact: `Repo-owned Added removal work is underway, but final import-surface validation for System rows is pending confirmation of the live CSV shape.`
-- Needed to unblock: `Confirm the current System.csv header/source so the remaining import cleanup can be completed safely.`
+- Status: `[x]`
+- Blocker: `No active blocker remains at this point.`
+- Impact: `Next work can start as soon as the next checkpoint is chosen.`
+- Needed to unblock: `none`
 
 ### Last updated
 - Date: `2026-04-20`
 - By: `ChatGPT + Tromador`
-- Session summary: `Started Checkpoint D. Local in-session edits have removed the Added ORM model and System.added_id schema linkage, removed Added from the canonical SQLite schema, removed Added from TradeDB bootstrap/default table/runtime wrapper paths, removed the Added import helper path from cache.py, removed templates/Added.csv from package data, removed the false templates/database_changes.json package-data entry, and deleted tradedangerous/templates/Added.csv. These edits are pending push.`
+- Session summary: `Closed out Checkpoint D. Removed Added from ORM/schema/runtime/import/export/package-data paths, removed Added handling from spansh_plug.py, validated fresh MariaDB rebuild plus spansh seed on the test server, confirmed exported System.csv no longer carries added_id, verified listener startup/live ingestion against the post-D schema, completed a clean eddblink import from the test server output, and smoke-tested trade run in both CLI and GUI.`
 
 ### Last known good rollback point
 - Commit: `ae6e942`
-- Notes: `Checkpoint C closeout commit remains the last committed rollback point. Checkpoint D work is currently local and pending push.`
+- Notes: `Checkpoint C closeout remains the last rollback commit recorded in this tracker. Checkpoint D has been validated end-to-end in a local/test environment; record the D commit hash here once the change-set is finalized.`
 
 ---
 
@@ -93,7 +96,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] A — Instrumentation and production baselines
 - [x] B — Schema Batch A: narrow additive index release
 - [x] C — Legacy audit and prune map
-- [-] D — Remove `Added`
+- [x] D — Remove `Added`
 - [ ] E — Collapse `RareItem` into `Item`
 - [ ] F — Resolver contract and parity tests
 - [ ] G — Resolver-first execution flow
@@ -181,7 +184,7 @@ Ship the first narrow additive read-performance schema batch through the support
   - Evidence: `live MariaDB schema screenshots for td_live.System and td_live.Station on 2026-04-17`
 - [x] B7. Decide on optional composite station index
   - Status note: `Decision already made in inherited preparatory work: include idx_station_by_system_name because live SQLite plan/timing evidence justified it.`
-  - Evidence: `1bd9ba9`; live SQLite probe on 2026-04-16
+  - Evidence: `1bd9ba9`; live SQLite probe on 2026-04-16`
 - [x] B8. Write release-note text for Batch A
   - Status note: `Release-note text finalized in the Batch A spec and aligned to the rebuild/reset-only rollout policy.`
   - Evidence: `docs/schema_batch_a_spec.md`
@@ -240,27 +243,27 @@ Delete the obsolete `Added` table and all live references.
 - release/docs state plainly that a fresh DB rebuild is required for the breaking schema change
 
 ### Tasks
-- [-] D1. Remove `Added` from ORM and canonical schema
-  - Status note: `Local in-session edits have removed the Added ORM model and System.added_id ORM/schema linkage, removed the Added table from the canonical SQLite schema, and removed System.added_id from the canonical SQLite schema. Pending push.`
-  - Evidence: `in-session accepted edits to tradedangerous/db/orm_models.py and tradedangerous/templates/TradeDangerous.sql on 2026-04-20`
-- [-] D2. Remove template/import/export plumbing
-  - Status note: `Local in-session edits have removed Added from TradeDB.defaultTables, removed Added.csv bootstrap copying, removed the Added import helper/cache path from cache.py, removed templates/Added.csv from package data, removed the false templates/database_changes.json package-data entry, and deleted tradedangerous/templates/Added.csv. Remaining work is confirmation of the live System.csv shape and any test/fixture fallout. Pending push.`
-  - Evidence: `in-session accepted edits to tradedangerous/tradedb.py, tradedangerous/cache.py, pyproject.toml, and deletion of tradedangerous/templates/Added.csv on 2026-04-20`
-- [-] D3. Remove live runtime references and wrapper dependencies
-  - Status note: `Local in-session edits have removed SA_Added import usage, removed TradeDB.lookupAdded, removed the legacy System.addedID wrapper field/signature, removed _loadSystems() dependence on SA_System.added_id, and removed addLocalSystem() writes to added_id. Pending push.`
-  - Evidence: `in-session accepted edits to tradedangerous/tradedb.py on 2026-04-20`
+- [x] D1. Remove `Added` from ORM and canonical schema
+  - Status note: `Added model removed from ORM metadata, System.added_id removed from ORM metadata, Added table removed from the canonical SQLite schema, and System.added_id removed from the canonical SQLite schema.`
+  - Evidence: `accepted edits to tradedangerous/db/orm_models.py and tradedangerous/templates/TradeDangerous.sql, validated by fresh MariaDB rebuild on the test server on 2026-04-20`
+- [x] D2. Remove template/import/export plumbing
+  - Status note: `Added removed from TradeDB.defaultTables and bootstrap copying, Added import helper/cache handling removed, templates/Added.csv removed from package data and deleted from the repo, and the exported System.csv contract now omits the obsolete added_id column.`
+  - Evidence: `accepted edits to tradedangerous/tradedb.py, tradedangerous/cache.py, pyproject.toml, and deletion of tradedangerous/templates/Added.csv; live test-server export confirmed System.csv header 'unq:system_id,name,pos_x,pos_y,pos_z,modified' on 2026-04-20`
+- [x] D3. Remove live runtime references and wrapper dependencies
+  - Status note: `SA_Added import usage removed, TradeDB.lookupAdded removed, the legacy System.addedID wrapper field/signature removed, _loadSystems() no longer depends on SA_System.added_id, addLocalSystem() no longer writes added_id, and spansh_plug.py no longer seeds or writes Added.`
+  - Evidence: `accepted edits to tradedangerous/tradedb.py and tradedangerous/plugins/spansh_plug.py, validated by successful spansh seed and listener startup/live ingestion against the post-D schema on 2026-04-20`
 - [~] D4. Add schema sanity detection / rebuild path
-  - Status note: `Not planned. Checkpoint D is a breaking schema change and v13 simply expects a fresh rebuilt database; no code will be added to detect or assist obsolete v12 schemas.`
+  - Status note: `Not planned. Checkpoint D is a breaking schema change and v13 simply expects a fresh rebuilt database; no code was added to detect or assist obsolete v12 schemas.`
   - Evidence: `2026-04-20 checkpoint D policy clarification from Tromador`
-- [-] D5. Update tests, fixtures, docs
-  - Status note: `REFACTOR_PROGRESS.md has been updated for Checkpoint D start. Remaining work is verification/update of tests, fixtures, and any live System.csv/header dependency.`
-  - Evidence: `docs/REFACTOR_PROGRESS.md in-session update on 2026-04-20`
+- [x] D5. Update tests, fixtures, docs
+  - Status note: `Checkpoint D was validated end-to-end on the test server and client path: fresh MariaDB rebuild, spansh seed, listener startup/live ingestion, published CSV export, clean eddblink import from the test server, and trade run smoke tests in both CLI and GUI. The progress tracker has been updated to reflect D closeout.`
+  - Evidence: `2026-04-20 local/test validation on the mort-clone server and Windows client`
 
 ### Notes
-- Checkpoint D started on 2026-04-20.
+- Checkpoint D started and was closed out on 2026-04-20.
 - This checkpoint deliberately does not include migration handling, old-schema detection, or runtime babysitting for pre-D databases.
 - Supported operator/user action is a normal rebuild/clean import on upgrade.
-- Current code changes are local and pending push.
+- The server/export validation surface for this checkpoint included the companion repo `Tromador/TradeDangerous-listener`.
 
 ---
 
@@ -505,7 +508,7 @@ Finish the main command migration set.
 
 ### Acceptance criteria
 - `olddata`, `nav`, and `rares` no longer depend on full preload
-- remaining monolithic `TradeDB` callers are few and justified
+- remaining monolithic `TradeDB.load()` callers are few and justified
 
 ### Tasks
 - [ ] L1. Migrate `olddata`
@@ -632,6 +635,11 @@ Record decisions that materially affect later work.
   - Decision: `Do not add old-schema detection, migration logic, or runtime assistance for pre-D databases. v13 simply expects a fresh rebuilt database.`
   - Reason: `Checkpoint D is a deliberate breaking schema change and the supported user/operator workflow is already a normal rebuild/clean import.`
   - Revisit trigger: `Only if release policy later changes to require explicit compatibility handling for obsolete local databases.`
+- Date: `2026-04-20`
+  - Topic: `Companion repo scope for server/export validation`
+  - Decision: `Treat Tromador/TradeDangerous-listener as a companion target whenever schema or published CSV contracts are being validated on the server side.`
+  - Reason: `Checkpoint D proved that server-side spansh/import/export and listener workflows are part of the real validation surface even when the schema changes are implemented in the main Trade-Dangerous repo.`
+  - Revisit trigger: `Only if the server/listener pipeline is folded back into the main repo or replaced entirely.`
 
 ---
 
@@ -697,6 +705,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-19`
   - Commit: `ae6e942`
   - Notes: `Corrected an early false positive, tightened the audit method to repo-internal caller proof plus dynamic checks, removed confirmed dead helpers from live modules in bounded packets, and archived dead legacy modules/deprecated tooling.`
+- [x] Milestone: `Checkpoint D Added removal validated end-to-end`
+  - Date completed: `2026-04-20`
+  - Commit:
+  - Notes: `Validated fresh MariaDB rebuild, spansh seed, post-D System.csv export shape, listener startup/live ingestion, clean eddblink import from the test server, and trade run smoke tests in both CLI and GUI with Added removed from the schema and runtime paths.`
 
 ---
 
