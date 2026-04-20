@@ -68,8 +68,8 @@ Do not tick a task unless:
 - Session summary: `Closed out Checkpoint D. Removed Added from ORM/schema/runtime/import/export/package-data paths, removed Added handling from spansh_plug.py, validated fresh MariaDB rebuild plus spansh seed on the test server, confirmed exported System.csv no longer carries added_id, verified listener startup/live ingestion against the post-D schema, completed a clean eddblink import from the test server output, and smoke-tested trade run in both CLI and GUI.`
 
 ### Last known good rollback point
-- Commit: `ae6e942`
-- Notes: `Checkpoint C closeout remains the last rollback commit recorded in this tracker. Checkpoint D has been validated end-to-end in a local/test environment; record the D commit hash here once the change-set is finalized.`
+- Commit: `859b076`
+- Notes: `Pushed last relevant Chapter D code change for removal of Added table`
 
 ---
 
