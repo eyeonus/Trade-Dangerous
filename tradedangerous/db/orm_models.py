@@ -1,7 +1,6 @@
 # tradedangerous/db/orm_models.py
 from __future__ import annotations
 
-from typing import Optional
 import datetime
 
 from sqlalchemy import (
@@ -121,21 +120,7 @@ PadSize = Enum(
     validate_strings=True,
 )
 
-
 # ---------- Core Domain ----------
-class Added(Base):
-    """ Added table was originally introduced to help identify whether things like
-        Systems represented data that was present in specific releases of the game,
-        such as pre-alpha, beta, etc. """
-    __tablename__ = "Added"
-    
-    added_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(CIString(128), nullable=False, unique=True)
-    
-    # Relationships
-    systems: Mapped[list["System"]] = relationship(back_populates="added")
-
-
 class System(Base):
     """ System represents the game's concept of a Star System or a group of bodies
         orbiting a barycenter - or in game terms, things you can FSD jump between. """
@@ -146,9 +131,6 @@ class System(Base):
     pos_x: Mapped[float] = mapped_column(nullable=False)
     pos_y: Mapped[float] = mapped_column(nullable=False)
     pos_z: Mapped[float] = mapped_column(nullable=False)
-    added_id: Mapped[int | None] = mapped_column(
-        ForeignKey("Added.added_id", onupdate="CASCADE", ondelete="CASCADE")
-    )
     modified: Mapped[str] = mapped_column(
         DateTime6(),
         server_default=now6(),
@@ -160,7 +142,6 @@ class System(Base):
         return f"{self.name.upper()}/"
     
     # Relationships
-    added: Mapped[Optional["Added"]] = relationship(back_populates="systems")
     stations: Mapped[list["Station"]] = relationship(back_populates="system", cascade="all, delete-orphan")
     
     __table_args__ = (
@@ -483,7 +464,6 @@ __all__ = [
     # Base
     "Base",
     # Core
-    "Added",
     "System",
     "Station",
     "Category",

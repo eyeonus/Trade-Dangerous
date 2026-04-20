@@ -90,7 +90,6 @@ from .db.utils import age_in_days  # type: ignore
 # --------------------------------------------------------------------
 
 from .db.orm_models import (  # noqa: F401  # pylint: disable=unused-import
-    Added              as SA_Added,
     System             as SA_System,
     Station            as SA_Station,
     Item               as SA_Item,
@@ -132,7 +131,6 @@ def make_stellar_grid_key(x: float, y: float, z: float) -> tuple[int, int, int]:
     # against the system.
     return math_floor(x) >> 5, math_floor(y) >> 5, math_floor(z) >> 5
 
-
 class System:
     """
     Describes a star system which may contain one or more Station objects.
@@ -143,7 +141,6 @@ class System:
     __slots__ = (
         'ID',
         'dbname', 'posX', 'posY', 'posZ', 'pos', 'stations',
-        'addedID',
         '_rangeCache'
     )
     
@@ -155,11 +152,10 @@ class System:
             self.systems = []
             self.probed_ly = 0.
     
-    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float, addedID: int | None) -> None:
+    def __init__(self, ID: int, dbname: str, posX: float, posY: float, posZ: float) -> None:
         self.ID = ID
         self.dbname = dbname
         self.posX, self.posY, self.posZ = posX, posY, posZ
-        self.addedID = addedID or 0
         self.stations: list['Station'] = []
         self._rangeCache = None
     
@@ -528,7 +524,6 @@ class TradeDB:
     # array containing standard tables, csvfilename and tablename
     # WARNING: order is important because of dependencies!
     defaultTables = (
-        ('Added.csv', 'Added'),
         ('System.csv', 'System'),
         ('Station.csv', 'Station'),
         ('Ship.csv', 'Ship'),
@@ -570,7 +565,6 @@ class TradeDB:
         self.csvPath = fs.ensurefolder(tdenv.csvDir)
         
         # Template bootstrap files: copy ONLY if missing (never overwrite on pip upgrade).
-        fs.copy_if_missing(self.templatePath / "Added.csv",       self.csvPath / "Added.csv")
         fs.copy_if_missing(self.templatePath / "RareItem.csv",    self.csvPath / "RareItem.csv")
         fs.copy_if_missing(self.templatePath / "Category.csv",    self.csvPath / "Category.csv")
         fs.copy_if_newer(self.templatePath / "TradeDangerous.sql", self.dataPath / "TradeDangerous.sql")
@@ -733,17 +727,6 @@ class TradeDB:
             cache.buildCache(self, self.tdenv)
     
     ############################################################
-    # [deprecated] "added" data.
-    
-    def lookupAdded(self, name):
-        stmt = select(SA_Added.added_id).where(SA_Added.name == name)
-        with self.Session() as session:
-            try:
-                return session.execute(stmt).scalar_one()
-            except NoResultFound:
-                raise KeyError(name) from None
-    
-    ############################################################
     # Star system data.
     
     # TODO: Defer to SA_System as much as possible
@@ -766,7 +749,6 @@ class TradeDB:
                 SA_System.pos_x,
                 SA_System.pos_y,
                 SA_System.pos_z,
-                SA_System.added_id,
             ):
                 system = System(
                     row.system_id,
@@ -774,7 +756,6 @@ class TradeDB:
                     row.pos_x,
                     row.pos_y,
                     row.pos_z,
-                    row.added_id,
                 )
                 systemByID[row.system_id] = system
                 key = system.dbname.upper()
@@ -880,16 +861,13 @@ class TradeDB:
             ) -> System:
         """
         Add a system to the local cache and memory copy using SQLAlchemy.
-        Note: 'added' field has been deprecated and is no longer populated.
         """
         with self.Session() as session:
-            # Create ORM System row (added_id is deprecated → NULL)
             orm_system = SA_System(
                 name=name,
                 pos_x=x,
                 pos_y=y,
                 pos_z=z,
-                added_id=None,
                 modified=None if modified == 'now' else modified,
             )
             session.add(orm_system)
@@ -900,8 +878,8 @@ class TradeDB:
             
             ID = orm_system.system_id
         
-        # Maintain legacy wrapper + caches (added_id always None now)
-        system = System(ID, name.upper(), x, y, z, None)
+        # Maintain legacy wrapper + caches
+        system = System(ID, name.upper(), x, y, z)
         self.systemByID[ID] = system
         
         key = system.dbname.upper()

@@ -155,10 +155,8 @@ exclude = ["tests", "tests.*"]
 # Include non-Python assets (templates, type hints, marker files).
 tradedangerous = [
     "templates/TradeDangerous.sql",
-    "templates/Added.csv",
     "templates/Category.csv",
     "templates/RareItem.csv",
-    "templates/database_changes.json",
     "tradeenv.pyi",
     "py.typed",
 ]

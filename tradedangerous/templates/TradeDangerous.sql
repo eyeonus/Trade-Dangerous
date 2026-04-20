@@ -33,15 +33,6 @@ PRAGMA auto_vacuum=INCREMENTAL;
 BEGIN TRANSACTION;
 
 
-CREATE TABLE Added
- (
-   added_id INTEGER PRIMARY KEY AUTOINCREMENT,
-   name VARCHAR(40) COLLATE nocase,
-
-   UNIQUE(name)
- );
-
-
 CREATE TABLE System
  (
    system_id BIGINT PRIMARY KEY,
@@ -49,14 +40,9 @@ CREATE TABLE System
    pos_x DOUBLE NOT NULL,
    pos_y DOUBLE NOT NULL,
    pos_z DOUBLE NOT NULL,
-   added_id INTEGER,
    modified DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-   UNIQUE (system_id),
-
-    FOREIGN KEY (added_id) REFERENCES Added(added_id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE
+   UNIQUE (system_id)
  );
 CREATE INDEX idx_system_by_pos ON System (pos_x, pos_y, pos_z, system_id);
 CREATE INDEX idx_system_by_name ON System (name);

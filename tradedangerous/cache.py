@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------
 # Copyright (C) Oliver 'kfsone' Smith 2014 <oliver@kfs.org>:
 # Copyright (C) Bernd 'Gazelle' Gollesch 2016, 2017
-# Copyright (C) Stefan 'Tromador' Morrell 2025
+# Copyright (C) Stefan 'Tromador' Morrell 2025, 2026
 # Copyright (C) Jonathan 'eyeonus' Jones 2018-2025
 #
 # You are free to use, redistribute, or even print and eat a copy of
@@ -242,7 +242,6 @@ class SupplyError(BuildCacheBaseException):
 _fk_cache_system = {}
 _fk_cache_station = {}
 _fk_cache_category = {}
-_fk_cache_added = {}
 
 def _get_system_id(session, system_name):
     if system_name in _fk_cache_system:
@@ -274,15 +273,6 @@ def _get_category_id(session, cat_name):
     if rid is None:
         raise ValueError(f"Unknown Category name: {cat_name}")
     _fk_cache_category[cat_name] = rid
-    return rid
-
-def _get_added_id(session, added_name):
-    if added_name in _fk_cache_added:
-        return _fk_cache_added[added_name]
-    rid = session.query(SA.Added.added_id).filter(SA.Added.name == added_name).scalar()
-    if rid is None:
-        raise ValueError(f"Unknown Added name: {added_name}")
-    _fk_cache_added[added_name] = rid
     return rid
 
 
@@ -894,12 +884,6 @@ def processImportFile(
             baseName = colName[uniqueLen:] if colName.startswith(uniquePfx) else colName
             header_index[baseName] = cIndex
             
-            # Special-case: System-added
-            if tableName == "System":
-                if cName == "name@Added.added_id":
-                    fk_col_indices["added"] = cIndex
-                    continue
-            
             # Foreign key columns for RareItem
             if tableName == "RareItem":
                 if cName == "!name@System.system_id":
@@ -1120,15 +1104,6 @@ def processImportFile(
                             rowdict["category_id"] = _get_category_id(session, cat_name)
                         except ValueError:
                             tdenv.WARN("Unknown Category '{}' in {}", cat_name, importPath)
-                
-                # Foreign key lookups — System.added
-                if tableName == "System" and "added" in fk_col_indices:
-                    added_val = linein[fk_col_indices["added"]] or "EDSM"
-                    try:
-                        rowdict["added_id"] = _get_added_id(session, added_val)
-                    except ValueError:
-                        rowdict["added_id"] = None
-                        tdenv.WARN("Unknown Added value '{}' in {}", added_val, importPath)
                 
                 # --- Type coercion for common types ---
                 for key, val in list(rowdict.items()):
