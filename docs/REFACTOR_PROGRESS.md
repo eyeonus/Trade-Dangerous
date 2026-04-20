@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[!]`
-- Checkpoint: `Next checkpoint not yet selected`
-- Subtask: `Post-Chapter-C closeout / choose next chapter`
+- Status: `[-]`
+- Checkpoint: `D — Remove Added`
+- Subtask: `Remove Added from schema, runtime, import/build, packaging, and repo metadata`
 - Owner: `Tromador + ChatGPT`
-- Started: `2026-04-19`
-- Goal: `Checkpoint C is complete. Next checkpoint selection is pending.`
+- Started: `2026-04-20`
+- Goal: `Delete the obsolete Added table and all live repo-owned references without providing migration or old-schema compatibility handling.`
 
 ### Current blocker
-- Status: `[x]`
-- Blocker: `No active blocker remains at this point.`
-- Impact: `Next work can start as soon as the next checkpoint is chosen.`
-- Needed to unblock: `none`
+- Status: `[!]`
+- Blocker: `Canonical System.csv source/header for Checkpoint D has not yet been confirmed in-session.`
+- Impact: `Repo-owned Added removal work is underway, but final import-surface validation for System rows is pending confirmation of the live CSV shape.`
+- Needed to unblock: `Confirm the current System.csv header/source so the remaining import cleanup can be completed safely.`
 
 ### Last updated
-- Date: `2026-04-19`
-- By: `ChatGPT (with Codex audit output, grep verification, archive moves, and commit work provided by Tromador)`
-- Session summary: `Closed out checkpoint C. Archived dead legacy modules and deprecated tooling, removed confirmed dead helper methods from live modules in bounded packets, preserved explicitly kept items, and recorded the repo-internal caller standard used to judge reachability. Commit ae6e942 is the Chapter C closeout point.`
+- Date: `2026-04-20`
+- By: `ChatGPT + Tromador`
+- Session summary: `Started Checkpoint D. Local in-session edits have removed the Added ORM model and System.added_id schema linkage, removed Added from the canonical SQLite schema, removed Added from TradeDB bootstrap/default table/runtime wrapper paths, removed the Added import helper path from cache.py, removed templates/Added.csv from package data, removed the false templates/database_changes.json package-data entry, and deleted tradedangerous/templates/Added.csv. These edits are pending push.`
 
 ### Last known good rollback point
 - Commit: `ae6e942`
-- Notes: `Checkpoint C closeout landed: dead legacy modules archived, confirmed dead helper/runtime code removed from live modules, and the remaining explicitly retained items left in place.`
+- Notes: `Checkpoint C closeout commit remains the last committed rollback point. Checkpoint D work is currently local and pending push.`
 
 ---
 
@@ -93,7 +93,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] A — Instrumentation and production baselines
 - [x] B — Schema Batch A: narrow additive index release
 - [x] C — Legacy audit and prune map
-- [ ] D — Remove `Added`
+- [-] D — Remove `Added`
 - [ ] E — Collapse `RareItem` into `Item`
 - [ ] F — Resolver contract and parity tests
 - [ ] G — Resolver-first execution flow
@@ -235,29 +235,32 @@ Delete the obsolete `Added` table and all live references.
 
 ### Acceptance criteria
 - fresh DB has no `Added`
-- old DB is rebuilt or rejected cleanly
 - no supported command/import/export path relies on `Added`
 - no live ORM/runtime references remain
+- release/docs state plainly that a fresh DB rebuild is required for the breaking schema change
 
 ### Tasks
-- [ ] D1. Remove `Added` from ORM and canonical schema
-  - Status note:
-  - Evidence:
-- [ ] D2. Remove template/import/export plumbing
-  - Status note:
-  - Evidence:
-- [ ] D3. Remove live runtime references and wrapper dependencies
-  - Status note:
-  - Evidence:
-- [ ] D4. Add schema sanity detection / rebuild path
-  - Status note:
-  - Evidence:
-- [ ] D5. Update tests, fixtures, docs
-  - Status note:
-  - Evidence:
+- [-] D1. Remove `Added` from ORM and canonical schema
+  - Status note: `Local in-session edits have removed the Added ORM model and System.added_id ORM/schema linkage, removed the Added table from the canonical SQLite schema, and removed System.added_id from the canonical SQLite schema. Pending push.`
+  - Evidence: `in-session accepted edits to tradedangerous/db/orm_models.py and tradedangerous/templates/TradeDangerous.sql on 2026-04-20`
+- [-] D2. Remove template/import/export plumbing
+  - Status note: `Local in-session edits have removed Added from TradeDB.defaultTables, removed Added.csv bootstrap copying, removed the Added import helper/cache path from cache.py, removed templates/Added.csv from package data, removed the false templates/database_changes.json package-data entry, and deleted tradedangerous/templates/Added.csv. Remaining work is confirmation of the live System.csv shape and any test/fixture fallout. Pending push.`
+  - Evidence: `in-session accepted edits to tradedangerous/tradedb.py, tradedangerous/cache.py, pyproject.toml, and deletion of tradedangerous/templates/Added.csv on 2026-04-20`
+- [-] D3. Remove live runtime references and wrapper dependencies
+  - Status note: `Local in-session edits have removed SA_Added import usage, removed TradeDB.lookupAdded, removed the legacy System.addedID wrapper field/signature, removed _loadSystems() dependence on SA_System.added_id, and removed addLocalSystem() writes to added_id. Pending push.`
+  - Evidence: `in-session accepted edits to tradedangerous/tradedb.py on 2026-04-20`
+- [~] D4. Add schema sanity detection / rebuild path
+  - Status note: `Not planned. Checkpoint D is a breaking schema change and v13 simply expects a fresh rebuilt database; no code will be added to detect or assist obsolete v12 schemas.`
+  - Evidence: `2026-04-20 checkpoint D policy clarification from Tromador`
+- [-] D5. Update tests, fixtures, docs
+  - Status note: `REFACTOR_PROGRESS.md has been updated for Checkpoint D start. Remaining work is verification/update of tests, fixtures, and any live System.csv/header dependency.`
+  - Evidence: `docs/REFACTOR_PROGRESS.md in-session update on 2026-04-20`
 
 ### Notes
--
+- Checkpoint D started on 2026-04-20.
+- This checkpoint deliberately does not include migration handling, old-schema detection, or runtime babysitting for pre-D databases.
+- Supported operator/user action is a normal rebuild/clean import on upgrade.
+- Current code changes are local and pending push.
 
 ---
 
@@ -624,6 +627,11 @@ Record decisions that materially affect later work.
   - Decision: `Judge dead code by repo-internal reachability. Docs, exported surface, and stale compatibility intent do not preserve code by themselves. Test-only utilities may still be kept deliberately when they remain useful to the suite.`
   - Reason: `The audit needed an explicit standard to stop dead-code decisions drifting into hypothetical external consumers or stale documentation.`
   - Revisit trigger: `Only if the repo later adopts a formal supported external API policy for these surfaces.`
+- Date: `2026-04-20`
+  - Topic: `Checkpoint D old-schema handling`
+  - Decision: `Do not add old-schema detection, migration logic, or runtime assistance for pre-D databases. v13 simply expects a fresh rebuilt database.`
+  - Reason: `Checkpoint D is a deliberate breaking schema change and the supported user/operator workflow is already a normal rebuild/clean import.`
+  - Revisit trigger: `Only if release policy later changes to require explicit compatibility handling for obsolete local databases.`
 
 ---
 
@@ -656,6 +664,12 @@ Record decisions that materially affect later work.
   - Severity: `Medium`
   - Needed decision/input: `Run the supported rebuild/reset flow and inspect the recreated SQLite indexes/query plan`
   - Current workaround: `Source inspection confirms the indexes are present in the template and ORM metadata, but runtime verification is still required before closing B`
+- Date: `2026-04-20`
+  - Blocker: `Canonical System.csv source/header for Checkpoint D has not yet been confirmed in-session`
+  - Checkpoint affected: `D`
+  - Severity: `Low`
+  - Needed decision/input: `Confirm the current System.csv header/source before finalizing the remaining import-surface cleanup`
+  - Current workaround: `Continue repo-owned Added removal work first and leave the live System.csv confirmation until the code and docs packets are finished`
 
 ---
 
