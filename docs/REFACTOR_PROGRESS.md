@@ -46,27 +46,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
-- Checkpoint: `C — Legacy audit and prune map`
-- Subtask: `C1/C3/C4 bounded prune packet and audit-method tightening`
+- Status: `[!]`
+- Checkpoint: `Next checkpoint not yet selected`
+- Subtask: `Post-Chapter-C closeout / choose next chapter`
 - Owner: `Tromador + ChatGPT`
-- Started: `2026-04-18`
-- Goal: `in progress — Chapter C resumed after checkpoint B closeout; a false-positive dead-code removal was caught and reverted, the audit method was tightened to one-at-a-time repo-internal caller verification, and a first four-function orphaned-helper prune packet landed.`
+- Started: `2026-04-19`
+- Goal: `Checkpoint C is complete. Next checkpoint selection is pending.`
 
 ### Current blocker
 - Status: `[x]`
-- Blocker: `No active blocker remains for checkpoint C at this point.`
-- Impact: `Work can continue with the next bounded audit target.`
+- Blocker: `No active blocker remains at this point.`
+- Impact: `Next work can start as soon as the next checkpoint is chosen.`
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-18`
-- By: `ChatGPT (with runtime verification evidence and local commit work provided by Tromador)`
-- Session summary: `Resumed Chapter C, caught and reversed a false-positive removal of CommandEnv.colorize after proving it is still live via dynamic lookup, re-audited the remaining candidates one at a time, removed four orphaned helper methods in 0d8c165, split and closed the X52 issue separately in a0de3a3, cleaned up the run workspace in 4da6695, and landed the Rich/color-path follow-up in 1c12adf.`
+- Date: `2026-04-19`
+- By: `ChatGPT (with Codex audit output, grep verification, archive moves, and commit work provided by Tromador)`
+- Session summary: `Closed out checkpoint C. Archived dead legacy modules and deprecated tooling, removed confirmed dead helper methods from live modules in bounded packets, preserved explicitly kept items, and recorded the repo-internal caller standard used to judge reachability. Commit ae6e942 is the Chapter C closeout point.`
 
 ### Last known good rollback point
-- Commit: `0d8c165`
-- Notes: `First re-audited Chapter C prune packet landed: CommandEnv.render, spansh ImportPlugin._upsert_shipyard, spansh ImportPlugin._live_line, and eddblink _collect_station_modified_times removed. CommandEnv.colorize is explicitly excluded after false-positive correction.`
+- Commit: `ae6e942`
+- Notes: `Checkpoint C closeout landed: dead legacy modules archived, confirmed dead helper/runtime code removed from live modules, and the remaining explicitly retained items left in place.`
 
 ---
 
@@ -92,7 +92,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 
 - [x] A — Instrumentation and production baselines
 - [x] B — Schema Batch A: narrow additive index release
-- [ ] C — Legacy audit and prune map
+- [x] C — Legacy audit and prune map
 - [ ] D — Remove `Added`
 - [ ] E — Collapse `RareItem` into `Item`
 - [ ] F — Resolver contract and parity tests
@@ -196,30 +196,35 @@ Ship the first narrow additive read-performance schema batch through the support
 ## Checkpoint C — Legacy audit and prune map
 
 ### Goal
-Classify suspiciously ancient or possibly dead code before deleting anything.
+Classify and remove dead repo-internal code before broader structural work.
 
 ### Acceptance criteria
-- `docs/AUDIT.md` is populated
-- entry points are inventoried
-- tracing or equivalent evidence exists for uncertain paths
-- suspicious candidates have a classification and action plan
+- CLI and GUI entry roots are explicitly identified and used consistently for audit work
+- reachability evidence exists for dynamic or uncertain paths
+- suspicious candidates are classified into remove / archive / keep / stay-of-execution
+- confirmed dead helpers are removed in bounded packets and dead whole modules are archived
 
 ### Tasks
-- [ ] C1. Inventory live entry points
-  - Status note:
-  - Evidence:
-- [ ] C2. Add temporary tracing mode or equivalent reachability evidence
-  - Status note:
-  - Evidence:
-- [ ] C3. Build first audit map
-  - Status note:
-  - Evidence:
-- [ ] C4. Quarantine obvious non-runtime junk
-  - Status note:
-  - Evidence:
+- [x] C1. Inventory live entry points
+  - Status note: `CLI root fixed as trade.py -> tradedangerous.cli.main(...) and GUI root fixed as tradegui.py -> tradedangerous.guiapp.main.main(...). These roots were then used consistently for the Chapter C audit.`
+  - Evidence: `in-session Chapter C audit method and Codex callable reachability report, validated by local grep review on 2026-04-19`
+- [x] C2. Add temporary tracing mode or equivalent reachability evidence
+  - Status note: `Equivalent evidence was used instead of a dedicated tracing mode: one-symbol-at-a-time caller search, dynamic lookup checks, live control-flow review, targeted runtime verification where needed, and a full Codex-assisted callable reachability pass.`
+  - Evidence: `false-positive correction for CommandEnv.colorize; Chapter C Codex audit report; local grep verification on 2026-04-18 and 2026-04-19`
+- [x] C3. Build first audit map
+  - Status note: `A bounded prune map was built and then expanded through callable inventory, candidate review, and repo-internal caller verification. The earlier false five-function packet was discarded after the colorize false positive; the tightened method then produced valid bounded prune packets.`
+  - Evidence: `0d8c165`; Chapter C audit report; ae6e942`
+- [x] C4. Quarantine obvious non-runtime junk
+  - Status note: `Confirmed dead helpers were removed from live modules in small packets, and dead legacy modules/deprecated tooling were moved under archive. Explicit keeps and stays of execution were recorded instead of being pruned opportunistically.`
+  - Evidence: `0d8c165`; ae6e942; archive moves for db/adapter.py, prices.py, mapping.py, edscupdate.py, edsmupdate.py, submit-distances.py, misc/clipboard.py, misc/edsc.py, plugins/edcd_plug.py`
 
 ### Notes
--
+- Chapter C started with a false-positive removal of `CommandEnv.colorize()`. That was corrected after proving the symbol remained live via dynamic lookup in `tradecalc.Route.detail()`. From that point onward, the audit standard was tightened to repo-internal caller proof, dynamic lookup checks, and bounded symbol packets.
+- Side issues surfaced during the audit but were handled separately and are closed: X52 behaviour (`a0de3a3`) and the Rich / colour-path split (`1c12adf`). These do not remain open Chapter C work.
+- First valid Chapter C prune packet landed in `0d8c165`, removing `CommandEnv.render`, `spansh ImportPlugin._upsert_shipyard`, `spansh ImportPlugin._live_line`, and `eddblink _collect_station_modified_times`.
+- Chapter C closeout landed in `ae6e942`, removing confirmed dead helpers from live modules and archiving dead legacy modules/deprecated tooling.
+- Explicitly retained after review: `tradedangerous/commands/TEMPLATE.py`, `tradedangerous/db/paths.py::get_sqlite_db_path`, `tradedangerous/tradedb.py::TradeDB.lookupAdded`, `tradedangerous/tradeorm.py::TradeORM.commit`, and `tradedangerous/fs.py::copyallfiles`.
+- Checkpoint C is complete.
 
 ---
 
@@ -614,6 +619,11 @@ Record decisions that materially affect later work.
   - Decision: `Support rebuild/reset rollout only for Batch A. Do not implement or promise additive in-place reconciliation of existing databases.`
   - Reason: `Users were already directed to use clean import/rebuild, and later refactor stages will introduce breaking schema changes that make long-lived additive upgrade support poor value.`
   - Revisit trigger: `Only if a later release policy explicitly restores support for in-place schema upgrades.`
+- Date: `2026-04-19`
+  - Topic: `Chapter C dead-code standard`
+  - Decision: `Judge dead code by repo-internal reachability. Docs, exported surface, and stale compatibility intent do not preserve code by themselves. Test-only utilities may still be kept deliberately when they remain useful to the suite.`
+  - Reason: `The audit needed an explicit standard to stop dead-code decisions drifting into hypothetical external consumers or stale documentation.`
+  - Revisit trigger: `Only if the repo later adopts a formal supported external API policy for these surfaces.`
 
 ---
 
@@ -669,6 +679,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-17`
   - Commit:
   - Notes: `Verified packaged SQLite runtime index presence and query-plan usage after the supported rebuild/reset path, confirmed live MariaDB schema presence for the same Batch A indexes, and finalized release-note text for the rebuild-only rollout policy.`
+- [x] Milestone: `Checkpoint C legacy audit and prune closeout`
+  - Date completed: `2026-04-19`
+  - Commit: `ae6e942`
+  - Notes: `Corrected an early false positive, tightened the audit method to repo-internal caller proof plus dynamic checks, removed confirmed dead helpers from live modules in bounded packets, and archived dead legacy modules/deprecated tooling.`
 
 ---
 
