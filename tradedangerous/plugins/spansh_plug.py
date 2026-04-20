@@ -26,7 +26,6 @@ import os
 import shutil
 import sys
 import time
-import traceback
 import typing
 
 # SQLAlchemy
@@ -188,37 +187,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception:
             pass  # never break main flow
     
-    # --- TD shim: seed 'Added' from templates (idempotent) ---
-    def _seed_added_from_templates(self, session) -> None:
-        """
-        Seed the legacy 'Added' table from the packaged CSV:
-            tradedangerous/templates/Added.csv
-        
-        DB-agnostic; uses cache.processImportFile. No reliance on any templatesDir.
-        """
-        # Obtain a Traversable for the packaged resource and materialize to a real path
-        res = implib_files("tradedangerous").joinpath("templates", "Added.csv")
-        with implib_as_file(res) as csv_path:
-            if not csv_path.exists():
-                # Graceful failure so schedulers can retry
-                raise CleanExit(f"Packaged Added.csv not found: {csv_path}")
-            try:
-                processImportFile(
-                    tdenv=self.tdenv,
-                    session=session,
-                    importPath=csv_path,
-                    tableName="Added",
-                )
-            except Exception as e:
-                # Keep diagnostics, but avoid hard process exit
-                self._warn("Seeding 'Added' from templates failed; continuing without it.")
-                self._warn(f"{type(e).__name__}: {e}")
-                traceback.print_exc()
-                raise CleanExit("Failed to seed 'Added' table from templates.") from e  # ^ contradiction?
-
     # --------------------------------------
     # EDCD Import Functions
-    #
     def _acquire_edcd_files(self) -> dict[str, Path | None]:
         """
         Download (or resolve) EDCD CSVs to tmp/ with conditional caching.
@@ -986,12 +956,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 db_path = Path(self.tdb.engine.url.database or (data_dir / "TradeDangerous.db"))  # SQLite only
                 self._print("No valid DB detected — creating full schema…")
                 reset_db(self.tdb.engine, db_path=db_path)
-                
-                # Seed 'Added' once on a fresh schema
-                self.session = self._open_session()
-                self._seed_added_from_templates(self.session)
-                self.session.commit()
-                self._safe_close_session()
         
         except Exception as e:
             self._error(f"Database bootstrap failed: {e!r}")
@@ -1728,14 +1692,9 @@ class ImportPlugin(plugins.ImportPluginBase):
     ) -> None:
         """
         Upsert System with timestamp guard.
-        'added' policy (when column exists):
-          - INSERT: set added=20 (EDSM).
-          - UPDATE: do not overwrite, unless existing added IS NULL → set to 20.
         """
         if modified is None:
             modified = datetime.utcfromtimestamp(0)
-        
-        has_added_col = hasattr(t_system.c, "added")
         
         row = {
             "system_id": system_id,
@@ -1743,8 +1702,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             "pos_x": x, "pos_y": y, "pos_z": z,
             "modified": modified,
         }
-        if has_added_col:
-            row["added"] = 20  # EDSM on INSERT
         
         if db_utils.is_sqlite(self.session):
             db_utils.sqlite_upsert_modified(
@@ -1754,12 +1711,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 modified_col="modified",
                 update_cols=("name", "pos_x", "pos_y", "pos_z"),
             )
-            if has_added_col:
-                self.session.execute(
-                    update(t_system)
-                    .where((t_system.c.system_id == system_id) & (t_system.c.added.is_(None)))
-                    .values(added=20)
-                )
             return
         
         if db_utils.is_mysql(self.session):
@@ -1770,13 +1721,25 @@ class ImportPlugin(plugins.ImportPluginBase):
                 modified_col="modified",
                 update_cols=("name", "pos_x", "pos_y", "pos_z"),
             )
-            if has_added_col:
-                self.session.execute(
-                    update(t_system)
-                    .where((t_system.c.system_id == system_id) & (t_system.c.added.is_(None)))
-                    .values(added=20)
-                )
             return
+        
+        # Generic fallback
+        existing = self.session.execute(
+            select(t_system.c.modified).where(t_system.c.system_id == system_id)
+        ).first()
+        
+        if existing is None:
+            self.session.execute(insert(t_system).values(**row))
+        else:
+            db_modified = existing[0]
+            values = {"name": name, "pos_x": x, "pos_y": y, "pos_z": z}
+            if db_modified is None or modified > db_modified:
+                values["modified"] = modified
+            self.session.execute(
+                update(t_system)
+                .where(t_system.c.system_id == system_id)
+                .values(**values)
+            )
         
         # Generic fallback
         sel_cols = [t_system.c.modified]
