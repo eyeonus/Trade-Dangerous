@@ -669,10 +669,6 @@ Record decisions that materially affect later work.
 
 ## 7. Blockers log
 
----
-
-## 7. Blockers log
-
 ### Blocker template
 - Date:
 - Blocker:
