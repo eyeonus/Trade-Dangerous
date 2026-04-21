@@ -49,23 +49,23 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[!]`
-- Checkpoint: `Next checkpoint not yet selected`
-- Subtask: `Checkpoint D closeout complete; choose the next chapter`
+- Status: `[-]`
+- Checkpoint: `E — Collapse RareItem into Item`
+- Subtask: `Checkpoint E startup and locked design decisions recorded`
 - Owner: `Tromador + ChatGPT`
-- Started: `2026-04-20`
-- Goal: `Checkpoint D is complete. Next checkpoint selection is pending.`
+- Started: `2026-04-21`
+- Goal: `Remove RareItem entirely, move canonical rarity to Item.rare_station_id, retire trade rares, and simplify the rare model under the rebuild-only policy.`
 
 ### Current blocker
 - Status: `[x]`
 - Blocker: `No active blocker remains at this point.`
-- Impact: `Next work can start as soon as the next checkpoint is chosen.`
+- Impact: `Checkpoint E work can proceed.`
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-20`
+- Date: `2026-04-21`
 - By: `ChatGPT + Tromador`
-- Session summary: `Closed out Checkpoint D. Removed Added from ORM/schema/runtime/import/export/package-data paths, removed Added handling from spansh_plug.py, validated fresh MariaDB rebuild plus spansh seed on the test server, confirmed exported System.csv no longer carries added_id, verified listener startup/live ingestion against the post-D schema, completed a clean eddblink import from the test server output, and smoke-tested trade run in both CLI and GUI.`
+- Session summary: `Selected Checkpoint E as the active chapter, locked the rare-item design and rollout policy, confirmed that live market data for rares already lands in StationItem when present, fixed the model distinction between canonical rarity and live market overlay, decided to retire trade rares in favour of buy-side rare filtering, and excluded Festive Gifts from canonical rare handling.`
 
 ### Last known good rollback point
 - Commit: `859b076`
@@ -77,10 +77,6 @@ Do not tick a task unless:
 
 Mark these only if they are superseded by explicit new evidence and an agreed replacement.
 
-- [x] Use Option 1 ORM migration strategy
-- [x] `TradeDB` is being shrunk into a compatibility shim, not deleted up front
-- [x] CLI and GUI remain equally first-class
-- [x] Core engine remains OS-agnostic and frontend-agnostic
 - [x] `Added` will be removed entirely
 - [x] `RareItem` will be removed entirely
 - [x] Rarity is represented by `Item.rare_station_id IS NOT NULL`
@@ -88,6 +84,9 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] Work happens directly on `Tromador/Trade-Dangerous:release/v1`
 - [x] No second refactor branch inside the fork unless later forced
 - [x] Batch A rollout is rebuild/reset only; in-place index reconciliation is not planned
+- [x] Checkpoint E is rebuild/reset only; no migration/backfill or old-schema assistance is planned
+- [x] `trade rares` is retired; remaining useful rare lookup moves into `trade buy` filtering
+- [x] `Festive Gifts` is excluded from canonical rare handling
 
 ---
 
@@ -97,7 +96,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] B — Schema Batch A: narrow additive index release
 - [x] C — Legacy audit and prune map
 - [x] D — Remove `Added`
-- [ ] E — Collapse `RareItem` into `Item`
+- [-] E — Collapse `RareItem` into `Item`
 - [ ] F — Resolver contract and parity tests
 - [ ] G — Resolver-first execution flow
 - [ ] H — Migrate `local`
@@ -270,13 +269,16 @@ Delete the obsolete `Added` table and all live references.
 ## Checkpoint E — Collapse `RareItem` into `Item`
 
 ### Goal
-Remove standalone rares table and model rarity through `Item.rare_station_id`.
+Remove standalone rares table, model canonical rarity through `Item.rare_station_id`, and retire the dedicated rare subsystem.
 
 ### Acceptance criteria
 - fresh DB has no `RareItem`
-- old DB migrates or reports unmappable rows honestly
-- `trade rares` works end-to-end on the new model
-- importer/cache logic no longer treats rares as a separate table
+- v13 expects a fresh rebuilt database; no migration/backfill or old-schema assistance is provided
+- rarity is modelled by `Item.rare_station_id`, with `is_rare` convenience logic only
+- canonical rare identity is item-side; `StationItem` is live market overlay only
+- `trade rares` is retired and any still-useful rare lookup behaviour is covered by `trade buy` filtering
+- importer/cache/export logic no longer treats rares as a separate table
+- `Festive Gifts` is excluded from canonical rare handling
 
 ### Tasks
 - [ ] E1. Add `Item.rare_station_id` and only genuinely needed parity fields
@@ -285,21 +287,25 @@ Remove standalone rares table and model rarity through `Item.rare_station_id`.
 - [ ] E2. Add computed `is_rare` convenience logic if useful
   - Status note:
   - Evidence:
-- [ ] E3. Implement migration/backfill from old `RareItem`
+- [ ] E3. Remove dedicated rare command surface and cover any still-useful behaviour through `trade buy` filtering
   - Status note:
   - Evidence:
-- [ ] E4. Rewrite `trade rares`
+- [ ] E4. Remove importer/cache special cases and rare-only export/template plumbing
   - Status note:
   - Evidence:
-- [ ] E5. Remove importer/cache special cases
+- [ ] E5. Remove `RareItem` schema/runtime/docs/tests
   - Status note:
   - Evidence:
-- [ ] E6. Remove `RareItem` schema/docs/tests
+- [ ] E6. Encode the `Festive Gifts` exclusion narrowly
   - Status note:
   - Evidence:
 
 ### Notes
--
+- Canonical Checkpoint E decisions are locked in `docs/CHECKPOINT_E_LOCKED_DECISIONS.md`.
+- `StationItem` may contain live market rows for canonical rares, but absence of a `StationItem` row is not evidence against rarity.
+- Checkpoint E deliberately does not include migration handling, backfill, or runtime babysitting for pre-E databases.
+
+---
 
 ---
 
@@ -507,7 +513,8 @@ Reduce `TradeCalc.__init__()` setup overhead before touching route maths.
 Finish the main command migration set.
 
 ### Acceptance criteria
-- `olddata`, `nav`, and `rares` no longer depend on full preload
+- `olddata` and `nav` no longer depend on full preload
+- any remaining rare lookup behaviour uses the post-E `buy` path rather than a dedicated `rares` command
 - remaining monolithic `TradeDB.load()` callers are few and justified
 
 ### Tasks
@@ -517,7 +524,7 @@ Finish the main command migration set.
 - [ ] L2. Migrate `nav`
   - Status note:
   - Evidence:
-- [ ] L3. Complete full `rares` cutover on new item model
+- [ ] L3. Complete post-E rare lookup cutover on `buy`
   - Status note:
   - Evidence:
 - [ ] L4. Re-evaluate remaining full `TradeDB.load()` callers
@@ -525,7 +532,9 @@ Finish the main command migration set.
   - Evidence:
 
 ### Notes
--
+- `trade rares` is retired under the locked Checkpoint E design.
+
+---
 
 ---
 
@@ -640,6 +649,25 @@ Record decisions that materially affect later work.
   - Decision: `Treat Tromador/TradeDangerous-listener as a companion target whenever schema or published CSV contracts are being validated on the server side.`
   - Reason: `Checkpoint D proved that server-side spansh/import/export and listener workflows are part of the real validation surface even when the schema changes are implemented in the main Trade-Dangerous repo.`
   - Revisit trigger: `Only if the server/listener pipeline is folded back into the main repo or replaced entirely.`
+- Date: `2026-04-21`
+  - Topic: `Checkpoint E rare model and rollout`
+  - Decision: `Checkpoint E is a rebuild/reset-only simplification checkpoint. Remove RareItem entirely, store canonical rarity only as Item.rare_station_id, and do not add migration/backfill or old-schema assistance.`
+  - Reason: `Current command and data needs no longer justify preserving the historical RareItem model, and current market import already treats rares as ordinary commodities when live data is present.`
+  - Revisit trigger: `Only if later product or release policy explicitly restores a requirement for old-schema compatibility or rich rare-only metadata.`
+- Date: `2026-04-21`
+  - Topic: `Rare command surface`
+  - Decision: `Retire trade rares and move any still-useful rare lookup behaviour into trade buy filtering.`
+  - Reason: `The remaining useful rare lookup behaviour is buy-shaped, and canonical rarity belongs on Item rather than in a dedicated rare subsystem.`
+  - Revisit trigger: `Only if a later command review produces a concrete user need that cannot be served cleanly through buy-side filtering.`
+- Date: `2026-04-21`
+  - Topic: `Festive Gifts exception`
+  - Decision: `Exclude Festive Gifts from canonical rare handling.`
+  - Reason: `Festive Gifts is a Frontier seasonal/event-specific commodity with bespoke behaviour and should not distort normal rare modelling.`
+  - Revisit trigger: `Only if Frontier later turns Festive Gifts into a normal always-available rare commodity, which is not the current game behaviour.`
+
+---
+
+## 7. Blockers log
 
 ---
 
