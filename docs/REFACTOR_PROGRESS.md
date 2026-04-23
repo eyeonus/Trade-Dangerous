@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `E — Collapse RareItem into Item`
-- Subtask: `Checkpoint E startup and locked design decisions recorded`
+- Subtask: `First committed Checkpoint E implementation pass landed; master tracker now being brought back into line`
 - Owner: `Tromador + ChatGPT`
 - Started: `2026-04-21`
 - Goal: `Remove RareItem entirely, move canonical rarity to Item.rare_station_id, retire trade rares, and simplify the rare model under the rebuild-only policy.`
@@ -63,13 +63,13 @@ Do not tick a task unless:
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-21`
+- Date: `2026-04-23`
 - By: `ChatGPT + Tromador`
-- Session summary: `Selected Checkpoint E as the active chapter, locked the rare-item design and rollout policy, confirmed that live market data for rares already lands in StationItem when present, fixed the model distinction between canonical rarity and live market overlay, decided to retire trade rares in favour of buy-side rare filtering, and excluded Festive Gifts from canonical rare handling.`
+- Session summary: `The first committed Checkpoint E implementation pass is now landed on release/v1: Item.rare_station_id is in place, the standalone RareItem model/table path has been removed from live schema/runtime, trade rares has been retired from the command registry, trade buy now carries rare filtering, and Spansh rare enrichment now writes canonical rarity onto Item. The physical templates/RareItem.csv file still remains in-tree, and no Checkpoint E runtime or rebuild validation pass has yet been recorded.`
 
 ### Last known good rollback point
-- Commit: `859b076`
-- Notes: `Pushed last relevant Chapter D code change for removal of Added table`
+- Commit: `not yet re-established`
+- Notes: `Checkpoint E implementation has been committed, but no post-commit validation pass has yet been recorded. Do not treat the old 859b076 Chapter D rollback point as current for Checkpoint E work.`
 
 ---
 
@@ -281,31 +281,32 @@ Remove standalone rares table, model canonical rarity through `Item.rare_station
 - `Festive Gifts` is excluded from canonical rare handling
 
 ### Tasks
-- [ ] E1. Add `Item.rare_station_id` and only genuinely needed parity fields
-  - Status note:
-  - Evidence:
-- [ ] E2. Add computed `is_rare` convenience logic if useful
-  - Status note:
-  - Evidence:
-- [ ] E3. Remove dedicated rare command surface and cover any still-useful behaviour through `trade buy` filtering
-  - Status note:
-  - Evidence:
-- [ ] E4. Remove importer/cache special cases and rare-only export/template plumbing
-  - Status note:
-  - Evidence:
-- [ ] E5. Remove `RareItem` schema/runtime/docs/tests
-  - Status note:
-  - Evidence:
-- [ ] E6. Encode the `Festive Gifts` exclusion narrowly
-  - Status note:
-  - Evidence:
+- [x] E1. Add `Item.rare_station_id` and only genuinely needed parity fields
+  - Status note: `Landed in ORM and canonical SQLite schema. Canonical rarity is now item-side via Item.rare_station_id, with Station as the FK target and restrictive delete semantics.`
+  - Evidence: `tradedangerous/db/orm_models.py`; `tradedangerous/templates/TradeDangerous.sql`
+- [x] E2. Add computed `is_rare` convenience logic if useful
+  - Status note: `Landed as Item.is_rare convenience logic only; no persisted is_rare column was added.`
+  - Evidence: `tradedangerous/db/orm_models.py`
+- [x] E3. Remove dedicated rare command surface and cover any still-useful behaviour through `trade buy` filtering
+  - Status note: `trade rares has been retired from the live command registry, and trade buy now supports --rare filtering, rare browse mode, and the associated command-surface guards.`
+  - Evidence: `tradedangerous/commands/__init__.py`; `tradedangerous/commands/buy_cmd.py`; archived `tradedangerous/commands/rares_cmd.py`
+- [-] E4. Remove importer/cache special cases and rare-only export/template plumbing
+  - Status note: `Main importer/cache/plumbing changes are landed: TradeDB bootstrap no longer carries RareItem, Spansh rare enrichment now writes Item.rare_station_id, package data no longer ships templates/RareItem.csv, and explicit RareItem cache header special-casing has been removed. The remaining obvious repo-hygiene item is the still-present physical templates/RareItem.csv file.`
+  - Evidence: `tradedangerous/tradedb.py`; `tradedangerous/plugins/spansh_plug.py`; `tradedangerous/cache.py`; `pyproject.toml`; `tradedangerous/templates/RareItem.csv`
+- [-] E5. Remove `RareItem` schema/runtime/docs/tests
+  - Status note: `Schema and runtime removal are largely landed, but repo hygiene and validation are not yet closed out. RareItem is gone from the live ORM/schema path, but repo-wide eradication and the first Checkpoint E runtime/rebuild validation pass have not yet been formally completed.`
+  - Evidence: `tradedangerous/db/orm_models.py`; `tradedangerous/templates/TradeDangerous.sql`; absence of recorded Checkpoint E validation evidence so far
+- [x] E6. Encode the `Festive Gifts` exclusion narrowly
+  - Status note: `Landed in the Spansh rare-enrichment path so Festive Gifts is excluded from canonical rare handling.`
+  - Evidence: `tradedangerous/plugins/spansh_plug.py`
 
 ### Notes
-- Canonical Checkpoint E decisions are locked in `docs/CHECKPOINT_E_LOCKED_DECISIONS.md`.
-- `StationItem` may contain live market rows for canonical rares, but absence of a `StationItem` row is not evidence against rarity.
-- Checkpoint E deliberately does not include migration handling, backfill, or runtime babysitting for pre-E databases.
-
----
+- Canonical rarity is item-side: `Item.rare_station_id` answers whether an item is rare and identifies its canonical source station.
+- `StationItem` is live market overlay only. A live row for a rare belongs in `StationItem` like any other commodity, but absence of a `StationItem` row does not disprove canonical rarity.
+- `trade rares` is retired. The surviving useful rare lookup behaviour now lives on the `trade buy` path.
+- Checkpoint E is rebuild/reset only and deliberately does not include migration handling, backfill, old-schema detection, or runtime babysitting for pre-E databases.
+- The main obvious remaining repo-hygiene item is evacuation of `tradedangerous/templates/RareItem.csv`.
+- No Checkpoint E runtime validation pass or fresh rebuild validation pass has yet been recorded.
 
 ---
 
