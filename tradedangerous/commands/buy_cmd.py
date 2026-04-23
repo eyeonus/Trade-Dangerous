@@ -266,6 +266,9 @@ def run(results, cmdenv, tdb):
     queries, mode = get_lookup_list(cmdenv, tdb)
     cmdenv.DEBUG0("{} query: {}", mode, queries.values())
     
+    if cmdenv.rare and cmdenv.oneStop and not queries:
+        raise CommandLineError("--one-stop requires one or more named items when using --rare")
+    
     avoidSystems = {s for s in cmdenv.avoidPlaces if isinstance(s, System)}
     avoidStations = {s for s in cmdenv.avoidPlaces if isinstance(s, Station)}
     
@@ -343,6 +346,12 @@ def run(results, cmdenv, tdb):
         if maxAge and stnAge > maxAge:
             continue
         
+        item = queries.get(ID)
+        if item is None:
+            item = tdb.itemByID.get(ID)
+            if item is None:
+                continue
+        
         row = ResultRow()
         row.station = station
         if mls:
@@ -354,7 +363,7 @@ def run(results, cmdenv, tdb):
             if distance > maxLy:
                 continue
             row.dist = distance
-        row.item = queries[ID]
+        row.item = item
         row.price = price
         row.units = units
         row.age = station.itemDataAgeStr
