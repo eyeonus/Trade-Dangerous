@@ -884,18 +884,6 @@ def processImportFile(
             baseName = colName[uniqueLen:] if colName.startswith(uniquePfx) else colName
             header_index[baseName] = cIndex
             
-            # Foreign key columns for RareItem
-            if tableName == "RareItem":
-                if cName == "!name@System.system_id":
-                    fk_col_indices["system"] = cIndex
-                    continue
-                if cName == "name@Station.station_id":
-                    fk_col_indices["station"] = cIndex
-                    continue
-                if cName == "name@Category.category_id":
-                    fk_col_indices["category"] = cIndex
-                    continue
-            
             # Handle unique constraint tracking
             if colName.startswith(uniquePfx):
                 uniqueIndexes.append(len(activeColumns))

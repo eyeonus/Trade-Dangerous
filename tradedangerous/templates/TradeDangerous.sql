@@ -143,30 +143,6 @@ CREATE TABLE UpgradeVendor
 ;
 CREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);
 
-CREATE TABLE RareItem
- (
-   rare_id INTEGER PRIMARY KEY,
-   station_id INTEGER NOT NULL,
-   category_id INTEGER NOT NULL,
-   name VARCHAR(40) COLLATE nocase,
-   cost INTEGER,
-   max_allocation INTEGER,
-   illegal TEXT(1) NOT NULL DEFAULT '?'
-       CHECK (illegal IN ('?', 'Y', 'N')),
-   suppressed TEXT(1) NOT NULL DEFAULT '?'
-       CHECK (suppressed IN ('?', 'Y', 'N')),
-
-   UNIQUE (name),
-
-   FOREIGN KEY (station_id) REFERENCES Station(station_id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
-   FOREIGN KEY (category_id) REFERENCES Category(category_id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE
- )
-;
-
 CREATE TABLE Category
  (
    category_id INTEGER PRIMARY KEY,
@@ -184,12 +160,16 @@ CREATE TABLE Item
    ui_order INTEGER NOT NULL DEFAULT 0,
    avg_price INTEGER,
    fdev_id INTEGER,
+   rare_station_id BIGINT,
 
    UNIQUE (item_id),
 
    FOREIGN KEY (category_id) REFERENCES Category(category_id)
     ON UPDATE CASCADE
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+   FOREIGN KEY (rare_station_id) REFERENCES Station(station_id)
+    ON UPDATE CASCADE
+    ON DELETE RESTRICT
  );
  CREATE INDEX idx_item_by_fdev_id ON Item (fdev_id);
 

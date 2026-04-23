@@ -156,7 +156,6 @@ exclude = ["tests", "tests.*"]
 tradedangerous = [
     "templates/TradeDangerous.sql",
     "templates/Category.csv",
-    "templates/RareItem.csv",
     "tradeenv.pyi",
     "py.typed",
 ]

@@ -17,7 +17,6 @@ from . import local_cmd
 from . import market_cmd
 from . import nav_cmd
 from . import olddata_cmd
-from . import rares_cmd
 from . import run_cmd
 from . import sell_cmd
 from . import shipvendor_cmd

@@ -95,7 +95,6 @@ from .db.orm_models import (  # noqa: F401  # pylint: disable=unused-import
     Item               as SA_Item,
     Category           as SA_Category,
     StationItem        as SA_StationItem,
-    RareItem           as SA_RareItem,
     Ship               as SA_Ship,
     ShipVendor         as SA_ShipVendor,
     Upgrade            as SA_Upgrade,
@@ -423,22 +422,37 @@ class Item:
     A product that can be bought/sold in the game.
     
     Attributes:
-        ID       -- Database ID.
-        dbname   -- Name as it appears in-game and in the DB.
-        category -- Reference to the category.
-        fullname -- Combined category/dbname for lookups.
-        avgPrice -- Galactic average as shown in game.
-        fdevID   -- FDevID as provided by the companion API.
+        ID            -- Database ID.
+        dbname        -- Name as it appears in-game and in the DB.
+        category      -- Reference to the category.
+        fullname      -- Combined category/dbname for lookups.
+        avgPrice      -- Galactic average as shown in game.
+        fdevID        -- FDevID as provided by the companion API.
+        rareStationID -- Canonical source station for rare commodities.
     """
-    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID')
+    __slots__ = ('ID', 'dbname', 'category', 'fullname', 'avgPrice', 'fdevID', 'rareStationID')
     
-    def __init__(self, ID: int, dbname: str, category: 'Category', fullname: str, avgPrice: int | None = None, fdevID: int | None = None) -> None:
+    def __init__(
+            self,
+            ID: int,
+            dbname: str,
+            category: 'Category',
+            fullname: str,
+            avgPrice: int | None = None,
+            fdevID: int | None = None,
+            rareStationID: int | None = None,
+            ) -> None:
         self.ID = ID
         self.dbname = dbname
         self.category = category
         self.fullname = fullname
         self.avgPrice = avgPrice
         self.fdevID   = fdevID
+        self.rareStationID = rareStationID
+    
+    @property
+    def isRare(self) -> bool:
+        return self.rareStationID is not None
     
     def name(self, detail: int = 0):
         return self.fullname if detail > 0 else self.dbname
@@ -533,7 +547,6 @@ class TradeDB:
         ('Category.csv', 'Category'),
         ('Item.csv', 'Item'),
         ('StationItem.csv', 'StationItem'),
-        ('RareItem.csv', 'RareItem'),
         ('FDevShipyard.csv', 'FDevShipyard'),
         ('FDevOutfitting.csv', 'FDevOutfitting'),
     )
@@ -565,7 +578,6 @@ class TradeDB:
         self.csvPath = fs.ensurefolder(tdenv.csvDir)
         
         # Template bootstrap files: copy ONLY if missing (never overwrite on pip upgrade).
-        fs.copy_if_missing(self.templatePath / "RareItem.csv",    self.csvPath / "RareItem.csv")
         fs.copy_if_missing(self.templatePath / "Category.csv",    self.csvPath / "Category.csv")
         fs.copy_if_newer(self.templatePath / "TradeDangerous.sql", self.dataPath / "TradeDangerous.sql")
         
@@ -1761,13 +1773,14 @@ class TradeDB:
                 SA_Item.category_id,
                 SA_Item.avg_price,
                 SA_Item.fdev_id,
+                SA_Item.rare_station_id,
             )
-            for ID, name, categoryID, avgPrice, fdevID in rows:
+            for ID, name, categoryID, avgPrice, fdevID, rareStationID in rows:
                 category = self.categoryByID[categoryID]
                 item = Item(
                     ID, name, category,
                     f"{category.dbname}/{name}",
-                    avgPrice, fdevID
+                    avgPrice, fdevID, rareStationID
                 )
                 itemByID[ID] = item
                 itemByName[name] = item

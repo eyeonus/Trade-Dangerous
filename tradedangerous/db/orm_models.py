@@ -221,6 +221,10 @@ class Item(Base):
     ui_order: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     avg_price: Mapped[int | None] = mapped_column(Integer)
     fdev_id: Mapped[int | None] = mapped_column(Integer)
+    rare_station_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("Station.station_id", onupdate="CASCADE", ondelete="RESTRICT"),
+    )
     
     # Relationships
     category: Mapped["Category"] = relationship(back_populates="items")
@@ -231,6 +235,10 @@ class Item(Base):
         if detail:
             return f"{self.category.name}/{self.name}"
         return self.name
+    
+    @property
+    def is_rare(self) -> bool:
+        return self.rare_station_id is not None
     
     __table_args__ = (
         Index("idx_item_by_fdevid", "fdev_id"),
@@ -357,31 +365,6 @@ class UpgradeVendor(Base):
     __table_args__ = (Index("idx_vendor_by_station_id", "station_id"),)
 
 
-class RareItem(Base):  # [[deprecated]]
-    """ RareItem is used to track specialized commodities that Frontier introduced during the
-        early days of the game.
-        @deprecated These are now just included in the standard Item catalog. """
-    __tablename__ = "RareItem"
-    
-    rare_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    station_id: Mapped[int] = mapped_column(
-        BigInteger,
-        ForeignKey("Station.station_id", ondelete="CASCADE", onupdate="CASCADE"),
-        nullable=False,
-    )
-    category_id: Mapped[int] = mapped_column(
-        ForeignKey("Category.category_id", onupdate="CASCADE", ondelete="CASCADE"),
-        nullable=False,
-    )
-    name: Mapped[str] = mapped_column(CIString(128), nullable=False)
-    cost: Mapped[int | None] = mapped_column(Integer)
-    max_allocation: Mapped[int | None] = mapped_column(Integer)
-    illegal: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    suppressed: Mapped[str] = mapped_column(TriState, nullable=False, server_default=text("'?'"))
-    
-    __table_args__ = (UniqueConstraint("name", name="uq_rareitem_name"),)
-
-
 class FDevShipyard(Base):
     """ FDevShipyard is a vestigial bridge between originally crowd-sourced ship information,
         and the data that is now available thanks to frontier's journal logs. """
@@ -473,7 +456,6 @@ __all__ = [
     "ShipVendor",
     "Upgrade",
     "UpgradeVendor",
-    "RareItem",
     "FDevShipyard",
     "FDevOutfitting",
     # Control & staging

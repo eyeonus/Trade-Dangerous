@@ -29,9 +29,9 @@ wantsTradeDB = True
 arguments = (
     ParseArgument(
         'name',
-        help = 'Items or Ships to look for.',
+        help = 'Items or Ships to look for. Omit when using --rare.',
         type = str,
-        nargs = '+',
+        nargs = '*',
     ),
 )
 switches = (
@@ -40,6 +40,12 @@ switches = (
         help = 'Limit to stations known to have at least this much supply.',
         default = 0,
         type = int,
+    ),
+    ParseArgument(
+        '--rare',
+        help = 'Limit to rare commodities only.',
+        action = 'store_true',
+        default = False,
     ),
     ParseArgument(
         '--near',
@@ -125,8 +131,12 @@ def get_lookup_list(cmdenv, tdb):
     # Credit: http://stackoverflow.com/a/952952/257645
     # Turns [['a'],['b','c']] => ['a', 'b', 'c']
     names = [
-        name for names in cmdenv.name for name in names.split(',')
+        name for names in cmdenv.name for name in names.split(',') if name
     ]
+    if not names:
+        if cmdenv.rare:
+            return {}, ITEM_MODE
+        raise CommandLineError("No item or ship specified")
     # We only support searching for one type of purchase a time: ship or item.
     # Our first match is open-ended, but once we have matched one type of
     # thing, the remaining arguments are all sourced from the same pool.
@@ -178,6 +188,9 @@ def get_lookup_list(cmdenv, tdb):
                 "Unrecognized ship: {}".format(name)
             )
     
+    if cmdenv.rare and mode is SHIP_MODE:
+        raise CommandLineError("--rare cannot be used with ships")
+    
     return queries, mode
 
 
@@ -207,11 +220,17 @@ def sql_query(cmdenv, tdb, queries, mode):
         constraints = [f"(s.ship_id IN ({id_list_sql}))"]
     else:
         columns = "s.item_id, s.station_id, s.supply_price, s.supply_units"
-        tables = "StationItem AS s"
+        if cmdenv.rare:
+            tables = "StationItem AS s JOIN Item AS i ON i.item_id = s.item_id"
+        else:
+            tables = "StationItem AS s"
         constraints = [
-            f"(s.item_id IN ({id_list_sql}))",
             "(s.supply_price > 0)",  # preserves index intent across backends
         ]
+        if ids:
+            constraints.insert(0, f"(s.item_id IN ({id_list_sql}))")
+        if cmdenv.rare:
+            constraints.append("(i.rare_station_id IS NOT NULL)")
         if cmdenv.supply:
             constraints.append("(s.supply_units >= :supply)")
             params["supply"] = cmdenv.supply

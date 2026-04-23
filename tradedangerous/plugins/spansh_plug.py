@@ -8,7 +8,7 @@
 # - Options: -O url=… | -O file=… (mutually exclusive), -O maxage=<float days>
 # - JSON/intermediate in tmp/, CSV & .prices in data/
 # - Warnings gated by verbosity; low-verbosity uses single-line progress
-# - After import: export CSVs (incl. RareItem) and regenerate TradeDangerous.prices
+# - After import: export CSVs and regenerate TradeDangerous.prices
 # - Returns True from finish() to stop default flow
 #
 # DB/dialect specifics live in tradedangerous.db.utils (parse_ts, batch sizing, etc.)
@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
-from importlib.resources import files as implib_files, as_file as implib_as_file
 from pathlib import Path
 import csv
 import json  # used for debug
@@ -29,7 +28,7 @@ import time
 import typing
 
 # SQLAlchemy
-from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, text, UniqueConstraint
+from sqlalchemy import MetaData, Table, select, insert, update, func, and_, or_, UniqueConstraint
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -38,7 +37,6 @@ import urllib.request
 
 # Framework modules
 from tradedangerous import plugins, cache, csvexport  # provided by project
-from tradedangerous.cache import processImportFile
 
 # DB helpers (dialect specifics live here)
 from tradedangerous.db import utils as db_utils
@@ -61,8 +59,8 @@ class ImportPlugin(plugins.ImportPluginBase):
       - Consumes galaxy_stations.json (local file or remote URL)
       - Updates System, Station, Ship/ShipVendor, Upgrade/UpgradeVendor, Item/StationItem
       - Respects per-service freshness & optional maxage (days)
-      - Imports RareItem.csv via cache.processImportFile() AFTER systems/stations exist
-      - Exports CSVs (+RareItem) and rebuilds TradeDangerous.prices
+      - Enriches Item.rare_station_id from EDCD rare_commodity.csv after station identity exists
+      - Exports CSVs and rebuilds TradeDangerous.prices
     """
     
     pluginInfo = {
@@ -84,7 +82,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         "listener_mode": "Listener/server mode: disable progress bars; emit [Spansh] log lines suitable for parallel output.",
         "log_interval": "Listener/server mode: seconds between periodic import progress lines (default 30).",
         # --- EDCD sourcing (hardcoded URLs; can be disabled or overridden) ---
-        "no_edcd": "Disable EDCD preloads (categories, FDev tables) and EDCD rares import.",
+        "no_edcd": "Disable EDCD preloads (categories, items, FDev tables) and rare item enrichment.",
         "edcd_commodity": "Override URL or local path for EDCD commodity.csv.",
         "edcd_outfitting": "Override URL or local path for EDCD outfitting.csv.",
         "edcd_shipyard": "Override URL or local path for EDCD shipyard.csv.",
@@ -373,7 +371,114 @@ class ImportPlugin(plugins.ImportPluginBase):
         session.execute(insert(t_cat), to_add)
         inserted += len(to_add)
         return inserted
-
+    
+    def _edcd_import_items_add_update(
+            self,
+            session: Session,
+            tables: dict[str, Table],
+            commodity_csv: Path,
+        ) -> int:
+        """
+        Read EDCD commodity.csv and add/update Item rows so Item is seeded from
+        the canonical commodity catalogue rather than only from observed markets.
+        No deletes in this pass.
+        Returns: number of commodity rows processed from EDCD.
+        """
+        t_item = tables["Item"]
+        t_cat = tables["Category"]
+        cat_id_by_name = {
+            str(name).strip().lower(): int(category_id)
+            for category_id, name in session.execute(
+                select(t_cat.c.category_id, t_cat.c.name)
+            ).all()
+            if name is not None
+        }
+        with open(commodity_csv, "r", encoding="utf-8", newline="") as fh:
+            reader = csv.DictReader(fh)
+            fieldnames = reader.fieldnames or []
+            def _find_col(*aliases: str) -> Optional[str]:
+                canon = {}
+                for header in fieldnames:
+                    if not header:
+                        continue
+                    key = str(header).strip().lower().replace("_", "").replace(" ", "")
+                    canon[key] = header
+                for alias in aliases:
+                    key = alias.strip().lower().replace("_", "").replace(" ", "")
+                    if key in canon:
+                        return canon[key]
+                return None
+            k_id = _find_col("id", "commodityid")
+            k_name = _find_col("name", "commodity", "commodityname")
+            k_cat = _find_col("category", "categoryname")
+            if k_id is None or k_name is None or k_cat is None:
+                raise CleanExit(
+                    f"EDCD commodity.csv missing required columns: {commodity_csv}"
+                )
+            item_rows_by_id: dict[int, dict[str, Any]] = {}
+            for row in reader:
+                raw_id = row.get(k_id)
+                raw_name = row.get(k_name)
+                raw_cat = row.get(k_cat)
+                if raw_id is None or raw_name is None or raw_cat is None:
+                    continue
+                try:
+                    item_id = int(raw_id)
+                except (TypeError, ValueError):
+                    raise CleanExit(
+                        f"EDCD commodity.csv has invalid commodity id {raw_id!r}: {commodity_csv}"
+                    ) from None
+                category_id = cat_id_by_name.get(str(raw_cat).strip().lower())
+                if category_id is None:
+                    raise CleanExit(
+                        f'EDCD commodity.csv references unknown category "{raw_cat}"'
+                    )
+                item_rows_by_id[item_id] = {
+                    "item_id": item_id,
+                    "name": raw_name,
+                    "category_id": category_id,
+                    "fdev_id": item_id,
+                    "ui_order": 0,
+                }
+        if not item_rows_by_id:
+            return 0
+        item_rows = [item_rows_by_id[item_id] for item_id in sorted(item_rows_by_id.keys())]
+        if db_utils.is_sqlite(session):
+            db_utils.sqlite_upsert_simple(
+                session,
+                t_item,
+                rows=item_rows,
+                key_cols=("item_id",),
+                update_cols=("name", "category_id", "fdev_id", "ui_order"),
+            )
+        elif db_utils.is_mysql(session):
+            db_utils.mysql_upsert_simple(
+                session,
+                t_item,
+                rows=item_rows,
+                key_cols=("item_id",),
+                update_cols=("name", "category_id", "fdev_id", "ui_order"),
+            )
+        else:
+            for row in item_rows:
+                exists = session.execute(
+                    select(t_item.c.item_id).where(t_item.c.item_id == row["item_id"])
+                ).first()
+                if exists is None:
+                    session.execute(insert(t_item).values(**row))
+                else:
+                    session.execute(
+                        update(t_item)
+                        .where(t_item.c.item_id == row["item_id"])
+                        .values(
+                            name=row["name"],
+                            category_id=row["category_id"],
+                            fdev_id=row["fdev_id"],
+                            ui_order=row["ui_order"],
+                        )
+                    )
+        return len(item_rows)
+    
     # ---------- EDCD: FDev tables (direct load) ----------
     #
     def _edcd_import_table_direct(self, session: Session, table: Table, csv_path: Path) -> int:
@@ -905,7 +1010,7 @@ class ImportPlugin(plugins.ImportPluginBase):
     #
     def run(self) -> bool:
         """
-        Full orchestrator: acquisition → bootstrap → EDCD preload → import → rares → export.
+        Full orchestrator: acquisition → bootstrap → EDCD preload → import → rare enrichment → export.
         Returns False to keep default flow suppressed.
         """
         started = time.time()
@@ -986,6 +1091,23 @@ class ImportPlugin(plugins.ImportPluginBase):
         except Exception as e:
             self._warn(f"EDCD categories skipped due to error: {e!r}")
         
+        # Item catalogue seed / verification from EDCD commodity.csv.
+        try:
+            if edcd.get("commodity"):
+                item_count = self._edcd_import_items_add_update(
+                    self.session,
+                    tables,
+                    edcd["commodity"],
+                )
+                if item_count:
+                    self._print(f"EDCD items: upserts={item_count:,}")
+                self.session.commit()
+        except CleanExit as ce:
+            self._warn(str(ce))
+            return False
+        except Exception as e:
+            self._warn(f"EDCD items skipped due to error: {e!r}")
+        
         # FDev catalogs (outfitting, shipyard) — COMMIT immediately as well.
         try:
             if edcd.get("outfitting") and edcd.get("shipyard"):
@@ -1055,19 +1177,19 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self._safe_close_session()
         
-        # -------- Rares (prefer EDCD; fallback to template) --------
+        # -------- Rare item enrichment (EDCD only) --------
         try:
             t0 = time.time()
             if edcd.get("rares"):
-                self._import_rareitems_edcd(edcd["rares"])
+                self._import_rareitems_edcd(edcd["rares"], edcd.get("commodity"))
+                self._print(f"Rare item enrichment completed in {time.time()-t0:.2f}s")
             else:
-                self._import_rareitems()
-            self._print(f"Rares imported in {time.time()-t0:.2f}s")
+                self._warn("EDCD rare_commodity.csv unavailable; skipping rare item enrichment.")
         except CleanExit as ce:
             self._warn(str(ce))
             return False
         except Exception as e:
-            self._error(f"RareItem import failed: {e!r}")
+            self._error(f"Rare item enrichment failed: {e!r}")
             return False
         
         # -------- Export (uses your parallel exporter already present) --------
@@ -2075,7 +2197,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 expected += 1
     
     # ------------------------------
-    # Rares import, either from edcd, or via cache.processImportFile
+    # Rare item enrichment from EDCD
     # ------------------------------
     def _import_rareitems_edcd(self, rares_csv: Path, commodity_csv: Optional[Path] = None) -> None:
         """
@@ -2253,69 +2375,38 @@ class ImportPlugin(plugins.ImportPluginBase):
                         })
                         kept += 1
             
-            # Verify/add-only merge: preserve locally-maintained fields such as
-            # max_allocation for existing rares, while still updating EDCD-owned
-            # structure fields (station/category). Cost is live market data, so
-            # refresh it from current StationItem.supply_price on every import.
+            # Reset canonical rare markers, then set them for resolved EDCD rares.
             if out_rows:
-                t_item = tables["Item"]
-                t_si = tables["StationItem"]
-                rare_station_ids = sorted({int(r["station_id"]) for r in out_rows})
-                cost_by_key: dict[tuple[int, str], int] = {}
-                if rare_station_ids:
-                    for station_id, item_name, supply_price in sess.execute(
-                        select(t_si.c.station_id, t_item.c.name, t_si.c.supply_price)
-                        .select_from(t_si.join(t_item, t_si.c.item_id == t_item.c.item_id))
-                        .where(
-                            and_(
-                                t_si.c.station_id.in_(rare_station_ids),
-                                t_si.c.supply_price > 0,
-                            )
-                        )
-                    ).all():
-                        if item_name is not None and supply_price is not None:
-                            cost_by_key[(int(station_id), _norm(str(item_name)))] = int(supply_price)
-                merge_rows = [
-                    {
-                        "name": r["name"],
-                        "station_id": r["station_id"],
-                        "category_id": r["category_id"],
-                        "cost": cost_by_key.get((int(r["station_id"]), _norm(str(r["name"])))),
-                    }
-                    for r in out_rows
-                ]
-                if db_utils.is_sqlite(sess):
-                    db_utils.sqlite_upsert_simple(
-                        sess,
-                        t_rare,
-                        rows=merge_rows,
-                        key_cols=("name",),
-                        update_cols=("station_id", "category_id", "cost"),
+                item_id_by_key = {
+                    (_norm(str(name)), int(category_id)): int(item_id)
+                    for item_id, name, category_id in sess.execute(
+                        select(t_item.c.item_id, t_item.c.name, t_item.c.category_id)
+                    ).all()
+                    if name is not None and category_id is not None
+                }
+                sess.execute(update(t_item).values(rare_station_id=None))
+                festive_gifts_key = _norm("Festive Gifts")
+                for r in out_rows:
+                    item_name_key = _norm(str(r["name"]))
+                    if item_name_key == festive_gifts_key:
+                        continue
+                    item_id = item_id_by_key.get((item_name_key, int(r["category_id"])))
+                    if item_id is None:
+                        skipped += 1
+                        skipped_no_item += 1
+                        skipped_rows.append({
+                            "reason": "no_item",
+                            "name": r["name"],
+                            "station_id": r["station_id"],
+                            "category_id": r["category_id"],
+                        })
+                        continue
+                    sess.execute(
+                        update(t_item)
+                        .where(t_item.c.item_id == item_id)
+                        .values(rare_station_id=int(r["station_id"]))
                     )
-                elif db_utils.is_mysql(sess):
-                    db_utils.mysql_upsert_simple(
-                        sess,
-                        t_rare,
-                        rows=merge_rows,
-                        key_cols=("name",),
-                        update_cols=("station_id", "category_id", "cost"),
-                    )
-                else:
-                    for r in merge_rows:
-                        ex = sess.execute(select(t_rare.c.name).where(t_rare.c.name == r["name"])).first()
-                        if ex is None:
-                            sess.execute(insert(t_rare).values(**r))
-                        else:
-                            sess.execute(
-                                update(t_rare)
-                                .where(t_rare.c.name == r["name"])
-                                .values(
-                                    station_id=r["station_id"],
-                                    category_id=r["category_id"],
-                                    cost=r["cost"],
-                                )
-                            )
-            sess.commit()            
+            sess.commit()
             # Write a CSV with skipped details
             if skipped_rows:
                 outp = self.tmp_dir / "edcd_rares_skipped.csv"
@@ -2324,12 +2415,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                     w = csv.DictWriter(fh, fieldnames=keys)
                     w.writeheader()
                     w.writerows(skipped_rows)
-                self._print(f"EDCD Rares: imported={kept:,}  skipped={skipped:,}  "
-                            f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,})  "
+                self._print(f"EDCD rares: applied={kept:,}  skipped={skipped:,}  "
+                            f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,}, no_item={skipped_no_item:,})  "
                             f"→ details: {outp}")
             else:
-                self._print(f"EDCD Rares: imported={kept:,}  skipped={skipped:,}  "
-                            f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,})")
+                self._print(f"EDCD rares: applied={kept:,}  skipped={skipped:,}  "
+                            f"(no_station={skipped_no_station:,}, no_category={skipped_no_category:,}, no_item={skipped_no_item:,})")
         
         except Exception as e:
             if sess is not None:
@@ -2337,7 +2428,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     sess.rollback()
                 except Exception:
                     pass
-            raise CleanExit(f"RareItem import failed: {e!r}") from e
+            raise CleanExit(f"Rare item enrichment failed: {e!r}") from e
         finally:
             if sess is not None:
                 try:
@@ -2345,68 +2436,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 except Exception:
                     pass
 
-    def _import_rareitems(self) -> None:
-        """
-        Fallback rares import: use the packaged template CSV:
-            tradedangerous/templates/RareItem.csv
-
-        Uses cache.processImportFile() because RareItem CSV has special FK header
-        handling and correction rules (already well tested).
-
-        Called when EDCD rare_commodity.csv is unavailable/disabled.
-        """
-        sess: Session | None = None
-        try:
-            sess = self._open_session()
-
-            # Template is authoritative baseline: clear table first.
-            try:
-                sess.execute(text('DELETE FROM "RareItem"'))
-            except Exception:
-                sess.execute(text("DELETE FROM RareItem"))
-
-            # Prefer packaged resource (works for installed package).
-            try:
-                res = implib_files("tradedangerous").joinpath("templates", "RareItem.csv")
-                with implib_as_file(res) as p:
-                    csv_path = Path(p)
-                    if not csv_path.exists():
-                        raise FileNotFoundError(str(csv_path))
-                    processImportFile(
-                        tdenv=self.tdenv,
-                        session=sess,
-                        importPath=csv_path,
-                        tableName="RareItem",
-                    )
-            except FileNotFoundError:
-                # Fallback for editable/source-tree layouts where resources may not be packaged.
-                csv_path = Path(__file__).resolve().parents[1] / "templates" / "RareItem.csv"
-                if not csv_path.exists():
-                    raise CleanExit(
-                        f"RareItem.csv not found via importlib.resources or source tree: {csv_path}"
-                    )
-                processImportFile(
-                    tdenv=self.tdenv,
-                    session=sess,
-                    importPath=csv_path,
-                    tableName="RareItem",
-                )
-
-        except CleanExit:
-            raise
-        except Exception as e:
-            if sess is not None:
-                try:
-                    sess.rollback()
-                except Exception:
-                    pass
-            raise CleanExit(f"RareItem fallback import failed: {e!r}") from e
-        finally:
-            if sess is not None:
-                try:
-                    sess.close()
-                except Exception:
-                    pass
     # ------------------------------
     # Export / cache refresh
     #
@@ -2531,7 +2560,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         public_csv = (
             "Category.csv",
             "Item.csv",
-            "RareItem.csv",
             "Ship.csv",
             "Station.csv",
             "System.csv",
