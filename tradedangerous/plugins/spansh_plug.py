@@ -2566,16 +2566,14 @@ class ImportPlugin(plugins.ImportPluginBase):
     
         # Public contract (served by eddblink + documented on the files index):
         #   - Reference tables
-        #   - Listings + live listings
         #   - Outfitting + vendor tables (optional in client, but real server dependencies)
+        # listings.csv and listings-live.csv are listener-owned; not mirrored here.
         public_csv = (
             "Category.csv",
             "Item.csv",
             "Ship.csv",
             "Station.csv",
             "System.csv",
-            "listings.csv",
-            "listings-live.csv",
             "Upgrade.csv",
             "ShipVendor.csv",
             "UpgradeVendor.csv",
