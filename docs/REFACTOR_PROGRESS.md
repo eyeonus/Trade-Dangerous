@@ -49,27 +49,27 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[-]`
-- Checkpoint: `E — Collapse RareItem into Item`
-- Subtask: `First committed Checkpoint E implementation pass landed; master tracker now being brought back into line`
-- Owner: `Tromador + ChatGPT`
-- Started: `2026-04-21`
-- Goal: `Remove RareItem entirely, move canonical rarity to Item.rare_station_id, retire trade rares, and simplify the rare model under the rebuild-only policy.`
+- Status: `[ ]`
+- Checkpoint: `F — Resolver contract and parity tests`
+- Subtask: `Not yet started`
+- Owner: `Tromador`
+- Started: `not started`
+- Goal: `Define and lock lookup semantics before broad command migration.`
 
 ### Current blocker
 - Status: `[x]`
-- Blocker: `No active blocker remains at this point.`
-- Impact: `Checkpoint E work can proceed.`
+- Blocker: `No active blocker.`
+- Impact: `none`
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-23`
-- By: `ChatGPT + Tromador`
-- Session summary: `The first committed Checkpoint E implementation pass is now landed on release/v1: Item.rare_station_id is in place, the standalone RareItem model/table path has been removed from live schema/runtime, trade rares has been retired from the command registry, trade buy now carries rare filtering, and Spansh rare enrichment now writes canonical rarity onto Item. The physical templates/RareItem.csv file still remains in-tree, and no Checkpoint E runtime or rebuild validation pass has yet been recorded.`
+- Date: `2026-04-26`
+- By: `Tromador + Claude`
+- Session summary: `Checkpoint E fully validated and closed. Sentinel station_id guard added to spansh_plug for 0xFFFFFFFFFFFFFFFF overflow. skip_galaxy + file= silent failure fixed. supply_units > 0 filter added to buy --rare. eddblink stale comment updated. GUI RaresWorkspace removed, --rare checkbox wired into buy workspace (f57c411). End-to-end validation passed: spansh seed → listener → eddblink import → trade buy --rare returns 142 rares. Two working-tree files (spansh_plug.py, eddblink_plug.py) carry uncommitted session changes pending a final commit.`
 
 ### Last known good rollback point
-- Commit: `not yet re-established`
-- Notes: `Checkpoint E implementation has been committed, but no post-commit validation pass has yet been recorded. Do not treat the old 859b076 Chapter D rollback point as current for Checkpoint E work.`
+- Commit: `f57c411`
+- Notes: `Post-Checkpoint-E validated state. Full end-to-end validation passed on 2026-04-26.`
 
 ---
 
@@ -96,7 +96,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] B — Schema Batch A: narrow additive index release
 - [x] C — Legacy audit and prune map
 - [x] D — Remove `Added`
-- [-] E — Collapse `RareItem` into `Item`
+- [x] E — Collapse `RareItem` into `Item`
 - [ ] F — Resolver contract and parity tests
 - [ ] G — Resolver-first execution flow
 - [ ] H — Migrate `local`
@@ -290,12 +290,12 @@ Remove standalone rares table, model canonical rarity through `Item.rare_station
 - [x] E3. Remove dedicated rare command surface and cover any still-useful behaviour through `trade buy` filtering
   - Status note: `trade rares has been retired from the live command registry, and trade buy now supports --rare filtering, rare browse mode, and the associated command-surface guards.`
   - Evidence: `tradedangerous/commands/__init__.py`; `tradedangerous/commands/buy_cmd.py`; archived `tradedangerous/commands/rares_cmd.py`
-- [-] E4. Remove importer/cache special cases and rare-only export/template plumbing
-  - Status note: `Main importer/cache/plumbing changes are landed: TradeDB bootstrap no longer carries RareItem, Spansh rare enrichment now writes Item.rare_station_id, package data no longer ships templates/RareItem.csv, and explicit RareItem cache header special-casing has been removed. The remaining obvious repo-hygiene item is the still-present physical templates/RareItem.csv file.`
-  - Evidence: `tradedangerous/tradedb.py`; `tradedangerous/plugins/spansh_plug.py`; `tradedangerous/cache.py`; `pyproject.toml`; `tradedangerous/templates/RareItem.csv`
-- [-] E5. Remove `RareItem` schema/runtime/docs/tests
-  - Status note: `Schema and runtime removal are largely landed, but repo hygiene and validation are not yet closed out. RareItem is gone from the live ORM/schema path, but repo-wide eradication and the first Checkpoint E runtime/rebuild validation pass have not yet been formally completed.`
-  - Evidence: `tradedangerous/db/orm_models.py`; `tradedangerous/templates/TradeDangerous.sql`; absence of recorded Checkpoint E validation evidence so far
+- [x] E4. Remove importer/cache special cases and rare-only export/template plumbing
+  - Status note: `All plumbing removed: TradeDB bootstrap no longer carries RareItem, Spansh rare enrichment writes Item.rare_station_id, templates/RareItem.csv evacuated from repo and package data, RareItem cache header special-casing removed. spansh_plug.py: sentinel station_id guard for 0xFFFFFFFFFFFFFFFF overflow added, skip_galaxy + file= silent failure fixed, listings.csv/listings-live.csv moved out of public_csv (listener-owned). eddblink_plug.py: stale 'skip rare items' comment updated.`
+  - Evidence: `tradedangerous/tradedb.py`; `tradedangerous/plugins/spansh_plug.py`; `tradedangerous/plugins/eddblink_plug.py`; `tradedangerous/cache.py`; `pyproject.toml`; `17bc9ade`; `99e2d710`
+- [x] E5. Remove `RareItem` schema/runtime/docs/tests
+  - Status note: `RareItem fully eradicated from ORM, schema, docs, and GUI. docs/ORM_Schema_reference.md and docs/db_engine_reference.md updated to reflect Checkpoint E model. GUI RaresWorkspace removed; buy --rare checkbox wired into Buy workspace extended options (f57c411). supply_units > 0 filter added to buy_cmd --rare path. End-to-end validation passed: spansh seed → listener --no-update --export-live-now → eddblink clean import → trade buy --rare returns 142 rares.`
+  - Evidence: `tradedangerous/db/orm_models.py`; `tradedangerous/templates/TradeDangerous.sql`; `docs/ORM_Schema_reference.md`; `docs/db_engine_reference.md`; `tradedangerous/commands/buy_cmd.py`; `f57c411`; live MariaDB validation on 2026-04-26
 - [x] E6. Encode the `Festive Gifts` exclusion narrowly
   - Status note: `Landed in the Spansh rare-enrichment path so Festive Gifts is excluded from canonical rare handling.`
   - Evidence: `tradedangerous/plugins/spansh_plug.py`
@@ -305,8 +305,7 @@ Remove standalone rares table, model canonical rarity through `Item.rare_station
 - `StationItem` is live market overlay only. A live row for a rare belongs in `StationItem` like any other commodity, but absence of a `StationItem` row does not disprove canonical rarity.
 - `trade rares` is retired. The surviving useful rare lookup behaviour now lives on the `trade buy` path.
 - Checkpoint E is rebuild/reset only and deliberately does not include migration handling, backfill, old-schema detection, or runtime babysitting for pre-E databases.
-- The main obvious remaining repo-hygiene item is evacuation of `tradedangerous/templates/RareItem.csv`.
-- No Checkpoint E runtime validation pass or fresh rebuild validation pass has yet been recorded.
+- Checkpoint E is complete. End-to-end validation passed on 2026-04-26.
 
 ---
 
@@ -734,6 +733,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-20`
   - Commit:
   - Notes: `Validated fresh MariaDB rebuild, spansh seed, post-D System.csv export shape, listener startup/live ingestion, clean eddblink import from the test server, and trade run smoke tests in both CLI and GUI with Added removed from the schema and runtime paths.`
+- [x] Milestone: `Checkpoint E RareItem collapse validated end-to-end`
+  - Date completed: `2026-04-26`
+  - Commit: `f57c411` (GUI closeout); `99e2d710` (importer/cache plumbing)
+  - Notes: `RareItem fully removed from schema, ORM, importer, cache, export, and GUI. Sentinel station_id guard added for 0xFFFFFFFFFFFFFFFF overflow in Spansh dump. skip_galaxy + file= silent failure fixed. trade buy --rare validated with supply_units > 0 filter; returns 142 rares on test MariaDB. GUI RaresWorkspace removed; Rares only checkbox wired into buy workspace.`
 
 ---
 
