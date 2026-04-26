@@ -2,6 +2,114 @@
 
 <!-- version list -->
 
+## v12.22.2 (2026-04-26)
+
+### Bug Fixes
+
+- **import**: Skip stations with sentinel or invalid market IDs
+  ([`cc4c6b1`](https://github.com/eyeonus/Trade-Dangerous/commit/cc4c6b1a1673efd72e8a90e0de46f50b99c04da1))
+
+Station entries with market_id 0xFFFFFFFFFFFFFFFF (UINT64_MAX) overflow MariaDB BIGINT (signed) and
+  abort the import. Guard added to skip any station_id outside the valid signed BIGINT range and any
+  station with an empty name.
+
+- **spansh**: Skip stations with sentinel or invalid market IDs
+  ([`cc4c6b1`](https://github.com/eyeonus/Trade-Dangerous/commit/cc4c6b1a1673efd72e8a90e0de46f50b99c04da1))
+
+### Chores
+
+- **dependabot**: Archive dependabot.yml
+  ([`7bf1f57`](https://github.com/eyeonus/Trade-Dangerous/commit/7bf1f5754dc1d375399ba81b63e9fb90bf400b71))
+
+Really not convinced this is fit for purpose. Oliver's comment at the end says it's for security
+  updates only, but in fact this is collating a monthly digest of major updates. Security updates
+  come via a different pathway and they generally appear when GitHub has a matching advisory and the
+  repo/settings support security updates. We don't need this file for that to continue to happen.
+
+- **deps**: Bump gitpython from 3.1.46 to 3.1.47
+  ([#307](https://github.com/eyeonus/Trade-Dangerous/pull/307),
+  [`876f2b0`](https://github.com/eyeonus/Trade-Dangerous/commit/876f2b082bd0e4848b5cba60d0f6f424b8874b35))
+
+Bumps [gitpython](https://github.com/gitpython-developers/GitPython) from 3.1.46 to 3.1.47. -
+  [Release notes](https://github.com/gitpython-developers/GitPython/releases) -
+  [Changelog](https://github.com/gitpython-developers/GitPython/blob/main/CHANGES) -
+  [Commits](https://github.com/gitpython-developers/GitPython/compare/3.1.46...3.1.47)
+
+--- updated-dependencies: - dependency-name: gitpython dependency-version: 3.1.47
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump lxml from 6.0.3 to 6.1.0
+  ([#306](https://github.com/eyeonus/Trade-Dangerous/pull/306),
+  [`5b470b3`](https://github.com/eyeonus/Trade-Dangerous/commit/5b470b3298c5c2c607b379515ec35d82f1f8c369))
+
+Bumps [lxml](https://github.com/lxml/lxml) from 6.0.3 to 6.1.0. - [Release
+  notes](https://github.com/lxml/lxml/releases) -
+  [Changelog](https://github.com/lxml/lxml/blob/master/CHANGES.txt) -
+  [Commits](https://github.com/lxml/lxml/compare/lxml-6.0.3...lxml-6.1.0)
+
+--- updated-dependencies: - dependency-name: lxml dependency-version: 6.1.0
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump python-multipart from 0.0.24 to 0.0.26
+  ([#304](https://github.com/eyeonus/Trade-Dangerous/pull/304),
+  [`7250ef2`](https://github.com/eyeonus/Trade-Dangerous/commit/7250ef2a2c810c9d26d91d7f5ea3f467c85507d0))
+
+Bumps [python-multipart](https://github.com/Kludex/python-multipart) from 0.0.24 to 0.0.26. -
+  [Release notes](https://github.com/Kludex/python-multipart/releases) -
+  [Changelog](https://github.com/Kludex/python-multipart/blob/master/CHANGELOG.md) -
+  [Commits](https://github.com/Kludex/python-multipart/compare/0.0.24...0.0.26)
+
+--- updated-dependencies: - dependency-name: python-multipart dependency-version: 0.0.26
+
+dependency-type: indirect ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+- **deps**: Bump rich in the all-dependencies group
+  ([#305](https://github.com/eyeonus/Trade-Dangerous/pull/305),
+  [`8c8fcc7`](https://github.com/eyeonus/Trade-Dangerous/commit/8c8fcc747933e881a149b58d7dbe4af44492460d))
+
+Bumps the all-dependencies group with 1 update: [rich](https://github.com/Textualize/rich).
+
+Updates `rich` from 13.7.1 to 15.0.0 - [Release notes](https://github.com/Textualize/rich/releases)
+  - [Changelog](https://github.com/Textualize/rich/blob/master/CHANGELOG.md) -
+  [Commits](https://github.com/Textualize/rich/compare/v13.7.1...v15.0.0)
+
+--- updated-dependencies: - dependency-name: rich dependency-version: 15.0.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major
+
+dependency-group: all-dependencies ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+Co-authored-by: dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+
+### Continuous Integration
+
+- Ensure correct changelog updates on merge
+  ([`6eb4cb6`](https://github.com/eyeonus/Trade-Dangerous/commit/6eb4cb69d650eade22666c379ba566e44543cf22))
+
+- **dependabot script**: Fix tab where should be spaces
+  ([`d084914`](https://github.com/eyeonus/Trade-Dangerous/commit/d0849144add0c0db748589c1b00606e20b04b92d))
+
+Actively causing problems checking the dependabot update path as it failed at lint.
+
+
 ## v12.22.1 (2026-04-16)
 
 ### Bug Fixes
