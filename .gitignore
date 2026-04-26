@@ -51,3 +51,4 @@ repo_files.txt
 tradedangerous/db/config.ini
 tmp/
 /*.ipynb
+TradeDangerous-listener/
