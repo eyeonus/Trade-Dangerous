@@ -236,46 +236,6 @@ class SupplyError(BuildCacheBaseException):
 
 
 ######################################################################
-# Helpers
-
-# --- tiny FK lookup caches (per import run) ---
-_fk_cache_system = {}
-_fk_cache_station = {}
-_fk_cache_category = {}
-
-def _get_system_id(session, system_name):
-    if system_name in _fk_cache_system:
-        return _fk_cache_system[system_name]
-    rid = session.query(SA.System.system_id).filter(SA.System.name == system_name).scalar()
-    if rid is None:
-        raise ValueError(f"Unknown System name: {system_name}")
-    _fk_cache_system[system_name] = rid
-    return rid
-
-def _get_station_id(session, system_id, station_name):
-    key = (system_id, station_name)
-    if key in _fk_cache_station:
-        return _fk_cache_station[key]
-    rid = (
-        session.query(SA.Station.station_id)
-        .filter(SA.Station.system_id == system_id, SA.Station.name == station_name)
-        .scalar()
-    )
-    if rid is None:
-        raise ValueError(f"Unknown Station '{station_name}' in system_id={system_id}")
-    _fk_cache_station[key] = rid
-    return rid
-
-def _get_category_id(session, cat_name):
-    if cat_name in _fk_cache_category:
-        return _fk_cache_category[cat_name]
-    rid = session.query(SA.Category.category_id).filter(SA.Category.name == cat_name).scalar()
-    if rid is None:
-        raise ValueError(f"Unknown Category name: {cat_name}")
-    _fk_cache_category[cat_name] = rid
-    return rid
-
-
 # supply/demand levels are one of '?' for unknown, 'L', 'M' or 'H'
 # for low, medium, or high. We turn these into integer values for
 # ordering convenience, and we include both upper and lower-case
@@ -871,8 +831,6 @@ def processImportFile(
         activeColumns: list[str] = []   # Final columns we'll use (after "unq:" stripping)
         kept_indices: list[int] = []    # Indices into CSV rows we keep (aligned to activeColumns)
         uniqueIndexes: list[int] = []   # Indexes (into activeColumns) of unique keys
-        fk_col_indices: dict[str, int] = {}  # Special handling for FK resolution
-        
         uniquePfx = "unq:"
         uniqueLen = len(uniquePfx)
         
@@ -986,21 +944,6 @@ def processImportFile(
                         _warn(line_no, f'Item "{i_orig}" is deprecated and should be replaced with "{i_corr}".')
                         row[name_idx] = i_corr
             
-            # RareItem: we only correct category (FK lookup uses names) to improve hit rate.
-            elif table_name == "RareItem":
-                cat_idx = header_index.get("category")
-                if cat_idx is not None:
-                    c_orig = row[cat_idx]
-                    c_corr = corrections.correctCategory(c_orig)
-                    if c_corr is DELETED:
-                        if tdenv.ignoreUnknown:
-                            _warn(line_no, f'Category "{c_orig}" is marked as DELETED and should not be used.')
-                            return True
-                        raise DeletedKeyError(importPath, line_no, "Category", c_orig)
-                    if c_corr != c_orig:
-                        _warn(line_no, f'Category "{c_orig}" is deprecated and should be replaced with "{c_corr}".')
-                        row[cat_idx] = c_corr
-            
             return False  # do not skip
         
         # --- Read data lines ---
@@ -1066,33 +1009,6 @@ def processImportFile(
             try:
                 rowdict = dict(zip(activeColumns, activeValues))
                 
-                # Foreign key lookups — RareItem
-                if tableName == "RareItem":
-                    sys_id = None
-                    if "system" in fk_col_indices:
-                        sys_name = linein[fk_col_indices["system"]]
-                        try:
-                            sys_id = _get_system_id(session, sys_name)
-                        except ValueError:
-                            tdenv.WARN("Unknown System '{}' in {}", sys_name, importPath)
-                    
-                    if "station" in fk_col_indices:
-                        stn_name = linein[fk_col_indices["station"]]
-                        if sys_id is not None:
-                            try:
-                                rowdict["station_id"] = _get_station_id(session, sys_id, stn_name)
-                            except ValueError:
-                                tdenv.WARN("Unknown Station '{}' in {}", stn_name, importPath)
-                        else:
-                            tdenv.WARN("Station lookup skipped (no system_id) for '{}'", stn_name)
-                    
-                    if "category" in fk_col_indices:
-                        cat_name = linein[fk_col_indices["category"]]
-                        try:
-                            rowdict["category_id"] = _get_category_id(session, cat_name)
-                        except ValueError:
-                            tdenv.WARN("Unknown Category '{}' in {}", cat_name, importPath)
-                
                 # --- Type coercion for common types ---
                 for key, val in list(rowdict.items()):
                     if val in ("", None):
@@ -1127,9 +1043,6 @@ def processImportFile(
                     rowdict["class_"] = rowdict.pop("class")
                 if tableName == "FDevOutfitting" and "class" in rowdict:
                     rowdict["class_"] = rowdict.pop("class")
-                if tableName == "RareItem" and "system_id" in rowdict:
-                    rowdict.pop("system_id", None)
-                
                 # ORM insert/merge
                 Model = getattr(SA, tableName)
                 obj = Model(**rowdict)

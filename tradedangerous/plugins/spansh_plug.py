@@ -1388,7 +1388,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         names = [
             "System", "Station", "Item", "Category", "StationItem",
             "Ship", "ShipVendor", "Upgrade", "UpgradeVendor",
-            "FDevOutfitting", "FDevShipyard", "RareItem",
+            "FDevOutfitting", "FDevShipyard",
         ]
         return {n: Table(n, meta, autoload_with=engine) for n in names}
     
@@ -2201,14 +2201,15 @@ class ImportPlugin(plugins.ImportPluginBase):
     # ------------------------------
     def _import_rareitems_edcd(self, rares_csv: Path, commodity_csv: Optional[Path] = None) -> None:
         """
-        EDCD rares → TD.RareItem
-        
+        EDCD rares → Item.rare_station_id enrichment.
+
         Supports CSV shapes:
           A) name, system, station
           B) id, symbol, market_id, category, name  (FDevIDs canonical)
-        
+
         Shape B maps: station_id = int(market_id), category by name.
-        Clears RareItem then upserts by UNIQUE(name). Writes a CSV of skipped rows to tmp/.
+        Resets all rare_station_id values then sets them for resolved EDCD rares.
+        Writes a CSV of skipped rows to tmp/.
         """
         
         def _norm(s: Optional[str]) -> str:
@@ -2239,7 +2240,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         try:
             sess = self._open_session()
             tables = self._reflect_tables(sess.get_bind())
-            t_sys, t_stn, t_cat, t_rare = tables["System"], tables["Station"], tables["Category"], tables["RareItem"]
+            t_sys, t_stn, t_cat, t_item = tables["System"], tables["Station"], tables["Category"], tables["Item"]
             
             # Build lookups for Shape A
             stn_by_names: dict[tuple[str, str], int] = {}
@@ -2259,6 +2260,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             kept = skipped = 0
             skipped_no_station = 0
             skipped_no_category = 0
+            skipped_no_item = 0
             out_rows: list[dict] = []
             skipped_rows: list[dict] = []   # <-- record details
             
@@ -2479,7 +2481,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             "Item",
             "Ship",
             "Upgrade",
-            "RareItem",
             "FDevOutfitting",
             "FDevShipyard",
         ]
