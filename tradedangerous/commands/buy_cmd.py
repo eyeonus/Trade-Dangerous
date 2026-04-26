@@ -231,6 +231,7 @@ def sql_query(cmdenv, tdb, queries, mode):
             constraints.insert(0, f"(s.item_id IN ({id_list_sql}))")
         if cmdenv.rare:
             constraints.append("(i.rare_station_id IS NOT NULL)")
+            constraints.append("(s.supply_units > 0)")
         if cmdenv.supply:
             constraints.append("(s.supply_units >= :supply)")
             params["supply"] = cmdenv.supply
