@@ -38,12 +38,8 @@
 
 ## Tables
 
-### Added
-- **Columns:** `added_id` PK (autoinc); `name` (CI, unique).
-- **Relations:** `Added 1→* System`.
-
 ### System
-- **Columns:** `system_id` PK; `name` (CI); `pos_x/pos_y/pos_z` (float); `added_id` FK (update/delete cascade); `modified` (default timestamp).
+- **Columns:** `system_id` PK; `name` (CI); `pos_x/pos_y/pos_z` (float); `modified` (default timestamp).
 - **Indexes (canonical):** `idx_system_by_pos (pos_x,pos_y,pos_z,system_id)`.
 - **Notes:** An ORM index on `name` may exist for perf (not in legacy SQLite DDL).
 
@@ -56,8 +52,9 @@
 - **Indexes:** none in SQLite DDL; ORM may add one for perf.
 
 ### Item
-- **Columns:** `item_id` PK; `name` (CI); `category_id` FK (update/delete cascade); `ui_order` default 0; `avg_price` nullable; `fdev_id` nullable.
+- **Columns:** `item_id` PK; `name` (CI); `category_id` FK (update/delete cascade); `ui_order` default 0; `avg_price` nullable; `fdev_id` nullable; `rare_station_id` nullable BIGINT FK → `Station.station_id` (update CASCADE, delete RESTRICT).
 - **Indexes:** `idx_item_by_fdev_id (fdev_id)`.
+- **Rarity model:** `rare_station_id IS NOT NULL` means the item is rare and identifies its canonical source station. Most items have `NULL`.
 
 ### StationItem
 - **Columns:** composite PK `(station_id, item_id)`; demand_* and supply_* (**price/units/level**, ints); `modified` default timestamp; `from_live` default 0.
@@ -81,9 +78,6 @@
 ### UpgradeVendor
 - **Columns:** composite PK `(upgrade_id, station_id)`; `modified` **NOT NULL** (no default; application must set).
 - **FKs:** to `Upgrade` and `Station` (update/delete cascade).
-
-### RareItem
-- **Columns:** `rare_id` PK; `station_id` FK (cascade); `category_id` FK (cascade); `name` (CI, unique); `cost`, `max_allocation` optional; `illegal`, `suppressed` (`TriState`).
 
 ---
 

@@ -426,7 +426,7 @@ print(summary)
 
 ## Purpose
 Defines the **SQLAlchemy ORM models** for the TradeDangerous database schema.  
-Covers systems, stations, items, prices, ships, upgrades, rares, staging, and export control.
+Covers systems, stations, items, prices, ships, upgrades, staging, and export control.
 
 Includes dialect-aware timestamp helpers (`now6`, `DateTime6`) for consistent `DATETIME(6)` handling.
 
@@ -469,7 +469,7 @@ Applies deterministic naming to constraints and indexes (ix, uq, ck, fk, pk).
 ---
 
 ## Exported API (`__all__`)
-- Base + all models: `Added`, `System`, `Station`, `Category`, `Item`, `StationItem`, `Ship`, `ShipVendor`, `Upgrade`, `UpgradeVendor`, `RareItem`, `ExportControl`, `StationItemStaging`
+- Base + all models: `System`, `Station`, `Category`, `Item`, `StationItem`, `Ship`, `ShipVendor`, `Upgrade`, `UpgradeVendor`, `ExportControl`, `StationItemStaging`
 
 ---
 
