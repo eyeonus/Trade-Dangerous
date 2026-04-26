@@ -15,7 +15,6 @@ from .command_views import (
     LocalWorkspace,
     MarketWorkspace,
     OldDataWorkspace,
-    RaresWorkspace,
     TradeWorkspace,
 )
 from .nav_view import NavWorkspace
@@ -42,7 +41,6 @@ COMMAND_OPTIONS: dict[str, str] = {
     'trade': 'Trade',
     'local': 'Local',
     'market': 'Market',
-    'rares': 'Rares',
     'nav': 'Nav',
     'olddata': 'Old Data',
     'import': 'Import',
@@ -885,17 +883,6 @@ class AppShell:
                     ),
                     resolve_system=lambda text: self.search_service.resolve_system(
                         text,
-                    ),
-                )
-                workspace.build()
-            elif self.session.selected_command == 'rares':
-                workspace = RaresWorkspace(
-                    self.session.draft,
-                    on_changed=self._on_run_draft_changed,
-                    on_execute=self._on_execute_command,
-                    suggest_systems=lambda text: self.search_service.suggest_systems(
-                        text,
-                        limit=10,
                     ),
                 )
                 workspace.build()

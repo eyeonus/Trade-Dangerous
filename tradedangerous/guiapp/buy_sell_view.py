@@ -533,6 +533,20 @@ class BuySellWorkspace(DraftValueHelper):
                 
                 if self.command == 'buy':
                     ui.checkbox(
+                        'Rares only',
+                        value=self._bool_value(
+                            self.draft.advanced_values,
+                            'rare',
+                        ),
+                        on_change=lambda event: self._set_bool(
+                            self.draft.advanced_values,
+                            'rare',
+                            event.value,
+                        ),
+                    ).tooltip(
+                        'Only show rare commodities with stock available.'
+                    )
+                    ui.checkbox(
                         'One stop',
                         value=self._bool_value(
                             self.draft.advanced_values,

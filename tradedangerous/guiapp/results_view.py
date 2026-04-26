@@ -87,10 +87,6 @@ def render_command_results(
         _render_market_results(structured_result)
         return
     
-    if command == 'rares' and structured_result:
-        _render_rares_results(structured_result)
-        return
-    
     if raw_output:
         ui.label(raw_output).classes('font-mono text-sm whitespace-pre-wrap')
         return
@@ -606,100 +602,6 @@ def _render_olddata_results(structured_result: Any) -> None:
     
     ui.table(
         columns=columns,
-        rows=table_rows,
-        row_key='row_id',
-    ).classes('w-full')
-
-def _render_rares_results(structured_result: Any) -> None:
-    payload = _structured_payload(structured_result)
-    summary = payload.get('summary')
-    rows = payload.get('rows', [])
-    near_name = _named_result_value(_field(summary, 'near'))
-    ly = _field(summary, 'ly')
-    
-    if near_name and ly is not None:
-        ui.label(
-            f'{len(rows)} rare row(s) within {float(ly):g} ly of {near_name}.'
-        ).classes('text-sm text-gray-600')
-    elif rows:
-        ui.label(f'{len(rows)} rare row(s) returned.').classes(
-            'text-sm text-gray-600'
-        )
-    
-    ui.label(
-        'Costs for rares fluctuate and these are our best current estimates only.'
-    ).classes('text-sm text-gray-600')
-    ui.label(
-        'A zero cost means we have insufficient current data even to make an '
-        'estimate.'
-    ).classes('text-sm text-gray-600')
-    
-    if not rows:
-        ui.label('No rare rows returned.').classes('text-sm text-gray-600')
-        return
-    
-    def yes_no_unknown(value: Any) -> str:
-        return {'Y': 'Yes', 'N': 'No', '?': '?'}.get(str(value or ''), '?')
-    
-    def pad_text(value: Any) -> str:
-        return {'S': 'Sml', 'M': 'Med', 'L': 'Lrg', '?': '?'}.get(
-            str(value or ''),
-            '?',
-        )
-    
-    def station_text(value: Any) -> str:
-        return _station_name(value)
-    
-    def rare_name(value: Any) -> str:
-        name = _field(value, 'name')
-        if callable(name):
-            return str(name())
-        if name in (None, ''):
-            return '?'
-        return str(name)
-    
-    def cost_text(value: Any) -> str:
-        cost = _field(value, 'cost')
-        if cost is None:
-            return '0'
-        return f'{int(cost):n}'
-    
-    def alloc_text(value: Any) -> str:
-        allocation = _field(value, 'max_allocation')
-        if allocation in (None, ''):
-            return '?'
-        return str(allocation)
-    
-    table_rows = []
-    for index, row in enumerate(rows, start=1):
-        values = _row_to_dict(row)
-        station = values.get('station')
-        rare = values.get('rare')
-        table_rows.append(
-            {
-                'row_id': f'rares-{index}',
-                'station': station_text(station),
-                'rare': rare_name(rare),
-                'cost': cost_text(rare),
-                'alloc': alloc_text(rare),
-                'dist': _format_result_value(values.get('dist')),
-                'ls': _station_ls_text(station),
-                'black_market': yes_no_unknown(_field(station, 'blackMarket')),
-                'pad': pad_text(_field(station, 'maxPadSize')),
-            }
-        )
-    
-    ui.table(
-        columns=[
-            {'name': 'station', 'label': 'Station', 'field': 'station', 'align': 'left'},
-            {'name': 'rare', 'label': 'Rare', 'field': 'rare', 'align': 'left'},
-            {'name': 'cost', 'label': 'Cost', 'field': 'cost', 'align': 'right'},
-            {'name': 'alloc', 'label': 'Alloc', 'field': 'alloc', 'align': 'right'},
-            {'name': 'dist', 'label': 'DistLy', 'field': 'dist', 'align': 'right'},
-            {'name': 'ls', 'label': 'StnLs', 'field': 'ls', 'align': 'right'},
-            {'name': 'black_market', 'label': 'B/mkt', 'field': 'black_market', 'align': 'right'},
-            {'name': 'pad', 'label': 'Pad', 'field': 'pad', 'align': 'right'},
-        ],
         rows=table_rows,
         row_key='row_id',
     ).classes('w-full')

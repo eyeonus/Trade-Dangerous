@@ -25,7 +25,6 @@ EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
     '7days',
     'units',
     'item',
-    'rare',
     'ship',
     'upgrade',
     'system',
@@ -36,7 +35,6 @@ EDDBLINK_OPTION_ORDER: tuple[str, ...] = (
 )
 EDDBLINK_GUI_SHIPVEND_KEY = 'shipvend_mode'
 EDDBLINK_GUI_SHIPVEND_BASE_OPTIONS: tuple[str, ...] = (
-    'rare',
     'upgrade',
     'shipvend',
     'listings',

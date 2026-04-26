@@ -21,7 +21,6 @@ from .td_exec_commands import (
     build_market_argv,
     build_nav_argv,
     build_olddata_argv,
-    build_rares_argv,
     build_run_argv,
     build_sell_argv,
     build_trade_argv,
@@ -30,7 +29,6 @@ from .td_exec_commands import (
     validate_nav_request,
     validate_olddata_request,
     validate_trade_request,
-    validate_rares_request,
 )
 from .td_exec_import import build_import_argv, execute_import_command
 
@@ -351,15 +349,6 @@ class TdExecutor:
                 validate_optional_float=self._validate_optional_float,
             )
         
-        if request.command == 'rares':
-            validate_rares_request(
-                resolved=self._global_command_resolved_values(request),
-                errors=errors,
-                validate_optional_int=self._validate_optional_int,
-                validate_optional_float=self._validate_optional_float,
-                split_search_terms=self._split_search_terms,
-            )
-        
         return errors
     
     def execute(self, request: GuiCommandRequest) -> GuiCommandResult:
@@ -386,8 +375,6 @@ class TdExecutor:
             return self._execute_olddata(request)
         if request.command == 'market':
             return self._execute_market(request)
-        if request.command == 'rares':
-            return self._execute_rares(request)
         if request.command == 'nav':
             return self._execute_nav(request)
         if request.command == 'import':
@@ -401,7 +388,7 @@ class TdExecutor:
             ),
             diagnostics_output=(
                 'Only the run, buy, sell, trade, local, nav, olddata, '
-                'market, rares, and import commands are currently connected '
+                'market, and import commands are currently connected '
                 'to the in-process TD execution path.'
             ),
         )
@@ -474,16 +461,6 @@ class TdExecutor:
         argv = build_market_argv(
             resolved=resolved,
             append_flag=self._append_flag,
-        )
-        return self._execute_td_command(request, argv)
-    
-    def _execute_rares(self, request: GuiCommandRequest) -> GuiCommandResult:
-        resolved = self._global_command_resolved_values(request)
-        argv = build_rares_argv(
-            resolved=resolved,
-            append_option=self._append_option,
-            append_flag=self._append_flag,
-            split_search_terms=self._split_search_terms,
         )
         return self._execute_td_command(request, argv)
     
