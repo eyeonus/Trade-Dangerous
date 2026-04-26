@@ -90,7 +90,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     """
     pluginOptions = {
         'item':         "Update Items using latest file from server. (Implies '-O system,station')",
-        'rare':         "Update RareItems using latest file from server. (Implies '-O system,station')",
         'ship':         "Update Ships using latest file from server.",
         'upgrade':      "Update Upgrades using latest file from server.",
         'system':       "Update Systems using latest file from server.",
@@ -119,7 +118,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.dataPath = os.environ.get('TD_EDDB') or self.tdenv.tmpDir
         self.categoriesPath = Path("Category.csv")
         self.commoditiesPath = Path("Item.csv")
-        self.rareItemPath = Path("RareItem.csv")
         self.shipPath = Path("Ship.csv")
         self.urlShipyard = "https://raw.githubusercontent.com/EDCD/FDevIDs/master/shipyard.csv"
         self.FDevShipyardPath = self.tdb.dataPath / Path("FDevShipyard.csv")
@@ -349,7 +347,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             }
 
             # Hash only the small “truth-critical” files (cheap + detects template clobber cleanly).
-            if key in ("Category.csv", "RareItem.csv", "Item.csv"):
+            if key in ("Category.csv", "Item.csv"):
                 new_entry["sha256"] = self._file_sha256(localPath)
 
             files_state[key] = new_entry
@@ -513,7 +511,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         
                         item_id = int(listing[2])
                         if item_id not in item_lookup:
-                            continue  # skip rare items (not in Item table)
+                            continue  # skip unknown item IDs
                         
                         dt_listing_time = from_timestamp(listing_time, utc)
                         
@@ -579,9 +577,6 @@ class ImportPlugin(plugins.ImportPluginBase):
     def _refresh_dump_tables(self, table_jobs: list[tuple[str, Path]]) -> None:
         """Upsert-refresh (table_name, csv_path) jobs into the live ORM database,
         with a proper row-count progress bar.
-
-        Note: RareItem is rebuilt (wiped then re-imported) whenever it is refreshed.
-        This avoids UNIQUE(name) collisions caused by historical PK drift / template-era imports.
         """
         if not table_jobs:
             return
@@ -652,11 +647,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                         prog.increment(value=1)
                         call_args = {"task": child, "advance": 1}
                         try:
-                            # RareItem: rebuild contents on refresh to avoid uq_rareitem_name collisions
-                            # when existing DB has same names under different rare_id values.
-                            if table_name == "RareItem":
-                                session.execute(delete(SA.RareItem))
-
                             td_cache.processImportFile(
                                 self.tdenv,
                                 session,
@@ -693,7 +683,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Refactored DB flow:
           - No dialect-specific logic in the plugin.
           - Preflight uses TradeDB.reloadCache() (which centralizes sanity via lifecycle.ensure_fresh_db).
-          - For '--clean' → do a single full rebuild with the RareItem dance.
+          - For '--clean' → do a single full rebuild.
           - Otherwise, if static CSVs changed → upsert-refresh only those tables (no drop/recreate).
           - Listings import unchanged.
         """
@@ -715,7 +705,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("clean"):
             # Remove CSVs so downloads become the new source of truth
             for name in [
-                "Category", "Item", "RareItem",
+                "Category", "Item",
                 "Ship", "ShipVendor",
                 "Station", "System",
                 "Upgrade", "UpgradeVendor",
@@ -762,15 +752,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("item"):
             self.options["station"] = True
 
-        if self.getOption("rare"):
-            self.options["station"] = True
-
         if self.getOption("station"):
             self.options["system"] = True
 
         if self.getOption("all"):
             self.options["item"] = True
-            self.options["rare"] = True
             self.options["ship"] = True
             self.options["shipvend"] = True
             self.options["station"] = True
@@ -792,7 +778,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         upgrade_changed = False
         ship_changed = False
-        rare_changed = False
         shipvend_changed = False
         upvend_changed = False
         system_changed = False
@@ -816,9 +801,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 transfers.download(self.tdenv, self.urlShipyard, self.FDevShipyardPath)
                 fdev_shipyard_changed = True
 
-        if self.getOption("rare"):
-            rare_changed = self.downloadFile(self.rareItemPath) or force
-
         if self.getOption("shipvend"):
             shipvend_changed = self.downloadFile(self.shipVendorPath) or force
 
@@ -838,7 +820,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         # If any of the non-listings tables changed, ensure DB is fresh and then upsert-refresh.
         build_cache = any([
-            upgrade_changed, ship_changed, rare_changed,
+            upgrade_changed, ship_changed,
             shipvend_changed, upvend_changed,
             system_changed, station_changed,
             category_changed, item_changed,
@@ -894,9 +876,6 @@ class ImportPlugin(plugins.ImportPluginBase):
 
             if upvend_changed:
                 jobs.append(("UpgradeVendor", (self.tdb.dataPath / self.upgradeVendorPath).resolve()))
-
-            if rare_changed:
-                jobs.append(("RareItem", (self.tdb.dataPath / self.rareItemPath).resolve()))
 
             self._refresh_dump_tables(jobs)
             self.tdb.close()

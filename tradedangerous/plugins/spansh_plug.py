@@ -25,6 +25,7 @@ import os
 import shutil
 import sys
 import time
+import traceback
 import typing
 
 # SQLAlchemy
@@ -87,6 +88,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         "edcd_outfitting": "Override URL or local path for EDCD outfitting.csv.",
         "edcd_shipyard": "Override URL or local path for EDCD shipyard.csv.",
         "edcd_rares": "Override URL or local path for EDCD rare_commodity.csv.",
+        "skip_galaxy": "Skip the galaxy_stations.json bulk import; run EDCD enrichment and export only.",
         # --- Extra Debug Options
         "only_system": "Process only the system with this name or id64; still stream the real file.",
         "debug_trace": "Emit compact JSONL decision logs to tmp/spansh_trace.jsonl (1 line per decision).",
@@ -1025,16 +1027,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 return False
             return False
         
-        # Acquire Spansh JSON
-        try:
-            source_path = self._acquire_source()
-        except CleanExit as ce:
-            self._warn(str(ce))
-            return False
-        except Exception as e:
-            self._error(f"Acquisition failed: {e!r}")
-            return False
-        
         # -------- Bootstrap DB (no cache rebuild here) --------
         try:
             backend  = self.tdb.engine.dialect.name.lower()
@@ -1130,31 +1122,46 @@ class ImportPlugin(plugins.ImportPluginBase):
             return False
         
         # -------- Import Spansh JSON --------
-        try:
-            if self._debug_level < 1:
-                self._print("This will take at least several minutes.")
-                self._print("You can increase verbosity (-v) to get a sense of progress")
-            self._print("Importing spansh data")
-            stats = self._import_stream(source_path, categories, tables)
-            self._end_live_status()
-            
-            mk_e = stats.get("market_writes", 0) + stats.get("market_stations", 0)
-            of_e = stats.get("outfit_writes", 0) + stats.get("outfit_stations", 0)
-            sh_e = stats.get("ship_writes", 0) + stats.get("ship_stations", 0)
-            self._print(
-                f"Import complete — systems: {stats.get('systems',0):,}  "
-                f"stations: {stats.get('stations',0):,}  "
-                f"evaluated: markets≈{mk_e:,} outfitters≈{of_e:,} shipyards≈{sh_e:,}  "
-                f"kept: markets≈{stats.get('market_stations',0):,} outfitters≈{stats.get('outfit_stations',0):,} shipyards≈{stats.get('ship_stations',0):,}"
-            )
-        except CleanExit as ce:
-            self._warn(str(ce))
-            self._safe_close_session()
-            return False
-        except Exception as e:
-            self._error(f"Import failed: {e!r}")
-            self._safe_close_session()
-            return False
+        if self.getOption("skip_galaxy"):
+            self._print("skip_galaxy set — skipping galaxy_stations.json bulk import.")
+        else:
+            # Acquire source only when actually importing
+            try:
+                source_path = self._acquire_source()
+            except CleanExit as ce:
+                self._error(str(ce))
+                return False
+            except Exception as e:
+                self._error(f"Acquisition failed: {e!r}")
+                return False
+            try:
+                if self._debug_level < 1:
+                    self._print("This will take at least several minutes.")
+                    self._print("You can increase verbosity (-v) to get a sense of progress")
+                self._print("Importing spansh data")
+                stats = self._import_stream(source_path, categories, tables)
+                self._end_live_status()
+
+                mk_e = stats.get("market_writes", 0) + stats.get("market_stations", 0)
+                of_e = stats.get("outfit_writes", 0) + stats.get("outfit_stations", 0)
+                sh_e = stats.get("ship_writes", 0) + stats.get("ship_stations", 0)
+                skipped_sentinel = stats.get("skipped_sentinel_id", 0)
+                sentinel_note = f"skipped_sentinel: {skipped_sentinel:,}  " if skipped_sentinel else ""
+                self._print(
+                    f"Import complete — systems: {stats.get('systems',0):,}  "
+                    f"stations: {stats.get('stations',0):,}  "
+                    f"{sentinel_note}"
+                    f"evaluated: markets≈{mk_e:,} outfitters≈{of_e:,} shipyards≈{sh_e:,}  "
+                    f"kept: markets≈{stats.get('market_stations',0):,} outfitters≈{stats.get('outfit_stations',0):,} shipyards≈{stats.get('ship_stations',0):,}"
+                )
+            except CleanExit as ce:
+                self._warn(str(ce))
+                self._safe_close_session()
+                return False
+            except Exception as e:
+                self._error(f"Import failed: {traceback.format_exc()}")
+                self._safe_close_session()
+                return False
         
         # Enforce Item.ui_order
         try:
@@ -1487,9 +1494,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 for st in stations:
                     name = st.get("name")
                     sid = st.get("id")
-                    if not isinstance(name, str) or sid is None:
+                    if not isinstance(name, str) or not name.strip() or sid is None:
                         continue
                     station_id = int(sid)
+                    if not (0 < station_id <= 0x7FFFFFFFFFFFFFFF):
+                        stats["skipped_sentinel_id"] = stats.get("skipped_sentinel_id", 0) + 1
+                        continue
                     
                     seen_station_ids.add(station_id)
                     stats["stations"] += 1
