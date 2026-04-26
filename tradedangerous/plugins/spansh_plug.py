@@ -1055,9 +1055,12 @@ class ImportPlugin(plugins.ImportPluginBase):
             mk_e = stats.get("market_writes", 0) + stats.get("market_stations", 0)
             of_e = stats.get("outfit_writes", 0) + stats.get("outfit_stations", 0)
             sh_e = stats.get("ship_writes", 0) + stats.get("ship_stations", 0)
+            skipped_sentinel = stats.get("skipped_sentinel_id", 0)
+            sentinel_note = f"skipped_sentinel: {skipped_sentinel:,}  " if skipped_sentinel else ""
             self._print(
                 f"Import complete — systems: {stats.get('systems',0):,}  "
                 f"stations: {stats.get('stations',0):,}  "
+                f"{sentinel_note}"
                 f"evaluated: markets≈{mk_e:,} outfitters≈{of_e:,} shipyards≈{sh_e:,}  "
                 f"kept: markets≈{stats.get('market_stations',0):,} outfitters≈{stats.get('outfit_stations',0):,} shipyards≈{stats.get('ship_stations',0):,}"
             )
@@ -1401,9 +1404,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 for st in stations:
                     name = st.get("name")
                     sid = st.get("id")
-                    if not isinstance(name, str) or sid is None:
+                    if not isinstance(name, str) or not name.strip() or sid is None:
                         continue
                     station_id = int(sid)
+                    if not (0 < station_id <= 0x7FFFFFFFFFFFFFFF):
+                        stats["skipped_sentinel_id"] = stats.get("skipped_sentinel_id", 0) + 1
+                        continue
                     
                     seen_station_ids.add(station_id)
                     stats["stations"] += 1
