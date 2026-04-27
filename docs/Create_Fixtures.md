@@ -78,6 +78,10 @@ Barnard's Star
 
 Keep only the system names (no distances/columns).
 
+In notepad++ use ^H then in regex mode. 
+Replace:^[ \t]*(.*?)[ \t]+[+-]?\d+(?:\.\d+)?[ \t]*$
+With: \1
+
 ---
 
 ## Step 4 – Crop the Database
