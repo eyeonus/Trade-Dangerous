@@ -124,7 +124,9 @@ def validate_buy_request(
     search_terms = split_search_terms(resolved.get('search'))
     if not search_terms and not resolved.get('rare'):
         errors.append('Buy requires Search.')
-    
+    if resolved.get('oneStop') and resolved.get('rare') and not search_terms:
+        errors.append('Buy --one-stop with Rares requires at least one search term.')
+
     validate_optional_int(resolved, 'supply', minimum=0, errors=errors)
     validate_optional_int(resolved, 'limit', minimum=0, errors=errors)
     validate_optional_int(resolved, 'gt', minimum=0, errors=errors)
