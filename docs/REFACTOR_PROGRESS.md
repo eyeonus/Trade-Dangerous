@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-26`
 - By: `Tromador + Claude`
-- Session summary: `Checkpoint E fully validated and closed. Sentinel station_id guard added to spansh_plug for 0xFFFFFFFFFFFFFFFF overflow. skip_galaxy + file= silent failure fixed. supply_units > 0 filter added to buy --rare. eddblink stale comment updated. GUI RaresWorkspace removed, --rare checkbox wired into buy workspace (f57c411). End-to-end validation passed: spansh seed → listener → eddblink import → trade buy --rare returns 142 rares. Two working-tree files (spansh_plug.py, eddblink_plug.py) carry uncommitted session changes pending a final commit.`
+- Session summary: `Checkpoint E fully validated and closed. Sentinel station_id guard added to spansh_plug for 0xFFFFFFFFFFFFFFFF overflow. skip_galaxy + file= silent failure fixed. supply_units > 0 filter added to buy --rare. eddblink stale comment updated. GUI RaresWorkspace removed, --rare checkbox wired into buy workspace (f57c411). End-to-end validation passed: spansh seed → listener → eddblink import → trade buy --rare returns 142 rares. 
 
 ### Last known good rollback point
 - Commit: `f57c411`
