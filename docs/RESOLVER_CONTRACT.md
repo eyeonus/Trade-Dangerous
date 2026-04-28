@@ -413,7 +413,8 @@ These cases must become tests for the ORM-first resolver, verifying matching beh
 | `@system/station` form | `"@Sol/Abraham Lincoln"` → `lookupPlace` | Returns Abraham Lincoln in Sol |
 | Backslash separator | `"Sol\Abraham Lincoln"` → `lookupPlace` | Returns Abraham Lincoln in Sol |
 | Ambiguous station in compound | `"Sol/a"` → `lookupPlace` | Raises `AmbiguityError` if multiple match |
-| Not found (compound, bad system) | `"xxxxxxxx/Abraham Lincoln"` → `lookupPlace` | Raises `LookupError` |
+| Unknown system, existing unique station | `"xxxxxxxx/Abraham Lincoln"` → `lookupPlace` | Returns the station via global fallback — station search is unrestricted when system part matches nothing |
+| Not found (compound, nonexistent station) | `"Sol/xyzzy"` → `lookupPlace` | Raises `LookupError` — station not found within scoped system |
 
 ### Station lookup
 
