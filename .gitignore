@@ -49,6 +49,8 @@ tools/*
 /data/
 repo_files.txt
 tradedangerous/db/config.ini
+data/
+tests/fixtures/db_config.ini
 tmp/
 /*.ipynb
 TradeDangerous-listener/
