@@ -50,11 +50,11 @@ Do not tick a task unless:
 
 ### Current active checkpoint
 - Status: `[-]`
-- Checkpoint: `F — Resolver contract and parity tests`
-- Subtask: `F6 — Add partial matching carefully`
+- Checkpoint: `G — Resolver-first execution flow`
+- Subtask: `G1 — Add capability-style command model`
 - Owner: `Tromador`
 - Started: `2026-04-28`
-- Goal: `Define and lock lookup semantics before broad command migration.`
+- Goal: `Resolve command inputs before heavy TradeDB paths.`
 
 ### Current blocker
 - Status: `[x]`
@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-28`
 - By: `Tromador + Claude`
-- Session summary: `F1–F5 complete. 50 ORM lookup tests + 53 parity tests passing. F5 added TestAmbiguityAndAtNF5 (7 tests) covering ambiguity propagation, @N disambiguation in lookup_place, @N suppression in lookup_station, and cross-name dual-scan AmbiguityError. No tradeorm.py changes required. Starting F6.`
+- Session summary: `F6 complete. Partial matching added to tradeorm.py: _list_search (mirrors listSearch), _place_lookup (mirrors _lookup four-tier), _resolve_place_tiers, _prefix_of. lookup_system/station/place all extended with prefix ILIKE + Python-side tier matching fallback. 12 new F6 tests. 113 total passing. Checkpoint F complete.`
 
 ### Last known good rollback point
 - Commit: `f57c411`
@@ -97,7 +97,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] C — Legacy audit and prune map
 - [x] D — Remove `Added`
 - [x] E — Collapse `RareItem` into `Item`
-- [-] F — Resolver contract and parity tests
+- [x] F — Resolver contract and parity tests
 - [ ] G — Resolver-first execution flow
 - [ ] H — Migrate `local`
 - [ ] I — Migrate `market`, `buy`, `sell`
@@ -335,9 +335,9 @@ Define and lock lookup semantics before broad command migration.
 - [x] F5. Add ambiguity and `@N` handling
   - Status note: `TestAmbiguityAndAtNF5 added (7 tests) plus torm_with_crossname_ambiguity fixture. Covers: lookup_place fast-path AmbiguityError propagation, @N disambiguation (@1/@2), @ prefix + @N, out-of-range @N → TradeException, lookup_station @N not stripped (LookupError), dual-scan cross-name AmbiguityError. No tradeorm.py changes needed — all behaviours correct from F3/F4.`
   - Evidence: `tests/test_tradeorm_lookup_db.py`; `bfccd34c`
-- [ ] F6. Add partial matching carefully
-  - Status note:
-  - Evidence:
+- [x] F6. Add partial matching carefully
+  - Status note: `Module-level _normalize_trans/_trim_trans added to tradeorm.py. Four static helpers added: _prefix_of (prefix ILIKE narrowing), _list_search (mirrors listSearch: exact/word/partial tiers), _place_lookup (mirrors _lookup: exact/close/word/any tiers with space-based word boundaries), _resolve_place_tiers. lookup_system falls through to prefix ILIKE + _list_search on no exact results. lookup_station (scoped) falls through to all-stations-in-system + _list_search; (unscoped) falls through to prefix ILIKE + _list_search for both station and system candidates. lookup_place fast-path station fallback extended with prefix ILIKE + _list_search. lookup_place slow-path extended with prefix ILIKE + _place_lookup for system part; scoped station part uses all stations in matched systems (handles interior substrings); global station part uses prefix ILIKE + _place_lookup. TestPartialMatchingF6 added (12 tests). 113 total tests passing.`
+  - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`; 113 tests passing on 2026-04-28`
 
 ### Notes
 -

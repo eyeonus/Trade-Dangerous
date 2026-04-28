@@ -198,11 +198,6 @@ class TestLookupSystemF3:
         with pytest.raises(TypeError):
             isolated_torm.lookup_system(42)
 
-    def test_lookup_system_partial_raises_lookup_error(self, isolated_torm):
-        # No partial matching in F3 — "So" is not Sol.
-        with pytest.raises(LookupError):
-            isolated_torm.lookup_system("So")
-
     def test_lookup_system_slash_not_parsed(self, isolated_torm):
         # lookup_system() does not parse place syntax; slash belongs to lookup_place().
         with pytest.raises(LookupError):
@@ -457,3 +452,86 @@ class TestAmbiguityAndAtNF5:
         # but they refer to different systems → AmbiguityError.
         with pytest.raises(AmbiguityError):
             torm_with_crossname_ambiguity.lookup_station("Crossmatch")
+
+
+class TestPartialMatchingF6:
+    """F6: partial matching for lookup_system, lookup_station, lookup_place."""
+
+    # -- lookup_system partial --
+
+    def test_lookup_system_partial_word_prefix(self, isolated_torm):
+        # "Sigma Dra" misses the exact query; prefix "SIGMA" narrows candidates;
+        # _list_search finds "Sigma Draconis" via partial match.
+        result = isolated_torm.lookup_system("Sigma Dra")
+        assert result.name == "Sigma Draconis"
+
+    def test_lookup_system_partial_ambiguous_raises(self, isolated_torm):
+        # "Luyten" is a prefix of several Luyten-* systems → AmbiguityError.
+        with pytest.raises(AmbiguityError):
+            isolated_torm.lookup_system("Luyten")
+
+    def test_lookup_system_not_found_still_raises_lookup_error(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_system("xyzzy_no_such_system_f6")
+
+    # -- lookup_station partial --
+
+    def test_lookup_station_partial_ambiguous_raises(self, isolated_torm):
+        # "Blanco Manuf" is a prefix of both "Blanco Manufacturing Forge"
+        # stations → AmbiguityError.
+        with pytest.raises(AmbiguityError):
+            isolated_torm.lookup_station("Blanco Manuf")
+
+    def test_lookup_station_partial_scoped_to_system(self, isolated_torm):
+        # With a system arg, partial matching pulls all stations in that system.
+        result = isolated_torm.lookup_station(
+            "Blanco Manuf", system="Lushertha"
+        )
+        assert result.name == "Blanco Manufacturing Forge"
+        assert result.system.name == "Lushertha"
+
+    def test_lookup_station_partial_not_found_raises(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_station("xyzzy_no_station_f6")
+
+    # -- lookup_place slow-path partial: station word match --
+
+    def test_lookup_place_compound_partial_station_word_match(self, isolated_torm):
+        # "Dunyach" is a word-boundary prefix of "Dunyach Enterprise".
+        result = isolated_torm.lookup_place("Ross 490/Dunyach")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Dunyach Enterprise"
+        assert result.system.name == "Ross 490"
+
+    # -- lookup_place slow-path partial: interior substring (any_match) --
+
+    def test_lookup_place_compound_partial_station_any_match(self, isolated_torm):
+        # "braham" appears inside "Abraham Lincoln" but not at a word boundary
+        # → any_match tier.
+        result = isolated_torm.lookup_place("Sol/braham")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Abraham Lincoln"
+        assert result.system.name == "Sol"
+
+    # -- lookup_place slow-path partial: both parts partial --
+
+    def test_lookup_place_compound_partial_both_parts(self, isolated_torm):
+        # "ross 49" hits "Ross 490" via any_match; "Dunyach" hits "Dunyach
+        # Enterprise" via word_match within the scoped station set.
+        result = isolated_torm.lookup_place("ross 49/Dunyach")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Dunyach Enterprise"
+        assert result.system.name == "Ross 490"
+
+    # -- regression: exact paths still work after F6 --
+
+    def test_exact_system_lookup_unchanged(self, isolated_torm):
+        result = isolated_torm.lookup_system("Sol")
+        assert result.name == "Sol"
+
+    def test_exact_station_fallback_in_lookup_place_unchanged(self, isolated_torm):
+        # "Goo Research" is not a system; station exact match still resolves it.
+        result = isolated_torm.lookup_place("Goo Research")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Goo Research"
+        assert result.system.name == "LHS 3799"
