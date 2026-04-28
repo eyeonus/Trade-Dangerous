@@ -49,11 +49,11 @@ Do not tick a task unless:
 ## 1. Current snapshot
 
 ### Current active checkpoint
-- Status: `[ ]`
+- Status: `[-]`
 - Checkpoint: `F — Resolver contract and parity tests`
-- Subtask: `Not yet started`
+- Subtask: `F4 — Implement exact station and place lookup via ORM`
 - Owner: `Tromador`
-- Started: `not started`
+- Started: `2026-04-28`
 - Goal: `Define and lock lookup semantics before broad command migration.`
 
 ### Current blocker
@@ -63,9 +63,9 @@ Do not tick a task unless:
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-26`
+- Date: `2026-04-28`
 - By: `Tromador + Claude`
-- Session summary: `Checkpoint E fully validated and closed. Sentinel station_id guard added to spansh_plug for 0xFFFFFFFFFFFFFFFF overflow. skip_galaxy + file= silent failure fixed. supply_units > 0 filter added to buy --rare. eddblink stale comment updated. GUI RaresWorkspace removed, --rare checkbox wired into buy workspace (f57c411). End-to-end validation passed: spansh seed → listener → eddblink import → trade buy --rare returns 142 rares. 
+- Session summary: `F1–F3 complete. RESOLVER_CONTRACT.md written. 53 legacy parity tests passing. lookup_system() rewritten with @N disambiguation, case-insensitive exact match, correct error types. 13 ORM lookup tests passing. Starting F4.`
 
 ### Last known good rollback point
 - Commit: `f57c411`
@@ -97,7 +97,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] C — Legacy audit and prune map
 - [x] D — Remove `Added`
 - [x] E — Collapse `RareItem` into `Item`
-- [ ] F — Resolver contract and parity tests
+- [-] F — Resolver contract and parity tests
 - [ ] G — Resolver-first execution flow
 - [ ] H — Migrate `local`
 - [ ] I — Migrate `market`, `buy`, `sell`
@@ -320,15 +320,15 @@ Define and lock lookup semantics before broad command migration.
 - exact/common place resolution works without full `TradeDB.load()`
 
 ### Tasks
-- [ ] F1. Write resolver contract document
-  - Status note:
-  - Evidence:
-- [ ] F2. Convert legacy behavior into tests
-  - Status note:
-  - Evidence:
-- [ ] F3. Implement exact system lookup
-  - Status note:
-  - Evidence:
+- [x] F1. Write resolver contract document
+  - Status note: `RESOLVER_CONTRACT.md written from full code-read of tradedb.py and tradeexcept.py. Covers normalization pipeline, listSearch, lookupSystem, lookupPlace (fast/slow paths), lookupStation, lookupItem, error types, behaviour classification, parity matrix, and fixture requirements. §13 corrected after F2 testing revealed one wrong matrix entry.`
+  - Evidence: `docs/RESOLVER_CONTRACT.md`; `9faa1ec`
+- [x] F2. Convert legacy behavior into tests
+  - Status note: `53 parity tests covering normalization, lookupSystem (including @N), lookupPlace fast and slow paths, lookupStation, lookupItem, and @N boundary/negative cases. v13 fixtures regenerated from sol-25ly crop; Create_Fixtures.md procedure documented.`
+  - Evidence: `tests/test_resolver_parity.py`; `95d5538`; `8a9cac1`
+- [x] F3. Implement exact system lookup
+  - Status note: `lookup_system() rewritten as self-contained ORM query. _split_system_index() added. Exact match via CIString (NOCASE/utf8mb4_unicode_ci). @N disambiguation ordered by (pos_x, pos_y, pos_z, system_id). LookupError on no match, AmbiguityError on duplicate name, TradeException on out-of-range @N. TypeError on non-string. Slash and partial matching explicitly excluded. 9 new tests.`
+  - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`
 - [ ] F4. Implement exact station and place lookup
   - Status note:
   - Evidence:
