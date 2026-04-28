@@ -63,13 +63,13 @@ Do not tick a task unless:
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-28`
+- Date: `2026-04-29`
 - By: `Tromador + Claude`
-- Session summary: `F6 complete. Partial matching added to tradeorm.py: _list_search (mirrors listSearch), _place_lookup (mirrors _lookup four-tier), _resolve_place_tiers, _prefix_of. lookup_system/station/place all extended with prefix ILIKE + Python-side tier matching fallback. 12 new F6 tests. 113 total passing. Checkpoint F complete.`
+- Session summary: `Post-review fixes to F6: two parity holes corrected — lookup_system partial fallback now passes the full original name (not base_name) to _prefix_of and _list_search; all five unscoped candidate queries upgraded to two-step ILIKE (prefix then interior). Four additional tests added to TestPartialMatching (now 16 tests). RESOLVER_CONTRACT.md updated with punctuation-normalised interior limitation as DELIBERATE ORM CHANGE. Test class names and module docstrings scrubbed of planning-phase labels and process language. 177 total tests passing. Checkpoint F complete.`
 
 ### Last known good rollback point
-- Commit: `f57c411`
-- Notes: `Post-Checkpoint-E validated state. Full end-to-end validation passed on 2026-04-26.`
+- Commit: `1896bdaf`
+- Notes: `Post-Checkpoint-F validated state. 177 tests passing on 2026-04-29.`
 
 ---
 
@@ -330,17 +330,17 @@ Define and lock lookup semantics before broad command migration.
   - Status note: `lookup_system() rewritten as self-contained ORM query. _split_system_index() added. Exact match via CIString (NOCASE/utf8mb4_unicode_ci). @N disambiguation ordered by (pos_x, pos_y, pos_z, system_id). LookupError on no match, AmbiguityError on duplicate name, TradeException on out-of-range @N. TypeError on non-string. Slash and partial matching explicitly excluded. 9 new tests.`
   - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`
 - [x] F4. Implement exact station and place lookup
-  - Status note: `lookup_station() rewritten: Station/System pass-through, TypeError for non-str, scoped lookup via system arg, dual-scan (exact station + exact system) with contract-correct reconciliation. lookup_place() rewritten: System/Station pass-through, TypeError, fast path (bare/@name via lookup_system + station fallback; @ suppresses station fallback), slow path (raw exact system query, NOT lookup_system — @N stays out of compound syntax), unknown-system global fallback, duplicate-system combined candidates. _system_lookup() and _station_lookup() removed. 30 new tests (TestLookupStationF4 + TestLookupPlaceF4). All 43 ORM tests + 53 parity tests passing.`
+  - Status note: `lookup_station() rewritten: Station/System pass-through, TypeError for non-str, scoped lookup via system arg, dual-scan (exact station + exact system) with contract-correct reconciliation. lookup_place() rewritten: System/Station pass-through, TypeError, fast path (bare/@name via lookup_system + station fallback; @ suppresses station fallback), slow path (raw exact system query, NOT lookup_system — @N stays out of compound syntax), unknown-system global fallback, duplicate-system combined candidates. _system_lookup() and _station_lookup() removed. 30 new tests (TestLookupStation + TestLookupPlace). All 43 ORM tests + 53 parity tests passing.`
   - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`
 - [x] F5. Add ambiguity and `@N` handling
-  - Status note: `TestAmbiguityAndAtNF5 added (7 tests) plus torm_with_crossname_ambiguity fixture. Covers: lookup_place fast-path AmbiguityError propagation, @N disambiguation (@1/@2), @ prefix + @N, out-of-range @N → TradeException, lookup_station @N not stripped (LookupError), dual-scan cross-name AmbiguityError. No tradeorm.py changes needed — all behaviours correct from F3/F4.`
+  - Status note: `TestAmbiguityAndAtNDisambiguation added (7 tests) plus torm_with_crossname_ambiguity fixture. Covers: lookup_place fast-path AmbiguityError propagation, @N disambiguation (@1/@2), @ prefix + @N, out-of-range @N → TradeException, lookup_station @N not stripped (LookupError), dual-scan cross-name AmbiguityError. No tradeorm.py changes needed — all behaviours already correct from the exact-lookup implementation.`
   - Evidence: `tests/test_tradeorm_lookup_db.py`; `bfccd34c`
 - [x] F6. Add partial matching carefully
-  - Status note: `Module-level _normalize_trans/_trim_trans added to tradeorm.py. Four static helpers added: _prefix_of (prefix ILIKE narrowing), _list_search (mirrors listSearch: exact/word/partial tiers), _place_lookup (mirrors _lookup: exact/close/word/any tiers with space-based word boundaries), _resolve_place_tiers. lookup_system falls through to prefix ILIKE + _list_search on no exact results. lookup_station (scoped) falls through to all-stations-in-system + _list_search; (unscoped) falls through to prefix ILIKE + _list_search for both station and system candidates. lookup_place fast-path station fallback extended with prefix ILIKE + _list_search. lookup_place slow-path extended with prefix ILIKE + _place_lookup for system part; scoped station part uses all stations in matched systems (handles interior substrings); global station part uses prefix ILIKE + _place_lookup. TestPartialMatchingF6 added (12 tests). 113 total tests passing.`
-  - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`; 113 tests passing on 2026-04-28`
+  - Status note: `Module-level _normalize_trans/_trim_trans added to tradeorm.py. Four static helpers: _prefix_of, _list_search (mirrors listSearch: exact/word/partial tiers), _place_lookup (mirrors _lookup: exact/close/word/any tiers with space-based word boundaries), _resolve_place_tiers. All five unscoped candidate queries use two-step ILIKE: prefix ILIKE first (index-friendly), then interior ILIKE ('%token%') if prefix returns nothing. lookup_system partial fallback passes the full original name (including any @N) to both _prefix_of and _list_search — @N is treated as a literal search string in the partial path per documented legacy behaviour. lookup_station (scoped) uses all-stations-in-system + _list_search; (unscoped) uses two-step ILIKE for both station and system candidates. lookup_place fast-path station fallback: two-step ILIKE + _list_search. lookup_place slow-path: system part uses two-step ILIKE + _place_lookup; scoped station part uses all stations in matched systems; global station part uses two-step ILIKE + _place_lookup. Punctuation-normalised interior matches (e.g. 'CD37' → 'CD-37 15492') not supported without a normalised column — DELIBERATE ORM CHANGE, recorded in RESOLVER_CONTRACT.md. TestPartialMatching has 16 tests. 177 total tests passing on 2026-04-29.`
+  - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`; `docs/RESOLVER_CONTRACT.md`; commits `493a2ae`, `1896bdaf`; 177 tests passing on 2026-04-29`
 
 ### Notes
--
+- Punctuation-normalised interior substring matching (e.g. `"CD37"` → `"CD-37 15492"`) is a deliberate unsupported case. The ORM searches raw stored names; without a normalised generated column, stage-1 punctuation deletion cannot be applied on the DB side. Recorded in RESOLVER_CONTRACT.md as a DELIBERATE ORM CHANGE.
 
 ---
 
@@ -737,6 +737,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-26`
   - Commit: `f57c411` (GUI closeout); `99e2d710` (importer/cache plumbing)
   - Notes: `RareItem fully removed from schema, ORM, importer, cache, export, and GUI. Sentinel station_id guard added for 0xFFFFFFFFFFFFFFFF overflow in Spansh dump. skip_galaxy + file= silent failure fixed. trade buy --rare validated with supply_units > 0 filter; returns 142 rares on test MariaDB. GUI RaresWorkspace removed; Rares only checkbox wired into buy workspace.`
+- [x] Milestone: `Checkpoint F resolver contract and parity tests complete`
+  - Date completed: `2026-04-29`
+  - Commit: `1896bdaf` (partial matching fixes); `1ca25bc4` (test cleanup)
+  - Notes: `RESOLVER_CONTRACT.md written and locked. 53 legacy parity tests. TradeORM lookup_system/station/place all implement exact + partial matching with two-step ILIKE candidate narrowing and Python-side tier matching mirroring the legacy resolver. 177 tests passing.`
 
 ---
 
