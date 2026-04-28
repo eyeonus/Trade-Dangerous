@@ -1,8 +1,8 @@
 """
-Resolver parity tests — Checkpoint F2.
+Resolver parity tests — legacy TradeDB resolver.
 
 Documents and locks the lookup semantics of the legacy TradeDB resolver so that
-the ORM-first replacement (F3+) can be verified for parity.
+the ORM-first replacement can be verified for parity.
 
 Every test here corresponds to a row in the parity matrix in docs/RESOLVER_CONTRACT.md.
 Tests are grouped by the function under test.  Fixture data comes from the sol-25ly

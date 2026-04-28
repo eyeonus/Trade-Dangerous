@@ -153,7 +153,7 @@ class TestTradeORMLookup:
             isolated_torm.lookup_place("%")
 
 
-class TestLookupSystemF3:
+class TestLookupSystem:
     def test_lookup_system_case_insensitive(self, isolated_torm):
         # CIString (COLLATE NOCASE / utf8mb4_unicode_ci) must make equality
         # case-insensitive on all supported backends.
@@ -216,8 +216,8 @@ class TestLookupSystemF3:
         assert isolated_torm.lookup_system(station).system_id == system.system_id
 
 
-class TestLookupStationF4:
-    """Exact station lookup — F4 acceptance tests."""
+class TestLookupStation:
+    """Station lookup by name, case sensitivity, scoping, and error cases."""
 
     def test_passthrough_station(self, isolated_torm):
         stn = isolated_torm.lookup_station("Abraham Lincoln")
@@ -283,8 +283,8 @@ class TestLookupStationF4:
             isolated_torm.lookup_station("%")
 
 
-class TestLookupPlaceF4:
-    """Exact place lookup — F4 acceptance tests."""
+class TestLookupPlace:
+    """Place lookup by name, syntax variants, scoping, and error cases."""
 
     def test_passthrough_system(self, isolated_torm):
         sys_obj = isolated_torm.lookup_system("Sol")
@@ -413,8 +413,8 @@ def torm_with_crossname_ambiguity(isolated_torm):
     yield isolated_torm
 
 
-class TestAmbiguityAndAtNF5:
-    """F5: ambiguity propagation and @N handling across all three lookup methods."""
+class TestAmbiguityAndAtNDisambiguation:
+    """Ambiguity propagation and @N disambiguation across all three lookup methods."""
 
     def test_lookup_place_fast_path_propagates_ambiguity_error(self, torm_with_dupsys):
         # Duplicate system name → lookup_system raises AmbiguityError → propagates.
@@ -454,8 +454,8 @@ class TestAmbiguityAndAtNF5:
             torm_with_crossname_ambiguity.lookup_station("Crossmatch")
 
 
-class TestPartialMatchingF6:
-    """F6: partial matching for lookup_system, lookup_station, lookup_place."""
+class TestPartialMatching:
+    """Partial (prefix and substring) matching for all three lookup methods."""
 
     # -- lookup_system partial --
 
@@ -523,7 +523,7 @@ class TestPartialMatchingF6:
         assert result.name == "Dunyach Enterprise"
         assert result.system.name == "Ross 490"
 
-    # -- regression: exact paths still work after F6 --
+    # -- regression: exact paths still work after adding partial matching --
 
     def test_exact_system_lookup_unchanged(self, isolated_torm):
         result = isolated_torm.lookup_system("Sol")
