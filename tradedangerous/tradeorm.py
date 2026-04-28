@@ -99,21 +99,49 @@ class TradeORM:
         station: orm.Station | None = self.lookup_place(name)
         return station
     
-    def lookup_system(self, name: str) -> orm.System | None:
-        """ Use the database to lookup a system, which accepts a name that
-            is either a unique system name (or partial of one), or in the
-            'system name/station name' component. If the system does not
-            match a unique system, raises an AmbiguityError
-        """
+    def lookup_system(self, name: str | orm.System | orm.Station) -> orm.System:
+        """ Look up a system by name, with optional '@N' disambiguation index. """
+        if isinstance(name, orm.System):
+            return name
+        if isinstance(name, orm.Station):
+            return name.system
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_system requires a str, got {type(name).__name__!r}")
+
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in system names")
-        system_name, _, _ = name.partition("/")
-        if not system_name:
-            raise TradeException(f"system name required for system lookup, got {name}")
-        result: orm.Station | orm.System | None = self.lookup_place(system_name)
-        if isinstance(result, orm.Station):
-            return result.system
-        return result
+
+        base_name, index = self._split_system_index(name)
+
+        results = (
+            self.session.query(orm.System)
+            .filter(orm.System.name == base_name)
+            .order_by(orm.System.pos_x, orm.System.pos_y, orm.System.pos_z, orm.System.system_id)
+            .all()
+        )
+
+        if not results:
+            raise LookupError(f"unknown system: {base_name!r}")
+
+        if index is not None:
+            if 1 <= index <= len(results):
+                return results[index - 1]
+            raise TradeException(
+                f"System {base_name!r}@{index} does not exist "
+                f"(valid range: 1-{len(results)})"
+            )
+
+        if len(results) == 1:
+            return results[0]
+
+        pairs = list(enumerate(results, start=1))
+        raise AmbiguityError(
+            "System", base_name, pairs,
+            key=lambda pair: (
+                f"{pair[1].name.upper()}/@{pair[0]} "
+                f"({pair[1].pos_x:.1f}, {pair[1].pos_y:.1f}, {pair[1].pos_z:.1f})"
+            ),
+        )
     
     def lookup_place(self, name: str) -> orm.Station | orm.System | None:
         """ Using a "[<system>]/[<station>]" style name, look up either a Station or a System."""
@@ -154,6 +182,17 @@ class TradeORM:
         station = self._station_lookup(stn_name, exact=False)
         return station
     
+    @staticmethod
+    def _split_system_index(name: str) -> tuple[str, int | None]:
+        """ Split 'Name@N' into ('Name', N); returns (name, None) if no valid suffix. """
+        at = name.rfind('@')
+        if at <= 0:
+            return name, None
+        tail = name[at + 1:]
+        if not tail.isdigit():
+            return name, None
+        return name[:at], int(tail)
+
     def _system_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.System | None:
         """ Look up a model by exact name match. """
         assert exact or partial, "at least one of exact or partial must be True"
