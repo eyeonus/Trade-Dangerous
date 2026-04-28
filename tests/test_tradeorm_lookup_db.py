@@ -535,3 +535,40 @@ class TestPartialMatching:
         assert isinstance(result, orm.Station)
         assert result.name == "Goo Research"
         assert result.system.name == "LHS 3799"
+
+    # -- @N in partial path: treated as literal, not disambiguated --
+
+    def test_lookup_system_at_n_partial_not_disambiguated(self, torm_with_dupsys):
+        # "Zeta@1": exact query for base name "Zeta" misses; partial path uses the
+        # full name "Zeta@1" as the search token — no system name contains that
+        # literal string, so LookupError is raised.  @N only disambiguates in the
+        # exact tier (documented legacy behaviour preserved for parity).
+        with pytest.raises(LookupError):
+            torm_with_dupsys.lookup_system("Zeta@1")
+
+    # -- interior-suffix partial match: two-step ILIKE required --
+
+    def test_lookup_system_interior_suffix(self, isolated_torm):
+        # "Draconis" is a suffix of "Sigma Draconis", not a prefix.
+        # Prefix ILIKE 'DRACONIS%' returns nothing; interior ILIKE '%Draconis%'
+        # is required to surface the candidate.
+        result = isolated_torm.lookup_system("Draconis")
+        assert result.name == "Sigma Draconis"
+
+    def test_lookup_place_compound_system_interior(self, isolated_torm):
+        # "490" is an interior token of "Ross 490", not a prefix.
+        # Prefix ILIKE '490%' returns nothing; interior ILIKE '%490%' finds it.
+        result = isolated_torm.lookup_place("490/Dunyach")
+        assert isinstance(result, orm.Station)
+        assert result.name == "Dunyach Enterprise"
+        assert result.system.name == "Ross 490"
+
+    # -- deliberate limitation: punctuation-normalised interior not supported --
+
+    def test_lookup_system_punctuation_normalised_interior_no_match(self, isolated_torm):
+        # "CD37" would match "CD-37 15492" after stage-1 normalisation strips the
+        # hyphen, but the ORM searches raw names via ILIKE with no normalised column.
+        # Deliberate divergence from the legacy resolver — documented in
+        # RESOLVER_CONTRACT.md under "DELIBERATE ORM CHANGE".
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_system("CD37")

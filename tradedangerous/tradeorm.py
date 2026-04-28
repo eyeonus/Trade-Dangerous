@@ -333,18 +333,31 @@ class TradeORM:
         )
 
         if not stn_results and not sys_results:
-            # Neither exact scan found anything — try partial via prefix ILIKE.
+            # Neither exact scan found anything — try partial via prefix ILIKE,
+            # then interior ILIKE if prefix returns nothing (two-step superset).
             prefix = self._prefix_of(name)
             stn_cands = (
                 self.session.query(orm.Station)
                 .filter(orm.Station.name.ilike(f"{prefix}%"))
                 .all()
             )
+            if not stn_cands:
+                stn_cands = (
+                    self.session.query(orm.Station)
+                    .filter(orm.Station.name.ilike(f"%{name}%"))
+                    .all()
+                )
             sys_cands = (
                 self.session.query(orm.System)
                 .filter(orm.System.name.ilike(f"{prefix}%"))
                 .all()
             )
+            if not sys_cands:
+                sys_cands = (
+                    self.session.query(orm.System)
+                    .filter(orm.System.name.ilike(f"%{name}%"))
+                    .all()
+                )
             if stn_cands:
                 try:
                     stn_results = [
@@ -430,18 +443,25 @@ class TradeORM:
 
         if not results:
             # Partial matching fallback — mirrors listSearch on systemByName/systemByID.
-            # @N is not passed to the partial path (parity: listSearch receives the
-            # full name including @N but treats it as a literal search string).
-            prefix = self._prefix_of(base_name)
+            # Full name (including any @N) is passed to _list_search; @N is treated as
+            # a literal search string in the partial path (DOCUMENTED LEGACY BUG parity).
+            prefix = self._prefix_of(name)
             candidates = (
                 self.session.query(orm.System)
                 .filter(orm.System.name.ilike(f"{prefix}%"))
                 .all()
             )
             if not candidates:
+                # Interior fallback: prefix ILIKE is not a superset for interior-suffix names.
+                candidates = (
+                    self.session.query(orm.System)
+                    .filter(orm.System.name.ilike(f"%{name}%"))
+                    .all()
+                )
+            if not candidates:
                 raise LookupError(f"unknown system: {base_name!r}")
             return self._list_search(
-                "System", base_name, candidates, key=lambda s: s.name
+                "System", name, candidates, key=lambda s: s.name
             )
 
         if index is not None:
@@ -519,13 +539,19 @@ class TradeORM:
                 .all()
             )
             if not stn_results:
-                # Partial station fallback.
+                # Partial station fallback: prefix ILIKE then interior ILIKE.
                 prefix = self._prefix_of(norm)
                 stn_cands = (
                     self.session.query(orm.Station)
                     .filter(orm.Station.name.ilike(f"{prefix}%"))
                     .all()
                 )
+                if not stn_cands:
+                    stn_cands = (
+                        self.session.query(orm.Station)
+                        .filter(orm.Station.name.ilike(f"%{norm}%"))
+                        .all()
+                    )
                 if not stn_cands:
                     raise LookupError(f"Unrecognized place: {name!r}")
                 return self._list_search(
@@ -550,13 +576,20 @@ class TradeORM:
                 .all()
             )
             if not sys_results:
-                # Partial system matching — prefix ILIKE then _place_lookup.
+                # Partial system matching — prefix ILIKE then interior ILIKE,
+                # then _place_lookup to tier the candidates.
                 prefix = self._prefix_of(sys_part)
                 sys_cands = (
                     self.session.query(orm.System)
                     .filter(orm.System.name.ilike(f"{prefix}%"))
                     .all()
                 )
+                if not sys_cands:
+                    sys_cands = (
+                        self.session.query(orm.System)
+                        .filter(orm.System.name.ilike(f"%{sys_part}%"))
+                        .all()
+                    )
                 if sys_cands:
                     exact_m, close_m, word_m, any_m = self._place_lookup(
                         sys_part, sys_cands
@@ -603,13 +636,19 @@ class TradeORM:
                 .all()
             )
             if not results:
-                # Partial global search via prefix ILIKE.
+                # Partial global search: prefix ILIKE then interior ILIKE.
                 prefix = self._prefix_of(stn_part)
                 stn_cands = (
                     self.session.query(orm.Station)
                     .filter(orm.Station.name.ilike(f"{prefix}%"))
                     .all()
                 )
+                if not stn_cands:
+                    stn_cands = (
+                        self.session.query(orm.Station)
+                        .filter(orm.Station.name.ilike(f"%{stn_part}%"))
+                        .all()
+                    )
                 if not stn_cands:
                     raise LookupError(f"Unrecognized place: {name!r}")
                 exact_m, close_m, word_m, any_m = self._place_lookup(

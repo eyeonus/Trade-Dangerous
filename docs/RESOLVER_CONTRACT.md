@@ -354,6 +354,7 @@ Each notable quirk is classified so future sessions can distinguish what must be
 | `lookupSystem` `listSearch` fallback passes the full `name` including `@N` suffix — `@N` silently stops working for partial matches | DOCUMENTED LEGACY BUG |
 | `lookupPlace` slow path system resolution does not support `@N` | PRESERVE FOR PARITY (limitation is consistent with the fast path owning `@N`) |
 | `listSearch` short-circuits on the first exact station-name match — no ambiguity check even when duplicate rows exist | DELIBERATE ORM CHANGE — `TradeORM.lookup_station` raises `AmbiguityError` for multiple exact DB rows; returning an arbitrary duplicate is less correct than asking the caller to disambiguate |
+| `listSearch` normalises both needle and candidate before substring search — so `"CD37"` matches `"CD-37 15492"` (hyphen stripped from both sides) | DELIBERATE ORM CHANGE — the ORM searches raw stored names via `ILIKE`; without a normalised generated column, punctuation-stripped interior matches are not supported. `lookup_system("CD37")` raises `LookupError`. |
 
 ---
 
