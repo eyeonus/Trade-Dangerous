@@ -379,3 +379,81 @@ class TestLookupPlaceF4:
     def test_wildcard_guard(self, isolated_torm):
         with pytest.raises(TradeException):
             isolated_torm.lookup_place("%")
+
+
+@pytest.fixture()
+def torm_with_crossname_ambiguity(isolated_torm):
+    """System 'Crossmatch' + station 'Crossmatch' in Sol (a different system).
+
+    When lookup_station("Crossmatch") runs the dual scan:
+    - stn_results: 1 station (in Sol)
+    - sys_results: 1 system (Crossmatch)
+    - station.system_id != sys_obj.system_id → AmbiguityError
+    """
+    from sqlalchemy import text
+    session = isolated_torm.session
+    max_sys_id = session.execute(text("SELECT MAX(system_id) FROM System")).scalar()
+    max_stn_id = session.execute(text("SELECT MAX(station_id) FROM Station")).scalar()
+    sol_id = session.execute(
+        text("SELECT system_id FROM System WHERE name = 'Sol'")
+    ).scalar()
+    session.execute(
+        text(
+            "INSERT INTO System (system_id, name, pos_x, pos_y, pos_z, modified) "
+            "VALUES (:id, 'Crossmatch', 500.0, 500.0, 500.0, datetime('now'))"
+        ),
+        {"id": max_sys_id + 1},
+    )
+    session.execute(
+        text(
+            "INSERT INTO Station "
+            "(station_id, name, system_id, ls_from_star, blackmarket, max_pad_size, "
+            "market, shipyard, outfitting, rearm, refuel, repair, planetary, type_id, modified) "
+            "VALUES (:id, 'Crossmatch', :sys_id, 0, '?', '?', '?', '?', '?', '?', '?', '?', '?', 0, datetime('now'))"
+        ),
+        {"id": max_stn_id + 1, "sys_id": sol_id},
+    )
+    session.commit()
+    session.expire_all()
+    yield isolated_torm
+
+
+class TestAmbiguityAndAtNF5:
+    """F5: ambiguity propagation and @N handling across all three lookup methods."""
+
+    def test_lookup_place_fast_path_propagates_ambiguity_error(self, torm_with_dupsys):
+        # Duplicate system name → lookup_system raises AmbiguityError → propagates.
+        with pytest.raises(AmbiguityError):
+            torm_with_dupsys.lookup_place("Zeta Dup")
+
+    def test_lookup_place_at_n_disambiguates_to_first_system(self, torm_with_dupsys):
+        result = torm_with_dupsys.lookup_place("Zeta Dup@1")
+        assert isinstance(result, orm.System)
+        assert result.pos_x == pytest.approx(-100.0)
+
+    def test_lookup_place_at_n_disambiguates_to_second_system(self, torm_with_dupsys):
+        result = torm_with_dupsys.lookup_place("Zeta Dup@2")
+        assert isinstance(result, orm.System)
+        assert result.pos_x == pytest.approx(100.0)
+
+    def test_lookup_place_at_annotation_with_at_n(self, torm_with_dupsys):
+        # "@Zeta Dup@1": leading @ stripped → bare "Zeta Dup@1" → lookup_system("Zeta Dup@1").
+        result = torm_with_dupsys.lookup_place("@Zeta Dup@1")
+        assert isinstance(result, orm.System)
+        assert result.pos_x == pytest.approx(-100.0)
+
+    def test_lookup_place_at_n_out_of_range_propagates_trade_exception(self, torm_with_dupsys):
+        with pytest.raises(TradeException):
+            torm_with_dupsys.lookup_place("Zeta Dup@99")
+
+    def test_lookup_station_at_n_not_interpreted_as_disambiguation(self, torm_with_dupsys):
+        # "Zeta Dup@1" is passed as a literal station/system name string.
+        # No station or system is named "Zeta Dup@1" → LookupError.
+        with pytest.raises(LookupError):
+            torm_with_dupsys.lookup_station("Zeta Dup@1")
+
+    def test_lookup_station_dual_scan_cross_name_ambiguity(self, torm_with_crossname_ambiguity):
+        # Station "Crossmatch" (in Sol) + system "Crossmatch" both match exactly,
+        # but they refer to different systems → AmbiguityError.
+        with pytest.raises(AmbiguityError):
+            torm_with_crossname_ambiguity.lookup_station("Crossmatch")
