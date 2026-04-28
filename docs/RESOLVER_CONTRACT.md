@@ -339,19 +339,21 @@ Each notable quirk is classified so future sessions can distinguish what must be
 - **PRESERVE FOR PARITY** — must match legacy behaviour exactly in the ORM-first resolver; any change requires an explicit decision and test update.
 - **DOCUMENTED LEGACY BUG** — known defect; should not be intentionally replicated, but do not silently fix without a decision and a test update.
 - **CANDIDATE FOR DELIBERATE CHANGE** — behaviour that could reasonably change; must not change silently; requires decision + test update.
+- **DELIBERATE ORM CHANGE** — the ORM-first resolver intentionally diverges from legacy here; decision recorded, tests updated.
 
 | Behaviour | Classification |
 |-----------|---------------|
 | `lookupPlace` bare name prefers system over station | PRESERVE FOR PARITY |
-| Exact normalized match in `listSearch` bypasses all ambiguity checking | PRESERVE FOR PARITY (at least initially) |
+| Exact normalized match in `listSearch` bypasses all ambiguity checking | PRESERVE FOR PARITY for `lookupSystem`; see DELIBERATE ORM CHANGE entry below for `lookup_station` |
 | `@N` disambiguation only works in `lookupSystem` / `lookupPlace` fast path | PRESERVE FOR PARITY unless explicitly extended |
 | `@` annotation is a `lookupPlace` concept, not a `lookupSystem` concept | PRESERVE FOR PARITY |
 | Duplicate-name system ordering by (posX, posY, posZ, ID) | PRESERVE FOR PARITY |
 | `_lookup` word boundaries are space-based; `listSearch` uses regex `\b` — two different implementations | PRESERVE FOR PARITY (both); they are not interchangeable |
 | `listSearch` word-boundary regex uses unescaped `lookup` — regex metacharacters in the lookup string follow Python regex semantics | DOCUMENTED LEGACY BUG |
-| `lookupStation` dual scan is O(n) × 2 with no DB index | CANDIDATE FOR DELIBERATE CHANGE (replace with indexed query in ORM-first path) |
+| `lookupStation` dual scan is O(n) × 2 with no DB index | DELIBERATE ORM CHANGE — `lookup_station` uses two indexed exact queries instead |
 | `lookupSystem` `listSearch` fallback passes the full `name` including `@N` suffix — `@N` silently stops working for partial matches | DOCUMENTED LEGACY BUG |
 | `lookupPlace` slow path system resolution does not support `@N` | PRESERVE FOR PARITY (limitation is consistent with the fast path owning `@N`) |
+| `listSearch` short-circuits on the first exact station-name match — no ambiguity check even when duplicate rows exist | DELIBERATE ORM CHANGE — `TradeORM.lookup_station` raises `AmbiguityError` for multiple exact DB rows; returning an arbitrary duplicate is less correct than asking the caller to disambiguate |
 
 ---
 
@@ -427,6 +429,7 @@ These cases must become tests for the ORM-first resolver, verifying matching beh
 | With system arg | `"Abraham Lincoln", sol` → `lookupStation` | Returns station scoped to Sol |
 | Dual scan reconciles | `"Aulin"` → `lookupStation` | Returns Aulin Enterprise (station.system == matched system) |
 | Not found | `"xxxxxxxx"` → `lookupStation` | Raises `LookupError` |
+| Exact duplicate station name (ORM) | two stations with identical names → `lookup_station` | Raises `AmbiguityError` — deliberate ORM divergence from legacy `listSearch` short-circuit |
 
 ### Normalization edge cases
 
