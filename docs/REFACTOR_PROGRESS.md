@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `F — Resolver contract and parity tests`
-- Subtask: `F4 — Implement exact station and place lookup via ORM`
+- Subtask: `F5 — Add ambiguity and @N handling`
 - Owner: `Tromador`
 - Started: `2026-04-28`
 - Goal: `Define and lock lookup semantics before broad command migration.`
@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-28`
 - By: `Tromador + Claude`
-- Session summary: `F1–F3 complete. RESOLVER_CONTRACT.md written. 53 legacy parity tests passing. lookup_system() rewritten with @N disambiguation, case-insensitive exact match, correct error types. 13 ORM lookup tests passing. Starting F4.`
+- Session summary: `F1–F4 complete. RESOLVER_CONTRACT.md written. 53 legacy parity tests passing. lookup_system() rewritten with @N, exact match, error types. lookup_station() and lookup_place() rewritten for exact ORM lookup with correct dual-scan and compound-form semantics. 43 ORM lookup tests passing. Starting F5.`
 
 ### Last known good rollback point
 - Commit: `f57c411`
@@ -329,9 +329,9 @@ Define and lock lookup semantics before broad command migration.
 - [x] F3. Implement exact system lookup
   - Status note: `lookup_system() rewritten as self-contained ORM query. _split_system_index() added. Exact match via CIString (NOCASE/utf8mb4_unicode_ci). @N disambiguation ordered by (pos_x, pos_y, pos_z, system_id). LookupError on no match, AmbiguityError on duplicate name, TradeException on out-of-range @N. TypeError on non-string. Slash and partial matching explicitly excluded. 9 new tests.`
   - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`
-- [ ] F4. Implement exact station and place lookup
-  - Status note:
-  - Evidence:
+- [x] F4. Implement exact station and place lookup
+  - Status note: `lookup_station() rewritten: Station/System pass-through, TypeError for non-str, scoped lookup via system arg, dual-scan (exact station + exact system) with contract-correct reconciliation. lookup_place() rewritten: System/Station pass-through, TypeError, fast path (bare/@name via lookup_system + station fallback; @ suppresses station fallback), slow path (raw exact system query, NOT lookup_system — @N stays out of compound syntax), unknown-system global fallback, duplicate-system combined candidates. _system_lookup() and _station_lookup() removed. 30 new tests (TestLookupStationF4 + TestLookupPlaceF4). All 43 ORM tests + 53 parity tests passing.`
+  - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`
 - [ ] F5. Add ambiguity and `@N` handling
   - Status note:
   - Evidence:

@@ -82,22 +82,93 @@ class TradeORM:
         """ Commit the current transaction state. """
         return self.session.commit()
     
-    def lookup_station(self, name: str) -> orm.Station | None:
-        """ Use the database to lookup a station, which accepts a name that
-            is either a unique station name (or partial of one), or in the
-            'system name/station name' component. If the station does not
-            match a unique station, raises an AmbiguityError
+    def lookup_station(
+        self,
+        name: str | orm.Station | orm.System,
+        system: str | orm.System | None = None,
+    ) -> orm.Station:
+        """ Exact station lookup.
+
+        Accepts a Station (pass-through), a System (returns its single station
+        or raises SystemNotStationError), or a str name.  When *system* is
+        supplied the search is scoped to that system; without it a dual-scan
+        is performed (exact station first, then exact system) and the results
+        are reconciled per the resolver contract.
         """
+        if isinstance(name, orm.Station):
+            return name
+        if isinstance(name, orm.System):
+            stns = name.stations
+            if len(stns) == 1:
+                return stns[0]
+            raise SystemNotStationError(
+                f"System {name.name!r} has {len(stns)} stations; specify a station name"
+            )
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_station requires a str, got {type(name).__name__!r}")
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in station names")
-        if "/" not in name:
-            if (station := self._station_lookup(name, exact=True, partial=False)):
-                return station
-            if self._system_lookup(name, exact=True, partial=False):
-                raise SystemNotStationError(f'"{name}" is a system name, use "/{name}" if you meant it as a station')
-            name = "/" + name
-        station: orm.Station | None = self.lookup_place(name)
-        return station
+
+        if system is not None:
+            sys_obj = self.lookup_system(system)
+            results = (
+                self.session.query(orm.Station)
+                .filter(orm.Station.system_id == sys_obj.system_id)
+                .filter(orm.Station.name == name)
+                .all()
+            )
+            if not results:
+                raise LookupError(f"station {name!r} not found in {sys_obj.name!r}")
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Station", name, results, key=lambda s: s.dbname())
+
+        # Dual scan: exact station + exact system queries
+        stn_results = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.name == name)
+            .all()
+        )
+        sys_results = (
+            self.session.query(orm.System)
+            .filter(orm.System.name == name)
+            .all()
+        )
+
+        if not stn_results and not sys_results:
+            raise LookupError(f"'{name}' did not match any station or system.")
+
+        if len(stn_results) > 1:
+            raise AmbiguityError("Station", name, stn_results, key=lambda s: s.dbname())
+        if len(sys_results) > 1:
+            raise AmbiguityError("System", name, sys_results, key=lambda s: s.name)
+
+        station = stn_results[0] if stn_results else None
+        sys_obj = sys_results[0] if sys_results else None
+
+        if station and sys_obj:
+            if station.system_id == sys_obj.system_id:
+                return station  # same system — station wins (Aulin-pattern)
+            raise AmbiguityError(
+                "Place", name,
+                [station, sys_obj],
+                key=lambda x: x.dbname(),
+            )
+
+        if station:
+            return station
+
+        # Only system matched
+        stn_list = (
+            self.session.query(orm.Station)
+            .filter(orm.Station.system_id == sys_obj.system_id)
+            .all()
+        )
+        if len(stn_list) == 1:
+            return stn_list[0]
+        raise SystemNotStationError(
+            f"System {sys_obj.name!r} has {len(stn_list)} stations; specify a station name"
+        )
     
     def lookup_system(self, name: str | orm.System | orm.Station) -> orm.System:
         """ Look up a system by name, with optional '@N' disambiguation index. """
@@ -143,44 +214,102 @@ class TradeORM:
             ),
         )
     
-    def lookup_place(self, name: str) -> orm.Station | orm.System | None:
-        """ Using a "[<system>]/[<station>]" style name, look up either a Station or a System."""
+    def lookup_place(
+        self,
+        name: str | orm.System | orm.Station,
+    ) -> orm.System | orm.Station:
+        """ Resolve a place name to a System or Station.
+
+        Accepts System/Station instances (pass-through) or a str in any of:
+          bare name, @system, /station, system/station, @system/station.
+        Backslash is treated as forward slash.
+
+        Fast path (no slash after stripping @ annotation):
+          Calls lookup_system() — inherits full @N semantics.
+          Falls through to global exact station search on LookupError.
+          AmbiguityError / TradeException propagate immediately.
+          If a leading @ is present and the system is not found: LookupError
+          (@ signals "this is a system", no station fallback).
+
+        Slow path (slash present):
+          System part resolved via a raw exact case-insensitive query
+          (NOT via lookup_system — @N must not work in compound syntax).
+          If system matches exist, station candidates are scoped to those
+          systems; if not, station search is global (unknown-system fallback).
+        """
+        if isinstance(name, (orm.System, orm.Station)):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_place requires a str, got {type(name).__name__!r}")
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in names")
-        sys_name, slashed, stn_name = name.partition("/")
-        if not slashed:
-            if stn_name:
-                station: orm.Station | None = self._station_lookup(stn_name, exact=True, partial=False)
-                if station:
-                    return station
-            if sys_name:
-                system: orm.System | None = self._system_lookup(sys_name, exact=True, partial=False)
-                if system:
-                    return system
-        
-        if sys_name:
-            system = self._system_lookup(sys_name)
-            if not system:
-                raise TradeException(f"unknown system: {sys_name}")
-            if not stn_name:
-                return system
-            
-            # Now we match the list of station names for this system.
-            stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name == stn_name)
-            results = stmt.all()
-            if len(results) == 1:
-                return results[0]
 
-            stmt = self.session.query(orm.Station).filter(orm.Station.system_id == system.system_id).filter(orm.Station.name.like(f"%{stn_name}%"))
-            results = stmt.all()
-            if not results:
-                raise TradeException(f"no station in {sys_name} matches '{stn_name}'")
-            if len(results) > 1:
-                raise AmbiguityError("Station", stn_name, [s.name for s in results])
+        # Normalise backslash to forward slash.
+        norm = name.replace("\\", "/")
+        at_prefix = norm.startswith("@")
+        slash_pos = norm.find("/")
+
+        if slash_pos == -1:
+            # Fast path: bare name or @name, no slash.
+            bare = norm[1:] if at_prefix else norm
+            try:
+                return self.lookup_system(bare)
+            except LookupError:
+                pass
+            # AmbiguityError / TradeException propagate above.
+            if at_prefix:
+                # @ marks an explicit system intent — no station fallback.
+                raise LookupError(f"Unrecognized place: {name!r}")
+            stn_results = (
+                self.session.query(orm.Station)
+                .filter(orm.Station.name == norm)
+                .all()
+            )
+            if not stn_results:
+                raise LookupError(f"Unrecognized place: {name!r}")
+            if len(stn_results) == 1:
+                return stn_results[0]
+            raise AmbiguityError("Place", norm, stn_results, key=lambda s: s.dbname())
+
+        # Slow path: compound form with slash.
+        # Strip leading @ annotation (not @N — that is suppressed here).
+        name_off = 1 if at_prefix else 0
+        sys_part = norm[name_off:slash_pos]   # empty string for leading /
+        stn_part = norm[slash_pos + 1:]
+
+        # Raw exact system query — do NOT use lookup_system() here.
+        # This keeps @N disambiguation out of compound syntax (parity).
+        if sys_part:
+            sys_results = (
+                self.session.query(orm.System)
+                .filter(orm.System.name == sys_part)
+                .all()
+            )
+        else:
+            sys_results = []
+
+        if not stn_part:
+            # "system/" with no station — return system if unambiguous.
+            if not sys_results:
+                raise LookupError(f"Unrecognized place: {name!r}")
+            if len(sys_results) == 1:
+                return sys_results[0]
+            raise AmbiguityError(
+                "System", sys_part, sys_results, key=lambda s: s.name
+            )
+
+        # Station candidates: scoped to matched systems, or global if none.
+        stn_query = self.session.query(orm.Station)
+        if sys_results:
+            system_ids = [s.system_id for s in sys_results]
+            stn_query = stn_query.filter(orm.Station.system_id.in_(system_ids))
+
+        results = stn_query.filter(orm.Station.name == stn_part).all()
+        if not results:
+            raise LookupError(f"Unrecognized place: {name!r}")
+        if len(results) == 1:
             return results[0]
-        
-        station = self._station_lookup(stn_name, exact=False)
-        return station
+        raise AmbiguityError("Place", stn_part, results, key=lambda s: s.dbname())
     
     @staticmethod
     def _split_system_index(name: str) -> tuple[str, int | None]:
@@ -193,37 +322,3 @@ class TradeORM:
             return name, None
         return name[:at], int(tail)
 
-    def _system_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.System | None:
-        """ Look up a model by exact name match. """
-        assert exact or partial, "at least one of exact or partial must be True"
-        results: list[orm.System] | None = None
-        if exact:
-            results = self.session.query(orm.System).filter(orm.System.name == name).all()
-            if len(results) == 1:
-                partial = False
-        if partial:
-            like_pattern = f"%{name}%"
-            results = self.session.query(orm.System).filter(orm.System.name.like(like_pattern)).all()
-        
-        if not results:
-            return None
-        if len(results) > 1:
-            raise AmbiguityError("System", name, results, key=lambda s: s.dbname())
-        return results[0]
-    
-    def _station_lookup(self, name: str, *, exact: bool = True, partial: bool = True) -> orm.Station | None:
-        """ Look up a model by exact name match. """
-        assert exact or partial, "at least one of exact or partial must be True"
-        results: list[orm.Station] | None = None
-        if exact:
-            results = self.session.query(orm.Station).filter(orm.Station.name == name).all()
-            if len(results) == 1:
-                partial = False
-        if partial:
-            like_pattern = f"%{name}%"
-            results = self.session.query(orm.Station).filter(orm.Station.name.like(like_pattern)).all()
-        if not results:
-            return None
-        if len(results) > 1:
-            raise AmbiguityError("Station", name, results, key=lambda s: s.dbname())
-        return results[0]
