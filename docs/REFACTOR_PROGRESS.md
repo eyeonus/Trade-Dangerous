@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `F — Resolver contract and parity tests`
-- Subtask: `F5 — Add ambiguity and @N handling`
+- Subtask: `F6 — Add partial matching carefully`
 - Owner: `Tromador`
 - Started: `2026-04-28`
 - Goal: `Define and lock lookup semantics before broad command migration.`
@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-28`
 - By: `Tromador + Claude`
-- Session summary: `F1–F4 complete. RESOLVER_CONTRACT.md written. 53 legacy parity tests passing. lookup_system() rewritten with @N, exact match, error types. lookup_station() and lookup_place() rewritten for exact ORM lookup with correct dual-scan and compound-form semantics. 43 ORM lookup tests passing. Starting F5.`
+- Session summary: `F1–F5 complete. 50 ORM lookup tests + 53 parity tests passing. F5 added TestAmbiguityAndAtNF5 (7 tests) covering ambiguity propagation, @N disambiguation in lookup_place, @N suppression in lookup_station, and cross-name dual-scan AmbiguityError. No tradeorm.py changes required. Starting F6.`
 
 ### Last known good rollback point
 - Commit: `f57c411`
@@ -332,9 +332,9 @@ Define and lock lookup semantics before broad command migration.
 - [x] F4. Implement exact station and place lookup
   - Status note: `lookup_station() rewritten: Station/System pass-through, TypeError for non-str, scoped lookup via system arg, dual-scan (exact station + exact system) with contract-correct reconciliation. lookup_place() rewritten: System/Station pass-through, TypeError, fast path (bare/@name via lookup_system + station fallback; @ suppresses station fallback), slow path (raw exact system query, NOT lookup_system — @N stays out of compound syntax), unknown-system global fallback, duplicate-system combined candidates. _system_lookup() and _station_lookup() removed. 30 new tests (TestLookupStationF4 + TestLookupPlaceF4). All 43 ORM tests + 53 parity tests passing.`
   - Evidence: `tradedangerous/tradeorm.py`; `tests/test_tradeorm_lookup_db.py`
-- [ ] F5. Add ambiguity and `@N` handling
-  - Status note:
-  - Evidence:
+- [x] F5. Add ambiguity and `@N` handling
+  - Status note: `TestAmbiguityAndAtNF5 added (7 tests) plus torm_with_crossname_ambiguity fixture. Covers: lookup_place fast-path AmbiguityError propagation, @N disambiguation (@1/@2), @ prefix + @N, out-of-range @N → TradeException, lookup_station @N not stripped (LookupError), dual-scan cross-name AmbiguityError. No tradeorm.py changes needed — all behaviours correct from F3/F4.`
+  - Evidence: `tests/test_tradeorm_lookup_db.py`; `bfccd34c`
 - [ ] F6. Add partial matching carefully
   - Status note:
   - Evidence:
