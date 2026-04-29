@@ -51,9 +51,9 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `G — Resolver-first execution flow`
-- Subtask: `G1 — Add capability-style command model`
+- Subtask: `G2 — Move --near, --from, --to to resolver path`
 - Owner: `Tromador`
-- Started: `2026-04-28`
+- Started: `2026-04-29`
 - Goal: `Resolve command inputs before heavy TradeDB paths.`
 
 ### Current blocker
@@ -65,7 +65,7 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-29`
 - By: `Tromador + Claude`
-- Session summary: `Post-review fixes to F6: two parity holes corrected — lookup_system partial fallback now passes the full original name (not base_name) to _prefix_of and _list_search; all five unscoped candidate queries upgraded to two-step ILIKE (prefix then interior). Four additional tests added to TestPartialMatching (now 16 tests). RESOLVER_CONTRACT.md updated with punctuation-normalised interior limitation as DELIBERATE ORM CHANGE. Test class names and module docstrings scrubbed of planning-phase labels and process language. 177 total tests passing. Checkpoint F complete.`
+- Session summary: `G1 complete and accepted after review. Needs capability model implemented: four tiers (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY); wantsTradeDB=False fallback correctly preserved as LEGACY_HANDLE; cli.trade() constructs only the backend each tier declares; needs_resolver derived bool added to CommandEnv; update_cmd classified NOTHING, export_cmd classified RESOLVER; CLI-level construction tests cover all four tiers with assert-fail guards. Test suite cleaned of retired tests (rares, colorize, average pricing). 269 tests passing. Commits: 3bd0bb57, f2c9719f, 1a20e8a5.`
 
 ### Last known good rollback point
 - Commit: `1896bdaf`
@@ -355,9 +355,9 @@ Resolve command inputs before heavy legacy load.
 - no behavior regression in argument handling
 
 ### Tasks
-- [ ] G1. Add capability-style command model
-  - Status note:
-  - Evidence:
+- [x] G1. Add capability-style command model
+  - Status note: Accepted after review. Needs enum (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY); wantsTradeDB fallback preserved; runtime construction matches tier; CLI tests cover all four tiers.
+  - Evidence: commits 3bd0bb57, f2c9719f, 1a20e8a5; 269 tests passing.
 - [ ] G2. Move `--near`, `--from`, `--to` to resolver path
   - Status note:
   - Evidence:
