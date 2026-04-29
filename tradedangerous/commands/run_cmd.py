@@ -287,7 +287,7 @@ def validateRunArgumentsFast(cmdenv):
     if cmdenv.maxLyPer is None and not cmdenv.direct:
         raise CommandLineError("Missing '--ly-per'")
     
-    if cmdenv.x52pro and not cmdenv.checklist:
+    if getattr(cmdenv, 'x52pro', False) and not getattr(cmdenv, 'checklist', False):
         raise CommandLineError("--x52-pro requires --checklist")
     
     # --towards requires --from

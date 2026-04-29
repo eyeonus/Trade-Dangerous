@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import typing
 
-from .commandenv import ResultRow
+from .commandenv import Needs, ResultRow
 from .exceptions import CommandLineError, NoDataError, GameDataError
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from tradedangerous import TradeException, TradeORM
@@ -25,7 +25,7 @@ if typing.TYPE_CHECKING:
 help='Find potential trades between two given stations.'
 name='trade'
 epilog=None
-wantsTradeDB=False
+needs=Needs.RESOLVER
 arguments = [
     ParseArgument(
         'origin',
@@ -180,8 +180,7 @@ def get_stations(cmdenv: CommandEnv, tdb: TradeORM) -> tuple[models.Station, mod
 ######################################################################
 # Perform query and populate result set
 
-def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM | None) -> CommandResults:
-    tdb = TradeORM(tdenv=cmdenv)
+def run(results: CommandResults, cmdenv: CommandEnv, tdb: TradeORM) -> CommandResults:
 
     # Did they specify --fill?
     full_load = getattr(cmdenv, "full_load", False)

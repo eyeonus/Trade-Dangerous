@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Flag, auto
 from pathlib import Path
 import sys
 import typing
@@ -20,6 +21,16 @@ if typing.TYPE_CHECKING:
     from typing import Any, ModuleType
     
     from tradedangerous import TradeDB, TradeORM
+
+class Needs(Flag):
+    """Backend capability requirements for a command."""
+    NOTHING       = 0
+    RESOLVER      = auto()  # TradeORM lookup only
+    STATION_SHELL = auto()  # TradeDB systems + stations loaded
+    ITEM_CATALOG  = auto()  # TradeDB items + categories loaded
+    FULL_GRAPH    = auto()  # full TradeDB including StationItem summaries
+    FULL_LEGACY   = RESOLVER | STATION_SHELL | ITEM_CATALOG | FULL_GRAPH
+
 
 class ResultRow:
     """ ResultRow captures a data item returned by a command. It's really an abstract namespace. """
@@ -62,7 +73,17 @@ class CommandEnv(TradeEnv):
             raise CommandLineError("'--detail' (-v) and '--quiet' (-q) are mutually exclusive.")
         
         self._cmd = cmdModule
-        self.wantsTradeDB = getattr(cmdModule, 'wantsTradeDB', True)
+        _module_needs = getattr(cmdModule, 'needs', None)
+        if _module_needs is not None:
+            self.commandNeeds = _module_needs
+        else:
+            _wants = getattr(cmdModule, 'wantsTradeDB', True)
+            self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.RESOLVER
+        self.needs_legacy_db = bool(
+            self.commandNeeds & (Needs.STATION_SHELL | Needs.ITEM_CATALOG | Needs.FULL_GRAPH)
+        )
+        self.needs_full_load = bool(self.commandNeeds & Needs.FULL_GRAPH)
+        self.wantsTradeDB = self.needs_legacy_db  # backward-compat alias
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
     
     def preflight(self) -> None:
@@ -93,7 +114,7 @@ class CommandEnv(TradeEnv):
         self.tdb = tdb
         update_database_schema(self.tdb)
         
-        if self.wantsTradeDB:
+        if self.needs_legacy_db:
             self.checkFromToNear()
             self.checkAvoids()
             self.checkVias()
@@ -122,7 +143,7 @@ class CommandEnv(TradeEnv):
         self.mfd = X52ProMFD()
     
     def checkFromToNear(self) -> None:
-        if not self.wantsTradeDB:
+        if not self.needs_legacy_db:
             return
         
         def check(label, fieldName, wantStation):

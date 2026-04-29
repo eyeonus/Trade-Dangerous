@@ -97,6 +97,10 @@ class TradeORM:
         """ Commit the current transaction state. """
         return self.session.commit()
 
+    def close(self, final: bool = False) -> None:
+        """ Close the ORM session. """
+        self.session.close()
+
     # ------------------------------------------------------------------
     # Partial-matching helpers
     # ------------------------------------------------------------------
@@ -297,6 +301,14 @@ class TradeORM:
             raise TypeError(f"lookup_station requires a str, got {type(name).__name__!r}")
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in station names")
+
+        if "/" in name or "\\" in name:
+            place = self.lookup_place(name)
+            if isinstance(place, orm.Station):
+                return place
+            raise SystemNotStationError(
+                f"Place {name!r} resolved to a system, not a station; specify a station name"
+            )
 
         if system is not None:
             sys_obj = self.lookup_system(system)

@@ -40,6 +40,7 @@ from .plugins import PluginException
 from . import commands
 from . import tradedb
 from . import tradeexcept
+from .tradeorm import TradeORM
 
 if "CPROF" in os.environ:
     import cProfile
@@ -110,10 +111,16 @@ def trade(argv):
             if (preflight := getattr(cmdenv, "preflight", None)) and callable(preflight):
                 preflight()
         
-        # Phase B: heavy init + execution
-        with cmdenv.time_block("TradeDB.__init__", level=0):
-            tdb = tradedb.TradeDB(cmdenv, load=cmdenv.wantsTradeDB)
-        
+        # Phase B1: ORM resolver — lightweight, always created.
+        with cmdenv.time_block("TradeORM.__init__", level=0):
+            torm = TradeORM(tdenv=cmdenv)
+
+        # Phase B2: legacy TradeDB — only for commands that need it.
+        tdb = torm
+        if cmdenv.needs_legacy_db:
+            with cmdenv.time_block("TradeDB.__init__", level=0):
+                tdb = tradedb.TradeDB(cmdenv, load=cmdenv.needs_full_load)
+
         if cmdenv.usesTradeData:
             tsc = tdb.tradingStationCount
             if tsc == 0:
@@ -141,16 +148,16 @@ def trade(argv):
         try:
             with cmdenv.time_block("command_run", level=0):
                 results = cmdenv.run(tdb)
+            if results:
+                with cmdenv.time_block("render", level=0):
+                    results.render()
         except tradeexcept.SimpleAbort as e:
             cmdenv.console.print(f"\n{e}\n", style="red")
             sys.exit(1)
         finally:
-            # always close tdb
             tdb.close(final=True)
-        
-        if results:
-            with cmdenv.time_block("render", level=0):
-                results.render()
+            if tdb is not torm:
+                torm.close()
     finally:
         cmdenv.DEBUG0(
             "TIMING total: {:.3f}ms",

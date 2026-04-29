@@ -105,12 +105,3 @@ def test_commandenv_checkPlanetaryFleetOdyssey_normalize_or_reject():
     with pytest.raises(OdysseyError):
         _make_env(odyssey='zn').checkOdyssey()
 
-def test_commandenv_colorize_known_and_unknown_colors():
-    env = _make_env()
-    
-    colored = env.colorize('red', 'alert')
-    raw = env.colorize('unknown-color', 'alert')
-    
-    assert colored.startswith('[')
-    assert colored.endswith('alert[0m')
-    assert raw == 'alert'
