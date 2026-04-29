@@ -9,6 +9,7 @@
 # This module accepts and ignores any arguments/switches and exits immediately.
 
 from __future__ import annotations
+from .commandenv import Needs
 from .parsing import ParseArgument
 
 # ---- Command metadata ----
@@ -20,7 +21,7 @@ epilog = None
 acceptUnknown = True
 
 # No DB access is needed for this no-op command.
-wantsTradeDB = False
+needs = Needs.NOTHING
 usesTradeData = False
 
 # Accept ANY number of positional args and ignore them (prevents parser errors).

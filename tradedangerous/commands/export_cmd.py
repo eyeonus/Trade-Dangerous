@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from .commandenv import Needs
 from .parsing import ParseArgument, MutuallyExclusiveGroup
 from .exceptions import CommandLineError
 
@@ -29,7 +30,7 @@ epilog=(
         "database, they will be lost.\n "
         "Use the 'buildcache' command first to rebuild the database."
 )
-wantsTradeDB=False           # because we don't want the DB to be rebuild
+needs = Needs.RESOLVER
 arguments = [
 ]
 switches = [

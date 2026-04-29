@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from tradedangerous.commands import olddata_cmd, run_cmd
-from tradedangerous.commands.commandenv import CommandEnv
+from tradedangerous.commands.commandenv import CommandEnv, Needs
 from tradedangerous.commands.exceptions import (
     CommandLineError,
     FleetCarrierError,
@@ -16,6 +16,9 @@ _FAKE_CMD = SimpleNamespace(wantsTradeDB=False, usesTradeData=False)
 
 def _make_env(**properties):
     return CommandEnv(properties, ['trade.py', 'test'], _FAKE_CMD)
+
+def _make_cmd_env(cmd_module, **properties):
+    return CommandEnv(properties, ['trade.py', 'test'], cmd_module)
 
 def test_run_validateRunArgumentsFast_required_fields():
     with pytest.raises(CommandLineError, match="Missing '--capacity'"):
@@ -104,4 +107,41 @@ def test_commandenv_checkPlanetaryFleetOdyssey_normalize_or_reject():
         _make_env(fleet='za').checkFleet()
     with pytest.raises(OdysseyError):
         _make_env(odyssey='zn').checkOdyssey()
+
+
+def test_commandenv_needs_explicit_resolver():
+    """Commands declaring Needs.RESOLVER receive TradeORM; no legacy DB loaded."""
+    from tradedangerous.commands import trade_cmd, export_cmd
+    for cmd in (trade_cmd, export_cmd):
+        env = _make_cmd_env(cmd)
+        assert env.commandNeeds == Needs.RESOLVER
+        assert not env.needs_legacy_db
+        assert not env.needs_full_load
+
+
+def test_commandenv_needs_explicit_nothing():
+    """Commands declaring Needs.NOTHING require no backend at all."""
+    from tradedangerous.commands import update_cmd
+    env = _make_cmd_env(update_cmd)
+    assert env.commandNeeds == Needs.NOTHING
+    assert not env.needs_legacy_db
+    assert not env.needs_full_load
+
+
+def test_commandenv_needs_legacy_wantsTradeDB_false_gives_handle():
+    """wantsTradeDB=False without an explicit needs= maps to LEGACY_HANDLE, not RESOLVER."""
+    from tradedangerous.commands import buildcache_cmd, import_cmd
+    for cmd in (buildcache_cmd, import_cmd):
+        env = _make_cmd_env(cmd)
+        assert env.commandNeeds == Needs.LEGACY_HANDLE
+        assert env.needs_legacy_db
+        assert not env.needs_full_load
+
+
+def test_commandenv_needs_legacy_wantsTradeDB_true_gives_full_legacy():
+    """wantsTradeDB=True (or absent) maps to FULL_LEGACY with full preload."""
+    env = _make_cmd_env(run_cmd)
+    assert env.commandNeeds == Needs.FULL_LEGACY
+    assert env.needs_legacy_db
+    assert env.needs_full_load
 

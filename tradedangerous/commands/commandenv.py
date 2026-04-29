@@ -23,13 +23,18 @@ if typing.TYPE_CHECKING:
     from tradedangerous import TradeDB, TradeORM
 
 class Needs(Flag):
-    """Backend capability requirements for a command."""
-    NOTHING       = 0
-    RESOLVER      = auto()  # TradeORM lookup only
-    STATION_SHELL = auto()  # TradeDB systems + stations loaded
-    ITEM_CATALOG  = auto()  # TradeDB items + categories loaded
-    FULL_GRAPH    = auto()  # full TradeDB including StationItem summaries
-    FULL_LEGACY   = RESOLVER | STATION_SHELL | ITEM_CATALOG | FULL_GRAPH
+    """Backend capability requirements for a command.
+
+    Commands declare their backend needs via a module-level ``needs`` attribute.
+    Modules without an explicit declaration fall back to the legacy
+    ``wantsTradeDB`` boolean for backward compatibility:
+      wantsTradeDB=True  (or absent) -> FULL_LEGACY
+      wantsTradeDB=False             -> LEGACY_HANDLE
+    """
+    NOTHING       = 0        # no backend required (e.g. deprecated no-ops)
+    RESOLVER      = auto()   # TradeORM resolver only
+    LEGACY_HANDLE = auto()   # TradeDB(load=False): legacy surface, no full preload
+    FULL_LEGACY   = auto()   # TradeDB(load=True): full in-memory preload
 
 
 class ResultRow:
@@ -78,11 +83,11 @@ class CommandEnv(TradeEnv):
             self.commandNeeds = _module_needs
         else:
             _wants = getattr(cmdModule, 'wantsTradeDB', True)
-            self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.RESOLVER
+            self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.LEGACY_HANDLE
         self.needs_legacy_db = bool(
-            self.commandNeeds & (Needs.STATION_SHELL | Needs.ITEM_CATALOG | Needs.FULL_GRAPH)
+            self.commandNeeds & (Needs.LEGACY_HANDLE | Needs.FULL_LEGACY)
         )
-        self.needs_full_load = bool(self.commandNeeds & Needs.FULL_GRAPH)
+        self.needs_full_load = bool(self.commandNeeds & Needs.FULL_LEGACY)
         self.wantsTradeDB = self.needs_legacy_db  # backward-compat alias
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
     
