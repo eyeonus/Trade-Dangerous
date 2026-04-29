@@ -111,17 +111,20 @@ def trade(argv):
             if (preflight := getattr(cmdenv, "preflight", None)) and callable(preflight):
                 preflight()
         
-        # Phase B1: ORM resolver — lightweight, always created.
-        with cmdenv.time_block("TradeORM.__init__", level=0):
-            torm = TradeORM(tdenv=cmdenv)
+        # Phase B1: ORM resolver — only for commands that declare Needs.RESOLVER.
+        torm = None
+        tdb = None
+        if cmdenv.needs_resolver:
+            with cmdenv.time_block("TradeORM.__init__", level=0):
+                torm = TradeORM(tdenv=cmdenv)
+            tdb = torm
 
         # Phase B2: legacy TradeDB — only for commands that need it.
-        tdb = torm
         if cmdenv.needs_legacy_db:
             with cmdenv.time_block("TradeDB.__init__", level=0):
                 tdb = tradedb.TradeDB(cmdenv, load=cmdenv.needs_full_load)
 
-        if cmdenv.usesTradeData:
+        if cmdenv.usesTradeData and tdb is not None:
             tsc = tdb.tradingStationCount
             if tsc == 0:
                 raise exceptions.NoDataError(
@@ -155,8 +158,9 @@ def trade(argv):
             cmdenv.console.print(f"\n{e}\n", style="red")
             sys.exit(1)
         finally:
-            tdb.close(final=True)
-            if tdb is not torm:
+            if tdb is not None:
+                tdb.close(final=True)
+            if torm is not None and torm is not tdb:
                 torm.close()
     finally:
         cmdenv.DEBUG0(

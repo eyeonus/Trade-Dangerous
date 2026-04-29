@@ -84,9 +84,8 @@ class CommandEnv(TradeEnv):
         else:
             _wants = getattr(cmdModule, 'wantsTradeDB', True)
             self.commandNeeds = Needs.FULL_LEGACY if _wants else Needs.LEGACY_HANDLE
-        self.needs_legacy_db = bool(
-            self.commandNeeds & (Needs.LEGACY_HANDLE | Needs.FULL_LEGACY)
-        )
+        self.needs_resolver  = bool(self.commandNeeds & Needs.RESOLVER)
+        self.needs_legacy_db = bool(self.commandNeeds & (Needs.LEGACY_HANDLE | Needs.FULL_LEGACY))
         self.needs_full_load = bool(self.commandNeeds & Needs.FULL_LEGACY)
         self.wantsTradeDB = self.needs_legacy_db  # backward-compat alias
         self.usesTradeData = getattr(cmdModule, 'usesTradeData', False)
