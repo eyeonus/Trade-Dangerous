@@ -13,6 +13,7 @@ from .exceptions import (
 )
 
 from tradedangerous import TradeEnv
+from tradedangerous.db import orm_models as orm
 from tradedangerous.tradedb import AmbiguityError, Station
 
 
@@ -118,7 +119,9 @@ class CommandEnv(TradeEnv):
         self.tdb = tdb
         update_database_schema(self.tdb)
         
-        if self.needs_legacy_db:
+        if self.needs_resolver and not self.needs_legacy_db:
+            self.checkFromToNearORM()
+        elif self.needs_legacy_db:
             self.checkFromToNear()
             self.checkAvoids()
             self.checkVias()
@@ -206,7 +209,57 @@ class CommandEnv(TradeEnv):
         self.origPlace = lookupPlace('origin', 'starting')
         self.destPlace = lookupPlace('destination', 'ending')
         self.nearSystem = check('system', 'near', False)
-    
+
+    def checkFromToNearORM(self) -> None:
+        def check(label, fieldName, wantStation):
+            key = getattr(self, fieldName, None)
+            if not key:
+                return None
+            try:
+                place = self.tdb.lookup_place(key)
+            except LookupError:
+                raise CommandLineError(
+                    "Unrecognized {}: {}".format(label, key)
+                )
+            if not wantStation:
+                if isinstance(place, orm.Station):
+                    return place.system
+                return place
+            if isinstance(place, orm.Station):
+                return place
+            stns = place.stations
+            if not stns:
+                raise CommandLineError(
+                    "Station name required for {}: "
+                    "{} is a SYSTEM but has no stations.".format(label, key)
+                )
+            if len(stns) > 1:
+                raise AmbiguityError(
+                    label, key, stns,
+                    key=lambda st: (
+                        f"{st.dbname()} — "
+                        f"({st.system.pos_x:.1f}, {st.system.pos_y:.1f}, {st.system.pos_z:.1f})"
+                    ),
+                )
+            return stns[0]
+
+        def lookup_place(label, fieldName):
+            key = getattr(self, fieldName, None)
+            if not key:
+                return None
+            try:
+                return self.tdb.lookup_place(key)
+            except LookupError:
+                raise CommandLineError(
+                    "Unrecognized {}: {}".format(label, key)
+                )
+
+        self.startStation = check('origin station', 'origin', True)
+        self.stopStation  = check('destination station', 'dest', True)
+        self.origPlace    = lookup_place('origin', 'starting')
+        self.destPlace    = lookup_place('destination', 'ending')
+        self.nearSystem   = check('system', 'near', False)
+
     def checkAvoids(self) -> None:
         """
             Process a list of avoidances.

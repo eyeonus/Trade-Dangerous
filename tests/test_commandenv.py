@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import gc
 
 import pytest
 
@@ -11,8 +12,13 @@ from tradedangerous.commands.exceptions import (
     PadSizeError,
     PlanetaryError,
 )
+from tradedangerous.db import orm_models as orm
+from tradedangerous.tradeorm import TradeORM
+
+from .helpers import isolated_trade_env  # noqa: F401 — used as fixture
 
 _FAKE_CMD = SimpleNamespace(wantsTradeDB=False, usesTradeData=False)
+_RESOLVER_CMD = SimpleNamespace(needs=Needs.RESOLVER, usesTradeData=False)
 
 def _make_env(**properties):
     return CommandEnv(properties, ['trade.py', 'test'], _FAKE_CMD)
@@ -144,4 +150,60 @@ def test_commandenv_needs_legacy_wantsTradeDB_true_gives_full_legacy():
     assert env.commandNeeds == Needs.FULL_LEGACY
     assert env.needs_legacy_db
     assert env.needs_full_load
+
+
+@pytest.fixture()
+def isolated_torm(isolated_trade_env):
+    instance = TradeORM()
+    yield instance
+    instance.session.close()
+    instance.engine.dispose()
+    del instance
+    gc.collect()
+
+
+def _make_orm_env(torm, **props):
+    env = CommandEnv(props, ['trade.py', 'test'], _RESOLVER_CMD)
+    env.tdb = torm
+    return env
+
+
+def test_checkFromToNearORM_near_system_sets_nearSystem(isolated_torm):
+    env = _make_orm_env(isolated_torm, near='Sol', origin=None, dest=None, starting=None, ending=None)
+    env.checkFromToNearORM()
+    assert isinstance(env.nearSystem, orm.System)
+    assert env.nearSystem.name == 'Sol'
+    assert env.startStation is None
+    assert env.stopStation is None
+
+
+def test_checkFromToNearORM_near_station_unwraps_to_system(isolated_torm):
+    env = _make_orm_env(isolated_torm, near='Abraham Lincoln', origin=None, dest=None, starting=None, ending=None)
+    env.checkFromToNearORM()
+    assert isinstance(env.nearSystem, orm.System)
+    assert env.nearSystem.name == 'Sol'
+
+
+def test_checkFromToNearORM_origin_compound_sets_startStation(isolated_torm):
+    env = _make_orm_env(isolated_torm, near=None, origin='Sol/Abraham Lincoln', dest=None, starting=None, ending=None)
+    env.checkFromToNearORM()
+    assert isinstance(env.startStation, orm.Station)
+    assert env.startStation.name == 'Abraham Lincoln'
+    assert env.startStation.system.name == 'Sol'
+
+
+def test_checkFromToNearORM_not_found_raises_CommandLineError(isolated_torm):
+    env = _make_orm_env(isolated_torm, near='xyzzy_no_such_place', origin=None, dest=None, starting=None, ending=None)
+    with pytest.raises(CommandLineError, match='xyzzy_no_such_place'):
+        env.checkFromToNearORM()
+
+
+def test_checkFromToNearORM_no_args_sets_all_none(isolated_torm):
+    env = _make_orm_env(isolated_torm, near=None, origin=None, dest=None, starting=None, ending=None)
+    env.checkFromToNearORM()
+    assert env.nearSystem is None
+    assert env.startStation is None
+    assert env.stopStation is None
+    assert env.origPlace is None
+    assert env.destPlace is None
 
