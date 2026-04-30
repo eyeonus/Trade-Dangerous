@@ -1,7 +1,10 @@
 from __future__ import annotations
 from itertools import chain
+from math import sqrt
 
-from .commandenv import ResultRow
+from sqlalchemy import exists, func
+
+from .commandenv import Needs, ResultRow
 from .exceptions import NoDataError
 from .parsing import (
     ParseArgument, PadSizeArgument, MutuallyExclusiveGroup, NoPlanetSwitch,
@@ -9,6 +12,8 @@ from .parsing import (
     ShipyardSwitch, OutfittingSwitch, RearmSwitch, RefuelSwitch, RepairSwitch,
 )
 from tradedangerous import TradeDB
+from tradedangerous.db import orm_models as orm
+from tradedangerous.db.utils import age_in_days
 from tradedangerous.formatting import RowFormat, ColumnFormat, max_len
 
 
@@ -18,7 +23,7 @@ from tradedangerous.formatting import RowFormat, ColumnFormat, max_len
 name='local'
 help='Calculate local systems.'
 epilog="See also the 'station' sub-command."
-wantsTradeDB=True
+needs = Needs.RESOLVER
 arguments = [
     ParseArgument(
             'near',
@@ -66,129 +71,227 @@ switches = [
 ]
 
 ######################################################################
+# type_id constants (carrier/odyssey detection, mirrors _loadStations)
+
+_CARRIER_TYPE_IDS = frozenset((24, 0))
+_ODYSSEY_TYPE_ID = 25
+
+
+def _fleet_state(station: orm.Station) -> str:
+    return 'Y' if station.type_id in _CARRIER_TYPE_IDS else 'N'
+
+
+def _odyssey_state(station: orm.Station) -> str:
+    return 'Y' if station.type_id == _ODYSSEY_TYPE_ID else 'N'
+
+
+def _dist_from_star(station: orm.Station) -> str:
+    ls = station.ls_from_star
+    if not ls:
+        return '?'
+    if ls < 1000:
+        return f'{ls:n}'
+    if ls < 10000:
+        return f'{ls / 1000:.2f}K'
+    if ls < 1000000:
+        return f'{int(ls / 1000):n}K'
+    return f'{ls / (365*24*60*60):.2f}ly'
+
+
+######################################################################
 # Perform query and populate result set
 
 def run(results, cmdenv, tdb):
     cmdenv = results.cmdenv
     tdb = cmdenv.tdb
-    srcSystem = cmdenv.nearSystem
-    
+    srcSystem = cmdenv.nearSystem  # ORM System
+
     # Allow the user to say '0' for system-only
     ly = cmdenv.ly if cmdenv.ly is not None else cmdenv.maxSystemLinkLy
-    
+
     results.summary = ResultRow()
     results.summary.near = srcSystem
     results.summary.ly = ly
     results.summary.stations = 0
-    
-    distances = { srcSystem: 0.0 }
-    
-    # Calculate the bounding dimensions
-    for destSys, dist in tdb.genSystemsInRange(srcSystem, ly):
-        distances[destSys] = dist
-    
+
+    # Bounding-box pre-filter in SQL; precise sphere check in Python.
+    # Avoids loading all systems into memory (legacy stellarGrid approach).
+    x, y, z = srcSystem.pos_x, srcSystem.pos_y, srcSystem.pos_z
+    lySq = ly * ly
+    distances = {srcSystem: 0.0}
+    nearby = (
+        tdb.session.query(orm.System)
+        .filter(
+            orm.System.pos_x.between(x - ly, x + ly),
+            orm.System.pos_y.between(y - ly, y + ly),
+            orm.System.pos_z.between(z - ly, z + ly),
+            orm.System.system_id != srcSystem.system_id,
+        )
+        .all()
+    )
+    for sys in nearby:
+        dx = sys.pos_x - x
+        dy = sys.pos_y - y
+        dz = sys.pos_z - z
+        dist_sq = dx*dx + dy*dy + dz*dz
+        if dist_sq <= lySq:
+            distances[sys] = sqrt(dist_sq)
+
     showStations = cmdenv.detail
     wantStations = cmdenv.stations
-    padSize = cmdenv.padSize
-    planetary = cmdenv.planetary
-    fleet = cmdenv.fleet
-    odyssey = cmdenv.odyssey
-    wantNoPlanet = cmdenv.noPlanet
-    wantTrading = cmdenv.trading
-    maxAge = cmdenv.maxAge
-    wantShipYard = cmdenv.shipyard
-    wantBlackMarket = cmdenv.blackMarket
-    wantOutfitting = cmdenv.outfitting
-    wantRearm = cmdenv.rearm
-    wantRefuel = cmdenv.refuel
-    wantRepair = cmdenv.repair
-    
-    def station_filter(stations):
-        for station in stations:
-            if wantNoPlanet and station.planetary != 'N':
+
+    # Station query: only issued when station data is needed.
+    # All flag filters are pushed to SQL; age data fetched separately
+    # when required for display or --age filtering.
+    stn_by_system: dict[int, list[ResultRow]] = {}
+    if showStations or wantStations:
+        padSize = cmdenv.padSize
+        planetary = cmdenv.planetary
+        fleet = cmdenv.fleet
+        odyssey = cmdenv.odyssey
+        wantNoPlanet = cmdenv.noPlanet
+        wantTrading = cmdenv.trading
+        maxAge = cmdenv.maxAge
+        wantShipYard = cmdenv.shipyard
+        wantBlackMarket = cmdenv.blackMarket
+        wantOutfitting = cmdenv.outfitting
+        wantRearm = cmdenv.rearm
+        wantRefuel = cmdenv.refuel
+        wantRepair = cmdenv.repair
+
+        system_ids = [s.system_id for s in distances]
+        q = (
+            tdb.session.query(orm.Station)
+            .filter(orm.Station.system_id.in_(system_ids))
+        )
+
+        if wantNoPlanet:
+            q = q.filter(orm.Station.planetary == 'N')
+        if wantBlackMarket:
+            q = q.filter(orm.Station.blackmarket == 'Y')
+        if wantShipYard:
+            q = q.filter(orm.Station.shipyard == 'Y')
+        if wantOutfitting:
+            q = q.filter(orm.Station.outfitting == 'Y')
+        if wantRearm:
+            q = q.filter(orm.Station.rearm == 'Y')
+        if wantRefuel:
+            q = q.filter(orm.Station.refuel == 'Y')
+        if wantRepair:
+            q = q.filter(orm.Station.repair == 'Y')
+        if padSize:
+            q = q.filter(orm.Station.max_pad_size.in_(list(padSize)))
+        if planetary:
+            q = q.filter(orm.Station.planetary.in_(list(planetary)))
+        if fleet:
+            fleet_chars = set(fleet)
+            want_fleet_y = 'Y' in fleet_chars
+            want_fleet_n = 'N' in fleet_chars
+            if want_fleet_y and not want_fleet_n:
+                q = q.filter(orm.Station.type_id.in_(list(_CARRIER_TYPE_IDS)))
+            elif want_fleet_n and not want_fleet_y:
+                q = q.filter(orm.Station.type_id.notin_(list(_CARRIER_TYPE_IDS)))
+        if odyssey:
+            odyssey_chars = set(odyssey)
+            want_ody_y = 'Y' in odyssey_chars
+            want_ody_n = 'N' in odyssey_chars
+            if want_ody_y and not want_ody_n:
+                q = q.filter(orm.Station.type_id == _ODYSSEY_TYPE_ID)
+            elif want_ody_n and not want_ody_y:
+                q = q.filter(orm.Station.type_id != _ODYSSEY_TYPE_ID)
+        if wantTrading:
+            q = q.filter(
+                (orm.Station.market == 'Y') |
+                exists().where(
+                    orm.StationItem.station_id == orm.Station.station_id
+                )
+            )
+
+        all_stns = q.all()
+
+        # Fetch age/count per station when needed for display or --age filtering.
+        need_age = bool(maxAge) or bool(showStations)
+        age_by_stn: dict[int, tuple] = {}
+        if need_age and all_stns:
+            stn_ids = [s.station_id for s in all_stns]
+            age_rows = (
+                tdb.session.query(
+                    orm.StationItem.station_id,
+                    func.count().label('item_count'),
+                    func.avg(
+                        age_in_days(tdb.session, orm.StationItem.modified)
+                    ).label('data_age'),
+                )
+                .filter(orm.StationItem.station_id.in_(stn_ids))
+                .group_by(orm.StationItem.station_id)
+                .all()
+            )
+            age_by_stn = {
+                row.station_id: (row.data_age, row.item_count)
+                for row in age_rows
+            }
+
+        for stn in all_stns:
+            data_age, item_count = age_by_stn.get(stn.station_id, (None, 0))
+            if maxAge and (data_age is None or data_age > maxAge):
                 continue
-            if wantTrading and not station.isTrading:
-                continue
-            if maxAge and (station.dataAge or float("inf")) > maxAge:
-                continue
-            if wantBlackMarket and station.blackMarket != 'Y':
-                continue
-            if wantShipYard and station.shipyard != 'Y':
-                continue
-            if padSize and not station.checkPadSize(padSize):
-                continue
-            if planetary and not station.checkPlanetary(planetary):
-                continue
-            if fleet and not station.checkFleet(fleet):
-                continue
-            if odyssey and not station.checkOdyssey(odyssey):
-                continue
-            if wantOutfitting and station.outfitting != 'Y':
-                continue
-            if wantRearm and station.rearm != 'Y':
-                continue
-            if wantRefuel and station.refuel != 'Y':
-                continue
-            if wantRepair and station.repair != 'Y':
-                continue
-            yield station    
+            age_str = f'{data_age:7.2f}' if data_age is not None else '-'
+            stn_by_system.setdefault(stn.system_id, []).append(
+                ResultRow(station=stn, age=age_str, item_count=item_count)
+            )
+
     for (system, dist) in sorted(distances.items(), key=lambda x: x[1]):
         if showStations or wantStations:
-            stations = []
-            for (station) in station_filter(system.stations):
-                stations.append(
-                    ResultRow(
-                        station=station,
-                        age=station.itemDataAgeStr,
-                    )
-                )
-            if not stations:
+            stn_rows = stn_by_system.get(system.system_id, [])
+            if not stn_rows:
                 continue
-        
+        else:
+            stn_rows = []
+
         row = ResultRow()
         row.system = system
         row.dist = dist
-        row.stations = stations if showStations else []
+        row.stations = stn_rows if showStations else []
         results.rows.append(row)
         results.summary.stations += len(row.stations)
-    
+
     return results
 
 
 def render(results, cmdenv, tdb):
     """ render transforms a result set into output for the CLI. """
     if not results or not results.rows:
-        distance, origin = results.summary.ly, results.summary.near.name()
+        distance, origin = results.summary.ly, results.summary.near.name
         raise NoDataError(f"No suitable systems found within {distance}ly of {origin}.")
-    
+
     # Compare name lengths for formatting
-    maxSysLen = max_len(results.rows, key=lambda row: row.system.name())
-    
+    maxSysLen = max_len(results.rows, key=lambda row: row.system.name)
+
     sysRowFmt = RowFormat().append(
         ColumnFormat("System", '<', maxSysLen,
-                key=lambda row: row.system.name())
+                key=lambda row: row.system.name)
     ).append(
         ColumnFormat("Dist", '>', '7', '.2f',
                 key=lambda row: row.dist)
     )
-    
+
     showStations = cmdenv.detail
     if showStations:
         maxStnLen = max_len(
             chain.from_iterable(row.stations for row in results.rows),
-            key=lambda row: row.station.dbname
+            key=lambda row: row.station.name
         )
         maxLsLen = max_len(
             chain.from_iterable(row.stations for row in results.rows),
-            key=lambda row: row.station.distFromStar()
+            key=lambda row: _dist_from_star(row.station)
         )
         maxLsLen = max(maxLsLen, 5)
         stnRowFmt = RowFormat(prefix='  /  ').append(
                 ColumnFormat("Station", '.<', maxStnLen + 2,
-                    key=lambda row: row.station.dbname)
+                    key=lambda row: row.station.name)
         ).append(
                 ColumnFormat("StnLs", '>', maxLsLen,
-                    key=lambda row: row.station.distFromStar())
+                    key=lambda row: _dist_from_star(row.station))
         ).append(
                 ColumnFormat("Age/days", '>', 7,
                         key=lambda row: row.age)
@@ -197,7 +300,7 @@ def render(results, cmdenv, tdb):
                     key=lambda row: TradeDB.marketStates[row.station.market])
         ).append(
                 ColumnFormat("BMk", '>', '3',
-                    key=lambda row: TradeDB.marketStates[row.station.blackMarket])
+                    key=lambda row: TradeDB.marketStates[row.station.blackmarket])
         ).append(
                 ColumnFormat("Shp", '>', '3',
                     key=lambda row: TradeDB.marketStates[row.station.shipyard])
@@ -215,36 +318,36 @@ def render(results, cmdenv, tdb):
                     key=lambda row: TradeDB.marketStates[row.station.repair])
         ).append(
                 ColumnFormat("Pad", '>', '3',
-                    key=lambda row: TradeDB.padSizes[row.station.maxPadSize])
+                    key=lambda row: TradeDB.padSizes[row.station.max_pad_size])
         ).append(
                 ColumnFormat("Plt", '>', '3',
                     key=lambda row: TradeDB.planetStates[row.station.planetary])
         ).append(
                 ColumnFormat("Flc", '>', '3',
-                    key=lambda row: TradeDB.fleetStates[row.station.fleet])
+                    key=lambda row: TradeDB.fleetStates[_fleet_state(row.station)])
         ).append(
                 ColumnFormat("Ody", '>', '3',
-                    key=lambda row: TradeDB.odysseyStates[row.station.odyssey])
+                    key=lambda row: TradeDB.odysseyStates[_odyssey_state(row.station)])
         )
         if cmdenv.detail > 1:
             stnRowFmt.append(
                 ColumnFormat("Itms", ">", 4,
-                    key=lambda row: row.station.itemCount)
+                    key=lambda row: row.item_count)
             )
-    
+
     cmdenv.DEBUG0(
         "Systems within {ly:<5.2f}ly of {sys}.\n",
-        sys=results.summary.near.name(),
+        sys=results.summary.near.name,
         ly=results.summary.ly,
     )
-    
+
     if not cmdenv.quiet:
         heading, underline = sysRowFmt.heading()
         if showStations:
             print(heading)
             heading, underline = stnRowFmt.heading()
         print(heading, underline, sep='\n')
-    
+
     for row in results.rows:
         print(sysRowFmt.format(row))
         for stnRow in row.stations:
