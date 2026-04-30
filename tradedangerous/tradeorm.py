@@ -106,6 +106,15 @@ class TradeORM:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def normalize_str(s: str) -> str:
+        """Apply the two-stage normalisation used by _list_search.
+
+        Equivalent to TradeDB.normalizedStr(): stage-1 uppercases and removes
+        punctuation; stage-2 removes spaces and apostrophes.
+        """
+        return s.translate(_normalize_trans).translate(_trim_trans)
+
+    @staticmethod
     def _prefix_of(name: str) -> str:
         """Stage-1 normalize *name* and return the first space-delimited word.
 
@@ -675,10 +684,16 @@ class TradeORM:
         raise AmbiguityError("Place", stn_part, results, key=lambda s: s.name)
 
     def lookup_item(self, name: str | orm.Item) -> orm.Item:
-        """Exact-then-partial item lookup by name.
+        """Exact-then-normalised item lookup by name.
 
-        Mirrors TradeDB.lookupItem: searches Item.name with the same
-        normalization and tier logic as _list_search.
+        Mirrors TradeDB.lookupItem / listSearch. Exact CI match is tried first
+        (fast path). Partial/normalised fallback scans the full item catalogue
+        in Python via _list_search, which applies the same two-stage
+        normalisation as the legacy path. A full scan is used rather than ILIKE
+        narrowing because raw SQL cannot replicate stage-1 punctuation deletion,
+        so ILIKE is not a superset of normalised matches (e.g. "HESuits" must
+        reach "H.E. Suits"). The item catalogue is small enough (~300 rows) that
+        a full scan is acceptable.
         """
         if isinstance(name, orm.Item):
             return name
@@ -687,6 +702,7 @@ class TradeORM:
         if "%" in name:
             raise TradeException("wildcards ('%') are not supported in item names")
 
+        # Exact CI match — fast path.
         results = (
             self.session.query(orm.Item)
             .filter(orm.Item.name == name)
@@ -697,22 +713,11 @@ class TradeORM:
                 return results[0]
             raise AmbiguityError("Item", name, results, key=lambda i: i.name)
 
-        # Partial matching fallback — mirrors listSearch on itemByName.
-        prefix = self._prefix_of(name)
-        candidates = (
-            self.session.query(orm.Item)
-            .filter(orm.Item.name.ilike(f"{prefix}%"))
-            .all()
-        )
-        if not candidates:
-            candidates = (
-                self.session.query(orm.Item)
-                .filter(orm.Item.name.ilike(f"%{name}%"))
-                .all()
-            )
-        if not candidates:
+        # Full catalogue scan with Python-side normalised matching.
+        all_items = self.session.query(orm.Item).all()
+        if not all_items:
             raise LookupError(f"unknown item: {name!r}")
-        return self._list_search("Item", name, candidates, key=lambda i: i.name)
+        return self._list_search("Item", name, all_items, key=lambda i: i.name)
 
     @staticmethod
     def _split_system_index(name: str) -> tuple[str, int | None]:

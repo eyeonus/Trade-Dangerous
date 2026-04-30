@@ -257,7 +257,7 @@ class CommandEnv(TradeEnv):
             try:
                 item = self.tdb.lookup_item(avoid)
                 avoidItems.append(item)
-                if item.name.lower() == avoid.lower():
+                if self.tdb.normalize_str(item.name) == self.tdb.normalize_str(avoid):
                     continue
             except LookupError:
                 pass

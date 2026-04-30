@@ -572,3 +572,29 @@ class TestPartialMatching:
         # RESOLVER_CONTRACT.md under "DELIBERATE ORM CHANGE".
         with pytest.raises(LookupError):
             isolated_torm.lookup_system("CD37")
+
+
+class TestLookupItem:
+
+    def test_lookup_item_exact(self, isolated_torm):
+        item = isolated_torm.lookup_item("Gold")
+        assert item.name == "Gold"
+
+    def test_lookup_item_case_insensitive(self, isolated_torm):
+        item = isolated_torm.lookup_item("gold")
+        assert item.name == "Gold"
+
+    def test_lookup_item_normalised_punctuation(self, isolated_torm):
+        # "HESuits" normalises identically to "H.E. Suits" via two-stage
+        # normalisation (stage-1 removes '.', stage-2 removes spaces).
+        # Raw ILIKE cannot reach this candidate; full-scan _list_search must.
+        item = isolated_torm.lookup_item("HESuits")
+        assert item.name == "H.E. Suits"
+
+    def test_lookup_item_partial_prefix(self, isolated_torm):
+        item = isolated_torm.lookup_item("Bertrand")
+        assert item.name == "Bertrandite"
+
+    def test_lookup_item_not_found(self, isolated_torm):
+        with pytest.raises(LookupError):
+            isolated_torm.lookup_item("xyzzy_no_such_item")

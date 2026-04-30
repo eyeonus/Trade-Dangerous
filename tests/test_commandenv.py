@@ -272,6 +272,16 @@ def test_checkAvoidsORM_unknown_raises_CommandLineError(isolated_torm):
         env.checkAvoidsORM()
 
 
+def test_checkAvoidsORM_normalised_item_exact_suppresses_place_lookup(isolated_torm):
+    # "HESuits" normalises identically to "H.E. Suits"; the normalised-exact
+    # short-circuit must fire and leave avoidPlaces empty.
+    env = _make_orm_env(isolated_torm, avoid=['HESuits'])
+    env.checkAvoidsORM()
+    assert len(env.avoidItems) == 1
+    assert env.avoidItems[0].name == 'H.E. Suits'
+    assert env.avoidPlaces == []
+
+
 # --- checkViasORM ---
 
 def test_checkViasORM_no_via_sets_empty_list(isolated_torm):
