@@ -169,41 +169,51 @@ def _make_orm_env(torm, **props):
 
 
 def test_checkFromToNearORM_near_system_sets_nearSystem(isolated_torm):
-    env = _make_orm_env(isolated_torm, near='Sol', origin=None, dest=None, starting=None, ending=None)
+    env = _make_orm_env(isolated_torm, near='Sol', starting=None, ending=None)
     env.checkFromToNearORM()
     assert isinstance(env.nearSystem, orm.System)
     assert env.nearSystem.name == 'Sol'
-    assert env.startStation is None
-    assert env.stopStation is None
 
 
 def test_checkFromToNearORM_near_station_unwraps_to_system(isolated_torm):
-    env = _make_orm_env(isolated_torm, near='Abraham Lincoln', origin=None, dest=None, starting=None, ending=None)
+    env = _make_orm_env(isolated_torm, near='Abraham Lincoln', starting=None, ending=None)
     env.checkFromToNearORM()
     assert isinstance(env.nearSystem, orm.System)
     assert env.nearSystem.name == 'Sol'
 
 
-def test_checkFromToNearORM_origin_compound_sets_startStation(isolated_torm):
-    env = _make_orm_env(isolated_torm, near=None, origin='Sol/Abraham Lincoln', dest=None, starting=None, ending=None)
+def test_checkFromToNearORM_starting_sets_origPlace(isolated_torm):
+    env = _make_orm_env(isolated_torm, starting='Sol', ending=None, near=None)
     env.checkFromToNearORM()
-    assert isinstance(env.startStation, orm.Station)
-    assert env.startStation.name == 'Abraham Lincoln'
-    assert env.startStation.system.name == 'Sol'
+    assert isinstance(env.origPlace, orm.System)
+    assert env.origPlace.name == 'Sol'
+
+
+def test_checkFromToNearORM_ending_sets_destPlace(isolated_torm):
+    env = _make_orm_env(isolated_torm, starting=None, ending='Abraham Lincoln', near=None)
+    env.checkFromToNearORM()
+    assert isinstance(env.destPlace, orm.Station)
+    assert env.destPlace.system.name == 'Sol'
+
+
+def test_checkFromToNearORM_does_not_resolve_origin_or_dest(isolated_torm):
+    """origin and dest are command-owned; invalid values must not raise or resolve."""
+    env = _make_orm_env(isolated_torm, origin='~', dest='~/Some Station', near=None, starting=None, ending=None)
+    env.checkFromToNearORM()
+    assert not isinstance(getattr(env, 'startStation', None), orm.Station)
+    assert not isinstance(getattr(env, 'stopStation', None), orm.Station)
 
 
 def test_checkFromToNearORM_not_found_raises_CommandLineError(isolated_torm):
-    env = _make_orm_env(isolated_torm, near='xyzzy_no_such_place', origin=None, dest=None, starting=None, ending=None)
+    env = _make_orm_env(isolated_torm, near='xyzzy_no_such_place', starting=None, ending=None)
     with pytest.raises(CommandLineError, match='xyzzy_no_such_place'):
         env.checkFromToNearORM()
 
 
 def test_checkFromToNearORM_no_args_sets_all_none(isolated_torm):
-    env = _make_orm_env(isolated_torm, near=None, origin=None, dest=None, starting=None, ending=None)
+    env = _make_orm_env(isolated_torm, near=None, starting=None, ending=None)
     env.checkFromToNearORM()
     assert env.nearSystem is None
-    assert env.startStation is None
-    assert env.stopStation is None
     assert env.origPlace is None
     assert env.destPlace is None
 

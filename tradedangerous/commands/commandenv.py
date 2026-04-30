@@ -211,39 +211,7 @@ class CommandEnv(TradeEnv):
         self.nearSystem = check('system', 'near', False)
 
     def checkFromToNearORM(self) -> None:
-        def check(label, fieldName, wantStation):
-            key = getattr(self, fieldName, None)
-            if not key:
-                return None
-            try:
-                place = self.tdb.lookup_place(key)
-            except LookupError:
-                raise CommandLineError(
-                    "Unrecognized {}: {}".format(label, key)
-                )
-            if not wantStation:
-                if isinstance(place, orm.Station):
-                    return place.system
-                return place
-            if isinstance(place, orm.Station):
-                return place
-            stns = place.stations
-            if not stns:
-                raise CommandLineError(
-                    "Station name required for {}: "
-                    "{} is a SYSTEM but has no stations.".format(label, key)
-                )
-            if len(stns) > 1:
-                raise AmbiguityError(
-                    label, key, stns,
-                    key=lambda st: (
-                        f"{st.dbname()} — "
-                        f"({st.system.pos_x:.1f}, {st.system.pos_y:.1f}, {st.system.pos_z:.1f})"
-                    ),
-                )
-            return stns[0]
-
-        def lookup_place(label, fieldName):
+        def _resolve_place(label, fieldName):
             key = getattr(self, fieldName, None)
             if not key:
                 return None
@@ -254,11 +222,17 @@ class CommandEnv(TradeEnv):
                     "Unrecognized {}: {}".format(label, key)
                 )
 
-        self.startStation = check('origin station', 'origin', True)
-        self.stopStation  = check('destination station', 'dest', True)
-        self.origPlace    = lookup_place('origin', 'starting')
-        self.destPlace    = lookup_place('destination', 'ending')
-        self.nearSystem   = check('system', 'near', False)
+        def _resolve_system(label, fieldName):
+            place = _resolve_place(label, fieldName)
+            if place is None:
+                return None
+            if isinstance(place, orm.Station):
+                return place.system
+            return place
+
+        self.origPlace  = _resolve_place('origin', 'starting')
+        self.destPlace  = _resolve_place('destination', 'ending')
+        self.nearSystem = _resolve_system('system', 'near')
 
     def checkAvoids(self) -> None:
         """
