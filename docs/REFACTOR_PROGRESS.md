@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `G — Resolver-first execution flow`
-- Subtask: `G3 — Move --avoid and --via to resolver path`
+- Subtask: `G4 — Keep TradeDB(load=False) only as transitional shim`
 - Owner: `Tromador`
 - Started: `2026-04-30`
 - Goal: `Resolve command inputs before heavy TradeDB paths.`
@@ -65,11 +65,11 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-30`
 - By: `Tromador + Claude`
-- Session summary: `G2 complete and accepted after review. checkFromToNearORM() added to CommandEnv resolving starting (--from), ending (--to), near (--near) via TradeORM.lookup_place() into origPlace, destPlace, nearSystem. origin/dest deliberately excluded — positional, command-owned; trade_cmd ~ shortcut expansion must remain command-local. CommandEnv.run() dispatches resolver-tier commands through checkFromToNearORM(), legacy tiers unchanged. 7 tests covering all three fields, station-to-system unwrap for near, not-found error, and regression confirming origin/dest are not resolved. 271 tests passing. Commits: fb700a54, 305e2fa6.`
+- Session summary: `G3 complete and accepted after review. TradeORM.lookup_item() added (exact CI fast path then full catalogue scan via _list_search — full scan required for two-stage normalisation equivalence with TradeDB.lookupItem; ILIKE narrowing deliberately avoided). TradeORM.normalize_str() static method added, exposing the two-stage normalisation for callers outside tradeorm.py. checkAvoidsORM() added to CommandEnv: mirrors legacy try-item-then-place logic; exact normalised item match (via normalize_str) suppresses place lookup; AmbiguityError propagates. checkViasORM() added: resolves each --via token as a place, wraps LookupError as CommandLineError (deliberate improvement over legacy silent propagation). Both wired into CommandEnv.run() for RESOLVER-tier commands. 19 tests added across two files. 290 tests passing. Commits: be8a6fb7, 2c697f35.`
 
 ### Last known good rollback point
-- Commit: `305e2fa6`
-- Notes: `Post-G2 validated state. 271 tests passing on 2026-04-30.`
+- Commit: `2c697f35`
+- Notes: `Post-G3 validated state. 290 tests passing on 2026-04-30.`
 
 ---
 
@@ -361,9 +361,9 @@ Resolve command inputs before heavy legacy load.
 - [x] G2. Move `--near`, `--from`, `--to` to resolver path
   - Status note: Accepted after review. checkFromToNearORM() resolves starting/ending/near only; origin/dest left command-owned. Regression test confirms trade_cmd shortcut fields are not pre-resolved.
   - Evidence: commits fb700a54, 305e2fa6; 271 tests passing.
-- [ ] G3. Move `--avoid` and `--via` to resolver path
-  - Status note:
-  - Evidence:
+- [x] G3. Move `--avoid` and `--via` to resolver path
+  - Status note: Accepted after review and fix. checkAvoidsORM() resolves items via lookup_item() (full catalogue scan for normalised equivalence) then places via lookup_place(); normalize_str() exact check suppresses place lookup on normalised-exact item match. checkViasORM() resolves each via as a place with CommandLineError on not-found. Both called from run() for RESOLVER-tier commands. normalize_str() added to TradeORM as public two-stage normalisation helper.
+  - Evidence: commits be8a6fb7, 2c697f35; 290 tests passing.
 - [ ] G4. Keep `TradeDB(load=False)` only as transitional shim
   - Status note:
   - Evidence:
