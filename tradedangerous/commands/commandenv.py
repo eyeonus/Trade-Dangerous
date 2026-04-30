@@ -121,6 +121,8 @@ class CommandEnv(TradeEnv):
         
         if self.needs_resolver and not self.needs_legacy_db:
             self.checkFromToNearORM()
+            self.checkAvoidsORM()
+            self.checkViasORM()
         elif self.needs_legacy_db:
             self.checkFromToNear()
             self.checkAvoids()
@@ -233,6 +235,58 @@ class CommandEnv(TradeEnv):
         self.origPlace  = _resolve_place('origin', 'starting')
         self.destPlace  = _resolve_place('destination', 'ending')
         self.nearSystem = _resolve_system('system', 'near')
+
+    def checkAvoidsORM(self) -> None:
+        """Resolver-tier equivalent of checkAvoids().
+
+        Mirrors the legacy try-item-then-place logic: each token is first
+        resolved as an item, then as a place.  An exact CI item match skips
+        the place lookup; a partial item match falls through so both can be
+        appended independently.  AmbiguityError from either lookup propagates.
+        """
+        avoidItems = self.avoidItems = []
+        avoidPlaces = self.avoidPlaces = []
+        avoidances = getattr(self, 'avoid', None)
+        if not avoidances:
+            return
+        for avoid in ','.join(avoidances).split(','):
+            avoid = avoid.strip()
+            if not avoid:
+                continue
+            item = None
+            try:
+                item = self.tdb.lookup_item(avoid)
+                avoidItems.append(item)
+                if item.name.lower() == avoid.lower():
+                    continue
+            except LookupError:
+                pass
+            try:
+                avoidPlaces.append(self.tdb.lookup_place(avoid))
+                continue
+            except LookupError:
+                pass
+            if not item:
+                raise CommandLineError(
+                    "Unknown item/system/station: {}".format(avoid)
+                )
+
+    def checkViasORM(self) -> None:
+        """Resolver-tier equivalent of checkVias()."""
+        viaPlaces = self.viaPlaces = []
+        viaPlaceNames = getattr(self, 'via', None)
+        if not viaPlaceNames:
+            return
+        for via in ','.join(viaPlaceNames).split(','):
+            via = via.strip()
+            if not via:
+                continue
+            try:
+                viaPlaces.append(self.tdb.lookup_place(via))
+            except LookupError:
+                raise CommandLineError(
+                    "Unknown system/station: {}".format(via)
+                )
 
     def checkAvoids(self) -> None:
         """

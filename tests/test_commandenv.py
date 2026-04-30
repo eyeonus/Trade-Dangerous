@@ -217,3 +217,85 @@ def test_checkFromToNearORM_no_args_sets_all_none(isolated_torm):
     assert env.origPlace is None
     assert env.destPlace is None
 
+
+# --- checkAvoidsORM ---
+
+def test_checkAvoidsORM_no_avoid_sets_empty_lists(isolated_torm):
+    env = _make_orm_env(isolated_torm)
+    env.checkAvoidsORM()
+    assert env.avoidItems == []
+    assert env.avoidPlaces == []
+
+
+def test_checkAvoidsORM_system_name_adds_system_to_avoidPlaces(isolated_torm):
+    env = _make_orm_env(isolated_torm, avoid=['Sol'])
+    env.checkAvoidsORM()
+    assert len(env.avoidPlaces) == 1
+    assert isinstance(env.avoidPlaces[0], orm.System)
+    assert env.avoidPlaces[0].name == 'Sol'
+    assert env.avoidItems == []
+
+
+def test_checkAvoidsORM_station_name_adds_station_to_avoidPlaces(isolated_torm):
+    env = _make_orm_env(isolated_torm, avoid=['Abraham Lincoln'])
+    env.checkAvoidsORM()
+    assert len(env.avoidPlaces) == 1
+    assert isinstance(env.avoidPlaces[0], orm.Station)
+    assert env.avoidItems == []
+
+
+def test_checkAvoidsORM_item_name_adds_item_to_avoidItems(isolated_torm):
+    env = _make_orm_env(isolated_torm, avoid=['Gold'])
+    env.checkAvoidsORM()
+    assert len(env.avoidItems) == 1
+    assert isinstance(env.avoidItems[0], orm.Item)
+    assert env.avoidItems[0].name == 'Gold'
+    assert env.avoidPlaces == []
+
+
+def test_checkAvoidsORM_multiple_args_resolves_all(isolated_torm):
+    env = _make_orm_env(isolated_torm, avoid=['Sol', 'Gold'])
+    env.checkAvoidsORM()
+    assert len(env.avoidPlaces) == 1
+    assert len(env.avoidItems) == 1
+
+
+def test_checkAvoidsORM_comma_separated_resolves_all(isolated_torm):
+    env = _make_orm_env(isolated_torm, avoid=['Sol,Abraham Lincoln'])
+    env.checkAvoidsORM()
+    assert len(env.avoidPlaces) == 2
+
+
+def test_checkAvoidsORM_unknown_raises_CommandLineError(isolated_torm):
+    env = _make_orm_env(isolated_torm, avoid=['xyzzy_no_such_place'])
+    with pytest.raises(CommandLineError, match='xyzzy_no_such_place'):
+        env.checkAvoidsORM()
+
+
+# --- checkViasORM ---
+
+def test_checkViasORM_no_via_sets_empty_list(isolated_torm):
+    env = _make_orm_env(isolated_torm)
+    env.checkViasORM()
+    assert env.viaPlaces == []
+
+
+def test_checkViasORM_system_name_adds_to_viaPlaces(isolated_torm):
+    env = _make_orm_env(isolated_torm, via=['Sol'])
+    env.checkViasORM()
+    assert len(env.viaPlaces) == 1
+    assert isinstance(env.viaPlaces[0], orm.System)
+    assert env.viaPlaces[0].name == 'Sol'
+
+
+def test_checkViasORM_comma_separated_resolves_multiple(isolated_torm):
+    env = _make_orm_env(isolated_torm, via=['Sol,Abraham Lincoln'])
+    env.checkViasORM()
+    assert len(env.viaPlaces) == 2
+
+
+def test_checkViasORM_unknown_raises_CommandLineError(isolated_torm):
+    env = _make_orm_env(isolated_torm, via=['xyzzy_no_such_place'])
+    with pytest.raises(CommandLineError, match='xyzzy_no_such_place'):
+        env.checkViasORM()
+

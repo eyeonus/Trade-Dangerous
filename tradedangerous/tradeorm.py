@@ -674,6 +674,46 @@ class TradeORM:
             return results[0]
         raise AmbiguityError("Place", stn_part, results, key=lambda s: s.name)
 
+    def lookup_item(self, name: str | orm.Item) -> orm.Item:
+        """Exact-then-partial item lookup by name.
+
+        Mirrors TradeDB.lookupItem: searches Item.name with the same
+        normalization and tier logic as _list_search.
+        """
+        if isinstance(name, orm.Item):
+            return name
+        if not isinstance(name, str):
+            raise TypeError(f"lookup_item requires a str, got {type(name).__name__!r}")
+        if "%" in name:
+            raise TradeException("wildcards ('%') are not supported in item names")
+
+        results = (
+            self.session.query(orm.Item)
+            .filter(orm.Item.name == name)
+            .all()
+        )
+        if results:
+            if len(results) == 1:
+                return results[0]
+            raise AmbiguityError("Item", name, results, key=lambda i: i.name)
+
+        # Partial matching fallback — mirrors listSearch on itemByName.
+        prefix = self._prefix_of(name)
+        candidates = (
+            self.session.query(orm.Item)
+            .filter(orm.Item.name.ilike(f"{prefix}%"))
+            .all()
+        )
+        if not candidates:
+            candidates = (
+                self.session.query(orm.Item)
+                .filter(orm.Item.name.ilike(f"%{name}%"))
+                .all()
+            )
+        if not candidates:
+            raise LookupError(f"unknown item: {name!r}")
+        return self._list_search("Item", name, candidates, key=lambda i: i.name)
+
     @staticmethod
     def _split_system_index(name: str) -> tuple[str, int | None]:
         """ Split 'Name@N' into ('Name', N); returns (name, None) if no valid suffix. """
