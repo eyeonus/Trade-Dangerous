@@ -51,9 +51,9 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `G — Resolver-first execution flow`
-- Subtask: `G2 — Move --near, --from, --to to resolver path`
+- Subtask: `G3 — Move --avoid and --via to resolver path`
 - Owner: `Tromador`
-- Started: `2026-04-29`
+- Started: `2026-04-30`
 - Goal: `Resolve command inputs before heavy TradeDB paths.`
 
 ### Current blocker
@@ -63,13 +63,13 @@ Do not tick a task unless:
 - Needed to unblock: `none`
 
 ### Last updated
-- Date: `2026-04-29`
+- Date: `2026-04-30`
 - By: `Tromador + Claude`
-- Session summary: `G1 complete and accepted after review. Needs capability model implemented: four tiers (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY); wantsTradeDB=False fallback correctly preserved as LEGACY_HANDLE; cli.trade() constructs only the backend each tier declares; needs_resolver derived bool added to CommandEnv; update_cmd classified NOTHING, export_cmd classified RESOLVER; CLI-level construction tests cover all four tiers with assert-fail guards. Test suite cleaned of retired tests (rares, colorize, average pricing). 269 tests passing. Commits: 3bd0bb57, f2c9719f, 1a20e8a5.`
+- Session summary: `G2 complete and accepted after review. checkFromToNearORM() added to CommandEnv resolving starting (--from), ending (--to), near (--near) via TradeORM.lookup_place() into origPlace, destPlace, nearSystem. origin/dest deliberately excluded — positional, command-owned; trade_cmd ~ shortcut expansion must remain command-local. CommandEnv.run() dispatches resolver-tier commands through checkFromToNearORM(), legacy tiers unchanged. 7 tests covering all three fields, station-to-system unwrap for near, not-found error, and regression confirming origin/dest are not resolved. 271 tests passing. Commits: fb700a54, 305e2fa6.`
 
 ### Last known good rollback point
-- Commit: `1896bdaf`
-- Notes: `Post-Checkpoint-F validated state. 177 tests passing on 2026-04-29.`
+- Commit: `305e2fa6`
+- Notes: `Post-G2 validated state. 271 tests passing on 2026-04-30.`
 
 ---
 
@@ -358,9 +358,9 @@ Resolve command inputs before heavy legacy load.
 - [x] G1. Add capability-style command model
   - Status note: Accepted after review. Needs enum (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY); wantsTradeDB fallback preserved; runtime construction matches tier; CLI tests cover all four tiers.
   - Evidence: commits 3bd0bb57, f2c9719f, 1a20e8a5; 269 tests passing.
-- [ ] G2. Move `--near`, `--from`, `--to` to resolver path
-  - Status note:
-  - Evidence:
+- [x] G2. Move `--near`, `--from`, `--to` to resolver path
+  - Status note: Accepted after review. checkFromToNearORM() resolves starting/ending/near only; origin/dest left command-owned. Regression test confirms trade_cmd shortcut fields are not pre-resolved.
+  - Evidence: commits fb700a54, 305e2fa6; 271 tests passing.
 - [ ] G3. Move `--avoid` and `--via` to resolver path
   - Status note:
   - Evidence:
