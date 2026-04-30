@@ -50,11 +50,11 @@ Do not tick a task unless:
 
 ### Current active checkpoint
 - Status: `[ ]`
-- Checkpoint: `H — Migrate local`
-- Subtask: `H1 — Port origin resolution to resolver`
+- Checkpoint: `I — Migrate market, buy, sell`
+- Subtask: `I1 — Build lightweight item lookup service`
 - Owner: `Tromador`
 - Started: `2026-04-30`
-- Goal: `Deliver the first clear user-visible performance win.`
+- Goal: `Move obvious preload-bound trading commands off full preload.`
 
 ### Current blocker
 - Status: `[x]`
@@ -65,11 +65,11 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-30`
 - By: `Tromador + Claude`
-- Session summary: `G5 complete and accepted. _execute_td_command in td_exec.py updated to mirror CLI capability-aware backend selection: RESOLVER → TradeORM only; LEGACY_HANDLE → TradeDB(load=False); FULL_LEGACY → TradeDB(load=True); NOTHING → no backend. Finally block updated to close torm independently when not aliased as tdb. Four unit tests added covering all four tiers including belt-and-braces NOTHING coverage. Checkpoint G complete.`
+- Session summary: `Checkpoint H complete. local_cmd.py rewritten to RESOLVER tier: SQL bounding-box pre-filter + Python sphere check replaces genSystemsInRange(); all station flag filters pushed to SQL; fleet/odyssey resolved via type_id; --trading via EXISTS subquery; age/count via StationItem aggregate. Render updated for ORM attribute names throughout. H5 benchmark: 0.85s warm vs 6.98s baseline (~8× improvement). One deliberate ORM behaviour change noted: Mkt column in --detail reads station.market directly from DB; legacy path coerced it to Y when itemCount > 0. --trading filter is unaffected.`
 
 ### Last known good rollback point
-- Commit: `104f6d68`
-- Notes: `Post-G5 accepted state. Checkpoint G complete.`
+- Commit: `45148695`
+- Notes: `Post-H accepted state. Checkpoint H complete.`
 
 ---
 
@@ -99,7 +99,7 @@ Mark these only if they are superseded by explicit new evidence and an agreed re
 - [x] E — Collapse `RareItem` into `Item`
 - [x] F — Resolver contract and parity tests
 - [x] G — Resolver-first execution flow
-- [ ] H — Migrate `local`
+- [x] H — Migrate `local`
 - [ ] I — Migrate `market`, `buy`, `sell`
 - [ ] J — Split `TradeDB` by capability
 - [ ] K — Reduce `TradeCalc` setup cost
@@ -387,24 +387,24 @@ Deliver the first clear user-visible performance win.
 - cold-start timing improves materially
 
 ### Tasks
-- [ ] H1. Port origin resolution to resolver
-  - Status note:
-  - Evidence:
-- [ ] H2. Replace full legacy range iteration
-  - Status note:
-  - Evidence:
-- [ ] H3. Push station filters into SQL
-  - Status note:
-  - Evidence:
-- [ ] H4. Restore render parity
-  - Status note:
-  - Evidence:
-- [ ] H5. Benchmark before/after
-  - Status note:
-  - Evidence:
+- [x] H1. Port origin resolution to resolver
+  - Status note: `needs = Needs.RESOLVER` replaces `wantsTradeDB=True`. `checkFromToNearORM()` resolves `--near` to an ORM System object before `run()` is entered.
+  - Evidence: `tradedangerous/commands/local_cmd.py`; commit `45148695`
+- [x] H2. Replace full legacy range iteration
+  - Status note: SQL bounding-box pre-filter (`BETWEEN` on pos_x/y/z) followed by Python sphere check replaces `genSystemsInRange()`. No full system preload required.
+  - Evidence: `tradedangerous/commands/local_cmd.py`; commit `45148695`
+- [x] H3. Push station filters into SQL
+  - Status note: All flag filters pushed to SQL. Fleet/odyssey resolved via `type_id` (mirrors `_loadStations` constants). `--trading` uses EXISTS subquery over StationItem. Age/count fetched in a single StationItem aggregate, gated on `need_age`.
+  - Evidence: `tradedangerous/commands/local_cmd.py`; commit `45148695`
+- [x] H4. Restore render parity
+  - Status note: All ORM attribute names corrected throughout render. Module-level helpers added for `_dist_from_star()`, `_fleet_state()`, `_odyssey_state()`. One deliberate ORM behaviour change: `Mkt` column reads `station.market` directly from DB; legacy `_loadStations()` coerced it to `Y` when `itemCount > 0`. The `--trading` filter is correct and unaffected; only the rendered `Mkt` display differs for stations where the flag and data disagree.
+  - Evidence: `tradedangerous/commands/local_cmd.py`; commit `45148695`
+- [x] H5. Benchmark before/after
+  - Status note: 0.85s warm vs 6.98s warm baseline. ~8× improvement. User description: "effectively instant."
+  - Evidence: `docs/PERF_NOTES.md`; live SQLite timing on 2026-04-30
 
 ### Notes
--
+- The `Mkt` column render parity mismatch (H4 note above) is a deliberate ORM behaviour change, not a structural failure. The filter path is correct; only the display of the raw DB flag differs from the legacy coerced value for edge-case stations.
 
 ---
 
@@ -745,6 +745,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-30`
   - Commit: `104f6d68` (G5); `0f785462` (G4); `2c697f35` (G3); `305e2fa6` (G2); `1a20e8a5` (G1)
   - Notes: `G1: Needs capability enum (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY). G2: --near/--from/--to resolved via checkFromToNearORM(). G3: --avoid/--via resolved via checkAvoidsORM()/checkViasORM(); normalize_str() added to TradeORM. G4: station_cmd and shipvendor_cmd moved from LEGACY_HANDLE to Needs.NOTHING; LEGACY_HANDLE docstring clarified as transitional shim only. G5: GUI _execute_td_command mirrors CLI capability-aware backend selection; four unit tests covering all four tiers.`
+- [x] Milestone: `Checkpoint H complete — local migrated to RESOLVER tier`
+  - Date completed: `2026-04-30`
+  - Commit: `45148695`
+  - Notes: `local_cmd.py rewritten: SQL bounding-box + Python sphere check replaces genSystemsInRange(); all station filters pushed to SQL; fleet/odyssey via type_id; --trading via EXISTS; age/count via StationItem aggregate. 294 tests passing. H5 benchmark: 0.85s warm vs 6.98s warm baseline (~8×). Deliberate ORM behaviour change: Mkt display reads raw station.market; legacy coerced to Y when itemCount > 0. --trading filter is correct and unaffected.`
 
 ---
 

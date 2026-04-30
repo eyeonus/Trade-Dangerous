@@ -237,3 +237,22 @@ Evidence now present:
 
 Still pending:
 - none within checkpoint A baseline capture
+
+### Checkpoint H — Migrate `local`
+
+#### Before (checkpoint A warm baseline, 2026-04-17)
+- `local`: 6.98s warm
+
+#### After (post-H warm, 2026-04-30, live SQLite)
+- `local`: 0.85s warm
+
+#### Improvement
+- ~8× faster warm. User description: "effectively instant."
+
+#### Mechanism
+- `wantsTradeDB=True` → `needs = Needs.RESOLVER`: full `TradeDB.load()` no longer invoked.
+- SQL `BETWEEN` bounding-box pre-filter + Python sphere check replaces `genSystemsInRange()` (which required the full in-memory stellar grid).
+- Station flag filters pushed to SQL. Age/count via single StationItem aggregate subquery.
+
+#### Caveats
+- `Mkt` column in `--detail` mode reads `station.market` directly from DB. Legacy `_loadStations()` coerced this to `Y` in-memory when `itemCount > 0`. The `--trading` filter is correct (uses EXISTS over StationItem); only the rendered display of the raw flag differs for edge-case stations where the flag and data disagree. Deliberate ORM behaviour change, not a regression.
