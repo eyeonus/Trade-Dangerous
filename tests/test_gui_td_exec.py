@@ -225,6 +225,28 @@ def test_execute_td_command_uses_tradedb_full_load_for_full_legacy_commands():
     mock_tdb.close.assert_called_once_with(final=True)
 
 
+def test_execute_td_command_constructs_no_backend_for_nothing_commands():
+    """NOTHING commands construct neither TradeORM nor TradeDB; run() receives None."""
+    fake_cmdenv = _make_fake_cmdenv(
+        needs_resolver=False, needs_legacy_db=False, needs_full_load=False
+    )
+    request = GuiCommandRequest(command='update')
+
+    with (
+        patch(
+            'tradedangerous.guiapp.td_exec.commands.CommandIndex.parse',
+            return_value=fake_cmdenv,
+        ),
+        patch('tradedangerous.guiapp.td_exec.TradeORM') as torm_cls,
+        patch('tradedangerous.guiapp.td_exec.tradedb.TradeDB') as tdb_cls,
+    ):
+        TdExecutor()._execute_td_command(request, ['trade.py', 'update'])
+
+    torm_cls.assert_not_called()
+    tdb_cls.assert_not_called()
+    fake_cmdenv.run.assert_called_once_with(None)
+
+
 def test_execute_td_command_uses_tradedb_no_load_for_legacy_handle_commands():
     """LEGACY_HANDLE commands get TradeDB(load=False); TradeORM is not constructed."""
     fake_cmdenv = _make_fake_cmdenv(
