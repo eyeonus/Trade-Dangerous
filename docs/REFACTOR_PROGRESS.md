@@ -51,7 +51,7 @@ Do not tick a task unless:
 ### Current active checkpoint
 - Status: `[-]`
 - Checkpoint: `G — Resolver-first execution flow`
-- Subtask: `G4 — Keep TradeDB(load=False) only as transitional shim`
+- Subtask: `G5 — Mirror the same flow in GUI`
 - Owner: `Tromador`
 - Started: `2026-04-30`
 - Goal: `Resolve command inputs before heavy TradeDB paths.`
@@ -65,11 +65,11 @@ Do not tick a task unless:
 ### Last updated
 - Date: `2026-04-30`
 - By: `Tromador + Claude`
-- Session summary: `G3 complete and accepted after review. TradeORM.lookup_item() added (exact CI fast path then full catalogue scan via _list_search — full scan required for two-stage normalisation equivalence with TradeDB.lookupItem; ILIKE narrowing deliberately avoided). TradeORM.normalize_str() static method added, exposing the two-stage normalisation for callers outside tradeorm.py. checkAvoidsORM() added to CommandEnv: mirrors legacy try-item-then-place logic; exact normalised item match (via normalize_str) suppresses place lookup; AmbiguityError propagates. checkViasORM() added: resolves each --via token as a place, wraps LookupError as CommandLineError (deliberate improvement over legacy silent propagation). Both wired into CommandEnv.run() for RESOLVER-tier commands. 19 tests added across two files. 290 tests passing. Commits: be8a6fb7, 2c697f35.`
+- Session summary: `G4 complete. station_cmd and shipvendor_cmd moved from LEGACY_HANDLE (wantsTradeDB=False) to Needs.NOTHING — both are deprecated no-ops that touch no backend. LEGACY_HANDLE docstring clarified as transitional shim only. Needs.NOTHING test extended to cover all three no-op commands (update_cmd, station_cmd, shipvendor_cmd).`
 
 ### Last known good rollback point
-- Commit: `2c697f35`
-- Notes: `Post-G3 validated state. 290 tests passing on 2026-04-30.`
+- Commit: `0f785462`
+- Notes: `Post-G4 accepted state. 290 tests passing on 2026-04-30.`
 
 ---
 
@@ -364,9 +364,9 @@ Resolve command inputs before heavy legacy load.
 - [x] G3. Move `--avoid` and `--via` to resolver path
   - Status note: Accepted after review and fix. checkAvoidsORM() resolves items via lookup_item() (full catalogue scan for normalised equivalence) then places via lookup_place(); normalize_str() exact check suppresses place lookup on normalised-exact item match. checkViasORM() resolves each via as a place with CommandLineError on not-found. Both called from run() for RESOLVER-tier commands. normalize_str() added to TradeORM as public two-stage normalisation helper.
   - Evidence: commits be8a6fb7, 2c697f35; 290 tests passing.
-- [ ] G4. Keep `TradeDB(load=False)` only as transitional shim
-  - Status note:
-  - Evidence:
+- [x] G4. Keep `TradeDB(load=False)` only as transitional shim
+  - Status note: station_cmd and shipvendor_cmd moved from wantsTradeDB=False (LEGACY_HANDLE) to Needs.NOTHING — both are deprecated no-ops that touch no backend. LEGACY_HANDLE docstring updated to make transitional intent explicit. Needs.NOTHING test extended to cover all three no-op commands.
+  - Evidence: tradedangerous/commands/station_cmd.py; tradedangerous/commands/shipvendor_cmd.py; tradedangerous/commands/commandenv.py; tests/test_commandenv.py
 - [ ] G5. Mirror the same flow in GUI
   - Status note:
   - Evidence:
@@ -741,6 +741,10 @@ Use this as the short “what is already definitely done” section for quick sc
   - Date completed: `2026-04-29`
   - Commit: `1896bdaf` (partial matching fixes); `1ca25bc4` (test cleanup)
   - Notes: `RESOLVER_CONTRACT.md written and locked. 53 legacy parity tests. TradeORM lookup_system/station/place all implement exact + partial matching with two-step ILIKE candidate narrowing and Python-side tier matching mirroring the legacy resolver. 177 tests passing.`
+- [x] Milestone: `Checkpoint G G1–G4 complete`
+  - Date completed: `2026-04-30`
+  - Commit: `0f785462` (G4); `2c697f35` (G3); `305e2fa6` (G2); `1a20e8a5` (G1)
+  - Notes: `G1: Needs capability enum (NOTHING/RESOLVER/LEGACY_HANDLE/FULL_LEGACY). G2: --near/--from/--to resolved via checkFromToNearORM(). G3: --avoid/--via resolved via checkAvoidsORM()/checkViasORM(); normalize_str() added to TradeORM. G4: station_cmd and shipvendor_cmd moved from LEGACY_HANDLE to Needs.NOTHING; LEGACY_HANDLE docstring clarified as transitional shim only.`
 
 ---
 
