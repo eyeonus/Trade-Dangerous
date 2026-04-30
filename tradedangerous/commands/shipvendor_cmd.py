@@ -5,6 +5,7 @@
 #   • Search for ships via:            trade buy --near "<place>" --ly N "<ship>"
 
 from __future__ import annotations
+from .commandenv import Needs
 from .parsing import ParseArgument  # to swallow arbitrary positional args
 
 # ---- Command metadata ----
@@ -13,8 +14,8 @@ name = "shipvendor"
 epilog = None
 acceptUnknown = True
 
-# No DB access needed.
-wantsTradeDB = False
+# Deprecated no-op: no backend required.
+needs = Needs.NOTHING
 usesTradeData = False
 
 # Accept ANY number of positional args and ignore them (prevents parser errors).

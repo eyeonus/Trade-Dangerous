@@ -12,6 +12,7 @@
 #   trade market --origin "<station>" (market view)
 
 from __future__ import annotations
+from .commandenv import Needs
 from .parsing import ParseArgument
 
 # ---- Command metadata ----
@@ -20,8 +21,8 @@ name = "station"
 epilog = None
 acceptUnknown = True
 
-# No DB access is needed for this no-op command.
-wantsTradeDB = False
+# Deprecated no-op: no backend required.
+needs = Needs.NOTHING
 usesTradeData = False
 
 # Accept ANY number of positional args and ignore them (prevents parser errors).

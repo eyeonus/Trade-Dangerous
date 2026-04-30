@@ -34,7 +34,10 @@ class Needs(Flag):
     """
     NOTHING       = 0        # no backend required (e.g. deprecated no-ops)
     RESOLVER      = auto()   # TradeORM resolver only
-    LEGACY_HANDLE = auto()   # TradeDB(load=False): legacy surface, no full preload
+    LEGACY_HANDLE = auto()   # TradeDB(load=False): transitional shim only — for commands that
+                             # need TradeDB infrastructure (paths/engine) but not the full
+                             # in-memory load, and for commands in transit toward RESOLVER.
+                             # Not a permanent migration target.
     FULL_LEGACY   = auto()   # TradeDB(load=True): full in-memory preload
 
 

@@ -127,11 +127,12 @@ def test_commandenv_needs_explicit_resolver():
 
 def test_commandenv_needs_explicit_nothing():
     """Commands declaring Needs.NOTHING require no backend at all."""
-    from tradedangerous.commands import update_cmd
-    env = _make_cmd_env(update_cmd)
-    assert env.commandNeeds == Needs.NOTHING
-    assert not env.needs_legacy_db
-    assert not env.needs_full_load
+    from tradedangerous.commands import update_cmd, station_cmd, shipvendor_cmd
+    for cmd in (update_cmd, station_cmd, shipvendor_cmd):
+        env = _make_cmd_env(cmd)
+        assert env.commandNeeds == Needs.NOTHING
+        assert not env.needs_legacy_db
+        assert not env.needs_full_load
 
 
 def test_commandenv_needs_legacy_wantsTradeDB_false_gives_handle():
